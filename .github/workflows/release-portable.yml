@@ -145,7 +145,7 @@ jobs:
           chmod +x "$DIR_NAME/RCloneManager"
 
           # 3. Create README with Dependencies
-          echo -e "RClone Manager - Portable Edition v$VERSION\n==========================================\nPortable version with local config.\nYou can also import/export settings via the application.\n\nSystem Requirements:\n-------------------\nDependencies (Install via your package manager):\n- libayatana-appindicator3-1 OR libappindicator3-1\n- libwebkit2gtk-4.1-0\n- libgtk-3-0\n\nRecommended:\n- rclone\n- 7z" > "$DIR_NAME/README.txt"
+          echo -e "RClone Manager - Portable Edition v$VERSION\n==========================================\nPortable version with local config.\nYou can also import/export settings via the application.\n\nSystem Requirements:\n-------------------\nDependencies (Install via your package manager):\n- libayatana-appindicator3-1 OR libappindicator3-1\n- libwebkit2gtk-4.1-0\n- libgtk-3-0\n\nRecommended:\n- rclone" > "$DIR_NAME/README.txt"
 
           # Compress
           tar -czvf "${DIR_NAME}.tar.gz" "$DIR_NAME"

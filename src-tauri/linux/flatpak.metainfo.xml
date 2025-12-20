@@ -62,37 +62,67 @@
   <url type="vcs-browser">https://github.com/Zarestia-Dev/rclone-manager</url>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.8/assets/desktop-ui.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.9/assets/desktop-ui.png</image>
       <caption>Desktop UI</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.8/assets/general-home.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.9/assets/general-home.png</image>
       <caption>General Home View</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.8/assets/general-remote.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.9/assets/general-remote.png</image>
       <caption>Remote Management Interface</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.8/assets/serve-control.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.9/assets/serve-control.png</image>
       <caption>Serve Management Interface</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.8/assets/job-watcher.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.9/assets/job-watcher.png</image>
       <caption>Job Watcher - Monitor your operations</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.8/assets/mount-control.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.9/assets/mount-control.png</image>
       <caption>Mount Control Panel</caption>
     </screenshot>
     </screenshots>
   <releases>
-    <release version="0.1.8" date="2025-12-6">
+    <release version="0.1.9" date="2025-12-20">
+      <description>
+        <p>Warning</p>
+        <ul>
+          <li>Since multiple profiles support, the old profiles are automatically migrated to the new profile system. But before the update, please backup your old profiles. If there is a any problem with the new profile system, you can restore your old profiles from the backup and app try the re-migration to the new profile system.</li>
+        </ul>
+        <p>Added</p>
+        <ul>
+          <li>Multiple profiles support added for all operations (Sync, Copy, Move, Bisync, Mount, Serve). Now you can create multiple profiles for each operation and run them separately. Also operation UI has been changed to show profiles. User can configure it from the detailed remote setup modal. User also can select the shared settings and also add a multiple profiles for shared settings to. Quick Remote Access only works with default profile (When you start a action, it uses the default profile).</li>
+          <li>Added special Flatpak autostart entry for Flatpak version. Now it creates a desktop entry for Flatpak version of the app. This entry is not handled by Tauri. (Fixed #63)</li>
+          <li>Nautilus Component: Added hash calculation support for files. Now you can calculate the hash of a file and copy it to clipboard on the properties dialog.</li>
+          <li>Nautilus Component: Added public link generation support for files and directories. If remote supports public link generation, it will be available in the properties dialog.</li>
+          <li>Nautilus Component: Enabled download button for remote files. Now you can download remote files to your local machine.</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>On linux remove the rclone to required dependencies when installing via deb or rpm packages. Because app handle the rclone binary installation and update itself correctly.</li>
+          <li>Encrypted export not required standalone 7zip binary anymore. Changed to sevenz-rust crate. Not break the old encrypted exports.</li>
+          <li>On tray icon when remote not mounted, it shows the Browse (In App). Basically it opens the RClone Manager's Nautilus with that remote.</li>
+          <li>Angular and Angular Material updated to v21 and other dependencies updated to latest stable versions.</li>
+          <li>Small design changes on Quick Remote Modal.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>Remote configuration step provider selection fixed. Now it correctly filters the provider-specific fields when Provider selected. (issue #59 and #1)</li>
+          <li>Broken reduce animations fixed. (issue #60)</li>
+          <li>Links openning in the about modal fixed. Now it opens the links in the default browser.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.1.8" date="2025-11-06">
       <description>
         <p>Added</p>
         <ul>
-          <li>Developer Setting: Memory Optimization (Destroy Window on Close). Added a new experimental option in Developer Settings that destroys the main window instead of hiding it when closed. This significantly reduces background RAM usage. On Linux, this also actively cleans up lingering WebKit "zombie" processes to prevent memory leaks over long sessions.</li>
-          <li>Nautilus file manager component added for file browsing. This new file manager component provides a more native and integrated file browsing experience within the app, leveraging Nautilus' capabilities. Currently, it does not support all features like copy, move, delete, etc. They will be added in future updates.</li>
+          <li>Developer Setting: Memory Optimization (Destroy Window on Close). Added a new experimental option in Developer Settings that destroys the main window instead of hiding it when closed. This significantly reduces background RAM usage. On Linux, this also actively cleans up lingering WebKit "zombie" processes to prevent memory leaks over long sessions. On MacOS, this not so effective because MacOS version dont use a lot of memory for background processes. But its useful linux and windows.</li>
+          <li>Nautilus file manager component added for file browsing. This new file manager component provides a more native and integrated file browsing experience within the app, leveraging Nautilus' capabilities. Currently, it is not supports all features like copy, move, delete, etc. They will be added in future updates. Also support the preview for images, text files and pdf files.</li>
           <li>marked dependency added for markdown rendering in the About modal. This allows us to display formatted release notes fetched from GitHub in a user-friendly manner.</li>
           <li>Support for local path navigation on the remote config. User can now navigate to local paths when configuring remotes that use local file systems.</li>
           <li>Added Flatpak detection and warning banner. If the app is running as a Flatpak, a warning banner will be displayed to inform the user about permission limitations. The banner can be dismissed and will not show again once dismissed.</li>

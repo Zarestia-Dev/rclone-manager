@@ -5,9 +5,7 @@
       <mat-icon [svgIcon]="iconService.getIconName(remoteForm.get('type')?.value)"></mat-icon>
     </button>
     <p data-tauri-drag-region>
-      <span>
-        {{ editTarget ? 'Edit ' + (editTarget | titlecase) + ' Settings' : 'Add New Remote' }}
-      </span>
+      {{ editTarget ? 'Edit ' + (editTarget | titlecase) + ' Settings' : 'Add New Remote' }}
     </p>
     <button matIconButton (click)="close()" aria-label="Close dialog" title="Close">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
@@ -15,26 +13,25 @@
   </header>
 
   <!-- Step Progress Indicator (Only shown during multi-step create flow) -->
-  @if (!interactiveFlowState.isActive && (!editTarget || isServeMode)) {
+  @if (!interactiveFlowState.isActive && !editTarget) {
     <div class="step-indicator-container">
       <div class="step-indicator hide-scrollbar" role="tablist" aria-label="Configuration Steps">
-        @for (step of currentStepLabels; track step; let i = $index) {
+        @for (step of stepLabels; track step; let i = $index) {
           <button
             class="step"
             [ngClass]="getStepState(i + 1)"
             [class.clickable]="editTarget"
             (click)="goToStep(i + 1)"
-            (keydown)="handleStepKeydown($event, i + 1)"
             [attr.tabindex]="editTarget ? '0' : '-1'"
             role="tab"
-            [disabled]="isAuthInProgress || (isServeMode ? false : !remoteForm.valid)"
+            [disabled]="isAuthInProgress || !remoteForm.valid"
             [attr.aria-selected]="currentStep === i + 1"
           >
             <div class="step-number">
               @if (getStepState(i + 1) === 'completed') {
                 <mat-icon svgIcon="circle-check"></mat-icon>
               } @else {
-                <mat-icon [svgIcon]="getStepIcon(i)"></mat-icon>
+                <mat-icon [svgIcon]="stepIcons[i]"></mat-icon>
               }
             </div>
             @if (getStepState(i + 1) === 'current') {
@@ -67,8 +64,8 @@
 
     <!-- Non-Interactive Configuration Flow -->
     @if (!interactiveFlowState.isActive) {
-      <!-- Step 1: Remote Configuration or Serve Configuration -->
-      @if (editTarget === 'remote' || (!editTarget && currentStep === 1 && !isServeMode)) {
+      <!-- Step 1: Remote Configuration -->
+      @if (currentStep === 1) {
         <section class="step-container">
           <app-remote-config-step
             class="step"
@@ -86,101 +83,179 @@
         </section>
       }
 
-      <!-- Step 1: Serve Configuration -->
-      @if (currentStep === 1 && isServeMode) {
-        <section class="step-container">
-          <app-serve-config-step
-            class="step"
-            [form]="serveConfigForm"
-            [remoteName]="getRemoteName()"
-            [hasSavedServeConfig]="hasSavedServeConfig"
-            [savedType]="savedType"
-            [availableServeTypes]="availableServeTypes"
-            [selectedType]="selectedServeType"
-            [dynamicServeFields]="dynamicServeFields"
-            [isLoadingFields]="isLoadingServeFields"
-            [getControlKey]="getServeControlKey.bind(this)"
-            (typeChange)="onServeTypeChange($event)"
-          />
-        </section>
-      }
+      <!-- Shared Profile Template -->
+      <ng-template #profileHeader let-flagType="type">
+        <div class="profile-header">
+          @if (getProfileState(flagType).mode === 'view') {
+            <mat-form-field subscriptSizing="dynamic" class="profile-select">
+              <mat-label>Profile</mat-label>
+              <mat-select
+                [value]="getSelectedProfile($any(flagType))"
+                (selectionChange)="selectProfile($any(flagType), $event.value)"
+              >
+                @for (profile of getProfiles($any(flagType)); track profile.name) {
+                  <mat-option [value]="profile.name">{{ profile.name }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
 
-      <!-- Steps 2-9: Flag Configurations (Mount, Copy, Sync, etc.) or Serve Steps -->
-      @if (!isServeMode) {
-        @for (flagType of FLAG_TYPES; track flagType; let i = $index) {
-          @if (editTarget === flagType || (!editTarget && currentStep === i + 2)) {
-            <section class="step-container">
-              <app-flag-config-step
-                class="step"
-                [form]="remoteConfigForm"
-                [flagType]="flagType"
-                [isEditMode]="!!editTarget"
-                [existingRemotes]="existingRemotes"
-                [dynamicFlagFields]="dynamicFlagFields[flagType]"
-                [mountTypes]="mountTypes"
-                [currentRemoteName]="getRemoteName()"
-                [isNewRemote]="!editTarget"
-                [getControlKey]="getUniqueControlKey.bind(this)"
-                (sourceFolderSelected)="handleSourceFolderSelect(flagType)"
-                (destFolderSelected)="handleDestFolderSelect(flagType)"
+            <div class="profile-actions">
+              <button mat-icon-button (click)="startAddProfile($any(flagType))" title="Add Profile">
+                <mat-icon svgIcon="plus"></mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                (click)="startEditProfile($any(flagType))"
+                title="Rename Profile"
+                [disabled]="getSelectedProfile($any(flagType)).toLowerCase() === 'default'"
+              >
+                <mat-icon svgIcon="pen"></mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                class="warn"
+                (click)="deleteProfile($any(flagType), getSelectedProfile($any(flagType)))"
+                title="Delete Profile"
+                [disabled]="
+                  getProfiles($any(flagType)).length <= 1 ||
+                  getSelectedProfile($any(flagType)).toLowerCase() === 'default'
+                "
+              >
+                <mat-icon svgIcon="trash"></mat-icon>
+              </button>
+            </div>
+          } @else {
+            <!-- Edit/Add Mode -->
+            <mat-form-field subscriptSizing="dynamic" class="profile-input">
+              <mat-label>{{
+                getProfileState(flagType).mode === 'add' ? 'New Profile Name' : 'Rename Profile'
+              }}</mat-label>
+              <input
+                matInput
+                [(ngModel)]="getProfileState(flagType).tempName"
+                [ngModelOptions]="{ standalone: true }"
+                (keyup.enter)="saveProfile($any(flagType))"
+                (keyup.escape)="cancelProfileEdit($any(flagType))"
+                autoFocus
               />
-            </section>
+            </mat-form-field>
+
+            <div class="profile-actions">
+              <button
+                mat-icon-button
+                class="primary"
+                (click)="saveProfile($any(flagType))"
+                title="Save"
+              >
+                <mat-icon svgIcon="circle-check"></mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                class="warn"
+                (click)="cancelProfileEdit($any(flagType))"
+                title="Cancel"
+              >
+                <mat-icon svgIcon="circle-xmark"></mat-icon>
+              </button>
+            </div>
           }
-        }
-      }
+        </div>
+      </ng-template>
 
-      <!-- Serve Mode Steps -->
-      @if (isServeMode) {
-        <!-- Step 2: Filter -->
-        @if (currentStep === 2) {
+      <!-- Linked Profiles Template (Collapsible) -->
+      <ng-template #linkedProfiles let-configPath="configPath" let-showVfs="showVfs">
+        <mat-expansion-panel class="linked-profiles-panel">
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              <mat-icon svgIcon="gear" class="panel-icon"></mat-icon>
+              <span>Advanced Profiles</span>
+            </mat-panel-title>
+            <mat-panel-description>
+              <span class="profile-count">{{ showVfs ? '3' : '2' }} linked</span>
+            </mat-panel-description>
+          </mat-expansion-panel-header>
+
+          <div class="linked-profiles-content">
+            @if (showVfs) {
+              <mat-form-field subscriptSizing="dynamic">
+                <mat-label>VFS Profile</mat-label>
+                <mat-select
+                  [formControl]="$any(remoteConfigForm.get(configPath)?.get('vfsProfile'))"
+                >
+                  @for (opt of getProfileOptions('vfs'); track opt) {
+                    <mat-option [value]="opt">{{ opt }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            }
+
+            <mat-form-field subscriptSizing="dynamic">
+              <mat-label>Filter Profile</mat-label>
+              <mat-select
+                [formControl]="$any(remoteConfigForm.get(configPath)?.get('filterProfile'))"
+              >
+                @for (opt of getProfileOptions('filter'); track opt) {
+                  <mat-option [value]="opt">{{ opt }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field subscriptSizing="dynamic">
+              <mat-label>Backend Profile</mat-label>
+              <mat-select
+                [formControl]="$any(remoteConfigForm.get(configPath)?.get('backendProfile'))"
+              >
+                @for (opt of getProfileOptions('backend'); track opt) {
+                  <mat-option [value]="opt">{{ opt }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </div>
+        </mat-expansion-panel>
+      </ng-template>
+
+      <!-- Flags and Serve Steps -->
+      <!-- Step mapping: index + 2 (Remote is step 1, then FLAG_TYPES start at step 2) -->
+      @for (flagType of FLAG_TYPES; track flagType; let i = $index) {
+        @if (currentStep === i + 2) {
           <section class="step-container">
+            <!-- Profile Management Header -->
+            <ng-container
+              *ngTemplateOutlet="profileHeader; context: { type: flagType }"
+            ></ng-container>
+
+            <!-- Linked Profiles for Operations (Mount, Serve, Sync, Copy, Move, Bisync) -->
+            @if (['mount', 'serve', 'sync', 'copy', 'move', 'bisync'].includes(flagType)) {
+              <ng-container
+                *ngTemplateOutlet="
+                  linkedProfiles;
+                  context: {
+                    configPath: flagType + 'Config',
+                    showVfs: flagType === 'mount' || flagType === 'serve',
+                  }
+                "
+              ></ng-container>
+            }
+
             <app-flag-config-step
               class="step"
               [form]="remoteConfigForm"
-              [flagType]="'filter'"
-              [isEditMode]="false"
+              [flagType]="flagType"
+              [isEditMode]="!!editTarget"
               [existingRemotes]="existingRemotes"
-              [dynamicFlagFields]="dynamicFlagFields['filter']"
+              [dynamicFlagFields]="
+                flagType === 'serve' ? dynamicServeFields : dynamicFlagFields[flagType]
+              "
               [mountTypes]="mountTypes"
               [currentRemoteName]="getRemoteName()"
-              [isNewRemote]="true"
+              [isNewRemote]="!editTarget"
               [getControlKey]="getUniqueControlKey.bind(this)"
-            />
-          </section>
-        }
-
-        <!-- Step 3: VFS -->
-        @if (currentStep === 3) {
-          <section class="step-container">
-            <app-flag-config-step
-              class="step"
-              [form]="remoteConfigForm"
-              [flagType]="'vfs'"
-              [isEditMode]="false"
-              [existingRemotes]="existingRemotes"
-              [dynamicFlagFields]="dynamicFlagFields['vfs']"
-              [mountTypes]="mountTypes"
-              [currentRemoteName]="getRemoteName()"
-              [isNewRemote]="true"
-              [getControlKey]="getUniqueControlKey.bind(this)"
-            />
-          </section>
-        }
-
-        <!-- Step 4: Backend -->
-        @if (currentStep === 4) {
-          <section class="step-container">
-            <app-flag-config-step
-              class="step"
-              [form]="remoteConfigForm"
-              [flagType]="'backend'"
-              [isEditMode]="false"
-              [existingRemotes]="existingRemotes"
-              [dynamicFlagFields]="dynamicFlagFields['backend']"
-              [mountTypes]="mountTypes"
-              [currentRemoteName]="getRemoteName()"
-              [isNewRemote]="true"
-              [getControlKey]="getUniqueControlKey.bind(this)"
+              [availableServeTypes]="availableServeTypes"
+              [selectedServeType]="selectedServeType"
+              [isLoadingServeFields]="isLoadingServeFields"
+              (sourceFolderSelected)="handleSourceFolderSelect(flagType)"
+              (destFolderSelected)="handleDestFolderSelect(flagType)"
+              (serveTypeChange)="onServeTypeChange($event)"
             />
           </section>
         }
@@ -192,11 +267,7 @@
   <footer class="button-container">
     <!-- Left Side: Back Button -->
     <div class="button-container-inner">
-      @if (
-        currentStep > 1 &&
-        (!editTarget || (isServeMode && !isEditingSpecificServeSection)) &&
-        !interactiveFlowState.isActive
-      ) {
+      @if (currentStep > 1 && !editTarget && !interactiveFlowState.isActive) {
         <button
           matButton="filled"
           class="accent"

@@ -57,8 +57,8 @@
     <!-- Empty state when no shortcuts match search -->
     @if (filteredShortcuts.length === 0 && searchText) {
       <div class="empty-state">
-        <mat-icon svgIcon="search" class="empty-icon"></mat-icon>
-        <h3>No shortcuts found</h3>
+        <mat-icon svgIcon="search"></mat-icon>
+        <span>No shortcuts found</span>
         <p>Try searching for a different term or clear your search.</p>
         <button matButton="filled" class="accent" (click)="clearSearch()">Clear Search</button>
       </div>

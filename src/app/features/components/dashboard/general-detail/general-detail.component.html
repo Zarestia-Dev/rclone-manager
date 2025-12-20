@@ -54,7 +54,6 @@
         }
       </div>
     </div>
-    <div class="header-divider"></div>
   </div>
 
   <div class="detail-content">
@@ -62,7 +61,13 @@
 
     <app-jobs-panel
       [config]="jobsPanelConfig()"
-      (stopJob)="stopJob.emit({ type: $event.type, remoteName: $event.remoteName })"
+      (stopJob)="
+        stopJob.emit({
+          type: $event.type,
+          remoteName: $event.remoteName,
+          profileName: $event.profileName,
+        })
+      "
       (deleteJob)="deleteJob.emit($event)"
     >
     </app-jobs-panel>
@@ -113,15 +118,7 @@
                     <div class="task-info">
                       <div class="task-title-row">
                         <mat-icon
-                          [svgIcon]="
-                            task.taskType === 'sync'
-                              ? 'sync'
-                              : task.taskType === 'copy'
-                                ? 'copy'
-                                : task.taskType === 'move'
-                                  ? 'move'
-                                  : 'right-left'
-                          "
+                          [svgIcon]="getTaskTypeIcon(task.taskType)"
                           class="task-type-icon"
                           [class.sync-color]="task.taskType === 'sync'"
                           [class.copy-color]="task.taskType === 'copy'"
@@ -204,7 +201,9 @@
                       <div class="path-grid">
                         <div class="path-item">
                           <span class="path-label">Source:</span>
-                          <code class="path-value">{{ task.args['source'] }}</code>
+                          <code class="path-value">{{
+                            task.args['source'] || task.args['remote_name'] + ':'
+                          }}</code>
                         </div>
                         <div class="path-item">
                           <span class="path-label">Destination:</span>

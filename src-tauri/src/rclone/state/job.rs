@@ -91,13 +91,45 @@ impl JobCache {
     }
 
     /// Checks if a job of a specific type is already running for a specific remote.
-    pub async fn is_job_running(&self, remote_name: &str, job_type: &str) -> bool {
+    pub async fn is_job_running(
+        &self,
+        remote_name: &str,
+        job_type: &str,
+        profile: Option<&str>,
+    ) -> bool {
         let jobs = self.jobs.read().await;
         jobs.iter().any(|job| {
             job.remote_name == remote_name
                 && job.job_type == job_type
                 && job.status == JobStatus::Running
+                && job.profile.as_deref() == profile
         })
+    }
+    /// Get jobs filtered by source_ui
+    pub async fn get_jobs_by_source(&self, source: &str) -> Vec<JobInfo> {
+        self.jobs
+            .read()
+            .await
+            .iter()
+            .filter(|job| job.source_ui.as_deref() == Some(source))
+            .cloned()
+            .collect()
+    }
+
+    /// Rename a profile in all matching running jobs
+    /// Returns the number of jobs updated
+    pub async fn rename_profile(&self, remote_name: &str, old_name: &str, new_name: &str) -> usize {
+        let mut jobs = self.jobs.write().await;
+        let mut updated_count = 0;
+
+        for job in jobs.iter_mut() {
+            if job.remote_name == remote_name && job.profile.as_deref() == Some(old_name) {
+                job.profile = Some(new_name.to_string());
+                updated_count += 1;
+            }
+        }
+
+        updated_count
     }
 }
 
@@ -122,6 +154,27 @@ pub async fn get_job_status(
 #[tauri::command]
 pub async fn get_active_jobs(job_cache: State<'_, JobCache>) -> Result<Vec<JobInfo>, String> {
     Ok(job_cache.get_active_jobs().await)
+}
+
+#[tauri::command]
+pub async fn get_jobs_by_source(
+    job_cache: State<'_, JobCache>,
+    source: String,
+) -> Result<Vec<JobInfo>, String> {
+    Ok(job_cache.get_jobs_by_source(&source).await)
+}
+
+/// Rename a profile in all cached running jobs
+#[tauri::command]
+pub async fn rename_profile_in_cache(
+    job_cache: State<'_, JobCache>,
+    remote_name: String,
+    old_name: String,
+    new_name: String,
+) -> Result<usize, String> {
+    Ok(job_cache
+        .rename_profile(&remote_name, &old_name, &new_name)
+        .await)
 }
 
 impl Default for JobCache {

@@ -1,9 +1,15 @@
 import { Injectable, inject } from '@angular/core';
-import { BehaviorSubject, interval, Subscription, firstValueFrom } from 'rxjs';
-import { takeWhile } from 'rxjs/operators';
+import {
+  BehaviorSubject,
+  Observable,
+  combineLatest,
+  interval,
+  Subscription,
+  firstValueFrom,
+} from 'rxjs';
+import { map, takeWhile } from 'rxjs/operators';
 import { NotificationService } from '../../shared/services/notification.service';
 import { AppSettingsService } from '../settings/app-settings.service';
-import { UpdateStateService } from './update-state.service';
 import { UpdateMetadata } from '@app/types';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { UiStateService } from '../ui/ui-state.service';
@@ -19,15 +25,27 @@ export interface DownloadStatus {
   failureMessage?: string | null;
 }
 
+export interface UpdateState {
+  isSupported: boolean;
+  buildType: string | null;
+  hasUpdates: boolean;
+  isUpdateInProgress: boolean;
+}
+
 @Injectable({
   providedIn: 'root',
 })
 export class AppUpdaterService extends TauriBaseService {
   private notificationService = inject(NotificationService);
   private appSettingsService = inject(AppSettingsService);
-  private updateStateService = inject(UpdateStateService);
   private uiStateService = inject(UiStateService);
   private dialog = inject(MatDialog);
+
+  // Update state subjects (previously in UpdateStateService)
+  private buildTypeSubject = new BehaviorSubject<string | null>(null);
+  private updatesDisabledSubject = new BehaviorSubject<boolean>(false);
+  private hasUpdatesSubject = new BehaviorSubject<boolean>(false);
+  private updateInProgressSubject = new BehaviorSubject<boolean>(false);
 
   private updateAvailableSubject = new BehaviorSubject<UpdateMetadata | null>(null);
   private downloadStatusSubject = new BehaviorSubject<DownloadStatus>({
@@ -38,24 +56,39 @@ export class AppUpdaterService extends TauriBaseService {
   });
   private skippedVersionsSubject = new BehaviorSubject<string[]>([]);
   private updateChannelSubject = new BehaviorSubject<string>('stable');
-
-  // New subject for restart state
   private restartRequiredSubject = new BehaviorSubject<boolean>(false);
 
   private statusPollingInterval = 500;
   private pollingSubscription: Subscription | null = null;
   private initialized = false;
 
+  // Public observables
+  public buildType$ = this.buildTypeSubject.asObservable();
+  public updatesDisabled$ = this.updatesDisabledSubject.asObservable();
+  public hasUpdates$ = this.hasUpdatesSubject.asObservable();
+  public updateInProgress$ = this.updateInProgressSubject.asObservable();
   public updateAvailable$ = this.updateAvailableSubject.asObservable();
-  public updateInProgress$ = this.updateStateService.updateInProgress$;
   public downloadStatus$ = this.downloadStatusSubject.asObservable();
   public skippedVersions$ = this.skippedVersionsSubject.asObservable();
   public updateChannel$ = this.updateChannelSubject.asObservable();
-  public updatesDisabled$ = this.updateStateService.updatesDisabled$;
-  public buildType$ = this.updateStateService.buildType$;
-  public updateState$ = this.updateStateService.updateState$;
-
   public restartRequired$ = this.restartRequiredSubject.asObservable();
+
+  /**
+   * Combined state observable that provides all update-related information
+   */
+  public updateState$: Observable<UpdateState> = combineLatest([
+    this.buildType$,
+    this.updatesDisabled$,
+    this.hasUpdates$,
+    this.updateInProgress$,
+  ]).pipe(
+    map(([buildType, updatesDisabled, hasUpdates, updateInProgress]) => ({
+      isSupported: !updatesDisabled,
+      buildType,
+      hasUpdates: hasUpdates && !updatesDisabled,
+      isUpdateInProgress: updateInProgress && !updatesDisabled,
+    }))
+  );
 
   async checkForUpdates(): Promise<UpdateMetadata | null> {
     try {
@@ -63,7 +96,7 @@ export class AppUpdaterService extends TauriBaseService {
 
       console.log('Checking for updates on channel:', this.updateChannelSubject.value);
 
-      this.updateStateService.setUpdateInProgress(false);
+      this.updateInProgressSubject.next(false);
       this.resetDownloadStatus();
 
       // Check if updates are disabled (use cached value)
@@ -90,8 +123,8 @@ export class AppUpdaterService extends TauriBaseService {
         if (result.updateInProgress) {
           console.log('Update is already in progress, restoring UI state');
           this.updateAvailableSubject.next(result);
-          this.updateStateService.setUpdateInProgress(true);
-          this.updateStateService.setHasUpdates(true);
+          this.updateInProgressSubject.next(true);
+          this.hasUpdatesSubject.next(true);
           this.startStatusPolling();
           return result;
         }
@@ -103,7 +136,7 @@ export class AppUpdaterService extends TauriBaseService {
         }
 
         this.updateAvailableSubject.next(result);
-        this.updateStateService.setHasUpdates(true);
+        this.hasUpdatesSubject.next(true);
         this.notificationService.showInfo(
           `Update available: ${result.version}. Please check the About dialog to install.`,
           'OK',
@@ -149,7 +182,7 @@ export class AppUpdaterService extends TauriBaseService {
         }
       }
 
-      this.updateStateService.setUpdateInProgress(true);
+      this.updateInProgressSubject.next(true);
       this.resetDownloadStatus();
 
       // Start polling for download status
@@ -164,7 +197,7 @@ export class AppUpdaterService extends TauriBaseService {
       console.error('Failed to install update:', error);
       this.notificationService.showError('Failed to install update');
       this.stopStatusPolling();
-      this.updateStateService.setUpdateInProgress(false);
+      this.updateInProgressSubject.next(false);
     }
   }
 
@@ -172,7 +205,7 @@ export class AppUpdaterService extends TauriBaseService {
     this.stopStatusPolling();
 
     this.pollingSubscription = interval(this.statusPollingInterval)
-      .pipe(takeWhile(() => this.updateStateService.isUpdateInProgress()))
+      .pipe(takeWhile(() => this.isUpdateInProgress()))
       .subscribe(async () => {
         try {
           const status = await this.invokeCommand<DownloadStatus>('get_download_status');
@@ -182,9 +215,9 @@ export class AppUpdaterService extends TauriBaseService {
           if (status.isFailed) {
             const msg = status.failureMessage || 'Update installation failed';
             this.notificationService.showError(msg);
-            this.updateStateService.setUpdateInProgress(false);
+            this.updateInProgressSubject.next(false);
             this.updateAvailableSubject.next(null);
-            this.updateStateService.setHasUpdates(false);
+            this.hasUpdatesSubject.next(false);
             this.stopStatusPolling();
             return;
           }
@@ -206,9 +239,9 @@ export class AppUpdaterService extends TauriBaseService {
   }
 
   private handleUpdateComplete(): void {
-    this.updateStateService.setUpdateInProgress(false);
+    this.updateInProgressSubject.next(false);
     this.updateAvailableSubject.next(null);
-    this.updateStateService.setHasUpdates(false);
+    this.hasUpdatesSubject.next(false);
     this.stopStatusPolling();
 
     if (this.uiStateService.platform !== 'windows') {
@@ -244,7 +277,7 @@ export class AppUpdaterService extends TauriBaseService {
   }
 
   isUpdateInProgress(): boolean {
-    return this.updateStateService.isUpdateInProgress();
+    return this.updateInProgressSubject.value && !this.updatesDisabledSubject.value;
   }
 
   async skipVersion(version: string): Promise<void> {
@@ -323,7 +356,7 @@ export class AppUpdaterService extends TauriBaseService {
 
       // Clear update status when channel is changed
       this.updateAvailableSubject.next(null);
-      this.updateStateService.setHasUpdates(false);
+      this.hasUpdatesSubject.next(false);
       this.resetDownloadStatus();
 
       this.notificationService.showInfo(`Update channel changed to ${channel}`);
@@ -360,10 +393,10 @@ export class AppUpdaterService extends TauriBaseService {
         this.checkIfUpdatesDisabled(),
       ]);
 
-      this.updateStateService.setBuildType(await this.getBuildType());
+      this.buildTypeSubject.next(await this.getBuildType());
       this.skippedVersionsSubject.next(skippedVersions);
       this.updateChannelSubject.next(channel);
-      this.updateStateService.setUpdatesDisabled(updatesDisabled);
+      this.updatesDisabledSubject.next(updatesDisabled);
 
       this.initialized = true;
     } catch (error) {
@@ -371,8 +404,8 @@ export class AppUpdaterService extends TauriBaseService {
       // Set defaults on error
       this.skippedVersionsSubject.next([]);
       this.updateChannelSubject.next('stable');
-      this.updateStateService.setUpdatesDisabled(false);
-      this.updateStateService.setBuildType(null);
+      this.updatesDisabledSubject.next(false);
+      this.buildTypeSubject.next(null);
     }
   }
 
@@ -386,7 +419,7 @@ export class AppUpdaterService extends TauriBaseService {
   }
 
   public areUpdatesDisabled(): boolean {
-    return this.updateStateService.areUpdatesDisabled();
+    return this.updatesDisabledSubject.value;
   }
 
   public async getBuildType(): Promise<string> {

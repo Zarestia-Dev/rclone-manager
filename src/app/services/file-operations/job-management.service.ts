@@ -1,19 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
-import {
-  BackendOptions,
-  BisyncOptions,
-  BisyncParams,
-  CopyOptions,
-  CopyParams,
-  FilterOptions,
-  JobInfo,
-  MoveOptions,
-  MoveParams,
-  SyncOptions,
-  SyncParams,
-} from '@app/types';
+import { JobInfo } from '@app/types';
 
 /**
  * Service for managing rclone jobs (sync, copy, etc.)
@@ -26,148 +14,55 @@ export class JobManagementService extends TauriBaseService {
   private activeJobsSubject = new BehaviorSubject<JobInfo[]>([]);
   public activeJobs$ = this.activeJobsSubject.asObservable();
 
+  // Nautilus-specific jobs stream
+  private nautilusJobsSubject = new BehaviorSubject<JobInfo[]>([]);
+  public nautilusJobs$ = this.nautilusJobsSubject.asObservable();
+
   constructor() {
     super();
   }
 
+  // ============================================================================
+  // PROFILE-BASED METHODS
+  // These methods only require remote and profile names - the backend resolves
+  // all options (sync, filter, backend, vfs) from cached settings.
+  // ============================================================================
+
   /**
-   * Start a sync job
+   * Start a sync job using a named profile
+   * Backend resolves all options from cached settings
    */
-  async startSync(
-    remoteName: string,
-    source: string,
-    dest: string,
-    createEmptySrcDirs?: boolean,
-    syncOptions?: SyncOptions,
-    filterOptions?: FilterOptions,
-    backendOptions?: BackendOptions
-  ): Promise<number> {
-    this.validatePaths(source, dest);
-
-    const params: SyncParams = {
-      remote_name: remoteName,
-      source,
-      dest,
-      create_empty_src_dirs: createEmptySrcDirs || false,
-      sync_options: syncOptions || {},
-      filter_options: filterOptions || {},
-      backend_options: backendOptions || {},
-    };
-
-    console.debug('Invoking start_sync with params', params);
-    const jobId = await this.invokeCommand<number>('start_sync', { params });
-
-    return jobId;
+  async startSyncProfile(remoteName: string, profileName: string): Promise<number> {
+    const params = { remote_name: remoteName, profile_name: profileName };
+    console.debug('Invoking start_sync_profile with params', params);
+    return this.invokeCommand<number>('start_sync_profile', { params });
   }
 
   /**
-   * Start a copy job
+   * Start a copy job using a named profile
    */
-  async startCopy(
-    remoteName: string,
-    source: string,
-    dest: string,
-    createEmptySrcDirs?: boolean,
-    copyOptions?: CopyOptions,
-    filterOptions?: FilterOptions,
-    backendOptions?: BackendOptions
-  ): Promise<number> {
-    this.validatePaths(source, dest);
-
-    const params: CopyParams = {
-      remote_name: remoteName,
-      source,
-      dest,
-      create_empty_src_dirs: createEmptySrcDirs || false,
-      copy_options: copyOptions || {},
-      filter_options: filterOptions || {},
-      backend_options: backendOptions || {},
-    };
-
-    console.debug('Invoking start_copy with params', params);
-    const jobId = await this.invokeCommand<number>('start_copy', { params });
-
-    return jobId;
+  async startCopyProfile(remoteName: string, profileName: string): Promise<number> {
+    const params = { remote_name: remoteName, profile_name: profileName };
+    console.debug('Invoking start_copy_profile with params', params);
+    return this.invokeCommand<number>('start_copy_profile', { params });
   }
 
-  async startBisync(
-    remoteName: string,
-    source: string,
-    dest: string,
-    bisyncOptions?: BisyncOptions,
-    filterOptions?: FilterOptions,
-    backendOptions?: BackendOptions,
-    dryRun?: boolean,
-    resync?: boolean,
-    checkAccess?: boolean,
-    checkFilename?: string,
-    maxDelete?: number,
-    force?: boolean,
-    checkSync?: boolean | 'only',
-    createEmptySrcDirs?: boolean,
-    removeEmptyDirs?: boolean,
-    filtersFile?: string,
-    ignoreListingChecksum?: boolean,
-    resilient?: boolean,
-    workdir?: string,
-    backupdir1?: string,
-    backupdir2?: string,
-    noCleanup?: boolean
-  ): Promise<number> {
-    this.validatePaths(source, dest);
-
-    const params: BisyncParams = {
-      remote_name: remoteName,
-      source,
-      dest,
-      bisync_options: bisyncOptions || null,
-      filter_options: filterOptions || null,
-      backend_options: backendOptions || {},
-      resync: resync || false,
-      dryRun: dryRun || false,
-      checkAccess: checkAccess || false,
-      checkFilename: checkFilename || '',
-      maxDelete: maxDelete || 0,
-      force: force || false,
-      checkSync: checkSync || false,
-      createEmptySrcDirs: createEmptySrcDirs || false,
-      removeEmptyDirs: removeEmptyDirs || false,
-      filtersFile: filtersFile || '',
-      ignoreListingChecksum: ignoreListingChecksum || false,
-      resilient: resilient || false,
-      workdir: workdir || '',
-      backupdir1: backupdir1 || '',
-      backupdir2: backupdir2 || '',
-      noCleanup: noCleanup || false,
-    };
-
-    console.debug('Invoking start_bisync with params', params);
-    return await this.invokeCommand<number>('start_bisync', { params });
+  /**
+   * Start a bisync job using a named profile
+   */
+  async startBisyncProfile(remoteName: string, profileName: string): Promise<number> {
+    const params = { remote_name: remoteName, profile_name: profileName };
+    console.debug('Invoking start_bisync_profile with params', params);
+    return this.invokeCommand<number>('start_bisync_profile', { params });
   }
 
-  async startMove(
-    remoteName: string,
-    source: string,
-    dest: string,
-    createEmptySrcDirs?: boolean,
-    deleteEmptySrcDirs?: boolean,
-    moveOptions?: MoveOptions,
-    filterOptions?: FilterOptions,
-    backendOptions?: BackendOptions
-  ): Promise<number> {
-    this.validatePaths(source, dest);
-    const params: MoveParams = {
-      remote_name: remoteName,
-      source,
-      dest,
-      create_empty_src_dirs: createEmptySrcDirs || false,
-      delete_empty_src_dirs: deleteEmptySrcDirs || false,
-      move_options: moveOptions || {},
-      filter_options: filterOptions || {},
-      backend_options: backendOptions || {},
-    };
-    console.debug('Invoking start_move with params', params);
-    return await this.invokeCommand<number>('start_move', { params });
+  /**
+   * Start a move job using a named profile
+   */
+  async startMoveProfile(remoteName: string, profileName: string): Promise<number> {
+    const params = { remote_name: remoteName, profile_name: profileName };
+    console.debug('Invoking start_move_profile with params', params);
+    return this.invokeCommand<number>('start_move_profile', { params });
   }
 
   /**
@@ -178,7 +73,8 @@ export class JobManagementService extends TauriBaseService {
    * @param autoFilename Whether to automatically determine the filename
    */
   async copyUrl(remote: string, path: string, url: string, autoFilename: boolean): Promise<void> {
-    return this.invokeCommand('copy_url', { remote, path, urlToCopy: url, autoFilename });
+    await this.invokeCommand('copy_url', { remote, path, urlToCopy: url, autoFilename });
+    this.refreshNautilusJobs();
   }
 
   /**
@@ -197,6 +93,34 @@ export class JobManagementService extends TauriBaseService {
     console.log('Active jobs updated:', jobs);
 
     return jobs;
+  }
+
+  /**
+   * Get jobs filtered by source UI
+   * @param source The source UI identifier (e.g., 'nautilus', 'dashboard', 'scheduled')
+   */
+  async getJobsBySource(source: string): Promise<JobInfo[]> {
+    return this.invokeCommand<JobInfo[]>('get_jobs_by_source', { source });
+  }
+
+  /**
+   * Refresh the nautilus jobs stream
+   * This method fetches the latest nautilus jobs and updates the BehaviorSubject
+   */
+  async refreshNautilusJobs(): Promise<void> {
+    try {
+      const jobs = await this.getJobsBySource('nautilus');
+      this.nautilusJobsSubject.next(jobs);
+    } catch (err) {
+      console.error('Failed to refresh nautilus jobs:', err);
+    }
+  }
+
+  /**
+   * Get the current nautilus jobs synchronously from the stream
+   */
+  getNautilusJobs(): JobInfo[] {
+    return this.nautilusJobsSubject.value;
   }
 
   /**
@@ -223,9 +147,15 @@ export class JobManagementService extends TauriBaseService {
   /**
    * Get active jobs for a specific remote from the current state
    */
-  getActiveJobsForRemote(remoteName: string): JobInfo[] {
+  getActiveJobsForRemote(remoteName: string, profile?: string): JobInfo[] {
     const activeJobs = this.activeJobsSubject.value;
-    return activeJobs.filter(job => job.remote_name === remoteName);
+    return activeJobs.filter(job => {
+      const matchRemote = job.remote_name === remoteName;
+      if (profile) {
+        return matchRemote && job.profile === profile;
+      }
+      return matchRemote;
+    });
   }
 
   /**
@@ -261,5 +191,21 @@ export class JobManagementService extends TauriBaseService {
     if (!dest) {
       throw new Error('Destination is required');
     }
+  }
+
+  /**
+   * Rename a profile in all cached running jobs
+   * Returns the number of jobs updated
+   */
+  async renameProfileInCache(
+    remoteName: string,
+    oldName: string,
+    newName: string
+  ): Promise<number> {
+    return this.invokeCommand<number>('rename_profile_in_cache', {
+      remoteName,
+      oldName,
+      newName,
+    });
   }
 }

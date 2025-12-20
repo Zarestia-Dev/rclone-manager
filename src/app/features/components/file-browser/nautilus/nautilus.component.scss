@@ -74,25 +74,13 @@ mat-nav-list {
   &.cdk-drop-list-dragging {
     .new-bookmark-placeholder {
       display: flex !important;
-      animation: slideDown 0.2s ease forwards;
+      animation: slideDownIn 0.2s ease forwards;
     }
 
     .grid-item,
     tr {
       display: none !important;
     }
-  }
-}
-
-/* Animation */
-@keyframes slideDown {
-  from {
-    height: 0;
-    opacity: 0;
-  }
-  to {
-    height: 36px;
-    opacity: 1;
   }
 }
 
@@ -211,7 +199,7 @@ mat-nav-list {
   position: sticky;
   top: 0;
   z-index: 30;
-  background: var(--secondary-background);
+
   gap: var(--space-xs);
 
   .left-section,
@@ -473,7 +461,7 @@ mat-nav-list {
   align-items: center;
   gap: 8px;
   padding: var(--space-sm) var(--space-md);
-  background: var(--secondary-background);
+
   border-radius: var(--border-radius);
   box-shadow: var(--shadow-elevated);
   border: 1px solid var(--primary-color);
@@ -535,7 +523,6 @@ mat-nav-list {
 
   /* HEADER STYLING */
   th.mat-mdc-header-cell {
-    background: var(--secondary-background);
     font-weight: 600;
     color: var(--secondary-text-color);
     border-bottom: none;
@@ -605,8 +592,8 @@ mat-nav-list {
 
   .buttons {
     display: flex;
-    border: 1px solid var(--theme-border);
     border-radius: var(--radius-xs);
+
     overflow: hidden;
 
     button {
@@ -649,7 +636,7 @@ mat-nav-list {
   position: absolute;
   bottom: 16px;
   right: 16px;
-  background-color: var(--app-background);
+
   padding: var(--space-xxs) var(--space-sm);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-elevated);
@@ -664,7 +651,7 @@ mat-nav-list {
   bottom: 16px;
   right: 16px;
   z-index: 10;
-  background-color: var(--app-background);
+
   box-shadow: var(--shadow-elevated);
   border-radius: var(--radius-sm);
   padding: var(--space-xxs) var(--space-sm);
@@ -739,7 +726,6 @@ mat-nav-list {
 
 /* 3. Main Content Area Update */
 .nautilus-main-content {
-  background: var(--secondary-background);
   height: 100%;
   display: flex;
   flex-direction: column;

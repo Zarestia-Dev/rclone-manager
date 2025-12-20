@@ -1,80 +1,23 @@
-// Operation option bags
-export type SyncOptions = Record<string, object>;
-export type CopyOptions = Record<string, object>;
-export type BisyncOptions = Record<string, object>;
-export type MoveOptions = Record<string, object>;
-export type FilterOptions = Record<string, object>;
+// Base option types
+export type OperationOptions = Record<string, object>;
+export type FlagOptions = Record<string, string | number | boolean>;
 
-// Mount option bags
-export type MountOptions = Record<string, string | number | boolean>;
-export type VfsOptions = Record<string, string | number | boolean>;
-export type BackendOptions = Record<string, string | number | boolean>;
-export type ServeOptions = Record<string, string | number | boolean>;
+// Operation option aliases (used throughout the codebase)
+export type SyncOptions = OperationOptions;
+export type CopyOptions = OperationOptions;
+export type BisyncOptions = OperationOptions;
+export type MoveOptions = OperationOptions;
+export type FilterOptions = OperationOptions;
 
-// Tauri command parameter payloads
-export interface SyncParams {
+// Flag option aliases (used in serve.ts and elsewhere)
+export type MountOptions = FlagOptions;
+export type VfsOptions = FlagOptions;
+export type BackendOptions = FlagOptions;
+export type ServeOptions = FlagOptions;
+
+// Profile-based params - used by frontend services to start operations
+// The backend resolves all options from cached settings
+export interface ProfileParams {
   remote_name: string;
-  source: string;
-  dest: string;
-  create_empty_src_dirs: boolean;
-  sync_options: SyncOptions | null;
-  filter_options: FilterOptions | null;
-  backend_options: BackendOptions | null;
-}
-
-export interface CopyParams {
-  remote_name: string;
-  source: string;
-  dest: string;
-  create_empty_src_dirs: boolean;
-  copy_options: CopyOptions | null;
-  filter_options: FilterOptions | null;
-  backend_options: BackendOptions | null;
-}
-
-export interface BisyncParams {
-  remote_name: string;
-  source: string;
-  dest: string;
-  bisync_options: BisyncOptions | null;
-  filter_options: FilterOptions | null;
-  resync?: boolean;
-  dryRun?: boolean;
-  checkAccess?: boolean;
-  checkFilename?: string;
-  maxDelete?: number;
-  force?: boolean;
-  checkSync?: boolean | 'only';
-  createEmptySrcDirs?: boolean;
-  removeEmptyDirs?: boolean;
-  filtersFile?: string;
-  ignoreListingChecksum?: boolean;
-  resilient?: boolean;
-  workdir?: string;
-  backupdir1?: string;
-  backupdir2?: string;
-  noCleanup?: boolean;
-  backend_options: BackendOptions | null;
-}
-
-export interface MoveParams {
-  remote_name: string;
-  source: string;
-  dest: string;
-  create_empty_src_dirs: boolean;
-  delete_empty_src_dirs: boolean;
-  move_options: MoveOptions | null;
-  filter_options: FilterOptions | null;
-  backend_options: BackendOptions | null;
-}
-
-export interface MountParams {
-  remote_name: string;
-  source: string;
-  mount_point: string;
-  mount_type: string;
-  mount_options: MountOptions | null;
-  vfs_options: VfsOptions | null;
-  filter_options: FilterOptions | null;
-  backend_options: BackendOptions | null;
+  profile_name: string;
 }

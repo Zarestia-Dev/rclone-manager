@@ -20,36 +20,38 @@
       </div>
 
       <!-- Remote Options Menu -->
-      @if (selectedRemote(); as remote) {
-        <button
-          matIconButton
-          class="ellipsis-button"
-          [cdkMenuTriggerFor]="remoteOptionsMenu"
-          [cdkMenuTriggerData]="{ remote: remote }"
-        >
-          <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
-        </button>
+      @for (remote of [selectedRemote()]; track remote?.remoteSpecs?.name) {
+        @if (remote) {
+          <button
+            matIconButton
+            class="ellipsis-button"
+            [cdkMenuTriggerFor]="remoteOptionsMenu"
+            [cdkMenuTriggerData]="{ remote: remote }"
+          >
+            <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
+          </button>
+        }
       }
 
       <!-- Empty State -->
       @if (remotes().length === 0 && !isLoading()) {
-        <div class="empty-state">
-          <div class="empty-state-content">
+        <div class="no-remotes">
+          <div class="no-remotes-content">
             <div class="icon-container">
-              <img src="assets/rclone.svg" alt="Rclone Logo" class="empty-state-icon" />
+              <img src="assets/rclone.svg" alt="Rclone Logo" class="no-remotes-icon" />
             </div>
             <h2>RClone Manager</h2>
             <p>
               Easily manage your RClone remotes. If you're new to RClone, use "Add Quick Remote" for
               a fast and simple setup.
             </p>
-            <div class="empty-state-actions">
+            <div class="no-remotes-actions">
               <button matButton="filled" class="primary" (click)="openQuickAddRemoteModal()">
-                <mat-icon svgIcon="add"></mat-icon>
+                <mat-icon svgIcon="plus"></mat-icon>
                 Add Quick Remote
               </button>
               <button matButton="filled" class="accent" (click)="openRemoteConfigModal()">
-                <mat-icon svgIcon="add"></mat-icon>
+                <mat-icon svgIcon="plus"></mat-icon>
                 Add Detailed Remote
               </button>
             </div>
@@ -72,26 +74,16 @@
             >
             </app-general-overview>
           }
-          @case ('serve') {
-            <app-serve-overview
-              [remotes]="remotes()"
-              [runningServes]="runningServes()"
-              [actionInProgress]="actionInProgress()"
-              (remoteSelected)="selectRemote($event)"
-              (startJob)="startJob($event.type, $event.remoteName)"
-              (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId)"
-            >
-            </app-serve-overview>
-          }
           @default {
             <app-app-overview
               [mode]="currentTab()"
               [remotes]="remotes()"
+              [runningServes]="runningServes()"
               [actionInProgress]="actionInProgress()"
               (remoteSelected)="selectRemote($event)"
               (openInFiles)="openRemoteInFiles($event, currentTab())"
               (startJob)="startJob($event.type, $event.remoteName)"
-              (stopJob)="stopJob($event.type, $event.remoteName)"
+              (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId)"
             >
             </app-app-overview>
           }
@@ -115,24 +107,6 @@
             >
             </app-general-detail>
           }
-          @case ('serve') {
-            <app-serve-detail
-              [selectedRemote]="remote"
-              [runningServes]="runningServes()"
-              [remoteSettings]="selectedRemoteSettings()"
-              [actionInProgress]="actionInProgress()[remote.remoteSpecs.name]"
-              (startJob)="startJob($event.type, $event.remoteName)"
-              (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId)"
-              (openRemoteConfigModal)="
-                openRemoteConfigModal(
-                  $event.editTarget,
-                  $event.existingConfig,
-                  $event.initialSection
-                )
-              "
-            >
-            </app-serve-detail>
-          }
           @default {
             <app-app-detail
               [mainOperationType]="currentTab()"
@@ -141,13 +115,21 @@
               [remoteSettings]="selectedRemoteSettings()"
               [restrictMode]="restrictMode()"
               [actionInProgress]="actionInProgress()[remote.remoteSpecs.name]"
+              [runningServes]="runningServes()"
               (syncOperationChange)="onSyncOperationChange($event)"
               (openRemoteConfigModal)="
-                openRemoteConfigModal($event.editTarget, $event.existingConfig)
+                openRemoteConfigModal(
+                  $event.editTarget,
+                  $event.existingConfig,
+                  $event.initialSection,
+                  $event.targetProfile
+                )
               "
               (openInFiles)="openRemoteInFilesWithPath($event.remoteName, $event.path)"
-              (startJob)="startJob($event.type, $event.remoteName)"
-              (stopJob)="stopJob($event.type, $event.remoteName)"
+              (startJob)="startJob($event.type, $event.remoteName, $event.profileName)"
+              (stopJob)="
+                stopJob($event.type, $event.remoteName, $event.serveId, $event.profileName)
+              "
             >
             </app-app-detail>
           }
@@ -181,7 +163,7 @@
     <button class="menu-item" cdkMenuItem (click)="openExportModal(remote.remoteSpecs.name)">
       <span>Export Configuration</span>
     </button>
-    <button class="menu-item" cdkMenuItem (click)="resetRemoteSettings()">
+    <button class="menu-item" cdkMenuItem (click)="resetRemoteSettings(remote.remoteSpecs.name)">
       <span>Reset Settings</span>
     </button>
     <mat-divider></mat-divider>

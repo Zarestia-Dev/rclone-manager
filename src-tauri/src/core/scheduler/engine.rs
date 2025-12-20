@@ -1,6 +1,8 @@
-use crate::rclone::commands::sync::{BisyncParams, CopyParams, MoveParams, SyncParams};
+use crate::rclone::commands::sync::{
+    start_bisync_profile, start_copy_profile, start_move_profile, start_sync_profile,
+};
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
-use crate::utils::types::all_types::{JobCache, RcloneState};
+use crate::utils::types::all_types::{JobCache, ProfileParams, RcloneState};
 use crate::utils::types::events::{SCHEDULED_TASK_COMPLETED, SCHEDULED_TASK_ERROR};
 use crate::utils::types::scheduled_task::{ScheduledTask, TaskStatus, TaskType};
 use chrono::{Local, Utc};
@@ -305,11 +307,15 @@ async fn execute_scheduled_task(
         }
     };
     let job_type = task.task_type.as_str();
+    let profile = task.args.get("profile").and_then(|v| v.as_str());
 
-    if job_cache.is_job_running(&remote_name, job_type).await {
+    if job_cache
+        .is_job_running(&remote_name, job_type, profile)
+        .await
+    {
         warn!(
-            "Scheduler skipping task '{}': A '{}' job for remote '{}' is already running.",
-            task.name, job_type, remote_name
+            "Scheduler skipping task '{}': A '{}' job for remote '{}' (profile: {:?}) is already running.",
+            task.name, job_type, remote_name, profile
         );
         return Ok(());
     }
@@ -320,31 +326,32 @@ async fn execute_scheduled_task(
         })
         .await?;
 
+    let params: ProfileParams = serde_json::from_value(task.args.clone())
+        .map_err(|e| format!("Failed to parse task args: {}", e))?;
+
     let result = match task.task_type {
         TaskType::Copy => {
-            execute_copy_task(&task, app_handle, job_cache.clone(), rclone_state.clone()).await
+            start_copy_profile(app_handle.clone(), job_cache, rclone_state, params).await
         }
         TaskType::Sync => {
-            execute_sync_task(&task, app_handle, job_cache.clone(), rclone_state.clone()).await
+            start_sync_profile(app_handle.clone(), job_cache, rclone_state, params).await
         }
         TaskType::Move => {
-            execute_move_task(&task, app_handle, job_cache.clone(), rclone_state.clone()).await
+            start_move_profile(app_handle.clone(), job_cache, rclone_state, params).await
         }
         TaskType::Bisync => {
-            execute_bisync_task(&task, app_handle, job_cache.clone(), rclone_state.clone()).await
+            start_bisync_profile(app_handle.clone(), job_cache, rclone_state, params).await
         }
     };
 
     match result {
         Ok(job_id) => {
-            if let Some(rclone_job_id) = job_id {
-                cache
-                    .update_task(task_id, |t| {
-                        t.mark_running(rclone_job_id);
-                    })
-                    .await
-                    .ok();
-            }
+            cache
+                .update_task(task_id, |t| {
+                    t.mark_running(job_id);
+                })
+                .await
+                .ok();
             Ok(())
         }
         Err(e) => {
@@ -359,70 +366,6 @@ async fn execute_scheduled_task(
             Err(e)
         }
     }
-}
-
-/// Execute copy task
-async fn execute_copy_task(
-    task: &ScheduledTask,
-    app_handle: &AppHandle,
-    job_cache: State<'_, JobCache>,
-    rclone_state: State<'_, RcloneState>,
-) -> Result<Option<u64>, String> {
-    use crate::rclone::commands::sync::start_copy;
-
-    let params: CopyParams = serde_json::from_value(task.args.clone())
-        .map_err(|e| format!("Failed to parse copy task args: {}", e))?;
-
-    let result = start_copy(app_handle.clone(), job_cache, rclone_state, params).await?;
-    Ok(Some(result))
-}
-
-/// Execute sync task
-async fn execute_sync_task(
-    task: &ScheduledTask,
-    app_handle: &AppHandle,
-    job_cache: State<'_, JobCache>,
-    rclone_state: State<'_, RcloneState>,
-) -> Result<Option<u64>, String> {
-    use crate::rclone::commands::sync::start_sync;
-
-    let params: SyncParams = serde_json::from_value(task.args.clone())
-        .map_err(|e| format!("Failed to parse sync task args: {}", e))?;
-
-    let result = start_sync(app_handle.clone(), job_cache, rclone_state, params).await?;
-    Ok(Some(result))
-}
-
-/// Execute move task
-async fn execute_move_task(
-    task: &ScheduledTask,
-    app_handle: &AppHandle,
-    job_cache: State<'_, JobCache>,
-    rclone_state: State<'_, RcloneState>,
-) -> Result<Option<u64>, String> {
-    use crate::rclone::commands::sync::start_move;
-
-    let params: MoveParams = serde_json::from_value(task.args.clone())
-        .map_err(|e| format!("Failed to parse move task args: {}", e))?;
-
-    let result = start_move(app_handle.clone(), job_cache, rclone_state, params).await?;
-    Ok(Some(result))
-}
-
-/// Execute bisync task
-async fn execute_bisync_task(
-    task: &ScheduledTask,
-    app_handle: &AppHandle,
-    job_cache: State<'_, JobCache>,
-    rclone_state: State<'_, RcloneState>,
-) -> Result<Option<u64>, String> {
-    use crate::rclone::commands::sync::start_bisync;
-
-    let params: BisyncParams = serde_json::from_value(task.args.clone())
-        .map_err(|e| format!("Failed to parse bisync task args: {}", e))?;
-
-    let result = start_bisync(app_handle.clone(), job_cache, rclone_state, params).await?;
-    Ok(Some(result))
 }
 
 impl Default for CronScheduler {

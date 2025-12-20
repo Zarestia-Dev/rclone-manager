@@ -96,6 +96,47 @@
       flex-direction: column;
       overflow: hidden;
 
+      .profile-header {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+        padding: var(--space-sm) var(--space-md);
+        background: var(--secondary-background);
+        border-bottom: 1px solid var(--border-color);
+
+        .profile-actions {
+          display: flex;
+          align-items: center;
+          gap: var(--space-xs);
+        }
+      }
+
+      // Linked Profiles Expansion Panel
+      .linked-profiles-panel {
+        margin: 0;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        border-bottom: 1px solid var(--border-color);
+
+        mat-expansion-panel-header {
+          min-height: 56px;
+        }
+
+        .profile-count {
+          font-size: 12px;
+          color: var(--secondary-text-color);
+          background: rgba(var(--primary-color-rgb), 0.1);
+          padding: 2px 8px;
+          border-radius: 10px;
+        }
+
+        .linked-profiles-content {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: var(--space-md);
+        }
+      }
+
       .step {
         flex: 1;
         display: flex;

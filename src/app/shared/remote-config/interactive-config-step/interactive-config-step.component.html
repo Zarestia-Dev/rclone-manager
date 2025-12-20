@@ -19,8 +19,8 @@
       <div class="question-header">
         <mat-icon class="question-icon" svgIcon="question"></mat-icon>
         <div class="question-title-section">
-          <h4 class="question-title">{{ question?.Option?.Name || 'Configuration Required' }}</h4>
-          @if (question?.Option?.Required) {
+          <h4 class="question-title">{{ question()?.Option?.Name || 'Configuration Required' }}</h4>
+          @if (question()?.Option?.Required) {
             <span class="required-badge">Required</span>
           }
         </div>
@@ -29,14 +29,14 @@
         <p
           class="help-text"
           [innerHTML]="
-            (question?.Option?.Help | linebreaks) || 'Answer the next question to continue.'
+            (question()?.Option?.Help | linebreaks) || 'Answer the next question to continue.'
           "
         ></p>
-        @if (question?.Option?.DefaultStr) {
+        @if (question()?.Option?.DefaultStr) {
           <div class="default-info">
             <mat-icon class="info-icon" svgIcon="circle-info"></mat-icon>
             <span
-              >Default value: <strong>{{ question?.Option?.DefaultStr }}</strong></span
+              >Default value: <strong>{{ question()?.Option?.DefaultStr }}</strong></span
             >
           </div>
         }
@@ -44,7 +44,7 @@
     </div>
 
     <!-- Input Section -->
-    @if (question; as q) {
+    @if (question(); as q) {
       <div class="input-section">
         @switch (q.Option?.Type) {
           <!-- Enhanced Boolean Toggle -->
@@ -53,7 +53,7 @@
               <div class="toggle-container">
                 <mat-slide-toggle
                   [(ngModel)]="answer"
-                  [disabled]="canceling"
+                  [disabled]="canceling()"
                   class="toggle-input primary"
                   [attr.aria-label]="q.Option?.Name || 'Toggle option'"
                 >
@@ -70,7 +70,7 @@
                   <mat-label>{{ q.Option?.Name || 'Choose an option' }}</mat-label>
                   <mat-select
                     [(ngModel)]="answer"
-                    [disabled]="canceling"
+                    [disabled]="canceling()"
                     [attr.aria-label]="q.Option?.Name || 'Select option'"
                   >
                     @for (ex of q.Option?.Examples; track trackByIndex($index)) {
@@ -93,7 +93,7 @@
                   <input
                     matInput
                     [(ngModel)]="answer"
-                    [disabled]="canceling"
+                    [disabled]="canceling()"
                     [placeholder]="getInputPlaceholder(q)"
                     [attr.aria-label]="q.Option?.Name || 'Input field'"
                   />
@@ -108,7 +108,7 @@
       </div>
     }
 
-    @if (question?.Option?.Required) {
+    @if (question()?.Option?.Required) {
       <div class="validation-status">
         <mat-icon
           class="validation-icon"

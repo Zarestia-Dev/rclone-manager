@@ -1,7 +1,6 @@
 use log::{debug, error, info};
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Listener, Manager};
-use tauri_plugin_autostart::ManagerExt;
 
 use crate::{
     core::{
@@ -229,12 +228,25 @@ fn handle_settings_changed(app: &AppHandle) {
                     if let Some(startup) = general.get("start_on_startup").and_then(|v| v.as_bool())
                     {
                         debug!("🚀 Start on Startup changed to: {startup}");
-                        let autostart = app_handle.autolaunch();
-                        let _ = if startup {
-                            autostart.enable()
-                        } else {
-                            autostart.disable()
-                        };
+
+                        #[cfg(feature = "flatpak")]
+                        {
+                            use crate::utils::app::platform::manage_flatpak_autostart;
+                            if let Err(e) = manage_flatpak_autostart(startup) {
+                                error!("Failed to update flatpak autostart: {e}");
+                            }
+                        }
+
+                        #[cfg(not(feature = "flatpak"))]
+                        {
+                            use tauri_plugin_autostart::ManagerExt;
+                            let autostart = app_handle.autolaunch();
+                            let _ = if startup {
+                                autostart.enable()
+                            } else {
+                                autostart.disable()
+                            };
+                        }
                     }
 
                     if let Some(tray_enabled) =

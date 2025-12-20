@@ -4,21 +4,14 @@ import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
-import { TruncatePathPipe } from '../../pipes/truncate-path.pipe';
+
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 import { CompletedTransfer } from '@app/types';
 import { FormatTimePipe } from '../../pipes/format-time.pipe';
 
 @Component({
   selector: 'app-completed-transfers-table',
-  imports: [
-    CommonModule,
-    MatTableModule,
-    MatIconModule,
-    MatTooltipModule,
-    MatChipsModule,
-    TruncatePathPipe,
-  ],
+  imports: [CommonModule, MatTableModule, MatIconModule, MatTooltipModule, MatChipsModule],
   template: `
     <div class="transfer-table-container">
       @if (transfers().length > 0) {
@@ -99,11 +92,11 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
                 <div class="path-info">
                   @if (transfer.srcFs && transfer.dstFs) {
                     <span class="src" matTooltip="Source: {{ transfer.srcFs }}">{{
-                      transfer.srcFs | truncatePath
+                      transfer.srcFs
                     }}</span>
                     <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
                     <span class="dst" matTooltip="Destination: {{ transfer.dstFs }}">{{
-                      transfer.dstFs | truncatePath
+                      transfer.dstFs
                     }}</span>
                   } @else {
                     <span class="no-path">-</span>
@@ -158,12 +151,10 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
           </table>
         </div>
       } @else {
-        <div class="no-items-placeholder">
+        <div class="empty-state">
           <mat-icon svgIcon="circle-check" class="placeholder-icon"></mat-icon>
           <span>No recent completed transfers</span>
-          <p class="placeholder-description">
-            Completed transfers will appear here once operations finish
-          </p>
+          <p>Completed transfers will appear here once operations finish</p>
         </div>
       }
     </div>

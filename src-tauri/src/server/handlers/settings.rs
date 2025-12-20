@@ -1,0 +1,283 @@
+//! Settings handlers
+
+use axum::{
+    extract::{Query, State},
+    response::Json,
+};
+use serde::Deserialize;
+use std::collections::HashMap;
+use tauri::Manager;
+
+use crate::core::scheduler::engine::CronScheduler;
+use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
+use crate::server::state::{ApiResponse, AppError, WebServerState};
+use crate::utils::types::all_types::RemoteCache;
+use crate::utils::types::settings::SettingsState;
+
+pub async fn get_settings_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
+    use crate::rclone::state::cache::get_settings;
+    let cache = state.app_handle.state::<RemoteCache>();
+    let settings = get_settings(cache).await.map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(settings)))
+}
+
+pub async fn load_settings_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
+    use crate::core::settings::operations::core::load_settings;
+    let settings_state: tauri::State<SettingsState<tauri::Wry>> = state.app_handle.state();
+    let settings = load_settings(settings_state)
+        .await
+        .map_err(anyhow::Error::msg)?;
+    let json_settings = serde_json::to_value(settings)?;
+    Ok(Json(ApiResponse::success(json_settings)))
+}
+
+#[derive(Deserialize)]
+pub struct SaveSettingBody {
+    pub category: String,
+    pub key: String,
+    pub value: serde_json::Value,
+}
+
+pub async fn save_setting_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<SaveSettingBody>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::core::settings::operations::core::save_setting;
+    let settings_state: tauri::State<SettingsState<tauri::Wry>> = state.app_handle.state();
+    save_setting(
+        body.category,
+        body.key,
+        body.value,
+        settings_state,
+        state.app_handle.clone(),
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(
+        "Setting saved successfully".to_string(),
+    )))
+}
+
+#[derive(Deserialize)]
+pub struct ResetSettingBody {
+    pub category: String,
+    pub key: String,
+}
+
+pub async fn reset_setting_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<ResetSettingBody>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
+    use crate::core::settings::operations::core::reset_setting;
+    let settings_state: tauri::State<SettingsState<tauri::Wry>> = state.app_handle.state();
+    let default_value = reset_setting(
+        body.category,
+        body.key,
+        settings_state,
+        state.app_handle.clone(),
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(default_value)))
+}
+
+pub async fn reset_settings_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::core::settings::operations::core::reset_settings;
+    let settings_state: tauri::State<SettingsState<tauri::Wry>> = state.app_handle.state();
+    reset_settings(settings_state, state.app_handle.clone())
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(
+        "Settings reset successfully".to_string(),
+    )))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SaveRemoteSettingsBody {
+    pub remote_name: String,
+    pub settings: serde_json::Value,
+}
+
+pub async fn save_remote_settings_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<SaveRemoteSettingsBody>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::core::settings::remote::manager::save_remote_settings;
+    let settings_state: tauri::State<SettingsState<tauri::Wry>> = state.app_handle.state();
+    let task_cache = state.app_handle.state::<ScheduledTasksCache>();
+    let cron_cache = state.app_handle.state::<CronScheduler>();
+    save_remote_settings(
+        body.remote_name,
+        body.settings,
+        settings_state,
+        task_cache,
+        cron_cache,
+        state.app_handle.clone(),
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(
+        "Remote settings saved successfully".to_string(),
+    )))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeleteRemoteSettingsBody {
+    pub remote_name: String,
+}
+
+pub async fn delete_remote_settings_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<DeleteRemoteSettingsBody>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::core::settings::remote::manager::delete_remote_settings;
+    let settings_state: tauri::State<SettingsState<tauri::Wry>> = state.app_handle.state();
+    delete_remote_settings(body.remote_name, settings_state, state.app_handle.clone())
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(
+        "Remote settings deleted successfully".to_string(),
+    )))
+}
+
+pub async fn check_links_handler(
+    State(_state): State<WebServerState>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
+    use crate::utils::io::network::check_links;
+    let links: Vec<String> = params
+        .iter()
+        .filter(|(key, _)| key == &"links")
+        .map(|(_, value)| value.clone())
+        .collect();
+    if links.is_empty() {
+        return Err(AppError::BadRequest(anyhow::anyhow!("No links provided")));
+    }
+    let max_retries = params
+        .get("maxRetries")
+        .and_then(|s| s.parse::<usize>().ok())
+        .unwrap_or(2);
+    let retry_delay_secs = params
+        .get("retryDelaySecs")
+        .and_then(|s| s.parse::<u64>().ok())
+        .unwrap_or(3);
+    let result = check_links(links, max_retries, retry_delay_secs)
+        .await
+        .map_err(anyhow::Error::msg)?;
+    let json_result = serde_json::to_value(result).map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(json_result)))
+}
+
+#[derive(Deserialize)]
+pub struct SaveRCloneBackendOptionsBody {
+    pub options: serde_json::Value,
+}
+
+pub async fn save_rclone_backend_options_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<SaveRCloneBackendOptionsBody>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::core::settings::rclone_backend::save_rclone_backend_options;
+    save_rclone_backend_options(state.app_handle.clone(), body.options)
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(
+        "RClone backend options saved successfully".to_string(),
+    )))
+}
+
+pub async fn reset_rclone_backend_options_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::core::settings::rclone_backend::reset_rclone_backend_options;
+    reset_rclone_backend_options(state.app_handle.clone())
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(
+        "RClone backend options reset successfully".to_string(),
+    )))
+}
+
+pub async fn get_rclone_backend_store_path_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::core::settings::rclone_backend::get_rclone_backend_store_path;
+    let settings_state: tauri::State<SettingsState<tauri::Wry>> = state.app_handle.state();
+    let path = get_rclone_backend_store_path(settings_state)
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(path)))
+}
+
+#[derive(Deserialize)]
+pub struct SaveRCloneBackendOptionBody {
+    pub block: String,
+    pub option: String,
+    pub value: serde_json::Value,
+}
+
+pub async fn save_rclone_backend_option_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<SaveRCloneBackendOptionBody>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::core::settings::rclone_backend::save_rclone_backend_option;
+    save_rclone_backend_option(
+        state.app_handle.clone(),
+        body.block,
+        body.option,
+        body.value,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(
+        "RClone backend option saved successfully".to_string(),
+    )))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SetRCloneOptionBody {
+    pub block_name: String,
+    pub option_name: String,
+    pub value: serde_json::Value,
+}
+
+pub async fn set_rclone_option_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<SetRCloneOptionBody>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
+    use crate::rclone::queries::flags::set_rclone_option;
+    use crate::utils::types::all_types::RcloneState;
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+    let result = set_rclone_option(rclone_state, body.block_name, body.option_name, body.value)
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(result)))
+}
+
+#[derive(Deserialize)]
+pub struct RemoveRCloneBackendOptionBody {
+    pub block: String,
+    pub option: String,
+}
+
+pub async fn remove_rclone_backend_option_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<RemoveRCloneBackendOptionBody>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::core::settings::rclone_backend::remove_rclone_backend_option;
+    remove_rclone_backend_option(state.app_handle.clone(), body.block, body.option)
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(
+        "RClone backend option removed successfully".to_string(),
+    )))
+}

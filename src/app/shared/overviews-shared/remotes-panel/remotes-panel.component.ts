@@ -21,12 +21,15 @@ export class RemotesPanelComponent {
   actionInProgress = input<RemoteActionProgress>({});
   primaryActionLabel = input('Start');
   activeIcon = input('circle-check');
-  primaryActions = input<PrimaryActionType[]>([]);
 
   @Output() remoteSelected = new EventEmitter<Remote>();
   @Output() openInFiles = new EventEmitter<string>();
   @Output() startJob = new EventEmitter<{ type: PrimaryActionType; remoteName: string }>();
-  @Output() stopJob = new EventEmitter<{ type: PrimaryActionType; remoteName: string }>();
+  @Output() stopJob = new EventEmitter<{
+    type: PrimaryActionType;
+    remoteName: string;
+    profileName?: string;
+  }>();
 
   readonly iconService = inject(IconService);
 
@@ -54,6 +57,10 @@ export class RemotesPanelComponent {
   }
 
   getActionState(remoteName: string): RemoteAction | null {
-    return this.actionInProgress()[remoteName] || null;
+    const actions = this.actionInProgress()[remoteName];
+    if (Array.isArray(actions) && actions.length > 0) {
+      return actions[0].type;
+    }
+    return null;
   }
 }

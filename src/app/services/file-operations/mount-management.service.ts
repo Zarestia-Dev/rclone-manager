@@ -2,15 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { NotificationService } from '../../shared/services/notification.service';
-
-import {
-  MountOptions,
-  VfsOptions,
-  MountParams,
-  BackendOptions,
-  FilterOptions,
-  MountedRemote,
-} from '@app/types';
+import { MountedRemote } from '@app/types';
 
 /**
  * Service for managing rclone mounts
@@ -33,6 +25,7 @@ export class MountManagementService extends TauriBaseService {
    */
   async getMountedRemotes(): Promise<MountedRemote[]> {
     const mountedRemotes = await this.invokeCommand<MountedRemote[]>('get_cached_mounted_remotes');
+    console.log('Mounted Remotes:', mountedRemotes);
     this.mountedRemotesCache.next(mountedRemotes);
     return mountedRemotes;
   }
@@ -45,34 +38,19 @@ export class MountManagementService extends TauriBaseService {
   }
 
   /**
-   * Mount a remote
+   * Mount a remote using a named profile
+   * Backend resolves all options (mount, vfs, filter, backend) from cached settings
    */
-  async mountRemote(
-    remoteName: string,
-    source: string,
-    mountPoint: string,
-    mountType: string,
-    mountOptions?: MountOptions,
-    vfsOptions?: VfsOptions,
-    filterOptions?: FilterOptions,
-    backendOptions?: BackendOptions
-  ): Promise<void> {
+  async mountRemoteProfile(remoteName: string, profileName: string): Promise<void> {
     try {
-      const params: MountParams = {
-        remote_name: remoteName,
-        source: source || '',
-        mount_point: mountPoint || '',
-        mount_type: mountType || '',
-        mount_options: mountOptions || {},
-        vfs_options: vfsOptions || {},
-        filter_options: filterOptions || {},
-        backend_options: backendOptions || {},
-      };
-      await this.invokeCommand('mount_remote', { params });
+      const params = { remote_name: remoteName, profile_name: profileName };
+      await this.invokeCommand('mount_remote_profile', { params });
       await this.refreshMountedRemotes();
-      this.notificationService.showSuccess(`Successfully mounted ${remoteName}`);
+      this.notificationService.showSuccess(`Successfully mounted ${remoteName} (${profileName})`);
     } catch (error) {
-      this.notificationService.showError(`Failed to mount ${remoteName}: ${error}`);
+      this.notificationService.showError(
+        `Failed to mount ${remoteName} (${profileName}): ${error}`
+      );
       throw error;
     }
   }
@@ -106,59 +84,39 @@ export class MountManagementService extends TauriBaseService {
   }
 
   /**
-   * Get mount flags
-   */
-  async getMountFlags(): Promise<any> {
-    return this.invokeCommand('get_mount_flags');
-  }
-
-  /**
-   * Get VFS flags
-   */
-  async getVfsFlags(): Promise<any> {
-    return this.invokeCommand('get_vfs_flags');
-  }
-
-  /**
-   * Get sync flags
-   */
-  async getSyncFlags(): Promise<any> {
-    return this.invokeCommand('get_sync_flags');
-  }
-
-  /**
-   * Get copy flags
-   */
-  async getCopyFlags(): Promise<any> {
-    return this.invokeCommand('get_copy_flags');
-  }
-
-  /**
-   * Get filter flags
-   */
-  async getFilterFlags(): Promise<any> {
-    return this.invokeCommand('get_filter_flags');
-  }
-
-  /**
-   * Get backend flags
-   */
-  async getBackendFlags(): Promise<any> {
-    return this.invokeCommand('get_backend_flags');
-  }
-
-  /**
-   * Get global flags
-   */
-  async getGlobalFlags(): Promise<any> {
-    return this.invokeCommand('get_global_flags');
-  }
-
-  /**
    * Refresh mounted remotes cache
    */
   private async refreshMountedRemotes(): Promise<void> {
     const mountedRemotes = await this.getMountedRemotes();
     this.mountedRemotesCache.next(mountedRemotes);
+  }
+
+  /**
+   * Rename a profile in all cached mounts for a given remote
+   * Returns the number of mounts updated
+   */
+  async renameProfileInMountCache(
+    remoteName: string,
+    oldName: string,
+    newName: string
+  ): Promise<number> {
+    return this.invokeCommand<number>('rename_mount_profile_in_cache', {
+      remoteName,
+      oldName,
+      newName,
+    });
+  }
+
+  /**
+   * Get mounts for a specific remote and profile
+   */
+  getMountsForRemoteProfile(remoteName: string, profile?: string): MountedRemote[] {
+    return this.mountedRemotesCache.value.filter(mount => {
+      const matchesRemote = mount.fs.startsWith(remoteName);
+      if (profile) {
+        return matchesRemote && mount.profile === profile;
+      }
+      return matchesRemote;
+    });
   }
 }

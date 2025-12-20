@@ -16,6 +16,9 @@ mod core;
 mod rclone;
 mod utils;
 
+#[cfg(feature = "web-server")]
+mod server;
+
 /// RClone Manager - Headless Web Server Mode
 #[cfg(feature = "web-server")]
 #[derive(Parser, Debug)]
@@ -59,7 +62,7 @@ use crate::utils::app::updater::app_updates::{fetch_update, get_download_status,
 
 use crate::{
     core::{
-        check_binaries::{check_rclone_available, is_7z_available},
+        check_binaries::check_rclone_available,
         initialization::{init_rclone_state, initialization, setup_config_dir},
         lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
         scheduler::{
@@ -93,11 +96,12 @@ use crate::{
         },
         tray::{
             actions::{
-                handle_bisync_remote, handle_browse_remote, handle_copy_remote,
-                handle_mount_remote, handle_move_remote, handle_start_serve, handle_stop_all_jobs,
-                handle_stop_all_serves, handle_stop_bisync, handle_stop_copy, handle_stop_move,
-                handle_stop_serve, handle_stop_sync, handle_sync_remote, handle_unmount_remote,
-                show_main_window,
+                handle_bisync_profile, handle_browse_in_app, handle_browse_remote,
+                handle_copy_profile, handle_mount_profile, handle_move_profile,
+                handle_serve_profile, handle_stop_all_jobs, handle_stop_all_serves,
+                handle_stop_bisync_profile, handle_stop_copy_profile, handle_stop_move_profile,
+                handle_stop_serve_profile, handle_stop_sync_profile, handle_sync_profile,
+                handle_unmount_profile, show_main_window,
             },
             tray_action::TrayAction,
         },
@@ -106,13 +110,15 @@ use crate::{
         commands::{
             filesystem::{cleanup, copy_url, mkdir},
             job::stop_job,
-            mount::{mount_remote, unmount_all_remotes, unmount_remote},
+            mount::{mount_remote_profile, unmount_all_remotes, unmount_remote},
             remote::{
                 continue_create_remote_interactive, create_remote, create_remote_interactive,
                 delete_remote, update_remote,
             },
-            serve::{start_serve, stop_all_serves, stop_serve},
-            sync::{start_bisync, start_copy, start_move, start_sync},
+            serve::{start_serve_profile, stop_all_serves, stop_serve},
+            sync::{
+                start_bisync_profile, start_copy_profile, start_move_profile, start_sync_profile,
+            },
             system::{quit_rclone_oauth, set_bandwidth_limit},
         },
         queries::{
@@ -120,24 +126,27 @@ use crate::{
             flags::{
                 get_backend_flags, get_bisync_flags, get_copy_flags, get_filter_flags,
                 get_flags_by_category, get_grouped_options_with_values, get_mount_flags,
-                get_move_flags, get_option_blocks, get_sync_flags, get_vfs_flags,
+                get_move_flags, get_option_blocks, get_serve_flags, get_sync_flags, get_vfs_flags,
                 set_rclone_option,
             },
             get_about_remote, get_all_remote_configs, get_bandwidth_limit, get_completed_transfers,
-            get_core_stats, get_core_stats_filtered, get_disk_usage, get_fs_info, get_local_drives,
-            get_memory_stats, get_mount_types, get_mounted_remotes, get_oauth_supported_remotes,
-            get_rclone_info, get_rclone_pid, get_remote_config, get_remote_paths, get_remote_types,
-            get_remotes, get_serve_flags, get_serve_types, get_size, get_stat, list_serves,
-            vfs_forget, vfs_list, vfs_poll_interval, vfs_queue, vfs_queue_set_expiry, vfs_refresh,
-            vfs_stats,
+            get_core_stats, get_core_stats_filtered, get_disk_usage, get_fs_info, get_hashsum,
+            get_local_drives, get_memory_stats, get_mount_types, get_mounted_remotes,
+            get_oauth_supported_remotes, get_public_link, get_rclone_info, get_rclone_pid,
+            get_remote_config, get_remote_paths, get_remote_types, get_remotes, get_serve_types,
+            get_size, get_stat, list_serves, vfs_forget, vfs_list, vfs_poll_interval, vfs_queue,
+            vfs_queue_set_expiry, vfs_refresh, vfs_stats,
         },
         state::{
             cache::{
                 get_cached_mounted_remotes, get_cached_remotes, get_cached_serves, get_configs,
-                get_settings,
+                get_settings, rename_mount_profile_in_cache, rename_serve_profile_in_cache,
             },
             engine::get_rclone_rc_url,
-            job::{delete_job, get_active_jobs, get_job_status, get_jobs},
+            job::{
+                delete_job, get_active_jobs, get_job_status, get_jobs, get_jobs_by_source,
+                rename_profile_in_cache,
+            },
             log::{clear_remote_logs, get_remote_logs},
             scheduled_tasks::{
                 ScheduledTasksCache, get_scheduled_task, get_scheduled_tasks,
@@ -237,6 +246,14 @@ pub fn run() {
     }
 
     // 2. SETUP PLUGINS & HANDLERS
+    #[cfg(not(feature = "flatpak"))]
+    {
+        builder = builder.plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec!["--tray"]),
+        ));
+    }
+
     builder = builder
         .plugin(tauri_plugin_single_instance::init(|_app, _, _| {
             #[cfg(feature = "web-server")]
@@ -245,10 +262,6 @@ pub fn run() {
             #[cfg(not(feature = "web-server"))]
             show_main_window(_app.clone());
         }))
-        .plugin(tauri_plugin_autostart::init(
-            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            Some(vec!["--tray"]),
-        ))
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_os::init())
@@ -391,7 +404,7 @@ pub fn run() {
             //   RCLONE_MANAGER_PORT=3000 rclone-manager
             #[cfg(feature = "web-server")]
             {
-                use crate::core::server::start_web_server;
+                use crate::server::start_web_server;
 
                 let web_handle = app.handle().clone();
                 let args = cli_args;
@@ -427,7 +440,7 @@ pub fn run() {
             #[cfg(not(feature = "web-server"))]
             if !std::env::args().any(|arg| arg == "--tray") {
                 debug!("Creating main window");
-                create_app_window(app.handle().clone());
+                create_app_window(app.handle().clone(), None);
             }
 
             Ok(())
@@ -435,19 +448,44 @@ pub fn run() {
         .on_menu_event(|app, event| {
             if let Some(action) = TrayAction::from_id(event.id.as_ref()) {
                 match action {
-                    TrayAction::Mount(remote) => handle_mount_remote(app.clone(), &remote),
-                    TrayAction::Unmount(remote) => handle_unmount_remote(app.clone(), &remote),
-                    TrayAction::Sync(remote) => handle_sync_remote(app.clone(), &remote),
-                    TrayAction::StopSync(remote) => handle_stop_sync(app.clone(), &remote),
-                    TrayAction::Copy(remote) => handle_copy_remote(app.clone(), &remote),
-                    TrayAction::StopCopy(remote) => handle_stop_copy(app.clone(), &remote),
-                    TrayAction::Move(remote) => handle_move_remote(app.clone(), &remote),
-                    TrayAction::StopMove(remote) => handle_stop_move(app.clone(), &remote),
-                    TrayAction::Bisync(remote) => handle_bisync_remote(app.clone(), &remote),
-                    TrayAction::StopBisync(remote) => handle_stop_bisync(app.clone(), &remote),
+                    TrayAction::MountProfile(remote, profile) => {
+                        handle_mount_profile(app.clone(), &remote, &profile)
+                    }
+                    TrayAction::UnmountProfile(remote, profile) => {
+                        handle_unmount_profile(app.clone(), &remote, &profile)
+                    }
+                    TrayAction::SyncProfile(remote, profile) => {
+                        handle_sync_profile(app.clone(), &remote, &profile)
+                    }
+                    TrayAction::StopSyncProfile(remote, profile) => {
+                        handle_stop_sync_profile(app.clone(), &remote, &profile)
+                    }
+                    TrayAction::CopyProfile(remote, profile) => {
+                        handle_copy_profile(app.clone(), &remote, &profile)
+                    }
+                    TrayAction::StopCopyProfile(remote, profile) => {
+                        handle_stop_copy_profile(app.clone(), &remote, &profile)
+                    }
+                    TrayAction::MoveProfile(remote, profile) => {
+                        handle_move_profile(app.clone(), &remote, &profile)
+                    }
+                    TrayAction::StopMoveProfile(remote, profile) => {
+                        handle_stop_move_profile(app.clone(), &remote, &profile)
+                    }
+                    TrayAction::BisyncProfile(remote, profile) => {
+                        handle_bisync_profile(app.clone(), &remote, &profile)
+                    }
+                    TrayAction::StopBisyncProfile(remote, profile) => {
+                        handle_stop_bisync_profile(app.clone(), &remote, &profile)
+                    }
+                    TrayAction::ServeProfile(remote, profile) => {
+                        handle_serve_profile(app.clone(), &remote, &profile)
+                    }
+                    TrayAction::StopServeProfile(remote, serve_id) => {
+                        handle_stop_serve_profile(app.clone(), &remote, &serve_id)
+                    }
                     TrayAction::Browse(remote) => handle_browse_remote(app, &remote),
-                    TrayAction::Serve(remote) => handle_start_serve(app.clone(), &remote),
-                    TrayAction::StopServe(serve_id) => handle_stop_serve(app.clone(), &serve_id),
+                    TrayAction::BrowseInApp(remote) => handle_browse_in_app(app, &remote),
                 }
                 return;
             }
@@ -515,6 +553,8 @@ pub fn run() {
             get_about_remote,
             get_size,
             get_stat,
+            get_hashsum,
+            get_public_link,
             get_memory_stats,
             get_remotes,
             get_remote_config,
@@ -523,12 +563,12 @@ pub fn run() {
             get_mounted_remotes,
             set_bandwidth_limit,
             // Rclone Sync API
-            start_sync,
-            start_copy,
-            start_bisync,
-            start_move,
-            // Rclone Query API
-            mount_remote,
+            start_sync_profile,
+            start_copy_profile,
+            start_bisync_profile,
+            start_move_profile,
+            // Rclone Mount API
+            mount_remote_profile,
             unmount_remote,
             unmount_all_remotes,
             get_mount_types,
@@ -541,7 +581,7 @@ pub fn run() {
             vfs_queue,
             vfs_queue_set_expiry,
             // Serve API
-            start_serve,
+            start_serve_profile,
             stop_serve,
             stop_all_serves,
             get_serve_types,
@@ -606,18 +646,21 @@ pub fn run() {
             get_settings,
             get_cached_mounted_remotes,
             get_cached_serves,
+            rename_mount_profile_in_cache,
+            rename_serve_profile_in_cache,
             // Binaries
             check_rclone_available,
-            is_7z_available,
             // Logs
             get_remote_logs,
             clear_remote_logs,
             // Jobs
             get_jobs,
             get_active_jobs,
+            get_jobs_by_source,
             get_job_status,
             stop_job,
             delete_job,
+            rename_profile_in_cache,
             // Scheduled Tasks (Now require state)
             get_scheduled_tasks,
             get_scheduled_task,
@@ -684,7 +727,7 @@ pub fn run() {
                     #[cfg(target_os = "linux")]
                     {
                         std::thread::spawn(|| {
-                            std::thread::sleep(std::time::Duration::from_millis(500));
+                            std::thread::sleep(std::time::Duration::from_millis(1000));
                             utils::process::process_manager::cleanup_webkit_zombies();
                         });
                     }

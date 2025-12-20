@@ -1,6 +1,5 @@
 @use "../../../../styles/_shared_components";
 
-// Main container
 .remote-details {
   display: flex;
   flex-direction: column;
@@ -17,7 +16,6 @@
     flex-direction: column;
     align-items: center;
     gap: var(--header-gap);
-    margin-bottom: var(--header-gap);
   }
 
   .remote-info-section {
@@ -108,17 +106,60 @@
   gap: var(--panel-gap);
 }
 
-// Operation buttons
-.operation-buttons {
+// Operation mode selector
+.operation-mode-selector {
   display: flex;
-  justify-content: center;
-  gap: var(--button-gap);
-  padding: var(--space-sm);
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
   background: rgba(var(--app-text-color-rgb), var(--background-opacity));
   border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
 
-  .operation-button.active {
-    box-shadow: 0 0 0 2px var(--operation-color);
+  .selector-label {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--secondary-text-color);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+}
+
+.operation-toggle-group {
+  border-color: var(--border-color);
+
+  .mat-button-toggle {
+    border-color: var(--border-color);
+
+    .mat-button-toggle-button {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      padding: var(--space-sm) var(--space-md);
+      font-weight: 500;
+    }
+
+    // Selected states by operation type
+    &.mat-button-toggle-checked {
+      color: white;
+      --mat-sys-on-secondary-container: white;
+
+      &.operation-sync {
+        background: var(--primary-color);
+      }
+
+      &.operation-copy {
+        background: var(--yellow);
+      }
+
+      &.operation-move {
+        background: var(--orange);
+      }
+
+      &.operation-bisync {
+        background: var(--purple);
+      }
+    }
   }
 }
 
@@ -129,6 +170,127 @@
   flex-direction: column;
   gap: var(--panel-gap);
   padding: var(--container-padding);
+
+  .serves-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-md);
+    padding: var(--space-md);
+    background: var(--secondary-background);
+    border-radius: var(--card-border-radius);
+    border: 1px solid var(--theme-border);
+    box-shadow: var(--shadow-light);
+  }
+}
+
+// Profile Selector
+.profile-selector-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid rgba(var(--primary-color-rgb), 0.15);
+  border-radius: var(--icon-radius);
+  transition: var(--transition-standard);
+
+  // Operation-specific colors
+  &.operation-sync {
+    background: rgba(var(--primary-color-rgb), 0.03);
+    border-color: rgba(var(--primary-color-rgb), 0.15);
+
+    &:hover {
+      background: rgba(var(--primary-color-rgb), 0.05);
+      border-color: rgba(var(--primary-color-rgb), 0.2);
+    }
+  }
+
+  &.operation-mount,
+  &.operation-serve {
+    background: rgba(var(--accent-color-rgb), 0.03);
+    border-color: rgba(var(--accent-color-rgb), 0.15);
+
+    &:hover {
+      background: rgba(var(--accent-color-rgb), 0.05);
+      border-color: rgba(var(--accent-color-rgb), 0.2);
+    }
+  }
+}
+
+.profile-selector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.profile-selector-label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--app-text-color);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.profile-count {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  color: var(--secondary-text-color);
+  padding: 2px 8px;
+  background: rgba(var(--app-text-color-rgb), 0.08);
+  border-radius: 10px;
+}
+
+.profile-chips {
+  display: flex;
+  flex-wrap: wrap;
+
+  mat-chip-option {
+    // Running state (not selected)
+    &.chip-running:not(.mat-mdc-chip-selected) {
+      --mdc-chip-label-text-color: var(--primary-color);
+    }
+
+    // Running state (selected)
+    &.chip-running.mat-mdc-chip-selected {
+      --mdc-chip-elevated-selected-container-color: var(--primary-color);
+      --mdc-chip-label-text-color: white;
+
+      .chip-icon {
+        color: white;
+      }
+    }
+
+    // Scheduled state (not selected)
+    &.chip-scheduled:not(.mat-mdc-chip-selected) {
+      --mdc-chip-label-text-color: var(--orange);
+      border: 1.5px solid rgba(var(--orange-rgb), 0.4);
+
+      .chip-icon {
+        color: var(--orange);
+      }
+    }
+
+    // Scheduled state (selected)
+    &.chip-scheduled.mat-mdc-chip-selected {
+      --mdc-chip-elevated-selected-container-color: var(--orange);
+      --mdc-chip-label-text-color: white;
+
+      .chip-icon {
+        color: white;
+      }
+    }
+  }
+
+  .chip-icon {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.cron-schedules-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
 }
 
 .cron-human-readable {
@@ -145,6 +307,19 @@
 
   .cron-icon {
     color: var(--primary-color);
+    flex-shrink: 0;
+  }
+
+  .cron-profile-name {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .cron-schedule {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
@@ -152,6 +327,7 @@
 .settings-layout {
   display: grid;
   gap: var(--panel-gap);
+  align-items: start;
 }
 
 .settings-group {
@@ -221,13 +397,6 @@
   }
 }
 
-.empty-state {
-  color: var(--secondary-text-color);
-  font-size: 13px;
-  text-align: center;
-  padding: 16px 0;
-}
-
 // Responsive design
 @media (max-width: 768px) {
   .remote-info-section {
@@ -240,6 +409,13 @@
   }
 
   .settings-group {
+    padding: var(--space-sm);
+  }
+  .serves-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-selector-container {
     padding: var(--space-sm);
   }
 }

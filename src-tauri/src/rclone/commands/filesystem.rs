@@ -112,6 +112,8 @@ pub async fn copy_url(
             operation_name: "Copy from URL".to_string(),
             source: url_to_copy,
             destination: path,
+            profile: None,
+            source_ui: Some("nautilus".to_string()),
         },
     )
     .await?;

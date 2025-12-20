@@ -31,6 +31,8 @@ pub struct RcloneState {
 pub struct MountedRemote {
     pub fs: String,
     pub mount_point: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub profile: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -38,6 +40,8 @@ pub struct ServeInstance {
     pub id: String,
     pub addr: String,
     pub params: Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub profile: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -115,6 +119,10 @@ pub struct RemoteCache {
     pub settings: RwLock<serde_json::Value>,
     pub mounted: RwLock<Vec<MountedRemote>>,
     pub serves: RwLock<Vec<ServeInstance>>,
+    /// Tracks mount_point → profile mapping (since rclone API doesn't return profile)
+    pub mount_profiles: RwLock<HashMap<String, String>>,
+    /// Tracks serve_id → profile mapping (since rclone API doesn't return profile)
+    pub serve_profiles: RwLock<HashMap<String, String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -153,6 +161,10 @@ pub struct JobInfo {
     pub status: JobStatus, // "running", "completed", "failed", "stopped"
     pub stats: Option<Value>,
     pub group: String, // Add this field to track the job group
+    pub profile: Option<String>,
+    /// Source UI that started this job (e.g., "nautilus", "dashboard", "scheduled")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_ui: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -204,3 +216,9 @@ pub struct NetworkStatusPayload {
 
 pub const SERVICE_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONFIG_PASSWORD_KEY: &str = "rclone_config_password";
+
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+pub struct ProfileParams {
+    pub remote_name: String,
+    pub profile_name: String,
+}

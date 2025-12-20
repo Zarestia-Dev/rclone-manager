@@ -12,6 +12,9 @@
           <span class="serve-protocol-badge">
             {{ serve().params.type | uppercase }}
           </span>
+          @if (serve().profile) {
+            <span class="serve-profile-badge">{{ serve().profile }}</span>
+          }
         </div>
 
         @if (serveUrl(); as url) {

@@ -612,8 +612,6 @@ body {
     background-color 0.5s ease,
     color 0.05s ease;
   -webkit-user-drag: none;
-  scrollbar-width: thin;
-  -webkit-scrollbar-width: thin;
 }
 
 pre,
@@ -832,38 +830,50 @@ mat-accordion {
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
+}
 
-  .mat-expansion-panel {
-    border-radius: var(--card-border-radius) !important;
+.mat-expansion-panel {
+  border-radius: var(--card-border-radius) !important;
 
-    mat-panel-title {
-      display: flex;
-      align-items: center;
-      gap: var(--space-md);
-      flex: 1;
+  .mat-expansion-panel-body {
+    padding: var(--space-md);
+  }
 
-      mat-icon:first-child {
-        color: var(--primary-color);
-        opacity: 0.9;
-      }
+  mat-panel-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    flex: 1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+
+    mat-icon:first-child {
+      color: var(--primary-color);
+      opacity: 0.9;
     }
+  }
 
-    &.mat-expanded {
-      box-shadow: var(--shadow-elevated);
-    }
+  mat-panel-description {
+    flex-grow: 0;
+    flex-basis: auto;
+  }
 
-    .mat-expansion-panel-header {
-      min-height: 72px;
-      padding: 0 clamp(16px, 4vw, 32px);
-    }
+  &.mat-expanded {
+    box-shadow: var(--shadow-elevated);
+  }
 
-    .mat-expansion-panel-header-description {
-      justify-content: flex-end;
-      align-items: center;
-      display: flex;
-      gap: 12px;
-      font-size: clamp(12px, 2vw, 14px);
-    }
+  .mat-expansion-panel-header {
+    min-height: 72px;
+    padding: 0 clamp(16px, 4vw, 32px);
+  }
+
+  .mat-expansion-panel-header-description {
+    justify-content: flex-end;
+    align-items: center;
+    display: flex;
+    gap: 12px;
+    font-size: clamp(12px, 2vw, 14px);
   }
 }
 
@@ -955,5 +965,34 @@ mat-accordion {
       opacity: 0.4;
       background: transparent;
     }
+  }
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg) var(--space-md);
+  text-align: center;
+  gap: var(--space-sm);
+  color: var(--secondary-text-color);
+
+  mat-icon {
+    width: 48px;
+    height: 48px;
+    opacity: 0.4;
+  }
+
+  span {
+    font-size: var(--font-size-base);
+    font-weight: 500;
+  }
+
+  p {
+    font-size: var(--font-size-sm);
+    opacity: 0.8;
+    margin-block: var(--space-xxs);
   }
 }

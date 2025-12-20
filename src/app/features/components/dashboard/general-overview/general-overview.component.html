@@ -39,7 +39,7 @@
                     <mat-slide-toggle
                       [checked]="panel.visible"
                       (change)="togglePanelVisibility(panel.id)"
-                      color="primary"
+                      class="primary"
                     >
                     </mat-slide-toggle>
                   </div>
@@ -60,14 +60,19 @@
                       [mode]="'general'"
                       [actionInProgress]="actionInProgress()"
                       [primaryActionLabel]="'Mount'"
-                      [primaryActions]="primaryActions()"
                       [activeIcon]="'mount'"
                       (remoteSelected)="onRemoteSelectedFromPanel($event)"
                       (openInFiles)="onOpenInFilesFromPanel($event)"
                       (startJob)="
                         startJob.emit({ type: $event.type, remoteName: $event.remoteName })
                       "
-                      (stopJob)="stopJob.emit({ type: $event.type, remoteName: $event.remoteName })"
+                      (stopJob)="
+                        stopJob.emit({
+                          type: $event.type,
+                          remoteName: $event.remoteName,
+                          profileName: $event.profileName,
+                        })
+                      "
                       role="region"
                       aria-labelledby="remotes-panel-title"
                     >
@@ -598,30 +603,28 @@
                           <span>Loading running serves...</span>
                         </div>
                       } @else {
-                        <div class="serves-content">
-                          @if (allRunningServes().length === 0) {
-                            <div class="no-serves-message" role="status">
-                              <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
-                              <span
-                                >No active serves running. Start serving a remote to make it
-                                accessible via network protocols like HTTP, WebDAV, FTP, or
-                                SFTP.</span
-                              >
-                            </div>
-                          } @else {
-                            <div class="serves-grid">
-                              @for (serve of allRunningServes(); track serve.id) {
-                                <app-serve-card
-                                  [serve]="serve"
-                                  [showRemoteName]="true"
-                                  (stopServe)="stopServe($event)"
-                                  (copyToClipboard)="handleCopyToClipboard($event)"
-                                  (cardClick)="handleServeCardClick($event)"
-                                ></app-serve-card>
-                              }
-                            </div>
-                          }
-                        </div>
+                        @if (allRunningServes().length === 0) {
+                          <div class="no-serves-message" role="status">
+                            <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
+                            <span
+                              >No active serves running. Start serving a remote to make it
+                              accessible via network protocols like HTTP, WebDAV, FTP, or
+                              SFTP.</span
+                            >
+                          </div>
+                        } @else {
+                          <div class="serves-grid">
+                            @for (serve of allRunningServes(); track serve.id) {
+                              <app-serve-card
+                                [serve]="serve"
+                                [showRemoteName]="true"
+                                (stopServe)="stopServe($event)"
+                                (copyToClipboard)="handleCopyToClipboard($event)"
+                                (cardClick)="handleServeCardClick($event)"
+                              ></app-serve-card>
+                            }
+                          </div>
+                        }
                       }
                     </mat-expansion-panel>
                   }

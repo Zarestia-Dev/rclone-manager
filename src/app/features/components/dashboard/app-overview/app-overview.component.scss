@@ -23,6 +23,13 @@
     --mode-light-color: var(--light-green);
     --mode-light-color-rgb: var(--light-green-rgb);
   }
+
+  &.serve {
+    --mode-primary-color: var(--primary-color);
+    --mode-primary-color-rgb: var(--primary-color-rgb);
+    --mode-light-color: var(--light-green);
+    --mode-light-color-rgb: var(--light-green-rgb);
+  }
 }
 
 // OVERVIEW CONTENT CONTAINER
@@ -33,6 +40,65 @@
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;
+}
+
+// =============================================
+// SERVE MODE - ACTIVE REMOTES PANEL
+// =============================================
+.remotes-panel.active-remotes-panel {
+  border-radius: var(--card-border-radius-large);
+  padding: 0;
+
+  .remotes-header {
+    padding: var(--space-xl) var(--space-xl) var(--space-md) var(--space-xl);
+
+    .panel-title-content {
+      color: var(--app-text-color);
+      font-size: var(--font-size-md);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      font-weight: 500;
+
+      .active-icon {
+        width: var(--icon-size-md);
+        height: var(--icon-size-md);
+        color: var(--primary-color);
+      }
+
+      .remote-count {
+        color: var(--secondary-text-color);
+        font-size: var(--font-size-base);
+        font-weight: 400;
+        padding: var(--space-xxs) var(--space-xs);
+        border-radius: var(--radius-sm);
+        background: rgba(var(--primary-color-rgb), 0.1);
+        border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+      }
+    }
+  }
+
+  .remotes-content {
+    padding: var(--panel-padding) 32px 32px 32px;
+
+    .remotes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 16px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .remotes-content {
+      padding: var(--panel-padding-mobile) var(--panel-padding) var(--panel-padding)
+        var(--panel-padding);
+
+      .remotes-grid {
+        grid-template-columns: 1fr;
+        gap: var(--panel-padding-mobile);
+      }
+    }
+  }
 }
 
 // 7.1 Tablet Styles (max-width: 768px)

@@ -18,7 +18,7 @@ export class IconService {
   private registerIcons(): void {
     const icons: Record<string, string> = {
       // ------------------- Titlebar Icons -------------------
-      add: 'assets/icons/titlebar/add.svg',
+      plus: 'assets/icons/titlebar/add.svg',
       'check-box': 'assets/icons/titlebar/check-box.svg',
       close: 'assets/icons/titlebar/close.svg',
       'ellipsis-vertical': 'assets/icons/titlebar/ellipsis-vertical.svg',
@@ -86,6 +86,13 @@ export class IconService {
       webdav: 'assets/icons/remotes/webdav.svg',
       sftp: 'assets/icons/remotes/sftp.svg',
       hdfs: 'assets/icons/remotes/hdfs.svg',
+      box: 'assets/icons/remotes/box.svg',
+      yandex: 'assets/icons/remotes/yandex.svg',
+      'google photos': 'assets/icons/remotes/google.svg',
+      'google cloud storage': 'assets/icons/remotes/google.svg',
+      jottacloud: 'assets/icons/remotes/jottacloud.svg',
+      hidrive: 'assets/icons/remotes/hidrive.svg',
+      pcloud: 'assets/icons/remotes/pcloud.svg',
 
       // ------------------- Theme Icons -------------------
       'circle-check': 'assets/icons/circle-check.svg',

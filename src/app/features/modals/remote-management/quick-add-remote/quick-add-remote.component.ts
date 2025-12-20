@@ -4,8 +4,10 @@ import {
   OnInit,
   OnDestroy,
   inject,
-  ChangeDetectorRef,
+  computed,
+  signal,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import {
   FormBuilder,
   FormGroup,
@@ -25,6 +27,10 @@ import { takeUntil, Subject } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import {
+  MatAutocompleteModule,
+  MatAutocompleteSelectedEvent,
+} from '@angular/material/autocomplete';
 
 // Services
 import { AuthStateService } from '../../../../shared/services/auth-state.service';
@@ -39,19 +45,22 @@ import {
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import {
   RemoteType,
-  RcConfigQuestionResponse,
   RemoteConfigSections,
   InteractiveFlowState,
   INTERACTIVE_REMOTES,
-  CopyConfig,
-  SyncConfig,
-  BisyncConfig,
-  MoveConfig,
 } from '@app/types';
 import { OperationConfigComponent } from '../../../../shared/remote-config/app-operation-config/app-operation-config.component';
 import { ValidatorRegistryService } from 'src/app/shared/services/validator-registry.service';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
 import { IconService } from 'src/app/shared/services/icon.service';
+import {
+  buildPathString,
+  getDefaultAnswerFromQuestion,
+  createInitialInteractiveFlowState,
+  isInteractiveContinueDisabled,
+  convertBoolAnswerToString,
+  updateInteractiveAnswer,
+} from '../../../../shared/utils/remote-config.utils';
 
 type WizardStep = 'setup' | 'operations' | 'interactive';
 
@@ -73,6 +82,7 @@ type WizardStep = 'setup' | 'operations' | 'interactive';
     InteractiveConfigStepComponent,
     MatTooltipModule,
     OperationConfigComponent,
+    MatAutocompleteModule,
   ],
   templateUrl: './quick-add-remote.component.html',
   styleUrls: ['./quick-add-remote.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -86,7 +96,6 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   private readonly mountManagementService = inject(MountManagementService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly fileSystemService = inject(FileSystemService);
-  private readonly cdRef = inject(ChangeDetectorRef);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
   readonly iconService = inject(IconService);
   private readonly nautilusService = inject(NautilusService);
@@ -94,15 +103,50 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   readonly quickAddForm: FormGroup;
   remoteTypes: RemoteType[] = [];
   existingRemotes: string[] = [];
-  isAuthInProgress = false;
-  isAuthCancelled = false;
-  currentStep: WizardStep = 'setup';
-  interactiveFlowState: InteractiveFlowState = {
-    isActive: false,
-    question: null,
-    answer: null,
-    isProcessing: false,
-  };
+
+  // Auth state signals (from service observables)
+  readonly isAuthInProgress = toSignal(this.authStateService.isAuthInProgress$, {
+    initialValue: false,
+  });
+  readonly isAuthCancelled = toSignal(this.authStateService.isAuthCancelled$, {
+    initialValue: false,
+  });
+
+  // Component state signals
+  readonly currentStep = signal<WizardStep>('setup');
+  readonly interactiveFlowState = signal<InteractiveFlowState>(createInitialInteractiveFlowState());
+
+  // Computed signals
+  readonly submitButtonText = computed(() =>
+    this.isAuthInProgress() && !this.isAuthCancelled() ? 'Adding Remote...' : 'Create Remote'
+  );
+
+  readonly isInteractiveContinueDisabled = computed(() =>
+    isInteractiveContinueDisabled(this.interactiveFlowState(), this.isAuthCancelled())
+  );
+
+  // Operation tabs configuration for DRY template
+  readonly operationTabs = [
+    { type: 'mount', label: 'Mount', description: 'Automatically mount this remote as a drive.' },
+    { type: 'sync', label: 'Sync', description: 'Sync this remote to a local folder.' },
+    { type: 'copy', label: 'Copy', description: 'Copy contents to a local folder.' },
+    { type: 'bisync', label: 'Bisync', description: 'Bidirectional sync with a local folder.' },
+    { type: 'move', label: 'Move', description: 'Move contents to a local folder.' },
+  ] as const;
+
+  // Autocomplete for remote type
+  readonly remoteTypeSearchControl = new FormControl('');
+  private readonly remoteTypesSignal = signal<RemoteType[]>([]);
+  private readonly searchTermSignal = signal('');
+
+  readonly filteredRemoteTypes = computed(() => {
+    const term = this.searchTermSignal().toLowerCase();
+    const types = this.remoteTypesSignal();
+    if (!term) return types;
+    return types.filter(
+      r => r.label.toLowerCase().includes(term) || r.value.toLowerCase().includes(term)
+    );
+  });
 
   private readonly destroy$ = new Subject<void>();
   private pendingConfig: {
@@ -121,11 +165,18 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   constructor() {
     this.quickAddForm = this.createQuickAddForm();
     this.setupFormListeners();
+    this.setupRemoteTypeSearch();
+  }
+
+  private setupRemoteTypeSearch(): void {
+    this.remoteTypeSearchControl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(value => {
+      // Update search term for filtering
+      this.searchTermSignal.set(typeof value === 'string' ? value : '');
+    });
   }
 
   ngOnInit(): void {
     this.initializeComponent();
-    this.setupAuthStateListeners();
   }
 
   ngOnDestroy(): void {
@@ -141,24 +192,33 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
         value: remote.name,
         label: remote.description,
       }));
+      this.remoteTypesSignal.set(this.remoteTypes);
       this.existingRemotes = await this.remoteManagementService.getRemotes();
+
+      // Update the remote name validator with the loaded remotes
+      const remoteNameControl = this.quickAddForm.get('setup.remoteName');
+      if (remoteNameControl) {
+        remoteNameControl.setValidators([
+          Validators.required,
+          this.validatorRegistry.createRemoteNameValidator(this.existingRemotes),
+        ]);
+        remoteNameControl.updateValueAndValidity();
+      }
     } catch (error) {
       console.error('Error initializing component:', error);
     }
   }
 
-  private setupAuthStateListeners(): void {
-    this.authStateService.isAuthInProgress$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(isInProgress => {
-        this.isAuthInProgress = isInProgress;
-        this.setFormState(isInProgress);
-      });
+  // Autocomplete helper methods
+  displayRemoteType(value: string): string {
+    const remote = this.remoteTypes.find(r => r.value === value);
+    return remote ? remote.label : value || '';
+  }
 
-    this.authStateService.isAuthCancelled$.pipe(takeUntil(this.destroy$)).subscribe(isCancelled => {
-      this.isAuthCancelled = isCancelled;
-      this.cdRef.markForCheck();
-    });
+  onRemoteTypeSelected(event: MatAutocompleteSelectedEvent): void {
+    const value = event.option.value;
+    this.quickAddForm.get('setup.remoteType')?.setValue(value);
+    this.onRemoteTypeChange(value);
   }
 
   private createOperationPathGroup(
@@ -298,17 +358,17 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   }
 
   nextStep(): void {
-    if (this.currentStep === 'setup') {
+    if (this.currentStep() === 'setup') {
       this.quickAddForm.get('setup')?.markAllAsTouched();
       if (this.isSetupStepValid()) {
-        this.currentStep = 'operations';
+        this.currentStep.set('operations');
       }
     }
   }
 
   prevStep(): void {
-    if (this.currentStep === 'operations') {
-      this.currentStep = 'setup';
+    if (this.currentStep() === 'operations') {
+      this.currentStep.set('setup');
     }
   }
 
@@ -340,7 +400,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     const setup = this.quickAddForm.get('setup')?.value;
     const operations = this.quickAddForm.get('operations')?.value;
 
-    if (this.quickAddForm.invalid || this.isAuthInProgress || !setup || !operations) {
+    if (this.quickAddForm.invalid || this.isAuthInProgress() || !setup || !operations) {
       return;
     }
 
@@ -351,12 +411,12 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
         await this.handleInteractiveCreation(setup, operations);
       } else {
         await this.handleStandardCreation(setup, operations);
-        if (!this.isAuthCancelled) this.dialogRef.close(true);
+        if (!this.isAuthCancelled()) this.dialogRef.close(true);
       }
     } catch (error) {
       console.error('Error in onSubmit:', error);
     } finally {
-      if (!setup.useInteractiveMode || !this.interactiveFlowState.isActive) {
+      if (!setup.useInteractiveMode || !this.interactiveFlowState().isActive) {
         this.authStateService.resetAuthState();
       }
     }
@@ -381,26 +441,6 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     await this.startInteractiveRemoteConfig();
   }
 
-  private buildPathString(pathGroup: any, currentRemoteName: string): string {
-    if (typeof pathGroup === 'string' || !pathGroup) {
-      return pathGroup || '';
-    }
-    const { pathType, path, otherRemoteName } = pathGroup;
-    const p = path || '';
-    if (typeof pathType === 'string' && pathType.startsWith('otherRemote:')) {
-      const remote = otherRemoteName || pathType.split(':')[1];
-      return `${remote}:${p}`;
-    }
-    switch (pathType) {
-      case 'local':
-        return p;
-      case 'currentRemote':
-        return `${currentRemoteName}:${p}`;
-      default:
-        return '';
-    }
-  }
-
   private buildFinalConfig(remoteName: string, operations: any): RemoteConfigSections {
     const createConfig = (
       op: any
@@ -411,21 +451,22 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
       cronEnabled?: boolean;
       cronExpression?: string | null;
     } => ({
-      source: this.buildPathString(op.source, remoteName),
-      dest: this.buildPathString(op.dest, remoteName),
+      source: buildPathString(op.source, remoteName),
+      dest: buildPathString(op.dest, remoteName),
       autoStart: op.autoStart || false,
       cronEnabled: op.cronEnabled || false,
       cronExpression: op.cronExpression || null,
     });
+
     return {
-      mountConfig: { ...createConfig(operations.mount), type: 'mount' },
-      copyConfig: createConfig(operations.copy),
-      syncConfig: createConfig(operations.sync),
-      bisyncConfig: createConfig(operations.bisync),
-      moveConfig: createConfig(operations.move),
-      filterConfig: {},
-      vfsConfig: { CacheMode: 'full', ChunkSize: '32M' },
-      backendConfig: {},
+      mountConfigs: { default: { ...createConfig(operations.mount), type: 'mount' } },
+      copyConfigs: { default: createConfig(operations.copy) },
+      syncConfigs: { default: createConfig(operations.sync) },
+      bisyncConfigs: { default: createConfig(operations.bisync) },
+      moveConfigs: { default: createConfig(operations.move) },
+      filterConfigs: { default: {} },
+      vfsConfigs: { default: { options: { CacheMode: 'full', ChunkSize: '32M' } } },
+      backendConfigs: { default: {} },
       showOnTray: true,
     };
   }
@@ -443,14 +484,13 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
         await this.finalizeRemoteCreation();
         return;
       }
-      this.currentStep = 'interactive';
-      this.interactiveFlowState = {
+      this.currentStep.set('interactive');
+      this.interactiveFlowState.set({
         isActive: true,
         question: startResp,
-        answer: this.getDefaultAnswerFromQuestion(startResp),
+        answer: getDefaultAnswerFromQuestion(startResp),
         isProcessing: false,
-      };
-      this.cdRef.markForCheck();
+      });
     } catch (error) {
       console.error('Error starting interactive config:', error);
       await this.finalizeRemoteCreation();
@@ -458,45 +498,42 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   }
 
   async onInteractiveContinue(answer: string | number | boolean | null): Promise<void> {
-    this.interactiveFlowState.answer = answer;
-    this.interactiveFlowState.isProcessing = true;
+    this.interactiveFlowState.update(state => ({ ...state, answer, isProcessing: true }));
     try {
       await this.submitRcAnswer();
     } finally {
-      if (this.interactiveFlowState.isActive) {
-        this.interactiveFlowState.isProcessing = false;
+      if (this.interactiveFlowState().isActive) {
+        this.interactiveFlowState.update(state => ({ ...state, isProcessing: false }));
       }
-      this.cdRef.markForCheck();
     }
   }
 
   private async submitRcAnswer(): Promise<void> {
-    if (
-      !this.interactiveFlowState.isActive ||
-      !this.interactiveFlowState.question ||
-      !this.pendingConfig
-    ) {
+    const state = this.interactiveFlowState();
+    if (!state.isActive || !state.question || !this.pendingConfig) {
       return;
     }
     try {
-      let answer: unknown = this.interactiveFlowState.answer;
-      if (this.interactiveFlowState.question?.Option?.Type === 'bool') {
-        answer = typeof answer === 'boolean' ? (answer ? 'true' : 'false') : String(answer);
+      let answer: unknown = state.answer;
+      if (state.question?.Option?.Type === 'bool') {
+        answer = convertBoolAnswerToString(answer);
       }
       const resp = await this.remoteManagementService.continueRemoteConfigNonInteractive(
         this.pendingConfig.remoteData.name,
-        this.interactiveFlowState.question.State,
+        state.question.State,
         answer,
         {},
         { nonInteractive: true }
       );
       if (!resp || resp.State === '') {
-        this.interactiveFlowState.isActive = false;
-        this.interactiveFlowState.question = null;
+        this.interactiveFlowState.update(s => ({ ...s, isActive: false, question: null }));
         await this.finalizeRemoteCreation();
       } else {
-        this.interactiveFlowState.question = resp;
-        this.interactiveFlowState.answer = this.getDefaultAnswerFromQuestion(resp);
+        this.interactiveFlowState.update(s => ({
+          ...s,
+          question: resp,
+          answer: getDefaultAnswerFromQuestion(resp),
+        }));
       }
     } catch (error) {
       console.error('Interactive config error:', error);
@@ -504,35 +541,9 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     }
   }
 
-  private getDefaultAnswerFromQuestion(q: RcConfigQuestionResponse): string | boolean | number {
-    const opt = q.Option;
-    if (!opt) return '';
-    if (opt.Type === 'bool') {
-      if (typeof opt.Value === 'boolean') return opt.Value;
-      if (opt.ValueStr !== undefined) return opt.ValueStr.toLowerCase() === 'true';
-      if (opt.DefaultStr !== undefined) return opt.DefaultStr.toLowerCase() === 'true';
-      return typeof opt.Default === 'boolean' ? opt.Default : true;
-    }
-    return (
-      opt.ValueStr || opt.DefaultStr || String(opt.Default || '') || opt.Examples?.[0]?.Value || ''
-    );
-  }
-
-  isInteractiveContinueDisabled(): boolean {
-    if (this.isAuthCancelled || this.interactiveFlowState.isProcessing) return true;
-    if (!this.interactiveFlowState.question?.Option?.Required) return false;
-    const answer = this.interactiveFlowState.answer;
-    return (
-      answer === null ||
-      answer === undefined ||
-      (typeof answer === 'string' && answer.trim() === '')
-    );
-  }
-
   handleInteractiveAnswerUpdate(newAnswer: string | number | boolean | null): void {
-    if (this.interactiveFlowState.isActive) {
-      this.interactiveFlowState.answer = newAnswer;
-      this.cdRef.markForCheck();
+    if (this.interactiveFlowState().isActive) {
+      this.interactiveFlowState.update(state => updateInteractiveAnswer(state, newAnswer));
     }
   }
 
@@ -556,58 +567,43 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     remoteName: string,
     finalConfig: RemoteConfigSections
   ): Promise<void> {
-    const { mountConfig, copyConfig, syncConfig, bisyncConfig, moveConfig } = finalConfig;
+    const { mountConfigs, copyConfigs, syncConfigs, bisyncConfigs, moveConfigs } = finalConfig;
 
-    // Mount operations (always run immediately if autoStart is enabled)
-    if (mountConfig.autoStart && mountConfig.dest) {
-      await this.mountManagementService.mountRemote(
-        remoteName,
-        mountConfig.source,
-        mountConfig.dest,
-        mountConfig.type
-      );
+    // Get default profiles
+    const mountConfig = mountConfigs?.['default'];
+    const copyConfig = copyConfigs?.['default'];
+    const syncConfig = syncConfigs?.['default'];
+    const bisyncConfig = bisyncConfigs?.['default'];
+    const moveConfig = moveConfigs?.['default'];
+
+    // Use profile-based methods - backend resolves options from saved config
+    // This is simpler and ensures consistency with tray actions
+
+    if (mountConfig?.autoStart && mountConfig?.dest) {
+      await this.mountManagementService.mountRemoteProfile(remoteName, 'default');
     }
 
-    // Helper to handle operation with cron or immediate execution
-    const handleOperation = async (
-      opType: 'copy' | 'sync' | 'bisync' | 'move',
-      config: CopyConfig | SyncConfig | BisyncConfig | MoveConfig
-    ): Promise<void> => {
-      if (!config.autoStart || !config.source || !config.dest) return;
+    if (copyConfig?.autoStart && copyConfig?.source && copyConfig?.dest) {
+      await this.jobManagementService.startCopyProfile(remoteName, 'default');
+    }
 
-      switch (opType) {
-        case 'copy':
-          await this.jobManagementService.startCopy(remoteName, config.source, config.dest);
-          break;
-        case 'sync':
-          await this.jobManagementService.startSync(remoteName, config.source, config.dest);
-          break;
-        case 'bisync':
-          await this.jobManagementService.startBisync(remoteName, config.source, config.dest);
-          break;
-        case 'move':
-          await this.jobManagementService.startMove(remoteName, config.source, config.dest);
-          break;
-      }
-    };
+    if (syncConfig?.autoStart && syncConfig?.source && syncConfig?.dest) {
+      await this.jobManagementService.startSyncProfile(remoteName, 'default');
+    }
 
-    // Handle each operation type
-    await handleOperation('copy', copyConfig);
-    await handleOperation('sync', syncConfig);
-    await handleOperation('bisync', bisyncConfig);
-    await handleOperation('move', moveConfig);
+    if (bisyncConfig?.autoStart && bisyncConfig?.source && bisyncConfig?.dest) {
+      await this.jobManagementService.startBisyncProfile(remoteName, 'default');
+    }
+
+    if (moveConfig?.autoStart && moveConfig?.source && moveConfig?.dest) {
+      await this.jobManagementService.startMoveProfile(remoteName, 'default');
+    }
   }
 
   async cancelAuth(): Promise<void> {
     await this.authStateService.cancelAuth();
-    this.currentStep = 'operations';
-    this.interactiveFlowState = {
-      isActive: false,
-      question: null,
-      answer: null,
-      isProcessing: false,
-    };
-    this.cdRef.markForCheck();
+    this.currentStep.set('operations');
+    this.interactiveFlowState.set(createInitialInteractiveFlowState());
   }
 
   private setFormState(disabled: boolean): void {
@@ -616,10 +612,6 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     } else {
       this.quickAddForm.enable();
     }
-  }
-
-  getSubmitButtonText(): string {
-    return this.isAuthInProgress && !this.isAuthCancelled ? 'Adding Remote...' : 'Create Remote';
   }
 
   get selectedRemoteLabel(): string {

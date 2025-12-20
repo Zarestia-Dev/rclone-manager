@@ -41,3 +41,4 @@ export const SCHEDULED_TASK_STOPPED = 'scheduled_task_stopped';
 
 // Application events
 export const APP_EVENT = 'app_event';
+export const OPEN_INTERNAL_ROUTE = 'open_internal_route';

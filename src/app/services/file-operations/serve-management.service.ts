@@ -3,7 +3,7 @@ import { BehaviorSubject } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { NotificationService } from '../../shared/services/notification.service';
 
-import { ServeStartResponse, ServeListResponse, ServeListItem, RcConfigOption } from '@app/types';
+import { ServeStartResponse, ServeListResponse, ServeListItem } from '@app/types';
 import { EventListenersService } from '../system/event-listeners.service';
 
 /**
@@ -41,13 +41,6 @@ export class ServeManagementService extends TauriBaseService {
    */
   async getServeTypes(): Promise<string[]> {
     return this.invokeCommand<string[]>('get_serve_types');
-  }
-
-  /**
-   * Get flags/options for a specific serve type
-   */
-  async getServeFlags(serveType: string): Promise<RcConfigOption[]> {
-    return this.invokeCommand<RcConfigOption[]>('get_serve_flags', { serveType });
   }
 
   /**
@@ -101,38 +94,27 @@ export class ServeManagementService extends TauriBaseService {
     }
   }
   /**
-   * Start a new serve instance
+   * Start a serve using a named profile
+   * Backend resolves all options (serve, vfs, filter, backend) from cached settings
    */
-  async startServe(
-    remoteName: string,
-    serveOptions: Record<string, unknown>,
-    backendOptions?: Record<string, unknown>,
-    filterOptions?: Record<string, unknown>,
-    vfsOptions?: Record<string, unknown>
-  ): Promise<ServeStartResponse> {
+  async startServeProfile(remoteName: string, profileName: string): Promise<ServeStartResponse> {
     try {
-      const serveType = (serveOptions['type'] as string) || 'serve';
-
-      const params = {
-        remote_name: remoteName,
-        serve_options: serveOptions,
-        filter_options: filterOptions || null,
-        backend_options: backendOptions || null,
-        vfs_options: vfsOptions || null,
-      };
-      const response = await this.invokeCommand<ServeStartResponse>('start_serve', { params });
+      const params = { remote_name: remoteName, profile_name: profileName };
+      console.debug('Invoking start_serve_profile with params', params);
+      const response = await this.invokeCommand<ServeStartResponse>('start_serve_profile', {
+        params,
+      });
 
       this.notificationService.showSuccess(
-        `Successfully started ${serveType} serve at ${response.addr}`
+        `Started serve for ${remoteName} (${profileName}) at ${response.addr}`
       );
-
-      // Refresh the list of running serves
       await this.refreshServes();
 
       return response;
     } catch (error) {
-      const serveType = (serveOptions['type'] as string) || 'serve';
-      this.notificationService.showError(`Failed to start ${serveType}: ${error}`);
+      this.notificationService.showError(
+        `Failed to start serve for ${remoteName} (${profileName}): ${error}`
+      );
       throw error;
     }
   }
@@ -209,5 +191,34 @@ export class ServeManagementService extends TauriBaseService {
    */
   getServesByType(serveType: string): ServeListItem[] {
     return this.runningServesSubject.value.filter(serve => serve.params.type === serveType);
+  }
+
+  /**
+   * Rename a profile in all cached serves for a given remote
+   * Returns the number of serves updated
+   */
+  async renameProfileInServeCache(
+    remoteName: string,
+    oldName: string,
+    newName: string
+  ): Promise<number> {
+    return this.invokeCommand<number>('rename_serve_profile_in_cache', {
+      remoteName,
+      oldName,
+      newName,
+    });
+  }
+
+  /**
+   * Get serves for a specific remote and profile
+   */
+  getServesForRemoteProfile(remoteName: string, profile?: string): ServeListItem[] {
+    return this.runningServesSubject.value.filter(serve => {
+      const matchesRemote = serve.params.fs.startsWith(remoteName);
+      if (profile) {
+        return matchesRemote && serve.profile === profile;
+      }
+      return matchesRemote;
+    });
   }
 }

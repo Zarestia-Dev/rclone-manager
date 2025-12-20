@@ -19,6 +19,7 @@ import {
   RCLONE_ENGINE_PATH_ERROR,
   RCLONE_ENGINE_UPDATING,
   RCLONE_PASSWORD_STORED,
+  OPEN_INTERNAL_ROUTE,
 } from '@app/types';
 
 /**
@@ -143,5 +144,12 @@ export class EventListenersService extends TauriBaseService {
    */
   listenToBandwidthLimitChanged(): Observable<unknown> {
     return this.listenToEvent<unknown>(BANDWIDTH_LIMIT_CHANGED);
+  }
+
+  /**
+   * Listen to open internal route events from tray menu
+   */
+  listenToOpenInternalRoute(): Observable<string> {
+    return this.listenToEvent<string>(OPEN_INTERNAL_ROUTE);
   }
 }

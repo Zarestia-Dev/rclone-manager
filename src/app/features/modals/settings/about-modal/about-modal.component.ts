@@ -15,7 +15,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { marked } from 'marked';
+import { marked, Renderer } from 'marked';
 
 // Services
 import {
@@ -155,7 +155,13 @@ export class AboutModalComponent implements OnInit {
     if (!markdown) {
       return this.sanitizer.sanitize(1, '<p>No release notes available.</p>') || '';
     }
-    const html = marked.parse(markdown, { gfm: true, breaks: true });
+    // Configure marked to add target="_blank" to links
+    const renderer = new Renderer();
+    renderer.link = ({ href, title, text }): string => {
+      const titleAttr = title ? ` title="${title}"` : '';
+      return `<a href="${href}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+    };
+    const html = marked.parse(markdown, { gfm: true, breaks: true, renderer });
     return this.sanitizer.sanitize(1, html) || '';
   }
 

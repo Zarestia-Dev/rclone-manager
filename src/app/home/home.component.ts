@@ -20,22 +20,21 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { catchError, EMPTY, Subject, takeUntil } from 'rxjs';
+import { catchError, EMPTY, Observable, Subject, takeUntil } from 'rxjs';
 
 // App Types
 import {
-  // AppTab,
+  ActionState,
   DiskUsage,
   JobInfo,
   MountedRemote,
   PrimaryActionType,
   Remote,
   RemoteAction,
-  RemoteActionProgress,
   RemoteSettings,
+  ServeListItem,
   STANDARD_MODAL_SIZE,
   SyncOperationType,
-  ServeListItem,
 } from '@app/types';
 
 // App Components
@@ -44,9 +43,7 @@ import { GeneralDetailComponent } from '../features/components/dashboard/general
 import { GeneralOverviewComponent } from '../features/components/dashboard/general-overview/general-overview.component';
 import { AppDetailComponent } from '../features/components/dashboard/app-detail/app-detail.component';
 import { AppOverviewComponent } from '../features/components/dashboard/app-overview/app-overview.component';
-import { ServeOverviewComponent } from '../features/components/dashboard/serve-overview/serve-overview.component';
-import { ServeDetailComponent } from '../features/components/dashboard/serve-detail/serve-detail.component';
-import { LogsModalComponent } from '../features/modals/monitoring/logs-modal/logs-modal.component';
+import { LogsModalComponent } from '../features/modals/settings/logs-modal/logs-modal.component';
 import { ExportModalComponent } from '../features/modals/settings/export-modal/export-modal.component';
 import { RemoteConfigModalComponent } from '../features/modals/remote-management/remote-config-modal/remote-config-modal.component';
 import { QuickAddRemoteComponent } from '../features/modals/remote-management/quick-add-remote/quick-add-remote.component';
@@ -85,8 +82,6 @@ import {
     GeneralOverviewComponent,
     AppDetailComponent,
     AppOverviewComponent,
-    ServeOverviewComponent,
-    ServeDetailComponent,
   ],
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss'],
@@ -155,7 +150,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   selectedSyncOperation = signal<SyncOperationType>('sync');
   isLoading = signal(false);
   restrictMode = signal(true);
-  actionInProgress = signal<RemoteActionProgress>({});
+  actionInProgress = signal<Record<string, ActionState[]>>({});
 
   // ============================================================================
   // PROPERTIES - LIFECYCLE
@@ -208,8 +203,21 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   // ============================================================================
-  // UI & LAYOUT
+  // HELPER METHODS
   // ============================================================================
+
+  /** Get operation state from a remote */
+  private getOperationState(remote: Remote | undefined, type: SyncOperationType): any {
+    if (!remote) return undefined;
+    const stateMap: Record<SyncOperationType, any> = {
+      sync: remote.syncState,
+      copy: remote.copyState,
+      bisync: remote.bisyncState,
+      move: remote.moveState,
+    };
+    return stateMap[type];
+  }
+
   @HostListener('window:resize')
   onResize(): void {
     this.updateSidebarMode();
@@ -260,6 +268,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     try {
       const remoteConfigs = await this.remoteManagementService.getAllRemoteConfigs();
       this.remotes.set(this.createRemotesFromConfigs(remoteConfigs));
+      // Explicitly update mount states after remotes are created
+      this.updateRemoteMountStates();
       await this.loadActiveJobs();
       this.loadDiskUsageInBackground();
     } catch (error) {
@@ -294,9 +304,12 @@ export class HomeComponent implements OnInit, OnDestroy {
           free_space: 0,
           loading: true,
         },
-        mountState: { mounted: mountedSet.has(name) },
+        mountState: existingRemote?.mountState || {
+          mounted: mountedSet.has(name),
+          activeProfiles: {},
+        },
         serveState: {
-          hasActiveServes: remoteServes.length > 0,
+          isOnServe: remoteServes.length > 0,
           serveCount: remoteServes.length,
           serves: remoteServes,
         },
@@ -399,85 +412,54 @@ export class HomeComponent implements OnInit, OnDestroy {
   // TAURI EVENT LISTENERS
   // ============================================================================
   private setupTauriListeners(): void {
-    this.listenToMountCache();
-    this.listenToRemoteCache();
-    this.listenToRcloneEngine();
-    this.listenToJobCache();
+    this.setupEventListener(
+      () => this.eventListenersService.listenToMountCacheUpdated(),
+      async () => this.mountManagementService.getMountedRemotes(),
+      'MountCache'
+    );
+    this.setupEventListener(
+      () => this.eventListenersService.listenToRemoteCacheUpdated(),
+      async () => {
+        await this.getRemoteSettings();
+        await this.loadRemotes();
+        await this.loadRestrictMode();
+      },
+      'RemoteCache'
+    );
+    this.setupEventListener(
+      () => this.eventListenersService.listenToRcloneEngineReady(),
+      async () => {
+        await this.refreshData();
+        await this.loadRestrictMode();
+      },
+      'RcloneEngine'
+    );
+    this.setupEventListener(
+      () => this.eventListenersService.listenToJobCacheChanged(),
+      async () => {
+        await this.loadJobs();
+        await this.loadActiveJobs();
+      },
+      'JobCache'
+    );
   }
 
-  private listenToMountCache(): void {
-    this.eventListenersService
-      .listenToMountCacheUpdated()
+  private setupEventListener(
+    eventFn: () => Observable<unknown>,
+    handler: () => Promise<unknown>,
+    context: string
+  ): void {
+    eventFn()
       .pipe(
         takeUntil(this.destroy$),
-        catchError(error => (console.error('Event listener error (MountCache):', error), EMPTY))
+        catchError(error => (console.error(`Event listener error (${context}):`, error), EMPTY))
       )
       .subscribe({
         next: async () => {
           try {
-            await this.mountManagementService.getMountedRemotes();
+            await handler();
           } catch (error) {
-            this.handleError('Error handling mount_state_changed', error);
-          }
-        },
-      });
-  }
-
-  private listenToRemoteCache(): void {
-    this.eventListenersService
-      .listenToRemoteCacheUpdated()
-      .pipe(
-        takeUntil(this.destroy$),
-        catchError(error => (console.error('Event listener error (RemoteCache):', error), EMPTY))
-      )
-      .subscribe({
-        next: async () => {
-          try {
-            await this.getRemoteSettings();
-            await this.loadRemotes();
-            await this.loadRestrictMode();
-          } catch (error) {
-            this.handleError('Error handling remote_cache_updated', error);
-          }
-        },
-      });
-  }
-
-  private listenToRcloneEngine(): void {
-    this.eventListenersService
-      .listenToRcloneEngineReady()
-      .pipe(
-        takeUntil(this.destroy$),
-        catchError(
-          error => (console.error('Event listener error (RcloneEngineReady):', error), EMPTY)
-        )
-      )
-      .subscribe({
-        next: async () => {
-          try {
-            await this.refreshData();
-            await this.loadRestrictMode();
-          } catch (error) {
-            this.handleError('Error handling rclone_engine_ready', error);
-          }
-        },
-      });
-  }
-
-  private listenToJobCache(): void {
-    this.eventListenersService
-      .listenToJobCacheChanged()
-      .pipe(
-        takeUntil(this.destroy$),
-        catchError(error => (console.error('Event listener error (JobCache):', error), EMPTY))
-      )
-      .subscribe({
-        next: async () => {
-          try {
-            await this.loadJobs();
-            await this.loadActiveJobs();
-          } catch (error) {
-            this.handleError('Error handling job_cache_changed', error);
+            this.handleError(`Error handling ${context} event`, error);
           }
         },
       });
@@ -524,25 +506,6 @@ export class HomeComponent implements OnInit, OnDestroy {
   // ============================================================================
   // REMOTE & JOB OPERATIONS
   // ============================================================================
-  async mountRemote(remoteName: string, settings: any): Promise<void> {
-    await this.executeRemoteAction(
-      remoteName,
-      'mount',
-      () =>
-        this.mountManagementService.mountRemote(
-          remoteName,
-          settings.mountConfig.source,
-          settings.mountConfig.dest,
-          settings.mountConfig.type,
-          settings.mountConfig.options,
-          settings.vfsConfig || {},
-          settings.filterConfig || {},
-          settings.backendConfig || {}
-        ),
-      `Failed to mount ${remoteName}`
-    );
-  }
-
   async unmountRemote(remoteName: string): Promise<void> {
     await this.executeRemoteAction(
       remoteName,
@@ -603,115 +566,137 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   }
 
-  async startJob(operationType: PrimaryActionType, remoteName: string): Promise<void> {
+  async startJob(
+    operationType: PrimaryActionType,
+    remoteName: string,
+    profileName?: string
+  ): Promise<void> {
     await this.executeRemoteAction(
       remoteName,
       operationType as RemoteAction,
       async () => {
         const settings = this.loadRemoteSettings(remoteName);
-        const config = settings[`${operationType}Config`];
-        if (!config)
-          throw new Error(`Configuration for ${operationType} not found on ${remoteName}.`);
+        const configKey = `${operationType}Configs` as keyof RemoteSettings;
+        const profiles = settings[configKey] as Record<string, unknown> | undefined;
 
+        // Get profile name - prefer provided profile, then "default", then first available
+        let targetProfile = profileName;
+        if (!targetProfile && profiles) {
+          // Prefer "default" profile if it exists
+          targetProfile = profiles['default'] ? 'default' : Object.keys(profiles)[0];
+        }
+
+        if (!targetProfile || !profiles?.[targetProfile]) {
+          throw new Error(`Configuration for ${operationType} not found on ${remoteName}.`);
+        }
+
+        // Use new profile-based APIs - backend resolves all options from settings
         switch (operationType) {
           case 'mount':
-            await this.mountRemote(remoteName, settings);
+            await this.mountManagementService.mountRemoteProfile(remoteName, targetProfile);
             break;
           case 'sync':
-            await this.jobManagementService.startSync(
-              remoteName,
-              config.source,
-              config.dest,
-              config.createEmptySrcDirs,
-              config.options,
-              settings['filterConfig'],
-              settings['backendConfig']
-            );
+            await this.jobManagementService.startSyncProfile(remoteName, targetProfile);
             break;
           case 'copy':
-            await this.jobManagementService.startCopy(
-              remoteName,
-              config.source,
-              config.dest,
-              config.createEmptySrcDirs,
-              config.options,
-              settings['filterConfig'],
-              settings['backendConfig']
-            );
+            await this.jobManagementService.startCopyProfile(remoteName, targetProfile);
             break;
           case 'bisync':
-            await this.jobManagementService.startBisync(
-              remoteName,
-              config.source,
-              config.dest,
-              config.options,
-              settings['filterConfig'],
-              settings['backendConfig'],
-              config.dryRun,
-              config.resync,
-              config.checkAccess,
-              config.checkFilename,
-              config.maxDelete,
-              config.force,
-              config.checkSync,
-              config.createEmptySrcDirs,
-              config.removeEmptyDirs,
-              config.filtersFile,
-              config.ignoreListingChecksum,
-              config.resilient,
-              config.workdir,
-              config.backupdir1,
-              config.backupdir2,
-              config.noCleanup
-            );
+            await this.jobManagementService.startBisyncProfile(remoteName, targetProfile);
             break;
           case 'move':
-            await this.jobManagementService.startMove(
-              remoteName,
-              config.source,
-              config.dest,
-              config.createEmptySrcDirs,
-              config.deleteEmptySrcDirs,
-              config.options,
-              settings['filterConfig'],
-              settings['backendConfig']
-            );
+            await this.jobManagementService.startMoveProfile(remoteName, targetProfile);
             break;
           case 'serve':
-            await this.serveManagementService.startServe(
-              remoteName,
-              config.options,
-              settings['filterConfig'],
-              settings['backendConfig'],
-              config.vfsConfig
-            );
+            await this.serveManagementService.startServeProfile(remoteName, targetProfile);
             break;
           default:
             throw new Error(`Unsupported operation type: ${operationType}`);
         }
       },
-      `Failed to start ${operationType} for ${remoteName}`
+      `Failed to start ${operationType} for ${remoteName}${profileName ? ` (${profileName})` : ''}`,
+      profileName
     );
   }
 
-  async stopJob(type: PrimaryActionType, remoteName: string, serveId?: string): Promise<void> {
+  async stopJob(
+    type: PrimaryActionType,
+    remoteName: string,
+    serveId?: string,
+    profileName?: string
+  ): Promise<void> {
     await this.executeRemoteAction(
       remoteName,
       'stop',
       async () => {
-        if (type === 'mount') {
-          await this.unmountRemote(remoteName);
-        } else if (type === 'serve') {
-          if (!serveId) throw new Error('Serve ID is required to stop a serve');
-          await this.serveManagementService.stopServe(serveId, remoteName);
+        // Primary stop logic handles specific profile or serve IDs below
+
+        if (type === 'serve') {
+          let idToStop = serveId;
+          if (!idToStop && profileName) {
+            // Find active serve with this profile
+            const serves = this.runningServes();
+            const serve = serves.find(
+              s => s.params.fs.startsWith(remoteName + ':') && s.profile === profileName
+            );
+            idToStop = serve?.id;
+          } else if (!idToStop) {
+            // Fallback: try find ANY serve for this remote
+            const serves = this.runningServes();
+            const serve = serves.find(s => s.params.fs.startsWith(remoteName + ':'));
+            idToStop = serve?.id;
+          }
+
+          if (!idToStop) throw new Error('Serve ID required to stop serve');
+          await this.serveManagementService.stopServe(idToStop, remoteName);
+          this.updateRemoteServeStates();
+        } else if (type === 'mount') {
+          const remote = this.remotes().find(r => r.remoteSpecs.name === remoteName);
+          let mountPoint: string | undefined;
+
+          if (profileName && remote?.mountState?.activeProfiles) {
+            mountPoint = remote.mountState.activeProfiles[profileName];
+          } else {
+            // Fallback: find first mount point for this remote
+            const mount = this.mountedRemotes().find(m => m.fs.startsWith(remoteName + ':'));
+            mountPoint = mount?.mount_point;
+          }
+
+          if (!mountPoint) throw new Error(`Active mount logic not found for ${remoteName}`);
+
+          await this.mountManagementService.unmountRemote(mountPoint, remoteName);
+          this.updateRemoteMountStates();
         } else {
           const remote = this.remotes().find(r => r.remoteSpecs.name === remoteName);
-          const jobId = this.getJobIdForOperation(remote, type as SyncOperationType);
-          if (jobId === undefined) throw new Error(`No active ${type} job found for ${remoteName}`);
-          await this.jobManagementService.stopJob(jobId, remoteName);
+          const state = this.getOperationState(remote, type as SyncOperationType);
+
+          let idToStop: number | undefined;
+
+          if (profileName) {
+            // Specific profile requested
+            idToStop = state?.activeProfiles?.[profileName];
+          } else if (state?.activeProfiles) {
+            // No profile specified - find first Selected Profile job
+            const activeProfileEntries = Object.entries(state.activeProfiles);
+            if (activeProfileEntries.length > 0) {
+              idToStop = activeProfileEntries[0][1] as number;
+            }
+          }
+
+          // Fallback to legacy job lookup
+          if (idToStop === undefined) {
+            idToStop = this.getJobIdForOperation(remote, type as SyncOperationType);
+          }
+
+          if (idToStop === undefined)
+            throw new Error(`No active ${type} job found for ${remoteName}`);
+          await this.jobManagementService.stopJob(idToStop, remoteName);
         }
+
+        this.updateRemotesWithJobs();
       },
-      `Failed to stop ${type} for ${remoteName}`
+      `Failed to stop ${type} for ${remoteName}`,
+      profileName
     );
   }
 
@@ -738,7 +723,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   openRemoteConfigModal(
     editTarget?: string,
     existingConfig?: RemoteSettings,
-    initialSection?: string
+    initialSection?: string,
+    targetProfile?: string
   ): void {
     this.dialog.open(RemoteConfigModalComponent, {
       ...STANDARD_MODAL_SIZE,
@@ -749,6 +735,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         existingConfig,
         restrictMode: this.restrictMode(),
         initialSection,
+        targetProfile,
       },
     });
   }
@@ -825,16 +812,14 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.remoteSettings.update(allSettings => ({ ...allSettings, [remoteName]: mergedSettings }));
   }
 
-  async resetRemoteSettings(): Promise<void> {
-    const remote = this.selectedRemote();
-    if (!remote?.remoteSpecs.name) return;
+  async resetRemoteSettings(remoteName: string): Promise<void> {
+    if (!remoteName) return;
     try {
       const confirmed = await this.notificationService.confirmModal(
         'Reset Remote Settings',
-        `Are you sure you want to reset ALL settings for ${remote.remoteSpecs.name}?`
+        `Are you sure you want to reset ALL settings for ${remoteName}?`
       );
       if (confirmed) {
-        const remoteName = remote.remoteSpecs.name;
         await this.appSettingsService.resetRemoteSettings(remoteName);
         this.remoteSettings.update(allSettings => {
           const newSettings = { ...allSettings };
@@ -868,16 +853,28 @@ export class HomeComponent implements OnInit, OnDestroy {
     remoteName: string,
     action: RemoteAction,
     operation: () => Promise<void>,
-    errorMessage: string
+    errorMessage: string,
+    profileName?: string
   ): Promise<void> {
     if (!remoteName) return;
     try {
-      this.actionInProgress.update(progress => ({ ...progress, [remoteName]: action }));
+      this.actionInProgress.update(progress => {
+        const currentActions = progress[remoteName] || [];
+        const newAction: ActionState = { type: action, profileName };
+        return { ...progress, [remoteName]: [...currentActions, newAction] };
+      });
       await operation();
     } catch (error) {
       this.handleError(errorMessage, error);
     } finally {
-      this.actionInProgress.update(progress => ({ ...progress, [remoteName]: null }));
+      this.actionInProgress.update(progress => {
+        const currentActions = progress[remoteName] || [];
+        // Remove the action that just finished
+        const updatedActions = currentActions.filter(
+          a => !(a.type === action && a.profileName === profileName)
+        );
+        return { ...progress, [remoteName]: updatedActions };
+      });
     }
   }
 
@@ -951,56 +948,63 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   private updateRemoteWithJobs(remote: Remote, jobs: JobInfo[]): Remote {
-    const runningSyncJob = jobs.find(j => j.status === 'Running' && j.job_type === 'sync');
-    const runningCopyJob = jobs.find(j => j.status === 'Running' && j.job_type === 'copy');
-    const runningBisyncJob = jobs.find(j => j.status === 'Running' && j.job_type === 'bisync');
-    const runningMoveJob = jobs.find(j => j.status === 'Running' && j.job_type === 'move');
-
     const settings = this.loadRemoteSettings(remote.remoteSpecs.name);
 
     const updatedRemote: Remote = {
       ...remote,
-      syncState: {
-        isOnSync: !!runningSyncJob,
-        syncJobID: runningSyncJob?.jobid,
-        isLocal: this.isLocalPath(settings['syncConfig']?.dest || ''),
-      },
-      copyState: {
-        isOnCopy: !!runningCopyJob,
-        copyJobID: runningCopyJob?.jobid,
-        isLocal: this.isLocalPath(settings['copyConfig']?.dest || ''),
-      },
-      bisyncState: {
-        isOnBisync: !!runningBisyncJob,
-        bisyncJobID: runningBisyncJob?.jobid,
-        isLocal: this.isLocalPath(settings['bisyncConfig']?.dest || ''),
-      },
-      moveState: {
-        isOnMove: !!runningMoveJob,
-        moveJobID: runningMoveJob?.jobid,
-        isLocal: this.isLocalPath(settings['moveConfig']?.dest || ''),
-      },
+      syncState: this.calculateOperationState('sync', jobs, settings),
+      copyState: this.calculateOperationState('copy', jobs, settings),
+      bisyncState: this.calculateOperationState('bisync', jobs, settings),
+      moveState: this.calculateOperationState('move', jobs, settings),
     };
 
     this.updateRemoteInList(updatedRemote);
     return updatedRemote;
   }
 
+  private calculateOperationState(
+    type: SyncOperationType,
+    jobs: JobInfo[],
+    settings: RemoteSettings
+  ): Record<string, unknown> {
+    const runningJobs = jobs.filter(j => j.status === 'Running' && j.job_type === type);
+    const configKey = `${type}Configs` as keyof RemoteSettings;
+    const profiles = settings[configKey] as Record<string, unknown> | undefined;
+    const activeProfiles: Record<string, number> = {};
+
+    // Map running jobs to their profiles
+    if (profiles) {
+      Object.keys(profiles).forEach(profileName => {
+        const match = runningJobs.find(j => j.profile === profileName);
+        if (match) {
+          activeProfiles[profileName] = match.jobid;
+        }
+      });
+    }
+
+    // Get first profile for isLocal check
+    const firstProfileKey = profiles ? Object.keys(profiles)[0] : undefined;
+    const firstProfile = firstProfileKey ? (profiles as any)[firstProfileKey] : undefined;
+
+    return {
+      isOnSync: type === 'sync' ? runningJobs.length > 0 : undefined,
+      isOnCopy: type === 'copy' ? runningJobs.length > 0 : undefined,
+      isOnBisync: type === 'bisync' ? runningJobs.length > 0 : undefined,
+      isOnMove: type === 'move' ? runningJobs.length > 0 : undefined,
+      isLocal: this.isLocalPath(firstProfile?.dest || ''),
+      activeProfiles,
+    };
+  }
+
   private getPathForOperation(remoteName: string, usePath: PrimaryActionType): string | undefined {
     const settings = this.loadRemoteSettings(remoteName);
-    const configMap: Record<PrimaryActionType, () => string | undefined> = {
-      mount: () => settings['mountConfig']?.dest,
-      sync: () => settings['syncConfig']?.dest,
-      copy: () => settings['copyConfig']?.dest,
-      bisync: () => settings['bisyncConfig']?.dest,
-      move: () => settings['moveConfig']?.dest,
-      serve: () => undefined, // Serve does not have a single path
-    };
-    const getPath = configMap[usePath];
-    if (!getPath) {
-      throw new Error(`Invalid usePath: ${usePath}`);
-    }
-    return getPath();
+    const configKey = `${usePath}Configs` as keyof RemoteSettings;
+    const profiles = settings[configKey] as Record<string, unknown> | undefined;
+    if (!profiles) return undefined;
+
+    const firstProfileKey = Object.keys(profiles)[0];
+    const firstProfile = firstProfileKey ? (profiles as any)[firstProfileKey] : undefined;
+    return firstProfile?.dest;
   }
 
   private getJobIdForOperation(
@@ -1009,14 +1013,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   ): number | undefined {
     if (!remote) return undefined;
 
-    const stateMap: Record<SyncOperationType, any | undefined> = {
-      sync: remote.syncState,
-      copy: remote.copyState,
-      bisync: remote.bisyncState,
-      move: remote.moveState,
-    };
-
-    const jobState = stateMap[type];
+    const jobState = this.getOperationState(remote, type);
     const jobId = jobState?.[`${type}JobID` as keyof typeof jobState];
     return typeof jobId === 'number' ? jobId : undefined;
   }
@@ -1030,14 +1027,48 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   private updateRemoteMountStates(): void {
+    const mountedRemotes = this.mountedRemotes();
+
     this.remotes.update(remotes =>
-      remotes.map(remote => ({
-        ...remote,
-        mountState: {
-          ...remote.mountState,
-          mounted: this.isRemoteMounted(remote.remoteSpecs.name),
-        },
-      }))
+      remotes.map(remote => {
+        const remoteMounts = mountedRemotes.filter(m =>
+          m.fs.startsWith(`${remote.remoteSpecs.name}:`)
+        );
+        const isMounted = remoteMounts.length > 0;
+        const activeProfiles: Record<string, string> = {};
+
+        if (isMounted) {
+          // Use the profile field from mount data (populated by backend)
+          remoteMounts.forEach(mount => {
+            if (mount.profile) {
+              activeProfiles[mount.profile] = mount.mount_point;
+            } else {
+              // Fallback: if no profile, match by mount_point
+              const settings = this.loadRemoteSettings(remote.remoteSpecs.name);
+              const profiles = settings['mountConfigs'] as
+                | Record<string, Record<string, unknown>>
+                | undefined;
+              if (profiles) {
+                const matchEntry = Object.entries(profiles).find(
+                  ([_, p]) => (p as any).dest === mount.mount_point
+                );
+                if (matchEntry) {
+                  activeProfiles[matchEntry[0]] = mount.mount_point;
+                }
+              }
+            }
+          });
+        }
+
+        return {
+          ...remote,
+          mountState: {
+            ...remote.mountState,
+            mounted: isMounted,
+            activeProfiles,
+          },
+        };
+      })
     );
   }
 
@@ -1051,7 +1082,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         return {
           ...remote,
           serveState: {
-            hasActiveServes: remoteServes.length > 0,
+            isOnServe: remoteServes.length > 0,
             serveCount: remoteServes.length,
             serves: remoteServes,
           },

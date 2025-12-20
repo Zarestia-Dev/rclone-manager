@@ -4,14 +4,19 @@ form {
   overflow: hidden;
   height: 100%;
 
+  .form-container {
+    padding: var(--space-md);
+    .dynamic-fields {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+  }
+
   // Virtual Scroll Viewport
   .virtual-scroll-viewport {
     width: 100%;
     flex: 1;
-
-    .form-field-item {
-      padding-inline: var(--space-lg);
-    }
   }
 
   .slide-toggle {
@@ -40,25 +45,32 @@ form {
   .section-heading {
     margin: 16px 0 8px 0;
   }
+}
 
-  .options {
+.type-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+
+  mat-icon {
+    width: 24px;
+    height: 24px;
+    color: var(--primary-color);
+  }
+
+  .type-info {
     display: flex;
     flex-direction: column;
-    gap: var(--space-md);
-    padding: var(--space-md);
-    margin-inline: var(--space-lg);
-    border-radius: var(--radius-lg);
-    background-color: var(--secondary-background);
-    box-shadow: var(--shadow-light);
-    transition: box-shadow 0.2s ease-in-out;
+  }
 
-    &:hover {
-      box-shadow: var(--shadow-elevated);
-    }
+  .type-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-primary);
+  }
 
-    h4 {
-      color: var(--mat-primary-color);
-      font-weight: 500;
-    }
+  .type-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
   }
 }

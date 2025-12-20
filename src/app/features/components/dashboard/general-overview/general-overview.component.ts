@@ -120,6 +120,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     type: PrimaryActionType;
     remoteName: string;
     serveId?: string;
+    profileName?: string;
   }>();
   @Output() browseRemote = new EventEmitter<string>();
 
@@ -172,9 +173,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   );
   allRunningServes = computed(() =>
     this.remotes().flatMap(remote => remote.serveState?.serves || [])
-  );
-  primaryActions = computed<PrimaryActionType[]>(() =>
-    this.remotes().flatMap(remote => remote.primaryActions || [])
   );
 
   jobCompletionPercentage = computed(() => {
@@ -356,29 +354,40 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     return colorMap[taskType] || '';
   }
 
+  private readonly TASK_STATUS_TOOLTIPS: Record<string, string> = {
+    enabled: 'Task is enabled and will run on schedule.',
+    disabled: 'Task is disabled and will not run.',
+    running: 'Task is currently running.',
+    failed: 'Task failed on its last run.',
+    stopping: 'Task is stopping and will be disabled after the current run finishes.',
+  };
+
+  private readonly TOGGLE_TOOLTIPS: Record<string, string> = {
+    enabled: 'Disable task',
+    running: 'Disable task',
+    disabled: 'Enable task',
+    failed: 'Enable task',
+    stopping: 'Task is stopping...',
+  };
+
+  private readonly TOGGLE_ICONS: Record<string, string> = {
+    enabled: 'pause',
+    running: 'pause',
+    disabled: 'play',
+    failed: 'play',
+    stopping: 'stop',
+  };
+
   getTaskStatusTooltip(status: string): string {
-    const tooltips: Record<string, string> = {
-      enabled: 'Task is enabled and will run on schedule.',
-      disabled: 'Task is disabled and will not run.',
-      running: 'Task is currently running.',
-      failed: 'Task failed on its last run.',
-      stopping: 'Task is stopping and will be disabled after the current run finishes.',
-    };
-    return tooltips[status] || '';
+    return this.TASK_STATUS_TOOLTIPS[status] || '';
   }
 
   getToggleTooltip(status: string): string {
-    if (status === 'enabled' || status === 'running') return 'Disable task';
-    if (status === 'disabled' || status === 'failed') return 'Enable task';
-    if (status === 'stopping') return 'Task is stopping...';
-    return '';
+    return this.TOGGLE_TOOLTIPS[status] || '';
   }
 
   getToggleIcon(status: string): string {
-    if (status === 'enabled' || status === 'running') return 'pause';
-    if (status === 'disabled' || status === 'failed') return 'play';
-    if (status === 'stopping') return 'stop';
-    return 'help';
+    return this.TOGGLE_ICONS[status] || 'help';
   }
 
   // Private methods

@@ -19,29 +19,37 @@ import { JobInfoConfig } from '../../types';
       </mat-card-header>
 
       <mat-card-content>
-        <div class="job-details-grid">
-          <div class="job-detail-item">
-            <div class="detail-label">Job Type</div>
-            <div class="detail-value">{{ config.operationType | titlecase }}</div>
-          </div>
-
-          <div class="job-detail-item">
-            <div class="detail-label">Job ID</div>
-            <div class="detail-value">{{ config.jobId || 'N/A' }}</div>
-          </div>
-
-          @if (config.startTime) {
+        @if (config.jobId) {
+          <div class="job-details-grid">
             <div class="job-detail-item">
-              <div class="detail-label">Started</div>
-              <div class="detail-value">{{ config.startTime | date: 'medium' }}</div>
+              <div class="detail-label">Job Type</div>
+              <div class="detail-value">{{ config.operationType | titlecase }}</div>
             </div>
-          }
 
-          <div class="job-detail-item">
-            <div class="detail-label">Last Operation</div>
-            <div class="detail-value">{{ config.lastOperationTime || 'N/A' }}</div>
+            <div class="job-detail-item">
+              <div class="detail-label">Job ID</div>
+              <div class="detail-value">{{ config.jobId }}</div>
+            </div>
+
+            @if (config.startTime) {
+              <div class="job-detail-item">
+                <div class="detail-label">Started</div>
+                <div class="detail-value">{{ config.startTime | date: 'medium' }}</div>
+              </div>
+            }
+
+            <div class="job-detail-item">
+              <div class="detail-label">Last Operation</div>
+              <div class="detail-value">{{ config.lastOperationTime || 'N/A' }}</div>
+            </div>
           </div>
-        </div>
+        } @else {
+          <div class="empty-state">
+            <mat-icon svgIcon="info"></mat-icon>
+            <span>No active job</span>
+            <p>Job details will appear here when an operation starts</p>
+          </div>
+        }
       </mat-card-content>
     </mat-card>
   `,

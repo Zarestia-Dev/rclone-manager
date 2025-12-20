@@ -44,10 +44,12 @@
           <span class="label">Location</span>
           <span class="value path" [title]="displayLocation">{{ displayLocation }}</span>
         </div>
-        <div class="prop-row" *ngIf="item?.ModTime">
-          <span class="label">Modified</span>
-          <span class="value">{{ item?.ModTime | date: 'medium' }}</span>
-        </div>
+        @if (item?.ModTime) {
+          <div class="prop-row">
+            <span class="label">Modified</span>
+            <span class="value">{{ item?.ModTime | date: 'medium' }}</span>
+          </div>
+        }
         @if (item && !item.IsDir) {
           <div class="prop-row">
             <span class="label">Size</span>
@@ -105,6 +107,120 @@
           </div>
         }
       </div>
+
+      <!-- Checksums section - only for files -->
+      @if (isFile) {
+        <mat-divider></mat-divider>
+        <div class="properties-group checksums-group">
+          <h4 class="group-title">Checksums</h4>
+
+          @if (loadingHashes) {
+            <div class="section-loader">
+              <mat-spinner diameter="24"></mat-spinner>
+              <span>Loading hash types...</span>
+            </div>
+          } @else if (hashError) {
+            <div class="hash-error">
+              <span class="error-text">{{ hashError }}</span>
+            </div>
+          } @else if (supportedHashes.length > 0) {
+            <div class="hash-content custom-scrollbar">
+              <!-- Calculated hashes -->
+              @for (hash of hashEntries; track hash.type) {
+                <div class="hash-item">
+                  <div class="hash-header">
+                    <span class="hash-type">{{ hash.type | uppercase }}</span>
+                    <mat-icon
+                      (click)="copyHash(hash.type)"
+                      [matTooltip]="copiedHash === hash.type ? 'Copied!' : 'Copy to clipboard'"
+                      [svgIcon]="copiedHash === hash.type ? 'circle-check' : 'copy'"
+                    ></mat-icon>
+                  </div>
+                  <span class="hash-value" [title]="hash.value">{{ hash.value }}</span>
+                </div>
+              }
+
+              <!-- Uncalculated hash types as buttons -->
+              @if (uncalculatedHashes.length > 0) {
+                <div class="hash-options">
+                  <span class="hash-options-label">Calculate more:</span>
+                  <div class="hash-chips">
+                    @for (hashType of uncalculatedHashes; track hashType) {
+                      <button
+                        class="hash-chip"
+                        [class.loading]="isHashLoading(hashType)"
+                        [disabled]="isHashLoading(hashType)"
+                        (click)="calculateHash(hashType)"
+                      >
+                        @if (isHashLoading(hashType)) {
+                          <mat-spinner diameter="14"></mat-spinner>
+                        }
+                        {{ hashType | uppercase }}
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="no-hashes">
+              <span>No hash types supported for this remote</span>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Public Link section - only for remotes that support it -->
+      @if (supportsPublicLink) {
+        <mat-divider></mat-divider>
+        <div class="properties-group public-link-group">
+          <h4 class="group-title">Public Link</h4>
+
+          @if (loadingPublicLink) {
+            <div class="section-loader">
+              <mat-spinner diameter="24"></mat-spinner>
+              <span>{{ publicLinkUrl ? 'Removing link...' : 'Creating link...' }}</span>
+            </div>
+          } @else if (publicLinkUrl) {
+            <!-- Link exists - show URL with copy and remove options -->
+            <div class="link-display">
+              <div class="link-url-container">
+                <span class="link-url" [title]="publicLinkUrl">{{ publicLinkUrl }}</span>
+                <mat-icon
+                  (click)="copyPublicLink()"
+                  [matTooltip]="copiedLink ? 'Copied!' : 'Copy to clipboard'"
+                  [svgIcon]="copiedLink ? 'circle-check' : 'copy'"
+                ></mat-icon>
+              </div>
+              <button mat-stroked-button class="remove-link-btn" (click)="removePublicLink()">
+                Remove Link
+              </button>
+            </div>
+          } @else {
+            <!-- No link yet - show create button with expiry option -->
+            <div class="link-create">
+              <mat-form-field class="expiry-select">
+                <mat-label>Expires</mat-label>
+                <mat-select [(ngModel)]="selectedExpiry">
+                  @for (option of expiryOptions; track option.value) {
+                    <mat-option [value]="option.value">{{ option.label }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <button mat-flat-button class="get-link-btn primary" (click)="getPublicLink()">
+                <mat-icon svgIcon="open-link"></mat-icon>
+                Get Link
+              </button>
+            </div>
+          }
+
+          @if (publicLinkError) {
+            <div class="link-error">
+              <span class="error-text">{{ publicLinkError }}</span>
+            </div>
+          }
+        </div>
+      }
     }
   </div>
 </div>

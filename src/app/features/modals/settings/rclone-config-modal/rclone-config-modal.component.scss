@@ -1,4 +1,7 @@
 .rclone-config-modal {
+  // Layout variables
+  --item-gap: var(--space-xs);
+
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -9,16 +12,17 @@
     height: 100%;
     min-height: 0;
     flex: 1;
-  }
 
-  .virtual-scroll-item {
-    display: flex;
-    align-items: stretch;
+    form,
+    .virtual-scroll-content {
+      display: flex;
+      flex-direction: column;
+      gap: var(--item-gap);
+      padding: var(--space-sm);
+    }
 
-    app-setting-control {
-      width: 100%;
-      height: 100%;
-      display: block;
+    form {
+      gap: var(--space-md);
     }
   }
 
@@ -35,7 +39,7 @@
     .category-items {
       display: flex;
       flex-direction: column;
-      gap: var(--space-xs);
+      gap: var(--item-gap);
     }
 
     .category-header-text {
@@ -57,6 +61,7 @@
     }
   }
 
+  // Main Category Panel
   .main-category-panel {
     .main-category-title-text {
       .main-category-header {
@@ -97,32 +102,22 @@
     }
   }
 
-  // Home search container
-  .home-search-container {
-    width: 100%;
-    max-width: var(--max-content-width);
-  }
-
   // Shared config item styles
   .config-item {
     display: flex;
     align-items: center;
-    flex-direction: row-reverse !important;
-    justify-content: space-between;
-    padding: var(--space-md);
     background-color: var(--app-background);
-    min-height: 56px;
     border-radius: var(--radius-md);
     color: var(--app-text-color);
     transition: var(--transition-fast);
+    padding: var(--space-xs) var(--space-md);
 
     &.search-result-item {
       background-color: var(--input-background);
-      text-align: left;
-      min-height: 72px;
     }
 
-    &:hover {
+    &:hover,
+    &:focus {
       box-shadow: var(--shadow-light);
     }
 
@@ -134,8 +129,6 @@
 
       mat-icon:first-child {
         color: var(--primary-color);
-        opacity: 0.8;
-        font-size: 20px;
         width: 20px;
         height: 20px;
       }
@@ -145,27 +138,13 @@
       display: flex;
       flex-direction: column;
       gap: 4px;
+
       .config-item-title {
         font-weight: 600;
         font-size: 14px;
         display: flex;
         align-items: center;
         gap: var(--space-xs);
-
-        .match-count {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          min-width: 20px;
-          height: 20px;
-          padding: 0 6px;
-          background-color: var(--primary-color);
-          color: white;
-          font-size: 11px;
-          font-weight: 700;
-          border-radius: 10px;
-          line-height: 1;
-        }
       }
 
       .config-item-description {
@@ -183,7 +162,6 @@
 
     > mat-icon:last-child {
       color: var(--secondary-text-color);
-      font-size: 18px;
       width: 18px;
       height: 18px;
     }
@@ -191,59 +169,13 @@
 
   // Security Section
   .security-section {
-    max-width: var(--max-content-width);
     border: 2px solid var(--primary-color);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-elevated);
-    overflow: hidden;
-    min-height: 72px;
 
-    .security-item {
-      width: 100%;
-      min-height: 72px;
+    .config-item {
+      min-height: 56px;
     }
-  }
-
-  // Shared no-results styles
-  .no-results-home,
-  .no-results {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-xxl);
-    text-align: center;
-    color: var(--secondary-text-color);
-
-    mat-icon {
-      width: 64px;
-      height: 64px;
-      font-size: 64px;
-      opacity: 0.3;
-      margin-bottom: var(--space-md);
-    }
-
-    h4 {
-      font-size: 18px;
-      font-weight: 600;
-      margin: 0 0 var(--space-xs) 0;
-      color: var(--app-text-color);
-    }
-
-    p {
-      font-size: 14px;
-      margin: 0 0 var(--space-lg) 0;
-    }
-
-    button {
-      margin-top: var(--space-sm);
-    }
-  }
-
-  .no-results-home {
-    margin-top: var(--space-lg);
-    width: 100%;
-    max-width: var(--max-content-width);
   }
 
   .search-results-info {
@@ -263,39 +195,6 @@
     display: flex;
     flex-direction: column;
     z-index: 10;
-
-    .overlay-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 600;
-      padding: var(--space-xs);
-      p {
-        font-size: 16px;
-      }
-    }
-
-    .overlay-content {
-      flex: 1;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-  }
-
-  .global-search-results {
-    display: flex;
-    flex-direction: column;
-
-    .virtual-scroll-item {
-      display: flex;
-      align-items: stretch;
-      padding: var(--space-xs) var(--space-md);
-
-      .config-item {
-        width: 100%;
-      }
-    }
   }
 
   // Loading Overlay
@@ -307,98 +206,5 @@
     justify-content: center;
     background: var(--app-background);
     z-index: 100;
-  }
-
-  // Form styles for settings page
-  form {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    flex: 1;
-  }
-}
-
-// =============================================
-// RESPONSIVE ADJUSTMENTS
-// =============================================
-@media (max-width: 840px) {
-  .rclone-config-modal {
-    .modal-content {
-      padding: var(--space-sm);
-    }
-
-    .config-item {
-      padding: var(--space-sm);
-
-      .config-item-content {
-        gap: var(--space-sm);
-      }
-    }
-  }
-}
-
-@media (max-width: 540px) {
-  .rclone-config-modal {
-    .category-header-text {
-      .category-title {
-        font-size: 14px;
-      }
-
-      .category-description {
-        font-size: 11px;
-      }
-    }
-
-    .category-items {
-      padding: var(--space-xxs);
-    }
-    .config-item {
-      min-height: 52px;
-      padding: var(--space-sm);
-
-      .config-item-content {
-        gap: var(--space-sm);
-
-        mat-icon:first-child {
-          font-size: 18px;
-          width: 18px;
-          height: 18px;
-        }
-      }
-
-      .config-item-text {
-        .config-item-title {
-          font-size: 13px;
-        }
-
-        .config-item-description {
-          font-size: 11px;
-        }
-      }
-    }
-
-    .search-results-info {
-      padding: var(--space-xs) var(--space-sm);
-      font-size: 11px;
-    }
-
-    .no-results-home,
-    .no-results {
-      padding: var(--space-lg);
-
-      mat-icon {
-        width: 48px;
-        height: 48px;
-        font-size: 48px;
-      }
-
-      h4 {
-        font-size: 16px;
-      }
-
-      p {
-        font-size: 13px;
-      }
-    }
   }
 }

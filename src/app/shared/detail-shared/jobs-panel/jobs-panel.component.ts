@@ -1,4 +1,4 @@
-import { Component, input, output, computed } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -31,12 +31,12 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
         <mat-card-title>
           <mat-icon svgIcon="jobs"></mat-icon>
           <span>Active Jobs</span>
-          <span class="count">{{ filteredJobs().length }}</span>
+          <span class="count">{{ config().jobs.length }}</span>
         </mat-card-title>
       </mat-card-header>
       <mat-card-content>
         <div class="jobs-table-container">
-          <table mat-table [dataSource]="filteredJobs()" matSort class="jobs-table">
+          <table mat-table [dataSource]="config().jobs" matSort class="jobs-table">
             <!-- Type Column -->
             <ng-container matColumnDef="type">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Type</th>
@@ -44,6 +44,14 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
                 <div class="job-type-info">
                   <span class="job-type-text">{{ job.job_type | titlecase }}</span>
                 </div>
+              </td>
+            </ng-container>
+
+            <!-- Profile Column -->
+            <ng-container matColumnDef="profile">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Profile</th>
+              <td mat-cell *matCellDef="let job">
+                <span class="profile-name">{{ job.profile || 'default' }}</span>
               </td>
             </ng-container>
 
@@ -98,7 +106,13 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
                       matIconButton
                       class="action-button stop-button"
                       matTooltip="Stop Job"
-                      (click)="stopJob.emit({ type: job.job_type, remoteName: job.remote_name })"
+                      (click)="
+                        stopJob.emit({
+                          type: job.job_type,
+                          remoteName: job.remote_name,
+                          profileName: job.profile,
+                        })
+                      "
                     >
                       <mat-icon svgIcon="stop"></mat-icon>
                     </button>
@@ -139,14 +153,10 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 export class JobsPanelComponent {
   config = input.required<JobsPanelConfig>();
 
-  // For now app not support the multiple jobs at same time. This will be come v0.1.9 or v0.2.0
-  filteredJobs = computed(() => {
-    return this.config().jobs.filter(job => job.job_type !== 'serve');
-  });
-
   stopJob = output<{
     type: PrimaryActionType;
     remoteName: string;
+    profileName?: string;
   }>();
   deleteJob = output<number>();
 

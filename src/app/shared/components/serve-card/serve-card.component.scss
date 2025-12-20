@@ -68,6 +68,15 @@
           color: var(--primary-color);
         }
 
+        .serve-profile-badge {
+          padding: 2px 8px;
+          border-radius: 10px;
+          font-size: 10px;
+          font-weight: 600;
+          background: rgba(var(--accent-color-rgb), 0.2);
+          color: var(--accent-color);
+        }
+
         .serve-url-container {
           display: flex;
           align-items: center;

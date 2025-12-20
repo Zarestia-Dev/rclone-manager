@@ -1,6 +1,30 @@
 # Changelog
 # All notable changes to this project will be documented in this file.
 
+## [v0.1.9] - 2025-12-20
+
+### Warning
+- Since multiple profiles support, the old profiles are automatically migrated to the new profile system. But before the update, please backup your old profiles. If there is a any problem with the new profile system, you can restore your old profiles from the backup and app try the re-migration to the new profile system.
+
+### Added
+- Multiple profiles support added for all operations (Sync, Copy, Move, Bisync, Mount, Serve). Now you can create multiple profiles for each operation and run them separately. Also operation UI has been changed to show profiles. User can configure it from the detailed remote setup modal. User also can select the shared settings and also add a multiple profiles for shared settings to. Quick Remote Access only works with default profile (When you start a action, it uses the default profile).
+- Added special Flatpak autostart entry for Flatpak version. Now it creates a desktop entry for Flatpak version of the app. This entry is not handled by Tauri. (Fixed #63)
+- Nautilus Component: Added hash calculation support for files. Now you can calculate the hash of a file and copy it to clipboard on the properties dialog.
+- Nautilus Component: Added public link generation support for files and directories. If remote supports public link generation, it will be available in the properties dialog.
+- Nautilus Component: Enabled download button for remote files. Now you can download remote files to your local machine.
+
+### Changed
+- On linux remove the rclone to required dependencies when installing via deb or rpm packages. Because app handle the rclone binary installation and update itself correctly.  
+- Encrypted export not required standalone 7zip binary anymore. Changed to sevenz-rust crate. Not break the old encrypted exports.
+- On tray icon when remote not mounted, it shows the Browse (In App). Basically it opens the RClone Manager's `Nautilus` with that remote.
+- Angular and Angular Material updated to v21 and other dependencies updated to latest stable versions.
+- Small design changes on `Quick Remote Modal`.
+
+### Fixed
+- Remote configuration step provider selection fixed. Now it correctly filters the provider-specific fields when Provider selected. (issue #59 and #1)
+- Broken reduce animations fixed. (issue #60)
+- Links openning in the about modal fixed. Now it opens the links in the default browser.
+
 ## [v0.1.8] - 2025-11-06
 ### Added
 - Developer Setting: Memory Optimization (Destroy Window on Close). Added a new experimental option in Developer Settings that destroys the main window instead of hiding it when closed. This significantly reduces background RAM usage. On Linux, this also actively cleans up lingering WebKit "zombie" processes to prevent memory leaks over long sessions. On MacOS, this not so effective because MacOS version dont use a lot of memory for background processes. But its useful linux and windows.

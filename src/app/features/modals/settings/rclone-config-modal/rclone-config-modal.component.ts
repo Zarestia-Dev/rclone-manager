@@ -4,9 +4,11 @@ import {
   HostListener,
   OnInit,
   inject,
-  ChangeDetectorRef,
   OnDestroy,
   ViewChild,
+  signal,
+  computed,
+  effect,
 } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
@@ -22,8 +24,8 @@ import {
   FormControl,
   ReactiveFormsModule,
   FormsModule,
-  AbstractControl,
   FormGroup,
+  FormBuilder,
 } from '@angular/forms';
 import { ScrollingModule, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 
@@ -34,7 +36,7 @@ import { SearchContainerComponent } from '../../../../shared/components/search-c
 import { MatSelectModule } from '@angular/material/select';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { SecuritySettingsComponent } from '../security-settings/security-settings.component';
-import { distinctUntilChanged, Subject, takeUntil } from 'rxjs';
+import { distinctUntilChanged, Subject, takeUntil, debounceTime } from 'rxjs';
 import { SettingControlComponent } from 'src/app/shared/components';
 
 type PageType = 'home' | 'security' | string;
@@ -84,28 +86,71 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   private notificationService = inject(NotificationService);
   private flagConfigService = inject(FlagConfigService);
   private rcloneBackendOptionsService = inject(RcloneBackendOptionsService);
-  private cdRef = inject(ChangeDetectorRef);
+  private fb = inject(FormBuilder);
 
   // --- View Child for Virtual Scroll ---
   @ViewChild(CdkVirtualScrollViewport) virtualScrollViewport?: CdkVirtualScrollViewport;
-  @ViewChild('searchViewport') searchViewport?: CdkVirtualScrollViewport;
 
-  // --- Public Properties (for the template) ---
-  currentPage: PageType = 'home';
-  currentCategory: string | null = null;
-  isLoading = true;
+  // --- Signals ---
+  currentPage = signal<PageType>('home');
+  currentCategory = signal<string | null>(null);
+  isLoading = signal(true);
+  searchQuery = signal('');
+  isSearchVisible = signal(false);
+  savingOptions = signal(new Set<string>());
+  
+  // Services and filtering
+  services = signal<RCloneService[]>([]);
+  filteredServices = signal<RCloneService[]>([]);
+  globalSearchResults = signal<SearchResult[]>([]);
+  searchMatchCounts = signal(new Map<string, number>());
+  virtualScrollData = signal<RcConfigOption[]>([]);
+  
+  // Option state tracking
+  private optionIsDefaultMap = signal(new Map<string, boolean>());
+
+  // Form
   rcloneOptionsForm: FormGroup;
-  services: RCloneService[] = [];
-  filteredServices: RCloneService[] = [];
-  globalSearchResults: SearchResult[] = [];
-  searchQuery = '';
-  isSearchVisible = false;
-  savingOptions = new Set<string>();
-  searchMatchCounts = new Map<string, number>();
-  private optionIsDefaultMap = new Map<string, boolean>();
 
-  // Virtual scroll properties
-  virtualScrollData: RcConfigOption[] = [];
+  // --- Computed Signals ---
+  hasSearchQuery = computed(() => this.searchQuery().trim().length > 0);
+  
+  isSecurityPage = computed(() => this.currentPage() === 'security');
+  
+  filteredOptionsCount = computed(() => {
+    const page = this.currentPage();
+    const category = this.currentCategory();
+    if (page === 'home' || page === 'security' || !category) {
+      return 0;
+    }
+    return this.virtualScrollData().length;
+  });
+  
+  totalOptionsCount = computed(() => {
+    const page = this.currentPage();
+    const category = this.currentCategory();
+    if (page === 'home' || page === 'security' || !category) {
+      return 0;
+    }
+    return (this.groupedRcloneOptions[page]?.[category] || []).length;
+  });
+
+  servicesByMainCategory = computed(() => {
+    const grouped: Record<string, RCloneService[]> = {
+      'General Settings': [],
+      'File System & Storage': [],
+      'Network & Servers': [],
+    };
+
+    this.filteredServices().forEach(service => {
+      const mainCategory = this.serviceCategoryMap[service.name] || 'Network & Servers';
+      if (grouped[mainCategory]) {
+        grouped[mainCategory].push(service);
+      }
+    });
+
+    return grouped;
+  });
 
   // --- Private Properties ---
   private readonly componentDestroyed$ = new Subject<void>();
@@ -113,7 +158,6 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   private groupedRcloneOptions: GroupedRCloneOptions = {};
   private optionToFocus: string | null = null;
   private optionToServiceMap: Record<string, string> = {};
-  private optionToCategoryMap: Record<string, string> = {};
   private optionToFullFieldNameMap: Record<string, string> = {};
 
   // Enhanced icon mapping with better visual consistency
@@ -164,6 +208,17 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
     MetricsHTTP: 'Metrics HTTP settings',
   };
 
+  private readonly categoryIconMap: Record<string, string> = {
+    General: 'gear',
+    Auth: 'lock',
+    HTTP: 'globe',
+    Template: 'terminal',
+    MetaRules: 'chart',
+    RulesOpt: 'filter',
+    MetricsAuth: 'lock',
+    MetricsHTTP: 'globe',
+  };
+
   private readonly serviceCategoryMap: Record<string, string> = {
     main: 'General Settings',
     log: 'General Settings',
@@ -195,31 +250,46 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   };
 
   constructor() {
-    this.rcloneOptionsForm = new FormGroup({});
+    this.rcloneOptionsForm = this.fb.group({});
     this.setupSearchSubscription();
+    this.setupVirtualScrollEffect();
   }
 
   private setupSearchSubscription(): void {
     this.search$
-      .pipe(distinctUntilChanged(), takeUntil(this.componentDestroyed$))
+      .pipe(
+        distinctUntilChanged(),
+        debounceTime(200),
+        takeUntil(this.componentDestroyed$)
+      )
       .subscribe(searchText => {
         const query = searchText.toLowerCase().trim();
-        this.searchQuery = query;
+        this.searchQuery.set(query);
 
-        if (this.currentPage === 'home') {
+        if (this.currentPage() === 'home') {
           if (!query) {
-            this.globalSearchResults = [];
-            this.filteredServices = [...this.services].map(s => ({ ...s, expanded: false }));
+            this.globalSearchResults.set([]);
+            this.filteredServices.set([...this.services()].map(s => ({ ...s, expanded: false })));
           } else {
             this.performGlobalSearch(query);
             this.updateFilteredServices();
           }
-        } else if (this.currentPage !== 'home' && this.currentPage !== 'security') {
+        } else if (this.currentPage() !== 'home' && this.currentPage() !== 'security') {
           this.updateVirtualScrollData();
         }
-
-        this.cdRef.detectChanges();
       });
+  }
+
+  private setupVirtualScrollEffect(): void {
+    // Effect to scroll to top when virtual scroll data changes
+    effect(() => {
+      const data = this.virtualScrollData();
+      if (data.length > 0) {
+        setTimeout(() => {
+          this.virtualScrollViewport?.scrollToIndex(0);
+        }, 0);
+      }
+    });
   }
 
   ngOnDestroy(): void {
@@ -232,29 +302,30 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   }
 
   getSearchPlaceholder(): string {
-    return this.currentPage === 'home'
+    return this.currentPage() === 'home'
       ? 'Search all services and settings...'
-      : `Search in ${this.currentPage.toUpperCase()}...`;
+      : `Search in ${this.currentPage().toUpperCase()}...`;
   }
 
   getMatchCountForCategory(serviceName: string, categoryName: string): number {
     const key = `${serviceName}---${categoryName}`;
-    return this.searchMatchCounts.get(key) || 0;
+    return this.searchMatchCounts().get(key) || 0;
   }
 
   async ngOnInit(): Promise<void> {
     await this.loadAndBuildOptions();
-    this.isLoading = false;
-    this.cdRef.detectChanges();
+    this.isLoading.set(false);
   }
 
   onOptionValueChanged(optionName: string, isChanged: boolean): void {
-    this.optionIsDefaultMap.set(optionName, !isChanged);
-    this.cdRef.detectChanges();
+    const currentMap = this.optionIsDefaultMap();
+    const newMap = new Map(currentMap);
+    newMap.set(optionName, !isChanged);
+    this.optionIsDefaultMap.set(newMap);
   }
 
   isOptionAtDefault(optionName: string): boolean {
-    return this.optionIsDefaultMap.get(optionName) ?? true;
+    return this.optionIsDefaultMap().get(optionName) ?? true;
   }
 
   private async loadAndBuildOptions(): Promise<void> {
@@ -262,7 +333,6 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
       this.groupedRcloneOptions = await this.flagConfigService.getGroupedOptions();
       this.buildServices();
       this.createRCloneOptionControls();
-      this.cdRef.detectChanges();
     } catch (error) {
       console.error('Failed to load RClone configuration:', error);
       this.notificationService.showError('Failed to load RClone configuration');
@@ -270,15 +340,18 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   }
 
   private buildServices(): void {
-    this.services = Object.keys(this.groupedRcloneOptions).map(serviceName => ({
+    const servicesList = Object.keys(this.groupedRcloneOptions).map(serviceName => ({
       name: serviceName,
       expanded: false,
       categories: Object.keys(this.groupedRcloneOptions[serviceName]),
     }));
-    this.filteredServices = [...this.services];
+    this.services.set(servicesList);
+    this.filteredServices.set([...servicesList]);
   }
 
   private createRCloneOptionControls(): void {
+    const controls: Record<string, FormControl> = {};
+
     for (const service in this.groupedRcloneOptions) {
       for (const category in this.groupedRcloneOptions[service]) {
         for (const option of this.groupedRcloneOptions[service][category]) {
@@ -287,49 +360,30 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
           const uniqueControlKey = `${service}---${category}---${option.Name}`;
 
           this.optionToServiceMap[uniqueControlKey] = service;
-          this.optionToCategoryMap[uniqueControlKey] = category;
           this.optionToFullFieldNameMap[uniqueControlKey] = fullFieldName;
-          this.rcloneOptionsForm.addControl(uniqueControlKey, new FormControl(option.Value));
+          controls[uniqueControlKey] = this.fb.control(option.Value);
         }
       }
     }
+
+    this.rcloneOptionsForm = this.fb.group(controls);
   }
 
   // Virtual Scroll Methods
   private updateVirtualScrollData(): void {
-    this.virtualScrollData = this.getRCloneOptionsForCurrentPage();
-    this.cdRef.detectChanges();
-
-    setTimeout(() => {
-      this.virtualScrollViewport?.scrollToIndex(0);
-    }, 0);
-  }
-
-  getVirtualScrollData(): RcConfigOption[] {
-    return this.virtualScrollData;
+    this.virtualScrollData.set(this.getRCloneOptionsForCurrentPage());
   }
 
   trackByOptionIndex(index: number, option: RcConfigOption): string {
-    return `${this.currentPage}-${this.currentCategory}-${option.Name}-${index}`;
+    // Include index to handle options with duplicate Names across different services/categories
+    return `${index}-${option.Name}`;
   }
 
-  // Main Category Grouping
-  getServicesByMainCategory(): Record<string, RCloneService[]> {
-    const grouped: Record<string, RCloneService[]> = {
-      'General Settings': [],
-      'File System & Storage': [],
-      'Network & Servers': [],
-    };
-
-    this.filteredServices.forEach(service => {
-      const mainCategory = this.serviceCategoryMap[service.name] || 'Network & Servers';
-      if (grouped[mainCategory]) {
-        grouped[mainCategory].push(service);
-      }
-    });
-
-    return grouped;
+  trackBySearchResult(_index: number, result: SearchResult): string {
+    return `${result.service}-${result.category}-${result.option.Name}`;
   }
+
+
 
   getMainCategoryDescription(category: string): string {
     return this.mainCategoryDescriptionMap[category] || '';
@@ -355,17 +409,7 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   }
 
   getCategoryIcon(categoryName: string): string {
-    const iconMap: Record<string, string> = {
-      General: 'gear',
-      Auth: 'lock',
-      HTTP: 'globe',
-      Template: 'terminal',
-      MetaRules: 'chart',
-      RulesOpt: 'filter',
-      MetricsAuth: 'lock',
-      MetricsHTTP: 'globe',
-    };
-    return iconMap[categoryName] || 'gear';
+    return this.categoryIconMap[categoryName] || 'gear';
   }
 
   getCategoryDescription(categoryName: string): string {
@@ -375,20 +419,18 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   // Navigation and page management
   navigateTo(service: string, category?: string, optionName?: string): void {
     if (service === 'security') {
-      this.currentPage = 'security';
-      this.currentCategory = null;
+      this.currentPage.set('security');
+      this.currentCategory.set(null);
     } else {
-      this.currentPage = service;
-      this.currentCategory = category || null;
+      this.currentPage.set(service);
+      this.currentCategory.set(category || null);
     }
 
     this.optionToFocus = optionName || null;
 
-    if (this.currentPage !== 'home' && this.currentPage !== 'security') {
+    if (this.currentPage() !== 'home' && this.currentPage() !== 'security') {
       this.updateVirtualScrollData();
     }
-
-    this.cdRef.detectChanges();
 
     const option = this.optionToFocus;
     if (option) {
@@ -398,9 +440,16 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
     }
   }
 
+  handleKeyboardNavigation(event: KeyboardEvent, service: string, category?: string, optionName?: string): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.navigateTo(service, category, optionName);
+    }
+  }
+
   private scrollToOption(optionName: string): void {
-    if (this.virtualScrollViewport && this.virtualScrollData.length > 0) {
-      const index = this.virtualScrollData.findIndex(opt => opt.Name === optionName);
+    if (this.virtualScrollViewport && this.virtualScrollData().length > 0) {
+      const index = this.virtualScrollData().findIndex(opt => opt.Name === optionName);
       if (index !== -1) {
         this.virtualScrollViewport.scrollToIndex(index, 'smooth');
       }
@@ -409,28 +458,32 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   }
 
   getRCloneOptionsForCurrentPage(): RcConfigOption[] {
-    if (this.currentPage === 'home' || this.currentPage === 'security' || !this.currentCategory) {
+    const page = this.currentPage();
+    const category = this.currentCategory();
+    
+    if (page === 'home' || page === 'security' || !category) {
       return [];
     }
 
-    const options = this.groupedRcloneOptions[this.currentPage]?.[this.currentCategory] || [];
+    const options = this.groupedRcloneOptions[page]?.[category] || [];
     return this.filterOptionsBySearch(options);
   }
 
   private filterOptionsBySearch(options: RcConfigOption[]): RcConfigOption[] {
-    if (!this.searchQuery || this.searchQuery.trim() === '') return options;
+    const query = this.searchQuery();
+    if (!query || query.trim() === '') return options;
 
-    const query = this.searchQuery.toLowerCase().trim();
+    const lowerQuery = query.toLowerCase().trim();
     return options.filter(
       option =>
-        option.Name.toLowerCase().includes(query) ||
-        option.FieldName.toLowerCase().includes(query) ||
-        option.Help.toLowerCase().includes(query)
+        option.Name.toLowerCase().includes(lowerQuery) ||
+        option.FieldName.toLowerCase().includes(lowerQuery) ||
+        option.Help.toLowerCase().includes(lowerQuery)
     );
   }
 
   private performGlobalSearch(query: string): void {
-    this.globalSearchResults = [];
+    const results: SearchResult[] = [];
     for (const service in this.groupedRcloneOptions) {
       for (const category in this.groupedRcloneOptions[service]) {
         for (const option of this.groupedRcloneOptions[service][category]) {
@@ -441,84 +494,66 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
             service.toLowerCase().includes(query) ||
             category.toLowerCase().includes(query)
           ) {
-            this.globalSearchResults.push({ service, category, option });
+            results.push({ service, category, option });
           }
         }
       }
     }
-    this.cdRef.detectChanges();
+    this.globalSearchResults.set(results);
   }
 
   private updateFilteredServices(): void {
-    this.searchMatchCounts.clear();
+    const newMatchCounts = new Map<string, number>();
+    const results = this.globalSearchResults();
 
-    if (this.globalSearchResults.length > 0) {
-      this.globalSearchResults.forEach(result => {
+    if (results.length > 0) {
+      results.forEach(result => {
         const key = `${result.service}---${result.category}`;
-        const currentCount = this.searchMatchCounts.get(key) || 0;
-        this.searchMatchCounts.set(key, currentCount + 1);
+        const currentCount = newMatchCounts.get(key) || 0;
+        newMatchCounts.set(key, currentCount + 1);
       });
 
-      const servicesWithMatches = new Set(this.globalSearchResults.map(r => r.service));
-      this.filteredServices = this.services
+      const servicesWithMatches = new Set(results.map(r => r.service));
+      const filtered = this.services()
         .filter(svc => servicesWithMatches.has(svc.name))
         .map(svc => ({ ...svc, expanded: true }));
+      
+      this.filteredServices.set(filtered);
     } else {
-      const query = this.searchQuery.toLowerCase().trim();
-      this.filteredServices = this.services
+      const query = this.searchQuery().toLowerCase().trim();
+      const filtered = this.services()
         .filter(
           svc =>
             svc.name.toLowerCase().includes(query) ||
             (this.serviceDescriptionMap[svc.name] || '').toLowerCase().includes(query)
         )
         .map(svc => ({ ...svc, expanded: true }));
+      
+      this.filteredServices.set(filtered);
     }
-    this.cdRef.detectChanges();
+    
+    this.searchMatchCounts.set(newMatchCounts);
   }
 
   toggleSearchVisibility(): void {
-    this.isSearchVisible = !this.isSearchVisible;
-    if (!this.isSearchVisible) {
-      this.searchQuery = '';
+    this.isSearchVisible.update(visible => !visible);
+    if (!this.isSearchVisible()) {
+      this.searchQuery.set('');
       this.onSearchInput('');
     }
-    this.cdRef.detectChanges();
-  }
-
-  // Getters for template
-  get hasSearchQuery(): boolean {
-    return this.searchQuery.trim().length > 0;
-  }
-
-  get filteredOptionsCount(): number {
-    if (this.currentPage === 'home' || this.currentPage === 'security' || !this.currentCategory) {
-      return 0;
-    }
-    return this.getRCloneOptionsForCurrentPage().length;
-  }
-
-  get totalOptionsCount(): number {
-    if (this.currentPage === 'home' || this.currentPage === 'security' || !this.currentCategory) {
-      return 0;
-    }
-    return (this.groupedRcloneOptions[this.currentPage]?.[this.currentCategory] || []).length;
-  }
-
-  get isSecurityPage(): boolean {
-    return this.currentPage === 'security';
   }
 
   async saveRCloneOption(optionName: string, isAtDefault: boolean): Promise<void> {
     const control = this.rcloneOptionsForm.get(optionName);
-    console.log('Saving option:', optionName, 'with value:', control?.value);
 
-    if (!control || control.invalid || this.savingOptions.has(optionName) || control.pristine) {
-      console.log('Skipping save for option:', optionName);
+    if (!control || control.invalid || this.savingOptions().has(optionName) || control.pristine) {
       return;
     }
 
     try {
-      this.savingOptions.add(optionName);
+      const currentSaving = new Set(this.savingOptions());
+      currentSaving.add(optionName);
+      this.savingOptions.set(currentSaving);
       control.disable({ emitEvent: false });
 
       const service = this.optionToServiceMap[optionName];
@@ -534,11 +569,9 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
       }
 
       if (isAtDefault) {
-        // Value is at default - remove from JSON file
         await this.rcloneBackendOptionsService.removeOption(service, fullFieldName);
         this.notificationService.showSuccess(`Reset to default: ${fullFieldName}`);
       } else {
-        // Value is custom - save to JSON file
         await this.rcloneBackendOptionsService.saveOption(service, fullFieldName, valueToSave);
         this.notificationService.showSuccess(`Saved: ${fullFieldName}`);
       }
@@ -549,42 +582,30 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
       console.error(`Failed to save option ${optionName}:`, error);
       this.notificationService.showError(`Failed to save ${optionName}: ${error as string}`);
     } finally {
-      this.savingOptions.delete(optionName);
+      const currentSaving = new Set(this.savingOptions());
+      currentSaving.delete(optionName);
+      this.savingOptions.set(currentSaving);
       if (control) {
         control.enable({ emitEvent: false });
       }
-      this.cdRef.detectChanges();
     }
-  }
-
-  getRCloneOptionControl(optionName: string): AbstractControl | null {
-    const uniqueKey = `${this.currentPage}---${this.currentCategory}---${optionName}`;
-    return this.rcloneOptionsForm.get(uniqueKey);
   }
 
   // UI helpers
   getPageTitle(): string {
-    if (this.currentPage === 'home') return 'RClone Configuration';
-    if (this.currentPage === 'security') return 'Security Settings';
-    if (this.currentCategory) {
-      return `${this.currentPage.toUpperCase()} - ${this.currentCategory}`;
+    const page = this.currentPage();
+    const category = this.currentCategory();
+    
+    if (page === 'home') return 'RClone Configuration';
+    if (page === 'security') return 'Security Settings';
+    if (category) {
+      return `${page.toUpperCase()} - ${category}`;
     }
     return 'Backend Settings';
   }
 
-  trackByIndex(index: number): number {
-    return index;
-  }
-
-  trackByOptionName(_index?: number, option?: RcConfigOption): string {
-    if (typeof _index === 'number') {
-      return `${this.currentPage}-${this.currentCategory}-${option?.Name}-${_index}`;
-    }
-    return `${this.currentPage}-${this.currentCategory}-${option?.Name}`;
-  }
-
   public getUniqueControlKey(option: RcConfigOption): string {
-    return `${this.currentPage}---${this.currentCategory}---${option.Name}`;
+    return `${this.currentPage()}---${this.currentCategory()}---${option.Name}`;
   }
 
   @HostListener('document:keydown.escape')

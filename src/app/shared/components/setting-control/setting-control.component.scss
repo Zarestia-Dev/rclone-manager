@@ -1,43 +1,35 @@
-.settings-list {
+.setting {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-  padding: var(--space-md);
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
 
-  .setting {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-
-    .setting-info {
-      h3 {
-        font-size: var(--font-size-xl);
-        font-weight: 600;
-        margin-bottom: var(--space-xs);
-        color: var(--app-text-color);
-      }
-
-      .settings-description {
-        font-size: var(--font-size-sm);
-        color: var(--secondary-text-color);
-        margin: 0;
-      }
+  .setting-info {
+    h3 {
+      font-size: var(--font-size-xl);
+      font-weight: 600;
+      color: var(--app-text-color);
     }
 
-    .reset-btn {
-      color: var(--orange);
-      background: rgba(var(--orange-rgb), 0.1);
-      &:hover {
-        background: rgba(var(--orange-rgb), 0.2);
-      }
+    .settings-description {
+      font-size: var(--font-size-sm);
+      color: var(--secondary-text-color);
+      margin: 0;
+    }
+  }
+
+  .reset-btn {
+    color: var(--orange);
+    background: rgba(var(--orange-rgb), 0.1);
+    &:hover {
+      background: rgba(var(--orange-rgb), 0.2);
     }
   }
 }
 
 .setting-item {
-  background: var(--surface-background);
+  background: var(--secondary-background);
   border-radius: var(--radius-lg);
   padding: var(--space-lg);
   box-shadow: var(--shadow-light);

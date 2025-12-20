@@ -76,7 +76,6 @@ export class RemoteAboutModalComponent implements OnInit {
       .then(info => {
         const typedInfo = info as Record<string, any>;
         this.aboutInfo.set(typedInfo);
-        console.log('Loaded FS Info:', info);
         this.loadingAbout.set(false);
 
         // Check if 'About' feature is supported before fetching usage
@@ -84,8 +83,7 @@ export class RemoteAboutModalComponent implements OnInit {
         if (features && features['About']) {
           this.fetchDiskUsage();
         } else {
-          // Feature not supported
-          console.log('About feature not supported, skipping disk usage fetch.');
+          // Feature not supported, skip disk usage fetch
           this.loadingUsage.set(false);
           this.diskUsageInfo.set(null);
         }
@@ -103,7 +101,6 @@ export class RemoteAboutModalComponent implements OnInit {
       .getSize(this.remoteName())
       .then(size => {
         this.sizeInfo.set(size);
-        console.log('Loaded Size Info:', size);
         this.loadingSize.set(false);
       })
       .catch(err => {
@@ -117,7 +114,6 @@ export class RemoteAboutModalComponent implements OnInit {
       .getDiskUsage(this.remoteName())
       .then(usage => {
         this.diskUsageInfo.set(usage);
-        console.log('Loaded Disk Usage:', usage);
       })
       .catch(err => {
         console.warn('Disk usage check failed:', err);

@@ -46,7 +46,9 @@ pub async fn setup_tray(app: AppHandle, max_tray_items: usize) -> tauri::Result<
     Ok(())
 }
 
-pub fn create_app_window(app_handle: AppHandle) {
+/// Creates the main app window.
+/// Optionally accepts a remote name to navigate to the in-app browser for that remote.
+pub fn create_app_window(app_handle: AppHandle, browse_remote: Option<&str>) {
     let mut main_window =
         tauri::WebviewWindowBuilder::new(&app_handle, "main", tauri::WebviewUrl::default())
             .title("RClone Manager")
@@ -78,6 +80,21 @@ pub fn create_app_window(app_handle: AppHandle) {
     }
 
     let main_window = main_window.build().expect("Failed to build main window");
+
+    // Navigate to current URL with browse parameter if provided
+    if let Some(remote_name) = browse_remote {
+        let remote_encoded = urlencoding::encode(remote_name);
+        if let Ok(current_url) = main_window.url() {
+            let new_url = format!(
+                "{}?browse={}",
+                current_url.as_str().trim_end_matches('/'),
+                remote_encoded
+            );
+            if let Ok(url) = tauri::Url::parse(&new_url) {
+                let _ = main_window.navigate(url);
+            }
+        }
+    }
 
     main_window.show().unwrap_or_else(|e| {
         eprintln!("Failed to show main window: {e}");

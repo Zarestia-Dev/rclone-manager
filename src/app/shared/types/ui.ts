@@ -12,10 +12,10 @@ export interface ModalSize {
 
 export const STANDARD_MODAL_SIZE: ModalSize = {
   width: '90vw',
-  maxWidth: '642px',
+  maxWidth: '680px',
   minWidth: '362px',
   height: '80vh',
-  maxHeight: '700px',
+  maxHeight: '800px',
   minHeight: '240px',
   disableClose: true,
 };
@@ -48,11 +48,6 @@ export interface ExportOption {
   readonly icon: string;
 }
 
-export interface ToastMessage {
-  message: string;
-  type: 'success' | 'error' | 'info' | 'warning';
-}
-
 export interface PasswordPromptResult {
   password: string;
   stored: boolean;
@@ -81,7 +76,7 @@ export interface FileBrowserItem {
   /** UI context metadata (where the file lives and how to render it) */
   meta: {
     remote: string; // e.g. "gdrive:"
-    fsType: 'local' | 'remote';
+    isLocal: boolean;
     remoteType?: string; // e.g. 's3', 'drive', etc. (used for icons)
   };
 }

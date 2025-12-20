@@ -78,4 +78,7 @@ export interface JobInfo {
   remote_name: string;
   stats: GlobalStats;
   group?: string;
+  profile?: string;
+  /** Source UI that started this job (e.g., "nautilus", "dashboard", "scheduled") */
+  source_ui?: string;
 }

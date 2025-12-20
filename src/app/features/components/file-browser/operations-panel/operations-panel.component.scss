@@ -1,0 +1,122 @@
+.operations-accordion {
+  .mat-expansion-panel {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+
+    .mat-expansion-panel-header {
+      min-height: 40px;
+    }
+
+    ::ng-deep .mat-expansion-panel-body {
+      padding: 0 !important;
+    }
+
+    mat-panel-title {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      color: var(--secondary-text-color);
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      font-size: 11px;
+
+      mat-icon {
+        width: 14px;
+        height: 14px;
+        font-size: 14px;
+      }
+
+      .job-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 16px;
+        height: 16px;
+        padding: 0 4px;
+        font-size: 10px;
+        font-weight: 600;
+        background: var(--primary-color);
+        color: white;
+        border-radius: 8px;
+        text-transform: none;
+        letter-spacing: 0;
+      }
+    }
+  }
+}
+
+.panel-content {
+  max-height: 180px;
+  overflow-y: auto;
+
+  .job-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: var(--space-sm) var(--space-md);
+    border-top: 1px solid var(--border-color);
+    transition: background 0.15s ease;
+
+    &:first-child {
+      border-top: none;
+    }
+
+    &:hover {
+      background: rgba(var(--app-text-color-rgb), 0.02);
+    }
+
+    &.completed {
+      opacity: 0.6;
+    }
+
+    .job-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-xs);
+
+      .job-name {
+        flex: 1;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--app-text-color);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .action-btn {
+        width: 16px;
+        height: 16px;
+        font-size: 16px;
+        flex-shrink: 0;
+        opacity: 0.4;
+        transition: opacity 0.15s ease;
+
+        &:hover {
+          opacity: 1;
+        }
+      }
+    }
+
+    .job-progress {
+      height: 4px;
+      border-radius: 2px;
+    }
+
+    .job-stats {
+      .stats-text {
+        font-size: 11px;
+        color: var(--secondary-text-color);
+
+        &.success {
+          color: var(--primary-color);
+        }
+
+        &.error {
+          color: var(--warn-color);
+        }
+      }
+    }
+  }
+}

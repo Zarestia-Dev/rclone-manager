@@ -33,7 +33,7 @@ import { FormatFileSizePipe } from '@app/pipes';
                 {{ config.notSupported ? 'Not Supported' : 'Unknown' }}
               </div>
             } @else {
-              <div class="usage-fill" [style.width]="getUsagePercentage() + '%'"></div>
+              <div class="usage-fill" [ngStyle]="getUsageFillStyle()"></div>
             }
           </div>
         </div>
@@ -58,7 +58,7 @@ import { FormatFileSizePipe } from '@app/pipes';
                 >
               </div>
               <div class="legend-item">
-                <div class="legend-color used"></div>
+                <div class="legend-color used" [ngStyle]="getUsedLegendStyle()"></div>
                 <span class="legend-text">Used: {{ config.used_space ?? 0 | formatFileSize }}</span>
               </div>
               <div class="legend-item">
@@ -100,29 +100,53 @@ export class DiskUsagePanelComponent {
 
   private getUnsupportedStyle(): Record<string, string> {
     return {
-      backgroundColor: 'var(--yellow)',
-      border: '3px solid transparent',
-      transition: 'all 0.5s ease-in-out',
+      backgroundColor: 'rgba(var(--yellow-rgb), 0.3)',
+      border: '2px solid var(--yellow)',
     };
   }
 
   private getLoadingStyle(): Record<string, string> {
     return {
-      backgroundColor: 'var(--orange)',
-      border: '3px solid transparent',
+      backgroundColor: 'rgba(var(--orange-rgb), 0.2)',
+      border: '2px solid var(--orange)',
       backgroundImage:
-        'linear-gradient(120deg, rgba(255,255,255,0.15) 25%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.15) 75%)',
+        'linear-gradient(90deg, transparent 0%, rgba(var(--orange-rgb), 0.3) 50%, transparent 100%)',
       backgroundSize: '200% 100%',
-      animation: 'diskLoadingShimmer 2s linear infinite',
-      transition: 'all 0.5s ease-in-out',
+      animation: 'diskLoadingShimmer 1.5s ease-in-out infinite',
     };
   }
 
   private getMountedStyle(): Record<string, string> {
+    const colorVar = this.getUsageColorVar();
     return {
-      backgroundColor: '#cecece',
-      border: '3px solid var(--light-blue)',
-      transition: 'all 0.5s ease-in-out',
+      backgroundColor: 'rgba(var(--app-text-color-rgb), 0.08)',
+      border: `2px solid var(${colorVar})`,
     };
+  }
+
+  getUsageFillStyle(): Record<string, string> {
+    return {
+      width: `${this.getUsagePercentage()}%`,
+      background: `var(${this.getUsageColorVar()})`,
+    };
+  }
+
+  getUsedLegendStyle(): Record<string, string> {
+    return {
+      background: `var(${this.getUsageColorVar()})`,
+    };
+  }
+
+  private getUsageColorVar(): string {
+    const percentage = this.getUsagePercentage();
+
+    if (percentage >= 90) {
+      return '--warn-color'; // Red - Critical
+    } else if (percentage >= 80) {
+      return '--orange'; // Orange - High
+    } else if (percentage >= 60) {
+      return '--yellow'; // Yellow - Warning
+    }
+    return '--primary-color'; // Green - Healthy
   }
 }

@@ -25,34 +25,32 @@
         </div>
       </div>
     </div>
-    <div class="header-divider"></div>
   </div>
 
   <!-- Main Content Area -->
   <div class="detail-content">
     @if (mainOperationType() === 'sync') {
       <div class="sync-operation-wrapper">
-        <!-- Operation Selection Buttons -->
-        <div class="operation-buttons">
-          @for (operation of syncOperations; track operation.type) {
-            <button
-              mat-flat-button
-              [class]="
-                'operation-button operation-' +
-                operation.type +
-                (selectedSyncOperation() === operation.type ? ' active' : '') +
-                ' ' +
-                operation.cssClass
-              "
-              [style.--operation-color]="operation.cssClass"
-              (click)="onSyncOperationChange(operation.type)"
-              [matTooltip]="operation.description"
-              matTooltipPosition="below"
-            >
-              <mat-icon [svgIcon]="operation.icon" class="operation-icon"></mat-icon>
-              <span class="operation-label">{{ operation.label }}</span>
-            </button>
-          }
+        <!-- Operation Mode Selector -->
+        <div class="operation-mode-selector">
+          <span class="selector-label">Operation Mode</span>
+          <mat-button-toggle-group
+            [value]="selectedSyncOperation()"
+            (change)="onSyncOperationChange($event.value)"
+            class="operation-toggle-group"
+            aria-label="Select operation mode"
+          >
+            @for (operation of syncOperations; track operation.type) {
+              <mat-button-toggle
+                [value]="operation.type"
+                [matTooltip]="operation.description"
+                matTooltipPosition="below"
+                [class]="'operation-toggle operation-' + operation.type"
+              >
+                <span class="toggle-label">{{ operation.label }}</span>
+              </mat-button-toggle>
+            }
+          </mat-button-toggle-group>
         </div>
 
         <div class="sync-operation-content">
@@ -64,26 +62,75 @@
               </ng-template>
 
               <div class="operation-monitor">
-                <!-- Operation Control Panel -->
-                <app-operation-control
-                  [config]="operationControlConfig()"
-                  (startJob)="
-                    startJob.emit({ type: $event, remoteName: selectedRemote().remoteSpecs.name })
-                  "
-                  (stopJob)="
-                    stopJob.emit({ type: $event, remoteName: selectedRemote().remoteSpecs.name })
-                  "
-                  (openPath)="triggerOpenInFiles($event)"
-                  class="control-panel"
-                >
-                </app-operation-control>
-
-                <!-- Human Readable Cron Expression -->
-                @if (isCronEnabled()) {
-                  <div class="cron-human-readable">
-                    <mat-icon svgIcon="clock" class="cron-icon"></mat-icon>
-                    <span>{{ humanReadableCron() }}</span>
+                <!-- Profile Selector (when multiple profiles exist) -->
+                @if (showProfileSelector()) {
+                  <div class="profile-selector-container" [class.operation-sync]="isSyncType()">
+                    <div class="profile-selector-header">
+                      <span class="profile-selector-label">Selected Profile</span>
+                      <span class="profile-count">{{ enrichedProfiles().length }} profiles</span>
+                    </div>
+                    <mat-chip-set aria-label="Profile selection" class="profile-chips">
+                      @for (profile of enrichedProfiles(); track profile.name) {
+                        <mat-chip-option
+                          [selected]="selectedProfile() === profile.name"
+                          (click)="selectedProfile.set(profile.name)"
+                          [class.chip-running]="profile.status === 'running'"
+                          [class.chip-scheduled]="profile.status === 'scheduled'"
+                        >
+                          @if (profile.status === 'running') {
+                            <mat-icon
+                              svgIcon="refresh"
+                              class="primary animate-spin"
+                              matChipAvatar
+                            ></mat-icon>
+                          } @else if (profile.status === 'scheduled') {
+                            <mat-icon svgIcon="clock" class="orange" matChipAvatar></mat-icon>
+                          }
+                          {{ profile.label }}
+                        </mat-chip-option>
+                      }
+                    </mat-chip-set>
                   </div>
+                }
+
+                <!-- Operation Control Panel (filtered by selected profile) -->
+                @for (
+                  opConfig of filteredOperationControlConfigs();
+                  track opConfig.profileName || opConfig.operationType
+                ) {
+                  <app-operation-control
+                    [config]="opConfig"
+                    (startJob)="
+                      startJob.emit({
+                        type: $event,
+                        remoteName: selectedRemote().remoteSpecs.name,
+                        profileName: opConfig.profileName,
+                      })
+                    "
+                    (stopJob)="
+                      stopJob.emit({
+                        type: $event,
+                        remoteName: selectedRemote().remoteSpecs.name,
+                        profileName: opConfig.profileName,
+                      })
+                    "
+                    (openPath)="triggerOpenInFiles($event)"
+                    class="control-panel"
+                  >
+                  </app-operation-control>
+                }
+
+                <!-- Human Readable Cron Schedule (for selected profile) -->
+                @if (hasCronSchedule()) {
+                  @let schedule = selectedCronSchedule();
+                  @if (schedule) {
+                    <div class="cron-human-readable">
+                      <mat-icon svgIcon="clock" class="cron-icon"></mat-icon>
+                      <span class="cron-schedule" [matTooltip]="schedule.cronExpression">{{
+                        schedule.humanReadable
+                      }}</span>
+                    </div>
+                  }
                 }
 
                 <!-- Job Information Panel -->
@@ -113,13 +160,13 @@
                 <!-- Operation-Specific Warnings -->
                 @switch (selectedSyncOperation()) {
                   @case ('move') {
-                    <mat-card class="detail-panel">
-                      <mat-card-header class="panel-header">
-                        <mat-card-title class="panel-title-content">
+                    <mat-card>
+                      <mat-card-header>
+                        <mat-card-title>
                           <mat-icon svgIcon="warning" class="warn"></mat-icon>Move Operation Warning
                         </mat-card-title>
                       </mat-card-header>
-                      <mat-card-content class="panel-content">
+                      <mat-card-content>
                         <p>
                           Files will be <strong>deleted</strong> from the source after successful
                           transfer to destination.
@@ -129,13 +176,13 @@
                     </mat-card>
                   }
                   @case ('bisync') {
-                    <mat-card class="detail-panel">
-                      <mat-card-header class="panel-header">
-                        <mat-card-title class="panel-title-content">
-                          <mat-icon svgIcon="info" class="panel-icon"></mat-icon>BiSync Information
+                    <mat-card>
+                      <mat-card-header>
+                        <mat-card-title>
+                          <mat-icon svgIcon="info"></mat-icon>BiSync Information
                         </mat-card-title>
                       </mat-card-header>
-                      <mat-card-content class="panel-content">
+                      <mat-card-content>
                         <p>Bidirectional synchronization keeps both locations synchronized.</p>
                         <p>Changes made to either location will be reflected in the other.</p>
                         <p>First run may take longer as it establishes the sync baseline.</p>
@@ -144,41 +191,37 @@
                   }
                 }
                 <div class="settings-layout">
-                  @if (operationSettingsSections().length) {
-                    <section class="settings-group operation-settings">
-                      <header class="group-header">
-                        <h3 class="group-title">{{ operationSettingsHeading() }}</h3>
-                        <p class="group-description">{{ operationSettingsDescription() }}</p>
-                      </header>
-                      <div class="group-panels">
-                        @for (section of operationSettingsSections(); track section.key) {
-                          <app-settings-panel
-                            [config]="getSettingsPanelConfig(section)"
-                            (editSettings)="onEditSettings($event)"
-                            class="settings-section"
-                          ></app-settings-panel>
-                        }
-                      </div>
-                    </section>
-                  }
+                  <section class="settings-group operation-settings">
+                    <header class="group-header">
+                      <h3 class="group-title">{{ operationSettingsHeading() }}</h3>
+                      <p class="group-description">{{ operationSettingsDescription() }}</p>
+                    </header>
+                    <div class="group-panels">
+                      @for (section of operationSettingsSections(); track section.key) {
+                        <app-settings-panel
+                          [config]="getSettingsPanelConfig(section)"
+                          (editSettings)="onEditSettings($event)"
+                          class="settings-section"
+                        ></app-settings-panel>
+                      }
+                    </div>
+                  </section>
 
-                  @if (sharedSettingsSections().length) {
-                    <section class="settings-group shared-settings">
-                      <header class="group-header">
-                        <h3 class="group-title">{{ sharedSettingsHeading }}</h3>
-                        <p class="group-description">{{ sharedSettingsDescription }}</p>
-                      </header>
-                      <div class="group-panels">
-                        @for (section of sharedSettingsSections(); track section.key) {
-                          <app-settings-panel
-                            [config]="getSettingsPanelConfig(section)"
-                            (editSettings)="onEditSettings($event)"
-                            class="settings-section"
-                          ></app-settings-panel>
-                        }
-                      </div>
-                    </section>
-                  }
+                  <section class="settings-group shared-settings">
+                    <header class="group-header">
+                      <h3 class="group-title">{{ sharedSettingsHeading }}</h3>
+                      <p class="group-description">{{ sharedSettingsDescription }}</p>
+                    </header>
+                    <div class="group-panels">
+                      @for (section of sharedSettingsSections(); track section.key) {
+                        <app-settings-panel
+                          [config]="getSettingsPanelConfig(section)"
+                          (editSettings)="onEditSettings($event)"
+                          class="settings-section"
+                        ></app-settings-panel>
+                      }
+                    </div>
+                  </section>
                 </div>
               </div>
             </mat-tab>
@@ -198,30 +241,143 @@
             </ng-template>
 
             <div class="operation-monitor">
-              <!-- Mount Control Panel -->
-              <app-operation-control
-                [config]="mountControlConfig()"
-                (startJob)="
-                  startJob.emit({
-                    type: 'mount',
-                    remoteName: selectedRemote().remoteSpecs.name,
-                  })
-                "
-                (stopJob)="
-                  stopJob.emit({
-                    type: 'mount',
-                    remoteName: selectedRemote().remoteSpecs.name,
-                  })
-                "
-                (openPath)="triggerOpenInFiles($event)"
-                class="mount-control-panel"
-              ></app-operation-control>
+              @if (mainOperationType() === 'serve') {
+                <!-- Serve Controls -->
 
-              <mat-divider></mat-divider>
+                <!-- Profile Selector (when multiple profiles exist) -->
+                @if (showProfileSelector()) {
+                  <div class="profile-selector-container operation-serve">
+                    <div class="profile-selector-header">
+                      <span class="profile-selector-label">Selected Profile</span>
+                      <span class="profile-count">{{ enrichedProfiles().length }} profiles</span>
+                    </div>
+                    <mat-chip-set aria-label="Profile selection" class="profile-chips">
+                      @for (profile of enrichedProfiles(); track profile.name) {
+                        <mat-chip-option
+                          [selected]="selectedProfile() === profile.name"
+                          (click)="selectedProfile.set(profile.name)"
+                          [class.chip-running]="profile.status === 'running'"
+                          [class.chip-scheduled]="profile.status === 'scheduled'"
+                        >
+                          @if (profile.status === 'running') {
+                            <mat-icon svgIcon="serve" class="accent" matChipAvatar></mat-icon>
+                          }
+                          {{ profile.label }}
+                        </mat-chip-option>
+                      }
+                    </mat-chip-set>
+                  </div>
+                }
 
-              <app-vfs-control-panel
-                [remoteName]="selectedRemote().remoteSpecs.name"
-              ></app-vfs-control-panel>
+                @for (
+                  opConfig of filteredServeControlConfigs();
+                  track opConfig.profileName || opConfig.operationType
+                ) {
+                  <app-operation-control
+                    [config]="opConfig"
+                    (startJob)="
+                      startJob.emit({
+                        type: 'serve',
+                        remoteName: selectedRemote().remoteSpecs.name,
+                        profileName: opConfig.profileName,
+                      })
+                    "
+                    (stopJob)="
+                      stopJob.emit({
+                        type: 'serve',
+                        remoteName: selectedRemote().remoteSpecs.name,
+                        profileName: opConfig.profileName,
+                      })
+                    "
+                    class="control-panel"
+                  ></app-operation-control>
+                }
+
+                <!-- Active Serves List -->
+                @if (filteredRunningServes().length > 0) {
+                  <div class="active-serves-list">
+                    <h3>Active Serves</h3>
+                    <div class="serves-grid">
+                      @for (serve of filteredRunningServes(); track serve.id) {
+                        <app-serve-card
+                          [serve]="serve"
+                          (stopServe)="
+                            stopJob.emit({
+                              type: 'serve',
+                              remoteName: selectedRemote().remoteSpecs.name,
+                              serveId: serve.id,
+                            })
+                          "
+                          (copyToClipboard)="onCopyToClipboard($event)"
+                        ></app-serve-card>
+                      }
+                    </div>
+                  </div>
+                }
+                <mat-divider></mat-divider>
+
+                <app-vfs-control-panel
+                  [remoteName]="selectedRemote().remoteSpecs.name"
+                ></app-vfs-control-panel>
+              } @else {
+                <!-- Mount Control Panel -->
+
+                <!-- Profile Selector (when multiple profiles exist) -->
+                @if (showProfileSelector()) {
+                  <div class="profile-selector-container operation-mount">
+                    <div class="profile-selector-header">
+                      <span class="profile-selector-label">Selected Profile</span>
+                      <span class="profile-count">{{ enrichedProfiles().length }} profiles</span>
+                    </div>
+                    <mat-chip-set aria-label="Profile selection" class="profile-chips">
+                      @for (profile of enrichedProfiles(); track profile.name) {
+                        <mat-chip-option
+                          [selected]="selectedProfile() === profile.name"
+                          (click)="selectedProfile.set(profile.name)"
+                          [class.chip-running]="profile.status === 'running'"
+                          [class.chip-scheduled]="profile.status === 'scheduled'"
+                        >
+                          @if (profile.status === 'running') {
+                            <mat-icon svgIcon="mount" class="accent" matChipAvatar></mat-icon>
+                          }
+                          {{ profile.label }}
+                        </mat-chip-option>
+                      }
+                    </mat-chip-set>
+                  </div>
+                }
+
+                @for (
+                  opConfig of filteredMountControlConfigs();
+                  track opConfig.profileName || opConfig.operationType
+                ) {
+                  <app-operation-control
+                    [config]="opConfig"
+                    (startJob)="
+                      startJob.emit({
+                        type: 'mount',
+                        remoteName: selectedRemote().remoteSpecs.name,
+                        profileName: opConfig.profileName,
+                      })
+                    "
+                    (stopJob)="
+                      stopJob.emit({
+                        type: 'mount',
+                        remoteName: selectedRemote().remoteSpecs.name,
+                        profileName: opConfig.profileName,
+                      })
+                    "
+                    (openPath)="triggerOpenInFiles($event)"
+                    class="mount-control-panel"
+                  ></app-operation-control>
+                }
+
+                <mat-divider></mat-divider>
+
+                <app-vfs-control-panel
+                  [remoteName]="selectedRemote().remoteSpecs.name"
+                ></app-vfs-control-panel>
+              }
             </div>
           </mat-tab>
 
@@ -233,41 +389,37 @@
 
             <div class="configuration-content">
               <div class="settings-layout">
-                @if (operationSettingsSections().length) {
-                  <section class="settings-group operation-settings">
-                    <header class="group-header">
-                      <h3 class="group-title">{{ operationSettingsHeading() }}</h3>
-                      <p class="group-description">{{ operationSettingsDescription() }}</p>
-                    </header>
-                    <div class="group-panels">
-                      @for (section of operationSettingsSections(); track section.key) {
-                        <app-settings-panel
-                          [config]="getSettingsPanelConfig(section)"
-                          (editSettings)="onEditSettings($event)"
-                          class="mount-settings-section"
-                        ></app-settings-panel>
-                      }
-                    </div>
-                  </section>
-                }
+                <section class="settings-group operation-settings">
+                  <header class="group-header">
+                    <h3 class="group-title">{{ operationSettingsHeading() }}</h3>
+                    <p class="group-description">{{ operationSettingsDescription() }}</p>
+                  </header>
+                  <div class="group-panels">
+                    @for (section of operationSettingsSections(); track section.key) {
+                      <app-settings-panel
+                        [config]="getSettingsPanelConfig(section)"
+                        (editSettings)="onEditSettings($event)"
+                        class="mount-settings-section"
+                      ></app-settings-panel>
+                    }
+                  </div>
+                </section>
 
-                @if (sharedSettingsSections().length) {
-                  <section class="settings-group shared-settings">
-                    <header class="group-header">
-                      <h3 class="group-title">{{ sharedSettingsHeading }}</h3>
-                      <p class="group-description">{{ sharedSettingsDescription }}</p>
-                    </header>
-                    <div class="group-panels">
-                      @for (section of sharedSettingsSections(); track section.key) {
-                        <app-settings-panel
-                          [config]="getSettingsPanelConfig(section)"
-                          (editSettings)="onEditSettings($event)"
-                          class="mount-settings-section"
-                        ></app-settings-panel>
-                      }
-                    </div>
-                  </section>
-                }
+                <section class="settings-group shared-settings">
+                  <header class="group-header">
+                    <h3 class="group-title">{{ sharedSettingsHeading }}</h3>
+                    <p class="group-description">{{ sharedSettingsDescription }}</p>
+                  </header>
+                  <div class="group-panels">
+                    @for (section of sharedSettingsSections(); track section.key) {
+                      <app-settings-panel
+                        [config]="getSettingsPanelConfig(section)"
+                        (editSettings)="onEditSettings($event)"
+                        class="mount-settings-section"
+                      ></app-settings-panel>
+                    }
+                  </div>
+                </section>
               </div>
             </div>
           </mat-tab>

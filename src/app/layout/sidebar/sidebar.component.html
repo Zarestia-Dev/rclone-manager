@@ -39,16 +39,22 @@
             <mat-card-content class="card-content">
               <!-- Remote Name with Status Indicators -->
               <div class="remote-header">
-                <h4 [matTooltip]="remote.remoteSpecs.name">{{ remote.remoteSpecs.name }}</h4>
+                <h4 matTooltipShowDelay="500" [matTooltip]="remote.remoteSpecs.name">
+                  {{ remote.remoteSpecs.name }}
+                </h4>
                 <div class="status-indicators">
                   @if (remote.mountState) {
                     <div
                       class="status-dot mount"
-                      [class.active]="remote.mountState.mounted"
-                      [matTooltip]="remote.mountState.mounted ? 'Mounted' : 'Not Mounted'"
+                      [class.active]="getMountProfileCount(remote) > 0"
+                      [matTooltip]="getMountTooltip(remote)"
+                      matTooltipShowDelay="500"
                       aria-label="Mount status"
                     >
                       <mat-icon svgIcon="mount"></mat-icon>
+                      @if (getMountProfileCount(remote) > 1) {
+                        <span class="count-badge">{{ getMountProfileCount(remote) }}</span>
+                      }
                     </div>
                   }
 
@@ -57,20 +63,28 @@
                       class="status-dot sync-operations"
                       [class.active]="isAnySyncOperationActive(remote)"
                       [matTooltip]="getSyncOperationsTooltip(remote)"
+                      matTooltipShowDelay="500"
                       aria-label="Sync operations status"
                     >
                       <mat-icon [svgIcon]="getActiveSyncOperationIcon(remote)"></mat-icon>
+                      @if (getSyncProfileCount(remote) > 1) {
+                        <span class="count-badge">{{ getSyncProfileCount(remote) }}</span>
+                      }
                     </div>
                   }
 
-                  @if (remote.serveState && remote.serveState.hasActiveServes) {
+                  @if (remote.serveState && remote.serveState.isOnServe) {
                     <div
                       class="status-dot serve"
-                      [class.active]="remote.serveState.hasActiveServes"
+                      [class.active]="remote.serveState.isOnServe"
                       [matTooltip]="getServeTooltip(remote)"
+                      matTooltipShowDelay="500"
                       aria-label="Serve status"
                     >
                       <mat-icon svgIcon="satellite-dish"></mat-icon>
+                      @if (getServeProfileCount(remote) > 1) {
+                        <span class="count-badge">{{ getServeProfileCount(remote) }}</span>
+                      }
                     </div>
                   }
                 </div>

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use log::{debug, error};
 use serde_json::json;
 use tauri::{Manager, State};
@@ -17,6 +19,8 @@ impl RemoteCache {
             settings: RwLock::new(json!({})),
             mounted: RwLock::new(Vec::new()),
             serves: RwLock::new(Vec::new()),
+            mount_profiles: RwLock::new(HashMap::new()),
+            serve_profiles: RwLock::new(HashMap::new()),
         }
     }
 
@@ -70,16 +74,43 @@ impl RemoteCache {
         app_handle: tauri::AppHandle,
     ) -> Result<(), String> {
         match get_mounted_remotes(app_handle.state()).await {
-            Ok(remotes) => {
+            Ok(mut remotes) => {
+                // Attach profiles from our lookup table
+                let profiles = self.mount_profiles.read().await;
+                for mount in remotes.iter_mut() {
+                    mount.profile = profiles.get(&mount.mount_point).cloned();
+                }
+                drop(profiles);
+
+                // Also clean up stale entries from mount_profiles
+                let active_mount_points: std::collections::HashSet<_> =
+                    remotes.iter().map(|m| m.mount_point.clone()).collect();
+                let mut profiles_mut = self.mount_profiles.write().await;
+                profiles_mut.retain(|mount_point, _| active_mount_points.contains(mount_point));
+                drop(profiles_mut);
+
                 let mut mounted = self.mounted.write().await;
                 *mounted = remotes;
-                debug!("🔄 Updated mounted remotes cache");
+                debug!("🔄 Updated mounted remotes cache with profiles");
                 Ok(())
             }
             Err(e) => {
                 error!("❌ Failed to refresh mounted remotes: {e}");
                 Err("Failed to refresh mounted remotes".into())
             }
+        }
+    }
+
+    /// Store a mount profile mapping (call this when mounting)
+    pub async fn store_mount_profile(&self, mount_point: &str, profile: Option<String>) {
+        if let Some(profile_name) = profile {
+            let mut profiles = self.mount_profiles.write().await;
+            profiles.insert(mount_point.to_string(), profile_name);
+            debug!(
+                "📌 Stored mount profile: {} -> {}",
+                mount_point,
+                profiles.get(mount_point).unwrap_or(&"?".to_string())
+            );
         }
     }
 
@@ -118,7 +149,7 @@ impl RemoteCache {
     pub async fn refresh_serves(&self, app_handle: tauri::AppHandle) -> Result<(), String> {
         match list_serves(app_handle.state()).await {
             Ok(response) => {
-                let serves_list = response
+                let mut serves_list: Vec<ServeInstance> = response
                     .get("list")
                     .and_then(|v| v.as_array())
                     .map(|arr| {
@@ -128,15 +159,37 @@ impl RemoteCache {
                                 let addr = item.get("addr")?.as_str()?.to_string();
                                 let params = item.get("params")?.clone();
 
-                                Some(ServeInstance { id, addr, params })
+                                Some(ServeInstance {
+                                    id,
+                                    addr,
+                                    params,
+                                    profile: None,
+                                })
                             })
                             .collect()
                     })
                     .unwrap_or_default();
 
+                // Attach profiles from our lookup table
+                let profiles = self.serve_profiles.read().await;
+                for serve in serves_list.iter_mut() {
+                    serve.profile = profiles.get(&serve.id).cloned();
+                }
+                drop(profiles);
+
+                // Clean up stale entries from serve_profiles
+                let active_serve_ids: std::collections::HashSet<_> =
+                    serves_list.iter().map(|s| s.id.clone()).collect();
+                let mut profiles_mut = self.serve_profiles.write().await;
+                profiles_mut.retain(|serve_id, _| active_serve_ids.contains(serve_id));
+                drop(profiles_mut);
+
                 let mut serves = self.serves.write().await;
                 *serves = serves_list;
-                debug!("🔄 Updated serves cache: {} active serves", serves.len());
+                debug!(
+                    "🔄 Updated serves cache with profiles: {} active serves",
+                    serves.len()
+                );
                 Ok(())
             }
             Err(e) => {
@@ -150,6 +203,19 @@ impl RemoteCache {
         self.serves.read().await.clone()
     }
 
+    /// Store a serve profile mapping (call this when starting serve)
+    pub async fn store_serve_profile(&self, serve_id: &str, profile: Option<String>) {
+        if let Some(profile_name) = profile {
+            let mut profiles = self.serve_profiles.write().await;
+            profiles.insert(serve_id.to_string(), profile_name);
+            debug!(
+                "📌 Stored serve profile: {} -> {}",
+                serve_id,
+                profiles.get(serve_id).unwrap_or(&"?".to_string())
+            );
+        }
+    }
+
     pub async fn get_remotes(&self) -> Vec<String> {
         self.remotes.read().await.clone()
     }
@@ -160,6 +226,51 @@ impl RemoteCache {
 
     pub async fn get_settings(&self) -> serde_json::Value {
         self.settings.read().await.clone()
+    }
+
+    // === Profile Management for Mounts ===
+    /// Rename a profile in all mounted remotes for a given remote
+    pub async fn rename_profile_in_mounts(
+        &self,
+        remote_name: &str,
+        old_name: &str,
+        new_name: &str,
+    ) -> usize {
+        let mut mounts = self.mounted.write().await;
+        let mut count = 0;
+        for mount in mounts.iter_mut() {
+            if mount.fs.starts_with(remote_name)
+                && mount.profile.as_ref().is_some_and(|p| p == old_name)
+            {
+                mount.profile = Some(new_name.to_string());
+                count += 1;
+            }
+        }
+        count
+    }
+
+    // === Profile Management for Serves ===
+    /// Rename a profile in all serves for a given remote
+    pub async fn rename_profile_in_serves(
+        &self,
+        remote_name: &str,
+        old_name: &str,
+        new_name: &str,
+    ) -> usize {
+        let mut serves = self.serves.write().await;
+        let mut count = 0;
+        for serve in serves.iter_mut() {
+            let fs_matches = serve
+                .params
+                .get("fs")
+                .and_then(|v| v.as_str())
+                .is_some_and(|fs| fs.starts_with(remote_name));
+            if fs_matches && serve.profile.as_ref().is_some_and(|p| p == old_name) {
+                serve.profile = Some(new_name.to_string());
+                count += 1;
+            }
+        }
+        count
     }
 }
 
@@ -192,6 +303,32 @@ pub async fn get_cached_serves(
     cache: State<'_, RemoteCache>,
 ) -> Result<Vec<ServeInstance>, String> {
     Ok(cache.get_serves().await)
+}
+
+/// Rename a profile in all cached mounts
+#[tauri::command]
+pub async fn rename_mount_profile_in_cache(
+    cache: State<'_, RemoteCache>,
+    remote_name: String,
+    old_name: String,
+    new_name: String,
+) -> Result<usize, String> {
+    Ok(cache
+        .rename_profile_in_mounts(&remote_name, &old_name, &new_name)
+        .await)
+}
+
+/// Rename a profile in all cached serves
+#[tauri::command]
+pub async fn rename_serve_profile_in_cache(
+    cache: State<'_, RemoteCache>,
+    remote_name: String,
+    old_name: String,
+    new_name: String,
+) -> Result<usize, String> {
+    Ok(cache
+        .rename_profile_in_serves(&remote_name, &old_name, &new_name)
+        .await)
 }
 
 impl Default for RemoteCache {

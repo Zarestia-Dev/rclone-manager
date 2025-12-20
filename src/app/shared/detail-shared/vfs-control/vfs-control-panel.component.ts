@@ -8,7 +8,7 @@ import {
   effect,
   ViewChild,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -56,7 +56,6 @@ const DELAY_SLIDER_DEFAULT = 60;
   selector: 'app-vfs-control-panel',
   standalone: true,
   imports: [
-    CommonModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -104,6 +103,17 @@ export class VfsControlPanelComponent implements OnInit {
     () => this.selectedVfs()?.queue.reduce((sum, i) => sum + i.size, 0) ?? 0
   );
   uploadingCount = computed(() => this.selectedVfs()?.queue.filter(i => i.uploading).length ?? 0);
+
+  // Check if selected VFS has an index suffix (e.g., "remoteName:[0]")
+  // These indexed VFS entries are not supported by rclone's VFS RC API
+  isIndexedVfs = computed(() => {
+    const name = this.selectedVfs()?.name;
+    if (!name) return false;
+    return /:\[\d+\]$/.test(name);
+  });
+
+  // Simplified: true when we have a usable (non-indexed) VFS selected
+  hasUsableVfs = computed(() => !!this.selectedVfs() && !this.isIndexedVfs());
 
   displayedColumns: string[] = ['name', 'size', 'status'];
   isDetailRow = (_: number, row: VfsQueueItem): boolean => this.showDelaySlider() === row.id;
@@ -200,6 +210,11 @@ export class VfsControlPanelComponent implements OnInit {
     const selected = this.selectedVfs();
     if (!selected) return;
 
+    // Skip if no usable VFS (includes indexed VFS entries)
+    if (!this.hasUsableVfs()) {
+      return;
+    }
+
     try {
       const [stats, queueData] = await Promise.all([
         this.vfsService.getStats(selected.name),
@@ -217,9 +232,15 @@ export class VfsControlPanelComponent implements OnInit {
 
   private async loadPollIntervals(): Promise<void> {
     const instances = this.vfsInstances();
+    // Helper to check if a VFS name is indexed
+    const isIndexed = (name: string): boolean => /:\[\d+\]$/.test(name);
+
     // Run side-effect to fetch intervals, then update signal once
     await Promise.all(
       instances.map(async inst => {
+        // Skip indexed VFS entries - they're not supported by rclone's API
+        if (isIndexed(inst.name)) return;
+
         try {
           const res = await this.vfsService.getPollInterval(inst.name);
           if (res?.interval?.string) inst.pollInterval = res.interval.string;

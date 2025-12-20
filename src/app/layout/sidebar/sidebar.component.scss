@@ -153,6 +153,7 @@
         transition: var(--transition-fast);
         background: rgba(var(--app-text-color-rgb), 0.06);
         border: 1.5px solid rgba(var(--app-text-color-rgb), 0.12);
+        position: relative;
 
         mat-icon {
           width: 12px;
@@ -160,6 +161,24 @@
           font-size: 12px;
           color: var(--secondary-text-color);
           transition: color var(--transition-fast);
+        }
+
+        // Count Badge for multiple profiles
+        .count-badge {
+          position: absolute;
+          top: -8px;
+          right: -10px;
+          min-width: 14px;
+          height: 14px;
+          padding: 0 3px;
+          font-size: 9px;
+          font-weight: 700;
+          line-height: 14px;
+          text-align: center;
+          color: white;
+          background: var(--primary-color);
+          border-radius: 7px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
         }
 
         // Hover effect
@@ -178,6 +197,11 @@
 
             mat-icon {
               color: var(--accent-color);
+            }
+
+            .count-badge {
+              background: var(--accent-color);
+              animation: badge-pop 180ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
             }
 
             &:hover {
@@ -199,6 +223,10 @@
               color: var(--primary-color);
             }
 
+            .count-badge {
+              background: var(--primary-color);
+            }
+
             &:hover {
               background: rgba(var(--primary-color-rgb), 0.18);
               box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.25);
@@ -216,6 +244,10 @@
 
             mat-icon {
               color: var(--accent-color);
+            }
+
+            .count-badge {
+              background: var(--accent-color);
             }
 
             &:hover {

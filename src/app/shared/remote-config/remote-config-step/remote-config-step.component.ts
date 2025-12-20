@@ -1,34 +1,31 @@
 import {
-  ChangeDetectionStrategy,
-  ChangeDetectorRef,
   Component,
-  EventEmitter,
-  inject,
-  Input,
+  effect,
+  input,
+  output,
+  signal,
+  computed,
+  untracked,
   OnDestroy,
-  OnInit,
-  Output,
-  OnChanges,
-  SimpleChanges,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { ScrollingModule } from '@angular/cdk/scrolling';
 import { RcConfigOption, RemoteType } from '@app/types';
 import { SettingControlComponent } from 'src/app/shared/components';
-import { Observable, ReplaySubject, Subject, combineLatest } from 'rxjs';
-import { map, startWith, takeUntil } from 'rxjs/operators';
-import { ScrollingModule } from '@angular/cdk/scrolling';
+import { startWith } from 'rxjs/operators';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-remote-config-step',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,
@@ -40,234 +37,337 @@ import { ScrollingModule } from '@angular/cdk/scrolling';
   ],
   templateUrl: './remote-config-step.component.html',
   styleUrl: './remote-config-step.component.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class RemoteConfigStepComponent implements OnInit, OnDestroy, OnChanges {
-  cdRef = inject(ChangeDetectorRef);
+export class RemoteConfigStepComponent implements OnDestroy {
+  // --- Signal Inputs ---
+  form = input.required<FormGroup>();
+  remoteFields = input<RcConfigOption[]>([]);
+  isLoading = input(false);
+  existingRemotes = input<string[]>([]);
+  restrictMode = input(false);
+  useInteractiveMode = input(false);
+  remoteTypes = input<RemoteType[]>([]);
 
-  @Input() form!: FormGroup;
-  @Input() remoteFields: RcConfigOption[] = [];
-  @Input() isLoading = false;
-  @Input() existingRemotes: string[] = [];
-  @Input() restrictMode!: boolean;
-  @Input() useInteractiveMode = false;
+  // --- Signal Outputs ---
+  remoteTypeChanged = output<void>();
+  interactiveModeToggled = output<boolean>();
+  fieldChanged = output<{ fieldName: string; isChanged: boolean }>();
 
-  private remoteTypes$ = new ReplaySubject<RemoteType[]>(1);
-  @Input()
-  set remoteTypes(types: RemoteType[]) {
-    if (types && types.length > 0) {
-      this.remoteTypes$.next(types);
-      this.remoteTypeMap = new Map(types.map(t => [t.value, t]));
-      const initialTypeValue = this.form.get('type')?.value;
-      if (initialTypeValue) {
-        this.remoteSearchCtrl.setValue(initialTypeValue, { emitEvent: false });
-      }
-      this.cdRef.markForCheck(); // Mark for check when remote types change
-    }
-  }
-
-  @Output() remoteTypeChanged = new EventEmitter<void>();
-  @Output() interactiveModeToggled = new EventEmitter<boolean>();
-  @Output() fieldChanged = new EventEmitter<{ fieldName: string; isChanged: boolean }>();
-
+  // --- Local Form Controls ---
   remoteSearchCtrl = new FormControl('');
-  filteredRemotes$!: Observable<RemoteType[]>;
-  showAdvancedOptions = false;
-  selectedProvider?: string;
-  private providerFieldName?: string = 'provider';
+  providerSearchCtrl = new FormControl('');
 
-  private remoteTypeMap = new Map<string, RemoteType>();
-  private destroy$ = new Subject<void>();
+  // --- Local Signals ---
+  showAdvancedOptions = signal(false);
+  selectedProvider = signal<string | undefined>(undefined);
 
-  ngOnInit(): void {
-    this.detectProviderField();
-    const searchTerm$ = this.remoteSearchCtrl.valueChanges.pipe(startWith(''));
-    this.filteredRemotes$ = combineLatest([this.remoteTypes$, searchTerm$]).pipe(
-      map(([types, term]) => this.filterRemotes(types, term || ''))
-    );
+  // Convert FormControls to Signals for use in computed
+  private remoteSearchTerm = toSignal(this.remoteSearchCtrl.valueChanges.pipe(startWith('')), {
+    initialValue: '',
+  });
+  private providerSearchTerm = toSignal(this.providerSearchCtrl.valueChanges.pipe(startWith('')), {
+    initialValue: '',
+  });
 
-    const typeControl = this.form.get('type');
-    if (typeControl?.disabled) {
-      this.remoteSearchCtrl.disable();
-    }
-  }
+  private providerSub?: Subscription;
 
-  ngOnChanges(changes: SimpleChanges): void {
-    // Re-detect provider field when remoteFields change
-    if (changes['remoteFields'] && this.remoteFields.length > 0) {
-      setTimeout(() => {
-        this.detectProviderField();
-      }, 100);
-    }
+  constructor() {
+    // Effect 1: Detect Provider Field and sync with form
+    effect(() => {
+      const fields = this.remoteFields();
+      const formGroup = this.form();
+
+      // Clean up previous subscription
+      if (this.providerSub) {
+        this.providerSub.unsubscribe();
+        this.providerSub = undefined;
+      }
+
+      // Logic to find which field acts as the "Provider" (e.g. AWS vs DigitalOcean for S3)
+      let fieldDef = fields.find(f => f.Name === 'provider' && f.Examples && f.Examples.length > 0);
+      if (!fieldDef) {
+        fieldDef = fields.find(
+          f => f.Examples && f.Examples.length > 0 && fields.some(other => other.Provider)
+        );
+      }
+
+      if (fieldDef) {
+        const control = formGroup.get(fieldDef.Name);
+        if (control) {
+          // Sync initial value without triggering cycles
+          untracked(() => {
+            const currentVal = control.value || fieldDef!.DefaultStr || fieldDef!.Default;
+            this.selectedProvider.set(currentVal);
+
+            // Ensure our local search control matches the form's value
+            if (currentVal && currentVal !== this.providerSearchCtrl.value) {
+              this.providerSearchCtrl.setValue(currentVal, { emitEvent: false });
+            }
+
+            // If the main form control is empty but we have a default, set it
+            if (!control.value && currentVal) {
+              control.setValue(currentVal, { emitEvent: true });
+            }
+          });
+
+          // Subscribe to future changes
+          this.providerSub = control.valueChanges.subscribe(newProviderValue => {
+            const oldProviderValue = this.selectedProvider();
+            this.selectedProvider.set(newProviderValue);
+
+            if (oldProviderValue && newProviderValue !== oldProviderValue) {
+              this.clearProviderDependentFields(fields, formGroup, newProviderValue);
+            }
+
+            // Sync search control
+            if (newProviderValue && newProviderValue !== this.providerSearchCtrl.value) {
+              this.providerSearchCtrl.setValue(newProviderValue, { emitEvent: false });
+            }
+          });
+        }
+      }
+    });
+
+    // Effect 2: Sync Type Control state with Search Control
+    effect(() => {
+      const formGroup = this.form();
+      const typeControl = formGroup.get('type');
+      this.remoteTypes(); // Ensure dependency is tracked
+
+      if (typeControl) {
+        untracked(() => {
+          const val = typeControl.value;
+          if (val) {
+            this.remoteSearchCtrl.setValue(this.displayRemote(val), { emitEvent: false });
+          }
+
+          if (typeControl.disabled) {
+            this.remoteSearchCtrl.disable({ emitEvent: false });
+          } else {
+            this.remoteSearchCtrl.enable({ emitEvent: false });
+          }
+        });
+      }
+    });
   }
 
   ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
+    this.providerSub?.unsubscribe();
   }
 
-  // Track by function for virtual scrolling
+  // --- Computed State ---
+
+  /** Map for O(1) label lookups */
+  private remoteTypeMap = computed(() => {
+    return new Map(this.remoteTypes().map(t => [t.value, t]));
+  });
+
+  /** Filtered list of remotes based on search term */
+  filteredRemotes = computed(() => {
+    const types = this.remoteTypes();
+    const term = (this.remoteSearchTerm() || '').toLowerCase();
+    return types.filter(
+      remote =>
+        remote.label.toLowerCase().includes(term) || remote.value.toLowerCase().includes(term)
+    );
+  });
+
+  /** The identified provider field configuration */
+  providerField = computed(() => {
+    const fields = this.remoteFields();
+    let f = fields.find(f => f.Name === 'provider' && f.Examples && f.Examples.length > 0);
+    if (!f) {
+      f = fields.find(
+        x => x.Examples && x.Examples.length > 0 && fields.some(other => other.Provider)
+      );
+    }
+    return f || null;
+  });
+
+  /** Filtered provider examples */
+  filteredProviders = computed(() => {
+    const field = this.providerField();
+    if (!field || !field.Examples) return [];
+
+    const term = (this.providerSearchTerm() || '').toLowerCase();
+    return field.Examples.filter(
+      opt =>
+        (opt.Value && opt.Value.toLowerCase().includes(term)) ||
+        (opt.Help && opt.Help.toLowerCase().includes(term))
+    );
+  });
+
+  /** Basic config fields, filtered by selected provider */
+  basicFields = computed(() => {
+    const fields = this.remoteFields();
+    const providerName = this.providerField()?.Name;
+    const currentProvider = this.selectedProvider();
+
+    return fields
+      .filter(f => !f.Advanced)
+      .filter(f => f.Name !== providerName) // Don't show provider field here
+      .filter(f => this.shouldShowField(f, currentProvider))
+      .map(f => this.getFilteredField(f, currentProvider));
+  });
+
+  /** Advanced config fields, filtered by selected provider */
+  advancedFields = computed(() => {
+    const fields = this.remoteFields();
+    const providerName = this.providerField()?.Name;
+    const currentProvider = this.selectedProvider();
+
+    return fields
+      .filter(f => f.Advanced)
+      .filter(f => f.Name !== providerName)
+      .filter(f => this.shouldShowField(f, currentProvider))
+      .map(f => this.getFilteredField(f, currentProvider));
+  });
+
+  /** Virtual Scroll Data Source */
+  formFields = computed(() => {
+    const fields = [];
+    fields.push({ type: 'basic-info' });
+
+    if (this.remoteFields().length > 0) {
+      fields.push({ type: 'config-toggles' });
+    }
+
+    if (this.providerField()) {
+      fields.push({ type: 'provider-field' });
+    }
+
+    const hasBasic = this.basicFields().length > 0;
+    // Show fields if no provider concept exists OR if a provider is selected
+    const providerReady = !this.providerField() || this.selectedProvider();
+
+    if (hasBasic && providerReady) {
+      fields.push({ type: 'basic-fields' });
+    }
+
+    if (this.showAdvancedOptions() && this.advancedFields().length > 0 && providerReady) {
+      fields.push({ type: 'advanced-section' });
+    }
+
+    return fields;
+  });
+
+  // --- Logic Helpers ---
+
+  private shouldShowField(field: RcConfigOption, provider?: string): boolean {
+    const providerRule = field.Provider;
+    if (!providerRule) return true;
+    if (!provider) return false;
+
+    const isNegated = providerRule.startsWith('!');
+    const cleanRule = isNegated ? providerRule.substring(1) : providerRule;
+    const parts = cleanRule.split(',').map(p => p.trim());
+
+    if (isNegated) {
+      return !parts.includes(provider);
+    } else {
+      return parts.includes(provider);
+    }
+  }
+
+  private getFilteredField(field: RcConfigOption, provider?: string): RcConfigOption {
+    if (!field.Examples || field.Examples.length === 0 || !provider) {
+      return field;
+    }
+    // Filter examples based on provider rule
+    const filteredExamples = field.Examples.filter(ex =>
+      this.isProviderMatch(ex.Provider, provider)
+    );
+    return { ...field, Examples: filteredExamples };
+  }
+
+  private isProviderMatch(rule: string | undefined, provider: string): boolean {
+    if (!rule) return true;
+    const isNegated = rule.startsWith('!');
+    const cleanRule = isNegated ? rule.substring(1) : rule;
+    const parts = cleanRule.split(',').map(p => p.trim());
+
+    return isNegated ? !parts.includes(provider) : parts.includes(provider);
+  }
+
+  private clearProviderDependentFields(
+    fields: RcConfigOption[],
+    form: FormGroup,
+    newProvider: string
+  ): void {
+    fields.forEach(field => {
+      // If a field has a specific Provider rule, checks if it is still valid
+      if (field.Provider) {
+        const isVisible = this.shouldShowField(field, newProvider);
+        if (!isVisible) {
+          // Field is hidden now -> reset it
+          form.get(field.Name)?.setValue(null);
+        }
+      }
+
+      // If a field is shared (like 'endpoint') but the Examples list changed
+      if (field.Examples && field.Examples.length > 0) {
+        const control = form.get(field.Name);
+        const currentValue = control?.value;
+
+        // If the current value was one of the OLD examples, we should probably clear it
+        // so the user doesn't accidentally send an Alibaba endpoint to AWS
+        // (Optional: strict check logic could go here)
+        if (currentValue && !this.isValueValidForProvider(field, currentValue, newProvider)) {
+          control?.setValue(''); // Reset to empty so they pick a new one
+        }
+      }
+    });
+  }
+
+  private isValueValidForProvider(field: RcConfigOption, value: string, provider: string): boolean {
+    // If the value matches an Example that is NOT allowed for this provider, return false
+    const match = field.Examples?.find(ex => ex.Value === value);
+    if (match && match.Provider && !this.isProviderMatch(match.Provider, provider)) {
+      return false;
+    }
+    return true;
+  }
+
+  // --- Template Bindings ---
+
   trackByField(index: number, field: any): string {
     return `${field.type}-${index}`;
   }
 
   onTypeSelected(value: string): void {
-    this.form.get('type')?.setValue(value);
-    this.onRemoteTypeChange();
-  }
-
-  private filterRemotes(types: RemoteType[], value: string): RemoteType[] {
-    const filterValue = value.toLowerCase();
-    return types.filter(
-      remote =>
-        remote.label.toLowerCase().includes(filterValue) ||
-        remote.value.toLowerCase().includes(filterValue)
-    );
+    this.form().get('type')?.setValue(value);
+    this.remoteTypeChanged.emit();
   }
 
   displayRemote(remoteValue: string): string {
     if (!remoteValue) return '';
-    return this.remoteTypeMap.get(remoteValue)?.label || '';
+    return this.remoteTypeMap().get(remoteValue)?.label || remoteValue;
+  }
+
+  displayProvider(value: string): string {
+    const field = this.providerField();
+    if (!field?.Examples) return value;
+    const option = field.Examples.find(o => o.Value === value);
+    return option ? option.Help : value;
   }
 
   toggleAdvancedOptions(): void {
-    this.showAdvancedOptions = !this.showAdvancedOptions;
-    // Mark for check since we're changing a property that affects the template
-    this.cdRef.markForCheck();
+    this.showAdvancedOptions.update(v => !v);
   }
 
   toggleInteractiveMode(): void {
-    this.useInteractiveMode = !this.useInteractiveMode;
-    this.interactiveModeToggled.emit(this.useInteractiveMode);
-    // Mark for check since we're changing a property that affects the template
-    this.cdRef.markForCheck();
+    const newValue = !this.useInteractiveMode();
+    this.interactiveModeToggled.emit(newValue);
   }
 
-  onRemoteTypeChange(): void {
-    this.remoteTypeChanged.emit();
+  onProviderSelected(value: string): void {
+    const field = this.providerField();
+    if (field) {
+      this.form().get(field.Name)?.setValue(value);
+    }
   }
 
   onFieldChanged(fieldName: string, isChanged: boolean): void {
     this.fieldChanged.emit({ fieldName, isChanged });
-  }
-
-  private detectProviderField(): void {
-    let providerField = this.remoteFields.find(
-      f => f.Name === 'provider' && f.Examples && f.Examples.length > 0
-    );
-
-    if (!providerField) {
-      providerField = this.remoteFields.find(
-        f => f.Examples && f.Examples.length > 0 && this.remoteFields.some(other => other.Provider)
-      );
-    }
-
-    if (!providerField) {
-      return;
-    }
-
-    this.providerFieldName = providerField.Name;
-    const providerControl = this.form.get(providerField.Name);
-
-    if (!providerControl) {
-      return;
-    }
-
-    providerControl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(value => {
-      this.selectedProvider = value;
-      this.cdRef.markForCheck();
-    });
-
-    const currentValue = providerControl.value;
-    this.selectedProvider =
-      currentValue ||
-      providerField.DefaultStr ||
-      providerField.Default ||
-      providerField.Examples?.[0]?.Value;
-
-    if (!currentValue && this.selectedProvider) {
-      providerControl.setValue(this.selectedProvider, { emitEvent: true });
-    }
-  }
-
-  get providerField(): RcConfigOption | null {
-    if (!this.providerFieldName) return null;
-    return this.remoteFields.find(f => f.Name === this.providerFieldName) || null;
-  }
-
-  get basicFields(): RcConfigOption[] {
-    return this.remoteFields
-      .filter(f => !f.Advanced)
-      .filter(f => f.Name !== this.providerFieldName)
-      .filter(f => this.shouldShowField(f));
-  }
-
-  get advancedFields(): RcConfigOption[] {
-    return this.remoteFields
-      .filter(f => f.Advanced)
-      .filter(f => f.Name !== this.providerFieldName)
-      .filter(f => this.shouldShowField(f));
-  }
-
-  /**
-   * Determines if a field should be shown based on the selected provider.
-   * Handles comma-separated lists and negated lists (starting with '!').
-   */
-  private shouldShowField(field: RcConfigOption): boolean {
-    const providerRule = field.Provider;
-
-    // 1. If the field has no provider rule, always show it.
-    if (!providerRule) {
-      return true;
-    }
-
-    // 2. If a provider rule exists but no provider has been selected yet, hide the field.
-    if (!this.selectedProvider) {
-      return false;
-    }
-
-    const isNegated = providerRule.startsWith('!');
-    // 3. Clean the rule: remove '!' and split into an array, trimming whitespace from each item.
-    const providers = (isNegated ? providerRule.substring(1) : providerRule)
-      .split(',')
-      .map(p => p.trim());
-
-    // 4. Apply the logic.
-    if (isNegated) {
-      // If the rule is negated, show the field if the selected provider is NOT in the list.
-      // e.g., rule "!Storj,Ceph" -> show if provider is "Minio", hide if it's "Storj".
-      return !providers.includes(this.selectedProvider);
-    } else {
-      // If the rule is inclusive, show the field if the selected provider IS in the list.
-      // e.g., rule "AWS,Minio" -> show if provider is "AWS", hide if it's "Storj".
-      return providers.includes(this.selectedProvider);
-    }
-  }
-
-  get formFields(): any[] {
-    const fields = [];
-    fields.push({ type: 'basic-info' });
-
-    if (this.remoteFields.length > 0) {
-      fields.push({ type: 'config-toggles' });
-    }
-
-    if (this.providerField) {
-      fields.push({ type: 'provider-field' });
-    }
-
-    if (this.basicFields.length > 0 && (!this.providerField || this.selectedProvider)) {
-      fields.push({ type: 'basic-fields' });
-    }
-
-    if (
-      this.showAdvancedOptions &&
-      this.advancedFields.length > 0 &&
-      (!this.providerField || this.selectedProvider)
-    ) {
-      fields.push({ type: 'advanced-section' });
-    }
-
-    return fields;
   }
 }

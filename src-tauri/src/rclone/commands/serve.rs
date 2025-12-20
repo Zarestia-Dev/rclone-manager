@@ -4,20 +4,21 @@ use std::collections::HashMap;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::{
-    rclone::{commands::job::submit_job, state::engine::ENGINE_STATE},
+    rclone::state::engine::ENGINE_STATE,
     utils::{
-        json_helpers::{get_string, json_to_hashmap, unwrap_nested_options},
+        json_helpers::{
+            get_string, json_to_hashmap, resolve_profile_options, unwrap_nested_options,
+        },
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, serve},
         types::{
-            all_types::{JobCache, LogLevel, RcloneState},
+            all_types::{LogLevel, ProfileParams, RcloneState, RemoteCache},
             events::SERVE_STATE_CHANGED,
         },
     },
 };
 
 use super::system::redact_sensitive_values;
-use crate::rclone::commands::job::JobMetadata;
 
 /// Parameters for starting a serve instance
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
@@ -27,17 +28,17 @@ pub struct ServeParams {
     pub backend_options: Option<HashMap<String, Value>>,
     pub filter_options: Option<HashMap<String, Value>>,
     pub vfs_options: Option<HashMap<String, Value>>,
+    pub profile: Option<String>,
 }
 
 impl ServeParams {
-    pub fn from_settings(remote_name: String, settings: &Value) -> Option<Self> {
-        let serve_cfg = settings.get("serveConfig")?;
-
-        let source = get_string(serve_cfg, &["source"]);
+    /// Create ServeParams from a profile config and settings
+    pub fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self> {
+        let source = get_string(config, &["source"]);
 
         // Valid if either source is set or fs is in options
         let has_source = !source.is_empty();
-        let has_fs = serve_cfg
+        let has_fs = config
             .get("options")
             .and_then(|opts| opts.get("fs"))
             .and_then(|v| v.as_str())
@@ -48,25 +49,22 @@ impl ServeParams {
             return None;
         }
 
+        let vfs_profile = config.get("vfsProfile").and_then(|v| v.as_str());
+        let filter_profile = config.get("filterProfile").and_then(|v| v.as_str());
+        let backend_profile = config.get("backendProfile").and_then(|v| v.as_str());
+
+        let vfs_options = resolve_profile_options(settings, vfs_profile, "vfsConfigs");
+        let filter_options = resolve_profile_options(settings, filter_profile, "filterConfigs");
+        let backend_options = resolve_profile_options(settings, backend_profile, "backendConfigs");
+
         Some(Self {
             remote_name,
-            serve_options: json_to_hashmap(serve_cfg.get("options")),
-            backend_options: json_to_hashmap(
-                settings.get("backendConfig").and_then(|v| v.get("options")),
-            ),
-            filter_options: json_to_hashmap(
-                settings.get("filterConfig").and_then(|v| v.get("options")),
-            ),
-            vfs_options: json_to_hashmap(settings.get("vfsConfig").and_then(|v| v.get("options"))),
+            serve_options: json_to_hashmap(config.get("options")),
+            backend_options,
+            filter_options,
+            vfs_options,
+            profile: Some(get_string(config, &["name"])).filter(|s| !s.is_empty()),
         })
-    }
-
-    pub fn should_auto_start(settings: &Value) -> bool {
-        settings
-            .get("serveConfig")
-            .and_then(|v| v.get("autoStart"))
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false)
     }
 }
 
@@ -101,11 +99,9 @@ async fn handle_rclone_response(
     Ok(body)
 }
 
-/// Start a serve instance
-#[tauri::command]
+/// Start a serve instance (not exposed as Tauri command - use start_serve_profile)
 pub async fn start_serve(
     app: AppHandle,
-    _job_cache: State<'_, JobCache>,
     params: ServeParams,
 ) -> Result<ServeStartResponse, String> {
     // Validate remote name
@@ -156,11 +152,11 @@ pub async fn start_serve(
                 .and_then(|opts| opts.get("type"))
                 .unwrap_or(&Value::from("unknown")),
             params
-                .backend_options
+                .serve_options
                 .as_ref()
-                .and_then(|opts| opts.get("ListenAddr"))
+                .and_then(|opts| opts.get("addr"))
                 .and_then(|v| v.as_str())
-                .unwrap_or("unknown"),
+                .unwrap_or(":8080"),
         ),
         Some(log_context),
     );
@@ -205,34 +201,31 @@ pub async fn start_serve(
     }
 
     let payload = Value::Object(payload);
-
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, serve::START);
 
-    // Determine source string for metadata
-    let source_str = params
-        .serve_options
-        .as_ref()
-        .and_then(|o| o.get("fs"))
+    // Call serve/start directly - serves are NOT jobs, they are long-running services
+    let response = state
+        .client
+        .post(&url)
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+
+    let body = handle_rclone_response(response, "Start serve", &params.remote_name).await?;
+
+    // Parse response - serve/start returns { "id": "http-abc123", "addr": "[::]:8080" }
+    let response_json: Value =
+        serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {e}"))?;
+
+    // Extract serve ID (string, e.g., "http-abc123")
+    let serve_id = response_json
+        .get("id")
         .and_then(|v| v.as_str())
-        .unwrap_or("")
+        .unwrap_or("unknown")
         .to_string();
 
-    let (jobid, response_json) = submit_job(
-        app.clone(),
-        state.client.clone(),
-        url,
-        payload,
-        JobMetadata {
-            remote_name: params.remote_name.clone(),
-            job_type: "serve".to_string(),
-            operation_name: "Start serve".to_string(),
-            source: source_str,
-            destination: "Initializing...".to_string(),
-        },
-    )
-    .await?;
-
-    // Extract address from response (Serve specific)
+    // Extract address
     let addr = response_json
         .get("addr")
         .and_then(|v| v.as_str())
@@ -240,7 +233,7 @@ pub async fn start_serve(
         .to_string();
 
     let serve_response = ServeStartResponse {
-        id: jobid.to_string(), // Or response_json["id"] if jobid was parsed differently
+        id: serve_id.clone(),
         addr: addr.clone(),
     };
 
@@ -257,6 +250,12 @@ pub async fn start_serve(
             "addr": serve_response.addr
         })),
     );
+
+    // Store the profile mapping for this serve ID
+    let cache = app.state::<RemoteCache>();
+    cache
+        .store_serve_profile(&serve_id, params.profile.clone())
+        .await;
 
     // Emit event for UI update
     app.emit(SERVE_STATE_CHANGED, &params.remote_name)
@@ -342,4 +341,45 @@ pub async fn stop_all_serves(
     info!("✅ All serves stopped successfully");
 
     Ok("✅ All serves stopped successfully".to_string())
+}
+
+// ============================================================================
+// PROFILE-BASED COMMAND
+// ============================================================================
+
+/// Start a serve using a named profile
+/// Resolves all options (serve, vfs, filter, backend) from cached settings
+#[tauri::command]
+pub async fn start_serve_profile(
+    app: AppHandle,
+    params: ProfileParams,
+) -> Result<ServeStartResponse, String> {
+    let cache = app.state::<RemoteCache>();
+    let settings_map = cache.get_settings().await;
+
+    let settings = settings_map
+        .get(&params.remote_name)
+        .ok_or_else(|| format!("Remote '{}' not found in settings", params.remote_name))?;
+
+    let serve_configs = settings
+        .get("serveConfigs")
+        .and_then(|v| v.as_object())
+        .ok_or_else(|| format!("No serveConfigs found for '{}'", params.remote_name))?;
+
+    let config = serve_configs
+        .get(&params.profile_name)
+        .ok_or_else(|| format!("Serve profile '{}' not found", params.profile_name))?;
+
+    let mut serve_params = ServeParams::from_config(params.remote_name.clone(), config, settings)
+        .ok_or_else(|| {
+        format!(
+            "Serve configuration incomplete for profile '{}'",
+            params.profile_name
+        )
+    })?;
+
+    // Ensure profile is set from the function parameter, not the config object
+    serve_params.profile = Some(params.profile_name.clone());
+
+    start_serve(app, serve_params).await
 }

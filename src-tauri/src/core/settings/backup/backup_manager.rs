@@ -1,5 +1,4 @@
 use crate::{
-    core::check_binaries::find_7z_executable,
     rclone::queries::{get_rclone_config_file, get_remote_config},
     utils::types::{
         all_types::RcloneState,
@@ -17,7 +16,6 @@ use std::{
     fs::{self, File},
     io::{BufReader, Write},
     path::{Path, PathBuf},
-    process::{Command, Stdio},
 };
 use tauri::{AppHandle, Manager, State};
 use walkdir::WalkDir;
@@ -338,32 +336,14 @@ async fn gather_files_to_backup(
 
 /// Creates an encrypted 7z archive with password
 fn create_7z_archive(source_dir: &Path, output_path: &Path, password: &str) -> Result<(), String> {
-    let seven_zip = find_7z_executable().map_err(|e| format!("7z not found: {e}"))?;
-
     // Remove existing archive if present
     if output_path.exists() {
         fs::remove_file(output_path)
             .map_err(|e| format!("Failed to remove existing archive: {e}"))?;
     }
 
-    let output = Command::new(seven_zip)
-        .current_dir(source_dir)
-        .arg("a") // Add to archive
-        .arg("-mhe=on") // Encrypt headers
-        .arg(format!("-p{}", password)) // Password (no space between -p and password)
-        .arg(output_path)
-        .arg(".") // Archive current directory
-        .stdout(Stdio::null())
-        .stderr(Stdio::piped())
-        .output()
-        .map_err(|e| format!("Failed to execute 7z: {e}"))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("7z failed: {}", stderr));
-    }
-
-    Ok(())
+    sevenz_rust2::compress_to_path_encrypted(source_dir, output_path, password.into())
+        .map_err(|e| format!("Failed to create 7z archive: {e}"))
 }
 
 /// Creates a zip archive from a directory

@@ -82,6 +82,14 @@ const ACTION_CONFIGS: ActionConfig[] = [
       remote.bisyncState?.isOnBisync ? 'Bisync Active' : 'Toggle BiSync as Quick Action',
     getActiveState: remote => remote.bisyncState?.isOnBisync || false,
   },
+  {
+    key: 'serve',
+    label: 'Serve',
+    icon: 'serve',
+    getTooltip: remote =>
+      remote.serveState?.isOnServe ? 'Serving' : 'Toggle Serve as Quick Action',
+    getActiveState: remote => remote.serveState?.isOnServe || false,
+  },
 ];
 
 @Component({
@@ -122,6 +130,7 @@ export class GeneralDetailComponent {
   @Output() stopJob = new EventEmitter<{
     type: PrimaryActionType;
     remoteName: string;
+    profileName?: string;
   }>();
   @Output() deleteJob = new EventEmitter<number>();
   @Output() togglePrimaryAction = new EventEmitter<PrimaryActionType>();
@@ -131,9 +140,27 @@ export class GeneralDetailComponent {
   remoteScheduledTasks = signal<ScheduledTask[]>([]);
   currentTaskCardIndex = signal(0);
 
-  readonly displayedColumns: string[] = ['type', 'status', 'progress', 'startTime', 'actions'];
+  readonly displayedColumns: string[] = [
+    'type',
+    'profile',
+    'status',
+    'progress',
+    'startTime',
+    'actions',
+  ];
   readonly maxPrimaryActions = 3;
   readonly actionConfigs = ACTION_CONFIGS;
+
+  private readonly TASK_TYPE_ICONS: Record<string, string> = {
+    sync: 'sync',
+    copy: 'copy',
+    move: 'move',
+    bisync: 'right-left',
+  };
+
+  getTaskTypeIcon(taskType: string): string {
+    return this.TASK_TYPE_ICONS[taskType] || 'circle-info';
+  }
 
   constructor() {
     // Initial load of all tasks
@@ -277,51 +304,40 @@ export class GeneralDetailComponent {
     this.currentTaskCardIndex.set(index);
   }
 
+  private readonly TASK_STATUS_TOOLTIPS: Record<string, string> = {
+    enabled: 'Task is enabled and will run on schedule.',
+    disabled: 'Task is disabled and will not run.',
+    running: 'Task is currently running.',
+    failed: 'Task failed on its last run.',
+    stopping: 'Task is stopping and will be disabled after the current run finishes.',
+  };
+
+  private readonly TOGGLE_TOOLTIPS: Record<string, string> = {
+    enabled: 'Disable task',
+    running: 'Disable task',
+    disabled: 'Enable task',
+    failed: 'Enable task',
+    stopping: 'Task is stopping...',
+  };
+
+  private readonly TOGGLE_ICONS: Record<string, string> = {
+    enabled: 'pause',
+    running: 'pause',
+    disabled: 'play',
+    failed: 'play',
+    stopping: 'stop',
+  };
+
   // Tooltip and icon helpers
   getTaskStatusTooltip(status: string): string {
-    switch (status) {
-      case 'enabled':
-        return 'Task is enabled and will run on schedule.';
-      case 'disabled':
-        return 'Task is disabled and will not run.';
-      case 'running':
-        return 'Task is currently running.';
-      case 'failed':
-        return 'Task failed on its last run.';
-      case 'stopping':
-        return 'Task is stopping and will be disabled after the current run finishes.';
-      default:
-        return '';
-    }
+    return this.TASK_STATUS_TOOLTIPS[status] || '';
   }
 
   getToggleTooltip(status: string): string {
-    switch (status) {
-      case 'enabled':
-      case 'running':
-        return 'Disable task';
-      case 'disabled':
-      case 'failed':
-        return 'Enable task';
-      case 'stopping':
-        return 'Task is stopping...';
-      default:
-        return '';
-    }
+    return this.TOGGLE_TOOLTIPS[status] || '';
   }
 
   getToggleIcon(status: string): string {
-    switch (status) {
-      case 'enabled':
-      case 'running':
-        return 'pause';
-      case 'disabled':
-      case 'failed':
-        return 'play';
-      case 'stopping':
-        return 'stop';
-      default:
-        return 'help';
-    }
+    return this.TOGGLE_ICONS[status] || 'help';
   }
 }

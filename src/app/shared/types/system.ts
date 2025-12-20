@@ -52,12 +52,6 @@ export interface MemoryStats {
   TotalAlloc: number;
 }
 
-export interface PanelState {
-  bandwidth: boolean;
-  system: boolean;
-  jobs: boolean;
-}
-
 export interface SystemStats {
   memoryUsage: MemoryStats | null;
   uptime: number;
@@ -105,6 +99,7 @@ export interface RcloneUpdateInfo {
   release_notes?: string; // Add release notes support
   release_date?: string;
   release_url?: string;
+  update_in_progress?: boolean;
 }
 
 export interface UpdateStatus {
@@ -169,12 +164,6 @@ export interface SettingMetadata {
 export interface SearchResult {
   category: string;
   key: string;
-}
-
-export interface PasswordTab {
-  label: string;
-  icon: string;
-  key: 'overview' | 'security' | 'advanced';
 }
 
 export enum RepairSheetType {
