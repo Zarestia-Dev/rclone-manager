@@ -1,10 +1,8 @@
-@use "../../../styles/_shared_components";
-
 // Expansion Panel styles
 .settings-expansion-panel {
   .settings-count {
     font-size: 12px;
-    color: var(--secondary-text-color);
+    color: var(--dim-color);
     background: rgba(var(--primary-color-rgb), 0.1);
     padding: 2px 8px;
     border-radius: 10px;
@@ -12,7 +10,7 @@
 
   .no-settings-hint {
     font-size: 12px;
-    color: var(--secondary-text-color);
+    color: var(--dim-color);
     font-style: italic;
   }
 
@@ -38,25 +36,21 @@
   display: flex;
   flex-direction: column;
   padding: var(--space-md);
-  background: var(--app-background);
+  background: var(--view-bg-color);
   border-radius: var(--item-radius);
-  border: 1px solid var(--border-color);
   transition: var(--transition-standard);
-
-  &:hover {
-    box-shadow: var(--shadow-light);
-  }
+  box-shadow: var(--shadow-light);
 
   .setting-key {
     font-size: var(--font-size-sm);
-    color: var(--secondary-text-color);
+    color: var(--dim-color);
     font-weight: 500;
     margin-bottom: var(--space-xxs);
   }
 
   .setting-value {
     font-size: var(--font-size-sm);
-    color: var(--app-text-color);
+    color: var(--window-fg-color);
     font-weight: 400;
     word-break: break-all;
   }
@@ -68,7 +62,7 @@
   align-items: center;
   gap: var(--space-xs);
   padding: var(--panel-gap);
-  color: var(--secondary-text-color);
+  color: var(--dim-color);
   text-align: center;
 
   .no-settings-icon {

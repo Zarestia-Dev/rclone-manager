@@ -2,26 +2,19 @@
   position: relative;
   transition: var(--transition-standard);
   border-radius: var(--card-border-radius);
-  background: var(--app-background);
+  background: var(--window-bg-color);
   box-shadow: var(--shadow-light);
-  border: 1px solid var(--theme-border);
   animation: fadeIn 0.6s ease-out;
   animation-fill-mode: both;
-  will-change: transform, box-shadow;
-
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-elevated);
-  }
+  will-change: transform;
 
   &.mounted {
-    animation: pulseBlue 2s infinite;
-    border-color: rgba(var(--accent-color-rgb), 0.2);
+    box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.2);
     will-change: box-shadow;
 
     .remote-info .icon-container {
       background: rgba(var(--accent-color-rgb), 0.1);
-      border: 1px solid rgba(var(--accent-color-rgb), 0.2);
+      box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.2);
 
       .remote-type-icon {
         color: var(--accent-color);
@@ -30,13 +23,12 @@
   }
 
   &.syncing {
-    animation: pulseGreen 2s infinite;
-    border-color: rgba(var(--primary-color-rgb), 0.2);
+    box-shadow: 0 0 0 1px rgba(var(--primary-color-rgb), 0.2);
     will-change: box-shadow;
 
     .remote-info .icon-container {
       background: rgba(var(--primary-color-rgb), 0.1);
-      border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+      box-shadow: 0 0 0 1px rgba(var(--primary-color-rgb), 0.2);
 
       .remote-type-icon {
         color: var(--primary-color);
@@ -45,13 +37,12 @@
   }
 
   &.copying {
-    animation: pulseYellow 2s infinite;
-    border-color: rgba(var(--yellow-rgb), 0.2);
+    box-shadow: 0 0 0 1px rgba(var(--yellow-rgb), 0.2);
     will-change: box-shadow;
 
     .remote-info .icon-container {
       background: rgba(var(--yellow-rgb), 0.1);
-      border: 1px solid rgba(var(--yellow-rgb), 0.2);
+      box-shadow: 0 0 0 1px rgba(var(--yellow-rgb), 0.2);
 
       .remote-type-icon {
         color: var(--yellow);
@@ -60,13 +51,12 @@
   }
 
   &.moving {
-    animation: pulseOrange 2s infinite;
-    border-color: rgba(var(--orange-rgb), 0.2);
+    box-shadow: 0 0 0 1px rgba(var(--orange-rgb), 0.2);
     will-change: box-shadow;
 
     .remote-info .icon-container {
       background: rgba(var(--orange-rgb), 0.1);
-      border: 1px solid rgba(var(--orange-rgb), 0.2);
+      box-shadow: 0 0 0 1px rgba(var(--orange-rgb), 0.2);
 
       .remote-type-icon {
         color: var(--orange);
@@ -75,13 +65,12 @@
   }
 
   &.bisyncing {
-    animation: pulsePurple 2s infinite;
-    border-color: rgba(var(--purple-rgb), 0.2);
+    box-shadow: 0 0 0 1px rgba(var(--purple-rgb), 0.2);
     will-change: box-shadow;
 
     .remote-info .icon-container {
       background: rgba(var(--purple-rgb), 0.1);
-      border: 1px solid rgba(var(--purple-rgb), 0.2);
+      box-shadow: 0 0 0 1px rgba(var(--purple-rgb), 0.2);
 
       .remote-type-icon {
         color: var(--purple);
@@ -90,26 +79,24 @@
   }
 
   &.inactive-remote {
-    border-color: rgba(var(--app-text-color-rgb), 0.3);
+    border-color: rgba(var(--window-fg-color-rgb), 0.3);
 
     .remote-info .icon-container {
-      background: rgba(var(--app-text-color-rgb), 0.1);
-      border: 1px solid rgba(var(--app-text-color-rgb), 0.2);
+      background: rgba(var(--window-fg-color-rgb), 0.1);
 
       .remote-type-icon {
-        color: rgba(var(--app-text-color-rgb), 0.5);
+        color: rgba(var(--window-fg-color-rgb), 0.5);
       }
     }
   }
 
   &.error-remote {
-    animation: pulseRed 3s infinite;
     border-color: rgba(var(--warn-color-rgb), 0.3);
     will-change: box-shadow;
 
     .remote-info .icon-container {
       background: rgba(var(--warn-color-rgb), 0.1);
-      border: 1px solid rgba(var(--warn-color-rgb), 0.2);
+      box-shadow: 0 0 0 1px rgba(var(--warn-color-rgb), 0.2);
 
       .remote-type-icon {
         color: var(--warn-color);
@@ -141,8 +128,7 @@
       width: 48px;
       height: 48px;
       border-radius: var(--card-border-radius);
-      background: var(--hover-color);
-      border: 1px solid var(--theme-border);
+      background: var(--hover-bg-color);
       transition: var(--transition-standard);
     }
 
@@ -157,7 +143,7 @@
         font-size: var(--font-size-base);
         font-weight: 600;
         margin: 0;
-        color: var(--app-text-color);
+        color: var(--window-fg-color);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -165,7 +151,7 @@
 
       .remote-type {
         font-size: var(--font-size-sm);
-        color: var(--secondary-text-color);
+        color: var(--dim-color);
         font-weight: 500;
       }
     }
@@ -202,13 +188,13 @@
       &.mounted {
         background: rgba(var(--accent-color-rgb), 0.1);
         color: var(--accent-color);
-        border: 1px solid rgba(var(--accent-color-rgb), 0.2);
+        box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.2);
       }
 
       &.syncing {
         background: rgba(var(--primary-color-rgb), 0.1);
         color: var(--primary-color);
-        border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+        box-shadow: 0 0 0 1px rgba(var(--primary-color-rgb), 0.2);
 
         .status-icon {
           animation: spin 2s linear infinite;
@@ -218,7 +204,7 @@
       &.copying {
         background: rgba(var(--yellow-rgb), 0.1);
         color: var(--yellow);
-        border: 1px solid rgba(var(--yellow-rgb), 0.2);
+        box-shadow: 0 0 0 1px rgba(var(--yellow-rgb), 0.2);
 
         .status-icon {
           animation: breathing 2s ease-in-out infinite;
@@ -228,7 +214,7 @@
       &.moving {
         background: rgba(var(--orange-rgb), 0.1);
         color: var(--orange);
-        border: 1px solid rgba(var(--orange-rgb), 0.2);
+        box-shadow: 0 0 0 1px rgba(var(--orange-rgb), 0.2);
 
         .status-icon {
           animation: breathing 2s ease-in-out infinite;
@@ -238,7 +224,7 @@
       &.bisyncing {
         background: rgba(var(--purple-rgb), 0.1);
         color: var(--purple);
-        border: 1px solid rgba(var(--purple-rgb), 0.2);
+        box-shadow: 0 0 0 1px rgba(var(--purple-rgb), 0.2);
       }
     }
   }

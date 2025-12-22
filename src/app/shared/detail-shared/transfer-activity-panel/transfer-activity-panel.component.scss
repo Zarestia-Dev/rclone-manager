@@ -1,5 +1,3 @@
-@use "../../../styles/_shared_components";
-
 .transfer-activity-panel {
   display: flex;
   flex-direction: column;
@@ -23,13 +21,13 @@
           &.active {
             background: rgba(var(--primary-color-rgb), var(--active-opacity));
             color: var(--primary-color);
-            border: 1px solid rgba(var(--primary-color-rgb), 0.3);
+            box-shadow: 0 0 0 1px var(--card-shade-color);
           }
 
           &.completed {
             background: rgba(var(--accent-color-rgb), var(--active-opacity));
             color: var(--accent-color);
-            border: 1px solid rgba(var(--accent-color-rgb), 0.3);
+            box-shadow: 0 0 0 1px var(--card-shade-color);
           }
 
           .chip-label {

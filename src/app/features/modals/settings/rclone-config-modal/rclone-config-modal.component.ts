@@ -28,15 +28,15 @@ import {
   FormBuilder,
 } from '@angular/forms';
 import { ScrollingModule, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
+import { MatSelectModule } from '@angular/material/select';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { distinctUntilChanged, Subject, takeUntil, debounceTime } from 'rxjs';
 
 import { FlagConfigService, RcloneBackendOptionsService } from '@app/services';
 import { NotificationService } from '../../../../shared/services/notification.service';
 import { RcConfigOption } from '@app/types';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
-import { MatSelectModule } from '@angular/material/select';
-import { MatExpansionModule } from '@angular/material/expansion';
 import { SecuritySettingsComponent } from '../security-settings/security-settings.component';
-import { distinctUntilChanged, Subject, takeUntil, debounceTime } from 'rxjs';
 import { SettingControlComponent } from 'src/app/shared/components';
 
 type PageType = 'home' | 'security' | string;
@@ -53,6 +53,101 @@ interface SearchResult {
   category: string;
   option: RcConfigOption;
 }
+
+// Consolidated service configuration
+interface ServiceConfig {
+  icon: string;
+  description: string;
+  mainCategory: string;
+}
+
+const SERVICE_CONFIG: Record<string, ServiceConfig> = {
+  vfs: {
+    icon: 'vfs',
+    description: 'Virtual File System caching and performance settings',
+    mainCategory: 'File System & Storage',
+  },
+  mount: {
+    icon: 'mount',
+    description: 'Mount-specific options and FUSE configuration',
+    mainCategory: 'File System & Storage',
+  },
+  filter: {
+    icon: 'filter',
+    description: 'File filtering rules and patterns',
+    mainCategory: 'File System & Storage',
+  },
+  main: {
+    icon: 'gear',
+    description: 'General RClone operation and transfer settings',
+    mainCategory: 'General Settings',
+  },
+  log: {
+    icon: 'file-lines',
+    description: 'Logging configuration and output settings',
+    mainCategory: 'General Settings',
+  },
+  http: { icon: 'globe', description: 'HTTP server settings', mainCategory: 'Network & Servers' },
+  rc: {
+    icon: 'server',
+    description: 'Remote control server configuration',
+    mainCategory: 'General Settings',
+  },
+  dlna: { icon: 'tv', description: 'DLNA server settings', mainCategory: 'Network & Servers' },
+  ftp: {
+    icon: 'file-arrow-up',
+    description: 'FTP server configuration',
+    mainCategory: 'Network & Servers',
+  },
+  nfs: { icon: 'database', description: 'NFS server settings', mainCategory: 'Network & Servers' },
+  proxy: {
+    icon: 'shield-halved',
+    description: 'Proxy authentication settings',
+    mainCategory: 'General Settings',
+  },
+  restic: {
+    icon: 'box-archive',
+    description: 'Restic server configuration',
+    mainCategory: 'Network & Servers',
+  },
+  s3: { icon: 'bucket', description: 'S3 server settings', mainCategory: 'Network & Servers' },
+  sftp: {
+    icon: 'lock',
+    description: 'SFTP server configuration',
+    mainCategory: 'Network & Servers',
+  },
+  webdav: {
+    icon: 'cloud',
+    description: 'WebDAV server settings',
+    mainCategory: 'Network & Servers',
+  },
+};
+
+const CATEGORY_CONFIG: Record<string, { icon: string; description: string }> = {
+  General: { icon: 'gear', description: 'General configuration options' },
+  Auth: { icon: 'lock', description: 'Authentication and credentials' },
+  HTTP: { icon: 'globe', description: 'HTTP-specific settings' },
+  Template: { icon: 'terminal', description: 'Template settings' },
+  MetaRules: { icon: 'chart', description: 'Meta rule configurations' },
+  RulesOpt: { icon: 'filter', description: 'Rule options' },
+  MetricsAuth: { icon: 'lock', description: 'Metrics authentication' },
+  MetricsHTTP: { icon: 'globe', description: 'Metrics HTTP settings' },
+};
+
+const MAIN_CATEGORY_CONFIG: Record<string, { icon: string; description: string }> = {
+  'General Settings': {
+    icon: 'gear',
+    description: 'Core RClone options and logging configuration',
+  },
+  'File System & Storage': {
+    icon: 'folder',
+    description: 'Virtual file system, mounting, filtering, and storage options',
+  },
+  'Network & Servers': {
+    icon: 'public',
+    description: 'HTTP, FTP, SFTP, WebDAV, S3, and other network service settings',
+  },
+};
 
 @Component({
   selector: 'app-rclone-config-modal',
@@ -81,57 +176,45 @@ interface SearchResult {
   styleUrls: ['./rclone-config-modal.component.scss', '../../../../styles/_shared-modal.scss'],
 })
 export class RcloneConfigModalComponent implements OnInit, OnDestroy {
-  // --- Injected Services & DialogRef ---
   private dialogRef = inject(MatDialogRef<RcloneConfigModalComponent>);
   private notificationService = inject(NotificationService);
   private flagConfigService = inject(FlagConfigService);
   private rcloneBackendOptionsService = inject(RcloneBackendOptionsService);
   private fb = inject(FormBuilder);
 
-  // --- View Child for Virtual Scroll ---
   @ViewChild(CdkVirtualScrollViewport) virtualScrollViewport?: CdkVirtualScrollViewport;
 
-  // --- Signals ---
+  // Signals
   currentPage = signal<PageType>('home');
   currentCategory = signal<string | null>(null);
   isLoading = signal(true);
   searchQuery = signal('');
   isSearchVisible = signal(false);
   savingOptions = signal(new Set<string>());
-  
-  // Services and filtering
   services = signal<RCloneService[]>([]);
   filteredServices = signal<RCloneService[]>([]);
   globalSearchResults = signal<SearchResult[]>([]);
   searchMatchCounts = signal(new Map<string, number>());
   virtualScrollData = signal<RcConfigOption[]>([]);
-  
-  // Option state tracking
   private optionIsDefaultMap = signal(new Map<string, boolean>());
 
   // Form
   rcloneOptionsForm: FormGroup;
 
-  // --- Computed Signals ---
+  // Computed
   hasSearchQuery = computed(() => this.searchQuery().trim().length > 0);
-  
   isSecurityPage = computed(() => this.currentPage() === 'security');
-  
+
   filteredOptionsCount = computed(() => {
     const page = this.currentPage();
-    const category = this.currentCategory();
-    if (page === 'home' || page === 'security' || !category) {
-      return 0;
-    }
+    if (page === 'home' || page === 'security' || !this.currentCategory()) return 0;
     return this.virtualScrollData().length;
   });
-  
+
   totalOptionsCount = computed(() => {
     const page = this.currentPage();
     const category = this.currentCategory();
-    if (page === 'home' || page === 'security' || !category) {
-      return 0;
-    }
+    if (page === 'home' || page === 'security' || !category) return 0;
     return (this.groupedRcloneOptions[page]?.[category] || []).length;
   });
 
@@ -143,111 +226,20 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
     };
 
     this.filteredServices().forEach(service => {
-      const mainCategory = this.serviceCategoryMap[service.name] || 'Network & Servers';
-      if (grouped[mainCategory]) {
-        grouped[mainCategory].push(service);
-      }
+      const mainCategory = SERVICE_CONFIG[service.name]?.mainCategory || 'Network & Servers';
+      grouped[mainCategory]?.push(service);
     });
 
     return grouped;
   });
 
-  // --- Private Properties ---
+  // Private
   private readonly componentDestroyed$ = new Subject<void>();
   private readonly search$ = new Subject<string>();
   private groupedRcloneOptions: GroupedRCloneOptions = {};
   private optionToFocus: string | null = null;
   private optionToServiceMap: Record<string, string> = {};
   private optionToFullFieldNameMap: Record<string, string> = {};
-
-  // Enhanced icon mapping with better visual consistency
-  private readonly serviceIconMap: Record<string, string> = {
-    vfs: 'vfs',
-    mount: 'mount',
-    filter: 'filter',
-    main: 'gear',
-    log: 'file-lines',
-    http: 'globe',
-    rc: 'server',
-    dlna: 'tv',
-    ftp: 'file-arrow-up',
-    nfs: 'database',
-    proxy: 'shield-halved',
-    restic: 'box-archive',
-    s3: 'bucket',
-    sftp: 'lock',
-    webdav: 'cloud',
-  };
-
-  private readonly serviceDescriptionMap: Record<string, string> = {
-    vfs: 'Virtual File System caching and performance settings',
-    mount: 'Mount-specific options and FUSE configuration',
-    filter: 'File filtering rules and patterns',
-    main: 'General RClone operation and transfer settings',
-    log: 'Logging configuration and output settings',
-    http: 'HTTP server settings',
-    rc: 'Remote control server configuration',
-    dlna: 'DLNA server settings',
-    ftp: 'FTP server configuration',
-    nfs: 'NFS server settings',
-    proxy: 'Proxy authentication settings',
-    restic: 'Restic server configuration',
-    s3: 'S3 server settings',
-    sftp: 'SFTP server configuration',
-    webdav: 'WebDAV server settings',
-  };
-
-  private readonly categoryDescriptionMap: Record<string, string> = {
-    General: 'General configuration options',
-    Auth: 'Authentication and credentials',
-    HTTP: 'HTTP-specific settings',
-    Template: 'Template settings',
-    MetaRules: 'Meta rule configurations',
-    RulesOpt: 'Rule options',
-    MetricsAuth: 'Metrics authentication',
-    MetricsHTTP: 'Metrics HTTP settings',
-  };
-
-  private readonly categoryIconMap: Record<string, string> = {
-    General: 'gear',
-    Auth: 'lock',
-    HTTP: 'globe',
-    Template: 'terminal',
-    MetaRules: 'chart',
-    RulesOpt: 'filter',
-    MetricsAuth: 'lock',
-    MetricsHTTP: 'globe',
-  };
-
-  private readonly serviceCategoryMap: Record<string, string> = {
-    main: 'General Settings',
-    log: 'General Settings',
-    vfs: 'File System & Storage',
-    mount: 'File System & Storage',
-    filter: 'File System & Storage',
-    dlna: 'Network & Servers',
-    http: 'Network & Servers',
-    rc: 'General Settings',
-    ftp: 'Network & Servers',
-    sftp: 'Network & Servers',
-    webdav: 'Network & Servers',
-    s3: 'Network & Servers',
-    nfs: 'Network & Servers',
-    restic: 'Network & Servers',
-    proxy: 'General Settings',
-  };
-
-  private readonly mainCategoryDescriptionMap: Record<string, string> = {
-    'General Settings': 'Core RClone options and logging configuration',
-    'File System & Storage': 'Virtual file system, mounting, filtering, and storage options',
-    'Network & Servers': 'HTTP, FTP, SFTP, WebDAV, S3, and other network service settings',
-  };
-
-  private readonly mainCategoryIconMap: Record<string, string> = {
-    'General Settings': 'gear',
-    'File System & Storage': 'folder',
-    'Network & Servers': 'public',
-  };
 
   constructor() {
     this.rcloneOptionsForm = this.fb.group({});
@@ -257,11 +249,7 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
 
   private setupSearchSubscription(): void {
     this.search$
-      .pipe(
-        distinctUntilChanged(),
-        debounceTime(200),
-        takeUntil(this.componentDestroyed$)
-      )
+      .pipe(distinctUntilChanged(), debounceTime(200), takeUntil(this.componentDestroyed$))
       .subscribe(searchText => {
         const query = searchText.toLowerCase().trim();
         this.searchQuery.set(query);
@@ -274,20 +262,16 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
             this.performGlobalSearch(query);
             this.updateFilteredServices();
           }
-        } else if (this.currentPage() !== 'home' && this.currentPage() !== 'security') {
+        } else if (this.currentPage() !== 'security') {
           this.updateVirtualScrollData();
         }
       });
   }
 
   private setupVirtualScrollEffect(): void {
-    // Effect to scroll to top when virtual scroll data changes
     effect(() => {
-      const data = this.virtualScrollData();
-      if (data.length > 0) {
-        setTimeout(() => {
-          this.virtualScrollViewport?.scrollToIndex(0);
-        }, 0);
+      if (this.virtualScrollData().length > 0) {
+        setTimeout(() => this.virtualScrollViewport?.scrollToIndex(0), 0);
       }
     });
   }
@@ -295,6 +279,11 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.componentDestroyed$.next();
     this.componentDestroyed$.complete();
+  }
+
+  async ngOnInit(): Promise<void> {
+    await this.loadAndBuildOptions();
+    this.isLoading.set(false);
   }
 
   onSearchInput(searchText: string): void {
@@ -308,18 +297,11 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   }
 
   getMatchCountForCategory(serviceName: string, categoryName: string): number {
-    const key = `${serviceName}---${categoryName}`;
-    return this.searchMatchCounts().get(key) || 0;
-  }
-
-  async ngOnInit(): Promise<void> {
-    await this.loadAndBuildOptions();
-    this.isLoading.set(false);
+    return this.searchMatchCounts().get(`${serviceName}---${categoryName}`) || 0;
   }
 
   onOptionValueChanged(optionName: string, isChanged: boolean): void {
-    const currentMap = this.optionIsDefaultMap();
-    const newMap = new Map(currentMap);
+    const newMap = new Map(this.optionIsDefaultMap());
     newMap.set(optionName, !isChanged);
     this.optionIsDefaultMap.set(newMap);
   }
@@ -340,10 +322,10 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   }
 
   private buildServices(): void {
-    const servicesList = Object.keys(this.groupedRcloneOptions).map(serviceName => ({
-      name: serviceName,
+    const servicesList = Object.keys(this.groupedRcloneOptions).map(name => ({
+      name,
       expanded: false,
-      categories: Object.keys(this.groupedRcloneOptions[serviceName]),
+      categories: Object.keys(this.groupedRcloneOptions[name]),
     }));
     this.services.set(servicesList);
     this.filteredServices.set([...servicesList]);
@@ -358,7 +340,6 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
           const fullFieldName =
             category === 'General' ? option.FieldName : `${category}.${option.FieldName}`;
           const uniqueControlKey = `${service}---${category}---${option.Name}`;
-
           this.optionToServiceMap[uniqueControlKey] = service;
           this.optionToFullFieldNameMap[uniqueControlKey] = fullFieldName;
           controls[uniqueControlKey] = this.fb.control(option.Value);
@@ -369,13 +350,11 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
     this.rcloneOptionsForm = this.fb.group(controls);
   }
 
-  // Virtual Scroll Methods
   private updateVirtualScrollData(): void {
     this.virtualScrollData.set(this.getRCloneOptionsForCurrentPage());
   }
 
   trackByOptionIndex(index: number, option: RcConfigOption): string {
-    // Include index to handle options with duplicate Names across different services/categories
     return `${index}-${option.Name}`;
   }
 
@@ -383,40 +362,35 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
     return `${result.service}-${result.category}-${result.option.Name}`;
   }
 
-
-
-  getMainCategoryDescription(category: string): string {
-    return this.mainCategoryDescriptionMap[category] || '';
+  // Config accessors using consolidated maps
+  getServiceIcon(name: string): string {
+    return SERVICE_CONFIG[name]?.icon ?? 'gear';
   }
 
-  getMainCategoryIcon(category: string): string {
-    return this.mainCategoryIconMap[category] || 'gear';
+  getServiceDescription(name: string): string {
+    return SERVICE_CONFIG[name]?.description ?? '';
   }
 
-  // Service and category methods
-  getServiceIcon(serviceName: string): string {
-    return this.serviceIconMap[serviceName] || 'gear';
+  getServiceCategories(name: string): string[] {
+    return this.groupedRcloneOptions[name] ? Object.keys(this.groupedRcloneOptions[name]) : [];
   }
 
-  getServiceDescription(serviceName: string): string {
-    return this.serviceDescriptionMap[serviceName] || '';
+  getCategoryIcon(name: string): string {
+    return CATEGORY_CONFIG[name]?.icon ?? 'gear';
   }
 
-  getServiceCategories(serviceName: string): string[] {
-    return this.groupedRcloneOptions[serviceName]
-      ? Object.keys(this.groupedRcloneOptions[serviceName])
-      : [];
+  getCategoryDescription(name: string): string {
+    return CATEGORY_CONFIG[name]?.description ?? '';
   }
 
-  getCategoryIcon(categoryName: string): string {
-    return this.categoryIconMap[categoryName] || 'gear';
+  getMainCategoryIcon(name: string): string {
+    return MAIN_CATEGORY_CONFIG[name]?.icon ?? 'gear';
   }
 
-  getCategoryDescription(categoryName: string): string {
-    return this.categoryDescriptionMap[categoryName] || '';
+  getMainCategoryDescription(name: string): string {
+    return MAIN_CATEGORY_CONFIG[name]?.description ?? '';
   }
 
-  // Navigation and page management
   navigateTo(service: string, category?: string, optionName?: string): void {
     if (service === 'security') {
       this.currentPage.set('security');
@@ -432,15 +406,17 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
       this.updateVirtualScrollData();
     }
 
-    const option = this.optionToFocus;
-    if (option) {
-      setTimeout(() => {
-        this.scrollToOption(option);
-      }, 100);
+    if (this.optionToFocus) {
+      setTimeout(() => this.scrollToOption(this.optionToFocus!), 100);
     }
   }
 
-  handleKeyboardNavigation(event: KeyboardEvent, service: string, category?: string, optionName?: string): void {
+  handleKeyboardNavigation(
+    event: KeyboardEvent,
+    service: string,
+    category?: string,
+    optionName?: string
+  ): void {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       this.navigateTo(service, category, optionName);
@@ -460,25 +436,21 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   getRCloneOptionsForCurrentPage(): RcConfigOption[] {
     const page = this.currentPage();
     const category = this.currentCategory();
-    
-    if (page === 'home' || page === 'security' || !category) {
-      return [];
-    }
+    if (page === 'home' || page === 'security' || !category) return [];
 
     const options = this.groupedRcloneOptions[page]?.[category] || [];
     return this.filterOptionsBySearch(options);
   }
 
   private filterOptionsBySearch(options: RcConfigOption[]): RcConfigOption[] {
-    const query = this.searchQuery();
-    if (!query || query.trim() === '') return options;
+    const query = this.searchQuery().trim().toLowerCase();
+    if (!query) return options;
 
-    const lowerQuery = query.toLowerCase().trim();
     return options.filter(
-      option =>
-        option.Name.toLowerCase().includes(lowerQuery) ||
-        option.FieldName.toLowerCase().includes(lowerQuery) ||
-        option.Help.toLowerCase().includes(lowerQuery)
+      opt =>
+        opt.Name.toLowerCase().includes(query) ||
+        opt.FieldName.toLowerCase().includes(query) ||
+        opt.Help.toLowerCase().includes(query)
     );
   }
 
@@ -509,29 +481,28 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
     if (results.length > 0) {
       results.forEach(result => {
         const key = `${result.service}---${result.category}`;
-        const currentCount = newMatchCounts.get(key) || 0;
-        newMatchCounts.set(key, currentCount + 1);
+        newMatchCounts.set(key, (newMatchCounts.get(key) || 0) + 1);
       });
 
       const servicesWithMatches = new Set(results.map(r => r.service));
-      const filtered = this.services()
-        .filter(svc => servicesWithMatches.has(svc.name))
-        .map(svc => ({ ...svc, expanded: true }));
-      
-      this.filteredServices.set(filtered);
+      this.filteredServices.set(
+        this.services()
+          .filter(svc => servicesWithMatches.has(svc.name))
+          .map(svc => ({ ...svc, expanded: true }))
+      );
     } else {
       const query = this.searchQuery().toLowerCase().trim();
-      const filtered = this.services()
-        .filter(
-          svc =>
-            svc.name.toLowerCase().includes(query) ||
-            (this.serviceDescriptionMap[svc.name] || '').toLowerCase().includes(query)
-        )
-        .map(svc => ({ ...svc, expanded: true }));
-      
-      this.filteredServices.set(filtered);
+      this.filteredServices.set(
+        this.services()
+          .filter(
+            svc =>
+              svc.name.toLowerCase().includes(query) ||
+              (SERVICE_CONFIG[svc.name]?.description || '').toLowerCase().includes(query)
+          )
+          .map(svc => ({ ...svc, expanded: true }))
+      );
     }
-    
+
     this.searchMatchCounts.set(newMatchCounts);
   }
 
@@ -545,7 +516,6 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
 
   async saveRCloneOption(optionName: string, isAtDefault: boolean): Promise<void> {
     const control = this.rcloneOptionsForm.get(optionName);
-
     if (!control || control.invalid || this.savingOptions().has(optionName) || control.pristine) {
       return;
     }
@@ -585,26 +555,20 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
       const currentSaving = new Set(this.savingOptions());
       currentSaving.delete(optionName);
       this.savingOptions.set(currentSaving);
-      if (control) {
-        control.enable({ emitEvent: false });
-      }
+      control?.enable({ emitEvent: false });
     }
   }
 
-  // UI helpers
   getPageTitle(): string {
     const page = this.currentPage();
     const category = this.currentCategory();
-    
     if (page === 'home') return 'RClone Configuration';
     if (page === 'security') return 'Security Settings';
-    if (category) {
-      return `${page.toUpperCase()} - ${category}`;
-    }
+    if (category) return `${page.toUpperCase()} - ${category}`;
     return 'Backend Settings';
   }
 
-  public getUniqueControlKey(option: RcConfigOption): string {
+  getUniqueControlKey(option: RcConfigOption): string {
     return `${this.currentPage()}---${this.currentCategory()}---${option.Name}`;
   }
 

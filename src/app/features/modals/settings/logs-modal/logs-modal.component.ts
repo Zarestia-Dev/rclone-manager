@@ -14,11 +14,11 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
-import { CommonModule } from '@angular/common';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { DatePipe, UpperCasePipe } from '@angular/common';
 import { LogContext, RemoteLogEntry, LOG_LEVELS, LogLevel } from '@app/types';
 import { LoggingService } from '@app/services';
 import { AnsiToHtmlPipe } from 'src/app/shared/pipes/ansi-to-html.pipe';
@@ -27,7 +27,6 @@ import { AnsiToHtmlPipe } from 'src/app/shared/pipes/ansi-to-html.pipe';
   selector: 'app-logs-modal',
   standalone: true,
   imports: [
-    CommonModule,
     MatProgressSpinnerModule,
     MatIconModule,
     MatFormFieldModule,
@@ -38,6 +37,8 @@ import { AnsiToHtmlPipe } from 'src/app/shared/pipes/ansi-to-html.pipe';
     MatButtonModule,
     MatTooltipModule,
     AnsiToHtmlPipe,
+    DatePipe,
+    UpperCasePipe,
   ],
   templateUrl: './logs-modal.component.html',
   styleUrls: ['./logs-modal.component.scss', '../../../../styles/_shared-modal.scss'],

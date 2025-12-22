@@ -109,7 +109,7 @@ export class WindowService extends TauriBaseService {
     try {
       await this.applyTheme(theme);
       this._theme$.next(theme);
-      await this.appSettingsService.saveSetting('general', 'theme', theme);
+      await this.appSettingsService.saveSetting('runtime', 'theme', theme);
     } catch (error) {
       console.error(`Failed to set and save theme "${theme}":`, error);
     }

@@ -3,7 +3,7 @@
   flex-direction: column;
   width: 100%;
   height: 100%;
-  background: var(--app-background);
+  background: var(--window-bg-color);
   box-sizing: border-box;
 
   // =============================================
@@ -40,7 +40,7 @@
           width: var(--icon-size-lg);
           height: var(--icon-size-lg);
           border-radius: var(--button-border-radius);
-          color: var(--secondary-text-color);
+          color: var(--dim-color);
           transition: all 0.3s ease;
 
           mat-icon {
@@ -53,14 +53,13 @@
         .step-label-animated {
           font-size: 13px;
           font-weight: 600;
-          color: var(--app-text-color);
+          color: var(--window-fg-color);
           white-space: nowrap;
         }
 
         &.current {
           .step-number {
             background: var(--primary-color);
-            color: white;
           }
         }
 
@@ -72,7 +71,7 @@
 
         &.future {
           .step-number {
-            background: rgba(0, 0, 0, 0.03);
+            background: var(--hover-bg-color);
             opacity: 0.6;
           }
         }
@@ -101,7 +100,7 @@
         align-items: center;
         gap: var(--space-sm);
         padding: var(--space-sm) var(--space-md);
-        background: var(--secondary-background);
+        background: var(--view-bg-color);
         border-bottom: 1px solid var(--border-color);
 
         .profile-actions {
@@ -124,7 +123,7 @@
 
         .profile-count {
           font-size: 12px;
-          color: var(--secondary-text-color);
+          color: var(--dim-color);
           background: rgba(var(--primary-color-rgb), 0.1);
           padding: 2px 8px;
           border-radius: 10px;
@@ -162,7 +161,7 @@
     align-items: center;
     padding: var(--button-padding);
     gap: var(--space-md);
-    background: var(--app-background);
+    background: var(--window-bg-color);
     z-index: 10;
 
     .button-container-inner {
@@ -177,7 +176,7 @@
         margin: 0;
         font-size: var(--font-size-sm);
         font-weight: 500;
-        color: var(--app-text-color);
+        color: var(--window-fg-color);
         opacity: 0.8;
       }
     }

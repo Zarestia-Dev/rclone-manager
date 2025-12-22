@@ -34,7 +34,6 @@
           [errorMessage]="passwordErrorMessage()"
           [showStoreOption]="!!data.showStoreOption"
           [disabled]="installing() || showConfigOptions()"
-          [shakeTrigger]="errorCount()"
           (passwordChange)="password.set($event)"
           (storePasswordChange)="storePassword.set($event)"
           (unlock)="submitPassword()"

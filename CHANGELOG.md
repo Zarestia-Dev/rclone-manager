@@ -1,6 +1,11 @@
 # Changelog
 # All notable changes to this project will be documented in this file.
 
+## [unreleased]
+
+### Fixed
+- Broken theme setting fixed. Now it correctly applies the theme.
+
 ## [v0.1.9] - 2025-12-20
 
 ### Warning

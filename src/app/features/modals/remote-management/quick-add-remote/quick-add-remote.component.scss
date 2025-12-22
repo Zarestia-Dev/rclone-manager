@@ -33,7 +33,7 @@
   .section-label {
     font-size: 0.9rem;
     font-weight: 600;
-    color: var(--app-text-color);
+    color: var(--window-fg-color);
     margin-bottom: var(--space-sm);
     opacity: 0.9;
   }
@@ -48,7 +48,7 @@
 // ===== REMOTE TYPE AUTOCOMPLETE =====
 .remote-type-field {
   .field-icon {
-    color: var(--secondary-text-color);
+    color: var(--dim-color);
   }
 }
 
@@ -69,7 +69,7 @@
     .remote-label {
       font-weight: 500;
       font-size: 0.9rem;
-      color: var(--app-text-color);
+      color: var(--window-fg-color);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -77,21 +77,21 @@
 
     .remote-value {
       font-size: 0.75rem;
-      color: var(--secondary-text-color);
+      color: var(--dim-color);
     }
   }
 }
 
 // ===== CONFIG SECTION =====
 .config-section {
-  background: var(--secondary-background);
+  background: var(--view-bg-color);
   padding: 16px;
   border-radius: 12px;
-  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-light);
   gap: 16px;
 
   .field-icon {
-    color: var(--secondary-text-color);
+    color: var(--dim-color);
   }
 }
 
@@ -111,12 +111,12 @@
     .option-title {
       font-size: 0.9rem;
       font-weight: 500;
-      color: var(--app-text-color);
+      color: var(--window-fg-color);
     }
 
     .option-desc {
       font-size: 0.75rem;
-      color: var(--secondary-text-color);
+      color: var(--dim-color);
       max-width: 300px;
     }
   }
@@ -133,15 +133,15 @@
 
   .section-description {
     font-size: 0.85rem;
-    color: var(--secondary-text-color);
+    color: var(--dim-color);
   }
 }
 
 .tabs-container {
-  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-light);
   border-radius: var(--radius-md);
   overflow: hidden;
-  background: var(--secondary-background);
+  background: var(--view-bg-color);
 
   .operation-config {
     padding: var(--space-sm);
@@ -174,13 +174,13 @@
     &.info {
       color: var(--accent-color);
       background: rgba(var(--accent-color-rgb), 0.1);
-      border: 1px solid rgba(var(--accent-color-rgb), 0.2);
+      box-shadow: 0 0 0 1px var(--card-shade-color);
     }
 
     &.warning {
       color: var(--orange);
       background: rgba(var(--orange-rgb), 0.1);
-      border: 1px solid rgba(var(--orange-rgb), 0.2);
+      box-shadow: 0 0 0 1px var(--card-shade-color);
     }
   }
 }
@@ -192,7 +192,7 @@
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  background: var(--secondary-background);
+  background: var(--view-bg-color);
 }
 
 // ===== RESPONSIVE =====

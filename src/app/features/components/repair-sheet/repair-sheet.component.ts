@@ -61,7 +61,6 @@ export class RepairSheetComponent {
   readonly isSubmittingPassword = signal(false);
   readonly hasPasswordError = signal(false);
   readonly passwordErrorMessage = signal('');
-  readonly errorCount = signal(0);
 
   // --- INJECTED DEPENDENCIES ---
   readonly data = inject<RepairData>(MAT_BOTTOM_SHEET_DATA);
@@ -338,7 +337,6 @@ export class RepairSheetComponent {
     console.error('Password validation failed:', error);
     this.hasPasswordError.set(true);
     this.passwordErrorMessage.set(this.getPasswordErrorMessage(error));
-    this.errorCount.update(v => v + 1);
   }
 
   private getPasswordErrorMessage(error: unknown): string {

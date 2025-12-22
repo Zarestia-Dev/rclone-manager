@@ -17,7 +17,6 @@
       align-items: center;
       justify-content: center;
       gap: var(--space-md);
-      margin-bottom: 16px;
 
       .app-icon {
         width: var(--icon-size-xl);
@@ -31,7 +30,7 @@
         font-size: var(--font-size-2xl);
         font-weight: 300;
         margin: 0;
-        color: var(--app-text-color);
+        color: var(--window-fg-color);
         letter-spacing: -0.5px;
       }
     }

@@ -10,15 +10,18 @@ import {
 } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-search-container',
   standalone: true,
-  imports: [FormsModule, MatInputModule],
+  imports: [FormsModule, MatFormFieldModule, MatInputModule, MatIconModule],
   template: `
     <div class="search-container" [class.visible]="visible">
-      <div class="search-input-wrapper">
+      <mat-form-field subscriptSizing="dynamic">
+        <mat-icon matPrefix svgIcon="search"></mat-icon>
         <input
           #searchInput
           matInput
@@ -26,9 +29,8 @@ import { MatInputModule } from '@angular/material/input';
           (ngModelChange)="onSearchTextChange($event)"
           [placeholder]="placeholder"
           [attr.aria-label]="ariaLabel"
-          class="search-input"
         />
-      </div>
+      </mat-form-field>
     </div>
   `,
   styleUrls: ['./search-container.component.scss'],

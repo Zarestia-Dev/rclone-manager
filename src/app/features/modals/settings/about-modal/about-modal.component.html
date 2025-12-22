@@ -21,19 +21,15 @@
         {{ rCloneManagerVersion }}
       </button>
       @if (buildType) {
-        <span
-          class="platform-badge"
-          [ngClass]="buildType"
-          [matTooltip]="(buildType | titlecase) + ' package'"
-        >
+        <span class="platform-badge" [class]="buildType" [matTooltip]="buildType + ' package'">
           <mat-icon svgIcon="package"></mat-icon>
-          {{ buildType | titlecase }}
+          {{ buildType }}
         </span>
       }
     </div>
 
     <div class="about-list">
-      <button matButton class="about-item" (click)="navigateTo('details')">
+      <button matButton class="about-item" (click)="navigateTo('Details')">
         <span>Details</span>
         <mat-icon svgIcon="chevron-right"></mat-icon>
       </button>
@@ -42,7 +38,7 @@
         <button
           matButton
           class="about-item"
-          (click)="navigateTo('updates')"
+          (click)="navigateTo('Updates')"
           [matBadge]="updateAvailable || restartRequired ? '!' : null"
         >
           <span>Updates</span>
@@ -61,12 +57,12 @@
       </button>
 
       <div class="stacked-buttons">
-        <button matButton class="about-item" (click)="navigateTo('credits')">
+        <button matButton class="about-item" (click)="navigateTo('Credits')">
           <span>Credits</span>
           <mat-icon svgIcon="chevron-right"></mat-icon>
         </button>
         <mat-divider></mat-divider>
-        <button matButton class="about-item" (click)="navigateTo('legal')">
+        <button matButton class="about-item" (click)="navigateTo('Legal')">
           <span>Legal</span>
           <mat-icon svgIcon="chevron-right"></mat-icon>
         </button>
@@ -76,20 +72,20 @@
 
   @if (currentPage !== 'main') {
     <div class="overlay" animate.enter="slide-overlay-enter" animate.leave="slide-overlay-leave">
-      <div class="overlay-header" data-tauri-drag-region>
+      <div class="modal-header" data-tauri-drag-region>
         <button mat-icon-button (click)="navigateTo('main')">
           <mat-icon svgIcon="chevron-left"></mat-icon>
         </button>
         <p>
-          {{ currentPage | titlecase }}
+          {{ currentPage }}
         </p>
         <button mat-icon-button (click)="close()">
           <mat-icon svgIcon="circle-xmark"></mat-icon>
         </button>
       </div>
 
-      @if (currentPage === 'details') {
-        <div class="overlay-content">
+      @if (currentPage === 'Details') {
+        <div class="modal-content">
           <div class="stacked-buttons">
             <a
               matButton
@@ -129,8 +125,8 @@
         </div>
       }
 
-      @if (currentPage === 'updates') {
-        <div class="overlay-content updates-page">
+      @if (currentPage === 'Updates') {
+        <div class="modal-content updates-page">
           <div class="current-version-card">
             <div class="version-info">
               <span class="version-label">Current Version</span>
@@ -166,7 +162,7 @@
                     Version {{ updateAvailable.version }}
                     @if (updateReleaseChannel) {
                       <span class="release-badge badge-{{ updateReleaseChannel }}">
-                        {{ updateReleaseChannel | titlecase }}
+                        {{ updateReleaseChannel }}
                       </span>
                     }
                   </span>
@@ -174,7 +170,7 @@
               </div>
 
               @if (updateAvailable.releaseNotes) {
-                <button mat-button class="whats-new-button" (click)="showWhatsNew('app')">
+                <button mat-stroked-button class="whats-new-button" (click)="showWhatsNew('app')">
                   <mat-icon svgIcon="file-lines"></mat-icon>
                   What's New
                 </button>
@@ -209,7 +205,7 @@
                     Install Update
                   }
                 </button>
-                <button mat-button (click)="skipUpdate()" [disabled]="downloadInProgress">
+                <button mat-stroked-button (click)="skipUpdate()" [disabled]="downloadInProgress">
                   Skip Version
                 </button>
               </div>
@@ -224,21 +220,19 @@
             </div>
           }
 
-          <div class="check-updates-section">
-            <button
-              mat-stroked-button
-              (click)="checkForUpdates()"
-              [disabled]="checkingForUpdates || downloadInProgress || restartRequired"
-              class="check-button"
-            >
-              @if (checkingForUpdates) {
-                <mat-spinner diameter="16"></mat-spinner>
-                Checking...
-              } @else {
-                Check for Updates
-              }
-            </button>
-          </div>
+          <button
+            mat-stroked-button
+            (click)="checkForUpdates()"
+            [disabled]="checkingForUpdates || downloadInProgress || restartRequired"
+            class="check-button"
+          >
+            @if (checkingForUpdates) {
+              <mat-spinner diameter="16"></mat-spinner>
+              Checking...
+            } @else {
+              Check for Updates
+            }
+          </button>
 
           <div class="settings-section">
             <h4>Update Settings</h4>
@@ -313,10 +307,10 @@
       }
 
       @if (currentPage === 'About Rclone') {
-        <div class="overlay-content rclone-page">
+        <div class="modal-content updates-page">
           <div class="rclone-info">
             <div class="rclone-header">
-              <h3>Rclone Information</h3>
+              <h4>Rclone Information</h4>
             </div>
 
             @if (loadingRclone) {
@@ -373,150 +367,145 @@
             }
           </div>
 
-          <div class="rclone-updates-section">
-            <h3>Rclone Updates</h3>
-
-            @if (rcloneUpdateStatus.updateInfo?.update_available) {
-              <div class="update-card available">
-                <div class="update-header">
-                  <mat-icon svgIcon="circle-up"></mat-icon>
-                  <div class="update-title">
-                    <h4>Rclone Update Available</h4>
-                    <span class="new-version">
-                      Version
-                      {{
-                        rcloneUpdateStatus.updateInfo?.latest_version_clean ||
-                          rcloneUpdateStatus.updateInfo?.latest_version
-                      }}
-                      <span class="release-badge badge-{{ rcloneUpdateChannel }}">
-                        {{ rcloneUpdateChannel | titlecase }}
-                      </span>
+          @if (rcloneUpdateStatus.updateInfo?.update_available) {
+            <div class="update-card available">
+              <div class="update-header">
+                <mat-icon svgIcon="circle-up"></mat-icon>
+                <div class="update-title">
+                  <h4>Rclone Update Available</h4>
+                  <span class="new-version">
+                    Version
+                    {{
+                      rcloneUpdateStatus.updateInfo?.latest_version_clean ||
+                        rcloneUpdateStatus.updateInfo?.latest_version
+                    }}
+                    <span class="release-badge badge-{{ rcloneUpdateChannel }}">
+                      {{ rcloneUpdateChannel }}
                     </span>
-                  </div>
-                </div>
-
-                @if (rcloneUpdateStatus.updateInfo?.release_notes) {
-                  <button mat-button class="whats-new-button" (click)="showWhatsNew('rclone')">
-                    <mat-icon svgIcon="file-lines"></mat-icon>
-                    What's New in Rclone
-                  </button>
-                }
-
-                <div class="update-buttons">
-                  <button
-                    matButton="filled"
-                    (click)="installRcloneUpdate()"
-                    [disabled]="rcloneUpdateStatus.updating"
-                  >
-                    @if (rcloneUpdateStatus.updating) {
-                      <mat-spinner diameter="16"></mat-spinner>
-                      Updating...
-                    } @else {
-                      Update Rclone
-                    }
-                  </button>
-                  <button mat-button (click)="skipRcloneUpdate()">Skip Version</button>
+                  </span>
                 </div>
               </div>
-            } @else {
-              <div class="update-card up-to-date">
-                <mat-icon svgIcon="circle-check"></mat-icon>
-                <div class="status-text">
-                  <h4>Rclone Up to Date</h4>
-                  <p>You're running the latest version</p>
-                </div>
-              </div>
-            }
 
-            <div class="check-updates-section">
-              <button
-                matButton="outlined"
-                (click)="checkForRcloneUpdates()"
-                [disabled]="rcloneUpdateStatus.checking"
-                class="check-button"
-              >
-                @if (rcloneUpdateStatus.checking) {
-                  <mat-spinner diameter="16"></mat-spinner>
-                  Checking...
-                } @else {
-                  Check for Rclone Updates
-                }
-              </button>
-            </div>
+              @if (rcloneUpdateStatus.updateInfo?.release_notes) {
+                <button
+                  mat-stroked-button
+                  class="whats-new-button"
+                  (click)="showWhatsNew('rclone')"
+                >
+                  <mat-icon svgIcon="file-lines"></mat-icon>
+                  What's New in Rclone
+                </button>
+              }
 
-            <div class="settings-section">
-              <h4>Rclone Update Settings</h4>
-
-              <div class="settings-card">
-                <div class="setting-group">
-                  <div class="setting-header">
-                    <span class="setting-title">Auto-Check Updates</span>
-                  </div>
-                  <div class="setting-control">
-                    <mat-slide-toggle
-                      [checked]="rcloneAutoCheck"
-                      (change)="toggleRcloneAutoCheck()"
-                    >
-                    </mat-slide-toggle>
-                  </div>
-                </div>
-
-                <mat-divider></mat-divider>
-
-                <div class="setting-group">
-                  <div class="setting-header">
-                    <span class="setting-title">Release Channel</span>
-                  </div>
-                  <div class="setting-control">
-                    <mat-form-field appearance="fill">
-                      <mat-select
-                        [value]="rcloneUpdateChannel"
-                        (selectionChange)="changeRcloneChannel($event.value)"
-                      >
-                        @for (channel of rcloneChannels; track channel.value) {
-                          <mat-option
-                            [value]="channel.value"
-                            [matTooltip]="channel.description"
-                            matTooltipPosition="left"
-                          >
-                            <div class="channel-option">
-                              <span class="channel-name">{{ channel.label }}</span>
-                            </div>
-                          </mat-option>
-                        }
-                      </mat-select>
-                    </mat-form-field>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            @if (rcloneSkippedVersions.length > 0) {
-              <div class="skipped-section">
-                <h4>Skipped Rclone Updates</h4>
-                <div class="skipped-list">
-                  @for (version of rcloneSkippedVersions; track version) {
-                    <div class="skipped-item">
-                      <span class="version">{{ version }}</span>
-                      <button
-                        mat-icon-button
-                        (click)="unskipRcloneVersion(version)"
-                        matTooltip="Restore update"
-                        class="restore-button"
-                      >
-                        <mat-icon svgIcon="rotate-left"></mat-icon>
-                      </button>
-                    </div>
+              <div class="update-buttons">
+                <button
+                  matButton="filled"
+                  (click)="installRcloneUpdate()"
+                  [disabled]="rcloneUpdateStatus.updating"
+                >
+                  @if (rcloneUpdateStatus.updating) {
+                    <mat-spinner diameter="16"></mat-spinner>
+                    Updating...
+                  } @else {
+                    Update Rclone
                   }
+                </button>
+                <button mat-button (click)="skipRcloneUpdate()">Skip Version</button>
+              </div>
+            </div>
+          } @else {
+            <div class="update-card up-to-date">
+              <mat-icon svgIcon="circle-check"></mat-icon>
+              <div class="status-text">
+                <h4>Rclone Up to Date</h4>
+                <p>You're running the latest version</p>
+              </div>
+            </div>
+          }
+
+          <button
+            matButton="outlined"
+            (click)="checkForRcloneUpdates()"
+            [disabled]="rcloneUpdateStatus.checking"
+            class="check-button"
+          >
+            @if (rcloneUpdateStatus.checking) {
+              <mat-spinner diameter="16"></mat-spinner>
+              Checking...
+            } @else {
+              Check for Rclone Updates
+            }
+          </button>
+
+          <div class="settings-section">
+            <h4>Rclone Update Settings</h4>
+
+            <div class="settings-card">
+              <div class="setting-group">
+                <div class="setting-header">
+                  <span class="setting-title">Auto-Check Updates</span>
+                </div>
+                <div class="setting-control">
+                  <mat-slide-toggle [checked]="rcloneAutoCheck" (change)="toggleRcloneAutoCheck()">
+                  </mat-slide-toggle>
                 </div>
               </div>
-            }
+
+              <mat-divider></mat-divider>
+
+              <div class="setting-group">
+                <div class="setting-header">
+                  <span class="setting-title">Release Channel</span>
+                </div>
+                <div class="setting-control">
+                  <mat-form-field appearance="fill">
+                    <mat-select
+                      [value]="rcloneUpdateChannel"
+                      (selectionChange)="changeRcloneChannel($event.value)"
+                    >
+                      @for (channel of channels; track channel.value) {
+                        <mat-option
+                          [value]="channel.value"
+                          [matTooltip]="channel.description"
+                          matTooltipPosition="left"
+                        >
+                          <div class="channel-option">
+                            <span class="channel-name">{{ channel.label }}</span>
+                          </div>
+                        </mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                </div>
+              </div>
+            </div>
           </div>
+
+          @if (rcloneSkippedVersions.length > 0) {
+            <div class="skipped-section">
+              <h4>Skipped Rclone Updates</h4>
+              <div class="skipped-list">
+                @for (version of rcloneSkippedVersions; track version) {
+                  <div class="skipped-item">
+                    <span class="version">{{ version }}</span>
+                    <button
+                      mat-icon-button
+                      (click)="unskipRcloneVersion(version)"
+                      matTooltip="Restore update"
+                      class="restore-button"
+                    >
+                      <mat-icon svgIcon="rotate-left"></mat-icon>
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
+          }
         </div>
       }
 
-      @if (currentPage === 'credits') {
-        <div class="overlay-content">
+      @if (currentPage === 'Credits') {
+        <div class="modal-content">
           <h4>Development Team</h4>
           <div class="about-item">
             <mat-icon svgIcon="terminal"></mat-icon>
@@ -531,13 +520,12 @@
         </div>
       }
 
-      @if (currentPage === 'legal') {
-        <div class="overlay-content">
+      @if (currentPage === 'Legal') {
+        <div class="modal-content">
           <h4>License</h4>
           <p>
             This application is free and open source software distributed under the
             <a
-              class="link-button"
               href="https://www.gnu.org/licenses/gpl-3.0.html"
               target="_blank"
               rel="noopener noreferrer"
@@ -568,7 +556,7 @@
       animate.enter="slide-overlay-enter"
       animate.leave="slide-overlay-leave"
     >
-      <div class="overlay-header" data-tauri-drag-region>
+      <div class="modal-header" data-tauri-drag-region>
         <button mat-icon-button (click)="closeWhatsNew()">
           <mat-icon svgIcon="chevron-left"></mat-icon>
         </button>
@@ -578,7 +566,7 @@
         </button>
       </div>
 
-      <div class="overlay-content whats-new-content">
+      <div class="modal-content whats-new-content">
         @if (whatsNewType === 'app' && updateAvailable) {
           <div class="release-header">
             <div class="release-version">
@@ -595,7 +583,7 @@
                 [href]="updateAvailable.releaseUrl"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="view-on-github"
+                class="whats-new-button"
               >
                 <mat-icon svgIcon="open-link"></mat-icon>
                 <span style="text-wrap: nowrap">View on GitHub</span>
@@ -631,7 +619,7 @@
                 [href]="rcloneUpdateStatus.updateInfo.release_url"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="view-on-github"
+                class="whats-new-button"
               >
                 <mat-icon svgIcon="open-link"></mat-icon>
                 View on GitHub

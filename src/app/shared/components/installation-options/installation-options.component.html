@@ -1,14 +1,11 @@
 <div class="advanced-options" [ngClass]="mode">
-  <div
-    class="options-tabs"
-    [style.gridTemplateColumns]="'repeat(' + (tabOptions.length || 1) + ', 1fr)'"
-  >
-    @for (tab of tabOptions; track tab) {
+  <div class="options-tabs" [style.gridTemplateColumns]="'repeat(' + tabOptions.length + ', 1fr)'">
+    @for (tab of tabOptions; track tab.key) {
       <button
         type="button"
         class="option-tab"
         [class.active]="installLocation === tab.key"
-        (click)="setInstallLocation(tab.key)"
+        (click)="setLocation(tab.key)"
         [disabled]="disabled"
       >
         <mat-icon [svgIcon]="tab.icon"></mat-icon>
@@ -46,11 +43,7 @@
                 : 'Choose a custom location to install rclone.'
             }}
           </p>
-          <mat-form-field
-            [class]="mode === 'config' ? 'accent' : 'primary'"
-            appearance="fill"
-            class="compact-field"
-          >
+          <mat-form-field [class]="mode === 'config' ? 'accent' : 'primary'" appearance="fill">
             <mat-label>{{
               mode === 'config' ? 'Configuration File' : 'Installation Path'
             }}</mat-label>
@@ -62,14 +55,14 @@
             <button
               matSuffix
               matIconButton
-              (click)="selectCustomFolder()"
-              matTooltip="Browse"
+              (click)="selectCustomPath()"
               [disabled]="disabled"
+              matTooltip="Browse"
             >
               <mat-icon [svgIcon]="mode === 'config' ? 'file' : 'folder'"></mat-icon>
             </button>
             @if (customPathControl.invalid && customPathControl.touched) {
-              <mat-error>{{ getValidationMessage(customPathControl) }}</mat-error>
+              <mat-error>{{ getError(customPathControl) }}</mat-error>
             }
           </mat-form-field>
         </div>
@@ -90,31 +83,29 @@
             <button
               matSuffix
               matIconButton
-              (click)="selectExistingBinary()"
-              matTooltip="Browse"
+              (click)="selectBinary()"
               [disabled]="disabled"
+              matTooltip="Browse"
             >
               <mat-icon svgIcon="file"></mat-icon>
             </button>
             @if (existingBinaryControl.invalid && existingBinaryControl.touched) {
-              <mat-error>{{ getValidationMessage(existingBinaryControl) }}</mat-error>
+              <mat-error>{{ getError(existingBinaryControl) }}</mat-error>
             }
           </mat-form-field>
 
-          @if (existingBinaryPath.trim().length > 0) {
+          @if (existingBinaryControl.value?.trim()) {
             <div class="binary-status" [class]="binaryTestResult">
               <mat-icon
-                [svgIcon]="getBinaryTestStatusIcon()"
+                [svgIcon]="getStatusIcon()"
                 [class.animate-spin]="binaryTestResult === 'testing'"
               ></mat-icon>
-              <span>{{ getBinaryTestStatusText() }}</span>
+              <span>{{ getStatusText() }}</span>
               @if (binaryTestResult !== 'valid') {
                 <button
                   matButton="outlined"
-                  (click)="testSelectedBinary()"
-                  [disabled]="
-                    disabled || binaryTestResult === 'testing' || !existingBinaryPath.trim()
-                  "
+                  (click)="testBinary()"
+                  [disabled]="disabled || binaryTestResult === 'testing'"
                 >
                   {{ binaryTestResult === 'testing' ? 'Testing...' : 'Test' }}
                 </button>

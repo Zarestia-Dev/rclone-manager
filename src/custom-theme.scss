@@ -1,77 +1,273 @@
-// Custom Theming for Angular Material
-// For more information: https://material.angular.io/guide/theming
+// ============================================================================
+// RCLONE MANAGER - LIBADWAITA + ANGULAR MATERIAL THEME
+// ============================================================================
+// This theme bridges GNOME libadwaita CSS variables with Angular Material M3.
+//
+// Structure:
+//   1. GNOME Palette - Official GNOME HIG colors (single source of truth)
+//   2. Libadwaita Semantic - Theme-aware UI colors (light/dark)
+//   3. Angular Material Bridge - Maps libadwaita → --mat-sys-* variables
+//   4. Legacy Aliases - Backward compatibility with existing components
+// ============================================================================
+
 @use "@angular/material" as mat;
 @use "sass:map";
 @use "sass:color";
-// Plus imports for other components in your app.
-
-// Import centralized animations
 @use "animations";
 
-// Adwaita Green Primary Palette (M3 format)
-$adwaita-green-palette: (
-  0: #167345,
-  // darkest
-  10: #167345,
-  // very dark
-  20: #ffffff,
-  // dark
-  30: #1e8a57,
-  // dark
-  40: #2ec27e,
-  // medium-dark
-  50: #2ec27e,
-  // medium
-  60: #33d17a,
-  // primary
-  70: #57e389,
-  // light-primary
-  80: #2ec27e,
-  // light
-  90: #b8f0c8,
-  // lighter
-  95: #d8f5e0,
-  // very light
-  100: #ffffff,
-  // lightest
-  // Secondary Palette (M3 format)
-  // Using Adwaita Blue as secondary color
-  secondary: (
-      0: #103b6c,
-      // darkest
-      10: #103b6c,
-      // very dark
-      20: #154d90,
-      // dark
-      30: #1a5fb4,
-      // dark
-      40: #1c71d8,
-      // medium-dark
-      50: #3584e4,
-      // medium
-      60: #62a0ea,
-      // primary
-      70: #99c1f1,
-      // light-primary
-      80: #b8d9ff,
-      // light
-      90: #d8ebff,
-      // lighter
-      95: #f0f7ff,
-      // very light
-      98: #f0f7ff,
-      // almost white
-      99: #f0f7ff,
-      // very light
-      100: #f0f7ff,
-      // lightest
-    ),
+// ============================================================================
+// SECTION 1: GNOME COLOR PALETTE (Single Source of Truth)
+// ============================================================================
+// Official GNOME HIG colors: https://developer.gnome.org/hig/reference/palette.html
+// These never change between light/dark - they are the raw color values.
 
+:root {
+  // Blue
+  --gnome-blue-1: #99c1f1;
+  --gnome-blue-2: #62a0ea;
+  --gnome-blue-3: #3584e4;
+  --gnome-blue-4: #1c71d8;
+  --gnome-blue-5: #1a5fb4;
+
+  // Green
+  --gnome-green-1: #8ff0a4;
+  --gnome-green-2: #57e389;
+  --gnome-green-3: #33d17a;
+  --gnome-green-4: #2ec27e;
+  --gnome-green-5: #26a269;
+
+  // Yellow
+  --gnome-yellow-1: #f9f06b;
+  --gnome-yellow-2: #f8e45c;
+  --gnome-yellow-3: #f6d32d;
+  --gnome-yellow-4: #f5c211;
+  --gnome-yellow-5: #e5a50a;
+
+  // Orange
+  --gnome-orange-1: #ffbe6f;
+  --gnome-orange-2: #ffa348;
+  --gnome-orange-3: #ff7800;
+  --gnome-orange-4: #e66100;
+  --gnome-orange-5: #c64600;
+
+  // Red
+  --gnome-red-1: #f66151;
+  --gnome-red-2: #ed333b;
+  --gnome-red-3: #e01b24;
+  --gnome-red-4: #c01c28;
+  --gnome-red-5: #a51d2d;
+
+  // Purple
+  --gnome-purple-1: #dc8add;
+  --gnome-purple-2: #c061cb;
+  --gnome-purple-3: #9141ac;
+  --gnome-purple-4: #813d9c;
+  --gnome-purple-5: #613583;
+
+  // Neutrals - Light
+  --gnome-light-1: #ffffff;
+  --gnome-light-2: #f6f5f4;
+  --gnome-light-3: #deddda;
+  --gnome-light-4: #c0bfbc;
+  --gnome-light-5: #9a9996;
+
+  // Neutrals - Dark
+  --gnome-dark-1: #77767b;
+  --gnome-dark-2: #5e5c64;
+  --gnome-dark-3: #3d3846;
+  --gnome-dark-4: #241f31;
+  --gnome-dark-5: #000000;
+}
+
+// ============================================================================
+// SECTION 2: LIBADWAITA SEMANTIC VARIABLES (Light/Dark Mode)
+// ============================================================================
+// Based on: https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.2/css-variables.html
+// These change between light and dark themes.
+
+.light {
+  color-scheme: light;
+
+  // Window Colors
+  --window-bg-color: #fafafb;
+  --window-fg-color: rgba(0, 0, 6, 0.8);
+
+  // View Colors (content areas)
+  --view-bg-color: #ffffff;
+  --view-fg-color: var(--window-fg-color);
+
+  // Headerbar Colors
+  --headerbar-bg-color: #ffffff;
+  --headerbar-fg-color: var(--window-fg-color);
+  --headerbar-shade-color: rgba(0, 0, 0, 0.12);
+
+  // Sidebar Colors
+  --sidebar-bg-color: #ebebed;
+  --sidebar-fg-color: var(--window-fg-color);
+
+  // Card Colors
+  --card-bg-color: #ffffff;
+  --card-fg-color: var(--window-fg-color);
+  --card-shade-color: rgba(0, 0, 6, 0.07);
+
+  // Popover/Menu Colors
+  --popover-bg-color: #ffffff;
+  --popover-fg-color: var(--window-fg-color);
+
+  // Accent Colors (Primary action color - Blue)
+  --accent-bg-color: var(--gnome-blue-3);
+  --accent-fg-color: #ffffff;
+  --accent-color: var(--gnome-blue-4); // Standalone (darker for light mode)
+
+  // Success Colors (Green)
+  --success-bg-color: var(--gnome-green-4);
+  --success-fg-color: #ffffff;
+  --success-color: var(--gnome-green-5);
+
+  // Warning Colors (Yellow)
+  --warning-bg-color: var(--gnome-yellow-5);
+  --warning-fg-color: rgba(0, 0, 0, 0.8);
+  --warning-color: var(--gnome-yellow-5);
+
+  // Destructive/Error Colors (Red)
+  --destructive-bg-color: var(--gnome-red-3);
+  --destructive-fg-color: #ffffff;
+  --destructive-color: var(--gnome-red-4);
+
+  // Interaction Colors (using color-mix for theme-aware opacity)
+  --border-color: color-mix(in srgb, currentColor 15%, transparent);
+  --hover-bg-color: color-mix(in srgb, currentColor 7%, transparent);
+  --active-bg-color: color-mix(in srgb, currentColor 16%, transparent);
+  --selected-bg-color: color-mix(in srgb, currentColor 10%, transparent);
+
+  // Dim/Muted
+  --dim-color: color-mix(in srgb, var(--window-fg-color) 55%, transparent);
+
+  // Shadows
+  --shadow-color: rgba(0, 0, 0, 0.08);
+
+  // RGB Variants (for rgba() usage)
+  --window-bg-color-rgb: 250, 250, 251;
+  --window-fg-color-rgb: 0, 0, 6;
+  --view-bg-color-rgb: 255, 255, 255;
+  --sidebar-bg-color-rgb: 235, 235, 237;
+  --dim-color-rgb: 147, 144, 144;
+}
+
+.dark {
+  color-scheme: dark;
+
+  // Window Colors
+  --window-bg-color: #222226;
+  --window-fg-color: #ffffff;
+
+  // View Colors
+  --view-bg-color: #1e1e1e;
+  --view-fg-color: var(--window-fg-color);
+
+  // Headerbar Colors
+  --headerbar-bg-color: #2e2e32;
+  --headerbar-fg-color: var(--window-fg-color);
+  --headerbar-shade-color: rgba(0, 0, 0, 0.9);
+
+  // Sidebar Colors
+  --sidebar-bg-color: #2e2e32;
+  --sidebar-fg-color: var(--window-fg-color);
+
+  // Card Colors
+  --card-bg-color: rgba(255, 255, 255, 0.08);
+  --card-fg-color: var(--window-fg-color);
+  --card-shade-color: rgba(0, 0, 6, 0.36);
+
+  // Popover/Menu Colors
+  --popover-bg-color: #36363a;
+  --popover-fg-color: var(--window-fg-color);
+
+  // Accent Colors (lighter for dark mode)
+  --accent-bg-color: var(--gnome-blue-3);
+  --accent-fg-color: #ffffff;
+  --accent-color: var(--gnome-blue-1);
+
+  // Success Colors
+  --success-bg-color: var(--gnome-green-5);
+  --success-fg-color: #ffffff;
+  --success-color: var(--gnome-green-1);
+
+  // Warning Colors
+  --warning-bg-color: #cd9309;
+  --warning-fg-color: rgba(0, 0, 0, 0.8);
+  --warning-color: var(--gnome-yellow-1);
+
+  // Destructive/Error Colors
+  --destructive-bg-color: var(--gnome-red-4);
+  --destructive-fg-color: #ffffff;
+  --destructive-color: var(--gnome-red-1);
+
+  // Interaction Colors
+  --border-color: color-mix(in srgb, currentColor 15%, transparent);
+  --hover-bg-color: color-mix(in srgb, currentColor 7%, transparent);
+  --active-bg-color: color-mix(in srgb, currentColor 16%, transparent);
+  --selected-bg-color: color-mix(in srgb, currentColor 10%, transparent);
+
+  // Dim/Muted
+  --dim-color: color-mix(in srgb, var(--window-fg-color) 55%, transparent);
+
+  // Shadows
+  --shadow-color: rgba(0, 0, 0, 0.3);
+
+  // RGB Variants (for rgba() usage)
+  --window-bg-color-rgb: 34, 34, 38;
+  --window-fg-color-rgb: 255, 255, 255;
+  --view-bg-color-rgb: 30, 30, 30;
+  --sidebar-bg-color-rgb: 46, 46, 50;
+  --dim-color-rgb: 147, 144, 144;
+}
+
+// ============================================================================
+// SECTION 3: ANGULAR MATERIAL M3 THEME BRIDGE
+// ============================================================================
+// Maps libadwaita semantic variables to Angular Material's --mat-sys-* system.
+// This allows Material components to automatically use libadwaita colors.
+
+// Angular Material Theme Definition (using GNOME colors for M3 palettes)
+$gnome-green-palette: (
+  0: #0d3d24,
+  10: #167345,
+  20: #1e8a57,
+  25: #228f5c,
+  30: #26a269,
+  35: #2ab670,
+  40: #2ec27e,
+  50: #33d17a,
+  60: #57e389,
+  70: #8ff0a4,
+  80: #b8f0c8,
+  90: #d8f5e0,
+  95: #ecfaee,
+  99: #f8fdf9,
+  100: #ffffff,
+  secondary: (
+    0: #103b6c,
+    10: #103b6c,
+    20: #154d90,
+    30: #1a5fb4,
+    40: #1c71d8,
+    50: #3584e4,
+    60: #62a0ea,
+    70: #99c1f1,
+    80: #b8d9ff,
+    90: #d8ebff,
+    95: #f0f7ff,
+    99: #f8fbff,
+    100: #ffffff,
+  ),
   neutral: (
     0: #000000,
-    10: #000000,
-    // Material Design 3 card background (dark mode)
+    10: #1a1a1a,
+    17: #2a2a2a,
     20: #313030,
+    22: #353434,
+    24: #3a3939,
     25: #3c3b3b,
     30: #474646,
     35: #535252,
@@ -80,459 +276,401 @@ $adwaita-green-palette: (
     60: #929090,
     70: #adabaa,
     80: #c9c6c5,
-    90: #e5e2e1,
-    // Material Design 3 slide toggle outline (dark mode)
-    95: #f4f0ef,
-    98: #ffffff,
-    // Expansion panel background (Light mode)
-    99: #f6feff,
-    100: #ffffff,
-    4: #0e0e0e,
-    6: #000000,
-    // Material Design 3 expansion panel background (dark mode)
-    12: #000000,
-    // Material Design 3 dropdown background (dark mode)
-    17: #2a2a2a,
-    22: #353434,
-    24: #3a3939,
     87: #ddd9d9,
+    90: #e5e2e1,
     92: #ebe7e7,
-    94: #ffffff,
-    // Material Design 3 dropdown background (light mode)
-    96: #ffffff,
-    // Material Design 3 card background (light mode)
+    94: #f0eded,
+    95: #f4f0ef,
+    96: #f6f3f2,
+    98: #faf8f7,
+    99: #fcfbfa,
+    100: #ffffff,
   ),
   neutral-variant: (
     0: #000000,
     10: #181c1d,
     20: #2d3132,
     25: #383c3d,
-    30: #000000,
-    // Material Design 3 icon color (light mode)
+    30: #434748,
     35: #4f5354,
     40: #5b5f60,
     50: #747878,
     60: #8e9192,
     70: #a8acac,
     80: #c4c7c8,
-    90: #ffffff,
-    // Material Design 3 icon color outline (dark mode)
+    90: #e0e3e4,
     95: #eef1f2,
     98: #f7fafa,
     99: #fafdfd,
     100: #ffffff,
   ),
-
-  // Error Palette (M3 format)
-  // Using Adwaita Red as error color
   error: (
-      0: #700e17,
-      // darkest
-      10: #700e17,
-      // very dark
-      20: #8b1522,
-      // dark
-      30: #a51d2d,
-      // dark
-      40: #c01c28,
-      // medium-dark
-      50: #e01b24,
-      // medium
-      60: #ed333b,
-      // primary
-      70: #f66151,
-      // light-primary
-      80: #ed333b,
-      // light (Using 60 color for better contrast)
-      90: #ffcdd2,
-      // lighter
-      95: #ffebee,
-      // very light
-      98: #ffebee,
-      // almost white
-      99: #ffebee,
-      // very light
-      100: #ffebee,
-      // lightest
-    ),
-);
-
-// Adwaita Blue Accent Palette (M3 format)
-$adwaita-blue-palette: (
-  0: #103b6c,
-  // darkest
-  10: #103b6c,
-  // very dark
-  20: #154d90,
-  // dark
-  // 30: #1a5fb4,
-  30: #103b6c,
-  // dark (changed for better contrast to 10)
-  40: #1c71d8,
-  // medium-dark
-  50: #3584e4,
-  // medium
-  60: #62a0ea,
-  // primary
-  70: #99c1f1,
-  // light-primary
-  80: #b8d9ff,
-  // light
-  90: #d8ebff,
-  // lighter
-  95: #f0f7ff,
-  // very light
-  98: #f0f7ff,
-  // almost white
-  99: #f0f7ff,
-  // very light
-  100: #f0f7ff, // lightest
-);
-
-// Adwaita Red Warn Palette (M3 format)
-$adwaita-red-palette: (
-  0: #700e17,
-  // darkest
-  10: #700e17,
-  // very dark
-  20: #8b1522,
-  // dark
-  30: #a51d2d,
-  // dark
-  40: #c01c28,
-  // medium-dark
-  50: #e01b24,
-  // medium
-  60: #ed333b,
-  // primary
-  70: #f66151,
-  // light-primary
-  80: #faa7a0,
-  // light
-  90: #ffcdd2,
-  // lighter
-  95: #ffebee,
-  // very light
-  98: #ffebee,
-  // almost white
-  99: #ffebee,
-  // very light
-  100: #ffebee, // lightest
-);
-
-// Yellow Palette (M3 format)
-$adwaita-yellow-palette: (
-  0: #b57900,
-  // darkest
-  10: #b57900,
-  // very dark
-  20: #d38f00,
-  // dark
-  30: #e5a50a,
-  // dark
-  40: #f5c211,
-  // medium-dark
-  50: #f6d32d,
-  // medium
-  60: #f8e45c,
-  // primary
-  70: #f9f06b,
-  // light-primary
-  80: #fff5b8,
-  // light
-  90: #fff9d8,
-  // lighter
-  95: #fffdf0,
-  // very light
-  98: #fffdf0,
-  // almost white
-  99: #fffdf0,
-  // very light
-  100: #fffdf0, // lightest
-);
-
-// Orange Palette (M3 format)
-$adwaita-orange-palette: (
-  0: #842500,
-  // darkest
-  10: #842500,
-  // very dark
-  20: #a53500,
-  // dark
-  30: #c64600,
-  // dark
-  40: #e66100,
-  // medium-dark
-  50: #ff7800,
-  // medium
-  60: #ffa348,
-  // primary
-  70: #ffbe6f,
-  // light-primary
-  80: #ffddb8,
-  // light
-  90: #ffebd8,
-  // lighter
-  95: #fff8f0,
-  // very light
-  98: #fff8f0,
-  // almost white
-  99: #fff8f0,
-  // very light
-  100: #fff8f0, // lightest
-);
-
-// Purple Palette (M3 format)
-$adwaita-purple-palette: (
-  0: #3d1f51,
-  // darkest
-  10: #3d1f51,
-  // very dark
-  20: #4f2a6a,
-  // dark
-  30: #613583,
-  // dark
-  40: #813d9c,
-  // medium-dark
-  50: #9141ac,
-  // medium
-  60: #c061cb,
-  // primary
-  70: #dc8add,
-  // light-primary
-  80: #e8b8e8,
-  // light
-  90: #f0d8f0,
-  // lighter
-  95: #faf0fa,
-  // very light
-  98: #faf0fa,
-  // almost white
-  99: #faf0fa,
-  // very light
-  100: #faf0fa, // lightest
+    0: #700e17,
+    10: #700e17,
+    20: #8b1522,
+    30: #a51d2d,
+    40: #c01c28,
+    50: #e01b24,
+    60: #ed333b,
+    70: #f66151,
+    80: #faa7a0,
+    90: #ffcdd2,
+    95: #ffebee,
+    99: #fffbfb,
+    100: #ffffff,
+  ),
 );
 
 $light-theme: (
   color: (
     theme-type: light,
-    primary: $adwaita-green-palette,
-    tertiary: $adwaita-blue-palette,
-    error: $adwaita-red-palette,
+    primary: $gnome-green-palette,
+    tertiary: map.get($gnome-green-palette, secondary),
   ),
 );
 
 $dark-theme: (
   color: (
     theme-type: dark,
-    primary: $adwaita-green-palette,
-    tertiary: $adwaita-blue-palette,
-    error: $adwaita-red-palette,
+    primary: $gnome-green-palette,
+    tertiary: map.get($gnome-green-palette, secondary),
   ),
 );
 
+// Apply Material themes with Libadwaita surface overrides
 .light {
   @include mat.theme($light-theme);
 
-  & {
-    color-scheme: light;
-    /* Define custom colors for light mode */
-    --app-background: #fafafa;
-    --secondary-background: #ffffff;
-    --banner-background: #d4d4d7;
-    --sidebar-background: #f5f5f5;
-    --box-shadow: 0 0 0 1px rgba(232, 232, 233, 1), 0 0 4px 1px rgba(10, 10, 11, 0.06);
-    --selected-tab-color: #e6e6e7;
-    --hover-color: rgb(200, 200, 200);
-    --app-text-color: #000000;
-    --secondary-text-color: #939090;
-    --button-hover: #dddddd;
-    --theme-border: #dbdbdb;
-    --input-background: #ebebeb;
+  // ===== MATERIAL M3 SURFACE OVERRIDES =====
+  // Force Material to use pure libadwaita neutrals instead of tinted surfaces
 
-    /* Define rgb variables for colors */
-    --app-background-rgb: 250, 250, 250;
-    --secondary-background-rgb: 255, 255, 255;
-    --app-text-color-rgb: 0, 0, 0;
-    --secondary-text-color-rgb: 147, 144, 144;
-  }
+  // Surface colors (backgrounds)
+  --mat-sys-background: var(--window-bg-color);
+  --mat-sys-surface: var(--window-bg-color);
+  --mat-sys-surface-bright: var(--view-bg-color);
+  --mat-sys-surface-dim: var(--sidebar-bg-color);
+  --mat-sys-surface-container: var(--view-bg-color);
+  --mat-sys-surface-container-low: var(--sidebar-bg-color);
+  --mat-sys-surface-container-lowest: var(--view-bg-color);
+  --mat-sys-surface-container-high: var(--card-bg-color);
+  --mat-sys-surface-container-highest: var(--card-bg-color);
+  --mat-sys-surface-variant: var(--sidebar-bg-color);
+
+  // On-surface colors (text on backgrounds)
+  --mat-sys-on-background: var(--window-fg-color);
+  --mat-sys-on-surface: var(--window-fg-color);
+  --mat-sys-on-surface-variant: var(--window-fg-color);
+
+  // Outline colors (borders)
+  --mat-sys-outline: var(--border-color);
+  --mat-sys-outline-variant: var(--border-color);
+
+  // Inverse colors (for snackbars, tooltips)
+  --mat-sys-inverse-surface: #2e2e32;
+  --mat-sys-inverse-on-surface: #ffffff;
+  --mat-sys-inverse-primary: var(--gnome-green-1);
+
+  // Scrim/shadow
+  --mat-sys-scrim: rgba(0, 0, 0, 0.3);
+  --mat-sys-shadow: rgba(0, 0, 0, 0.15);
+
+  // Primary overrides (keep green for buttons/actions)
+  --mat-sys-primary: var(--gnome-green-4);
+  --mat-sys-on-primary: #ffffff;
+  --mat-sys-primary-container: color-mix(in srgb, var(--gnome-green-4) 15%, var(--view-bg-color));
+  --mat-sys-on-primary-container: var(--gnome-green-5);
+
+  // Secondary (neutral for less emphasis)
+  --mat-sys-secondary: var(--dim-color);
+  --mat-sys-on-secondary: #ffffff;
+  --mat-sys-secondary-container: var(--sidebar-bg-color);
+  --mat-sys-on-secondary-container: var(--window-fg-color);
+
+  // Tertiary (accent blue)
+  --mat-sys-tertiary: var(--gnome-blue-3);
+  --mat-sys-on-tertiary: #ffffff;
+  --mat-sys-tertiary-container: color-mix(in srgb, var(--gnome-blue-3) 15%, var(--view-bg-color));
+  --mat-sys-on-tertiary-container: var(--gnome-blue-5);
+
+  // Error colors
+  --mat-sys-error: var(--gnome-red-3);
+  --mat-sys-on-error: #ffffff;
+  --mat-sys-error-container: color-mix(in srgb, var(--gnome-red-3) 15%, var(--view-bg-color));
+  --mat-sys-on-error-container: var(--gnome-red-5);
 }
-
-/* 🌙 Dark Theme */
 
 .dark {
   @include mat.theme($dark-theme);
 
-  & {
-    color-scheme: dark;
-    /* Define custom colors for dark mode */
-    --app-background: #222226;
-    --secondary-background: #000000;
-    --banner-background: #3d3d42;
-    --sidebar-background: #2e2e32;
-    --box-shadow: 0 0 0 1px rgba(32, 32, 36, 1), 0 0 4px 1px rgba(var(--app-text-color-rgb), 0.06);
-    --selected-tab-color: #2f2f30;
-    --hover-color: rgb(55, 55, 55);
-    --app-text-color: #ffffff;
-    --secondary-text-color: #939090;
-    --button-hover: #333;
-    --theme-border: #555;
-    --input-background: #47474b;
+  // ===== MATERIAL M3 SURFACE OVERRIDES =====
+  // Force Material to use pure libadwaita neutrals instead of tinted surfaces
 
-    /* Define rgb variables for colors */
-    --app-background-rgb: 34, 34, 38;
-    --secondary-background-rgb: 0, 0, 0;
-    --app-text-color-rgb: 255, 255, 255;
-    --secondary-text-color-rgb: 147, 144, 144;
-  }
+  // Surface colors (backgrounds)
+  --mat-sys-background: var(--window-bg-color);
+  --mat-sys-surface: var(--window-bg-color);
+  --mat-sys-surface-bright: var(--popover-bg-color);
+  --mat-sys-surface-dim: var(--view-bg-color);
+  --mat-sys-surface-container: var(--view-bg-color);
+  --mat-sys-surface-container-low: var(--view-bg-color);
+  --mat-sys-surface-container-lowest: var(--view-bg-color);
+  --mat-sys-surface-container-high: var(--sidebar-bg-color);
+  --mat-sys-surface-container-highest: var(--popover-bg-color);
+  --mat-sys-surface-variant: var(--sidebar-bg-color);
+
+  // On-surface colors (text on backgrounds)
+  --mat-sys-on-background: var(--window-fg-color);
+  --mat-sys-on-surface: var(--window-fg-color);
+  --mat-sys-on-surface-variant: var(--window-fg-color);
+
+  // Outline colors (borders)
+  --mat-sys-outline: var(--border-color);
+  --mat-sys-outline-variant: var(--border-color);
+
+  // Inverse colors (for snackbars, tooltips)
+  --mat-sys-inverse-surface: #fafafb;
+  --mat-sys-inverse-on-surface: rgba(0, 0, 6, 0.8);
+  --mat-sys-inverse-primary: var(--gnome-green-4);
+
+  // Scrim/shadow
+  --mat-sys-scrim: rgba(0, 0, 0, 0.5);
+  --mat-sys-shadow: rgba(0, 0, 0, 0.3);
+
+  // Primary overrides (keep green for buttons/actions)
+  --mat-sys-primary: var(--gnome-green-4);
+  --mat-sys-on-primary: #ffffff;
+  --mat-sys-primary-container: color-mix(in srgb, var(--gnome-green-4) 20%, var(--view-bg-color));
+  --mat-sys-on-primary-container: var(--gnome-green-1);
+
+  // Secondary (neutral for less emphasis)
+  --mat-sys-secondary: var(--dim-color);
+  --mat-sys-on-secondary: #ffffff;
+  --mat-sys-secondary-container: var(--sidebar-bg-color);
+  --mat-sys-on-secondary-container: var(--window-fg-color);
+
+  // Tertiary (accent blue)
+  --mat-sys-tertiary: var(--gnome-blue-3);
+  --mat-sys-on-tertiary: #ffffff;
+  --mat-sys-tertiary-container: color-mix(in srgb, var(--gnome-blue-3) 20%, var(--view-bg-color));
+  --mat-sys-on-tertiary-container: var(--gnome-blue-1);
+
+  // Error colors
+  --mat-sys-error: var(--gnome-red-3);
+  --mat-sys-on-error: #ffffff;
+  --mat-sys-error-container: color-mix(in srgb, var(--gnome-red-3) 20%, var(--view-bg-color));
+  --mat-sys-on-error-container: var(--gnome-red-1);
 }
 
+// ============================================================================
+// SECTION 4: SEMANTIC COLORS & DESIGN SYSTEM TOKENS
+// ============================================================================
+// App-specific semantic colors and design system tokens.
+
 :root {
-  --accent-color-rgb:
-    #{color.channel(map.get($adwaita-blue-palette, 50), "red", $space: rgb)},
-    #{color.channel(map.get($adwaita-blue-palette, 50), "green", $space: rgb)},
-    #{color.channel(map.get($adwaita-blue-palette, 50), "blue", $space: rgb)};
-  --warn-color-rgb:
-    #{color.channel(map.get($adwaita-red-palette, 50), "red", $space: rgb)},
-    #{color.channel(map.get($adwaita-red-palette, 50), "green", $space: rgb)},
-    #{color.channel(map.get($adwaita-red-palette, 50), "blue", $space: rgb)};
-  --primary-color-rgb:
-    #{color.channel(map.get($adwaita-green-palette, 50), "red", $space: rgb)},
-    #{color.channel(map.get($adwaita-green-palette, 50), "green", $space: rgb)},
-    #{color.channel(map.get($adwaita-green-palette, 50), "blue", $space: rgb)};
-  --purple-rgb:
-    #{color.channel(map.get($adwaita-purple-palette, 50), "red", $space: rgb)},
-    #{color.channel(map.get($adwaita-purple-palette, 50), "green", $space: rgb)},
-    #{color.channel(map.get($adwaita-purple-palette, 50), "blue", $space: rgb)};
-  --orange-rgb:
-    #{color.channel(map.get($adwaita-orange-palette, 50), "red", $space: rgb)},
-    #{color.channel(map.get($adwaita-orange-palette, 50), "green", $space: rgb)},
-    #{color.channel(map.get($adwaita-orange-palette, 50), "blue", $space: rgb)};
-  --yellow-rgb:
-    #{color.channel(map.get($adwaita-yellow-palette, 50), "red", $space: rgb)},
-    #{color.channel(map.get($adwaita-yellow-palette, 50), "green", $space: rgb)},
-    #{color.channel(map.get($adwaita-yellow-palette, 50), "blue", $space: rgb)};
-  --light-green-rgb:
-    #{color.channel(map.get($adwaita-green-palette, 30), "red", $space: rgb)},
-    #{color.channel(map.get($adwaita-green-palette, 30), "green", $space: rgb)},
-    #{color.channel(map.get($adwaita-green-palette, 30), "blue", $space: rgb)};
-  --light-orange-rgb:
-    #{color.channel(map.get($adwaita-orange-palette, 30), "red", $space: rgb)},
-    #{color.channel(map.get($adwaita-orange-palette, 30), "green", $space: rgb)},
-    #{color.channel(map.get($adwaita-orange-palette, 30), "blue", $space: rgb)};
-  --light-blue-rgb:
-    #{color.channel(map.get($adwaita-blue-palette, 30), "red", $space: rgb)},
-    #{color.channel(map.get($adwaita-blue-palette, 30), "green", $space: rgb)},
-    #{color.channel(map.get($adwaita-blue-palette, 30), "blue", $space: rgb)};
-  --red-rgb:
-    #{color.channel(map.get($adwaita-red-palette, 50), "red", $space: rgb)},
-    #{color.channel(map.get($adwaita-red-palette, 50), "green", $space: rgb)},
-    #{color.channel(map.get($adwaita-red-palette, 50), "blue", $space: rgb)};
+  // ===== SEMANTIC COLOR ALIASES =====
+  // These map to the GNOME palette for app-specific semantic meaning
 
-  --accent-color: #{map.get($adwaita-blue-palette, 50)};
-  --warn-color: #{map.get($adwaita-red-palette, 50)};
-  --primary-color: #{map.get($adwaita-green-palette, 50)};
-  --purple: #{map.get($adwaita-purple-palette, 50)};
-  --orange: #{map.get($adwaita-orange-palette, 50)};
-  --yellow: #{map.get($adwaita-yellow-palette, 50)};
-  --light-green: #{map.get($adwaita-green-palette, 80)};
-  --light-orange: #{map.get($adwaita-orange-palette, 80)};
-  --light-blue: #{map.get($adwaita-blue-palette, 80)};
-  --light-purple: #{map.get($adwaita-purple-palette, 80)};
-  --light-yellow: #{map.get($adwaita-yellow-palette, 80)};
-  --red: #{map.get($adwaita-red-palette, 50)};
+  --primary-color: var(--gnome-green-4);
+  --accent-color: var(--gnome-blue-3);
+  --warn-color: var(--gnome-red-3);
+  --orange: var(--gnome-orange-3);
+  --yellow: var(--gnome-yellow-3);
+  --purple: var(--gnome-purple-3);
+  --red: var(--gnome-red-3);
 
-  -webkit-font-smoothing: antialiased;
+  // Light color variants
+  --light-green: var(--gnome-green-1);
+  --light-blue: var(--gnome-blue-1);
+  --light-orange: var(--gnome-orange-1);
+  --light-purple: var(--gnome-purple-1);
+  --light-yellow: var(--gnome-yellow-1);
 
-  --onboarding-background:
-    radial-gradient(circle at 20% 50%, rgba(var(--primary-color-rgb), 0.5) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(var(--accent-color-rgb), 0.5) 0%, transparent 50%),
-    radial-gradient(circle at 40% 80%, rgba(var(--primary-color-rgb), 0.5) 0%, transparent 50%),
-    linear-gradient(
-      135deg,
-      rgba(var(--app-background-rgb), 0.9) 0%,
-      rgba(var(--secondary-background-rgb), 0.9) 100%
-    );
+  // RGB variants for semantic colors (for rgba() usage)
+  --accent-color-rgb: 53, 132, 228;
+  --warn-color-rgb: 224, 27, 36;
+  --primary-color-rgb: 46, 194, 126;
+  --purple-rgb: 145, 65, 172;
+  --orange-rgb: 255, 120, 0;
+  --yellow-rgb: 246, 211, 45;
+  --red-rgb: 224, 27, 36;
 
-  /* ===== DESIGN SYSTEM TOKENS ===== */
+  // UI composition variables (libadwaita style - outlines instead of shadows)
+  --box-shadow: 0 0 0 1px var(--card-shade-color);
+  --shade-color: rgba(0, 0, 6, 0.07);
 
-  /* Spacing Scale */
-  --space-xxs: 4px; // Extra small padding, gaps
-  --space-xs: 8px; // Small padding, gaps
-  --space-sm: 12px; // Medium padding, gaps
-  --space-md: 16px; // Default spacing unit
-  --space-lg: 20px; // Large spacing
-  --space-xl: 24px; // Extra large spacing
-  --space-2xl: 32px; // Section spacing
+  // ===== DESIGN SYSTEM TOKENS =====
 
-  /* Border Radius Scale */
-  --radius-xxs: 4px; // Extra small elements (small buttons, icons)
-  --radius-xs: 8px; // Small elements (inputs, small buttons)
-  --radius-sm: 12px; // Medium elements (cards, panels, buttons)
-  --radius-md: 16px; // Large elements (modals, containers)
-  --radius-lg: 24px; // Special elements (usage bars)
+  // Spacing Scale
+  --space-xxs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 20px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
 
-  /* Component-specific Aliases (mapped to scale) */
-  --border-radius: var(--radius-xs); // 8px
-  --button-border-radius: var(--radius-sm); // 12px
-  --input-border-radius: var(--radius-md); // 16px - Border radius for input fields
-  --card-border-radius: var(--radius-sm); // 12px
-  --panel-radius: var(--radius-sm); // 12px
-  --modal-radius: var(--radius-md); // 16px
-  --app-border-radius: var(--radius-md); // 16px
-  --icon-radius: var(--radius-md); // 16px
-  --item-radius: var(--radius-sm); // 12px
-  --badge-radius: var(--radius-sm); // 12px
-  --status-radius: var(--radius-sm); // 12px
-  --usage-bar-radius: var(--radius-lg); // 24px
-  --card-border-radius-large: var(--radius-md); // 16px
-  --divider-radius: 1px; // Special case
+  // Border Radius Scale
+  --radius-xxs: 4px;
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
 
-  /* Spacing Aliases (mapped to scale) */
-  --title-bar-padding: var(--space-xs); // 8px
-  --banner-padding: var(--space-sm); // 12px
-  --item-padding: var(--space-md); // 16px
-  --space-md: var(--space-lg); // 20px
-  --container-padding: var(--space-xl); // 24px
-  --header-gap: var(--space-md); // 16px
-  --button-gap: var(--space-md); // 16px
-  --panel-gap: var(--space-xl); // 24px
-  --container-gap: var(--space-2xl); // 32px
-  --modal-gap: var(--space-xl); // 24px
-  --section-gap: var(--space-2xl); // 32px
-  --legend-gap: var(--space-xl); // 24px
+  // Component-specific radius aliases
+  --border-radius: var(--radius-xs);
+  --button-border-radius: var(--radius-sm);
+  --input-border-radius: var(--radius-md);
+  --card-border-radius: var(--radius-sm);
+  --panel-radius: var(--radius-sm);
+  --modal-radius: var(--radius-md);
+  --app-border-radius: var(--radius-md);
+  --icon-radius: var(--radius-md);
+  --item-radius: var(--radius-sm);
+  --badge-radius: var(--radius-sm);
+  --status-radius: var(--radius-sm);
+  --usage-bar-radius: var(--radius-lg);
+  --card-border-radius-large: var(--radius-md);
+  --divider-radius: 1px;
 
-  /* Padding Aliases */
-  --panel-padding: var(--space-xl); // 24px
-  --modal-padding: var(--space-2xl); // 32px
-  --content-padding: var(--space-2xl); // 32px
-  --step-padding: var(--space-md); // 16px
-  --button-padding: var(--space-md) 28px; // 16px 28px
-  --panel-header-padding: var(--space-2xl) var(--space-2xl) var(--space-md) var(--space-2xl);
+  // Spacing Aliases
+  --title-bar-padding: var(--space-xs);
+  --banner-padding: var(--space-sm);
+  --item-padding: var(--space-md);
+  --container-padding: var(--space-xl);
+  --header-gap: var(--space-md);
+  --button-gap: var(--space-md);
+  --panel-gap: var(--space-xl);
+  --container-gap: var(--space-2xl);
+  --modal-gap: var(--space-xl);
+  --section-gap: var(--space-2xl);
+  --legend-gap: var(--space-xl);
+
+  // Padding Aliases
+  --panel-padding: var(--space-xl);
+  --modal-padding: var(--space-2xl);
+  --content-padding: var(--space-2xl);
+  --step-padding: var(--space-md);
+  --button-padding: var(--space-md) 28px;
+  --panel-header-padding: var(--space-xl);
   --panel-content-padding: var(--space-xl) var(--space-2xl) var(--space-2xl) var(--space-2xl);
   --panel-actions-padding: var(--space-md) var(--space-xl);
 
-  /* Mobile Responsive */
-  --panel-padding-mobile: var(--space-md); // 16px
-  --modal-padding-mobile: var(--space-xl); // 24px
-  --section-gap-mobile: var(--space-lg); // 20px
-  --legend-gap-mobile: var(--space-sm); // 12px
+  // Mobile Responsive
+  --panel-padding-mobile: var(--space-md);
+  --modal-padding-mobile: var(--space-xl);
+  --section-gap-mobile: var(--space-lg);
+  --legend-gap-mobile: var(--space-sm);
 
-  /* Layout Constants */
+  // Layout Constants
   --titlebar-height: 40px;
   --sidebar-width: 250px;
   --status-bar-height: 48px;
 
-  /* Global UI Variables */
-  --border-color: rgba(var(--app-text-color-rgb), 0.08);
-  --text-muted: rgba(var(--app-text-color-rgb), 0.7);
-  --bg-elevated: rgba(var(--app-text-color-rgb), 0.03);
-  --button-background: rgba(var(--app-text-color-rgb), 0.04);
-  --bg-hover: rgba(var(--app-text-color-rgb), 0.1);
-  --bg-selected: rgba(var(--app-text-color-rgb), 0.2);
-  --selected-border: var(--accent-color);
-  --surface-overlay: rgba(var(--app-text-color-rgb), 0.03);
+  // Global UI Variables
+  --text-muted: var(--dim-color);
+  --bg-elevated: color-mix(in srgb, var(--window-fg-color) 3%, transparent);
+  --bg-hover: var(--hover-bg-color);
+  --bg-selected: var(--selected-bg-color);
+
+  // Icon Size Scale
+  --icon-size-xs: 14px;
+  --icon-size-sm: 18px;
+  --icon-size-md: 24px;
+  --icon-size-lg: 32px;
+  --icon-size-xl: 48px;
+  --icon-container-size: 64px;
+
+  // Typography Scale
+  --font-size-3xl: 2rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-xl: 1.25rem;
+  --font-size-base: 1rem;
+  --font-size-md: 0.875rem;
+  --font-size-sm: 0.75rem;
+  --font-size-xs: 0.625rem;
+
+  // Opacity Scale
+  --panel-hover-opacity: 0.1;
+  --background-opacity: 0.05;
+  --border-opacity: 0.05;
+  --hover-opacity: 0.03;
+  --active-opacity: 0.1;
+  --inactive-opacity: 0.02;
+  --legend-opacity: 0.15;
+
+  // Transition Scale
+  --transition-fast: all 0.2s ease;
+  --transition-standard: all 0.3s ease;
+  --transition-slow: all 0.5s ease;
+  --transition-cubic: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  // Shadow Scale (libadwaita style - subtle outlines, minimal shadows)
+  --shadow-light: 0 1px 4px 0 var(--mat-sys-scrim);
+  // Popover/menu shadow (the one exception where libadwaita uses actual shadows)
+  --shadow-popover: 0 1px 5px 1px rgba(0, 0, 0, 0.09), 0 2px 14px 3px rgba(0, 0, 0, 0.05);
+
+  // Component-specific
+  --action-btn-scale-hover: 0.9;
+  --action-btn-scale-disabled: 0.8;
+
+  // Onboarding gradient
+  --onboarding-background:
+    radial-gradient(
+      circle at 20% 50%,
+      color-mix(in srgb, var(--primary-color) 50%, transparent) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 80% 20%,
+      color-mix(in srgb, var(--accent-color) 50%, transparent) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 40% 80%,
+      color-mix(in srgb, var(--primary-color) 50%, transparent) 0%,
+      transparent 50%
+    ),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--window-bg-color) 90%, transparent) 0%,
+      color-mix(in srgb, var(--view-bg-color) 90%, transparent) 100%
+    );
+
+  -webkit-font-smoothing: antialiased;
+
+  mat-card-header {
+    padding: var(--panel-header-padding);
+
+    mat-card-title {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      color: var(--window-fg-color);
+      font-weight: 500;
+      font-size: var(--font-size-md);
+
+      mat-icon {
+        width: var(--icon-size-md);
+        height: var(--icon-size-md);
+        color: var(--primary-color);
+      }
+
+      .count {
+        color: var(----dim-color);
+        font-size: var(--font-size-base);
+        font-weight: 400;
+        background: rgba(var(--accent-color-rgb), var(--active-opacity));
+        padding: var(--space-xxs) var(--space-xs);
+        border-radius: var(--badge-radius);
+        box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.2);
+      }
+    }
+  }
 }
+
+// ============================================================================
+// SECTION 5: GLOBAL STYLES & MATERIAL COMPONENT OVERRIDES
+// ============================================================================
 
 body {
   margin: 0;
@@ -541,17 +679,12 @@ body {
 
   @include mat.form-field-overrides(
     (
-      // Shape & Borders (using your design system tokens)
-      filled-container-color: var(--input-background),
-      // Unfocused State Colors
-      filled-label-text-color: var(--secondary-text-color),
-      filled-input-text-color: var(--app-text-color),
-      filled-input-text-placeholder-color: var(--secondary-text-color),
-      // Focused State Colors (using your accent color)
+      filled-label-text-color: var(----dim-color),
+      filled-input-text-color: var(--window-fg-color),
+      filled-input-text-placeholder-color: var(----dim-color),
       filled-focus-label-text-color: var(--accent-color),
       filled-caret-color: var(--accent-color),
-      // A slightly lighter gray from your palette
-      filled-hover-label-text-color: var(--app-text-color)
+      filled-hover-label-text-color: var(--window-fg-color),
     )
   );
 
@@ -596,11 +729,33 @@ body {
   @include mat.menu-overrides(
     (
       container-shape: var(--radius-sm),
-      container-color: var(--app-background),
-      divider-color: var(--theme-border),
+      container-color: var(--popover-bg-color),
+      divider-color: var(--border-color),
       divider-top-spacing: var(--space-xs),
       divider-bottom-spacing: var(--space-xs),
-      item-label-text-color: var(--app-text-color),
+      item-label-text-color: var(--window-fg-color),
+    )
+  );
+
+  @include mat.card-overrides(
+    (
+      // Container styling - use libadwaita colors
+      elevated-container-color: var(--view-bg-color),
+      filled-container-color: var(--view-bg-color),
+      outlined-container-color: var(--view-bg-color),
+      // Border radius
+      elevated-container-shape: var(--card-border-radius),
+      filled-container-shape: var(--card-border-radius),
+      outlined-container-shape: var(--card-border-radius),
+      elevated-container-elevation: var(--shadow-light)
+    )
+  );
+
+  @include mat.expansion-overrides(
+    (
+      container-shape: var(--card-border-radius),
+      // Use libadwaita-style outline shadow instead of heavy drop shadow
+      container-elevation-shadow: var(--shadow-light),
     )
   );
 }
@@ -621,11 +776,6 @@ textarea,
 [contenteditable="true"] {
   user-select: text;
   cursor: text;
-}
-
-mat-divider {
-  margin: var(--space-xxs) 0 !important;
-  border-color: var(--theme-border) !important;
 }
 
 // Fix for mat-icon overflow issues in Windows
@@ -705,8 +855,8 @@ button {
   }
 
   &:disabled {
-    background: rgba(var(--secondary-text-color-rgb), 0.3) !important;
-    color: rgba(var(--app-text-color-rgb), 0.5) !important;
+    background: color-mix(in srgb, var(----dim-color) 30%, transparent) !important;
+    color: color-mix(in srgb, var(--window-fg-color) 50%, transparent) !important;
     transform: none !important;
     box-shadow: none !important;
   }
@@ -719,14 +869,14 @@ button {
 
 .mat-bottom-sheet-container {
   box-shadow: none !important;
-  border-radius: var(--app-border-radius) var(--app-border-radius) 0 0 !important;
+  border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
 
   @media (max-width: 960px) {
     border-radius: var(--app-border-radius) !important;
   }
 }
 
-// ===== FORM FIELDS =====
+// Form fields
 .mat-mdc-form-field {
   width: 100%;
 }
@@ -735,72 +885,9 @@ button {
   border-radius: var(--modal-radius) !important;
 }
 
-/* ===== ICON SIZES ===== */
-:root {
-  // Icon size scale
-  --icon-size-xs: 14px; // Small inline icons
-  --icon-size-sm: 18px; // Status icons
-  --icon-size-md: 24px; // Default icon size (buttons, etc.)
-  --icon-size-lg: 32px; // Large icons
-  --icon-size-xl: 48px; // Extra large icons (overview cards)
-  --icon-container-size: 64px; // Icon container size
-
-  /* ===== TYPOGRAPHY SCALE ===== */
-  // Font sizes
-  --font-size-3xl: 2rem; // 32px
-  --font-size-2xl: 1.5rem; // 24px
-  --font-size-xl: 1.25rem; // 20px
-  --font-size-base: 1rem; // 16px
-  --font-size-md: 0.875rem; // 14px
-  --font-size-sm: 0.75rem; // 12px
-  --font-size-xs: 0.625rem; // 10px
-
-  /* ===== OPACITY SCALE ===== */
-  --panel-hover-opacity: 0.1;
-  --background-opacity: 0.05;
-  --border-opacity: 0.05;
-  --hover-opacity: 0.03;
-  --active-opacity: 0.1;
-  --inactive-opacity: 0.02;
-  --legend-opacity: 0.15;
-
-  /* ===== TRANSITION SCALE ===== */
-  --transition-instant: all 0.1s ease;
-  --transition-fast: all 0.2s ease;
-  --transition-standard: all 0.3s ease;
-  --transition-slow: all 0.5s ease;
-  --transition-cubic: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-
-  /* ===== SHADOW SCALE ===== */
-  --shadow-light:
-    0 4px 24px rgba(var(--app-text-color-rgb), 0.08),
-    0 2px 8px rgba(var(--app-text-color-rgb), 0.04);
-  --shadow-elevated:
-    0 8px 32px rgba(var(--app-text-color-rgb), 0.12),
-    0 4px 16px rgba(var(--app-text-color-rgb), 0.08);
-
-  /* ===== COMPONENT-SPECIFIC VARIABLES ===== */
-  --action-btn-scale-hover: 0.9;
-  --action-btn-scale-disabled: 0.8;
-}
-
-.header-divider {
-  height: 2px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.3) 20%,
-    rgba(var(--mode-accent-color-rgb, var(--accent-color-rgb)), 0.6) 50%,
-    rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.3) 80%,
-    transparent 100%
-  );
-  margin: 0 auto;
-  max-width: 20vw;
-  border-radius: var(--radius-xxs);
-  transition: var(--transition-standard);
-  will-change: background;
-}
+// ============================================================================
+// SECTION 6: COMPONENT STYLES
+// ============================================================================
 
 @media (max-width: 540px) {
   mat-accordion {
@@ -823,9 +910,6 @@ button {
   }
 }
 
-// =============================================
-// 2. MAT-ACCORDION CONTAINER
-// =============================================
 mat-accordion {
   display: flex;
   flex-direction: column;
@@ -859,10 +943,6 @@ mat-accordion {
     flex-basis: auto;
   }
 
-  &.mat-expanded {
-    box-shadow: var(--shadow-elevated);
-  }
-
   .mat-expansion-panel-header {
     min-height: 72px;
     padding: 0 clamp(16px, 4vw, 32px);
@@ -878,11 +958,11 @@ mat-accordion {
 }
 
 .hide-scrollbar {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* Internet Explorer 10+ */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 
   &::-webkit-scrollbar {
-    display: none; /* Safari and Chrome */
+    display: none;
   }
 }
 
@@ -894,7 +974,7 @@ mat-accordion {
   padding: var(--space-xs) 0;
 
   .option-label {
-    color: var(--app-text-color);
+    color: var(--window-fg-color);
     font-weight: 500;
     font-size: var(--font-size-base);
   }
@@ -905,9 +985,7 @@ mat-accordion {
   }
 }
 
-// =============================================
-// 3. CUSTOM CONTEXT MENU STYLES
-// =============================================
+// Custom context menu
 .material-context-menu {
   display: flex;
   flex-direction: column;
@@ -917,11 +995,11 @@ mat-accordion {
   max-height: 400px;
   overflow-y: auto;
 
-  background: var(--app-background);
-  color: var(--app-text-color);
+  background: var(--popover-bg-color);
+  color: var(--window-fg-color);
   border-radius: var(--radius-md);
   padding: 6px;
-  box-shadow: var(--shadow-elevated);
+  box-shadow: var(--shadow-popover);
 
   .menu-item {
     all: unset;
@@ -932,35 +1010,29 @@ mat-accordion {
     overflow: hidden;
     text-overflow: ellipsis;
 
-    /* 2. Sizing */
     width: 100%;
     min-height: 34px;
     padding: var(--space-xxs) var(--space-sm);
 
-    /* 3. Typography */
     font-size: var(--font-size-md);
     font-family: inherit;
     font-weight: 500;
-    color: var(--app-text-color);
+    color: var(--window-fg-color);
 
-    /* 4. The "Pill" Shape */
     border-radius: var(--border-radius);
     transition: var(--transition-instant);
 
-    /* 7. Hover / Focus States */
     &:hover,
     &:focus,
     &:focus-visible {
-      background-color: var(--bg-hover);
+      background-color: var(--hover-bg-color);
       outline: none;
     }
 
-    /* 8. Active/Click State */
     &:active {
-      background-color: var(--bg-selected);
+      background-color: var(--active-bg-color);
     }
 
-    /* 9. Disabled State */
     &:disabled {
       opacity: 0.4;
       background: transparent;
@@ -977,7 +1049,7 @@ mat-accordion {
   padding: var(--space-lg) var(--space-md);
   text-align: center;
   gap: var(--space-sm);
-  color: var(--secondary-text-color);
+  color: var(----dim-color);
 
   mat-icon {
     width: 48px;

@@ -3,8 +3,8 @@
   flex-direction: column;
   height: 100%;
   max-height: 100vh;
-  background: var(--app-background);
-  color: var(--app-text-color);
+  background: var(--window-bg-color);
+  color: var(--window-fg-color);
   overflow: hidden;
 }
 
@@ -29,7 +29,7 @@
   justify-content: center;
   padding: 48px 0;
   gap: 16px;
-  color: var(--secondary-text-color);
+  color: var(--dim-color);
 }
 
 .error-state {
@@ -51,7 +51,6 @@
 /* --- Usage Card --- */
 .usage-card {
   background: var(--bg-elevated);
-  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 24px;
@@ -79,14 +78,14 @@
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: var(--secondary-text-color);
+    color: var(--dim-color);
     font-weight: 600;
   }
 
   .value {
     font-size: 15px;
     font-weight: 600;
-    color: var(--app-text-color);
+    color: var(--window-fg-color);
     min-height: 20px; /* Prevent layout shift */
     display: flex;
     align-items: center;
@@ -96,9 +95,8 @@
 
 /* --- Info List --- */
 .info-list {
-  background: var(--secondary-background);
+  background: var(--view-bg-color);
   border-radius: 12px;
-  border: 1px solid var(--border-color);
   padding: 8px 0;
   margin-bottom: 24px;
 }
@@ -116,13 +114,13 @@
 }
 
 .info-label {
-  color: var(--secondary-text-color);
+  color: var(--dim-color);
   font-weight: 500;
 }
 
 .info-value {
   font-weight: 500;
-  color: var(--app-text-color);
+  color: var(--window-fg-color);
   max-width: 60%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -131,7 +129,7 @@
   &.code-font {
     font-family: monospace;
     font-size: 13px;
-    background: rgba(var(--app-text-color-rgb), 0.05);
+    background: rgba(var(--window-fg-color-rgb), 0.05);
     padding: 2px 6px;
     border-radius: 4px;
   }
@@ -141,7 +139,7 @@
 .section-header {
   font-size: 12px;
   font-weight: 700;
-  color: var(--secondary-text-color);
+  color: var(--dim-color);
   text-transform: uppercase;
   margin-bottom: 12px;
   letter-spacing: 0.5px;
@@ -160,7 +158,7 @@
 }
 
 .empty-text {
-  color: var(--secondary-text-color);
+  color: var(--dim-color);
   font-style: italic;
   font-size: 13px;
 }
@@ -178,8 +176,7 @@
   gap: 10px;
   padding: 10px 14px;
   border-radius: 8px;
-  background: var(--secondary-background);
-  border: 1px solid var(--border-color);
+  background: var(--view-bg-color);
   transition: all 0.2s ease;
 
   .feature-icon {
@@ -201,17 +198,17 @@
       color: var(--primary-color);
     }
     .feature-name {
-      color: var(--app-text-color);
+      color: var(--window-fg-color);
     }
   }
 
   &.unsupported {
     opacity: 0.7;
     .feature-icon {
-      color: var(--secondary-text-color);
+      color: var(--dim-color);
     }
     .feature-name {
-      color: var(--secondary-text-color);
+      color: var(--dim-color);
     }
   }
 }
@@ -222,7 +219,7 @@
   font-weight: 700;
   color: var(--primary-color);
   text-transform: uppercase;
-  background: var(--app-background);
+  background: var(--window-bg-color);
 }
 
 .meta-details {
@@ -234,7 +231,7 @@
 .meta-help {
   font-size: 14px;
   line-height: 1.5;
-  color: var(--secondary-text-color);
+  color: var(--dim-color);
 }
 
 .meta-props {
@@ -251,7 +248,7 @@
 }
 
 .code-bg {
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--hover-bg-color);
   padding: 2px 6px;
   border-radius: 4px;
   font-family: monospace;

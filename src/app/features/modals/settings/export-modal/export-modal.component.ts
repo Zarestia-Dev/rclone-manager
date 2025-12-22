@@ -6,16 +6,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 
 import { ExportModalData, ExportOption, ExportType } from '@app/types';
-import { BackupRestoreService } from '@app/services';
-import { RemoteManagementService } from '@app/services';
-import { FileSystemService } from '@app/services';
+import { BackupRestoreService, RemoteManagementService, FileSystemService } from '@app/services';
 
 @Component({
   selector: 'app-export-modal',
@@ -28,7 +25,6 @@ import { FileSystemService } from '@app/services';
     FormsModule,
     MatInputModule,
     MatTooltipModule,
-    MatCheckboxModule,
     MatButtonModule,
     MatProgressSpinnerModule,
     MatRadioModule,
@@ -55,8 +51,6 @@ export class ExportModalComponent implements OnInit {
   readonly isLoading = signal(false);
   readonly isExporting = signal(false);
   readonly userNote = signal('');
-
-  readonly ExportType = ExportType;
 
   readonly exportOptions: readonly ExportOption[] = [
     {

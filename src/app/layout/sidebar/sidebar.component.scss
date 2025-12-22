@@ -8,32 +8,26 @@
   --card-hover-opacity: 0.02;
   --status-active-opacity: 0.15;
   --status-inactive-opacity: 0.08;
-
-  // Shadows
-  --card-shadow:
-    0 2px 8px rgba(var(--app-text-color-rgb), 0.06), 0 1px 4px rgba(var(--app-text-color-rgb), 0.04);
-  --card-hover-shadow:
-    0 4px 16px rgba(var(--app-text-color-rgb), 0.1), 0 2px 8px rgba(var(--app-text-color-rgb), 0.06);
 }
 
 .sidebar {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--app-background);
+  background: var(--window-bg-color);
   overflow: hidden;
 
   // Header Section
   .sidebar-header {
     flex-shrink: 0;
-    background: var(--app-background);
+    background: var(--window-bg-color);
     padding: var(--header-padding);
-    box-shadow: var(--card-shadow);
+    box-shadow: var(--shadow-light);
     transition: var(--transition-standard);
     z-index: 1;
 
     &:hover {
-      background: var(--bg-hover);
+      background: var(--hover-bg-color);
     }
 
     h3 {
@@ -44,7 +38,7 @@
       margin: 0;
       font-size: 1.25rem;
       font-weight: 500;
-      color: var(--app-text-color);
+      color: var(--window-fg-color);
       letter-spacing: -0.2px;
     }
   }
@@ -53,7 +47,7 @@
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    background: var(--secondary-background);
+    background: var(--view-bg-color);
   }
 
   // Remote List
@@ -72,10 +66,9 @@
     margin-bottom: 0;
     padding: var(--space-lg);
     border-radius: var(--modal-radius);
-    background: var(--app-background);
-    box-shadow: var(--card-shadow);
+    background: var(--window-bg-color);
+    box-shadow: var(--shadow-light);
     transition: var(--transition-standard);
-    border: 1px solid rgba(var(--app-text-color-rgb), 0.02);
     overflow: hidden;
 
     &:hover {
@@ -84,8 +77,6 @@
         rgba(var(--primary-color-rgb), var(--card-hover-opacity)),
         rgba(var(--accent-color-rgb), var(--card-hover-opacity))
       );
-      box-shadow: var(--card-hover-shadow);
-      transform: translateY(-1px);
     }
 
     &:active {
@@ -110,7 +101,7 @@
           margin: 0;
           font-size: 1.1rem;
           font-weight: 600;
-          color: var(--app-text-color);
+          color: var(--window-fg-color);
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -137,7 +128,7 @@
         display: flex;
         align-items: center;
         gap: var(--space-xs);
-        color: var(--secondary-text-color);
+        color: var(--dim-color);
         font-size: 0.9rem;
         font-weight: 500;
       }
@@ -151,15 +142,14 @@
         height: 24px;
         border-radius: 50%;
         transition: var(--transition-fast);
-        background: rgba(var(--app-text-color-rgb), 0.06);
-        border: 1.5px solid rgba(var(--app-text-color-rgb), 0.12);
+        background: rgba(var(--window-fg-color-rgb), 0.06);
         position: relative;
 
         mat-icon {
           width: 12px;
           height: 12px;
           font-size: 12px;
-          color: var(--secondary-text-color);
+          color: var(--dim-color);
           transition: color var(--transition-fast);
         }
 
@@ -178,13 +168,12 @@
           color: white;
           background: var(--primary-color);
           border-radius: 7px;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
         }
 
         // Hover effect
         &:hover {
-          background: rgba(var(--app-text-color-rgb), 0.1);
-          border-color: rgba(var(--app-text-color-rgb), 0.2);
+          background: rgba(var(--window-fg-color-rgb), 0.1);
+          border-color: rgba(var(--window-fg-color-rgb), 0.2);
           transform: scale(1.08);
         }
 
@@ -265,7 +254,6 @@
   .remote-card.selected {
     position: relative;
     border-color: rgba(var(--primary-color-rgb), 0.18);
-    box-shadow: 0 6px 18px rgba(var(--primary-color-rgb), 0.08);
 
     /* Left accent bar */
     &::before {
@@ -308,7 +296,7 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    color: var(--secondary-text-color);
+    color: var(--dim-color);
     font-weight: 500;
     height: 100%;
     min-height: 200px;

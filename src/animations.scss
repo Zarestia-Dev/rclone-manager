@@ -501,9 +501,9 @@
   animation: diskLoadingShimmer 1.5s infinite linear;
   background: linear-gradient(
     90deg,
-    rgba(var(--app-text-color-rgb), 0.1) 25%,
-    rgba(var(--app-text-color-rgb), 0.2) 50%,
-    rgba(var(--app-text-color-rgb), 0.1) 75%
+    rgba(var(--window-fg-color-rgb), 0.1) 25%,
+    rgba(var(--window-fg-color-rgb), 0.2) 50%,
+    rgba(var(--window-fg-color-rgb), 0.1) 75%
   );
   background-size: 200% 100%;
 }

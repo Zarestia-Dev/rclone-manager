@@ -19,11 +19,6 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-md);
-    transition: var(--transition-standard);
-
-    &:hover {
-      box-shadow: var(--shadow-elevated);
-    }
 
     .card-header {
       .card-title {
@@ -33,23 +28,23 @@
         margin-bottom: var(--space-sm);
 
         mat-icon {
-          font-size: 24px;
-          width: 24px;
-          height: 24px;
+          font-size: var(--icon-size-md);
+          width: var(--icon-size-md);
+          height: var(--icon-size-md);
           color: var(--primary-color);
         }
 
         h3 {
           margin: 0;
-          font-size: 18px;
+          font-size: var(--font-size-xl);
           font-weight: 600;
-          color: var(--app-text-color);
+          color: var(--window-fg-color);
         }
       }
 
       .card-description {
-        color: var(--secondary-text-color);
-        font-size: 14px;
+        color: var(--dim-color);
+        font-size: var(--font-size-md);
         line-height: 1.5;
         margin: 0;
       }
@@ -82,9 +77,7 @@
           align-items: center;
           gap: var(--space-md);
           padding: var(--space-md);
-          background: var(--button-background);
           border-radius: var(--radius-md);
-          border: 1px solid var(--border-color);
 
           &.success {
             background: rgba(var(--primary-color-rgb), 0.1);
@@ -106,9 +99,8 @@
 
           .status-indicator {
             mat-icon {
-              font-size: 28px;
-              width: 28px;
-              height: 28px;
+              width: var(--icon-size-md);
+              height: var(--icon-size-md);
               color: var(--primary-color);
             }
           }
@@ -118,15 +110,15 @@
 
             h4 {
               margin: 0 0 var(--space-xxs) 0;
-              font-size: 14px;
+              font-size: var(--font-size-md);
               font-weight: 600;
-              color: var(--app-text-color);
+              color: var(--window-fg-color);
             }
 
             p {
               margin: 0;
-              font-size: 13px;
-              color: var(--secondary-text-color);
+              font-size: var(--font-size-sm);
+              color: var(--dim-color);
             }
           }
         }
@@ -143,7 +135,7 @@
 
         &.encrypted {
           background: rgba(var(--primary-color-rgb), 0.1);
-          border: 1px solid rgba(var(--primary-color-rgb), 0.3);
+          box-shadow: 0 0 0 1px var(--card-shade-color);
           color: var(--primary-color);
 
           mat-icon {
@@ -153,7 +145,7 @@
 
         &.unencrypted {
           background: rgba(var(--orange-rgb), 0.1);
-          border: 1px solid rgba(var(--orange-rgb), 0.3);
+          box-shadow: 0 0 0 1px var(--card-shade-color);
           color: var(--orange);
 
           mat-icon {
@@ -162,9 +154,9 @@
         }
 
         mat-icon {
-          font-size: 24px;
-          width: 24px;
-          height: 24px;
+          font-size: var(--icon-size-md);
+          width: var(--icon-size-md);
+          height: var(--icon-size-md);
         }
       }
 
@@ -180,16 +172,16 @@
           gap: var(--space-md);
 
           mat-icon {
-            font-size: 20px;
-            width: 20px;
-            height: 20px;
+            font-size: var(--icon-size-sm);
+            width: var(--icon-size-sm);
+            height: var(--icon-size-sm);
             color: var(--primary-color);
           }
 
           span {
-            font-size: 14px;
+            font-size: var(--font-size-md);
             line-height: 1.5;
-            color: var(--app-text-color);
+            color: var(--window-fg-color);
           }
         }
       }
@@ -208,15 +200,15 @@
 
         h3 {
           margin: 0;
-          font-size: 16px;
+          font-size: var(--font-size-lg);
           font-weight: 600;
-          color: var(--app-text-color);
+          color: var(--window-fg-color);
         }
 
         p {
           margin: 0;
-          font-size: 14px;
-          color: var(--secondary-text-color);
+          font-size: var(--font-size-md);
+          color: var(--dim-color);
         }
       }
     }
@@ -232,9 +224,9 @@
         gap: var(--space-xs);
 
         mat-icon {
-          font-size: 18px;
-          width: 18px;
-          height: 18px;
+          font-size: var(--icon-size-sm);
+          width: var(--icon-size-sm);
+          height: var(--icon-size-sm);
         }
 
         &.action-button-large {
@@ -260,17 +252,12 @@
     }
 
     &.get-started-card {
-      border: 2px solid var(--primary-color);
-      background: linear-gradient(
-        135deg,
-        var(--surface-background) 0%,
-        rgba(var(--primary-color-rgb), 0.05) 100%
-      );
+      box-shadow: 0 0 0 2px var(--primary-color);
     }
   }
 }
 
-// Responsive Design
+// Responsive
 @media (max-width: 768px) {
   .password-manager-section {
     .tab-content {
@@ -305,31 +292,31 @@
       .card-header {
         .card-title {
           h3 {
-            font-size: 16px;
+            font-size: var(--font-size-lg);
           }
 
           mat-icon {
-            font-size: 20px;
-            width: 20px;
-            height: 20px;
+            font-size: var(--icon-size-sm);
+            width: var(--icon-size-sm);
+            height: var(--icon-size-sm);
           }
         }
 
         .card-description {
-          font-size: 13px;
+          font-size: var(--font-size-sm);
         }
       }
 
       .card-content {
         .benefits-list .benefit-item {
           mat-icon {
-            font-size: 18px;
-            width: 18px;
-            height: 18px;
+            font-size: var(--icon-size-sm);
+            width: var(--icon-size-sm);
+            height: var(--icon-size-sm);
           }
 
           span {
-            font-size: 13px;
+            font-size: var(--font-size-sm);
           }
         }
       }

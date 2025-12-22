@@ -20,7 +20,7 @@
   justify-content: center;
   height: 200px;
   gap: var(--space-md);
-  color: var(--secondary-text-color);
+  color: var(--dim-color);
 }
 
 .item-overview {
@@ -57,12 +57,12 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      color: var(--app-text-color);
+      color: var(--window-fg-color);
     }
 
     .item-type {
       font-size: 13px;
-      color: var(--secondary-text-color);
+      color: var(--dim-color);
     }
   }
 }
@@ -97,12 +97,12 @@
     font-size: 14px;
 
     .label {
-      color: var(--secondary-text-color);
+      color: var(--dim-color);
       font-weight: 500;
     }
 
     .value {
-      color: var(--app-text-color);
+      color: var(--window-fg-color);
       font-weight: 500;
       text-align: right;
 
@@ -111,7 +111,7 @@
         max-width: 60%;
         text-align: right;
         font-family: monospace;
-        background: rgba(var(--app-text-color-rgb), 0.05);
+        background: rgba(var(--window-fg-color-rgb), 0.05);
         padding: 2px 6px;
         border-radius: 4px;
       }
@@ -124,9 +124,8 @@
     flex-direction: column;
     gap: 4px;
     padding: var(--space-sm);
-    background: rgba(var(--app-text-color-rgb), 0.03);
+    background: rgba(var(--window-fg-color-rgb), 0.03);
     border-radius: var(--radius-sm);
-    border: 1px solid rgba(var(--app-text-color-rgb), 0.08);
 
     .hash-header {
       display: flex;
@@ -151,7 +150,7 @@
       font-family: "Roboto Mono", "Consolas", monospace;
       font-size: 11px;
       word-break: break-all;
-      color: var(--app-text-color);
+      color: var(--window-fg-color);
       user-select: all;
       cursor: text;
       line-height: 1.4;
@@ -167,7 +166,7 @@
 
     .hash-options-label {
       font-size: 12px;
-      color: var(--secondary-text-color);
+      color: var(--dim-color);
     }
 
     .hash-chips {
@@ -188,7 +187,7 @@
     letter-spacing: 0.3px;
     background: rgba(var(--primary-color-rgb), 0.1);
     color: var(--primary-color);
-    border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+    box-shadow: 0 0 0 1px var(--card-shade-color);
     border-radius: 12px;
     transition: all 0.2s ease;
 
@@ -223,7 +222,7 @@
 
   .no-hashes {
     padding: var(--space-sm);
-    color: var(--secondary-text-color);
+    color: var(--dim-color);
     font-size: 13px;
     font-style: italic;
   }
@@ -233,7 +232,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  color: var(--secondary-text-color);
+  color: var(--dim-color);
   font-size: 13px;
   padding: var(--space-xs) 0;
 }
@@ -250,9 +249,8 @@
       align-items: center;
       gap: var(--space-xs);
       padding: var(--space-sm);
-      background: rgba(var(--app-text-color-rgb), 0.03);
+      background: rgba(var(--window-fg-color-rgb), 0.03);
       border-radius: var(--radius-sm);
-      border: 1px solid rgba(var(--app-text-color-rgb), 0.08);
 
       .link-url {
         flex: 1;

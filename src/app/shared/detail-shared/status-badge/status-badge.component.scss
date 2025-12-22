@@ -19,7 +19,7 @@
   &.error {
     background: rgba(var(--warn-color-rgb), var(--active-opacity));
     color: var(--warn-color);
-    border: 1px solid rgba(var(--warn-color-rgb), 0.2);
+    box-shadow: 0 0 0 1px var(--card-shade-color);
 
     .status-dot {
       background: var(--warn-color);
@@ -27,12 +27,11 @@
   }
 
   &.inactive {
-    background: rgba(var(--app-text-color-rgb), var(--inactive-opacity));
-    color: var(--secondary-text-color);
-    border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
+    background: rgba(var(--window-fg-color-rgb), var(--inactive-opacity));
+    color: var(--dim-color);
 
     .status-dot {
-      background: var(--secondary-text-color);
+      background: var(--dim-color);
     }
   }
 
@@ -40,7 +39,7 @@
   &.active-sync {
     background: rgba(var(--primary-color-rgb), var(--active-opacity));
     color: var(--primary-color);
-    border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+    box-shadow: 0 0 0 1px var(--card-shade-color);
 
     .status-dot {
       background: var(--primary-color);
@@ -50,7 +49,7 @@
   &.active-copy {
     background: rgba(var(--yellow-rgb), var(--active-opacity));
     color: var(--yellow);
-    border: 1px solid rgba(var(--yellow-rgb), 0.2);
+    box-shadow: 0 0 0 1px var(--card-shade-color);
 
     .status-dot {
       background: var(--yellow);
@@ -60,7 +59,7 @@
   &.active-move {
     background: rgba(var(--light-orange-rgb), var(--active-opacity));
     color: var(--light-orange);
-    border: 1px solid rgba(var(--light-orange-rgb), 0.2);
+    box-shadow: 0 0 0 1px var(--card-shade-color);
 
     .status-dot {
       background: var(--light-orange);
@@ -70,7 +69,7 @@
   &.active-bisync {
     background: rgba(var(--purple-rgb), var(--active-opacity));
     color: var(--purple);
-    border: 1px solid rgba(var(--purple-rgb), 0.2);
+    box-shadow: 0 0 0 1px var(--card-shade-color);
 
     .status-dot {
       background: var(--purple);
@@ -81,7 +80,7 @@
   &.mounted {
     background: rgba(var(--accent-color-rgb), var(--active-opacity));
     color: var(--accent-color);
-    border: 1px solid rgba(var(--accent-color-rgb), 0.2);
+    box-shadow: 0 0 0 1px var(--card-shade-color);
 
     .status-dot {
       background: var(--accent-color);
@@ -89,12 +88,11 @@
   }
 
   &.unmounted {
-    background: rgba(var(--app-text-color-rgb), var(--inactive-opacity));
-    color: var(--secondary-text-color);
-    border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
+    background: rgba(var(--window-fg-color-rgb), var(--inactive-opacity));
+    color: var(--dim-color);
 
     .status-dot {
-      background: var(--secondary-text-color);
+      background: var(--dim-color);
     }
   }
 }

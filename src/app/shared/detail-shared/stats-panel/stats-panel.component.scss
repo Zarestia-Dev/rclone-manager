@@ -1,5 +1,3 @@
-@use "../../../styles/_shared_components";
-
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -10,9 +8,8 @@
     flex-direction: column;
     align-items: center;
     padding: var(--item-padding);
-    background: rgba(var(--app-text-color-rgb), var(--background-opacity));
+    background: rgba(var(--window-fg-color-rgb), var(--background-opacity));
     border-radius: var(--item-radius);
-    border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
     text-align: center;
     transition: var(--transition-standard);
 
@@ -47,14 +44,14 @@
     .stat-value {
       font-size: var(--font-size-lg);
       font-weight: 600;
-      color: var(--app-text-color);
+      color: var(--window-fg-color);
       margin-bottom: var(--space-xxs);
       line-height: 1.2;
     }
 
     .stat-label {
       font-size: var(--font-size-sm);
-      color: var(--secondary-text-color);
+      color: var(--dim-color);
       font-weight: 500;
       letter-spacing: 0.5px;
     }

@@ -12,14 +12,7 @@
   border-radius: var(--card-border-radius-large) !important;
   box-shadow: var(--shadow-light);
   max-height: 60vh;
-  transition: var(--transition-standard);
-  border: 1px solid var(--theme-border);
-  background: var(--secondary-background);
-  will-change: transform, box-shadow;
-
-  &:hover {
-    box-shadow: var(--shadow-elevated);
-  }
+  background: var(--view-bg-color);
 
   // Dynamic styling based on panel state
   &.active-remotes-panel .panel-title-content {
@@ -29,7 +22,7 @@
 
     .remote-count {
       background: rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.1);
-      border: 1px solid rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.2);
+      box-shadow: 0 0 0 1px var(--card-shade-color);
     }
   }
 
@@ -40,7 +33,7 @@
 
     .remote-count {
       background: rgba(var(--purple-rgb), 0.1);
-      border: 1px solid rgba(var(--purple-rgb), 0.2);
+      box-shadow: 0 0 0 1px var(--card-shade-color);
     }
   }
 
@@ -49,7 +42,7 @@
     padding: var(--space-xl) var(--space-xl) var(--space-md) var(--space-xl);
 
     .panel-title-content {
-      color: var(--app-text-color);
+      color: var(--window-fg-color);
       font-size: var(--font-size-md);
       display: flex;
       align-items: center;
@@ -65,7 +58,7 @@
       }
 
       .remote-count {
-        color: var(--secondary-text-color);
+        color: var(--dim-color);
         font-size: var(--font-size-base);
         font-weight: 400;
         padding: var(--space-xxs) var(--space-xs);

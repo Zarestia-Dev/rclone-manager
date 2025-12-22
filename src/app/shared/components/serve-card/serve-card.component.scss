@@ -2,17 +2,10 @@
   position: relative;
   transition: var(--transition-standard);
   border-radius: var(--card-border-radius);
-  background: var(--app-background);
+  background: var(--window-bg-color);
   box-shadow: var(--shadow-light);
-  border: 1px solid var(--theme-border);
   animation: fadeIn 0.6s ease-out;
   animation-fill-mode: both;
-  will-change: transform, box-shadow;
-
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-elevated);
-  }
 
   .serve-card-header {
     .serve-info {
@@ -54,7 +47,7 @@
         .serve-remote-name {
           font-size: 14px;
           font-weight: 600;
-          color: var(--app-text-color);
+          color: var(--window-fg-color);
         }
 
         .serve-protocol-badge {
@@ -97,7 +90,7 @@
         .serve-address {
           font-size: 13px;
           font-weight: 600;
-          color: var(--app-text-color);
+          color: var(--window-fg-color);
           opacity: 0.8;
           font-style: italic;
           font-family: monospace;
@@ -105,7 +98,7 @@
 
         .serve-fs {
           font-size: 12px;
-          color: var(--secondary-text-color);
+          color: var(--dim-color);
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -120,7 +113,7 @@
     gap: var(--space-xs);
     margin: var(--space-sm);
     padding: var(--space-sm);
-    background: rgba(var(--secondary-text-color-rgb), 0.4);
+    background: rgba(var(--dim-color-rgb), 0.4);
     border-radius: var(--border-radius);
 
     .metadata-row {
@@ -132,16 +125,16 @@
       .metadata-icon {
         width: 16px;
         height: 16px;
-        color: var(--secondary-text-color);
+        color: var(--dim-color);
       }
 
       .metadata-label {
-        color: var(--secondary-text-color);
+        color: var(--dim-color);
         font-weight: 600;
       }
 
       .metadata-value {
-        color: var(--app-text-color);
+        color: var(--window-fg-color);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -150,7 +143,7 @@
 
         &.options-value {
           cursor: help;
-          border-bottom: 1px dashed var(--secondary-text-color);
+          border-bottom: 1px dashed var(--dim-color);
         }
       }
     }

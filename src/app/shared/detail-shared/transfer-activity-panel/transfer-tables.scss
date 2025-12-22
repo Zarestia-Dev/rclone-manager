@@ -1,5 +1,5 @@
 .transfer-table-container {
-  background: var(--app-background);
+  background: var(--window-bg-color);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -7,17 +7,17 @@
   .transfer-table {
     // STICKY HEADER CONFIGURATION
     .mat-mdc-header-row {
-      background-color: var(--secondary-background); // Crucial for sticky header opacity
+      background-color: var(--view-bg-color); // Crucial for sticky header opacity
     }
 
     .mat-mdc-header-cell {
-      color: var(--app-text-color);
+      color: var(--window-fg-color);
       font-weight: 600;
       font-size: var(--font-size-sm);
       padding: var(--space-sm) var(--space-md);
       background-color: inherit; // Inherit from row to ensure opacity covers scrolling content
       white-space: nowrap;
-      border-bottom: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
+      border-bottom: 1px solid rgba(var(--window-fg-color-rgb), var(--border-opacity));
 
       // Fix for sticky header z-index issues
       z-index: 10 !important;
@@ -25,11 +25,11 @@
 
     .transfer-row {
       transition: background-color 0.2s ease;
-      border-bottom: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
+      border-bottom: 1px solid rgba(var(--window-fg-color-rgb), var(--border-opacity));
       height: 50px; // Fixed height for consistency
 
       &:hover {
-        background: rgba(var(--app-text-color-rgb), var(--hover-opacity));
+        background: rgba(var(--window-fg-color-rgb), var(--hover-opacity));
       }
 
       &:last-child {
@@ -53,8 +53,8 @@
 
       // Checked (Skipped)
       &.checked {
-        border-left: 3px solid var(--secondary-text-color);
-        background: rgba(var(--app-text-color-rgb), 0.02);
+        border-left: 3px solid var(--dim-color);
+        background: rgba(var(--window-fg-color-rgb), 0.02);
       }
 
       // Error
@@ -69,7 +69,7 @@
 
       .mat-mdc-cell {
         padding: var(--space-sm) var(--space-md);
-        color: var(--app-text-color);
+        color: var(--window-fg-color);
         font-size: var(--font-size-sm);
         white-space: nowrap;
       }
@@ -88,7 +88,7 @@
         width: 20px;
         height: 20px;
         min-width: 20px;
-        color: var(--secondary-text-color);
+        color: var(--dim-color);
       }
 
       .file-name {
@@ -123,11 +123,11 @@
         justify-content: space-between;
         align-items: center;
         font-size: 11px;
-        color: var(--secondary-text-color);
+        color: var(--dim-color);
 
         .progress-text {
           font-weight: 600;
-          color: var(--app-text-color);
+          color: var(--window-fg-color);
         }
       }
     }
@@ -150,7 +150,6 @@
 
         &.speed-fast {
           background-color: var(--accent-color);
-          box-shadow: 0 0 4px var(--accent-color);
         }
         &.speed-medium {
           background-color: var(--primary-color);
@@ -161,7 +160,7 @@
       }
 
       .speed-idle {
-        color: var(--secondary-text-color);
+        color: var(--dim-color);
         opacity: 0.5;
       }
     }
@@ -180,7 +179,7 @@
 
       .time-relative {
         font-size: 11px;
-        color: var(--secondary-text-color);
+        color: var(--dim-color);
       }
 
       .duration {
@@ -226,8 +225,8 @@
         color: var(--warn-color);
       }
       &.checked {
-        background: rgba(var(--secondary-text-color-rgb), 0.15);
-        color: var(--secondary-text-color);
+        background: rgba(var(--dim-color-rgb), 0.15);
+        color: var(--dim-color);
       }
       &.partial {
         background: rgba(var(--orange-rgb), 0.15);
@@ -241,11 +240,11 @@
       align-items: center;
       gap: 4px;
       font-size: 12px;
-      color: var(--secondary-text-color);
+      color: var(--dim-color);
 
       .src,
       .dst {
-        background: rgba(var(--app-text-color-rgb), 0.05);
+        background: rgba(var(--window-fg-color-rgb), 0.05);
         padding: 2px 6px;
         border-radius: 4px;
         max-width: 120px;

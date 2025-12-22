@@ -12,9 +12,9 @@
     justify-content: space-between;
     align-items: center;
     padding: var(--space-sm) var(--space-md);
-    background: var(--app-background);
+    background: var(--window-bg-color);
     border-radius: var(--app-border-radius) var(--app-border-radius) 0 0;
-    color: var(--app-text-color);
+    color: var(--window-fg-color);
 
     .header-left {
       display: flex;
@@ -34,7 +34,7 @@
 
       .file-counter {
         font-size: var(--font-size-md);
-        color: var(--text-muted);
+        color: var(--dim-color);
       }
     }
 
@@ -102,7 +102,7 @@
       max-height: 100%;
       width: 90vw;
       height: 90vh;
-      background: var(--secondary-background);
+      background: var(--view-bg-color);
     }
 
     .audio-container {
@@ -118,7 +118,7 @@
         font-size: 80px;
         width: 80px;
         height: 80px;
-        color: var(--text-muted);
+        color: var(--dim-color);
       }
 
       audio {
@@ -132,17 +132,16 @@
       height: calc(100vh - 120px);
       border: none;
       border-radius: var(--radius-xxs);
-      background: white;
+      background: var(--gnome-light-1);
     }
 
     .text-container {
       width: calc(100vw - 200px);
       height: calc(100vh - 120px);
       overflow: auto;
-      background: var(--app-background);
-      color: var(--app-text-color);
+      background: var(--window-bg-color);
+      color: var(--window-fg-color);
       border-radius: var(--radius-xs);
-      border: 1px solid var(--border-color);
 
       pre {
         padding: var(--space-xl);
@@ -161,11 +160,11 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      background: var(--app-background);
+      background: var(--window-bg-color);
       border-radius: var(--border-radius);
       gap: var(--space-md);
       padding: 60px;
-      color: var(--text-muted);
+      color: var(--dim-color);
 
       mat-icon {
         font-size: 80px;
@@ -194,8 +193,8 @@
        Navigation
        ========================================================================== */
     .nav-button {
-      color: var(--app-text-color);
-      background: var(--app-background);
+      color: var(--window-fg-color);
+      background: var(--window-bg-color);
       margin: 0 var(--space-md);
       transition: var(--transition-fast);
 

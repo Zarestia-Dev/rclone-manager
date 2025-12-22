@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnInit, inject } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
@@ -29,7 +28,6 @@ import { NotificationService } from 'src/app/shared/services/notification.servic
 @Component({
   selector: 'app-about-modal',
   imports: [
-    CommonModule,
     MatDividerModule,
     MatIconModule,
     MatButtonModule,
@@ -72,7 +70,6 @@ export class AboutModalComponent implements OnInit {
 
   // App Updater properties
   updateAvailable: UpdateMetadata | null = null;
-  updateReleaseTag: string | null = null;
   updateReleaseChannel: string | null = null;
   checkingForUpdates = false;
   installingUpdate = false;
@@ -83,8 +80,6 @@ export class AboutModalComponent implements OnInit {
   downloadTotal = 0;
   downloadPercentage = 0;
   downloadInProgress = false;
-  updateErrorMessage: string | null = null;
-  updateErrorDismissed = false;
 
   // Rclone Update properties
   rcloneUpdateStatus: UpdateStatus = {
@@ -104,23 +99,16 @@ export class AboutModalComponent implements OnInit {
 
   readonly channels = [
     { value: 'stable', label: 'Stable', description: 'Recommended for most users' },
-    { value: 'beta', label: 'Beta', description: 'Latest features with some testing' },
-  ];
-
-  readonly rcloneChannels = [
-    { value: 'stable', label: 'Stable', description: 'Stable releases (recommended)' },
-    { value: 'beta', label: 'Beta', description: 'Beta releases with latest features' },
+    { value: 'beta', label: 'Beta', description: 'Latest features' },
   ];
 
   async ngOnInit(): Promise<void> {
     await Promise.all([
       this.loadPlatformInfo(),
-      this.loadRcloneInfo(),
+      this.loadRcloneInfoWithPID(),
       this.appUpdaterService.initialize(),
       this.rcloneUpdateService.initialize(),
     ]);
-
-    await this.loadRclonePID();
 
     this.setupUpdaterSubscriptions();
     this.setupRcloneUpdaterSubscriptions();
@@ -132,8 +120,7 @@ export class AboutModalComponent implements OnInit {
     this.eventListenersService.listenToRcloneEngineReady().subscribe({
       next: async () => {
         try {
-          await this.loadRcloneInfo();
-          await this.loadRclonePID();
+          await this.loadRcloneInfoWithPID();
         } catch (error) {
           console.error('Error handling Rclone API ready event:', error);
         }
@@ -178,37 +165,18 @@ export class AboutModalComponent implements OnInit {
     }
   }
 
-  private getChannelFromTag(tag: string): string {
-    const t = tag.toLowerCase();
-    if (t.includes('beta')) return 'beta';
-    return 'stable';
-  }
-
-  async loadRcloneInfo(): Promise<void> {
+  async loadRcloneInfoWithPID(): Promise<void> {
     this.loadingRclone = true;
     this.rcloneError = null;
     try {
-      this.rcloneInfo = await this.systemInfoService.getRcloneInfo();
+      const [info, pid] = await Promise.all([
+        this.systemInfoService.getRcloneInfo(),
+        this.systemInfoService.getRclonePID(),
+      ]);
+      this.rcloneInfo = { ...info, pid } as RcloneInfo;
     } catch (error) {
       console.error('Error fetching rclone info:', error);
       this.rcloneError = 'Failed to load rclone info.';
-    } finally {
-      this.loadingRclone = false;
-    }
-  }
-
-  async loadRclonePID(): Promise<void> {
-    this.loadingRclone = true;
-    this.rcloneError = null;
-    try {
-      const pid = await this.systemInfoService.getRclonePID();
-      if (this.rcloneInfo) {
-        this.rcloneInfo = { ...this.rcloneInfo, pid };
-      }
-    } catch (error) {
-      console.error('Error fetching rclone PID:', error);
-      this.rcloneError = 'Failed to load rclone PID.';
-      this.notificationService.openSnackBar(this.rcloneError, 'Close');
     } finally {
       this.loadingRclone = false;
     }
@@ -275,8 +243,6 @@ export class AboutModalComponent implements OnInit {
 
   async installUpdate(): Promise<void> {
     if (this.installingUpdate) return;
-    this.updateErrorDismissed = true;
-    this.updateErrorMessage = null;
     await this.appUpdaterService.installUpdate();
   }
 
@@ -287,10 +253,6 @@ export class AboutModalComponent implements OnInit {
       console.error('Failed to relaunch app:', error);
       this.notificationService.showError('Failed to restart application');
     }
-  }
-
-  closeUpdateError(): void {
-    this.updateErrorDismissed = true;
   }
 
   async skipUpdate(): Promise<void> {
@@ -366,10 +328,9 @@ export class AboutModalComponent implements OnInit {
     this.appUpdaterService.updateAvailable$.subscribe(update => {
       this.updateAvailable = update;
       if (update?.releaseTag) {
-        this.updateReleaseTag = update.releaseTag;
-        this.updateReleaseChannel = this.getChannelFromTag(update.releaseTag);
+        const tag = update.releaseTag.toLowerCase();
+        this.updateReleaseChannel = tag.includes('beta') ? 'beta' : 'stable';
       } else {
-        this.updateReleaseTag = null;
         this.updateReleaseChannel = null;
       }
     });
@@ -394,15 +355,6 @@ export class AboutModalComponent implements OnInit {
 
       if (status.isComplete) {
         this.installingUpdate = false;
-      }
-
-      if (status.isFailed && status.failureMessage !== this.updateErrorMessage) {
-        this.updateErrorMessage = status.failureMessage ?? 'Update installation failed.';
-        this.updateErrorDismissed = false;
-      }
-
-      if (this.downloadInProgress || this.installingUpdate) {
-        this.updateErrorDismissed = true;
       }
     });
 
@@ -473,13 +425,5 @@ export class AboutModalComponent implements OnInit {
       available: false,
       updateInfo: null,
     };
-  }
-
-  trackByChannel(index: number, channel: { value: string }): string {
-    return channel.value;
-  }
-
-  trackByVersion(index: number, version: string): string {
-    return version;
   }
 }

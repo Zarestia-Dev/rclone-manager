@@ -9,8 +9,8 @@
 
 .nautilus-sidenav {
   width: var(--sidenav-width);
-  background-color: var(--sidebar-background);
-  border-right: 1px solid var(--theme-border);
+  background-color: var(--sidebar-bg-color);
+  border-right: 1px solid var(--border-color);
   border-radius: 0 !important;
 }
 
@@ -26,20 +26,20 @@
 .nautilus-header {
   flex-shrink: 0;
   z-index: 10;
-  background-color: var(--sidebar-background);
+  background-color: var(--sidebar-bg-color);
   height: var(--titlebar-height);
   padding-block: var(--space-xxs);
 
   span {
     font-weight: 600;
-    color: var(--app-text-color);
+    color: var(--window-fg-color);
   }
 }
 
 .nautilus-sidenav mat-toolbar {
   display: flex;
   justify-content: space-between;
-  background-color: var(--sidebar-background) !important;
+  background-color: var(--sidebar-bg-color) !important;
   padding-inline: var(--space-sm);
   height: var(--titlebar-height);
 }
@@ -60,7 +60,7 @@ mat-nav-list {
 
 .starred-item {
   &.cdk-drop-list-dragging {
-    background: var(--bg-selected) !important;
+    background: var(--selected-bg-color) !important;
     .grid-item,
     tr {
       display: none !important;
@@ -92,14 +92,14 @@ mat-nav-list {
   transition: var(--transition-fast);
 
   &.selected {
-    background: var(--bg-hover);
+    background: var(--hover-bg-color);
   }
 
   span {
     display: flex;
     align-items: center;
     gap: 8px;
-    color: var(--app-text-color);
+    color: var(--window-fg-color);
 
     &.remote-info {
       justify-content: space-between !important;
@@ -113,8 +113,8 @@ mat-nav-list {
           padding: var(--space-xxs);
           border-radius: var(--radius-xs);
           &:hover {
-            background: var(--bg-hover);
-            color: var(--app-text-color);
+            background: var(--hover-bg-color);
+            color: var(--window-fg-color);
           }
         }
       }
@@ -166,11 +166,11 @@ mat-nav-list {
   width: 36px;
   height: 36px;
   border-radius: var(--border-radius);
-  color: var(--app-text-color);
+  color: var(--window-fg-color);
   transition: var(--transition-fast);
 
   &:hover {
-    background: var(--bg-hover);
+    background: var(--hover-bg-color);
   }
 
   &:disabled {
@@ -179,7 +179,7 @@ mat-nav-list {
   }
 
   &.active {
-    background: var(--bg-selected);
+    background: var(--selected-bg-color);
     color: var(--accent-color);
   }
 
@@ -194,7 +194,7 @@ mat-nav-list {
   justify-content: space-between;
   align-items: center;
   height: calc(var(--titlebar-height) + 8px);
-  color: var(--app-text-color);
+  color: var(--window-fg-color);
   padding: 4px var(--title-bar-padding);
   position: sticky;
   top: 0;
@@ -229,12 +229,12 @@ mat-nav-list {
     padding-right: 44px;
 
     &.active {
-      background: var(--bg-selected);
+      background: var(--selected-bg-color);
       font-weight: 600;
     }
 
     &:hover:not(.active) {
-      background: var(--bg-hover);
+      background: var(--hover-bg-color);
     }
 
     .tab-title {
@@ -266,8 +266,8 @@ mat-nav-list {
         border-radius: var(--border-radius);
 
         &:hover {
-          background: var(--bg-selected);
-          color: var(--app-text-color);
+          background: var(--selected-bg-color);
+          color: var(--window-fg-color);
         }
       }
     }
@@ -277,7 +277,7 @@ mat-nav-list {
 .path-container {
   display: flex;
   align-items: center;
-  background-color: var(--input-background);
+  background-color: var(--card-bg-color);
   border-radius: var(--border-radius);
   width: 100%;
   max-width: 800px;
@@ -298,10 +298,10 @@ mat-nav-list {
   scroll-behavior: smooth;
 
   background-image:
-    linear-gradient(to right, var(--input-background), var(--input-background)),
-    linear-gradient(to right, var(--input-background), var(--input-background)),
-    linear-gradient(to right, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0)),
-    linear-gradient(to left, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0));
+    linear-gradient(to right, var(--card-bg-color), var(--card-bg-color)),
+    linear-gradient(to right, var(--card-bg-color), var(--card-bg-color)),
+    linear-gradient(to right, var(--shadow-color), rgba(0, 0, 0, 0)),
+    linear-gradient(to left, var(--shadow-color), rgba(0, 0, 0, 0));
 
   background-position:
     0 0,
@@ -318,7 +318,7 @@ mat-nav-list {
 }
 
 .path-separator {
-  color: var(--secondary-text-color);
+  color: var(--dim-color);
   opacity: 0.6;
   margin: 0 2px;
   flex-shrink: 0;
@@ -336,15 +336,15 @@ mat-nav-list {
   margin: var(--space-xxs);
   padding: var(--space-xxs) var(--space-xs);
   border-radius: var(--border-radius);
-  color: var(--secondary-text-color);
+  color: var(--dim-color);
 
   &:hover:not(.active) {
-    background: var(--bg-selected);
-    color: var(--app-text-color);
+    background: var(--selected-bg-color);
+    color: var(--window-fg-color);
   }
 
   &.active {
-    color: var(--app-text-color);
+    color: var(--window-fg-color);
     font-weight: 500;
   }
 
@@ -361,7 +361,7 @@ mat-nav-list {
   border: none;
   outline: 2px solid transparent;
   background: transparent;
-  color: var(--app-text-color);
+  color: var(--window-fg-color);
   font-size: var(--font-size-base);
 }
 
@@ -395,7 +395,7 @@ mat-nav-list {
 
     /* SELECTION STATE: Applies to the real item */
     &.selected .folder-card {
-      background: var(--bg-selected);
+      background: var(--selected-bg-color);
     }
   }
 
@@ -405,12 +405,12 @@ mat-nav-list {
     padding: var(--space-xxs);
     transition: var(--transition-fast);
     width: 16px;
-    color: var(--secondary-text-color);
+    color: var(--dim-color);
     height: 16px;
     z-index: 1;
 
     &:hover {
-      background: var(--bg-selected);
+      background: var(--selected-bg-color);
     }
   }
 }
@@ -431,7 +431,7 @@ mat-nav-list {
   /* Typography */
   .folder-title {
     font-size: var(--font-size-md);
-    color: var(--app-text-color);
+    color: var(--window-fg-color);
     text-align: center;
     white-space: normal;
     overflow-wrap: break-word;
@@ -463,8 +463,7 @@ mat-nav-list {
   padding: var(--space-sm) var(--space-md);
 
   border-radius: var(--border-radius);
-  box-shadow: var(--shadow-elevated);
-  border: 1px solid var(--primary-color);
+  box-shadow: 0 0 0 1px var(--primary-color);
   opacity: 0.8;
 
   mat-icon {
@@ -514,17 +513,17 @@ mat-nav-list {
     transition: none;
 
     &:hover {
-      background-color: var(--bg-hover);
+      background-color: var(--hover-bg-color);
     }
     &.selected {
-      background-color: var(--bg-selected);
+      background-color: var(--selected-bg-color);
     }
   }
 
   /* HEADER STYLING */
   th.mat-mdc-header-cell {
     font-weight: 600;
-    color: var(--secondary-text-color);
+    color: var(--dim-color);
     border-bottom: none;
 
     .header-content {
@@ -542,7 +541,7 @@ mat-nav-list {
   td.mat-mdc-cell {
     border-bottom: 1px solid transparent;
     font-size: var(--font-size-md);
-    color: var(--app-text-color);
+    color: var(--window-fg-color);
     padding: 0 var(--space-xs);
 
     .name-cell {
@@ -607,11 +606,11 @@ mat-nav-list {
       }
 
       &:hover {
-        background: var(--bg-hover);
+        background: var(--hover-bg-color);
       }
 
       &:first-child {
-        border-right: 1px solid var(--theme-border);
+        border-right: 1px solid var(--border-color);
       }
     }
   }
@@ -627,7 +626,7 @@ mat-nav-list {
     .sort-label {
       font-size: var(--font-size-md);
       font-weight: 700;
-      color: var(--secondary-text-color);
+      color: var(--dim-color);
     }
   }
 }
@@ -639,7 +638,7 @@ mat-nav-list {
 
   padding: var(--space-xxs) var(--space-sm);
   border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-elevated);
+  box-shadow: var(--shadow-light);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -652,7 +651,7 @@ mat-nav-list {
   right: 16px;
   z-index: 10;
 
-  box-shadow: var(--shadow-elevated);
+  box-shadow: var(--shadow-light);
   border-radius: var(--radius-sm);
   padding: var(--space-xxs) var(--space-sm);
   max-width: calc(100vw - var(--sidenav-width) - 64px);
@@ -663,7 +662,7 @@ mat-nav-list {
 
 .selection-info {
   font-size: var(--font-size-md);
-  color: var(--app-text-color);
+  color: var(--window-fg-color);
 }
 
 .picker-actions + .selection-info-container {
@@ -688,17 +687,17 @@ mat-nav-list {
     width: 128px;
     height: 128px;
     font-size: 128px;
-    color: var(--theme-border);
+    color: var(--border-color);
   }
 
   h2 {
     font-weight: 700;
-    color: var(--app-text-color);
+    color: var(--window-fg-color);
     opacity: 0.7;
   }
 
   p {
-    color: var(--secondary-text-color);
+    color: var(--dim-color);
     max-width: 300px;
     text-align: center;
   }
@@ -737,8 +736,8 @@ mat-nav-list {
   justify-content: space-between;
   align-items: center;
   padding: var(--space-xs) var(--space-sm);
-  background-color: var(--secondary-background);
-  border-top: 1px solid var(--theme-border);
+  background-color: var(--view-bg-color);
+  border-top: 1px solid var(--border-color);
   z-index: 10;
 
   .nav-controls,

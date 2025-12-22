@@ -13,19 +13,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { CommonModule } from '@angular/common';
-
-// Services
-import {
-  BackupRestoreService,
-  BackupAnalysis,
-} from '../../../../services/settings/backup-restore.service';
+import { DatePipe, UpperCasePipe } from '@angular/common';
+import { BackupAnalysis, BackupRestoreService } from '@app/services';
 
 @Component({
   selector: 'app-restore-preview-modal',
   standalone: true,
   imports: [
-    CommonModule,
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
@@ -33,6 +27,8 @@ import {
     MatIconModule,
     MatProgressSpinnerModule,
     FormsModule,
+    DatePipe,
+    UpperCasePipe,
   ],
   templateUrl: './restore-preview-modal.component.html',
   styleUrls: ['./restore-preview-modal.component.scss', '../../../../styles/_shared-modal.scss'],

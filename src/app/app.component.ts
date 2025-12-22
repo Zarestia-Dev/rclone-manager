@@ -27,6 +27,7 @@ import {
   RcloneUpdateService,
   AppUpdaterService,
   NautilusService,
+  SystemHealthService,
 } from '@app/services';
 import { GlobalLoadingService } from './services/ui/global-loading.service';
 
@@ -63,6 +64,7 @@ export class AppComponent implements OnDestroy {
   private readonly rcloneUpdateService = inject(RcloneUpdateService);
   private readonly loadingService = inject(GlobalLoadingService);
   private readonly nautilusService = inject(NautilusService);
+  private readonly systemHealthService = inject(SystemHealthService);
 
   // --- DERIVED STATE & OBSERVABLE CONVERSIONS ---
   readonly currentTab = toSignal(this.uiStateService.currentTab$, {
@@ -206,10 +208,11 @@ export class AppComponent implements OnDestroy {
 
   private async checkMountPluginStatus(): Promise<void> {
     try {
-      const mountPluginOk = await this.installationService.isMountPluginInstalled();
+      // Use SystemHealthService for consistent state
+      const mountPluginOk = this.systemHealthService.mountPluginInstalled();
       console.log('Mount plugin status: ', mountPluginOk);
 
-      if (!mountPluginOk) {
+      if (mountPluginOk === false) {
         await this.showRepairSheet({
           type: RepairSheetType.MOUNT_PLUGIN,
           title: 'Mount Plugin Problem',
@@ -330,6 +333,7 @@ export class AppComponent implements OnDestroy {
       const result = await this.promptForPassword();
       if (result?.password) {
         await this.rclonePasswordService.setConfigPasswordEnv(result.password);
+        this.systemHealthService.markPasswordUnlocked();
         console.log('Password set successfully');
       } else {
         console.log('Password prompt was cancelled or no password provided');

@@ -12,13 +12,7 @@
   border-radius: var(--card-border-radius-large) !important;
   box-shadow: var(--shadow-light);
   transition: var(--transition-standard);
-  border: 1px solid var(--theme-border);
-  background: var(--secondary-background);
-  will-change: transform, box-shadow;
-
-  &:hover {
-    box-shadow: var(--shadow-elevated);
-  }
+  background: var(--view-bg-color);
 
   // Status Panel Header
   .status-header {
@@ -26,7 +20,7 @@
     margin-bottom: 8px;
 
     .panel-title-content {
-      color: var(--app-text-color);
+      color: var(--window-fg-color);
       font-size: var(--font-size-md);
       display: flex;
       align-items: center;
@@ -42,13 +36,13 @@
       }
 
       .remote-count {
-        color: var(--secondary-text-color);
+        color: var(--dim-color);
         font-size: var(--font-size-base);
         font-weight: 400;
         background: rgba(var(--mode-primary-color-rgb, var(--accent-color-rgb)), 0.1);
         padding: var(--space-xxs) var(--space-xs);
         border-radius: var(--radius-sm);
-        border: 1px solid rgba(var(--mode-primary-color-rgb, var(--accent-color-rgb)), 0.2);
+        box-shadow: 0 0 0 1px var(--card-shade-color);
         transition: var(--transition-standard);
         will-change: background, border;
       }
@@ -73,8 +67,7 @@
         position: relative;
         overflow: hidden;
         display: flex;
-        background: var(--hover-color);
-        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        background: var(--hover-bg-color);
 
         .bar {
           height: 100%;
@@ -111,14 +104,13 @@
           align-items: center;
           font-size: var(--font-size-sm);
           font-weight: 500;
-          color: var(--app-text-color);
+          color: var(--window-fg-color);
 
           .color-box {
             width: 16px;
             height: 16px;
             border-radius: var(--radius-xs);
             margin-right: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 
             &.active {
               background: linear-gradient(

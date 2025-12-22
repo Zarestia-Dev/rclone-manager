@@ -101,14 +101,14 @@ export class DiskUsagePanelComponent {
   private getUnsupportedStyle(): Record<string, string> {
     return {
       backgroundColor: 'rgba(var(--yellow-rgb), 0.3)',
-      border: '2px solid var(--yellow)',
+      boxShadow: 'inset 0 0 0 2px var(--yellow)',
     };
   }
 
   private getLoadingStyle(): Record<string, string> {
     return {
       backgroundColor: 'rgba(var(--orange-rgb), 0.2)',
-      border: '2px solid var(--orange)',
+      boxShadow: 'inset 0 0 0 2px var(--orange)',
       backgroundImage:
         'linear-gradient(90deg, transparent 0%, rgba(var(--orange-rgb), 0.3) 50%, transparent 100%)',
       backgroundSize: '200% 100%',
@@ -119,8 +119,8 @@ export class DiskUsagePanelComponent {
   private getMountedStyle(): Record<string, string> {
     const colorVar = this.getUsageColorVar();
     return {
-      backgroundColor: 'rgba(var(--app-text-color-rgb), 0.08)',
-      border: `2px solid var(${colorVar})`,
+      backgroundColor: 'rgba(var(--window-fg-color-rgb), 0.08)',
+      boxShadow: `inset 0 0 0 2px var(${colorVar})`,
     };
   }
 

@@ -13,7 +13,7 @@ form {
   }
 
   .advanced-section {
-    border: 2px solid rgba(var(--accent-color-rgb), 0.5);
+    box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.5);
     background: rgba(var(--accent-color-rgb), 0.06);
     border-radius: var(--border-radius);
   }
@@ -38,7 +38,7 @@ form {
   .section-heading {
     font-size: 16px;
     font-weight: 600;
-    color: var(--app-text-color);
+    color: var(--window-fg-color);
     display: flex;
     align-items: center;
     gap: var(--space-sm);
@@ -48,7 +48,7 @@ form {
       font-weight: 500;
       color: var(--purple);
       background: rgba(var(--purple-rgb), 0.1);
-      border: 1px solid var(--purple);
+      box-shadow: 0 0 0 2px var(--purple);
       padding: 2px 4px;
       border-radius: 12px;
       min-width: 40px;

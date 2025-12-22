@@ -104,31 +104,4 @@ export class KeyboardShortcutsModalComponent {
       this.searchContainer.clear();
     }
   }
-
-  // Method to get category for a shortcut (for potential future categorization)
-  getShortcutCategory(shortcut: any): string {
-    const { keys } = shortcut;
-
-    if (keys.includes('Ctrl + N') || keys.includes('Ctrl + R') || keys.includes('Ctrl + O')) {
-      return 'Remote Management';
-    } else if (
-      keys.includes('Ctrl + S') ||
-      keys.includes('Ctrl + E') ||
-      keys.includes('Ctrl + L')
-    ) {
-      return 'File Operations';
-    } else if (
-      keys.includes('Ctrl + C') ||
-      keys.includes('Ctrl + V') ||
-      keys.includes('Ctrl + X')
-    ) {
-      return 'Clipboard';
-    } else if (keys.includes('Tab') || keys.includes('Escape') || keys.includes('Enter')) {
-      return 'Navigation';
-    } else if (keys.includes('Ctrl + ,') || keys.includes('Ctrl + ?')) {
-      return 'Application';
-    }
-
-    return 'General';
-  }
 }

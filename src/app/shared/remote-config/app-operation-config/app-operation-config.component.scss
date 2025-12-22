@@ -12,7 +12,7 @@
   display: flex;
   flex-direction: column;
   padding: var(--space-sm);
-  border: 2px solid var(--primary-color);
+  box-shadow: 0 0 0 2px var(--primary-color);
   border-radius: var(--panel-radius);
   background: rgba(var(--primary-color-rgb), 0.05);
 }
@@ -36,12 +36,12 @@
 
   .section-description {
     font-size: var(--font-size-sm);
-    color: var(--app-text-color-secondary);
+    color: var(--window-fg-color-secondary);
     margin: 0 0 var(--space-xs) 0;
     line-height: 1.5;
 
     strong {
-      color: var(--app-text-color);
+      color: var(--window-fg-color);
     }
   }
 }
@@ -121,6 +121,6 @@
   &.warning {
     color: var(--orange);
     background: rgba(var(--orange-rgb), 0.1);
-    border: 1px solid var(--orange);
+    box-shadow: 0 0 0 1px var(--orange);
   }
 }

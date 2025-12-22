@@ -39,10 +39,6 @@
   gap: var(--space-md);
   transition: var(--transition-fast);
 
-  &:hover {
-    box-shadow: var(--shadow-elevated);
-  }
-
   .setting-control {
     .stepper-container {
       display: flex;
