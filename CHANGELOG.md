@@ -3,6 +3,9 @@
 
 ## [unreleased]
 
+### Added
+- Nautilus Component: Added dot and other text files preview support. Now you can preview the content of dot and other text files.
+
 ### Fixed
 - Broken theme setting fixed. Now it correctly applies the theme.
 

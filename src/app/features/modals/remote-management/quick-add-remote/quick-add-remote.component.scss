@@ -87,7 +87,7 @@
   background: var(--view-bg-color);
   padding: 16px;
   border-radius: 12px;
-  box-shadow: var(--shadow-light);
+  box-shadow: var(--shadow-gnome);
   gap: 16px;
 
   .field-icon {
@@ -138,7 +138,7 @@
 }
 
 .tabs-container {
-  box-shadow: var(--shadow-light);
+  box-shadow: var(--shadow-gnome);
   border-radius: var(--radius-md);
   overflow: hidden;
   background: var(--view-bg-color);

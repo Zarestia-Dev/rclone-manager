@@ -16,7 +16,7 @@ import {
 import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { combineLatest, firstValueFrom, from, of } from 'rxjs';
 import { catchError, finalize, map, switchMap } from 'rxjs/operators';
-import { CommonModule } from '@angular/common';
+import { NgTemplateOutlet } from '@angular/common';
 
 // Material Modules
 import { MatListModule } from '@angular/material/list';
@@ -81,7 +81,7 @@ interface Tab {
   selector: 'app-nautilus',
   standalone: true,
   imports: [
-    CommonModule,
+    NgTemplateOutlet,
     DragDropModule,
     CdkMenuModule,
     ScrollingModule,

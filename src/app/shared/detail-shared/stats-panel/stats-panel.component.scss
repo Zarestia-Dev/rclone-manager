@@ -13,10 +13,6 @@
     text-align: center;
     transition: var(--transition-standard);
 
-    &:hover {
-      box-shadow: var(--shadow-light);
-    }
-
     &.primary {
       background: rgba(var(--primary-color-rgb), var(--background-opacity));
       border-color: rgba(var(--primary-color-rgb), var(--active-opacity));

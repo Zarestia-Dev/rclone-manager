@@ -179,6 +179,8 @@ export class IconService {
         return 'file-pdf';
       case 'text':
         return 'file-lines';
+      case 'binary':
+        return 'file-zipper';
       default:
         return 'file';
     }

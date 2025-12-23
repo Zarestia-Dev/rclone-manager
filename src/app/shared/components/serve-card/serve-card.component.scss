@@ -3,9 +3,13 @@
   transition: var(--transition-standard);
   border-radius: var(--card-border-radius);
   background: var(--window-bg-color);
-  box-shadow: var(--shadow-light);
+  box-shadow: var(--box-shadow);
   animation: fadeIn 0.6s ease-out;
   animation-fill-mode: both;
+
+  &:hover {
+    background: var(--hover-bg-color);
+  }
 
   .serve-card-header {
     .serve-info {

@@ -136,7 +136,7 @@
 
   // Interaction Colors (using color-mix for theme-aware opacity)
   --border-color: color-mix(in srgb, currentColor 15%, transparent);
-  --hover-bg-color: color-mix(in srgb, currentColor 7%, transparent);
+  --hover-bg-color: rgba(var(--window-fg-color-rgb), 0.07);
   --active-bg-color: color-mix(in srgb, currentColor 16%, transparent);
   --selected-bg-color: color-mix(in srgb, currentColor 10%, transparent);
 
@@ -205,7 +205,7 @@
 
   // Interaction Colors
   --border-color: color-mix(in srgb, currentColor 15%, transparent);
-  --hover-bg-color: color-mix(in srgb, currentColor 7%, transparent);
+  --hover-bg-color: rgba(var(--window-fg-color-rgb), 0.07);
   --active-bg-color: color-mix(in srgb, currentColor 16%, transparent);
   --selected-bg-color: color-mix(in srgb, currentColor 10%, transparent);
 
@@ -604,8 +604,11 @@ $dark-theme: (
   --transition-cubic: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
-  // Shadow Scale (libadwaita style - subtle outlines, minimal shadows)
-  --shadow-light: 0 1px 4px 0 var(--mat-sys-scrim);
+  // Shadow Scale (authentic libadwaita - outline + subtle layered shadows)
+  --shadow-gnome:
+    0 0 0 1px var(--card-shade-color), 0 1px 3px 1px rgba(0, 0, 0, 0.07),
+    0 2px 6px 2px rgba(0, 0, 0, 0.03);
+
   // Popover/menu shadow (the one exception where libadwaita uses actual shadows)
   --shadow-popover: 0 1px 5px 1px rgba(0, 0, 0, 0.09), 0 2px 14px 3px rgba(0, 0, 0, 0.05);
 
@@ -747,7 +750,7 @@ body {
       elevated-container-shape: var(--card-border-radius),
       filled-container-shape: var(--card-border-radius),
       outlined-container-shape: var(--card-border-radius),
-      elevated-container-elevation: var(--shadow-light)
+      elevated-container-elevation: var(--shadow-gnome)
     )
   );
 
@@ -755,7 +758,7 @@ body {
     (
       container-shape: var(--card-border-radius),
       // Use libadwaita-style outline shadow instead of heavy drop shadow
-      container-elevation-shadow: var(--shadow-light),
+      container-elevation-shadow: var(--shadow-gnome),
     )
   );
 }

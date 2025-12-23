@@ -91,6 +91,7 @@
   &.bisync {
     @include operation-state(--purple, --purple-rgb);
   }
+  &.serve,
   &.mount {
     @include operation-state(--accent-color, --accent-color-rgb);
   }
@@ -171,7 +172,7 @@
     padding: var(--space-md);
     background: var(--view-bg-color);
     border-radius: var(--card-border-radius);
-    box-shadow: var(--shadow-light);
+    box-shadow: var(--shadow-gnome);
   }
 }
 

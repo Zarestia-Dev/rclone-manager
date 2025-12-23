@@ -62,6 +62,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
   textContent = signal('');
   folderSize = signal<{ count: number; bytes: number } | null>(null);
+  fileSize = signal<number | null>(null);
 
   isLoading = signal(true);
   isDownloading = signal(false);
@@ -73,6 +74,9 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   @Output() closeViewer = new EventEmitter<void>();
 
   async ngOnInit(): Promise<void> {
+    // Initialize file size for the first item
+    const item = this.data.items[this.data.currentIndex];
+    this.fileSize.set(item.Size ?? null);
     await this.updateContent();
   }
 
@@ -136,6 +140,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       this.sanitizedUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.data.url);
 
       if (this.data.fileType === 'text') {
+        // Binary detection already happened in getFileType(), just load text content
         this.http
           .get(this.data.url, {
             responseType: 'text',
@@ -150,19 +155,18 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
               return of(null);
             })
           )
-          .subscribe(response => {
-            if (response && response.body) {
-              this.textContent.set(response.body);
+          .subscribe(res => {
+            if (res && res.body) {
+              this.textContent.set(res.body);
             }
             this.isLoading.set(false);
           });
-
         return;
       }
 
       // For other file types (image, video, audio, pdf), loading will be handled by onLoadComplete/onLoadError
-      // For non-previewable files (default case), set loading to false immediately
-      const previewableTypes = ['image', 'video', 'audio', 'pdf', 'text', 'directory'];
+      // For non-previewable files (binary, default case), set loading to false immediately
+      const previewableTypes = ['image', 'video', 'audio', 'pdf'];
       if (!previewableTypes.includes(this.data.fileType)) {
         this.isLoading.set(false);
       }
@@ -201,7 +205,12 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   async updateData(): Promise<void> {
     const item = this.data.items[this.data.currentIndex];
     this.data.name = item.Name;
-    this.data.fileType = this.fileViewerService.getFileType(item);
+    this.data.fileType = await this.fileViewerService.getFileType(
+      item,
+      this.data.remoteName,
+      this.data.isLocal
+    );
+    this.fileSize.set(item.Size ?? null);
 
     this.data.url = await this.fileViewerService.generateUrl(
       item,
@@ -235,12 +244,6 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       console.error('Failed to start download:', err);
     } finally {
       this.isDownloading.set(false);
-    }
-  }
-
-  onBackdropClick(event: MouseEvent): void {
-    if (event.target === event.currentTarget) {
-      this.closeViewer.emit();
     }
   }
 }

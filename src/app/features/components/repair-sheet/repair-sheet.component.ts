@@ -87,6 +87,10 @@ export class RepairSheetComponent {
     () => this.installing() || this.isSubmittingPassword() || this.isRefreshingStatus()
   );
 
+  readonly repairIcon = computed(() => this.repairService.getRepairButtonIcon(this.data.type));
+
+  readonly repairDetails = computed(() => this.repairService.getRepairDetails(this.data.type));
+
   readonly repairButtonText = computed(() => {
     if (this.installing()) {
       return this.repairService.getRepairProgressText(this.data.type);
@@ -134,6 +138,43 @@ export class RepairSheetComponent {
     }
   });
 
+  readonly repairTooltip = computed(() => {
+    if (this.canRepair() || this.installing() || this.isSubmittingPassword()) return '';
+
+    const data = this.installationData();
+
+    if (this.showConfigOptions()) {
+      if (data.installLocation === 'custom' && !data.customPath.trim()) {
+        return 'Please select a config file first';
+      }
+      if (!this.installationValid()) {
+        return 'Please fix validation errors';
+      }
+      return '';
+    }
+
+    if (this.requiresPassword()) {
+      if (!this.password()) {
+        return 'Please enter the configuration password first';
+      }
+      return 'Account is temporarily locked due to failed attempts';
+    }
+
+    if (data.installLocation === 'custom' && !data.customPath.trim()) {
+      return 'Please select an installation path first';
+    }
+    if (data.installLocation === 'existing') {
+      if (!data.existingBinaryPath.trim()) return 'Please select a binary file first';
+      if (data.binaryTestResult === 'invalid')
+        return 'The selected file is not a valid rclone binary';
+      if (data.binaryTestResult === 'untested') return 'Please test the selected binary first';
+    }
+    if (!this.installationValid()) {
+      return 'Please fix validation errors';
+    }
+    return '';
+  });
+
   // --- PUBLIC METHODS ---
 
   async repair(): Promise<void> {
@@ -156,14 +197,6 @@ export class RepairSheetComponent {
         await this.executeRepair();
         break;
     }
-  }
-
-  getRepairIcon(): string {
-    return this.repairService.getRepairButtonIcon(this.data.type);
-  }
-
-  getRepairDetails(): { icon: string; label: string; value: string }[] | null {
-    return this.repairService.getRepairDetails(this.data.type);
   }
 
   toggleInstallOptions(): void {

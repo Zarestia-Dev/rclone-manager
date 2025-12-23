@@ -23,11 +23,6 @@
   background: rgba(var(--window-fg-color-rgb), var(--background-opacity));
   border-radius: var(--item-radius);
   transition: var(--transition-standard);
-
-  &:hover {
-    background: rgba(var(--window-fg-color-rgb), var(--hover-opacity));
-    box-shadow: var(--shadow-light);
-  }
 }
 
 .detail-label {

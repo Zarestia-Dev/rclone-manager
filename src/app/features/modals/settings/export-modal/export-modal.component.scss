@@ -64,7 +64,7 @@
     padding: var(--space-md) var(--space-lg);
     background: var(--view-bg-color);
     border-radius: var(--radius-md);
-    box-shadow: var(--shadow-light);
+    box-shadow: var(--shadow-gnome);
     transition: var(--transition-fast);
     height: 100%;
 
@@ -133,7 +133,7 @@
   background: var(--view-bg-color);
   padding: var(--space-lg);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-light);
+  box-shadow: var(--shadow-gnome);
 
   .field-icon {
     margin-right: var(--space-sm);

@@ -368,13 +368,13 @@
     transition: var(--transition-standard);
     border-radius: var(--card-border-radius);
     background: var(--window-bg-color);
-    box-shadow: var(--shadow-light);
+    box-shadow: var(--box-shadow);
     animation: fadeIn 0.6s ease-out;
     animation-fill-mode: both;
     will-change: transform, box-shadow;
 
     &.disabled {
-      opacity: 0.6;
+      filter: grayscale(1);
     }
 
     &.stopping {

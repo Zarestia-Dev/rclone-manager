@@ -24,7 +24,7 @@ mat-toolbar {
   }
 
   &.flatpak-warning-banner {
-    background-color: var(--headerbar-bg-color);
+    background-color: #d4d4d7;
 
     mat-icon {
       height: 20px;
@@ -33,7 +33,7 @@ mat-toolbar {
   }
 
   &.metered-banner {
-    background-color: var(--headerbar-bg-color);
+    background-color: #d4d4d7;
   }
 
   // CSS-based slide toggle animation

@@ -286,13 +286,15 @@
               >
                 <mat-card-content>
                   <mat-icon
-                    [ngClass]="{ accent: item.entry.IsDir }"
+                    [class.accent]="item.entry.IsDir"
                     [style.width.px]="iconSize()"
                     [style.height.px]="iconSize()"
                     [svgIcon]="
                       item.entry.IsDir
                         ? 'folder'
-                        : iconService.getIconForFileType(fileViewerService.getFileType(item.entry))
+                        : iconService.getIconForFileType(
+                            fileViewerService.getFileTypeSync(item.entry)
+                          )
                     "
                   ></mat-icon>
                   <p class="folder-title">{{ item.entry.Name }}</p>
@@ -351,11 +353,11 @@
           <table mat-table [dataSource]="files()" class="nautilus-table">
             <ng-template #nameCellContent let-item="item" let-rowTitle="rowTitle">
               <mat-icon
-                [ngClass]="{ accent: item.entry.IsDir }"
+                [class.accent]="item.entry.IsDir"
                 [svgIcon]="
                   item.entry.IsDir
                     ? 'folder'
-                    : iconService.getIconForFileType(fileViewerService.getFileType(item.entry))
+                    : iconService.getIconForFileType(fileViewerService.getFileTypeSync(item.entry))
                 "
               ></mat-icon>
               <span [class.row-title]="rowTitle">{{ item.entry.Name }}</span>

@@ -10,12 +10,11 @@
     gap: var(--space-lg);
   }
 
-  // Cards
   .card {
-    background: var(--surface-background);
+    background: var(--view-bg-color);
     border-radius: var(--radius-lg);
     padding: var(--space-lg);
-    box-shadow: var(--shadow-light);
+    box-shadow: var(--shadow-gnome);
     display: flex;
     flex-direction: column;
     gap: var(--space-md);
@@ -28,7 +27,6 @@
         margin-bottom: var(--space-sm);
 
         mat-icon {
-          font-size: var(--icon-size-md);
           width: var(--icon-size-md);
           height: var(--icon-size-md);
           color: var(--primary-color);
@@ -66,7 +64,6 @@
         gap: var(--space-md);
       }
 
-      // Status Grid
       .status-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -81,7 +78,6 @@
 
           &.success {
             background: rgba(var(--primary-color-rgb), 0.1);
-            border-color: rgba(var(--primary-color-rgb), 0.3);
 
             .status-indicator mat-icon {
               color: var(--primary-color);
@@ -90,19 +86,16 @@
 
           &.warning {
             background: rgba(var(--orange-rgb), 0.1);
-            border-color: rgba(var(--orange-rgb), 0.3);
 
             .status-indicator mat-icon {
               color: var(--orange);
             }
           }
 
-          .status-indicator {
-            mat-icon {
-              width: var(--icon-size-md);
-              height: var(--icon-size-md);
-              color: var(--primary-color);
-            }
+          .status-indicator mat-icon {
+            width: var(--icon-size-md);
+            height: var(--icon-size-md);
+            color: var(--primary-color);
           }
 
           .status-details {
@@ -124,7 +117,6 @@
         }
       }
 
-      // Encryption Status Badge
       .encryption-status {
         display: flex;
         align-items: center;
@@ -132,10 +124,10 @@
         padding: var(--space-md);
         border-radius: var(--radius-md);
         font-weight: 500;
+        box-shadow: 0 0 0 1px var(--card-shade-color);
 
         &.encrypted {
           background: rgba(var(--primary-color-rgb), 0.1);
-          box-shadow: 0 0 0 1px var(--card-shade-color);
           color: var(--primary-color);
 
           mat-icon {
@@ -145,7 +137,6 @@
 
         &.unencrypted {
           background: rgba(var(--orange-rgb), 0.1);
-          box-shadow: 0 0 0 1px var(--card-shade-color);
           color: var(--orange);
 
           mat-icon {
@@ -154,13 +145,11 @@
         }
 
         mat-icon {
-          font-size: var(--icon-size-md);
           width: var(--icon-size-md);
           height: var(--icon-size-md);
         }
       }
 
-      // Benefits List
       .benefits-list {
         display: flex;
         flex-direction: column;
@@ -172,7 +161,6 @@
           gap: var(--space-md);
 
           mat-icon {
-            font-size: var(--icon-size-sm);
             width: var(--icon-size-sm);
             height: var(--icon-size-sm);
             color: var(--primary-color);
@@ -186,7 +174,6 @@
         }
       }
 
-      // Loading Content
       .loading-content {
         display: flex;
         flex-direction: column;
@@ -224,7 +211,6 @@
         gap: var(--space-xs);
 
         mat-icon {
-          font-size: var(--icon-size-sm);
           width: var(--icon-size-sm);
           height: var(--icon-size-sm);
         }
@@ -287,38 +273,32 @@
 }
 
 @media (max-width: 540px) {
-  .password-manager-section {
-    .card {
-      .card-header {
-        .card-title {
-          h3 {
-            font-size: var(--font-size-lg);
-          }
-
-          mat-icon {
-            font-size: var(--icon-size-sm);
-            width: var(--icon-size-sm);
-            height: var(--icon-size-sm);
-          }
+  .password-manager-section .card {
+    .card-header {
+      .card-title {
+        h3 {
+          font-size: var(--font-size-lg);
         }
 
-        .card-description {
-          font-size: var(--font-size-sm);
+        mat-icon {
+          width: var(--icon-size-sm);
+          height: var(--icon-size-sm);
         }
       }
 
-      .card-content {
-        .benefits-list .benefit-item {
-          mat-icon {
-            font-size: var(--icon-size-sm);
-            width: var(--icon-size-sm);
-            height: var(--icon-size-sm);
-          }
+      .card-description {
+        font-size: var(--font-size-sm);
+      }
+    }
 
-          span {
-            font-size: var(--font-size-sm);
-          }
-        }
+    .card-content .benefits-list .benefit-item {
+      mat-icon {
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+      }
+
+      span {
+        font-size: var(--font-size-sm);
       }
     }
   }

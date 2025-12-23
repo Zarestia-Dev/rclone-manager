@@ -2,7 +2,13 @@
   <div class="file-viewer-header" data-tauri-drag-region>
     <div class="header-left">
       <span class="file-name">{{ data.name }}</span>
-      <span class="file-counter">{{ data.currentIndex + 1 }} / {{ data.items.length }}</span>
+      <div class="file-info">
+        <span class="file-counter">{{ data.currentIndex + 1 }} / {{ data.items.length }}</span>
+        @if (fileSize()) {
+          <span class="separator"></span>
+          <span class="file-size">{{ fileSize() ?? 0 | formatFileSize }}</span>
+        }
+      </div>
     </div>
     <div class="header-actions">
       @if (!this.data.isLocal) {
@@ -32,17 +38,17 @@
   </div>
 
   <div class="file-viewer-content">
-    <button
-      mat-icon-button
-      class="nav-button prev"
-      (click)="back(); $event.stopPropagation()"
-      [disabled]="data.currentIndex === 0"
-      [class.hidden]="data.items.length <= 1"
-      aria-label="Previous file"
-      [attr.aria-keyshortcuts]="'ArrowLeft'"
-    >
-      <mat-icon svgIcon="chevron-left"></mat-icon>
-    </button>
+    @if (data.items.length > 1 && data.currentIndex > 0) {
+      <button
+        mat-icon-button
+        class="nav-button prev"
+        (click)="back(); $event.stopPropagation()"
+        aria-label="Previous file"
+        [attr.aria-keyshortcuts]="'ArrowLeft'"
+      >
+        <mat-icon svgIcon="chevron-left"></mat-icon>
+      </button>
+    }
 
     <main role="main" aria-live="polite">
       @if (isLoading()) {
@@ -74,7 +80,9 @@
           }
           @case ('audio') {
             <div class="audio-container">
-              <mat-icon svgIcon="music" aria-hidden="true"></mat-icon>
+              <div class="audio-icon-wrapper">
+                <mat-icon svgIcon="music" aria-hidden="true"></mat-icon>
+              </div>
               <audio
                 [src]="sanitizedUrl"
                 controls
@@ -99,7 +107,9 @@
           }
           @case ('directory') {
             <div class="unsupported-container" role="status">
-              <mat-icon svgIcon="folder" aria-hidden="true"></mat-icon>
+              <div class="icon-wrapper">
+                <mat-icon svgIcon="folder" aria-hidden="true"></mat-icon>
+              </div>
               @if (folderSize()) {
                 <p class="unsupported-text">{{ data.name }}</p>
                 <p class="unsupported-subtext">Contains {{ folderSize()?.count ?? 0 }} files</p>
@@ -111,12 +121,23 @@
               }
             </div>
           }
+          @case ('binary') {
+            <div class="unsupported-container" role="status">
+              <div class="icon-wrapper">
+                <mat-icon svgIcon="file-zipper" aria-hidden="true"></mat-icon>
+              </div>
+              <p class="unsupported-text">Binary file</p>
+              <p class="unsupported-subtext">{{ data.name }}</p>
+            </div>
+          }
           @default {
             <div class="unsupported-container" role="status">
-              <mat-icon
-                [svgIcon]="iconService.getIconForFileType(data.fileType)"
-                aria-hidden="true"
-              ></mat-icon>
+              <div class="icon-wrapper">
+                <mat-icon
+                  [svgIcon]="iconService.getIconForFileType(data.fileType)"
+                  aria-hidden="true"
+                ></mat-icon>
+              </div>
               <p class="unsupported-text">Preview not available for this file type</p>
               <p class="unsupported-subtext">{{ data.name }}</p>
             </div>
@@ -125,16 +146,16 @@
       </div>
     </main>
 
-    <button
-      mat-icon-button
-      class="nav-button next"
-      (click)="next(); $event.stopPropagation()"
-      [disabled]="data.currentIndex === data.items.length - 1"
-      [class.hidden]="data.items.length <= 1"
-      aria-label="Next file"
-      [attr.aria-keyshortcuts]="'ArrowRight'"
-    >
-      <mat-icon svgIcon="chevron-right"></mat-icon>
-    </button>
+    @if (data.items.length > 1 && data.currentIndex < data.items.length - 1) {
+      <button
+        mat-icon-button
+        class="nav-button next"
+        (click)="next(); $event.stopPropagation()"
+        aria-label="Next file"
+        [attr.aria-keyshortcuts]="'ArrowRight'"
+      >
+        <mat-icon svgIcon="chevron-right"></mat-icon>
+      </button>
+    }
   </div>
 </div>

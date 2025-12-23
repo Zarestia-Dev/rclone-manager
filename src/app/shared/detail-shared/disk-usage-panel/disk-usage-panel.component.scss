@@ -10,7 +10,6 @@
     border-radius: var(--usage-bar-radius);
     position: relative;
     overflow: hidden;
-    background: rgba(var(--window-fg-color-rgb), var(--border-opacity));
     box-shadow: inset 0 0 0 2px var(--primary-color);
     display: flex;
     align-items: center;
@@ -48,6 +47,7 @@
     padding: var(--space-sm);
     background: var(--window-bg-color);
     border-radius: var(--radius-xs);
+    box-shadow: var(--box-shadow);
 
     .legend-color {
       width: var(--header-gap);

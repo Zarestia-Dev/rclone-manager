@@ -14,15 +14,14 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--window-bg-color);
+  background: var(--sidebar-bg-color);
   overflow: hidden;
 
   // Header Section
   .sidebar-header {
     flex-shrink: 0;
-    background: var(--window-bg-color);
     padding: var(--header-padding);
-    box-shadow: var(--shadow-light);
+    box-shadow: var(--box-shadow);
     transition: var(--transition-standard);
     z-index: 1;
 
@@ -47,7 +46,6 @@
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    background: var(--view-bg-color);
   }
 
   // Remote List
@@ -67,16 +65,12 @@
     padding: var(--space-lg);
     border-radius: var(--modal-radius);
     background: var(--window-bg-color);
-    box-shadow: var(--shadow-light);
+    box-shadow: var(--box-shadow);
     transition: var(--transition-standard);
     overflow: hidden;
 
     &:hover {
-      background: linear-gradient(
-        135deg,
-        rgba(var(--primary-color-rgb), var(--card-hover-opacity)),
-        rgba(var(--accent-color-rgb), var(--card-hover-opacity))
-      );
+      background: var(--hover-bg-color);
     }
 
     &:active {

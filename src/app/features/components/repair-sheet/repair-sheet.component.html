@@ -2,7 +2,7 @@
   <div class="sheet-header">
     <div class="repair-header-top">
       <div class="repair-icon">
-        <mat-icon [svgIcon]="getRepairIcon()"></mat-icon>
+        <mat-icon [svgIcon]="repairIcon()"></mat-icon>
       </div>
 
       <div class="repair-content">
@@ -11,9 +11,9 @@
       </div>
     </div>
 
-    @if (getRepairDetails()) {
+    @if (repairDetails(); as details) {
       <div class="repair-details">
-        @for (detail of getRepairDetails(); track $index) {
+        @for (detail of details; track $index) {
           <div class="detail-item">
             <mat-icon svgIcon="{{ detail.icon }}"></mat-icon>
             <span
@@ -40,18 +40,14 @@
         ></app-password-manager>
       </div>
 
-      <div class="advanced-toggle" style="margin-top: 1rem">
+      <div style="margin-top: 1rem">
         <button
           matButton="filled"
           class="accent"
           (click)="toggleConfigOptions()"
           [disabled]="installing() || isSubmittingPassword()"
         >
-          <mat-icon
-            svgIcon="caret-down"
-            [style.transform]="showConfigOptions() ? 'rotate(180deg)' : 'rotate(0deg)'"
-            style="transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
-          ></mat-icon>
+          <mat-icon svgIcon="caret-down" [class.rotated]="showConfigOptions()"></mat-icon>
           {{ showConfigOptions() ? 'Hide Config Options' : 'Use Different Config File' }}
         </button>
       </div>
@@ -69,18 +65,14 @@
     }
 
     @if (isRclonePathRepair()) {
-      <div class="advanced-toggle">
+      <div>
         <button
           matButton="filled"
           class="accent"
           (click)="toggleInstallOptions()"
           [disabled]="installing()"
         >
-          <mat-icon
-            svgIcon="caret-down"
-            [style.transform]="showAdvanced() ? 'rotate(180deg)' : 'rotate(0deg)'"
-            style="transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
-          ></mat-icon>
+          <mat-icon svgIcon="caret-down" [class.rotated]="showAdvanced()"></mat-icon>
           {{ showAdvanced() ? 'Hide' : 'Show' }} Advanced Options
         </button>
       </div>
@@ -101,39 +93,9 @@
     <button
       matButton="filled"
       [disabled]="!canRepair()"
-      class="repair-button"
       (click)="repair()"
       [attr.aria-label]="installing() ? 'Repairing in progress' : 'Start repair process'"
-      [matTooltip]="
-        !canRepair() && !installing() && !isSubmittingPassword()
-          ? showConfigOptions()
-            ? installationData().installLocation === 'custom' &&
-              installationData().customPath.trim().length === 0
-              ? 'Please select a config file first'
-              : !installationValid()
-                ? 'Please fix validation errors'
-                : ''
-            : requiresPassword() && !password()
-              ? 'Please enter the configuration password first'
-              : requiresPassword()
-                ? 'Account is temporarily locked due to failed attempts'
-                : installationData().installLocation === 'custom' &&
-                    installationData().customPath.trim().length === 0
-                  ? 'Please select an installation path first'
-                  : installationData().installLocation === 'existing' &&
-                      installationData().existingBinaryPath.trim().length === 0
-                    ? 'Please select a binary file first'
-                    : installationData().installLocation === 'existing' &&
-                        installationData().binaryTestResult === 'invalid'
-                      ? 'The selected file is not a valid rclone binary'
-                      : installationData().installLocation === 'existing' &&
-                          installationData().binaryTestResult === 'untested'
-                        ? 'Please test the selected binary first'
-                        : !installationValid()
-                          ? 'Please fix validation errors'
-                          : ''
-          : ''
-      "
+      [matTooltip]="repairTooltip()"
     >
       {{
         installing() || isSubmittingPassword()

@@ -1,4 +1,4 @@
-<div class="advanced-options" [ngClass]="mode">
+<div class="advanced-options" [class]="mode">
   <div class="options-tabs" [style.gridTemplateColumns]="'repeat(' + tabOptions.length + ', 1fr)'">
     @for (tab of tabOptions; track tab.key) {
       <button

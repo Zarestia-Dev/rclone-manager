@@ -22,7 +22,7 @@
   box-shadow: 0 0 0 1px var(--card-shade-color);
   border-radius: var(--card-border-radius);
   padding: var(--space-lg);
-  box-shadow: var(--shadow-light);
+  box-shadow: var(--shadow-gnome);
 }
 
 .header-content {
@@ -91,7 +91,7 @@
   background: var(--view-bg-color);
   border-radius: var(--card-border-radius);
   padding: var(--space-lg);
-  box-shadow: var(--shadow-light);
+  box-shadow: var(--shadow-gnome);
   transition: var(--transition-standard);
   position: relative;
   overflow: hidden;
@@ -171,7 +171,7 @@
   background: var(--view-bg-color);
   border-radius: var(--card-border-radius);
   padding: var(--space-lg);
-  box-shadow: var(--shadow-light);
+  box-shadow: var(--shadow-gnome);
 }
 
 .input-header {

@@ -2,7 +2,7 @@
   width: 100%;
   background: var(--bg-elevated);
   border-radius: var(--card-border-radius);
-  box-shadow: var(--shadow-light);
+  box-shadow: var(--shadow-gnome);
   overflow: hidden;
 }
 
@@ -15,15 +15,16 @@
     align-items: center;
     gap: var(--space-xs);
     padding: var(--space-md) var(--space-sm);
-    border-right: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
+    box-shadow:
+      inset -1px 0 0 var(--card-shade-color),
+      inset 0 -1px 0 var(--card-shade-color);
     color: var(--dim-color);
     font-size: var(--font-size-sm);
     font-weight: 500;
     transition: var(--transition-fast);
 
     &:last-child {
-      border-right: none;
+      box-shadow: inset 0 -1px 0 var(--card-shade-color);
     }
 
     mat-icon {
@@ -72,7 +73,7 @@
   gap: var(--space-sm);
   padding: var(--space-sm) var(--space-md);
   border-radius: var(--border-radius);
-  box-shadow: var(--shadow-light);
+  box-shadow: var(--shadow-gnome);
   font-size: var(--font-size-md);
   margin-top: var(--space-sm);
 
@@ -117,7 +118,7 @@
     }
 
     span {
-      font-size: 10px;
+      font-size: var(--font-size-xs);
     }
   }
 }

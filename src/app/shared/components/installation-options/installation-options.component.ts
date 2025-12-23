@@ -1,6 +1,5 @@
 import { Component, Input, Output, EventEmitter, inject, OnInit } from '@angular/core';
 import { FormControl, ReactiveFormsModule, FormsModule } from '@angular/forms';
-import { NgClass } from '@angular/common';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
@@ -20,7 +19,6 @@ type BinaryStatus = 'untested' | 'testing' | 'valid' | 'invalid';
   imports: [
     ReactiveFormsModule,
     FormsModule,
-    NgClass,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
