@@ -1,87 +1,67 @@
-use log::{error, info, warn};
+//! Remote settings management using rcman sub-settings
+//!
+//! This module handles remote-specific configuration operations using
+//! rcman's sub-settings system, which stores each remote's config in
+//! `config/remotes/{remoteName}.json`.
+//!
+//! Migration from legacy formats is handled automatically by rcman's
+//! `with_migrator()` feature when loading entries.
+
+use log::{info, warn};
+use rcman::{JsonStorage, SettingsManager};
 use serde_json::Value;
-use std::{
-    fs::{self, File, create_dir_all},
-    io::Write,
-};
 use tauri::{AppHandle, Emitter, State};
 
 use crate::utils::types::events::REMOTE_PRESENCE_CHANGED;
-use crate::utils::types::settings::SettingsState;
 use crate::{
     core::scheduler::engine::CronScheduler, rclone::state::scheduled_tasks::ScheduledTasksCache,
 };
 
-/// **Remote Settings Management**
-///
-/// This module handles remote-specific configuration operations:
-/// - Saving remote configurations  
-/// - Loading remote settings
-/// - Deleting remote configurations
 /// **Save remote settings (per remote)**
 #[tauri::command]
 pub async fn save_remote_settings(
     remote_name: String,
-    mut settings: Value, // **Accepts dynamic JSON**
-    state: State<'_, SettingsState<tauri::Wry>>,
+    mut settings: Value,
+    manager: State<'_, SettingsManager<JsonStorage>>,
     cache: State<'_, ScheduledTasksCache>,
     scheduler: State<'_, CronScheduler>,
     app_handle: AppHandle,
 ) -> Result<(), String> {
+    // Insert name into settings
     if let Some(settings_obj) = settings.as_object_mut() {
         settings_obj.insert("name".to_string(), Value::String(remote_name.clone()));
     }
 
-    // Sanitize input: Migrate legacy keys in the incoming payload so they don't get merged back in.
-    migrate_to_multi_profile(&mut settings);
+    // Sanitize incoming payload (don't save legacy keys)
+    migrate_to_multi_profile(settings.clone());
 
-    // **Ensure config directory exists**
-    if state.config_dir.exists() && !state.config_dir.is_dir() {
-        fs::remove_file(&state.config_dir).map_err(|e| format!("❌ Failed to remove file: {e}"))?;
-    }
-    create_dir_all(&state.config_dir)
-        .map_err(|e| format!("❌ Failed to create config dir: {e}"))?;
+    // Get remotes sub-settings
+    let remotes = manager
+        .inner()
+        .sub_settings("remotes")
+        .map_err(|e| format!("Failed to get remotes sub-settings: {e}"))?;
 
-    let remote_config_dir = state.config_dir.join("remotes");
-    let remote_config_path = remote_config_dir.join(format!("{remote_name}.json"));
-
-    // **Ensure "remotes" directory exists**
-    if remote_config_dir.exists() && !remote_config_dir.is_dir() {
-        fs::remove_file(&remote_config_dir)
-            .map_err(|e| format!("❌ Failed to remove file: {e}"))?;
-    }
-    create_dir_all(&remote_config_dir)
-        .map_err(|e| format!("❌ Failed to create remotes directory: {e}"))?;
-
-    // **Merge new settings with existing ones**
-    if remote_config_path.exists() {
-        let existing_content = fs::read_to_string(&remote_config_path)
-            .map_err(|e| format!("❌ Failed to read existing settings: {e}"))?;
-        let mut existing_settings: Value = serde_json::from_str(&existing_content)
-            .map_err(|e| format!("❌ Failed to parse existing settings: {e}"))?;
-
-        // Migrate legacy settings to ensure clean merge and scheduler compatibility
-        migrate_to_multi_profile(&mut existing_settings);
-
-        if let (Some(existing_obj), Some(new_obj)) =
-            (existing_settings.as_object_mut(), settings.as_object_mut())
-        {
+    // Check if remote already exists and merge settings
+    // Note: get_value runs the registered migrator automatically
+    if let Ok(existing) = remotes.get_value(&remote_name) {
+        // Merge new settings on top of existing (already migrated by rcman)
+        if let (Some(existing_obj), Some(new_obj)) = (existing.as_object(), settings.as_object()) {
+            let mut merged = existing_obj.clone();
             for (key, value) in new_obj {
-                existing_obj.insert(key.clone(), value.clone());
+                merged.insert(key.clone(), value.clone());
             }
-            settings = Value::Object(existing_obj.clone());
+            settings = Value::Object(merged);
         }
     }
 
-    // **Save to JSON file**
-    let mut file = File::create(&remote_config_path)
-        .map_err(|e| format!("❌ Failed to create settings file: {e}"))?;
+    // Save to rcman sub-settings
+    remotes
+        .set(&remote_name, &settings)
+        .map_err(|e| format!("Failed to save remote settings: {e}"))?;
 
-    file.write_all(settings.to_string().as_bytes())
-        .map_err(|e| format!("❌ Failed to save settings: {e}"))?;
+    info!("✅ Remote settings saved for '{remote_name}'");
 
-    info!("✅ Remote settings saved at {remote_config_path:?}");
-
+    // Update scheduled tasks
     match cache
         .add_or_update_task_for_remote(&remote_name, &settings, scheduler)
         .await
@@ -98,78 +78,84 @@ pub async fn save_remote_settings(
 #[tauri::command]
 pub async fn delete_remote_settings(
     remote_name: String,
-    state: State<'_, SettingsState<tauri::Wry>>,
+    manager: State<'_, SettingsManager<JsonStorage>>,
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
-    let remote_config_path = state
-        .config_dir
-        .join("remotes")
-        .join(format!("{remote_name}.json"));
+    let remotes = manager
+        .inner()
+        .sub_settings("remotes")
+        .map_err(|e| format!("Failed to get remotes sub-settings: {e}"))?;
 
-    if !remote_config_path.exists() {
+    // Check if exists first
+    if remotes.get_value(&remote_name).is_err() {
         warn!("⚠️ Remote settings for '{remote_name}' not found, but that's okay.");
-        // Don't return an error - just emit the event and return success
         app_handle.emit(REMOTE_PRESENCE_CHANGED, remote_name).ok();
-        return Ok(()); // Return success instead of error
+        return Ok(());
     }
 
-    fs::remove_file(&remote_config_path).map_err(|e| {
-        error!("❌ Failed to delete remote settings: {e}");
-        format!("❌ Failed to delete remote settings: {e}")
-    })?;
+    remotes
+        .delete(&remote_name)
+        .map_err(|e| format!("❌ Failed to delete remote settings: {e}"))?;
 
     info!("✅ Remote settings for '{remote_name}' deleted.");
-
     app_handle.emit(REMOTE_PRESENCE_CHANGED, remote_name).ok();
     Ok(())
 }
 
 /// **Retrieve settings for a specific remote**
+///
+/// The registered migrator runs automatically when loading, so legacy
+/// format migration is handled transparently by rcman.
 #[tauri::command]
 pub async fn get_remote_settings(
     remote_name: String,
-    state: State<'_, SettingsState<tauri::Wry>>,
+    manager: State<'_, SettingsManager<JsonStorage>>,
 ) -> Result<serde_json::Value, String> {
-    let remote_config_path = state
-        .config_dir
-        .join("remotes")
-        .join(format!("{remote_name}.json"));
+    let remotes = manager
+        .inner()
+        .sub_settings("remotes")
+        .map_err(|e| format!("Failed to get remotes sub-settings: {e}"))?;
 
-    if !remote_config_path.exists() {
-        return Err(format!("⚠️ Remote settings for '{remote_name}' not found.",));
-    }
-
-    let file_content = fs::read_to_string(&remote_config_path)
-        .map_err(|e| format!("❌ Failed to read remote settings: {e}"))?;
-    let mut settings: serde_json::Value = serde_json::from_str(&file_content)
-        .map_err(|e| format!("❌ Failed to parse remote settings: {e}"))?;
-
-    // Migrate legacy singular configs to profile arrays
-    if migrate_to_multi_profile(&mut settings) {
-        // Persist the clean settings back to disk immediately
-        let json_string = serde_json::to_string_pretty(&settings)
-            .map_err(|e| format!("❌ Failed to serialize cleaned settings: {e}"))?;
-
-        let mut file = File::create(&remote_config_path)
-            .map_err(|e| format!("❌ Failed to open settings file for cleanup: {e}"))?;
-
-        file.write_all(json_string.as_bytes())
-            .map_err(|e| format!("❌ Failed to write cleaned settings: {e}"))?;
-
-        info!("💾 Persisted cleaned/migrated settings for remote '{remote_name}'");
-    }
+    // Migration is handled automatically by rcman's registered migrator
+    let settings = remotes
+        .get_value(&remote_name)
+        .map_err(|_| format!("⚠️ Remote settings for '{remote_name}' not found."))?;
 
     info!("✅ Loaded settings for remote '{remote_name}'.");
     Ok(settings)
 }
 
-/// Helper to migrate legacy singular configs (e.g. mountConfig) to object-based configs (e.g. mountConfigs)
-/// Returns true if any changes were made.
+/// **Get all remote settings as a map (for internal use)**
 ///
-/// Migration: mountConfig: { source: "...", dest: "..." }
-///         → mountConfigs: { "Default": { source: "...", dest: "..." } }
-fn migrate_to_multi_profile(settings: &mut Value) -> bool {
-    let mut changed = false;
+/// This is used by modules like scheduler, startup, and sync that need
+/// to access all remote settings at once.
+pub fn get_all_remote_settings_sync(
+    manager: &SettingsManager<JsonStorage>,
+    remote_names: &[String],
+) -> serde_json::Value {
+    let remotes = match manager.sub_settings("remotes") {
+        Ok(r) => r,
+        Err(_) => return serde_json::json!({}),
+    };
+
+    let mut all_settings = serde_json::Map::new();
+    for remote_name in remote_names {
+        if let Ok(settings) = remotes.get_value(remote_name) {
+            all_settings.insert(remote_name.clone(), settings);
+        }
+    }
+
+    serde_json::Value::Object(all_settings)
+}
+
+/// Migrator to convert legacy singular configs to object-based configs.
+///
+/// This is registered with rcman's `with_migrator()` and runs automatically
+/// when loading remote settings entries.
+///
+/// Migration: `mountConfig: { source: "...", dest: "..." }`
+///         → `mountConfigs: { "Default": { source: "...", dest: "..." } }`
+pub fn migrate_to_multi_profile(mut settings: Value) -> Value {
     if let Some(obj) = settings.as_object_mut() {
         let migration_map = [
             ("mountConfig", "mountConfigs"),
@@ -184,14 +170,10 @@ fn migrate_to_multi_profile(settings: &mut Value) -> bool {
         ];
 
         for (old_key, new_key) in migration_map {
-            // Check if we need to migrate (if old key exists)
             if obj.contains_key(old_key)
                 && let Some(mut old_config) = obj.remove(old_key)
             {
-                changed = true;
-                // Only create new object if it doesn't exist
                 if !obj.contains_key(new_key) {
-                    // Get profile name from config, or use "Default"
                     let profile_name = old_config
                         .get("name")
                         .and_then(|v| v.as_str())
@@ -199,12 +181,10 @@ fn migrate_to_multi_profile(settings: &mut Value) -> bool {
                         .unwrap_or("Default")
                         .to_string();
 
-                    // Remove 'name' property since it's now the object key
                     if let Some(config_obj) = old_config.as_object_mut() {
                         config_obj.remove("name");
                     }
 
-                    // Create object-based structure: { "ProfileName": config }
                     let mut profiles_obj = serde_json::Map::new();
                     profiles_obj.insert(profile_name.clone(), old_config);
                     obj.insert(new_key.to_string(), Value::Object(profiles_obj));
@@ -214,8 +194,6 @@ fn migrate_to_multi_profile(settings: &mut Value) -> bool {
                         old_key, new_key, profile_name
                     );
                 } else {
-                    // If new key already exists, simply dropping the old one is the safest clean-up
-                    // as the new object structure takes precedence.
                     warn!(
                         "🗑️ Removed legacy {} as {} already exists",
                         old_key, new_key
@@ -224,5 +202,5 @@ fn migrate_to_multi_profile(settings: &mut Value) -> bool {
             }
         }
     }
-    changed
+    settings
 }

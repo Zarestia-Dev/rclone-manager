@@ -341,7 +341,12 @@ pub async fn mount_remote_profile(
     cache: State<'_, RemoteCache>,
     params: ProfileParams,
 ) -> Result<(), String> {
-    let settings_map = cache.get_settings().await;
+    let manager = app.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+    let remote_names = cache.get_remotes().await;
+    let settings_map = crate::core::settings::remote::manager::get_all_remote_settings_sync(
+        manager.inner(),
+        &remote_names,
+    );
 
     let settings = settings_map
         .get(&params.remote_name)

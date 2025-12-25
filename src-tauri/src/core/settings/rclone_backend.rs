@@ -1,219 +1,184 @@
+//! RClone Backend Settings Manager (using rcman sub-settings single-file mode)
+//!
+//! Manages RClone backend options using rcman's sub-settings with single_file() mode.
+//! All backend blocks stored in a single backend.json file.
+
 use log::{debug, info};
 use serde_json::json;
-use tauri::{AppHandle, Manager, State};
-use tauri_plugin_store::StoreBuilder;
-use tokio::sync::Mutex;
+use tauri::State;
 
-use crate::utils::types::settings::SettingsState;
+// -----------------------------------------------------------------------------
+// LOAD BACKEND OPTIONS
+// -----------------------------------------------------------------------------
 
-/// **RClone Backend Settings Manager**
-///
-/// Manages RClone backend options in a separate file (backend.json)
-/// This keeps RClone-specific runtime configurations separate from app settings
-pub struct RCloneBackendStore {
-    store: Mutex<std::sync::Arc<tauri_plugin_store::Store<tauri::Wry>>>,
-}
-
-impl RCloneBackendStore {
-    /// Initialize RClone backend store with proper path
-    /// Uses the same config directory as the main settings store for consistency
-    pub fn new(app_handle: &AppHandle, config_dir: &std::path::Path) -> Result<Self, String> {
-        let store_path = config_dir.join("backend.json");
-        info!("📦 Initializing RClone backend store at: {:?}", store_path);
-        let store = StoreBuilder::new(app_handle, store_path.clone())
-            .build()
-            .map_err(|e| format!("Failed to create RClone backend store: {}", e))?;
-
-        Ok(Self {
-            store: Mutex::new(store),
-        })
-    }
-}
-
-/// **Load RClone backend options from separate store**
+/// Load all RClone backend options from rcman sub-settings (single file)
 #[tauri::command]
 pub async fn load_rclone_backend_options(
-    app_handle: AppHandle,
+    manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
 ) -> Result<serde_json::Value, String> {
-    debug!("Loading RClone backend options");
+    debug!("Loading RClone backend options via rcman sub-settings");
 
-    // Get or create the backend store
-    let backend_store = app_handle
-        .try_state::<RCloneBackendStore>()
-        .ok_or("RClone backend store not initialized")?;
-
-    let store_guard = backend_store.store.lock().await;
-
-    // Try to reload from disk, handle missing file gracefully
-    let stored_options = match store_guard.reload() {
-        Ok(_) => store_guard
-            .get("backend")
-            .unwrap_or_else(|| json!({}))
-            .clone(),
-        Err(e) => match &e {
-            tauri_plugin_store::Error::Io(io_err)
-                if io_err.kind() == std::io::ErrorKind::NotFound =>
-            {
-                debug!("📁 RClone options file not found. Using empty object.");
-                json!({})
-            }
-            _ => {
-                return Err(format!("Failed to reload RClone options store: {}", e));
-            }
-        },
-    };
+    let backend = load_backend_options_sync(manager.inner());
 
     info!("✅ RClone backend options loaded successfully");
-    Ok(stored_options)
+    Ok(backend)
 }
 
-/// **Save RClone backend options to separate store**
+/// Sync version for use in initialization
+pub fn load_backend_options_sync(
+    manager: &rcman::SettingsManager<rcman::JsonStorage>,
+) -> serde_json::Value {
+    let sub = match manager.sub_settings("backend") {
+        Ok(s) => s,
+        Err(_) => return json!({}),
+    };
+
+    // Get all block names
+    let blocks = sub.list().unwrap_or_default();
+
+    // Build the combined object
+    let mut result = serde_json::Map::new();
+    for block in blocks {
+        if let Ok(value) = sub.get_value(&block) {
+            result.insert(block, value);
+        }
+    }
+
+    json!(result)
+}
+
+// -----------------------------------------------------------------------------
+// SAVE BACKEND OPTIONS
+// -----------------------------------------------------------------------------
+
+/// Save all RClone backend options
 #[tauri::command]
 pub async fn save_rclone_backend_options(
-    app_handle: AppHandle,
+    manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
     options: serde_json::Value,
 ) -> Result<(), String> {
-    debug!("Saving RClone backend options");
+    debug!("Saving RClone backend options via rcman sub-settings");
 
-    let backend_store = app_handle
-        .try_state::<RCloneBackendStore>()
-        .ok_or("RClone backend store not initialized")?;
+    let sub = manager
+        .sub_settings("backend")
+        .map_err(|e| format!("Failed to get backend sub-settings: {}", e))?;
 
-    let store_guard = backend_store.store.lock().await;
-
-    // Save to store
-    store_guard.set("backend", options.clone());
-
-    // Persist to disk
-    store_guard
-        .save()
-        .map_err(|e| format!("Failed to save RClone options: {}", e))?;
+    // Save each top-level block
+    if let Some(obj) = options.as_object() {
+        for (block_name, block_value) in obj {
+            sub.set(block_name, block_value)
+                .map_err(|e| format!("Failed to save block '{}': {}", block_name, e))?;
+        }
+    }
 
     info!("✅ RClone backend options saved successfully");
     Ok(())
 }
 
-/// **Save a single RClone backend option (for immediate updates)**
+// -----------------------------------------------------------------------------
+// SAVE SINGLE OPTION
+// -----------------------------------------------------------------------------
+
+/// Save a single RClone backend option (block.option format)
 #[tauri::command]
 pub async fn save_rclone_backend_option(
-    app_handle: AppHandle,
+    manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
     block: String,
     option: String,
     value: serde_json::Value,
 ) -> Result<(), String> {
     debug!("Saving RClone option: {}.{}", block, option);
 
-    let backend_store = app_handle
-        .try_state::<RCloneBackendStore>()
-        .ok_or("RClone backend store not initialized")?;
+    let sub = manager
+        .sub_settings("backend")
+        .map_err(|e| format!("Failed to get backend sub-settings: {}", e))?;
 
-    let store_guard = backend_store.store.lock().await;
+    // Load existing block or create new
+    let mut block_value = sub.get_value(&block).unwrap_or_else(|_| json!({}));
 
-    // Load existing options
-    let _ = store_guard.reload();
-    let mut options = store_guard
-        .get("backend")
-        .unwrap_or_else(|| json!({}))
-        .clone();
-
-    // Ensure block exists
-    if !options.is_object() {
-        options = json!({});
+    // Ensure it's an object
+    if !block_value.is_object() {
+        block_value = json!({});
     }
 
-    let options_obj = options
-        .as_object_mut()
-        .ok_or_else(|| "Options is not an object".to_string())?;
-
-    // Ensure block object exists
-    if !options_obj.contains_key(&block) {
-        options_obj.insert(block.clone(), json!({}));
+    // Set the option
+    if let Some(obj) = block_value.as_object_mut() {
+        obj.insert(option.clone(), value.clone());
     }
 
-    // Set the option value
-    if let Some(block_obj) = options_obj.get_mut(&block).and_then(|v| v.as_object_mut()) {
-        block_obj.insert(option.clone(), value.clone());
-    }
-
-    // Save to store
-    store_guard.set("backend", options);
-
-    store_guard
-        .save()
-        .map_err(|e| format!("Failed to save RClone option: {}", e))?;
+    // Save the block
+    sub.set(&block, &block_value)
+        .map_err(|e| format!("Failed to save block '{}': {}", block, e))?;
 
     info!("✅ RClone option {}.{} saved: {}", block, option, value);
     Ok(())
 }
 
-/// **Reset RClone backend options to defaults (empty)**
+// -----------------------------------------------------------------------------
+// RESET BACKEND OPTIONS
+// -----------------------------------------------------------------------------
+
+/// Reset RClone backend options to defaults (delete all)
 #[tauri::command]
-pub async fn reset_rclone_backend_options(app_handle: AppHandle) -> Result<(), String> {
+pub async fn reset_rclone_backend_options(
+    manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
+) -> Result<(), String> {
     debug!("Resetting RClone backend options");
 
-    let backend_store = app_handle
-        .try_state::<RCloneBackendStore>()
-        .ok_or("RClone backend store not initialized")?;
+    let sub = manager
+        .sub_settings("backend")
+        .map_err(|e| format!("Failed to get backend sub-settings: {}", e))?;
 
-    let store_guard = backend_store.store.lock().await;
-
-    // Clear all options
-    store_guard.set("backend", json!({}));
-
-    store_guard
-        .save()
-        .map_err(|e| format!("Failed to save reset RClone options: {}", e))?;
+    // Delete all blocks
+    let blocks = sub.list().unwrap_or_default();
+    for block in blocks {
+        let _ = sub.delete(&block); // Ignore errors for non-existent
+    }
 
     info!("✅ RClone backend options reset successfully");
     Ok(())
 }
 
+// -----------------------------------------------------------------------------
+// REMOVE SINGLE OPTION
+// -----------------------------------------------------------------------------
+
+/// Remove a single RClone backend option
 #[tauri::command]
 pub async fn remove_rclone_backend_option(
-    app_handle: AppHandle,
+    manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
     block: String,
     option: String,
 ) -> Result<(), String> {
     debug!("Removing RClone option: {}.{}", block, option);
 
-    let backend_store = app_handle
-        .try_state::<RCloneBackendStore>()
-        .ok_or("RClone backend store not initialized")?;
+    let sub = manager
+        .sub_settings("backend")
+        .map_err(|e| format!("Failed to get backend sub-settings: {}", e))?;
 
-    let store_guard = backend_store.store.lock().await;
-
-    // Load existing options
-    let _ = store_guard.reload();
-    let mut options = store_guard
-        .get("backend")
-        .unwrap_or_else(|| json!({}))
-        .clone();
+    // Load existing block
+    let mut block_value = match sub.get_value(&block) {
+        Ok(v) => v,
+        Err(_) => return Ok(()), // Block doesn't exist, nothing to remove
+    };
 
     // Ensure it's an object
-    if !options.is_object() {
-        return Ok(()); // Nothing to remove
+    if !block_value.is_object() {
+        return Ok(());
     }
 
-    let options_obj = options
-        .as_object_mut()
-        .ok_or_else(|| "Options is not an object for removal".to_string())?;
+    // Remove the option
+    if let Some(obj) = block_value.as_object_mut() {
+        obj.remove(&option);
 
-    // Remove the option from the block
-    if let Some(block_obj) = options_obj.get_mut(&block).and_then(|v| v.as_object_mut()) {
-        block_obj.remove(&option);
-
-        // If the block is now empty, remove the entire block
-        if block_obj.is_empty() {
-            options_obj.remove(&block);
+        // If block is now empty, delete the entire block
+        if obj.is_empty() {
+            let _ = sub.delete(&block);
+        } else {
+            sub.set(&block, &block_value)
+                .map_err(|e| format!("Failed to save block '{}': {}", block, e))?;
         }
     }
-
-    // Save to store
-    store_guard.set("backend", options);
-
-    store_guard
-        .save()
-        .map_err(|e| format!("Failed to save RClone options after removal: {}", e))?;
 
     info!(
         "✅ RClone option {}.{} removed (reset to default)",
@@ -222,12 +187,16 @@ pub async fn remove_rclone_backend_option(
     Ok(())
 }
 
-/// **Get RClone backend store path for backup/export**
+// -----------------------------------------------------------------------------
+// GET BACKEND STORE PATH
+// -----------------------------------------------------------------------------
+
+/// Get RClone backend store path for backup/export
 #[tauri::command]
 pub async fn get_rclone_backend_store_path(
-    settings_state: State<'_, SettingsState<tauri::Wry>>,
+    manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
 ) -> Result<String, String> {
-    let config_dir = &settings_state.config_dir;
-    let store_path = config_dir.join("backend.json");
-    Ok(store_path.to_string_lossy().to_string())
+    // Backend is stored in config/backend.json (single file mode)
+    let backend_path = manager.inner().config().config_dir.join("backend.json");
+    Ok(backend_path.to_string_lossy().to_string())
 }

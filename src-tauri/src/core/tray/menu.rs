@@ -436,12 +436,15 @@ pub async fn create_tray_menu<R: Runtime>(
 
     let active_jobs = job_cache.get_active_jobs().await;
 
-    let cached_settings = get_settings(app.state::<crate::utils::types::all_types::RemoteCache>())
-        .await
-        .unwrap_or_else(|_| {
-            error!("Failed to fetch cached settings");
-            serde_json::Value::Null
-        });
+    let cached_settings = get_settings(
+        app.state::<rcman::SettingsManager<rcman::JsonStorage>>(),
+        app.state::<crate::utils::types::all_types::RemoteCache>(),
+    )
+    .await
+    .unwrap_or_else(|_| {
+        error!("Failed to fetch cached settings");
+        serde_json::Value::Null
+    });
 
     let remotes_to_show = remotes
         .iter()

@@ -2,6 +2,7 @@ use log::{debug, error, info};
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
+use crate::core::settings::schema::AppSettings;
 use crate::{
     core::{event_listener::setup_event_listener, scheduler::engine::CronScheduler},
     rclone::{
@@ -13,10 +14,7 @@ use crate::{
             watcher::{start_mounted_remote_watcher, start_serve_watcher},
         },
     },
-    utils::types::{
-        all_types::{RcApiEngine, RcloneState, RemoteCache},
-        settings::{AppSettings, SettingsState},
-    },
+    utils::types::all_types::{RcApiEngine, RcloneState, RemoteCache},
 };
 
 #[cfg(not(feature = "web-server"))]
@@ -98,8 +96,14 @@ pub fn setup_config_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String
 /// Get the app's config directory from managed state.
 /// This is the central place to retrieve the config directory after initialization.
 pub fn get_config_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
-    let settings_state = app_handle.state::<SettingsState<tauri::Wry>>();
-    Ok(settings_state.config_dir.clone())
+    // Access the config directory via rcman SettingsManager
+    if let Some(manager) = app_handle.try_state::<rcman::SettingsManager<rcman::JsonStorage>>() {
+        let path = manager.inner().config().settings_path();
+        return Ok(path.parent().unwrap_or(&path).to_path_buf());
+    }
+
+    // Fallback/Error if manager not available
+    Err("Settings manager not available".to_string())
 }
 
 /// Handles async startup tasks
@@ -166,9 +170,13 @@ async fn initialize_scheduler(app_handle: AppHandle) -> Result<(), String> {
     let cache_state = app_handle.state::<ScheduledTasksCache>();
     let scheduler_state = app_handle.state::<CronScheduler>();
     let remote_cache = app_handle.state::<RemoteCache>();
+    let manager = app_handle.state::<rcman::SettingsManager<rcman::JsonStorage>>();
 
-    let settings = remote_cache.get_settings().await;
-    let all_settings = serde_json::json!(settings.clone());
+    let remote_names = remote_cache.get_remotes().await;
+    let all_settings = crate::core::settings::remote::manager::get_all_remote_settings_sync(
+        manager.inner(),
+        &remote_names,
+    );
 
     info!("📋 Loading scheduled tasks from remote configs...");
     let task_count = cache_state
@@ -209,15 +217,14 @@ pub async fn apply_core_settings(app_handle: &tauri::AppHandle, settings: &AppSe
     }
 }
 
-/// Apply RClone backend settings from backend.json file
+/// Apply RClone backend settings from rcman settings
 pub async fn apply_backend_settings(app_handle: &tauri::AppHandle) -> Result<(), String> {
-    use crate::core::settings::rclone_backend::load_rclone_backend_options;
+    use crate::core::settings::rclone_backend::load_backend_options_sync;
 
-    debug!("🔧 Applying RClone backend settings from backend.json");
+    debug!("🔧 Applying RClone backend settings from rcman");
 
-    let backend_options = load_rclone_backend_options(app_handle.clone())
-        .await
-        .map_err(|e| format!("Failed to load backend options: {}", e))?;
+    let manager = app_handle.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+    let backend_options = load_backend_options_sync(manager.inner());
 
     let rclone_state = app_handle.state::<RcloneState>();
 

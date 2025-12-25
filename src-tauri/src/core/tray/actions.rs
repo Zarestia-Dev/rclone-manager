@@ -137,7 +137,12 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
 
     tauri::async_runtime::spawn(async move {
         let cache = app_clone.state::<RemoteCache>();
-        let settings_val = cache.get_settings().await;
+        let manager = app_clone.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+        let remote_names = cache.get_remotes().await;
+        let settings_val = crate::core::settings::remote::manager::get_all_remote_settings_sync(
+            manager.inner(),
+            &remote_names,
+        );
         let settings = settings_val
             .get(&remote)
             .cloned()
@@ -451,7 +456,12 @@ pub fn handle_browse_remote(app: &AppHandle, remote_name: &str) {
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
         let cache = app_clone.state::<RemoteCache>();
-        let settings_val = cache.get_settings().await;
+        let manager = app_clone.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+        let remote_names = cache.get_remotes().await;
+        let settings_val = crate::core::settings::remote::manager::get_all_remote_settings_sync(
+            manager.inner(),
+            &remote_names,
+        );
         let settings = settings_val.get(&remote).cloned().unwrap_or_else(|| {
             error!("🚨 Remote {remote} not found in cached settings");
             serde_json::Value::Null

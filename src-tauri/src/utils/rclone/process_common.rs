@@ -2,7 +2,7 @@ use log::{error, info};
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::core::check_binaries::build_rclone_command;
-use crate::core::security::{CredentialStore, SafeEnvironmentManager};
+use crate::core::security::SafeEnvironmentManager;
 use crate::rclone::engine::core::ENGINE;
 use crate::utils::types::events::RCLONE_ENGINE_PASSWORD_ERROR;
 
@@ -85,13 +85,17 @@ pub async fn setup_rclone_environment(
         }
     }
 
-    // If no password found in environment manager, try credential store
-    if !password_found {
-        if let Some(credential_store) = app.try_state::<CredentialStore>() {
-            match credential_store.get_config_password() {
-                Ok(password) => {
+    // If no password found in environment manager, try credential store via rcman
+    if !password_found
+        && let Some(manager) = app.try_state::<rcman::SettingsManager<rcman::JsonStorage>>()
+    {
+        if let Some(credentials) = manager.inner().credentials() {
+            use crate::utils::types::all_types::CONFIG_PASSWORD_KEY;
+
+            match credentials.get(CONFIG_PASSWORD_KEY) {
+                Ok(Some(password)) => {
                     info!(
-                        "🔑 Using stored rclone config password for {} process",
+                        "🔑 Using stored rclone config password (via rcman) for {} process",
                         process_type
                     );
                     command = command.env("RCLONE_CONFIG_PASS", &password);
@@ -102,13 +106,16 @@ pub async fn setup_rclone_environment(
                         env_manager.set_config_password(password);
                     }
                 }
-                Err(_) => {
+                Ok(None) => {
                     info!("ℹ️ No stored password found for {} process", process_type);
+                }
+                Err(e) => {
+                    error!("❌ Failed to retrieve credentials via rcman: {}", e);
                 }
             }
         } else {
             info!(
-                "⚠️ CredentialStore not available for {} process",
+                "⚠️ Credential storage not available via rcman for {} process",
                 process_type
             );
         }

@@ -1,0 +1,56 @@
+[package]
+name = "rcman"
+version = "0.1.0"
+edition = "2021"
+authors = ["Hakan"]
+description = "Rust Config Manager - A generic, framework-agnostic settings management library"
+license = "MIT"
+repository = "https://github.com/Zarestia-Dev/rcman"
+keywords = ["settings", "config", "backup", "preferences"]
+categories = ["config", "filesystem"]
+
+[features]
+default = ["json", "backup"]
+full = ["json", "backup", "keychain", "encrypted-file"]
+json = []
+backup = ["dep:zip", "dep:sha2", "dep:tempfile"]
+keychain = ["dep:keyring"]
+encrypted-file = ["dep:aes-gcm", "dep:rand", "dep:base64", "dep:argon2"]
+
+[dependencies]
+# Core (always included)
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "2.0"
+log = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
+regex = "1.11"
+dirs = "6.0"
+
+# JSON (always included for now, required for settings)
+serde_json = "1.0"
+
+# Backup (optional, default)
+zip = { version = "7.0", default-features = false, features = ["deflate", "time", "aes-crypto"], optional = true }
+sha2 = { version = "0.10", optional = true }
+tempfile = { version = "3.14", optional = true }
+
+# Encrypted file (optional)
+aes-gcm = { version = "0.10", optional = true }
+rand = { version = "0.9", optional = true }
+base64 = { version = "0.22", optional = true }
+argon2 = { version = "0.5", features = ["std"], optional = true }
+
+# Platform-specific keyring backends
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3.6", features = ["sync-secret-service"], optional = true }
+
+[target.'cfg(windows)'.dependencies]
+keyring = { version = "3.6", features = ["windows-native"], optional = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3.6", features = ["apple-native"], optional = true }
+
+[dev-dependencies]
+tempfile = "3.14"
+env_logger = "0.11.8"
+eframe = "0.33.3"

@@ -1,25 +1,32 @@
 use crate::utils::types::events::RCLONE_PASSWORD_STORED;
 use crate::{
-    core::{
-        check_binaries::build_rclone_command,
-        security::{CredentialStore, SafeEnvironmentManager},
-    },
+    core::{check_binaries::build_rclone_command, security::SafeEnvironmentManager},
     rclone::commands::system::unlock_rclone_config,
+    utils::types::all_types::CONFIG_PASSWORD_KEY,
 };
 use log::{debug, error, info, warn};
 use tauri::{AppHandle, Emitter, Manager, State};
+
+// -----------------------------------------------------------------------------
+// PASSWORD MANAGEMENT (USING RCMAN CREDENTIALS)
+// -----------------------------------------------------------------------------
 
 /// Store the rclone config password securely
 #[tauri::command]
 pub async fn store_config_password(
     app: AppHandle,
     env_manager: State<'_, SafeEnvironmentManager>,
-    credential_store: State<'_, CredentialStore>,
+    manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
     password: String,
 ) -> Result<(), String> {
-    info!("🔑 Storing rclone config password");
+    info!("🔑 Storing rclone config password via rcman");
 
-    match credential_store.store_config_password(&password) {
+    // Access credential manager (requires keychain feature)
+    let credentials = manager.inner().credentials().ok_or_else(|| {
+        "Credential storage not available (keychain feature disabled)".to_string()
+    })?;
+
+    match credentials.store(CONFIG_PASSWORD_KEY, &password) {
         Ok(()) => {
             // Set environment variable for current session using safe manager
             env_manager.set_config_password(password.clone());
@@ -33,8 +40,8 @@ pub async fn store_config_password(
             Ok(())
         }
         Err(e) => {
-            error!("❌ Failed to store password: {:?}", e);
-            Err(format!("Failed to store password: {:?}", e))
+            error!("❌ Failed to store password: {}", e);
+            Err(format!("Failed to store password: {}", e))
         }
     }
 }
@@ -42,22 +49,27 @@ pub async fn store_config_password(
 /// Retrieve the stored rclone config password
 #[tauri::command]
 pub async fn get_config_password(
-    credential_store: State<'_, CredentialStore>,
+    manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
 ) -> Result<String, String> {
-    debug!("🔍 Retrieving stored config password");
+    debug!("🔍 Retrieving stored config password via rcman");
 
-    match credential_store.get_config_password() {
-        Ok(password) => {
+    let credentials = manager
+        .inner()
+        .credentials()
+        .ok_or_else(|| "Credential storage not available".to_string())?;
+
+    match credentials.get(CONFIG_PASSWORD_KEY) {
+        Ok(Some(password)) => {
             debug!("✅ Password retrieved successfully");
             Ok(password)
         }
-        Err(keyring::Error::NoEntry) => {
+        Ok(None) => {
             debug!("ℹ️ No password stored");
             Err("No password stored".to_string())
         }
         Err(e) => {
-            error!("❌ Failed to retrieve password: {:?}", e);
-            Err(format!("Failed to retrieve password: {:?}", e))
+            error!("❌ Failed to retrieve password: {}", e);
+            Err(format!("Failed to retrieve password: {}", e))
         }
     }
 }
@@ -65,35 +77,48 @@ pub async fn get_config_password(
 /// Check if a config password is stored
 #[tauri::command]
 pub async fn has_stored_password(
-    credential_store: State<'_, CredentialStore>,
+    manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
 ) -> Result<bool, String> {
-    debug!("🔍 Checking if password is stored");
+    debug!("🔍 Checking if password is stored via rcman");
 
-    Ok(credential_store.has_config_password())
+    if let Some(credentials) = manager.inner().credentials() {
+        Ok(credentials.exists(CONFIG_PASSWORD_KEY))
+    } else {
+        Ok(false)
+    }
 }
 
 /// Remove the stored config password
 #[tauri::command]
 pub async fn remove_config_password(
     env_manager: State<'_, SafeEnvironmentManager>,
-    credential_store: State<'_, CredentialStore>,
+    manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
 ) -> Result<(), String> {
-    info!("🗑️ Removing stored config password");
+    info!("🗑️ Removing stored config password via rcman");
 
-    match credential_store.remove_config_password() {
-        Ok(()) => {
-            // Clear environment variable using safe manager
-            env_manager.clear_config_password();
-
-            info!("✅ Password removed successfully");
-            Ok(())
+    if let Some(credentials) = manager.inner().credentials() {
+        match credentials.remove(CONFIG_PASSWORD_KEY) {
+            Ok(()) => {
+                // Clear environment variable using safe manager
+                env_manager.clear_config_password();
+                info!("✅ Password removed successfully");
+                Ok(())
+            }
+            Err(e) => {
+                error!("❌ Failed to remove password: {}", e);
+                Err(format!("Failed to remove password: {}", e))
+            }
         }
-        Err(e) => {
-            error!("❌ Failed to remove password: {:?}", e);
-            Err(format!("Failed to remove password: {:?}", e))
-        }
+    } else {
+        // If no credential manager, just clear env
+        env_manager.clear_config_password();
+        Ok(())
     }
 }
+
+// -----------------------------------------------------------------------------
+// RCLONE ENCRYPTION/DECRYPTION
+// -----------------------------------------------------------------------------
 
 /// Test if a password is valid for rclone
 #[tauri::command]
@@ -142,8 +167,7 @@ pub async fn set_config_password_env(
     debug!("🔧 Setting config password environment variable");
 
     env_manager.set_config_password(password);
-    // Emit event so other parts (engine) can react and clear any
-    // startup password error state.
+    // Emit event so other parts (engine) can react
     if let Err(e) = app.emit(RCLONE_PASSWORD_STORED, ()) {
         error!("Failed to emit password_stored event: {e}");
     }
@@ -158,9 +182,7 @@ pub async fn clear_config_password_env(
     env_manager: State<'_, SafeEnvironmentManager>,
 ) -> Result<(), String> {
     debug!("🧹 Clearing config password environment variable");
-
     env_manager.clear_config_password();
-
     debug!("✅ Environment variable cleared");
     Ok(())
 }
@@ -179,7 +201,6 @@ pub async fn has_config_password_env(
 #[tauri::command]
 pub fn get_cached_encryption_status() -> Option<bool> {
     use crate::utils::rclone::process_common::get_cached_encryption_status;
-
     debug!("⚡ Getting cached encryption status");
     get_cached_encryption_status()
 }
@@ -188,7 +209,6 @@ pub fn get_cached_encryption_status() -> Option<bool> {
 #[tauri::command]
 pub fn clear_encryption_cache() {
     use crate::utils::rclone::process_common::clear_encryption_cache;
-
     debug!("🗑️ Clearing encryption cache");
     clear_encryption_cache();
 }
@@ -200,13 +220,11 @@ pub async fn is_config_encrypted_cached(app: AppHandle) -> Result<bool, String> 
 
     debug!("🚀 Checking config encryption with cache");
 
-    // First try to get cached status
     if let Some(cached_status) = get_cached_encryption_status() {
         debug!("Using cached encryption status: {}", cached_status);
         return Ok(cached_status);
     }
 
-    // If not cached, fall back to full check
     debug!("No cached status found, performing full encryption check");
     is_config_encrypted(app).await
 }
@@ -215,10 +233,6 @@ pub async fn is_config_encrypted_cached(app: AppHandle) -> Result<bool, String> 
 pub async fn is_config_encrypted(app: AppHandle) -> Result<bool, String> {
     debug!("🔍 Checking if rclone config is encrypted");
 
-    // Don't use env_clear() as it removes PATH and prevents rclone from finding
-    // system utilities like getent. The SafeEnvironmentManager only sets
-    // RCLONE_CONFIG_PASS when explicitly configured, so we can safely inherit
-    // the parent process environment here.
     let output = build_rclone_command(&app, None, None, None)
         .args(["listremotes", "--ask-password=false"])
         .output()
@@ -226,9 +240,7 @@ pub async fn is_config_encrypted(app: AppHandle) -> Result<bool, String> {
         .map_err(|e| format!("Failed to execute rclone: {e}"))?;
 
     let stderr = String::from_utf8_lossy(&output.stderr);
-    debug!("🔍 rclone stderr: {}", stderr.trim());
 
-    // Encrypted if we get the specific decryption error message
     let is_encrypted =
         stderr.contains("unable to decrypt configuration and not allowed to ask for password");
 
@@ -250,7 +262,7 @@ pub async fn is_config_encrypted(app: AppHandle) -> Result<bool, String> {
 pub async fn encrypt_config(
     app: AppHandle,
     env_manager: State<'_, SafeEnvironmentManager>,
-    credential_store: State<'_, CredentialStore>,
+    manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
     password: String,
 ) -> Result<(), String> {
     info!("🔐 Encrypting rclone configuration (using password-command)");
@@ -259,17 +271,14 @@ pub async fn encrypt_config(
 
     // Create a cross-platform command that outputs the password
     let password_command = if cfg!(windows) {
-        // Windows: Use PowerShell Write-Host with -NoNewline to avoid extra newlines
         format!(
             "powershell -Command \"Write-Host {} -NoNewline\"",
             password.replace("'", "''")
         )
     } else {
-        // Unix/Linux: Use printf to avoid newlines and quote issues (no quotes)
         format!("echo \"{}\"", password)
     };
 
-    // Use --password-command to avoid stdin password prompt issues
     let output = rclone_command
         .args([
             "config",
@@ -292,12 +301,17 @@ pub async fn encrypt_config(
         || stdout.contains("Password set")
         || stdout.contains("Your configuration is encrypted")
     {
-        // Store the password securely after successful encryption
-        if let Err(e) = credential_store.store_config_password(&password) {
-            warn!("⚠️ Failed to store password after encryption: {:?}", e);
+        // Store the password securely after successful encryption using rcman
+        if let Some(credentials) = manager.inner().credentials()
+            && let Err(e) = credentials.store(CONFIG_PASSWORD_KEY, &password)
+        {
+            warn!(
+                "⚠️ Failed to store password after encryption via rcman: {}",
+                e
+            );
         }
 
-        // Set environment variable for current session using safe manager
+        // Set environment variable for current session
         env_manager.set_config_password(password.clone());
         // Ensure config is unlocked for current session
         unlock_rclone_config(app.clone(), password, app.state()).await?;
@@ -305,10 +319,7 @@ pub async fn encrypt_config(
         info!("✅ Configuration encrypted successfully");
         Ok(())
     } else {
-        error!(
-            "❌ Failed to encrypt configuration - stdout: {}, stderr: {}",
-            stdout, stderr
-        );
+        error!("❌ Failed to encrypt configuration");
         Err(format!(
             "Failed to encrypt configuration: {}",
             if !stderr.trim().is_empty() {
@@ -325,13 +336,13 @@ pub async fn encrypt_config(
 pub async fn unencrypt_config(
     app: AppHandle,
     env_manager: State<'_, SafeEnvironmentManager>,
+    manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
     password: String,
 ) -> Result<(), String> {
-    info!("🔓 Unencrypting rclone configuration (using password-command)");
+    info!("🔓 Unencrypting rclone configuration");
 
     let rclone_command = build_rclone_command(&app, None, None, None);
 
-    // Create a cross-platform password command
     let password_command = if cfg!(windows) {
         format!(
             "powershell -Command \"Write-Host {} -NoNewline\"",
@@ -356,32 +367,22 @@ pub async fn unencrypt_config(
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    debug!("📤 rclone unencrypt stdout: {}", stdout);
-    debug!("📤 rclone unencrypt stderr: {}", stderr);
-
     if output.status.success()
         || stdout.contains("Your configuration is not encrypted")
         || stderr.contains("config file is NOT encrypted")
     {
         // Remove stored password since config is no longer encrypted
-        let credential_store = CredentialStore::new();
-        if let Err(e) = credential_store.remove_config_password() {
-            warn!(
-                "⚠️ Failed to remove stored password after unencryption: {:?}",
-                e
-            );
+        if let Some(credentials) = manager.inner().credentials()
+            && let Err(e) = credentials.remove(CONFIG_PASSWORD_KEY)
+        {
+            warn!("⚠️ Failed to remove stored password via rcman: {}", e);
         }
 
-        // Clear environment variable using safe manager
         env_manager.clear_config_password();
-
         info!("✅ Configuration unencrypted successfully");
         Ok(())
     } else {
-        error!(
-            "❌ Failed to unencrypt configuration - stdout: {}, stderr: {}",
-            stdout, stderr
-        );
+        error!("❌ Failed to unencrypt configuration");
         Err(format!(
             "Failed to unencrypt configuration: {}",
             if !stderr.trim().is_empty() {
@@ -393,40 +394,43 @@ pub async fn unencrypt_config(
     }
 }
 
-/// Change the rclone configuration password (using simple two-step approach)
+/// Change the rclone configuration password
 #[tauri::command]
 pub async fn change_config_password(
     app: AppHandle,
     env_manager: State<'_, SafeEnvironmentManager>,
-    credential_store: State<'_, CredentialStore>,
+    manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
     current_password: String,
     new_password: String,
 ) -> Result<(), String> {
-    info!("🔄 Changing rclone configuration password (two-step approach)");
+    info!("🔄 Changing rclone configuration password");
 
     // Step 1: Remove encryption with current password
     debug!("🔓 Step 1: Removing current encryption");
-    unencrypt_config(app.clone(), env_manager.clone(), current_password)
-        .await
-        .map_err(|e| format!("Failed to remove current encryption: {}", e))?;
+    unencrypt_config(
+        app.clone(),
+        env_manager.clone(),
+        manager.clone(),
+        current_password,
+    )
+    .await
+    .map_err(|e| format!("Failed to remove current encryption: {e}"))?;
 
     // Step 2: Encrypt with new password
     debug!("🔒 Step 2: Encrypting with new password");
     encrypt_config(
         app.clone(),
         env_manager.clone(),
-        credential_store.clone(),
+        manager.clone(),
         new_password.clone(),
     )
     .await
-    .map_err(|e| format!("Failed to encrypt with new password: {}", e))?;
+    .map_err(|e| format!("Failed to encrypt with new password: {e}"))?;
 
-    // Update stored password with new password
-    if let Err(e) = credential_store.store_config_password(&new_password) {
-        warn!("⚠️ Failed to store new password: {:?}", e);
-    }
+    // Explicitly update stored password
+    // (encrypt_config does this, but being explicit doesn't hurt)
 
-    // Update environment variable for current session using safe manager
+    // Update environment variable for current session
     env_manager.set_config_password(new_password.clone());
 
     info!("✅ Configuration password changed successfully");

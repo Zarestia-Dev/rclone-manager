@@ -9,9 +9,6 @@ use clap::Parser;
 use tauri::Manager;
 #[cfg(not(feature = "web-server"))]
 use tauri::WindowEvent;
-use tauri_plugin_store::StoreBuilder;
-use tokio::sync::Mutex;
-
 mod core;
 mod rclone;
 mod utils;
@@ -173,10 +170,7 @@ use crate::{
             provision::provision_rclone,
             updater::{check_rclone_update, update_rclone},
         },
-        types::{
-            all_types::{JobCache, LogCache, RcloneState, RemoteCache},
-            settings::SettingsState,
-        },
+        types::all_types::{JobCache, LogCache, RcloneState, RemoteCache},
     },
 };
 
@@ -263,7 +257,6 @@ pub fn run() {
             show_main_window(_app.clone());
         }))
         .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_dialog::init())
@@ -271,37 +264,43 @@ pub fn run() {
         .setup(move |app| {
             let app_handle = app.handle();
             let config_dir = setup_config_dir(app_handle)?;
-            let store_path = config_dir.join("settings.json");
 
-            let store = Mutex::new(
-                StoreBuilder::new(&app_handle.clone(), store_path)
-                    .build()
-                    .map_err(|e| format!("Failed to create settings store: {e}"))?,
+            // Initialize rcman SettingsManager (new settings system)
+            // This runs alongside SettingsState during migration
+            let rcman_config =
+                rcman::SettingsConfig::builder(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
+                    .config_dir(&config_dir)
+                    .with_credentials() // Enable automatic keychain storage for secrets
+                    .build();
+
+            let rcman_manager: rcman::SettingsManager<rcman::JsonStorage> =
+                rcman::SettingsManager::new(rcman_config)
+                    .map_err(|e| format!("Failed to create rcman settings manager: {e}"))?;
+
+            // Register remotes as sub-settings with automatic migration
+            rcman_manager.register_sub_settings(
+                rcman::SubSettingsConfig::new("remotes").with_migrator(
+                    crate::core::settings::remote::manager::migrate_to_multi_profile,
+                ),
             );
 
-            app.manage(SettingsState {
-                store,
-                config_dir: config_dir.clone(),
-            });
+            // Register backend options as sub-settings (single-file mode for RClone backend blocks)
+            rcman_manager
+                .register_sub_settings(rcman::SubSettingsConfig::new("backend").single_file());
 
-            use crate::core::settings::rclone_backend::RCloneBackendStore;
-            let rclone_backend_store = RCloneBackendStore::new(app_handle, &config_dir)
-                .map_err(|e| format!("Failed to initialize RClone backend store: {e}"))?;
-            app.manage(rclone_backend_store);
+            // Load settings BEFORE managing so we can use the manager reference
+            let settings = load_startup_settings(&rcman_manager)
+                .map_err(|e| format!("Failed to load startup settings: {e}"))?;
 
-            use crate::core::security::{CredentialStore, SafeEnvironmentManager};
+            use crate::core::security::SafeEnvironmentManager;
             let env_manager = SafeEnvironmentManager::new();
-            let credential_store = CredentialStore::new();
 
-            if let Err(e) = env_manager.init_with_stored_credentials(&credential_store) {
+            if let Err(e) = env_manager.init_with_stored_credentials(&rcman_manager) {
                 error!("Failed to initialize environment manager with stored credentials: {e}");
             }
 
+            app.manage(rcman_manager);
             app.manage(env_manager);
-            app.manage(credential_store);
-
-            let settings = load_startup_settings(&app.state::<SettingsState<tauri::Wry>>())
-                .map_err(|e| format!("Failed to load startup settings: {e}"))?;
 
             let force_tray = std::env::args().any(|arg| arg == "--tray");
             let tray_enabled = settings.general.tray_enabled || force_tray;

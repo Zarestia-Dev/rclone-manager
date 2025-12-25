@@ -21,7 +21,13 @@ pub async fn handle_startup(app: AppHandle) {
     info!("🚀 Starting auto-start profiles check...");
 
     let cache = app.state::<RemoteCache>();
-    let settings_val = cache.get_settings().await;
+    let manager = app.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+
+    let remote_names = cache.get_remotes().await;
+    let settings_val = crate::core::settings::remote::manager::get_all_remote_settings_sync(
+        manager.inner(),
+        &remote_names,
+    );
 
     // settings_val is a serde_json::Value containing remote->settings mapping
     let settings_map = match settings_val.as_object() {

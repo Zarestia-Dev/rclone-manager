@@ -8,7 +8,7 @@ use serde::Deserialize;
 use tauri::Manager;
 
 use crate::server::state::{ApiResponse, AppError, WebServerState};
-use crate::utils::types::settings::SettingsState;
+use rcman::{JsonStorage, SettingsManager};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -25,14 +25,14 @@ pub async fn backup_settings_handler(
     Query(query): Query<BackupSettingsQuery>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::core::settings::backup::backup_manager::backup_settings;
-    let settings_state: tauri::State<SettingsState<tauri::Wry>> = state.app_handle.state();
+    let manager: tauri::State<SettingsManager<JsonStorage>> = state.app_handle.state();
     let result = backup_settings(
         query.backup_dir,
         query.export_type,
         query.password,
         query.remote_name,
         query.user_note,
-        settings_state,
+        manager,
         state.app_handle.clone(),
     )
     .await
@@ -46,13 +46,14 @@ pub struct AnalyzeBackupFileQuery {
 }
 
 pub async fn analyze_backup_file_handler(
-    State(_state): State<WebServerState>,
+    State(state): State<WebServerState>,
     Query(query): Query<AnalyzeBackupFileQuery>,
 ) -> Result<Json<ApiResponse<crate::utils::types::backup_types::BackupAnalysis>>, AppError> {
     use crate::core::settings::backup::backup_manager::analyze_backup_file;
     use std::path::PathBuf;
     let path = PathBuf::from(query.path);
-    let analysis = analyze_backup_file(path)
+    let manager: tauri::State<SettingsManager<JsonStorage>> = state.app_handle.state();
+    let analysis = analyze_backup_file(path, manager)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(analysis)))
@@ -71,12 +72,12 @@ pub async fn restore_settings_handler(
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::core::settings::backup::restore_manager::restore_settings;
     use std::path::PathBuf;
-    let settings_state: tauri::State<SettingsState<tauri::Wry>> = state.app_handle.state();
+    let manager: tauri::State<SettingsManager<JsonStorage>> = state.app_handle.state();
     let backup_path = PathBuf::from(body.backup_path);
     let result = restore_settings(
         backup_path,
         body.password,
-        settings_state,
+        manager,
         state.app_handle.clone(),
     )
     .await

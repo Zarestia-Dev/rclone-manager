@@ -12,7 +12,7 @@ use crate::core::scheduler::engine::CronScheduler;
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
 use crate::utils::types::all_types::RemoteCache;
-use crate::utils::types::settings::SettingsState;
+use rcman::{JsonStorage, SettingsManager};
 
 pub async fn get_settings_handler(
     State(state): State<WebServerState>,
@@ -27,10 +27,8 @@ pub async fn load_settings_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::core::settings::operations::core::load_settings;
-    let settings_state: tauri::State<SettingsState<tauri::Wry>> = state.app_handle.state();
-    let settings = load_settings(settings_state)
-        .await
-        .map_err(anyhow::Error::msg)?;
+    let manager: tauri::State<SettingsManager<JsonStorage>> = state.app_handle.state();
+    let settings = load_settings(manager).await.map_err(anyhow::Error::msg)?;
     let json_settings = serde_json::to_value(settings)?;
     Ok(Json(ApiResponse::success(json_settings)))
 }
@@ -47,12 +45,12 @@ pub async fn save_setting_handler(
     Json(body): Json<SaveSettingBody>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::core::settings::operations::core::save_setting;
-    let settings_state: tauri::State<SettingsState<tauri::Wry>> = state.app_handle.state();
+    let manager: tauri::State<SettingsManager<JsonStorage>> = state.app_handle.state();
     save_setting(
         body.category,
         body.key,
         body.value,
-        settings_state,
+        manager,
         state.app_handle.clone(),
     )
     .await
@@ -73,15 +71,10 @@ pub async fn reset_setting_handler(
     Json(body): Json<ResetSettingBody>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::core::settings::operations::core::reset_setting;
-    let settings_state: tauri::State<SettingsState<tauri::Wry>> = state.app_handle.state();
-    let default_value = reset_setting(
-        body.category,
-        body.key,
-        settings_state,
-        state.app_handle.clone(),
-    )
-    .await
-    .map_err(anyhow::Error::msg)?;
+    let manager: tauri::State<SettingsManager<JsonStorage>> = state.app_handle.state();
+    let default_value = reset_setting(body.category, body.key, manager, state.app_handle.clone())
+        .await
+        .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(default_value)))
 }
 
@@ -89,8 +82,8 @@ pub async fn reset_settings_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::core::settings::operations::core::reset_settings;
-    let settings_state: tauri::State<SettingsState<tauri::Wry>> = state.app_handle.state();
-    reset_settings(settings_state, state.app_handle.clone())
+    let manager: tauri::State<SettingsManager<JsonStorage>> = state.app_handle.state();
+    reset_settings(manager, state.app_handle.clone())
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(
@@ -110,13 +103,13 @@ pub async fn save_remote_settings_handler(
     Json(body): Json<SaveRemoteSettingsBody>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::core::settings::remote::manager::save_remote_settings;
-    let settings_state: tauri::State<SettingsState<tauri::Wry>> = state.app_handle.state();
+    let manager: tauri::State<SettingsManager<JsonStorage>> = state.app_handle.state();
     let task_cache = state.app_handle.state::<ScheduledTasksCache>();
     let cron_cache = state.app_handle.state::<CronScheduler>();
     save_remote_settings(
         body.remote_name,
         body.settings,
-        settings_state,
+        manager,
         task_cache,
         cron_cache,
         state.app_handle.clone(),
@@ -139,8 +132,8 @@ pub async fn delete_remote_settings_handler(
     Json(body): Json<DeleteRemoteSettingsBody>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::core::settings::remote::manager::delete_remote_settings;
-    let settings_state: tauri::State<SettingsState<tauri::Wry>> = state.app_handle.state();
-    delete_remote_settings(body.remote_name, settings_state, state.app_handle.clone())
+    let manager: tauri::State<SettingsManager<JsonStorage>> = state.app_handle.state();
+    delete_remote_settings(body.remote_name, manager, state.app_handle.clone())
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(
@@ -210,8 +203,8 @@ pub async fn get_rclone_backend_store_path_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::core::settings::rclone_backend::get_rclone_backend_store_path;
-    let settings_state: tauri::State<SettingsState<tauri::Wry>> = state.app_handle.state();
-    let path = get_rclone_backend_store_path(settings_state)
+    let manager: tauri::State<SettingsManager<JsonStorage>> = state.app_handle.state();
+    let path = get_rclone_backend_store_path(manager)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(path)))

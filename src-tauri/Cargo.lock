@@ -4307,6 +4307,7 @@ dependencies = [
  "netstat2",
  "nix",
  "once_cell",
+ "rcman",
  "reqwest",
  "rustls",
  "serde",
@@ -4341,7 +4342,24 @@ dependencies = [
  "windows 0.60.0",
  "windows-sys 0.59.0",
  "zbus",
- "zip",
+ "zip 4.6.1",
+]
+
+[[package]]
+name = "rcman"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "dirs 6.0.0",
+ "keyring",
+ "log",
+ "regex",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror 2.0.17",
+ "zip 7.0.0",
 ]
 
 [[package]]
@@ -5724,7 +5742,7 @@ dependencies = [
  "tokio",
  "url",
  "windows-sys 0.60.2",
- "zip",
+ "zip 4.6.1",
 ]
 
 [[package]]
@@ -7673,6 +7691,29 @@ dependencies = [
  "zeroize",
  "zopfli",
  "zstd",
+]
+
+[[package]]
+name = "zip"
+version = "7.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bdd8a47718a4ee5fe78e07667cd36f3de80e7c2bfe727c7074245ffc7303c037"
+dependencies = [
+ "aes",
+ "arbitrary",
+ "constant_time_eq",
+ "crc32fast",
+ "flate2",
+ "generic-array",
+ "getrandom 0.3.4",
+ "hmac",
+ "indexmap 2.12.1",
+ "memchr",
+ "pbkdf2",
+ "sha1",
+ "time",
+ "zeroize",
+ "zopfli",
 ]
 
 [[package]]

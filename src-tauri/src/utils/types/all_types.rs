@@ -116,7 +116,6 @@ pub struct EngineState {
 pub struct RemoteCache {
     pub remotes: RwLock<Vec<String>>,
     pub configs: RwLock<serde_json::Value>,
-    pub settings: RwLock<serde_json::Value>,
     pub mounted: RwLock<Vec<MountedRemote>>,
     pub serves: RwLock<Vec<ServeInstance>>,
     /// Tracks mount_point → profile mapping (since rclone API doesn't return profile)
@@ -214,7 +213,6 @@ pub struct NetworkStatusPayload {
     pub is_metered: bool,
 }
 
-pub const SERVICE_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONFIG_PASSWORD_KEY: &str = "rclone_config_password";
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]

@@ -13,9 +13,9 @@ use crate::{
             ENGINE_RESTARTED, RCLONE_ENGINE_ERROR, RCLONE_ENGINE_PASSWORD_ERROR,
             RCLONE_ENGINE_PATH_ERROR, RCLONE_ENGINE_READY,
         },
-        settings::SettingsState,
     },
 };
+use rcman::{JsonStorage, SettingsManager};
 
 impl RcApiEngine {
     pub fn init(&mut self, app: &AppHandle) {
@@ -146,7 +146,7 @@ pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
 
                 // Reapply core settings after successful engine start
                 let app_handle = app.clone();
-                match load_startup_settings(&app_handle.state::<SettingsState<tauri::Wry>>()) {
+                match load_startup_settings(&app_handle.state::<SettingsManager<JsonStorage>>()) {
                     Ok(settings) => {
                         tauri::async_runtime::spawn(async move {
                             apply_core_settings(&app_handle, &settings).await;

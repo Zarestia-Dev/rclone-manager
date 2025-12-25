@@ -120,17 +120,22 @@ fn handle_remote_presence_changed(app: &AppHandle) {
         let app_clone = app_clone.clone();
         tauri::async_runtime::spawn(async move {
             let cache = app_clone.state::<RemoteCache>();
+            let manager = app_clone.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+
             let refresh_tasks = tokio::join!(
                 cache.refresh_remote_list(app_clone.clone()),
                 cache.refresh_remote_configs(app_clone.clone()),
-                cache.refresh_remote_settings(app_clone.clone()),
             );
-            if let (Err(e1), Err(e2), Err(e3)) = refresh_tasks {
-                error!("Failed to refresh cache: {e1}, {e2}, {e3}");
+            if let (Err(e1), Err(e2)) = refresh_tasks {
+                error!("Failed to refresh cache: {e1}, {e2}");
             }
 
             info!("Remote presence changed, reloading scheduled tasks from configs...");
-            let all_configs = cache.get_settings().await;
+            let remote_names = cache.get_remotes().await;
+            let all_configs = crate::core::settings::remote::manager::get_all_remote_settings_sync(
+                manager.inner(),
+                &remote_names,
+            );
 
             let cache_state = app_clone.state::<ScheduledTasksCache>();
             let scheduler_state = app_clone.state::<CronScheduler>();

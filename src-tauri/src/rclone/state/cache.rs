@@ -6,7 +6,6 @@ use tauri::{Manager, State};
 use tokio::sync::RwLock;
 
 use crate::{
-    core::settings::remote::manager::get_remote_settings,
     rclone::queries::{get_all_remote_configs, get_mounted_remotes, get_remotes, list_serves},
     utils::types::all_types::{MountedRemote, RemoteCache, ServeInstance},
 };
@@ -16,7 +15,6 @@ impl RemoteCache {
         Self {
             remotes: RwLock::new(Vec::new()),
             configs: RwLock::new(json!({})),
-            settings: RwLock::new(json!({})),
             mounted: RwLock::new(Vec::new()),
             serves: RwLock::new(Vec::new()),
             mount_profiles: RwLock::new(HashMap::new()),
@@ -44,29 +42,6 @@ impl RemoteCache {
             error!("Failed to fetch remotes config");
             Err("Failed to fetch remotes config".into())
         }
-    }
-
-    pub async fn refresh_remote_settings(
-        &self,
-        app_handle: tauri::AppHandle,
-    ) -> Result<(), String> {
-        let remotes: Vec<String> = {
-            let remotes_guard = self.remotes.read().await;
-            remotes_guard.clone() // Quick clone, release lock
-        };
-
-        let mut all_settings = serde_json::Map::new();
-        for remote in remotes {
-            // IO without holding cache locks
-            if let Ok(settings) = get_remote_settings(remote.clone(), app_handle.state()).await {
-                all_settings.insert(remote, settings);
-            }
-        }
-
-        // Brief write lock only for the final update
-        let mut settings = self.settings.write().await;
-        *settings = serde_json::Value::Object(all_settings);
-        Ok(())
     }
 
     pub async fn refresh_mounted_remotes(
@@ -115,9 +90,8 @@ impl RemoteCache {
     }
 
     pub async fn refresh_all(&self, app_handle: tauri::AppHandle) -> Result<(), String> {
-        let (res1, res2, res3, res4, res5) = tokio::join!(
+        let (res1, res2, res3, res4) = tokio::join!(
             self.refresh_remote_list(app_handle.clone()),
-            self.refresh_remote_settings(app_handle.clone()),
             self.refresh_remote_configs(app_handle.clone()),
             self.refresh_mounted_remotes(app_handle.clone()),
             self.refresh_serves(app_handle.clone()),
@@ -127,15 +101,12 @@ impl RemoteCache {
             error!("Failed to refresh remote list: {e}");
         }
         if let Err(e) = res2 {
-            error!("Failed to refresh remote settings: {e}");
-        }
-        if let Err(e) = res3 {
             error!("Failed to refresh remote configs: {e}");
         }
-        if let Err(e) = res4 {
+        if let Err(e) = res3 {
             error!("Failed to refresh mounted remotes: {e}");
         }
-        if let Err(e) = res5 {
+        if let Err(e) = res4 {
             error!("Failed to refresh serves: {e}");
         }
 
@@ -224,10 +195,6 @@ impl RemoteCache {
         self.configs.read().await.clone()
     }
 
-    pub async fn get_settings(&self) -> serde_json::Value {
-        self.settings.read().await.clone()
-    }
-
     // === Profile Management for Mounts ===
     /// Rename a profile in all mounted remotes for a given remote
     pub async fn rename_profile_in_mounts(
@@ -286,9 +253,29 @@ pub async fn get_configs(cache: State<'_, RemoteCache>) -> Result<serde_json::Va
     Ok(cache.get_configs().await)
 }
 
+/// Get all remote settings from rcman sub-settings
 #[tauri::command]
-pub async fn get_settings(cache: State<'_, RemoteCache>) -> Result<serde_json::Value, String> {
-    Ok(cache.get_settings().await)
+pub async fn get_settings(
+    manager: tauri::State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
+    cache: tauri::State<'_, RemoteCache>,
+) -> Result<serde_json::Value, String> {
+    use serde_json::json;
+
+    let remotes = manager
+        .inner()
+        .sub_settings("remotes")
+        .map_err(|e| format!("Failed to get remotes sub-settings: {e}"))?;
+
+    let remote_names = cache.get_remotes().await;
+    let mut all_settings = serde_json::Map::new();
+
+    for remote_name in remote_names {
+        if let Ok(settings) = remotes.get_value(&remote_name) {
+            all_settings.insert(remote_name, settings);
+        }
+    }
+
+    Ok(json!(all_settings))
 }
 
 #[tauri::command]

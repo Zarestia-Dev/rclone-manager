@@ -541,7 +541,12 @@ pub async fn start_sync_profile(
     params: ProfileParams,
 ) -> Result<u64, String> {
     let cache = app.state::<RemoteCache>();
-    let settings_map = cache.get_settings().await;
+    let manager = app.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+    let remote_names = cache.get_remotes().await;
+    let settings_map = crate::core::settings::remote::manager::get_all_remote_settings_sync(
+        manager.inner(),
+        &remote_names,
+    );
 
     let settings = settings_map
         .get(&params.remote_name)
@@ -579,7 +584,12 @@ pub async fn start_copy_profile(
     params: ProfileParams,
 ) -> Result<u64, String> {
     let cache = app.state::<RemoteCache>();
-    let settings_map = cache.get_settings().await;
+    let manager = app.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+    let remote_names = cache.get_remotes().await;
+    let settings_map = crate::core::settings::remote::manager::get_all_remote_settings_sync(
+        manager.inner(),
+        &remote_names,
+    );
 
     let settings = settings_map
         .get(&params.remote_name)
@@ -617,7 +627,12 @@ pub async fn start_bisync_profile(
     params: ProfileParams,
 ) -> Result<u64, String> {
     let cache = app.state::<RemoteCache>();
-    let settings_map = cache.get_settings().await;
+    let manager = app.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+    let remote_names = cache.get_remotes().await;
+    let settings_map = crate::core::settings::remote::manager::get_all_remote_settings_sync(
+        manager.inner(),
+        &remote_names,
+    );
 
     let settings = settings_map
         .get(&params.remote_name)
@@ -655,7 +670,12 @@ pub async fn start_move_profile(
     params: ProfileParams,
 ) -> Result<u64, String> {
     let cache = app.state::<RemoteCache>();
-    let settings_map = cache.get_settings().await;
+    let manager = app.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+    let remote_names = cache.get_remotes().await;
+    let settings_map = crate::core::settings::remote::manager::get_all_remote_settings_sync(
+        manager.inner(),
+        &remote_names,
+    );
 
     let settings = settings_map
         .get(&params.remote_name)

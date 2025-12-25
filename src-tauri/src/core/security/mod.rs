@@ -1,5 +1,5 @@
 pub mod commands;
-pub mod credential_manager;
+pub mod env_manager;
 
 pub use commands::*;
-pub use credential_manager::*;
+pub use env_manager::*;
