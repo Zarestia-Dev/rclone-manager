@@ -7,7 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Settings Management Library (rcman)**: Extracted and refactored the internal settings management system into a standalone, reusable Rust library called [rcman](https://github.com/Zarestia-Dev/rcman). This provides schema-based configuration, backup/restore, secret storage, and a derive macro for automatic schema generation. The app now uses rcman as an external dependency.
 - Nautilus Component: Added dot and other text files preview support. Now you can preview the content of dot and other text files.
+
+### Changed
+- Removed legacy integrated settings manager in favor of the new rcman library
 
 ### Fixed
 - Broken theme setting fixed. Now it correctly applies the theme.

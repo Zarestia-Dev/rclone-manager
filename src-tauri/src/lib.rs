@@ -265,28 +265,17 @@ pub fn run() {
             let app_handle = app.handle();
             let config_dir = setup_config_dir(app_handle)?;
 
-            // Initialize rcman SettingsManager (new settings system)
-            // This runs alongside SettingsState during migration
-            let rcman_config =
-                rcman::SettingsConfig::builder(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
+            // Initialize rcman SettingsManager with fluent builder API
+            let rcman_manager: rcman::SettingsManager<rcman::JsonStorage> =
+                rcman::SettingsManager::builder(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
                     .config_dir(&config_dir)
                     .with_credentials() // Enable automatic keychain storage for secrets
-                    .build();
-
-            let rcman_manager: rcman::SettingsManager<rcman::JsonStorage> =
-                rcman::SettingsManager::new(rcman_config)
+                    .with_sub_settings(rcman::SubSettingsConfig::new("remotes").with_migrator(
+                        crate::core::settings::remote::manager::migrate_to_multi_profile,
+                    ))
+                    .with_sub_settings(rcman::SubSettingsConfig::new("backend").single_file())
+                    .build()
                     .map_err(|e| format!("Failed to create rcman settings manager: {e}"))?;
-
-            // Register remotes as sub-settings with automatic migration
-            rcman_manager.register_sub_settings(
-                rcman::SubSettingsConfig::new("remotes").with_migrator(
-                    crate::core::settings::remote::manager::migrate_to_multi_profile,
-                ),
-            );
-
-            // Register backend options as sub-settings (single-file mode for RClone backend blocks)
-            rcman_manager
-                .register_sub_settings(rcman::SubSettingsConfig::new("backend").single_file());
 
             // Load settings BEFORE managing so we can use the manager reference
             let settings = load_startup_settings(&rcman_manager)

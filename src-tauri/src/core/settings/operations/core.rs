@@ -4,7 +4,7 @@
 
 use crate::core::settings::schema::AppSettings;
 use log::info;
-use rcman::{JsonStorage, SettingsManager};
+use rcman::JsonSettingsManager;
 use serde_json::json;
 use tauri::{Emitter, State};
 
@@ -13,7 +13,7 @@ use crate::utils::types::events::SYSTEM_SETTINGS_CHANGED;
 /// Load all settings with metadata (for UI)
 #[tauri::command]
 pub async fn load_settings(
-    manager: State<'_, SettingsManager<JsonStorage>>,
+    manager: State<'_, JsonSettingsManager>,
 ) -> Result<serde_json::Value, String> {
     let metadata = manager
         .inner()
@@ -34,7 +34,7 @@ pub async fn save_setting(
     category: String,
     key: String,
     value: serde_json::Value,
-    manager: State<'_, SettingsManager<JsonStorage>>,
+    manager: State<'_, JsonSettingsManager>,
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
     manager
@@ -57,7 +57,7 @@ pub async fn save_setting(
 pub async fn reset_setting(
     category: String,
     key: String,
-    manager: State<'_, SettingsManager<JsonStorage>>,
+    manager: State<'_, JsonSettingsManager>,
     app_handle: tauri::AppHandle,
 ) -> Result<serde_json::Value, String> {
     let default_value = manager
@@ -78,7 +78,7 @@ pub async fn reset_setting(
 /// Reset all settings to defaults
 #[tauri::command]
 pub async fn reset_settings(
-    manager: State<'_, SettingsManager<JsonStorage>>,
+    manager: State<'_, JsonSettingsManager>,
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
     manager
@@ -97,9 +97,7 @@ pub async fn reset_settings(
 }
 
 /// Load startup settings (blocking, for initialization)
-pub fn load_startup_settings(
-    manager: &SettingsManager<JsonStorage>,
-) -> Result<AppSettings, String> {
+pub fn load_startup_settings(manager: &JsonSettingsManager) -> Result<AppSettings, String> {
     manager
         .load_startup::<AppSettings>()
         .map_err(|e| format!("Failed to load startup settings: {e}"))

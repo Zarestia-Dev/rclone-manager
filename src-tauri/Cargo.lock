@@ -4353,6 +4353,7 @@ dependencies = [
  "dirs 6.0.0",
  "keyring",
  "log",
+ "rcman-derive",
  "regex",
  "serde",
  "serde_json",
@@ -4360,6 +4361,17 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.17",
  "zip 7.0.0",
+]
+
+[[package]]
+name = "rcman-derive"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d3d94bec6d1a7ce36b5091241e5eec0fb0e4f13ff9d26edf7cae82213c92bb0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.111",
 ]
 
 [[package]]

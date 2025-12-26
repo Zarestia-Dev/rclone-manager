@@ -47,8 +47,9 @@ tokio-cron-scheduler = "0.13.0"
 croner = "3.0.1"
 sevenz-rust2 = "0.20.0"
 
-# rcman - Rust Config Manager library (local crate)
-rcman = { path = "../crates/rcman", features = ["backup", "keychain"] }
+# rcman - Rust Config Manager library
+# Path is used for local development, version is used when path is not available (crates.io)
+rcman = { version = "0.1.0", path = "../../rcman", features = ["backup", "keychain", "derive"] }
 
 # Implementation based on: https://github.com/tauri-apps/tauri/issues/12022
 # Until Tauri provides a built-in Rust API, this manual implementation is required
