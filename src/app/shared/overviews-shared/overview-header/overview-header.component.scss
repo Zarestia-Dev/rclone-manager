@@ -12,6 +12,60 @@
   margin-bottom: var(--panel-padding);
 
   .header-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-md);
+
+    .backend-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xs);
+      padding: var(--space-xs) var(--space-sm);
+      background: var(--sidebar-bg-color);
+      border: none;
+      border-radius: var(--badge-radius);
+      cursor: pointer;
+      transition: var(--transition-fast);
+      font-family: inherit;
+      font-size: var(--font-size-sm);
+
+      &:hover {
+        background: var(--hover-bg-color);
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--dim-color);
+
+        &.connected {
+          background: var(--success-color);
+          box-shadow: 0 0 6px var(--success-color);
+        }
+
+        &.disconnected {
+          background: var(--dim-color);
+        }
+
+        &.error {
+          background: var(--destructive-color);
+        }
+      }
+
+      .backend-name {
+        color: var(--window-fg-color);
+        font-weight: 500;
+      }
+
+      .chevron {
+        width: 14px;
+        height: 14px;
+        color: var(--dim-color);
+      }
+    }
+
     .title-section {
       display: flex;
       align-items: center;
@@ -42,14 +96,21 @@
   .overview-header {
     margin-bottom: var(--panel-padding-mobile);
 
-    .title-section {
-      .app-icon {
-        width: 28px;
-        height: 28px;
+    .header-content {
+      .backend-indicator {
+        padding: var(--space-xxs) var(--space-xs);
+        font-size: var(--font-size-xs);
       }
 
-      h2 {
-        font-size: 24px;
+      .title-section {
+        .app-icon {
+          width: 28px;
+          height: 28px;
+        }
+
+        h2 {
+          font-size: 24px;
+        }
       }
     }
   }
@@ -57,12 +118,14 @@
 
 // 5.2 Mobile Styles (max-width: 480px)
 @media (max-width: 480px) {
-  .overview-header .title-section {
-    flex-direction: column;
-    gap: 8px;
+  .overview-header .header-content {
+    .title-section {
+      flex-direction: column;
+      gap: 8px;
 
-    h2 {
-      font-size: 20px;
+      h2 {
+        font-size: 20px;
+      }
     }
   }
 }

@@ -3,22 +3,28 @@ use std::time::Duration;
 use tauri::AppHandle;
 use tauri_plugin_shell::process::CommandChild;
 
-use crate::{
-    rclone::state::engine::ENGINE_STATE,
-    utils::{
-        process::process_manager::{kill_all_rclone_processes, kill_processes_on_port},
-        rclone::{
-            endpoints::{EndpointHelper, core},
-            process_common::create_rclone_command,
-        },
-        types::all_types::RcApiEngine,
+use crate::utils::{
+    process::process_manager::{kill_all_rclone_processes, kill_processes_on_port},
+    rclone::{
+        endpoints::{EndpointHelper, core},
+        process_common::create_rclone_command,
     },
+    types::all_types::RcApiEngine,
 };
 
 impl RcApiEngine {
     pub async fn spawn_process(&mut self, app: &AppHandle) -> Result<CommandChild, String> {
         // Return type is correct
-        let port = ENGINE_STATE.get_api().1;
+        // Get port from BACKEND_MANAGER
+        let port = if let Some(backend) = crate::rclone::backend::BACKEND_MANAGER.get_active().await
+        {
+            backend.read().await.connection.port
+        } else {
+            // Fallback to default or existing if backend manager not ready (unlikely)
+            warn!("⚠️ No active backend found in BACKEND_MANAGER during spawn, using stored port");
+            self.current_api_port
+        };
+
         self.current_api_port = port;
 
         let engine_app = match create_rclone_command(port, app, "main_engine").await {
@@ -97,6 +103,7 @@ impl RcApiEngine {
     }
 
     pub fn kill_all_rclone_rcd() -> Result<(), String> {
-        kill_all_rclone_processes()
+        // Use default ports or last known if we had state (but static, so defaults)
+        kill_all_rclone_processes(51900, 51901)
     }
 }

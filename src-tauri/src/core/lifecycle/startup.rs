@@ -12,7 +12,7 @@ use crate::{
         serve::start_serve_profile,
         sync::{start_bisync_profile, start_copy_profile, start_move_profile, start_sync_profile},
     },
-    utils::types::all_types::{JobCache, ProfileParams, RcloneState, RemoteCache},
+    utils::types::all_types::{ProfileParams, RcloneState},
 };
 
 /// Auto-start all profiles that have autoStart: true
@@ -20,10 +20,15 @@ use crate::{
 pub async fn handle_startup(app: AppHandle) {
     info!("🚀 Starting auto-start profiles check...");
 
-    let cache = app.state::<RemoteCache>();
     let manager = app.state::<rcman::SettingsManager<rcman::JsonStorage>>();
 
-    let remote_names = cache.get_remotes().await;
+    let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
+    let remote_names = if let Some(backend) = backend_manager.get_active().await {
+        backend.read().await.remote_cache.get_remotes().await
+    } else {
+        warn!("Skipping auto-start: No active backend found.");
+        return;
+    };
     let settings_val = crate::core::settings::remote::manager::get_all_remote_settings_sync(
         manager.inner(),
         &remote_names,
@@ -127,9 +132,7 @@ async fn auto_start_mount(app: &AppHandle, remote_name: &str, profile_name: &str
         profile_name: profile_name.to_string(),
     };
 
-    let cache = app.state::<RemoteCache>();
-
-    match mount_remote_profile(app.clone(), cache, params).await {
+    match mount_remote_profile(app.clone(), params).await {
         Ok(_) => {
             info!(
                 "✅ Auto-started mount: {} profile '{}'",
@@ -173,20 +176,19 @@ async fn auto_start_sync(app: &AppHandle, remote_name: &str, profile_name: &str,
         profile_name: profile_name.to_string(),
     };
 
-    let job_cache = app.state::<JobCache>();
     let rclone_state = app.state::<RcloneState>();
 
     let result = match op_type {
-        "sync" => start_sync_profile(app.clone(), job_cache, rclone_state, params)
+        "sync" => start_sync_profile(app.clone(), rclone_state, params)
             .await
             .map(|_| ()),
-        "copy" => start_copy_profile(app.clone(), job_cache, rclone_state, params)
+        "copy" => start_copy_profile(app.clone(), rclone_state, params)
             .await
             .map(|_| ()),
-        "move" => start_move_profile(app.clone(), job_cache, rclone_state, params)
+        "move" => start_move_profile(app.clone(), rclone_state, params)
             .await
             .map(|_| ()),
-        "bisync" => start_bisync_profile(app.clone(), job_cache, rclone_state, params)
+        "bisync" => start_bisync_profile(app.clone(), rclone_state, params)
             .await
             .map(|_| ()),
         _ => {

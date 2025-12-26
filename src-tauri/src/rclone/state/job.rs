@@ -1,5 +1,4 @@
 use serde_json::Value;
-use tauri::State;
 use tokio::sync::RwLock;
 
 use crate::utils::types::all_types::{JobCache, JobInfo, JobStatus};
@@ -131,50 +130,6 @@ impl JobCache {
 
         updated_count
     }
-}
-
-#[tauri::command]
-pub async fn get_jobs(job_cache: State<'_, JobCache>) -> Result<Vec<JobInfo>, String> {
-    Ok(job_cache.get_jobs().await)
-}
-
-#[tauri::command]
-pub async fn delete_job(job_cache: State<'_, JobCache>, jobid: u64) -> Result<(), String> {
-    job_cache.delete_job(jobid).await
-}
-
-#[tauri::command]
-pub async fn get_job_status(
-    job_cache: State<'_, JobCache>,
-    jobid: u64,
-) -> Result<Option<JobInfo>, String> {
-    Ok(job_cache.get_job(jobid).await)
-}
-
-#[tauri::command]
-pub async fn get_active_jobs(job_cache: State<'_, JobCache>) -> Result<Vec<JobInfo>, String> {
-    Ok(job_cache.get_active_jobs().await)
-}
-
-#[tauri::command]
-pub async fn get_jobs_by_source(
-    job_cache: State<'_, JobCache>,
-    source: String,
-) -> Result<Vec<JobInfo>, String> {
-    Ok(job_cache.get_jobs_by_source(&source).await)
-}
-
-/// Rename a profile in all cached running jobs
-#[tauri::command]
-pub async fn rename_profile_in_cache(
-    job_cache: State<'_, JobCache>,
-    remote_name: String,
-    old_name: String,
-    new_name: String,
-) -> Result<usize, String> {
-    Ok(job_cache
-        .rename_profile(&remote_name, &old_name, &new_name)
-        .await)
 }
 
 impl Default for JobCache {

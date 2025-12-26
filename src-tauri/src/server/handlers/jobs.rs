@@ -7,28 +7,25 @@ use axum::{
 use serde::Deserialize;
 use tauri::Manager;
 
-use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
-use crate::utils::types::all_types::{JobCache, ProfileParams, RcloneState};
+use crate::utils::types::all_types::{ProfileParams, RcloneState}; // Removed JobCache import
 
 pub async fn get_jobs_handler(
-    State(state): State<WebServerState>,
+    State(_): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::state::job::get_jobs;
-    let job_cache = state.app_handle.state::<JobCache>();
-    let jobs = get_jobs(job_cache).await.map_err(anyhow::Error::msg)?;
+    // Call standalone function that uses BACKEND_MANAGER internally or use active backend directly
+    // state::job::get_jobs() in Step 946 is a tauri command that resolves active backend.
+    let jobs = get_jobs().await.map_err(anyhow::Error::msg)?;
     let json_jobs = serde_json::to_value(jobs)?;
     Ok(Json(ApiResponse::success(json_jobs)))
 }
 
 pub async fn get_active_jobs_handler(
-    State(state): State<WebServerState>,
+    State(_): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::state::job::get_active_jobs;
-    let job_cache = state.app_handle.state::<JobCache>();
-    let active_jobs = get_active_jobs(job_cache)
-        .await
-        .map_err(anyhow::Error::msg)?;
+    let active_jobs = get_active_jobs().await.map_err(anyhow::Error::msg)?;
     let json_active_jobs = serde_json::to_value(active_jobs)?;
     Ok(Json(ApiResponse::success(json_active_jobs)))
 }
@@ -39,12 +36,11 @@ pub struct JobsBySourceQuery {
 }
 
 pub async fn get_jobs_by_source_handler(
-    State(state): State<WebServerState>,
+    State(_): State<WebServerState>,
     Query(query): Query<JobsBySourceQuery>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::state::job::get_jobs_by_source;
-    let job_cache = state.app_handle.state::<JobCache>();
-    let jobs = get_jobs_by_source(job_cache, query.source)
+    let jobs = get_jobs_by_source(query.source)
         .await
         .map_err(anyhow::Error::msg)?;
     let json_jobs = serde_json::to_value(jobs)?;
@@ -57,12 +53,11 @@ pub struct JobStatusQuery {
 }
 
 pub async fn get_job_status_handler(
-    State(state): State<WebServerState>,
+    State(_): State<WebServerState>,
     Query(query): Query<JobStatusQuery>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::state::job::get_job_status;
-    let job_cache = state.app_handle.state::<JobCache>();
-    let opt = get_job_status(job_cache, query.jobid)
+    let opt = get_job_status(query.jobid)
         .await
         .map_err(anyhow::Error::msg)?;
     let json = match opt {
@@ -84,12 +79,12 @@ pub async fn stop_job_handler(
     Json(body): Json<StopJobBody>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::rclone::commands::job::stop_job;
-    let job_cache = state.app_handle.state::<JobCache>();
+    // Removed job_cache which is not in stop_job signature
+    use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
     let scheduled_cache = state.app_handle.state::<ScheduledTasksCache>();
     let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
     stop_job(
         state.app_handle.clone(),
-        job_cache,
         scheduled_cache,
         body.jobid,
         body.remote_name,
@@ -108,14 +103,12 @@ pub struct DeleteJobBody {
 }
 
 pub async fn delete_job_handler(
-    State(state): State<WebServerState>,
+    State(_): State<WebServerState>,
     Json(body): Json<DeleteJobBody>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::rclone::state::job::delete_job;
-    let job_cache = state.app_handle.state::<JobCache>();
-    delete_job(job_cache, body.jobid)
-        .await
-        .map_err(anyhow::Error::msg)?;
+    // Uses the standalone command variant that resolves active backend
+    delete_job(body.jobid).await.map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(
         "Job deleted successfully".to_string(),
     )))
@@ -141,9 +134,9 @@ pub async fn start_sync_profile_handler(
         remote_name: body.params.remote_name,
         profile_name: body.params.profile_name,
     };
-    let job_cache = state.app_handle.state::<JobCache>();
+    // Removed job_cache
     let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let jobid = start_sync_profile(state.app_handle.clone(), job_cache, rclone_state, params)
+    let jobid = start_sync_profile(state.app_handle.clone(), rclone_state, params)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(jobid)))
@@ -158,9 +151,8 @@ pub async fn start_copy_profile_handler(
         remote_name: body.params.remote_name,
         profile_name: body.params.profile_name,
     };
-    let job_cache = state.app_handle.state::<JobCache>();
     let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let jobid = start_copy_profile(state.app_handle.clone(), job_cache, rclone_state, params)
+    let jobid = start_copy_profile(state.app_handle.clone(), rclone_state, params)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(jobid)))
@@ -175,9 +167,8 @@ pub async fn start_move_profile_handler(
         remote_name: body.params.remote_name,
         profile_name: body.params.profile_name,
     };
-    let job_cache = state.app_handle.state::<JobCache>();
     let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let jobid = start_move_profile(state.app_handle.clone(), job_cache, rclone_state, params)
+    let jobid = start_move_profile(state.app_handle.clone(), rclone_state, params)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(jobid)))
@@ -192,9 +183,8 @@ pub async fn start_bisync_profile_handler(
         remote_name: body.params.remote_name,
         profile_name: body.params.profile_name,
     };
-    let job_cache = state.app_handle.state::<JobCache>();
     let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let jobid = start_bisync_profile(state.app_handle.clone(), job_cache, rclone_state, params)
+    let jobid = start_bisync_profile(state.app_handle.clone(), rclone_state, params)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(jobid)))

@@ -13,6 +13,8 @@ mod core;
 mod rclone;
 mod utils;
 
+use crate::utils::types::{LogCache, RcloneState};
+
 #[cfg(feature = "web-server")]
 mod server;
 
@@ -105,8 +107,15 @@ use crate::{
     },
     rclone::{
         commands::{
+            backend::{
+                add_backend, get_active_backend, list_backends, remove_backend, switch_backend,
+                test_backend_connection, update_backend,
+            },
             filesystem::{cleanup, copy_url, mkdir},
-            job::stop_job,
+            job::{
+                delete_job, get_active_jobs, get_job_status, get_jobs, get_jobs_by_source,
+                rename_profile_in_cache, stop_job,
+            },
             mount::{mount_remote_profile, unmount_all_remotes, unmount_remote},
             remote::{
                 continue_create_remote_interactive, create_remote, create_remote_interactive,
@@ -130,19 +139,14 @@ use crate::{
             get_core_stats, get_core_stats_filtered, get_disk_usage, get_fs_info, get_hashsum,
             get_local_drives, get_memory_stats, get_mount_types, get_mounted_remotes,
             get_oauth_supported_remotes, get_public_link, get_rclone_info, get_rclone_pid,
-            get_remote_config, get_remote_paths, get_remote_types, get_remotes, get_serve_types,
-            get_size, get_stat, list_serves, vfs_forget, vfs_list, vfs_poll_interval, vfs_queue,
-            vfs_queue_set_expiry, vfs_refresh, vfs_stats,
+            get_rclone_rc_url, get_remote_config, get_remote_paths, get_remote_types, get_remotes,
+            get_serve_types, get_size, get_stat, list_serves, vfs_forget, vfs_list,
+            vfs_poll_interval, vfs_queue, vfs_queue_set_expiry, vfs_refresh, vfs_stats,
         },
         state::{
             cache::{
                 get_cached_mounted_remotes, get_cached_remotes, get_cached_serves, get_configs,
                 get_settings, rename_mount_profile_in_cache, rename_serve_profile_in_cache,
-            },
-            engine::get_rclone_rc_url,
-            job::{
-                delete_job, get_active_jobs, get_job_status, get_jobs, get_jobs_by_source,
-                rename_profile_in_cache,
             },
             log::{clear_remote_logs, get_remote_logs},
             scheduled_tasks::{
@@ -170,7 +174,6 @@ use crate::{
             provision::provision_rclone,
             updater::{check_rclone_update, update_rclone},
         },
-        types::all_types::{JobCache, LogCache, RcloneState, RemoteCache},
     },
 };
 
@@ -274,6 +277,7 @@ pub fn run() {
                         crate::core::settings::remote::manager::migrate_to_multi_profile,
                     ))
                     .with_sub_settings(rcman::SubSettingsConfig::new("backend").single_file())
+                    .with_sub_settings(rcman::SubSettingsConfig::new("connections").single_file())
                     .build()
                     .map_err(|e| format!("Failed to create rcman settings manager: {e}"))?;
 
@@ -319,11 +323,9 @@ pub fn run() {
                 oauth_process: tokio::sync::Mutex::new(None),
             });
 
-            app.manage(JobCache::new());
             app.manage(LogCache::new(1000));
             app.manage(ScheduledTasksCache::new());
             app.manage(CronScheduler::new());
-            app.manage(RemoteCache::new());
 
             #[cfg(feature = "updater")]
             app.manage(PendingUpdate(std::sync::Mutex::new(None)));
@@ -649,6 +651,14 @@ pub fn run() {
             stop_job,
             delete_job,
             rename_profile_in_cache,
+            // Backend Management
+            list_backends,
+            get_active_backend,
+            switch_backend,
+            add_backend,
+            update_backend,
+            remove_backend,
+            test_backend_connection,
             // Scheduled Tasks (Now require state)
             get_scheduled_tasks,
             get_scheduled_task,

@@ -23,8 +23,17 @@ pub async fn get_mounted_remotes_handler(
 pub async fn get_cached_mounted_remotes_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
+    use crate::rclone::backend::BACKEND_MANAGER;
     use crate::rclone::state::cache::get_cached_mounted_remotes;
-    let cache = state.app_handle.state::<RemoteCache>();
+
+    let backend_manager = &BACKEND_MANAGER;
+    let backend = backend_manager
+        .get_active()
+        .await
+        .ok_or_else(|| anyhow::anyhow!("No active backend"))
+        .map_err(AppError::Anyhow)?;
+    let cache = backend.read().await.remote_cache.clone();
+
     let mounted_remotes = get_cached_mounted_remotes(cache)
         .await
         .map_err(anyhow::Error::msg)?;
@@ -35,8 +44,17 @@ pub async fn get_cached_mounted_remotes_handler(
 pub async fn get_cached_serves_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
+    use crate::rclone::backend::BACKEND_MANAGER;
     use crate::rclone::state::cache::get_cached_serves;
-    let cache = state.app_handle.state::<RemoteCache>();
+
+    let backend_manager = &BACKEND_MANAGER;
+    let backend = backend_manager
+        .get_active()
+        .await
+        .ok_or_else(|| anyhow::anyhow!("No active backend"))
+        .map_err(AppError::Anyhow)?;
+    let cache = backend.read().await.remote_cache.clone();
+
     let serves = get_cached_serves(cache).await.map_err(anyhow::Error::msg)?;
     let json_serves = serde_json::to_value(serves).map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(json_serves)))
@@ -63,8 +81,8 @@ pub async fn mount_remote_profile_handler(
         remote_name: body.params.remote_name,
         profile_name: body.params.profile_name,
     };
-    let remote_cache = state.app_handle.state::<RemoteCache>();
-    mount_remote_profile(state.app_handle.clone(), remote_cache, params)
+    // remote_cache not needed in updated signature
+    mount_remote_profile(state.app_handle.clone(), params)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(

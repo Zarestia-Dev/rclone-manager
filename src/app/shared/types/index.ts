@@ -1,3 +1,4 @@
+export * from './backend.types';
 export * from './components';
 export * from './events';
 export * from './filesystem';

@@ -3,7 +3,8 @@ use serde_json::Value;
 use std::collections::HashMap;
 use tauri::{State, command};
 
-use crate::rclone::state::engine::ENGINE_STATE;
+use crate::rclone::backend::BACKEND_MANAGER;
+use crate::rclone::backend::types::RcloneBackend;
 use crate::utils::rclone::endpoints::{EndpointHelper, config};
 use crate::utils::types::all_types::RcloneState;
 
@@ -11,11 +12,23 @@ use crate::utils::types::all_types::RcloneState;
 pub async fn get_all_remote_configs(
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::DUMP);
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend".to_string())?;
 
-    let response = state
-        .client
-        .post(url)
+    let backend_guard = backend.read().await;
+    get_all_remote_configs_internal(&state.client, &backend_guard).await
+}
+
+pub async fn get_all_remote_configs_internal(
+    client: &reqwest::Client,
+    backend: &RcloneBackend,
+) -> Result<serde_json::Value, String> {
+    let url = EndpointHelper::build_url(&backend.api_url(), config::DUMP);
+
+    let response = backend
+        .inject_auth(client.post(url))
         .send()
         .await
         .map_err(|e| format!("❌ Failed to fetch remote configs: {e}"))?;
@@ -30,13 +43,30 @@ pub async fn get_all_remote_configs(
 
 #[command]
 pub async fn get_remotes(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::LISTREMOTES);
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend".to_string())?;
+
+    let backend_guard = backend.read().await;
+    get_remotes_internal(&state.client, &backend_guard).await
+}
+
+pub async fn get_remotes_internal(
+    client: &reqwest::Client,
+    backend: &RcloneBackend,
+) -> Result<Vec<String>, String> {
+    let url = EndpointHelper::build_url(&backend.api_url(), config::LISTREMOTES);
     debug!("📡 Fetching remotes from: {url}");
 
-    let response = state.client.post(url).send().await.map_err(|e| {
-        log::error!("❌ Failed to fetch remotes: {e}");
-        format!("❌ Failed to fetch remotes: {e}")
-    })?;
+    let response = backend
+        .inject_auth(client.post(url))
+        .send()
+        .await
+        .map_err(|e| {
+            log::error!("❌ Failed to fetch remotes: {e}");
+            format!("❌ Failed to fetch remotes: {e}")
+        })?;
 
     let json: Value = response.json().await.map_err(|e| {
         log::error!("❌ Failed to parse remotes response: {e}");
@@ -60,11 +90,16 @@ pub async fn get_remote_config(
     remote_name: String,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::GET);
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend".to_string())?;
 
-    let response = state
-        .client
-        .post(&url)
+    let backend_guard = backend.read().await;
+    let url = EndpointHelper::build_url(&backend_guard.api_url(), config::GET);
+
+    let response = backend_guard
+        .inject_auth(state.client.post(&url))
         .query(&[("name", &remote_name)])
         .send()
         .await
@@ -82,11 +117,15 @@ pub async fn get_remote_config(
 async fn fetch_remote_providers(
     state: &State<'_, RcloneState>,
 ) -> Result<HashMap<String, Vec<Value>>, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::PROVIDERS);
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend".to_string())?;
+    let backend_guard = backend.read().await;
+    let url = EndpointHelper::build_url(&backend_guard.api_url(), config::PROVIDERS);
 
-    let response = state
-        .client
-        .post(url)
+    let response = backend_guard
+        .inject_auth(state.client.post(url))
         .send()
         .await
         .map_err(|e| format!("❌ Failed to send request: {e}"))?;

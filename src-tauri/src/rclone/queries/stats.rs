@@ -2,18 +2,22 @@ use log::{debug, error};
 use serde_json::json;
 use tauri::State;
 
-use crate::rclone::state::engine::ENGINE_STATE;
+use crate::rclone::backend::BACKEND_MANAGER;
 use crate::utils::rclone::endpoints::{EndpointHelper, core};
 use crate::utils::types::all_types::RcloneState;
 
 /// Get RClone core statistics  
 #[tauri::command]
 pub async fn get_core_stats(state: State<'_, RcloneState>) -> Result<serde_json::Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::STATS);
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend")?;
+    let backend_guard = backend.read().await;
+    let url = EndpointHelper::build_url(&backend_guard.api_url(), core::STATS);
 
-    let response = state
-        .client
-        .post(&url)
+    let response = backend_guard
+        .inject_auth(state.client.post(&url))
         .send()
         .await
         .map_err(|e| format!("Failed to get core stats: {e}"))?;
@@ -35,7 +39,12 @@ pub async fn get_core_stats_filtered(
     jobid: Option<u64>,
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::STATS);
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend")?;
+    let backend_guard = backend.read().await;
+    let url = EndpointHelper::build_url(&backend_guard.api_url(), core::STATS);
 
     let mut payload = json!({});
 
@@ -52,9 +61,8 @@ pub async fn get_core_stats_filtered(
 
     debug!("📡 Requesting core stats from: {url} with payload: {payload}");
 
-    let response = state
-        .client
-        .post(&url)
+    let response = backend_guard
+        .inject_auth(state.client.post(&url))
         .json(&payload)
         .send()
         .await
@@ -84,7 +92,12 @@ pub async fn get_completed_transfers(
     state: State<'_, RcloneState>,
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::TRANSFERRED);
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend")?;
+    let backend_guard = backend.read().await;
+    let url = EndpointHelper::build_url(&backend_guard.api_url(), core::TRANSFERRED);
 
     let mut payload = json!({});
     if let Some(group) = group {
@@ -96,9 +109,8 @@ pub async fn get_completed_transfers(
 
     debug!("📡 Requesting completed transfers from: {url} with payload: {payload}");
 
-    let response = state
-        .client
-        .post(&url)
+    let response = backend_guard
+        .inject_auth(state.client.post(&url))
         .json(&payload)
         .send()
         .await

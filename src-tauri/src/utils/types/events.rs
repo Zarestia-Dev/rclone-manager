@@ -1,7 +1,7 @@
 // Event constants for emit/listen operations
 
 // Core engine events
-pub const RCLONE_API_URL_UPDATED: &str = "rclone_api_url_updated";
+
 pub const ENGINE_RESTARTED: &str = "engine_restarted";
 
 // Dedicated engine state events (no payload needed - event name indicates state)

@@ -4,6 +4,7 @@ use tauri_plugin_opener::OpenerExt;
 
 use crate::{
     rclone::{
+        backend::BACKEND_MANAGER,
         commands::{
             job::stop_job,
             mount::{mount_remote_profile, unmount_remote},
@@ -16,7 +17,7 @@ use crate::{
     },
     utils::{
         app::{builder::create_app_window, notification::send_notification},
-        types::all_types::{JobCache, JobStatus, ProfileParams, RcloneState, RemoteCache},
+        types::all_types::{JobStatus, ProfileParams, RcloneState},
     },
 };
 
@@ -52,20 +53,19 @@ async fn handle_start_job_profile(
         profile_name: profile_name.clone(),
     };
 
-    let job_cache = app.state::<JobCache>();
     let rclone_state = app.state::<RcloneState>();
 
     let result = match op_type {
-        "sync" => start_sync_profile(app.clone(), job_cache, rclone_state, params)
+        "sync" => start_sync_profile(app.clone(), rclone_state, params)
             .await
             .map(|_| ()),
-        "copy" => start_copy_profile(app.clone(), job_cache, rclone_state, params)
+        "copy" => start_copy_profile(app.clone(), rclone_state, params)
             .await
             .map(|_| ()),
-        "move" => start_move_profile(app.clone(), job_cache, rclone_state, params)
+        "move" => start_move_profile(app.clone(), rclone_state, params)
             .await
             .map(|_| ()),
-        "bisync" => start_bisync_profile(app.clone(), job_cache, rclone_state, params)
+        "bisync" => start_bisync_profile(app.clone(), rclone_state, params)
             .await
             .map(|_| ()),
         _ => Err(format!("Unknown operation type: {}", op_type)),
@@ -111,9 +111,7 @@ pub fn handle_mount_profile(app: AppHandle, remote_name: &str, profile_name: &st
             profile_name: profile.clone(),
         };
 
-        let cache = app_clone.state::<RemoteCache>();
-
-        match mount_remote_profile(app_clone.clone(), cache, params).await {
+        match mount_remote_profile(app_clone.clone(), params).await {
             Ok(_) => {
                 info!("✅ Mounted {} profile '{}'", remote, profile);
                 notify(
@@ -136,7 +134,18 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
     let profile = profile_name.to_string();
 
     tauri::async_runtime::spawn(async move {
-        let cache = app_clone.state::<RemoteCache>();
+        let backend_manager = &BACKEND_MANAGER;
+        let backend = if let Some(b) = backend_manager.get_active().await {
+            b
+        } else {
+            error!("❌ No active backend for unmount");
+            return;
+        };
+
+        let guard = backend.read().await;
+        let cache = guard.remote_cache.clone();
+        drop(guard);
+
         let manager = app_clone.state::<rcman::SettingsManager<rcman::JsonStorage>>();
         let remote_names = cache.get_remotes().await;
         let settings_val = crate::core::settings::remote::manager::get_all_remote_settings_sync(
@@ -227,9 +236,20 @@ async fn handle_stop_job_profile(
     job_type: &str,
     action_name: &str,
 ) {
-    let job_cache_state = app.state::<JobCache>();
+    let backend_manager = &BACKEND_MANAGER;
+    let backend = if let Some(b) = backend_manager.get_active().await {
+        b
+    } else {
+        error!("❌ No active backend for stopping job");
+        return;
+    };
 
-    if let Some(job) = job_cache_state.get_jobs().await.iter().find(|j| {
+    let guard = backend.read().await;
+    let job_cache = guard.job_cache.clone();
+    drop(guard);
+
+    // Filter logic same as before, but on backend-specific cache
+    if let Some(job) = job_cache.get_jobs().await.iter().find(|j| {
         j.remote_name == remote_name
             && j.job_type == job_type
             && j.profile.as_ref() == Some(&profile_name)
@@ -238,7 +258,6 @@ async fn handle_stop_job_profile(
         let scheduled_cache = app.state::<ScheduledTasksCache>();
         match stop_job(
             app.clone(),
-            job_cache_state,
             scheduled_cache,
             job.jobid,
             remote_name.clone(),
@@ -377,7 +396,18 @@ pub fn handle_stop_serve_profile(app: AppHandle, _remote_name: &str, serve_id: &
     let serve_id_clone = serve_id.to_string();
 
     tauri::async_runtime::spawn(async move {
-        let cache = app_clone.state::<RemoteCache>();
+        let backend_manager = &BACKEND_MANAGER;
+        let backend = if let Some(b) = backend_manager.get_active().await {
+            b
+        } else {
+            error!("❌ No active backend for stop serve");
+            return;
+        };
+
+        let guard = backend.read().await;
+        let cache = guard.remote_cache.clone();
+        drop(guard);
+
         let all_serves = cache.get_serves().await;
         let remote_name = all_serves
             .iter()
@@ -418,35 +448,48 @@ pub fn handle_stop_serve_profile(app: AppHandle, _remote_name: &str, serve_id: &
 
 pub fn handle_stop_all_jobs(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
-        let job_cache_state = app.state::<JobCache>();
-        let active_jobs = job_cache_state.get_active_jobs().await;
-        if active_jobs.is_empty() {
-            return;
-        }
-        for job in active_jobs.clone() {
-            let scheduled_cache = app.state::<ScheduledTasksCache>();
-            match stop_job(
-                app.clone(),
-                job_cache_state.clone(),
-                scheduled_cache,
-                job.jobid,
-                job.remote_name.clone(),
-                app.state(),
-            )
-            .await
-            {
-                Ok(_) => {
-                    info!("🛑 Stopped job {}", job.jobid);
+        // Stop all jobs across ALL backends
+        let backend_names = BACKEND_MANAGER.list_names().await;
+        let mut stopped_count = 0;
+
+        for name in backend_names {
+            if let Some(backend) = BACKEND_MANAGER.get(&name).await {
+                let guard = backend.read().await;
+                let job_cache = guard.job_cache.clone();
+                let active_jobs = job_cache.get_active_jobs().await;
+                drop(guard);
+
+                if active_jobs.is_empty() {
+                    continue;
                 }
-                Err(e) => {
-                    error!("🚨 Failed to stop job {}: {}", job.jobid, e);
+
+                for job in active_jobs {
+                    let scheduled_cache = app.state::<ScheduledTasksCache>();
+                    match stop_job(
+                        app.clone(),
+                        scheduled_cache,
+                        job.jobid,
+                        job.remote_name.clone(),
+                        app.state(),
+                    )
+                    .await
+                    {
+                        Ok(_) => {
+                            info!("🛑 Stopped job {} ({})", job.jobid, name);
+                            stopped_count += 1;
+                        }
+                        Err(e) => {
+                            error!("🚨 Failed to stop job {}: {}", job.jobid, e);
+                        }
+                    }
                 }
             }
         }
+
         notify(
             &app,
             "All Jobs Stopped",
-            &format!("Stopped {} active jobs", active_jobs.len()),
+            &format!("Stopped {} active jobs", stopped_count),
         );
     });
 }
@@ -455,7 +498,17 @@ pub fn handle_browse_remote(app: &AppHandle, remote_name: &str) {
     let remote = remote_name.to_string();
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
-        let cache = app_clone.state::<RemoteCache>();
+        let backend_manager = &BACKEND_MANAGER;
+        let backend = if let Some(b) = backend_manager.get_active().await {
+            b
+        } else {
+            error!("❌ No active backend for browse");
+            return;
+        };
+        let guard = backend.read().await;
+        let cache = guard.remote_cache.clone();
+        drop(guard);
+
         let manager = app_clone.state::<rcman::SettingsManager<rcman::JsonStorage>>();
         let remote_names = cache.get_remotes().await;
         let settings_val = crate::core::settings::remote::manager::get_all_remote_settings_sync(

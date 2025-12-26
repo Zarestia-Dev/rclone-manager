@@ -1,0 +1,241 @@
+<div class="security-container">
+  <!-- Encryption State Hero -->
+  <div
+    class="encryption-hero"
+    [class.encrypted]="isConfigEncrypted() === true"
+    [class.unencrypted]="isConfigEncrypted() === false"
+  >
+    <div class="hero-icon">
+      <mat-icon [svgIcon]="isConfigEncrypted() === true ? 'lock' : 'lock-open'"></mat-icon>
+    </div>
+    <div class="hero-content">
+      <h4>
+        {{ isConfigEncrypted() === true ? 'Configuration Encrypted' : 'Configuration Unencrypted' }}
+      </h4>
+      <p>
+        @if (isConfigEncrypted() === true) {
+          Your rclone.conf file is encrypted and secure.
+        } @else {
+          Your rclone.conf file is stored in plain text.
+        }
+      </p>
+    </div>
+  </div>
+
+  <div class="security-forms" [formGroup]="securityForm">
+    @if (isConfigEncrypted() === true) {
+      <!-- ENCRYPTED STATE: Toggle + Accordion -->
+
+      <!-- Keychain Toggle Section -->
+      <div class="keychain-section">
+        <div class="keychain-row">
+          <mat-slide-toggle
+            color="primary"
+            [checked]="hasStoredPassword()"
+            (change)="onKeychainToggle($event)"
+            [disabled]="encryptionLoading()"
+          >
+            Auto-unlock with System Keychain
+          </mat-slide-toggle>
+        </div>
+
+        <!-- Keychain Password Input (if needed) -->
+        @if (showKeychainInput()) {
+          <div class="keychain-input-row">
+            <mat-form-field appearance="outline" density="compact" class="no-subscript">
+              <mat-label>Config Password</mat-label>
+              <input
+                matInput
+                formControlName="keychainPassword"
+                type="password"
+                (keyup.enter)="submitKeychainStore()"
+              />
+            </mat-form-field>
+            <button
+              mat-flat-button
+              color="primary"
+              (click)="submitKeychainStore()"
+              [disabled]="encryptionLoading()"
+            >
+              <mat-icon svgIcon="check"></mat-icon>
+              Confirm
+            </button>
+            <button mat-icon-button (click)="cancelKeychainStore()" matTooltip="Cancel">
+              <mat-icon svgIcon="xmark"></mat-icon>
+            </button>
+          </div>
+        }
+      </div>
+
+      <mat-accordion class="security-accordion" multi="false">
+        <!-- Change Password Panel -->
+        <mat-expansion-panel (opened)="onPanelOpened()">
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              <mat-icon svgIcon="key"></mat-icon>
+              Change Password
+            </mat-panel-title>
+          </mat-expansion-panel-header>
+
+          <div class="panel-form">
+            <mat-form-field appearance="fill">
+              <mat-label>Current Password</mat-label>
+              <input
+                matInput
+                [type]="showSecurityPassword() ? 'text' : 'password'"
+                formControlName="currentPassword"
+              />
+              <button
+                mat-icon-button
+                matSuffix
+                (click)="toggleSecurityPasswordVisibility()"
+                type="button"
+              >
+                <mat-icon [svgIcon]="showSecurityPassword() ? 'eye-slash' : 'eye'"></mat-icon>
+              </button>
+            </mat-form-field>
+
+            <mat-form-field appearance="fill">
+              <mat-label>New Password</mat-label>
+              <input
+                matInput
+                [type]="showNewSecurityPassword() ? 'text' : 'password'"
+                formControlName="newPassword"
+              />
+              <button
+                mat-icon-button
+                matSuffix
+                (click)="toggleNewSecurityPasswordVisibility()"
+                type="button"
+              >
+                <mat-icon [svgIcon]="showNewSecurityPassword() ? 'eye-slash' : 'eye'"></mat-icon>
+              </button>
+            </mat-form-field>
+
+            <mat-form-field appearance="fill">
+              <mat-label>Confirm New Password</mat-label>
+              <input
+                matInput
+                [type]="showNewSecurityPassword() ? 'text' : 'password'"
+                formControlName="confirmPassword"
+              />
+            </mat-form-field>
+
+            <div class="panel-actions">
+              <button
+                mat-flat-button
+                color="primary"
+                (click)="submitChangePassword()"
+                [disabled]="encryptionLoading()"
+              >
+                @if (encryptionLoading()) {
+                  <mat-spinner diameter="18"></mat-spinner>
+                } @else {
+                  Update Password
+                }
+              </button>
+            </div>
+          </div>
+        </mat-expansion-panel>
+
+        <!-- Remove Encryption Panel -->
+        <mat-expansion-panel (opened)="onPanelOpened()">
+          <mat-expansion-panel-header>
+            <mat-panel-title class="warn-text">
+              <mat-icon svgIcon="lock-open" class="warn-icon"></mat-icon>
+              Remove Encryption
+            </mat-panel-title>
+          </mat-expansion-panel-header>
+
+          <div class="panel-form">
+            <p class="warn-text small-text">
+              Warning: This will decrypt your configuration file. Your credentials will be stored in
+              plain text.
+            </p>
+
+            <mat-form-field appearance="fill">
+              <mat-label>Current Password</mat-label>
+              <input
+                matInput
+                [type]="showSecurityPassword() ? 'text' : 'password'"
+                formControlName="currentPassword"
+              />
+              <button
+                mat-icon-button
+                matSuffix
+                (click)="toggleSecurityPasswordVisibility()"
+                type="button"
+              >
+                <mat-icon [svgIcon]="showSecurityPassword() ? 'eye-slash' : 'eye'"></mat-icon>
+              </button>
+            </mat-form-field>
+
+            <div class="panel-actions">
+              <button
+                mat-flat-button
+                color="warn"
+                (click)="submitDecrypt()"
+                [disabled]="encryptionLoading()"
+              >
+                @if (encryptionLoading()) {
+                  <mat-spinner diameter="18"></mat-spinner>
+                } @else {
+                  Remove Encryption
+                }
+              </button>
+            </div>
+          </div>
+        </mat-expansion-panel>
+      </mat-accordion>
+    } @else if (isConfigEncrypted() === false) {
+      <!-- UNENCRYPTED STATE: Direct Form -->
+      <div class="direct-encrypt-form">
+        <div class="form-intro">
+          <h3>Protect your Configuration</h3>
+          <p>Set a password to encrypt your credentials.</p>
+        </div>
+
+        <mat-form-field appearance="fill">
+          <mat-label>New Password</mat-label>
+          <input
+            matInput
+            [type]="showNewSecurityPassword() ? 'text' : 'password'"
+            formControlName="newPassword"
+          />
+          <button
+            mat-icon-button
+            matSuffix
+            (click)="toggleNewSecurityPasswordVisibility()"
+            type="button"
+          >
+            <mat-icon [svgIcon]="showNewSecurityPassword() ? 'eye-slash' : 'eye'"></mat-icon>
+          </button>
+        </mat-form-field>
+
+        <mat-form-field appearance="fill">
+          <mat-label>Confirm Password</mat-label>
+          <input
+            matInput
+            [type]="showNewSecurityPassword() ? 'text' : 'password'"
+            formControlName="confirmPassword"
+          />
+        </mat-form-field>
+
+        <div class="form-actions-row">
+          <button
+            mat-flat-button
+            color="primary"
+            (click)="submitEncrypt()"
+            [disabled]="encryptionLoading()"
+          >
+            @if (encryptionLoading()) {
+              <mat-spinner diameter="18"></mat-spinner>
+            } @else {
+              Enable Encryption
+            }
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>

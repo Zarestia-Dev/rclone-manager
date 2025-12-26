@@ -1,0 +1,227 @@
+import { Component, inject, OnInit, signal } from '@angular/core';
+import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { RclonePasswordService } from 'src/app/services/security/rclone-password.service';
+
+@Component({
+  selector: 'app-backend-security',
+  standalone: true,
+  imports: [
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatIconModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatProgressSpinnerModule,
+    MatTooltipModule,
+    MatSnackBarModule,
+    MatSlideToggleModule,
+    MatExpansionModule,
+  ],
+  templateUrl: './backend-security.component.html',
+  styleUrls: ['./backend-security.component.scss'],
+})
+export class BackendSecurityComponent implements OnInit {
+  private readonly passwordService = inject(RclonePasswordService);
+  private readonly fb = inject(FormBuilder);
+  private readonly snackBar = inject(MatSnackBar);
+
+  // Security UI state
+  readonly showSecurityPassword = signal(false);
+  readonly showNewSecurityPassword = signal(false);
+
+  // Keychain specific state
+  readonly showKeychainInput = signal(false);
+
+  // Encryption state
+  readonly isConfigEncrypted = signal<boolean | null>(null);
+  readonly hasStoredPassword = signal(false);
+  readonly encryptionLoading = signal(false);
+
+  // Security Form (Inline)
+  securityForm: FormGroup = this.fb.group({
+    currentPassword: [''],
+    newPassword: [''],
+    confirmPassword: [''],
+    keychainPassword: [''],
+  });
+
+  async ngOnInit(): Promise<void> {
+    await this.loadEncryptionStatus();
+  }
+
+  private async loadEncryptionStatus(): Promise<void> {
+    try {
+      const [encrypted, hasPassword] = await Promise.all([
+        this.passwordService.isConfigEncryptedCached(),
+        this.passwordService.hasStoredPassword(),
+      ]);
+      this.isConfigEncrypted.set(encrypted);
+      this.hasStoredPassword.set(hasPassword);
+    } catch (error) {
+      console.error('Failed to load encryption status:', error);
+    }
+  }
+
+  toggleSecurityPasswordVisibility(): void {
+    this.showSecurityPassword.update(v => !v);
+  }
+
+  toggleNewSecurityPasswordVisibility(): void {
+    this.showNewSecurityPassword.update(v => !v);
+  }
+
+  // Panel Management
+  onPanelOpened(): void {
+    this.securityForm.reset();
+    this.showSecurityPassword.set(false);
+    this.showNewSecurityPassword.set(false);
+  }
+
+  // Keychain Toggle Logic
+  async onKeychainToggle(event: any): Promise<void> {
+    const isChecked = event.checked;
+
+    if (!isChecked) {
+      // Turning OFF -> Remove immediately
+      await this.removeStoredPassword();
+    } else {
+      // Turning ON -> Show input to get password
+      this.showKeychainInput.set(true);
+    }
+  }
+
+  async submitKeychainStore(): Promise<void> {
+    const password = this.securityForm.get('keychainPassword')?.value;
+    if (!password) return;
+
+    this.encryptionLoading.set(true);
+    try {
+      await this.passwordService.validatePassword(password);
+      await this.passwordService.storePassword(password);
+      this.snackBar.open('Password stored in keychain', 'Close', { duration: 4000 });
+      this.showKeychainInput.set(false);
+      this.securityForm.patchValue({ keychainPassword: '' });
+      await this.loadEncryptionStatus();
+    } catch (error: any) {
+      this.snackBar.open(`Failed: ${error.message || error}`, 'Close', {
+        duration: 6000,
+        panelClass: 'snackbar-error',
+      });
+    } finally {
+      this.encryptionLoading.set(false);
+    }
+  }
+
+  cancelKeychainStore(): void {
+    this.showKeychainInput.set(false);
+    this.securityForm.patchValue({ keychainPassword: '' });
+    this.loadEncryptionStatus();
+  }
+
+  // Action Submits
+  async submitEncrypt(): Promise<void> {
+    const { newPassword, confirmPassword } = this.securityForm.value;
+    if (!newPassword) return;
+    if (newPassword !== confirmPassword) {
+      this.snackBar.open('Passwords do not match', 'Close', {
+        duration: 3000,
+        panelClass: 'snackbar-error',
+      });
+      return;
+    }
+
+    this.encryptionLoading.set(true);
+    try {
+      await this.passwordService.encryptConfig(newPassword);
+      await this.passwordService.storePassword(newPassword);
+      await this.passwordService.clearEncryptionCache();
+      await this.loadEncryptionStatus();
+      this.snackBar.open('Configuration encrypted', 'Close', { duration: 4000 });
+      this.securityForm.reset();
+    } catch (error: any) {
+      this.snackBar.open(`Encryption failed: ${error.message || error}`, 'Close', {
+        duration: 6000,
+        panelClass: 'snackbar-error',
+      });
+    } finally {
+      this.encryptionLoading.set(false);
+    }
+  }
+
+  async submitDecrypt(): Promise<void> {
+    const { currentPassword } = this.securityForm.value;
+    if (!currentPassword) return;
+
+    this.encryptionLoading.set(true);
+    try {
+      await this.passwordService.unencryptConfig(currentPassword);
+      await this.passwordService.removeStoredPassword();
+      await this.passwordService.clearEncryptionCache();
+      await this.loadEncryptionStatus();
+      this.snackBar.open('Encryption removed', 'Close', { duration: 4000 });
+      this.securityForm.reset();
+    } catch (error: any) {
+      this.snackBar.open(`Failed to remove encryption: ${error.message || error}`, 'Close', {
+        duration: 6000,
+        panelClass: 'snackbar-error',
+      });
+    } finally {
+      this.encryptionLoading.set(false);
+    }
+  }
+
+  async submitChangePassword(): Promise<void> {
+    const { currentPassword, newPassword, confirmPassword } = this.securityForm.value;
+    if (!currentPassword || !newPassword) return;
+    if (newPassword !== confirmPassword) {
+      this.snackBar.open('New passwords do not match', 'Close', {
+        duration: 3000,
+        panelClass: 'snackbar-error',
+      });
+      return;
+    }
+
+    this.encryptionLoading.set(true);
+    try {
+      await this.passwordService.changeConfigPassword(currentPassword, newPassword);
+      await this.passwordService.storePassword(newPassword);
+      await this.passwordService.clearEncryptionCache();
+      await this.loadEncryptionStatus();
+      this.snackBar.open('Password changed', 'Close', { duration: 4000 });
+      this.securityForm.reset();
+    } catch (error: any) {
+      this.snackBar.open(`Failed to change password: ${error.message || error}`, 'Close', {
+        duration: 6000,
+        panelClass: 'snackbar-error',
+      });
+    } finally {
+      this.encryptionLoading.set(false);
+    }
+  }
+
+  async removeStoredPassword(): Promise<void> {
+    try {
+      this.encryptionLoading.set(true);
+      await this.passwordService.removeStoredPassword();
+      await this.loadEncryptionStatus();
+      this.snackBar.open('Password removed from keychain', 'Close', { duration: 4000 });
+    } catch (error: any) {
+      this.snackBar.open(`Failed: ${error.message || error}`, 'Close', {
+        duration: 6000,
+        panelClass: 'snackbar-error',
+      });
+      this.loadEncryptionStatus();
+    } finally {
+      this.encryptionLoading.set(false);
+    }
+  }
+}

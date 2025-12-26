@@ -4,7 +4,7 @@ use tauri::{State, command};
 use tokio::try_join;
 
 use crate::{
-    rclone::state::engine::ENGINE_STATE,
+    rclone::backend::BACKEND_MANAGER,
     utils::{
         rclone::endpoints::{EndpointHelper, options},
         types::all_types::RcloneState,
@@ -17,8 +17,17 @@ use crate::{
 async fn fetch_all_options_info(
     state: State<'_, RcloneState>,
 ) -> Result<Value, Box<dyn Error + Send + Sync>> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, options::INFO);
-    let response = state.client.post(&url).json(&json!({})).send().await?;
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend")?;
+    let backend_guard = backend.read().await;
+    let url = EndpointHelper::build_url(&backend_guard.api_url(), options::INFO);
+    let response = backend_guard
+        .inject_auth(state.client.post(&url))
+        .json(&json!({}))
+        .send()
+        .await?;
     if response.status().is_success() {
         Ok(response.json().await?)
     } else {
@@ -29,8 +38,17 @@ async fn fetch_all_options_info(
 async fn fetch_current_options(
     state: State<'_, RcloneState>,
 ) -> Result<Value, Box<dyn Error + Send + Sync>> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, options::GET);
-    let response = state.client.post(&url).json(&json!({})).send().await?;
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend")?;
+    let backend_guard = backend.read().await;
+    let url = EndpointHelper::build_url(&backend_guard.api_url(), options::GET);
+    let response = backend_guard
+        .inject_auth(state.client.post(&url))
+        .json(&json!({}))
+        .send()
+        .await?;
     if response.status().is_success() {
         Ok(response.json().await?)
     } else {
@@ -45,8 +63,17 @@ async fn fetch_current_options(
 async fn fetch_option_blocks(
     state: State<'_, RcloneState>,
 ) -> Result<Value, Box<dyn Error + Send + Sync>> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, options::BLOCKS);
-    let response = state.client.post(&url).json(&json!({})).send().await?;
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend")?;
+    let backend_guard = backend.read().await;
+    let url = EndpointHelper::build_url(&backend_guard.api_url(), options::BLOCKS);
+    let response = backend_guard
+        .inject_auth(state.client.post(&url))
+        .json(&json!({}))
+        .send()
+        .await?;
     if response.status().is_success() {
         Ok(response.json().await?)
     } else {
@@ -398,7 +425,12 @@ pub async fn set_rclone_option(
     option_name: String,
     value: Value,
 ) -> Result<Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, options::SET);
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend")?;
+    let backend_guard = backend.read().await;
+    let url = EndpointHelper::build_url(&backend_guard.api_url(), options::SET);
     let parts: Vec<&str> = option_name.split('.').collect();
     let nested_value = parts
         .iter()
@@ -406,9 +438,8 @@ pub async fn set_rclone_option(
         .fold(value, |acc, &part| json!({ part: acc }));
     let payload = json!({ block_name.clone(): nested_value });
 
-    let response = state
-        .client
-        .post(&url)
+    let response = backend_guard
+        .inject_auth(state.client.post(&url))
         .json(&payload)
         .send()
         .await

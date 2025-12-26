@@ -9,12 +9,11 @@ use crate::{
         commands::system::set_bandwidth_limit,
         queries::flags::set_rclone_option,
         state::{
-            engine::ENGINE_STATE,
             scheduled_tasks::ScheduledTasksCache,
             watcher::{start_mounted_remote_watcher, start_serve_watcher},
         },
     },
-    utils::types::all_types::{RcApiEngine, RcloneState, RemoteCache},
+    utils::types::all_types::{RcApiEngine, RcloneState},
 };
 
 #[cfg(not(feature = "web-server"))]
@@ -37,18 +36,21 @@ fn get_executable_directory() -> Result<PathBuf, String> {
 /// Initializes Rclone API and OAuth state, and launches the Rclone engine.
 pub fn init_rclone_state(
     app_handle: &tauri::AppHandle,
-    settings: &AppSettings,
+    _settings: &AppSettings,
 ) -> Result<(), String> {
-    let api_url = format!("http://127.0.0.1:{}", settings.core.rclone_api_port);
-    let oauth_url = format!("http://127.0.0.1:{}", settings.core.rclone_oauth_port);
-
-    ENGINE_STATE
-        .set_api(api_url, settings.core.rclone_api_port)
-        .map_err(|e| format!("Failed to set Rclone API: {e}"))?;
-
-    ENGINE_STATE
-        .set_oauth(oauth_url, settings.core.rclone_oauth_port)
-        .map_err(|e| format!("Failed to set Rclone OAuth: {e}"))?;
+    // BACKEND_MANAGER is already initialized with default ports (51900, 51901)
+    // Load any persistent connections
+    use crate::rclone::backend::BACKEND_MANAGER;
+    tauri::async_runtime::block_on(async {
+        // Load persistent connections
+        let settings_state = app_handle.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+        if let Err(e) = BACKEND_MANAGER
+            .load_connections(settings_state.inner())
+            .await
+        {
+            error!("Failed to load persistent connections: {e}");
+        }
+    });
 
     let mut engine = RcApiEngine::lock_engine()?;
     engine.init(app_handle);
@@ -114,9 +116,24 @@ pub async fn initialization(app_handle: tauri::AppHandle, settings: AppSettings)
 
     // Step 1: Refresh caches FIRST (need data for scheduler)
     info!("📊 Refreshing caches...");
-    let cache = app_handle.state::<RemoteCache>();
+    use crate::rclone::backend::BACKEND_MANAGER;
+    let refresh_result = async {
+        let backend = BACKEND_MANAGER
+            .get_active()
+            .await
+            .ok_or("No active backend".to_string())?;
+        let guard = backend.read().await;
+        // Need client for independent requests
+        let client = app_handle
+            .state::<crate::utils::types::all_types::RcloneState>()
+            .client
+            .clone();
 
-    match cache.refresh_all(app_handle.clone()).await {
+        guard.remote_cache.refresh_all(&client, &guard).await
+    }
+    .await;
+
+    match refresh_result {
         Ok(_) => {
             info!("✅ Caches refreshed successfully");
         }
@@ -169,10 +186,15 @@ pub async fn initialization(app_handle: tauri::AppHandle, settings: AppSettings)
 async fn initialize_scheduler(app_handle: AppHandle) -> Result<(), String> {
     let cache_state = app_handle.state::<ScheduledTasksCache>();
     let scheduler_state = app_handle.state::<CronScheduler>();
-    let remote_cache = app_handle.state::<RemoteCache>();
     let manager = app_handle.state::<rcman::SettingsManager<rcman::JsonStorage>>();
 
-    let remote_names = remote_cache.get_remotes().await;
+    use crate::rclone::backend::BACKEND_MANAGER;
+    let remote_names = if let Some(backend) = BACKEND_MANAGER.get_active().await {
+        backend.read().await.remote_cache.get_remotes().await
+    } else {
+        Vec::new()
+    };
+
     let all_settings = crate::core::settings::remote::manager::get_all_remote_settings_sync(
         manager.inner(),
         &remote_names,

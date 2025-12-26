@@ -46,6 +46,7 @@ export class AppOverviewComponent {
   openInFiles = output<string>();
   startJob = output<{ type: PrimaryActionType; remoteName: string }>();
   stopJob = output<{ type: PrimaryActionType; remoteName: string; serveId?: string }>();
+  openBackendModal = output<void>();
 
   private isRemoteActive = (remote: Remote): boolean => {
     const mode = this.mode();

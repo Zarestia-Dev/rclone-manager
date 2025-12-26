@@ -108,8 +108,14 @@ pub async fn get_rclone_pid_handler(
 pub async fn get_rclone_rc_url_handler(
     State(_state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
-    use crate::rclone::state::engine::get_rclone_rc_url;
-    let url = get_rclone_rc_url();
+    use crate::rclone::backend::BACKEND_MANAGER;
+    let backend_manager = &BACKEND_MANAGER;
+    let backend = backend_manager
+        .get_active()
+        .await
+        .ok_or_else(|| anyhow::anyhow!("No active backend"))
+        .map_err(AppError::Anyhow)?;
+    let url = backend.read().await.api_url();
     Ok(Json(ApiResponse::success(url)))
 }
 
@@ -217,8 +223,16 @@ pub async fn update_rclone_handler(
 pub async fn get_configs_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
+    use crate::rclone::backend::BACKEND_MANAGER;
     use crate::rclone::state::cache::get_configs;
-    let cache = state.app_handle.state::<RemoteCache>();
+    let backend_manager = &BACKEND_MANAGER;
+    let backend = backend_manager
+        .get_active()
+        .await
+        .ok_or_else(|| anyhow::anyhow!("No active backend"))
+        .map_err(AppError::Anyhow)?;
+    let cache = backend.read().await.remote_cache.clone();
+
     let configs = get_configs(cache).await.map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(configs)))
 }

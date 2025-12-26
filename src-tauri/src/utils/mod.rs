@@ -1,5 +1,5 @@
 pub mod app;
-pub mod async_operations;
+
 pub mod github_client;
 pub mod io;
 pub mod json_helpers;

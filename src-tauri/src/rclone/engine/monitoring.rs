@@ -42,11 +42,14 @@ impl RcApiEngine {
         let client = reqwest::blocking::Client::new();
         match client.post(&url).timeout(Duration::from_secs(2)).send() {
             Ok(response) => {
-                let is_healthy = response.status().is_success();
+                let status = response.status();
+                // Treat 401 Unauthorized as healthy - it means the API is responding
+                // but requires authentication (which we'll provide in actual requests)
+                let is_healthy = status.is_success() || status == reqwest::StatusCode::UNAUTHORIZED;
                 debug!(
                     "🔍 API health check: {} (status: {})",
                     if is_healthy { "healthy" } else { "unhealthy" },
-                    response.status()
+                    status
                 );
                 is_healthy
             }

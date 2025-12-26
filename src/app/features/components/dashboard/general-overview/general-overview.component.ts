@@ -51,6 +51,7 @@ import {
   UiStateService,
   SystemInfoService,
   AppSettingsService,
+  BackendService,
 } from '@app/services';
 import { IconService } from 'src/app/shared/services/icon.service';
 import { FormatRateValuePipe } from '../../../../shared/pipes/format-rate-value.pipe';
@@ -123,6 +124,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     profileName?: string;
   }>();
   @Output() browseRemote = new EventEmitter<string>();
+  @Output() openBackendModal = new EventEmitter<void>();
 
   // State signals
   rcloneStatus = signal<RcloneStatus>('inactive');
@@ -155,6 +157,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   private uiStateService = inject(UiStateService);
   private appSettingsService = inject(AppSettingsService);
   public iconService = inject(IconService);
+  readonly backendService = inject(BackendService);
 
   // Subscriptions
   private destroy$ = new Subject<void>();

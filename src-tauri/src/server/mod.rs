@@ -47,7 +47,6 @@ pub async fn start_web_server(
     // Auto-forward all events to SSE clients, except desktop-only events
     // This ensures new events are automatically available to headless clients
     let all_events = vec![
-        RCLONE_API_URL_UPDATED,
         ENGINE_RESTARTED,
         RCLONE_ENGINE_READY,
         RCLONE_ENGINE_ERROR,

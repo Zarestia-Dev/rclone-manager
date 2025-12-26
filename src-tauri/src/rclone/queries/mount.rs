@@ -2,19 +2,19 @@ use log::debug;
 use serde_json::Value;
 use tauri::State;
 
-use crate::rclone::state::engine::ENGINE_STATE;
+use crate::rclone::backend::BACKEND_MANAGER;
+use crate::rclone::backend::types::RcloneBackend;
 use crate::utils::rclone::endpoints::{EndpointHelper, mount};
 use crate::utils::types::all_types::{MountedRemote, RcloneState};
 
-#[tauri::command]
-pub async fn get_mounted_remotes(
-    state: State<'_, RcloneState>,
+pub async fn get_mounted_remotes_internal(
+    client: &reqwest::Client,
+    backend: &RcloneBackend,
 ) -> Result<Vec<MountedRemote>, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, mount::LISTMOUNTS);
+    let url = EndpointHelper::build_url(&backend.api_url(), mount::LISTMOUNTS);
 
-    let response = state
-        .client
-        .post(&url)
+    let response = backend
+        .inject_auth(client.post(&url))
         .send()
         .await
         .map_err(|e| format!("❌ Failed to send request: {e}"))?;
@@ -49,12 +49,28 @@ pub async fn get_mounted_remotes(
 }
 
 #[tauri::command]
-pub async fn get_mount_types(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, mount::TYPES);
+pub async fn get_mounted_remotes(
+    state: State<'_, RcloneState>,
+) -> Result<Vec<MountedRemote>, String> {
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend")?;
+    let backend_guard = backend.read().await;
+    get_mounted_remotes_internal(&state.client, &backend_guard).await
+}
 
-    let response = state
-        .client
-        .post(&url)
+#[tauri::command]
+pub async fn get_mount_types(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend")?;
+    let backend_guard = backend.read().await;
+    let url = EndpointHelper::build_url(&backend_guard.api_url(), mount::TYPES);
+
+    let response = backend_guard
+        .inject_auth(state.client.post(&url))
         .send()
         .await
         .map_err(|e| format!("❌ Failed to send request: {e}"))?;

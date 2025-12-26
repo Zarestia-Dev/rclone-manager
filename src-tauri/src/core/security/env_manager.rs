@@ -1,4 +1,5 @@
-use crate::utils::types::all_types::CONFIG_PASSWORD_KEY;
+const LOCAL_BACKEND_KEY: &str = "backend:Local:config_password";
+
 use log::{debug, info};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -23,7 +24,8 @@ impl SafeEnvironmentManager {
     ) -> Result<(), String> {
         // Only try to load if credentials are supported
         if let Some(creds) = manager.credentials() {
-            match creds.get(CONFIG_PASSWORD_KEY) {
+            // Strict Unified Key Check
+            match creds.get(LOCAL_BACKEND_KEY) {
                 Ok(Some(password)) => {
                     self.set_config_password(password);
                     info!(

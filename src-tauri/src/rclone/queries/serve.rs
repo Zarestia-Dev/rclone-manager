@@ -3,7 +3,7 @@ use serde_json::Value;
 use tauri::State;
 
 use crate::{
-    rclone::state::engine::ENGINE_STATE,
+    rclone::backend::{BACKEND_MANAGER, types::RcloneBackend},
     utils::{
         rclone::endpoints::{EndpointHelper, serve},
         types::all_types::RcloneState,
@@ -13,13 +13,18 @@ use crate::{
 /// Get all supported serve types from rclone
 #[tauri::command]
 pub async fn get_serve_types(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, serve::TYPES);
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend")?;
+
+    let backend_guard = backend.read().await;
+    let url = EndpointHelper::build_url(&backend_guard.api_url(), serve::TYPES);
 
     debug!("🔍 Fetching serve types from {url}");
 
-    let response = state
-        .client
-        .post(&url)
+    let response = backend_guard
+        .inject_auth(state.client.post(&url))
         .send()
         .await
         .map_err(|e| format!("Failed to send request: {e}"))?;
@@ -49,15 +54,16 @@ pub async fn get_serve_types(state: State<'_, RcloneState>) -> Result<Vec<String
 }
 
 /// List all currently running serve instances
-#[tauri::command]
-pub async fn list_serves(state: State<'_, RcloneState>) -> Result<Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, serve::LIST);
+pub async fn list_serves_internal(
+    client: &reqwest::Client,
+    backend: &RcloneBackend,
+) -> Result<Value, String> {
+    let url = EndpointHelper::build_url(&backend.api_url(), serve::LIST);
 
     debug!("🔍 Listing running serves from {url}");
 
-    let response = state
-        .client
-        .post(&url)
+    let response = backend
+        .inject_auth(client.post(&url))
         .send()
         .await
         .map_err(|e| format!("Failed to send request: {e}"))?;
@@ -77,4 +83,14 @@ pub async fn list_serves(state: State<'_, RcloneState>) -> Result<Value, String>
     debug!("✅ Running serves: {json}");
 
     Ok(json)
+}
+
+#[tauri::command]
+pub async fn list_serves(state: State<'_, RcloneState>) -> Result<Value, String> {
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend")?;
+    let backend_guard = backend.read().await;
+    list_serves_internal(&state.client, &backend_guard).await
 }

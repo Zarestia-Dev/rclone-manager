@@ -145,28 +145,6 @@
               </mat-expansion-panel>
             }
           }
-
-          <!-- Security Section -->
-          <div class="security-section">
-            <div
-              class="config-item"
-              (click)="navigateTo('security')"
-              (keydown)="handleKeyboardNavigation($event, 'security')"
-              [tabindex]="0"
-              aria-label="Navigate to Security Settings"
-            >
-              <div class="config-item-content">
-                <mat-icon svgIcon="shield"></mat-icon>
-                <div class="config-item-text">
-                  <span class="config-item-title">Security Settings</span>
-                  <small class="config-item-description"
-                    >Configuration encryption and password management</small
-                  >
-                </div>
-              </div>
-              <mat-icon svgIcon="chevron-right"></mat-icon>
-            </div>
-          </div>
         </mat-accordion>
       }
     </div>
@@ -186,44 +164,40 @@
       </div>
 
       <div class="modal-content">
-        @if (isSecurityPage()) {
-          <app-security-settings></app-security-settings>
-        } @else {
-          @if (hasSearchQuery()) {
-            <div class="search-results-info">
-              <small
-                >Showing {{ filteredOptionsCount() }} of {{ totalOptionsCount() }} settings</small
-              >
-            </div>
-          }
+        @if (hasSearchQuery()) {
+          <div class="search-results-info">
+            <small
+              >Showing {{ filteredOptionsCount() }} of {{ totalOptionsCount() }} settings</small
+            >
+          </div>
+        }
 
-          @if (filteredOptionsCount() === 0 && hasSearchQuery()) {
-            <div class="empty-state">
-              <mat-icon svgIcon="search"></mat-icon>
-              <span>No settings found</span>
-              <p>Try adjusting your search terms</p>
-            </div>
-          } @else {
-            <!-- VIRTUAL SCROLL IMPLEMENTATION -->
-            <cdk-virtual-scroll-viewport [itemSize]="20" class="virtual-scroll-viewport">
-              <form [formGroup]="rcloneOptionsForm">
-                @for (option of virtualScrollData(); track trackByOptionIndex($index, option)) {
-                  <app-setting-control
-                    [id]="'setting-' + option.Name"
-                    [option]="option"
-                    [formControlName]="getUniqueControlKey(option)"
-                    (valueCommit)="
-                      saveRCloneOption(
-                        getUniqueControlKey(option),
-                        isOptionAtDefault(getUniqueControlKey(option))
-                      )
-                    "
-                    (valueChanged)="onOptionValueChanged(getUniqueControlKey(option), $event)"
-                  ></app-setting-control>
-                }
-              </form>
-            </cdk-virtual-scroll-viewport>
-          }
+        @if (filteredOptionsCount() === 0 && hasSearchQuery()) {
+          <div class="empty-state">
+            <mat-icon svgIcon="search"></mat-icon>
+            <span>No settings found</span>
+            <p>Try adjusting your search terms</p>
+          </div>
+        } @else {
+          <!-- VIRTUAL SCROLL IMPLEMENTATION -->
+          <cdk-virtual-scroll-viewport [itemSize]="20" class="virtual-scroll-viewport">
+            <form [formGroup]="rcloneOptionsForm">
+              @for (option of virtualScrollData(); track trackByOptionIndex($index, option)) {
+                <app-setting-control
+                  [id]="'setting-' + option.Name"
+                  [option]="option"
+                  [formControlName]="getUniqueControlKey(option)"
+                  (valueCommit)="
+                    saveRCloneOption(
+                      getUniqueControlKey(option),
+                      isOptionAtDefault(getUniqueControlKey(option))
+                    )
+                  "
+                  (valueChanged)="onOptionValueChanged(getUniqueControlKey(option), $event)"
+                ></app-setting-control>
+              }
+            </form>
+          </cdk-virtual-scroll-viewport>
         }
       </div>
     </div>

@@ -17,8 +17,16 @@ use crate::utils::types::all_types::{RcloneState, RemoteCache};
 pub async fn get_remotes_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<Vec<String>>>, AppError> {
+    use crate::rclone::backend::BACKEND_MANAGER;
     use crate::rclone::state::cache::get_cached_remotes;
-    let cache = state.app_handle.state::<RemoteCache>();
+    let backend_manager = &BACKEND_MANAGER;
+    let backend = backend_manager
+        .get_active()
+        .await
+        .ok_or_else(|| anyhow::anyhow!("No active backend"))
+        .map_err(AppError::Anyhow)?;
+    let cache = backend.read().await.remote_cache.clone();
+
     let remotes = get_cached_remotes(cache)
         .await
         .map_err(anyhow::Error::msg)?;
@@ -58,8 +66,16 @@ pub async fn get_remote_types_handler(
 pub async fn get_cached_remotes_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<Vec<String>>>, AppError> {
+    use crate::rclone::backend::BACKEND_MANAGER;
     use crate::rclone::state::cache::get_cached_remotes;
-    let cache = state.app_handle.state::<RemoteCache>();
+    let backend_manager = &BACKEND_MANAGER;
+    let backend = backend_manager
+        .get_active()
+        .await
+        .ok_or_else(|| anyhow::anyhow!("No active backend"))
+        .map_err(AppError::Anyhow)?;
+    let cache = backend.read().await.remote_cache.clone();
+
     let remotes = get_cached_remotes(cache)
         .await
         .map_err(anyhow::Error::msg)?;

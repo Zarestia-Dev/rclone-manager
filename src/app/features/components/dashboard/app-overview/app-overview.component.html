@@ -6,7 +6,10 @@
   animate.leave="fade-in-out-leave"
 >
   <!-- Header Section -->
-  <app-overview-header [mode]="mode()"></app-overview-header>
+  <app-overview-header
+    [mode]="mode()"
+    (openBackendModal)="openBackendModal.emit()"
+  ></app-overview-header>
 
   <div class="overview-content">
     <!-- Status Overview Panel -->

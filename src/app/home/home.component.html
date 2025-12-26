@@ -71,6 +71,7 @@
               (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId)"
               (browseRemote)="openRemoteInFiles($event, 'mount')"
               (selectRemote)="selectRemote($event)"
+              (openBackendModal)="openBackendModal()"
             >
             </app-general-overview>
           }
@@ -84,6 +85,7 @@
               (openInFiles)="openRemoteInFiles($event, currentTab())"
               (startJob)="startJob($event.type, $event.remoteName)"
               (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId)"
+              (openBackendModal)="openBackendModal()"
             >
             </app-app-overview>
           }

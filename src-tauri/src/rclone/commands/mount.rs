@@ -4,10 +4,7 @@ use std::collections::HashMap;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::{
-    rclone::{
-        commands::job::submit_job_and_wait,
-        state::{engine::ENGINE_STATE, watcher::force_check_mounted_remotes},
-    },
+    rclone::{commands::job::submit_job_and_wait, state::watcher::force_check_mounted_remotes},
     utils::{
         json_helpers::{
             get_string, json_to_hashmap, resolve_profile_options, unwrap_nested_options,
@@ -15,7 +12,7 @@ use crate::{
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, mount},
         types::{
-            all_types::{LogLevel, ProfileParams, RcloneState, RemoteCache},
+            all_types::{LogLevel, ProfileParams, RcloneState},
             events::REMOTE_STATE_CHANGED,
         },
     },
@@ -78,12 +75,18 @@ impl MountParams {
 }
 
 /// Mount a remote filesystem (not exposed as Tauri command - use mount_remote_profile)
-pub async fn mount_remote(
-    app: AppHandle,
-    cache: State<'_, RemoteCache>,
-    params: MountParams,
-) -> Result<(), String> {
+pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), String> {
     debug!("Received mount_remote params: {params:#?}");
+    // Get active backend
+    let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
+    let backend = backend_manager
+        .get_active()
+        .await
+        .ok_or_else(|| "No active backend".to_string())?;
+    let backend_read = backend.read().await;
+    let cache = &backend_read.remote_cache;
+    let api_url = backend_read.api_url();
+
     let mounted_remotes = cache.get_mounted_remotes().await;
     let state = app.state::<RcloneState>();
 
@@ -179,12 +182,12 @@ pub async fn mount_remote(
     }
     debug!("Final mount request payload: {payload:#?}");
 
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, mount::MOUNT);
+    let url = EndpointHelper::build_url(&api_url, mount::MOUNT);
 
     let (_, _) = submit_job_and_wait(
         app.clone(),
         state.client.clone(),
-        url,
+        backend_read.inject_auth(state.client.post(&url)),
         payload,
         JobMetadata {
             remote_name: params.remote_name.clone(),
@@ -222,6 +225,18 @@ pub async fn unmount_remote(
     remote_name: String,
     state: State<'_, RcloneState>,
 ) -> Result<String, String> {
+    let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
+    // For unmount, we might need to find which backend has this mount?
+    // Or just look up by remote_name if it matches a connection?
+    // But params definition for unmount_remote takes `remote_name`.
+    let backend = backend_manager
+        .get_active()
+        .await
+        .ok_or_else(|| "No active backend".to_string())?;
+
+    let backend_guard = backend.read().await;
+    let url = EndpointHelper::build_url(&backend_guard.api_url(), mount::UNMOUNT);
+    let payload = json!({ "mountPoint": mount_point });
     if mount_point.trim().is_empty() {
         return Err("Mount point cannot be empty".to_string());
     }
@@ -234,12 +249,8 @@ pub async fn unmount_remote(
         None,
     );
 
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, mount::UNMOUNT);
-    let payload = json!({ "mountPoint": mount_point });
-
-    let response = state
-        .client
-        .post(&url)
+    let response = backend_guard
+        .inject_auth(state.client.post(&url))
         .json(&payload)
         .send()
         .await
@@ -296,11 +307,23 @@ pub async fn unmount_all_remotes(
 ) -> Result<String, String> {
     info!("🗑️ Unmounting all remotes");
 
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, mount::UNMOUNTALL);
+    let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
+    // Iterate all backends and unmount all
+    // This is complex because we return one string.
+    // For now, let's just use active, or warn if multiple.
+    // Ideally we should modify this to return list of results.
+    // Adhering to single backend assumption for unmount_all for now to avoid breaking frontend contract too much.
+    // Or simply loop and ignore errors?
+    let backend = backend_manager
+        .get_active()
+        .await
+        .ok_or("No active backend")?;
 
-    let response = state
-        .client
-        .post(&url)
+    let backend_guard = backend.read().await;
+    let url = EndpointHelper::build_url(&backend_guard.api_url(), mount::UNMOUNTALL);
+
+    let response = backend_guard
+        .inject_auth(state.client.post(&url))
         .send()
         .await
         .map_err(|e| format!("Request failed: {e}"))?;
@@ -336,41 +359,25 @@ pub async fn unmount_all_remotes(
 /// Mount a remote using a named profile
 /// Resolves all options (mount, vfs, filter, backend) from cached settings
 #[tauri::command]
-pub async fn mount_remote_profile(
-    app: AppHandle,
-    cache: State<'_, RemoteCache>,
-    params: ProfileParams,
-) -> Result<(), String> {
-    let manager = app.state::<rcman::SettingsManager<rcman::JsonStorage>>();
-    let remote_names = cache.get_remotes().await;
-    let settings_map = crate::core::settings::remote::manager::get_all_remote_settings_sync(
-        manager.inner(),
-        &remote_names,
-    );
+pub async fn mount_remote_profile(app: AppHandle, params: ProfileParams) -> Result<(), String> {
+    let (config, settings) = crate::rclone::commands::common::resolve_profile_settings(
+        &app,
+        &params.remote_name,
+        &params.profile_name,
+        "mountConfigs",
+    )
+    .await?;
 
-    let settings = settings_map
-        .get(&params.remote_name)
-        .ok_or_else(|| format!("Remote '{}' not found in settings", params.remote_name))?;
-
-    let mount_configs = settings
-        .get("mountConfigs")
-        .and_then(|v| v.as_object())
-        .ok_or_else(|| format!("No mountConfigs found for '{}'", params.remote_name))?;
-
-    let config = mount_configs
-        .get(&params.profile_name)
-        .ok_or_else(|| format!("Mount profile '{}' not found", params.profile_name))?;
-
-    let mut mount_params = MountParams::from_config(params.remote_name.clone(), config, settings)
+    let mut mount_params = MountParams::from_config(params.remote_name.clone(), &config, &settings)
         .ok_or_else(|| {
-        format!(
-            "Mount configuration incomplete for profile '{}'",
-            params.profile_name
-        )
-    })?;
+            format!(
+                "Mount configuration incomplete for profile '{}'",
+                params.profile_name
+            )
+        })?;
 
     // Ensure profile is set from the function parameter, not the config object
     mount_params.profile = Some(params.profile_name.clone());
 
-    mount_remote(app, cache, mount_params).await
+    mount_remote(app, mount_params).await
 }

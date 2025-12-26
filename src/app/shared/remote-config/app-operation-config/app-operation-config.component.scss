@@ -21,7 +21,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
-  margin-top: var(--space-md);
+  margin-block: var(--space-md);
 }
 
 .header-section {
@@ -107,13 +107,10 @@
   align-items: center;
   gap: var(--space-xs);
   padding: var(--space-sm);
-  margin-top: var(--space-sm);
   border-radius: var(--border-radius);
   font-size: var(--font-size-sm);
 
   mat-icon {
-    flex-shrink: 0;
-    font-size: 1.2rem;
     height: 1.2rem;
     width: 1.2rem;
   }

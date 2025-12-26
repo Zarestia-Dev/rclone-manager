@@ -330,18 +330,10 @@ async fn execute_scheduled_task(
         .map_err(|e| format!("Failed to parse task args: {}", e))?;
 
     let result = match task.task_type {
-        TaskType::Copy => {
-            start_copy_profile(app_handle.clone(), job_cache, rclone_state, params).await
-        }
-        TaskType::Sync => {
-            start_sync_profile(app_handle.clone(), job_cache, rclone_state, params).await
-        }
-        TaskType::Move => {
-            start_move_profile(app_handle.clone(), job_cache, rclone_state, params).await
-        }
-        TaskType::Bisync => {
-            start_bisync_profile(app_handle.clone(), job_cache, rclone_state, params).await
-        }
+        TaskType::Copy => start_copy_profile(app_handle.clone(), rclone_state, params).await,
+        TaskType::Sync => start_sync_profile(app_handle.clone(), rclone_state, params).await,
+        TaskType::Move => start_move_profile(app_handle.clone(), rclone_state, params).await,
+        TaskType::Bisync => start_bisync_profile(app_handle.clone(), rclone_state, params).await,
     };
 
     match result {

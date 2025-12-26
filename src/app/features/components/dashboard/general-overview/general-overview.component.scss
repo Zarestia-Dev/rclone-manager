@@ -22,6 +22,63 @@
   .overview-header {
     margin-bottom: var(--panel-padding);
 
+    .header-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-md);
+
+      .backend-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-xs);
+        padding: var(--space-xs) var(--space-sm);
+        background: var(--sidebar-bg-color);
+        border: none;
+        border-radius: var(--badge-radius);
+        cursor: pointer;
+        transition: var(--transition-fast);
+        font-family: inherit;
+        font-size: var(--font-size-sm);
+
+        &:hover {
+          background: var(--hover-bg-color);
+        }
+
+        .status-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: var(--dim-color);
+          animation: none;
+
+          &.connected {
+            background: var(--success-color);
+            box-shadow: 0 0 6px var(--success-color);
+          }
+
+          &.disconnected {
+            background: var(--dim-color);
+          }
+
+          &.error {
+            background: var(--destructive-color);
+          }
+        }
+
+        .backend-name {
+          color: var(--window-fg-color);
+          font-weight: 500;
+        }
+
+        .chevron {
+          width: 14px;
+          height: 14px;
+          color: var(--dim-color);
+        }
+      }
+    }
+
     .title-section {
       @include flex-center;
       gap: 16px;

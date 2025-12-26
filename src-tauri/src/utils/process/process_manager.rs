@@ -157,12 +157,8 @@ fn is_rclone_executable(filename: &str) -> bool {
 
 /// Kill all rclone rcd processes (emergency cleanup)
 /// WARNING: This kills ALL rclone processes including OAuth. Only use during application shutdown.
-pub fn kill_all_rclone_processes() -> Result<(), String> {
-    use crate::rclone::state::engine::ENGINE_STATE;
-
-    // Get ports from the app state
-    let (_, api_port) = ENGINE_STATE.get_api();
-    let (_, oauth_port) = ENGINE_STATE.get_oauth();
+pub fn kill_all_rclone_processes(api_port: u16, oauth_port: u16) -> Result<(), String> {
+    // Ports are passed in instead of retrieved from global state
 
     info!("🧹 Cleaning up rclone processes on managed ports: API={api_port}, OAuth={oauth_port}");
 

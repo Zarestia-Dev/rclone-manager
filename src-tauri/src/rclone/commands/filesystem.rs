@@ -2,8 +2,8 @@ use log::debug;
 use serde_json::json;
 use tauri::{AppHandle, State};
 
+use crate::rclone::backend::BACKEND_MANAGER;
 use crate::rclone::commands::job::{JobMetadata, submit_job};
-use crate::rclone::state::engine::ENGINE_STATE;
 use crate::utils::rclone::endpoints::{EndpointHelper, operations};
 use crate::utils::types::all_types::RcloneState;
 
@@ -15,13 +15,17 @@ pub async fn mkdir(
 ) -> Result<(), String> {
     debug!("📁 Creating directory: remote={} path={}", remote, path);
 
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::MKDIR);
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend")?;
+    let backend_guard = backend.read().await;
+    let url = EndpointHelper::build_url(&backend_guard.api_url(), operations::MKDIR);
 
     let params = json!({ "fs": remote, "remote": path });
 
-    let response = state
-        .client
-        .post(&url)
+    let response = backend_guard
+        .inject_auth(state.client.post(&url))
         .json(&params)
         .send()
         .await
@@ -49,7 +53,12 @@ pub async fn cleanup(
         path.as_deref().unwrap_or("")
     );
 
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::CLEANUP);
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend")?;
+    let backend_guard = backend.read().await;
+    let url = EndpointHelper::build_url(&backend_guard.api_url(), operations::CLEANUP);
 
     // Build parameters dynamically: include `remote` only when provided
     let mut params = serde_json::Map::new();
@@ -58,9 +67,8 @@ pub async fn cleanup(
         params.insert("remote".to_string(), json!(p));
     }
 
-    let response = state
-        .client
-        .post(&url)
+    let response = backend_guard
+        .inject_auth(state.client.post(&url))
         .json(&json!(params))
         .send()
         .await
@@ -91,7 +99,13 @@ pub async fn copy_url(
         remote, path, url_to_copy, auto_filename
     );
 
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::COPYURL);
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend")?;
+
+    let backend_guard = backend.read().await;
+    let url = EndpointHelper::build_url(&backend_guard.api_url(), operations::COPYURL);
 
     let payload = json!({
         "fs": remote.clone(),
@@ -104,7 +118,7 @@ pub async fn copy_url(
     let (jobid, _) = submit_job(
         app,
         state.client.clone(),
-        url,
+        backend_guard.inject_auth(state.client.clone().post(&url)),
         payload,
         JobMetadata {
             remote_name: remote,

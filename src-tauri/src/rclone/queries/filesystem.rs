@@ -3,13 +3,57 @@ use serde::Serialize;
 use serde_json::json;
 use tauri::State;
 
-use crate::rclone::state::engine::ENGINE_STATE;
-use crate::utils::async_operations::execute_async_operation;
 use crate::utils::types::all_types::RcloneState;
 use crate::utils::{
     rclone::endpoints::{EndpointHelper, operations},
     types::all_types::{DiskUsage, JobResponse, ListOptions},
 };
+
+use crate::rclone::backend::BACKEND_MANAGER;
+use crate::rclone::commands::job::poll_job;
+
+/// Helper to execute an async filesystem operation
+async fn execute_fs_op(
+    url: String,
+    params: serde_json::Value,
+    client: reqwest::Client,
+    backend: crate::rclone::backend::types::RcloneBackend,
+) -> Result<serde_json::Value, String> {
+    let response = backend
+        .inject_auth(client.post(&url))
+        .json(&params)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+
+    let job: JobResponse = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse response: {e}"))?;
+
+    poll_job(job.jobid, client, backend).await
+}
+
+/// Helper to execute a filesystem command (gets backend, builds URL, runs op)
+async fn run_fs_command(
+    client: reqwest::Client,
+    endpoint: &str,
+    mut params: serde_json::Map<String, serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend".to_string())?;
+    // Use read lock to get URL, then clone backend for async operation
+    let backend_guard = backend.read().await;
+    let url = EndpointHelper::build_url(&backend_guard.api_url(), endpoint);
+    let backend_copy = backend_guard.clone();
+    drop(backend_guard);
+
+    params.insert("_async".to_string(), json!(true));
+
+    execute_fs_op(url, json!(params), client, backend_copy).await
+}
 
 #[derive(Serialize, Clone)]
 pub struct LocalDrive {
@@ -23,35 +67,13 @@ pub async fn get_fs_info(
     path: Option<String>,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::FSINFO);
     debug!("ℹ️ Getting fs info for remote: {remote}, path: {path:?}");
 
     let mut params = serde_json::Map::new();
     params.insert("fs".to_string(), json!(remote));
     params.insert("remote".to_string(), json!(path));
-    params.insert("_async".to_string(), json!(true));
 
-    let client = state.client.clone();
-    let client_for_monitor = client.clone();
-    let url_clone = url.clone();
-    let params_value = json!(params);
-
-    let result = execute_async_operation("Get fs info", client_for_monitor, || async move {
-        let response = client
-            .post(&url_clone)
-            .json(&params_value)
-            .send()
-            .await
-            .map_err(|e| format!("❌ Failed to get fs info: {e}"))?;
-
-        let job: JobResponse = response
-            .json()
-            .await
-            .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
-
-        Ok(job.jobid)
-    })
-    .await;
+    let result = run_fs_command(state.client.clone(), operations::FSINFO, params).await;
 
     match result {
         Ok(data) => {
@@ -80,9 +102,6 @@ pub async fn get_remote_paths(
     options: Option<ListOptions>,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::LIST);
-    debug!("📂 Listing remote paths: remote={remote}, path={path:?}, options={options:?}");
-
     let mut params = serde_json::Map::new();
     params.insert("fs".to_string(), json!(remote));
     params.insert("remote".to_string(), json!(path));
@@ -94,29 +113,8 @@ pub async fn get_remote_paths(
         }
     }
     params.insert("opt".to_string(), json!(opt));
-    params.insert("_async".to_string(), json!(true));
 
-    let client = state.client.clone();
-    let client_for_monitor = client.clone();
-    let url_clone = url.clone();
-    let params_value = json!(params);
-
-    execute_async_operation("List remote paths", client_for_monitor, || async move {
-        let response = client
-            .post(&url_clone)
-            .json(&params_value)
-            .send()
-            .await
-            .map_err(|e| format!("❌ Failed to list remote paths: {e}"))?;
-
-        let job: JobResponse = response
-            .json()
-            .await
-            .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
-
-        Ok(job.jobid)
-    })
-    .await
+    run_fs_command(state.client.clone(), operations::LIST, params).await
 }
 
 #[cfg(windows)]
@@ -241,35 +239,13 @@ pub async fn get_about_remote(
     path: Option<String>,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::ABOUT);
     debug!("ℹ️ Getting about info for remote: {remote}, path: {path:?}");
 
     let mut params = serde_json::Map::new();
     params.insert("fs".to_string(), json!(remote));
     params.insert("remote".to_string(), json!(path));
-    params.insert("_async".to_string(), json!(true));
 
-    let client = state.client.clone();
-    let client_for_monitor = client.clone();
-    let url_clone = url.clone();
-    let params_value = json!(params);
-
-    execute_async_operation("Get about info", client_for_monitor, || async move {
-        let response = client
-            .post(&url_clone)
-            .json(&params_value)
-            .send()
-            .await
-            .map_err(|e| format!("❌ Failed to get about info: {e}"))?;
-
-        let job: JobResponse = response
-            .json()
-            .await
-            .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
-
-        Ok(job.jobid)
-    })
-    .await
+    run_fs_command(state.client.clone(), operations::ABOUT, params).await
 }
 
 #[tauri::command]
@@ -278,35 +254,13 @@ pub async fn get_size(
     path: Option<String>,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::SIZE);
     debug!("📏 Getting size for remote: {remote}, path: {path:?}");
 
     let mut params = serde_json::Map::new();
     params.insert("fs".to_string(), json!(remote));
     params.insert("remote".to_string(), json!(path));
-    params.insert("_async".to_string(), json!(true));
 
-    let client = state.client.clone();
-    let client_for_monitor = client.clone();
-    let url_clone = url.clone();
-    let params_value = json!(params);
-
-    execute_async_operation("Get size", client_for_monitor, || async move {
-        let response = client
-            .post(&url_clone)
-            .json(&params_value)
-            .send()
-            .await
-            .map_err(|e| format!("❌ Failed to get size: {e}"))?;
-
-        let job: JobResponse = response
-            .json()
-            .await
-            .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
-
-        Ok(job.jobid)
-    })
-    .await
+    run_fs_command(state.client.clone(), operations::SIZE, params).await
 }
 
 #[tauri::command]
@@ -315,35 +269,13 @@ pub async fn get_stat(
     path: String,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::STAT);
     debug!("📊 Getting stats for remote: {remote}, path: {path}");
 
     let mut params = serde_json::Map::new();
     params.insert("fs".to_string(), json!(remote));
     params.insert("remote".to_string(), json!(path));
-    params.insert("_async".to_string(), json!(true));
 
-    let client = state.client.clone();
-    let client_for_monitor = client.clone();
-    let url_clone = url.clone();
-    let params_value = json!(params);
-
-    execute_async_operation("Get stat", client_for_monitor, || async move {
-        let response = client
-            .post(&url_clone)
-            .json(&params_value)
-            .send()
-            .await
-            .map_err(|e| format!("❌ Failed to get stat: {e}"))?;
-
-        let job: JobResponse = response
-            .json()
-            .await
-            .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
-
-        Ok(job.jobid)
-    })
-    .await
+    run_fs_command(state.client.clone(), operations::STAT, params).await
 }
 
 /// Get hashsum for a file
@@ -355,7 +287,6 @@ pub async fn get_hashsum(
     hash_type: String,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::HASHSUM);
     debug!("🔐 Getting hashsum for remote: {remote}, path: {path}, hash_type: {hash_type}");
 
     let mut params = serde_json::Map::new();
@@ -368,29 +299,8 @@ pub async fn get_hashsum(
     };
     params.insert("fs".to_string(), json!(fs_with_path));
     params.insert("hashType".to_string(), json!(hash_type));
-    params.insert("_async".to_string(), json!(true));
 
-    let client = state.client.clone();
-    let client_for_monitor = client.clone();
-    let url_clone = url.clone();
-    let params_value = json!(params);
-
-    execute_async_operation("Get hashsum", client_for_monitor, || async move {
-        let response = client
-            .post(&url_clone)
-            .json(&params_value)
-            .send()
-            .await
-            .map_err(|e| format!("❌ Failed to get hashsum: {e}"))?;
-
-        let job: JobResponse = response
-            .json()
-            .await
-            .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
-
-        Ok(job.jobid)
-    })
-    .await
+    run_fs_command(state.client.clone(), operations::HASHSUM, params).await
 }
 
 /// Get or create a public link for a file or folder
@@ -403,7 +313,12 @@ pub async fn get_public_link(
     expire: Option<String>,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::PUBLICLINK);
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend".to_string())?;
+    let backend_guard = backend.read().await;
+    let url = EndpointHelper::build_url(&backend_guard.api_url(), operations::PUBLICLINK);
     debug!(
         "🔗 Getting public link for remote: {remote}, path: {path}, expire: {expire:?}, unlink: {unlink:?}"
     );
@@ -425,8 +340,8 @@ pub async fn get_public_link(
     let params_value = json!(params);
 
     // This is NOT an async operation - it returns the URL directly
-    let response = client
-        .post(&url_clone)
+    let response = backend_guard
+        .inject_auth(client.post(&url_clone))
         .json(&params_value)
         .send()
         .await

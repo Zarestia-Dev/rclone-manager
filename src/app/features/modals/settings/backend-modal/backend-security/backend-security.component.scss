@@ -1,0 +1,204 @@
+.security-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  padding: var(--space-xs) 0;
+}
+
+.security-forms {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+// Encryption Hero Section
+.encryption-hero {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  border-radius: var(--radius-md);
+  background: var(--view-bg-color);
+  border: 1px solid var(--border-color);
+
+  .hero-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    mat-icon {
+      width: 24px;
+      height: 24px;
+      transform: scale(1.2);
+    }
+  }
+
+  .hero-content {
+    h4 {
+      margin: 0 0 4px 0;
+      font-size: var(--font-size-lg);
+      font-weight: 600;
+    }
+    p {
+      margin: 0;
+      color: var(--dim-color);
+      font-size: var(--font-size-sm);
+      line-height: 1.4;
+    }
+  }
+
+  &.encrypted {
+    background: rgba(var(--success-color-rgb), 0.08);
+    border-color: rgba(var(--success-color-rgb), 0.2);
+    .hero-icon {
+      background: var(--success-bg-color);
+      color: white;
+    }
+    .hero-content h4 {
+      color: var(--success-color);
+    }
+  }
+
+  &.unencrypted {
+    background: rgba(var(--warning-color-rgb), 0.08);
+    border-color: rgba(var(--warning-color-rgb), 0.2);
+    .hero-icon {
+      background: var(--warning-bg-color);
+      color: white;
+    }
+    .hero-content h4 {
+      color: var(--warning-color);
+    }
+  }
+}
+
+// Keychain Section
+.keychain-section {
+  background: var(--view-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+
+  .keychain-row {
+    padding: var(--space-md);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .keychain-input-row {
+    padding: var(--space-sm) var(--space-md) var(--space-md);
+    background: var(--view-bg-color);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    border-top: 1px solid var(--border-color);
+
+    mat-form-field {
+      flex: 1;
+      .mat-mdc-form-field-subscript-wrapper {
+        display: none;
+      }
+    }
+  }
+}
+
+// Accordion Styling
+.security-accordion {
+  .mat-expansion-panel {
+    background: var(--view-bg-color) !important;
+    border: 1px solid var(--border-color);
+    box-shadow: none !important;
+    border-radius: 0;
+
+    &:first-of-type {
+      border-top-left-radius: var(--radius-sm);
+      border-top-right-radius: var(--radius-sm);
+    }
+    &:last-of-type {
+      border-bottom-left-radius: var(--radius-sm);
+      border-bottom-right-radius: var(--radius-sm);
+    }
+
+    &:not(:last-child) {
+      border-bottom: 0;
+    }
+
+    &.mat-expanded {
+      border-color: var(--primary-color);
+      z-index: 2;
+    }
+  }
+
+  .mat-expansion-panel-header {
+    padding: 0 var(--space-md);
+    height: 64px;
+
+    .mat-expansion-panel-header-title {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      margin: 0;
+
+      mat-icon {
+        color: var(--primary-color);
+      }
+
+      &.warn-text {
+        color: var(--warning-color);
+      }
+      .warn-icon {
+        color: var(--warning-color);
+      }
+    }
+  }
+
+  .panel-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    padding-top: var(--space-md);
+
+    .small-text {
+      margin: 0;
+      font-size: 13px;
+      opacity: 0.8;
+    }
+
+    .panel-actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+  }
+}
+
+// Direct Encrypt Form (Unencrypted State)
+.direct-encrypt-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: var(--view-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+
+  .form-intro {
+    h3 {
+      margin: 0 0 4px 0;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    p {
+      margin: 0;
+      color: var(--dim-color);
+      font-size: 13px;
+    }
+  }
+
+  .form-actions-row {
+    display: flex;
+    justify-content: flex-end;
+  }
+}

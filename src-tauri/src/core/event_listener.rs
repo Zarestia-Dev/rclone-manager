@@ -10,21 +10,17 @@ use crate::{
     rclone::{
         commands::system::set_bandwidth_limit,
         engine::core::ENGINE,
-        state::{
-            engine::ENGINE_STATE,
-            scheduled_tasks::{ScheduledTasksCache, reload_scheduled_tasks_from_configs},
-        },
+        state::scheduled_tasks::{ScheduledTasksCache, reload_scheduled_tasks_from_configs},
     },
     utils::{
         app::builder::setup_tray,
         logging::log::update_log_level,
         types::{
-            all_types::{RcloneState, RemoteCache},
+            all_types::RcloneState,
             events::{
-                JOB_CACHE_CHANGED, MOUNT_STATE_CHANGED, RCLONE_API_URL_UPDATED,
-                RCLONE_PASSWORD_STORED, REMOTE_CACHE_UPDATED, REMOTE_PRESENCE_CHANGED,
-                REMOTE_STATE_CHANGED, SERVE_STATE_CHANGED, SYSTEM_SETTINGS_CHANGED,
-                UPDATE_TRAY_MENU,
+                JOB_CACHE_CHANGED, MOUNT_STATE_CHANGED, RCLONE_PASSWORD_STORED,
+                REMOTE_CACHE_UPDATED, REMOTE_PRESENCE_CHANGED, REMOTE_STATE_CHANGED,
+                SERVE_STATE_CHANGED, SYSTEM_SETTINGS_CHANGED, UPDATE_TRAY_MENU,
             },
         },
     },
@@ -44,28 +40,6 @@ fn handle_ctrl_c(app: &AppHandle) {
         info!("🧹 Ctrl+C received via tokio. Initiating shutdown...");
         handle_shutdown(app_handle_clone.clone()).await;
         app_handle_clone.exit(0);
-    });
-}
-
-fn handle_rclone_api_url_updated(app: &AppHandle) {
-    let app_handle = app.clone();
-    app.listen(RCLONE_API_URL_UPDATED, move |_| {
-        let app = app_handle.clone();
-        tauri::async_runtime::spawn(async move {
-            let port = ENGINE_STATE.get_api().1;
-            let result = tauri::async_runtime::spawn_blocking(move || {
-                let mut engine = match ENGINE.lock() {
-                    Ok(guard) => guard,
-                    Err(poisoned) => poisoned.into_inner(),
-                };
-                engine.update_port(&app, port)
-            })
-            .await;
-
-            if let Err(e) = result {
-                error!("Failed to update Rclone API port: {e}");
-            }
-        });
     });
 }
 
@@ -96,9 +70,17 @@ fn handle_remote_state_changed(app: &AppHandle) {
         );
         let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            let cache = app.state::<RemoteCache>(); // <-- Get managed RemoteCache
-            if let Err(e) = cache.refresh_mounted_remotes(app.clone()).await {
-                error!("Failed to refresh mounted remotes: {e}");
+            let client = app
+                .state::<crate::utils::types::all_types::RcloneState>()
+                .client
+                .clone();
+            if let Some(backend) = crate::rclone::backend::BACKEND_MANAGER.get_active().await {
+                let guard = backend.read().await;
+                let cache = guard.remote_cache.clone();
+
+                if let Err(e) = cache.refresh_mounted_remotes(&client, &guard).await {
+                    error!("Failed to refresh mounted remotes: {e}");
+                }
             }
             if let Err(e) = update_tray_menu(app.clone(), 0).await {
                 error!("Failed to update tray menu: {e}");
@@ -119,19 +101,27 @@ fn handle_remote_presence_changed(app: &AppHandle) {
     app.listen(REMOTE_PRESENCE_CHANGED, move |_| {
         let app_clone = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            let cache = app_clone.state::<RemoteCache>();
-            let manager = app_clone.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+            let client = app_clone
+                .state::<crate::utils::types::all_types::RcloneState>()
+                .client
+                .clone();
+            let mut remote_names = Vec::new();
 
-            let refresh_tasks = tokio::join!(
-                cache.refresh_remote_list(app_clone.clone()),
-                cache.refresh_remote_configs(app_clone.clone()),
-            );
-            if let (Err(e1), Err(e2)) = refresh_tasks {
-                error!("Failed to refresh cache: {e1}, {e2}");
+            if let Some(backend) = crate::rclone::backend::BACKEND_MANAGER.get_active().await {
+                let guard = backend.read().await;
+                let cache = guard.remote_cache.clone();
+
+                let refresh_tasks: (Result<(), String>, Result<(), String>) = tokio::join!(
+                    cache.refresh_remote_list(&client, &guard),
+                    cache.refresh_remote_configs(&client, &guard),
+                );
+                if let (Err(e1), Err(e2)) = refresh_tasks {
+                    error!("Failed to refresh cache: {e1}, {e2}");
+                }
+
+                remote_names = cache.get_remotes().await;
             }
-
-            info!("Remote presence changed, reloading scheduled tasks from configs...");
-            let remote_names = cache.get_remotes().await;
+            let manager = app_clone.state::<rcman::SettingsManager<rcman::JsonStorage>>();
             let all_configs = crate::core::settings::remote::manager::get_all_remote_settings_sync(
                 manager.inner(),
                 &remote_names,
@@ -192,9 +182,17 @@ fn handle_serve_state_changed(app: &AppHandle) {
         tauri::async_runtime::spawn(async move {
             debug!("🔄 Serve state changed! Raw payload: {:?}", event.payload());
 
-            let cache = app.state::<RemoteCache>();
-            if let Err(e) = cache.refresh_serves(app.clone()).await {
-                error!("❌ Failed to refresh serves cache: {e}");
+            let client = app
+                .state::<crate::utils::types::all_types::RcloneState>()
+                .client
+                .clone();
+            if let Some(backend) = crate::rclone::backend::BACKEND_MANAGER.get_active().await {
+                let guard = backend.read().await;
+                let cache = guard.remote_cache.clone();
+
+                if let Err(e) = cache.refresh_serves(&client, &guard).await {
+                    error!("❌ Failed to refresh serves cache: {e}");
+                }
             }
 
             if let Err(e) = crate::core::tray::core::update_tray_menu(app.clone(), 0).await {
@@ -412,39 +410,6 @@ fn handle_settings_changed(app: &AppHandle) {
                         );
                     }
 
-                    if let Some(api_port) = core.get("rclone_api_port").and_then(|v| v.as_u64()) {
-                        debug!("🔌 Rclone API Port changed to: {api_port}");
-                        let old_port = ENGINE_STATE.get_api().1.to_string();
-
-                        if let Err(e) = ENGINE_STATE
-                            .set_api(format!("http://127.0.0.1:{api_port}"), api_port as u16)
-                        {
-                            error!("Failed to set Rclone API Port: {e}");
-                        } else {
-                            // Restart engine with new API port
-                            if let Err(e) =
-                                crate::rclone::engine::lifecycle::restart_for_config_change(
-                                    &app_handle,
-                                    "api_port",
-                                    &old_port,
-                                    &api_port.to_string(),
-                                )
-                            {
-                                error!("Failed to restart engine for API port change: {e}");
-                            }
-                        }
-                    }
-
-                    if let Some(oauth_port) = core.get("rclone_oauth_port").and_then(|v| v.as_u64())
-                    {
-                        debug!("🔑 Rclone OAuth Port changed to: {oauth_port}");
-                        if let Err(e) = ENGINE_STATE
-                            .set_oauth(format!("http://127.0.0.1:{oauth_port}"), oauth_port as u16)
-                        {
-                            error!("Failed to set Rclone OAuth Port: {e}");
-                        }
-                    }
-
                     if let Some(max_items) = core.get("max_tray_items").and_then(|v| v.as_u64()) {
                         debug!("🗂️ Max tray items changed to: {max_items}");
                         let app = app_handle.clone();
@@ -506,7 +471,7 @@ fn handle_settings_changed(app: &AppHandle) {
 
 pub fn setup_event_listener(app: &AppHandle) {
     handle_ctrl_c(app);
-    handle_rclone_api_url_updated(app);
+
     handle_rclone_password_stored(app);
     handle_remote_state_changed(app);
     handle_serve_state_changed(app);

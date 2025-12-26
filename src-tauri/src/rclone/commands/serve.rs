@@ -3,18 +3,13 @@ use serde_json::{Value, json};
 use std::collections::HashMap;
 use tauri::{AppHandle, Emitter, Manager, State};
 
-use crate::{
-    rclone::state::engine::ENGINE_STATE,
-    utils::{
-        json_helpers::{
-            get_string, json_to_hashmap, resolve_profile_options, unwrap_nested_options,
-        },
-        logging::log::log_operation,
-        rclone::endpoints::{EndpointHelper, serve},
-        types::{
-            all_types::{LogLevel, ProfileParams, RcloneState, RemoteCache},
-            events::SERVE_STATE_CHANGED,
-        },
+use crate::utils::{
+    json_helpers::{get_string, json_to_hashmap, resolve_profile_options, unwrap_nested_options},
+    logging::log::log_operation,
+    rclone::endpoints::{EndpointHelper, serve},
+    types::{
+        all_types::{LogLevel, ProfileParams, RcloneState},
+        events::SERVE_STATE_CHANGED,
     },
 };
 
@@ -109,6 +104,13 @@ pub async fn start_serve(
         return Err("Remote name cannot be empty".to_string());
     }
     let state = app.state::<RcloneState>();
+    let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
+    let backend = backend_manager
+        .get_active()
+        .await
+        .ok_or_else(|| "No active backend".to_string())?;
+    let backend_read = backend.read().await;
+    let api_url = backend_read.api_url();
 
     // Validate serve type is specified
     let serve_type = params
@@ -201,12 +203,22 @@ pub async fn start_serve(
     }
 
     let payload = Value::Object(payload);
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, serve::START);
+    let url = EndpointHelper::build_url(&api_url, serve::START);
 
     // Call serve/start directly - serves are NOT jobs, they are long-running services
-    let response = state
-        .client
-        .post(&url)
+    // Use submit_job_and_wait instead of direct call to properly track it?
+    // Wait, original code used state.client.post directly.
+    // Why did I think it used submit_job_and_wait?
+    // Ah, lines 97-272 is start_serve.
+    // Line 209: state.client.post(&url)...
+    // This calls `serve/dist`? No, `serve::START`.
+    // It returns `id` and `addr`.
+    // It's a short lived request that starts a long running process.
+    // It does NOT return a jobid.
+    // So we just use standard request, BUT we must inject auth.
+
+    let response = backend_read
+        .inject_auth(state.client.post(&url))
         .json(&payload)
         .send()
         .await
@@ -252,7 +264,7 @@ pub async fn start_serve(
     );
 
     // Store the profile mapping for this serve ID
-    let cache = app.state::<RemoteCache>();
+    let cache = &backend_read.remote_cache;
     cache
         .store_serve_profile(&serve_id, params.profile.clone())
         .await;
@@ -284,12 +296,23 @@ pub async fn stop_serve(
         None,
     );
 
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, serve::STOP);
+    let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
+    // Serve stop needs remote_name to find backend. But stop_serve(server_id) doesn't have remote_name in params?
+    // We stored profile mapping, maybe we can find it?
+    // Actually `stop_serve` relies on ID. `cache` stores serve_id -> profile.
+    // If we iterate backends to find serve_id, or if we assume active backend.
+    // Let's use active for now, or maybe update `stop_serve` to take remote_name.
+    // Given the difficulty, active is safest fallback for now.
+    let backend = backend_manager
+        .get_active()
+        .await
+        .ok_or("No active backend")?;
+    let backend_guard = backend.read().await;
+    let url = EndpointHelper::build_url(&backend_guard.api_url(), serve::STOP);
     let payload = json!({ "id": server_id });
 
-    let response = state
-        .client
-        .post(&url)
+    let response = backend_guard
+        .inject_auth(state.client.post(&url))
         .json(&payload)
         .send()
         .await
@@ -322,11 +345,16 @@ pub async fn stop_all_serves(
 ) -> Result<String, String> {
     info!("🗑️ Stopping all serves");
 
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, serve::STOPALL);
+    let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
+    let backend = backend_manager
+        .get_active()
+        .await
+        .ok_or("No active backend")?;
+    let backend_guard = backend.read().await;
+    let url = EndpointHelper::build_url(&backend_guard.api_url(), serve::STOPALL);
 
-    let response = state
-        .client
-        .post(&url)
+    let response = backend_guard
+        .inject_auth(state.client.post(&url))
         .send()
         .await
         .map_err(|e| format!("Request failed: {e}"))?;
@@ -354,34 +382,21 @@ pub async fn start_serve_profile(
     app: AppHandle,
     params: ProfileParams,
 ) -> Result<ServeStartResponse, String> {
-    let cache = app.state::<RemoteCache>();
-    let manager = app.state::<rcman::SettingsManager<rcman::JsonStorage>>();
-    let remote_names = cache.get_remotes().await;
-    let settings_map = crate::core::settings::remote::manager::get_all_remote_settings_sync(
-        manager.inner(),
-        &remote_names,
-    );
+    let (config, settings) = crate::rclone::commands::common::resolve_profile_settings(
+        &app,
+        &params.remote_name,
+        &params.profile_name,
+        "serveConfigs",
+    )
+    .await?;
 
-    let settings = settings_map
-        .get(&params.remote_name)
-        .ok_or_else(|| format!("Remote '{}' not found in settings", params.remote_name))?;
-
-    let serve_configs = settings
-        .get("serveConfigs")
-        .and_then(|v| v.as_object())
-        .ok_or_else(|| format!("No serveConfigs found for '{}'", params.remote_name))?;
-
-    let config = serve_configs
-        .get(&params.profile_name)
-        .ok_or_else(|| format!("Serve profile '{}' not found", params.profile_name))?;
-
-    let mut serve_params = ServeParams::from_config(params.remote_name.clone(), config, settings)
+    let mut serve_params = ServeParams::from_config(params.remote_name.clone(), &config, &settings)
         .ok_or_else(|| {
-        format!(
-            "Serve configuration incomplete for profile '{}'",
-            params.profile_name
-        )
-    })?;
+            format!(
+                "Serve configuration incomplete for profile '{}'",
+                params.profile_name
+            )
+        })?;
 
     // Ensure profile is set from the function parameter, not the config object
     serve_params.profile = Some(params.profile_name.clone());

@@ -5,6 +5,7 @@ export * from './system/rclone-update.service';
 export * from './system/app-updater.service';
 export * from './system/scheduler.service';
 export * from './system/system-health.service';
+export * from './system/backend.service';
 export * from './ui/ui-state.service';
 export * from './ui/onboarding-state.service';
 export * from './ui/window.service';

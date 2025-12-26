@@ -5,7 +5,7 @@ import { TauriBaseService } from '../core/tauri-base.service';
   providedIn: 'root',
 })
 export class ConfigService extends TauriBaseService {
-  rcloneServeUrl = signal('http://127.0.0.1:51900');
+  rcloneServeUrl = signal('http://127.0.0.1:51901');
 
   constructor() {
     super();

@@ -9,7 +9,7 @@ use tokio::net::TcpStream;
 use tokio::time::sleep;
 
 use crate::{
-    rclone::state::engine::ENGINE_STATE,
+    rclone::backend::BACKEND_MANAGER,
     utils::{
         rclone::{
             endpoints::{EndpointHelper, config, core},
@@ -28,6 +28,7 @@ pub enum RcloneError {
     ParseError(String),
     JobError(String),
     OAuthError(String),
+    ConfigError(String),
 }
 
 impl From<reqwest::Error> for RcloneError {
@@ -49,6 +50,7 @@ impl std::fmt::Display for RcloneError {
             RcloneError::ParseError(e) => write!(f, "Parse error: {e}"),
             RcloneError::JobError(e) => write!(f, "Job error: {e}"),
             RcloneError::OAuthError(e) => write!(f, "OAuth error: {e}"),
+            RcloneError::ConfigError(e) => write!(f, "Config error: {e}"),
         }
     }
 }
@@ -84,7 +86,18 @@ pub fn redact_sensitive_values(
 pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
     let state = app.state::<RcloneState>();
     let mut guard = state.oauth_process.lock().await;
-    let port = ENGINE_STATE.get_oauth().1;
+
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or_else(|| RcloneError::ConfigError("No active backend".to_string()))?;
+    let backend_read = backend.read().await;
+    let port = backend_read
+        .oauth
+        .as_ref()
+        .map(|o| o.port)
+        .ok_or_else(|| RcloneError::ConfigError("OAuth not configured".to_string()))?;
+    drop(backend_read); // Drop lock usage before potentially long operations
 
     // Check if process is already running (in memory or port open)
     let mut process_running = guard.is_some();
@@ -149,7 +162,18 @@ pub async fn quit_rclone_oauth(state: State<'_, RcloneState>) -> Result<(), Stri
     info!("🛑 Quitting Rclone OAuth process");
 
     let mut guard = state.oauth_process.lock().await;
-    let port = ENGINE_STATE.get_oauth().1;
+
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend")?;
+    let backend_read = backend.read().await;
+    let port = backend_read
+        .oauth
+        .as_ref()
+        .map(|o| o.port)
+        .ok_or("OAuth not configured")?;
+    drop(backend_read);
 
     let mut found_process = false;
 
@@ -203,12 +227,16 @@ pub async fn set_bandwidth_limit(
         _ => "off".to_string(),
     };
 
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::BWLIMIT);
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend")?;
+    let backend_guard = backend.read().await;
+    let url = EndpointHelper::build_url(&backend_guard.api_url(), core::BWLIMIT);
     let payload = json!({ "rate": rate_value });
 
-    let response = state
-        .client
-        .post(&url)
+    let response = backend_guard
+        .inject_auth(state.client.post(&url))
         .json(&payload)
         .send()
         .await
@@ -237,13 +265,17 @@ pub async fn unlock_rclone_config(
     password: String,
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::UNLOCK);
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend")?;
+    let backend_guard = backend.read().await;
+    let url = EndpointHelper::build_url(&backend_guard.api_url(), config::UNLOCK);
 
     let payload = json!({ "configPassword": password });
 
-    let response = state
-        .client
-        .post(&url)
+    let response = backend_guard
+        .inject_auth(state.client.post(&url))
         .json(&payload)
         .send()
         .await

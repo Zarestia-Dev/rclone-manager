@@ -1330,7 +1330,7 @@ pub mod vfs {
 //     ///
 //     /// After calling this you can use this to see the blocking profile:
 //     ///
-//     ///     go tool pprof http://localhost:5572/debug/pprof/block
+//     ///     go tool pprof http://localhost:51900/debug/pprof/block
 //     ///
 //     /// Parameters:
 //     ///
@@ -1365,7 +1365,7 @@ pub mod vfs {
 //     ///
 //     /// Once this is set you can look use this to profile the mutex contention:
 //     ///
-//     ///     go tool pprof http://localhost:5572/debug/pprof/mutex
+//     ///     go tool pprof http://localhost:51900/debug/pprof/mutex
 //     ///
 //     /// Parameters:
 //     ///

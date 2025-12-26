@@ -1,17 +1,31 @@
-import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy, inject, output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { AppTab } from '@app/types';
+import { BackendService } from '@app/services';
 
 @Component({
   selector: 'app-overview-header',
   standalone: true,
-  imports: [MatIconModule],
+  imports: [MatIconModule, MatButtonModule, MatTooltipModule],
   templateUrl: './overview-header.component.html',
   styleUrl: './overview-header.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OverviewHeaderComponent {
+  private readonly backendService = inject(BackendService);
+
   @Input() mode: AppTab = 'general';
+
+  /** Emits when backend indicator is clicked */
+  readonly openBackendModal = output<void>();
+
+  /** Current active backend name */
+  readonly activeBackend = this.backendService.activeBackend;
+
+  /** All backends for status */
+  readonly backends = this.backendService.backends;
 
   private readonly TITLE_MAP: Record<string, string> = {
     mount: 'Mount Overview',
@@ -21,5 +35,16 @@ export class OverviewHeaderComponent {
 
   get title(): string {
     return this.TITLE_MAP[this.mode] || 'Remotes Overview';
+  }
+
+  /** Get status class for the active backend */
+  get backendStatusClass(): string {
+    const active = this.backends().find(b => b.is_active);
+    if (!active) return 'disconnected';
+    return this.backendService.getStatusClass(active.status);
+  }
+
+  onBackendClick(): void {
+    this.openBackendModal.emit();
   }
 }

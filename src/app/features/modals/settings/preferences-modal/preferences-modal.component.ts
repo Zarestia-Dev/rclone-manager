@@ -135,6 +135,8 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
   private subscribeToOptions(): void {
     this.appSettingsService.options$.pipe(takeUntil(this.destroyed$)).subscribe(options => {
       if (options) {
+        // Enchant metadata with inferred types and labels if missing
+        this.enrichMetadata(options);
         this.optionsMap = options;
         this.buildForm(options);
         this.subscribeToFormChanges();
@@ -143,6 +145,50 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
         this.isLoading = true;
       }
     });
+  }
+
+  private enrichMetadata(options: Record<string, SettingMetadata>): void {
+    for (const [fullKey, meta] of Object.entries(options)) {
+      const [, key] = fullKey.split('.');
+
+      // 1. Map Labels and Descriptions
+      if (!meta.display_name) {
+        meta.display_name = meta.label || this.formatKeyToLabel(key);
+      }
+      if (!meta.help_text) {
+        meta.help_text = meta.description || '';
+      }
+
+      // 2. Infer Type if missing
+      if (!meta.value_type) {
+        meta.value_type = this.inferValueType(meta, key);
+      }
+    }
+  }
+
+  private formatKeyToLabel(key: string): string {
+    return key
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+
+  private inferValueType(meta: SettingMetadata, key: string): any {
+    if (meta.options && meta.options.length > 0) return 'string';
+
+    // Check key patterns for specialized types
+    if (key.includes('bandwidth')) return 'bandwidth';
+    if (key.endsWith('_urls') || key.endsWith('_apps')) return 'string[]'; // Lists
+    if (key.includes('path') || key.includes('file')) return 'file';
+    if (key.includes('folder') || key.includes('directory')) return 'folder';
+
+    // Fallback to type of default value
+    const def = meta.default;
+    if (typeof def === 'boolean') return 'bool';
+    if (typeof def === 'number') return 'int';
+    if (Array.isArray(def)) return 'string[]';
+
+    return 'string';
   }
 
   private buildForm(options: Record<string, SettingMetadata>): void {
@@ -376,9 +422,12 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
       return;
     }
     for (const [fullKey, meta] of Object.entries(this.optionsMap)) {
+      const displayName = meta.display_name || meta.label || '';
+      const helpText = meta.help_text || meta.description || '';
+
       if (
-        meta.display_name.toLowerCase().includes(this.searchQuery) ||
-        meta.help_text.toLowerCase().includes(this.searchQuery)
+        displayName.toLowerCase().includes(this.searchQuery) ||
+        helpText.toLowerCase().includes(this.searchQuery)
       ) {
         const [category, key] = fullKey.split('.');
         this.searchResults.push({ category, key });
@@ -477,7 +526,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     value: unknown;
   }[] {
     return Array.from(this.pendingRestartChanges.values()).map(change => ({
-      displayName: change.metadata.display_name,
+      displayName: change.metadata.display_name || change.metadata.label || change.key,
       category: change.category,
       key: change.key,
       value: change.value,

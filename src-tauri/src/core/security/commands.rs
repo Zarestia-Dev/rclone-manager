@@ -2,10 +2,11 @@ use crate::utils::types::events::RCLONE_PASSWORD_STORED;
 use crate::{
     core::{check_binaries::build_rclone_command, security::SafeEnvironmentManager},
     rclone::commands::system::unlock_rclone_config,
-    utils::types::all_types::CONFIG_PASSWORD_KEY,
 };
 use log::{debug, error, info, warn};
 use tauri::{AppHandle, Emitter, Manager, State};
+
+const LOCAL_BACKEND_KEY: &str = "backend:Local:config_password";
 
 // -----------------------------------------------------------------------------
 // PASSWORD MANAGEMENT (USING RCMAN CREDENTIALS)
@@ -19,14 +20,15 @@ pub async fn store_config_password(
     manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
     password: String,
 ) -> Result<(), String> {
-    info!("🔑 Storing rclone config password via rcman");
+    info!("🔑 Storing rclone config password via rcman (Unified Storage)");
 
     // Access credential manager (requires keychain feature)
     let credentials = manager.inner().credentials().ok_or_else(|| {
         "Credential storage not available (keychain feature disabled)".to_string()
     })?;
 
-    match credentials.store(CONFIG_PASSWORD_KEY, &password) {
+    // Store using the standardized Local backend key
+    match credentials.store(LOCAL_BACKEND_KEY, &password) {
         Ok(()) => {
             // Set environment variable for current session using safe manager
             env_manager.set_config_password(password.clone());
@@ -34,6 +36,13 @@ pub async fn store_config_password(
             // Emit event so OAuth can restart if needed
             if let Err(e) = app.emit(RCLONE_PASSWORD_STORED, ()) {
                 error!("Failed to emit password_stored event: {e}");
+            }
+
+            // Update BackendManager's Local instance in memory
+            if let Some(backend) = crate::rclone::backend::BACKEND_MANAGER.get("Local").await {
+                let mut guard = backend.write().await;
+                guard.config_password = Some(password);
+                debug!("📝 Updated in-memory Local backend config password");
             }
 
             info!("✅ Password stored successfully");
@@ -58,20 +67,14 @@ pub async fn get_config_password(
         .credentials()
         .ok_or_else(|| "Credential storage not available".to_string())?;
 
-    match credentials.get(CONFIG_PASSWORD_KEY) {
-        Ok(Some(password)) => {
-            debug!("✅ Password retrieved successfully");
-            Ok(password)
-        }
-        Ok(None) => {
-            debug!("ℹ️ No password stored");
-            Err("No password stored".to_string())
-        }
-        Err(e) => {
-            error!("❌ Failed to retrieve password: {}", e);
-            Err(format!("Failed to retrieve password: {}", e))
-        }
+    // Try Unified Key first (Standard)
+    if let Ok(Some(password)) = credentials.get(LOCAL_BACKEND_KEY) {
+        debug!("✅ Password retrieved successfully");
+        return Ok(password);
     }
+
+    debug!("ℹ️ No password stored");
+    Err("No password stored".to_string())
 }
 
 /// Check if a config password is stored
@@ -82,7 +85,8 @@ pub async fn has_stored_password(
     debug!("🔍 Checking if password is stored via rcman");
 
     if let Some(credentials) = manager.inner().credentials() {
-        Ok(credentials.exists(CONFIG_PASSWORD_KEY))
+        // Check both keys
+        Ok(credentials.exists(LOCAL_BACKEND_KEY))
     } else {
         Ok(false)
     }
@@ -97,18 +101,20 @@ pub async fn remove_config_password(
     info!("🗑️ Removing stored config password via rcman");
 
     if let Some(credentials) = manager.inner().credentials() {
-        match credentials.remove(CONFIG_PASSWORD_KEY) {
-            Ok(()) => {
-                // Clear environment variable using safe manager
-                env_manager.clear_config_password();
-                info!("✅ Password removed successfully");
-                Ok(())
-            }
-            Err(e) => {
-                error!("❌ Failed to remove password: {}", e);
-                Err(format!("Failed to remove password: {}", e))
-            }
+        // Remove key to ensure full cleanup
+        let _ = credentials.remove(LOCAL_BACKEND_KEY);
+
+        // Update BackendManager's Local instance in memory
+        if let Some(backend) = crate::rclone::backend::BACKEND_MANAGER.get("Local").await {
+            let mut guard = backend.write().await;
+            guard.config_password = None;
+            debug!("📝 Cleared in-memory Local backend config password");
         }
+
+        // Clear environment variable using safe manager
+        env_manager.clear_config_password();
+        info!("✅ Password removed successfully");
+        Ok(())
     } else {
         // If no credential manager, just clear env
         env_manager.clear_config_password();
@@ -303,12 +309,18 @@ pub async fn encrypt_config(
     {
         // Store the password securely after successful encryption using rcman
         if let Some(credentials) = manager.inner().credentials()
-            && let Err(e) = credentials.store(CONFIG_PASSWORD_KEY, &password)
+            && let Err(e) = credentials.store(LOCAL_BACKEND_KEY, &password)
         {
             warn!(
                 "⚠️ Failed to store password after encryption via rcman: {}",
                 e
             );
+        } else {
+            // Update BackendManager in memory
+            if let Some(backend) = crate::rclone::backend::BACKEND_MANAGER.get("Local").await {
+                let mut guard = backend.write().await;
+                guard.config_password = Some(password.clone());
+            }
         }
 
         // Set environment variable for current session
@@ -372,10 +384,14 @@ pub async fn unencrypt_config(
         || stderr.contains("config file is NOT encrypted")
     {
         // Remove stored password since config is no longer encrypted
-        if let Some(credentials) = manager.inner().credentials()
-            && let Err(e) = credentials.remove(CONFIG_PASSWORD_KEY)
-        {
-            warn!("⚠️ Failed to remove stored password via rcman: {}", e);
+        if let Some(credentials) = manager.inner().credentials() {
+            let _ = credentials.remove(LOCAL_BACKEND_KEY);
+
+            // Update BackendManager in memory
+            if let Some(backend) = crate::rclone::backend::BACKEND_MANAGER.get("Local").await {
+                let mut guard = backend.write().await;
+                guard.config_password = None;
+            }
         }
 
         env_manager.clear_config_password();

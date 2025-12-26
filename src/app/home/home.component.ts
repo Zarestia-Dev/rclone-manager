@@ -47,6 +47,7 @@ import { LogsModalComponent } from '../features/modals/settings/logs-modal/logs-
 import { ExportModalComponent } from '../features/modals/settings/export-modal/export-modal.component';
 import { RemoteConfigModalComponent } from '../features/modals/remote-management/remote-config-modal/remote-config-modal.component';
 import { QuickAddRemoteComponent } from '../features/modals/remote-management/quick-add-remote/quick-add-remote.component';
+import { BackendModalComponent } from '../features/modals/settings/backend-modal/backend-modal.component';
 
 // App Services
 import { IconService } from '../shared/services/icon.service';
@@ -786,6 +787,13 @@ export class HomeComponent implements OnInit, OnDestroy {
         remoteName,
         defaultExportType: 'SpecificRemote',
       },
+    });
+  }
+
+  openBackendModal(): void {
+    this.dialog.open(BackendModalComponent, {
+      ...STANDARD_MODAL_SIZE,
+      disableClose: false,
     });
   }
 

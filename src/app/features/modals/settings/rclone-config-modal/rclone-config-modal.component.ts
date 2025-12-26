@@ -36,10 +36,9 @@ import { FlagConfigService, RcloneBackendOptionsService } from '@app/services';
 import { NotificationService } from '../../../../shared/services/notification.service';
 import { RcConfigOption } from '@app/types';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
-import { SecuritySettingsComponent } from '../security-settings/security-settings.component';
 import { SettingControlComponent } from 'src/app/shared/components';
 
-type PageType = 'home' | 'security' | string;
+type PageType = 'home' | string;
 type GroupedRCloneOptions = Record<string, Record<string, RcConfigOption[]>>;
 
 interface RCloneService {
@@ -169,7 +168,6 @@ const MAIN_CATEGORY_CONFIG: Record<string, { icon: string; description: string }
     MatExpansionModule,
     ScrollingModule,
     SearchContainerComponent,
-    SecuritySettingsComponent,
     SettingControlComponent,
   ],
   templateUrl: './rclone-config-modal.component.html',
@@ -203,18 +201,17 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
 
   // Computed
   hasSearchQuery = computed(() => this.searchQuery().trim().length > 0);
-  isSecurityPage = computed(() => this.currentPage() === 'security');
 
   filteredOptionsCount = computed(() => {
     const page = this.currentPage();
-    if (page === 'home' || page === 'security' || !this.currentCategory()) return 0;
+    if (page === 'home' || !this.currentCategory()) return 0;
     return this.virtualScrollData().length;
   });
 
   totalOptionsCount = computed(() => {
     const page = this.currentPage();
     const category = this.currentCategory();
-    if (page === 'home' || page === 'security' || !category) return 0;
+    if (page === 'home' || !category) return 0;
     return (this.groupedRcloneOptions[page]?.[category] || []).length;
   });
 
@@ -262,7 +259,7 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
             this.performGlobalSearch(query);
             this.updateFilteredServices();
           }
-        } else if (this.currentPage() !== 'security') {
+        } else {
           this.updateVirtualScrollData();
         }
       });
@@ -392,17 +389,12 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   }
 
   navigateTo(service: string, category?: string, optionName?: string): void {
-    if (service === 'security') {
-      this.currentPage.set('security');
-      this.currentCategory.set(null);
-    } else {
-      this.currentPage.set(service);
-      this.currentCategory.set(category || null);
-    }
+    this.currentPage.set(service);
+    this.currentCategory.set(category || null);
 
     this.optionToFocus = optionName || null;
 
-    if (this.currentPage() !== 'home' && this.currentPage() !== 'security') {
+    if (this.currentPage() !== 'home') {
       this.updateVirtualScrollData();
     }
 
@@ -436,7 +428,7 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   getRCloneOptionsForCurrentPage(): RcConfigOption[] {
     const page = this.currentPage();
     const category = this.currentCategory();
-    if (page === 'home' || page === 'security' || !category) return [];
+    if (page === 'home' || !category) return [];
 
     const options = this.groupedRcloneOptions[page]?.[category] || [];
     return this.filterOptionsBySearch(options);
@@ -563,7 +555,6 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
     const page = this.currentPage();
     const category = this.currentCategory();
     if (page === 'home') return 'RClone Configuration';
-    if (page === 'security') return 'Security Settings';
     if (category) return `${page.toUpperCase()} - ${category}`;
     return 'Backend Settings';
   }

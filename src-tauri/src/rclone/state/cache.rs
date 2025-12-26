@@ -2,12 +2,17 @@ use std::collections::HashMap;
 
 use log::{debug, error};
 use serde_json::json;
-use tauri::{Manager, State};
 use tokio::sync::RwLock;
 
 use crate::{
-    rclone::queries::{get_all_remote_configs, get_mounted_remotes, get_remotes, list_serves},
-    utils::types::all_types::{MountedRemote, RemoteCache, ServeInstance},
+    rclone::{
+        backend::BACKEND_MANAGER,
+        queries::{
+            get_all_remote_configs_internal, get_mounted_remotes_internal, get_remotes_internal,
+            list_serves_internal,
+        },
+    },
+    utils::types::{MountedRemote, RemoteCache, ServeInstance},
 };
 
 impl RemoteCache {
@@ -22,9 +27,13 @@ impl RemoteCache {
         }
     }
 
-    pub async fn refresh_remote_list(&self, app_handle: tauri::AppHandle) -> Result<(), String> {
+    pub async fn refresh_remote_list(
+        &self,
+        client: &reqwest::Client,
+        backend: &crate::rclone::backend::types::RcloneBackend,
+    ) -> Result<(), String> {
         let mut remotes = self.remotes.write().await;
-        if let Ok(remote_list) = get_remotes(app_handle.state()).await {
+        if let Ok(remote_list) = get_remotes_internal(client, backend).await {
             *remotes = remote_list;
             Ok(())
         } else {
@@ -33,9 +42,13 @@ impl RemoteCache {
         }
     }
 
-    pub async fn refresh_remote_configs(&self, app_handle: tauri::AppHandle) -> Result<(), String> {
+    pub async fn refresh_remote_configs(
+        &self,
+        client: &reqwest::Client,
+        backend: &crate::rclone::backend::types::RcloneBackend,
+    ) -> Result<(), String> {
         let mut configs = self.configs.write().await;
-        if let Ok(remote_list) = get_all_remote_configs(app_handle.state()).await {
+        if let Ok(remote_list) = get_all_remote_configs_internal(client, backend).await {
             *configs = remote_list;
             Ok(())
         } else {
@@ -46,9 +59,10 @@ impl RemoteCache {
 
     pub async fn refresh_mounted_remotes(
         &self,
-        app_handle: tauri::AppHandle,
+        client: &reqwest::Client,
+        backend: &crate::rclone::backend::types::RcloneBackend,
     ) -> Result<(), String> {
-        match get_mounted_remotes(app_handle.state()).await {
+        match get_mounted_remotes_internal(client, backend).await {
             Ok(mut remotes) => {
                 // Attach profiles from our lookup table
                 let profiles = self.mount_profiles.read().await;
@@ -89,12 +103,22 @@ impl RemoteCache {
         }
     }
 
-    pub async fn refresh_all(&self, app_handle: tauri::AppHandle) -> Result<(), String> {
-        let (res1, res2, res3, res4) = tokio::join!(
-            self.refresh_remote_list(app_handle.clone()),
-            self.refresh_remote_configs(app_handle.clone()),
-            self.refresh_mounted_remotes(app_handle.clone()),
-            self.refresh_serves(app_handle.clone()),
+    #[allow(clippy::type_complexity)]
+    pub async fn refresh_all(
+        &self,
+        client: &reqwest::Client,
+        backend: &crate::rclone::backend::types::RcloneBackend,
+    ) -> Result<(), String> {
+        let (res1, res2, res3, res4): (
+            Result<(), String>,
+            Result<(), String>,
+            Result<(), String>,
+            Result<(), String>,
+        ) = tokio::join!(
+            self.refresh_remote_list(client, backend),
+            self.refresh_remote_configs(client, backend),
+            self.refresh_mounted_remotes(client, backend),
+            self.refresh_serves(client, backend),
         );
 
         if let Err(e) = res1 {
@@ -117,8 +141,12 @@ impl RemoteCache {
         self.mounted.read().await.clone()
     }
 
-    pub async fn refresh_serves(&self, app_handle: tauri::AppHandle) -> Result<(), String> {
-        match list_serves(app_handle.state()).await {
+    pub async fn refresh_serves(
+        &self,
+        client: &reqwest::Client,
+        backend: &crate::rclone::backend::types::RcloneBackend,
+    ) -> Result<(), String> {
+        match list_serves_internal(client, backend).await {
             Ok(response) => {
                 let mut serves_list: Vec<ServeInstance> = response
                     .get("list")
@@ -188,7 +216,9 @@ impl RemoteCache {
     }
 
     pub async fn get_remotes(&self) -> Vec<String> {
-        self.remotes.read().await.clone()
+        let guard = self.remotes.read().await;
+        let v: Vec<String> = guard.clone();
+        v
     }
 
     pub async fn get_configs(&self) -> serde_json::Value {
@@ -244,12 +274,22 @@ impl RemoteCache {
 // --- Tauri Commands ---
 
 #[tauri::command]
-pub async fn get_cached_remotes(cache: State<'_, RemoteCache>) -> Result<Vec<String>, String> {
+pub async fn get_cached_remotes() -> Result<Vec<String>, String> {
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend".to_string())?;
+    let cache = &backend.read().await.remote_cache;
     Ok(cache.get_remotes().await)
 }
 
 #[tauri::command]
-pub async fn get_configs(cache: State<'_, RemoteCache>) -> Result<serde_json::Value, String> {
+pub async fn get_configs() -> Result<serde_json::Value, String> {
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend".to_string())?;
+    let cache = &backend.read().await.remote_cache;
     Ok(cache.get_configs().await)
 }
 
@@ -257,9 +297,14 @@ pub async fn get_configs(cache: State<'_, RemoteCache>) -> Result<serde_json::Va
 #[tauri::command]
 pub async fn get_settings(
     manager: tauri::State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
-    cache: tauri::State<'_, RemoteCache>,
 ) -> Result<serde_json::Value, String> {
     use serde_json::json;
+
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend".to_string())?;
+    let cache = &backend.read().await.remote_cache;
 
     let remotes = manager
         .inner()
@@ -279,27 +324,37 @@ pub async fn get_settings(
 }
 
 #[tauri::command]
-pub async fn get_cached_mounted_remotes(
-    cache: State<'_, RemoteCache>,
-) -> Result<Vec<MountedRemote>, String> {
+pub async fn get_cached_mounted_remotes() -> Result<Vec<MountedRemote>, String> {
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend".to_string())?;
+    let cache = &backend.read().await.remote_cache;
     Ok(cache.get_mounted_remotes().await)
 }
 
 #[tauri::command]
-pub async fn get_cached_serves(
-    cache: State<'_, RemoteCache>,
-) -> Result<Vec<ServeInstance>, String> {
+pub async fn get_cached_serves() -> Result<Vec<ServeInstance>, String> {
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend".to_string())?;
+    let cache = &backend.read().await.remote_cache;
     Ok(cache.get_serves().await)
 }
 
 /// Rename a profile in all cached mounts
 #[tauri::command]
 pub async fn rename_mount_profile_in_cache(
-    cache: State<'_, RemoteCache>,
     remote_name: String,
     old_name: String,
     new_name: String,
 ) -> Result<usize, String> {
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend".to_string())?;
+    let cache = &backend.read().await.remote_cache;
     Ok(cache
         .rename_profile_in_mounts(&remote_name, &old_name, &new_name)
         .await)
@@ -308,11 +363,15 @@ pub async fn rename_mount_profile_in_cache(
 /// Rename a profile in all cached serves
 #[tauri::command]
 pub async fn rename_serve_profile_in_cache(
-    cache: State<'_, RemoteCache>,
     remote_name: String,
     old_name: String,
     new_name: String,
 ) -> Result<usize, String> {
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend".to_string())?;
+    let cache = &backend.read().await.remote_cache;
     Ok(cache
         .rename_profile_in_serves(&remote_name, &old_name, &new_name)
         .await)

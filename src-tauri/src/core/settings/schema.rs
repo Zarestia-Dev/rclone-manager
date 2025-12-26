@@ -64,23 +64,6 @@ pub struct CoreSettings {
     )]
     pub max_tray_items: usize,
 
-    #[setting(
-        label = "Rclone API Port",
-        description = "Port used for Rclone API communication (1024-65535).",
-        min = 1024,
-        max = 65535,
-        requires_restart
-    )]
-    pub rclone_api_port: u16,
-
-    #[setting(
-        label = "Rclone OAuth Port",
-        description = "Port used for Rclone OAuth communication (1024-65535).",
-        min = 1024,
-        max = 65535
-    )]
-    pub rclone_oauth_port: u16,
-
     #[setting(skip)] // Complex type, skip from schema
     pub connection_check_urls: Vec<String>,
 
@@ -156,8 +139,6 @@ impl Default for CoreSettings {
     fn default() -> Self {
         Self {
             max_tray_items: 5,
-            rclone_api_port: 51900,
-            rclone_oauth_port: 51901,
             connection_check_urls: vec![
                 "https://www.google.com".to_string(),
                 "https://www.dropbox.com".to_string(),

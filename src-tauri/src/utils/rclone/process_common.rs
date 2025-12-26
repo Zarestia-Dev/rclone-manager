@@ -85,39 +85,26 @@ pub async fn setup_rclone_environment(
         }
     }
 
-    // If no password found in environment manager, try credential store via rcman
+    // If no password found in environment manager, try retrieving from Local Backend
+    // This is the new standard "Unified" storage
     if !password_found
-        && let Some(manager) = app.try_state::<rcman::SettingsManager<rcman::JsonStorage>>()
+        && let Some(backend) = crate::rclone::backend::BACKEND_MANAGER.get("Local").await
     {
-        if let Some(credentials) = manager.inner().credentials() {
-            use crate::utils::types::all_types::CONFIG_PASSWORD_KEY;
-
-            match credentials.get(CONFIG_PASSWORD_KEY) {
-                Ok(Some(password)) => {
-                    info!(
-                        "🔑 Using stored rclone config password (via rcman) for {} process",
-                        process_type
-                    );
-                    command = command.env("RCLONE_CONFIG_PASS", &password);
-                    password_found = true;
-
-                    // Also update the environment manager for future use
-                    if let Some(env_manager) = app.try_state::<SafeEnvironmentManager>() {
-                        env_manager.set_config_password(password);
-                    }
-                }
-                Ok(None) => {
-                    info!("ℹ️ No stored password found for {} process", process_type);
-                }
-                Err(e) => {
-                    error!("❌ Failed to retrieve credentials via rcman: {}", e);
-                }
-            }
-        } else {
+        let guard = backend.read().await;
+        if let Some(ref password) = guard.config_password
+            && !password.is_empty()
+        {
             info!(
-                "⚠️ Credential storage not available via rcman for {} process",
+                "🔑 Using stored rclone config password (via Local backend) for {} process",
                 process_type
             );
+            command = command.env("RCLONE_CONFIG_PASS", password);
+            password_found = true;
+
+            // Also update the environment manager for future use
+            if let Some(env_manager) = app.try_state::<SafeEnvironmentManager>() {
+                env_manager.set_config_password(password.clone());
+            }
         }
     }
 
@@ -147,15 +134,42 @@ pub async fn create_rclone_command(
 ) -> Result<tauri_plugin_shell::process::Command, String> {
     let command = build_rclone_command(app, None, None, None);
 
+    // Retrieve active backend settings to check for auth
+    let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
+    let auth_args = if let Some(backend) = backend_manager.get_active().await {
+        let guard = backend.read().await;
+        if let Some(ref auth) = guard.connection.auth {
+            // Use password if present, otherwise fall back to username as password
+            let password = auth.password.as_deref().unwrap_or(&auth.username);
+            Some((auth.username.clone(), password.to_string()))
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
     // Standard rclone daemon arguments
-    let command = command.args([
-        "rcd",
-        "--rc-no-auth",
-        "--rc-serve",
-        &format!("--rc-addr=127.0.0.1:{}", port),
-        "--rc-allow-origin",
-        "*",
-    ]);
+    let mut args = vec![
+        "rcd".to_string(),
+        "--rc-serve".to_string(),
+        format!("--rc-addr=127.0.0.1:{}", port),
+        "--rc-allow-origin".to_string(),
+        "*".to_string(),
+    ];
+
+    if let Some((user, pass)) = auth_args {
+        // Use auth args
+        info!("🔐 Starting rclone with authentication enabled");
+        args.push(format!("--rc-user={}", user));
+        args.push(format!("--rc-pass={}", pass));
+    } else {
+        // No auth (default)
+        info!("🔓 Starting rclone with NO authentication");
+        args.push("--rc-no-auth".to_string());
+    }
+
+    let command = command.args(args);
 
     // Set up environment variables
     let command = setup_rclone_environment(app, command, process_type).await?;

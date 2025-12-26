@@ -1,5 +1,3 @@
-// Add these to job.rs
-
 use chrono::Utc;
 use log::{debug, error, info, warn};
 use serde_json::{Value, json};
@@ -9,7 +7,8 @@ use tokio::time::sleep;
 
 use crate::{
     core::scheduler::engine::get_next_run,
-    rclone::state::{engine::ENGINE_STATE, scheduled_tasks::ScheduledTasksCache},
+    rclone::backend::BACKEND_MANAGER,
+    rclone::state::scheduled_tasks::ScheduledTasksCache,
     utils::{
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, core, job},
@@ -40,31 +39,44 @@ pub struct JobMetadata {
 pub async fn submit_job(
     app: AppHandle,
     client: reqwest::Client,
-    url: String,
+    request: reqwest::RequestBuilder,
     payload: Value,
     metadata: JobMetadata,
 ) -> Result<(u64, Value), String> {
-    let (jobid, response_json) = send_job_request(client.clone(), url, payload, &metadata).await?;
+    let (jobid, response_json) = send_job_request(request, payload, &metadata).await?;
 
-    // Add to cache
-    let job_cache = app.state::<JobCache>();
-    add_job_to_cache(job_cache, jobid, &metadata).await;
+    // Determine active backend to associate job with
+    let backend_name = if let Some(backend) = BACKEND_MANAGER.get_active().await {
+        let backend = backend.read().await;
+        // Add to cache
+        add_job_to_cache(&backend.job_cache, jobid, &metadata, &backend.name).await;
+        Some(backend.name.clone())
+    } else {
+        warn!(
+            "Failed to get backend for remote '{}'. Job {} will not be cached.",
+            metadata.remote_name, jobid
+        );
+        None
+    };
 
-    // Monitor in background - don't wait
-    let app_clone = app.clone();
-    let meta_clone = metadata.clone();
-    let client_clone = client.clone();
+    if let Some(bk_name) = backend_name {
+        // Monitor in background - don't wait
+        let app_clone = app.clone();
+        let meta_clone = metadata.clone();
+        let client_clone = client.clone();
 
-    tauri::async_runtime::spawn(async move {
-        let _ = monitor_job(
-            meta_clone.remote_name,
-            &meta_clone.operation_name,
-            jobid,
-            app_clone,
-            client_clone,
-        )
-        .await;
-    });
+        tauri::async_runtime::spawn(async move {
+            let _ = monitor_job(
+                bk_name,
+                meta_clone.remote_name,
+                &meta_clone.operation_name,
+                jobid,
+                app_clone,
+                client_clone,
+            )
+            .await;
+        });
+    }
 
     let _ = app.emit(JOB_CACHE_CHANGED, jobid);
     Ok((jobid, response_json))
@@ -75,43 +87,58 @@ pub async fn submit_job(
 pub async fn submit_job_and_wait(
     app: AppHandle,
     client: reqwest::Client,
-    url: String,
+    request: reqwest::RequestBuilder,
     payload: Value,
     metadata: JobMetadata,
 ) -> Result<(u64, Value), String> {
-    let (jobid, response_json) = send_job_request(client.clone(), url, payload, &metadata).await?;
+    let (jobid, response_json) = send_job_request(request, payload, &metadata).await?;
 
-    // Add to cache
-    let job_cache = app.state::<JobCache>();
-    add_job_to_cache(job_cache, jobid, &metadata).await;
+    // Determine active backend
+    let backend_name = if let Some(backend) = BACKEND_MANAGER.get_active().await {
+        let backend = backend.read().await;
+        add_job_to_cache(&backend.job_cache, jobid, &metadata, &backend.name).await;
+        Some(backend.name.clone())
+    } else {
+        warn!(
+            "Failed to get backend for remote '{}'. Job {} will not be cached.",
+            metadata.remote_name, jobid
+        );
+        None
+    };
 
-    // Monitor and WAIT for completion
-    let result = monitor_job(
-        metadata.remote_name.clone(),
-        &metadata.operation_name,
-        jobid,
-        app.clone(),
-        client,
-    )
-    .await;
+    if let Some(bk_name) = backend_name {
+        // Monitor and WAIT for completion
+        let result = monitor_job(
+            bk_name,
+            metadata.remote_name.clone(),
+            &metadata.operation_name,
+            jobid,
+            app.clone(),
+            client,
+        )
+        .await;
+
+        // Return error if job failed
+        result.map_err(|e| e.to_string())?;
+    } else {
+        warn!(
+            "Not monitoring job {} because no backend context found.",
+            jobid
+        );
+    }
 
     let _ = app.emit(JOB_CACHE_CHANGED, jobid);
-
-    // Return error if job failed
-    result.map_err(|e| e.to_string())?;
 
     Ok((jobid, response_json))
 }
 
 /// Internal: Send job request and parse response
 async fn send_job_request(
-    client: reqwest::Client,
-    url: String,
+    client_builder: reqwest::RequestBuilder,
     payload: Value,
     metadata: &JobMetadata,
 ) -> Result<(u64, Value), String> {
-    let response = client
-        .post(&url)
+    let response = client_builder
         .json(&payload)
         .send()
         .await
@@ -155,8 +182,13 @@ async fn send_job_request(
     Ok((jobid, response_json))
 }
 
-/// Internal: Add job to cache
-async fn add_job_to_cache(job_cache: State<'_, JobCache>, jobid: u64, metadata: &JobMetadata) {
+/// Internal: Add job to cache (takes reference to JobCache)
+async fn add_job_to_cache(
+    job_cache: &JobCache,
+    jobid: u64,
+    metadata: &JobMetadata,
+    backend_name: &str,
+) {
     job_cache
         .add_job(JobInfo {
             jobid,
@@ -170,22 +202,174 @@ async fn add_job_to_cache(job_cache: State<'_, JobCache>, jobid: u64, metadata: 
             group: format!("{}/{}", metadata.job_type, jobid),
             profile: metadata.profile.clone(),
             source_ui: metadata.source_ui.clone(),
+            backend_name: Some(backend_name.to_string()),
         })
         .await;
 }
 
-pub async fn monitor_job(
+use crate::rclone::backend::types::RcloneBackend;
+
+/// Poll a job until completion (for short-running operations without cache overhead)
+pub async fn poll_job(
+    jobid: u64,
+    client: reqwest::Client,
+    backend: RcloneBackend,
+) -> Result<Value, String> {
+    let api_url = backend.api_url();
+    let job_status_url = EndpointHelper::build_url(&api_url, job::STATUS);
+    let mut consecutive_errors = 0;
+    const MAX_CONSECUTIVE_ERRORS: u8 = 3;
+
+    loop {
+        match backend
+            .inject_auth(client.post(&job_status_url))
+            .json(&json!({ "jobid": jobid }))
+            .send()
+            .await
+        {
+            Ok(response) => {
+                let body = response.text().await.unwrap_or_default();
+                match serde_json::from_str::<Value>(&body) {
+                    Ok(job_status) => {
+                        let finished = job_status
+                            .get("finished")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(false);
+
+                        if finished {
+                            let success = job_status
+                                .get("success")
+                                .and_then(|v| v.as_bool())
+                                .unwrap_or(false);
+
+                            if success {
+                                return Ok(job_status
+                                    .get("output")
+                                    .cloned()
+                                    .unwrap_or_else(|| json!({})));
+                            } else {
+                                let error = job_status
+                                    .get("error")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("Operation failed")
+                                    .to_string();
+                                return Err(error);
+                            }
+                        }
+                    }
+                    Err(e) => warn!("Failed to parse job status: {e}"),
+                }
+            }
+            Err(e) => {
+                consecutive_errors += 1;
+                if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
+                    return Err(format!("Too many errors monitoring job: {e}"));
+                }
+                warn!("Error checking job status: {e}");
+            }
+        }
+        sleep(Duration::from_millis(200)).await;
+    }
+}
+
+// ============================================================================
+// TAURI COMMANDS (MOVED FROM STATE)
+// ============================================================================
+
+#[tauri::command]
+pub async fn get_jobs() -> Result<Vec<JobInfo>, String> {
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend".to_string())?;
+    let job_cache = &backend.read().await.job_cache;
+    Ok(job_cache.get_jobs().await)
+}
+
+#[tauri::command]
+pub async fn delete_job(jobid: u64) -> Result<(), String> {
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend".to_string())?;
+    let job_cache = &backend.read().await.job_cache;
+    job_cache.delete_job(jobid).await
+}
+
+#[tauri::command]
+pub async fn get_job_status(jobid: u64) -> Result<Option<JobInfo>, String> {
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend".to_string())?;
+    let job_cache = &backend.read().await.job_cache;
+    Ok(job_cache.get_job(jobid).await)
+}
+
+#[tauri::command]
+pub async fn get_active_jobs() -> Result<Vec<JobInfo>, String> {
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend".to_string())?;
+    let job_cache = &backend.read().await.job_cache;
+    Ok(job_cache.get_active_jobs().await)
+}
+
+#[tauri::command]
+pub async fn get_jobs_by_source(source: String) -> Result<Vec<JobInfo>, String> {
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend".to_string())?;
+    let job_cache = &backend.read().await.job_cache;
+    Ok(job_cache.get_jobs_by_source(&source).await)
+}
+
+/// Rename a profile in all cached running jobs
+#[tauri::command]
+pub async fn rename_profile_in_cache(
     remote_name: String,
+    old_name: String,
+    new_name: String,
+) -> Result<usize, String> {
+    let backend = BACKEND_MANAGER
+        .get_active()
+        .await
+        .ok_or("No active backend".to_string())?;
+    let job_cache = &backend.read().await.job_cache;
+    Ok(job_cache
+        .rename_profile(&remote_name, &old_name, &new_name)
+        .await)
+}
+
+pub async fn monitor_job(
+    backend_name: String,
+    remote_name: String, // Used for logging
     operation: &str,
     jobid: u64,
     app: AppHandle,
     client: reqwest::Client,
 ) -> Result<(), RcloneError> {
-    let job_cache = app.state::<JobCache>();
     let scheduled_tasks_cache = app.state::<ScheduledTasksCache>();
 
-    let job_status_url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, job::STATUS);
-    let stats_url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::STATS);
+    // Get API URL and JobCache from backend (using backend_name)
+    let (backend_copy, job_cache) = if let Some(backend) = BACKEND_MANAGER.get(&backend_name).await
+    {
+        let backend = backend.read().await;
+        (
+            backend.clone(),
+            backend.job_cache.clone(), // Clone Arc
+        )
+    } else {
+        return Err(RcloneError::ConfigError(format!(
+            "Backend '{}' not found",
+            backend_name
+        )));
+    };
+
+    let job_status_url = EndpointHelper::build_url(&backend_copy.api_url(), job::STATUS);
+    let stats_url = EndpointHelper::build_url(&backend_copy.api_url(), core::STATS);
 
     info!("Starting monitoring for job {jobid} ({operation})");
 
@@ -207,13 +391,13 @@ pub async fn monitor_job(
         }
 
         // Get job status and stats in parallel
-        let status_fut = client
-            .post(&job_status_url)
+        let status_fut = backend_copy
+            .inject_auth(client.post(&job_status_url))
             .json(&json!({ "jobid": jobid }))
             .send();
 
-        let stats_fut = client
-            .post(&stats_url)
+        let stats_fut = backend_copy
+            .inject_auth(client.post(&stats_url))
             .json(&json!({ "jobid": jobid }))
             .send();
 
@@ -246,7 +430,7 @@ pub async fn monitor_job(
                             operation,
                             job_status,
                             &app,
-                            job_cache,
+                            &job_cache,
                             scheduled_tasks_cache,
                         )
                         .await;
@@ -285,7 +469,7 @@ pub async fn handle_job_completion(
     operation: &str,
     job_status: Value,
     app: &AppHandle,
-    job_cache: State<'_, JobCache>,
+    job_cache: &JobCache,
     scheduled_tasks_cache: State<'_, ScheduledTasksCache>,
 ) -> Result<(), RcloneError> {
     let success = job_status
@@ -373,21 +557,50 @@ pub async fn handle_job_completion(
 }
 
 /// Stop a running job
+/// Stop a running job
 #[tauri::command]
 pub async fn stop_job(
     app: AppHandle,
-    job_cache: State<'_, JobCache>,
     scheduled_tasks_cache: State<'_, ScheduledTasksCache>,
     jobid: u64,
     remote_name: String,
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, job::STOP);
+    // Find the backend that owns this job
+    let mut target_backend = None;
+    let names = BACKEND_MANAGER.list_names().await;
+
+    for name in names {
+        if let Some(backend) = BACKEND_MANAGER.get(&name).await {
+            let job_cache = backend.read().await.job_cache.clone();
+            if job_cache.get_job(jobid).await.is_some() {
+                target_backend = Some(backend);
+                break;
+            }
+        }
+    }
+
+    // Use found backend, or fallback to active if not found in any cache
+    let backend = if let Some(b) = target_backend {
+        b
+    } else {
+        debug!(
+            "Job {} not found in any backend cache, falling back to active backend",
+            jobid
+        );
+        BACKEND_MANAGER
+            .get_active()
+            .await
+            .ok_or_else(|| format!("Job {} not found and no active backend", jobid))?
+    };
+
+    let backend_guard = backend.read().await;
+    let job_cache = &backend_guard.job_cache;
+    let url = EndpointHelper::build_url(&backend_guard.api_url(), job::STOP);
     let payload = json!({ "jobid": jobid });
 
-    let response = state
-        .client
-        .post(&url)
+    let response = backend_guard
+        .inject_auth(state.client.post(&url))
         .json(&payload)
         .send()
         .await

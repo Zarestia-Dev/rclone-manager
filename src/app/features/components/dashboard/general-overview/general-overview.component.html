@@ -1,6 +1,23 @@
 <div class="general-overview" animate.enter="fade-in-out-enter" animate.leave="fade-in-out-leave">
   <div class="overview-header" role="banner">
     <div class="header-content">
+      <!-- Backend Indicator -->
+      <button
+        class="backend-indicator"
+        (click)="openBackendModal.emit()"
+        matTooltip="Click to manage backends"
+        matTooltipPosition="below"
+      >
+        <span
+          class="status-dot"
+          [ngClass]="
+            backendService.getStatusClass(backendService.backends()[0]?.status || 'disconnected')
+          "
+        ></span>
+        <span class="backend-name">{{ backendService.activeBackend() }}</span>
+        <mat-icon svgIcon="chevron-down" class="chevron"></mat-icon>
+      </button>
+
       <div class="title-section" aria-label="Application title">
         <img src="assets/rclone.svg" alt="Rclone Logo" class="app-icon" />
         <h2 id="app-title">RClone Manager</h2>

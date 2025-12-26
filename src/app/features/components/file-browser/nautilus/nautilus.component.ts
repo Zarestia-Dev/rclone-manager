@@ -12,8 +12,9 @@ import {
   HostListener,
   effect,
   untracked,
+  DestroyRef,
 } from '@angular/core';
-import { toSignal, toObservable } from '@angular/core/rxjs-interop';
+import { toSignal, toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, firstValueFrom, from, of } from 'rxjs';
 import { catchError, finalize, map, switchMap } from 'rxjs/operators';
 import { NgTemplateOutlet } from '@angular/common';
@@ -115,6 +116,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
   private readonly appSettingsService = inject(AppSettingsService);
   public readonly iconService = inject(IconService);
   public readonly fileViewerService = inject(FileViewerService);
+  private readonly destroyRef = inject(DestroyRef);
 
   // --- Outputs ---
   @Output() closeOverlay = new EventEmitter<void>();
@@ -417,7 +419,9 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
   constructor() {
     this.setupEffects();
-    this.loadSettings();
+    this.setupEffects();
+    this.appSettingsService.loadSettings();
+    this.subscribeToSettings();
   }
 
   async ngOnInit(): Promise<void> {
@@ -1380,37 +1384,46 @@ export class NautilusComponent implements OnInit, OnDestroy {
     }
   }
 
-  private async loadSettings(): Promise<void> {
-    try {
-      const [layout, sortKey, showHidden, gridIconSize, listIconSize] = await Promise.all([
-        this.appSettingsService.getSettingValue<'grid' | 'list'>('nautilus.default_layout'),
-        this.appSettingsService.getSettingValue<string>('nautilus.sort_key'),
-        this.appSettingsService.getSettingValue<boolean>('nautilus.show_hidden_items'),
-        this.appSettingsService.getSettingValue<number>('nautilus.grid_icon_size'),
-        this.appSettingsService.getSettingValue<number>('nautilus.list_icon_size'),
-      ]);
+  private subscribeToSettings(): void {
+    combineLatest([
+      this.appSettingsService.selectSetting('nautilus.default_layout'),
+      this.appSettingsService.selectSetting('nautilus.sort_key'),
+      this.appSettingsService.selectSetting('nautilus.show_hidden_items'),
+      this.appSettingsService.selectSetting('nautilus.grid_icon_size'),
+      this.appSettingsService.selectSetting('nautilus.list_icon_size'),
+    ])
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(([layout, sortKey, showHidden, gridIconSize, listIconSize]) => {
+        if (layout?.value && layout.value !== this.layout()) {
+          this.layout.set(layout.value);
+        }
+        if (sortKey?.value && sortKey.value !== this.sortKey()) {
+          this.sortKey.set(sortKey.value);
+        }
+        if (showHidden?.value !== undefined && showHidden.value !== this.showHidden()) {
+          this.showHidden.set(showHidden.value);
+        }
 
-      if (layout) this.layout.set(layout);
-      if (sortKey) this.sortKey.set(sortKey);
-      if (showHidden !== undefined) this.showHidden.set(showHidden);
+        if (gridIconSize?.value) this.savedGridIconSize.set(gridIconSize.value);
+        if (listIconSize?.value) this.savedListIconSize.set(listIconSize.value);
 
-      if (gridIconSize) this.savedGridIconSize.set(gridIconSize);
-      if (listIconSize) this.savedListIconSize.set(listIconSize);
+        // Update current icon size if needed
+        const currentLayout = this.layout();
+        // If we just switched layout or sizes updated, re-evaluate
+        const savedSize =
+          currentLayout === 'grid' ? this.savedGridIconSize() : this.savedListIconSize();
 
-      // Apply an initial icon size based on loaded settings (saved per-layout) or fall back to center
-      const currentLayout = this.layout();
-      const savedSize =
-        currentLayout === 'grid' ? this.savedGridIconSize() : this.savedListIconSize();
-      if (savedSize) {
-        this.iconSize.set(savedSize);
-      } else {
-        const sizes = currentLayout === 'grid' ? this.GRID_ICON_SIZES : this.LIST_ICON_SIZES;
-        const centerIndex = Math.floor(sizes.length / 2);
-        this.iconSize.set(sizes[centerIndex]);
-      }
-    } catch (e) {
-      console.warn('Settings load error', e);
-    }
+        if (savedSize && savedSize !== this.iconSize()) {
+          this.iconSize.set(savedSize);
+        } else if (!savedSize) {
+          // Fallback if no saved size yet
+          const sizes = currentLayout === 'grid' ? this.GRID_ICON_SIZES : this.LIST_ICON_SIZES;
+          const centerIndex = Math.floor(sizes.length / 2);
+          if (this.iconSize() !== sizes[centerIndex]) {
+            this.iconSize.set(sizes[centerIndex]);
+          }
+        }
+      });
   }
 
   trackByFile(i: number, item: FileBrowserItem): string {

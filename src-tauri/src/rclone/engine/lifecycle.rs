@@ -7,8 +7,9 @@ use crate::{
         initialization::apply_core_settings, settings::operations::core::load_startup_settings,
         tray::core::update_tray_menu,
     },
+    rclone::backend::{BACKEND_MANAGER, types::BackendType},
     utils::types::{
-        all_types::{RcApiEngine, RcloneState, RemoteCache},
+        all_types::{RcApiEngine, RcloneState},
         events::{
             ENGINE_RESTARTED, RCLONE_ENGINE_ERROR, RCLONE_ENGINE_PASSWORD_ERROR,
             RCLONE_ENGINE_PATH_ERROR, RCLONE_ENGINE_READY,
@@ -17,63 +18,85 @@ use crate::{
 };
 use rcman::{JsonStorage, SettingsManager};
 
+/// Check if the active backend is a local backend (requires process management)
+fn is_active_backend_local() -> bool {
+    // Use block_on since this is called from sync context
+    tauri::async_runtime::block_on(async {
+        if let Some(backend) = BACKEND_MANAGER.get_active().await {
+            let guard = backend.read().await;
+            guard.backend_type == BackendType::Local
+        } else {
+            // Default to true if no backend (shouldn't happen)
+            true
+        }
+    })
+}
+
 impl RcApiEngine {
     pub fn init(&mut self, app: &AppHandle) {
-        // if self.rclone_path.as_os_str().is_empty() {
-        //     self.rclone_path = read_rclone_path(app);
-        // }
-
         let app_handle = app.clone();
 
-        // Test Config before starting
-        if self.validate_config_sync(app) {
-            start(self, app);
-        }
-
-        thread::spawn(move || {
-            while !app_handle.state::<RcloneState>().is_shutting_down() {
-                {
-                    let mut engine = match RcApiEngine::lock_engine() {
-                        Ok(engine) => engine,
-                        Err(e) => {
-                            error!("❗ Failed to acquire lock on RcApiEngine: {e}");
-                            break;
-                        }
-                    };
-
-                    if engine.should_exit {
-                        break;
-                    }
-
-                    // if !engine.rclone_path.exists() {
-                    //     engine.handle_invalid_path(&app_handle);
-                    //     continue;
-                    // }
-
-                    // if engine.password_error {
-                    //     engine.test_config_and_password(&app_handle);
-                    //     continue;
-                    // }
-
-                    if !engine.is_api_healthy() && !engine.should_exit {
-                        debug!("🔄 Rclone API not healthy, attempting restart...");
-                        start(&mut engine, &app_handle);
-                    }
-                }
-
-                thread::sleep(std::time::Duration::from_secs(5)); // Increased to reduce restart frequency
+        // Only start and monitor process for Local backends
+        if is_active_backend_local() {
+            // Test Config before starting
+            if self.validate_config_sync(app) {
+                start(self, app);
             }
 
-            info!("🛑 Engine monitoring thread exiting.");
-        });
+            // Monitoring thread for Local backend only
+            thread::spawn(move || {
+                while !app_handle.state::<RcloneState>().is_shutting_down() {
+                    // Only monitor if we're still on a Local backend
+                    if !is_active_backend_local() {
+                        debug!("📡 Active backend is remote, skipping process monitoring");
+                        thread::sleep(std::time::Duration::from_secs(5));
+                        continue;
+                    }
+
+                    {
+                        let mut engine = match RcApiEngine::lock_engine() {
+                            Ok(engine) => engine,
+                            Err(e) => {
+                                error!("❗ Failed to acquire lock on RcApiEngine: {e}");
+                                break;
+                            }
+                        };
+
+                        if engine.should_exit {
+                            break;
+                        }
+
+                        if !engine.is_api_healthy() && !engine.should_exit {
+                            debug!("🔄 Rclone API not healthy, attempting restart...");
+                            start(&mut engine, &app_handle);
+                        }
+                    }
+
+                    thread::sleep(std::time::Duration::from_secs(5));
+                }
+
+                info!("🛑 Engine monitoring thread exiting.");
+            });
+        } else {
+            // Remote backend: just refresh cache, no process management
+            info!("📡 Active backend is remote, skipping local engine initialization");
+            let app = app.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = refresh_active_backend_cache(&app).await {
+                    error!("Failed to refresh remote backend cache: {e}");
+                }
+            });
+        }
     }
 
     pub fn shutdown(&mut self) {
         info!("🛑 Shutting down Rclone engine...");
         self.should_exit = true;
 
-        // Stop any running process
-        if let Err(e) = stop(self) {
+        // Only stop process for Local backends
+        if is_active_backend_local()
+            && let Err(e) = stop(self)
+        {
             error!("Failed to stop engine cleanly: {e}");
         }
 
@@ -83,7 +106,33 @@ impl RcApiEngine {
     }
 }
 
+/// Refresh the cache for the active backend (works for both Local and Remote)
+async fn refresh_active_backend_cache(app: &AppHandle) -> Result<(), String> {
+    let client = app.state::<RcloneState>().client.clone();
+
+    if let Some(backend) = BACKEND_MANAGER.get_active().await {
+        let guard = backend.read().await;
+        let cache = guard.remote_cache.clone();
+
+        cache.refresh_all(&client, &guard).await?;
+
+        if let Err(e) = update_tray_menu(app.clone(), 0).await {
+            error!("Failed to update tray menu: {e}");
+        }
+
+        Ok(())
+    } else {
+        Err("No active backend found".to_string())
+    }
+}
+
 pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
+    // Only start process for Local backends
+    if !is_active_backend_local() {
+        debug!("📡 Active backend is remote, skipping process start");
+        return;
+    }
+
     // If engine is not running and updating is true, do not start
     if !engine.running && engine.updating {
         debug!("⏸️ Engine is in updating state, not starting until updating is false");
@@ -165,11 +214,26 @@ pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
                                 }
                             });
 
-                            let cache = app_handle.state::<RemoteCache>();
+                            let client = app_handle
+                                .state::<crate::utils::types::all_types::RcloneState>()
+                                .client
+                                .clone();
+                            if let Some(backend) =
+                                crate::rclone::backend::BACKEND_MANAGER.get_active().await
+                            {
+                                let guard = backend.read().await;
+                                let cache = guard.remote_cache.clone();
+                                let backend_copy = guard.clone();
+                                drop(guard);
 
-                            match cache.refresh_all(app_handle.clone()).await {
-                                Ok(_) => debug!("Caches refreshed successfully after engine ready"),
-                                Err(e) => error!("Failed to refresh caches: {e}"),
+                                match cache.refresh_all(&client, &backend_copy).await {
+                                    Ok(_) => {
+                                        debug!("Caches refreshed successfully after engine ready")
+                                    }
+                                    Err(e) => error!("Failed to refresh caches: {e}"),
+                                }
+                            } else {
+                                error!("No active backend found to refresh caches");
                             }
 
                             if let Err(e) = update_tray_menu(app_handle.clone(), 0).await {
@@ -324,8 +388,8 @@ fn restart_engine_blocking(app: &AppHandle, change_type: &str) -> Result<(), Str
             }
         }
         "api_port" => {
-            debug!("🔄 API port updated in ENGINE_STATE");
-            // Port is already updated in ENGINE_STATE by the caller
+            debug!("🔄 API port updated in BACKEND_MANAGER");
+            // Port is already updated in BACKEND_MANAGER by the caller
         }
         "rclone_config_file" => {
             debug!("🔄 Config file updated in RcloneState");
