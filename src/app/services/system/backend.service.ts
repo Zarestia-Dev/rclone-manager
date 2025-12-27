@@ -31,6 +31,7 @@ export class BackendService extends TauriBaseService {
       this.isLoading.set(true);
       const backends = await this.invokeCommand<BackendInfo[]>('list_backends');
       this.backends.set(backends);
+      console.log(backends);
 
       // Update active backend name
       const active = backends.find(b => b.is_active);
@@ -94,7 +95,7 @@ export class BackendService extends TauriBaseService {
         name: config.name,
         host: config.host,
         port: config.port,
-        backendType: config.backend_type,
+        isLocal: config.is_local,
         username: config.username,
         password: config.password,
         configPassword: config.config_password,
@@ -122,11 +123,9 @@ export class BackendService extends TauriBaseService {
         name: config.name,
         host: config.host,
         port: config.port,
-        backendType: config.backend_type,
         username: config.username,
         password: config.password,
         configPassword: config.config_password,
-        oauthHost: config.oauth_host,
         oauthPort: config.oauth_port,
       });
 
@@ -191,9 +190,39 @@ export class BackendService extends TauriBaseService {
   }
 
   /**
+   * Check startup connectivity and sync with backend state
+   */
+  async checkStartupConnectivity(): Promise<void> {
+    const activeName = await this.getActiveBackend();
+    if (activeName === 'Local') return;
+
+    // Rust side handles the check and fallback logic on initialization.
+    // We just need to verify if the active backend is what we think it is.
+    // If Rust fell back to Local, getActiveBackend() will return Local now?
+    // Actually getActiveBackend calling 'get_active_backend' command should be truth.
+
+    // But we also want to populate cache info (version/OS)
+    this.testConnection(activeName);
+  }
+
+  /**
+   * Check all backends connectivity in background
+   */
+  async checkAllBackends(): Promise<void> {
+    const backends = this.backends();
+    for (const backend of backends) {
+      if (backend.name !== 'Local') {
+        // Run test in background (don't await individually, let them run)
+        this.testConnection(backend.name);
+      }
+    }
+  }
+
+  /**
    * Get status indicator class for a backend
    */
-  getStatusClass(status: string): string {
+  getStatusClass(status?: string): string {
+    if (!status) return 'disconnected';
     if (status === 'connected') return 'connected';
     if (status.startsWith('error')) return 'error';
     return 'disconnected';

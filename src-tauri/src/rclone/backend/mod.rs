@@ -6,4 +6,4 @@
 mod manager;
 pub mod types;
 
-pub use manager::BACKEND_MANAGER;
+pub use manager::{BACKEND_MANAGER, BackendManager};

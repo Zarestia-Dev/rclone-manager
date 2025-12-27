@@ -7,7 +7,7 @@ use crate::{
         initialization::apply_core_settings, settings::operations::core::load_startup_settings,
         tray::core::update_tray_menu,
     },
-    rclone::backend::{BACKEND_MANAGER, types::BackendType},
+    rclone::backend::BACKEND_MANAGER,
     utils::types::{
         all_types::{RcApiEngine, RcloneState},
         events::{
@@ -22,13 +22,8 @@ use rcman::{JsonStorage, SettingsManager};
 fn is_active_backend_local() -> bool {
     // Use block_on since this is called from sync context
     tauri::async_runtime::block_on(async {
-        if let Some(backend) = BACKEND_MANAGER.get_active().await {
-            let guard = backend.read().await;
-            guard.backend_type == BackendType::Local
-        } else {
-            // Default to true if no backend (shouldn't happen)
-            true
-        }
+        let backend = BACKEND_MANAGER.get_active().await;
+        backend.is_local
     })
 }
 
@@ -109,21 +104,16 @@ impl RcApiEngine {
 /// Refresh the cache for the active backend (works for both Local and Remote)
 async fn refresh_active_backend_cache(app: &AppHandle) -> Result<(), String> {
     let client = app.state::<RcloneState>().client.clone();
+    let backend = BACKEND_MANAGER.get_active().await;
+    let cache = BACKEND_MANAGER.remote_cache.clone();
 
-    if let Some(backend) = BACKEND_MANAGER.get_active().await {
-        let guard = backend.read().await;
-        let cache = guard.remote_cache.clone();
+    cache.refresh_all(&client, &backend).await?;
 
-        cache.refresh_all(&client, &guard).await?;
-
-        if let Err(e) = update_tray_menu(app.clone(), 0).await {
-            error!("Failed to update tray menu: {e}");
-        }
-
-        Ok(())
-    } else {
-        Err("No active backend found".to_string())
+    if let Err(e) = update_tray_menu(app.clone(), 0).await {
+        error!("Failed to update tray menu: {e}");
     }
+
+    Ok(())
 }
 
 pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
@@ -218,22 +208,15 @@ pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
                                 .state::<crate::utils::types::all_types::RcloneState>()
                                 .client
                                 .clone();
-                            if let Some(backend) =
-                                crate::rclone::backend::BACKEND_MANAGER.get_active().await
-                            {
-                                let guard = backend.read().await;
-                                let cache = guard.remote_cache.clone();
-                                let backend_copy = guard.clone();
-                                drop(guard);
 
-                                match cache.refresh_all(&client, &backend_copy).await {
-                                    Ok(_) => {
-                                        debug!("Caches refreshed successfully after engine ready")
-                                    }
-                                    Err(e) => error!("Failed to refresh caches: {e}"),
-                                }
-                            } else {
-                                error!("No active backend found to refresh caches");
+                            let backend =
+                                crate::rclone::backend::BACKEND_MANAGER.get_active().await;
+                            let cache =
+                                crate::rclone::backend::BACKEND_MANAGER.remote_cache.clone();
+
+                            match cache.refresh_all(&client, &backend).await {
+                                Ok(_) => debug!("Caches refreshed successfully after engine ready"),
+                                Err(e) => error!("Failed to refresh caches: {e}"),
                             }
 
                             if let Err(e) = update_tray_menu(app_handle.clone(), 0).await {
@@ -259,7 +242,7 @@ pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
             error!("❌ Failed to spawn Rclone process: {e}");
             if engine.path_error {
                 if let Err(err) = app.emit(RCLONE_ENGINE_PATH_ERROR, ()) {
-                    error!("Failed to emit path error event: {err}");
+                    error!("Failed to emit path_error event: {err}");
                 }
             } else if let Err(err) = app.emit(RCLONE_ENGINE_ERROR, ()) {
                 error!("Failed to emit event: {err}");

@@ -105,12 +105,8 @@ pub async fn start_serve(
     }
     let state = app.state::<RcloneState>();
     let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
-    let backend = backend_manager
-        .get_active()
-        .await
-        .ok_or_else(|| "No active backend".to_string())?;
-    let backend_read = backend.read().await;
-    let api_url = backend_read.api_url();
+    let backend = backend_manager.get_active().await;
+    let api_url = backend.api_url();
 
     // Validate serve type is specified
     let serve_type = params
@@ -217,7 +213,7 @@ pub async fn start_serve(
     // It does NOT return a jobid.
     // So we just use standard request, BUT we must inject auth.
 
-    let response = backend_read
+    let response = backend
         .inject_auth(state.client.post(&url))
         .json(&payload)
         .send()
@@ -264,7 +260,7 @@ pub async fn start_serve(
     );
 
     // Store the profile mapping for this serve ID
-    let cache = &backend_read.remote_cache;
+    let cache = &backend_manager.remote_cache;
     cache
         .store_serve_profile(&serve_id, params.profile.clone())
         .await;
@@ -303,15 +299,11 @@ pub async fn stop_serve(
     // If we iterate backends to find serve_id, or if we assume active backend.
     // Let's use active for now, or maybe update `stop_serve` to take remote_name.
     // Given the difficulty, active is safest fallback for now.
-    let backend = backend_manager
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), serve::STOP);
+    let backend = backend_manager.get_active().await;
+    let url = EndpointHelper::build_url(&backend.api_url(), serve::STOP);
     let payload = json!({ "id": server_id });
 
-    let response = backend_guard
+    let response = backend
         .inject_auth(state.client.post(&url))
         .json(&payload)
         .send()
@@ -346,14 +338,10 @@ pub async fn stop_all_serves(
     info!("🗑️ Stopping all serves");
 
     let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
-    let backend = backend_manager
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), serve::STOPALL);
+    let backend = backend_manager.get_active().await;
+    let url = EndpointHelper::build_url(&backend.api_url(), serve::STOPALL);
 
-    let response = backend_guard
+    let response = backend
         .inject_auth(state.client.post(&url))
         .send()
         .await

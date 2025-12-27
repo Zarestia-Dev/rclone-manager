@@ -13,6 +13,7 @@ pub mod core {
     ///
     /// Eg
     ///
+    /// ```text
     ///     rclone rc core/bwlimit rate=off
     ///     {
     ///         "bytesPerSecond": -1,
@@ -34,10 +35,12 @@ pub mod core {
     ///         "bytesPerSecondRx": 131072,
     ///         "rate": "1M"
     ///     }
+    /// ```
     ///
     ///
     /// If the rate parameter is not supplied then the bandwidth is queried
     ///
+    /// ```text
     ///     rclone rc core/bwlimit
     ///     {
     ///         "bytesPerSecond": 1048576,
@@ -45,6 +48,7 @@ pub mod core {
     ///         "bytesPerSecondRx": 1048576,
     ///         "rate": "1M"
     ///     }
+    /// ```
     ///
     /// The format of the parameter is exactly the same as passed to --bwlimit
     /// except only one bandwidth may be specified.
@@ -191,7 +195,7 @@ pub mod core {
     ///
     /// Returns the following values:
     ///
-    /// ```
+    /// ```text
     /// {
     /// "bytes": total transferred bytes since the start of the group,
     /// "checks": number of files checked,
@@ -269,7 +273,7 @@ pub mod core {
     /// - group - name of the stats group (string)
     ///
     /// Returns the following values:
-    /// ```
+    /// ```text
     /// {
     /// "transferred":  an array of completed transfers (including failed ones):
     /// [
@@ -384,11 +388,13 @@ pub mod config {
     ///
     /// Eg
     ///
+    /// ```json
     ///     {
     ///         "cache": "/home/USER/.cache/rclone",
     ///         "config": "/home/USER/.rclone.conf",
     ///         "temp": "/tmp"
     ///     }
+    /// ```
     ///
     /// See the [config paths](/commands/rclone_config_paths/) command for more information on the above.
     pub const PATHS: &str = "config/paths";
@@ -504,7 +510,9 @@ pub mod mount {
     ///
     /// Eg
     ///
+    /// ```text
     ///     rclone rc mount/listmounts
+    /// ```
     pub const LISTMOUNTS: &str = "mount/listmounts";
 
     /// Create a new mount point.
@@ -551,7 +559,9 @@ pub mod mount {
     ///
     /// Eg
     ///
+    /// ```text
     ///     rclone rc mount/types
+    /// ```
     pub const TYPES: &str = "mount/types";
 
     /// Unmount selected active mount.
@@ -566,7 +576,9 @@ pub mod mount {
     ///
     /// Example:
     ///
+    /// ```sh
     ///     rclone rc mount/unmount mountPoint=/home/<user>/mountPoint
+    /// ```
     pub const UNMOUNT: &str = "mount/unmount";
 
     /// Unmount all active mounts.
@@ -579,7 +591,9 @@ pub mod mount {
     ///
     /// Eg
     ///
+    /// ```sh
     ///     rclone rc mount/unmountall
+    /// ```
     pub const UNMOUNTALL: &str = "mount/unmountall";
 }
 
@@ -704,7 +718,7 @@ pub mod operations {
     ///
     /// This returns info about the remote passed in;
     ///
-    /// ```
+    /// ```text
     /// {
     ///         // optional features and whether they are available or not
     ///         "Features": {
@@ -808,7 +822,9 @@ pub mod operations {
     ///
     /// This command does not have a command line equivalent so use this instead:
     ///
+    /// ```text
     ///     rclone rc --loopback operations/fsinfo fs=remote:
+    /// ```
     pub const FSINFO: &str = "operations/fsinfo";
 
     /// Produces a hashsum file for all the objects in the path.
@@ -841,6 +857,7 @@ pub mod operations {
     ///
     /// Example:
     ///
+    /// ```text
     ///     $ rclone rc --loopback operations/hashsum fs=bin hashType=MD5 download=true base64=true
     ///     {
     ///         "hashType": "md5",
@@ -850,6 +867,7 @@ pub mod operations {
     ///             "VHbmHzHh4taXzgag8BAIKQ==  bisect-rclone.sh",
     ///         ]
     ///     }
+    /// ```
     ///
     /// See the [hashsum](/commands/rclone_hashsum/) command for more information on the above.
     pub const HASHSUM: &str = "operations/hashsum";
@@ -1088,13 +1106,17 @@ pub mod vfs {
     /// If no paths are passed in then it will forget all the paths in the
     /// directory cache.
     ///
+    /// ```text
     ///     rclone rc vfs/forget
+    /// ```
     ///
     /// Otherwise pass files or dirs in as file=path or dir=path. Any
     /// parameter key starting with file will forget that file and any
     /// starting with dir will forget that dir, e.g.
     ///
+    /// ```text
     ///     rclone rc vfs/forget file=hello file2=goodbye dir=home/junk
+    /// ```
     ///
     /// This command takes an "fs" parameter. If this parameter is not
     /// supplied and if there is only one VFS in use then that VFS will be
@@ -1120,7 +1142,9 @@ pub mod vfs {
     /// is updated and the polling function is notified.
     /// Setting interval=0 disables poll-interval.
     ///
+    /// ```text
     ///      rclone rc vfs/poll-interval interval=5m
+    /// ```
     ///
     /// The timeout=duration parameter can be used to specify a time to wait
     /// for the current poll function to apply the new value.
@@ -1146,6 +1170,7 @@ pub mod vfs {
     /// This is only useful if `--vfs-cache-mode` > off. If you call it when
     /// the `--vfs-cache-mode` is off, it will return an empty result.
     ///
+    /// ```text
     ///     {
     ///         "queued": // an array of files queued for upload
     ///         [
@@ -1160,6 +1185,7 @@ pub mod vfs {
     ///              },
     ///        ],
     ///     }
+    /// ```
     ///
     /// The `expiry` time is the time until the file is eligible for being
     /// uploaded in floating point seconds. This may go negative. As rclone
@@ -1214,12 +1240,16 @@ pub mod vfs {
     ///
     /// If no paths are passed in then it will refresh the root directory.
     ///
+    /// ```text
     ///     rclone rc vfs/refresh
+    /// ```
     ///
     /// Otherwise pass directories in as dir=path. Any parameter key
     /// starting with dir will refresh that directory, e.g.
     ///
+    /// ```text
     ///     rclone rc vfs/refresh dir=home/junk dir2=data/misc
+    /// ```
     ///
     /// If the parameter recursive=true is given the whole directory tree
     /// will get refreshed. This refresh will use --fast-list if enabled.
@@ -1234,6 +1264,7 @@ pub mod vfs {
     ///
     /// This returns stats for the selected VFS.
     ///
+    /// ```text
     ///     {
     ///         // Status of the disk cache - only present if --vfs-cache-mode > off
     ///         "diskCache": {
@@ -1261,6 +1292,7 @@ pub mod vfs {
     ///             "WriteWait": 1000000000
     ///         }
     ///     }
+    /// ```
     ///
     /// This command takes an "fs" parameter. If this parameter is not
     /// supplied and if there is only one VFS in use then that VFS will be
@@ -1505,16 +1537,22 @@ pub mod options {
     ///
     /// This sets DEBUG level logs (-vv) (these can be set by number or string)
     ///
+    /// ```text
     ///     rclone rc options/set --json '{"main": {"LogLevel": "DEBUG"}}'
     ///     rclone rc options/set --json '{"main": {"LogLevel": 8}}'
+    /// ```
     ///
     /// And this sets INFO level logs (-v)
     ///
+    /// ```text
     ///     rclone rc options/set --json '{"main": {"LogLevel": "INFO"}}'
+    /// ```
     ///
     /// And this sets NOTICE level logs (normal without -v)
     ///
+    /// ```text
     ///     rclone rc options/set --json '{"main": {"LogLevel": "NOTICE"}}'
+    /// ```
     pub const SET: &str = "options/set";
 }
 
@@ -1653,7 +1691,9 @@ pub mod serve {
     ///
     /// Eg
     ///
+    /// ```text
     ///     rclone rc serve/list
+    /// ```
     ///
     /// Returns
     ///
@@ -1698,8 +1738,10 @@ pub mod serve {
     ///
     /// Examples:
     ///
+    /// ```text
     ///     rclone rc serve/start type=nfs fs=remote: addr=:4321 vfs_cache_mode=full
     ///     rclone rc serve/start --json '{"type":"nfs","fs":"remote:","addr":":1234","vfs_cache_mode":"full"}'
+    /// ```
     ///
     /// This will give the reply
     ///
@@ -1727,14 +1769,18 @@ pub mod serve {
     ///
     /// Example:
     ///
+    /// ```text
     ///     rclone rc serve/stop id=12345
+    /// ```
     pub const STOP: &str = "serve/stop";
 
     /// Stop all active servers.
     ///
     /// This will stop all active servers.
     ///
+    /// ```text
     ///     rclone rc serve/stopall
+    /// ```
     pub const STOPALL: &str = "serve/stopall";
 
     /// Show all possible serve types.
@@ -1750,7 +1796,9 @@ pub mod serve {
     ///
     /// Eg
     ///
+    /// ```text
     ///     rclone rc serve/types
+    /// ```
     ///
     /// Returns
     ///

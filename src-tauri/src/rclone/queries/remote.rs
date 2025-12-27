@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use tauri::{State, command};
 
 use crate::rclone::backend::BACKEND_MANAGER;
-use crate::rclone::backend::types::RcloneBackend;
+use crate::rclone::backend::types::Backend;
 use crate::utils::rclone::endpoints::{EndpointHelper, config};
 use crate::utils::types::all_types::RcloneState;
 
@@ -12,18 +12,13 @@ use crate::utils::types::all_types::RcloneState;
 pub async fn get_all_remote_configs(
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend".to_string())?;
-
-    let backend_guard = backend.read().await;
-    get_all_remote_configs_internal(&state.client, &backend_guard).await
+    let backend = BACKEND_MANAGER.get_active().await;
+    get_all_remote_configs_internal(&state.client, &backend).await
 }
 
 pub async fn get_all_remote_configs_internal(
     client: &reqwest::Client,
-    backend: &RcloneBackend,
+    backend: &Backend,
 ) -> Result<serde_json::Value, String> {
     let url = EndpointHelper::build_url(&backend.api_url(), config::DUMP);
 
@@ -43,18 +38,13 @@ pub async fn get_all_remote_configs_internal(
 
 #[command]
 pub async fn get_remotes(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend".to_string())?;
-
-    let backend_guard = backend.read().await;
-    get_remotes_internal(&state.client, &backend_guard).await
+    let backend = BACKEND_MANAGER.get_active().await;
+    get_remotes_internal(&state.client, &backend).await
 }
 
 pub async fn get_remotes_internal(
     client: &reqwest::Client,
-    backend: &RcloneBackend,
+    backend: &Backend,
 ) -> Result<Vec<String>, String> {
     let url = EndpointHelper::build_url(&backend.api_url(), config::LISTREMOTES);
     debug!("📡 Fetching remotes from: {url}");
@@ -90,15 +80,10 @@ pub async fn get_remote_config(
     remote_name: String,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend".to_string())?;
+    let backend = BACKEND_MANAGER.get_active().await;
+    let url = EndpointHelper::build_url(&backend.api_url(), config::GET);
 
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), config::GET);
-
-    let response = backend_guard
+    let response = backend
         .inject_auth(state.client.post(&url))
         .query(&[("name", &remote_name)])
         .send()
@@ -117,14 +102,10 @@ pub async fn get_remote_config(
 async fn fetch_remote_providers(
     state: &State<'_, RcloneState>,
 ) -> Result<HashMap<String, Vec<Value>>, String> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend".to_string())?;
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), config::PROVIDERS);
+    let backend = BACKEND_MANAGER.get_active().await;
+    let url = EndpointHelper::build_url(&backend.api_url(), config::PROVIDERS);
 
-    let response = backend_guard
+    let response = backend
         .inject_auth(state.client.post(url))
         .send()
         .await

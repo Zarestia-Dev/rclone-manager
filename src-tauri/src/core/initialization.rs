@@ -45,7 +45,7 @@ pub fn init_rclone_state(
         // Load persistent connections
         let settings_state = app_handle.state::<rcman::SettingsManager<rcman::JsonStorage>>();
         if let Err(e) = BACKEND_MANAGER
-            .load_connections(settings_state.inner())
+            .load_from_settings(settings_state.inner())
             .await
         {
             error!("Failed to load persistent connections: {e}");
@@ -114,32 +114,32 @@ pub async fn initialization(app_handle: tauri::AppHandle, settings: AppSettings)
 
     setup_event_listener(&app_handle);
 
-    // Step 1: Refresh caches FIRST (need data for scheduler)
+    // Step 1: Check connectivity FIRST to ensure backend is ready
+    // This allows fallback to Local if Active is down, preventing cache refresh errors
+    check_active_backend_connectivity(&app_handle).await;
+
+    // Step 2: Refresh caches (now that we know backend is reachable)
+    // Use timeout to prevent indefinite hang if backend becomes unresponsive
     info!("📊 Refreshing caches...");
     use crate::rclone::backend::BACKEND_MANAGER;
-    let refresh_result = async {
-        let backend = BACKEND_MANAGER
-            .get_active()
-            .await
-            .ok_or("No active backend".to_string())?;
-        let guard = backend.read().await;
-        // Need client for independent requests
+
+    let refresh_future = async {
+        let backend = BACKEND_MANAGER.get_active().await;
         let client = app_handle
             .state::<crate::utils::types::all_types::RcloneState>()
             .client
             .clone();
 
-        guard.remote_cache.refresh_all(&client, &guard).await
-    }
-    .await;
+        BACKEND_MANAGER
+            .remote_cache
+            .refresh_all(&client, &backend)
+            .await
+    };
 
-    match refresh_result {
-        Ok(_) => {
-            info!("✅ Caches refreshed successfully");
-        }
-        Err(e) => {
-            error!("❌ Failed to refresh caches: {e}");
-        }
+    match tokio::time::timeout(std::time::Duration::from_secs(15), refresh_future).await {
+        Ok(Ok(_)) => info!("✅ Caches refreshed successfully"),
+        Ok(Err(e)) => error!("❌ Failed to refresh caches: {e}"),
+        Err(_) => error!("❌ Cache refresh timed out (backend may be unresponsive)"),
     }
 
     // Step 2: Initialize and start scheduler with loaded config
@@ -189,11 +189,7 @@ async fn initialize_scheduler(app_handle: AppHandle) -> Result<(), String> {
     let manager = app_handle.state::<rcman::SettingsManager<rcman::JsonStorage>>();
 
     use crate::rclone::backend::BACKEND_MANAGER;
-    let remote_names = if let Some(backend) = BACKEND_MANAGER.get_active().await {
-        backend.read().await.remote_cache.get_remotes().await
-    } else {
-        Vec::new()
-    };
+    let remote_names = BACKEND_MANAGER.remote_cache.get_remotes().await;
 
     let all_settings = crate::core::settings::remote::manager::get_all_remote_settings_sync(
         manager.inner(),
@@ -279,4 +275,98 @@ pub async fn apply_backend_settings(app_handle: &tauri::AppHandle) -> Result<(),
 
     info!("✅ RClone backend settings applied successfully");
     Ok(())
+}
+
+/// Check if the active backend is reachable; fallback to Local if not.
+/// Also spawns background checks for other backends.
+async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
+    use crate::rclone::backend::BACKEND_MANAGER;
+    let active_name = BACKEND_MANAGER.get_active_name().await;
+
+    // Always check Local backend (sets status to connected)
+    let client = app_handle
+        .state::<crate::utils::types::all_types::RcloneState>()
+        .client
+        .clone();
+
+    if active_name == "Local" {
+        // Check Local backend too (to get version/OS)
+        info!("🔍 Checking Local backend for version/OS info");
+        if let Err(e) = BACKEND_MANAGER.check_connectivity("Local", &client).await {
+            log::warn!("⚠️ Local backend check failed (will retry): {}", e);
+            // Still mark as connected since it's managed by us
+            BACKEND_MANAGER
+                .set_runtime_status("Local", "connected")
+                .await;
+        }
+    } else {
+        // Check remote active backend
+        info!(
+            "🔍 Checking connectivity for active backend: {}",
+            active_name
+        );
+        if let Err(e) = BACKEND_MANAGER
+            .check_connectivity(&active_name, &client)
+            .await
+        {
+            log::warn!(
+                "⚠️ Active backend '{}' unreachable: {}. Falling back to Local.",
+                active_name,
+                e
+            );
+            // Set error status before switching
+            BACKEND_MANAGER
+                .set_runtime_status(&active_name, &format!("error:{}", e))
+                .await;
+
+            if let Err(e) = BACKEND_MANAGER.switch_to("Local").await {
+                error!("❌ Failed to fallback to Local backend: {}", e);
+            } else {
+                info!("✅ Fallback to Local backend successful");
+                BACKEND_MANAGER
+                    .set_runtime_status("Local", "connected")
+                    .await;
+            }
+        } else {
+            info!("✅ Active backend '{}' is reachable", active_name);
+        }
+    }
+
+    // Spawn background task to check other backends (non-blocking)
+    let app_handle_clone = app_handle.clone();
+    tokio::spawn(async move {
+        check_other_backends(&app_handle_clone).await;
+    });
+}
+
+/// Background check for non-active backends
+async fn check_other_backends(app_handle: &tauri::AppHandle) {
+    use crate::rclone::backend::BACKEND_MANAGER;
+
+    let backends = BACKEND_MANAGER.list_all().await;
+    let active_name = BACKEND_MANAGER.get_active_name().await;
+
+    let client = app_handle
+        .state::<crate::utils::types::all_types::RcloneState>()
+        .client
+        .clone();
+
+    for backend in backends {
+        if backend.name == active_name || backend.name == "Local" {
+            continue; // Already checked
+        }
+
+        info!("🔍 Background check for backend: {}", backend.name);
+        if let Err(e) = BACKEND_MANAGER
+            .check_connectivity(&backend.name, &client)
+            .await
+        {
+            log::warn!("⚠️ Backend '{}' unreachable: {}", backend.name, e);
+            BACKEND_MANAGER
+                .set_runtime_status(&backend.name, &format!("error:{}", e))
+                .await;
+        } else {
+            info!("✅ Backend '{}' is reachable", backend.name);
+        }
+    }
 }

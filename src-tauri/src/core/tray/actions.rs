@@ -135,16 +135,12 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
 
     tauri::async_runtime::spawn(async move {
         let backend_manager = &BACKEND_MANAGER;
-        let backend = if let Some(b) = backend_manager.get_active().await {
-            b
-        } else {
-            error!("❌ No active backend for unmount");
-            return;
-        };
-
-        let guard = backend.read().await;
-        let cache = guard.remote_cache.clone();
-        drop(guard);
+        // active backend check removed as get_active returns Backend directly
+        // We can just rely on get_active or if logic requires checking if active...
+        // But get_active returns the backend logic.
+        // Wait, for unmount, we need remote cache.
+        // We removed locks.
+        let cache = &backend_manager.remote_cache;
 
         let manager = app_clone.state::<rcman::SettingsManager<rcman::JsonStorage>>();
         let remote_names = cache.get_remotes().await;
@@ -237,16 +233,9 @@ async fn handle_stop_job_profile(
     action_name: &str,
 ) {
     let backend_manager = &BACKEND_MANAGER;
-    let backend = if let Some(b) = backend_manager.get_active().await {
-        b
-    } else {
-        error!("❌ No active backend for stopping job");
-        return;
-    };
+    // backend logic removed
 
-    let guard = backend.read().await;
-    let job_cache = guard.job_cache.clone();
-    drop(guard);
+    let job_cache = backend_manager.job_cache.clone();
 
     // Filter logic same as before, but on backend-specific cache
     if let Some(job) = job_cache.get_jobs().await.iter().find(|j| {
@@ -397,16 +386,9 @@ pub fn handle_stop_serve_profile(app: AppHandle, _remote_name: &str, serve_id: &
 
     tauri::async_runtime::spawn(async move {
         let backend_manager = &BACKEND_MANAGER;
-        let backend = if let Some(b) = backend_manager.get_active().await {
-            b
-        } else {
-            error!("❌ No active backend for stop serve");
-            return;
-        };
+        // backend logic removed
 
-        let guard = backend.read().await;
-        let cache = guard.remote_cache.clone();
-        drop(guard);
+        let cache = backend_manager.remote_cache.clone();
 
         let all_serves = cache.get_serves().await;
         let remote_name = all_serves
@@ -449,38 +431,30 @@ pub fn handle_stop_serve_profile(app: AppHandle, _remote_name: &str, serve_id: &
 pub fn handle_stop_all_jobs(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         // Stop all jobs across ALL backends
-        let backend_names = BACKEND_MANAGER.list_names().await;
+        // Stop all jobs across ALL backends -> Now just active job cache
+        // Simplify to just job_cache
+        let job_cache = &BACKEND_MANAGER.job_cache;
+        let active_jobs = job_cache.get_active_jobs().await;
         let mut stopped_count = 0;
 
-        for name in backend_names {
-            if let Some(backend) = BACKEND_MANAGER.get(&name).await {
-                let guard = backend.read().await;
-                let job_cache = guard.job_cache.clone();
-                let active_jobs = job_cache.get_active_jobs().await;
-                drop(guard);
-
-                if active_jobs.is_empty() {
-                    continue;
-                }
-
-                for job in active_jobs {
-                    let scheduled_cache = app.state::<ScheduledTasksCache>();
-                    match stop_job(
-                        app.clone(),
-                        scheduled_cache,
-                        job.jobid,
-                        job.remote_name.clone(),
-                        app.state(),
-                    )
-                    .await
-                    {
-                        Ok(_) => {
-                            info!("🛑 Stopped job {} ({})", job.jobid, name);
-                            stopped_count += 1;
-                        }
-                        Err(e) => {
-                            error!("🚨 Failed to stop job {}: {}", job.jobid, e);
-                        }
+        if !active_jobs.is_empty() {
+            for job in active_jobs {
+                let scheduled_cache = app.state::<ScheduledTasksCache>();
+                match stop_job(
+                    app.clone(),
+                    scheduled_cache,
+                    job.jobid,
+                    job.remote_name.clone(),
+                    app.state(),
+                )
+                .await
+                {
+                    Ok(_) => {
+                        info!("🛑 Stopped job {}", job.jobid);
+                        stopped_count += 1;
+                    }
+                    Err(e) => {
+                        error!("🚨 Failed to stop job {}: {}", job.jobid, e);
                     }
                 }
             }
@@ -499,15 +473,9 @@ pub fn handle_browse_remote(app: &AppHandle, remote_name: &str) {
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
         let backend_manager = &BACKEND_MANAGER;
-        let backend = if let Some(b) = backend_manager.get_active().await {
-            b
-        } else {
-            error!("❌ No active backend for browse");
-            return;
-        };
-        let guard = backend.read().await;
-        let cache = guard.remote_cache.clone();
-        drop(guard);
+        // backend logic removed
+
+        let cache = backend_manager.remote_cache.clone();
 
         let manager = app_clone.state::<rcman::SettingsManager<rcman::JsonStorage>>();
         let remote_names = cache.get_remotes().await;

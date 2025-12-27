@@ -23,12 +23,12 @@
     align-items: center;
     justify-content: center;
     z-index: 1000;
-    background: rgba(255, 255, 255, 0.5); // Light backdrop
+    background: rgba(255, 255, 255, 0.5);
   }
 }
 
 // ============================================================================
-// Backend List (Styled as Setting Items)
+// Backend List - Clean Card Layout
 // ============================================================================
 .backends-list {
   display: flex;
@@ -36,113 +36,161 @@
   gap: var(--space-sm);
 }
 
-.setting-item {
+.backend-card {
   display: flex;
-  flex-direction: row;
   align-items: center;
-  justify-content: space-between;
-  background: var(--card-bg-color);
+  gap: var(--space-md);
+  background: var(--window-bg-color);
   padding: var(--space-md) var(--space-lg);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-gnome);
-  gap: var(--space-md);
-  transition: var(--transition-fast);
+  transition: var(--transition-standart);
+  position: relative;
 
   &:hover {
-    background: var(--view-bg-color); // Slight hover effect
+    background: var(--hover-bg-color);
   }
 
   &.active {
     box-shadow: 0 0 0 2px var(--primary-color);
-    background: var(--view-bg-color); // Active items should feel 'selected'
   }
 
   &.switching {
     opacity: 0.6;
     pointer-events: none;
   }
+}
 
-  .item-content {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: var(--space-md);
+// Backend Icon
+.backend-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--headerbar-bg-color);
+  color: var(--dim-color);
+  flex-shrink: 0;
+  position: relative;
 
-    .icon-wrapper {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 36px;
-      height: 36px;
-      border-radius: var(--radius-sm);
-      background: var(--headerbar-bg-color);
-      color: var(--dim-color);
-
-      &.connected {
-        color: var(--success-color);
-        background: rgba(var(--success-color-rgb), 0.1);
-      }
-      &.error {
-        color: var(--destructive-color);
-        background: rgba(var(--destructive-color-rgb), 0.1);
-      }
-    }
-
-    .item-text {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-xxs);
-
-      strong {
-        font-size: var(--font-size-base);
-        font-weight: 500;
-        color: var(--window-fg-color);
-        display: flex;
-        align-items: center;
-        gap: var(--space-xs);
-      }
-
-      .badge {
-        font-size: 10px;
-        padding: 1px 6px;
-        border-radius: var(--radius-sm);
-        text-transform: uppercase;
-        font-weight: 700;
-
-        &.active {
-          background: var(--primary-color);
-          color: white;
-        }
-        &.type {
-          background: var(--headerbar-bg-color);
-          box-shadow: var(--box-shadow);
-          color: var(--dim-color);
-        }
-        &.managed {
-          background: var(--success-bg-color);
-          color: white;
-        }
-      }
-
-      p {
-        color: var(--dim-color);
-        font-size: var(--font-size-sm);
-        margin: 0;
-      }
-    }
+  mat-icon {
+    width: 24px;
+    height: 24px;
   }
 
-  .item-actions {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
+  // Status-based styling
+  &.connected {
+    color: var(--window-fg-color);
+    box-shadow: var(--box-shadow);
+  }
+
+  &.error {
+    opacity: 0.5;
+  }
+
+  &.unknown {
+    opacity: 0.7;
+  }
+
+  &.local {
+    background: rgba(var(--primary-color-rgb), 0.1);
+    color: var(--primary-color);
+    opacity: 1;
+  }
+
+  // Status dot indicator
+  .status-dot {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--dim-color);
+
+    &.connected {
+      background: var(--success-color);
+    }
+
+    &.error {
+      background: var(--destructive-color);
+    }
+
+    &.unknown {
+      background: var(--dim-color);
+    }
   }
 }
 
-// ============================================================================
-// Form Section (Styled as a Settings Group)
-// ============================================================================
+// Backend Info
+.backend-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 
+.backend-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+
+  .name {
+    font-weight: 600;
+    font-size: var(--font-size-base);
+    color: var(--window-fg-color);
+  }
+
+  .badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+
+    &.active {
+      background: var(--primary-color);
+      color: white;
+    }
+  }
+}
+
+.backend-subtitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-size-sm);
+  color: var(--dim-color);
+
+  .separator {
+    opacity: 0.5;
+  }
+
+  .address {
+    font-family: var(--font-family-mono, monospace);
+    font-size: 12px;
+  }
+
+  .version,
+  .os {
+    opacity: 0.8;
+  }
+}
+
+// Backend Actions - Show on hover
+// Backend Actions - Always visible
+.backend-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+// ============================================================================
+// Form Section
+// ============================================================================
 .form-header {
   h3 {
     margin: 0;
@@ -160,9 +208,11 @@ form {
 .form-row {
   display: flex;
   gap: var(--space-md);
+
   .host-field {
     flex: 2;
   }
+
   .port-field {
     flex: 1;
   }
@@ -176,6 +226,13 @@ form {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
+
+  .auth-fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    padding-top: var(--space-sm);
+  }
 }
 
 .oauth-group {
@@ -199,9 +256,8 @@ form {
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 0; // Prevent flex overflow issues
+  min-height: 0;
 
-  // Custom tab styling
   ::ng-deep .mat-mdc-tab-body-wrapper {
     flex: 1;
   }
@@ -229,17 +285,20 @@ form {
   border-top: 1px solid var(--border-color);
 }
 
-// Responsive adjustments
+// ============================================================================
+// Responsive
+// ============================================================================
 @media (max-width: 500px) {
-  .setting-item {
-    flex-direction: column;
-    align-items: stretch;
+  .backend-card {
+    flex-wrap: wrap;
 
-    .item-actions {
+    .backend-actions {
+      width: 100%;
       justify-content: flex-end;
       margin-top: var(--space-sm);
       padding-top: var(--space-sm);
       border-top: 1px solid var(--border-color);
+      opacity: 1;
     }
   }
 }

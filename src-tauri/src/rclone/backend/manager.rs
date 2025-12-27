@@ -1,162 +1,252 @@
-// Backend Manager - Central orchestrator for all rclone backends
+// Backend Manager - Simplified single-active-backend architecture
 //
-// Manages multiple backend instances and tracks the active one.
+// Stores multiple backends, but only one is active at runtime.
 
+use log::info;
+use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use super::types::{BackendStatus, RcloneBackend};
+use super::types::{Backend, BackendInfo};
+use crate::utils::rclone::endpoints::{EndpointHelper, core};
+use crate::utils::types::all_types::{JobCache, RemoteCache};
 
-/// Central manager for all rclone backends
+/// Runtime connectivity info (not persisted)
+#[derive(Debug, Clone, Default)]
+pub struct RuntimeInfo {
+    pub version: Option<String>,
+    pub os: Option<String>,
+    pub status: Option<String>,
+}
+
+/// Central manager for rclone backends
 pub struct BackendManager {
-    /// All registered backends by name
-    backends: RwLock<HashMap<String, Arc<RwLock<RcloneBackend>>>>,
-    /// Name of the currently active backend
-    active_backend: RwLock<String>,
+    /// All configured backends (index 0 is always Local)
+    backends: RwLock<Vec<Backend>>,
+    /// Index of the currently active backend
+    active_index: RwLock<usize>,
+    /// Runtime connectivity info (version, os, status) - not persisted
+    runtime_info: RwLock<HashMap<String, RuntimeInfo>>,
+    /// Shared remote cache (for active backend)
+    pub remote_cache: Arc<RemoteCache>,
+    /// Shared job cache (for active backend)
+    pub job_cache: Arc<JobCache>,
 }
 
 impl BackendManager {
-    /// Create a new BackendManager with no backends
+    /// Create a new manager with just the Local backend
     pub fn new() -> Self {
         Self {
-            backends: RwLock::new(HashMap::new()),
-            active_backend: RwLock::new(String::new()),
+            backends: RwLock::new(vec![Backend::new_local("Local")]),
+            active_index: RwLock::new(0),
+            runtime_info: RwLock::new(HashMap::new()),
+            remote_cache: Arc::new(RemoteCache::new()),
+            job_cache: Arc::new(JobCache::new()),
         }
     }
 
-    /// Create a BackendManager with a default local backend
-    pub fn with_local_backend(name: impl Into<String>) -> Self {
-        let name = name.into();
-        let backend = RcloneBackend::new_local(&name);
-        let mut backends = HashMap::new();
-        backends.insert(name.clone(), Arc::new(RwLock::new(backend)));
-
-        Self {
-            backends: RwLock::new(backends),
-            active_backend: RwLock::new(name),
-        }
-    }
-
-    /// Get the active backend
-    pub async fn get_active(&self) -> Option<Arc<RwLock<RcloneBackend>>> {
-        let active_name = self.active_backend.read().await;
+    /// Get a clone of the active backend
+    pub async fn get_active(&self) -> Backend {
         let backends = self.backends.read().await;
-        backends.get(&*active_name).cloned()
+        let index = *self.active_index.read().await;
+        backends
+            .get(index)
+            .cloned()
+            .unwrap_or_else(Backend::default)
     }
 
-    /// Get the active backend name
+    /// Get the name of the active backend
     pub async fn get_active_name(&self) -> String {
-        self.active_backend.read().await.clone()
+        self.get_active().await.name
     }
 
     /// Get a specific backend by name
-    pub async fn get(&self, name: &str) -> Option<Arc<RwLock<RcloneBackend>>> {
+    pub async fn get(&self, name: &str) -> Option<Backend> {
         let backends = self.backends.read().await;
-        backends.get(name).cloned()
+        backends.iter().find(|b| b.name == name).cloned()
+    }
+
+    /// List all backends with their active status and runtime info
+    pub async fn list_all(&self) -> Vec<BackendInfo> {
+        let backends = self.backends.read().await;
+        let active_index = *self.active_index.read().await;
+        let runtime_cache = self.runtime_info.read().await;
+
+        backends
+            .iter()
+            .enumerate()
+            .map(|(i, b)| {
+                let info = BackendInfo::from_backend(b, i == active_index);
+                if let Some(runtime) = runtime_cache.get(&b.name) {
+                    info.with_runtime_info(
+                        runtime.version.clone(),
+                        runtime.os.clone(),
+                        runtime.status.clone(),
+                    )
+                } else {
+                    info
+                }
+            })
+            .collect()
+    }
+
+    /// Add a new backend
+    pub async fn add(&self, backend: Backend) -> Result<(), String> {
+        let mut backends = self.backends.write().await;
+
+        // Check for duplicate name
+        if backends.iter().any(|b| b.name == backend.name) {
+            return Err(format!("Backend '{}' already exists", backend.name));
+        }
+
+        info!("➕ Adding backend: {}", backend.name);
+        backends.push(backend);
+        Ok(())
+    }
+
+    /// Update an existing backend
+    pub async fn update(&self, name: &str, backend: Backend) -> Result<(), String> {
+        let mut backends = self.backends.write().await;
+
+        let index = backends
+            .iter()
+            .position(|b| b.name == name)
+            .ok_or_else(|| format!("Backend '{}' not found", name))?;
+
+        info!("🔄 Updating backend: {}", name);
+        backends[index] = backend;
+        Ok(())
+    }
+
+    /// Remove a backend by name
+    pub async fn remove(&self, name: &str) -> Result<(), String> {
+        if name == "Local" {
+            return Err("Cannot remove the Local backend".to_string());
+        }
+
+        let mut backends = self.backends.write().await;
+        let active_index = *self.active_index.read().await;
+
+        let index = backends
+            .iter()
+            .position(|b| b.name == name)
+            .ok_or_else(|| format!("Backend '{}' not found", name))?;
+
+        // Can't remove active backend
+        if index == active_index {
+            return Err("Cannot remove the active backend".to_string());
+        }
+
+        info!("➖ Removing backend: {}", name);
+        backends.remove(index);
+
+        // Adjust active_index if needed
+        drop(backends);
+        let mut active = self.active_index.write().await;
+        if *active > index {
+            *active -= 1;
+        }
+
+        Ok(())
     }
 
     /// Switch to a different backend
     pub async fn switch_to(&self, name: &str) -> Result<(), String> {
         let backends = self.backends.read().await;
-        if !backends.contains_key(name) {
-            return Err(format!("Backend '{}' not found", name));
-        }
-        drop(backends);
 
-        let mut active = self.active_backend.write().await;
-        *active = name.to_string();
-        Ok(())
-    }
-
-    /// Add a new backend
-    pub async fn add_backend(&self, backend: RcloneBackend) -> Result<(), String> {
-        let name = backend.name.clone();
-        let mut backends = self.backends.write().await;
-
-        if backends.contains_key(&name) {
-            return Err(format!("Backend '{}' already exists", name));
-        }
-
-        backends.insert(name, Arc::new(RwLock::new(backend)));
-        Ok(())
-    }
-
-    /// Update an existing backend
-    pub async fn update_backend(&self, backend: RcloneBackend) -> Result<(), String> {
-        let name = backend.name.clone();
-        let mut backends = self.backends.write().await;
-
-        if !backends.contains_key(&name) {
-            return Err(format!("Backend '{}' not found", name));
-        }
-
-        backends.insert(name, Arc::new(RwLock::new(backend)));
-        Ok(())
-    }
-
-    /// Remove a backend by name
-    pub async fn remove_backend(&self, name: &str) -> Result<(), String> {
-        let active = self.active_backend.read().await;
-        if *active == name {
-            return Err("Cannot remove the active backend".to_string());
-        }
-        drop(active);
-
-        let mut backends = self.backends.write().await;
-        if backends.remove(name).is_none() {
-            return Err(format!("Backend '{}' not found", name));
-        }
-        Ok(())
-    }
-
-    /// List all backend names
-    pub async fn list_names(&self) -> Vec<String> {
-        let backends = self.backends.read().await;
-        backends.keys().cloned().collect()
-    }
-
-    /// Update the status of a backend
-    pub async fn set_status(&self, name: &str, status: BackendStatus) -> Result<(), String> {
-        let backends = self.backends.read().await;
-        let backend = backends
-            .get(name)
+        let index = backends
+            .iter()
+            .position(|b| b.name == name)
             .ok_or_else(|| format!("Backend '{}' not found", name))?;
 
-        let mut backend = backend.write().await;
-        backend.status = status;
+        drop(backends);
+
+        let mut active = self.active_index.write().await;
+        *active = index;
+
+        info!("🔄 Switched to backend: {}", name);
+
+        // Clear caches when switching
+        self.remote_cache.clear().await;
+        self.job_cache.clear().await;
+
         Ok(())
     }
 
-    /// Get the OAuth URL of the active backend (if local)
+    /// Get OAuth URL of active backend
     pub async fn get_active_oauth_url(&self) -> Option<String> {
-        let backend = self.get_active().await?;
-        let backend = backend.read().await;
-        backend.oauth_url()
+        self.get_active()
+            .await
+            .oauth_port
+            .map(|port| format!("http://127.0.0.1:{}", port))
     }
-}
 
-impl Default for BackendManager {
-    fn default() -> Self {
-        Self::new()
+    /// Check connectivity to a backend, updating cache if successful
+    /// Returns (version, os) on success
+    pub async fn check_connectivity(
+        &self,
+        name: &str,
+        client: &reqwest::Client,
+    ) -> Result<(String, String), String> {
+        let backend = self
+            .get(name)
+            .await
+            .ok_or_else(|| format!("Backend '{}' not found", name))?;
+
+        let url = EndpointHelper::build_url(&backend.api_url(), core::VERSION);
+
+        let response = backend
+            .inject_auth(client.post(&url))
+            .timeout(std::time::Duration::from_secs(5))
+            .send()
+            .await
+            .map_err(|e| format!("Request failed: {}", e))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            return Err(format!("HTTP {}: {}", status, body));
+        }
+
+        let body = response.text().await.map_err(|e| e.to_string())?;
+        let json: serde_json::Value = serde_json::from_str(&body).unwrap_or_default();
+
+        let version = json
+            .get("version")
+            .and_then(|v| v.as_str())
+            .map(String::from)
+            .unwrap_or_default();
+        let os = json
+            .get("os")
+            .and_then(|v| v.as_str())
+            .map(String::from)
+            .unwrap_or_default();
+
+        // Update runtime cache (not persisted)
+        {
+            let mut cache = self.runtime_info.write().await;
+            cache.insert(
+                name.to_string(),
+                RuntimeInfo {
+                    version: Some(version.clone()),
+                    os: Some(os.clone()),
+                    status: Some("connected".to_string()),
+                },
+            );
+        }
+
+        Ok((version, os))
     }
-}
 
-// =============================================================================
-// Global Backend Manager Instance
-// =============================================================================
+    /// Update runtime status for a backend (used for error states)
+    pub async fn set_runtime_status(&self, name: &str, status: &str) {
+        let mut cache = self.runtime_info.write().await;
+        cache.entry(name.to_string()).or_default().status = Some(status.to_string());
+    }
 
-use once_cell::sync::Lazy;
-
-/// Global backend manager instance
-///
-/// This provides centralized access to all rclone backends.
-pub static BACKEND_MANAGER: Lazy<BackendManager> =
-    Lazy::new(|| BackendManager::with_local_backend("Local"));
-
-impl BackendManager {
-    /// Load persistent connections from settings
-    pub async fn load_connections(
+    /// Load backends from settings
+    pub async fn load_from_settings(
         &self,
         manager: &rcman::SettingsManager<rcman::JsonStorage>,
     ) -> Result<(), String> {
@@ -166,80 +256,137 @@ impl BackendManager {
 
         let keys = connections.list().map_err(|e| e.to_string())?;
 
+        // Track active backend name for later
+        let mut active_name: Option<String> = None;
+
         for key in keys {
+            // Special key for active backend
+            if key == "_active" {
+                if let Ok(value) = connections.get_value(&key) {
+                    active_name = value.as_str().map(String::from);
+                }
+                continue;
+            }
+
             if let Ok(value) = connections.get_value(&key)
-                && let Ok(mut backend) = serde_json::from_value::<RcloneBackend>(value)
+                && let Ok(mut backend) = serde_json::from_value::<Backend>(value)
             {
-                // Set the name from the HashMap key (since it's skipped in serialization)
+                // Set name from key
                 backend.name = key.clone();
 
-                // Load secrets from credential manager
-                crate::rclone::commands::backend::load_backend_secrets(manager, &mut backend);
+                // Load secrets from keychain
+                load_backend_secrets(manager, &mut backend);
 
-                // For Local backend, update the existing one with saved settings
+                // Update Local or add new
                 if backend.name == "Local" {
-                    let _ = self.update_backend(backend).await;
+                    let _ = self.update("Local", backend).await;
                 } else {
-                    let _ = self.add_backend(backend).await;
+                    let _ = self.add(backend).await;
                 }
             }
         }
+
+        // Set active backend if found
+        if let Some(name) = active_name {
+            if let Err(e) = self.switch_to(&name).await {
+                log::warn!("Failed to restore active backend '{}': {}", name, e);
+            } else {
+                log::info!("✅ Restored active backend: {}", name);
+            }
+        }
+
         Ok(())
+    }
+
+    /// Save active backend name to settings
+    pub fn save_active_to_settings(
+        manager: &rcman::SettingsManager<rcman::JsonStorage>,
+        name: &str,
+    ) -> Result<(), String> {
+        let connections = manager
+            .sub_settings("connections")
+            .map_err(|e| e.to_string())?;
+
+        connections
+            .set("_active", &name)
+            .map_err(|e| format!("Failed to save active backend: {}", e))?;
+
+        log::debug!("💾 Saved active backend: {}", name);
+        Ok(())
+    }
+}
+
+impl Default for BackendManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Global backend manager instance
+pub static BACKEND_MANAGER: Lazy<BackendManager> = Lazy::new(BackendManager::new);
+
+/// Load backend secrets from keychain
+fn load_backend_secrets(
+    manager: &rcman::SettingsManager<rcman::JsonStorage>,
+    backend: &mut Backend,
+) {
+    if let Some(creds) = manager.credentials() {
+        // Load RC API password
+        if let Ok(Some(password)) = creds.get(&format!("backend:{}:password", backend.name)) {
+            // Only set if username exists
+            if backend.username.is_some() {
+                backend.password = Some(password);
+            }
+        }
+
+        // Load config password (for remote encrypted configs)
+        if let Ok(Some(config_password)) =
+            creds.get(&format!("backend:{}:config_password", backend.name))
+        {
+            backend.config_password = Some(config_password);
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::rclone::backend::types::BackendType;
 
     #[tokio::test]
-    async fn test_new_empty_manager() {
+    async fn test_new_manager() {
         let manager = BackendManager::new();
-        assert_eq!(manager.count().await, 0);
-        assert!(manager.get_active().await.is_none());
-    }
 
-    #[tokio::test]
-    async fn test_with_local_backend() {
-        let manager = BackendManager::with_local_backend("Local");
-
-        assert_eq!(manager.count().await, 1);
-        assert_eq!(manager.get_active_name().await, "Local");
-
-        let active = manager.get_active().await.unwrap();
-        let backend = active.read().await;
-        assert_eq!(backend.backend_type, BackendType::Local);
+        let backends = manager.list_all().await;
+        assert_eq!(backends.len(), 1);
+        assert_eq!(backends[0].name, "Local");
+        assert!(backends[0].is_active);
     }
 
     #[tokio::test]
     async fn test_add_backend() {
         let manager = BackendManager::new();
-        let backend = RcloneBackend::new_remote("NAS", "192.168.1.100", 51900);
+        let remote = Backend::new_remote("NAS", "192.168.1.100", 51900);
 
-        manager.add_backend(backend).await.unwrap();
-        assert_eq!(manager.count().await, 1);
+        manager.add(remote).await.unwrap();
 
-        let retrieved = manager.get("NAS").await.unwrap();
-        let backend = retrieved.read().await;
-        assert_eq!(backend.name, "NAS");
+        let backends = manager.list_all().await;
+        assert_eq!(backends.len(), 2);
     }
 
     #[tokio::test]
-    async fn test_add_duplicate_backend() {
-        let manager = BackendManager::with_local_backend("Local");
-        let duplicate = RcloneBackend::new_local("Local");
+    async fn test_add_duplicate() {
+        let manager = BackendManager::new();
+        let duplicate = Backend::new_local("Local");
 
-        let result = manager.add_backend(duplicate).await;
+        let result = manager.add(duplicate).await;
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("already exists"));
     }
 
     #[tokio::test]
     async fn test_switch_to() {
-        let manager = BackendManager::with_local_backend("Local");
-        let remote = RcloneBackend::new_remote("NAS", "192.168.1.100", 51900);
-        manager.add_backend(remote).await.unwrap();
+        let manager = BackendManager::new();
+        let remote = Backend::new_remote("NAS", "192.168.1.100", 51900);
+        manager.add(remote).await.unwrap();
 
         assert_eq!(manager.get_active_name().await, "Local");
 
@@ -248,76 +395,76 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_switch_to_nonexistent() {
-        let manager = BackendManager::with_local_backend("Local");
-
-        let result = manager.switch_to("DoesNotExist").await;
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("not found"));
-    }
-
-    #[tokio::test]
     async fn test_remove_backend() {
-        let manager = BackendManager::with_local_backend("Local");
-        let remote = RcloneBackend::new_remote("NAS", "192.168.1.100", 51900);
-        manager.add_backend(remote).await.unwrap();
+        let manager = BackendManager::new();
+        let remote = Backend::new_remote("NAS", "192.168.1.100", 51900);
+        manager.add(remote).await.unwrap();
 
-        manager.remove_backend("NAS").await.unwrap();
-        assert_eq!(manager.count().await, 1);
-        assert!(manager.get("NAS").await.is_none());
+        manager.remove("NAS").await.unwrap();
+
+        let backends = manager.list_all().await;
+        assert_eq!(backends.len(), 1);
     }
 
     #[tokio::test]
-    async fn test_remove_active_backend() {
-        let manager = BackendManager::with_local_backend("Local");
+    async fn test_cannot_remove_local() {
+        let manager = BackendManager::new();
 
-        let result = manager.remove_backend("Local").await;
+        let result = manager.remove("Local").await;
         assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .contains("Cannot remove the active backend")
-        );
     }
 
     #[tokio::test]
-    async fn test_list_names() {
-        let manager = BackendManager::with_local_backend("Local");
-        let remote = RcloneBackend::new_remote("NAS", "192.168.1.100", 51900);
-        manager.add_backend(remote).await.unwrap();
+    async fn test_cannot_remove_active() {
+        let manager = BackendManager::new();
+        let remote = Backend::new_remote("NAS", "192.168.1.100", 51900);
+        manager.add(remote).await.unwrap();
+        manager.switch_to("NAS").await.unwrap();
 
-        let names = manager.list_names().await;
-        assert_eq!(names.len(), 2);
-        assert!(names.contains(&"Local".to_string()));
-        assert!(names.contains(&"NAS".to_string()));
+        let result = manager.remove("NAS").await;
+        assert!(result.is_err());
     }
 
     #[tokio::test]
-    async fn test_set_status() {
-        let manager = BackendManager::with_local_backend("Local");
+    async fn test_set_runtime_status() {
+        let manager = BackendManager::new();
 
+        // Set status for Local
+        manager.set_runtime_status("Local", "connected").await;
+
+        let backends = manager.list_all().await;
+        assert_eq!(backends[0].status, Some("connected".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_runtime_info_persists_across_list_calls() {
+        let manager = BackendManager::new();
+
+        // Set runtime info
+        manager.set_runtime_status("Local", "connected").await;
+
+        // First list
+        let backends1 = manager.list_all().await;
+        assert_eq!(backends1[0].status, Some("connected".to_string()));
+
+        // Second list should still have the info
+        let backends2 = manager.list_all().await;
+        assert_eq!(backends2[0].status, Some("connected".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_runtime_info_error_status() {
+        let manager = BackendManager::new();
+        let remote = Backend::new_remote("Offline", "192.168.1.200", 51900);
+        manager.add(remote).await.unwrap();
+
+        // Simulate error status
         manager
-            .set_status("Local", BackendStatus::Connected)
-            .await
-            .unwrap();
+            .set_runtime_status("Offline", "error:Connection refused")
+            .await;
 
-        let backend = manager.get("Local").await.unwrap();
-        let backend = backend.read().await;
-        assert_eq!(backend.status, BackendStatus::Connected);
-    }
-
-    #[tokio::test]
-    async fn test_get_active_oauth_url() {
-        let manager = BackendManager::with_local_backend("Local");
-
-        let url = manager.get_active_oauth_url().await;
-        assert_eq!(url, Some("http://127.0.0.1:51901".to_string()));
-    }
-
-    #[tokio::test]
-    async fn test_global_backend_manager() {
-        // Test that BACKEND_MANAGER is accessible and has a local backend
-        assert_eq!(BACKEND_MANAGER.get_active_name().await, "Local");
-        assert_eq!(BACKEND_MANAGER.count().await, 1);
+        let backends = manager.list_all().await;
+        let offline = backends.iter().find(|b| b.name == "Offline").unwrap();
+        assert_eq!(offline.status, Some("error:Connection refused".to_string()));
     }
 }

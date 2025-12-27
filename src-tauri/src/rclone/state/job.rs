@@ -10,6 +10,11 @@ impl JobCache {
         }
     }
 
+    pub async fn clear(&self) {
+        let mut jobs = self.jobs.write().await;
+        jobs.clear();
+    }
+
     pub async fn add_job(&self, job: JobInfo) {
         let mut jobs = self.jobs.write().await;
         jobs.push(job);

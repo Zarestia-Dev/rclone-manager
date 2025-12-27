@@ -83,21 +83,57 @@ pub fn redact_sensitive_values(
         })
         .collect()
 }
+
+/// Try to auto-unlock config for remote backends with stored password
+///
+/// This is only for remote backends - local backends use RCLONE_CONFIG_PASS env var.
+pub async fn try_auto_unlock_config(app: &AppHandle) -> Result<(), String> {
+    let backend = BACKEND_MANAGER.get_active().await;
+
+    // Only for remote backends
+    if backend.is_local {
+        return Ok(());
+    }
+
+    // Only if config_password is set
+    let password = match &backend.config_password {
+        Some(p) if !p.is_empty() => p.clone(),
+        _ => return Ok(()),
+    };
+
+    info!("🔓 Auto-unlocking remote config for '{}'...", backend.name);
+
+    let state = app.state::<RcloneState>();
+    let url = EndpointHelper::build_url(&backend.api_url(), config::UNLOCK);
+    let payload = json!({ "configPassword": password });
+
+    let response = backend
+        .inject_auth(state.client.post(&url))
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+
+    if !response.status().is_success() {
+        let body = response.text().await.unwrap_or_default();
+        return Err(format!("Unlock failed: {}", body));
+    }
+
+    app.emit(RCLONE_CONFIG_UNLOCKED, ())
+        .map_err(|e| format!("Failed to emit event: {e}"))?;
+
+    info!("✅ Remote config unlocked");
+    Ok(())
+}
+
 pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
     let state = app.state::<RcloneState>();
     let mut guard = state.oauth_process.lock().await;
 
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or_else(|| RcloneError::ConfigError("No active backend".to_string()))?;
-    let backend_read = backend.read().await;
-    let port = backend_read
-        .oauth
-        .as_ref()
-        .map(|o| o.port)
+    let backend = BACKEND_MANAGER.get_active().await;
+    let port = backend
+        .oauth_port
         .ok_or_else(|| RcloneError::ConfigError("OAuth not configured".to_string()))?;
-    drop(backend_read); // Drop lock usage before potentially long operations
 
     // Check if process is already running (in memory or port open)
     let mut process_running = guard.is_some();
@@ -163,17 +199,8 @@ pub async fn quit_rclone_oauth(state: State<'_, RcloneState>) -> Result<(), Stri
 
     let mut guard = state.oauth_process.lock().await;
 
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-    let backend_read = backend.read().await;
-    let port = backend_read
-        .oauth
-        .as_ref()
-        .map(|o| o.port)
-        .ok_or("OAuth not configured")?;
-    drop(backend_read);
+    let backend = BACKEND_MANAGER.get_active().await;
+    let port = backend.oauth_port.ok_or("OAuth not configured")?;
 
     let mut found_process = false;
 
@@ -227,15 +254,11 @@ pub async fn set_bandwidth_limit(
         _ => "off".to_string(),
     };
 
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), core::BWLIMIT);
+    let backend = BACKEND_MANAGER.get_active().await;
+    let url = EndpointHelper::build_url(&backend.api_url(), core::BWLIMIT);
     let payload = json!({ "rate": rate_value });
 
-    let response = backend_guard
+    let response = backend
         .inject_auth(state.client.post(&url))
         .json(&payload)
         .send()
@@ -265,16 +288,12 @@ pub async fn unlock_rclone_config(
     password: String,
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), config::UNLOCK);
+    let backend = BACKEND_MANAGER.get_active().await;
+    let url = EndpointHelper::build_url(&backend.api_url(), config::UNLOCK);
 
     let payload = json!({ "configPassword": password });
 
-    let response = backend_guard
+    let response = backend
         .inject_auth(state.client.post(&url))
         .json(&payload)
         .send()

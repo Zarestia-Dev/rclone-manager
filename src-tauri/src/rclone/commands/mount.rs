@@ -79,13 +79,10 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     debug!("Received mount_remote params: {params:#?}");
     // Get active backend
     let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
-    let backend = backend_manager
-        .get_active()
-        .await
-        .ok_or_else(|| "No active backend".to_string())?;
-    let backend_read = backend.read().await;
-    let cache = &backend_read.remote_cache;
-    let api_url = backend_read.api_url();
+    let backend = backend_manager.get_active().await;
+    // backend_read deleted
+    let cache = &backend_manager.remote_cache;
+    let api_url = backend.api_url();
 
     let mounted_remotes = cache.get_mounted_remotes().await;
     let state = app.state::<RcloneState>();
@@ -187,7 +184,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     let (_, _) = submit_job_and_wait(
         app.clone(),
         state.client.clone(),
-        backend_read.inject_auth(state.client.post(&url)),
+        backend.inject_auth(state.client.post(&url)),
         payload,
         JobMetadata {
             remote_name: params.remote_name.clone(),
@@ -229,13 +226,10 @@ pub async fn unmount_remote(
     // For unmount, we might need to find which backend has this mount?
     // Or just look up by remote_name if it matches a connection?
     // But params definition for unmount_remote takes `remote_name`.
-    let backend = backend_manager
-        .get_active()
-        .await
-        .ok_or_else(|| "No active backend".to_string())?;
+    let backend = backend_manager.get_active().await;
 
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), mount::UNMOUNT);
+    // backend_guard deleted
+    let url = EndpointHelper::build_url(&backend.api_url(), mount::UNMOUNT);
     let payload = json!({ "mountPoint": mount_point });
     if mount_point.trim().is_empty() {
         return Err("Mount point cannot be empty".to_string());
@@ -249,7 +243,7 @@ pub async fn unmount_remote(
         None,
     );
 
-    let response = backend_guard
+    let response = backend
         .inject_auth(state.client.post(&url))
         .json(&payload)
         .send()
@@ -314,15 +308,12 @@ pub async fn unmount_all_remotes(
     // Ideally we should modify this to return list of results.
     // Adhering to single backend assumption for unmount_all for now to avoid breaking frontend contract too much.
     // Or simply loop and ignore errors?
-    let backend = backend_manager
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
+    let backend = backend_manager.get_active().await;
 
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), mount::UNMOUNTALL);
+    // backend_guard deleted
+    let url = EndpointHelper::build_url(&backend.api_url(), mount::UNMOUNTALL);
 
-    let response = backend_guard
+    let response = backend
         .inject_auth(state.client.post(&url))
         .send()
         .await

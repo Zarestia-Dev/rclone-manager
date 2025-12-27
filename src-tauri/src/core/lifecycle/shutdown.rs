@@ -17,7 +17,6 @@ use crate::{
 
 use crate::core::scheduler::engine::CronScheduler;
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
-// removed global JobCache/RemoteCache imports
 
 /// Main entry point for handling shutdown tasks
 #[tauri::command]
@@ -39,18 +38,12 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
 
     let scheduler_state = app_handle.state::<CronScheduler>();
 
-    // Iterate all backends to count active jobs/serves (for logging)
-    let backend_names = BACKEND_MANAGER.list_names().await;
-    let mut job_count = 0;
-    let mut serve_count = 0;
+    // Count active jobs/serves (for logging) from shared caches
+    let job_cache = &BACKEND_MANAGER.job_cache;
+    let remote_cache = &BACKEND_MANAGER.remote_cache;
 
-    for name in &backend_names {
-        if let Some(backend) = BACKEND_MANAGER.get(name).await {
-            let guard = backend.read().await;
-            job_count += guard.job_cache.get_active_jobs().await.len();
-            serve_count += guard.remote_cache.get_serves().await.len();
-        }
-    }
+    let job_count = job_cache.get_active_jobs().await.len();
+    let serve_count = remote_cache.get_serves().await.len();
 
     if job_count > 0 {
         info!("⚠️ Stopping {job_count} active jobs during shutdown");
@@ -59,15 +52,10 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         info!("⚠️ Stopping {serve_count} active serves during shutdown");
     }
 
-    // Stop everything across all backends
-    // We launch tasks for all backends in parallel? Or sequential?
-    // Sequential for safety for now.
+    // Stop everything
+    // We launch tasks in parallel
 
-    // Unmount all remotes (using global helper which currently only handles active - TODO: fix unmount_all_remotes to handle all)
-    // Actually, we can loop backends here if we had a per-backend unmount_all command.
-    // For now call the command, but really we should iterate.
-    // Since unmount_all_remotes uses active backend, this is partial.
-    // But fixing unmount_all_remotes is separate.
+    // Unmount all remotes (using global helper which currently only handles active)
     let unmount_task = tokio::time::timeout(
         tokio::time::Duration::from_secs(5),
         unmount_all_remotes(
@@ -79,7 +67,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
 
     let stop_jobs_task = tokio::time::timeout(
         tokio::time::Duration::from_secs(5),
-        stop_all_jobs_all_backends(app_handle.clone()),
+        stop_all_active_jobs(app_handle.clone()),
     );
 
     let stop_serves_task = tokio::time::timeout(
@@ -193,31 +181,23 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     app_handle.exit(0);
 }
 
-async fn stop_all_jobs_all_backends(app: AppHandle) -> Result<(), String> {
-    let backend_names = BACKEND_MANAGER.list_names().await;
+async fn stop_all_active_jobs(app: AppHandle) -> Result<(), String> {
+    let job_cache = &BACKEND_MANAGER.job_cache;
+    let active_jobs = job_cache.get_active_jobs().await;
     let mut errors = Vec::new();
     let scheduled_cache = app.state::<ScheduledTasksCache>();
 
-    for name in backend_names {
-        if let Some(backend) = BACKEND_MANAGER.get(&name).await {
-            let guard = backend.read().await;
-            let job_cache = guard.job_cache.clone();
-            let active_jobs = job_cache.get_active_jobs().await;
-            drop(guard); // drop lock before async calls
-
-            for job in active_jobs {
-                if let Err(e) = stop_job(
-                    app.clone(),
-                    scheduled_cache.clone(),
-                    job.jobid,
-                    job.remote_name.clone(),
-                    app.state(),
-                )
-                .await
-                {
-                    errors.push(format!("Job {} ({}): {e}", job.jobid, name));
-                }
-            }
+    for job in active_jobs {
+        if let Err(e) = stop_job(
+            app.clone(),
+            scheduled_cache.clone(),
+            job.jobid,
+            job.remote_name.clone(),
+            app.state(),
+        )
+        .await
+        {
+            errors.push(format!("Job {} ({}): {e}", job.jobid, job.remote_name));
         }
     }
 

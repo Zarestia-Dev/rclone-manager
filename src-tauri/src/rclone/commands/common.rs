@@ -21,13 +21,9 @@ pub async fn resolve_profile_settings(
     config_key: &str,
 ) -> Result<(Value, Value), String> {
     let backend_manager = &BACKEND_MANAGER;
-    let backend = backend_manager
-        .get_active()
-        .await
-        .ok_or_else(|| "No active backend".to_string())?;
 
-    let backend_read = backend.read().await;
-    let cache = &backend_read.remote_cache;
+    // backend_read deleted
+    let cache = &backend_manager.remote_cache;
 
     let manager = app.state::<rcman::SettingsManager<rcman::JsonStorage>>();
     let remote_names = cache.get_remotes().await;

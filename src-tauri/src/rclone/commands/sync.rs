@@ -365,19 +365,16 @@ async fn perform_transfer(
 
     // 6. Get API URL
     let backend_manager = &BACKEND_MANAGER;
-    let backend = backend_manager
-        .get_active()
-        .await
-        .ok_or_else(|| "No active backend".to_string())?;
+    let backend = backend_manager.get_active().await;
+    // backend_read deleted
 
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), params.transfer_type.endpoint());
+    let url = EndpointHelper::build_url(&backend.api_url(), params.transfer_type.endpoint());
 
     // 7. Submit Job
     let (jobid, _) = submit_job(
         app,
         rclone_state.client.clone(),
-        backend_guard.inject_auth(rclone_state.client.clone().post(&url)),
+        backend.inject_auth(rclone_state.client.clone().post(&url)),
         Value::Object(body),
         JobMetadata {
             remote_name: params.remote_name,

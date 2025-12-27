@@ -39,9 +39,11 @@ pub async fn store_config_password(
             }
 
             // Update BackendManager's Local instance in memory
-            if let Some(backend) = crate::rclone::backend::BACKEND_MANAGER.get("Local").await {
-                let mut guard = backend.write().await;
-                guard.config_password = Some(password);
+            if let Some(mut backend) = crate::rclone::backend::BACKEND_MANAGER.get("Local").await {
+                backend.config_password = Some(password.clone());
+                let _ = crate::rclone::backend::BACKEND_MANAGER
+                    .update("Local", backend)
+                    .await;
                 debug!("📝 Updated in-memory Local backend config password");
             }
 
@@ -105,9 +107,11 @@ pub async fn remove_config_password(
         let _ = credentials.remove(LOCAL_BACKEND_KEY);
 
         // Update BackendManager's Local instance in memory
-        if let Some(backend) = crate::rclone::backend::BACKEND_MANAGER.get("Local").await {
-            let mut guard = backend.write().await;
-            guard.config_password = None;
+        if let Some(mut backend) = crate::rclone::backend::BACKEND_MANAGER.get("Local").await {
+            backend.config_password = None;
+            let _ = crate::rclone::backend::BACKEND_MANAGER
+                .update("Local", backend)
+                .await;
             debug!("📝 Cleared in-memory Local backend config password");
         }
 
@@ -317,9 +321,11 @@ pub async fn encrypt_config(
             );
         } else {
             // Update BackendManager in memory
-            if let Some(backend) = crate::rclone::backend::BACKEND_MANAGER.get("Local").await {
-                let mut guard = backend.write().await;
-                guard.config_password = Some(password.clone());
+            if let Some(mut backend) = crate::rclone::backend::BACKEND_MANAGER.get("Local").await {
+                backend.config_password = Some(password.clone());
+                let _ = crate::rclone::backend::BACKEND_MANAGER
+                    .update("Local", backend)
+                    .await;
             }
         }
 
@@ -388,9 +394,11 @@ pub async fn unencrypt_config(
             let _ = credentials.remove(LOCAL_BACKEND_KEY);
 
             // Update BackendManager in memory
-            if let Some(backend) = crate::rclone::backend::BACKEND_MANAGER.get("Local").await {
-                let mut guard = backend.write().await;
-                guard.config_password = None;
+            if let Some(mut backend) = crate::rclone::backend::BACKEND_MANAGER.get("Local").await {
+                backend.config_password = None;
+                let _ = crate::rclone::backend::BACKEND_MANAGER
+                    .update("Local", backend)
+                    .await;
             }
         }
 

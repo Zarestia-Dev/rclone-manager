@@ -17,13 +17,9 @@ use crate::{
 async fn fetch_all_options_info(
     state: State<'_, RcloneState>,
 ) -> Result<Value, Box<dyn Error + Send + Sync>> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), options::INFO);
-    let response = backend_guard
+    let backend = BACKEND_MANAGER.get_active().await;
+    let url = EndpointHelper::build_url(&backend.api_url(), options::INFO);
+    let response = backend
         .inject_auth(state.client.post(&url))
         .json(&json!({}))
         .send()
@@ -38,13 +34,9 @@ async fn fetch_all_options_info(
 async fn fetch_current_options(
     state: State<'_, RcloneState>,
 ) -> Result<Value, Box<dyn Error + Send + Sync>> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), options::GET);
-    let response = backend_guard
+    let backend = BACKEND_MANAGER.get_active().await;
+    let url = EndpointHelper::build_url(&backend.api_url(), options::GET);
+    let response = backend
         .inject_auth(state.client.post(&url))
         .json(&json!({}))
         .send()
@@ -63,13 +55,9 @@ async fn fetch_current_options(
 async fn fetch_option_blocks(
     state: State<'_, RcloneState>,
 ) -> Result<Value, Box<dyn Error + Send + Sync>> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), options::BLOCKS);
-    let response = backend_guard
+    let backend = BACKEND_MANAGER.get_active().await;
+    let url = EndpointHelper::build_url(&backend.api_url(), options::BLOCKS);
+    let response = backend
         .inject_auth(state.client.post(&url))
         .json(&json!({}))
         .send()
@@ -425,12 +413,8 @@ pub async fn set_rclone_option(
     option_name: String,
     value: Value,
 ) -> Result<Value, String> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), options::SET);
+    let backend = BACKEND_MANAGER.get_active().await;
+    let url = EndpointHelper::build_url(&backend.api_url(), options::SET);
     let parts: Vec<&str> = option_name.split('.').collect();
     let nested_value = parts
         .iter()
@@ -438,7 +422,7 @@ pub async fn set_rclone_option(
         .fold(value, |acc, &part| json!({ part: acc }));
     let payload = json!({ block_name.clone(): nested_value });
 
-    let response = backend_guard
+    let response = backend
         .inject_auth(state.client.post(&url))
         .json(&payload)
         .send()

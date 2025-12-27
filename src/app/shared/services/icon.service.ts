@@ -72,6 +72,10 @@ export class IconService {
       'file-arrow-up': 'assets/icons/file-arrow-up.svg',
       database: 'assets/icons/database.svg',
 
+      apple: 'assets/icons/apple.svg',
+      linux: 'assets/icons/linux.svg',
+      windows: 'assets/icons/windows.svg',
+
       // ------------------- Remote Icons -------------------
       drive: 'assets/icons/remotes/drive.svg',
       dropbox: 'assets/icons/remotes/dropbox.svg',

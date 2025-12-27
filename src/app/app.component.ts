@@ -28,6 +28,7 @@ import {
   AppUpdaterService,
   NautilusService,
   SystemHealthService,
+  BackendService,
 } from '@app/services';
 import { GlobalLoadingService } from './services/ui/global-loading.service';
 
@@ -65,6 +66,7 @@ export class AppComponent implements OnDestroy {
   private readonly loadingService = inject(GlobalLoadingService);
   private readonly nautilusService = inject(NautilusService);
   private readonly systemHealthService = inject(SystemHealthService);
+  private readonly backendService = inject(BackendService);
 
   // --- DERIVED STATE & OBSERVABLE CONVERSIONS ---
   readonly currentTab = toSignal(this.uiStateService.currentTab$, {
@@ -93,10 +95,21 @@ export class AppComponent implements OnDestroy {
       await this.appSettingsService.loadSettings();
       await this.checkOnboardingStatus();
       this.checkBrowseUrlParameter();
+
+      // Perform startup/background checks
+      this.runBackendChecks();
     } catch (error) {
       console.error('App initialization failed:', error);
       this.completedOnboarding.set(false);
     }
+  }
+
+  private runBackendChecks(): void {
+    // These run in background without blocking init
+    this.backendService.loadBackends().then(async () => {
+      await this.backendService.checkStartupConnectivity();
+      await this.backendService.checkAllBackends();
+    });
   }
 
   /**

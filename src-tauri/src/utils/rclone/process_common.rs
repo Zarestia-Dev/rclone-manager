@@ -89,22 +89,19 @@ pub async fn setup_rclone_environment(
     // This is the new standard "Unified" storage
     if !password_found
         && let Some(backend) = crate::rclone::backend::BACKEND_MANAGER.get("Local").await
+        && let Some(ref password) = backend.config_password
+        && !password.is_empty()
     {
-        let guard = backend.read().await;
-        if let Some(ref password) = guard.config_password
-            && !password.is_empty()
-        {
-            info!(
-                "🔑 Using stored rclone config password (via Local backend) for {} process",
-                process_type
-            );
-            command = command.env("RCLONE_CONFIG_PASS", password);
-            password_found = true;
+        info!(
+            "🔑 Using stored rclone config password (via Local backend) for {} process",
+            process_type
+        );
+        command = command.env("RCLONE_CONFIG_PASS", password);
+        password_found = true;
 
-            // Also update the environment manager for future use
-            if let Some(env_manager) = app.try_state::<SafeEnvironmentManager>() {
-                env_manager.set_config_password(password.clone());
-            }
+        // Also update the environment manager for future use
+        if let Some(env_manager) = app.try_state::<SafeEnvironmentManager>() {
+            env_manager.set_config_password(password.clone());
         }
     }
 
@@ -134,17 +131,16 @@ pub async fn create_rclone_command(
 ) -> Result<tauri_plugin_shell::process::Command, String> {
     let command = build_rclone_command(app, None, None, None);
 
-    // Retrieve active backend settings to check for auth
+    // Retrieve active backend settings to check for valid auth
     let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
-    let auth_args = if let Some(backend) = backend_manager.get_active().await {
-        let guard = backend.read().await;
-        if let Some(ref auth) = guard.connection.auth {
-            // Use password if present, otherwise fall back to username as password
-            let password = auth.password.as_deref().unwrap_or(&auth.username);
-            Some((auth.username.clone(), password.to_string()))
-        } else {
-            None
-        }
+    let backend = backend_manager.get_active().await;
+
+    // Only use auth if properly configured (non-empty username AND password)
+    let auth_args = if backend.has_valid_auth() {
+        Some((
+            backend.username.clone().unwrap(),
+            backend.password.clone().unwrap_or_default(),
+        ))
     } else {
         None
     };

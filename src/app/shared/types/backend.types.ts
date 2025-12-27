@@ -3,29 +3,31 @@
 
 export interface BackendInfo {
   name: string;
-  backend_type: 'local' | 'remote';
+  is_local: boolean;
   host: string;
   port: number;
   is_active: boolean;
-  status: string;
-  username?: string;
-  password?: string;
-  config_password?: string;
-  oauth_host?: string;
+  has_auth: boolean;
+  has_config_password: boolean;
   oauth_port?: number;
+  username?: string;
+  version?: string;
+  os?: string;
+  status?: string;
 }
 
 export interface TestConnectionResult {
   success: boolean;
   message: string;
   version?: string;
+  os?: string;
 }
 
 export interface AddBackendConfig {
   name: string;
   host: string;
   port: number;
-  backend_type: 'local' | 'remote';
+  is_local: boolean;
   username?: string;
   password?: string;
   config_password?: string;

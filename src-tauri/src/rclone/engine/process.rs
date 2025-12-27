@@ -16,14 +16,12 @@ impl RcApiEngine {
     pub async fn spawn_process(&mut self, app: &AppHandle) -> Result<CommandChild, String> {
         // Return type is correct
         // Get port from BACKEND_MANAGER
-        let port = if let Some(backend) = crate::rclone::backend::BACKEND_MANAGER.get_active().await
-        {
-            backend.read().await.connection.port
-        } else {
-            // Fallback to default or existing if backend manager not ready (unlikely)
-            warn!("⚠️ No active backend found in BACKEND_MANAGER during spawn, using stored port");
-            self.current_api_port
-        };
+        // We only care about Local backend port - but get_active returns current backend
+        // If it's local, we use its port. If remote, we shouldn't be spawning, but if we do, we use its port (though it won't work as we don't manage process)
+        // Actually spawn_process is only called if is_active_backend_local check passes in lifecycle.rs.
+        let backend = crate::rclone::backend::BACKEND_MANAGER.get_active().await;
+        // If backend is remote, the port might be unrelated to local process, but we use it as "current_api_port"
+        let port = backend.port;
 
         self.current_api_port = port;
 

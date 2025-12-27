@@ -8,7 +8,7 @@ use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::time;
 
-use crate::rclone::backend::{BACKEND_MANAGER, types::RcloneBackend};
+use crate::rclone::backend::{BACKEND_MANAGER, types::Backend};
 use crate::rclone::queries::{mount::get_mounted_remotes_internal, serve::list_serves_internal};
 use crate::utils::types::all_types::{MountedRemote, RemoteCache, ServeInstance};
 use crate::utils::types::events::{REMOTE_STATE_CHANGED, SERVE_STATE_CHANGED};
@@ -33,10 +33,10 @@ fn find_mount_changes(previous: &[MountedRemote], current: &[MountedRemote]) -> 
         .collect()
 }
 
-/// Core logic to check and reconcile mounted remotes for a specific backend
+/// Core logic to check and reconcile mounted remotes for the active backend
 async fn check_and_reconcile_mounts(
     app_handle: AppHandle,
-    backend: RcloneBackend,
+    backend: Backend,
     cache: Arc<RemoteCache>,
     client: reqwest::Client,
 ) -> Result<(), String> {
@@ -110,28 +110,16 @@ pub async fn start_mounted_remote_watcher(app_handle: AppHandle) {
             break;
         }
 
-        let backend_names = BACKEND_MANAGER.list_names().await;
-        for name in backend_names {
-            let (backend_copy, cache, client) =
-                if let Some(backend) = BACKEND_MANAGER.get(&name).await {
-                    let guard = backend.read().await;
-                    (
-                        guard.clone(),
-                        guard.remote_cache.clone(),
-                        app_handle
-                            .state::<crate::utils::types::all_types::RcloneState>()
-                            .client
-                            .clone(),
-                    )
-                } else {
-                    continue;
-                };
+        let backend = BACKEND_MANAGER.get_active().await;
+        let cache = BACKEND_MANAGER.remote_cache.clone();
+        let client = app_handle
+            .state::<crate::utils::types::all_types::RcloneState>()
+            .client
+            .clone();
 
-            if let Err(e) =
-                check_and_reconcile_mounts(app_handle.clone(), backend_copy, cache, client).await
-            {
-                debug!("🔍 Watcher failed to reconcile mounts: {e}");
-            }
+        if let Err(e) = check_and_reconcile_mounts(app_handle.clone(), backend, cache, client).await
+        {
+            debug!("🔍 Watcher failed to reconcile mounts: {e}");
         }
     }
 }
@@ -146,33 +134,22 @@ pub fn stop_mounted_remote_watcher() {
 #[tauri::command]
 pub async fn force_check_mounted_remotes(app_handle: AppHandle) -> Result<(), String> {
     debug!("🔍 Force checking mounted remotes");
-    // Force check iterates all backends
-    let backend_names = BACKEND_MANAGER.list_names().await;
-    for name in backend_names {
-        let (backend_copy, cache, client) = if let Some(backend) = BACKEND_MANAGER.get(&name).await
-        {
-            let guard = backend.read().await;
-            (
-                guard.clone(),
-                guard.remote_cache.clone(),
-                app_handle
-                    .state::<crate::utils::types::all_types::RcloneState>()
-                    .client
-                    .clone(),
-            )
-        } else {
-            continue;
-        };
+    // Force check only checks active backend
+    let backend = BACKEND_MANAGER.get_active().await;
+    let cache = BACKEND_MANAGER.remote_cache.clone();
+    let client = app_handle
+        .state::<crate::utils::types::all_types::RcloneState>()
+        .client
+        .clone();
 
-        check_and_reconcile_mounts(app_handle.clone(), backend_copy, cache, client).await?;
-    }
+    check_and_reconcile_mounts(app_handle.clone(), backend, cache, client).await?;
     Ok(())
 }
 
 /// Helper to get running serves directly from the API
 async fn get_serves_from_api(
     client: &reqwest::Client,
-    backend: &RcloneBackend,
+    backend: &Backend,
 ) -> Result<Vec<ServeInstance>, String> {
     let api_response = list_serves_internal(client, backend).await?;
     let api_serves: Vec<ServeInstance> = api_response
@@ -201,7 +178,7 @@ async fn get_serves_from_api(
 /// Core logic to check and reconcile running serves
 async fn check_and_reconcile_serves(
     app_handle: AppHandle,
-    backend: RcloneBackend,
+    backend: Backend,
     cache: Arc<RemoteCache>,
     client: reqwest::Client,
 ) -> Result<(), String> {
@@ -296,25 +273,14 @@ async fn check_and_reconcile_serves(
 #[tauri::command]
 pub async fn force_check_serves(app_handle: AppHandle) -> Result<(), String> {
     debug!("🔍 Force checking running serves");
-    let backend_names = BACKEND_MANAGER.list_names().await;
-    for name in backend_names {
-        let (backend_copy, cache, client) = if let Some(backend) = BACKEND_MANAGER.get(&name).await
-        {
-            let guard = backend.read().await;
-            (
-                guard.clone(),
-                guard.remote_cache.clone(),
-                app_handle
-                    .state::<crate::utils::types::all_types::RcloneState>()
-                    .client
-                    .clone(),
-            )
-        } else {
-            continue;
-        };
+    let backend = BACKEND_MANAGER.get_active().await;
+    let cache = BACKEND_MANAGER.remote_cache.clone();
+    let client = app_handle
+        .state::<crate::utils::types::all_types::RcloneState>()
+        .client
+        .clone();
 
-        check_and_reconcile_serves(app_handle.clone(), backend_copy, cache, client).await?;
-    }
+    check_and_reconcile_serves(app_handle.clone(), backend, cache, client).await?;
     Ok(())
 }
 
@@ -337,29 +303,17 @@ pub fn start_serve_watcher(app_handle: AppHandle) {
                 break;
             }
 
-            let backend_names = BACKEND_MANAGER.list_names().await;
-            for name in backend_names {
-                let (backend_copy, cache, client) =
-                    if let Some(backend) = BACKEND_MANAGER.get(&name).await {
-                        let guard = backend.read().await;
-                        (
-                            guard.clone(),
-                            guard.remote_cache.clone(),
-                            app_handle
-                                .state::<crate::utils::types::all_types::RcloneState>()
-                                .client
-                                .clone(),
-                        )
-                    } else {
-                        continue;
-                    };
+            let backend = BACKEND_MANAGER.get_active().await;
+            let cache = BACKEND_MANAGER.remote_cache.clone();
+            let client = app_handle
+                .state::<crate::utils::types::all_types::RcloneState>()
+                .client
+                .clone();
 
-                if let Err(e) =
-                    check_and_reconcile_serves(app_handle.clone(), backend_copy, cache, client)
-                        .await
-                {
-                    debug!("🔍 Watcher failed to reconcile serves: {e}");
-                }
+            if let Err(e) =
+                check_and_reconcile_serves(app_handle.clone(), backend, cache, client).await
+            {
+                debug!("🔍 Watcher failed to reconcile serves: {e}");
             }
         }
     });

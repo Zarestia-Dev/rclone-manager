@@ -18,54 +18,51 @@
 
     <!-- Backend List -->
     @if (formState().mode === 'closed') {
-      <mat-radio-group
-        class="backends-list"
-        [value]="activeBackend()"
-        (change)="switchToBackend($event.value)"
-      >
+      <div class="backends-list">
         @for (backend of backends(); track backend.name) {
           <div
-            class="setting-item"
+            class="backend-card"
             [class.active]="backend.is_active"
             [class.switching]="switchingTo() === backend.name"
             (click)="!backend.is_active && switchToBackend(backend.name)"
             (keydown.enter)="!backend.is_active && switchToBackend(backend.name)"
-            (keydown.space)="!backend.is_active && switchToBackend(backend.name)"
             tabindex="0"
             [attr.aria-label]="'Switch to ' + backend.name"
-            [attr.aria-pressed]="backend.is_active"
           >
-            <!-- Selection Indicator -->
-            <mat-radio-button
-              [value]="backend.name"
-              [checked]="backend.is_active"
-              (click)="$event.stopPropagation()"
-              class="backend-radio"
+            <!-- Backend Icon with Status -->
+            <div
+              class="backend-icon"
+              [class.local]="backend.is_local"
+              [class]="getStatusClass(backend)"
+              [matTooltip]="getStatusTooltip(backend)"
             >
-            </mat-radio-button>
+              <mat-icon [svgIcon]="getBackendIcon(backend)"></mat-icon>
+              <span class="status-dot" [class]="getStatusClass(backend)"></span>
+            </div>
 
-            <div class="item-content">
-              <div class="icon-wrapper" [class]="getStatusClass(backend.status)">
-                <mat-icon [svgIcon]="getStatusIcon(backend.status)"></mat-icon>
+            <!-- Backend Info -->
+            <div class="backend-info">
+              <div class="backend-title">
+                <span class="name">{{ backend.name }}</span>
+                @if (backend.is_active) {
+                  <span class="badge active">Active</span>
+                }
               </div>
-
-              <div class="item-text">
-                <strong>
-                  {{ backend.name }}
-                  @if (backend.backend_type === 'local') {
-                    <span class="badge type managed">Managed</span>
-                  } @else {
-                    <span class="badge type">Remote</span>
-                  }
-                  @if (backend.is_active) {
-                    <span class="badge active">Active</span>
-                  }
-                </strong>
-                <p>{{ backend.host }}:{{ backend.port }}</p>
+              <div class="backend-subtitle">
+                <span class="address">{{ backend.host }}:{{ backend.port }}</span>
+                @if (backend.version) {
+                  <span class="separator">•</span>
+                  <span class="version">{{ backend.version }}</span>
+                }
+                @if (backend.os) {
+                  <span class="separator">•</span>
+                  <span class="os">{{ backend.os }}</span>
+                }
               </div>
             </div>
 
-            <div class="item-actions">
+            <!-- Action Buttons -->
+            <div class="backend-actions">
               <button
                 mat-icon-button
                 (click)="$event.stopPropagation(); startEdit(backend)"
@@ -92,7 +89,8 @@
                   mat-icon-button
                   class="warn"
                   (click)="$event.stopPropagation(); removeBackend(backend.name)"
-                  matTooltip="Remove"
+                  [disabled]="backend.is_active"
+                  [matTooltip]="backend.is_active ? 'Switch to another backend first' : 'Remove'"
                 >
                   <mat-icon svgIcon="trash"></mat-icon>
                 </button>
@@ -100,7 +98,7 @@
             </div>
           </div>
         }
-      </mat-radio-group>
+      </div>
     }
 
     <!-- Add/Edit Form -->

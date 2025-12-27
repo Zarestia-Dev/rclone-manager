@@ -3,7 +3,7 @@ use serde_json::Value;
 use tauri::State;
 
 use crate::{
-    rclone::backend::{BACKEND_MANAGER, types::RcloneBackend},
+    rclone::backend::{BACKEND_MANAGER, types::Backend},
     utils::{
         rclone::endpoints::{EndpointHelper, serve},
         types::all_types::RcloneState,
@@ -13,17 +13,12 @@ use crate::{
 /// Get all supported serve types from rclone
 #[tauri::command]
 pub async fn get_serve_types(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), serve::TYPES);
+    let backend = BACKEND_MANAGER.get_active().await;
+    let url = EndpointHelper::build_url(&backend.api_url(), serve::TYPES);
 
     debug!("🔍 Fetching serve types from {url}");
 
-    let response = backend_guard
+    let response = backend
         .inject_auth(state.client.post(&url))
         .send()
         .await
@@ -56,7 +51,7 @@ pub async fn get_serve_types(state: State<'_, RcloneState>) -> Result<Vec<String
 /// List all currently running serve instances
 pub async fn list_serves_internal(
     client: &reqwest::Client,
-    backend: &RcloneBackend,
+    backend: &Backend,
 ) -> Result<Value, String> {
     let url = EndpointHelper::build_url(&backend.api_url(), serve::LIST);
 
@@ -87,10 +82,6 @@ pub async fn list_serves_internal(
 
 #[tauri::command]
 pub async fn list_serves(state: State<'_, RcloneState>) -> Result<Value, String> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-    let backend_guard = backend.read().await;
-    list_serves_internal(&state.client, &backend_guard).await
+    let backend = BACKEND_MANAGER.get_active().await;
+    list_serves_internal(&state.client, &backend).await
 }

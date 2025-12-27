@@ -23,12 +23,8 @@ pub async fn handle_startup(app: AppHandle) {
     let manager = app.state::<rcman::SettingsManager<rcman::JsonStorage>>();
 
     let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
-    let remote_names = if let Some(backend) = backend_manager.get_active().await {
-        backend.read().await.remote_cache.get_remotes().await
-    } else {
-        warn!("Skipping auto-start: No active backend found.");
-        return;
-    };
+
+    let remote_names = backend_manager.remote_cache.get_remotes().await;
     let settings_val = crate::core::settings::remote::manager::get_all_remote_settings_sync(
         manager.inner(),
         &remote_names,

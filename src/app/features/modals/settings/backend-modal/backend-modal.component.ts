@@ -7,7 +7,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatRadioModule } from '@angular/material/radio';
 import { BackendService } from 'src/app/services/system/backend.service';
 import type { BackendInfo } from 'src/app/shared/types/backend.types';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -32,7 +31,6 @@ import { BackendSecurityComponent } from './backend-security/backend-security.co
     MatTooltipModule,
     MatCheckboxModule,
     MatSnackBarModule,
-    MatRadioModule,
     MatTabsModule,
     BackendSecurityComponent,
   ],
@@ -99,11 +97,11 @@ export class BackendModalComponent implements OnInit {
       name: backend.name,
       host: backend.host,
       port: backend.port,
-      has_auth: !!(backend.username || backend.password),
+      has_auth: backend.has_auth,
       username: backend.username || '',
-      password: backend.password || '',
-      config_password: backend.config_password || '',
-      oauth_host: backend.oauth_host || '127.0.0.1',
+      password: '', // Passwords not sent from backend for security
+      config_password: '', // Config passwords not sent from backend
+      oauth_host: '127.0.0.1', // Default, oauth_host not tracked in BackendInfo
       oauth_port: backend.oauth_port || 51901,
     });
 
@@ -135,8 +133,20 @@ export class BackendModalComponent implements OnInit {
     try {
       this.switchingTo.set(name);
       await this.backendService.switchBackend(name);
+      this.snackBar.open(`Switched to '${name}'`, 'Close', {
+        duration: 3000,
+        panelClass: 'snackbar-success',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.snackBar.open(`Failed to switch: ${message}`, 'Close', {
+        duration: 5000,
+        panelClass: 'snackbar-error',
+      });
     } finally {
       this.switchingTo.set(null);
+      // Reload to get updated status (connected/error)
+      await this.backendService.loadBackends();
     }
   }
 
@@ -173,17 +183,17 @@ export class BackendModalComponent implements OnInit {
     const formValue = this.backendForm.getRawValue();
     const state = this.formState();
 
-    // Determine backend type - Local when editing Local, remote for new backends
+    // Determine if editing local backend
     const isEditingLocal = state.mode === 'edit' && state.editingName === 'Local';
-    const backendType = isEditingLocal ? ('local' as const) : ('remote' as const);
 
     const backendData = {
       name: formValue.name,
       host: formValue.host,
       port: formValue.port,
-      backend_type: backendType,
-      username: formValue.has_auth ? formValue.username : undefined,
-      password: formValue.has_auth ? formValue.password : undefined,
+      is_local: isEditingLocal,
+      // Send empty strings to signal "clear auth" when toggle is off
+      username: formValue.has_auth ? formValue.username : '',
+      password: formValue.has_auth ? formValue.password : '',
       config_password: formValue.config_password || undefined,
       // OAuth fields only for Local backend
       oauth_host: isEditingLocal ? formValue.oauth_host : undefined,
@@ -224,16 +234,6 @@ export class BackendModalComponent implements OnInit {
     }
   }
 
-  getStatusClass(status: string): string {
-    return this.backendService.getStatusClass(status);
-  }
-
-  getStatusIcon(status: string): string {
-    if (status === 'connected') return 'circle-check';
-    if (status.startsWith('error')) return 'circle-xmark';
-    return 'question';
-  }
-
   togglePasswordVisibility(): void {
     this.showPassword.update(v => !v);
   }
@@ -262,4 +262,29 @@ export class BackendModalComponent implements OnInit {
 
   // ============= Encryption Actions =============
   // Moved to BackendSecurityComponent
+
+  // ============= Icon & Status Helpers =============
+  getBackendIcon(backend: BackendInfo): string {
+    if (backend.is_local) return 'home';
+    if (!backend.os) return 'cloud';
+    const os = backend.os.toLowerCase();
+    if (os.includes('linux')) return 'linux';
+    if (os.includes('darwin') || os.includes('macos')) return 'apple';
+    if (os.includes('windows')) return 'windows';
+    return 'cloud';
+  }
+
+  getStatusClass(backend: BackendInfo): string {
+    if (!backend.status) return 'unknown';
+    if (backend.status === 'connected') return 'connected';
+    if (backend.status.startsWith('error')) return 'error';
+    return 'unknown';
+  }
+
+  getStatusTooltip(backend: BackendInfo): string {
+    if (!backend.status) return 'Connection not tested';
+    if (backend.status === 'connected') return 'Connected';
+    if (backend.status.startsWith('error')) return backend.status.replace('error:', 'Error: ');
+    return backend.status;
+  }
 }

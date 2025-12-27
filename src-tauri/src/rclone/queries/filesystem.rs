@@ -17,7 +17,7 @@ async fn execute_fs_op(
     url: String,
     params: serde_json::Value,
     client: reqwest::Client,
-    backend: crate::rclone::backend::types::RcloneBackend,
+    backend: crate::rclone::backend::types::Backend,
 ) -> Result<serde_json::Value, String> {
     let response = backend
         .inject_auth(client.post(&url))
@@ -40,19 +40,12 @@ async fn run_fs_command(
     endpoint: &str,
     mut params: serde_json::Map<String, serde_json::Value>,
 ) -> Result<serde_json::Value, String> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend".to_string())?;
-    // Use read lock to get URL, then clone backend for async operation
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), endpoint);
-    let backend_copy = backend_guard.clone();
-    drop(backend_guard);
+    let backend = BACKEND_MANAGER.get_active().await;
+    let url = EndpointHelper::build_url(&backend.api_url(), endpoint);
 
     params.insert("_async".to_string(), json!(true));
 
-    execute_fs_op(url, json!(params), client, backend_copy).await
+    execute_fs_op(url, json!(params), client, backend).await
 }
 
 #[derive(Serialize, Clone)]
@@ -313,12 +306,8 @@ pub async fn get_public_link(
     expire: Option<String>,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend".to_string())?;
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), operations::PUBLICLINK);
+    let backend = BACKEND_MANAGER.get_active().await;
+    let url = EndpointHelper::build_url(&backend.api_url(), operations::PUBLICLINK);
     debug!(
         "🔗 Getting public link for remote: {remote}, path: {path}, expire: {expire:?}, unlink: {unlink:?}"
     );
@@ -340,7 +329,7 @@ pub async fn get_public_link(
     let params_value = json!(params);
 
     // This is NOT an async operation - it returns the URL directly
-    let response = backend_guard
+    let response = backend
         .inject_auth(client.post(&url_clone))
         .json(&params_value)
         .send()

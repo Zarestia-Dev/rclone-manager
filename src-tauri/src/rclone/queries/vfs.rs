@@ -9,15 +9,12 @@ use crate::utils::types::all_types::RcloneState;
 /// List active VFSes.
 #[command]
 pub async fn vfs_list(state: State<'_, RcloneState>) -> Result<Value, String> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), vfs::LIST);
+    let backend = BACKEND_MANAGER.get_active().await;
+    // backend_guard deleted
+    let url = EndpointHelper::build_url(&backend.api_url(), vfs::LIST);
     debug!("🔍 Fetching VFS list from {url}");
 
-    let response = backend_guard
+    let response = backend
         .inject_auth(state.client.post(&url))
         .send()
         .await
@@ -46,12 +43,9 @@ pub async fn vfs_forget(
     fs: Option<String>,
     file: Option<String>,
 ) -> Result<Value, String> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), vfs::FORGET);
+    let backend = BACKEND_MANAGER.get_active().await;
+    // backend_guard deleted
+    let url = EndpointHelper::build_url(&backend.api_url(), vfs::FORGET);
     debug!("🗑️ Forgetting paths in VFS cache via {url}");
 
     let mut payload = json!({});
@@ -63,7 +57,7 @@ pub async fn vfs_forget(
         payload["file"] = Value::String(f);
     }
 
-    let response = backend_guard
+    let response = backend
         .inject_auth(state.client.post(&url))
         .json(&payload)
         .send()
@@ -93,12 +87,9 @@ pub async fn vfs_refresh(
     dir: Option<String>,
     recursive: bool,
 ) -> Result<Value, String> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), vfs::REFRESH);
+    let backend = BACKEND_MANAGER.get_active().await;
+    // backend_guard deleted
+    let url = EndpointHelper::build_url(&backend.api_url(), vfs::REFRESH);
     debug!("🔄 Refreshing VFS cache via {url}");
 
     let recursive_str = if recursive { "true" } else { "false" };
@@ -113,7 +104,7 @@ pub async fn vfs_refresh(
         payload["dir"] = Value::String(d);
     }
 
-    let response = backend_guard
+    let response = backend
         .inject_auth(state.client.post(&url))
         .json(&payload)
         .send()
@@ -138,12 +129,9 @@ pub async fn vfs_refresh(
 /// Get stats for a VFS.
 #[command]
 pub async fn vfs_stats(state: State<'_, RcloneState>, fs: Option<String>) -> Result<Value, String> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), vfs::STATS);
+    let backend = BACKEND_MANAGER.get_active().await;
+    // backend_guard deleted
+    let url = EndpointHelper::build_url(&backend.api_url(), vfs::STATS);
     debug!("📊 Fetching VFS stats via {url}");
 
     let mut payload = json!({});
@@ -151,7 +139,7 @@ pub async fn vfs_stats(state: State<'_, RcloneState>, fs: Option<String>) -> Res
         payload["fs"] = Value::String(f);
     }
 
-    let response = backend_guard
+    let response = backend
         .inject_auth(state.client.post(&url))
         .json(&payload)
         .send()
@@ -181,12 +169,9 @@ pub async fn vfs_poll_interval(
     interval: Option<String>,
     timeout: Option<String>,
 ) -> Result<Value, String> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), vfs::POLL_INTERVAL);
+    let backend = BACKEND_MANAGER.get_active().await;
+    // backend_guard deleted
+    let url = EndpointHelper::build_url(&backend.api_url(), vfs::POLL_INTERVAL);
     debug!("⏱️ VFS poll interval via {url}");
 
     let mut payload = json!({});
@@ -200,7 +185,7 @@ pub async fn vfs_poll_interval(
         payload["timeout"] = Value::String(t);
     }
 
-    let response = backend_guard
+    let response = backend
         .inject_auth(state.client.post(&url))
         .json(&payload)
         .send()
@@ -225,12 +210,9 @@ pub async fn vfs_poll_interval(
 /// Get VFS queue info
 #[command]
 pub async fn vfs_queue(state: State<'_, RcloneState>, fs: Option<String>) -> Result<Value, String> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), vfs::QUEUE);
+    let backend = BACKEND_MANAGER.get_active().await;
+    // backend_guard deleted
+    let url = EndpointHelper::build_url(&backend.api_url(), vfs::QUEUE);
     debug!("📥 Fetching VFS queue via {url}");
 
     let mut payload = json!({});
@@ -238,7 +220,7 @@ pub async fn vfs_queue(state: State<'_, RcloneState>, fs: Option<String>) -> Res
         payload["fs"] = Value::String(f);
     }
 
-    let response = backend_guard
+    let response = backend
         .inject_auth(state.client.post(&url))
         .json(&payload)
         .send()
@@ -271,12 +253,9 @@ pub async fn vfs_queue_set_expiry(
     expiry: f64,
     relative: bool,
 ) -> Result<Value, String> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), vfs::QUEUE_SET_EXPIRY);
+    let backend = BACKEND_MANAGER.get_active().await;
+    // backend_guard deleted
+    let url = EndpointHelper::build_url(&backend.api_url(), vfs::QUEUE_SET_EXPIRY);
     debug!("⏱️ Setting VFS queue expiry via {url}");
 
     let mut payload = json!({
@@ -288,7 +267,7 @@ pub async fn vfs_queue_set_expiry(
         payload["fs"] = Value::String(f);
     }
 
-    let response = backend_guard
+    let response = backend
         .inject_auth(state.client.post(&url))
         .json(&payload)
         .send()

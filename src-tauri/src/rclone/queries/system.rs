@@ -14,14 +14,11 @@ use crate::utils::{
 pub async fn get_bandwidth_limit(
     state: State<'_, RcloneState>,
 ) -> Result<BandwidthLimitResponse, String> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), core::BWLIMIT);
+    let backend = BACKEND_MANAGER.get_active().await;
+    // backend_guard deleted
+    let url = EndpointHelper::build_url(&backend.api_url(), core::BWLIMIT);
 
-    let response = backend_guard
+    let response = backend
         .inject_auth(state.client.post(&url))
         .json(&json!({}))
         .send()
@@ -44,14 +41,11 @@ pub async fn get_bandwidth_limit(
 
 #[tauri::command]
 pub async fn get_rclone_info(state: State<'_, RcloneState>) -> Result<RcloneCoreVersion, String> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), core::VERSION);
+    let backend = BACKEND_MANAGER.get_active().await;
+    // backend_guard deleted
+    let url = EndpointHelper::build_url(&backend.api_url(), core::VERSION);
 
-    let response = backend_guard
+    let response = backend
         .inject_auth(state.client.post(&url))
         .send()
         .await
@@ -69,17 +63,10 @@ pub async fn get_rclone_info(state: State<'_, RcloneState>) -> Result<RcloneCore
 
 #[tauri::command]
 pub async fn get_rclone_pid(state: State<'_, RcloneState>) -> Result<Option<u32>, String> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), core::PID);
-    match backend_guard
-        .inject_auth(state.client.post(&url))
-        .send()
-        .await
-    {
+    let backend = BACKEND_MANAGER.get_active().await;
+    // backend_guard deleted
+    let url = EndpointHelper::build_url(&backend.api_url(), core::PID);
+    match backend.inject_auth(state.client.post(&url)).send().await {
         Ok(resp) => {
             debug!("📡 Querying rclone /core/pid: {url}");
             debug!("rclone /core/pid response status: {}", resp.status());
@@ -110,14 +97,11 @@ pub async fn get_rclone_pid(state: State<'_, RcloneState>) -> Result<Option<u32>
 /// Get RClone memory statistics
 #[tauri::command]
 pub async fn get_memory_stats(state: State<'_, RcloneState>) -> Result<serde_json::Value, String> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), core::MEMSTATS);
+    let backend = BACKEND_MANAGER.get_active().await;
+    // backend_guard deleted
+    let url = EndpointHelper::build_url(&backend.api_url(), core::MEMSTATS);
 
-    let response = backend_guard
+    let response = backend
         .inject_auth(state.client.post(&url))
         .send()
         .await
@@ -136,14 +120,11 @@ pub async fn get_memory_stats(state: State<'_, RcloneState>) -> Result<serde_jso
 #[tauri::command]
 pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {
     let state = app.state::<RcloneState>();
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), config::PATHS);
+    let backend = BACKEND_MANAGER.get_active().await;
+    // backend_guard deleted
+    let url = EndpointHelper::build_url(&backend.api_url(), config::PATHS);
 
-    let response = backend_guard
+    let response = backend
         .inject_auth(state.client.post(&url))
         .json(&json!({}))
         .send()
@@ -175,9 +156,6 @@ pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {
 
 #[tauri::command]
 pub async fn get_rclone_rc_url() -> Result<String, String> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or_else(|| "No active backend".to_string())?;
-    Ok(backend.read().await.api_url())
+    let backend = BACKEND_MANAGER.get_active().await;
+    Ok(backend.api_url())
 }

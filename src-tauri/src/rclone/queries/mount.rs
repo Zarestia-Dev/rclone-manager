@@ -3,13 +3,13 @@ use serde_json::Value;
 use tauri::State;
 
 use crate::rclone::backend::BACKEND_MANAGER;
-use crate::rclone::backend::types::RcloneBackend;
+use crate::rclone::backend::types::Backend;
 use crate::utils::rclone::endpoints::{EndpointHelper, mount};
 use crate::utils::types::all_types::{MountedRemote, RcloneState};
 
 pub async fn get_mounted_remotes_internal(
     client: &reqwest::Client,
-    backend: &RcloneBackend,
+    backend: &Backend,
 ) -> Result<Vec<MountedRemote>, String> {
     let url = EndpointHelper::build_url(&backend.api_url(), mount::LISTMOUNTS);
 
@@ -52,24 +52,16 @@ pub async fn get_mounted_remotes_internal(
 pub async fn get_mounted_remotes(
     state: State<'_, RcloneState>,
 ) -> Result<Vec<MountedRemote>, String> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-    let backend_guard = backend.read().await;
-    get_mounted_remotes_internal(&state.client, &backend_guard).await
+    let backend = BACKEND_MANAGER.get_active().await;
+    get_mounted_remotes_internal(&state.client, &backend).await
 }
 
 #[tauri::command]
 pub async fn get_mount_types(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
-    let backend = BACKEND_MANAGER
-        .get_active()
-        .await
-        .ok_or("No active backend")?;
-    let backend_guard = backend.read().await;
-    let url = EndpointHelper::build_url(&backend_guard.api_url(), mount::TYPES);
+    let backend = BACKEND_MANAGER.get_active().await;
+    let url = EndpointHelper::build_url(&backend.api_url(), mount::TYPES);
 
-    let response = backend_guard
+    let response = backend
         .inject_auth(state.client.post(&url))
         .send()
         .await

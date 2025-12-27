@@ -426,12 +426,10 @@ pub async fn create_tray_menu<R: Runtime>(
         vec![]
     });
 
-    let active_jobs =
-        if let Some(backend) = crate::rclone::backend::BACKEND_MANAGER.get_active().await {
-            backend.read().await.job_cache.get_active_jobs().await
-        } else {
-            Vec::new()
-        };
+    let active_jobs = crate::rclone::backend::BACKEND_MANAGER
+        .job_cache
+        .get_active_jobs()
+        .await;
 
     let cached_settings = get_settings(app.state::<rcman::SettingsManager<rcman::JsonStorage>>())
         .await

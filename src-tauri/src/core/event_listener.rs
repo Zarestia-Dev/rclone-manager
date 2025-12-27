@@ -74,13 +74,12 @@ fn handle_remote_state_changed(app: &AppHandle) {
                 .state::<crate::utils::types::all_types::RcloneState>()
                 .client
                 .clone();
-            if let Some(backend) = crate::rclone::backend::BACKEND_MANAGER.get_active().await {
-                let guard = backend.read().await;
-                let cache = guard.remote_cache.clone();
+            let backend = crate::rclone::backend::BACKEND_MANAGER.get_active().await;
+            // guard deleted
+            let cache = &crate::rclone::backend::BACKEND_MANAGER.remote_cache;
 
-                if let Err(e) = cache.refresh_mounted_remotes(&client, &guard).await {
-                    error!("Failed to refresh mounted remotes: {e}");
-                }
+            if let Err(e) = cache.refresh_mounted_remotes(&client, &backend).await {
+                error!("Failed to refresh mounted remotes: {e}");
             }
             if let Err(e) = update_tray_menu(app.clone(), 0).await {
                 error!("Failed to update tray menu: {e}");
@@ -105,22 +104,20 @@ fn handle_remote_presence_changed(app: &AppHandle) {
                 .state::<crate::utils::types::all_types::RcloneState>()
                 .client
                 .clone();
-            let mut remote_names = Vec::new();
 
-            if let Some(backend) = crate::rclone::backend::BACKEND_MANAGER.get_active().await {
-                let guard = backend.read().await;
-                let cache = guard.remote_cache.clone();
+            let backend = crate::rclone::backend::BACKEND_MANAGER.get_active().await;
+            // guard deleted
+            let cache = &crate::rclone::backend::BACKEND_MANAGER.remote_cache;
 
-                let refresh_tasks: (Result<(), String>, Result<(), String>) = tokio::join!(
-                    cache.refresh_remote_list(&client, &guard),
-                    cache.refresh_remote_configs(&client, &guard),
-                );
-                if let (Err(e1), Err(e2)) = refresh_tasks {
-                    error!("Failed to refresh cache: {e1}, {e2}");
-                }
-
-                remote_names = cache.get_remotes().await;
+            let refresh_tasks: (Result<(), String>, Result<(), String>) = tokio::join!(
+                cache.refresh_remote_list(&client, &backend),
+                cache.refresh_remote_configs(&client, &backend),
+            );
+            if let (Err(e1), Err(e2)) = refresh_tasks {
+                error!("Failed to refresh cache: {e1}, {e2}");
             }
+
+            let remote_names = cache.get_remotes().await;
             let manager = app_clone.state::<rcman::SettingsManager<rcman::JsonStorage>>();
             let all_configs = crate::core::settings::remote::manager::get_all_remote_settings_sync(
                 manager.inner(),
@@ -186,13 +183,12 @@ fn handle_serve_state_changed(app: &AppHandle) {
                 .state::<crate::utils::types::all_types::RcloneState>()
                 .client
                 .clone();
-            if let Some(backend) = crate::rclone::backend::BACKEND_MANAGER.get_active().await {
-                let guard = backend.read().await;
-                let cache = guard.remote_cache.clone();
+            let backend = crate::rclone::backend::BACKEND_MANAGER.get_active().await;
+            // guard deleted
+            let cache = &crate::rclone::backend::BACKEND_MANAGER.remote_cache;
 
-                if let Err(e) = cache.refresh_serves(&client, &guard).await {
-                    error!("❌ Failed to refresh serves cache: {e}");
-                }
+            if let Err(e) = cache.refresh_serves(&client, &backend).await {
+                error!("❌ Failed to refresh serves cache: {e}");
             }
 
             if let Err(e) = crate::core::tray::core::update_tray_menu(app.clone(), 0).await {
