@@ -6,12 +6,14 @@ use crate::{
     rclone::{
         backend::BACKEND_MANAGER,
         commands::{job::stop_job, mount::unmount_all_remotes, serve::stop_all_serves},
-        engine::core::ENGINE,
         state::watcher::{stop_mounted_remote_watcher, stop_serve_watcher},
     },
     utils::{
         process::process_manager::kill_all_rclone_processes,
-        types::{all_types::RcloneState, events::APP_EVENT},
+        types::{
+            all_types::{RcApiEngine, RcloneState},
+            events::APP_EVENT,
+        },
     },
 };
 
@@ -132,19 +134,8 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     let engine_shutdown_task = tokio::time::timeout(
         tokio::time::Duration::from_secs(3),
         spawn_blocking(move || -> Result<(), String> {
-            match ENGINE.lock() {
-                Ok(mut engine) => {
-                    info!("🔄 Shutting down engine gracefully...");
-                    engine.shutdown();
-                    Ok(())
-                }
-                Err(poisoned) => {
-                    error!("Failed to acquire lock on RcApiEngine: {poisoned}");
-                    let mut guard = poisoned.into_inner();
-                    guard.shutdown();
-                    Ok(())
-                }
-            }
+            info!("🔄 Shutting down engine gracefully...");
+            RcApiEngine::with_lock(|e| e.shutdown())
         }),
     );
 

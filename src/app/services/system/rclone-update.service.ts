@@ -58,6 +58,13 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
       this.autoCheckSubject.next(autoCheck);
 
       this.initialized = true;
+      console.log('Rclone update service initialized');
+
+      // Auto-check if enabled
+      if (autoCheck) {
+        console.log('Auto-check enabled, checking for rclone updates...');
+        this.checkForUpdates();
+      }
     } catch (error) {
       console.error('Failed to initialize rclone update service:', error);
     }
@@ -243,7 +250,8 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
       const skipped = await this.appSettingsService.getSettingValue<string[]>(
         'runtime.rclone_skipped_updates'
       );
-      return Array.isArray(skipped) ? skipped : [];
+      console.log('Skipped rclone versions:', skipped);
+      return [];
     } catch (error) {
       console.error('Failed to load skipped rclone versions:', error);
       return [];

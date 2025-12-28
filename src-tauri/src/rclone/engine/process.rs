@@ -1,10 +1,10 @@
-use log::{error, info, warn};
+use log::{debug, error, info};
 use std::time::Duration;
 use tauri::AppHandle;
 use tauri_plugin_shell::process::CommandChild;
 
 use crate::utils::{
-    process::process_manager::{kill_all_rclone_processes, kill_processes_on_port},
+    process::process_manager::kill_processes_on_port,
     rclone::{
         endpoints::{EndpointHelper, core},
         process_common::create_rclone_command,
@@ -12,81 +12,86 @@ use crate::utils::{
     types::all_types::RcApiEngine,
 };
 
+use super::error::{EngineError, EngineResult};
+
 impl RcApiEngine {
-    pub async fn spawn_process(&mut self, app: &AppHandle) -> Result<CommandChild, String> {
-        // Return type is correct
-        // Get port from BACKEND_MANAGER
-        // We only care about Local backend port - but get_active returns current backend
-        // If it's local, we use its port. If remote, we shouldn't be spawning, but if we do, we use its port (though it won't work as we don't manage process)
-        // Actually spawn_process is only called if is_active_backend_local check passes in lifecycle.rs.
+    pub async fn spawn_process(&mut self, app: &AppHandle) -> EngineResult<CommandChild> {
         let backend = crate::rclone::backend::BACKEND_MANAGER.get_active().await;
-        // If backend is remote, the port might be unrelated to local process, but we use it as "current_api_port"
         let port = backend.port;
 
         self.current_api_port = port;
 
-        let engine_app = match create_rclone_command(port, app, "main_engine").await {
-            Ok(cmd) => cmd,
-            Err(e) => {
-                let error_msg = format!("Failed to create engine command: {e}");
-                error!("❌ {}", error_msg);
-                // Error already emitted by check_binaries if it's a path issue
-                return Err(error_msg);
-            }
-        };
+        let engine_app = create_rclone_command(port, app, "main_engine")
+            .await
+            .map_err(|e| {
+                error!("❌ Failed to create engine command: {e}");
+                EngineError::SpawnFailed(e)
+            })?;
 
         match engine_app.spawn() {
-            // FIX 1: Destructure the tuple returned by spawn().
-            // We ignore the receiver (`_rx`) for now and just keep the child process.
             Ok((_rx, child)) => {
                 info!("✅ Rclone process spawned successfully");
-                self.path_error = false;
+                self.set_path_error(false);
                 Ok(child)
             }
             Err(e) => {
                 error!("❌ Failed to spawn Rclone process: {e}");
-                // Check if it's a "file not found" error
                 let err_text = e.to_string();
-                self.path_error = err_text.contains("No such file or directory")
+                let is_path_error = err_text.contains("No such file or directory")
                     || err_text.contains("os error 2");
-                Err(format!("Failed to spawn Rclone process: {e}"))
+                self.set_path_error(is_path_error);
+
+                if is_path_error {
+                    Err(EngineError::InvalidPath)
+                } else {
+                    Err(EngineError::SpawnFailed(err_text))
+                }
             }
         }
     }
 
-    pub fn kill_process(&mut self) -> Result<(), String> {
+    pub fn kill_process(&mut self) -> EngineResult<()> {
         if let Some(child) = self.process.take() {
-            // 1. Attempt graceful shutdown in a background thread
+            let pid = child.pid();
+
+            // 1. Attempt graceful shutdown
             if self.running {
                 info!("🔄 Attempting graceful shutdown...");
 
-                // FIX: Corrected the IP address from 1227.0.0.1 to 127.0.0.1
                 let quit_url = EndpointHelper::build_url(
                     &format!("http://127.0.0.1:{}", self.current_api_port),
                     core::QUIT,
                 );
 
-                std::thread::spawn(move || {
-                    match reqwest::blocking::Client::new()
-                        .post(&quit_url)
-                        .timeout(Duration::from_secs(2))
-                        .send()
-                    {
-                        Ok(_) => info!("📡 Graceful shutdown request sent"),
-                        Err(e) => warn!("⚠️ Graceful shutdown request failed: {e}"),
-                    }
-                });
+                // Send quit request synchronously (with timeout)
+                let _ = reqwest::blocking::Client::new()
+                    .post(&quit_url)
+                    .timeout(Duration::from_secs(2))
+                    .send();
 
-                // Give it a moment to shut down gracefully
-                std::thread::sleep(Duration::from_secs(2));
+                // Poll for process exit (up to 2 seconds, checking every 100ms)
+                for _ in 0..20 {
+                    // Use kill -0 for Flatpak compatibility
+                    if let Ok(output) = std::process::Command::new("kill")
+                        .args(["-0", &pid.to_string()])
+                        .output()
+                        && !output.status.success()
+                    {
+                        info!("✅ Process terminated gracefully");
+                        self.running = false;
+                        return Ok(());
+                    }
+                    std::thread::sleep(Duration::from_millis(100));
+                }
+                debug!("⚠️ Graceful shutdown timed out, force killing...");
             }
 
-            // 2. Force kill the process to ensure it's gone.
-            info!("🛑 Force killing process to ensure termination...");
+            // 2. Force kill the process
+            info!("🛑 Force killing process...");
             if let Err(e) = child.kill() {
                 let error_msg = format!("Failed to kill process: {e}");
                 error!("❌ {}", error_msg);
-                return Err(error_msg);
+                return Err(EngineError::KillFailed(error_msg));
             }
             info!("✅ Process terminated");
         }
@@ -95,13 +100,8 @@ impl RcApiEngine {
         Ok(())
     }
 
-    pub fn kill_port_processes(&self) -> Result<(), String> {
+    pub fn kill_port_processes(&self) -> EngineResult<()> {
         let port = self.current_api_port;
-        kill_processes_on_port(port)
-    }
-
-    pub fn kill_all_rclone_rcd() -> Result<(), String> {
-        // Use default ports or last known if we had state (but static, so defaults)
-        kill_all_rclone_processes(51900, 51901)
+        kill_processes_on_port(port).map_err(EngineError::PortCleanupFailed)
     }
 }

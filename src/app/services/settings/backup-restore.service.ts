@@ -26,6 +26,15 @@ export interface BackupAnalysis {
   };
 }
 
+// Matches ExportCategoryResponse from backend
+export interface ExportCategory {
+  id: string;
+  name: string;
+  categoryType: 'settings' | 'sub_settings' | 'external';
+  optional: boolean;
+  description?: string;
+}
+
 /**
  * Service for backup and restore operations
  * Handles settings backup/restore with encryption support
@@ -92,5 +101,12 @@ export class BackupRestoreService extends TauriBaseService {
       this.notificationService.alertModal('Error', String(error));
       throw error;
     }
+  }
+
+  /**
+   * Get available export categories from backend
+   */
+  async getExportCategories(): Promise<ExportCategory[]> {
+    return this.invokeCommand<ExportCategory[]>('get_export_categories', {});
   }
 }

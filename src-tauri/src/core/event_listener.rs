@@ -9,7 +9,6 @@ use crate::{
     },
     rclone::{
         commands::system::set_bandwidth_limit,
-        engine::core::ENGINE,
         state::scheduled_tasks::{ScheduledTasksCache, reload_scheduled_tasks_from_configs},
     },
     utils::{
@@ -48,14 +47,11 @@ fn handle_rclone_password_stored(app: &AppHandle) {
     app.listen(RCLONE_PASSWORD_STORED, move |_| {
         let _app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            // Clear the engine flag and attempt a restart if engine not running
+            // Clear the engine flag using the new helper
             tauri::async_runtime::spawn_blocking(move || {
-                let mut engine = match ENGINE.lock() {
-                    Ok(guard) => guard,
-                    Err(poisoned) => poisoned.into_inner(),
-                };
-
-                engine.password_error = false;
+                let _ = crate::utils::types::all_types::RcApiEngine::with_lock(|e| {
+                    e.set_password_error(false);
+                });
             });
         });
     });

@@ -24,11 +24,11 @@
           (ngModelChange)="onExportOptionChange($event)"
           class="options-grid"
         >
-          @for (option of exportOptions; track option.value) {
+          @for (option of exportOptions(); track option.id) {
             <mat-radio-button
-              [value]="option.value"
+              [value]="option.id"
               class="option-card-radio"
-              [class.selected]="selectedOption() === option.value"
+              [class.selected]="selectedOption() === option.id"
             >
               <div class="option-card-content">
                 <div class="icon-wrapper">

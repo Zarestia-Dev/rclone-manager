@@ -69,39 +69,7 @@
 .action-card {
   background: var(--card-bg-color);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
   overflow: hidden;
-
-  // Material Expansion Panel Overrides
-  &.mat-expansion-panel {
-    box-shadow: none !important;
-    background: var(--card-bg-color) !important;
-    border-radius: var(--radius-sm) !important;
-    margin-bottom: var(--space-sm); // Spacing between accordion items
-
-    &.mat-expanded {
-      border-color: var(--primary-color);
-      margin-bottom: var(--space-sm); // Keep consistent spacing
-    }
-
-    .mat-expansion-panel-header {
-      padding: 0 !important; // Controlled by .card-header
-      height: auto !important;
-      font-family: inherit;
-
-      &:hover {
-        background: var(--view-bg-color) !important;
-      }
-
-      &.mat-expanded {
-        height: auto !important;
-      }
-    }
-
-    .mat-expansion-panel-body {
-      padding: 0; // Controlled by .card-form
-    }
-  }
 
   &.highlight {
     border-color: var(--primary-color);
@@ -124,17 +92,10 @@
   align-items: center;
   gap: var(--space-md);
   padding: var(--space-md) var(--space-lg);
-  width: 100%;
-  border: none;
-  background: transparent;
   text-align: left;
-  font: inherit;
-  color: inherit;
-  margin: 0; // Reset for mat-panel-title
 
-  > mat-icon:first-child {
+  mat-icon {
     color: var(--primary-color);
-    flex-shrink: 0;
   }
 
   .card-title {

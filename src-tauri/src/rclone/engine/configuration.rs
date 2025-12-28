@@ -147,8 +147,7 @@ impl RcApiEngine {
         match result {
             Ok(_) => {
                 info!("✅ Rclone configuration and password are valid");
-                self.password_error = false;
-                self.path_error = false;
+                self.clear_errors();
                 true
             }
             Err(e) => {
@@ -156,25 +155,23 @@ impl RcApiEngine {
 
                 if e.contains("Rclone binary not found") {
                     // Missing executable on filesystem
-                    self.password_error = false;
-                    self.path_error = true;
+                    self.set_password_error(false);
+                    self.set_path_error(true);
                 } else if e.contains("Wrong password") || e.contains("Invalid environment password")
                 {
                     // Stored password is incorrect
-                    self.password_error = true;
-                    self.path_error = false;
+                    self.set_password_error(true);
+                    self.set_path_error(false);
                 } else if e.contains("no password is available") {
                     // Encrypted config without password
-                    self.password_error = true;
-                    self.path_error = false;
+                    self.set_password_error(true);
+                    self.set_path_error(false);
                 } else if e.contains("Failed to load rclone config file") {
                     // Config file issue, treat as generic error for now
-                    self.password_error = false;
-                    self.path_error = false;
+                    self.clear_errors();
                 } else {
                     // Unknown error, fall back to generic handling
-                    self.password_error = false;
-                    self.path_error = false;
+                    self.clear_errors();
                 }
 
                 let event = if self.path_error {

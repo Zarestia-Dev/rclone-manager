@@ -155,9 +155,11 @@ impl BackendManager {
     pub async fn switch_to(&self, name: &str) -> Result<(), String> {
         let backends = self.backends.read().await;
 
-        let index = backends
+        let (index, is_local) = backends
             .iter()
-            .position(|b| b.name == name)
+            .enumerate()
+            .find(|(_, b)| b.name == name)
+            .map(|(i, b)| (i, b.is_local))
             .ok_or_else(|| format!("Backend '{}' not found", name))?;
 
         drop(backends);
@@ -165,7 +167,10 @@ impl BackendManager {
         let mut active = self.active_index.write().await;
         *active = index;
 
-        info!("🔄 Switched to backend: {}", name);
+        // Update cached is_local flag for engine
+        crate::rclone::engine::core::set_active_is_local(is_local);
+
+        info!("🔄 Switched to backend: {} (is_local: {})", name, is_local);
 
         // Clear caches when switching
         self.remote_cache.clear().await;

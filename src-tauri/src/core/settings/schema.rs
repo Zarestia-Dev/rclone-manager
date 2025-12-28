@@ -184,7 +184,10 @@ pub struct RuntimeSettings {
     )]
     pub app_auto_check_updates: bool,
 
-    #[setting(skip)] // Complex type
+    #[setting(
+        label = "Skipped App Updates",
+        description = "List of application versions that have been skipped."
+    )]
     pub app_skipped_updates: Vec<String>,
 
     #[setting(label = "App Update Channel", options(("stable", "Stable"), ("beta", "Beta")))]
@@ -196,7 +199,10 @@ pub struct RuntimeSettings {
     )]
     pub rclone_auto_check_updates: bool,
 
-    #[setting(skip)] // Complex type
+    #[setting(
+        label = "Skipped Rclone Updates",
+        description = "List of rclone versions that have been skipped."
+    )]
     pub rclone_skipped_updates: Vec<String>,
 
     #[setting(label = "Rclone Update Channel", options(("stable", "Stable"), ("beta", "Beta")))]

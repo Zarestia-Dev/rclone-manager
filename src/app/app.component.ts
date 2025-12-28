@@ -242,17 +242,9 @@ export class AppComponent implements OnDestroy {
 
   private async runAutoUpdateChecks(): Promise<void> {
     try {
-      // Check for application updates
-      const appAutoCheckEnabled = await this.appUpdaterService.getAutoCheckEnabled();
-      if (appAutoCheckEnabled && !this.appUpdaterService.areUpdatesDisabled()) {
-        await this.appUpdaterService.checkForUpdates();
-      }
-
-      // Check for rclone updates
-      const rcloneAutoCheckEnabled = await this.rcloneUpdateService.getAutoCheckEnabled();
-      if (rcloneAutoCheckEnabled) {
-        await this.rcloneUpdateService.checkForUpdates();
-      }
+      // Just initialize the services; they will auto-check if enabled
+      await this.appUpdaterService.initialize();
+      await this.rcloneUpdateService.initialize();
     } catch (error) {
       console.error('Failed to run auto-update checks post-onboarding:', error);
     }

@@ -21,11 +21,13 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use crate::core::check_binaries::{build_rclone_command, get_rclone_binary_path, read_rclone_path};
 use crate::core::initialization::get_config_dir;
 use crate::core::settings::operations::core::save_setting;
-use crate::rclone::engine::core::ENGINE;
 use crate::utils::github_client;
 use crate::{
     rclone::queries::get_rclone_info,
-    utils::types::{all_types::RcloneState, events::RCLONE_ENGINE_UPDATING},
+    utils::types::{
+        all_types::{RcApiEngine, RcloneState},
+        events::RCLONE_ENGINE_UPDATING,
+    },
 };
 
 // ============================================================================
@@ -116,13 +118,8 @@ pub async fn update_rclone(
     channel: Option<String>,
 ) -> Result<serde_json::Value, String> {
     // Step 1: Initialize update process
-    {
-        let mut engine = ENGINE
-            .lock()
-            .map_err(|e| format!("Failed to lock engine: {e}"))?;
-        engine.updating = true;
-        debug!("🔍 Starting rclone update process");
-    }
+    RcApiEngine::with_lock(|e| e.set_updating(true))?;
+    debug!("🔍 Starting rclone update process");
 
     // Step 2: Check if update is available
     let update_check = check_rclone_update(app_handle.clone(), state, channel.clone()).await?;
@@ -133,10 +130,7 @@ pub async fn update_rclone(
 
     if !update_available {
         // Set updating to false before returning
-        let mut engine = ENGINE
-            .lock()
-            .map_err(|e| format!("Failed to lock engine: {e}"))?;
-        engine.updating = false;
+        RcApiEngine::with_lock(|e| e.set_updating(false))?;
         debug!("🔍 No update available for rclone");
         return Ok(json!({
             "success": false,
@@ -169,10 +163,7 @@ pub async fn update_rclone(
             current_path = system_path;
         } else {
             // Set updating to false before returning
-            let mut engine = ENGINE
-                .lock()
-                .map_err(|e| format!("Failed to lock engine: {e}"))?;
-            engine.updating = false;
+            RcApiEngine::with_lock(|e| e.set_updating(false))?;
             debug!(
                 "🔍 Current rclone binary not found at: {}",
                 current_path.display()
@@ -190,16 +181,13 @@ pub async fn update_rclone(
         .map_err(|e| format!("Failed to emit update event: {e}"))?;
 
     // Actually stop the engine process
-    {
-        let mut engine = ENGINE
-            .lock()
-            .map_err(|e| format!("Failed to lock engine: {e}"))?;
-        if let Err(e) = engine.kill_process() {
+    RcApiEngine::with_lock(|e| {
+        if let Err(e) = e.kill_process() {
             log::error!("Failed to stop engine before update: {e}");
         }
-        engine.running = false;
-        engine.process = None;
-    }
+        e.running = false;
+        e.process = None;
+    })?;
 
     // Determine the best update strategy based on current path and permissions
     let update_result = match determine_update_strategy(&current_path, &app_handle).await {
@@ -222,13 +210,8 @@ pub async fn update_rclone(
     // Note: Completion is signaled by ENGINE_RESTARTED event with reason 'rclone_update'
 
     // Set updating to false at the end (regardless of success/failure)
-    {
-        let mut engine = ENGINE
-            .lock()
-            .map_err(|e| format!("Failed to lock engine: {e}"))?;
-        log::info!("Setting updating to false");
-        engine.updating = false;
-    }
+    log::info!("Setting updating to false");
+    RcApiEngine::with_lock(|e| e.set_updating(false))?;
 
     // If update was successful, restart engine with updated binary
     if success
@@ -617,5 +600,75 @@ async fn perform_rclone_selfupdate(
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         Err(format!("Rclone selfupdate failed: {stderr}"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // -------------------------------------------------------------------------
+    // Tests for clean_version()
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_clean_version_removes_v_prefix() {
+        assert_eq!(clean_version("v1.71.1"), "1.71.1");
+    }
+
+    #[test]
+    fn test_clean_version_no_prefix() {
+        assert_eq!(clean_version("1.71.1"), "1.71.1");
+    }
+
+    #[test]
+    fn test_clean_version_beta() {
+        assert_eq!(
+            clean_version("v1.72.0-beta.9155.2bc155a96"),
+            "1.72.0-beta.9155.2bc155a96"
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Tests for extract_version_changelog()
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_extract_version_changelog_finds_section() {
+        let changelog = r#"
+## v1.71.1 - 2025-09-24
+
+Bug fixes and improvements.
+
+## v1.71.0 - 2025-08-01
+
+Major release notes here.
+"#;
+        let result = extract_version_changelog(changelog, "v1.71.1");
+        assert!(result.is_some());
+        let section = result.unwrap();
+        assert!(section.contains("v1.71.1"));
+        assert!(section.contains("Bug fixes"));
+        // Should NOT include v1.71.0 section
+        assert!(!section.contains("v1.71.0"));
+    }
+
+    #[test]
+    fn test_extract_version_changelog_not_found() {
+        let changelog = "## v1.70.0 - Old version\n\nOld notes.";
+        let result = extract_version_changelog(changelog, "v1.71.1");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_extract_version_changelog_last_section() {
+        let changelog = r#"
+## v1.71.1 - 2025-09-24
+
+This is the last section with no following header.
+"#;
+        let result = extract_version_changelog(changelog, "v1.71.1");
+        assert!(result.is_some());
+        assert!(result.unwrap().contains("last section"));
     }
 }

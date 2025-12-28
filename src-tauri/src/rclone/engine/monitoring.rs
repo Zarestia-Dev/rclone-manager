@@ -6,6 +6,10 @@ use crate::utils::{
     types::all_types::RcApiEngine,
 };
 
+/// Duration constants for health checks
+const API_HEALTH_TIMEOUT: Duration = Duration::from_secs(2);
+const API_READY_POLL_INTERVAL: Duration = Duration::from_millis(500);
+
 impl RcApiEngine {
     /// Check if both the process is running AND the API is responding
     pub fn is_api_healthy(&mut self) -> bool {
@@ -18,15 +22,53 @@ impl RcApiEngine {
         self.check_api_response()
     }
 
-    /// Check if the process is still alive (without checking API)
+    /// Check if the process is still alive using native PID checking
     pub fn is_process_alive(&mut self) -> bool {
-        if let Some(_child) = &mut self.process {
-            // FIX: CommandChild has no sync try_wait. The most reliable way to check
-            // if it's "alive" from a synchronous context is to assume it is if the
-            // handle exists and let the API check confirm it. For a more robust check,
-            // you would need to use the async CommandEvent receiver or check the PID.
-            // For now, we return true and let the API health check do the real work.
-            true
+        if let Some(child) = &self.process {
+            let pid = child.pid();
+
+            #[cfg(unix)]
+            {
+                // Use kill -0 which works in Flatpak sandbox (inherits permissions)
+                use std::process::Command;
+                match Command::new("kill").args(["-0", &pid.to_string()]).output() {
+                    Ok(output) => {
+                        let alive = output.status.success();
+                        if !alive {
+                            debug!("🔍 Process {} is no longer running", pid);
+                        }
+                        alive
+                    }
+                    Err(_) => {
+                        // If we can't check, assume alive and let API check verify
+                        true
+                    }
+                }
+            }
+
+            #[cfg(windows)]
+            {
+                // On Windows, try to open the process with minimal access
+                use std::process::Command;
+                let output = Command::new("tasklist")
+                    .args(["/FI", &format!("PID eq {}", pid), "/NH"])
+                    .output();
+
+                match output {
+                    Ok(out) => {
+                        let stdout = String::from_utf8_lossy(&out.stdout);
+                        let alive = stdout.contains(&pid.to_string());
+                        if !alive {
+                            debug!("🔍 Process {} is no longer running", pid);
+                        }
+                        alive
+                    }
+                    Err(_) => {
+                        // If we can't check, assume alive and let API check verify
+                        true
+                    }
+                }
+            }
         } else {
             debug!("🔍 No process found");
             false
@@ -35,12 +77,19 @@ impl RcApiEngine {
 
     /// Check if the API is responding by making a simple request
     fn check_api_response(&self) -> bool {
-        let base_url = format!("http://127.0.0.1:{}", self.current_api_port);
+        Self::check_api_health_on_port(self.current_api_port)
+    }
+
+    /// Check if an API endpoint is responding on a given port (static helper)
+    ///
+    /// Returns true if the API returns a successful response or 401 Unauthorized
+    /// (which means the API is running but requires auth).
+    pub fn check_api_health_on_port(port: u16) -> bool {
+        let base_url = format!("http://127.0.0.1:{}", port);
         let url = EndpointHelper::build_url(&base_url, core::VERSION);
 
-        // Use blocking client for synchronous check
         let client = reqwest::blocking::Client::new();
-        match client.post(&url).timeout(Duration::from_secs(2)).send() {
+        match client.post(&url).timeout(API_HEALTH_TIMEOUT).send() {
             Ok(response) => {
                 let status = response.status();
                 // Treat 401 Unauthorized as healthy - it means the API is responding
@@ -63,7 +112,6 @@ impl RcApiEngine {
     pub fn wait_until_ready(&mut self, timeout_secs: u64) -> bool {
         let start = std::time::Instant::now();
         let timeout = Duration::from_secs(timeout_secs);
-        let poll = Duration::from_millis(500);
 
         debug!("🔍 Waiting for API to be ready (timeout: {timeout_secs}s)");
 
@@ -72,10 +120,42 @@ impl RcApiEngine {
                 debug!("✅ API is healthy and ready");
                 return true;
             }
-            std::thread::sleep(poll);
+            std::thread::sleep(API_READY_POLL_INTERVAL);
         }
 
         debug!("⏰ API health check timed out after {timeout_secs}s");
         false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_check_api_health_no_server() {
+        // Port 59999 should not have anything listening
+        assert!(!RcApiEngine::check_api_health_on_port(59999));
+    }
+
+    #[test]
+    fn test_engine_process_alive_no_process() {
+        let mut engine = RcApiEngine::default();
+        assert!(!engine.is_process_alive());
+    }
+
+    #[test]
+    fn test_wait_until_ready_immediate_timeout() {
+        let mut engine = RcApiEngine::default();
+        // With no process and no API, should timeout quickly
+        // Using 1 second timeout to keep test fast
+        let start = std::time::Instant::now();
+        let result = engine.wait_until_ready(1);
+        let elapsed = start.elapsed();
+
+        assert!(!result);
+        // Should have waited approximately 1 second (with some margin)
+        assert!(elapsed >= std::time::Duration::from_millis(800));
+        assert!(elapsed <= std::time::Duration::from_millis(1500));
     }
 }

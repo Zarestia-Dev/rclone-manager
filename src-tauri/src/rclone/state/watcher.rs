@@ -325,3 +325,55 @@ pub fn stop_serve_watcher() {
     SERVE_WATCHER_RUNNING.store(false, Ordering::SeqCst);
     debug!("🔍 Serve watcher stop requested");
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn mock_mount(fs: &str, mount_point: &str) -> MountedRemote {
+        MountedRemote {
+            fs: fs.to_string(),
+            mount_point: mount_point.to_string(),
+            profile: None,
+        }
+    }
+
+    #[test]
+    fn test_find_mount_changes_no_changes() {
+        let previous = vec![mock_mount("remote1:", "/mnt/remote1")];
+        let current = vec![mock_mount("remote1:", "/mnt/remote1")];
+        let changes = find_mount_changes(&previous, &current);
+        assert!(changes.is_empty());
+    }
+
+    #[test]
+    fn test_find_mount_changes_detects_unmount() {
+        let previous = vec![
+            mock_mount("remote1:", "/mnt/remote1"),
+            mock_mount("remote2:", "/mnt/remote2"),
+        ];
+        let current = vec![mock_mount("remote1:", "/mnt/remote1")];
+        let unmounted = find_mount_changes(&previous, &current);
+        assert_eq!(unmounted.len(), 1);
+        assert_eq!(unmounted[0].fs, "remote2:");
+    }
+
+    #[test]
+    fn test_find_mount_changes_detects_new_mount() {
+        let previous = vec![mock_mount("remote1:", "/mnt/remote1")];
+        let current = vec![
+            mock_mount("remote1:", "/mnt/remote1"),
+            mock_mount("remote2:", "/mnt/remote2"),
+        ];
+        // Using find_mount_changes with args swapped to find NEW mounts
+        let newly_mounted = find_mount_changes(&current, &previous);
+        assert_eq!(newly_mounted.len(), 1);
+        assert_eq!(newly_mounted[0].fs, "remote2:");
+    }
+
+    #[test]
+    fn test_find_mount_changes_both_empty() {
+        let changes = find_mount_changes(&[], &[]);
+        assert!(changes.is_empty());
+    }
+}

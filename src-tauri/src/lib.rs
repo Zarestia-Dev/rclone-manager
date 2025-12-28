@@ -54,6 +54,8 @@ struct CliArgs {
     tls_key: Option<std::path::PathBuf>,
 }
 
+use crate::core::settings::backup::export_categories::get_export_categories;
+use crate::core::settings::backup::rclone_config_provider::RcloneConfigProvider;
 #[cfg(feature = "updater")]
 use crate::utils::app::updater::app_updates::{DownloadState, PendingUpdate};
 #[cfg(feature = "updater")]
@@ -284,6 +286,17 @@ pub fn run() {
             // Load settings BEFORE managing so we can use the manager reference
             let settings = load_startup_settings(&rcman_manager)
                 .map_err(|e| format!("Failed to load startup settings: {e}"))?;
+
+            let config_dir = app_handle
+                .path()
+                .config_dir()
+                .unwrap_or(std::path::PathBuf::from("."));
+            let default_rclone_conf = config_dir.join("rclone").join("rclone.conf");
+
+            rcman_manager.register_external_provider(Box::new(RcloneConfigProvider::new(
+                settings.core.rclone_config_file.clone(),
+                default_rclone_conf,
+            )));
 
             use crate::core::security::SafeEnvironmentManager;
             let env_manager = SafeEnvironmentManager::new();
@@ -624,6 +637,7 @@ pub fn run() {
             backup_settings,
             analyze_backup_file,
             restore_settings,
+            get_export_categories,
             // Network
             check_links,
             is_network_metered,

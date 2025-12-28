@@ -389,7 +389,6 @@
 
   .skipped-section {
     .skipped-list {
-      background: var(--view-bg-color);
       border-radius: var(--radius-lg);
       display: flex;
       flex-direction: column;
@@ -401,7 +400,6 @@
       justify-content: space-between;
       align-items: center;
       padding: var(--space-sm) var(--space-md);
-      background: rgba(var(--window-fg-color-rgb), 0.03);
       box-shadow: var(--box-shadow);
       border-radius: var(--radius-md);
       transition: var(--transition-fast);

@@ -59,6 +59,15 @@ pub async fn backup_settings(
         ExportType::All | ExportType::Remotes | ExportType::RemoteConfigs
     ) {
         options = options.include_sub_settings("remotes");
+        options = options.include_external("rclone_config");
+    }
+
+    if matches!(export_type, ExportType::All | ExportType::RCloneBackend) {
+        options = options.include_sub_settings("backend");
+    }
+
+    if matches!(export_type, ExportType::All) {
+        options = options.include_sub_settings("connections");
     }
 
     // Add password if provided
@@ -131,8 +140,16 @@ pub async fn analyze_backup_file(
         // Map rcman BackupContents to app's ContentsInfo
         let contents = ContentsInfo {
             settings: analysis.manifest.contents.settings,
-            backend_config: false, // Not tracked in rcman format
-            rclone_config: false,  // Not tracked in rcman format
+            backend_config: analysis
+                .manifest
+                .contents
+                .sub_settings
+                .contains_key("backend"),
+            rclone_config: analysis
+                .manifest
+                .contents
+                .external_configs
+                .contains(&"rclone_config".to_string()),
             remote_configs: if analysis
                 .manifest
                 .contents

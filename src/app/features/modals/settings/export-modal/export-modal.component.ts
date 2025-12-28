@@ -11,8 +11,22 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 
-import { ExportModalData, ExportOption, ExportType } from '@app/types';
-import { BackupRestoreService, RemoteManagementService, FileSystemService } from '@app/services';
+import { ExportModalData, ExportType } from '@app/types';
+import {
+  BackupRestoreService,
+  ExportCategory,
+  RemoteManagementService,
+  FileSystemService,
+} from '@app/services';
+
+// Display option for UI
+interface ExportOption {
+  id: string;
+  label: string;
+  description: string;
+  icon: string;
+  categoryType?: string;
+}
 
 @Component({
   selector: 'app-export-modal',
@@ -42,7 +56,7 @@ export class ExportModalComponent implements OnInit {
 
   // Signals
   readonly exportPath = signal('');
-  readonly selectedOption = signal<ExportType>(ExportType.All);
+  readonly selectedOption = signal<string>('full'); // Changed to string ID
   readonly selectedRemoteName = signal('');
   readonly withPassword = signal(false);
   readonly password = signal('');
@@ -52,65 +66,41 @@ export class ExportModalComponent implements OnInit {
   readonly isExporting = signal(false);
   readonly userNote = signal('');
 
-  readonly exportOptions: readonly ExportOption[] = [
-    {
-      value: ExportType.All,
-      label: 'Export All',
-      description: 'Settings + Remotes + rclone.conf',
-      icon: 'box-archive',
-    },
-    {
-      value: ExportType.Settings,
-      label: 'App Settings',
-      description: 'Application preferences only',
-      icon: 'gear',
-    },
-    {
-      value: ExportType.Remotes,
-      label: 'Remotes',
-      description: 'Remotes list with rclone.conf',
-      icon: 'server',
-    },
-    {
-      value: ExportType.RemoteConfigs,
-      label: 'Remote Configs',
-      description: 'Settings for specific remotes',
-      icon: 'wrench',
-    },
-    {
-      value: ExportType.SpecificRemote,
-      label: 'Single Remote',
-      description: 'Export one specific remote',
-      icon: 'hard-drive',
-    },
-    {
-      value: ExportType.RCloneBackend,
-      label: 'Backend Options',
-      description: 'Global RClone backend flags',
-      icon: 'terminal',
-    },
-  ] as const;
+  // Dynamic export options from backend
+  readonly exportOptions = signal<ExportOption[]>([]);
+
+  // Icon mapping for category types
+  private readonly iconMap: Record<string, string> = {
+    settings: 'gear',
+    sub_settings: 'folder-tree',
+    external: 'file-export',
+  };
 
   readonly canExport = computed(() => {
     if (this.isLoading() || this.isExporting()) return false;
     const hasPath = !!this.exportPath().trim();
     const hasValidPassword = !this.withPassword() || !!this.password().trim();
     const hasRemoteSelected =
-      this.selectedOption() !== ExportType.SpecificRemote || !!this.selectedRemoteName().trim();
+      this.selectedOption() !== 'specific_remote' || !!this.selectedRemoteName().trim();
 
     return hasPath && hasValidPassword && hasRemoteSelected;
   });
 
-  readonly showSpecificRemoteSection = computed(
-    () => this.selectedOption() === ExportType.SpecificRemote
-  );
+  readonly showSpecificRemoteSection = computed(() => this.selectedOption() === 'specific_remote');
 
   async ngOnInit(): Promise<void> {
     this.isLoading.set(true);
     try {
-      const [remotesList] = await Promise.allSettled([this.remoteManagementService.getRemotes()]);
+      const [remotesList, categoriesList] = await Promise.allSettled([
+        this.remoteManagementService.getRemotes(),
+        this.backupRestoreService.getExportCategories(),
+      ]);
 
       this.remotes.set(remotesList.status === 'fulfilled' ? Object.freeze(remotesList.value) : []);
+
+      // Build export options from backend categories
+      const backendCategories = categoriesList.status === 'fulfilled' ? categoriesList.value : [];
+      this.buildExportOptions(backendCategories);
 
       this.initializeFromData();
     } catch (error) {
@@ -120,13 +110,71 @@ export class ExportModalComponent implements OnInit {
     }
   }
 
+  private buildExportOptions(categories: ExportCategory[]): void {
+    const options: ExportOption[] = [
+      // Full backup is always first (special option)
+      {
+        id: 'full',
+        label: 'Full Backup',
+        description: 'All Configs',
+        icon: 'box-archive',
+      },
+    ];
+
+    // Add categories from backend
+    for (const cat of categories) {
+      options.push({
+        id: cat.id,
+        label: cat.name,
+        description: cat.description || this.getDefaultDescription(cat.categoryType),
+        icon: this.iconMap[cat.categoryType] || 'file',
+        categoryType: cat.categoryType,
+      });
+    }
+
+    // Add "Single Remote" option if remotes sub-settings exists
+    if (categories.some(c => c.id === 'remotes')) {
+      options.push({
+        id: 'specific_remote',
+        label: 'Single Remote',
+        description: 'Export one specific remote config',
+        icon: 'hard-drive',
+      });
+    }
+
+    this.exportOptions.set(options);
+  }
+
+  private getDefaultDescription(categoryType: string): string {
+    switch (categoryType) {
+      case 'settings':
+        return 'Application preferences';
+      case 'sub_settings':
+        return 'Per-entity configuration files';
+      case 'external':
+        return 'External configuration file';
+      default:
+        return '';
+    }
+  }
+
   private initializeFromData(): void {
     if (this.data?.remoteName) {
-      this.selectedOption.set(ExportType.SpecificRemote);
+      this.selectedOption.set('specific_remote');
       this.selectedRemoteName.set(this.data.remoteName);
     }
     if (this.data?.defaultExportType) {
-      this.selectedOption.set(this.data.defaultExportType);
+      // Map old ExportType enum to new IDs
+      const typeToIdMap: Record<string, string> = {
+        [ExportType.All]: 'full',
+        [ExportType.Settings]: 'settings',
+        [ExportType.Remotes]: 'remotes',
+        [ExportType.RemoteConfigs]: 'remotes',
+        [ExportType.SpecificRemote]: 'specific_remote',
+        [ExportType.RCloneBackend]: 'backend',
+      };
+      const id = typeToIdMap[this.data.defaultExportType] || 'full';
+      this.selectedOption.set(id);
     }
   }
 
@@ -140,7 +188,6 @@ export class ExportModalComponent implements OnInit {
   async selectFolder(): Promise<void> {
     if (this.isExporting()) return;
 
-    // Native dialog is modal, no need for loading state
     const selected = await this.fileSystemService.selectFolder(false);
     if (selected?.trim()) {
       this.exportPath.set(selected.trim());
@@ -152,14 +199,24 @@ export class ExportModalComponent implements OnInit {
 
     this.isExporting.set(true);
     try {
+      const selectedId = this.selectedOption();
+
+      // Map IDs back to ExportType for backend compatibility
+      const idToTypeMap: Record<string, ExportType> = {
+        full: ExportType.All,
+        settings: ExportType.Settings,
+        remotes: ExportType.Remotes,
+        backend: ExportType.RCloneBackend,
+        specific_remote: ExportType.SpecificRemote,
+      };
+
+      const exportType = idToTypeMap[selectedId] || ExportType.All;
+
       const exportParams = {
         path: this.exportPath().trim(),
-        type: this.selectedOption(),
+        type: exportType,
         password: this.withPassword() ? this.password().trim() : null,
-        remoteName:
-          this.selectedOption() === ExportType.SpecificRemote
-            ? this.selectedRemoteName().trim()
-            : '',
+        remoteName: selectedId === 'specific_remote' ? this.selectedRemoteName().trim() : '',
         userNote: this.userNote().trim() || null,
       };
 
@@ -193,9 +250,9 @@ export class ExportModalComponent implements OnInit {
     this.selectedRemoteName.set(name?.trim() ?? '');
   }
 
-  onExportOptionChange(option: ExportType): void {
-    this.selectedOption.set(option);
-    if (option !== ExportType.SpecificRemote) {
+  onExportOptionChange(optionId: string): void {
+    this.selectedOption.set(optionId);
+    if (optionId !== 'specific_remote') {
       this.selectedRemoteName.set('');
     }
   }

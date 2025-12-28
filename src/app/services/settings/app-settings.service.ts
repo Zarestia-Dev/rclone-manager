@@ -53,12 +53,12 @@ export class AppSettingsService extends TauriBaseService implements OnDestroy {
   }
 
   async getSettingValue<T = any>(key: string): Promise<T | undefined> {
-    const setting$ = this.selectSetting(key).pipe(
-      map(option => option?.value as T),
-      // Use first() to wait for the first non-undefined value
-      first(value => value !== undefined)
+    const setting$ = this.options$.pipe(
+      filter(options => options !== null),
+      first(),
+      map(options => options![key]?.value as T)
     );
-    return firstValueFrom(setting$, { defaultValue: undefined });
+    return firstValueFrom(setting$);
   }
 
   async saveSetting(category: string, key: string, value: any): Promise<void> {

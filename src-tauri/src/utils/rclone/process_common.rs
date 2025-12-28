@@ -3,32 +3,24 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::core::check_binaries::build_rclone_command;
 use crate::core::security::SafeEnvironmentManager;
-use crate::rclone::engine::core::ENGINE;
+use crate::utils::types::all_types::RcApiEngine;
 use crate::utils::types::events::RCLONE_ENGINE_PASSWORD_ERROR;
 
 /// Clear cached encryption status (e.g., when config changes)
 pub fn clear_encryption_cache() {
-    if let Ok(mut engine_guard) = ENGINE.try_lock() {
-        engine_guard.config_encrypted = None;
-        info!("🗑️ Cleared cached encryption status");
-    }
+    RcApiEngine::clear_encryption_cache();
+    info!("🗑️ Cleared cached encryption status");
 }
 
 /// Get cached encryption status without checking (returns None if not cached)
 pub fn get_cached_encryption_status() -> Option<bool> {
-    if let Ok(engine_guard) = ENGINE.try_lock() {
-        engine_guard.config_encrypted
-    } else {
-        None
-    }
+    RcApiEngine::get_encryption_cached()
 }
 
 /// Check if config is encrypted, using cached value if available
 async fn is_config_encrypted_cached(app: &AppHandle) -> bool {
     // Try to get cached value from engine state first
-    if let Ok(engine_guard) = ENGINE.try_lock()
-        && let Some(cached_status) = engine_guard.config_encrypted
-    {
+    if let Some(cached_status) = RcApiEngine::get_encryption_cached() {
         info!("🚀 Using cached encryption status: {}", cached_status);
         return cached_status;
     }
@@ -37,13 +29,8 @@ async fn is_config_encrypted_cached(app: &AppHandle) -> bool {
     match crate::core::security::is_config_encrypted(app.clone()).await {
         Ok(is_encrypted) => {
             info!("🔍 Config encryption status determined: {}", is_encrypted);
-
-            // Cache the result in engine state
-            if let Ok(mut engine_guard) = ENGINE.try_lock() {
-                engine_guard.config_encrypted = Some(is_encrypted);
-                info!("💾 Cached encryption status for future use");
-            }
-
+            RcApiEngine::set_encryption_cached(is_encrypted);
+            info!("💾 Cached encryption status for future use");
             is_encrypted
         }
         Err(e) => {
@@ -51,12 +38,7 @@ async fn is_config_encrypted_cached(app: &AppHandle) -> bool {
                 "⚠️ Could not determine config encryption status: {}, assuming not encrypted",
                 e
             );
-
-            // Cache the "not encrypted" assumption
-            if let Ok(mut engine_guard) = ENGINE.try_lock() {
-                engine_guard.config_encrypted = Some(false);
-            }
-
+            RcApiEngine::set_encryption_cached(false);
             false
         }
     }

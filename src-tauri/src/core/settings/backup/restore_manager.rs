@@ -115,7 +115,6 @@ async fn restore_rcman_backup(
     // Build restore options
     let mut options = rcman::RestoreOptions::from_path(backup_path)
         .restore_settings(true)
-        .restore_sub_settings("remotes")
         .overwrite(true)
         .verify_checksum(true);
 
@@ -134,6 +133,19 @@ async fn restore_rcman_backup(
 
     // Emit events to notify frontend
     app_handle.emit(REMOTE_PRESENCE_CHANGED, ()).ok();
+
+    if result.restored.iter().any(|s| s == "settings.json") {
+        // Reload settings to get new values
+        manager.invalidate_cache();
+        if let Some(app_settings) = manager
+            .load_startup::<crate::core::settings::schema::AppSettings>()
+            .ok()
+            .and_then(|s| serde_json::to_value(s).ok())
+            .and_then(|v| v.get("app_settings").cloned())
+        {
+            app_handle.emit(SYSTEM_SETTINGS_CHANGED, app_settings).ok();
+        }
+    }
 
     let restored_count = result.restored.len();
     let skipped_count = result.skipped.len();

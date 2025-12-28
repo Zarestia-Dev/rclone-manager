@@ -399,6 +399,12 @@ export class AppUpdaterService extends TauriBaseService {
       this.updatesDisabledSubject.next(updatesDisabled);
 
       this.initialized = true;
+
+      const autoCheck = await this.getAutoCheckEnabled();
+      if (autoCheck && !updatesDisabled) {
+        console.log('Auto-check enabled, checking for app updates...');
+        this.checkForUpdates();
+      }
     } catch (error) {
       console.error('Failed to initialize updater service:', error);
       // Set defaults on error
