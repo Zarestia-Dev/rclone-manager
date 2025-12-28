@@ -10,10 +10,12 @@ const LOCAL_BACKEND_KEY: &str = "backend:Local:config_password";
 
 // -----------------------------------------------------------------------------
 // PASSWORD MANAGEMENT (USING RCMAN CREDENTIALS)
+// These functions require the keychain feature which is only available on desktop
 // -----------------------------------------------------------------------------
 
 /// Store the rclone config password securely
 #[tauri::command]
+#[cfg(desktop)]
 pub async fn store_config_password(
     app: AppHandle,
     env_manager: State<'_, SafeEnvironmentManager>,
@@ -57,8 +59,21 @@ pub async fn store_config_password(
     }
 }
 
+/// Store config password (mobile fallback - not supported)
+#[tauri::command]
+#[cfg(not(desktop))]
+pub async fn store_config_password(
+    _app: AppHandle,
+    _env_manager: State<'_, SafeEnvironmentManager>,
+    _manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
+    _password: String,
+) -> Result<(), String> {
+    Err("Credential storage is not available on this platform".to_string())
+}
+
 /// Retrieve the stored rclone config password
 #[tauri::command]
+#[cfg(desktop)]
 pub async fn get_config_password(
     manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
 ) -> Result<String, String> {
@@ -79,23 +94,40 @@ pub async fn get_config_password(
     Err("No password stored".to_string())
 }
 
+#[tauri::command]
+#[cfg(not(desktop))]
+pub async fn get_config_password(
+    _manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
+) -> Result<String, String> {
+    Err("Credential storage is not available on this platform".to_string())
+}
+
 /// Check if a config password is stored
 #[tauri::command]
+#[cfg(desktop)]
 pub async fn has_stored_password(
     manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
 ) -> Result<bool, String> {
     debug!("🔍 Checking if password is stored via rcman");
 
     if let Some(credentials) = manager.inner().credentials() {
-        // Check both keys
         Ok(credentials.exists(LOCAL_BACKEND_KEY))
     } else {
         Ok(false)
     }
 }
 
+#[tauri::command]
+#[cfg(not(desktop))]
+pub async fn has_stored_password(
+    _manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
+) -> Result<bool, String> {
+    Ok(false)
+}
+
 /// Remove the stored config password
 #[tauri::command]
+#[cfg(desktop)]
 pub async fn remove_config_password(
     env_manager: State<'_, SafeEnvironmentManager>,
     manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
@@ -103,10 +135,8 @@ pub async fn remove_config_password(
     info!("🗑️ Removing stored config password via rcman");
 
     if let Some(credentials) = manager.inner().credentials() {
-        // Remove key to ensure full cleanup
         let _ = credentials.remove(LOCAL_BACKEND_KEY);
 
-        // Update BackendManager's Local instance in memory
         if let Some(mut backend) = crate::rclone::backend::BACKEND_MANAGER.get("Local").await {
             backend.config_password = None;
             let _ = crate::rclone::backend::BACKEND_MANAGER
@@ -115,15 +145,23 @@ pub async fn remove_config_password(
             debug!("📝 Cleared in-memory Local backend config password");
         }
 
-        // Clear environment variable using safe manager
         env_manager.clear_config_password();
         info!("✅ Password removed successfully");
         Ok(())
     } else {
-        // If no credential manager, just clear env
         env_manager.clear_config_password();
         Ok(())
     }
+}
+
+#[tauri::command]
+#[cfg(not(desktop))]
+pub async fn remove_config_password(
+    env_manager: State<'_, SafeEnvironmentManager>,
+    _manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
+) -> Result<(), String> {
+    env_manager.clear_config_password();
+    Ok(())
 }
 
 // -----------------------------------------------------------------------------
@@ -269,6 +307,7 @@ pub async fn is_config_encrypted(app: AppHandle) -> Result<bool, String> {
 
 /// Encrypt the rclone configuration with a password
 #[tauri::command]
+#[cfg(desktop)]
 pub async fn encrypt_config(
     app: AppHandle,
     env_manager: State<'_, SafeEnvironmentManager>,
@@ -349,8 +388,20 @@ pub async fn encrypt_config(
     }
 }
 
+#[tauri::command]
+#[cfg(not(desktop))]
+pub async fn encrypt_config(
+    _app: AppHandle,
+    _env_manager: State<'_, SafeEnvironmentManager>,
+    _manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
+    _password: String,
+) -> Result<(), String> {
+    Err("Encryption is not available on this platform".to_string())
+}
+
 /// Unencrypt (decrypt) the rclone configuration
 #[tauri::command]
+#[cfg(desktop)]
 pub async fn unencrypt_config(
     app: AppHandle,
     env_manager: State<'_, SafeEnvironmentManager>,
@@ -418,8 +469,20 @@ pub async fn unencrypt_config(
     }
 }
 
+#[tauri::command]
+#[cfg(not(desktop))]
+pub async fn unencrypt_config(
+    _app: AppHandle,
+    _env_manager: State<'_, SafeEnvironmentManager>,
+    _manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
+    _password: String,
+) -> Result<(), String> {
+    Err("Decryption is not available on this platform".to_string())
+}
+
 /// Change the rclone configuration password
 #[tauri::command]
+#[cfg(desktop)]
 pub async fn change_config_password(
     app: AppHandle,
     env_manager: State<'_, SafeEnvironmentManager>,
@@ -459,4 +522,16 @@ pub async fn change_config_password(
 
     info!("✅ Configuration password changed successfully");
     Ok(())
+}
+
+#[tauri::command]
+#[cfg(not(desktop))]
+pub async fn change_config_password(
+    _app: AppHandle,
+    _env_manager: State<'_, SafeEnvironmentManager>,
+    _manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
+    _current_password: String,
+    _new_password: String,
+) -> Result<(), String> {
+    Err("Password change is not available on this platform".to_string())
 }

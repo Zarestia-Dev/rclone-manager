@@ -16,7 +16,7 @@ use crate::{
     utils::types::all_types::{RcApiEngine, RcloneState},
 };
 
-#[cfg(not(feature = "web-server"))]
+#[cfg(all(desktop, not(feature = "web-server")))]
 use crate::utils::app::builder::setup_tray;
 
 /// Get the directory containing the executable (for portable mode)
@@ -161,7 +161,7 @@ pub async fn initialization(app_handle: tauri::AppHandle, settings: AppSettings)
     start_serve_watcher(app_handle.clone());
 
     // Step 4: Setup tray if needed (desktop only)
-    #[cfg(not(feature = "web-server"))]
+    #[cfg(all(desktop, not(feature = "web-server")))]
     {
         let force_tray = std::env::args().any(|arg| arg == "--tray");
         if settings.general.tray_enabled || force_tray {

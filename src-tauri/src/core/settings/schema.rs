@@ -133,6 +133,11 @@ pub fn default_terminal_apps() -> Vec<String> {
             "cmd /C start \"\" pwsh -NoExit -Command \"& {}\"".to_string(),
         ]
     }
+    // Mobile platforms (Android/iOS) - no terminal apps
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+    {
+        vec![]
+    }
 }
 
 impl Default for CoreSettings {

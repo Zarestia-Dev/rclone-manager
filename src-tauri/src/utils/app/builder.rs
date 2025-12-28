@@ -1,3 +1,5 @@
+#![cfg(desktop)]
+
 use tauri::{
     AppHandle, Emitter,
     image::Image,

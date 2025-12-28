@@ -55,10 +55,10 @@ struct CliArgs {
 }
 
 use crate::core::settings::backup::export_categories::get_export_categories;
-use crate::core::settings::backup::rclone_config_provider::RcloneConfigProvider;
-#[cfg(feature = "updater")]
+
+#[cfg(all(desktop, feature = "updater"))]
 use crate::utils::app::updater::app_updates::{DownloadState, PendingUpdate};
-#[cfg(feature = "updater")]
+#[cfg(all(desktop, feature = "updater"))]
 use crate::utils::app::updater::app_updates::{fetch_update, get_download_status, install_update};
 
 use crate::{
@@ -94,17 +94,6 @@ use crate::{
                 save_rclone_backend_option, save_rclone_backend_options,
             },
             remote::manager::{delete_remote_settings, get_remote_settings, save_remote_settings},
-        },
-        tray::{
-            actions::{
-                handle_bisync_profile, handle_browse_in_app, handle_browse_remote,
-                handle_copy_profile, handle_mount_profile, handle_move_profile,
-                handle_serve_profile, handle_stop_all_jobs, handle_stop_all_serves,
-                handle_stop_bisync_profile, handle_stop_copy_profile, handle_stop_move_profile,
-                handle_stop_serve_profile, handle_stop_sync_profile, handle_sync_profile,
-                handle_unmount_profile, show_main_window,
-            },
-            tray_action::TrayAction,
         },
     },
     rclone::{
@@ -160,13 +149,12 @@ use crate::{
     },
     utils::{
         app::{
-            builder::create_app_window,
             platform::{are_updates_disabled, get_build_type, relaunch_app},
             ui::{get_system_theme, set_theme},
         },
         io::{
             file_helper::{get_file_location, get_folder_location, open_in_files},
-            network::{check_links, is_network_metered, monitor_network_changes},
+            network::{check_links, is_network_metered},
             terminal::open_terminal_config,
         },
         logging::log::init_logging,
@@ -179,6 +167,24 @@ use crate::{
     },
 };
 
+#[cfg(desktop)]
+use crate::utils::app::builder::create_app_window;
+
+#[cfg(desktop)]
+use crate::core::tray::{
+    actions::{
+        handle_bisync_profile, handle_browse_in_app, handle_browse_remote, handle_copy_profile,
+        handle_mount_profile, handle_move_profile, handle_serve_profile, handle_stop_all_jobs,
+        handle_stop_all_serves, handle_stop_bisync_profile, handle_stop_copy_profile,
+        handle_stop_move_profile, handle_stop_serve_profile, handle_stop_sync_profile,
+        handle_sync_profile, handle_unmount_profile, show_main_window,
+    },
+    tray_action::TrayAction,
+};
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+use crate::utils::io::network::monitor_network_changes;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Parse CLI args early when running in web-server mode so `--help`/`--version`
@@ -189,7 +195,7 @@ pub fn run() {
     #[allow(unused_mut)]
     let mut builder = tauri::Builder::default().plugin(tauri_plugin_shell::init());
 
-    #[cfg(feature = "updater")]
+    #[cfg(all(desktop, feature = "updater"))]
     {
         builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
     }
@@ -216,6 +222,7 @@ pub fn run() {
                     if destroy_on_close {
                         debug!("♻️ Optimization Enabled: Destroying window to free RAM");
                     } else {
+                        #[cfg(desktop)]
                         if let Err(e) = window.hide() {
                             error!("Failed to hide window: {e}");
                         }
@@ -233,6 +240,7 @@ pub fn run() {
                     });
                 }
             }
+            #[cfg(desktop)]
             WindowEvent::Focused(true) => {
                 if let Some(win) = window.app_handle().get_webview_window("main")
                     && let Err(e) = win.show()
@@ -245,7 +253,7 @@ pub fn run() {
     }
 
     // 2. SETUP PLUGINS & HANDLERS
-    #[cfg(not(feature = "flatpak"))]
+    #[cfg(all(desktop, not(feature = "flatpak")))]
     {
         builder = builder.plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -253,14 +261,18 @@ pub fn run() {
         ));
     }
 
-    builder = builder
-        .plugin(tauri_plugin_single_instance::init(|_app, _, _| {
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|_app, _, _| {
             #[cfg(feature = "web-server")]
             info!("Another instance attempted to run.");
 
             #[cfg(not(feature = "web-server"))]
             show_main_window(_app.clone());
-        }))
+        }));
+    }
+
+    builder = builder
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_http::init())
@@ -275,10 +287,50 @@ pub fn run() {
                 rcman::SettingsManager::builder(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
                     .config_dir(&config_dir)
                     .with_credentials() // Enable automatic keychain storage for secrets
+                    .with_migrator(|mut value: serde_json::Value| {
+                        if let Some(root) = value.as_object_mut() {
+                            // Check if legacy "app_settings" exists
+                            if let Some(app_settings) = root.remove("app_settings") {
+                                log::info!("found legacy app_settings, flattening to root");
+                                if let Some(app_settings_obj) = app_settings.as_object() {
+                                    // Move all keys from app_settings to root
+                                    for (k, v) in app_settings_obj {
+                                        // Only insert if not already present (prefer root values if conflict, though conflict unlikely in migration)
+                                        if !root.contains_key(k) {
+                                            root.insert(k.clone(), v.clone());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        value
+                    })
                     .with_sub_settings(rcman::SubSettingsConfig::new("remotes").with_migrator(
                         crate::core::settings::remote::manager::migrate_to_multi_profile,
                     ))
-                    .with_sub_settings(rcman::SubSettingsConfig::new("backend").single_file())
+                    .with_sub_settings(
+                        rcman::SubSettingsConfig::new("backend")
+                            .single_file()
+                            .with_migrator(|mut value: serde_json::Value| {
+                                if let Some(root) = value.as_object_mut() {
+                                    // Check if legacy "backend" exists (nested inside root)
+                                    if let Some(backend_settings) = root.remove("backend") {
+                                        log::info!(
+                                            "found legacy backend settings, flattening to root"
+                                        );
+                                        if let Some(backend_obj) = backend_settings.as_object() {
+                                            // Move all keys from backend object to root
+                                            for (k, v) in backend_obj {
+                                                if !root.contains_key(k) {
+                                                    root.insert(k.clone(), v.clone());
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                value
+                            }),
+                    )
                     .with_sub_settings(rcman::SubSettingsConfig::new("connections").single_file())
                     .build()
                     .map_err(|e| format!("Failed to create rcman settings manager: {e}"))?;
@@ -286,17 +338,6 @@ pub fn run() {
             // Load settings BEFORE managing so we can use the manager reference
             let settings = load_startup_settings(&rcman_manager)
                 .map_err(|e| format!("Failed to load startup settings: {e}"))?;
-
-            let config_dir = app_handle
-                .path()
-                .config_dir()
-                .unwrap_or(std::path::PathBuf::from("."));
-            let default_rclone_conf = config_dir.join("rclone").join("rclone.conf");
-
-            rcman_manager.register_external_provider(Box::new(RcloneConfigProvider::new(
-                settings.core.rclone_config_file.clone(),
-                default_rclone_conf,
-            )));
 
             use crate::core::security::SafeEnvironmentManager;
             let env_manager = SafeEnvironmentManager::new();
@@ -340,9 +381,9 @@ pub fn run() {
             app.manage(ScheduledTasksCache::new());
             app.manage(CronScheduler::new());
 
-            #[cfg(feature = "updater")]
+            #[cfg(all(desktop, feature = "updater"))]
             app.manage(PendingUpdate(std::sync::Mutex::new(None)));
-            #[cfg(feature = "updater")]
+            #[cfg(all(desktop, feature = "updater"))]
             app.manage(DownloadState::default());
 
             // CONDITIONAL SHORTCUTS: Only if NOT running web server
@@ -384,6 +425,7 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 initialization(app_handle_clone.clone(), settings).await;
                 handle_startup(app_handle_clone.clone()).await;
+                #[cfg(not(any(target_os = "android", target_os = "ios")))]
                 monitor_network_changes(app_handle_clone).await;
             });
 
@@ -440,15 +482,18 @@ pub fn run() {
             }
 
             // --- WINDOW CREATION (Desktop Only) ---
-            #[cfg(not(feature = "web-server"))]
+            #[cfg(all(desktop, not(feature = "web-server")))]
             if !std::env::args().any(|arg| arg == "--tray") {
                 debug!("Creating main window");
                 create_app_window(app.handle().clone(), None);
             }
 
             Ok(())
-        })
-        .on_menu_event(|app, event| {
+        });
+
+    #[cfg(desktop)]
+    {
+        builder = builder.on_menu_event(|app, event| {
             if let Some(action) = TrayAction::from_id(event.id.as_ref()) {
                 match action {
                     TrayAction::MountProfile(remote, profile) => {
@@ -521,6 +566,7 @@ pub fn run() {
                 _ => {}
             }
         });
+    }
 
     // 3. CONDITIONAL INVOKE HANDLER (Desktop Only)
     // Only register IPC handlers when running in desktop mode with UI
@@ -705,11 +751,11 @@ pub fn run() {
             set_config_password_env,
             clear_config_password_env,
             has_config_password_env,
-            #[cfg(feature = "updater")]
+            #[cfg(all(desktop, feature = "updater"))]
             fetch_update,
-            #[cfg(feature = "updater")]
+            #[cfg(all(desktop, feature = "updater"))]
             get_download_status,
-            #[cfg(feature = "updater")]
+            #[cfg(all(desktop, feature = "updater"))]
             install_update,
         ]);
     }

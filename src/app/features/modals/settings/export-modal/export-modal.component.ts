@@ -207,6 +207,7 @@ export class ExportModalComponent implements OnInit {
         settings: ExportType.Settings,
         remotes: ExportType.Remotes,
         backend: ExportType.RCloneBackend,
+        connections: ExportType.Connections,
         specific_remote: ExportType.SpecificRemote,
       };
 

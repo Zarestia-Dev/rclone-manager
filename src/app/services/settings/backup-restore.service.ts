@@ -9,21 +9,17 @@ export interface BackupAnalysis {
   formatVersion: string;
   createdAt?: string;
   backupType?: string;
-  metadata?: {
-    userNote?: string;
-    tags?: string[];
-    computer?: string;
-    os?: string;
-  };
-  contents?: {
-    settings: boolean;
-    backendConfig: boolean;
-    rcloneConfig: boolean;
-    remoteConfigs?: {
-      count: number;
-      names?: string[];
-    };
-  };
+  userNote?: string;
+  contents?: BackupContentsInfo;
+}
+
+// Matches the `BackupContentsInfo` struct
+export interface BackupContentsInfo {
+  settings: boolean;
+  backendConfig: boolean;
+  rcloneConfig: boolean;
+  remoteCount?: number;
+  remoteNames?: string[];
 }
 
 // Matches ExportCategoryResponse from backend

@@ -331,6 +331,7 @@ impl Default for BackendManager {
 pub static BACKEND_MANAGER: Lazy<BackendManager> = Lazy::new(BackendManager::new);
 
 /// Load backend secrets from keychain
+#[cfg(desktop)]
 fn load_backend_secrets(
     manager: &rcman::SettingsManager<rcman::JsonStorage>,
     backend: &mut Backend,
@@ -351,6 +352,15 @@ fn load_backend_secrets(
             backend.config_password = Some(config_password);
         }
     }
+}
+
+/// Load backend secrets (mobile no-op)
+#[cfg(not(desktop))]
+fn load_backend_secrets(
+    _manager: &rcman::SettingsManager<rcman::JsonStorage>,
+    _backend: &mut Backend,
+) {
+    // Keychain not available on mobile
 }
 
 #[cfg(test)]

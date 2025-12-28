@@ -2,10 +2,12 @@ use log::{debug, error, info};
 use std::thread;
 use tauri::{AppHandle, Emitter, Manager};
 
+#[cfg(desktop)]
+use crate::core::tray::core::update_tray_menu;
+
 use crate::{
     core::{
         initialization::apply_core_settings, settings::operations::core::load_startup_settings,
-        tray::core::update_tray_menu,
     },
     rclone::backend::BACKEND_MANAGER,
     utils::types::{
@@ -17,6 +19,12 @@ use crate::{
     },
 };
 use rcman::{JsonStorage, SettingsManager};
+
+// Mobile no-op stub for update_tray_menu
+#[cfg(not(desktop))]
+async fn update_tray_menu(_app: AppHandle, _max_items: usize) -> Result<(), String> {
+    Ok(())
+}
 
 // Use the cached version from core - no more block_on!
 use super::core::is_active_backend_local;

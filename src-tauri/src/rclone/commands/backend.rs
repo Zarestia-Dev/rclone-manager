@@ -219,7 +219,8 @@ pub async fn update_backend(
             backend.password = Some(p.to_string());
         }
         (Some(_), _) | (_, Some(_)) => {
-            // Clear auth from keychain
+            // Clear auth from keychain (desktop only)
+            #[cfg(desktop)]
             if let Some(creds) = settings_manager.credentials() {
                 let _ = creds.remove(&format!("backend:{}:password", name));
             }
@@ -233,7 +234,8 @@ pub async fn update_backend(
             backend.config_password = Some(cp.to_string());
         }
         Some(_) => {
-            // Clear from keychain
+            // Clear from keychain (desktop only)
+            #[cfg(desktop)]
             if let Some(creds) = settings_manager.credentials() {
                 let _ = creds.remove(&format!("backend:{}:config_password", name));
             }
@@ -332,7 +334,8 @@ fn save_backend_to_settings(
     manager: &rcman::SettingsManager<rcman::JsonStorage>,
     backend: &Backend,
 ) -> Result<(), String> {
-    // Store secrets in keychain
+    // Store secrets in keychain (desktop only)
+    #[cfg(desktop)]
     if let Some(creds) = manager.credentials() {
         // Password
         if let Some(ref password) = backend.password
@@ -372,7 +375,8 @@ fn delete_backend_from_settings(
     manager: &rcman::SettingsManager<rcman::JsonStorage>,
     name: &str,
 ) -> Result<(), String> {
-    // Remove secrets
+    // Remove secrets (desktop only)
+    #[cfg(desktop)]
     if let Some(creds) = manager.credentials() {
         let _ = creds.remove(&format!("backend:{}:password", name));
         let _ = creds.remove(&format!("backend:{}:config_password", name));

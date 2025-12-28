@@ -18,6 +18,7 @@ impl SafeEnvironmentManager {
     }
 
     /// Initialize with stored credentials from rcman
+    #[cfg(desktop)]
     pub fn init_with_stored_credentials(
         &self,
         manager: &rcman::SettingsManager<rcman::JsonStorage>,
@@ -47,6 +48,15 @@ impl SafeEnvironmentManager {
             debug!("Credential storage not available in rcman");
             Ok(())
         }
+    }
+
+    /// Initialize with stored credentials (mobile no-op)
+    #[cfg(not(desktop))]
+    pub fn init_with_stored_credentials(
+        &self,
+        _manager: &rcman::SettingsManager<rcman::JsonStorage>,
+    ) -> Result<(), String> {
+        Ok(())
     }
 
     /// Store password in internal safe storage instead of global env

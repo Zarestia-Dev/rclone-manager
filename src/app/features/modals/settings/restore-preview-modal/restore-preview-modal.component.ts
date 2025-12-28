@@ -53,20 +53,22 @@ export class RestorePreviewModalComponent {
   // Computed Signals
   readonly isEncrypted = computed(() => this.analysis.isEncrypted);
   readonly hasContents = computed(() => !!this.analysis.contents);
-  readonly hasMetadata = computed(() => !!this.analysis.metadata);
+  readonly hasUserNote = computed(() => !!this.analysis.userNote);
 
   /**
    * Gets the total count of items in the backup
    */
   getItemCount(): number {
     let count = 0;
+    console.log(this.analysis);
+
     if (!this.analysis.contents) return count;
 
     const contents = this.analysis.contents;
     if (contents.settings) count++;
     if (contents.backendConfig) count++;
     if (contents.rcloneConfig) count++;
-    if (contents.remoteConfigs) count += contents.remoteConfigs.count;
+    if (contents.remoteCount) count += contents.remoteCount;
 
     return count;
   }

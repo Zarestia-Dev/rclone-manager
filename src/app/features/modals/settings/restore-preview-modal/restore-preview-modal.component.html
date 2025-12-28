@@ -130,7 +130,7 @@
             </div>
           }
 
-          @if (analysis.contents!.remoteConfigs; as remoteInfo) {
+          @if (analysis.contents!.remoteCount) {
             <div class="content-item">
               <div class="item-icon-wrapper">
                 <mat-icon svgIcon="cloud" class="item-icon"></mat-icon>
@@ -138,10 +138,12 @@
               <div class="item-content">
                 <span class="item-title">
                   Remote Configurations
-                  <span class="count-badge">{{ remoteInfo.count }}</span>
+                  <span class="count-badge">{{ analysis.contents!.remoteCount }}</span>
                 </span>
-                @if (remoteInfo.names && remoteInfo.names.length > 0) {
-                  <span class="item-description">{{ remoteInfo.names.join(', ') }}</span>
+                @if (analysis.contents!.remoteNames && analysis.contents!.remoteNames.length > 0) {
+                  <span class="item-description">{{
+                    analysis.contents!.remoteNames.join(', ')
+                  }}</span>
                 }
               </div>
               <mat-icon svgIcon="circle-check" class="check-icon accent"></mat-icon>
@@ -152,7 +154,7 @@
     }
 
     <!-- User Note Card -->
-    @if (hasMetadata() && analysis.metadata!.userNote) {
+    @if (hasUserNote()) {
       <div class="info-card note-card">
         <div class="card-header">
           <mat-icon svgIcon="note-sticky" class="card-icon"></mat-icon>
@@ -160,7 +162,7 @@
         </div>
         <div class="user-note">
           <mat-icon svgIcon="comment" class="quote-icon"></mat-icon>
-          <pre aria-label="Backup note">{{ analysis.metadata!.userNote }}</pre>
+          <pre aria-label="Backup note">{{ analysis.userNote }}</pre>
         </div>
       </div>
     }

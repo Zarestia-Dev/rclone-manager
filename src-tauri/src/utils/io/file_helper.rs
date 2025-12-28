@@ -1,9 +1,11 @@
 use log::{debug, error};
 use tauri::{AppHandle, Window, command};
+#[cfg(desktop)]
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
 #[command]
+#[cfg(desktop)]
 pub async fn get_folder_location(
     app: AppHandle,
     require_empty: bool,
@@ -78,6 +80,16 @@ pub async fn get_folder_location(
     Ok(Some(folder))
 }
 
+/// Folder picker is not available on mobile
+#[command]
+#[cfg(not(desktop))]
+pub async fn get_folder_location(
+    _app: AppHandle,
+    _require_empty: bool,
+) -> Result<Option<String>, String> {
+    Err("Folder picker is not available on this platform".into())
+}
+
 #[command]
 pub async fn open_in_files(
     app: tauri::AppHandle,
@@ -102,7 +114,9 @@ pub async fn open_in_files(
 }
 
 #[command]
+#[cfg(desktop)]
 pub async fn get_file_location(window: Window) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
     debug!("Opening file picker dialog...");
 
     let file_location = window
@@ -114,4 +128,10 @@ pub async fn get_file_location(window: Window) -> Result<Option<String>, String>
     debug!("File location: {file_location:?}");
 
     Ok(file_location)
+}
+
+#[command]
+#[cfg(not(desktop))]
+pub async fn get_file_location(_window: Window) -> Result<Option<String>, String> {
+    Err("File picker is not available on this platform".into())
 }

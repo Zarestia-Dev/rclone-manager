@@ -2,6 +2,7 @@ use tauri::Theme;
 
 /// Set the application theme
 #[tauri::command]
+#[cfg(desktop)]
 pub async fn set_theme(theme: String, window: tauri::Window) -> Result<(), String> {
     let theme_enum = match theme.as_str() {
         "dark" => Theme::Dark,
@@ -14,6 +15,14 @@ pub async fn set_theme(theme: String, window: tauri::Window) -> Result<(), Strin
             .map_err(|e| format!("Failed to set theme: {e}"))?;
     }
 
+    Ok(())
+}
+
+/// Set the application theme (mobile no-op)
+#[tauri::command]
+#[cfg(not(desktop))]
+pub async fn set_theme(_theme: String, _window: tauri::Window) -> Result<(), String> {
+    // Theme setting is not supported on mobile
     Ok(())
 }
 

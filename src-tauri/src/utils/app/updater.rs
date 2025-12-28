@@ -1,4 +1,4 @@
-#[cfg(feature = "updater")]
+#[cfg(all(desktop, feature = "updater"))]
 pub mod app_updates {
     use crate::{
         core::lifecycle::shutdown::handle_shutdown,

@@ -2,17 +2,19 @@ use log::{debug, error, info};
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Listener, Manager};
 
+#[cfg(desktop)]
+use crate::core::tray::core::update_tray_menu;
+
+#[cfg(desktop)]
+use crate::utils::app::builder::setup_tray;
+
 use crate::{
-    core::{
-        lifecycle::shutdown::handle_shutdown, scheduler::engine::CronScheduler,
-        tray::core::update_tray_menu,
-    },
+    core::{lifecycle::shutdown::handle_shutdown, scheduler::engine::CronScheduler},
     rclone::{
         commands::system::set_bandwidth_limit,
         state::scheduled_tasks::{ScheduledTasksCache, reload_scheduled_tasks_from_configs},
     },
     utils::{
-        app::builder::setup_tray,
         logging::log::update_log_level,
         types::{
             all_types::RcloneState,
@@ -24,6 +26,18 @@ use crate::{
         },
     },
 };
+
+// Mobile no-op stub for update_tray_menu
+#[cfg(not(desktop))]
+async fn update_tray_menu(_app: AppHandle, _max_items: usize) -> Result<(), String> {
+    Ok(())
+}
+
+// Mobile no-op stub for setup_tray
+#[cfg(not(desktop))]
+async fn setup_tray(_app: AppHandle, _max_items: usize) -> tauri::Result<()> {
+    Ok(())
+}
 
 fn parse_payload<T: for<'de> serde::Deserialize<'de>>(payload: Option<&str>) -> Result<T, String> {
     payload
@@ -187,7 +201,7 @@ fn handle_serve_state_changed(app: &AppHandle) {
                 error!("❌ Failed to refresh serves cache: {e}");
             }
 
-            if let Err(e) = crate::core::tray::core::update_tray_menu(app.clone(), 0).await {
+            if let Err(e) = update_tray_menu(app.clone(), 0).await {
                 error!("Failed to update tray menu after serve change: {e}");
             }
         });
@@ -232,7 +246,7 @@ fn handle_settings_changed(app: &AppHandle) {
                             }
                         }
 
-                        #[cfg(not(feature = "flatpak"))]
+                        #[cfg(all(desktop, not(feature = "flatpak")))]
                         {
                             use tauri_plugin_autostart::ManagerExt;
                             let autostart = app_handle.autolaunch();
@@ -247,29 +261,36 @@ fn handle_settings_changed(app: &AppHandle) {
                     if let Some(tray_enabled) =
                         general.get("tray_enabled").and_then(|v| v.as_bool())
                     {
-                        let app_handle_clone = app_handle.clone();
-                        tauri::async_runtime::spawn(async move {
-                            let tray_state = app_handle_clone.state::<RcloneState>();
-                            let mut guard = match tray_state.tray_enabled.write() {
-                                Ok(g) => g,
-                                Err(e) => {
-                                    error!("Failed to write tray_enabled: {e}");
-                                    return;
-                                }
-                            };
-                            *guard = tray_enabled;
-                            debug!("🛠️ Tray visibility changed to: {tray_enabled}");
-                            if let Some(tray) = app_handle_clone.tray_by_id("main-tray") {
-                                let _ = tray.set_visible(tray_enabled);
-                            } else {
-                                let app = app_handle_clone.clone();
-                                tauri::async_runtime::spawn(async move {
-                                    if let Err(e) = setup_tray(app, 0).await {
-                                        error!("Failed to set up tray: {e}");
+                        #[cfg(desktop)]
+                        {
+                            let app_handle_clone = app_handle.clone();
+                            tauri::async_runtime::spawn(async move {
+                                let tray_state = app_handle_clone.state::<RcloneState>();
+                                let mut guard = match tray_state.tray_enabled.write() {
+                                    Ok(g) => g,
+                                    Err(e) => {
+                                        error!("Failed to write tray_enabled: {e}");
+                                        return;
                                     }
-                                });
-                            }
-                        });
+                                };
+                                *guard = tray_enabled;
+                                debug!("🛠️ Tray visibility changed to: {tray_enabled}");
+                                if let Some(tray) = app_handle_clone.tray_by_id("main-tray") {
+                                    let _ = tray.set_visible(tray_enabled);
+                                } else {
+                                    let app = app_handle_clone.clone();
+                                    tauri::async_runtime::spawn(async move {
+                                        if let Err(e) = setup_tray(app, 0).await {
+                                            error!("Failed to set up tray: {e}");
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                        #[cfg(not(desktop))]
+                        {
+                            let _ = tray_enabled; // Silence unused warning
+                        }
                     }
                     if let Some(restrict) = general.get("restrict").and_then(|v| v.as_bool()) {
                         debug!("🔒 Restrict mode changed to: {restrict}");

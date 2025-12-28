@@ -34,6 +34,7 @@ export enum ExportType {
   RemoteConfigs = 'RemoteConfigs',
   SpecificRemote = 'SpecificRemote',
   RCloneBackend = 'RCloneBackend',
+  Connections = 'Connections',
 }
 
 export interface ExportModalData {
