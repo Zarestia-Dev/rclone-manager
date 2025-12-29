@@ -66,28 +66,31 @@ use crate::{
         check_binaries::check_rclone_available,
         initialization::{init_rclone_state, initialization, setup_config_dir},
         lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
-        scheduler::{
-            commands::{
-                clear_all_scheduled_tasks, reload_scheduled_tasks, toggle_scheduled_task,
-                validate_cron,
-            },
-            engine::CronScheduler,
+        scheduler::engine::CronScheduler,
+        settings::operations::core::load_startup_settings,
+    },
+    rclone::{commands::mount::unmount_all_remotes, state::scheduled_tasks::ScheduledTasksCache},
+    utils::logging::log::init_logging,
+};
+
+#[cfg(not(feature = "web-server"))]
+use crate::{
+    core::{
+        scheduler::commands::{
+            clear_all_scheduled_tasks, reload_scheduled_tasks, toggle_scheduled_task, validate_cron,
         },
         security::{
-            change_config_password, clear_config_password_env, clear_encryption_cache,
-            encrypt_config, get_cached_encryption_status, get_config_password,
+            change_config_password, clear_config_password_env, encrypt_config, get_config_password,
             has_config_password_env, has_stored_password, is_config_encrypted,
-            is_config_encrypted_cached, remove_config_password, set_config_password_env,
-            store_config_password, unencrypt_config, validate_rclone_password,
+            remove_config_password, set_config_password_env, store_config_password,
+            unencrypt_config, validate_rclone_password,
         },
         settings::{
             backup::{
                 backup_manager::{analyze_backup_file, backup_settings},
                 restore_manager::restore_settings,
             },
-            operations::core::{
-                load_settings, load_startup_settings, reset_setting, reset_settings, save_setting,
-            },
+            operations::core::{load_settings, reset_setting, reset_settings, save_setting},
             rclone_backend::{
                 get_rclone_backend_store_path, load_rclone_backend_options,
                 remove_rclone_backend_option, reset_rclone_backend_options,
@@ -107,7 +110,7 @@ use crate::{
                 delete_job, get_active_jobs, get_job_status, get_jobs, get_jobs_by_source,
                 rename_profile_in_cache, stop_job,
             },
-            mount::{mount_remote_profile, unmount_all_remotes, unmount_remote},
+            mount::{mount_remote_profile, unmount_remote},
             remote::{
                 continue_create_remote_interactive, create_remote, create_remote_interactive,
                 delete_remote, update_remote,
@@ -141,8 +144,8 @@ use crate::{
             },
             log::{clear_remote_logs, get_remote_logs},
             scheduled_tasks::{
-                ScheduledTasksCache, get_scheduled_task, get_scheduled_tasks,
-                get_scheduled_tasks_stats, reload_scheduled_tasks_from_configs,
+                get_scheduled_task, get_scheduled_tasks, get_scheduled_tasks_stats,
+                reload_scheduled_tasks_from_configs,
             },
             watcher::{force_check_mounted_remotes, force_check_serves},
         },
@@ -157,7 +160,6 @@ use crate::{
             network::{check_links, is_network_metered},
             terminal::open_terminal_config,
         },
-        logging::log::init_logging,
         process::process_manager::kill_process_by_pid,
         rclone::{
             mount::{check_mount_plugin_installed, install_mount_plugin},
@@ -345,6 +347,10 @@ pub fn run() {
             if let Err(e) = env_manager.init_with_stored_credentials(&rcman_manager) {
                 error!("Failed to initialize environment manager with stored credentials: {e}");
             }
+
+            // Initialize engine state
+            use crate::utils::types::all_types::RcApiEngine;
+            app.manage(tokio::sync::Mutex::new(RcApiEngine::default()));
 
             app.manage(rcman_manager);
             app.manage(env_manager);
@@ -742,9 +748,6 @@ pub fn run() {
             remove_config_password,
             validate_rclone_password,
             is_config_encrypted,
-            is_config_encrypted_cached,
-            get_cached_encryption_status,
-            clear_encryption_cache,
             encrypt_config,
             unencrypt_config,
             change_config_password,

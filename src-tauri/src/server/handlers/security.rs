@@ -10,35 +10,17 @@ use tauri::Manager;
 
 use crate::server::state::{ApiResponse, AppError, WebServerState};
 
-pub async fn get_cached_encryption_status_handler(
-    State(_state): State<WebServerState>,
-) -> Result<Json<ApiResponse<Option<bool>>>, (StatusCode, Json<ApiResponse<Option<bool>>>)> {
-    use crate::core::security::commands::get_cached_encryption_status;
-    let status = get_cached_encryption_status();
-    Ok(Json(ApiResponse::success(status)))
-}
-
 pub async fn has_stored_password_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<bool>>, AppError> {
     use crate::core::security::commands::has_stored_password;
     let credential_store = state
         .app_handle
-        .state::<crate::core::security::CredentialStore>();
+        .state::<rcman::SettingsManager<rcman::JsonStorage>>();
     let has_password = has_stored_password(credential_store)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(has_password)))
-}
-
-pub async fn is_config_encrypted_cached_handler(
-    State(state): State<WebServerState>,
-) -> Result<Json<ApiResponse<bool>>, AppError> {
-    use crate::core::security::commands::is_config_encrypted_cached;
-    let is_encrypted = is_config_encrypted_cached(state.app_handle.clone())
-        .await
-        .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(is_encrypted)))
 }
 
 pub async fn has_config_password_env_handler(
@@ -63,7 +45,7 @@ pub async fn remove_config_password_handler(
         .state::<crate::core::security::SafeEnvironmentManager>();
     let credential_store = state
         .app_handle
-        .state::<crate::core::security::CredentialStore>();
+        .state::<rcman::SettingsManager<rcman::JsonStorage>>();
     remove_config_password(env_manager, credential_store)
         .await
         .map_err(anyhow::Error::msg)?;
@@ -105,7 +87,7 @@ pub async fn store_config_password_handler(
         .state::<crate::core::security::SafeEnvironmentManager>();
     let credential_store = state
         .app_handle
-        .state::<crate::core::security::CredentialStore>();
+        .state::<rcman::SettingsManager<rcman::JsonStorage>>();
     store_config_password(
         state.app_handle.clone(),
         env_manager,
@@ -132,9 +114,17 @@ pub async fn unencrypt_config_handler(
     let env_manager = state
         .app_handle
         .state::<crate::core::security::SafeEnvironmentManager>();
-    unencrypt_config(state.app_handle.clone(), env_manager, body.password)
-        .await
-        .map_err(anyhow::Error::msg)?;
+    let manager = state
+        .app_handle
+        .state::<rcman::SettingsManager<rcman::JsonStorage>>();
+    unencrypt_config(
+        state.app_handle.clone(),
+        env_manager,
+        manager,
+        body.password,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(
         "Configuration unencrypted successfully".to_string(),
     )))
@@ -155,7 +145,7 @@ pub async fn encrypt_config_handler(
         .state::<crate::core::security::SafeEnvironmentManager>();
     let credential_store = state
         .app_handle
-        .state::<crate::core::security::CredentialStore>();
+        .state::<rcman::SettingsManager<rcman::JsonStorage>>();
     encrypt_config(
         state.app_handle.clone(),
         env_manager,
@@ -175,7 +165,7 @@ pub async fn get_config_password_handler(
     use crate::core::security::commands::get_config_password;
     let credential_store = state
         .app_handle
-        .state::<crate::core::security::CredentialStore>();
+        .state::<rcman::SettingsManager<rcman::JsonStorage>>();
     let password = get_config_password(credential_store)
         .await
         .map_err(anyhow::Error::msg)?;
@@ -218,16 +208,6 @@ pub async fn clear_config_password_env_handler(
     )))
 }
 
-pub async fn clear_encryption_cache_handler(
-    State(_state): State<WebServerState>,
-) -> Result<Json<ApiResponse<String>>, AppError> {
-    use crate::core::security::commands::clear_encryption_cache;
-    clear_encryption_cache();
-    Ok(Json(ApiResponse::success(
-        "Encryption cache cleared successfully".to_string(),
-    )))
-}
-
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangeConfigPasswordBody {
@@ -245,7 +225,7 @@ pub async fn change_config_password_handler(
         .state::<crate::core::security::SafeEnvironmentManager>();
     let credential_store = state
         .app_handle
-        .state::<crate::core::security::CredentialStore>();
+        .state::<rcman::SettingsManager<rcman::JsonStorage>>();
     change_config_password(
         state.app_handle.clone(),
         env_manager,

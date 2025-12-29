@@ -12,14 +12,14 @@ const API_READY_POLL_INTERVAL: Duration = Duration::from_millis(500);
 
 impl RcApiEngine {
     /// Check if both the process is running AND the API is responding
-    pub fn is_api_healthy(&mut self) -> bool {
+    pub async fn is_api_healthy(&mut self) -> bool {
         // First check if process is still alive
         if !self.is_process_alive() {
             debug!("🔍 Process is not alive");
             return false;
         }
 
-        self.check_api_response()
+        self.check_api_response().await
     }
 
     /// Check if the process is still alive using native PID checking
@@ -76,20 +76,20 @@ impl RcApiEngine {
     }
 
     /// Check if the API is responding by making a simple request
-    fn check_api_response(&self) -> bool {
-        Self::check_api_health_on_port(self.current_api_port)
+    async fn check_api_response(&self) -> bool {
+        Self::check_api_health_on_port(self.current_api_port).await
     }
 
     /// Check if an API endpoint is responding on a given port (static helper)
     ///
     /// Returns true if the API returns a successful response or 401 Unauthorized
     /// (which means the API is running but requires auth).
-    pub fn check_api_health_on_port(port: u16) -> bool {
+    pub async fn check_api_health_on_port(port: u16) -> bool {
         let base_url = format!("http://127.0.0.1:{}", port);
         let url = EndpointHelper::build_url(&base_url, core::VERSION);
 
-        let client = reqwest::blocking::Client::new();
-        match client.post(&url).timeout(API_HEALTH_TIMEOUT).send() {
+        let client = reqwest::Client::new();
+        match client.post(&url).timeout(API_HEALTH_TIMEOUT).send().await {
             Ok(response) => {
                 let status = response.status();
                 // Treat 401 Unauthorized as healthy - it means the API is responding
@@ -109,18 +109,18 @@ impl RcApiEngine {
         }
     }
 
-    pub fn wait_until_ready(&mut self, timeout_secs: u64) -> bool {
+    pub async fn wait_until_ready(&mut self, timeout_secs: u64) -> bool {
         let start = std::time::Instant::now();
         let timeout = Duration::from_secs(timeout_secs);
 
         debug!("🔍 Waiting for API to be ready (timeout: {timeout_secs}s)");
 
         while start.elapsed() < timeout {
-            if self.is_api_healthy() {
+            if self.is_api_healthy().await {
                 debug!("✅ API is healthy and ready");
                 return true;
             }
-            std::thread::sleep(API_READY_POLL_INTERVAL);
+            tokio::time::sleep(API_READY_POLL_INTERVAL).await;
         }
 
         debug!("⏰ API health check timed out after {timeout_secs}s");
@@ -132,10 +132,10 @@ impl RcApiEngine {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_check_api_health_no_server() {
+    #[tokio::test]
+    async fn test_check_api_health_no_server() {
         // Port 59999 should not have anything listening
-        assert!(!RcApiEngine::check_api_health_on_port(59999));
+        assert!(!RcApiEngine::check_api_health_on_port(59999).await);
     }
 
     #[test]
@@ -144,13 +144,13 @@ mod tests {
         assert!(!engine.is_process_alive());
     }
 
-    #[test]
-    fn test_wait_until_ready_immediate_timeout() {
+    #[tokio::test]
+    async fn test_wait_until_ready_immediate_timeout() {
         let mut engine = RcApiEngine::default();
         // With no process and no API, should timeout quickly
         // Using 1 second timeout to keep test fast
         let start = std::time::Instant::now();
-        let result = engine.wait_until_ready(1);
+        let result = engine.wait_until_ready(1).await;
         let elapsed = start.elapsed();
 
         assert!(!result);

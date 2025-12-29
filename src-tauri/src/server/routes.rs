@@ -21,6 +21,7 @@ pub fn build_api_router(state: WebServerState) -> Router {
         .merge(logs_routes())
         .merge(vfs_routes())
         .merge(backup_routes())
+        .merge(backend_routes())
         .nest("/jobs", jobs_router)
         .route("/events", get(handlers::sse_handler))
         .with_state(state.clone())
@@ -300,16 +301,8 @@ fn flags_routes() -> Router<WebServerState> {
 fn security_routes() -> Router<WebServerState> {
     Router::new()
         .route(
-            "/get-cached-encryption-status",
-            get(handlers::get_cached_encryption_status_handler),
-        )
-        .route(
             "/has-stored-password",
             get(handlers::has_stored_password_handler),
-        )
-        .route(
-            "/is-config-encrypted-cached",
-            get(handlers::is_config_encrypted_cached_handler),
         )
         .route(
             "/has-config-password-env",
@@ -343,10 +336,6 @@ fn security_routes() -> Router<WebServerState> {
         .route(
             "/clear-config-password-env",
             post(handlers::clear_config_password_env_handler),
-        )
-        .route(
-            "/clear-encryption-cache",
-            post(handlers::clear_encryption_cache_handler),
         )
         .route(
             "/change-config-password",
@@ -390,5 +379,22 @@ fn backup_routes() -> Router<WebServerState> {
         .route(
             "/restore-settings",
             post(handlers::restore_settings_handler),
+        )
+}
+
+fn backend_routes() -> Router<WebServerState> {
+    Router::new()
+        .route("/list-backends", get(handlers::list_backends_handler))
+        .route(
+            "/get-active-backend",
+            get(handlers::get_active_backend_handler),
+        )
+        .route("/switch-backend", post(handlers::switch_backend_handler))
+        .route("/add-backend", post(handlers::add_backend_handler))
+        .route("/update-backend", post(handlers::update_backend_handler))
+        .route("/remove-backend", post(handlers::remove_backend_handler))
+        .route(
+            "/test-backend-connection",
+            post(handlers::test_backend_connection_handler),
         )
 }

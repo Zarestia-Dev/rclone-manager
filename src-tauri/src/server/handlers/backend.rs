@@ -1,0 +1,152 @@
+//! Backend handlers (add, update, remove, switch, test, list)
+
+use axum::{extract::State, response::Json};
+use serde::Deserialize;
+use tauri::Manager;
+
+use crate::rclone::backend::types::BackendInfo;
+use crate::server::state::{ApiResponse, AppError, WebServerState};
+use crate::utils::types::all_types::RcloneState;
+
+pub async fn list_backends_handler() -> Result<Json<ApiResponse<Vec<BackendInfo>>>, AppError> {
+    use crate::rclone::commands::backend::list_backends;
+    let backends = list_backends().await.map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(backends)))
+}
+
+pub async fn get_active_backend_handler() -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::rclone::commands::backend::get_active_backend;
+    let active = get_active_backend().await.map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(active)))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SwitchBackendBody {
+    pub name: String,
+}
+
+pub async fn switch_backend_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<SwitchBackendBody>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::rclone::commands::backend::switch_backend;
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+    switch_backend(state.app_handle.clone(), body.name.clone(), rclone_state)
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(format!(
+        "Switched to backend '{}' successfully",
+        body.name
+    ))))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AddBackendBody {
+    pub name: String,
+    pub host: String,
+    pub port: u16,
+    pub is_local: bool,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub config_password: Option<String>,
+    pub oauth_port: Option<u16>,
+}
+
+pub async fn add_backend_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<AddBackendBody>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::rclone::commands::backend::add_backend;
+    add_backend(
+        state.app_handle.clone(),
+        body.name.clone(),
+        body.host,
+        body.port,
+        body.is_local,
+        body.username,
+        body.password,
+        body.config_password,
+        body.oauth_port,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(format!(
+        "Backend '{}' added successfully",
+        body.name
+    ))))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateBackendBody {
+    pub name: String,
+    pub host: String,
+    pub port: u16,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub config_password: Option<String>,
+    pub oauth_port: Option<u16>,
+}
+
+pub async fn update_backend_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<UpdateBackendBody>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::rclone::commands::backend::update_backend;
+    update_backend(
+        state.app_handle.clone(),
+        body.name.clone(),
+        body.host,
+        body.port,
+        body.username,
+        body.password,
+        body.config_password,
+        body.oauth_port,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(format!(
+        "Backend '{}' updated successfully",
+        body.name
+    ))))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoveBackendBody {
+    pub name: String,
+}
+
+pub async fn remove_backend_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<RemoveBackendBody>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::rclone::commands::backend::remove_backend;
+    remove_backend(state.app_handle.clone(), body.name.clone())
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(format!(
+        "Backend '{}' removed successfully",
+        body.name
+    ))))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TestBackendConnectionBody {
+    pub name: String,
+}
+
+pub async fn test_backend_connection_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<TestBackendConnectionBody>,
+) -> Result<Json<ApiResponse<crate::rclone::commands::backend::TestConnectionResult>>, AppError> {
+    use crate::rclone::commands::backend::test_backend_connection;
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+    let result = test_backend_connection(state.app_handle.clone(), body.name, rclone_state)
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(result)))
+}

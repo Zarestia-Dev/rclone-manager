@@ -5,29 +5,19 @@ use axum::{
     response::Json,
 };
 use serde::Deserialize;
-use std::collections::HashMap;
 use tauri::Manager;
 
 use crate::core::scheduler::engine::CronScheduler;
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
-use crate::utils::types::all_types::RemoteCache;
 use rcman::{JsonStorage, SettingsManager};
 
 pub async fn get_settings_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::rclone::backend::BACKEND_MANAGER;
     use crate::rclone::state::cache::get_settings;
-    let backend_manager = &BACKEND_MANAGER;
-    let backend = backend_manager
-        .get_active()
-        .await
-        .ok_or_else(|| anyhow::anyhow!("No active backend"))
-        .map_err(AppError::Anyhow)?;
-    let cache = backend.read().await.remote_cache.clone();
-
-    let settings = get_settings(cache).await.map_err(anyhow::Error::msg)?;
+    let manager: tauri::State<SettingsManager<JsonStorage>> = state.app_handle.state();
+    let settings = get_settings(manager).await.map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(settings)))
 }
 
@@ -151,24 +141,26 @@ pub async fn delete_remote_settings_handler(
 
 pub async fn check_links_handler(
     State(_state): State<WebServerState>,
-    Query(params): Query<HashMap<String, String>>,
+    Query(params): Query<Vec<(String, String)>>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::utils::io::network::check_links;
     let links: Vec<String> = params
         .iter()
-        .filter(|(key, _)| key == &"links")
+        .filter(|(key, _)| key == "links")
         .map(|(_, value)| value.clone())
         .collect();
     if links.is_empty() {
         return Err(AppError::BadRequest(anyhow::anyhow!("No links provided")));
     }
     let max_retries = params
-        .get("maxRetries")
-        .and_then(|s| s.parse::<usize>().ok())
+        .iter()
+        .find(|(k, _)| k == "maxRetries")
+        .and_then(|(_, v)| v.parse::<usize>().ok())
         .unwrap_or(2);
     let retry_delay_secs = params
-        .get("retryDelaySecs")
-        .and_then(|s| s.parse::<u64>().ok())
+        .iter()
+        .find(|(k, _)| k == "retryDelaySecs")
+        .and_then(|(_, v)| v.parse::<u64>().ok())
         .unwrap_or(3);
     let result = check_links(links, max_retries, retry_delay_secs)
         .await
@@ -187,7 +179,8 @@ pub async fn save_rclone_backend_options_handler(
     Json(body): Json<SaveRCloneBackendOptionsBody>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::core::settings::rclone_backend::save_rclone_backend_options;
-    save_rclone_backend_options(state.app_handle.clone(), body.options)
+    let manager: tauri::State<SettingsManager<JsonStorage>> = state.app_handle.state();
+    save_rclone_backend_options(manager, body.options)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(
@@ -199,7 +192,8 @@ pub async fn reset_rclone_backend_options_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::core::settings::rclone_backend::reset_rclone_backend_options;
-    reset_rclone_backend_options(state.app_handle.clone())
+    let manager: tauri::State<SettingsManager<JsonStorage>> = state.app_handle.state();
+    reset_rclone_backend_options(manager)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(
@@ -230,14 +224,10 @@ pub async fn save_rclone_backend_option_handler(
     Json(body): Json<SaveRCloneBackendOptionBody>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::core::settings::rclone_backend::save_rclone_backend_option;
-    save_rclone_backend_option(
-        state.app_handle.clone(),
-        body.block,
-        body.option,
-        body.value,
-    )
-    .await
-    .map_err(anyhow::Error::msg)?;
+    let manager: tauri::State<SettingsManager<JsonStorage>> = state.app_handle.state();
+    save_rclone_backend_option(manager, body.block, body.option, body.value)
+        .await
+        .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(
         "RClone backend option saved successfully".to_string(),
     )))
@@ -275,7 +265,8 @@ pub async fn remove_rclone_backend_option_handler(
     Json(body): Json<RemoveRCloneBackendOptionBody>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::core::settings::rclone_backend::remove_rclone_backend_option;
-    remove_rclone_backend_option(state.app_handle.clone(), body.block, body.option)
+    let manager: tauri::State<SettingsManager<JsonStorage>> = state.app_handle.state();
+    remove_rclone_backend_option(manager, body.block, body.option)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(

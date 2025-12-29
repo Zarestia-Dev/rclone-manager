@@ -2,6 +2,7 @@
 //!
 //! This module contains all the handler functions organized by domain.
 
+mod backend;
 mod backup;
 mod common;
 mod files;
@@ -15,6 +16,7 @@ mod settings;
 mod system;
 mod vfs;
 
+pub use backend::*;
 pub use backup::*;
 pub use common::*;
 pub use files::*;

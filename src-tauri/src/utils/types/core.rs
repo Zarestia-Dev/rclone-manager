@@ -29,10 +29,11 @@ pub struct RcApiEngine {
     pub updating: bool,
     pub path_error: bool,
     pub password_error: bool,
-    // pub rclone_path: std::path::PathBuf,
     pub current_api_port: u16,
-    pub config_encrypted: Option<bool>,
 }
+
+/// Thread-safe, async-friendly managed state for the engine
+pub type EngineState = tokio::sync::Mutex<RcApiEngine>;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CheckResult {

@@ -8,25 +8,23 @@ use serde::Deserialize;
 use tauri::Manager;
 
 use crate::server::state::{ApiResponse, AppError, WebServerState};
-use crate::utils::types::all_types::{ProfileParams, RcloneState}; // Removed JobCache import
+use crate::utils::types::all_types::{ProfileParams, RcloneState};
 
 pub async fn get_jobs_handler(
     State(_): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::rclone::state::job::get_jobs;
-    // Call standalone function that uses BACKEND_MANAGER internally or use active backend directly
-    // state::job::get_jobs() in Step 946 is a tauri command that resolves active backend.
-    let jobs = get_jobs().await.map_err(anyhow::Error::msg)?;
-    let json_jobs = serde_json::to_value(jobs)?;
+    use crate::rclone::backend::BACKEND_MANAGER;
+    let jobs = BACKEND_MANAGER.job_cache.get_jobs().await;
+    let json_jobs = serde_json::to_value(jobs).map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(json_jobs)))
 }
 
 pub async fn get_active_jobs_handler(
     State(_): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::rclone::state::job::get_active_jobs;
-    let active_jobs = get_active_jobs().await.map_err(anyhow::Error::msg)?;
-    let json_active_jobs = serde_json::to_value(active_jobs)?;
+    use crate::rclone::backend::BACKEND_MANAGER;
+    let active_jobs = BACKEND_MANAGER.job_cache.get_active_jobs().await;
+    let json_active_jobs = serde_json::to_value(active_jobs).map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(json_active_jobs)))
 }
 
@@ -39,11 +37,12 @@ pub async fn get_jobs_by_source_handler(
     State(_): State<WebServerState>,
     Query(query): Query<JobsBySourceQuery>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::rclone::state::job::get_jobs_by_source;
-    let jobs = get_jobs_by_source(query.source)
-        .await
-        .map_err(anyhow::Error::msg)?;
-    let json_jobs = serde_json::to_value(jobs)?;
+    use crate::rclone::backend::BACKEND_MANAGER;
+    let jobs = BACKEND_MANAGER
+        .job_cache
+        .get_jobs_by_source(&query.source)
+        .await;
+    let json_jobs = serde_json::to_value(jobs).map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(json_jobs)))
 }
 
@@ -56,12 +55,10 @@ pub async fn get_job_status_handler(
     State(_): State<WebServerState>,
     Query(query): Query<JobStatusQuery>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::rclone::state::job::get_job_status;
-    let opt = get_job_status(query.jobid)
-        .await
-        .map_err(anyhow::Error::msg)?;
+    use crate::rclone::backend::BACKEND_MANAGER;
+    let opt = BACKEND_MANAGER.job_cache.get_job(query.jobid).await;
     let json = match opt {
-        Some(j) => serde_json::to_value(j)?,
+        Some(j) => serde_json::to_value(j).map_err(anyhow::Error::msg)?,
         None => serde_json::Value::Null,
     };
     Ok(Json(ApiResponse::success(json)))
@@ -79,7 +76,6 @@ pub async fn stop_job_handler(
     Json(body): Json<StopJobBody>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::rclone::commands::job::stop_job;
-    // Removed job_cache which is not in stop_job signature
     use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
     let scheduled_cache = state.app_handle.state::<ScheduledTasksCache>();
     let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
@@ -106,9 +102,12 @@ pub async fn delete_job_handler(
     State(_): State<WebServerState>,
     Json(body): Json<DeleteJobBody>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
-    use crate::rclone::state::job::delete_job;
-    // Uses the standalone command variant that resolves active backend
-    delete_job(body.jobid).await.map_err(anyhow::Error::msg)?;
+    use crate::rclone::backend::BACKEND_MANAGER;
+    BACKEND_MANAGER
+        .job_cache
+        .delete_job(body.jobid)
+        .await
+        .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(
         "Job deleted successfully".to_string(),
     )))

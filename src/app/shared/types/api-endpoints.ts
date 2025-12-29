@@ -129,7 +129,6 @@ export const POST_COMMANDS = new Set([
   'open_terminal_config',
   'set_config_password_env',
   'clear_config_password_env',
-  'clear_encryption_cache',
   'change_config_password',
   'restore_settings',
   'install_update',
@@ -143,4 +142,13 @@ export const POST_COMMANDS = new Set([
   'mkdir',
   'cleanup',
   'copy_url',
+  // Backend Commands
+  'add_backend',
+  'update_backend',
+  'remove_backend',
+  'switch_backend',
+  'test_backend_connection',
+  'force_check_serves',
+  'save_rclone_backend_options',
+  'reset_rclone_backend_options',
 ]);

@@ -63,9 +63,10 @@ fn handle_rclone_password_stored(app: &AppHandle) {
         tauri::async_runtime::spawn(async move {
             // Clear the engine flag using the new helper
             tauri::async_runtime::spawn_blocking(move || {
-                let _ = crate::utils::types::all_types::RcApiEngine::with_lock(|e| {
-                    e.set_password_error(false);
-                });
+                use crate::utils::types::core::EngineState;
+                _app.state::<EngineState>()
+                    .blocking_lock()
+                    .set_password_error(false);
             });
         });
     });

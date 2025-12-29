@@ -60,12 +60,12 @@ export class BackendSecurityComponent implements OnInit {
 
   private async loadEncryptionStatus(): Promise<void> {
     try {
-      const [encrypted, hasPassword] = await Promise.all([
-        this.passwordService.isConfigEncryptedCached(),
+      const [hasPassword, isEncrypted] = await Promise.all([
         this.passwordService.hasStoredPassword(),
+        this.passwordService.isConfigEncrypted(),
       ]);
-      this.isConfigEncrypted.set(encrypted);
       this.hasStoredPassword.set(hasPassword);
+      this.isConfigEncrypted.set(isEncrypted);
     } catch (error) {
       console.error('Failed to load encryption status:', error);
     }
@@ -143,7 +143,6 @@ export class BackendSecurityComponent implements OnInit {
     try {
       await this.passwordService.encryptConfig(newPassword);
       await this.passwordService.storePassword(newPassword);
-      await this.passwordService.clearEncryptionCache();
       await this.loadEncryptionStatus();
       this.snackBar.open('Configuration encrypted', 'Close', { duration: 4000 });
       this.securityForm.reset();
@@ -165,7 +164,6 @@ export class BackendSecurityComponent implements OnInit {
     try {
       await this.passwordService.unencryptConfig(currentPassword);
       await this.passwordService.removeStoredPassword();
-      await this.passwordService.clearEncryptionCache();
       await this.loadEncryptionStatus();
       this.snackBar.open('Encryption removed', 'Close', { duration: 4000 });
       this.securityForm.reset();
@@ -194,7 +192,6 @@ export class BackendSecurityComponent implements OnInit {
     try {
       await this.passwordService.changeConfigPassword(currentPassword, newPassword);
       await this.passwordService.storePassword(newPassword);
-      await this.passwordService.clearEncryptionCache();
       await this.loadEncryptionStatus();
       this.snackBar.open('Password changed', 'Close', { duration: 4000 });
       this.securityForm.reset();

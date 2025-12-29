@@ -1,48 +1,8 @@
-use log::{error, info};
-use tauri::{AppHandle, Emitter, Manager};
+use log::info;
+use tauri::{AppHandle, Manager};
 
 use crate::core::check_binaries::build_rclone_command;
 use crate::core::security::SafeEnvironmentManager;
-use crate::utils::types::all_types::RcApiEngine;
-use crate::utils::types::events::RCLONE_ENGINE_PASSWORD_ERROR;
-
-/// Clear cached encryption status (e.g., when config changes)
-pub fn clear_encryption_cache() {
-    RcApiEngine::clear_encryption_cache();
-    info!("🗑️ Cleared cached encryption status");
-}
-
-/// Get cached encryption status without checking (returns None if not cached)
-pub fn get_cached_encryption_status() -> Option<bool> {
-    RcApiEngine::get_encryption_cached()
-}
-
-/// Check if config is encrypted, using cached value if available
-async fn is_config_encrypted_cached(app: &AppHandle) -> bool {
-    // Try to get cached value from engine state first
-    if let Some(cached_status) = RcApiEngine::get_encryption_cached() {
-        info!("🚀 Using cached encryption status: {}", cached_status);
-        return cached_status;
-    }
-
-    // If not cached, check and cache the result
-    match crate::core::security::is_config_encrypted(app.clone()).await {
-        Ok(is_encrypted) => {
-            info!("🔍 Config encryption status determined: {}", is_encrypted);
-            RcApiEngine::set_encryption_cached(is_encrypted);
-            info!("💾 Cached encryption status for future use");
-            is_encrypted
-        }
-        Err(e) => {
-            info!(
-                "⚠️ Could not determine config encryption status: {}, assuming not encrypted",
-                e
-            );
-            RcApiEngine::set_encryption_cached(false);
-            false
-        }
-    }
-}
 
 /// Setup environment variables for rclone processes (main engine or OAuth)
 pub async fn setup_rclone_environment(
@@ -89,16 +49,18 @@ pub async fn setup_rclone_environment(
 
     // Only check encryption status if no password found and this is main engine
     if !password_found && process_type == "main_engine" {
-        // Use cached encryption check for performance
-        if is_config_encrypted_cached(app).await {
-            info!(
-                "🔒 Configuration is encrypted but no password available, emitting password error"
-            );
-            if let Err(e) = app.emit(RCLONE_ENGINE_PASSWORD_ERROR, ()) {
-                error!("Failed to emit password error event: {e}");
+        // Always run fresh check to detect external config changes
+        match crate::core::security::is_config_encrypted(app.clone()).await {
+            Ok(true) => {
+                info!("🔒 Configuration is encrypted but no password available, stopping start");
+                return Err("Configuration is encrypted and no password provided".to_string());
             }
-        } else {
-            info!("🔓 Configuration is not encrypted, proceeding without password");
+            Ok(false) => {
+                info!("🔓 Configuration is not encrypted, proceeding without password");
+            }
+            Err(e) => {
+                info!("⚠️ Could not determine encryption status: {e}, proceeding without password");
+            }
         }
     }
 

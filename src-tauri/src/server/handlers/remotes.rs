@@ -12,24 +12,12 @@ use crate::core::scheduler::engine::CronScheduler;
 use crate::rclone::commands::remote::create_remote;
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
-use crate::utils::types::all_types::{RcloneState, RemoteCache};
+use crate::utils::types::all_types::RcloneState;
 
-pub async fn get_remotes_handler(
-    State(state): State<WebServerState>,
-) -> Result<Json<ApiResponse<Vec<String>>>, AppError> {
+pub async fn get_remotes_handler() -> Result<Json<ApiResponse<Vec<String>>>, AppError> {
     use crate::rclone::backend::BACKEND_MANAGER;
     use crate::rclone::state::cache::get_cached_remotes;
-    let backend_manager = &BACKEND_MANAGER;
-    let backend = backend_manager
-        .get_active()
-        .await
-        .ok_or_else(|| anyhow::anyhow!("No active backend"))
-        .map_err(AppError::Anyhow)?;
-    let cache = backend.read().await.remote_cache.clone();
-
-    let remotes = get_cached_remotes(cache)
-        .await
-        .map_err(anyhow::Error::msg)?;
+    let remotes = get_cached_remotes().await.map_err(anyhow::Error::msg)?;
     info!("Fetched remotes: {:?}", remotes);
     Ok(Json(ApiResponse::success(remotes)))
 }
@@ -63,22 +51,10 @@ pub async fn get_remote_types_handler(
     Ok(Json(ApiResponse::success(json_types)))
 }
 
-pub async fn get_cached_remotes_handler(
-    State(state): State<WebServerState>,
-) -> Result<Json<ApiResponse<Vec<String>>>, AppError> {
+pub async fn get_cached_remotes_handler() -> Result<Json<ApiResponse<Vec<String>>>, AppError> {
     use crate::rclone::backend::BACKEND_MANAGER;
     use crate::rclone::state::cache::get_cached_remotes;
-    let backend_manager = &BACKEND_MANAGER;
-    let backend = backend_manager
-        .get_active()
-        .await
-        .ok_or_else(|| anyhow::anyhow!("No active backend"))
-        .map_err(AppError::Anyhow)?;
-    let cache = backend.read().await.remote_cache.clone();
-
-    let remotes = get_cached_remotes(cache)
-        .await
-        .map_err(anyhow::Error::msg)?;
+    let remotes = get_cached_remotes().await.map_err(anyhow::Error::msg)?;
     info!("Fetched cached remotes: {:?}", remotes);
     Ok(Json(ApiResponse::success(remotes)))
 }

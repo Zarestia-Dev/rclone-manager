@@ -24,10 +24,7 @@ use crate::core::settings::operations::core::save_setting;
 use crate::utils::github_client;
 use crate::{
     rclone::queries::get_rclone_info,
-    utils::types::{
-        all_types::{RcApiEngine, RcloneState},
-        events::RCLONE_ENGINE_UPDATING,
-    },
+    utils::types::{all_types::RcloneState, events::RCLONE_ENGINE_UPDATING},
 };
 
 // ============================================================================
@@ -118,7 +115,12 @@ pub async fn update_rclone(
     channel: Option<String>,
 ) -> Result<serde_json::Value, String> {
     // Step 1: Initialize update process
-    RcApiEngine::with_lock(|e| e.set_updating(true))?;
+    // Step 1: Initialize update process
+    {
+        use crate::utils::types::core::EngineState;
+        let engine_state = app_handle.state::<EngineState>();
+        engine_state.lock().await.set_updating(true);
+    }
     debug!("🔍 Starting rclone update process");
 
     // Step 2: Check if update is available
@@ -130,7 +132,14 @@ pub async fn update_rclone(
 
     if !update_available {
         // Set updating to false before returning
-        RcApiEngine::with_lock(|e| e.set_updating(false))?;
+        {
+            use crate::utils::types::core::EngineState;
+            app_handle
+                .state::<EngineState>()
+                .lock()
+                .await
+                .set_updating(false);
+        }
         debug!("🔍 No update available for rclone");
         return Ok(json!({
             "success": false,
@@ -163,7 +172,14 @@ pub async fn update_rclone(
             current_path = system_path;
         } else {
             // Set updating to false before returning
-            RcApiEngine::with_lock(|e| e.set_updating(false))?;
+            {
+                use crate::utils::types::core::EngineState;
+                app_handle
+                    .state::<EngineState>()
+                    .lock()
+                    .await
+                    .set_updating(false);
+            }
             debug!(
                 "🔍 Current rclone binary not found at: {}",
                 current_path.display()
@@ -181,13 +197,16 @@ pub async fn update_rclone(
         .map_err(|e| format!("Failed to emit update event: {e}"))?;
 
     // Actually stop the engine process
-    RcApiEngine::with_lock(|e| {
-        if let Err(e) = e.kill_process() {
+    {
+        use crate::utils::types::core::EngineState;
+        let engine_state = app_handle.state::<EngineState>();
+        let mut engine = engine_state.lock().await;
+        if let Err(e) = engine.kill_process().await {
             log::error!("Failed to stop engine before update: {e}");
         }
-        e.running = false;
-        e.process = None;
-    })?;
+        engine.running = false;
+        engine.process = None;
+    }
 
     // Determine the best update strategy based on current path and permissions
     let update_result = match determine_update_strategy(&current_path, &app_handle).await {
@@ -210,8 +229,16 @@ pub async fn update_rclone(
     // Note: Completion is signaled by ENGINE_RESTARTED event with reason 'rclone_update'
 
     // Set updating to false at the end (regardless of success/failure)
+    // Set updating to false at the end (regardless of success/failure)
     log::info!("Setting updating to false");
-    RcApiEngine::with_lock(|e| e.set_updating(false))?;
+    {
+        use crate::utils::types::core::EngineState;
+        app_handle
+            .state::<EngineState>()
+            .lock()
+            .await
+            .set_updating(false);
+    }
 
     // If update was successful, restart engine with updated binary
     if success

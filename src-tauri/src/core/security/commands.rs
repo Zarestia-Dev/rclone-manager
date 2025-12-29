@@ -245,38 +245,7 @@ pub async fn has_config_password_env(
 }
 
 /// Check if the rclone configuration is encrypted
-/// Get cached encryption status if available (faster, no I/O)
-#[tauri::command]
-pub fn get_cached_encryption_status() -> Option<bool> {
-    use crate::utils::rclone::process_common::get_cached_encryption_status;
-    debug!("⚡ Getting cached encryption status");
-    get_cached_encryption_status()
-}
-
-/// Clear cached encryption status (e.g., when config changes)
-#[tauri::command]
-pub fn clear_encryption_cache() {
-    use crate::utils::rclone::process_common::clear_encryption_cache;
-    debug!("🗑️ Clearing encryption cache");
-    clear_encryption_cache();
-}
-
-/// Check if config is encrypted (with caching for performance)
-#[tauri::command]
-pub async fn is_config_encrypted_cached(app: AppHandle) -> Result<bool, String> {
-    use crate::utils::rclone::process_common::get_cached_encryption_status;
-
-    debug!("🚀 Checking config encryption with cache");
-
-    if let Some(cached_status) = get_cached_encryption_status() {
-        debug!("Using cached encryption status: {}", cached_status);
-        return Ok(cached_status);
-    }
-
-    debug!("No cached status found, performing full encryption check");
-    is_config_encrypted(app).await
-}
-
+/// Always runs a fresh check to detect external config changes
 #[tauri::command]
 pub async fn is_config_encrypted(app: AppHandle) -> Result<bool, String> {
     debug!("🔍 Checking if rclone config is encrypted");
@@ -289,8 +258,9 @@ pub async fn is_config_encrypted(app: AppHandle) -> Result<bool, String> {
 
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    let is_encrypted =
-        stderr.contains("unable to decrypt configuration and not allowed to ask for password");
+    let is_encrypted = stderr
+        .contains("unable to decrypt configuration and not allowed to ask for password")
+        || (stderr.contains("Failed to load config file") && stderr.contains("unable to decrypt"));
 
     debug!(
         "{} Configuration is {}",

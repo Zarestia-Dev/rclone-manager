@@ -10,10 +10,7 @@ use crate::{
     },
     utils::{
         process::process_manager::kill_all_rclone_processes,
-        types::{
-            all_types::{RcApiEngine, RcloneState},
-            events::APP_EVENT,
-        },
+        types::{all_types::RcloneState, events::APP_EVENT},
     },
 };
 
@@ -131,11 +128,17 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     }
 
     // Perform engine shutdown in a blocking task with timeout
+    let app_handle_clone = app_handle.clone();
     let engine_shutdown_task = tokio::time::timeout(
         tokio::time::Duration::from_secs(3),
         spawn_blocking(move || -> Result<(), String> {
-            info!("🔄 Shutting down engine gracefully...");
-            RcApiEngine::with_lock(|e| e.shutdown())
+            use crate::utils::types::core::EngineState;
+            let engine_state = app_handle_clone.state::<EngineState>();
+            // Use blocking_lock to get the guard synchronously
+            let mut engine = engine_state.blocking_lock();
+            // Use block_on to run the async shutdown method
+            tauri::async_runtime::block_on(engine.shutdown());
+            Ok(())
         }),
     );
 

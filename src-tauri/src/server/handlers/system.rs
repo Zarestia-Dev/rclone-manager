@@ -13,7 +13,7 @@ use tokio::sync::broadcast;
 
 use crate::core::lifecycle::shutdown::handle_shutdown;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
-use crate::utils::types::all_types::{LogCache, RcloneState, RemoteCache};
+use crate::utils::types::all_types::{LogCache, RcloneState};
 
 #[cfg(feature = "updater")]
 use crate::utils::app::updater::app_updates::{
@@ -110,12 +110,8 @@ pub async fn get_rclone_rc_url_handler(
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::rclone::backend::BACKEND_MANAGER;
     let backend_manager = &BACKEND_MANAGER;
-    let backend = backend_manager
-        .get_active()
-        .await
-        .ok_or_else(|| anyhow::anyhow!("No active backend"))
-        .map_err(AppError::Anyhow)?;
-    let url = backend.read().await.api_url();
+    let backend = backend_manager.get_active().await;
+    let url = backend.api_url();
     Ok(Json(ApiResponse::success(url)))
 }
 
@@ -220,20 +216,9 @@ pub async fn update_rclone_handler(
     Ok(Json(ApiResponse::success(result)))
 }
 
-pub async fn get_configs_handler(
-    State(state): State<WebServerState>,
-) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::rclone::backend::BACKEND_MANAGER;
+pub async fn get_configs_handler() -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::state::cache::get_configs;
-    let backend_manager = &BACKEND_MANAGER;
-    let backend = backend_manager
-        .get_active()
-        .await
-        .ok_or_else(|| anyhow::anyhow!("No active backend"))
-        .map_err(AppError::Anyhow)?;
-    let cache = backend.read().await.remote_cache.clone();
-
-    let configs = get_configs(cache).await.map_err(anyhow::Error::msg)?;
+    let configs = get_configs().await.map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(configs)))
 }
 

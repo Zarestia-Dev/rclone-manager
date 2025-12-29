@@ -1,6 +1,11 @@
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use std::thread;
+use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
+
+// Timeout and interval constants
+const API_READY_TIMEOUT_SECS: u64 = 10;
+const MONITORING_INTERVAL_SECS: u64 = if cfg!(test) { 1 } else { 5 };
 
 #[cfg(desktop)]
 use crate::core::tray::core::update_tray_menu;
@@ -30,14 +35,16 @@ async fn update_tray_menu(_app: AppHandle, _max_items: usize) -> Result<(), Stri
 use super::core::is_active_backend_local;
 
 impl RcApiEngine {
-    pub fn init(&mut self, app: &AppHandle) {
+    pub async fn init(&mut self, app: &AppHandle) {
         let app_handle = app.clone();
 
         // Only start and monitor process for Local backends
         if is_active_backend_local() {
             // Test Config before starting
-            if self.validate_config_sync(app) {
-                start(self, app);
+            if self.validate_config(app).await {
+                start(self, app).await;
+            } else {
+                warn!("⚠️ Engine startup aborted due to configuration validation failure");
             }
 
             // Monitoring thread for Local backend only
@@ -46,30 +53,33 @@ impl RcApiEngine {
                     // Only monitor if we're still on a Local backend
                     if !is_active_backend_local() {
                         debug!("📡 Active backend is remote, skipping process monitoring");
-                        thread::sleep(std::time::Duration::from_secs(5));
+                        thread::sleep(Duration::from_secs(MONITORING_INTERVAL_SECS));
                         continue;
                     }
 
                     {
-                        let mut engine = match RcApiEngine::lock_engine() {
-                            Ok(engine) => engine,
-                            Err(e) => {
-                                error!("❗ Failed to acquire lock on RcApiEngine: {e}");
-                                break;
-                            }
-                        };
+                        use crate::utils::types::core::EngineState;
+                        let engine_state = app_handle.state::<EngineState>();
+                        // Use blocking_lock since we are in a dedicated thread
+                        let mut engine = engine_state.blocking_lock();
 
                         if engine.should_exit {
                             break;
                         }
 
-                        if !engine.is_api_healthy() && !engine.should_exit {
+                        // We are in a sync thread, so we must block_on the async check
+                        let is_healthy = tauri::async_runtime::block_on(engine.is_api_healthy());
+
+                        if !is_healthy && !engine.should_exit {
                             debug!("🔄 Rclone API not healthy, attempting restart...");
-                            start(&mut engine, &app_handle);
+                            // We are in a sync thread, so we must block_on the async start
+                            tauri::async_runtime::block_on(async {
+                                start(&mut engine, &app_handle).await;
+                            });
                         }
                     }
 
-                    thread::sleep(std::time::Duration::from_secs(5));
+                    thread::sleep(Duration::from_secs(MONITORING_INTERVAL_SECS));
                 }
 
                 info!("🛑 Engine monitoring thread exiting.");
@@ -78,21 +88,19 @@ impl RcApiEngine {
             // Remote backend: just refresh cache, no process management
             info!("📡 Active backend is remote, skipping local engine initialization");
             let app = app.clone();
-            tauri::async_runtime::spawn(async move {
-                if let Err(e) = refresh_active_backend_cache(&app).await {
-                    error!("Failed to refresh remote backend cache: {e}");
-                }
-            });
+            if let Err(e) = refresh_active_backend_cache(&app).await {
+                error!("Failed to refresh remote backend cache: {e}");
+            }
         }
     }
 
-    pub fn shutdown(&mut self) {
-        info!("� Shutting down Rclone engine...");
+    pub async fn shutdown(&mut self) {
+        info!("🛑 Shutting down Rclone engine...");
         self.should_exit = true;
 
         // Only stop process for Local backends
         if is_active_backend_local()
-            && let Err(e) = stop(self)
+            && let Err(e) = stop(self).await
         {
             error!("Failed to stop engine cleanly: {e}");
         }
@@ -126,7 +134,7 @@ async fn refresh_active_backend_cache(app: &AppHandle) -> Result<(), String> {
 /// 3. Spawns the new process
 /// 4. Waits for API readiness
 /// 5. Triggers post-start setup (settings, cache refresh)
-pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
+pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
     // Only start process for Local backends
     if !is_active_backend_local() {
         debug!("📡 Active backend is remote, skipping process start");
@@ -141,24 +149,25 @@ pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
     }
 
     // 2. Check if already healthy
-    if engine.is_api_healthy() {
+    if engine.is_api_healthy().await {
         debug!("✅ API is already healthy, skipping restart");
         return;
     }
 
     // 3. Clean up existing state
-    stop_existing_process(engine);
+    stop_existing_process(engine).await;
 
     // 4. Emergency cleanup of ports/zombies
-    cleanup_environment(engine);
+    cleanup_environment(engine).await;
 
     // 5. Spawn and wait for readiness
-    match spawn_and_wait(engine, app) {
+    // Using direct async spawn instead of blocked helper
+    match engine.spawn_process(app).await {
         Ok(child) => {
             engine.process = Some(child);
 
             // Wait for the API to be ready before declaring success
-            if engine.wait_until_ready(10) {
+            if engine.wait_until_ready(API_READY_TIMEOUT_SECS).await {
                 engine.running = true;
                 let port = engine.current_api_port;
                 info!("✅ Rclone API started successfully on port {port}");
@@ -173,13 +182,13 @@ pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
                 error!("❌ Failed to start Rclone API within timeout.");
                 engine.running = false;
                 engine.process = None;
-                let _ = stop(engine);
+                let _ = stop(engine).await;
 
                 handle_start_failure(engine, app, "Timeout waiting for API readiness".to_string());
             }
         }
         Err(e) => {
-            handle_start_failure(engine, app, e);
+            handle_start_failure(engine, app, e.to_string());
         }
     }
 }
@@ -200,29 +209,21 @@ fn emit_pause_error(app: &AppHandle, reason: super::core::PauseReason) {
 }
 
 /// Helper: Stop existing process in engine struct
-fn stop_existing_process(engine: &mut RcApiEngine) {
+async fn stop_existing_process(engine: &mut RcApiEngine) {
     if engine.process.is_some() {
         debug!("⚠️ Rclone process already exists, stopping first...");
-        if let Err(e) = stop(engine) {
+        if let Err(e) = stop(engine).await {
             error!("Failed to stop Rclone process: {e}");
         }
     }
 }
 
 /// Helper: Clean up zombie processes on the API port
-fn cleanup_environment(engine: &RcApiEngine) {
+async fn cleanup_environment(engine: &RcApiEngine) {
     // Only kill processes on our specific port, not ALL rclone processes
-    if let Err(e) = engine.kill_port_processes() {
+    if let Err(e) = engine.kill_port_processes().await {
         error!("Failed to clean up port processes: {e}");
     }
-}
-
-/// Helper: Spawn process and return the child handle
-fn spawn_and_wait(
-    engine: &mut RcApiEngine,
-    app: &AppHandle,
-) -> Result<tauri_plugin_shell::process::CommandChild, String> {
-    tauri::async_runtime::block_on(engine.spawn_process(app)).map_err(|e| e.to_string())
 }
 
 /// Helper: Handle start failure
@@ -231,6 +232,10 @@ fn handle_start_failure(engine: &mut RcApiEngine, app: &AppHandle, e: String) {
     if engine.path_error {
         if let Err(err) = app.emit(RCLONE_ENGINE_PATH_ERROR, ()) {
             error!("Failed to emit path_error event: {err}");
+        }
+    } else if engine.password_error {
+        if let Err(err) = app.emit(RCLONE_ENGINE_PASSWORD_ERROR, ()) {
+            error!("Failed to emit password_error event: {err}");
         }
     } else if let Err(err) = app.emit(RCLONE_ENGINE_ERROR, ()) {
         error!("Failed to emit event: {err}");
@@ -246,7 +251,8 @@ fn trigger_post_start_setup(app: AppHandle) {
                 apply_core_settings(&app, &settings).await;
 
                 // Clear errors (synchronous, but fast enough to not need blocking spawn)
-                let _ = RcApiEngine::with_lock(|engine| engine.clear_errors());
+                use crate::utils::types::core::EngineState;
+                app.state::<EngineState>().lock().await.clear_errors();
 
                 // Refresh caches
                 refresh_caches_and_tray(&app).await;
@@ -313,8 +319,8 @@ mod tests {
     }
 }
 
-pub fn stop(engine: &mut RcApiEngine) -> Result<(), String> {
-    engine.kill_process().map_err(|e| e.to_string())
+pub async fn stop(engine: &mut RcApiEngine) -> super::error::EngineResult<()> {
+    engine.kill_process().await
 }
 
 /// **Restart engine due to configuration changes**
@@ -328,7 +334,7 @@ pub fn restart_for_config_change(
     change_type: &str,
     old_value: &str,
     new_value: &str,
-) -> Result<(), String> {
+) -> super::error::EngineResult<()> {
     info!("🔄 Restarting engine due to {change_type} change: {old_value} → {new_value}");
 
     // Use spawn_blocking to avoid blocking the event loop
@@ -373,81 +379,112 @@ pub fn restart_for_config_change(
 
 /// **Blocking version of engine restart**
 /// This function does the actual restart work and blocks until completion
-fn restart_engine_blocking(app: &AppHandle, change_type: &str) -> Result<(), String> {
-    let mut engine =
-        RcApiEngine::lock_engine().map_err(|e| format!("Failed to acquire engine lock: {e}"))?;
+fn restart_engine_blocking(app: &AppHandle, change_type: &str) -> super::error::EngineResult<()> {
+    use super::error::EngineError;
+    use crate::utils::types::core::EngineState;
+
+    let engine_state = app.state::<EngineState>();
+    let mut engine = engine_state.blocking_lock();
 
     // Step 1: Stop the current engine
     debug!("🛑 Stopping current engine for {change_type} change...");
-    if let Err(e) = stop(&mut engine) {
+    if let Err(e) = tauri::async_runtime::block_on(stop(&mut engine)) {
         error!("Failed to stop engine cleanly: {e}");
         // Continue anyway - we'll try to force kill
     }
 
-    // Step 2: Update engine state based on change type
-    match change_type {
-        "rclone_path" => {
-            debug!("🔄 Updating rclone path...");
-            // Validate the new configured rclone path before attempting to start
-            let configured_path = crate::core::check_binaries::read_rclone_path(app);
+    // Step 2: Handle change-specific configuration updates
+    handle_restart_change_type(&mut engine, app, change_type)?;
 
-            // Use blocking call since we're in a blocking context
-            let check_result = tauri::async_runtime::block_on(
-                crate::core::check_binaries::check_rclone_available(app.clone(), ""),
-            );
-
-            match check_result {
-                Ok(available) => {
-                    if !available {
-                        error!(
-                            "❌ Configured rclone path is invalid: {}",
-                            configured_path.display()
-                        );
-                        engine.set_path_error(true);
-                        // Inform the frontend about the path error
-                        if let Err(e) = app.emit(RCLONE_ENGINE_PATH_ERROR, ()) {
-                            error!("Failed to emit path_error event: {e}");
-                        }
-                        return Err(format!(
-                            "Configured rclone path is invalid: {}",
-                            configured_path.display()
-                        ));
-                    } else {
-                        engine.set_path_error(false);
-                    }
-                }
-                Err(e) => {
-                    error!("❌ Error checking rclone availability: {}", e);
-                    engine.set_path_error(true);
-                    if let Err(emit_err) = app.emit(RCLONE_ENGINE_PATH_ERROR, ()) {
-                        error!("Failed to emit path_error event: {emit_err}");
-                    }
-                    return Err(e);
-                }
-            }
-        }
-        "api_port" => {
-            debug!("🔄 API port updated in BACKEND_MANAGER");
-            // Port is already updated in BACKEND_MANAGER by the caller
-        }
-        "rclone_config_file" => {
-            debug!("🔄 Config file updated in RcloneState");
-            engine.validate_config_sync(app);
-        }
-        _ => {
-            debug!("🔄 Generic restart for {change_type}");
-        }
+    // Step 3: Validate configuration (including password) before starting
+    if !engine.validate_config_sync(app) {
+        error!("❌ Configuration validation failed during restart");
+        return Err(EngineError::ConfigValidationFailed(
+            "Configuration validation failed".to_string(),
+        ));
     }
 
     // Step 4: Start the engine with new configuration
     debug!("🚀 Starting engine with new configuration...");
-    start(&mut engine, app);
+    tauri::async_runtime::block_on(async {
+        start(&mut engine, app).await;
+    });
 
-    // Step 5: Verify the restart was successful
+    // Step 4: Verify the restart was successful
     if engine.running {
         info!("✅ Engine restart completed successfully");
         Ok(())
     } else {
-        Err("Engine failed to start after restart".to_string())
+        Err(EngineError::RestartFailed(
+            "Engine failed to start after restart".to_string(),
+        ))
+    }
+}
+
+/// Handle configuration-specific updates during engine restart
+fn handle_restart_change_type(
+    engine: &mut RcApiEngine,
+    app: &AppHandle,
+    change_type: &str,
+) -> super::error::EngineResult<()> {
+    match change_type {
+        "rclone_path" => validate_rclone_path_change(engine, app),
+        "api_port" => {
+            debug!("🔄 API port updated in BACKEND_MANAGER");
+            Ok(())
+        }
+        "rclone_config_file" => {
+            debug!("🔄 Config file updated in RcloneState");
+            Ok(())
+        }
+        _ => {
+            debug!("🔄 Generic restart for {change_type}");
+            Ok(())
+        }
+    }
+}
+
+/// Validate rclone path change and update engine state
+fn validate_rclone_path_change(
+    engine: &mut RcApiEngine,
+    app: &AppHandle,
+) -> super::error::EngineResult<()> {
+    use super::error::EngineError;
+
+    debug!("🔄 Updating rclone path...");
+    let configured_path = crate::core::check_binaries::read_rclone_path(app);
+
+    // Use blocking call since we're in a blocking context
+    let check_result = tauri::async_runtime::block_on(
+        crate::core::check_binaries::check_rclone_available(app.clone(), ""),
+    );
+
+    match check_result {
+        Ok(true) => {
+            engine.set_path_error(false);
+            Ok(())
+        }
+        Ok(false) => {
+            error!(
+                "❌ Configured rclone path is invalid: {}",
+                configured_path.display()
+            );
+            engine.set_path_error(true);
+            if let Err(e) = app.emit(RCLONE_ENGINE_PATH_ERROR, ()) {
+                error!("Failed to emit path_error event: {e}");
+            }
+            Err(EngineError::ConfigValidationFailed(format!(
+                "Configured rclone path is invalid: {}",
+                configured_path.display()
+            )))
+        }
+        Err(e) => {
+            error!("❌ Error checking rclone availability: {}", e);
+            engine.set_path_error(true);
+            if let Err(emit_err) = app.emit(RCLONE_ENGINE_PATH_ERROR, ()) {
+                error!("Failed to emit path_error event: {emit_err}");
+            }
+            Err(EngineError::ConfigValidationFailed(e))
+        }
     }
 }

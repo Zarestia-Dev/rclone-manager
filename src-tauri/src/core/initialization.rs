@@ -13,7 +13,7 @@ use crate::{
             watcher::{start_mounted_remote_watcher, start_serve_watcher},
         },
     },
-    utils::types::all_types::{RcApiEngine, RcloneState},
+    utils::types::all_types::RcloneState,
 };
 
 #[cfg(all(desktop, not(feature = "web-server")))]
@@ -41,6 +41,8 @@ pub fn init_rclone_state(
     // BACKEND_MANAGER is already initialized with default ports (51900, 51901)
     // Load any persistent connections
     use crate::rclone::backend::BACKEND_MANAGER;
+    use crate::utils::types::core::EngineState;
+
     tauri::async_runtime::block_on(async {
         // Load persistent connections
         let settings_state = app_handle.state::<rcman::SettingsManager<rcman::JsonStorage>>();
@@ -50,10 +52,12 @@ pub fn init_rclone_state(
         {
             error!("Failed to load persistent connections: {e}");
         }
-    });
 
-    let mut engine = RcApiEngine::lock_engine()?;
-    engine.init(app_handle);
+        // Initialize engine
+        let engine_state = app_handle.state::<EngineState>();
+        let mut engine = engine_state.lock().await;
+        engine.init(app_handle).await;
+    });
 
     info!("🔄 Rclone engine initialized");
     Ok(())

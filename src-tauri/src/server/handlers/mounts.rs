@@ -6,7 +6,7 @@ use tauri::Manager;
 
 use crate::server::handlers::jobs::ProfileParamsBody;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
-use crate::utils::types::all_types::{ProfileParams, RcloneState, RemoteCache};
+use crate::utils::types::all_types::{ProfileParams, RcloneState};
 
 pub async fn get_mounted_remotes_handler(
     State(state): State<WebServerState>,
@@ -21,41 +21,21 @@ pub async fn get_mounted_remotes_handler(
 }
 
 pub async fn get_cached_mounted_remotes_handler(
-    State(state): State<WebServerState>,
+    State(_state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::rclone::backend::BACKEND_MANAGER;
     use crate::rclone::state::cache::get_cached_mounted_remotes;
 
-    let backend_manager = &BACKEND_MANAGER;
-    let backend = backend_manager
-        .get_active()
-        .await
-        .ok_or_else(|| anyhow::anyhow!("No active backend"))
-        .map_err(AppError::Anyhow)?;
-    let cache = backend.read().await.remote_cache.clone();
-
-    let mounted_remotes = get_cached_mounted_remotes(cache)
+    let mounted_remotes = get_cached_mounted_remotes()
         .await
         .map_err(anyhow::Error::msg)?;
     let json_mounted_remotes = serde_json::to_value(mounted_remotes).map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(json_mounted_remotes)))
 }
 
-pub async fn get_cached_serves_handler(
-    State(state): State<WebServerState>,
-) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::rclone::backend::BACKEND_MANAGER;
+pub async fn get_cached_serves_handler() -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::state::cache::get_cached_serves;
 
-    let backend_manager = &BACKEND_MANAGER;
-    let backend = backend_manager
-        .get_active()
-        .await
-        .ok_or_else(|| anyhow::anyhow!("No active backend"))
-        .map_err(AppError::Anyhow)?;
-    let cache = backend.read().await.remote_cache.clone();
-
-    let serves = get_cached_serves(cache).await.map_err(anyhow::Error::msg)?;
+    let serves = get_cached_serves().await.map_err(anyhow::Error::msg)?;
     let json_serves = serde_json::to_value(serves).map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(json_serves)))
 }

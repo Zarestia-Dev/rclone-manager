@@ -265,11 +265,6 @@ pub fn kill_all_rclone_processes(api_port: u16, oauth_port: u16) -> Result<(), S
     Ok(())
 }
 
-// /// Get the PID of a child process
-// // pub fn get_child_pid(child: &tauri_plugin_shell::process::CommandChild) -> Option<u32> {
-// //     Some(child.pid())
-// // }
-
 /// Aggressively clean up WebKitGTK zombie processes on Linux
 /// This finds any "WebKitNetworkProcess" that belongs to THIS application
 /// and kills it.

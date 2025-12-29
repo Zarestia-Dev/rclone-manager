@@ -130,13 +130,10 @@ export class SystemHealthService {
   async checkConfigEncryption(): Promise<boolean> {
     this.isCheckingEncryption.set(true);
     try {
-      // Clear cache first to get fresh status
-      await this.rclonePasswordService.clearEncryptionCache();
-      const encrypted = await this.rclonePasswordService.isConfigEncryptedCached();
+      const encrypted = await this.rclonePasswordService.isConfigEncrypted();
       this.configEncrypted.set(encrypted);
 
       if (encrypted) {
-        // Try auto-unlock with stored password
         const storedPassword = await this.rclonePasswordService.getStoredPassword();
         if (storedPassword) {
           try {
