@@ -80,7 +80,6 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     // Get active backend
     let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
     let backend = backend_manager.get_active().await;
-    // backend_read deleted
     let cache = &backend_manager.remote_cache;
     let api_url = backend.api_url();
 
@@ -228,7 +227,6 @@ pub async fn unmount_remote(
     // But params definition for unmount_remote takes `remote_name`.
     let backend = backend_manager.get_active().await;
 
-    // backend_guard deleted
     let url = EndpointHelper::build_url(&backend.api_url(), mount::UNMOUNT);
     let payload = json!({ "mountPoint": mount_point });
     if mount_point.trim().is_empty() {
@@ -310,7 +308,6 @@ pub async fn unmount_all_remotes(
     // Or simply loop and ignore errors?
     let backend = backend_manager.get_active().await;
 
-    // backend_guard deleted
     let url = EndpointHelper::build_url(&backend.api_url(), mount::UNMOUNTALL);
 
     let response = backend

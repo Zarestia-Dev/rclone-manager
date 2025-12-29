@@ -1,3 +1,4 @@
+use rcman::JsonSettingsManager;
 use std::sync::{Arc, atomic::AtomicBool};
 
 #[cfg(not(feature = "web-server"))]
@@ -285,7 +286,7 @@ pub fn run() {
             let config_dir = setup_config_dir(app_handle)?;
 
             // Initialize rcman SettingsManager with fluent builder API
-            let rcman_manager: rcman::SettingsManager<rcman::JsonStorage> =
+            let rcman_manager: JsonSettingsManager =
                 rcman::SettingsManager::builder(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
                     .config_dir(&config_dir)
                     .with_credentials() // Enable automatic keychain storage for secrets

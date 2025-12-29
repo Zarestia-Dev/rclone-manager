@@ -1,4 +1,5 @@
 use log::{debug, error, info};
+use rcman::JsonSettingsManager;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
@@ -45,7 +46,7 @@ pub fn init_rclone_state(
 
     tauri::async_runtime::block_on(async {
         // Load persistent connections
-        let settings_state = app_handle.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+        let settings_state = app_handle.state::<JsonSettingsManager>();
         if let Err(e) = BACKEND_MANAGER
             .load_from_settings(settings_state.inner())
             .await
@@ -103,7 +104,7 @@ pub fn setup_config_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String
 /// This is the central place to retrieve the config directory after initialization.
 pub fn get_config_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
     // Access the config directory via rcman SettingsManager
-    if let Some(manager) = app_handle.try_state::<rcman::SettingsManager<rcman::JsonStorage>>() {
+    if let Some(manager) = app_handle.try_state::<JsonSettingsManager>() {
         let path = manager.inner().config().settings_path();
         return Ok(path.parent().unwrap_or(&path).to_path_buf());
     }
@@ -190,7 +191,7 @@ pub async fn initialization(app_handle: tauri::AppHandle, settings: AppSettings)
 async fn initialize_scheduler(app_handle: AppHandle) -> Result<(), String> {
     let cache_state = app_handle.state::<ScheduledTasksCache>();
     let scheduler_state = app_handle.state::<CronScheduler>();
-    let manager = app_handle.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+    let manager = app_handle.state::<JsonSettingsManager>();
 
     use crate::rclone::backend::BACKEND_MANAGER;
     let remote_names = BACKEND_MANAGER.remote_cache.get_remotes().await;
@@ -245,7 +246,7 @@ pub async fn apply_backend_settings(app_handle: &tauri::AppHandle) -> Result<(),
 
     debug!("🔧 Applying RClone backend settings from rcman");
 
-    let manager = app_handle.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+    let manager = app_handle.state::<JsonSettingsManager>();
     let backend_options = load_backend_options_sync(manager.inner());
 
     let rclone_state = app_handle.state::<RcloneState>();

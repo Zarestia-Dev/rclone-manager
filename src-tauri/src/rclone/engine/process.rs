@@ -132,3 +132,43 @@ impl RcApiEngine {
         kill_processes_on_port(port).map_err(EngineError::PortCleanupFailed)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::rclone::engine::core::DEFAULT_API_PORT;
+
+    #[test]
+    fn test_graceful_shutdown_constants() {
+        // Verify constants are reasonable
+        assert_eq!(GRACEFUL_SHUTDOWN_TIMEOUT, Duration::from_secs(2));
+        assert_eq!(MAX_GRACEFUL_SHUTDOWN_ITERATIONS, 20);
+        assert_eq!(GRACEFUL_SHUTDOWN_CHECK_INTERVAL, Duration::from_millis(100));
+
+        // 20 iterations * 100ms = 2 seconds total polling time
+        let total_poll_time = MAX_GRACEFUL_SHUTDOWN_ITERATIONS as u64
+            * GRACEFUL_SHUTDOWN_CHECK_INTERVAL.as_millis() as u64;
+        assert_eq!(total_poll_time, 2000);
+    }
+
+    #[tokio::test]
+    async fn test_kill_process_no_process() {
+        let mut engine = RcApiEngine::default();
+        engine.running = true; // Even if marked running
+
+        // Should succeed when there's no process
+        let result = engine.kill_process().await;
+        assert!(result.is_ok());
+        assert!(!engine.running); // running should be set to false
+    }
+
+    #[tokio::test]
+    async fn test_kill_port_processes_default_port() {
+        let engine = RcApiEngine::default();
+        assert_eq!(engine.current_api_port, DEFAULT_API_PORT);
+
+        // This may or may not succeed depending on whether something is on the port
+        // but it shouldn't panic
+        let _ = engine.kill_port_processes().await;
+    }
+}

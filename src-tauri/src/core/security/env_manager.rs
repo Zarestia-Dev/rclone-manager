@@ -1,6 +1,7 @@
 const LOCAL_BACKEND_KEY: &str = "backend:Local:config_password";
 
 use log::{debug, info};
+use rcman::JsonSettingsManager;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -21,7 +22,7 @@ impl SafeEnvironmentManager {
     #[cfg(desktop)]
     pub fn init_with_stored_credentials(
         &self,
-        manager: &rcman::SettingsManager<rcman::JsonStorage>,
+        manager: &JsonSettingsManager,
     ) -> Result<(), String> {
         // Only try to load if credentials are supported
         if let Some(creds) = manager.credentials() {
@@ -54,7 +55,7 @@ impl SafeEnvironmentManager {
     #[cfg(not(desktop))]
     pub fn init_with_stored_credentials(
         &self,
-        _manager: &rcman::SettingsManager<rcman::JsonStorage>,
+        _manager: &JsonSettingsManager,
     ) -> Result<(), String> {
         Ok(())
     }

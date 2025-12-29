@@ -335,7 +335,6 @@ pub async fn delete_remote(
     info!("🗑️ Deleting remote: {name}");
 
     let backend = BACKEND_MANAGER.get_active().await;
-    // backend_guard deleted
     let url = EndpointHelper::build_url(&backend.api_url(), config::DELETE);
 
     let response = backend

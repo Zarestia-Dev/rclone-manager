@@ -4,6 +4,7 @@
 
 use crate::utils::types::backup_types::{BackupAnalysis, BackupContentsInfo, ExportType};
 use log::info;
+use rcman::JsonSettingsManager;
 use std::{fs::File, io::BufReader, path::PathBuf};
 use tauri::{AppHandle, State};
 use zip::ZipArchive;
@@ -19,7 +20,7 @@ pub async fn backup_settings(
     password: Option<String>,
     remote_name: Option<String>,
     user_note: Option<String>,
-    manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
+    manager: State<'_, JsonSettingsManager>,
     _app_handle: AppHandle,
 ) -> Result<String, String> {
     info!("Starting backup with rcman to: {}", backup_dir);
@@ -114,7 +115,7 @@ pub async fn backup_settings(
 #[tauri::command]
 pub async fn analyze_backup_file(
     path: PathBuf,
-    manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
+    manager: State<'_, JsonSettingsManager>,
 ) -> Result<BackupAnalysis, String> {
     let ext = path
         .extension()

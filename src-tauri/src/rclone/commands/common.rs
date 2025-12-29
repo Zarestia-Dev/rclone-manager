@@ -1,3 +1,4 @@
+use rcman::JsonSettingsManager;
 use serde_json::Value;
 use tauri::{AppHandle, Manager};
 
@@ -22,10 +23,9 @@ pub async fn resolve_profile_settings(
 ) -> Result<(Value, Value), String> {
     let backend_manager = &BACKEND_MANAGER;
 
-    // backend_read deleted
     let cache = &backend_manager.remote_cache;
 
-    let manager = app.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+    let manager = app.state::<JsonSettingsManager>();
     let remote_names = cache.get_remotes().await;
 
     // We use the sync version of retrieving all settings because rcman's inner implementation

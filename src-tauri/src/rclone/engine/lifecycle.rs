@@ -1,5 +1,4 @@
 use log::{debug, error, info, warn};
-use std::thread;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -47,42 +46,43 @@ impl RcApiEngine {
                 warn!("⚠️ Engine startup aborted due to configuration validation failure");
             }
 
-            // Monitoring thread for Local backend only
-            thread::spawn(move || {
-                while !app_handle.state::<RcloneState>().is_shutting_down() {
+            // Monitoring task for Local backend only (async, no blocking)
+            tokio::spawn(async move {
+                let mut interval =
+                    tokio::time::interval(Duration::from_secs(MONITORING_INTERVAL_SECS));
+                interval.tick().await; // Skip immediate first tick
+
+                loop {
+                    interval.tick().await;
+
+                    // Check shutdown
+                    if app_handle.state::<RcloneState>().is_shutting_down() {
+                        break;
+                    }
+
                     // Only monitor if we're still on a Local backend
                     if !is_active_backend_local() {
                         debug!("📡 Active backend is remote, skipping process monitoring");
-                        thread::sleep(Duration::from_secs(MONITORING_INTERVAL_SECS));
                         continue;
                     }
 
                     {
                         use crate::utils::types::core::EngineState;
                         let engine_state = app_handle.state::<EngineState>();
-                        // Use blocking_lock since we are in a dedicated thread
-                        let mut engine = engine_state.blocking_lock();
+                        let mut engine = engine_state.lock().await;
 
                         if engine.should_exit {
                             break;
                         }
 
-                        // We are in a sync thread, so we must block_on the async check
-                        let is_healthy = tauri::async_runtime::block_on(engine.is_api_healthy());
-
-                        if !is_healthy && !engine.should_exit {
+                        if !engine.is_api_healthy().await && !engine.should_exit {
                             debug!("🔄 Rclone API not healthy, attempting restart...");
-                            // We are in a sync thread, so we must block_on the async start
-                            tauri::async_runtime::block_on(async {
-                                start(&mut engine, &app_handle).await;
-                            });
+                            start(&mut engine, &app_handle).await;
                         }
                     }
-
-                    thread::sleep(Duration::from_secs(MONITORING_INTERVAL_SECS));
                 }
 
-                info!("🛑 Engine monitoring thread exiting.");
+                info!("🛑 Engine monitoring task exiting.");
             });
         } else {
             // Remote backend: just refresh cache, no process management
@@ -397,7 +397,7 @@ fn restart_engine_blocking(app: &AppHandle, change_type: &str) -> super::error::
     handle_restart_change_type(&mut engine, app, change_type)?;
 
     // Step 3: Validate configuration (including password) before starting
-    if !engine.validate_config_sync(app) {
+    if !tauri::async_runtime::block_on(engine.validate_config(app)) {
         error!("❌ Configuration validation failed during restart");
         return Err(EngineError::ConfigValidationFailed(
             "Configuration validation failed".to_string(),

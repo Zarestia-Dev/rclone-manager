@@ -4,6 +4,7 @@
 
 use log::info;
 use once_cell::sync::Lazy;
+use rcman::JsonSettingsManager;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -251,10 +252,7 @@ impl BackendManager {
     }
 
     /// Load backends from settings
-    pub async fn load_from_settings(
-        &self,
-        manager: &rcman::SettingsManager<rcman::JsonStorage>,
-    ) -> Result<(), String> {
+    pub async fn load_from_settings(&self, manager: &JsonSettingsManager) -> Result<(), String> {
         let connections = manager
             .sub_settings("connections")
             .map_err(|e| e.to_string())?;
@@ -305,7 +303,7 @@ impl BackendManager {
 
     /// Save active backend name to settings
     pub fn save_active_to_settings(
-        manager: &rcman::SettingsManager<rcman::JsonStorage>,
+        manager: &JsonSettingsManager,
         name: &str,
     ) -> Result<(), String> {
         let connections = manager
@@ -332,10 +330,7 @@ pub static BACKEND_MANAGER: Lazy<BackendManager> = Lazy::new(BackendManager::new
 
 /// Load backend secrets from keychain
 #[cfg(desktop)]
-fn load_backend_secrets(
-    manager: &rcman::SettingsManager<rcman::JsonStorage>,
-    backend: &mut Backend,
-) {
+fn load_backend_secrets(manager: &JsonSettingsManager, backend: &mut Backend) {
     if let Some(creds) = manager.credentials() {
         // Load RC API password
         if let Ok(Some(password)) = creds.get(&format!("backend:{}:password", backend.name)) {
@@ -356,10 +351,7 @@ fn load_backend_secrets(
 
 /// Load backend secrets (mobile no-op)
 #[cfg(not(desktop))]
-fn load_backend_secrets(
-    _manager: &rcman::SettingsManager<rcman::JsonStorage>,
-    _backend: &mut Backend,
-) {
+fn load_backend_secrets(_manager: &JsonSettingsManager, _backend: &mut Backend) {
     // Keychain not available on mobile
 }
 

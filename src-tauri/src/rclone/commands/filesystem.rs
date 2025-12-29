@@ -16,7 +16,6 @@ pub async fn mkdir(
     debug!("📁 Creating directory: remote={} path={}", remote, path);
 
     let backend = BACKEND_MANAGER.get_active().await;
-    // backend_guard deleted
     let url = EndpointHelper::build_url(&backend.api_url(), operations::MKDIR);
 
     let params = json!({ "fs": remote, "remote": path });
@@ -51,7 +50,6 @@ pub async fn cleanup(
     );
 
     let backend = BACKEND_MANAGER.get_active().await;
-    // backend_guard deleted
     let url = EndpointHelper::build_url(&backend.api_url(), operations::CLEANUP);
 
     // Build parameters dynamically: include `remote` only when provided
@@ -95,7 +93,6 @@ pub async fn copy_url(
 
     let backend = BACKEND_MANAGER.get_active().await;
 
-    // backend_guard deleted
     let url = EndpointHelper::build_url(&backend.api_url(), operations::COPYURL);
 
     let payload = json!({

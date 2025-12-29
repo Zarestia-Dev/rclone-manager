@@ -10,7 +10,6 @@ use crate::utils::types::all_types::RcloneState;
 #[tauri::command]
 pub async fn get_core_stats(state: State<'_, RcloneState>) -> Result<serde_json::Value, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    // backend_guard deleted
     let url = EndpointHelper::build_url(&backend.api_url(), core::STATS);
 
     let response = backend
@@ -37,7 +36,6 @@ pub async fn get_core_stats_filtered(
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    // backend_guard deleted
     let url = EndpointHelper::build_url(&backend.api_url(), core::STATS);
 
     let mut payload = json!({});
@@ -87,7 +85,6 @@ pub async fn get_completed_transfers(
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    // backend_guard deleted
     let url = EndpointHelper::build_url(&backend.api_url(), core::TRANSFERRED);
 
     let mut payload = json!({});

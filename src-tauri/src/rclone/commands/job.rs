@@ -20,6 +20,7 @@ use crate::{
 };
 
 use super::system::RcloneError;
+use crate::utils::app::notification::send_notification;
 
 /// Metadata required to start and track a job
 #[derive(Debug, Clone)]
@@ -470,6 +471,12 @@ pub async fn handle_job_completion(
             format!("{operation} Job {jobid} failed: {error_msg}"),
             Some(json!({"jobid": jobid, "status": job_status})),
         );
+        // Send failure notification
+        send_notification(
+            app,
+            &format!("{} Failed", operation),
+            &format!("{} on {} failed: {}", operation, remote_name, error_msg),
+        );
         Err(RcloneError::JobError(error_msg))
     } else if success {
         log_operation(
@@ -478,6 +485,12 @@ pub async fn handle_job_completion(
             Some(operation.to_string()),
             format!("{operation} Job {jobid} completed successfully"),
             Some(json!({"jobid": jobid, "status": job_status})),
+        );
+        // Send success notification
+        send_notification(
+            app,
+            &format!("{} Complete", operation),
+            &format!("{} on {} completed successfully", operation, remote_name),
         );
         Ok(())
     } else {

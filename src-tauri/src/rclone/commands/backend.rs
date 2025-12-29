@@ -3,6 +3,7 @@
 // Tauri commands for backend CRUD operations and connection testing.
 
 use log::{debug, info, warn};
+use rcman::JsonSettingsManager;
 use tauri::{AppHandle, Manager, State};
 
 use crate::{
@@ -101,7 +102,7 @@ pub async fn switch_backend(
     }
 
     // Persist active backend selection
-    let settings_manager = app.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+    let settings_manager = app.state::<JsonSettingsManager>();
     if let Err(e) = crate::rclone::backend::BackendManager::save_active_to_settings(
         settings_manager.inner(),
         &name,
@@ -169,7 +170,7 @@ pub async fn add_backend(
     BACKEND_MANAGER.add(backend.clone()).await?;
 
     // Persist to settings
-    let settings_manager = app.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+    let settings_manager = app.state::<JsonSettingsManager>();
     save_backend_to_settings(settings_manager.inner(), &backend)?;
 
     info!("✅ Backend '{}' added", name);
@@ -210,7 +211,7 @@ pub async fn update_backend(
         os: existing.os.clone(),
     };
 
-    let settings_manager = app.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+    let settings_manager = app.state::<JsonSettingsManager>();
 
     // Handle auth
     match (username.as_deref(), password.as_deref()) {
@@ -275,7 +276,7 @@ pub async fn remove_backend(app: AppHandle, name: String) -> Result<(), String> 
     BACKEND_MANAGER.remove(&name).await?;
 
     // Remove from settings
-    let settings_manager = app.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+    let settings_manager = app.state::<JsonSettingsManager>();
     delete_backend_from_settings(settings_manager.inner(), &name)?;
 
     info!("✅ Backend '{}' removed", name);
@@ -298,7 +299,7 @@ pub async fn test_backend_connection(
         Ok((version, os)) => {
             // Persist to settings (optional but good)
             if let Some(backend) = BACKEND_MANAGER.get(&name).await {
-                let settings_manager = app.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+                let settings_manager = app.state::<JsonSettingsManager>();
                 let _ = save_backend_to_settings(settings_manager.inner(), &backend);
             }
 
@@ -331,7 +332,7 @@ pub struct TestConnectionResult {
 // =============================================================================
 
 fn save_backend_to_settings(
-    manager: &rcman::SettingsManager<rcman::JsonStorage>,
+    manager: &JsonSettingsManager,
     backend: &Backend,
 ) -> Result<(), String> {
     // Store secrets in keychain (desktop only)
@@ -371,10 +372,7 @@ fn save_backend_to_settings(
     Ok(())
 }
 
-fn delete_backend_from_settings(
-    manager: &rcman::SettingsManager<rcman::JsonStorage>,
-    name: &str,
-) -> Result<(), String> {
+fn delete_backend_from_settings(manager: &JsonSettingsManager, name: &str) -> Result<(), String> {
     // Remove secrets (desktop only)
     #[cfg(desktop)]
     if let Some(creds) = manager.credentials() {

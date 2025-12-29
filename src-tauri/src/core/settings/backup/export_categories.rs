@@ -2,6 +2,7 @@
 //!
 //! Exposes rcman's dynamic export categories to the frontend.
 
+use rcman::JsonSettingsManager;
 use tauri::State;
 
 /// Response type for export categories
@@ -19,7 +20,7 @@ pub struct ExportCategoryResponse {
 /// Get available export categories from rcman
 #[tauri::command]
 pub fn get_export_categories(
-    manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
+    manager: State<'_, JsonSettingsManager>,
 ) -> Vec<ExportCategoryResponse> {
     manager
         .get_export_categories()

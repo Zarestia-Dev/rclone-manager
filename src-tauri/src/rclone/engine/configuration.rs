@@ -168,9 +168,4 @@ impl RcApiEngine {
             }
         }
     }
-
-    /// Test configuration and password without starting the engine (synchronous version)
-    pub fn validate_config_sync(&mut self, app: &AppHandle) -> bool {
-        tauri::async_runtime::block_on(self.validate_config(app))
-    }
 }

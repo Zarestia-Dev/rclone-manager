@@ -10,6 +10,7 @@ use crate::{
     },
 };
 use log::{info, warn};
+use rcman::JsonSettingsManager;
 use serde_json::json;
 use std::{fs::File, io::BufReader, path::Path};
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -67,7 +68,7 @@ fn detect_manifest_format(manifest_json: &serde_json::Value) -> BackupFormatVers
 pub async fn restore_settings(
     backup_path: std::path::PathBuf,
     password: Option<String>,
-    manager: State<'_, rcman::SettingsManager<rcman::JsonStorage>>,
+    manager: State<'_, JsonSettingsManager>,
     app_handle: AppHandle,
 ) -> Result<String, String> {
     info!("Starting restore from: {:?}", backup_path);
@@ -107,7 +108,7 @@ pub async fn restore_settings(
 async fn restore_rcman_backup(
     backup_path: &Path,
     password: Option<String>,
-    manager: &rcman::SettingsManager<rcman::JsonStorage>,
+    manager: &JsonSettingsManager,
     app_handle: &AppHandle,
 ) -> Result<String, String> {
     info!("Restoring using rcman library...");

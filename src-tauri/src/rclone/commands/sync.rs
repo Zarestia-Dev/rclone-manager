@@ -366,7 +366,6 @@ async fn perform_transfer(
     // 6. Get API URL
     let backend_manager = &BACKEND_MANAGER;
     let backend = backend_manager.get_active().await;
-    // backend_read deleted
 
     let url = EndpointHelper::build_url(&backend.api_url(), params.transfer_type.endpoint());
 

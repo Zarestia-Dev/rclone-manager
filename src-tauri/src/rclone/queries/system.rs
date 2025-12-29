@@ -15,7 +15,6 @@ pub async fn get_bandwidth_limit(
     state: State<'_, RcloneState>,
 ) -> Result<BandwidthLimitResponse, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    // backend_guard deleted
     let url = EndpointHelper::build_url(&backend.api_url(), core::BWLIMIT);
 
     let response = backend
@@ -42,7 +41,6 @@ pub async fn get_bandwidth_limit(
 #[tauri::command]
 pub async fn get_rclone_info(state: State<'_, RcloneState>) -> Result<RcloneCoreVersion, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    // backend_guard deleted
     let url = EndpointHelper::build_url(&backend.api_url(), core::VERSION);
 
     let response = backend
@@ -64,7 +62,6 @@ pub async fn get_rclone_info(state: State<'_, RcloneState>) -> Result<RcloneCore
 #[tauri::command]
 pub async fn get_rclone_pid(state: State<'_, RcloneState>) -> Result<Option<u32>, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    // backend_guard deleted
     let url = EndpointHelper::build_url(&backend.api_url(), core::PID);
     match backend.inject_auth(state.client.post(&url)).send().await {
         Ok(resp) => {
@@ -98,7 +95,6 @@ pub async fn get_rclone_pid(state: State<'_, RcloneState>) -> Result<Option<u32>
 #[tauri::command]
 pub async fn get_memory_stats(state: State<'_, RcloneState>) -> Result<serde_json::Value, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    // backend_guard deleted
     let url = EndpointHelper::build_url(&backend.api_url(), core::MEMSTATS);
 
     let response = backend
@@ -121,7 +117,6 @@ pub async fn get_memory_stats(state: State<'_, RcloneState>) -> Result<serde_jso
 pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {
     let state = app.state::<RcloneState>();
     let backend = BACKEND_MANAGER.get_active().await;
-    // backend_guard deleted
     let url = EndpointHelper::build_url(&backend.api_url(), config::PATHS);
 
     let response = backend

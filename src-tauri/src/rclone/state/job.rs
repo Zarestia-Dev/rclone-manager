@@ -142,3 +142,172 @@ impl Default for JobCache {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn mock_job(jobid: u64, remote: &str, job_type: &str, profile: Option<&str>) -> JobInfo {
+        JobInfo {
+            jobid,
+            remote_name: remote.to_string(),
+            job_type: job_type.to_string(),
+            source: format!("{}path", remote),
+            destination: "/local/path".to_string(),
+            start_time: chrono::Utc::now(),
+            profile: profile.map(|s| s.to_string()),
+            status: JobStatus::Running,
+            stats: None,
+            group: format!("job/{}", jobid),
+            source_ui: None,
+            backend_name: Some("Local".to_string()),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_add_and_get_job() {
+        let cache = JobCache::new();
+        let job = mock_job(1, "gdrive:", "sync", Some("default"));
+
+        cache.add_job(job.clone()).await;
+
+        let retrieved = cache.get_job(1).await;
+        assert!(retrieved.is_some());
+        assert_eq!(retrieved.unwrap().remote_name, "gdrive:");
+    }
+
+    #[tokio::test]
+    async fn test_delete_job() {
+        let cache = JobCache::new();
+        cache.add_job(mock_job(1, "gdrive:", "sync", None)).await;
+        cache.add_job(mock_job(2, "s3:", "copy", None)).await;
+
+        assert_eq!(cache.get_jobs().await.len(), 2);
+
+        let result = cache.delete_job(1).await;
+        assert!(result.is_ok());
+        assert_eq!(cache.get_jobs().await.len(), 1);
+
+        // Deleting non-existent job should fail
+        let result = cache.delete_job(999).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_complete_job() {
+        let cache = JobCache::new();
+        cache.add_job(mock_job(1, "gdrive:", "sync", None)).await;
+
+        // Complete successfully
+        cache.complete_job(1, true).await.unwrap();
+        let job = cache.get_job(1).await.unwrap();
+        assert_eq!(job.status, JobStatus::Completed);
+
+        // Add another and fail it
+        cache.add_job(mock_job(2, "s3:", "copy", None)).await;
+        cache.complete_job(2, false).await.unwrap();
+        let job = cache.get_job(2).await.unwrap();
+        assert_eq!(job.status, JobStatus::Failed);
+    }
+
+    #[tokio::test]
+    async fn test_stop_job() {
+        let cache = JobCache::new();
+        cache.add_job(mock_job(1, "gdrive:", "sync", None)).await;
+
+        cache.stop_job(1).await.unwrap();
+
+        let job = cache.get_job(1).await.unwrap();
+        assert_eq!(job.status, JobStatus::Stopped);
+    }
+
+    #[tokio::test]
+    async fn test_get_active_jobs() {
+        let cache = JobCache::new();
+        cache.add_job(mock_job(1, "gdrive:", "sync", None)).await;
+        cache.add_job(mock_job(2, "s3:", "copy", None)).await;
+        cache.add_job(mock_job(3, "b2:", "move", None)).await;
+
+        // Stop one, complete one
+        cache.stop_job(1).await.unwrap();
+        cache.complete_job(2, true).await.unwrap();
+
+        let active = cache.get_active_jobs().await;
+        assert_eq!(active.len(), 1);
+        assert_eq!(active[0].jobid, 3);
+    }
+
+    #[tokio::test]
+    async fn test_is_job_running() {
+        let cache = JobCache::new();
+        cache
+            .add_job(mock_job(1, "gdrive:", "sync", Some("default")))
+            .await;
+
+        // Should find running job
+        assert!(
+            cache
+                .is_job_running("gdrive:", "sync", Some("default"))
+                .await
+        );
+
+        // Wrong remote
+        assert!(!cache.is_job_running("s3:", "sync", Some("default")).await);
+
+        // Wrong job type
+        assert!(
+            !cache
+                .is_job_running("gdrive:", "copy", Some("default"))
+                .await
+        );
+
+        // Wrong profile
+        assert!(!cache.is_job_running("gdrive:", "sync", Some("other")).await);
+
+        // Stop the job
+        cache.stop_job(1).await.unwrap();
+        assert!(
+            !cache
+                .is_job_running("gdrive:", "sync", Some("default"))
+                .await
+        );
+    }
+
+    #[tokio::test]
+    async fn test_rename_profile() {
+        let cache = JobCache::new();
+        cache
+            .add_job(mock_job(1, "gdrive:", "sync", Some("old_profile")))
+            .await;
+        cache
+            .add_job(mock_job(2, "gdrive:", "copy", Some("old_profile")))
+            .await;
+        cache
+            .add_job(mock_job(3, "s3:", "sync", Some("old_profile")))
+            .await; // Different remote
+
+        let updated = cache
+            .rename_profile("gdrive:", "old_profile", "new_profile")
+            .await;
+        assert_eq!(updated, 2); // Only gdrive jobs renamed
+
+        // Verify
+        let job1 = cache.get_job(1).await.unwrap();
+        assert_eq!(job1.profile, Some("new_profile".to_string()));
+
+        let job3 = cache.get_job(3).await.unwrap();
+        assert_eq!(job3.profile, Some("old_profile".to_string())); // Unchanged
+    }
+
+    #[tokio::test]
+    async fn test_clear() {
+        let cache = JobCache::new();
+        cache.add_job(mock_job(1, "gdrive:", "sync", None)).await;
+        cache.add_job(mock_job(2, "s3:", "copy", None)).await;
+
+        assert_eq!(cache.get_jobs().await.len(), 2);
+
+        cache.clear().await;
+        assert_eq!(cache.get_jobs().await.len(), 0);
+    }
+}

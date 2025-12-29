@@ -4,6 +4,7 @@
 //! to automatically start any profiles that are configured with autoStart: true
 
 use log::{error, info, warn};
+use rcman::JsonSettingsManager;
 use tauri::{AppHandle, Manager};
 
 use crate::{
@@ -20,7 +21,7 @@ use crate::{
 pub async fn handle_startup(app: AppHandle) {
     info!("🚀 Starting auto-start profiles check...");
 
-    let manager = app.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+    let manager = app.state::<JsonSettingsManager>();
 
     let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
 
@@ -39,87 +40,66 @@ pub async fn handle_startup(app: AppHandle) {
         }
     };
 
+    // Profile type definitions: (config_key, op_type)
+    const SYNC_PROFILE_TYPES: &[(&str, &str)] = &[
+        ("syncConfigs", "sync"),
+        ("copyConfigs", "copy"),
+        ("moveConfigs", "move"),
+        ("bisyncConfigs", "bisync"),
+    ];
+
     for (remote_name, settings) in settings_map.iter() {
         // Auto-start mount profiles
-        if let Some(mount_configs) = settings.get("mountConfigs").and_then(|v| v.as_object()) {
-            for (profile_name, config) in mount_configs {
-                if config
-                    .get("autoStart")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false)
-                {
-                    auto_start_mount(&app, remote_name, profile_name).await;
-                }
-            }
-        }
+        check_and_start_profiles(settings, "mountConfigs", |profile_name| {
+            let app = app.clone();
+            let remote = remote_name.clone();
+            async move { auto_start_mount(&app, &remote, &profile_name).await }
+        })
+        .await;
 
         // Auto-start serve profiles
-        if let Some(serve_configs) = settings.get("serveConfigs").and_then(|v| v.as_object()) {
-            for (profile_name, config) in serve_configs {
-                if config
-                    .get("autoStart")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false)
-                {
-                    auto_start_serve(&app, remote_name, profile_name).await;
-                }
-            }
-        }
+        check_and_start_profiles(settings, "serveConfigs", |profile_name| {
+            let app = app.clone();
+            let remote = remote_name.clone();
+            async move { auto_start_serve(&app, &remote, &profile_name).await }
+        })
+        .await;
 
-        // Auto-start sync profiles
-        if let Some(sync_configs) = settings.get("syncConfigs").and_then(|v| v.as_object()) {
-            for (profile_name, config) in sync_configs {
-                if config
-                    .get("autoStart")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false)
-                {
-                    auto_start_sync(&app, remote_name, profile_name, "sync").await;
-                }
-            }
-        }
-
-        // Auto-start copy profiles
-        if let Some(copy_configs) = settings.get("copyConfigs").and_then(|v| v.as_object()) {
-            for (profile_name, config) in copy_configs {
-                if config
-                    .get("autoStart")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false)
-                {
-                    auto_start_sync(&app, remote_name, profile_name, "copy").await;
-                }
-            }
-        }
-
-        // Auto-start move profiles
-        if let Some(move_configs) = settings.get("moveConfigs").and_then(|v| v.as_object()) {
-            for (profile_name, config) in move_configs {
-                if config
-                    .get("autoStart")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false)
-                {
-                    auto_start_sync(&app, remote_name, profile_name, "move").await;
-                }
-            }
-        }
-
-        // Auto-start bisync profiles
-        if let Some(bisync_configs) = settings.get("bisyncConfigs").and_then(|v| v.as_object()) {
-            for (profile_name, config) in bisync_configs {
-                if config
-                    .get("autoStart")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false)
-                {
-                    auto_start_sync(&app, remote_name, profile_name, "bisync").await;
-                }
-            }
+        // Auto-start sync/copy/move/bisync profiles (unified loop)
+        for (config_key, op_type) in SYNC_PROFILE_TYPES {
+            check_and_start_profiles(settings, config_key, |profile_name| {
+                let app = app.clone();
+                let remote = remote_name.clone();
+                let op = op_type.to_string();
+                async move { auto_start_sync(&app, &remote, &profile_name, &op).await }
+            })
+            .await;
         }
     }
 
     info!("✅ Auto-start profiles check complete");
+}
+
+/// Helper to iterate profiles and start those with autoStart: true
+async fn check_and_start_profiles<F, Fut>(
+    settings: &serde_json::Value,
+    config_key: &str,
+    starter: F,
+) where
+    F: Fn(String) -> Fut,
+    Fut: std::future::Future<Output = ()>,
+{
+    if let Some(configs) = settings.get(config_key).and_then(|v| v.as_object()) {
+        for (profile_name, config) in configs {
+            if config
+                .get("autoStart")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
+            {
+                starter(profile_name.clone()).await;
+            }
+        }
+    }
 }
 
 async fn auto_start_mount(app: &AppHandle, remote_name: &str, profile_name: &str) {

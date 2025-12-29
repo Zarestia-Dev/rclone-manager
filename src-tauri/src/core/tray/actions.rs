@@ -1,4 +1,5 @@
 use log::{error, info};
+use rcman::JsonSettingsManager;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_opener::OpenerExt;
 
@@ -142,7 +143,7 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
         // We removed locks.
         let cache = &backend_manager.remote_cache;
 
-        let manager = app_clone.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+        let manager = app_clone.state::<JsonSettingsManager>();
         let remote_names = cache.get_remotes().await;
         let settings_val = crate::core::settings::remote::manager::get_all_remote_settings_sync(
             manager.inner(),
@@ -233,7 +234,6 @@ async fn handle_stop_job_profile(
     action_name: &str,
 ) {
     let backend_manager = &BACKEND_MANAGER;
-    // backend logic removed
 
     let job_cache = backend_manager.job_cache.clone();
 
@@ -386,7 +386,6 @@ pub fn handle_stop_serve_profile(app: AppHandle, _remote_name: &str, serve_id: &
 
     tauri::async_runtime::spawn(async move {
         let backend_manager = &BACKEND_MANAGER;
-        // backend logic removed
 
         let cache = backend_manager.remote_cache.clone();
 
@@ -473,11 +472,10 @@ pub fn handle_browse_remote(app: &AppHandle, remote_name: &str) {
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
         let backend_manager = &BACKEND_MANAGER;
-        // backend logic removed
 
         let cache = backend_manager.remote_cache.clone();
 
-        let manager = app_clone.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+        let manager = app_clone.state::<JsonSettingsManager>();
         let remote_names = cache.get_remotes().await;
         let settings_val = crate::core::settings::remote::manager::get_all_remote_settings_sync(
             manager.inner(),

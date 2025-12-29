@@ -5,6 +5,7 @@ use crate::core::check_binaries::build_rclone_command;
 use crate::core::security::SafeEnvironmentManager;
 
 /// Setup environment variables for rclone processes (main engine or OAuth)
+/// Password is retrieved from SafeEnvironmentManager (single source of truth)
 pub async fn setup_rclone_environment(
     app: &AppHandle,
     mut command: tauri_plugin_shell::process::Command,
@@ -12,10 +13,10 @@ pub async fn setup_rclone_environment(
 ) -> Result<tauri_plugin_shell::process::Command, String> {
     let mut password_found = false;
 
-    // Try to get password from SafeEnvironmentManager first (GUI context)
+    // Get password from SafeEnvironmentManager (synced from backend at startup)
     if let Some(env_manager) = app.try_state::<SafeEnvironmentManager>() {
         let env_vars = env_manager.get_env_vars();
-        if !env_vars.is_empty() && env_vars.contains_key("RCLONE_CONFIG_PASS") {
+        if env_vars.contains_key("RCLONE_CONFIG_PASS") {
             info!(
                 "🔑 Using environment manager password for {} process",
                 process_type
@@ -24,26 +25,6 @@ pub async fn setup_rclone_environment(
                 command = command.env(&key, &value);
             }
             password_found = true;
-        }
-    }
-
-    // If no password found in environment manager, try retrieving from Local Backend
-    // This is the new standard "Unified" storage
-    if !password_found
-        && let Some(backend) = crate::rclone::backend::BACKEND_MANAGER.get("Local").await
-        && let Some(ref password) = backend.config_password
-        && !password.is_empty()
-    {
-        info!(
-            "🔑 Using stored rclone config password (via Local backend) for {} process",
-            process_type
-        );
-        command = command.env("RCLONE_CONFIG_PASS", password);
-        password_found = true;
-
-        // Also update the environment manager for future use
-        if let Some(env_manager) = app.try_state::<SafeEnvironmentManager>() {
-            env_manager.set_config_password(password.clone());
         }
     }
 

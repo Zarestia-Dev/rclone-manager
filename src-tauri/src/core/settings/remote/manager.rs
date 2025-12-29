@@ -8,7 +8,7 @@
 //! `with_migrator()` feature when loading entries.
 
 use log::{info, warn};
-use rcman::{JsonStorage, SettingsManager};
+use rcman::JsonSettingsManager;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, State};
 
@@ -22,7 +22,7 @@ use crate::{
 pub async fn save_remote_settings(
     remote_name: String,
     mut settings: Value,
-    manager: State<'_, SettingsManager<JsonStorage>>,
+    manager: State<'_, JsonSettingsManager>,
     cache: State<'_, ScheduledTasksCache>,
     scheduler: State<'_, CronScheduler>,
     app_handle: AppHandle,
@@ -78,7 +78,7 @@ pub async fn save_remote_settings(
 #[tauri::command]
 pub async fn delete_remote_settings(
     remote_name: String,
-    manager: State<'_, SettingsManager<JsonStorage>>,
+    manager: State<'_, JsonSettingsManager>,
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
     let remotes = manager
@@ -109,7 +109,7 @@ pub async fn delete_remote_settings(
 #[tauri::command]
 pub async fn get_remote_settings(
     remote_name: String,
-    manager: State<'_, SettingsManager<JsonStorage>>,
+    manager: State<'_, JsonSettingsManager>,
 ) -> Result<serde_json::Value, String> {
     let remotes = manager
         .inner()
@@ -130,7 +130,7 @@ pub async fn get_remote_settings(
 /// This is used by modules like scheduler, startup, and sync that need
 /// to access all remote settings at once.
 pub fn get_all_remote_settings_sync(
-    manager: &SettingsManager<JsonStorage>,
+    manager: &JsonSettingsManager,
     remote_names: &[String],
 ) -> serde_json::Value {
     let remotes = match manager.sub_settings("remotes") {

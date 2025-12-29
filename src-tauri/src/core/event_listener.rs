@@ -1,4 +1,5 @@
 use log::{debug, error, info};
+use rcman::JsonSettingsManager;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Listener, Manager};
 
@@ -129,7 +130,7 @@ fn handle_remote_presence_changed(app: &AppHandle) {
             }
 
             let remote_names = cache.get_remotes().await;
-            let manager = app_clone.state::<rcman::SettingsManager<rcman::JsonStorage>>();
+            let manager = app_clone.state::<JsonSettingsManager>();
             let all_configs = crate::core::settings::remote::manager::get_all_remote_settings_sync(
                 manager.inner(),
                 &remote_names,

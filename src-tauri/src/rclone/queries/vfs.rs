@@ -10,7 +10,6 @@ use crate::utils::types::all_types::RcloneState;
 #[command]
 pub async fn vfs_list(state: State<'_, RcloneState>) -> Result<Value, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    // backend_guard deleted
     let url = EndpointHelper::build_url(&backend.api_url(), vfs::LIST);
     debug!("🔍 Fetching VFS list from {url}");
 
@@ -44,7 +43,6 @@ pub async fn vfs_forget(
     file: Option<String>,
 ) -> Result<Value, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    // backend_guard deleted
     let url = EndpointHelper::build_url(&backend.api_url(), vfs::FORGET);
     debug!("🗑️ Forgetting paths in VFS cache via {url}");
 
@@ -88,7 +86,6 @@ pub async fn vfs_refresh(
     recursive: bool,
 ) -> Result<Value, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    // backend_guard deleted
     let url = EndpointHelper::build_url(&backend.api_url(), vfs::REFRESH);
     debug!("🔄 Refreshing VFS cache via {url}");
 
@@ -130,7 +127,6 @@ pub async fn vfs_refresh(
 #[command]
 pub async fn vfs_stats(state: State<'_, RcloneState>, fs: Option<String>) -> Result<Value, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    // backend_guard deleted
     let url = EndpointHelper::build_url(&backend.api_url(), vfs::STATS);
     debug!("📊 Fetching VFS stats via {url}");
 
@@ -170,7 +166,6 @@ pub async fn vfs_poll_interval(
     timeout: Option<String>,
 ) -> Result<Value, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    // backend_guard deleted
     let url = EndpointHelper::build_url(&backend.api_url(), vfs::POLL_INTERVAL);
     debug!("⏱️ VFS poll interval via {url}");
 
@@ -211,7 +206,6 @@ pub async fn vfs_poll_interval(
 #[command]
 pub async fn vfs_queue(state: State<'_, RcloneState>, fs: Option<String>) -> Result<Value, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    // backend_guard deleted
     let url = EndpointHelper::build_url(&backend.api_url(), vfs::QUEUE);
     debug!("📥 Fetching VFS queue via {url}");
 
@@ -254,7 +248,6 @@ pub async fn vfs_queue_set_expiry(
     relative: bool,
 ) -> Result<Value, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    // backend_guard deleted
     let url = EndpointHelper::build_url(&backend.api_url(), vfs::QUEUE_SET_EXPIRY);
     debug!("⏱️ Setting VFS queue expiry via {url}");
 
