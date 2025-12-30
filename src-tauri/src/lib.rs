@@ -422,7 +422,7 @@ pub fn run() {
                 info!("🔗 Global shortcuts registered successfully");
             }
 
-            init_logging(settings.developer.debug_logging, app_handle.clone())
+            init_logging(&settings.developer.log_level, app_handle.clone())
                 .map_err(|e| format!("Failed to initialize logging: {e}"))?;
 
             init_rclone_state(app_handle, &settings)

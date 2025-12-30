@@ -88,6 +88,9 @@ pub struct NetworkStatusPayload {
 
 pub const SENSITIVE_KEYS: &[&str] = &[
     "password",
+    "pass",
+    "session_id",
+    "2fa",
     "secret",
     "endpoint",
     "token",

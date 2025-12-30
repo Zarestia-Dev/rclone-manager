@@ -155,7 +155,7 @@ export interface SettingMetadata {
   label?: string;
   description?: string;
 
-  value_type?: 'bool' | 'int' | 'string' | 'bandwidth' | 'file' | 'folder' | 'string[]';
+  value_type?: 'bool' | 'int' | 'string' | 'select' | 'bandwidth' | 'file' | 'folder' | 'string[]';
   default: any;
   value?: any;
   min_value?: number; // Backend sends 'min' often, map this? Rust schema says "min".

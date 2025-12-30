@@ -320,8 +320,10 @@
                       [formControl]="$any(getFormControl(category, key))"
                       [attr.aria-label]="meta.display_name"
                     >
-                      @for (option of meta.options; track option) {
-                        <mat-option [value]="option">{{ option }}</mat-option>
+                      @for (option of meta.options; track option.value || option) {
+                        <mat-option [value]="option.value ?? option">{{
+                          option.label ?? option
+                        }}</mat-option>
                       }
                     </mat-select>
                   } @else {
@@ -332,6 +334,25 @@
                       [placeholder]="meta.placeholder || ''"
                     />
                   }
+                  @if (
+                    getFormControl(category, key).invalid && getFormControl(category, key).touched
+                  ) {
+                    <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
+                  }
+                </mat-form-field>
+              }
+              @case ('select') {
+                <mat-form-field class="input-field" appearance="fill">
+                  <mat-select
+                    [formControl]="$any(getFormControl(category, key))"
+                    [attr.aria-label]="meta.display_name"
+                  >
+                    @for (option of meta.options; track option.value || option) {
+                      <mat-option [value]="option.value ?? option">{{
+                        option.label ?? option
+                      }}</mat-option>
+                    }
+                  </mat-select>
                   @if (
                     getFormControl(category, key).invalid && getFormControl(category, key).touched
                   ) {

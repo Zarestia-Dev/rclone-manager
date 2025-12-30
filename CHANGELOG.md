@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 - Removed legacy integrated settings manager in favor of the new rcman library
+- Mount plugin detector and installer improved. Dynamic checks for the latest plugin version for installation.
 
 ### Fixed
 - Broken theme setting fixed. Now it correctly applies the theme.

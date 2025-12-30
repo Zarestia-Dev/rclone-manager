@@ -3,7 +3,7 @@
 //! This module provides backup and analysis commands using the rcman library.
 
 use crate::utils::types::backup_types::{BackupAnalysis, BackupContentsInfo, ExportType};
-use log::info;
+use log::{error, info};
 use rcman::JsonSettingsManager;
 use std::{fs::File, io::BufReader, path::PathBuf};
 use tauri::{AppHandle, State};
@@ -99,10 +99,10 @@ pub async fn backup_settings(
         options = options.note(note);
     }
 
-    let backup_path = manager
-        .backup()
-        .create(options)
-        .map_err(|e| format!("Backup failed: {}", e))?;
+    let backup_path = manager.backup().create(options).map_err(|e| {
+        error!("❌ Backup failed: {}", e);
+        format!("Backup failed: {}", e)
+    })?;
 
     info!("Backup complete: {}", backup_path.display());
     Ok(format!("Backup created at: {}", backup_path.display()))
@@ -146,10 +146,10 @@ pub async fn analyze_backup_file(
         .is_some();
 
     if is_rcman_format {
-        let analysis = manager
-            .backup()
-            .analyze(&path)
-            .map_err(|e| format!("Analysis failed: {}", e))?;
+        let analysis = manager.backup().analyze(&path).map_err(|e| {
+            error!("❌ Backup analysis failed: {}", e);
+            format!("Analysis failed: {}", e)
+        })?;
 
         let contents =
             BackupContentsInfo {

@@ -455,11 +455,9 @@ fn handle_settings_changed(app: &AppHandle) {
                 }
 
                 if let Some(developer) = settings.get("developer") {
-                    if let Some(debug_logging) =
-                        developer.get("debug_logging").and_then(|v| v.as_bool())
-                    {
-                        debug!("🐞 Debug logging changed to: {debug_logging}");
-                        update_log_level(debug_logging);
+                    if let Some(log_level) = developer.get("log_level").and_then(|v| v.as_str()) {
+                        debug!("📊 Log level changed to: {log_level}");
+                        update_log_level(log_level);
                     }
 
                     if let Some(destroy_window) = developer

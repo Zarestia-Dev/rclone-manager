@@ -4,13 +4,15 @@ use log::SetLoggerError;
 use once_cell::sync::OnceCell;
 use serde_json::Value;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 use tokio::sync::mpsc;
 
 use crate::utils::types::all_types::DynamicLogger;
 use crate::utils::types::all_types::LogCache;
 use crate::utils::types::all_types::LogEntry;
 use crate::utils::types::all_types::LogLevel;
+
+use super::file_writer::write_to_file;
 
 // This will hold the "sender" part of our logging channel.
 static LOG_SENDER: OnceCell<mpsc::Sender<LogEntry>> = OnceCell::new();
@@ -24,13 +26,19 @@ impl log::Log for DynamicLogger {
 
     fn log(&self, record: &log::Record) {
         if self.enabled(record.metadata()) {
-            println!(
+            let log_line = format!(
                 "[{} [{}] {}]: {}",
                 chrono::Local::now().format("%Y/%m/%d %H:%M:%S"),
                 record.level(),
                 record.target(),
                 record.args()
             );
+
+            // Write to console
+            println!("{}", log_line);
+
+            // Write to rotating log file
+            write_to_file(&log_line);
         }
     }
 
@@ -49,8 +57,30 @@ fn current_log_level() -> LevelFilter {
     }
 }
 
+/// Parse log level string to LevelFilter
+fn parse_log_level(level: &str) -> LevelFilter {
+    match level.to_lowercase().as_str() {
+        "error" => LevelFilter::Error,
+        "warn" => LevelFilter::Warn,
+        "info" => LevelFilter::Info,
+        "debug" => LevelFilter::Debug,
+        "trace" => LevelFilter::Trace,
+        _ => LevelFilter::Info, // Default to info
+    }
+}
+
 // --- Modified function to accept AppHandle ---
-pub fn init_logging(enable_debug: bool, app_handle: AppHandle) -> Result<(), SetLoggerError> {
+pub fn init_logging(log_level: &str, app_handle: AppHandle) -> Result<(), SetLoggerError> {
+    // Initialize rotating file logger using cache directory
+    use tauri::Manager;
+
+    if let Ok(cache_dir) = app_handle.path().app_cache_dir() {
+        let log_dir = cache_dir.join("logs");
+        if let Err(e) = super::file_writer::init_file_writer(&log_dir) {
+            eprintln!("Failed to initialize file logger: {e}");
+        }
+    }
+
     let (tx, mut rx) = mpsc::channel::<LogEntry>(1000);
 
     let app_handle_clone = app_handle.clone();
@@ -65,11 +95,7 @@ pub fn init_logging(enable_debug: bool, app_handle: AppHandle) -> Result<(), Set
         eprintln!("CRITICAL: Failed to set LOG_SENDER. Logging will not work.");
     }
 
-    let level = if enable_debug {
-        LevelFilter::Debug
-    } else {
-        LevelFilter::Info
-    };
+    let level = parse_log_level(log_level);
 
     LOG_LEVEL.store(level as usize, Ordering::Relaxed);
     log::set_max_level(level);
@@ -77,12 +103,8 @@ pub fn init_logging(enable_debug: bool, app_handle: AppHandle) -> Result<(), Set
     Ok(())
 }
 
-pub fn update_log_level(enable_debug: bool) {
-    let level = if enable_debug {
-        LevelFilter::Debug
-    } else {
-        LevelFilter::Info
-    };
+pub fn update_log_level(log_level: &str) {
+    let level = parse_log_level(log_level);
 
     LOG_LEVEL.store(level as usize, Ordering::Relaxed);
     log::set_max_level(level);

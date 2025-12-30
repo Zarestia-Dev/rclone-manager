@@ -158,15 +158,22 @@ impl Default for CoreSettings {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Default, DeriveSettingsSchema)]
+#[derive(Debug, Serialize, Deserialize, Clone, DeriveSettingsSchema)]
 #[schema(category = "developer")]
 pub struct DeveloperSettings {
     #[setting(
-        label = "Enable Debug Logging",
-        description = "Enable detailed logging for debugging.",
+        label = "Log Level",
+        description = "Controls which log messages are recorded. Higher levels include more detail.",
+        options(
+            ("error", "Error Only"),
+            ("warn", "Warnings & Errors"),
+            ("info", "Info (Recommended)"),
+            ("debug", "Debug (Verbose)"),
+            ("trace", "Trace (All, includes library logs)")
+        ),
         advanced
     )]
-    pub debug_logging: bool,
+    pub log_level: String,
 
     #[setting(
         label = "Memory Optimization",
@@ -174,6 +181,15 @@ pub struct DeveloperSettings {
         advanced
     )]
     pub destroy_window_on_close: bool,
+}
+
+impl Default for DeveloperSettings {
+    fn default() -> Self {
+        Self {
+            log_level: "info".to_string(),
+            destroy_window_on_close: false,
+        }
+    }
 }
 
 /// Runtime settings

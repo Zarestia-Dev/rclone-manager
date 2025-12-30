@@ -362,12 +362,9 @@ export class OnboardingComponent implements OnInit, OnDestroy {
     try {
       await this.installationService.installMountPlugin();
 
-      this.eventListenersService.listenToMountPluginInstalled().subscribe(() => {
-        // Mark as installed - this will automatically remove the Install card
-        // from the computed cards array, showing the next card at the same index
-        this.systemHealth.markMountPluginInstalled();
-        // Note: Don't call nextCard() here - the cards array shrink already advances us
-      });
+      // Re-check mount plugin status after installation
+      // The backend verifies installation before returning success
+      await this.systemHealth.checkMountPlugin();
     } catch (error) {
       console.error('Plugin installation failed:', error);
     } finally {
