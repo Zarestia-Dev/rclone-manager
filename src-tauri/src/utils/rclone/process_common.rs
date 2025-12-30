@@ -50,7 +50,6 @@ pub async fn setup_rclone_environment(
 
 /// Create and configure a new rclone command with standard settings
 pub async fn create_rclone_command(
-    port: u16,
     app: &AppHandle,
     process_type: &str,
 ) -> Result<tauri_plugin_shell::process::Command, String> {
@@ -59,6 +58,15 @@ pub async fn create_rclone_command(
     // Retrieve active backend settings to check for valid auth
     let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
     let backend = backend_manager.get_active().await;
+
+    // Determine port based on process type
+    let port = match process_type {
+        "main_engine" => backend.port,
+        "oauth" => backend
+            .oauth_port
+            .ok_or_else(|| "OAuth port not configured".to_string())?,
+        _ => return Err(format!("Unknown process type: {}", process_type)),
+    };
 
     // Only use auth if properly configured (non-empty username AND password)
     let auth_args = if backend.has_valid_auth() {
@@ -74,7 +82,7 @@ pub async fn create_rclone_command(
     let mut args = vec![
         "rcd".to_string(),
         "--rc-serve".to_string(),
-        format!("--rc-addr=127.0.0.1:{}", port),
+        format!("--rc-addr={}:{}", backend.host, port),
         "--rc-allow-origin".to_string(),
         "*".to_string(),
     ];

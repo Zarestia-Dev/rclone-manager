@@ -92,52 +92,6 @@ pub struct CoreSettings {
         description = "Indicates if the onboarding process is completed."
     )]
     pub completed_onboarding: bool,
-
-    #[setting(skip)] // Complex type, skip from schema
-    pub terminal_apps: Vec<String>,
-}
-
-/// Platform-specific default terminal apps
-pub fn default_terminal_apps() -> Vec<String> {
-    #[cfg(target_os = "linux")]
-    {
-        vec![
-            "gnome-terminal -- bash -c \"{}\"".to_string(),
-            "kgx -- bash -c \"{}\"".to_string(),
-            "konsole -e bash -c \"{}\"".to_string(),
-            "xfce4-terminal -e 'bash -c \"{}\"'".to_string(),
-            "alacritty -e bash -c \"{}\"".to_string(),
-            "kitty bash -c \"{}\"".to_string(),
-            "terminator -e 'bash -c \"{}\"'".to_string(),
-            "tilix -e 'bash -c \"{}\"'".to_string(),
-            "x-terminal-emulator -e bash -c \"{}\"".to_string(),
-            "xterm -e bash -c \"{}\"".to_string(),
-            "urxvt -e bash -c \"{}\"".to_string(),
-        ]
-    }
-    #[cfg(target_os = "macos")]
-    {
-        vec![
-            "osascript -e \"tell application \\\"Terminal\\\" to do script \\\"{}\\\"\""
-                .to_string(),
-        ]
-    }
-    #[cfg(target_os = "windows")]
-    {
-        vec![
-            "wt new-tab --title 'Rclone Config' -- cmd /K {}".to_string(),
-            "wt new-tab --title 'Rclone Config' -- \"\" powershell -NoExit -Command \"& {}\""
-                .to_string(),
-            "cmd /C start cmd /K {}".to_string(),
-            "cmd /C start \"\" powershell -NoExit -Command \"& {}\"".to_string(),
-            "cmd /C start \"\" pwsh -NoExit -Command \"& {}\"".to_string(),
-        ]
-    }
-    // Mobile platforms (Android/iOS) - no terminal apps
-    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
-    {
-        vec![]
-    }
 }
 
 impl Default for CoreSettings {
@@ -153,7 +107,6 @@ impl Default for CoreSettings {
             rclone_config_file: String::new(),
             rclone_path: String::new(),
             completed_onboarding: false,
-            terminal_apps: default_terminal_apps(),
         }
     }
 }

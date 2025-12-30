@@ -21,6 +21,16 @@ pub struct RuntimeInfo {
     pub status: Option<String>,
 }
 
+/// Per-backend cached state (jobs, mounts, serves)
+#[derive(Debug, Clone, Default)]
+pub struct BackendState {
+    pub jobs: Vec<crate::utils::types::all_types::JobInfo>,
+    pub mounts: Vec<crate::utils::types::MountedRemote>,
+    pub serves: Vec<crate::utils::types::ServeInstance>,
+    pub mount_profiles: HashMap<String, String>,
+    pub serve_profiles: HashMap<String, String>,
+}
+
 /// Central manager for rclone backends
 pub struct BackendManager {
     /// All configured backends (index 0 is always Local)
@@ -29,6 +39,8 @@ pub struct BackendManager {
     active_index: RwLock<usize>,
     /// Runtime connectivity info (version, os, status) - not persisted
     runtime_info: RwLock<HashMap<String, RuntimeInfo>>,
+    /// Per-backend state storage (backend_name → cached state)
+    per_backend_state: RwLock<HashMap<String, BackendState>>,
     /// Shared remote cache (for active backend)
     pub remote_cache: Arc<RemoteCache>,
     /// Shared job cache (for active backend)
@@ -42,6 +54,7 @@ impl BackendManager {
             backends: RwLock::new(vec![Backend::new_local("Local")]),
             active_index: RwLock::new(0),
             runtime_info: RwLock::new(HashMap::new()),
+            per_backend_state: RwLock::new(HashMap::new()),
             remote_cache: Arc::new(RemoteCache::new()),
             job_cache: Arc::new(JobCache::new()),
         }
@@ -142,6 +155,12 @@ impl BackendManager {
         info!("➖ Removing backend: {}", name);
         backends.remove(index);
 
+        // Clean up per-backend state
+        {
+            let mut states = self.per_backend_state.write().await;
+            states.remove(name);
+        }
+
         // Adjust active_index if needed
         drop(backends);
         let mut active = self.active_index.write().await;
@@ -154,38 +173,89 @@ impl BackendManager {
 
     /// Switch to a different backend
     pub async fn switch_to(&self, name: &str) -> Result<(), String> {
+        // Get the new backend info
         let backends = self.backends.read().await;
-
-        let (index, is_local) = backends
+        let (new_index, is_local) = backends
             .iter()
             .enumerate()
             .find(|(_, b)| b.name == name)
             .map(|(i, b)| (i, b.is_local))
             .ok_or_else(|| format!("Backend '{}' not found", name))?;
-
         drop(backends);
 
+        // Get current backend name before switching
+        let current_name = self.get_active_name().await;
+
+        // Don't save/restore if switching to the same backend
+        if current_name != name {
+            // Save current backend's state
+            let jobs = self.job_cache.get_all_jobs().await;
+            let (mounts, serves, mount_profiles, serve_profiles) =
+                self.remote_cache.get_backend_state().await;
+
+            let current_state = BackendState {
+                jobs,
+                mounts,
+                serves,
+                mount_profiles,
+                serve_profiles,
+            };
+
+            {
+                let mut states = self.per_backend_state.write().await;
+                states.insert(current_name.clone(), current_state);
+                info!("💾 Saved state for backend: {}", current_name);
+            }
+
+            // Restore new backend's state (or empty if none exists)
+            let new_state = {
+                let states = self.per_backend_state.read().await;
+                states.get(name).cloned().unwrap_or_default()
+            };
+
+            // Restore jobs
+            self.job_cache.set_all_jobs(new_state.jobs).await;
+
+            // Restore mounts/serves (remotes will be refreshed from API)
+            self.remote_cache
+                .set_backend_state(
+                    new_state.mounts,
+                    new_state.serves,
+                    new_state.mount_profiles,
+                    new_state.serve_profiles,
+                )
+                .await;
+
+            // Clear remotes/configs (will be refreshed from new backend)
+            self.remote_cache.clear_remotes_only().await;
+
+            info!("📂 Restored state for backend: {}", name);
+        }
+
+        // Update active index
         let mut active = self.active_index.write().await;
-        *active = index;
+        *active = new_index;
 
         // Update cached is_local flag for engine
         crate::rclone::engine::core::set_active_is_local(is_local);
 
         info!("🔄 Switched to backend: {} (is_local: {})", name, is_local);
 
-        // Clear caches when switching
-        self.remote_cache.clear().await;
-        self.job_cache.clear().await;
-
         Ok(())
     }
 
     /// Get OAuth URL of active backend
+    /// - For Local: Returns http://{host}:{oauth_port}
+    /// - For Remote: Returns main API URL
     pub async fn get_active_oauth_url(&self) -> Option<String> {
-        self.get_active()
-            .await
-            .oauth_port
-            .map(|port| format!("http://127.0.0.1:{}", port))
+        let backend = self.get_active().await;
+        if backend.is_local {
+            backend
+                .oauth_port
+                .map(|port| format!("http://{}:{}", backend.host, port))
+        } else {
+            Some(backend.api_url())
+        }
     }
 
     /// Check connectivity to a backend, updating cache if successful
@@ -473,5 +543,44 @@ mod tests {
         let backends = manager.list_all().await;
         let offline = backends.iter().find(|b| b.name == "Offline").unwrap();
         assert_eq!(offline.status, Some("error:Connection refused".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_persistence_on_switch() {
+        use crate::utils::types::all_types::{JobInfo, JobStatus};
+        use chrono::Utc;
+
+        let manager = BackendManager::new();
+        let remote = Backend::new_remote("Remote1", "host", 1234);
+        manager.add(remote).await.unwrap();
+
+        // 1. We are on Local (default). Add a job.
+        let job = JobInfo {
+            jobid: 1,
+            job_type: "sync".to_string(),
+            remote_name: "drive:".to_string(),
+            source: "/local".to_string(),
+            destination: "drive:/remote".to_string(),
+            start_time: Utc::now(),
+            status: JobStatus::Running,
+            stats: Some(serde_json::json!({})),
+            group: "job/1".to_string(),
+            profile: None,
+            source_ui: Some("test".to_string()),
+            backend_name: Some("Local".to_string()),
+        };
+        manager.job_cache.add_job(job).await;
+        assert_eq!(manager.job_cache.get_jobs().await.len(), 1);
+
+        // 2. Switch to Remote1
+        manager.switch_to("Remote1").await.unwrap();
+        // Should be empty initially (new backend state)
+        assert_eq!(manager.job_cache.get_jobs().await.len(), 0);
+
+        // 3. Switch back to Local
+        manager.switch_to("Local").await.unwrap();
+        // Should have restored the job
+        assert_eq!(manager.job_cache.get_jobs().await.len(), 1);
+        assert_eq!(manager.job_cache.get_jobs().await[0].jobid, 1);
     }
 }

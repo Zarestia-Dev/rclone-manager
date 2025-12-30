@@ -44,6 +44,7 @@ import { FormatEtaPipe } from '../../../../shared/pipes/format-eta.pipe';
 import { FormatMemoryUsagePipe } from '../../../../shared/pipes/format-memory-usage.pipe';
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
+import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
 
 import {
   EventListenersService,
@@ -104,6 +105,7 @@ const ALL_PANELS: PanelConfig[] = [
     ServeCardComponent,
     FormatRateValuePipe,
     FormatBytes,
+    OverviewHeaderComponent,
   ],
   templateUrl: './general-overview.component.html',
   styleUrls: ['./general-overview.component.scss'],

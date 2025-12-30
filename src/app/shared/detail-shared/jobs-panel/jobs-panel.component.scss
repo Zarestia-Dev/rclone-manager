@@ -12,7 +12,7 @@
     contain: layout style paint;
 
     .mat-mdc-header-row {
-      background: rgba(var(--window-fg-color-rgb), var(--background-opacity));
+      background: var(--sidebar-bg-color);
       border-bottom: 1px solid rgba(var(--window-fg-color-rgb), var(--panel-hover-opacity));
       position: sticky;
       top: 0;

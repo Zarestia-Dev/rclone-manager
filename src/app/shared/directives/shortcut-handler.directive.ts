@@ -3,13 +3,14 @@ import { MatDialog } from '@angular/material/dialog';
 import { KeyboardShortcutsModalComponent } from '../../features/modals/settings/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component';
 import { QuickAddRemoteComponent } from '../../features/modals/remote-management/quick-add-remote/quick-add-remote.component';
 import { RemoteConfigModalComponent } from '../../features/modals/remote-management/remote-config-modal/remote-config-modal.component';
+
 import { ExportModalComponent } from '../../features/modals/settings/export-modal/export-modal.component';
 import { PreferencesModalComponent } from '../../features/modals/settings/preferences-modal/preferences-modal.component';
 import { RcloneConfigModalComponent } from '../../features/modals/settings/rclone-config-modal/rclone-config-modal.component';
 
 // Services
 import { MountManagementService, NautilusService, WindowService } from '@app/services';
-import { RemoteManagementService } from '@app/services';
+import { BackupRestoreUiService } from '@app/services';
 import { OnboardingStateService } from '@app/services';
 import { NotificationService } from '../services/notification.service';
 import { STANDARD_MODAL_SIZE } from '@app/types';
@@ -22,10 +23,10 @@ export class ShortcutHandlerDirective {
   private dialog = inject(MatDialog);
   private notificationService = inject(NotificationService);
   private windowService = inject(WindowService);
-  private remoteManagementService = inject(RemoteManagementService);
   private onboardingStateService = inject(OnboardingStateService);
   private mountManagementService = inject(MountManagementService);
   private nautilusService = inject(NautilusService);
+  private backupRestoreUiService = inject(BackupRestoreUiService);
 
   @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
@@ -78,11 +79,6 @@ export class ShortcutHandlerDirective {
 
     if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 'r') {
       this.createNewRemoteQuick();
-      return true;
-    }
-
-    if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 't') {
-      this.createNewRemoteTerminal();
       return true;
     }
 
@@ -194,17 +190,12 @@ export class ShortcutHandlerDirective {
     this.dialog.open(RemoteConfigModalComponent, STANDARD_MODAL_SIZE);
   }
 
-  private createNewRemoteTerminal(): void {
-    this.remoteManagementService.openRcloneConfigTerminal();
-  }
-
   private createNewRemoteQuick(): void {
     this.dialog.open(QuickAddRemoteComponent, STANDARD_MODAL_SIZE);
   }
 
   private loadConfiguration(): void {
-    console.log('Loading configuration');
-    this.notificationService.showInfo('Configuration loading not yet implemented');
+    this.backupRestoreUiService.launchRestoreFlow();
   }
 
   private exportConfiguration(): void {

@@ -13,7 +13,7 @@ pub struct RcloneState {
     pub notifications_enabled: Arc<std::sync::RwLock<bool>>,
     pub rclone_path: Arc<std::sync::RwLock<PathBuf>>,
     pub restrict_mode: Arc<std::sync::RwLock<bool>>,
-    pub terminal_apps: Arc<std::sync::RwLock<Vec<String>>>,
+
     // New flag for memory optimization
     pub destroy_window_on_close: Arc<std::sync::RwLock<bool>>,
     pub is_restart_required: AtomicBool,

@@ -10,9 +10,15 @@ impl JobCache {
         }
     }
 
-    pub async fn clear(&self) {
-        let mut jobs = self.jobs.write().await;
-        jobs.clear();
+    /// Get all jobs (for state snapshot)
+    pub async fn get_all_jobs(&self) -> Vec<JobInfo> {
+        self.jobs.read().await.clone()
+    }
+
+    /// Set all jobs (for state restore)
+    pub async fn set_all_jobs(&self, jobs: Vec<JobInfo>) {
+        let mut current = self.jobs.write().await;
+        *current = jobs;
     }
 
     pub async fn add_job(&self, job: JobInfo) {
@@ -297,17 +303,5 @@ mod tests {
 
         let job3 = cache.get_job(3).await.unwrap();
         assert_eq!(job3.profile, Some("old_profile".to_string())); // Unchanged
-    }
-
-    #[tokio::test]
-    async fn test_clear() {
-        let cache = JobCache::new();
-        cache.add_job(mock_job(1, "gdrive:", "sync", None)).await;
-        cache.add_job(mock_job(2, "s3:", "copy", None)).await;
-
-        assert_eq!(cache.get_jobs().await.len(), 2);
-
-        cache.clear().await;
-        assert_eq!(cache.get_jobs().await.len(), 0);
     }
 }

@@ -14,20 +14,14 @@
           font-size: var(--font-size-sm);
           height: 24px;
           min-height: 24px;
-          border-radius: var(--badge-radius);
           font-weight: 600;
-          padding: 0 10px;
 
           &.active {
             background: rgba(var(--primary-color-rgb), var(--active-opacity));
-            color: var(--primary-color);
-            box-shadow: 0 0 0 1px var(--card-shade-color);
           }
 
           &.completed {
             background: rgba(var(--accent-color-rgb), var(--active-opacity));
-            color: var(--accent-color);
-            box-shadow: 0 0 0 1px var(--card-shade-color);
           }
 
           .chip-label {

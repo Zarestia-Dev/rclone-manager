@@ -11,6 +11,7 @@ pub const RCLONE_ENGINE_PASSWORD_ERROR: &str = "rclone_engine_password_error";
 pub const RCLONE_ENGINE_PATH_ERROR: &str = "rclone_engine_path_error";
 pub const RCLONE_ENGINE_UPDATING: &str = "rclone_engine_updating";
 pub const RCLONE_PASSWORD_STORED: &str = "rclone_password_stored";
+pub const BACKEND_SWITCHED: &str = "backend_switched";
 
 // Remote management events
 pub const REMOTE_STATE_CHANGED: &str = "remote_state_changed";

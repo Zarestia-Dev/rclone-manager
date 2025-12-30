@@ -94,6 +94,18 @@ impl Backend {
         format!("http://{}:{}", self.host, self.port)
     }
 
+    /// Get the OAuth HTTP URL for this backend (if oauth_port is configured)
+    pub fn oauth_url(&self) -> Option<String> {
+        self.oauth_port
+            .map(|port| format!("http://{}:{}", self.host, port))
+    }
+
+    /// Get the OAuth address (host:port) for TCP connection checks
+    pub fn oauth_addr(&self) -> Option<String> {
+        self.oauth_port
+            .map(|port| format!("{}:{}", self.host, port))
+    }
+
     /// Check if RC API auth is properly configured
     ///
     /// Returns true only if BOTH username and password are non-empty.

@@ -1,19 +1,26 @@
 <header class="overview-header" role="banner">
   <div class="header-content">
-    <!-- Backend Indicator -->
+    <!-- Unified Backend Switcher & Title -->
     <button
-      class="backend-indicator"
+      class="title-section interactive"
       (click)="onBackendClick()"
-      matTooltip="Click to manage backends"
-      matTooltipPosition="below"
+      matTooltip="Manage Backends"
+      matTooltipShowDelay="500"
+      matTooltipPosition="left"
+      [attr.aria-label]="'Current mode: ' + title + ' - Click to switch backend'"
     >
-      <span class="status-dot" [class]="backendStatusClass"></span>
-      <span class="backend-name">{{ activeBackend() }}</span>
+      <div class="logo-container">
+        @if (mode === 'general') {
+          <img src="assets/rclone.svg" alt="Rclone Logo" class="app-icon" />
+        } @else {
+          <mat-icon [svgIcon]="mode" class="app-icon" aria-hidden="true"></mat-icon>
+        }
+        <span class="status-dot" [class]="backendStatusClass"></span>
+      </div>
+      <div class="text-container">
+        <h2 id="overview-title">{{ title }}</h2>
+        <span class="backend-name">{{ activeBackend() }}</span>
+      </div>
     </button>
-
-    <div class="title-section" [attr.aria-label]="'Application mode and title'">
-      <mat-icon [svgIcon]="mode" class="app-icon" aria-hidden="true"></mat-icon>
-      <h2 id="overview-title">{{ title }}</h2>
-    </div>
   </div>
 </header>

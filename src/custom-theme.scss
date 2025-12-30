@@ -659,7 +659,7 @@ $dark-theme: (
       }
 
       .count {
-        color: var(----dim-color);
+        color: var(--dim-color);
         font-size: var(--font-size-base);
         font-weight: 400;
         background: rgba(var(--accent-color-rgb), var(--active-opacity));
@@ -682,9 +682,9 @@ body {
 
   @include mat.form-field-overrides(
     (
-      filled-label-text-color: var(----dim-color),
+      filled-label-text-color: var(--dim-color),
       filled-input-text-color: var(--window-fg-color),
-      filled-input-text-placeholder-color: var(----dim-color),
+      filled-input-text-placeholder-color: var(--dim-color),
       filled-focus-label-text-color: var(--accent-color),
       filled-caret-color: var(--accent-color),
       filled-hover-label-text-color: var(--window-fg-color),
@@ -858,7 +858,7 @@ button {
   }
 
   &:disabled {
-    background: color-mix(in srgb, var(----dim-color) 30%, transparent) !important;
+    background: color-mix(in srgb, var(--dim-color) 30%, transparent) !important;
     color: color-mix(in srgb, var(--window-fg-color) 50%, transparent) !important;
     transform: none !important;
     box-shadow: none !important;
@@ -920,6 +920,7 @@ mat-accordion {
 }
 
 .mat-expansion-panel {
+  background: var(--view-bg-color) !important;
   border-radius: var(--card-border-radius) !important;
 
   .mat-expansion-panel-body {
@@ -1052,7 +1053,7 @@ mat-accordion {
   padding: var(--space-lg) var(--space-md);
   text-align: center;
   gap: var(--space-sm);
-  color: var(----dim-color);
+  color: var(--dim-color);
 
   mat-icon {
     width: 48px;

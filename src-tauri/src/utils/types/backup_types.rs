@@ -6,11 +6,9 @@ use serde::{Deserialize, Serialize};
 pub enum ExportType {
     All,
     Settings,
-    Remotes,
-    RemoteConfigs,
     SpecificRemote,
-    RCloneBackend,
-    Connections,
+    /// Dynamic category export (e.g. "remotes", "connections", "backend")
+    Category(String),
 }
 
 /// Backup analysis result returned to frontend

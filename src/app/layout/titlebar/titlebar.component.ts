@@ -1,8 +1,6 @@
 import { Component, OnInit, OnDestroy, inject, Type } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { Subject, Subscription } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
-import { RestorePreviewModalComponent } from '../../features/modals/settings/restore-preview-modal/restore-preview-modal.component';
 
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -18,8 +16,8 @@ import { RemoteConfigModalComponent } from '../../features/modals/remote-managem
 
 // Services
 import { RemoteManagementService, WindowService } from '@app/services';
-import { BackupRestoreService } from '@app/services';
-import { FileSystemService } from '@app/services';
+import { BackupRestoreUiService } from '@app/services';
+
 import { AppSettingsService } from '@app/services';
 import { UiStateService, NautilusService } from '@app/services';
 import { NotificationService } from 'src/app/shared/services/notification.service';
@@ -48,8 +46,8 @@ import { CdkMenuModule } from '@angular/cdk/menu';
 })
 export class TitlebarComponent implements OnInit, OnDestroy {
   dialog = inject(MatDialog);
-  backupRestoreService = inject(BackupRestoreService);
-  fileSystemService = inject(FileSystemService);
+  backupRestoreUiService = inject(BackupRestoreUiService);
+
   appSettingsService = inject(AppSettingsService);
   uiStateService = inject(UiStateService);
   nautilusService = inject(NautilusService);
@@ -266,40 +264,8 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     this.uiStateService.resetSelectedRemote();
   }
 
-  async openRemoteConfigTerminal(): Promise<void> {
-    try {
-      await this.remoteManagementService.openRcloneConfigTerminal();
-    } catch (error) {
-      console.error('Error opening Rclone config terminal:', error);
-      this.notificationService.openSnackBar(
-        `Failed to open Rclone config terminal: ${error}`,
-        'OK'
-      );
-    }
-  }
-
-  async restoreSettings(): Promise<void> {
-    const path = await this.fileSystemService.selectFile();
-    if (!path) return;
-
-    try {
-      const analysis = await this.backupRestoreService.analyzeBackupFile(path);
-      if (!analysis) return;
-
-      // Open the restore preview modal with the analysis data
-      const dialogRef = this.dialog.open(RestorePreviewModalComponent, {
-        ...STANDARD_MODAL_SIZE,
-        disableClose: true,
-        data: {
-          backupPath: path,
-          analysis,
-        },
-      });
-
-      dialogRef.afterClosed().pipe(takeUntil(this.destroy$)).subscribe();
-    } catch (error) {
-      console.error('Failed to analyze backup:', error);
-    }
+  restoreSettings(): void {
+    this.backupRestoreUiService.launchRestoreFlow();
   }
 
   onBrowseClick(): void {

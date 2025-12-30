@@ -80,25 +80,31 @@ pub async fn switch_backend(
     // Switch (only if connection test passed for remote backends)
     BACKEND_MANAGER.switch_to(&name).await?;
 
-    // Post-switch operations for remote backends
-    if !backend.is_local {
-        // Auto-unlock if config_password is set
-        if backend.config_password.is_some()
-            && let Err(e) = crate::rclone::commands::system::try_auto_unlock_config(&app).await
-        {
-            warn!("⚠️ Auto-unlock failed: {}", e);
-        }
+    // Auto-unlock if config_password is set (Remote only)
+    if !backend.is_local
+        && backend.config_password.is_some()
+        && let Err(e) = crate::rclone::commands::system::try_auto_unlock_config(&app).await
+    {
+        warn!("⚠️ Auto-unlock failed: {}", e);
+    }
 
-        // Refresh cache with timeout (15s max)
-        let refresh_future = BACKEND_MANAGER
-            .remote_cache
-            .refresh_all(&state.client, &backend);
+    // Always Refresh cache (for both Local and Remote)
+    // Local backend also needs remotes refreshed from rclone
+    let refresh_future = BACKEND_MANAGER
+        .remote_cache
+        .refresh_all(&state.client, &backend);
 
-        match tokio::time::timeout(std::time::Duration::from_secs(15), refresh_future).await {
-            Ok(Ok(_)) => info!("✅ Cache refreshed for backend '{}'", name),
-            Ok(Err(e)) => warn!("⚠️ Cache refresh failed: {}", e),
-            Err(_) => warn!("⚠️ Cache refresh timed out for backend '{}'", name),
+    match tokio::time::timeout(std::time::Duration::from_secs(15), refresh_future).await {
+        Ok(Ok(_)) => {
+            info!("✅ Cache refreshed for backend '{}'", name);
+            // Notify frontend that cache is updated
+            use crate::utils::types::events::{BACKEND_SWITCHED, REMOTE_CACHE_UPDATED};
+            use tauri::Emitter;
+            let _ = app.emit(REMOTE_CACHE_UPDATED, ());
+            let _ = app.emit(BACKEND_SWITCHED, &name);
         }
+        Ok(Err(e)) => warn!("⚠️ Cache refresh failed: {}", e),
+        Err(_) => warn!("⚠️ Cache refresh timed out for backend '{}'", name),
     }
 
     // Persist active backend selection

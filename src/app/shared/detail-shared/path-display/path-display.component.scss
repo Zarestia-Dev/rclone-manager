@@ -11,7 +11,7 @@
     flex: 1;
     min-width: 250px;
     padding: var(--item-padding);
-    background: rgba(var(--window-fg-color-rgb), var(--background-opacity));
+    background: var(--sidebar-bg-color);
     border-radius: var(--item-radius);
     transition: var(--transition-fast);
 

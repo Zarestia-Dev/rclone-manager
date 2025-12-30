@@ -9,83 +9,80 @@
 
 .overview-header {
   text-align: center;
-  margin-bottom: var(--panel-padding);
 
   .header-content {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--space-md);
-
-    .backend-indicator {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--space-xs);
-      padding: var(--space-xs) var(--space-sm);
-      background: var(--sidebar-bg-color);
-      border: none;
-      border-radius: var(--badge-radius);
-      cursor: pointer;
-      transition: var(--transition-fast);
-      font-family: inherit;
-      font-size: var(--font-size-sm);
-
-      &:hover {
-        background: var(--hover-bg-color);
-      }
-
-      .status-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--dim-color);
-
-        &.connected {
-          background: var(--success-color);
-          box-shadow: 0 0 6px var(--success-color);
-        }
-
-        &.disconnected {
-          background: var(--dim-color);
-        }
-
-        &.error {
-          background: var(--destructive-color);
-        }
-      }
-
-      .backend-name {
-        color: var(--window-fg-color);
-        font-weight: 500;
-      }
-
-      .chevron {
-        width: 14px;
-        height: 14px;
-        color: var(--dim-color);
-      }
-    }
 
     .title-section {
+      padding: var(--space-xs) var(--space-md);
+      cursor: pointer;
+      font-family: inherit;
       display: flex;
       align-items: center;
-      justify-content: center;
       gap: var(--space-md);
+      transition: all 0.2s ease;
+      border-radius: var(--radius-md);
 
-      .app-icon {
-        width: var(--icon-size-xl);
-        height: var(--icon-size-xl);
-        color: var(--mode-primary-color, var(--primary-color));
-        transition: var(--transition-standard);
-        will-change: color;
+      &:hover {
+        background-color: var(--hover-bg-color);
       }
 
-      h2 {
-        font-size: var(--font-size-2xl);
-        font-weight: 300;
-        margin: 0;
-        color: var(--window-fg-color);
-        letter-spacing: -0.5px;
+      .logo-container {
+        position: relative;
+        display: flex;
+        align-items: center;
+
+        .app-icon {
+          width: var(--icon-size-xl);
+          height: var(--icon-size-xl);
+          color: var(--mode-primary-color, var(--primary-color));
+          transition: var(--transition-standard);
+          will-change: color;
+        }
+
+        .status-dot {
+          position: absolute;
+          bottom: 2px;
+          right: -2px;
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          border: 2px solid var(--window-bg-color);
+          background-color: var(--dim-color);
+          transition: background-color 0.3s ease;
+
+          &.connected {
+            background-color: var(--success-color);
+            box-shadow: 0 0 0 2px var(--window-bg-color);
+          }
+          &.disconnected {
+            background-color: var(--destructive-color);
+          }
+        }
+      }
+
+      .text-container {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        text-align: left;
+
+        h2 {
+          font-size: var(--font-size-2xl);
+          font-weight: 300;
+          margin: 0;
+          color: var(--window-fg-color);
+          letter-spacing: -0.5px;
+          line-height: 1.2;
+        }
+
+        .backend-name {
+          font-size: var(--font-size-sm);
+          color: var(--dim-color);
+          font-weight: 400;
+        }
       }
     }
   }
@@ -97,19 +94,18 @@
     margin-bottom: var(--panel-padding-mobile);
 
     .header-content {
-      .backend-indicator {
-        padding: var(--space-xxs) var(--space-xs);
-        font-size: var(--font-size-xs);
-      }
-
       .title-section {
-        .app-icon {
-          width: 28px;
-          height: 28px;
+        .logo-container {
+          .app-icon {
+            width: 32px;
+            height: 32px;
+          }
         }
 
-        h2 {
-          font-size: 24px;
+        .text-container {
+          h2 {
+            font-size: 24px;
+          }
         }
       }
     }
@@ -120,11 +116,12 @@
 @media (max-width: 480px) {
   .overview-header .header-content {
     .title-section {
-      flex-direction: column;
-      gap: 8px;
+      gap: 12px;
 
-      h2 {
-        font-size: 20px;
+      .text-container {
+        h2 {
+          font-size: 20px;
+        }
       }
     }
   }

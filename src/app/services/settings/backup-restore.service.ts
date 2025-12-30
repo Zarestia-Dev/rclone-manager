@@ -1,6 +1,8 @@
 import { inject, Injectable } from '@angular/core';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { NotificationService } from '../../shared/services/notification.service';
+import { ExportType } from '../../shared/types/ui';
+import { FileSystemService } from '../file-operations/file-system.service';
 
 // Matches the `BackupAnalysis` struct in `core/settings/backup/backup_types.rs`
 export interface BackupAnalysis {
@@ -40,6 +42,7 @@ export interface ExportCategory {
 })
 export class BackupRestoreService extends TauriBaseService {
   private notificationService = inject(NotificationService);
+  private fileSystemService = inject(FileSystemService);
   constructor() {
     super();
   }
@@ -49,7 +52,7 @@ export class BackupRestoreService extends TauriBaseService {
    */
   async backupSettings(
     selectedPath: string,
-    selectedOption: string,
+    selectedOption: ExportType,
     password: string | null,
     remoteName: string,
     userNote: string | null
@@ -88,9 +91,28 @@ export class BackupRestoreService extends TauriBaseService {
   }
 
   /**
+   * Selects a backup file and analyzes it
+   * Returns null if no file selected or analysis failed
+   */
+  async selectAndAnalyzeBackup(): Promise<{ path: string; analysis: BackupAnalysis } | null> {
+    const path = await this.fileSystemService.selectFile();
+    if (!path) return null;
+
+    try {
+      const analysis = await this.analyzeBackupFile(path);
+      if (!analysis) return null;
+      return { path, analysis };
+    } catch (error) {
+      console.error('Failed to analyze backup:', error);
+      this.notificationService.showError('Failed to analyze backup file');
+      return null;
+    }
+  }
+
+  /**
    * Analyze backup file contents
    */
-  async analyzeBackupFile(path: string): Promise<BackupAnalysis> {
+  async analyzeBackupFile(path: string): Promise<BackupAnalysis | null> {
     try {
       return await this.invokeCommand<BackupAnalysis>('analyze_backup_file', { path });
     } catch (error) {

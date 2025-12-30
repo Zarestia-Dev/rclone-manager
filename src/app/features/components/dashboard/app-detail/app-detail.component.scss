@@ -56,7 +56,7 @@
   width: var(--icon-container-size);
   height: var(--icon-container-size);
   border-radius: var(--icon-radius, 12px);
-  background: rgba(var(--window-fg-color-rgb), var(--background-opacity));
+  background: var(--sidebar-bg-color);
   transition: var(--transition-standard);
 
   .remote-type-icon {
@@ -111,7 +111,7 @@
   align-items: center;
   gap: var(--space-sm);
   padding: var(--space-md);
-  background: rgba(var(--window-fg-color-rgb), var(--background-opacity));
+  background: var(--sidebar-bg-color);
 
   .selector-label {
     font-size: var(--font-size-sm);
@@ -167,7 +167,7 @@
 
   .serves-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: var(--space-md);
     padding: var(--space-md);
     background: var(--view-bg-color);
@@ -327,7 +327,7 @@
   flex-direction: column;
   gap: var(--space-sm);
   padding: var(--space-sm);
-  background: rgba(var(--window-fg-color-rgb), var(--background-opacity));
+  background: var(--sidebar-bg-color);
   border-radius: var(--icon-radius, 12px);
 
   .group-header {

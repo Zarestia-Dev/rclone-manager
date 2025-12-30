@@ -16,6 +16,7 @@ export * from './remote/flag-config.service';
 export * from './remote/path-selection.service';
 export * from './core/tauri-base.service';
 export * from './settings/backup-restore.service';
+export * from './settings/backup-restore-ui.service';
 export * from './settings/app-settings.service';
 export * from './settings/installation.service';
 export * from './settings/rclone-backend-options.service';

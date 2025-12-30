@@ -96,6 +96,9 @@ export class ExportModalComponent implements OnInit {
         this.backupRestoreService.getExportCategories(),
       ]);
 
+      console.log('remotesList', remotesList);
+      console.log('categoriesList', categoriesList);
+
       this.remotes.set(remotesList.status === 'fulfilled' ? Object.freeze(remotesList.value) : []);
 
       // Build export options from backend categories
@@ -125,14 +128,15 @@ export class ExportModalComponent implements OnInit {
     for (const cat of categories) {
       options.push({
         id: cat.id,
-        label: cat.name,
+        // Capitalize label if simple string
+        label: this.formatLabel(cat.name),
         description: cat.description || this.getDefaultDescription(cat.categoryType),
         icon: this.iconMap[cat.categoryType] || 'file',
         categoryType: cat.categoryType,
       });
     }
 
-    // Add "Single Remote" option if remotes sub-settings exists
+    // Add "Single Remote" option if remotes category exists (check by ID 'remotes')
     if (categories.some(c => c.id === 'remotes')) {
       options.push({
         id: 'specific_remote',
@@ -145,12 +149,20 @@ export class ExportModalComponent implements OnInit {
     this.exportOptions.set(options);
   }
 
+  private formatLabel(name: string): string {
+    // Simple title case if it looks like a raw ID
+    if (name === name.toLowerCase()) {
+      return name.charAt(0).toUpperCase() + name.slice(1);
+    }
+    return name;
+  }
+
   private getDefaultDescription(categoryType: string): string {
     switch (categoryType) {
       case 'settings':
         return 'Application preferences';
-      case 'sub_settings':
-        return 'Per-entity configuration files';
+      case 'subsettings':
+        return 'Configuration files';
       case 'external':
         return 'External configuration file';
       default:
@@ -164,16 +176,17 @@ export class ExportModalComponent implements OnInit {
       this.selectedRemoteName.set(this.data.remoteName);
     }
     if (this.data?.defaultExportType) {
-      // Map old ExportType enum to new IDs
-      const typeToIdMap: Record<string, string> = {
-        [ExportType.All]: 'full',
-        [ExportType.Settings]: 'settings',
-        [ExportType.Remotes]: 'remotes',
-        [ExportType.RemoteConfigs]: 'remotes',
-        [ExportType.SpecificRemote]: 'specific_remote',
-        [ExportType.RCloneBackend]: 'backend',
-      };
-      const id = typeToIdMap[this.data.defaultExportType] || 'full';
+      const type = this.data.defaultExportType;
+      let id = 'full';
+
+      if (typeof type === 'string') {
+        if (type === 'All') id = 'full';
+        else if (type === 'Settings') id = 'settings';
+        else if (type === 'SpecificRemote') id = 'specific_remote';
+      } else if ('Category' in type) {
+        id = type.Category;
+      }
+
       this.selectedOption.set(id);
     }
   }
@@ -201,17 +214,23 @@ export class ExportModalComponent implements OnInit {
     try {
       const selectedId = this.selectedOption();
 
-      // Map IDs back to ExportType for backend compatibility
-      const idToTypeMap: Record<string, ExportType> = {
-        full: ExportType.All,
-        settings: ExportType.Settings,
-        remotes: ExportType.Remotes,
-        backend: ExportType.RCloneBackend,
-        connections: ExportType.Connections,
-        specific_remote: ExportType.SpecificRemote,
-      };
+      // Resolve ExportType dynamically
+      let exportType: ExportType;
 
-      const exportType = idToTypeMap[selectedId] || ExportType.All;
+      switch (selectedId) {
+        case 'full':
+          exportType = ExportType.All;
+          break;
+        case 'settings':
+          exportType = ExportType.Settings;
+          break;
+        case 'specific_remote':
+          exportType = ExportType.SpecificRemote;
+          break;
+        default:
+          // Assume any other ID is a category
+          exportType = ExportType.Category(selectedId);
+      }
 
       const exportParams = {
         path: this.exportPath().trim(),

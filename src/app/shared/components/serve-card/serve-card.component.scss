@@ -117,7 +117,7 @@
     gap: var(--space-xs);
     margin: var(--space-sm);
     padding: var(--space-sm);
-    background: rgba(var(--dim-color-rgb), 0.4);
+    background: var(--sidebar-bg-color);
     border-radius: var(--border-radius);
 
     .metadata-row {

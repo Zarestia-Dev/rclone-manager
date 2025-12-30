@@ -131,21 +131,33 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
     let mut guard = state.oauth_process.lock().await;
 
     let backend = BACKEND_MANAGER.get_active().await;
-    let port = backend
-        .oauth_port
-        .ok_or_else(|| RcloneError::ConfigError("OAuth not configured".to_string()))?;
+
+    // Skip spawning for remote backends (assume remote handles it or it's simply not needed locally)
+    if !backend.is_local {
+        return Ok(());
+    }
+
+    // Check OAuth is configured
+    if backend.oauth_port.is_none() {
+        return Err(RcloneError::ConfigError("OAuth not configured".to_string()));
+    }
 
     // Check if process is already running (in memory or port open)
     let mut process_running = guard.is_some();
-    if !process_running {
-        let addr = format!("127.0.0.1:{port}");
+    if !process_running && let Some(addr) = backend.oauth_addr() {
         match TcpStream::connect(&addr).await {
             Ok(_) => {
                 process_running = true;
-                warn!("Rclone OAuth process already running (port {port} in use)",);
+                warn!(
+                    "Rclone OAuth process already running (port {} in use)",
+                    backend.oauth_port.unwrap()
+                );
             }
             Err(_) => {
-                debug!("No existing OAuth process detected on port {port}");
+                debug!(
+                    "No existing OAuth process detected on port {:?}",
+                    backend.oauth_port
+                );
             }
         }
     }
@@ -155,7 +167,7 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
     }
 
     // Start new process
-    let oauth_cmd = match create_rclone_command(port, app, "oauth").await {
+    let oauth_cmd = match create_rclone_command(app, "oauth").await {
         Ok(cmd) => cmd,
         Err(e) => {
             let error_msg = format!("Failed to create OAuth command: {e}");
@@ -179,16 +191,18 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
     let timeout = Duration::from_secs(5);
 
     while start_time.elapsed() < timeout {
-        if TcpStream::connect(&format!("127.0.0.1:{port}"))
-            .await
-            .is_ok()
+        if let Some(addr) = backend.oauth_addr()
+            && TcpStream::connect(&addr).await.is_ok()
         {
             return Ok(());
         }
         sleep(Duration::from_millis(100)).await;
     }
 
-    let timeout_error = format!("Timeout waiting for OAuth process to start on port {port}");
+    let timeout_error = format!(
+        "Timeout waiting for OAuth process to start on port {:?}",
+        backend.oauth_port
+    );
     Err(RcloneError::OAuthError(timeout_error))
 }
 
@@ -200,7 +214,15 @@ pub async fn quit_rclone_oauth(state: State<'_, RcloneState>) -> Result<(), Stri
     let mut guard = state.oauth_process.lock().await;
 
     let backend = BACKEND_MANAGER.get_active().await;
-    let port = backend.oauth_port.ok_or("OAuth not configured")?;
+
+    if !backend.is_local {
+        return Ok(());
+    }
+
+    // Check oauth is configured
+    if backend.oauth_port.is_none() {
+        return Err("OAuth not configured".to_string());
+    }
 
     let mut found_process = false;
 
@@ -209,8 +231,9 @@ pub async fn quit_rclone_oauth(state: State<'_, RcloneState>) -> Result<(), Stri
         found_process = true;
     } else {
         // Try to connect to the port to see if something is running
-        let addr = format!("127.0.0.1:{port}");
-        if TcpStream::connect(&addr).await.is_ok() {
+        if let Some(addr) = backend.oauth_addr()
+            && TcpStream::connect(&addr).await.is_ok()
+        {
             found_process = true;
         }
     }
@@ -220,10 +243,11 @@ pub async fn quit_rclone_oauth(state: State<'_, RcloneState>) -> Result<(), Stri
         return Ok(());
     }
 
-    let url = EndpointHelper::build_url(&format!("http://127.0.0.1:{port}"), core::QUIT);
-
-    if let Err(e) = state.client.post(&url).send().await {
-        warn!("⚠️ Failed to send quit request: {e}");
+    if let Some(oauth_url) = backend.oauth_url() {
+        let url = EndpointHelper::build_url(&oauth_url, core::QUIT);
+        if let Err(e) = state.client.post(&url).send().await {
+            warn!("⚠️ Failed to send quit request: {e}");
+        }
     }
 
     if let Some(process) = guard.take() {

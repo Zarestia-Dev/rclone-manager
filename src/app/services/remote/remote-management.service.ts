@@ -245,18 +245,6 @@ export class RemoteManagementService extends TauriBaseService {
   }
 
   /**
-   * Open the Rclone configuration terminal
-   */
-  async openRcloneConfigTerminal(): Promise<void> {
-    try {
-      await this.invokeCommand('open_terminal_config');
-    } catch (error) {
-      console.error('Error opening Rclone config terminal:', error);
-      throw error;
-    }
-  }
-
-  /**
    * Start non-interactive remote config. Returns a question or an empty state when finished.
    */
   async startRemoteConfigInteractive(

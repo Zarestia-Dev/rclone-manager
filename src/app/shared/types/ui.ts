@@ -27,15 +27,14 @@ export interface ConfirmDialogData {
   cancelText?: string; // Defaults to "No"
 }
 
-export enum ExportType {
-  All = 'All',
-  Settings = 'Settings',
-  Remotes = 'Remotes',
-  RemoteConfigs = 'RemoteConfigs',
-  SpecificRemote = 'SpecificRemote',
-  RCloneBackend = 'RCloneBackend',
-  Connections = 'Connections',
-}
+export type ExportType = 'All' | 'Settings' | 'SpecificRemote' | { Category: string };
+
+export const ExportType = {
+  All: 'All' as ExportType,
+  Settings: 'Settings' as ExportType,
+  SpecificRemote: 'SpecificRemote' as ExportType,
+  Category: (name: string): ExportType => ({ Category: name }),
+};
 
 export interface ExportModalData {
   remoteName?: string;

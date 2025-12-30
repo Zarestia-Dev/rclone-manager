@@ -92,7 +92,7 @@ export class ApiClientService {
       return Promise.resolve(theme as T);
     }
 
-    if (command === 'open_in_files' || command === 'open_terminal_config') {
+    if (command === 'open_in_files') {
       throw new Error('Native file manager integration not available in headless mode.');
     }
 

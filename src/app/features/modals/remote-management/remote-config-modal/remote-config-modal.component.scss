@@ -40,7 +40,6 @@
           width: var(--icon-size-lg);
           height: var(--icon-size-lg);
           border-radius: var(--button-border-radius);
-          color: var(--dim-color);
           transition: all 0.3s ease;
 
           mat-icon {
@@ -59,6 +58,7 @@
 
         &.current {
           .step-number {
+            color: var(--gnome-light-1);
             background: var(--primary-color);
           }
         }

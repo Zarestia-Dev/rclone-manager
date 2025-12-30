@@ -23,7 +23,6 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 1rem;
-  margin-bottom: 2rem;
 }
 
 .preset-card {
@@ -205,8 +204,6 @@
 }
 
 .advanced-section {
-  margin-bottom: 2rem;
-
   &:last-child {
     margin-bottom: 0;
   }

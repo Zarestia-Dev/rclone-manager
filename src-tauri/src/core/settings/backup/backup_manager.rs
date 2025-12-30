@@ -33,10 +33,7 @@ pub async fn backup_settings(
             settings_type: "remotes".into(),
             name: remote_name.clone().unwrap_or_default(),
         },
-        ExportType::Remotes
-        | ExportType::RemoteConfigs
-        | ExportType::RCloneBackend
-        | ExportType::Connections => rcman::ExportType::SettingsOnly,
+        ExportType::Category(_) => rcman::ExportType::SettingsOnly,
     };
 
     // Build rcman backup options
@@ -44,25 +41,32 @@ pub async fn backup_settings(
         .output_dir(&backup_dir)
         .export_type(rcman_export_type);
 
-    // Disable settings.json for partial exports
+    // Disable settings.json for partial exports (Categories or SpecificRemote)
     if matches!(
         export_type,
-        ExportType::Remotes
-            | ExportType::RemoteConfigs
-            | ExportType::RCloneBackend
-            | ExportType::Connections
-            | ExportType::SpecificRemote
+        ExportType::Category(_) | ExportType::SpecificRemote
     ) {
         options = options.include_settings(false);
     }
 
-    // Include remotes sub-settings for full or remote-related exports
-    if matches!(
-        export_type,
-        ExportType::All | ExportType::Remotes | ExportType::RemoteConfigs
-    ) {
+    // Handle dynamic categories
+    if let ExportType::Category(ref category) = export_type {
+        // Special handling for legacy "remotes" category if needed,
+        // but generally we just pass the category name to rcman
+        options = options.include_sub_settings(category);
+
+        // If category is "remotes", we should also include rclone.conf
+        if category == "remotes" {
+            options = options.include_external("rclone.conf");
+        }
+    }
+
+    // Always include remotes/rclone.conf for Full backup
+    if matches!(export_type, ExportType::All) {
         options = options.include_sub_settings("remotes");
         options = options.include_external("rclone.conf");
+        options = options.include_sub_settings("backend");
+        options = options.include_sub_settings("connections");
     }
 
     // Single remote export: register dynamic provider for just this remote's config
@@ -78,14 +82,6 @@ pub async fn backup_settings(
         let provider = RcloneConfigProvider::for_remote(name, remote_config);
         manager.register_external_provider(Box::new(provider));
         options = options.include_external(format!("remote:{}", name));
-    }
-
-    if matches!(export_type, ExportType::All | ExportType::RCloneBackend) {
-        options = options.include_sub_settings("backend");
-    }
-
-    if matches!(export_type, ExportType::All | ExportType::Connections) {
-        options = options.include_sub_settings("connections");
     }
 
     if let Some(ref pw) = password {

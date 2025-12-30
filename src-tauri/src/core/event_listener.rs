@@ -434,24 +434,6 @@ fn handle_settings_changed(app: &AppHandle) {
                             }
                         });
                     }
-
-                    if let Some(terminal_apps) =
-                        core.get("terminal_apps").and_then(|v| v.as_array())
-                    {
-                        debug!("🖥️ Terminal apps changed: {terminal_apps:?}");
-                        let rclone_state = app_handle.state::<RcloneState>();
-                        let mut terminal_apps_guard = match rclone_state.terminal_apps.write() {
-                            Ok(g) => g,
-                            Err(e) => {
-                                error!("Failed to write terminal_apps: {e}");
-                                return;
-                            }
-                        };
-                        *terminal_apps_guard = terminal_apps
-                            .iter()
-                            .filter_map(|v| v.as_str().map(String::from))
-                            .collect::<Vec<String>>();
-                    }
                 }
 
                 if let Some(developer) = settings.get("developer") {
@@ -482,6 +464,21 @@ fn handle_settings_changed(app: &AppHandle) {
     });
 }
 
+fn handle_backend_switched(app: &AppHandle) {
+    let app_clone = app.clone();
+    use crate::utils::types::events::BACKEND_SWITCHED;
+    app.listen(BACKEND_SWITCHED, move |event| {
+        debug!("🔄 Backend switched! Raw payload: {:?}", event.payload());
+        let app = app_clone.clone();
+        tauri::async_runtime::spawn(async move {
+            // Update tray menu to reflect potentially new remotes
+            if let Err(e) = update_tray_menu(app.clone(), 0).await {
+                error!("Failed to update tray menu: {e}");
+            }
+        });
+    });
+}
+
 pub fn setup_event_listener(app: &AppHandle) {
     handle_ctrl_c(app);
 
@@ -492,5 +489,6 @@ pub fn setup_event_listener(app: &AppHandle) {
     handle_settings_changed(app);
     tray_menu_updated(app);
     handle_job_cache_changed(app);
+    handle_backend_switched(app);
     debug!("✅ Event listeners set up");
 }

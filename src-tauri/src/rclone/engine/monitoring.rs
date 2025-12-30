@@ -1,6 +1,7 @@
 use log::debug;
 use std::time::Duration;
 
+use crate::rclone::backend::BACKEND_MANAGER;
 use crate::utils::{
     rclone::endpoints::{EndpointHelper, core},
     types::all_types::RcApiEngine,
@@ -84,9 +85,10 @@ impl RcApiEngine {
     ///
     /// Returns true if the API returns a successful response or 401 Unauthorized
     /// (which means the API is running but requires auth).
-    pub async fn check_api_health_on_port(port: u16) -> bool {
-        let base_url = format!("http://127.0.0.1:{}", port);
-        let url = EndpointHelper::build_url(&base_url, core::VERSION);
+    pub async fn check_api_health_on_port(_port: u16) -> bool {
+        // Use the backend's api_url() as single source of truth
+        let backend = BACKEND_MANAGER.get_active().await;
+        let url = EndpointHelper::build_url(&backend.api_url(), core::VERSION);
 
         let client = reqwest::Client::new();
         match client.post(&url).timeout(API_HEALTH_TIMEOUT).send().await {

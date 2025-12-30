@@ -8,7 +8,7 @@
     flex-direction: column;
     align-items: center;
     padding: var(--item-padding);
-    background: rgba(var(--window-fg-color-rgb), var(--background-opacity));
+    background: var(--sidebar-bg-color);
     border-radius: var(--item-radius);
     text-align: center;
     transition: var(--transition-standard);

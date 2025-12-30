@@ -93,7 +93,8 @@ mat-form-field {
   gap: 12px;
   padding: 16px;
   background: var(--window-bg-color);
-  border-radius: 8px;
+  box-shadow: var(--box-shadow);
+  border-radius: var(--card-border-radius);
   margin-bottom: 20px;
 
   .stat-item {

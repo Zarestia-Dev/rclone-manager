@@ -35,12 +35,7 @@
               }
             </div>
             @if (getStepState(i + 1) === 'current') {
-              <span
-                class="step-label-animated"
-                animate.enter="label-slide-in-enter"
-                animate.leave="label-slide-in-leave"
-                >{{ step }}</span
-              >
+              <span class="step-label-animated">{{ step }}</span>
             }
           </button>
         }

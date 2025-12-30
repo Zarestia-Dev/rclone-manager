@@ -159,7 +159,6 @@ use crate::{
         io::{
             file_helper::{get_file_location, get_folder_location, open_in_files},
             network::{check_links, is_network_metered},
-            terminal::open_terminal_config,
         },
         process::process_manager::kill_process_by_pid,
         rclone::{
@@ -373,9 +372,6 @@ pub fn run() {
                     settings.core.rclone_path.clone().into(),
                 )),
                 restrict_mode: Arc::new(std::sync::RwLock::new(settings.general.restrict)),
-                terminal_apps: Arc::new(std::sync::RwLock::new(
-                    settings.core.terminal_apps.clone(),
-                )),
                 destroy_window_on_close: Arc::new(std::sync::RwLock::new(
                     settings.developer.destroy_window_on_close,
                 )),
@@ -741,7 +737,6 @@ pub fn run() {
             get_mount_types,
             // Application control
             handle_shutdown,
-            open_terminal_config,
             // Security & Password Management
             store_config_password,
             get_config_password,

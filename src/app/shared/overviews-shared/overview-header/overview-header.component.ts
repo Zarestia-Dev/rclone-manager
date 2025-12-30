@@ -31,6 +31,7 @@ export class OverviewHeaderComponent {
     mount: 'Mount Overview',
     sync: 'Sync Overview',
     serve: 'Serve Overview',
+    general: 'RClone Manager',
   };
 
   get title(): string {

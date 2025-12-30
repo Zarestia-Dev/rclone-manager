@@ -3,6 +3,7 @@ use std::time::Duration;
 use tauri::AppHandle;
 use tauri_plugin_shell::process::CommandChild;
 
+use crate::rclone::backend::BACKEND_MANAGER;
 use crate::utils::{
     process::process_manager::kill_processes_on_port,
     rclone::{
@@ -26,7 +27,7 @@ impl RcApiEngine {
 
         self.current_api_port = port;
 
-        let engine_app_result = create_rclone_command(port, app, "main_engine")
+        let engine_app_result = create_rclone_command(app, "main_engine")
             .await
             .map_err(|e| {
                 error!("❌ Failed to create engine command: {e}");
@@ -84,10 +85,9 @@ impl RcApiEngine {
             if self.running {
                 info!("🔄 Attempting graceful shutdown...");
 
-                let quit_url = EndpointHelper::build_url(
-                    &format!("http://127.0.0.1:{}", self.current_api_port),
-                    core::QUIT,
-                );
+                // Use backend's api_url() as single source of truth
+                let backend = BACKEND_MANAGER.get_active().await;
+                let quit_url = EndpointHelper::build_url(&backend.api_url(), core::QUIT);
 
                 let _ = reqwest::Client::new()
                     .post(&quit_url)

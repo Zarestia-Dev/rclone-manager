@@ -17,86 +17,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: var(--section-gap);
   padding: var(--panel-padding);
-
-  .overview-header {
-    margin-bottom: var(--panel-padding);
-
-    .header-content {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: var(--space-md);
-
-      .backend-indicator {
-        display: inline-flex;
-        align-items: center;
-        gap: var(--space-xs);
-        padding: var(--space-xs) var(--space-sm);
-        background: var(--sidebar-bg-color);
-        border: none;
-        border-radius: var(--badge-radius);
-        cursor: pointer;
-        transition: var(--transition-fast);
-        font-family: inherit;
-        font-size: var(--font-size-sm);
-
-        &:hover {
-          background: var(--hover-bg-color);
-        }
-
-        .status-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: var(--dim-color);
-          animation: none;
-
-          &.connected {
-            background: var(--success-color);
-            box-shadow: 0 0 6px var(--success-color);
-          }
-
-          &.disconnected {
-            background: var(--dim-color);
-          }
-
-          &.error {
-            background: var(--destructive-color);
-          }
-        }
-
-        .backend-name {
-          color: var(--window-fg-color);
-          font-weight: 500;
-        }
-
-        .chevron {
-          width: 14px;
-          height: 14px;
-          color: var(--dim-color);
-        }
-      }
-    }
-
-    .title-section {
-      @include flex-center;
-      gap: 16px;
-
-      .app-icon {
-        width: var(--icon-size-xl);
-        height: var(--icon-size-xl);
-      }
-
-      h2 {
-        font-size: clamp(20px, 4vw, 32px);
-        font-weight: 300;
-        margin: 0;
-        color: var(--window-fg-color);
-        letter-spacing: -0.5px;
-      }
-    }
-  }
 
   .overview-content {
     gap: var(--panel-padding);
@@ -551,7 +473,7 @@
 
   .serves-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: var(--space-md);
   }
 }
@@ -784,23 +706,6 @@
   .general-overview {
     padding: var(--panel-padding-mobile, 16px);
     gap: var(--section-gap-mobile, 12px);
-
-    .overview-header {
-      margin-bottom: var(--panel-padding-mobile, 16px);
-
-      .title-section {
-        gap: 12px;
-
-        mat-icon {
-          width: 28px;
-          height: 28px;
-        }
-
-        h2 {
-          font-size: clamp(18px, 5vw, 24px);
-        }
-      }
-    }
   }
 
   .scheduled-tasks-panel .tasks-grid,
@@ -812,14 +717,5 @@
 @media (max-width: 480px) {
   .general-overview {
     padding: 12px;
-
-    .overview-header .title-section {
-      flex-direction: column;
-      gap: 8px;
-
-      h2 {
-        font-size: clamp(16px, 6vw, 20px);
-      }
-    }
   }
 }

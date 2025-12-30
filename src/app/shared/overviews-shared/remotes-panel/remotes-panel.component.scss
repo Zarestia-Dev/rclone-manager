@@ -8,7 +8,6 @@
 }
 
 .remotes-panel {
-  margin-bottom: 2rem;
   border-radius: var(--card-border-radius-large) !important;
   box-shadow: var(--shadow-gnome);
   max-height: 60vh;
@@ -76,7 +75,7 @@
 
     .remotes-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
       gap: var(--space-md);
     }
   }
