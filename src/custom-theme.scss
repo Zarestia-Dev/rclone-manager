@@ -85,6 +85,7 @@
 // Based on: https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.2/css-variables.html
 // These change between light and dark themes.
 
+:root,
 .light {
   color-scheme: light;
 
@@ -338,6 +339,7 @@ $dark-theme: (
 );
 
 // Apply Material themes with Libadwaita surface overrides
+:root,
 .light {
   @include mat.theme($light-theme);
 
@@ -783,10 +785,6 @@ textarea,
 
 // Fix for mat-icon overflow issues in Windows
 mat-icon {
-  overflow: visible !important;
-  min-height: unset !important;
-  flex-shrink: 0;
-
   &.warn {
     color: var(--warn-color) !important;
   }

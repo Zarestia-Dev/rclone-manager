@@ -188,10 +188,7 @@ fn file_operations_routes() -> Router<WebServerState> {
         .route("/cleanup", post(handlers::cleanup_handler))
         .route("/copy-url", post(handlers::copy_url_handler))
         .route("/remote/paths", post(handlers::get_remote_paths_handler))
-        .route(
-            "/convert-asset-src",
-            get(handlers::convert_file_src_handler),
-        )
+        .route("/fs/stream", get(handlers::stream_file_handler))
 }
 
 fn settings_routes() -> Router<WebServerState> {

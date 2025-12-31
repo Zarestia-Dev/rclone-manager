@@ -1,6 +1,7 @@
 import { Injectable, inject, signal, WritableSignal } from '@angular/core';
 import { Overlay } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { FileViewerModalComponent } from '../../features/components/file-browser/file-viewer/file-viewer-modal.component';
 import { ConfigService } from '../system/config.service';
 import { Entry } from '@app/types';
@@ -158,13 +159,11 @@ export class FileViewerService {
       const separator = remoteName.endsWith('/') || remoteName.endsWith('\\') ? '' : '/';
       const fullPath = `${remoteName}${separator}${item.Path}`;
 
-      // In headless/web-server mode, use file:// protocol for local files
       if (this.apiClient.isHeadless()) {
-        return `file://${fullPath}`;
+        const encodedPath = encodeURIComponent(fullPath);
+        return `${this.apiClient.getApiBaseUrl()}/fs/stream?path=${encodedPath}`;
       }
-
-      // In desktop mode, use Tauri's asset protocol
-      return this.apiClient.invoke('convert_file_src', { path: fullPath });
+      return convertFileSrc(fullPath);
     }
     const rName = remoteName.includes(':') ? remoteName : `${remoteName}:`;
     return `${baseUrl}/[${rName}]/${item.Path}`;

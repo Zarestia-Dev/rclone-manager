@@ -1,11 +1,14 @@
 //! File operation handlers
 
+use axum::http::header;
 use axum::{
     extract::{Query, State},
-    response::Json,
+    response::{IntoResponse, Json},
 };
 use serde::Deserialize;
 use tauri::Manager;
+use tokio::fs::File;
+use tokio_util::io::ReaderStream;
 
 use crate::server::state::{ApiResponse, AppError, WebServerState};
 use crate::utils::types::all_types::RcloneState;
@@ -226,13 +229,22 @@ pub struct ConvertFileSrcQuery {
     pub path: String,
 }
 
-pub async fn convert_file_src_handler(
-    State(state): State<WebServerState>,
+pub async fn stream_file_handler(
     Query(query): Query<ConvertFileSrcQuery>,
-) -> Result<Json<ApiResponse<String>>, AppError> {
-    use crate::rclone::queries::filesystem::convert_file_src;
-    let url = convert_file_src(state.app_handle.clone(), query.path)
-        .map_err(anyhow::Error::msg)
-        .map_err(AppError::BadRequest)?;
-    Ok(Json(ApiResponse::success(url)))
+) -> Result<impl IntoResponse, AppError> {
+    let path = std::path::PathBuf::from(&query.path);
+    if !path.exists() {
+        return Err(AppError::NotFound("File not found".to_string()));
+    }
+
+    let file = File::open(&path).await.map_err(anyhow::Error::msg)?;
+    let stream = ReaderStream::new(file);
+    let body = axum::body::Body::from_stream(stream);
+
+    let mime_type = mime_guess::from_path(&path).first_or_octet_stream();
+
+    axum::response::Response::builder()
+        .header(header::CONTENT_TYPE, mime_type.as_ref())
+        .body(body)
+        .map_err(|e| AppError::InternalServerError(anyhow::Error::msg(e.to_string())))
 }

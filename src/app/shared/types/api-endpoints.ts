@@ -68,7 +68,6 @@ export const EXPLICIT_ENDPOINTS: Record<string, string> = {
   // Filesystem - nested
   get_fs_info: '/fs/info',
   get_remote_paths: '/remote/paths',
-  convert_file_src: '/convert-asset-src',
 
   // Flags - nested under /flags or /options
   get_option_blocks: '/options/blocks',

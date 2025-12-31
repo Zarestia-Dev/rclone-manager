@@ -55,6 +55,7 @@ impl<T> ApiResponse<T> {
 pub enum AppError {
     BadRequest(anyhow::Error),
     InternalServerError(anyhow::Error),
+    NotFound(String),
 }
 
 impl<E> From<E> for AppError
@@ -69,14 +70,15 @@ where
 impl IntoResponse for AppError {
     fn into_response(self) -> axum::response::Response {
         let (status, error) = match self {
-            AppError::BadRequest(e) => (StatusCode::BAD_REQUEST, e),
+            AppError::BadRequest(e) => (StatusCode::BAD_REQUEST, e.to_string()),
+            AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             AppError::InternalServerError(e) => {
                 error!("API Error: {:#}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, e)
+                (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
             }
         };
 
-        let body = Json(ApiResponse::<String>::error(error.to_string()));
+        let body = Json(ApiResponse::<String>::error(error));
         (status, body).into_response()
     }
 }

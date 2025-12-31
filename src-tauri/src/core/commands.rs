@@ -109,7 +109,6 @@ macro_rules! generate_invoke_handler {
             $crate::rclone::commands::filesystem::mkdir,
             $crate::rclone::commands::filesystem::cleanup,
             $crate::rclone::commands::filesystem::copy_url,
-            $crate::rclone::queries::convert_file_src,
             $crate::rclone::queries::get_local_drives,
             $crate::rclone::queries::get_bandwidth_limit,
             // =================================================================

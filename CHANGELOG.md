@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - Broken theme setting fixed. Now it correctly applies the theme.
+- On headless mode cannot open the local files (Access denied error). Now it fixed.
 
 ## [v0.1.9] - 2025-12-20
 

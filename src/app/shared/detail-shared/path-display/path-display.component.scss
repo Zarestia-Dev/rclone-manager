@@ -15,11 +15,6 @@
     border-radius: var(--item-radius);
     transition: var(--transition-fast);
 
-    &:hover {
-      background: rgba(var(--primary-color-rgb), var(--background-opacity));
-      border-color: rgba(var(--primary-color-rgb), var(--active-opacity));
-    }
-
     .path-icon-container {
       .folder-button {
         &.active {

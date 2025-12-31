@@ -88,10 +88,12 @@
   gap: var(--space-xs);
   padding: 8px 12px;
   border-radius: 20px;
-  background: rgba(var(--window-fg-color-rgb), 0.04);
+  background: var(--window-fg-color-rgb);
   transition: var(--transition-standard);
+  box-shadow: var(--box-shadow);
+  cursor: pointer;
   position: relative;
-  isolation: isolate; // ensure badge shadows stay contained
+  isolation: isolate;
 
   // numeric selection badge shows ordering of primary actions
   .selection-badge {
@@ -108,7 +110,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 0 0 1px rgba(var(--primary-color-rgb), 0.5);
     z-index: 2;
     transform-origin: center;
     will-change: transform, opacity;
@@ -177,30 +178,13 @@
 
   // Hover effects
   &:hover {
-    transform: translateY(-1px);
-    transition: all 200ms var(--transition-ease);
-
     // For unselected chips
     &:not(.active) {
-      background: rgba(var(--primary-color-rgb), 0.06);
-      box-shadow: 0 0 0 1px rgba(var(--primary-color-rgb), 0.08);
-
-      .status-dot {
-        background: rgba(var(--primary-color-rgb), 0.12);
-        transform: scale(1.05);
-
-        mat-icon {
-          color: var(--primary-color);
-        }
-      }
-      .status-label {
-        color: var(--primary-color);
-      }
+      background: var(--hover-bg-color);
     }
 
     // For active (running) chips
     &.active {
-      transform: translateY(-1px);
       .status-dot {
         transform: scale(1.05);
       }
@@ -323,6 +307,7 @@
     display: flex;
     justify-content: center;
     gap: 8px;
+    cursor: pointer;
 
     .indicator {
       width: 8px;
@@ -330,7 +315,6 @@
       border-radius: 50%;
       background: rgba(var(--dim-color-rgb), 0.3);
       transition: all 0.3s ease;
-      cursor: pointer;
 
       &:hover {
         background: rgba(var(--primary-color-rgb), 0.5);

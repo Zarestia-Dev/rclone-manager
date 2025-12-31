@@ -52,10 +52,7 @@ sevenz-rust2 = "0.20.0"
 # Note: keychain feature is added via target-specific dependencies below (not supported on Android/iOS)
 rcman = { version = "0.1.0", path = "../../rcman", features = ["backup", "derive"] }
 
-# Implementation based on: https://github.com/tauri-apps/tauri/issues/12022
-# Until Tauri provides a built-in Rust API, this manual implementation is required
 urlencoding = "2.1"
-dunce = "1.0"
 
 # Web server dependencies (optional)
 axum = { version = "0.7", optional = true }
@@ -67,6 +64,8 @@ axum-server = { version = "0.7", features = ["tls-rustls"], optional = true }
 rustls = { version = "0.23", features = ["ring"], optional = true }
 anyhow = {version = "1.0.98", optional = true}
 clap = { version = "4.5", features = ["derive", "env"], optional = true }
+tokio-util = { version = "0.7.17", features = ["io"] }
+mime_guess = "2.0.5"
 
 [target.'cfg(unix)'.dependencies]
 nix = "0.30.1"
