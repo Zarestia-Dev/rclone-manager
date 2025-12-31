@@ -92,7 +92,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         Err(e) => error!("❌ Failed to stop cron scheduler: {e}"),
     }
 
-    #[cfg(desktop)]
+    #[cfg(all(desktop, not(feature = "web-server")))]
     {
         if app_handle
             .try_state::<tauri_plugin_global_shortcut::GlobalShortcut<tauri::Wry>>()

@@ -174,7 +174,7 @@ pub async fn create_remote(
         .clone()
         .into_iter()
         .collect();
-    let params_obj = redact_sensitive_values(&params_map, &state.restrict_mode);
+    let params_obj = redact_sensitive_values(&params_map, &app);
 
     log_operation(
         LogLevel::Info,
@@ -263,7 +263,7 @@ pub async fn update_remote(
         .ok_or("Missing remote type")?;
 
     // Enhanced logging with parameter values
-    let params_obj = redact_sensitive_values(&parameters, &state.restrict_mode);
+    let params_obj = redact_sensitive_values(&parameters, &app);
 
     log_operation(
         LogLevel::Info,

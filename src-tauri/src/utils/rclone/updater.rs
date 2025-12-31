@@ -148,13 +148,14 @@ pub async fn update_rclone(
         }));
     }
 
-    // Get current rclone path and resolve the actual binary path
-    let rclone_state = app_handle.state::<RcloneState>();
-    let base_path = rclone_state
-        .rclone_path
-        .read()
-        .map_err(|e| format!("Failed to read rclone path: {e}"))?
-        .clone();
+    // Get current rclone path from settings and resolve the actual binary path
+    let manager = app_handle.state::<rcman::JsonSettingsManager>();
+    let base_path: PathBuf = manager
+        .inner()
+        .get::<String>("core.rclone_path")
+        .ok()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("system"));
     let mut current_path = get_rclone_binary_path(&base_path);
 
     if !current_path.exists() {
@@ -351,17 +352,18 @@ fn can_update_in_place(rclone_path: &Path) -> bool {
 
 /// Get the local rclone path in the app's data directory
 fn get_local_rclone_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
-    // Prefer any configured rclone_path in application state (if not "system" or empty)
-    let rclone_state = app_handle.state::<RcloneState>();
-    let configured = rclone_state
-        .rclone_path
-        .read()
-        .map_err(|e| format!("Failed to read rclone path: {e}"))?
-        .clone();
+    // Prefer any configured rclone_path in settings (if not "system" or empty)
+    let manager = app_handle.state::<rcman::JsonSettingsManager>();
+    let configured: PathBuf = manager
+        .inner()
+        .get::<String>("core.rclone_path")
+        .ok()
+        .map(PathBuf::from)
+        .unwrap_or_default();
     let configured_str = configured.to_string_lossy();
 
     if !configured_str.is_empty() && configured_str != "system" {
-        log::info!("Using configured rclone install path from state: {configured:?}");
+        log::info!("Using configured rclone install path from settings: {configured:?}");
         return Ok(configured);
     }
 
@@ -371,14 +373,8 @@ fn get_local_rclone_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
 
 /// Update the rclone path in application settings
 async fn update_rclone_path_in_settings(app_handle: &AppHandle, new_path: &Path) {
-    // Update in-memory state immediately (event listener is async and may not complete before engine restart)
-    let rclone_state = app_handle.state::<RcloneState>();
-    if let Ok(mut path_guard) = rclone_state.rclone_path.write() {
-        *path_guard = new_path.to_path_buf();
-        info!("✅ Updated in-memory rclone_path to: {:?}", new_path);
-    }
-
-    // Also persist to settings store
+    // Note: In-memory caching is no longer used - we read from JsonSettingsManager which caches internally
+    // Persist to settings store
     match save_setting(
         "core".to_string(),
         "rclone_path".to_string(),

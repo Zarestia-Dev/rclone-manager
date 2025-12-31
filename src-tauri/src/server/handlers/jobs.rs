@@ -188,3 +188,23 @@ pub async fn start_bisync_profile_handler(
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(jobid)))
 }
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RenameProfileBody {
+    pub remote_name: String,
+    pub old_name: String,
+    pub new_name: String,
+}
+
+pub async fn rename_job_profile_handler(
+    State(_): State<WebServerState>,
+    Json(body): Json<RenameProfileBody>,
+) -> Result<Json<ApiResponse<usize>>, AppError> {
+    use crate::rclone::backend::BACKEND_MANAGER;
+    let count = BACKEND_MANAGER
+        .job_cache
+        .rename_profile(&body.remote_name, &body.old_name, &body.new_name)
+        .await;
+    Ok(Json(ApiResponse::success(count)))
+}

@@ -64,6 +64,7 @@ pub async fn start_web_server(
         JOB_CACHE_CHANGED,
         MOUNT_STATE_CHANGED,
         SERVE_STATE_CHANGED,
+        #[cfg(any(target_os = "macos", target_os = "windows"))]
         MOUNT_PLUGIN_INSTALLED,
         NETWORK_STATUS_CHANGED,
         SCHEDULED_TASK_ERROR,

@@ -1,9 +1,6 @@
 use log::{debug, error, info, warn};
 use serde_json::{Value, json};
-use std::{
-    sync::{Arc, RwLock},
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::net::TcpStream;
 use tokio::time::sleep;
@@ -55,17 +52,18 @@ impl std::fmt::Display for RcloneError {
     }
 }
 
+/// Redact sensitive values from parameters for logging
+/// Reads restrict setting from JsonSettingsManager internally
 pub fn redact_sensitive_values(
     params: &std::collections::HashMap<String, Value>,
-    restrict_mode: &Arc<RwLock<bool>>,
+    app: &tauri::AppHandle,
 ) -> Value {
-    let restrict_enabled = restrict_mode
-        .read()
-        .map(|guard| *guard)
-        .unwrap_or_else(|e| {
-            log::error!("Failed to read restrict_mode: {e}");
-            false // Default to false if we can't read
-        });
+    use tauri::Manager;
+
+    let restrict_enabled: bool = app
+        .try_state::<rcman::JsonSettingsManager>()
+        .and_then(|manager| manager.inner().get("general.restrict").ok())
+        .unwrap_or(false);
 
     params
         .iter()

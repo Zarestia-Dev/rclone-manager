@@ -113,19 +113,19 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         "mount_options": params
             .mount_options
             .as_ref()
-            .map(|opts| redact_sensitive_values(opts, &state.restrict_mode)),
+            .map(|opts| redact_sensitive_values(opts, &app)),
         "vfs_options": params
             .vfs_options
             .as_ref()
-            .map(|opts| redact_sensitive_values(opts, &state.restrict_mode)),
+            .map(|opts| redact_sensitive_values(opts, &app)),
         "filter_options": params
             .filter_options
             .as_ref()
-            .map(|opts| redact_sensitive_values(opts, &state.restrict_mode)),
+            .map(|opts| redact_sensitive_values(opts, &app)),
         "backend_options": params
             .backend_options
             .as_ref()
-            .map(|opts| redact_sensitive_values(opts, &state.restrict_mode)),
+            .map(|opts| redact_sensitive_values(opts, &app)),
     });
 
     log_operation(

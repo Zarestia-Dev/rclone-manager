@@ -168,7 +168,7 @@ pub fn kill_all_rclone_processes(api_port: u16, oauth_port: u16) -> Result<(), S
 /// Aggressively clean up WebKitGTK zombie processes on Linux
 /// This finds any "WebKitNetworkProcess" that belongs to THIS application
 /// and kills it.
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", not(feature = "web-server")))]
 pub fn cleanup_webkit_zombies() {
     use log::{debug, info};
     use sysinfo::{ProcessesToUpdate, System};

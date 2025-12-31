@@ -363,6 +363,7 @@ pub async fn get_cached_serves() -> Result<Vec<ServeInstance>, String> {
 }
 
 /// Rename a profile in all cached mounts
+#[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn rename_mount_profile_in_cache(
     remote_name: String,
@@ -376,6 +377,7 @@ pub async fn rename_mount_profile_in_cache(
 }
 
 /// Rename a profile in all cached serves
+#[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn rename_serve_profile_in_cache(
     remote_name: String,

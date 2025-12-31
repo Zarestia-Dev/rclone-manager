@@ -149,6 +149,7 @@ pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {
     Ok(PathBuf::from(config_path))
 }
 
+#[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn get_rclone_rc_url() -> Result<String, String> {
     let backend = BACKEND_MANAGER.get_active().await;

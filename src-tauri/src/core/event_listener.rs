@@ -225,15 +225,7 @@ fn handle_settings_changed(app: &AppHandle) {
                         general.get("notifications").and_then(|v| v.as_bool())
                     {
                         debug!("💬 Notifications changed to: {notification}");
-                        let notifications_enabled = app_handle.state::<RcloneState>();
-                        let mut guard = match notifications_enabled.notifications_enabled.write() {
-                            Ok(g) => g,
-                            Err(e) => {
-                                error!("Failed to write notifications_enabled: {e}");
-                                return;
-                            }
-                        };
-                        *guard = notification;
+                        // Note: notifications setting is now read from JsonSettingsManager which caches internally
                     }
 
                     if let Some(startup) = general.get("start_on_startup").and_then(|v| v.as_bool())
@@ -267,15 +259,7 @@ fn handle_settings_changed(app: &AppHandle) {
                         {
                             let app_handle_clone = app_handle.clone();
                             tauri::async_runtime::spawn(async move {
-                                let tray_state = app_handle_clone.state::<RcloneState>();
-                                let mut guard = match tray_state.tray_enabled.write() {
-                                    Ok(g) => g,
-                                    Err(e) => {
-                                        error!("Failed to write tray_enabled: {e}");
-                                        return;
-                                    }
-                                };
-                                *guard = tray_enabled;
+                                // Note: tray_enabled setting is now read from JsonSettingsManager which caches internally
                                 debug!("🛠️ Tray visibility changed to: {tray_enabled}");
                                 if let Some(tray) = app_handle_clone.tray_by_id("main-tray") {
                                     let _ = tray.set_visible(tray_enabled);
@@ -296,15 +280,7 @@ fn handle_settings_changed(app: &AppHandle) {
                     }
                     if let Some(restrict) = general.get("restrict").and_then(|v| v.as_bool()) {
                         debug!("🔒 Restrict mode changed to: {restrict}");
-                        let rclone_state = app_handle.state::<RcloneState>();
-                        let mut guard = match rclone_state.restrict_mode.write() {
-                            Ok(g) => g,
-                            Err(e) => {
-                                error!("Failed to write restrict_mode: {e}");
-                                return;
-                            }
-                        };
-                        *guard = restrict;
+                        // Note: restrict setting is now read from JsonSettingsManager which caches internally
                         let app_handle_clone = app_handle.clone();
                         app_handle_clone
                             .emit(REMOTE_PRESENCE_CHANGED, "restrict_mode_changed")
@@ -344,23 +320,12 @@ fn handle_settings_changed(app: &AppHandle) {
                         core.get("rclone_config_file").and_then(|v| v.as_str())
                     {
                         debug!("🔄 Rclone config path changed to: {config_path}");
-                        let rclone_state = app_handle.state::<RcloneState>();
-                        let old_rclone_config_file = match rclone_state.rclone_config_file.read() {
-                            Ok(cfg) => cfg.to_string(),
-                            Err(e) => {
-                                error!("Failed to read rclone_config_file: {e}");
-                                return;
-                            }
-                        };
-                        let mut guard = match rclone_state.rclone_config_file.write() {
-                            Ok(g) => g,
-                            Err(e) => {
-                                error!("Failed to write rclone_config_file: {e}");
-                                return;
-                            }
-                        };
-                        *guard = config_path.to_string();
-                        drop(guard);
+                        // Note: rclone_config_file is now read from JsonSettingsManager which caches internally
+                        // Get old value by reading from settings before the change is applied
+                        let old_rclone_config_file: String = app_handle
+                            .try_state::<rcman::JsonSettingsManager>()
+                            .and_then(|manager| manager.inner().get("core.rclone_config_file").ok())
+                            .unwrap_or_default();
 
                         if let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
                             &app_handle,
@@ -370,59 +335,29 @@ fn handle_settings_changed(app: &AppHandle) {
                         ) {
                             error!("Failed to restart engine for rclone config file change: {e}");
                         }
-                        info!(
-                            "Rclone config file updated to: {}",
-                            match rclone_state.rclone_config_file.read() {
-                                Ok(cfg) => cfg,
-                                Err(e) => {
-                                    error!("Failed to read rclone_config_file for logging: {e}");
-                                    return;
-                                }
-                            }
-                        );
+                        info!("Rclone config file updated to: {config_path}");
                     }
 
                     if let Some(rclone_path) = core.get("rclone_path").and_then(|v| v.as_str()) {
                         debug!("🔄 Rclone path changed to: {rclone_path}");
-                        let rclone_state = app_handle.state::<RcloneState>();
-                        let old_rclone_path = match rclone_state.rclone_path.read() {
-                            Ok(path) => path.clone(),
-                            Err(e) => {
-                                error!("Failed to read rclone_path: {e}");
-                                return;
-                            }
-                        };
-                        debug!("Old rclone path: {}", old_rclone_path.to_string_lossy());
-                        {
-                            let mut path_guard = match rclone_state.rclone_path.write() {
-                                Ok(g) => g,
-                                Err(e) => {
-                                    error!("Failed to write rclone_path: {e}");
-                                    return;
-                                }
-                            };
-                            *path_guard = std::path::PathBuf::from(rclone_path);
-                        }
+                        // Note: rclone_path is now read from JsonSettingsManager which caches internally
+                        // Get old value by reading from settings before the change is applied
+                        let old_rclone_path: String = app_handle
+                            .try_state::<rcman::JsonSettingsManager>()
+                            .and_then(|manager| manager.inner().get("core.rclone_path").ok())
+                            .unwrap_or_default();
+                        debug!("Old rclone path: {old_rclone_path}");
 
                         // Restart engine with new rclone path
                         if let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
                             &app_handle,
                             "rclone_path",
-                            &old_rclone_path.to_string_lossy(),
+                            &old_rclone_path,
                             rclone_path,
                         ) {
                             error!("Failed to restart engine for rclone path change: {e}");
                         }
-                        info!(
-                            "Rclone path updated to: {}",
-                            match rclone_state.rclone_path.read() {
-                                Ok(path) => path.to_string_lossy().to_string(),
-                                Err(e) => {
-                                    error!("Failed to read rclone_path for logging: {e}");
-                                    return;
-                                }
-                            }
-                        );
+                        info!("Rclone path updated to: {rclone_path}");
                     }
 
                     if let Some(max_items) = core.get("max_tray_items").and_then(|v| v.as_u64()) {
@@ -447,15 +382,7 @@ fn handle_settings_changed(app: &AppHandle) {
                         .and_then(|v| v.as_bool())
                     {
                         debug!("♻️ Destroy window on close changed to: {destroy_window}");
-                        let rclone_state = app_handle.state::<RcloneState>();
-                        let mut guard = match rclone_state.destroy_window_on_close.write() {
-                            Ok(g) => g,
-                            Err(e) => {
-                                error!("Failed to write destroy_window_on_close: {e}");
-                                return;
-                            }
-                        };
-                        *guard = destroy_window;
+                        // Note: destroy_window_on_close is now read from JsonSettingsManager which caches internally
                     }
                 }
             }

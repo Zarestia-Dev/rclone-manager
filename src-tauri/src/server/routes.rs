@@ -55,6 +55,10 @@ fn jobs_routes() -> Router<WebServerState> {
             post(handlers::start_bisync_profile_handler),
         )
         .route("/:id/status", get(handlers::get_job_status_handler))
+        .route(
+            "/rename-profile-in-cache",
+            post(handlers::rename_job_profile_handler),
+        )
 }
 
 fn remote_routes() -> Router<WebServerState> {
@@ -242,6 +246,14 @@ fn mount_serve_routes() -> Router<WebServerState> {
         )
         .route("/unmount-remote", post(handlers::unmount_remote_handler))
         .route("/mount-types", get(handlers::get_mount_types_handler))
+        .route(
+            "/rename-mount-profile-in-cache",
+            post(handlers::rename_mount_profile_handler),
+        )
+        .route(
+            "/rename-serve-profile-in-cache",
+            post(handlers::rename_serve_profile_handler),
+        )
 }
 
 fn scheduled_tasks_routes() -> Router<WebServerState> {
@@ -307,6 +319,10 @@ fn security_routes() -> Router<WebServerState> {
         .route(
             "/has-config-password-env",
             get(handlers::has_config_password_env_handler),
+        )
+        .route(
+            "/is-config-encrypted",
+            get(handlers::is_config_encrypted_handler),
         )
         .route(
             "/remove-config-password",
@@ -379,6 +395,10 @@ fn backup_routes() -> Router<WebServerState> {
         .route(
             "/restore-settings",
             post(handlers::restore_settings_handler),
+        )
+        .route(
+            "/get-export-categories",
+            get(handlers::get_export_categories_handler),
         )
 }
 

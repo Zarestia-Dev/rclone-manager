@@ -8,6 +8,7 @@ use crate::rclone::backend::types::Backend;
 use crate::utils::rclone::endpoints::{EndpointHelper, config};
 use crate::utils::types::all_types::RcloneState;
 
+#[cfg(not(feature = "web-server"))]
 #[command]
 pub async fn get_all_remote_configs(
     state: State<'_, RcloneState>,
@@ -36,6 +37,7 @@ pub async fn get_all_remote_configs_internal(
     Ok(json)
 }
 
+#[cfg(not(feature = "web-server"))]
 #[command]
 pub async fn get_remotes(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
     let backend = BACKEND_MANAGER.get_active().await;

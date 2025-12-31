@@ -1,11 +1,14 @@
+#[cfg(not(feature = "web-server"))]
 use log::{debug, error};
+#[cfg(not(feature = "web-server"))]
 use tauri::{AppHandle, Window, command};
-#[cfg(desktop)]
+#[cfg(all(desktop, not(feature = "web-server")))]
 use tauri_plugin_dialog::DialogExt;
+#[cfg(not(feature = "web-server"))]
 use tauri_plugin_opener::OpenerExt;
 
 #[command]
-#[cfg(desktop)]
+#[cfg(all(desktop, not(feature = "web-server")))]
 pub async fn get_folder_location(
     app: AppHandle,
     require_empty: bool,
@@ -90,6 +93,7 @@ pub async fn get_folder_location(
     Err("Folder picker is not available on this platform".into())
 }
 
+#[cfg(not(feature = "web-server"))]
 #[command]
 pub async fn open_in_files(
     app: tauri::AppHandle,
@@ -114,7 +118,7 @@ pub async fn open_in_files(
 }
 
 #[command]
-#[cfg(desktop)]
+#[cfg(all(desktop, not(feature = "web-server")))]
 pub async fn get_file_location(window: Window) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::DialogExt;
     debug!("Opening file picker dialog...");

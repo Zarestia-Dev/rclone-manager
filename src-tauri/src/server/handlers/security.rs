@@ -2,9 +2,9 @@
 
 use axum::{
     extract::{Query, State},
-    http::StatusCode,
     response::Json,
 };
+use rcman::JsonSettingsManager;
 use serde::Deserialize;
 use tauri::Manager;
 
@@ -19,6 +19,16 @@ pub async fn has_stored_password_handler(
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(has_password)))
+}
+
+pub async fn is_config_encrypted_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<bool>>, AppError> {
+    use crate::core::security::commands::is_config_encrypted;
+    let is_encrypted = is_config_encrypted(state.app_handle.clone())
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(is_encrypted)))
 }
 
 pub async fn has_config_password_env_handler(

@@ -252,32 +252,38 @@ pub async fn poll_job(
 // TAURI COMMANDS (MOVED FROM STATE)
 // ============================================================================
 
+#[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn get_jobs() -> Result<Vec<JobInfo>, String> {
     Ok(BACKEND_MANAGER.job_cache.get_jobs().await)
 }
 
+#[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn delete_job(jobid: u64) -> Result<(), String> {
     BACKEND_MANAGER.job_cache.delete_job(jobid).await
 }
 
+#[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn get_job_status(jobid: u64) -> Result<Option<JobInfo>, String> {
     Ok(BACKEND_MANAGER.job_cache.get_job(jobid).await)
 }
 
+#[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn get_active_jobs() -> Result<Vec<JobInfo>, String> {
     Ok(BACKEND_MANAGER.job_cache.get_active_jobs().await)
 }
 
+#[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn get_jobs_by_source(source: String) -> Result<Vec<JobInfo>, String> {
     Ok(BACKEND_MANAGER.job_cache.get_jobs_by_source(&source).await)
 }
 
 /// Rename a profile in all cached running jobs
+#[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn rename_profile_in_cache(
     remote_name: String,

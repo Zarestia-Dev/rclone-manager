@@ -1,4 +1,4 @@
-#![cfg(desktop)]
+#![cfg(all(desktop, not(feature = "web-server")))]
 
 use log::{debug, error};
 use tauri::{AppHandle, Manager};

@@ -106,6 +106,7 @@ pub async fn delete_remote_settings(
 ///
 /// The registered migrator runs automatically when loading, so legacy
 /// format migration is handled transparently by rcman.
+#[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn get_remote_settings(
     remote_name: String,

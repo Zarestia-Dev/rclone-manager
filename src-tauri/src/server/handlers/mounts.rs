@@ -134,3 +134,35 @@ pub async fn stop_serve_handler(
     .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(msg)))
 }
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RenameCacheProfileBody {
+    pub remote_name: String,
+    pub old_name: String,
+    pub new_name: String,
+}
+
+pub async fn rename_mount_profile_handler(
+    State(_): State<WebServerState>,
+    Json(body): Json<RenameCacheProfileBody>,
+) -> Result<Json<ApiResponse<usize>>, AppError> {
+    use crate::rclone::backend::BACKEND_MANAGER;
+    let count = BACKEND_MANAGER
+        .remote_cache
+        .rename_profile_in_mounts(&body.remote_name, &body.old_name, &body.new_name)
+        .await;
+    Ok(Json(ApiResponse::success(count)))
+}
+
+pub async fn rename_serve_profile_handler(
+    State(_): State<WebServerState>,
+    Json(body): Json<RenameCacheProfileBody>,
+) -> Result<Json<ApiResponse<usize>>, AppError> {
+    use crate::rclone::backend::BACKEND_MANAGER;
+    let count = BACKEND_MANAGER
+        .remote_cache
+        .rename_profile_in_serves(&body.remote_name, &body.old_name, &body.new_name)
+        .await;
+    Ok(Json(ApiResponse::success(count)))
+}

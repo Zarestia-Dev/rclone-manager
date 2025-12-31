@@ -15,7 +15,6 @@ use crate::server::state::{ApiResponse, AppError, WebServerState};
 use crate::utils::types::all_types::RcloneState;
 
 pub async fn get_remotes_handler() -> Result<Json<ApiResponse<Vec<String>>>, AppError> {
-    use crate::rclone::backend::BACKEND_MANAGER;
     use crate::rclone::state::cache::get_cached_remotes;
     let remotes = get_cached_remotes().await.map_err(anyhow::Error::msg)?;
     info!("Fetched remotes: {:?}", remotes);
@@ -52,7 +51,6 @@ pub async fn get_remote_types_handler(
 }
 
 pub async fn get_cached_remotes_handler() -> Result<Json<ApiResponse<Vec<String>>>, AppError> {
-    use crate::rclone::backend::BACKEND_MANAGER;
     use crate::rclone::state::cache::get_cached_remotes;
     let remotes = get_cached_remotes().await.map_err(anyhow::Error::msg)?;
     info!("Fetched cached remotes: {:?}", remotes);

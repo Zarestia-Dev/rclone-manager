@@ -4,8 +4,6 @@ use log::{debug, error, info};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_shell::ShellExt;
 
-use crate::utils::types::all_types::RcloneState;
-
 /// Internal helper that borrows the `AppHandle` so Rust call-sites don't need to clone it.
 /// Returns Ok(true) if rclone is available, Ok(false) if not found.
 /// Emits RCLONE_ENGINE_PATH_ERROR event when binary is missing.
@@ -83,20 +81,17 @@ pub fn build_rclone_command(
         .command(binary_path.to_string_lossy().to_string());
 
     // Determine config file: explicit override takes precedence, otherwise use
-    // the application state's configured rclone_config_file (if set).
+    // the application settings' rclone_config_file (if set).
     if let Some(cfg) = config_override {
         if !cfg.is_empty() {
             cmd = cmd.arg("--config").arg(cfg);
         }
     } else {
-        let rclone_state = app.state::<RcloneState>();
-        let cfg = match rclone_state.rclone_config_file.read() {
-            Ok(cfg) => cfg.clone(),
-            Err(e) => {
-                error!("Failed to read rclone_config_file: {e}");
-                String::new()
-            }
-        };
+        // Read from settings manager which caches internally
+        let cfg: String = app
+            .try_state::<rcman::JsonSettingsManager>()
+            .and_then(|manager| manager.inner().get("core.rclone_config_file").ok())
+            .unwrap_or_default();
         if !cfg.is_empty() {
             cmd = cmd.arg("--config").arg(cfg);
         }
@@ -122,14 +117,18 @@ pub fn get_rclone_binary_path(base_path: &std::path::Path) -> PathBuf {
 }
 
 pub fn read_rclone_path(app: &AppHandle) -> PathBuf {
-    let rclone_state = app.state::<RcloneState>();
-    let configured_base_path = match rclone_state.rclone_path.read() {
-        Ok(path) => path.clone(),
-        Err(e) => {
-            error!("Failed to read rclone_path: {e}");
-            PathBuf::from("system")
-        }
-    };
+    // Read from settings manager which caches internally
+    let configured_base_path: PathBuf = app
+        .try_state::<rcman::JsonSettingsManager>()
+        .and_then(|manager| {
+            manager
+                .inner()
+                .get::<String>("core.rclone_path")
+                .ok()
+                .map(PathBuf::from)
+        })
+        .unwrap_or_else(|| PathBuf::from("system"));
+
     debug!(
         "🔄 Reading configured rclone base path: {}",
         configured_base_path.to_string_lossy()

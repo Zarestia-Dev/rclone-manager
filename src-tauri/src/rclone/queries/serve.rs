@@ -80,6 +80,7 @@ pub async fn list_serves_internal(
     Ok(json)
 }
 
+#[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn list_serves(state: State<'_, RcloneState>) -> Result<Value, String> {
     let backend = BACKEND_MANAGER.get_active().await;

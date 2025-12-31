@@ -99,6 +99,6 @@ pub async fn reset_settings(
 /// Load startup settings (blocking, for initialization)
 pub fn load_startup_settings(manager: &JsonSettingsManager) -> Result<AppSettings, String> {
     manager
-        .load_startup::<AppSettings>()
+        .settings::<AppSettings>()
         .map_err(|e| format!("Failed to load startup settings: {e}"))
 }

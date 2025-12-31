@@ -139,7 +139,7 @@ async fn restore_rcman_backup(
         // Reload settings to get new values
         manager.invalidate_cache();
         if let Some(app_settings) = manager
-            .load_startup::<crate::core::settings::schema::AppSettings>()
+            .settings::<crate::core::settings::schema::AppSettings>()
             .ok()
             .and_then(|s| serde_json::to_value(s).ok())
             .and_then(|v| v.get("app_settings").cloned())

@@ -32,10 +32,10 @@ use crate::utils::{
     types::{all_types::RcloneState, events::MOUNT_PLUGIN_INSTALLED},
 };
 
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", not(feature = "web-server")))]
 use tauri::State;
 
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", not(feature = "web-server")))]
 use crate::utils::types::all_types::RcloneState;
 
 // =============================================================================
@@ -277,7 +277,7 @@ pub async fn install_mount_plugin(
 }
 
 /// Install mount plugin - Linux version (no-op)
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", not(feature = "web-server")))]
 #[tauri::command]
 pub async fn install_mount_plugin(_state: State<'_, RcloneState>) -> Result<String, String> {
     Ok("Linux does not require a mount plugin".to_string())

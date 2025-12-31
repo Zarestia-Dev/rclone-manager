@@ -13,6 +13,7 @@ use tauri::State;
 // -----------------------------------------------------------------------------
 
 /// Load all RClone backend options from rcman sub-settings (single file)
+#[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn load_rclone_backend_options(
     manager: State<'_, JsonSettingsManager>,

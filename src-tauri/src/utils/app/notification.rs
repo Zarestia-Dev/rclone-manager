@@ -1,16 +1,13 @@
 use tauri::Manager;
 use tauri_plugin_notification::NotificationExt;
 
-use crate::utils::types::all_types::RcloneState;
-
 pub fn send_notification(app: &tauri::AppHandle, title: &str, body: &str) {
-    let enabled = match app.state::<RcloneState>().notifications_enabled.read() {
-        Ok(enabled) => *enabled,
-        Err(e) => {
-            log::error!("Failed to read notifications_enabled: {e}");
-            false // Default to disabled if we can't read
-        }
-    };
+    // Read notifications setting from JsonSettingsManager which caches internally
+    let enabled: bool = app
+        .try_state::<rcman::JsonSettingsManager>()
+        .and_then(|manager| manager.inner().get("general.notifications").ok())
+        .unwrap_or(false);
+
     log::debug!("🔔 Notifications enabled: {enabled}");
     if enabled {
         if let Err(e) = app

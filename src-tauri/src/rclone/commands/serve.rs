@@ -123,19 +123,19 @@ pub async fn start_serve(
         "vfs_options": params
             .vfs_options
             .as_ref()
-            .map(|opts| redact_sensitive_values(opts, &state.restrict_mode)),
+            .map(|opts| redact_sensitive_values(opts, &app)),
         "serve_options": params
             .serve_options
             .as_ref()
-            .map(|opts| redact_sensitive_values(opts, &state.restrict_mode)),
+            .map(|opts| redact_sensitive_values(opts, &app)),
         "backend_options": params
             .backend_options
             .as_ref()
-            .map(|opts| redact_sensitive_values(opts, &state.restrict_mode)),
+            .map(|opts| redact_sensitive_values(opts, &app)),
         "filter_options": params
             .filter_options
             .as_ref()
-            .map(|opts| redact_sensitive_values(opts, &state.restrict_mode)),
+            .map(|opts| redact_sensitive_values(opts, &app)),
     });
 
     log_operation(

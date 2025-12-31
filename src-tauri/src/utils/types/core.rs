@@ -1,24 +1,19 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
-use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use tauri_plugin_shell::process::CommandChild;
 
+/// Core application state for Rclone operations.
 pub struct RcloneState {
+    /// HTTP client for rclone API calls
     pub client: reqwest::Client,
-    pub rclone_config_file: Arc<std::sync::RwLock<String>>,
-    pub tray_enabled: Arc<std::sync::RwLock<bool>>,
+    /// Flag indicating the app is shutting down
     pub is_shutting_down: AtomicBool,
-    pub notifications_enabled: Arc<std::sync::RwLock<bool>>,
-    pub rclone_path: Arc<std::sync::RwLock<PathBuf>>,
-    pub restrict_mode: Arc<std::sync::RwLock<bool>>,
-
-    // New flag for memory optimization
-    pub destroy_window_on_close: Arc<std::sync::RwLock<bool>>,
+    /// Flag indicating a restart is required (e.g., after update)
     pub is_restart_required: AtomicBool,
+    /// Flag indicating an update is in progress
     pub is_update_in_progress: AtomicBool,
-    // OAuth process state
+    /// OAuth process state for interactive remote creation
     pub oauth_process: tokio::sync::Mutex<Option<CommandChild>>,
 }
 

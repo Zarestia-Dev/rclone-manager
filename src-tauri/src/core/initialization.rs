@@ -3,9 +3,11 @@ use rcman::JsonSettingsManager;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
-use crate::core::settings::schema::AppSettings;
 use crate::{
-    core::{event_listener::setup_event_listener, scheduler::engine::CronScheduler},
+    core::{
+        event_listener::setup_event_listener, scheduler::engine::CronScheduler,
+        settings::schema::AppSettings,
+    },
     rclone::{
         commands::system::set_bandwidth_limit,
         queries::flags::set_rclone_option,
@@ -16,9 +18,6 @@ use crate::{
     },
     utils::types::all_types::RcloneState,
 };
-
-#[cfg(all(desktop, not(feature = "web-server")))]
-use crate::utils::app::builder::setup_tray;
 
 /// Get the directory containing the executable (for portable mode)
 #[cfg(feature = "portable")]
@@ -35,11 +34,7 @@ fn get_executable_directory() -> Result<PathBuf, String> {
 // ============================================================================
 
 /// Initializes Rclone API and OAuth state, and launches the Rclone engine.
-pub fn init_rclone_state(
-    app_handle: &tauri::AppHandle,
-    _settings: &AppSettings,
-) -> Result<(), String> {
-    // BACKEND_MANAGER is already initialized with default ports (51900, 51901)
+pub fn init_rclone_state(app_handle: &tauri::AppHandle) -> Result<(), String> {
     // Load any persistent connections
     use crate::rclone::backend::BACKEND_MANAGER;
     use crate::utils::types::core::EngineState;
@@ -114,7 +109,7 @@ pub fn get_config_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> 
 }
 
 /// Handles async startup tasks
-pub async fn initialization(app_handle: tauri::AppHandle, settings: AppSettings) {
+pub async fn initialization(app_handle: tauri::AppHandle) {
     debug!("🚀 Starting async startup tasks");
 
     setup_event_listener(&app_handle);
@@ -164,25 +159,6 @@ pub async fn initialization(app_handle: tauri::AppHandle, settings: AppSettings)
 
     info!("📡 Starting serve watcher...");
     start_serve_watcher(app_handle.clone());
-
-    // Step 4: Setup tray if needed (desktop only)
-    #[cfg(all(desktop, not(feature = "web-server")))]
-    {
-        let force_tray = std::env::args().any(|arg| arg == "--tray");
-        if settings.general.tray_enabled || force_tray {
-            if force_tray {
-                debug!("🧊 Setting up tray (forced by --tray argument)");
-            } else {
-                debug!("🧊 Setting up tray (enabled in settings)");
-            }
-            if let Err(e) = setup_tray(app_handle.clone(), settings.core.max_tray_items).await {
-                error!("Failed to setup tray: {e}");
-            }
-        }
-    }
-
-    #[cfg(feature = "web-server")]
-    info!("ℹ️  Tray disabled (web-server mode)");
 
     info!("🎉 Initialization complete");
 }

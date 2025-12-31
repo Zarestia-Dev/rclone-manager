@@ -11,4 +11,5 @@ pub mod types;
 // Shortcuts not working on linux wayland, so moved to frontend
 // Check this issue for more details:
 // https://github.com/tauri-apps/global-hotkey/issues/28
+#[cfg(all(desktop, not(feature = "web-server")))]
 pub mod shortcuts;

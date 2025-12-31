@@ -84,3 +84,17 @@ pub async fn restore_settings_handler(
     .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(result)))
 }
+
+pub async fn get_export_categories_handler(
+    State(state): State<WebServerState>,
+) -> Result<
+    Json<
+        ApiResponse<Vec<crate::core::settings::backup::export_categories::ExportCategoryResponse>>,
+    >,
+    AppError,
+> {
+    use crate::core::settings::backup::export_categories::get_export_categories;
+    let manager: tauri::State<SettingsManager<JsonStorage>> = state.app_handle.state();
+    let categories = get_export_categories(manager);
+    Ok(Json(ApiResponse::success(categories)))
+}
