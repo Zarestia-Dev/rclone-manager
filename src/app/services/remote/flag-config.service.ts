@@ -21,11 +21,7 @@ export class FlagConfigService extends TauriBaseService {
    * Fetches the master data object: all options, with live values, pre-grouped by the backend.
    */
   async getGroupedOptions(): Promise<GroupedRCloneOptions> {
-    const response = await this.invokeCommand<GroupedRCloneOptions>(
-      'get_grouped_options_with_values'
-    );
-    console.log('Fetched and cached grouped RClone options:', response);
-    return response;
+    return this.invokeCommand<GroupedRCloneOptions>('get_grouped_options_with_values');
   }
 
   /**

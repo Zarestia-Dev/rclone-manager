@@ -31,19 +31,6 @@ pub async fn is_config_encrypted_handler(
     Ok(Json(ApiResponse::success(is_encrypted)))
 }
 
-pub async fn has_config_password_env_handler(
-    State(state): State<WebServerState>,
-) -> Result<Json<ApiResponse<bool>>, AppError> {
-    use crate::core::security::commands::has_config_password_env;
-    let env_manager = state
-        .app_handle
-        .state::<crate::core::security::SafeEnvironmentManager>();
-    let has_password = has_config_password_env(env_manager)
-        .await
-        .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(has_password)))
-}
-
 pub async fn remove_config_password_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
@@ -188,21 +175,6 @@ pub async fn set_config_password_env_handler(
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(
         "Config password environment variable set successfully".to_string(),
-    )))
-}
-
-pub async fn clear_config_password_env_handler(
-    State(state): State<WebServerState>,
-) -> Result<Json<ApiResponse<String>>, AppError> {
-    use crate::core::security::commands::clear_config_password_env;
-    let env_manager = state
-        .app_handle
-        .state::<crate::core::security::SafeEnvironmentManager>();
-    clear_config_password_env(env_manager)
-        .await
-        .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Config password environment variable cleared successfully".to_string(),
     )))
 }
 

@@ -1,7 +1,6 @@
 // Event constants for emit/listen operations
 
 // Core engine events
-export const RCLONE_API_URL_UPDATED = 'rclone_api_url_updated';
 export const ENGINE_RESTARTED = 'engine_restarted';
 
 // Dedicated engine state events (no payload needed - event name indicates state)
@@ -13,11 +12,11 @@ export const RCLONE_ENGINE_UPDATING = 'rclone_engine_updating';
 export const RCLONE_PASSWORD_STORED = 'rclone_password_stored';
 
 // Remote management events
-export const REMOTE_STATE_CHANGED = 'remote_state_changed';
-export const REMOTE_PRESENCE_CHANGED = 'remote_presence_changed';
-export const REMOTE_CACHE_UPDATED = 'remote_cache_updated';
+// Remote management events
+export const REMOTE_CACHE_CHANGED = 'remote_cache_changed';
 
 // System and settings events
+export const REMOTE_SETTINGS_CHANGED = 'remote_settings_changed';
 export const SYSTEM_SETTINGS_CHANGED = 'system_settings_changed';
 export const BANDWIDTH_LIMIT_CHANGED = 'bandwidth_limit_changed';
 export const RCLONE_CONFIG_UNLOCKED = 'rclone_config_unlocked';
@@ -34,10 +33,8 @@ export const MOUNT_PLUGIN_INSTALLED = 'mount_plugin_installed';
 // Network events
 export const NETWORK_STATUS_CHANGED = 'network_status_changed';
 
-// Scheduled task events
-export const SCHEDULED_TASK_ERROR = 'scheduled_task_error';
-export const SCHEDULED_TASK_COMPLETED = 'scheduled_task_completed';
-export const SCHEDULED_TASK_STOPPED = 'scheduled_task_stopped';
+// Scheduled task event
+export const SCHEDULED_TASKS_CACHE_CHANGED = 'scheduled_tasks_cache_changed';
 
 // Application events
 export const APP_EVENT = 'app_event';

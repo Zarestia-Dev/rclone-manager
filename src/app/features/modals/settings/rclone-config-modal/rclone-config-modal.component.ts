@@ -33,7 +33,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { distinctUntilChanged, Subject, takeUntil, debounceTime } from 'rxjs';
 
 import { FlagConfigService, RcloneBackendOptionsService } from '@app/services';
-import { NotificationService } from '../../../../shared/services/notification.service';
+import { NotificationService } from '@app/services';
 import { RcConfigOption } from '@app/types';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
 import { SettingControlComponent } from 'src/app/shared/components';

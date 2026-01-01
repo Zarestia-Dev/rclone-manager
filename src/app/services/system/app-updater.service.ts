@@ -8,7 +8,7 @@ import {
   firstValueFrom,
 } from 'rxjs';
 import { map, takeWhile } from 'rxjs/operators';
-import { NotificationService } from '../../shared/services/notification.service';
+import { NotificationService } from '@app/services';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { UpdateMetadata } from '@app/types';
 import { TauriBaseService } from '../core/tauri-base.service';
@@ -94,14 +94,14 @@ export class AppUpdaterService extends TauriBaseService {
     try {
       await this.ensureInitialized();
 
-      console.log('Checking for updates on channel:', this.updateChannelSubject.value);
+      console.debug('Checking for updates on channel:', this.updateChannelSubject.value);
 
       this.updateInProgressSubject.next(false);
       this.resetDownloadStatus();
 
       // Check if updates are disabled (use cached value)
       if (this.areUpdatesDisabled()) {
-        console.log('Updates are disabled for this build type');
+        console.debug('Updates are disabled for this build type');
         return null;
       }
 
@@ -110,18 +110,18 @@ export class AppUpdaterService extends TauriBaseService {
       });
 
       if (result) {
-        console.log('Update available:', result.version, 'Release tag:', result.releaseTag);
+        console.debug('Update available:', result.version, 'Release tag:', result.releaseTag);
 
         // If restart is required, set flag and return
         if (result.restartRequired) {
-          console.log('Restart is required');
+          console.debug('Restart is required');
           this.restartRequiredSubject.next(true);
           return null;
         }
 
         // If update is already in progress, restore the UI state
         if (result.updateInProgress) {
-          console.log('Update is already in progress, restoring UI state');
+          console.debug('Update is already in progress, restoring UI state');
           this.updateAvailableSubject.next(result);
           this.updateInProgressSubject.next(true);
           this.hasUpdatesSubject.next(true);
@@ -131,7 +131,7 @@ export class AppUpdaterService extends TauriBaseService {
 
         // Check if version is skipped before setting as available
         if (this.isVersionSkipped(result.version)) {
-          console.log(`Update ${result.version} was skipped by user`);
+          console.debug(`Update ${result.version} was skipped by user`);
           return null;
         }
 
@@ -143,7 +143,7 @@ export class AppUpdaterService extends TauriBaseService {
           10000
         );
       } else {
-        console.log('No update available for channel:', this.updateChannelSubject.value);
+        console.debug('No update available for channel:', this.updateChannelSubject.value);
         this.updateAvailableSubject.next(null);
       }
 
@@ -402,7 +402,7 @@ export class AppUpdaterService extends TauriBaseService {
 
       const autoCheck = await this.getAutoCheckEnabled();
       if (autoCheck && !updatesDisabled) {
-        console.log('Auto-check enabled, checking for app updates...');
+        console.debug('Auto-check enabled, checking for app updates...');
         this.checkForUpdates();
       }
     } catch (error) {

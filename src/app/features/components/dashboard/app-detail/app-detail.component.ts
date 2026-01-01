@@ -53,7 +53,7 @@ import {
   TransferActivityPanelComponent,
 } from '../../../../shared/detail-shared';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
-import { IconService } from '../../../../shared/services/icon.service';
+import { IconService } from '@app/services';
 import { JobManagementService } from '@app/services';
 import { toString as cronstrue } from 'cronstrue';
 import { VfsControlPanelComponent } from '../../../../shared/detail-shared/vfs-control/vfs-control-panel.component';
@@ -92,7 +92,6 @@ export class AppDetailComponent {
   remoteSettings = input<RemoteSettings>({});
   restrictMode = input<boolean>(false);
   actionInProgress = input<ActionState[] | null | undefined>(null);
-  runningServes = input<ServeListItem[]>([]);
 
   // --- Outputs ---
   @Output() syncOperationChange = new EventEmitter<SyncOperationType>();
@@ -289,26 +288,27 @@ export class AppDetailComponent {
 
   /** Check if a profile is active for an operation type */
   private isProfileActive(type: string, profileName?: string): boolean {
-    if (type === 'serve') {
-      const remote = this.selectedRemote();
-      const serves = this.runningServes();
-      return profileName
-        ? serves.some(
-            s => s.params.fs.startsWith(remote.remoteSpecs.name + ':') && s.profile === profileName
-          )
-        : serves.some(s => s.params.fs.startsWith(remote.remoteSpecs.name + ':'));
-    }
-
-    const state = this.getOperationState(type as SyncOperationType | 'mount');
+    const state = this.getOperationState(type as SyncOperationType | 'mount' | 'serve');
     if (!state) return false;
+
+    if (type === 'serve') {
+      const serves = (state.serves || []) as ServeListItem[];
+      return profileName ? serves.some(s => s.profile === profileName) : state.isOnServe;
+    }
 
     if (type === 'mount') {
       return profileName ? !!state.activeProfiles?.[profileName] : !!state.mounted;
     }
 
-    // Sync types
-    const isActiveKey = `isOn${type.charAt(0).toUpperCase() + type.slice(1)}`;
-    return profileName ? !!state.activeProfiles?.[profileName] : !!state[isActiveKey];
+    if (['sync', 'copy', 'move', 'bisync'].includes(type)) {
+      if (profileName) {
+        return !!state.activeProfiles?.[profileName];
+      }
+      const isActiveKey = `isOn${type.charAt(0).toUpperCase() + type.slice(1)}`;
+      return !!state[isActiveKey];
+    }
+
+    return false;
   }
 
   /** Get profile configs for an operation type */
@@ -323,8 +323,7 @@ export class AppDetailComponent {
 
   /** Filters running serves to only show those belonging to the selected remote */
   filteredRunningServes = computed(() => {
-    const remoteName = this.remoteName();
-    return this.runningServes().filter(serve => serve.params.fs.startsWith(remoteName + ':'));
+    return (this.selectedRemote().serveState?.serves || []) as ServeListItem[];
   });
 
   isSyncType = computed(() => this.mainOperationType() === 'sync');
@@ -501,33 +500,7 @@ export class AppDetailComponent {
     pathConfig: PathDisplayConfig,
     profileName?: string
   ): OperationControlConfig {
-    const remote = this.selectedRemote();
-    let isActive = false;
-
-    if (this.isSyncType()) {
-      const stateMap: any = {
-        sync: remote?.syncState,
-        bisync: remote?.bisyncState,
-        move: remote?.moveState,
-        copy: remote?.copyState,
-      };
-
-      const state = stateMap[type];
-
-      if (profileName && state?.activeProfiles) {
-        isActive = !!state.activeProfiles[profileName];
-      } else {
-        const keyMap: any = {
-          sync: 'isOnSync',
-          bisync: 'isOnBisync',
-          move: 'isOnMove',
-          copy: 'isOnCopy',
-        };
-        isActive = !!state?.[keyMap[type]];
-      }
-    } else {
-      isActive = !!remote?.mountState?.mounted;
-    }
+    const isActive = this.isProfileActive(type, profileName);
 
     const inProgressActions = this.actionInProgress();
     const actionMatch = inProgressActions?.find(
@@ -576,15 +549,9 @@ export class AppDetailComponent {
   });
 
   private createMountControlConfig(config: any, profileName?: string): OperationControlConfig {
-    const mountState = this.selectedRemote()?.mountState;
     const inProgressActions = this.actionInProgress();
 
-    let isActive = false;
-    if (profileName && mountState?.activeProfiles) {
-      isActive = !!mountState.activeProfiles[profileName];
-    } else {
-      isActive = !!mountState?.mounted;
-    }
+    const isActive = this.isProfileActive('mount', profileName);
 
     // Check specific mount action
     const actionMatch = inProgressActions?.find(
@@ -633,19 +600,8 @@ export class AppDetailComponent {
   });
 
   private createServeControlConfig(config: any, profileName?: string): OperationControlConfig {
-    const serves = this.runningServes();
     const remote = this.selectedRemote();
-
-    let isActive = false;
-    // Check if ANY serve matches this profile
-    if (profileName) {
-      isActive = serves.some(
-        s => s.params.fs.startsWith(remote.remoteSpecs.name + ':') && s.profile === profileName
-      );
-    } else {
-      // Legacy check: any serve for this remote
-      isActive = serves.some(s => s.params.fs.startsWith(remote.remoteSpecs.name + ':'));
-    }
+    const isActive = this.isProfileActive('serve', profileName);
 
     const inProgressActions = this.actionInProgress();
     const actionMatch = inProgressActions?.find(

@@ -1,37 +1,21 @@
 use log::{debug, warn};
-use serde_json::json;
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
 };
 use std::time::Duration;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 use tokio::time;
 
 use crate::rclone::backend::{BACKEND_MANAGER, types::Backend};
 use crate::rclone::queries::{mount::get_mounted_remotes_internal, serve::list_serves_internal};
-use crate::utils::types::all_types::{MountedRemote, RemoteCache, ServeInstance};
-use crate::utils::types::events::{REMOTE_STATE_CHANGED, SERVE_STATE_CHANGED};
+use crate::utils::types::all_types::{RemoteCache, ServeInstance};
 
 /// Global flag to control the mounted remote watcher
 static WATCHER_RUNNING: AtomicBool = AtomicBool::new(false);
 
 /// Global flag to control the serve watcher
 static SERVE_WATCHER_RUNNING: AtomicBool = AtomicBool::new(false);
-
-/// Helper to find differences between two lists of mounts
-fn find_mount_changes(previous: &[MountedRemote], current: &[MountedRemote]) -> Vec<MountedRemote> {
-    previous
-        .iter()
-        .filter(|prev_remote| {
-            !current.iter().any(|curr_remote| {
-                curr_remote.fs == prev_remote.fs
-                    && curr_remote.mount_point == prev_remote.mount_point
-            })
-        })
-        .cloned()
-        .collect()
-}
 
 /// Core logic to check and reconcile mounted remotes for the active backend
 async fn check_and_reconcile_mounts(
@@ -40,7 +24,6 @@ async fn check_and_reconcile_mounts(
     cache: Arc<RemoteCache>,
     client: reqwest::Client,
 ) -> Result<(), String> {
-    let cached_mounts = cache.get_mounted_remotes().await;
     let api_url = backend.api_url();
     let api_mounts = match get_mounted_remotes_internal(&client, &backend).await {
         Ok(mounts) => mounts,
@@ -53,43 +36,12 @@ async fn check_and_reconcile_mounts(
         }
     };
 
-    let unmounted_remotes = find_mount_changes(&cached_mounts, &api_mounts);
-    let newly_mounted = find_mount_changes(&api_mounts, &cached_mounts);
-
-    if unmounted_remotes.is_empty() && newly_mounted.is_empty() {
-        return Ok(()); // No changes
-    }
-
-    debug!("🔍 Detected mount changes - updating cache for {}", api_url);
-
-    // Update cache directly
-    {
-        let mut cache_write = cache.mounted.write().await;
-        *cache_write = api_mounts;
-    }
-
-    // Emit events for unmounted remotes
-    for remote in unmounted_remotes {
-        let event_payload = json!({
-            "fs": remote.fs,
-            "mount_point": remote.mount_point,
-            "reason": "externally_unmounted"
-        });
-        if let Err(e) = app_handle.emit(REMOTE_STATE_CHANGED, &event_payload) {
-            warn!("⚠️ Failed to emit remote_state_changed event: {e}");
-        }
-    }
-
-    // Emit events for newly mounted remotes
-    for remote in newly_mounted {
-        let event_payload = json!({
-            "fs": remote.fs,
-            "mount_point": remote.mount_point,
-            "reason": "externally_mounted"
-        });
-        if let Err(e) = app_handle.emit(REMOTE_STATE_CHANGED, &event_payload) {
-            warn!("⚠️ Failed to emit remote_state_changed event: {e}");
-        }
+    // Use reactive cache update - it will emit event only if changed
+    let changed = cache
+        .update_mounts_if_changed(api_mounts, &app_handle)
+        .await;
+    if changed {
+        debug!("🔍 Mount cache updated via watcher for {}", api_url);
     }
 
     Ok(())
@@ -182,7 +134,6 @@ async fn check_and_reconcile_serves(
     cache: Arc<RemoteCache>,
     client: reqwest::Client,
 ) -> Result<(), String> {
-    let cached_serves = cache.get_serves().await;
     let api_url = backend.api_url();
     let api_serves = match get_serves_from_api(&client, &backend).await {
         Ok(serves) => serves,
@@ -195,75 +146,12 @@ async fn check_and_reconcile_serves(
         }
     };
 
-    let stopped_serves: Vec<ServeInstance> = cached_serves
-        .iter()
-        .filter(|cached| !api_serves.iter().any(|api| api.id == cached.id))
-        .cloned()
-        .collect();
-
-    let new_serves: Vec<ServeInstance> = api_serves
-        .iter()
-        .filter(|api| !cached_serves.iter().any(|cached| cached.id == api.id))
-        .cloned()
-        .collect();
-
-    if stopped_serves.is_empty() && new_serves.is_empty() {
-        return Ok(()); // No changes
-    }
-
-    debug!("🔍 Detected serve changes - updating cache for {}", api_url);
-
-    // Update cache directly
-    {
-        let mut cache_write = cache.serves.write().await;
-        *cache_write = api_serves;
-    }
-
-    // Emit events for stopped serves
-    for serve in stopped_serves {
-        let fs = serve
-            .params
-            .get("fs")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
-        let serve_type = serve
-            .params
-            .get("type")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
-        let event_payload = json!({
-            "id": serve.id,
-            "fs": fs,
-            "type": serve_type,
-            "reason": "externally_stopped"
-        });
-        if let Err(e) = app_handle.emit(SERVE_STATE_CHANGED, &event_payload) {
-            warn!("⚠️ Failed to emit serve_state_changed event: {e}");
-        }
-    }
-
-    // Emit events for new serves
-    for serve in new_serves {
-        let fs = serve
-            .params
-            .get("fs")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
-        let serve_type = serve
-            .params
-            .get("type")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
-        let event_payload = json!({
-            "id": serve.id,
-            "fs": fs,
-            "type": serve_type,
-            "addr": serve.addr,
-            "reason": "externally_started"
-        });
-        if let Err(e) = app_handle.emit(SERVE_STATE_CHANGED, &event_payload) {
-            warn!("⚠️ Failed to emit serve_state_changed event: {e}");
-        }
+    // Use reactive cache update - it will emit event only if changed
+    let changed = cache
+        .update_serves_if_changed(api_serves, &app_handle)
+        .await;
+    if changed {
+        debug!("🔍 Serve cache updated via watcher for {}", api_url);
     }
 
     Ok(())
@@ -324,56 +212,4 @@ pub fn start_serve_watcher(app_handle: AppHandle) {
 pub fn stop_serve_watcher() {
     SERVE_WATCHER_RUNNING.store(false, Ordering::SeqCst);
     debug!("🔍 Serve watcher stop requested");
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn mock_mount(fs: &str, mount_point: &str) -> MountedRemote {
-        MountedRemote {
-            fs: fs.to_string(),
-            mount_point: mount_point.to_string(),
-            profile: None,
-        }
-    }
-
-    #[test]
-    fn test_find_mount_changes_no_changes() {
-        let previous = vec![mock_mount("remote1:", "/mnt/remote1")];
-        let current = vec![mock_mount("remote1:", "/mnt/remote1")];
-        let changes = find_mount_changes(&previous, &current);
-        assert!(changes.is_empty());
-    }
-
-    #[test]
-    fn test_find_mount_changes_detects_unmount() {
-        let previous = vec![
-            mock_mount("remote1:", "/mnt/remote1"),
-            mock_mount("remote2:", "/mnt/remote2"),
-        ];
-        let current = vec![mock_mount("remote1:", "/mnt/remote1")];
-        let unmounted = find_mount_changes(&previous, &current);
-        assert_eq!(unmounted.len(), 1);
-        assert_eq!(unmounted[0].fs, "remote2:");
-    }
-
-    #[test]
-    fn test_find_mount_changes_detects_new_mount() {
-        let previous = vec![mock_mount("remote1:", "/mnt/remote1")];
-        let current = vec![
-            mock_mount("remote1:", "/mnt/remote1"),
-            mock_mount("remote2:", "/mnt/remote2"),
-        ];
-        // Using find_mount_changes with args swapped to find NEW mounts
-        let newly_mounted = find_mount_changes(&current, &previous);
-        assert_eq!(newly_mounted.len(), 1);
-        assert_eq!(newly_mounted[0].fs, "remote2:");
-    }
-
-    #[test]
-    fn test_find_mount_changes_both_empty() {
-        let changes = find_mount_changes(&[], &[]);
-        assert!(changes.is_empty());
-    }
 }

@@ -12,7 +12,7 @@ use rcman::JsonSettingsManager;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, State};
 
-use crate::utils::types::events::REMOTE_PRESENCE_CHANGED;
+use crate::utils::types::events::REMOTE_SETTINGS_CHANGED;
 use crate::{
     core::scheduler::engine::CronScheduler, rclone::state::scheduled_tasks::ScheduledTasksCache,
 };
@@ -70,7 +70,7 @@ pub async fn save_remote_settings(
         Err(e) => warn!("⚠️  Failed to update scheduled tasks for remote '{remote_name}': {e}"),
     }
 
-    app_handle.emit(REMOTE_PRESENCE_CHANGED, remote_name).ok();
+    app_handle.emit(REMOTE_SETTINGS_CHANGED, remote_name).ok();
     Ok(())
 }
 
@@ -89,7 +89,7 @@ pub async fn delete_remote_settings(
     // Check if exists first
     if remotes.get_value(&remote_name).is_err() {
         warn!("⚠️ Remote settings for '{remote_name}' not found, but that's okay.");
-        app_handle.emit(REMOTE_PRESENCE_CHANGED, remote_name).ok();
+        app_handle.emit(REMOTE_SETTINGS_CHANGED, remote_name).ok();
         return Ok(());
     }
 
@@ -98,7 +98,7 @@ pub async fn delete_remote_settings(
         .map_err(|e| format!("❌ Failed to delete remote settings: {e}"))?;
 
     info!("✅ Remote settings for '{remote_name}' deleted.");
-    app_handle.emit(REMOTE_PRESENCE_CHANGED, remote_name).ok();
+    app_handle.emit(REMOTE_SETTINGS_CHANGED, remote_name).ok();
     Ok(())
 }
 

@@ -58,11 +58,11 @@ import {
 } from '@app/types';
 
 import { FormatFileSizePipe } from '@app/pipes';
-import { IconService } from 'src/app/shared/services/icon.service';
+import { IconService } from '@app/services';
 import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
 
 import { InputModalComponent } from 'src/app/shared/modals/input-modal/input-modal.component';
-import { NotificationService } from 'src/app/shared/services/notification.service';
+import { NotificationService } from '@app/services';
 import { RemoteAboutModalComponent } from '../remote/remote-about-modal.component';
 import { PropertiesModalComponent } from '../properties/properties-modal.component';
 import { OperationsPanelComponent } from '../operations-panel/operations-panel.component';

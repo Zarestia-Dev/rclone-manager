@@ -42,7 +42,7 @@ export class SseClientService implements OnDestroy {
       if (port === '1420' || devApiPort) {
         const apiPort = devApiPort || '8080';
         portSuffix = `:${apiPort}`;
-        console.log('🔧 Development mode - SSE connecting to API server on port', apiPort);
+        console.debug('🔧 Development mode - SSE connecting to API server on port', apiPort);
       } else {
         portSuffix = port ? `:${port}` : ''; // Only add port if it's not default
       }
@@ -59,7 +59,7 @@ export class SseClientService implements OnDestroy {
     if (this.eventSource) {
       this.eventSource.close();
       this.eventSource = null;
-      console.log('🔌 SSE disconnected');
+      console.debug('🔌 SSE disconnected');
     }
   }
 
@@ -86,12 +86,12 @@ export class SseClientService implements OnDestroy {
   }
 
   private createEventSource(url: string): void {
-    console.log('🔌 Connecting to SSE:', url);
+    console.debug('🔌 Connecting to SSE:', url);
     // Browser handles Basic Auth automatically for EventSource
     this.eventSource = new EventSource(url, { withCredentials: true });
 
     this.eventSource.onopen = (): void => {
-      console.log('✅ SSE connected');
+      console.debug('✅ SSE connected');
       this.reconnectAttempts = 0;
       this.reconnectDelay = 1000;
     };
@@ -105,7 +105,7 @@ export class SseClientService implements OnDestroy {
       if (this.reconnectAttempts < this.maxReconnectAttempts) {
         this.reconnectAttempts++;
         const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-        console.log(`🔄 Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})...`);
+        console.debug(`🔄 Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})...`);
 
         setTimeout(() => {
           this.createEventSource(url);

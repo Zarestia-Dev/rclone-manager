@@ -1,8 +1,9 @@
 use rcman::JsonSettingsManager;
 use std::collections::HashMap;
 
-use log::{debug, error};
+use log::{debug, error, info};
 use serde_json::json;
+use tauri::{AppHandle, Emitter};
 use tokio::sync::RwLock;
 
 use crate::{
@@ -14,7 +15,10 @@ use crate::{
             list_serves_internal,
         },
     },
-    utils::types::{MountedRemote, RemoteCache, ServeInstance},
+    utils::types::{
+        MountedRemote, RemoteCache, ServeInstance,
+        events::{MOUNT_STATE_CHANGED, SERVE_STATE_CHANGED},
+    },
 };
 
 impl RemoteCache {
@@ -59,6 +63,74 @@ impl RemoteCache {
         *mp = mount_profiles;
         let mut sp = self.serve_profiles.write().await;
         *sp = serve_profiles;
+    }
+
+    // =========================================================================
+    // REACTIVE CACHE UPDATES - Emit events only when data actually changes
+    // =========================================================================
+
+    /// Update mounted remotes cache and emit event if changed.
+    /// Attaches profiles automatically. Returns true if changed.
+    pub async fn update_mounts_if_changed(
+        &self,
+        new_mounts: Vec<MountedRemote>,
+        app_handle: &AppHandle,
+    ) -> bool {
+        // Attach profiles
+        let profiles = self.mount_profiles.read().await;
+        let enriched: Vec<MountedRemote> = new_mounts
+            .into_iter()
+            .map(|mut m| {
+                m.profile = profiles.get(&m.mount_point).cloned();
+                m
+            })
+            .collect();
+        drop(profiles);
+
+        // Compare and update
+        let mut cache = self.mounted.write().await;
+        if *cache == enriched {
+            return false;
+        }
+        *cache = enriched;
+        drop(cache);
+
+        // Emit
+        info!("📡 Mount cache changed");
+        let _ = app_handle.emit(MOUNT_STATE_CHANGED, "cache_updated");
+        true
+    }
+
+    /// Update serves cache and emit event if changed.
+    /// Attaches profiles automatically. Returns true if changed.
+    pub async fn update_serves_if_changed(
+        &self,
+        new_serves: Vec<ServeInstance>,
+        app_handle: &AppHandle,
+    ) -> bool {
+        // Attach profiles
+        let profiles = self.serve_profiles.read().await;
+        let enriched: Vec<ServeInstance> = new_serves
+            .into_iter()
+            .map(|mut s| {
+                s.profile = profiles.get(&s.id).cloned();
+                s
+            })
+            .collect();
+        drop(profiles);
+
+        // Compare and update
+        let mut cache = self.serves.write().await;
+        if *cache == enriched {
+            return false;
+        }
+        *cache = enriched;
+        drop(cache);
+
+        // Emit
+        info!("📡 Serve cache changed");
+        let _ = app_handle.emit(SERVE_STATE_CHANGED, "cache_updated");
+        true
     }
 
     pub fn new() -> Self {

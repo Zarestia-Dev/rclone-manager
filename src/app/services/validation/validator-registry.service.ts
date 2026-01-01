@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { AbstractControl, ValidatorFn, ValidationErrors } from '@angular/forms';
-import { ValidatorsService } from './validators.service';
+import { ValidatorsService } from '@app/services';
 import { REMOTE_NAME_REGEX } from '@app/types';
 
 @Injectable({

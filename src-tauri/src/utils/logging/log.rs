@@ -70,15 +70,17 @@ fn parse_log_level(level: &str) -> LevelFilter {
 }
 
 // --- Modified function to accept AppHandle ---
-pub fn init_logging(log_level: &str, app_handle: AppHandle) -> Result<(), SetLoggerError> {
+pub fn init_logging(
+    log_level: &str,
+    app_handle: AppHandle,
+    cache_dir: &std::path::Path,
+) -> Result<(), SetLoggerError> {
     // Initialize rotating file logger using cache directory
     use tauri::Manager;
 
-    if let Ok(cache_dir) = app_handle.path().app_cache_dir() {
-        let log_dir = cache_dir.join("logs");
-        if let Err(e) = super::file_writer::init_file_writer(&log_dir) {
-            eprintln!("Failed to initialize file logger: {e}");
-        }
+    let log_dir = cache_dir.join("logs");
+    if let Err(e) = super::file_writer::init_file_writer(&log_dir) {
+        eprintln!("Failed to initialize file logger: {e}");
     }
 
     let (tx, mut rx) = mpsc::channel::<LogEntry>(1000);

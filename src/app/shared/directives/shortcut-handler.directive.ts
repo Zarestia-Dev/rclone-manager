@@ -12,7 +12,7 @@ import { RcloneConfigModalComponent } from '../../features/modals/settings/rclon
 import { MountManagementService, NautilusService, WindowService } from '@app/services';
 import { BackupRestoreUiService } from '@app/services';
 import { OnboardingStateService } from '@app/services';
-import { NotificationService } from '../services/notification.service';
+import { NotificationService } from '@app/services';
 import { STANDARD_MODAL_SIZE } from '@app/types';
 
 @Directive({

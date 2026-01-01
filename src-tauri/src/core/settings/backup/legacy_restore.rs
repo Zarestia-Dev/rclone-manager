@@ -13,7 +13,7 @@ use crate::{
     rclone::{commands::remote::create_remote, queries::get_rclone_config_file},
     utils::types::{
         all_types::RcloneState,
-        events::{REMOTE_PRESENCE_CHANGED, SYSTEM_SETTINGS_CHANGED},
+        events::{REMOTE_CACHE_CHANGED, SYSTEM_SETTINGS_CHANGED},
     },
 };
 use log::{debug, error, info, warn};
@@ -319,7 +319,7 @@ async fn restore_legacy_files(
         let new_settings: serde_json::Value = serde_json::from_str(&settings_content)
             .map_err(|e| format!("Failed to parse settings: {e}"))?;
 
-        app_handle.emit(REMOTE_PRESENCE_CHANGED, ()).ok();
+        app_handle.emit(REMOTE_CACHE_CHANGED, ()).ok();
         app_handle
             .emit(
                 SYSTEM_SETTINGS_CHANGED,

@@ -126,7 +126,6 @@ export const POST_COMMANDS = new Set([
   'stop_all_serves',
   'handle_shutdown',
   'set_config_password_env',
-  'clear_config_password_env',
   'change_config_password',
   'restore_settings',
   'install_update',

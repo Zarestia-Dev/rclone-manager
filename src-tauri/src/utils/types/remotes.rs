@@ -3,7 +3,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use tokio::sync::RwLock;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct MountedRemote {
     pub fs: String,
     pub mount_point: String,
@@ -11,7 +11,7 @@ pub struct MountedRemote {
     pub profile: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct ServeInstance {
     pub id: String,
     pub addr: String,

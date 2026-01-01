@@ -13,7 +13,7 @@ import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remot
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 
 // Services
-import { IconService } from '../../../../shared/services/icon.service';
+import { IconService } from '@app/services';
 
 @Component({
   selector: 'app-app-overview',

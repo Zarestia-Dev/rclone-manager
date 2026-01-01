@@ -640,6 +640,7 @@ mat-nav-list {
   position: absolute;
   bottom: var(--space-md);
   right: var(--space-md);
+  background: var(--view-bg-color);
   padding: var(--space-xxs) var(--space-sm);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-gnome);

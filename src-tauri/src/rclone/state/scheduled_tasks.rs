@@ -8,8 +8,10 @@ use crate::{
 use log::{debug, info, warn};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
-use tauri::State;
+use tauri::{AppHandle, Emitter, State};
 use tokio::sync::RwLock;
+
+use crate::utils::types::events::SCHEDULED_TASKS_CACHE_CHANGED;
 
 // --- Make struct public ---
 pub struct ScheduledTasksCache {
@@ -28,6 +30,7 @@ impl ScheduledTasksCache {
         &self,
         all_settings: &Value,
         scheduler: State<'_, CronScheduler>, // Pass in scheduler state
+        app: Option<&AppHandle>,
     ) -> Result<usize, String> {
         let settings_obj = all_settings
             .as_object()
@@ -99,15 +102,19 @@ impl ScheduledTasksCache {
 
                 if config_changed {
                     // Preserve runtime state
-                    self.update_task(&task_id, |t| {
-                        t.name = task_from_config.name.clone();
-                        t.cron_expression = task_from_config.cron_expression.clone();
-                        t.args = task_from_config.args.clone();
-                        t.task_type = task_from_config.task_type.clone();
-                        t.next_run = task_from_config.next_run;
-                        // Preserve: status, scheduler_job_id, created_at, last_run,
-                        // last_error, current_job_id, run_count, success_count, failure_count
-                    })
+                    self.update_task(
+                        &task_id,
+                        |t| {
+                            t.name = task_from_config.name.clone();
+                            t.cron_expression = task_from_config.cron_expression.clone();
+                            t.args = task_from_config.args.clone();
+                            t.task_type = task_from_config.task_type.clone();
+                            t.next_run = task_from_config.next_run;
+                            // Preserve: status, scheduler_job_id, created_at, last_run,
+                            // last_error, current_job_id, run_count, success_count, failure_count
+                        },
+                        None,
+                    ) // Don't emit per task, we emit once at end
                     .await?;
 
                     info!(
@@ -119,7 +126,7 @@ impl ScheduledTasksCache {
                 }
             } else {
                 // New task - add it
-                self.add_task(task_from_config.clone()).await?;
+                self.add_task(task_from_config.clone(), None).await?;
                 loaded_count += 1;
                 info!("➕ Added new task: {} ({})", task_from_config.name, task_id);
             }
@@ -133,8 +140,14 @@ impl ScheduledTasksCache {
                     "🗑️ Removing task no longer in configs: {} ({})",
                     task.name, task.id
                 );
-                self.remove_task(&task.id, scheduler.clone()).await?;
+                self.remove_task(&task.id, scheduler.clone(), None).await?;
             }
+        }
+
+        if (loaded_count > 0 || !new_task_ids.is_empty())
+            && let Some(app) = app
+        {
+            let _ = app.emit(SCHEDULED_TASKS_CACHE_CHANGED, "bulk_update");
         }
 
         Ok(loaded_count)
@@ -145,6 +158,7 @@ impl ScheduledTasksCache {
         &self,
         task_id: &str,
         scheduler: State<'_, CronScheduler>, // Pass in scheduler
+        app: Option<&AppHandle>,
     ) -> Result<(), String> {
         let task = self
             .get_task(task_id)
@@ -164,6 +178,9 @@ impl ScheduledTasksCache {
         tasks.remove(task_id);
 
         info!("🗑️ Removed task: {}", task_id);
+        if let Some(app) = app {
+            let _ = app.emit(SCHEDULED_TASKS_CACHE_CHANGED, "task_removed");
+        }
         Ok(())
     }
 
@@ -172,6 +189,7 @@ impl ScheduledTasksCache {
         &self,
         remote_name: &str,
         scheduler: State<'_, CronScheduler>, // Pass in scheduler
+        app: Option<&AppHandle>,
     ) -> Result<Vec<String>, String> {
         let tasks = self.get_all_tasks().await;
         let mut removed_ids = Vec::new();
@@ -183,11 +201,16 @@ impl ScheduledTasksCache {
                     "🗑️ Removing task '{}' associated with remote '{}'",
                     task.name, remote_name
                 );
-                self.remove_task(&task.id, scheduler.clone()).await?;
+                self.remove_task(&task.id, scheduler.clone(), None).await?;
                 removed_ids.push(task.id);
             }
         }
 
+        if !removed_ids.is_empty()
+            && let Some(app) = app
+        {
+            let _ = app.emit(SCHEDULED_TASKS_CACHE_CHANGED, "remote_tasks_removed");
+        }
         Ok(removed_ids)
     }
 
@@ -236,16 +259,20 @@ impl ScheduledTasksCache {
 
                                 if config_changed {
                                     // Update task but preserve status, scheduler_job_id, and stats
-                                    self.update_task(&task_id, |t| {
-                                        t.name = task_from_config.name.clone();
-                                        t.cron_expression =
-                                            task_from_config.cron_expression.clone();
-                                        t.args = task_from_config.args.clone();
-                                        t.task_type = task_from_config.task_type.clone();
-                                        t.next_run = task_from_config.next_run;
-                                        // PRESERVE: status, scheduler_job_id, created_at, last_run,
-                                        // last_error, current_job_id, run_count, success_count, failure_count
-                                    })
+                                    self.update_task(
+                                        &task_id,
+                                        |t| {
+                                            t.name = task_from_config.name.clone();
+                                            t.cron_expression =
+                                                task_from_config.cron_expression.clone();
+                                            t.args = task_from_config.args.clone();
+                                            t.task_type = task_from_config.task_type.clone();
+                                            t.next_run = task_from_config.next_run;
+                                            // PRESERVE: status, scheduler_job_id, created_at, last_run,
+                                            // last_error, current_job_id, run_count, success_count, failure_count
+                                        },
+                                        None,
+                                    )
                                     .await?;
 
                                     info!(
@@ -257,7 +284,7 @@ impl ScheduledTasksCache {
                                 }
                             } else {
                                 // New task - add it
-                                self.add_task(task_from_config.clone()).await?;
+                                self.add_task(task_from_config.clone(), None).await?;
                                 info!("➕ Added new task: {} ({})", task_from_config.name, task_id);
                             }
                         }
@@ -267,7 +294,7 @@ impl ScheduledTasksCache {
                                 format!("{}-{}-{}", remote_name, task_type.as_str(), profile_name);
                             if self.get_task(&task_id).await.is_some() {
                                 info!("🗑️ Removing disabled/invalid task: {}", task_id);
-                                self.remove_task(&task_id, scheduler.clone()).await?;
+                                self.remove_task(&task_id, scheduler.clone(), None).await?;
                             }
                         }
                         Err(e) => {
@@ -373,7 +400,11 @@ impl ScheduledTasksCache {
     }
 
     /// Add a new scheduled task (runtime only, not persisted)
-    pub async fn add_task(&self, task: ScheduledTask) -> Result<ScheduledTask, String> {
+    pub async fn add_task(
+        &self,
+        task: ScheduledTask,
+        app: Option<&AppHandle>,
+    ) -> Result<ScheduledTask, String> {
         let task_id = task.id.clone();
         let mut tasks = self.tasks.write().await;
 
@@ -383,6 +414,9 @@ impl ScheduledTasksCache {
 
         tasks.insert(task_id.clone(), task.clone());
         info!("✅ Added scheduled task: {} ({})", task.name, task.id);
+        if let Some(app) = app {
+            let _ = app.emit(SCHEDULED_TASKS_CACHE_CHANGED, "task_added");
+        }
         Ok(task)
     }
 
@@ -412,6 +446,7 @@ impl ScheduledTasksCache {
         &self,
         task_id: &str,
         update_fn: impl FnOnce(&mut ScheduledTask),
+        app: Option<&AppHandle>,
     ) -> Result<ScheduledTask, String> {
         let mut tasks = self.tasks.write().await;
 
@@ -423,32 +458,43 @@ impl ScheduledTasksCache {
         let updated_task = task.clone();
 
         debug!("🔄 Updated scheduled task: {}", task_id);
+        if let Some(app) = app {
+            let _ = app.emit(SCHEDULED_TASKS_CACHE_CHANGED, "task_updated");
+        }
         Ok(updated_task)
     }
 
     /// Toggle task enabled/disabled status
-    pub async fn toggle_task_status(&self, task_id: &str) -> Result<ScheduledTask, String> {
-        self.update_task(task_id, |task| {
-            let old_status = task.status.clone();
-            task.status = match task.status {
-                TaskStatus::Enabled => TaskStatus::Disabled,
-                TaskStatus::Disabled | TaskStatus::Failed => TaskStatus::Enabled,
-                TaskStatus::Running => TaskStatus::Stopping,
-                TaskStatus::Stopping => TaskStatus::Running,
-            };
+    pub async fn toggle_task_status(
+        &self,
+        task_id: &str,
+        app: Option<&AppHandle>,
+    ) -> Result<ScheduledTask, String> {
+        self.update_task(
+            task_id,
+            |task| {
+                let old_status = task.status.clone();
+                task.status = match task.status {
+                    TaskStatus::Enabled => TaskStatus::Disabled,
+                    TaskStatus::Disabled | TaskStatus::Failed => TaskStatus::Enabled,
+                    TaskStatus::Running => TaskStatus::Stopping,
+                    TaskStatus::Stopping => TaskStatus::Running,
+                };
 
-            // If the task is being enabled, recalculate the next run time.
-            if (old_status == TaskStatus::Disabled || old_status == TaskStatus::Failed)
-                && task.status == TaskStatus::Enabled
-            {
-                task.next_run = get_next_run(&task.cron_expression).ok();
-            }
+                // If the task is being enabled, recalculate the next run time.
+                if (old_status == TaskStatus::Disabled || old_status == TaskStatus::Failed)
+                    && task.status == TaskStatus::Enabled
+                {
+                    task.next_run = get_next_run(&task.cron_expression).ok();
+                }
 
-            // If the task is being disabled, clear the next run time.
-            if task.status == TaskStatus::Disabled {
-                task.next_run = None;
-            }
-        })
+                // If the task is being disabled, clear the next run time.
+                if task.status == TaskStatus::Disabled {
+                    task.next_run = None;
+                }
+            },
+            app,
+        )
         .await
     }
 
@@ -486,10 +532,13 @@ impl ScheduledTasksCache {
     }
 
     /// Clear all tasks (use with caution!)
-    pub async fn clear_all_tasks(&self) -> Result<(), String> {
+    pub async fn clear_all_tasks(&self, app: Option<&AppHandle>) -> Result<(), String> {
         warn!("⚠️  Clearing all scheduled tasks!");
         let mut tasks = self.tasks.write().await;
         tasks.clear();
+        if let Some(app) = app {
+            let _ = app.emit(SCHEDULED_TASKS_CACHE_CHANGED, "all_cleared");
+        }
         Ok(())
     }
 }
@@ -523,12 +572,13 @@ pub async fn reload_scheduled_tasks_from_configs(
     cache: State<'_, ScheduledTasksCache>,
     scheduler: State<'_, CronScheduler>,
     all_settings: serde_json::Value,
+    app: AppHandle,
 ) -> Result<usize, String> {
     info!("🔄 Reloading scheduled tasks from configs...");
 
     // Load tasks from configs (this preserves existing task states)
     let task_count = cache
-        .load_from_remote_configs(&all_settings, scheduler.clone())
+        .load_from_remote_configs(&all_settings, scheduler.clone(), Some(&app))
         .await?;
 
     info!("📅 Loaded/updated {} scheduled task(s)", task_count);

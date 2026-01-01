@@ -38,13 +38,6 @@
       align-items: center;
       gap: var(--space-xxs);
 
-      .divider {
-        width: 1px;
-        height: var(--icon-size-sm);
-        background: var(--card-shade-color);
-        margin: 0 var(--space-sm);
-      }
-
       .warn-btn {
         color: var(--warn-color);
         &:hover {

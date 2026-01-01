@@ -785,6 +785,10 @@ textarea,
 
 // Fix for mat-icon overflow issues in Windows
 mat-icon {
+  overflow: visible !important;
+  min-height: unset !important;
+  flex-shrink: 0;
+
   &.warn {
     color: var(--warn-color) !important;
   }

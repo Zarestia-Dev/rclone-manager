@@ -1,15 +1,17 @@
-use log::{debug, info};
+use log::{debug, info, warn};
 use serde_json::{Value, json};
 use std::collections::HashMap;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Manager, State};
 
-use crate::utils::{
-    json_helpers::{get_string, json_to_hashmap, resolve_profile_options, unwrap_nested_options},
-    logging::log::log_operation,
-    rclone::endpoints::{EndpointHelper, serve},
-    types::{
-        all_types::{LogLevel, ProfileParams, RcloneState},
-        events::SERVE_STATE_CHANGED,
+use crate::{
+    rclone::state::watcher::force_check_serves,
+    utils::{
+        json_helpers::{
+            get_string, json_to_hashmap, resolve_profile_options, unwrap_nested_options,
+        },
+        logging::log::log_operation,
+        rclone::endpoints::{EndpointHelper, serve},
+        types::all_types::{LogLevel, ProfileParams, RcloneState},
     },
 };
 
@@ -265,9 +267,10 @@ pub async fn start_serve(
         .store_serve_profile(&serve_id, params.profile.clone())
         .await;
 
-    // Emit event for UI update
-    app.emit(SERVE_STATE_CHANGED, &params.remote_name)
-        .map_err(|e| format!("Failed to emit event: {e}"))?;
+    // Force refresh - this will update cache and emit event if changed
+    if let Err(e) = force_check_serves(app.clone()).await {
+        warn!("Failed to refresh serves after start: {e}");
+    }
 
     info!(
         "✅ Serve {} started: ID={}, Address={}",
@@ -320,8 +323,10 @@ pub async fn stop_serve(
         None,
     );
 
-    app.emit(SERVE_STATE_CHANGED, &remote_name)
-        .map_err(|e| format!("Failed to emit event: {e}"))?;
+    // Force refresh - this will update cache and emit event if changed
+    if let Err(e) = force_check_serves(app).await {
+        warn!("Failed to refresh serves after stop: {e}");
+    }
 
     info!("✅ Serve {server_id} stopped successfully");
 
@@ -350,8 +355,10 @@ pub async fn stop_all_serves(
     let _body = handle_rclone_response(response, "Stop all serves", "").await?;
 
     if context != "shutdown" {
-        app.emit(SERVE_STATE_CHANGED, "all")
-            .map_err(|e| format!("Failed to emit event: {e}"))?;
+        // Force refresh - this will update cache and emit event if changed
+        if let Err(e) = force_check_serves(app).await {
+            warn!("Failed to refresh serves after stop all: {e}");
+        }
     }
 
     info!("✅ All serves stopped successfully");

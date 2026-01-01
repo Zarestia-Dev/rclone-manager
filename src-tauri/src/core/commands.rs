@@ -237,8 +237,6 @@ macro_rules! generate_invoke_handler {
             $crate::core::security::unencrypt_config,
             $crate::core::security::change_config_password,
             $crate::core::security::set_config_password_env,
-            $crate::core::security::clear_config_password_env,
-            $crate::core::security::has_config_password_env,
             // =================================================================
             // UPDATER (Desktop + Updater feature only)
             // =================================================================

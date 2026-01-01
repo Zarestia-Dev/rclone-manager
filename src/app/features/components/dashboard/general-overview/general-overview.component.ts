@@ -54,7 +54,7 @@ import {
   AppSettingsService,
   BackendService,
 } from '@app/services';
-import { IconService } from 'src/app/shared/services/icon.service';
+import { IconService } from '@app/services';
 import { FormatRateValuePipe } from '../../../../shared/pipes/format-rate-value.pipe';
 import { FormatBytes } from '../../../../shared/pipes/format-bytes.pipe';
 

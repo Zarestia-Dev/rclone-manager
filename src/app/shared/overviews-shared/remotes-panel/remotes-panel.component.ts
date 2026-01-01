@@ -4,7 +4,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { RemoteCardComponent } from '../remote-card/remote-card.component';
 import { AppTab, PrimaryActionType, Remote, RemoteAction, RemoteActionProgress } from '@app/types';
-import { IconService } from '../../services/icon.service';
+import { IconService } from '@app/services';
 
 @Component({
   selector: 'app-remotes-panel',

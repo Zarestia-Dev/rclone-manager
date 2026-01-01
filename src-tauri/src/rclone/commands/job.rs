@@ -2,7 +2,7 @@ use chrono::Utc;
 use log::{debug, error, info, warn};
 use serde_json::{Value, json};
 use std::time::Duration;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Manager, State};
 use tokio::time::sleep;
 
 use crate::{
@@ -12,10 +12,7 @@ use crate::{
     utils::{
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, core, job},
-        types::{
-            all_types::{JobCache, JobInfo, JobStatus, LogLevel, RcloneState},
-            events::{JOB_CACHE_CHANGED, SCHEDULED_TASK_STOPPED},
-        },
+        types::all_types::{JobCache, JobInfo, JobStatus, LogLevel, RcloneState},
     },
 };
 
@@ -48,8 +45,15 @@ pub async fn submit_job(
 
     // Determine active backend to associate job with
     let backend = BACKEND_MANAGER.get_active().await;
-    // Add to cache
-    add_job_to_cache(&BACKEND_MANAGER.job_cache, jobid, &metadata, &backend.name).await;
+    // Add to cache - this emits JOB_CACHE_CHANGED
+    add_job_to_cache(
+        &BACKEND_MANAGER.job_cache,
+        jobid,
+        &metadata,
+        &backend.name,
+        Some(&app),
+    )
+    .await;
     let backend_name = backend.name.clone();
 
     // Monitor in background - don't wait
@@ -69,7 +73,6 @@ pub async fn submit_job(
         .await;
     });
 
-    let _ = app.emit(JOB_CACHE_CHANGED, jobid);
     Ok((jobid, response_json))
 }
 
@@ -86,7 +89,15 @@ pub async fn submit_job_and_wait(
 
     // Determine active backend
     let backend = BACKEND_MANAGER.get_active().await;
-    add_job_to_cache(&BACKEND_MANAGER.job_cache, jobid, &metadata, &backend.name).await;
+    // Add to cache - this emits JOB_CACHE_CHANGED
+    add_job_to_cache(
+        &BACKEND_MANAGER.job_cache,
+        jobid,
+        &metadata,
+        &backend.name,
+        Some(&app),
+    )
+    .await;
     let backend_name = backend.name.clone();
 
     // Monitor and WAIT for completion
@@ -102,8 +113,6 @@ pub async fn submit_job_and_wait(
 
     // Return error if job failed
     result.map_err(|e| e.to_string())?;
-
-    let _ = app.emit(JOB_CACHE_CHANGED, jobid);
 
     Ok((jobid, response_json))
 }
@@ -159,27 +168,32 @@ async fn send_job_request(
 }
 
 /// Internal: Add job to cache (takes reference to JobCache)
+/// Now also emits JOB_CACHE_CHANGED via the cache layer
 async fn add_job_to_cache(
     job_cache: &JobCache,
     jobid: u64,
     metadata: &JobMetadata,
     backend_name: &str,
+    app: Option<&AppHandle>,
 ) {
     job_cache
-        .add_job(JobInfo {
-            jobid,
-            job_type: metadata.job_type.clone(),
-            remote_name: metadata.remote_name.clone(),
-            source: metadata.source.clone(),
-            destination: metadata.destination.clone(),
-            start_time: Utc::now(),
-            status: JobStatus::Running,
-            stats: None,
-            group: format!("{}/{}", metadata.job_type, jobid),
-            profile: metadata.profile.clone(),
-            source_ui: metadata.source_ui.clone(),
-            backend_name: Some(backend_name.to_string()),
-        })
+        .add_job(
+            JobInfo {
+                jobid,
+                job_type: metadata.job_type.clone(),
+                remote_name: metadata.remote_name.clone(),
+                source: metadata.source.clone(),
+                destination: metadata.destination.clone(),
+                start_time: Utc::now(),
+                status: JobStatus::Running,
+                stats: None,
+                group: format!("{}/{}", metadata.job_type, jobid),
+                profile: metadata.profile.clone(),
+                source_ui: metadata.source_ui.clone(),
+                backend_name: Some(backend_name.to_string()),
+            },
+            app,
+        )
         .await;
 }
 
@@ -260,8 +274,11 @@ pub async fn get_jobs() -> Result<Vec<JobInfo>, String> {
 
 #[cfg(not(feature = "web-server"))]
 #[tauri::command]
-pub async fn delete_job(jobid: u64) -> Result<(), String> {
-    BACKEND_MANAGER.job_cache.delete_job(jobid).await
+pub async fn delete_job(app: AppHandle, jobid: u64) -> Result<(), String> {
+    BACKEND_MANAGER
+        .job_cache
+        .delete_job(jobid, Some(&app))
+        .await
 }
 
 #[cfg(not(feature = "web-server"))]
@@ -392,11 +409,9 @@ pub async fn monitor_job(
                 if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
                     error!("Too many errors monitoring job {jobid}, giving up");
                     job_cache
-                        .complete_job(jobid, false)
+                        .complete_job(jobid, false, Some(&app))
                         .await
                         .map_err(RcloneError::JobError)?;
-                    app.emit(JOB_CACHE_CHANGED, jobid)
-                        .map_err(|e| RcloneError::JobError(e.to_string()))?;
                     return Err(RcloneError::JobError(format!(
                         "Too many errors monitoring job {jobid}: {e}"
                     )));
@@ -437,7 +452,7 @@ pub async fn handle_job_completion(
     };
 
     job_cache
-        .complete_job(jobid, success)
+        .complete_job(jobid, success, Some(app))
         .await
         .map_err(RcloneError::JobError)?;
 
@@ -449,25 +464,30 @@ pub async fn handle_job_completion(
 
         if success {
             scheduled_tasks_cache
-                .update_task(&task.id, |t| {
-                    t.mark_success();
-                    t.next_run = next_run;
-                })
+                .update_task(
+                    &task.id,
+                    |t| {
+                        t.mark_success();
+                        t.next_run = next_run;
+                    },
+                    Some(app),
+                )
                 .await
                 .map_err(RcloneError::JobError)?;
         } else {
             scheduled_tasks_cache
-                .update_task(&task.id, |t| {
-                    t.mark_failure(error_msg.clone());
-                    t.next_run = next_run;
-                })
+                .update_task(
+                    &task.id,
+                    |t| {
+                        t.mark_failure(error_msg.clone());
+                        t.next_run = next_run;
+                    },
+                    Some(app),
+                )
                 .await
                 .map_err(RcloneError::JobError)?;
         }
     }
-
-    app.emit(JOB_CACHE_CHANGED, jobid)
-        .map_err(|e| RcloneError::JobError(e.to_string()))?;
 
     if !error_msg.is_empty() {
         log_operation(
@@ -557,7 +577,10 @@ pub async fn stop_job(
     };
 
     if job_stopped {
-        job_cache.stop_job(jobid).await.map_err(|e| e.to_string())?;
+        job_cache
+            .stop_job(jobid, Some(&app))
+            .await
+            .map_err(|e| e.to_string())?;
 
         if let Some(task) = scheduled_tasks_cache.get_task_by_job_id(jobid).await {
             info!(
@@ -566,19 +589,15 @@ pub async fn stop_job(
             );
 
             scheduled_tasks_cache
-                .update_task(&task.id, |t| {
-                    t.mark_stopped();
-                })
+                .update_task(
+                    &task.id,
+                    |t| {
+                        t.mark_stopped();
+                    },
+                    Some(&app),
+                )
                 .await
                 .map_err(|e| format!("Failed to update task state: {}", e))?;
-
-            let _ = app.emit(
-                SCHEDULED_TASK_STOPPED,
-                serde_json::json!({
-                    "taskId": task.id,
-                    "jobId": jobid,
-                }),
-            );
         }
 
         log_operation(
@@ -588,9 +607,6 @@ pub async fn stop_job(
             format!("Job {jobid} stopped successfully"),
             None,
         );
-
-        app.emit(JOB_CACHE_CHANGED, jobid)
-            .map_err(|e| format!("Failed to emit event: {e}"))?;
 
         info!("✅ Stopped job {jobid}");
     }

@@ -1,12 +1,13 @@
 import { inject, Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
-import { NotificationService } from '../../shared/services/notification.service';
-import { MountedRemote } from '@app/types';
+import { NotificationService } from '@app/services';
+import { MountedRemote, MOUNT_STATE_CHANGED } from '@app/types';
 
 /**
  * Service for managing rclone mounts
  * Handles mount/unmount operations and mount state management
+ * Self-refreshes on MOUNT_STATE_CHANGED events from backend
  */
 @Injectable({
   providedIn: 'root',
@@ -16,8 +17,21 @@ export class MountManagementService extends TauriBaseService {
   public mountedRemotes$ = this.mountedRemotesCache.asObservable();
 
   private notificationService = inject(NotificationService);
+
   constructor() {
     super();
+    this.initializeEventListeners();
+  }
+
+  /**
+   * Initialize event listeners for mount state changes
+   */
+  private initializeEventListeners(): void {
+    this.listenToEvent<unknown>(MOUNT_STATE_CHANGED).subscribe(() => {
+      this.getMountedRemotes().catch(err =>
+        console.error('Failed to refresh mounts on state change:', err)
+      );
+    });
   }
 
   /**
@@ -25,7 +39,6 @@ export class MountManagementService extends TauriBaseService {
    */
   async getMountedRemotes(): Promise<MountedRemote[]> {
     const mountedRemotes = await this.invokeCommand<MountedRemote[]>('get_cached_mounted_remotes');
-    console.log('Mounted Remotes:', mountedRemotes);
     this.mountedRemotesCache.next(mountedRemotes);
     return mountedRemotes;
   }
@@ -45,7 +58,6 @@ export class MountManagementService extends TauriBaseService {
     try {
       const params = { remote_name: remoteName, profile_name: profileName };
       await this.invokeCommand('mount_remote_profile', { params });
-      await this.refreshMountedRemotes();
       this.notificationService.showSuccess(`Successfully mounted ${remoteName} (${profileName})`);
     } catch (error) {
       this.notificationService.showError(
@@ -61,7 +73,6 @@ export class MountManagementService extends TauriBaseService {
   async unmountRemote(mountPoint: string, remoteName: string): Promise<void> {
     try {
       await this.invokeCommand('unmount_remote', { mountPoint, remoteName });
-      await this.refreshMountedRemotes();
       this.notificationService.showSuccess(`Successfully unmounted ${remoteName}`);
     } catch (error) {
       this.notificationService.showError(`Failed to unmount ${remoteName}: ${error}`);
@@ -81,14 +92,6 @@ export class MountManagementService extends TauriBaseService {
    */
   async openInFiles(mountPoint: string): Promise<void> {
     return this.invokeCommand('open_in_files', { path: mountPoint });
-  }
-
-  /**
-   * Refresh mounted remotes cache
-   */
-  private async refreshMountedRemotes(): Promise<void> {
-    const mountedRemotes = await this.getMountedRemotes();
-    this.mountedRemotesCache.next(mountedRemotes);
   }
 
   /**

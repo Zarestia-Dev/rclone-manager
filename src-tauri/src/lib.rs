@@ -376,8 +376,12 @@ fn setup_app(
     // -------------------------------------------------------------------------
     // Initialize Logging & Rclone
     // -------------------------------------------------------------------------
-    init_logging(&settings.developer.log_level, app_handle.clone())
-        .map_err(|e| format!("Failed to initialize logging: {e}"))?;
+    init_logging(
+        &settings.developer.log_level,
+        app_handle.clone(),
+        &config_dir,
+    )
+    .map_err(|e| format!("Failed to initialize logging: {e}"))?;
 
     init_rclone_state(app_handle).map_err(|e| format!("Rclone initialization failed: {e}"))?;
 

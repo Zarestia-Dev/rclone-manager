@@ -24,7 +24,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FlagType, RcConfigOption } from '@app/types';
 import { SettingControlComponent } from 'src/app/shared/components';
 import { OperationConfigComponent } from 'src/app/shared/remote-config/app-operation-config/app-operation-config.component';
-import { IconService } from '../../services/icon.service';
+import { IconService } from '@app/services';
 
 // Serve type information for icons and descriptions
 const SERVE_TYPE_INFO: Record<string, { icon: string; description: string }> = {

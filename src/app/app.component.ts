@@ -196,7 +196,7 @@ export class AppComponent implements OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (remoteName: string) => {
-          console.log(`📂 Browse event received for remote: ${remoteName}`);
+          console.debug(`📂 Browse event received for remote: ${remoteName}`);
           this.nautilusService.openForRemote(remoteName);
         },
         error: error => console.error('Browse in app event error:', error),
@@ -223,7 +223,7 @@ export class AppComponent implements OnDestroy {
     try {
       // Use SystemHealthService for consistent state
       const mountPluginOk = this.systemHealthService.mountPluginInstalled();
-      console.log('Mount plugin status: ', mountPluginOk);
+      console.debug('Mount plugin status: ', mountPluginOk);
 
       if (mountPluginOk === false) {
         await this.showRepairSheet({
@@ -255,13 +255,13 @@ export class AppComponent implements OnDestroy {
       .listenToMountPluginInstalled()
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
-        console.log('Mount plugin installation event received');
+        console.debug('Mount plugin installation event received');
 
         // Re-check mount plugin status after a short delay
         setTimeout(async () => {
           try {
             const mountPluginOk = await this.installationService.isMountPluginInstalled(1);
-            console.log('Mount plugin re-check status:', mountPluginOk);
+            console.debug('Mount plugin re-check status:', mountPluginOk);
 
             if (mountPluginOk) {
               this.closeSheetsByType(RepairSheetType.MOUNT_PLUGIN);
@@ -280,7 +280,7 @@ export class AppComponent implements OnDestroy {
   }
 
   private async handleRcloneOAuthEvent(event: object): Promise<void> {
-    console.log('OAuth event received:', event);
+    console.debug('OAuth event received:', event);
 
     try {
       // Handle different OAuth event types
@@ -288,7 +288,7 @@ export class AppComponent implements OnDestroy {
         const typedEvent = event as { status: string; message?: string };
         switch (typedEvent.status) {
           case 'password_error':
-            console.log('🔑 OAuth password error detected:', typedEvent.message);
+            console.debug('🔑 OAuth password error detected:', typedEvent.message);
             if (this.completedOnboarding()) {
               await this.handlePasswordRequired();
             }
@@ -305,12 +305,12 @@ export class AppComponent implements OnDestroy {
             break;
 
           case 'success':
-            console.log('✅ OAuth process started successfully:', typedEvent.message);
+            console.debug('✅ OAuth process started successfully:', typedEvent.message);
             break;
 
           default:
             // Log unknown OAuth events for debugging
-            console.log(`Unhandled OAuth event status: ${typedEvent.status}`);
+            console.debug(`Unhandled OAuth event status: ${typedEvent.status}`);
             break;
         }
       } else {
@@ -328,7 +328,7 @@ export class AppComponent implements OnDestroy {
       this.passwordPromptInProgress() ||
       this.hasActiveSheetOfType(RepairSheetType.RCLONE_PASSWORD)
     ) {
-      console.log('Password prompt already in progress, skipping...');
+      console.debug('Password prompt already in progress, skipping...');
       return;
     }
 
@@ -339,9 +339,9 @@ export class AppComponent implements OnDestroy {
       if (result?.password) {
         await this.rclonePasswordService.setConfigPasswordEnv(result.password);
         this.systemHealthService.markPasswordUnlocked();
-        console.log('Password set successfully');
+        console.debug('Password set successfully');
       } else {
-        console.log('Password prompt was cancelled or no password provided');
+        console.debug('Password prompt was cancelled or no password provided');
       }
     } catch (error) {
       console.error('Error handling password requirement:', error);
@@ -457,7 +457,7 @@ export class AppComponent implements OnDestroy {
       // Use the centralized service to complete onboarding
       await this.onboardingStateService.completeOnboarding();
       this.completedOnboarding.set(true);
-      console.log('Onboarding completed via OnboardingStateService');
+      console.debug('Onboarding completed via OnboardingStateService');
 
       await this.postOnboardingSetup();
     } catch (error) {

@@ -2,7 +2,7 @@ import { Injectable, OnDestroy, inject } from '@angular/core';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { EventListenersService } from './event-listeners.service';
 import { AppSettingsService } from '../settings/app-settings.service';
-import { NotificationService } from '../../shared/services/notification.service';
+import { NotificationService } from '@app/services';
 import { BehaviorSubject, Subject, takeUntil } from 'rxjs';
 
 import { RcloneUpdateInfo, UpdateStatus, UpdateResult } from '@app/types';
@@ -58,11 +58,11 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
       this.autoCheckSubject.next(autoCheck);
 
       this.initialized = true;
-      console.log('Rclone update service initialized');
+      console.debug('Rclone update service initialized');
 
       // Auto-check if enabled
       if (autoCheck) {
-        console.log('Auto-check enabled, checking for rclone updates...');
+        console.debug('Auto-check enabled, checking for rclone updates...');
         this.checkForUpdates();
       }
     } catch (error) {
@@ -83,7 +83,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
       .subscribe({
         next: () => {
           try {
-            console.log('Rclone Engine updating started');
+            console.debug('Rclone Engine updating started');
             this.updateStatus({ updating: true });
           } catch (error) {
             console.error('Error handling Rclone Engine updating event:', error);
@@ -128,9 +128,9 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
       });
 
       if (updateInfo.update_available && !isSkipped) {
-        console.log(`Rclone update available: ${updateInfo.latest_version} (${channel} channel)`);
+        console.debug(`Rclone update available: ${updateInfo.latest_version} (${channel} channel)`);
       } else if (isSkipped) {
-        console.log(`Rclone update ${updateInfo.latest_version} is skipped`);
+        console.debug(`Rclone update ${updateInfo.latest_version} is skipped`);
       }
 
       return updateInfo;
@@ -172,7 +172,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
 
         // Log the successful update with path info if available
         if ('path' in result) {
-          console.log(`Rclone updated successfully to ${channel} channel at:`, result.path);
+          console.debug(`Rclone updated successfully to ${channel} channel at:`, result.path);
         }
 
         this.notificationService.openSnackBar(
@@ -250,7 +250,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
       const skipped = await this.appSettingsService.getSettingValue<string[]>(
         'runtime.rclone_skipped_updates'
       );
-      console.log('Skipped rclone versions:', skipped);
+      console.debug('Skipped rclone versions:', skipped);
       return [];
     } catch (error) {
       console.error('Failed to load skipped rclone versions:', error);

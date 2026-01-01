@@ -179,7 +179,7 @@ async fn initialize_scheduler(app_handle: AppHandle) -> Result<(), String> {
 
     info!("📋 Loading scheduled tasks from remote configs...");
     let task_count = cache_state
-        .load_from_remote_configs(&all_settings, scheduler_state.clone())
+        .load_from_remote_configs(&all_settings, scheduler_state.clone(), Some(&app_handle))
         .await?;
 
     info!("📅 Loaded {} scheduled task(s)", task_count);

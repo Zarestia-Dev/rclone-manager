@@ -20,7 +20,7 @@ import { BackupRestoreUiService } from '@app/services';
 
 import { AppSettingsService } from '@app/services';
 import { UiStateService, NautilusService } from '@app/services';
-import { NotificationService } from 'src/app/shared/services/notification.service';
+import { NotificationService } from '@app/services';
 import { AppUpdaterService, RcloneUpdateService } from '@app/services';
 import { CheckResult, ConnectionStatus, ModalSize, STANDARD_MODAL_SIZE, Theme } from '@app/types';
 import { MatDividerModule } from '@angular/material/divider';

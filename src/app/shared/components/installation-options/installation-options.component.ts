@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { FileSystemService, SystemInfoService } from '@app/services';
-import { ValidatorRegistryService } from '../../services/validator-registry.service';
+import { ValidatorRegistryService } from '@app/services';
 import { InstallationOptionsData, InstallationTabOption } from '../../types';
 
 type LocationType = 'default' | 'custom' | 'existing';

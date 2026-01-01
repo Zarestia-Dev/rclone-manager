@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { BackupRestoreService } from './backup-restore.service';
-import { NotificationService } from '../../shared/services/notification.service';
+import { NotificationService } from '@app/services';
 import { RestorePreviewModalComponent } from '../../features/modals/settings/restore-preview-modal/restore-preview-modal.component';
 import { STANDARD_MODAL_SIZE } from '@app/types';
 

@@ -221,26 +221,6 @@ pub async fn set_config_password_env(
     Ok(())
 }
 
-/// Clear the config password environment variable
-#[tauri::command]
-pub async fn clear_config_password_env(
-    env_manager: State<'_, SafeEnvironmentManager>,
-) -> Result<(), String> {
-    debug!("🧹 Clearing config password environment variable");
-    env_manager.clear_config_password();
-    debug!("✅ Environment variable cleared");
-    Ok(())
-}
-
-/// Check if config password environment variable is set
-#[tauri::command]
-pub async fn has_config_password_env(
-    env_manager: State<'_, SafeEnvironmentManager>,
-) -> Result<bool, String> {
-    debug!("🔍 Checking config password environment variable");
-    Ok(env_manager.has_config_password())
-}
-
 /// Check if the rclone configuration is encrypted
 /// Always runs a fresh check to detect external config changes
 #[tauri::command]

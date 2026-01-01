@@ -98,9 +98,9 @@ pub async fn switch_backend(
         Ok(Ok(_)) => {
             info!("✅ Cache refreshed for backend '{}'", name);
             // Notify frontend that cache is updated
-            use crate::utils::types::events::{BACKEND_SWITCHED, REMOTE_CACHE_UPDATED};
+            use crate::utils::types::events::{BACKEND_SWITCHED, REMOTE_CACHE_CHANGED};
             use tauri::Emitter;
-            let _ = app.emit(REMOTE_CACHE_UPDATED, ());
+            let _ = app.emit(REMOTE_CACHE_CHANGED, ());
             let _ = app.emit(BACKEND_SWITCHED, &name);
         }
         Ok(Err(e)) => warn!("⚠️ Cache refresh failed: {}", e),

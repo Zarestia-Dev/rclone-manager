@@ -20,8 +20,7 @@ use crate::{
         types::{
             all_types::RcloneState,
             events::{
-                JOB_CACHE_CHANGED, MOUNT_STATE_CHANGED, RCLONE_PASSWORD_STORED,
-                REMOTE_CACHE_UPDATED, REMOTE_PRESENCE_CHANGED, REMOTE_STATE_CHANGED,
+                JOB_CACHE_CHANGED, RCLONE_PASSWORD_STORED, REMOTE_CACHE_CHANGED,
                 SERVE_STATE_CHANGED, SYSTEM_SETTINGS_CHANGED, UPDATE_TRAY_MENU,
             },
         },
@@ -73,43 +72,10 @@ fn handle_rclone_password_stored(app: &AppHandle) {
     });
 }
 
-fn handle_remote_state_changed(app: &AppHandle) {
-    let app_clone = app.clone();
-    app.listen(REMOTE_STATE_CHANGED, move |event| {
-        debug!(
-            "🔄 Remote state changed! Raw payload: {:?}",
-            event.payload()
-        );
-        let app = app_clone.clone();
-        tauri::async_runtime::spawn(async move {
-            let client = app
-                .state::<crate::utils::types::all_types::RcloneState>()
-                .client
-                .clone();
-            let backend = crate::rclone::backend::BACKEND_MANAGER.get_active().await;
-            // guard deleted
-            let cache = &crate::rclone::backend::BACKEND_MANAGER.remote_cache;
-
-            if let Err(e) = cache.refresh_mounted_remotes(&client, &backend).await {
-                error!("Failed to refresh mounted remotes: {e}");
-            }
-            if let Err(e) = update_tray_menu(app.clone(), 0).await {
-                error!("Failed to update tray menu: {e}");
-            }
-
-            let _ = app
-                .clone()
-                .emit(MOUNT_STATE_CHANGED, "remote_presence")
-                .map_err(|e| {
-                    error!("❌ Failed to emit event to frontend: {e}");
-                });
-        });
-    });
-}
-
 fn handle_remote_presence_changed(app: &AppHandle) {
     let app_clone = app.clone();
-    app.listen(REMOTE_PRESENCE_CHANGED, move |_| {
+    // Listen for consolidated cache change event
+    app.listen(REMOTE_CACHE_CHANGED, move |_| {
         let app_clone = app_clone.clone();
         tauri::async_runtime::spawn(async move {
             let client = app_clone
@@ -139,8 +105,13 @@ fn handle_remote_presence_changed(app: &AppHandle) {
             let cache_state = app_clone.state::<ScheduledTasksCache>();
             let scheduler_state = app_clone.state::<CronScheduler>();
 
-            if let Err(e) =
-                reload_scheduled_tasks_from_configs(cache_state, scheduler_state, all_configs).await
+            if let Err(e) = reload_scheduled_tasks_from_configs(
+                cache_state,
+                scheduler_state,
+                all_configs,
+                app_clone.clone(),
+            )
+            .await
             {
                 error!("❌ Failed to reload scheduled tasks after remote change: {e}");
             }
@@ -149,11 +120,7 @@ fn handle_remote_presence_changed(app: &AppHandle) {
                 error!("Failed to update tray menu: {e}");
             }
 
-            let _ = app_clone
-                .emit(REMOTE_CACHE_UPDATED, "remote_presence")
-                .map_err(|e| {
-                    error!("❌ Failed to emit event to frontend: {e}");
-                });
+            // Event already emitted by command, no need to re-emit
         });
     });
 }
@@ -190,19 +157,6 @@ fn handle_serve_state_changed(app: &AppHandle) {
         let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
             debug!("🔄 Serve state changed! Raw payload: {:?}", event.payload());
-
-            let client = app
-                .state::<crate::utils::types::all_types::RcloneState>()
-                .client
-                .clone();
-            let backend = crate::rclone::backend::BACKEND_MANAGER.get_active().await;
-            // guard deleted
-            let cache = &crate::rclone::backend::BACKEND_MANAGER.remote_cache;
-
-            if let Err(e) = cache.refresh_serves(&client, &backend).await {
-                error!("❌ Failed to refresh serves cache: {e}");
-            }
-
             if let Err(e) = update_tray_menu(app.clone(), 0).await {
                 error!("Failed to update tray menu after serve change: {e}");
             }
@@ -283,7 +237,7 @@ fn handle_settings_changed(app: &AppHandle) {
                         // Note: restrict setting is now read from JsonSettingsManager which caches internally
                         let app_handle_clone = app_handle.clone();
                         app_handle_clone
-                            .emit(REMOTE_PRESENCE_CHANGED, "restrict_mode_changed")
+                            .emit(REMOTE_CACHE_CHANGED, "restrict_mode_changed")
                             .unwrap_or_else(|e| {
                                 error!("❌ Failed to emit remote presence changed event: {e}");
                             });
@@ -410,7 +364,6 @@ pub fn setup_event_listener(app: &AppHandle) {
     handle_ctrl_c(app);
 
     handle_rclone_password_stored(app);
-    handle_remote_state_changed(app);
     handle_serve_state_changed(app);
     handle_remote_presence_changed(app);
     handle_settings_changed(app);

@@ -569,7 +569,7 @@ mod tests {
             source_ui: Some("test".to_string()),
             backend_name: Some("Local".to_string()),
         };
-        manager.job_cache.add_job(job).await;
+        manager.job_cache.add_job(job, None).await;
         assert_eq!(manager.job_cache.get_jobs().await.len(), 1);
 
         // 2. Switch to Remote1

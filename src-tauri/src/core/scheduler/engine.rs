@@ -3,12 +3,12 @@ use crate::rclone::commands::sync::{
 };
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 use crate::utils::types::all_types::{JobCache, ProfileParams, RcloneState};
-use crate::utils::types::events::{SCHEDULED_TASK_COMPLETED, SCHEDULED_TASK_ERROR};
+
 use crate::utils::types::scheduled_task::{ScheduledTask, TaskStatus, TaskType};
 use chrono::{Local, Utc};
 use log::{debug, error, info, warn};
 use std::sync::Arc;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Manager, State};
 use tokio::sync::RwLock;
 use tokio_cron_scheduler::{JobBuilder, JobScheduler};
 use uuid::Uuid;
@@ -105,6 +105,7 @@ impl CronScheduler {
         let cron_expr_6_field = format!("0 {}", cron_expr_5_field);
 
         // 2. Create the job using JobBuilder to apply the local timezone
+        let app_handle_for_job = app_handle.clone();
         let job = JobBuilder::new()
             .with_timezone(Local)
             .with_cron_job_type()
@@ -115,7 +116,7 @@ impl CronScheduler {
                 let task_id = task_id.clone();
                 let task_name = task_name.clone();
                 let task_type = task_type.clone();
-                let app_handle = app_handle.clone();
+                let app_handle = app_handle_for_job.clone();
 
                 Box::pin(async move {
                     info!(
@@ -128,23 +129,8 @@ impl CronScheduler {
 
                     if let Err(e) = execute_scheduled_task(&task_id, &app_handle, cache).await {
                         error!("❌ Task execution failed {}: {}", task_id, e);
-                        // Emit error event to frontend
-                        let _ = app_handle.emit(
-                            SCHEDULED_TASK_ERROR,
-                            serde_json::json!({
-                                "taskId": task_id,
-                                "error": e,
-                            }),
-                        );
                     } else {
                         info!("✅ Task execution completed: {}", task_id);
-                        // Emit success event to frontend
-                        let _ = app_handle.emit(
-                            SCHEDULED_TASK_COMPLETED,
-                            serde_json::json!({
-                                "taskId": task_id,
-                            }),
-                        );
                     }
                 })
             }))
@@ -159,9 +145,13 @@ impl CronScheduler {
 
         // 4. Store the scheduler's job ID in our task cache
         cache
-            .update_task(&task.id, |t| {
-                t.scheduler_job_id = Some(job_id.to_string());
-            })
+            .update_task(
+                &task.id,
+                |t| {
+                    t.scheduler_job_id = Some(job_id.to_string());
+                },
+                Some(&app_handle),
+            )
             .await
             .ok(); // Log errors but don't fail the whole operation
 
@@ -217,7 +207,7 @@ impl CronScheduler {
                     error!("Failed to reschedule task {}: {}", task.name, e);
                     // Mark task as failed if scheduling fails
                     cache
-                        .update_task(&task.id, |t| t.mark_failure(e.clone()))
+                        .update_task(&task.id, |t| t.mark_failure(e.clone()), None)
                         .await?;
                     return Err(e);
                 }
@@ -229,9 +219,13 @@ impl CronScheduler {
             );
             // Task is disabled, clear its job ID
             cache
-                .update_task(&task.id, |t| {
-                    t.scheduler_job_id = None;
-                })
+                .update_task(
+                    &task.id,
+                    |t| {
+                        t.scheduler_job_id = None;
+                    },
+                    None,
+                )
                 .await
                 .ok();
         }
@@ -321,9 +315,13 @@ async fn execute_scheduled_task(
     }
 
     cache
-        .update_task(task_id, |t| {
-            let _ = t.mark_starting();
-        })
+        .update_task(
+            task_id,
+            |t| {
+                let _ = t.mark_starting();
+            },
+            Some(app_handle),
+        )
         .await?;
 
     let params: ProfileParams = serde_json::from_value(task.args.clone())
@@ -339,9 +337,13 @@ async fn execute_scheduled_task(
     match result {
         Ok(job_id) => {
             cache
-                .update_task(task_id, |t| {
-                    t.mark_running(job_id);
-                })
+                .update_task(
+                    task_id,
+                    |t| {
+                        t.mark_running(job_id);
+                    },
+                    Some(app_handle),
+                )
                 .await
                 .ok();
             Ok(())
@@ -350,10 +352,14 @@ async fn execute_scheduled_task(
             let next_run = get_next_run(&task.cron_expression).ok();
 
             cache
-                .update_task(task_id, |t| {
-                    t.mark_failure(e.clone());
-                    t.next_run = next_run;
-                })
+                .update_task(
+                    task_id,
+                    |t| {
+                        t.mark_failure(e.clone());
+                        t.next_run = next_run;
+                    },
+                    Some(app_handle),
+                )
                 .await?;
             Err(e)
         }

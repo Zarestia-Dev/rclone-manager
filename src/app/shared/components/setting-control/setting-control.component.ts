@@ -36,8 +36,8 @@ import { RcConfigOption } from '@app/types';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { LineBreaksPipe } from '../../pipes/linebreaks.pipe';
-import { RcloneValueMapperService } from '../../services/rclone-value-mapper.service';
-import { ValidatorRegistryService } from '../../services/validator-registry.service';
+import { RcloneValueMapperService } from '@app/services';
+import { ValidatorRegistryService } from '@app/services';
 
 @Component({
   selector: 'app-setting-control',

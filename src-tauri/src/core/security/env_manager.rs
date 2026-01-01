@@ -76,14 +76,6 @@ impl SafeEnvironmentManager {
         }
     }
 
-    /// Check if password is stored
-    pub fn has_config_password(&self) -> bool {
-        self.env_vars
-            .lock()
-            .map(|env_vars| env_vars.contains_key("RCLONE_CONFIG_PASS"))
-            .unwrap_or(false)
-    }
-
     /// Get all environment variables for spawning rclone process
     pub fn get_env_vars(&self) -> HashMap<String, String> {
         let mut result = HashMap::new();

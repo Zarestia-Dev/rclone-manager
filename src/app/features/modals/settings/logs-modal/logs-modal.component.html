@@ -43,7 +43,6 @@
       <button mat-icon-button (click)="clearLogs()" matTooltip="Clear All Logs" class="warn-btn">
         <mat-icon svgIcon="trash"></mat-icon>
       </button>
-      <div class="divider"></div>
       <button mat-icon-button (click)="loadLogs()" matTooltip="Refresh" [disabled]="loading()">
         <mat-icon [class.spinning]="loading()" svgIcon="refresh"></mat-icon>
       </button>
@@ -68,7 +67,7 @@
 
     <!-- Empty State -->
     @else if (filteredLogs().length === 0) {
-      <div class="empty-state">
+      <div class="empty-state" style="color: color-mix(in srgb, white 55%, transparent)">
         <mat-icon svgIcon="search"></mat-icon>
         <span>No logs found</span>
         <p>Try adjusting your filters</p>

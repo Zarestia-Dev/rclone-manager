@@ -6,7 +6,7 @@ use crate::{
     rclone::commands::remote::create_remote,
     utils::types::{
         all_types::RcloneState,
-        events::{REMOTE_PRESENCE_CHANGED, SYSTEM_SETTINGS_CHANGED},
+        events::{REMOTE_CACHE_CHANGED, SYSTEM_SETTINGS_CHANGED},
     },
 };
 use log::{info, warn};
@@ -133,7 +133,7 @@ async fn restore_rcman_backup(
         .map_err(|e| format!("Restore failed: {}", e))?;
 
     // Emit events to notify frontend
-    app_handle.emit(REMOTE_PRESENCE_CHANGED, ()).ok();
+    app_handle.emit(REMOTE_CACHE_CHANGED, ()).ok();
 
     if result.restored.iter().any(|s| s == "settings.json") {
         // Reload settings to get new values

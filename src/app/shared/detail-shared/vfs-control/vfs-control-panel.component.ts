@@ -35,7 +35,7 @@ import {
   VfsStats,
 } from 'src/app/services/file-operations/vfs.service';
 import { PathSelectionService } from 'src/app/services/remote/path-selection.service';
-import { NotificationService } from '../../services/notification.service';
+import { NotificationService } from '@app/services';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 import { FileSystemService, MountManagementService } from '@app/services';
 

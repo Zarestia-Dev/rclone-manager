@@ -24,8 +24,8 @@ import {
   UiStateService,
 } from '@app/services';
 import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
-import { IconService } from 'src/app/shared/services/icon.service';
-import { NotificationService } from 'src/app/shared/services/notification.service';
+import { IconService } from '@app/services';
+import { NotificationService } from '@app/services';
 import { FormatFileSizePipe } from '@app/pipes';
 import { Entry } from '@app/types';
 

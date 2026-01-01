@@ -54,9 +54,7 @@ pub async fn start_web_server(
         RCLONE_ENGINE_PATH_ERROR,
         RCLONE_ENGINE_UPDATING,
         RCLONE_PASSWORD_STORED,
-        REMOTE_STATE_CHANGED,
-        REMOTE_PRESENCE_CHANGED,
-        REMOTE_CACHE_UPDATED,
+        REMOTE_CACHE_CHANGED,
         SYSTEM_SETTINGS_CHANGED,
         BANDWIDTH_LIMIT_CHANGED,
         RCLONE_CONFIG_UNLOCKED,
@@ -67,9 +65,7 @@ pub async fn start_web_server(
         #[cfg(any(target_os = "macos", target_os = "windows"))]
         MOUNT_PLUGIN_INSTALLED,
         NETWORK_STATUS_CHANGED,
-        SCHEDULED_TASK_ERROR,
-        SCHEDULED_TASK_COMPLETED,
-        SCHEDULED_TASK_STOPPED,
+        SCHEDULED_TASKS_CACHE_CHANGED,
         APP_EVENT,
         OPEN_INTERNAL_ROUTE,
     ];

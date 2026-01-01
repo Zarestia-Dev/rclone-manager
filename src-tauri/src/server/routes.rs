@@ -314,10 +314,6 @@ fn security_routes() -> Router<WebServerState> {
             get(handlers::has_stored_password_handler),
         )
         .route(
-            "/has-config-password-env",
-            get(handlers::has_config_password_env_handler),
-        )
-        .route(
             "/is-config-encrypted",
             get(handlers::is_config_encrypted_handler),
         )
@@ -345,10 +341,6 @@ fn security_routes() -> Router<WebServerState> {
         .route(
             "/set-config-password-env",
             post(handlers::set_config_password_env_handler),
-        )
-        .route(
-            "/clear-config-password-env",
-            post(handlers::clear_config_password_env_handler),
         )
         .route(
             "/change-config-password",

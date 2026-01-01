@@ -1,7 +1,7 @@
 use log::{debug, error, info, warn};
 use serde_json::{Value, json};
 use std::collections::HashMap;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Manager, State};
 
 use crate::{
     rclone::{commands::job::submit_job_and_wait, state::watcher::force_check_mounted_remotes},
@@ -11,10 +11,7 @@ use crate::{
         },
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, mount},
-        types::{
-            all_types::{LogLevel, ProfileParams, RcloneState},
-            events::REMOTE_STATE_CHANGED,
-        },
+        types::all_types::{LogLevel, ProfileParams, RcloneState},
     },
 };
 
@@ -202,10 +199,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         .store_mount_profile(&params.mount_point, params.profile.clone())
         .await;
 
-    app.emit(REMOTE_STATE_CHANGED, &params.remote_name)
-        .map_err(|e| format!("Failed to emit event: {e}"))?;
-
-    // Force refresh mounted remotes after mount operation
+    // Force refresh - this will update cache and emit event if changed
     if let Err(e) = force_check_mounted_remotes(app).await {
         warn!("Failed to refresh mounted remotes after mount: {e}");
     }
@@ -253,10 +247,8 @@ pub async fn unmount_remote(
 
     if !status.is_success() {
         if status.as_u16() == 500 && body.contains("\"mount not found\"") {
-            warn!("🚨 Mount not found for {mount_point}, updating mount cache",);
-            // Update the cached mounted remotes
-            app.emit(REMOTE_STATE_CHANGED, &mount_point)
-                .map_err(|e| format!("Failed to emit event: {e}"))?;
+            warn!("🚨 Mount not found for {mount_point}, updating mount cache");
+            // Force refresh will detect the change
         }
 
         let error = format!("HTTP {status}: {body}");
@@ -279,10 +271,7 @@ pub async fn unmount_remote(
         None,
     );
 
-    app.emit(REMOTE_STATE_CHANGED, &mount_point)
-        .map_err(|e| format!("Failed to emit event: {e}"))?;
-
-    // Force refresh mounted remotes after unmount operation
+    // Force refresh - this will update cache and emit event if changed
     if let Err(e) = force_check_mounted_remotes(app).await {
         warn!("Failed to refresh mounted remotes after unmount: {e}");
     }
@@ -326,10 +315,7 @@ pub async fn unmount_all_remotes(
     }
 
     if context != "shutdown" {
-        app.emit(REMOTE_STATE_CHANGED, "all")
-            .map_err(|e| format!("Failed to emit event: {e}"))?;
-
-        // Force refresh mounted remotes after unmount all operation
+        // Force refresh - this will update cache and emit event if changed
         if let Err(e) = force_check_mounted_remotes(app).await {
             warn!("Failed to refresh mounted remotes after unmount all: {e}");
         }

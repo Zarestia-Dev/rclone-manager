@@ -33,7 +33,7 @@ import {
 } from '@angular/material/autocomplete';
 
 // Services
-import { AuthStateService } from '../../../../shared/services/auth-state.service';
+import { AuthStateService } from '@app/services';
 import {
   RemoteManagementService,
   JobManagementService,
@@ -50,9 +50,9 @@ import {
   INTERACTIVE_REMOTES,
 } from '@app/types';
 import { OperationConfigComponent } from '../../../../shared/remote-config/app-operation-config/app-operation-config.component';
-import { ValidatorRegistryService } from 'src/app/shared/services/validator-registry.service';
+import { ValidatorRegistryService } from '@app/services';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
-import { IconService } from 'src/app/shared/services/icon.service';
+import { IconService } from '@app/services';
 import {
   buildPathString,
   getDefaultAnswerFromQuestion,

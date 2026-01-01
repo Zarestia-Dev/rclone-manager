@@ -15,7 +15,7 @@ import {
   RemoteAction,
   RemoteCardVariant,
 } from '@app/types';
-import { IconService } from '../../services/icon.service';
+import { IconService } from '@app/services';
 
 /**
  * Centralized configuration for all operation types.

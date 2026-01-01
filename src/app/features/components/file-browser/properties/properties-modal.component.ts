@@ -10,10 +10,10 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { RemoteManagementService, NautilusService } from '@app/services';
+import { RemoteManagementService, NautilusService, RemoteFacadeService } from '@app/services';
 import { Entry, FileBrowserItem, FsInfo } from '@app/types';
 import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
-import { IconService } from 'src/app/shared/services/icon.service';
+import { IconService } from '@app/services';
 
 interface ExpiryOption {
   value: string;
@@ -54,6 +54,7 @@ export class PropertiesModalComponent implements OnInit {
 
   private remoteManagementService = inject(RemoteManagementService);
   private nautilusService = inject(NautilusService);
+  private remoteFacadeService = inject(RemoteFacadeService);
   private iconService = inject(IconService);
 
   // Separate loading states
@@ -132,29 +133,8 @@ export class PropertiesModalComponent implements OnInit {
       this.loadingSize = false;
     }
 
-    // 2. Get Disk Usage
-    let diskUsageRemote = remoteName;
-    let diskUsagePath = path;
-
-    if (isLocal && !(item && item.IsDir)) {
-      const lastSlashIndex = remoteName.lastIndexOf('/');
-      if (lastSlashIndex === 0) {
-        diskUsageRemote = '/';
-      } else if (lastSlashIndex > 0) {
-        diskUsageRemote = remoteName.substring(0, lastSlashIndex);
-      }
-      diskUsagePath = '';
-    }
-    this.remoteManagementService
-      .getDiskUsage(diskUsageRemote, diskUsagePath)
-      .then(diskUsage => {
-        this.diskUsage = diskUsage;
-        this.loadingDiskUsage = false;
-      })
-      .catch(err => {
-        console.error('Failed to load disk usage', err);
-        this.loadingDiskUsage = false;
-      });
+    // 2. Get Disk Usage - try cache first for remote roots
+    this.loadDiskUsage(remoteName, path, isLocal, item);
 
     // 3. Load supported hashes (only for files, not directories)
     if (!targetIsDir && this.item) {
@@ -164,6 +144,60 @@ export class PropertiesModalComponent implements OnInit {
     // 4. Check PublicLink support (only for remote filesystems)
     if (!isLocal) {
       this.checkPublicLinkSupport();
+    }
+  }
+
+  /**
+   * Load disk usage - uses centralized method that handles caching
+   */
+  private async loadDiskUsage(
+    remoteName: string,
+    path: string,
+    isLocal: boolean,
+    item: Entry | null | undefined
+  ): Promise<void> {
+    try {
+      // For remote roots, use centralized caching method
+      if (!isLocal && (!path || path === '/')) {
+        const diskUsage = await this.remoteFacadeService.getCachedOrFetchDiskUsage(
+          remoteName,
+          remoteName.endsWith(':') ? remoteName : `${remoteName}:`
+        );
+
+        if (diskUsage) {
+          this.diskUsage = {
+            total: diskUsage.total_space,
+            used: diskUsage.used_space,
+            free: diskUsage.free_space,
+          };
+        }
+        this.loadingDiskUsage = false;
+        return;
+      }
+
+      // Fall back to direct API call for subdirectories or local paths
+      let diskUsageRemote = remoteName;
+      let diskUsagePath = path;
+
+      if (isLocal && !(item && item.IsDir)) {
+        const lastSlashIndex = remoteName.lastIndexOf('/');
+        if (lastSlashIndex === 0) {
+          diskUsageRemote = '/';
+        } else if (lastSlashIndex > 0) {
+          diskUsageRemote = remoteName.substring(0, lastSlashIndex);
+        }
+        diskUsagePath = '';
+      }
+
+      const diskUsage = await this.remoteManagementService.getDiskUsage(
+        diskUsageRemote,
+        diskUsagePath
+      );
+      this.diskUsage = diskUsage;
+    } catch (err) {
+      console.error('Failed to load disk usage', err);
+    } finally {
+      this.loadingDiskUsage = false;
     }
   }
 

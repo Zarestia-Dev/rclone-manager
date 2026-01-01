@@ -5,12 +5,7 @@ import {
   ScheduledTask,
   CronValidationResponse,
   ScheduledTaskStats,
-  ScheduledTaskCompletedEvent,
-  ScheduledTaskErrorEvent,
-  ScheduledTaskStoppedEvent,
-  SCHEDULED_TASK_COMPLETED,
-  SCHEDULED_TASK_ERROR,
-  SCHEDULED_TASK_STOPPED,
+  SCHEDULED_TASKS_CACHE_CHANGED,
 } from '@app/types';
 
 /**
@@ -36,18 +31,8 @@ export class SchedulerService extends TauriBaseService {
    * Initialize event listeners for scheduled task events
    */
   private initializeEventListeners(): void {
-    // Listen for task completion events
-    this.listenToEvent<ScheduledTaskCompletedEvent>(SCHEDULED_TASK_COMPLETED).subscribe(_ => {
-      this.refreshScheduledTasks();
-    });
-
-    // Listen for task error events
-    this.listenToEvent<ScheduledTaskErrorEvent>(SCHEDULED_TASK_ERROR).subscribe(_ => {
-      this.refreshScheduledTasks();
-    });
-
-    // Listen for task stopped events
-    this.listenToEvent<ScheduledTaskStoppedEvent>(SCHEDULED_TASK_STOPPED).subscribe(_ => {
+    // Listen for cache changes
+    this.listenToEvent<unknown>(SCHEDULED_TASKS_CACHE_CHANGED).subscribe(_ => {
       this.refreshScheduledTasks();
     });
   }

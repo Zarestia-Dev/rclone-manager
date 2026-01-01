@@ -24,18 +24,6 @@ export class RclonePasswordService extends TauriBaseService {
   }
 
   /**
-   * Check if password is set in environment
-   */
-  async hasConfigPasswordEnv(): Promise<boolean> {
-    try {
-      return await this.invokeCommand<boolean>('has_config_password_env');
-    } catch (error) {
-      console.error('Failed to check config password env:', error);
-      throw error;
-    }
-  }
-
-  /**
    * Get stored password if available
    */
   async getStoredPassword(): Promise<string | null> {
@@ -55,18 +43,6 @@ export class RclonePasswordService extends TauriBaseService {
       await this.invokeCommand('store_config_password', { password });
     } catch (error) {
       console.error(error);
-      throw error;
-    }
-  }
-
-  /**
-   * Clear password from environment variable
-   */
-  async clearPasswordEnvironment(): Promise<void> {
-    try {
-      await this.invokeCommand('clear_config_password_env');
-    } catch (error) {
-      console.error('Failed to clear config password env:', error);
       throw error;
     }
   }

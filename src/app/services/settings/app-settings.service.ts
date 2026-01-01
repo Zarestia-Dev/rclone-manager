@@ -1,6 +1,6 @@
 import { inject, Injectable, OnDestroy } from '@angular/core';
 import { TauriBaseService } from '../core/tauri-base.service';
-import { NotificationService } from '../../shared/services/notification.service';
+import { NotificationService } from '@app/services';
 import { BehaviorSubject, firstValueFrom, Observable, Subject } from 'rxjs';
 import { map, distinctUntilChanged, filter, takeUntil, first } from 'rxjs/operators';
 import { CheckResult, SettingMetadata, SYSTEM_SETTINGS_CHANGED } from '@app/types';
@@ -19,11 +19,10 @@ export class AppSettingsService extends TauriBaseService implements OnDestroy {
   constructor() {
     super();
 
-    this.listenToEvent<Record<string, Record<string, any>>>(SYSTEM_SETTINGS_CHANGED)
+    this.listenToEvent<Record<string, Record<string, unknown>>>(SYSTEM_SETTINGS_CHANGED)
       .pipe(takeUntil(this.destroyed$))
       .subscribe(payload => {
-        console.log('Received settings change from backend:', payload);
-        this.updateStateFromEvent(payload);
+        this.updateStateFromEvent(payload as Record<string, Record<string, SettingMetadata>>);
       });
   }
 
@@ -35,8 +34,6 @@ export class AppSettingsService extends TauriBaseService implements OnDestroy {
       const response = await this.invokeCommand<{ options: Record<string, SettingMetadata> }>(
         'load_settings'
       );
-      console.log('Loaded settings from backend:', response);
-
       this.optionsState$.next(response.options);
     } catch (error) {
       console.error('Failed to load settings:', error);

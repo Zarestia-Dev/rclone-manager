@@ -10,8 +10,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCardModule } from '@angular/material/card';
-import { RemoteManagementService } from 'src/app/services';
-import { IconService } from 'src/app/shared/services/icon.service';
+import { RemoteManagementService, RemoteFacadeService } from 'src/app/services';
+import { IconService } from '@app/services';
 import { FormatFileSizePipe } from 'src/app/shared/pipes';
 
 interface RemoteAboutData {
@@ -41,6 +41,7 @@ interface RemoteAboutData {
 export class RemoteAboutModalComponent implements OnInit {
   private dialogRef = inject(MatDialogRef<RemoteAboutModalComponent>);
   private remoteManagementService = inject(RemoteManagementService);
+  private remoteFacadeService = inject(RemoteFacadeService);
   public iconService = inject(IconService);
   public data: RemoteAboutData = inject(MAT_DIALOG_DATA);
 
@@ -109,18 +110,29 @@ export class RemoteAboutModalComponent implements OnInit {
       });
   }
 
-  private fetchDiskUsage(): void {
-    this.remoteManagementService
-      .getDiskUsage(this.remoteName())
-      .then(usage => {
-        this.diskUsageInfo.set(usage);
-      })
-      .catch(err => {
-        console.warn('Disk usage check failed:', err);
-      })
-      .finally(() => {
-        this.loadingUsage.set(false);
-      });
+  private async fetchDiskUsage(): Promise<void> {
+    try {
+      // Use centralized method that handles caching and fetching
+      const diskUsage = await this.remoteFacadeService.getCachedOrFetchDiskUsage(
+        this.data.remote.displayName,
+        this.remoteName()
+      );
+
+      if (diskUsage) {
+        this.diskUsageInfo.set({
+          total: diskUsage.total_space,
+          used: diskUsage.used_space,
+          free: diskUsage.free_space,
+        });
+      } else {
+        this.diskUsageInfo.set(null);
+      }
+    } catch (err) {
+      console.warn('Disk usage check failed:', err);
+      this.diskUsageInfo.set(null);
+    } finally {
+      this.loadingUsage.set(false);
+    }
   }
 
   // --- Helpers for Template ---

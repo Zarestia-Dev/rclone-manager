@@ -34,7 +34,7 @@ import {
   JobsPanelComponent,
   SettingsPanelComponent,
 } from '../../../../shared/detail-shared';
-import { IconService } from 'src/app/shared/services/icon.service';
+import { IconService } from '@app/services';
 import { SchedulerService } from '@app/services';
 
 interface ActionConfig {

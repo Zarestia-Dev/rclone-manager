@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
-import { NotificationService } from '../../shared/services/notification.service';
+import { NotificationService } from '@app/services';
 
 import { ServeStartResponse, ServeListResponse, ServeListItem } from '@app/types';
 import { EventListenersService } from '../system/event-listeners.service';
@@ -58,7 +58,6 @@ export class ServeManagementService extends TauriBaseService {
       const response = await this.invokeCommand<ServeListItem[] | ServeListResponse>(
         'get_cached_serves'
       );
-      console.log('Fetched serves from cache:', response);
 
       let servesToUpdate: ServeListItem[] = [];
       if (Array.isArray(response)) {
@@ -68,12 +67,9 @@ export class ServeManagementService extends TauriBaseService {
       }
 
       this.runningServesSubject.next(servesToUpdate);
-      console.log('Updated running serves from cache:', servesToUpdate);
-      console.log('Refreshed serves from cache successfully');
-      console.log(this.runningServesSubject.value); // <-- This will now log the array
     } catch (error) {
-      console.error('Failed to refresh serves from cache:', error);
-      throw error; // Re-throw to be caught by refreshServes if needed
+      console.error('[ServeManagementService] Failed to refresh serves from cache:', error);
+      throw error;
     }
   }
 

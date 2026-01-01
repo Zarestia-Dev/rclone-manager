@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
 import {
   RemoteProvider,
@@ -13,13 +12,15 @@ import {
 /**
  * Service for managing rclone remotes
  * Handles CRUD operations, OAuth, and remote configuration
+ * Self-refreshes on REMOTE_CACHE_UPDATED events from backend
  */
 @Injectable({
   providedIn: 'root',
 })
 export class RemoteManagementService extends TauriBaseService {
-  private remotesCache = new BehaviorSubject<string[]>([]);
-  public remotes$ = this.remotesCache.asObservable();
+  constructor() {
+    super();
+  }
 
   /**
    * Get all available remote types
@@ -87,9 +88,7 @@ export class RemoteManagementService extends TauriBaseService {
    * Get all remotes
    */
   async getRemotes(): Promise<string[]> {
-    const remotes = await this.invokeCommand<string[]>('get_cached_remotes');
-    this.remotesCache.next(remotes);
-    return remotes;
+    return this.invokeCommand<string[]>('get_cached_remotes');
   }
 
   /**
@@ -104,7 +103,6 @@ export class RemoteManagementService extends TauriBaseService {
    */
   async createRemote(name: string, parameters: RemoteConfig): Promise<void> {
     await this.invokeCommand('create_remote', { name, parameters });
-    await this.refreshRemotes();
   }
 
   /**
@@ -112,7 +110,6 @@ export class RemoteManagementService extends TauriBaseService {
    */
   async updateRemote(name: string, parameters: RemoteConfig): Promise<void> {
     await this.invokeCommand('update_remote', { name, parameters });
-    await this.refreshRemotes();
   }
 
   /**
@@ -123,7 +120,6 @@ export class RemoteManagementService extends TauriBaseService {
       { command: 'delete_remote', args: { name } },
       { command: 'delete_remote_settings', args: { remoteName: name } },
     ]);
-    await this.refreshRemotes();
   }
 
   /**
@@ -234,14 +230,6 @@ export class RemoteManagementService extends TauriBaseService {
    */
   async cleanup(remote: string, path?: string): Promise<void> {
     return this.invokeCommand('cleanup', { remote, path });
-  }
-
-  /**
-   * Refresh the remotes cache
-   */
-  private async refreshRemotes(): Promise<void> {
-    const remotes = await this.getRemotes();
-    this.remotesCache.next(remotes);
   }
 
   /**

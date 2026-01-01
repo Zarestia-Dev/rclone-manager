@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ServeListItem } from '@app/types';
-import { IconService } from '../../services/icon.service';
+import { IconService } from '@app/services';
 
 interface TypeInfo {
   icon: string;

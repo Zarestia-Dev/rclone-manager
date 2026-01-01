@@ -23,7 +23,7 @@ import {
   AppUpdaterService,
   RcloneUpdateService,
 } from '@app/services';
-import { NotificationService } from 'src/app/shared/services/notification.service';
+import { NotificationService } from '@app/services';
 
 @Component({
   selector: 'app-about-modal',

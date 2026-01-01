@@ -24,7 +24,7 @@ import { Subject } from 'rxjs';
 import { takeUntil, debounceTime, pairwise, startWith } from 'rxjs/operators';
 
 // Services and Types
-import { ValidatorRegistryService } from '../../../../shared/services/validator-registry.service';
+import { ValidatorRegistryService } from '@app/services';
 import { AppSettingsService, FileSystemService } from '@app/services';
 import { SearchResult, SettingMetadata, SettingTab } from '@app/types';
 

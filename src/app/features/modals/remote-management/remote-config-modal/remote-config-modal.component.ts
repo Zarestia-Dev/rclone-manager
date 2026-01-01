@@ -25,8 +25,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { RemoteConfigStepComponent } from '../../../../shared/remote-config/remote-config-step/remote-config-step.component';
 import { FlagConfigStepComponent } from '../../../../shared/remote-config/flag-config-step/flag-config-step.component';
-import { AuthStateService } from '../../../../shared/services/auth-state.service';
-import { ValidatorRegistryService } from '../../../../shared/services/validator-registry.service';
+import { AuthStateService } from '@app/services';
+import { ValidatorRegistryService } from '@app/services';
 import {
   FlagConfigService,
   RemoteManagementService,
@@ -37,7 +37,7 @@ import {
   ServeManagementService,
   NautilusService,
 } from '@app/services';
-import { NotificationService } from '../../../../shared/services/notification.service';
+import { NotificationService } from '@app/services';
 import {
   BackendConfig,
   MountConfig,
@@ -61,7 +61,7 @@ import {
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
-import { IconService } from '../../../../shared/services/icon.service';
+import { IconService } from '@app/services';
 import {
   buildPathString,
   getDefaultAnswerFromQuestion,

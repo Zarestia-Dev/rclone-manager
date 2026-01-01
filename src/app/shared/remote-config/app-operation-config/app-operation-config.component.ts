@@ -27,7 +27,7 @@ import { FilePickerConfig } from '@app/types';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { CronInputComponent } from '@app/shared/components';
-import { NotificationService } from 'src/app/shared/services/notification.service';
+import { NotificationService } from '@app/services';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 
 type PathType = 'local' | 'currentRemote' | 'otherRemote';

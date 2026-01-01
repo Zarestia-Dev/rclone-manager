@@ -31,7 +31,6 @@ export class BackendService extends TauriBaseService {
       this.isLoading.set(true);
       const backends = await this.invokeCommand<BackendInfo[]>('list_backends');
       this.backends.set(backends);
-      console.log(backends);
 
       // Update active backend name
       const active = backends.find(b => b.is_active);
@@ -39,7 +38,7 @@ export class BackendService extends TauriBaseService {
         this.activeBackend.set(active.name);
       }
     } catch (error) {
-      console.error('Failed to load backends:', error);
+      console.error('[BackendService] Failed to load backends:', error);
       throw error;
     } finally {
       this.isLoading.set(false);

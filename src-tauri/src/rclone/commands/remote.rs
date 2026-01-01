@@ -15,7 +15,7 @@ use crate::{
         rclone::endpoints::{EndpointHelper, config},
         types::{
             all_types::{LogCache, LogLevel, RcloneState},
-            events::REMOTE_PRESENCE_CHANGED,
+            events::REMOTE_CACHE_CHANGED,
         },
     },
 };
@@ -148,7 +148,7 @@ pub async fn continue_create_remote_interactive(
     let value: Value =
         serde_json::from_str(&body_text).unwrap_or_else(|_| json!({ "raw": body_text }));
 
-    app.emit(REMOTE_PRESENCE_CHANGED, &name)
+    app.emit(REMOTE_CACHE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     Ok(value)
@@ -243,7 +243,7 @@ pub async fn create_remote(
         None,
     );
 
-    app.emit(REMOTE_PRESENCE_CHANGED, &name)
+    app.emit(REMOTE_CACHE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     Ok(())
@@ -318,7 +318,7 @@ pub async fn update_remote(
         None,
     );
 
-    app.emit(REMOTE_PRESENCE_CHANGED, &name)
+    app.emit(REMOTE_CACHE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     Ok(())
@@ -352,7 +352,10 @@ pub async fn delete_remote(
         return Err(error);
     }
 
-    match cache.remove_tasks_for_remote(&name, scheduler).await {
+    match cache
+        .remove_tasks_for_remote(&name, scheduler, Some(&app))
+        .await
+    {
         Ok(removed_ids) => {
             if !removed_ids.is_empty() {
                 info!(
@@ -371,7 +374,7 @@ pub async fn delete_remote(
     }
 
     // 1. The standard presence changed event
-    app.emit(REMOTE_PRESENCE_CHANGED, &name)
+    app.emit(REMOTE_CACHE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     let log_cache = app.state::<LogCache>();
