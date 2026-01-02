@@ -13,11 +13,12 @@ import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-search-container',
   standalone: true,
-  imports: [FormsModule, MatFormFieldModule, MatInputModule, MatIconModule],
+  imports: [FormsModule, MatFormFieldModule, MatInputModule, MatIconModule, TranslateModule],
   template: `
     <div class="search-container" [class.visible]="visible">
       <mat-form-field subscriptSizing="dynamic">
@@ -27,8 +28,8 @@ import { MatIconModule } from '@angular/material/icon';
           matInput
           [(ngModel)]="searchText"
           (ngModelChange)="onSearchTextChange($event)"
-          [placeholder]="placeholder"
-          [attr.aria-label]="ariaLabel"
+          [placeholder]="placeholder | translate"
+          [attr.aria-label]="ariaLabel | translate"
         />
       </mat-form-field>
     </div>
@@ -37,8 +38,8 @@ import { MatIconModule } from '@angular/material/icon';
 })
 export class SearchContainerComponent implements OnChanges {
   @Input() visible = false;
-  @Input() placeholder = 'Search...';
-  @Input() ariaLabel = 'Search';
+  @Input() placeholder = 'shared.search.placeholder';
+  @Input() ariaLabel = 'shared.search.ariaLabel';
   @Input() searchText = '';
 
   @Output() searchTextChange = new EventEmitter<string>();

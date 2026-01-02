@@ -1,9 +1,10 @@
-import { Component, input } from '@angular/core';
+import { Component, input, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 import { CompletedTransfer } from '@app/types';
@@ -11,7 +12,14 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
 
 @Component({
   selector: 'app-completed-transfers-table',
-  imports: [CommonModule, MatTableModule, MatIconModule, MatTooltipModule, MatChipsModule],
+  imports: [
+    CommonModule,
+    MatTableModule,
+    MatIconModule,
+    MatTooltipModule,
+    MatChipsModule,
+    TranslateModule,
+  ],
   template: `
     <div class="transfer-table-container">
       @if (transfers().length > 0) {
@@ -19,7 +27,9 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
           <table mat-table [dataSource]="transfers()" class="transfer-table">
             <!-- Name Column -->
             <ng-container matColumnDef="name">
-              <th mat-header-cell *matHeaderCellDef>File</th>
+              <th mat-header-cell *matHeaderCellDef>
+                {{ 'shared.transferActivity.table.file' | translate }}
+              </th>
               <td mat-cell *matCellDef="let transfer" class="name-cell">
                 <div class="file-info">
                   <mat-icon svgIcon="file" class="file-icon" matTooltip="{{ transfer.name }}">
@@ -33,34 +43,36 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
 
             <!-- Status Column -->
             <ng-container matColumnDef="status">
-              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <th mat-header-cell *matHeaderCellDef>
+                {{ 'shared.transferActivity.table.status' | translate }}
+              </th>
               <td mat-cell *matCellDef="let transfer" class="status-cell">
                 @if (transfer.status === 'failed') {
                   <mat-chip class="status-chip error">
                     <span>
                       <mat-icon svgIcon="circle-exclamation" class="chip-icon"></mat-icon>
-                      Failed
+                      {{ 'shared.transferActivity.status.failed' | translate }}
                     </span>
                   </mat-chip>
                 } @else if (transfer.status === 'checked') {
                   <mat-chip class="status-chip checked">
                     <span>
                       <mat-icon svgIcon="circle-check" class="chip-icon accent"></mat-icon>
-                      Checked
+                      {{ 'shared.transferActivity.status.checked' | translate }}
                     </span>
                   </mat-chip>
                 } @else if (transfer.status === 'partial') {
                   <mat-chip class="status-chip partial">
                     <span>
                       <mat-icon svgIcon="circle-exclamation" class="chip-icon warn"></mat-icon>
-                      Partial
+                      {{ 'shared.transferActivity.status.partial' | translate }}
                     </span>
                   </mat-chip>
                 } @else {
                   <mat-chip class="status-chip success">
                     <span>
                       <mat-icon svgIcon="circle-check" class="chip-icon accent"></mat-icon>
-                      Completed
+                      {{ 'shared.transferActivity.status.completed' | translate }}
                     </span>
                   </mat-chip>
                 }
@@ -69,17 +81,24 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
 
             <!-- Size Column -->
             <ng-container matColumnDef="size">
-              <th mat-header-cell *matHeaderCellDef>Size</th>
+              <th mat-header-cell *matHeaderCellDef>
+                {{ 'shared.transferActivity.table.size' | translate }}
+              </th>
               <td mat-cell *matCellDef="let transfer" class="size-cell">
                 <div class="size-info">
                   <span class="size-value">{{ FormatFileSizePipe.transform(transfer.size) }}</span>
                   @if (transfer.bytes !== transfer.size && transfer.bytes > 0) {
                     <span class="size-transferred"
-                      >({{ FormatFileSizePipe.transform(transfer.bytes) }} transferred)</span
+                      >({{
+                        'shared.transferActivity.table.transferred'
+                          | translate: { bytes: FormatFileSizePipe.transform(transfer.bytes) }
+                      }})</span
                     >
                   }
                   @if (transfer.status === 'checked' && transfer.size > 0) {
-                    <span class="size-note"> (already existed)</span>
+                    <span class="size-note">
+                      ({{ 'shared.transferActivity.table.alreadyExisted' | translate }})</span
+                    >
                   }
                 </div>
               </td>
@@ -87,17 +106,28 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
 
             <!-- Path Column -->
             <ng-container matColumnDef="path">
-              <th mat-header-cell *matHeaderCellDef>Path</th>
+              <th mat-header-cell *matHeaderCellDef>
+                {{ 'shared.transferActivity.table.path' | translate }}
+              </th>
               <td mat-cell *matCellDef="let transfer" class="path-cell">
                 <div class="path-info">
                   @if (transfer.srcFs && transfer.dstFs) {
-                    <span class="src" matTooltip="Source: {{ transfer.srcFs }}">{{
-                      transfer.srcFs
-                    }}</span>
+                    <span
+                      class="src"
+                      [matTooltip]="
+                        'shared.transferActivity.table.source' | translate: { path: transfer.srcFs }
+                      "
+                      >{{ transfer.srcFs }}</span
+                    >
                     <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
-                    <span class="dst" matTooltip="Destination: {{ transfer.dstFs }}">{{
-                      transfer.dstFs
-                    }}</span>
+                    <span
+                      class="dst"
+                      [matTooltip]="
+                        'shared.transferActivity.table.destination'
+                          | translate: { path: transfer.dstFs }
+                      "
+                      >{{ transfer.dstFs }}</span
+                    >
                   } @else {
                     <span class="no-path">-</span>
                   }
@@ -107,7 +137,9 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
 
             <!-- Time Column -->
             <ng-container matColumnDef="time">
-              <th mat-header-cell *matHeaderCellDef>Completed</th>
+              <th mat-header-cell *matHeaderCellDef>
+                {{ 'shared.transferActivity.table.completed' | translate }}
+              </th>
               <td mat-cell *matCellDef="let transfer" class="time-cell">
                 <div class="time-info">
                   @if (transfer.completedAt) {
@@ -128,9 +160,16 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
 
             <!-- Job ID Column -->
             <ng-container matColumnDef="jobid">
-              <th mat-header-cell *matHeaderCellDef>Job</th>
+              <th mat-header-cell *matHeaderCellDef>
+                {{ 'shared.transferActivity.table.job' | translate }}
+              </th>
               <td mat-cell *matCellDef="let transfer" class="jobid-cell">
-                <mat-chip class="job-chip" matTooltip="Job ID: {{ transfer.jobid }}">
+                <mat-chip
+                  class="job-chip"
+                  [matTooltip]="
+                    'shared.transferActivity.table.jobId' | translate: { id: transfer.jobid }
+                  "
+                >
                   #{{ transfer.jobid }}
                 </mat-chip>
               </td>
@@ -153,8 +192,8 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
       } @else {
         <div class="empty-state">
           <mat-icon svgIcon="circle-check" class="placeholder-icon"></mat-icon>
-          <span>No recent completed transfers</span>
-          <p>Completed transfers will appear here once operations finish</p>
+          <span>{{ 'shared.transferActivity.empty.noRecent' | translate }}</span>
+          <p>{{ 'shared.transferActivity.empty.recentHint' | translate }}</p>
         </div>
       }
     </div>
@@ -165,6 +204,7 @@ export class CompletedTransfersTableComponent {
   transfers = input.required<CompletedTransfer[]>();
   operationClass = input('');
   trackBy = input<(index: number, transfer: CompletedTransfer) => string>();
+  private translate = inject(TranslateService);
 
   FormatFileSizePipe = new FormatFileSizePipe();
   FormatTimePipe = new FormatTimePipe();
@@ -187,10 +227,13 @@ export class CompletedTransfersTableComponent {
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
 
-    if (days > 0) return `${days}d ago`;
-    if (hours > 0) return `${hours}h ago`;
-    if (minutes > 0) return `${minutes}m ago`;
-    return 'Just now';
+    if (days > 0)
+      return this.translate.instant('shared.transferActivity.time.daysAgo', { count: days });
+    if (hours > 0)
+      return this.translate.instant('shared.transferActivity.time.hoursAgo', { count: hours });
+    if (minutes > 0)
+      return this.translate.instant('shared.transferActivity.time.minutesAgo', { count: minutes });
+    return this.translate.instant('shared.transferActivity.time.justNow');
   }
 
   getDuration(startedAt: string, completedAt: string): string {
@@ -198,14 +241,23 @@ export class CompletedTransfersTableComponent {
     const end = new Date(completedAt).getTime();
     const diff = end - start;
 
-    if (diff < 1000) return '<1s';
+    if (diff < 1000)
+      return this.translate.instant('shared.transferActivity.time.duration.lessThanSecond');
 
     const seconds = Math.floor(diff / 1000);
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
 
-    if (hours > 0) return `${hours}h ${minutes % 60}m`;
-    if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
-    return `${seconds}s`;
+    if (hours > 0)
+      return this.translate.instant('shared.transferActivity.time.duration.hours', {
+        hours,
+        minutes: minutes % 60,
+      });
+    if (minutes > 0)
+      return this.translate.instant('shared.transferActivity.time.duration.minutes', {
+        minutes,
+        seconds: seconds % 60,
+      });
+    return this.translate.instant('shared.transferActivity.time.duration.seconds', { seconds });
   }
 }

@@ -1,11 +1,18 @@
 <div class="log-modal-wrapper">
   <!-- Header Section -->
   <div class="modal-header" data-tauri-drag-region>
-    <button aria-label="Terminal logs">
+    <button [attr.aria-label]="'modals.logs.aria.terminalLogs' | translate">
       <mat-icon svgIcon="terminal"></mat-icon>
     </button>
-    <p data-tauri-drag-region>Remote Logs: {{ data.remoteName }}</p>
-    <button (click)="close()" matIconButton matTooltipPosition="below">
+    <p data-tauri-drag-region>
+      {{ 'modals.logs.remoteLogs' | translate: { name: data.remoteName } }}
+    </p>
+    <button
+      (click)="close()"
+      matIconButton
+      matTooltipPosition="below"
+      [attr.aria-label]="'common.close' | translate"
+    >
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </div>
@@ -14,9 +21,9 @@
   <div class="toolbar-section">
     <div class="filter-controls">
       <mat-form-field class="compact">
-        <mat-label>Log Level</mat-label>
+        <mat-label>{{ 'modals.logs.logLevel' | translate }}</mat-label>
         <mat-select [value]="selectedLevel()" (selectionChange)="selectedLevel.set($event.value)">
-          <mat-option value="">All Levels</mat-option>
+          <mat-option value="">{{ 'modals.logs.allLevels' | translate }}</mat-option>
           @for (level of logLevels; track level.value) {
             <mat-option [value]="level.value">{{ level.label }}</mat-option>
           }
@@ -29,7 +36,7 @@
           matInput
           [ngModel]="searchText()"
           (ngModelChange)="searchText.set($event)"
-          placeholder="Search logs..."
+          [placeholder]="'modals.logs.searchPlaceholder' | translate"
         />
         @if (searchText()) {
           <button mat-icon-button matSuffix (click)="searchText.set('')">
@@ -40,16 +47,34 @@
     </div>
 
     <div class="action-controls">
-      <button mat-icon-button (click)="clearLogs()" matTooltip="Clear All Logs" class="warn-btn">
+      <button
+        mat-icon-button
+        (click)="clearLogs()"
+        [matTooltip]="'modals.logs.clearAll' | translate"
+        class="warn-btn"
+      >
         <mat-icon svgIcon="trash"></mat-icon>
       </button>
-      <button mat-icon-button (click)="loadLogs()" matTooltip="Refresh" [disabled]="loading()">
+      <button
+        mat-icon-button
+        (click)="loadLogs()"
+        [matTooltip]="'common.refresh' | translate"
+        [disabled]="loading()"
+      >
         <mat-icon [class.spinning]="loading()" svgIcon="refresh"></mat-icon>
       </button>
-      <button mat-icon-button (click)="scrollToTop()" matTooltip="Scroll Top">
+      <button
+        mat-icon-button
+        (click)="scrollToTop()"
+        [matTooltip]="'modals.logs.scrollTop' | translate"
+      >
         <mat-icon svgIcon="chewron-up"></mat-icon>
       </button>
-      <button mat-icon-button (click)="scrollToBottom()" matTooltip="Scroll Bottom">
+      <button
+        mat-icon-button
+        (click)="scrollToBottom()"
+        [matTooltip]="'modals.logs.scrollBottom' | translate"
+      >
         <mat-icon svgIcon="chewron-down"></mat-icon>
       </button>
     </div>
@@ -61,7 +86,7 @@
     @if (loading() && logs().length === 0) {
       <div class="empty-state">
         <mat-spinner diameter="40"></mat-spinner>
-        <span>Fetching logs...</span>
+        <span>{{ 'modals.logs.fetching' | translate }}</span>
       </div>
     }
 
@@ -69,8 +94,8 @@
     @else if (filteredLogs().length === 0) {
       <div class="empty-state" style="color: color-mix(in srgb, white 55%, transparent)">
         <mat-icon svgIcon="search"></mat-icon>
-        <span>No logs found</span>
-        <p>Try adjusting your filters</p>
+        <span>{{ 'modals.logs.noLogsFound' | translate }}</span>
+        <p>{{ 'modals.logs.adjustFilters' | translate }}</p>
       </div>
     }
 
@@ -94,7 +119,9 @@
             >
               <span class="timestamp">{{ log.timestamp | date: 'HH:mm:ss.SSS' }}</span>
               <span class="level-tag">{{ log.level | uppercase }}</span>
-              <span class="message" [title]="log.message">{{ log.message }}</span>
+              <span class="message" [title]="translateLogMessage(log.message)">{{
+                translateLogMessage(log.message)
+              }}</span>
 
               <div class="actions-hover">
                 <mat-icon
@@ -117,14 +144,14 @@
                 <!-- 1. Command Output (The one with ANSI colors) -->
                 @if (getCommandOutput(log); as output) {
                   <div class="detail-block output">
-                    <div class="block-label">Terminal Output</div>
+                    <div class="block-label">{{ 'modals.logs.terminalOutput' | translate }}</div>
                     <div class="code-block terminal-theme" [innerHTML]="output | ansiToHtml"></div>
                   </div>
                 }
 
                 <!-- 2. Raw JSON Data -->
                 <div class="detail-block json">
-                  <div class="block-label">Log Context</div>
+                  <div class="block-label">{{ 'modals.logs.logContext' | translate }}</div>
                   <div class="code-block json-theme">
                     <pre>{{ formatContext(log.context) }}</pre>
                   </div>

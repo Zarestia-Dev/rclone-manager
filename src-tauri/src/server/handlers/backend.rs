@@ -35,9 +35,9 @@ pub async fn switch_backend_handler(
     switch_backend(state.app_handle.clone(), body.name.clone(), rclone_state)
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(format!(
-        "Switched to backend '{}' successfully",
-        body.name
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.backend.switched",
+        "name" => body.name
     ))))
 }
 
@@ -72,9 +72,9 @@ pub async fn add_backend_handler(
     )
     .await
     .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(format!(
-        "Backend '{}' added successfully",
-        body.name
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.backend.added",
+        "name" => body.name
     ))))
 }
 
@@ -107,9 +107,9 @@ pub async fn update_backend_handler(
     )
     .await
     .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(format!(
-        "Backend '{}' updated successfully",
-        body.name
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.backend.updated",
+        "name" => body.name
     ))))
 }
 
@@ -127,9 +127,9 @@ pub async fn remove_backend_handler(
     remove_backend(state.app_handle.clone(), body.name.clone())
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(format!(
-        "Backend '{}' removed successfully",
-        body.name
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.backend.removed",
+        "name" => body.name
     ))))
 }
 

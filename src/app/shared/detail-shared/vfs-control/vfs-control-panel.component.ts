@@ -16,6 +16,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { FormsModule } from '@angular/forms';
@@ -71,6 +72,7 @@ const DELAY_SLIDER_DEFAULT = 60;
     FormatFileSizePipe,
     MatSliderModule,
     MatProgressSpinnerModule,
+    TranslateModule,
   ],
   templateUrl: './vfs-control-panel.component.html',
   styleUrl: './vfs-control-panel.component.scss',
@@ -83,6 +85,7 @@ export class VfsControlPanelComponent implements OnInit {
   private readonly fileSystemService = inject(FileSystemService);
   private readonly pathSelectionService = inject(PathSelectionService);
   private readonly mountService = inject(MountManagementService);
+  private readonly translate = inject(TranslateService);
 
   // ViewChild for table rendering
   @ViewChild(MatTable) table?: MatTable<VfsQueueItem>;
@@ -257,15 +260,31 @@ export class VfsControlPanelComponent implements OnInit {
   }
 
   async prioritizeUpload(item: VfsQueueItem): Promise<void> {
-    await this.updateExpiry(item, PRIORITY_EXPIRY, `'${item.name}' prioritized`);
+    await this.updateExpiry(
+      item,
+      PRIORITY_EXPIRY,
+      this.translate.instant('shared.vfsControl.actions.messages.prioritized', {
+        name: item.name,
+      })
+    );
   }
 
   async delayUpload(item: VfsQueueItem): Promise<void> {
-    await this.updateExpiry(item, DELAY_EXPIRY, `Delayed '${item.name}'`);
+    await this.updateExpiry(
+      item,
+      DELAY_EXPIRY,
+      this.translate.instant('shared.vfsControl.actions.messages.delayed', { name: item.name })
+    );
   }
 
   async setCustomDelay(item: VfsQueueItem): Promise<void> {
-    await this.updateExpiry(item, this.delaySliderValue(), `Delayed ${this.delaySliderValue()}s`);
+    await this.updateExpiry(
+      item,
+      this.delaySliderValue(),
+      this.translate.instant('shared.vfsControl.actions.messages.delayedSeconds', {
+        seconds: this.delaySliderValue(),
+      })
+    );
     this.showDelaySlider.set(null);
   }
 
@@ -277,21 +296,28 @@ export class VfsControlPanelComponent implements OnInit {
       this.notification.openSnackBar(msg, 'Close', 3000);
       this.refreshStatsAndQueue();
     } catch (e) {
-      this.notification.showError(`Action failed: ${e}`, 'Close');
+      this.notification.showError(
+        this.translate.instant('shared.vfsControl.actions.messages.actionFailed', { error: e }),
+        'Close'
+      );
     }
   }
 
   async forgetFile(path: string): Promise<void> {
     this.performAction(async fs => {
       const res = await this.vfsService.forget(fs, path);
-      return res.forgotten?.length ? `Removed '${path}'` : 'File cannot be removed';
+      return res.forgotten?.length
+        ? this.translate.instant('shared.vfsControl.actions.messages.removed', { path })
+        : this.translate.instant('shared.vfsControl.actions.messages.removeFailed');
     });
   }
 
   async clearMetadataCache(): Promise<void> {
     this.performAction(async fs => {
       const res = await this.vfsService.forget(fs);
-      return `Cleared ${res.forgotten?.length ?? 0} items`;
+      return this.translate.instant('shared.vfsControl.actions.messages.cleared', {
+        count: res.forgotten?.length ?? 0,
+      });
     });
   }
 
@@ -299,7 +325,7 @@ export class VfsControlPanelComponent implements OnInit {
     this.loading.set(true);
     await this.performAction(async fs => {
       await this.vfsService.refresh(fs, '', true);
-      return 'Directory refreshed';
+      return this.translate.instant('shared.vfsControl.actions.messages.directoryRefreshed');
     });
     this.loading.set(false);
   }
@@ -313,7 +339,7 @@ export class VfsControlPanelComponent implements OnInit {
       if (res?.interval?.string) {
         this.selectedVfs.update(v => (v ? { ...v, pollInterval: res.interval.string } : null));
       }
-      return `Interval set to ${val}`;
+      return this.translate.instant('shared.vfsControl.actions.messages.intervalSet', { val });
     });
   }
 
@@ -326,7 +352,10 @@ export class VfsControlPanelComponent implements OnInit {
       this.notification.openSnackBar(msg, 'Close', 3000);
       await this.refreshStatsAndQueue();
     } catch (e) {
-      this.notification.showError(`Error: ${e}`, 'Close');
+      this.notification.showError(
+        this.translate.instant('shared.vfsControl.actions.messages.error', { error: e }),
+        'Close'
+      );
     }
   }
 
@@ -345,10 +374,16 @@ export class VfsControlPanelComponent implements OnInit {
   }
 
   getQueueItemStatus(item: VfsQueueItem): string {
-    if (item.uploading) return 'Uploading now';
+    if (item.uploading) {
+      return this.translate.instant('shared.vfsControl.queue.statusText.uploading');
+    }
     return item.expiry < 0
-      ? `Ready (${Math.abs(item.expiry).toFixed(1)}s overdue)`
-      : `Waiting (${item.expiry.toFixed(1)}s)`;
+      ? this.translate.instant('shared.vfsControl.queue.statusText.ready', {
+          seconds: Math.abs(item.expiry).toFixed(1),
+        })
+      : this.translate.instant('shared.vfsControl.queue.statusText.waiting', {
+          seconds: item.expiry.toFixed(1),
+        });
   }
 
   toggleDelaySlider(item: VfsQueueItem): void {

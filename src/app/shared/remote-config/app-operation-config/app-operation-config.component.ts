@@ -29,6 +29,8 @@ import { CdkMenuModule } from '@angular/cdk/menu';
 import { CronInputComponent } from '@app/shared/components';
 import { NotificationService } from '@app/services';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 type PathType = 'local' | 'currentRemote' | 'otherRemote';
 type PathGroup = 'source' | 'dest';
@@ -51,6 +53,8 @@ type PathGroup = 'source' | 'dest';
     TitleCasePipe,
     CronInputComponent,
     MatProgressSpinner,
+    MatTooltipModule,
+    TranslateModule,
   ],
   templateUrl: './app-operation-config.component.html',
   styleUrls: ['./app-operation-config.component.scss'],
@@ -72,6 +76,7 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
   private readonly fileSystemService = inject(FileSystemService);
   private readonly pathSelectionService = inject(PathSelectionService);
   private readonly notificationService = inject(NotificationService);
+  private readonly translate = inject(TranslateService);
   private readonly cdRef = inject(ChangeDetectorRef);
   private readonly destroy$ = new Subject<void>();
 
@@ -329,7 +334,9 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
 
       // Validate mount destination must be local
       if (this.isMount && group === 'dest' && remoteName !== '') {
-        this.notificationService.showError('Mount destination must be a local folder.');
+        this.notificationService.showError(
+          this.translate.instant('wizards.appOperation.mountDestMustBeLocal')
+        );
         return;
       }
 

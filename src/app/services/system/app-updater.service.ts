@@ -8,6 +8,7 @@ import {
   firstValueFrom,
 } from 'rxjs';
 import { map, takeWhile } from 'rxjs/operators';
+import { TranslateService } from '@ngx-translate/core';
 import { NotificationService } from '@app/services';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { UpdateMetadata } from '@app/types';
@@ -40,6 +41,7 @@ export class AppUpdaterService extends TauriBaseService {
   private appSettingsService = inject(AppSettingsService);
   private uiStateService = inject(UiStateService);
   private dialog = inject(MatDialog);
+  private translate = inject(TranslateService);
 
   // Update state subjects (previously in UpdateStateService)
   private buildTypeSubject = new BehaviorSubject<string | null>(null);
@@ -138,8 +140,10 @@ export class AppUpdaterService extends TauriBaseService {
         this.updateAvailableSubject.next(result);
         this.hasUpdatesSubject.next(true);
         this.notificationService.showInfo(
-          `Update available: ${result.version}. Please check the About dialog to install.`,
-          'OK',
+          this.translate.instant('updates.availableNotification', {
+            version: result.version,
+          }),
+          this.translate.instant('common.ok'),
           10000
         );
       } else {
@@ -150,7 +154,7 @@ export class AppUpdaterService extends TauriBaseService {
       return result;
     } catch (error) {
       console.error('Failed to check for updates:', error);
-      this.notificationService.showError('Failed to check for updates');
+      this.notificationService.showError(this.translate.instant('updates.checkFailed'));
       return null;
     }
   }
@@ -158,7 +162,7 @@ export class AppUpdaterService extends TauriBaseService {
   async installUpdate(): Promise<void> {
     const update = this.updateAvailableSubject.value;
     if (!update) {
-      this.notificationService.showWarning('No update available');
+      this.notificationService.showWarning(this.translate.instant('updates.noUpdateAvailable'));
       return;
     }
 
@@ -166,11 +170,10 @@ export class AppUpdaterService extends TauriBaseService {
       if (this.uiStateService.platform === 'windows') {
         const dialogRef = this.dialog.open(ConfirmModalComponent, {
           data: {
-            title: 'Install Update',
-            message:
-              'Installing this update will restart the application automatically. Do you want to continue?',
-            confirmText: 'Install',
-            cancelText: 'Cancel',
+            title: this.translate.instant('updates.confirmInstall.title'),
+            message: this.translate.instant('updates.confirmInstall.message'),
+            confirmText: this.translate.instant('updates.confirmInstall.confirm'),
+            cancelText: this.translate.instant('updates.confirmInstall.cancel'),
             hideCancel: false,
           },
           disableClose: true,
@@ -195,7 +198,7 @@ export class AppUpdaterService extends TauriBaseService {
       // and handle the UI updates
     } catch (error) {
       console.error('Failed to install update:', error);
-      this.notificationService.showError('Failed to install update');
+      this.notificationService.showError(this.translate.instant('updates.installFailed'));
       this.stopStatusPolling();
       this.updateInProgressSubject.next(false);
     }
@@ -213,7 +216,7 @@ export class AppUpdaterService extends TauriBaseService {
 
           // If backend reported a failure, stop polling and notify
           if (status.isFailed) {
-            const msg = status.failureMessage || 'Update installation failed';
+            const msg = status.failureMessage || this.translate.instant('updates.installFailed');
             this.notificationService.showError(msg);
             this.updateInProgressSubject.next(false);
             this.updateAvailableSubject.next(null);
@@ -247,7 +250,7 @@ export class AppUpdaterService extends TauriBaseService {
     if (this.uiStateService.platform !== 'windows') {
       // Linux/MacOS: Set flag and show notification
       this.restartRequiredSubject.next(true);
-      this.notificationService.showSuccess('Update installed. Please restart the app.');
+      this.notificationService.showSuccess(this.translate.instant('updates.installSuccess'));
     } else {
       // Windows: the updater will auto-restart the application; no need for a modal here
       // Optionally, we could show a brief toast if required but we don't display a dialog now.
@@ -259,7 +262,7 @@ export class AppUpdaterService extends TauriBaseService {
       await this.invokeCommand('relaunch_app');
     } catch (error) {
       console.error('Failed to relaunch:', error);
-      this.notificationService.showError('Failed to restart application');
+      this.notificationService.showError(this.translate.instant('updates.restartFailed'));
     }
   }
 
@@ -288,11 +291,13 @@ export class AppUpdaterService extends TauriBaseService {
         await this.appSettingsService.saveSetting('runtime', 'app_skipped_updates', newSkipped);
         this.skippedVersionsSubject.next(newSkipped);
         this.updateAvailableSubject.next(null);
-        this.notificationService.showInfo(`Update ${version} will be skipped`);
+        this.notificationService.showInfo(
+          this.translate.instant('updates.skipVersion', { version })
+        );
       }
     } catch (error) {
       console.error('Failed to skip version:', error);
-      this.notificationService.showError('Failed to skip update');
+      this.notificationService.showError(this.translate.instant('updates.skipFailed'));
     }
   }
 
@@ -304,7 +309,7 @@ export class AppUpdaterService extends TauriBaseService {
       this.skippedVersionsSubject.next(newSkipped);
     } catch (error) {
       console.error('Failed to unskip version:', error);
-      this.notificationService.showError('Failed to unskip update');
+      this.notificationService.showError(this.translate.instant('updates.unskipFailed'));
     }
   }
 
@@ -341,7 +346,7 @@ export class AppUpdaterService extends TauriBaseService {
       await this.appSettingsService.saveSetting('runtime', 'app_auto_check_updates', enabled);
     } catch (error) {
       console.error('Failed to save auto-check setting:', error);
-      this.notificationService.showError('Failed to save update settings');
+      this.notificationService.showError(this.translate.instant('updates.saveSettingsFailed'));
     }
   }
 
@@ -359,10 +364,12 @@ export class AppUpdaterService extends TauriBaseService {
       this.hasUpdatesSubject.next(false);
       this.resetDownloadStatus();
 
-      this.notificationService.showInfo(`Update channel changed to ${channel}`);
+      this.notificationService.showInfo(
+        this.translate.instant('updates.channelChanged', { channel })
+      );
     } catch (error) {
       console.error('Failed to save update channel:', error);
-      this.notificationService.showError('Failed to save update channel');
+      this.notificationService.showError(this.translate.instant('updates.saveChannelFailed'));
     }
   }
 

@@ -10,6 +10,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 import { ExportModalData, ExportType } from '@app/types';
 import {
@@ -42,7 +43,9 @@ interface ExportOption {
     MatButtonModule,
     MatProgressSpinnerModule,
     MatRadioModule,
+    MatRadioModule,
     MatSlideToggleModule,
+    TranslateModule,
   ],
   templateUrl: './export-modal.component.html',
   styleUrls: ['./export-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -52,6 +55,7 @@ export class ExportModalComponent implements OnInit {
   private readonly backupRestoreService = inject(BackupRestoreService);
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly fileSystemService = inject(FileSystemService);
+  private readonly translate = inject(TranslateService);
   public readonly data = inject<ExportModalData>(MAT_DIALOG_DATA);
 
   // Signals
@@ -118,8 +122,8 @@ export class ExportModalComponent implements OnInit {
       // Full backup is always first (special option)
       {
         id: 'full',
-        label: 'Full Backup',
-        description: 'All Configs',
+        label: 'modals.export.fullBackup',
+        description: 'modals.export.allConfigs',
         icon: 'box-archive',
       },
     ];
@@ -140,8 +144,8 @@ export class ExportModalComponent implements OnInit {
     if (categories.some(c => c.id === 'remotes')) {
       options.push({
         id: 'specific_remote',
-        label: 'Single Remote',
-        description: 'Export one specific remote config',
+        label: 'modals.export.singleRemote',
+        description: 'modals.export.singleRemoteDesc',
         icon: 'hard-drive',
       });
     }
@@ -160,11 +164,11 @@ export class ExportModalComponent implements OnInit {
   private getDefaultDescription(categoryType: string): string {
     switch (categoryType) {
       case 'settings':
-        return 'Application preferences';
+        return 'modals.export.appPreferences';
       case 'subsettings':
-        return 'Configuration files';
+        return 'modals.export.configFiles';
       case 'external':
-        return 'External configuration file';
+        return 'modals.export.externalConfig';
       default:
         return '';
     }

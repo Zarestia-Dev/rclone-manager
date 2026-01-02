@@ -11,6 +11,7 @@ import { FormatFileSizePipe } from '@app/pipes';
 import { Subject, interval } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-operations-panel',
@@ -22,7 +23,9 @@ import { toSignal } from '@angular/core/rxjs-interop';
     MatProgressBarModule,
     MatTooltipModule,
     MatExpansionModule,
+    MatExpansionModule,
     FormatFileSizePipe,
+    TranslateModule,
   ],
   templateUrl: './operations-panel.component.html',
   styleUrls: ['./operations-panel.component.scss'],

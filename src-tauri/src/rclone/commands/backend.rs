@@ -138,10 +138,12 @@ pub async fn add_backend(
 
     // Validate
     if name.is_empty() {
-        return Err("Backend name cannot be empty".to_string());
+        return Err(crate::localized_error!("backendErrors.backend.nameEmpty"));
     }
     if name == "Local" {
-        return Err("Cannot add a backend named 'Local'".to_string());
+        return Err(crate::localized_error!(
+            "backendErrors.backend.cannotAddLocal"
+        ));
     }
 
     // Create backend

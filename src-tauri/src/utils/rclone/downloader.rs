@@ -15,20 +15,23 @@ pub async fn download_rclone_zip(
     while retries > 0 {
         match reqwest::get(&download_url).await {
             Ok(resp) => {
-                let bytes = resp
-                    .bytes()
-                    .await
-                    .map_err(|e| format!("Read failed: {e}"))?;
+                let bytes = resp.bytes().await.map_err(
+                    |e| crate::localized_error!("backendErrors.request.failed", "error" => e),
+                )?;
                 return Ok(bytes.to_vec());
             }
             Err(e) => {
                 retries -= 1;
                 if retries == 0 {
-                    return Err(format!("Download failed after 3 tries: {e}"));
+                    return Err(
+                        crate::localized_error!("backendErrors.rclone.downloadFailed", "error" => e),
+                    );
                 }
             }
         }
     }
 
-    Err("Unknown error downloading Rclone".into())
+    Err(crate::localized_error!(
+        "backendErrors.rclone.downloadError"
+    ))
 }

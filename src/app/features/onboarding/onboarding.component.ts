@@ -23,6 +23,7 @@ import { FormsModule } from '@angular/forms';
 import { LoadingOverlayComponent } from '../../shared/components/loading-overlay/loading-overlay.component';
 import { InstallationOptionsComponent } from '../../shared/components/installation-options/installation-options.component';
 import { PasswordManagerComponent } from '../../shared/components/password-manager/password-manager.component';
+import { TranslateModule } from '@ngx-translate/core';
 
 // Services
 import { InstallationService } from '@app/services';
@@ -35,6 +36,7 @@ import { InstallationOptionsData, InstallationTabOption } from '@app/types';
 
 /** Card definition for onboarding wizard */
 interface OnboardingCard {
+  key: string;
   image: string;
   title: string;
   content: string;
@@ -65,6 +67,7 @@ type OnboardingAction =
     MatProgressSpinnerModule,
     FormsModule,
     PasswordManagerComponent,
+    TranslateModule,
   ],
   templateUrl: './onboarding.component.html',
   styleUrls: ['./onboarding.component.scss'],
@@ -116,16 +119,16 @@ export class OnboardingComponent implements OnInit, OnDestroy {
   /** Base cards that are always shown */
   private readonly baseCards: OnboardingCard[] = [
     {
+      key: 'welcome',
       image: '../assets/rclone.svg',
-      title: 'Welcome to RClone Manager',
-      content:
-        'Your modern cloud storage management solution. RClone Manager provides an intuitive interface to sync, mount, and manage all your cloud remotes effortlessly.',
+      title: 'onboarding.cards.welcome.title',
+      content: 'onboarding.cards.welcome.content',
     },
     {
+      key: 'features',
       image: '../assets/rclone.svg',
-      title: 'Powerful Features',
-      content:
-        'Seamlessly sync files, mount cloud storage as local drives, manage multiple remotes, and monitor transfer operations - all from one beautiful interface.',
+      title: 'onboarding.cards.features.title',
+      content: 'onboarding.cards.features.content',
     },
   ];
 
@@ -137,47 +140,47 @@ export class OnboardingComponent implements OnInit, OnDestroy {
     // Don't add when still checking (null)
     if (this.systemHealth.rcloneInstalled() === false) {
       result.push({
+        key: 'installRclone',
         image: '../assets/rclone.svg',
-        title: 'Install RClone',
-        content:
-          "RClone is required for cloud storage operations. Choose your preferred installation location or binary location and we'll handle the setup automatically.",
+        title: 'onboarding.cards.installRclone.title',
+        content: 'onboarding.cards.installRclone.content',
       });
     }
 
     // Add mount plugin card only if explicitly not installed
     if (this.systemHealth.mountPluginInstalled() === false) {
       result.push({
+        key: 'installPlugin',
         image: '../assets/rclone.svg',
-        title: 'Install Mount Plugin',
-        content:
-          'The mount plugin enables you to mount cloud storage as local drives. This optional component enhances your RClone experience.',
+        title: 'onboarding.cards.installPlugin.title',
+        content: 'onboarding.cards.installPlugin.content',
       });
     }
 
     // Always add config selection card
     result.push({
+      key: 'selectConfig',
       image: '../assets/rclone.svg',
-      title: 'Select RClone Config',
-      content:
-        'Choose the RClone configuration file to use: the default location or a custom configuration file.',
+      title: 'onboarding.cards.selectConfig.title',
+      content: 'onboarding.cards.selectConfig.content',
     });
 
     // Add password card if config is encrypted and not unlocked
     if (this.systemHealth.passwordRequired()) {
       result.push({
+        key: 'passwordRequired',
         image: '../assets/rclone.svg',
-        title: 'Configuration Password Required',
-        content:
-          'Your rclone configuration is encrypted. Please enter the password to unlock it for this session.',
+        title: 'onboarding.cards.passwordRequired.title',
+        content: 'onboarding.cards.passwordRequired.content',
       });
     }
 
     // Always end with ready card
     result.push({
+      key: 'ready',
       image: '../assets/rclone.svg',
-      title: 'Ready to Go!',
-      content:
-        "Everything is set up and ready to use. RClone Manager will help you manage your cloud storage with ease. Click 'Get Started' to begin your journey.",
+      title: 'onboarding.cards.ready.title',
+      content: 'onboarding.cards.ready.content',
     });
 
     return result;
@@ -194,19 +197,19 @@ export class OnboardingComponent implements OnInit, OnDestroy {
   readonly currentAction = computed<OnboardingAction>(() => {
     const card = this.currentCard();
 
-    if (card.title === 'Install RClone' && !this.systemHealth.rcloneInstalled()) {
+    if (card.key === 'installRclone' && !this.systemHealth.rcloneInstalled()) {
       return 'install-rclone';
     }
-    if (card.title === 'Install Mount Plugin' && !this.systemHealth.mountPluginInstalled()) {
+    if (card.key === 'installPlugin' && !this.systemHealth.mountPluginInstalled()) {
       return 'install-plugin';
     }
-    if (card.title === 'Select RClone Config') {
+    if (card.key === 'selectConfig') {
       return 'config-next';
     }
-    if (card.title === 'Configuration Password Required') {
+    if (card.key === 'passwordRequired') {
       return 'unlock';
     }
-    if (card.title === 'Ready to Go!') {
+    if (card.key === 'ready') {
       return 'finish';
     }
     return 'next';
@@ -223,27 +226,30 @@ export class OnboardingComponent implements OnInit, OnDestroy {
     const data = this.installationData();
 
     if (this.installing()) {
-      return data.installLocation === 'existing' ? 'Configuring...' : 'Installing...';
+      return data.installLocation === 'existing'
+        ? 'onboarding.installButton.configuring'
+        : 'onboarding.installButton.installing';
     }
     if (data.installLocation === 'custom' && data.customPath.trim().length === 0) {
-      return 'Select Path First';
+      return 'onboarding.installButton.selectPath';
     }
     if (data.installLocation === 'existing') {
-      if (data.existingBinaryPath.trim().length === 0) return 'Select Binary First';
-      if (data.binaryTestResult === 'invalid') return 'Invalid Binary';
-      if (data.binaryTestResult === 'testing') return 'Testing Binary...';
-      if (data.binaryTestResult === 'valid') return 'Use This Binary';
-      return 'Test Binary First';
+      if (data.existingBinaryPath.trim().length === 0)
+        return 'onboarding.installButton.selectBinary';
+      if (data.binaryTestResult === 'invalid') return 'onboarding.installButton.invalidBinary';
+      if (data.binaryTestResult === 'testing') return 'onboarding.installButton.testingBinary';
+      if (data.binaryTestResult === 'valid') return 'onboarding.installButton.useBinary';
+      return 'onboarding.installButton.testBinary';
     }
-    return 'Install RClone';
+    return 'onboarding.installButton.install';
   });
 
   // ─── Tab Options ────────────────────────────────────────────────────────────
 
   readonly onboardingTabOptions: InstallationTabOption[] = [
-    { key: 'default', label: 'Recommended', icon: 'star' },
-    { key: 'custom', label: 'Custom', icon: 'folder' },
-    { key: 'existing', label: 'Existing', icon: 'file' },
+    { key: 'default', label: 'onboarding.options.recommended', icon: 'star' },
+    { key: 'custom', label: 'onboarding.options.custom', icon: 'folder' },
+    { key: 'existing', label: 'onboarding.options.existing', icon: 'file' },
   ];
 
   // ─── Lifecycle ──────────────────────────────────────────────────────────────
@@ -449,7 +455,7 @@ export class OnboardingComponent implements OnInit, OnDestroy {
       this.nextCard();
     } catch (error) {
       console.error('Password validation failed:', error);
-      this.passwordValidationError.set('Wrong password. Please try again.');
+      this.passwordValidationError.set('onboarding.validation.wrongPassword');
     } finally {
       this.isSubmittingPassword.set(false);
     }

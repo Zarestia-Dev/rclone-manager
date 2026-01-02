@@ -9,6 +9,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { StatusBadgeComponent } from '../status-badge/status-badge.component';
 import { PathDisplayComponent } from '../path-display/path-display.component';
 import { OperationControlConfig, PrimaryActionType, StatusBadgeConfig } from '@app/types';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-operation-control',
@@ -23,6 +24,7 @@ import { OperationControlConfig, PrimaryActionType, StatusBadgeConfig } from '@a
     MatExpansionModule,
     StatusBadgeComponent,
     PathDisplayComponent,
+    TranslateModule,
   ],
   template: `
     <mat-expansion-panel
@@ -33,12 +35,13 @@ import { OperationControlConfig, PrimaryActionType, StatusBadgeConfig } from '@a
       <mat-expansion-panel-header>
         <mat-panel-title>
           <mat-icon [svgIcon]="operationIcon()" class="panel-icon"></mat-icon>
-          <span class="panel-title-text">{{ config().profileName || 'default' }}</span>
+          <div class="profile-info">
+            <span class="profile-name">{{ config().profileName || 'default' }}</span>
+            <app-status-badge [config]="statusBadgeConfig()"></app-status-badge>
+          </div>
         </mat-panel-title>
 
         <mat-panel-description>
-          <app-status-badge [config]="statusBadgeConfig()"></app-status-badge>
-
           <div class="quick-action-wrapper" [class.hidden]="isExpanded">
             @if (config().isLoading) {
               <mat-spinner diameter="20" class="panel-spinner"></mat-spinner>
@@ -48,7 +51,7 @@ import { OperationControlConfig, PrimaryActionType, StatusBadgeConfig } from '@a
                 class="quick-action"
                 [ngClass]="buttonClass()"
                 (click)="handleQuickAction($event)"
-                [matTooltip]="config().isActive ? 'Stop' : 'Start'"
+                [matTooltip]="(config().isActive ? 'actions.stop' : 'actions.start') | translate"
               >
                 <mat-icon
                   [svgIcon]="config().isActive ? config().secondaryIcon : config().primaryIcon"
@@ -67,14 +70,14 @@ import { OperationControlConfig, PrimaryActionType, StatusBadgeConfig } from '@a
 
         <div class="panel-actions">
           <button
-            matButton="filled"
+            mat-flat-button
+            [color]="config().isActive ? 'warn' : 'primary'"
             (click)="
               config().isActive
                 ? stopJob.emit(config().operationType)
                 : startJob.emit(config().operationType)
             "
             [disabled]="config().isLoading"
-            [ngClass]="buttonClass()"
             class="full-action-button"
           >
             @if (config().isLoading) {
@@ -85,7 +88,8 @@ import { OperationControlConfig, PrimaryActionType, StatusBadgeConfig } from '@a
               ></mat-icon>
             }
             <span>{{
-              config().isActive ? config().secondaryButtonLabel : config().primaryButtonLabel
+              (config().isActive ? config().secondaryButtonLabel : config().primaryButtonLabel)
+                | translate
             }}</span>
           </button>
         </div>
@@ -116,6 +120,12 @@ import { OperationControlConfig, PrimaryActionType, StatusBadgeConfig } from '@a
         .full-action-button {
           width: 100%;
         }
+      }
+
+      .profile-info {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
       }
     `,
   ],
@@ -158,12 +168,12 @@ export class OperationControlComponent {
     const config = this.config();
     // Define status labels for each operation type
     const statusLabels: Record<PrimaryActionType, { active: string; inactive: string }> = {
-      mount: { active: 'Mounted', inactive: 'Not Mounted' },
-      sync: { active: 'Syncing', inactive: 'Stopped' },
-      bisync: { active: 'BiSyncing', inactive: 'Stopped' },
-      move: { active: 'Moving', inactive: 'Stopped' },
-      copy: { active: 'Copying', inactive: 'Stopped' },
-      serve: { active: 'Serving', inactive: 'Stopped' },
+      mount: { active: 'detailShared.status.mounted', inactive: 'detailShared.status.notMounted' },
+      sync: { active: 'detailShared.status.syncing', inactive: 'detailShared.status.stopped' },
+      bisync: { active: 'detailShared.status.bisyncing', inactive: 'detailShared.status.stopped' },
+      move: { active: 'detailShared.status.moving', inactive: 'detailShared.status.stopped' },
+      copy: { active: 'detailShared.status.copying', inactive: 'detailShared.status.stopped' },
+      serve: { active: 'detailShared.status.serving', inactive: 'detailShared.status.stopped' },
     };
 
     // Determine the current state

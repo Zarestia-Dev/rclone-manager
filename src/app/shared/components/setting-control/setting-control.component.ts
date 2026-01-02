@@ -11,6 +11,7 @@ import {
   WritableSignal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import {
   AbstractControl,
   ControlValueAccessor,
@@ -27,6 +28,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule, provideNativeDateAdapter } from '@angular/material/core';
@@ -51,12 +53,14 @@ import { ValidatorRegistryService } from '@app/services';
     MatSelectModule,
     MatSlideToggleModule,
     MatIconModule,
+    MatTooltipModule,
     MatButtonModule,
     MatDatepickerModule,
     MatNativeDateModule,
     ScrollingModule,
     NgxMatTimepickerModule,
     LineBreaksPipe,
+    TranslateModule,
   ],
   templateUrl: './setting-control.component.html',
   styleUrls: ['./setting-control.component.scss'],
@@ -73,6 +77,7 @@ import { ValidatorRegistryService } from '@app/services';
 export class SettingControlComponent implements ControlValueAccessor, OnDestroy {
   private valueMapper = inject(RcloneValueMapperService);
   private validatorRegistry = inject(ValidatorRegistryService);
+  private translate = inject(TranslateService);
   /** Caller-provided per-option overrides. Parent components may bind to this Input to change
    * how specific options are presented (for example override DefaultStr for certain options).
    */
@@ -261,7 +266,7 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   getDisplayDefault(): string {
     const _val = this.uiDefaultValue();
     if (_val === null || _val === undefined || _val === '') {
-      return 'none';
+      return this.translate.instant('shared.settingControl.none');
     }
     if (Array.isArray(_val)) {
       return _val.join(', ') || '[]';
@@ -762,7 +767,7 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
       errors['bwTimetable']?.message ||
       errors['fileMode']?.message ||
       errors['enum']?.message ||
-      'Invalid value'
+      this.translate.instant('shared.settingControl.errors.invalidValue')
     );
   }
 

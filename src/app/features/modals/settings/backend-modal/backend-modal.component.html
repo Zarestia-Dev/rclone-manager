@@ -3,8 +3,8 @@
     <button>
       <mat-icon svgIcon="server"></mat-icon>
     </button>
-    <p>Backend Management</p>
-    <button mat-icon-button (click)="close()" aria-label="Close">
+    <p>{{ 'modals.backend.title' | translate }}</p>
+    <button mat-icon-button (click)="close()" [attr.aria-label]="'common.close' | translate">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </div>
@@ -27,7 +27,7 @@
             (click)="!backend.is_active && switchToBackend(backend.name)"
             (keydown.enter)="!backend.is_active && switchToBackend(backend.name)"
             tabindex="0"
-            [attr.aria-label]="'Switch to ' + backend.name"
+            [attr.aria-label]="'modals.backend.switchTitle' | translate: { name: backend.name }"
           >
             <!-- Backend Icon with Status -->
             <div
@@ -45,7 +45,7 @@
               <div class="backend-title">
                 <span class="name">{{ backend.name }}</span>
                 @if (backend.is_active) {
-                  <span class="badge active">Active</span>
+                  <span class="badge active">{{ 'modals.backend.active' | translate }}</span>
                 }
               </div>
               <div class="backend-subtitle">
@@ -66,7 +66,7 @@
               <button
                 mat-icon-button
                 (click)="$event.stopPropagation(); startEdit(backend)"
-                matTooltip="Edit"
+                [matTooltip]="'modals.backend.editBackend' | translate"
               >
                 <mat-icon svgIcon="pen"></mat-icon>
               </button>
@@ -75,7 +75,7 @@
                 mat-icon-button
                 (click)="$event.stopPropagation(); testBackend(backend.name)"
                 [disabled]="testingBackend() !== null"
-                matTooltip="Test Connection"
+                [matTooltip]="'modals.backend.testConnection' | translate"
               >
                 @if (testingBackend() === backend.name) {
                   <mat-spinner diameter="18"></mat-spinner>
@@ -90,7 +90,11 @@
                   class="warn"
                   (click)="$event.stopPropagation(); removeBackend(backend.name)"
                   [disabled]="backend.is_active"
-                  [matTooltip]="backend.is_active ? 'Switch to another backend first' : 'Remove'"
+                  [matTooltip]="
+                    backend.is_active
+                      ? ('modals.backend.switchFirst' | translate)
+                      : ('modals.backend.removeTooltip' | translate)
+                  "
                 >
                   <mat-icon svgIcon="trash"></mat-icon>
                 </button>
@@ -104,7 +108,14 @@
     <!-- Add/Edit Form -->
     @if (formState().mode !== 'closed') {
       <div class="form-header">
-        <h3>{{ formState().mode === 'edit' ? 'Edit' : 'Add' }} Backend</h3>
+        <h3>
+          {{
+            (formState().mode === 'edit'
+              ? 'modals.backend.editBackend'
+              : 'modals.backend.addBackend'
+            ) | translate
+          }}
+        </h3>
       </div>
 
       <form [formGroup]="backendForm" (ngSubmit)="saveBackend()">
@@ -112,31 +123,33 @@
         @if (formState().editingName === 'Local') {
           <mat-tab-group animationDuration="0ms" class="local-backend-tabs">
             <!-- Tab 1: Connection & OAuth -->
-            <mat-tab label="Connection">
+            <mat-tab [label]="'modals.backend.connectionTab' | translate">
               <div class="tab-content">
                 <div class="form-row">
                   <mat-form-field class="host-field" appearance="fill">
-                    <mat-label>Host</mat-label>
+                    <mat-label>{{ 'modals.backend.host' | translate }}</mat-label>
                     <mat-icon matPrefix svgIcon="globe"></mat-icon>
                     <input matInput formControlName="host" />
                   </mat-form-field>
 
                   <mat-form-field class="port-field" appearance="fill">
-                    <mat-label>Port</mat-label>
+                    <mat-label>{{ 'modals.backend.port' | translate }}</mat-label>
                     <input matInput type="number" formControlName="port" />
                   </mat-form-field>
                 </div>
 
                 <div class="auth-group">
-                  <mat-checkbox formControlName="has_auth">Enable Authentication</mat-checkbox>
+                  <mat-checkbox formControlName="has_auth">{{
+                    'modals.backend.enableAuth' | translate
+                  }}</mat-checkbox>
                   @if (backendForm.get('has_auth')?.value) {
                     <div class="auth-fields">
                       <mat-form-field appearance="fill">
-                        <mat-label>Username</mat-label>
+                        <mat-label>{{ 'modals.backend.username' | translate }}</mat-label>
                         <input matInput formControlName="username" />
                       </mat-form-field>
                       <mat-form-field appearance="fill">
-                        <mat-label>Password</mat-label>
+                        <mat-label>{{ 'modals.backend.password' | translate }}</mat-label>
                         <input
                           matInput
                           [type]="showPassword() ? 'text' : 'password'"
@@ -156,15 +169,15 @@
                 </div>
 
                 <div class="oauth-group">
-                  <h4>OAuth Settings</h4>
+                  <h4>{{ 'modals.backend.oauthSettings' | translate }}</h4>
                   <div class="form-row">
                     <mat-form-field class="host-field" appearance="fill">
-                      <mat-label>OAuth Host</mat-label>
+                      <mat-label>{{ 'modals.backend.oauthHost' | translate }}</mat-label>
                       <input matInput formControlName="oauth_host" />
                     </mat-form-field>
 
                     <mat-form-field class="port-field" appearance="fill">
-                      <mat-label>OAuth Port</mat-label>
+                      <mat-label>{{ 'modals.backend.oauthPort' | translate }}</mat-label>
                       <input matInput type="number" formControlName="oauth_port" />
                     </mat-form-field>
                   </div>
@@ -172,7 +185,7 @@
               </div>
             </mat-tab>
 
-            <mat-tab label="Security">
+            <mat-tab [label]="'modals.backend.securityTab' | translate">
               <div class="tab-content security-tab">
                 <app-backend-security></app-backend-security>
               </div>
@@ -181,37 +194,39 @@
         } @else {
           <!-- Standard Form for Remote Backends -->
           <mat-form-field appearance="fill">
-            <mat-label>Name</mat-label>
+            <mat-label>{{ 'modals.backend.name' | translate }}</mat-label>
             <mat-icon matPrefix svgIcon="tag"></mat-icon>
             <input matInput formControlName="name" />
             @if (hasDuplicateName()) {
-              <mat-error>Name exists</mat-error>
+              <mat-error>{{ 'modals.backend.nameExists' | translate }}</mat-error>
             }
           </mat-form-field>
 
           <div class="form-row">
             <mat-form-field class="host-field" appearance="fill">
-              <mat-label>Host</mat-label>
+              <mat-label>{{ 'modals.backend.host' | translate }}</mat-label>
               <mat-icon matPrefix svgIcon="globe"></mat-icon>
               <input matInput formControlName="host" />
             </mat-form-field>
 
             <mat-form-field class="port-field" appearance="fill">
-              <mat-label>Port</mat-label>
+              <mat-label>{{ 'modals.backend.port' | translate }}</mat-label>
               <input matInput type="number" formControlName="port" />
             </mat-form-field>
           </div>
 
           <div class="auth-group">
-            <mat-checkbox formControlName="has_auth">Enable Authentication</mat-checkbox>
+            <mat-checkbox formControlName="has_auth">{{
+              'modals.backend.enableAuth' | translate
+            }}</mat-checkbox>
             @if (backendForm.get('has_auth')?.value) {
               <div class="auth-fields">
                 <mat-form-field appearance="fill">
-                  <mat-label>Username</mat-label>
+                  <mat-label>{{ 'modals.backend.username' | translate }}</mat-label>
                   <input matInput formControlName="username" />
                 </mat-form-field>
                 <mat-form-field appearance="fill">
-                  <mat-label>Password</mat-label>
+                  <mat-label>{{ 'modals.backend.password' | translate }}</mat-label>
                   <input
                     matInput
                     [type]="showPassword() ? 'text' : 'password'"
@@ -231,7 +246,7 @@
           </div>
 
           <mat-form-field appearance="fill">
-            <mat-label>Config Password (Optional)</mat-label>
+            <mat-label>{{ 'modals.backend.configPassword' | translate }}</mat-label>
             <input
               matInput
               [type]="showConfigPassword() ? 'text' : 'password'"
@@ -255,18 +270,18 @@
     @if (formState().mode === 'closed') {
       <button mat-flat-button class="primary" (click)="toggleAddForm()">
         <mat-icon svgIcon="plus"></mat-icon>
-        Add Backend
+        {{ 'modals.backend.addBackend' | translate }}
       </button>
     }
     @if (formState().mode !== 'closed') {
-      <button mat-button (click)="cancelEdit()">Cancel</button>
+      <button mat-button (click)="cancelEdit()">{{ 'common.cancel' | translate }}</button>
       <button
         mat-flat-button
         class="primary"
         [disabled]="backendForm.invalid || hasDuplicateName() || hasDuplicateHost()"
         (click)="saveBackend()"
       >
-        Save
+        {{ 'modals.backend.save' | translate }}
       </button>
     }
   </div>

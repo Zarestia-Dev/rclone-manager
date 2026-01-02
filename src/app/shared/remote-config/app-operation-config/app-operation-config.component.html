@@ -1,19 +1,21 @@
 <div class="operation-config" [formGroup]="opFormGroup">
   <div class="header-section">
     <mat-slide-toggle formControlName="autoStart" class="operation-enable">
-      Enable Auto-{{ operationType | titlecase }} on Startup
+      {{ 'wizards.appOperation.enableAutoStart' | translate: { type: operationType | titlecase } }}
     </mat-slide-toggle>
     <p class="section-description">{{ description }}</p>
 
     @if (!isMount && !isServe) {
       <mat-divider></mat-divider>
       <mat-slide-toggle formControlName="cronEnabled" class="cron-enable">
-        Enable Scheduled {{ operationType | titlecase }}
+        {{
+          'wizards.appOperation.enableScheduled' | translate: { type: operationType | titlecase }
+        }}
       </mat-slide-toggle>
-      <p class="section-description">
-        When enabled, this operation will run <strong>recurring</strong> based on the cron schedule
-        below.
-      </p>
+      <p
+        class="section-description"
+        [innerHTML]="'wizards.appOperation.scheduleDescription' | translate"
+      ></p>
     }
   </div>
 
@@ -21,19 +23,19 @@
     <mat-accordion class="cron-accordion" [multi]="false">
       <mat-expansion-panel class="cron-panel">
         <mat-expansion-panel-header>
-          <mat-panel-title> Cron Schedule </mat-panel-title>
+          <mat-panel-title> {{ 'wizards.appOperation.cronSchedule' | translate }} </mat-panel-title>
           <mat-panel-description>
             <span [class.no-schedule]="!cronExpression">
-              {{ cronExpression || 'Not configured' }}
+              {{ cronExpression || ('wizards.appOperation.notConfigured' | translate) }}
             </span>
             @if (cronExpression) {
               <button
                 mat-icon-button
                 class="clear-schedule-btn"
                 (click)="clearSchedule($event)"
-                matTooltip="Clear schedule"
+                [matTooltip]="'wizards.appOperation.clearSchedule' | translate"
                 type="button"
-                aria-label="Clear cron schedule"
+                [attr.aria-label]="'wizards.appOperation.clearSchedule' | translate"
               >
                 <mat-icon svgIcon="circle-xmark"></mat-icon>
               </button>
@@ -60,7 +62,11 @@
         <!-- Mount/Serve Source is Fixed to Current Remote -->
         <div class="path-input-wrapper">
           <mat-form-field appearance="fill">
-            <mat-label>{{ isServe ? 'Remote Path to Serve' : 'Source Path' }}</mat-label>
+            <mat-label>{{
+              isServe
+                ? ('wizards.appOperation.remotePathServe' | translate)
+                : ('wizards.appOperation.sourcePath' | translate)
+            }}</mat-label>
             <span matPrefix class="path-prefix mount-remote locked">
               <mat-icon svgIcon="hard-drive"></mat-icon>
               <span>{{ currentRemoteName }}:</span>
@@ -68,8 +74,16 @@
             <input
               matInput
               formControlName="path"
-              [placeholder]="isServe ? 'Root folder or specific path' : 'Root folder (optional)'"
-              [attr.aria-label]="isServe ? 'Remote path to serve' : 'Source path on remote'"
+              [placeholder]="
+                isServe
+                  ? ('wizards.appOperation.rootFolderSpecific' | translate)
+                  : ('wizards.appOperation.rootFolderOptional' | translate)
+              "
+              [attr.aria-label]="
+                isServe
+                  ? ('wizards.appOperation.remotePathServe' | translate)
+                  : ('wizards.appOperation.sourcePath' | translate)
+              "
               (input)="onInputChanged($event, 'source')"
               [cdkMenuTriggerFor]="sourceAutocompleteMenu"
             />
@@ -78,7 +92,7 @@
               matSuffix
               (click)="selectRemotePath('source'); $event.stopPropagation()"
               type="button"
-              aria-label="Select remote source folder"
+              [attr.aria-label]="'wizards.appOperation.selectRemoteSource' | translate"
             >
               <mat-icon svgIcon="folder" class="accent"></mat-icon>
             </button>
@@ -88,7 +102,7 @@
         <!-- Standard Source Path (Sync/Copy/Move) -->
         <div class="path-input-wrapper">
           <mat-form-field appearance="fill">
-            <mat-label>Source Path</mat-label>
+            <mat-label>{{ 'wizards.appOperation.sourcePath' | translate }}</mat-label>
             <mat-select
               matPrefix
               formControlName="pathType"
@@ -96,14 +110,14 @@
               [class.local]="sourcePathType === 'local'"
               [class.remote]="sourcePathType === 'currentRemote'"
               [class.other]="sourcePathType === 'otherRemote'"
-              aria-label="Change source path type"
+              [attr.aria-label]="'wizards.appOperation.changeSourceType' | translate"
               (selectionChange)="clearPathOnTypeChange('source')"
             >
               <mat-select-trigger>
                 @switch (sourcePathType) {
                   @case ('local') {
                     <mat-icon svgIcon="folder" class="purple"></mat-icon>
-                    <span>Local Path</span>
+                    <span>{{ 'wizards.appOperation.localPath' | translate }}</span>
                   }
                   @case ('currentRemote') {
                     <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
@@ -118,7 +132,7 @@
 
               <mat-option value="local">
                 <mat-icon svgIcon="folder" class="purple"></mat-icon>
-                Local Path
+                {{ 'wizards.appOperation.localPath' | translate }}
               </mat-option>
               <mat-option value="currentRemote">
                 <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
@@ -126,7 +140,7 @@
               </mat-option>
 
               @if (otherRemotes.length) {
-                <mat-optgroup label="Other Remotes">
+                <mat-optgroup [label]="'wizards.appOperation.otherRemotes' | translate">
                   @for (remote of otherRemotes; track remote) {
                     <mat-option [value]="'otherRemote:' + remote">
                       <mat-icon class="accent" svgIcon="cloud"></mat-icon>
@@ -140,8 +154,8 @@
             <input
               matInput
               formControlName="path"
-              placeholder="Enter source path..."
-              aria-label="Source path"
+              [placeholder]="'wizards.appOperation.enterSourcePath' | translate"
+              [attr.aria-label]="'wizards.appOperation.sourcePath' | translate"
               (click)="$event.stopPropagation()"
               (input)="onInputChanged($event, 'source')"
               [cdkMenuTriggerFor]="sourceAutocompleteMenu"
@@ -153,7 +167,7 @@
               matSuffix
               (click)="selectRemotePath('source'); $event.stopPropagation()"
               type="button"
-              aria-label="Select source folder"
+              [attr.aria-label]="'wizards.appOperation.selectRemoteSource' | translate"
             >
               <mat-icon
                 svgIcon="folder"
@@ -171,16 +185,16 @@
       <div class="path-section">
         <div class="path-input-wrapper">
           <mat-form-field appearance="fill">
-            <mat-label>Destination Path</mat-label>
+            <mat-label>{{ 'wizards.appOperation.destPath' | translate }}</mat-label>
             <span matPrefix class="path-prefix mount-local locked">
               <mat-icon svgIcon="folder" class="purple"></mat-icon>
-              <span>Local Path</span>
+              <span>{{ 'wizards.appOperation.localPath' | translate }}</span>
             </span>
             <input
               matInput
               formControlName="dest"
-              placeholder="Select a mount folder..."
-              aria-label="Destination mount path"
+              [placeholder]="'wizards.appOperation.selectDestFolder' | translate"
+              [attr.aria-label]="'wizards.appOperation.destPath' | translate"
               (input)="onInputChanged($event, 'dest')"
               [cdkMenuTriggerFor]="destAutocompleteMenu"
             />
@@ -190,12 +204,12 @@
               matSuffix
               (click)="selectRemotePath('dest'); $event.stopPropagation()"
               type="button"
-              aria-label="Select destination folder"
+              [attr.aria-label]="'wizards.appOperation.selectDestFolder' | translate"
             >
               <mat-icon svgIcon="folder" class="purple"></mat-icon>
             </button>
             @if (opFormGroup.get('dest')?.hasError('required')) {
-              <mat-error>Destination is required</mat-error>
+              <mat-error>{{ 'wizards.appOperation.destRequired' | translate }}</mat-error>
             }
           </mat-form-field>
         </div>
@@ -204,7 +218,7 @@
       <div class="path-section" formGroupName="dest">
         <div class="path-input-wrapper">
           <mat-form-field appearance="fill">
-            <mat-label>Destination Path</mat-label>
+            <mat-label>{{ 'wizards.appOperation.destPath' | translate }}</mat-label>
             <mat-select
               matPrefix
               formControlName="pathType"
@@ -212,14 +226,14 @@
               [class.local]="destPathType === 'local'"
               [class.remote]="destPathType === 'currentRemote'"
               [class.other]="destPathType === 'otherRemote'"
-              aria-label="Change destination path type"
+              [attr.aria-label]="'wizards.appOperation.changeDestPathType' | translate"
               (selectionChange)="clearPathOnTypeChange('dest')"
             >
               <mat-select-trigger>
                 @switch (destPathType) {
                   @case ('local') {
                     <mat-icon svgIcon="folder" class="purple"></mat-icon>
-                    <span>Local Path</span>
+                    <span>{{ 'wizards.appOperation.localPath' | translate }}</span>
                   }
                   @case ('currentRemote') {
                     <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
@@ -234,7 +248,7 @@
 
               <mat-option value="local">
                 <mat-icon svgIcon="folder" class="purple"></mat-icon>
-                Local Path
+                {{ 'wizards.appOperation.localPath' | translate }}
               </mat-option>
               <mat-option value="currentRemote">
                 <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
@@ -242,7 +256,7 @@
               </mat-option>
 
               @if (otherRemotes.length) {
-                <mat-optgroup label="Other Remotes">
+                <mat-optgroup [label]="'wizards.appOperation.otherRemotes' | translate">
                   @for (remote of otherRemotes; track remote) {
                     <mat-option [value]="'otherRemote:' + remote">
                       <mat-icon class="accent" svgIcon="cloud"></mat-icon>
@@ -256,8 +270,8 @@
             <input
               matInput
               formControlName="path"
-              placeholder="Enter destination path..."
-              aria-label="Destination path"
+              [placeholder]="'wizards.appOperation.enterDestPath' | translate"
+              [attr.aria-label]="'wizards.appOperation.destPath' | translate"
               (click)="$event.stopPropagation()"
               (input)="onInputChanged($event, 'dest')"
               [cdkMenuTriggerFor]="destAutocompleteMenu"
@@ -269,7 +283,7 @@
               matSuffix
               (click)="selectRemotePath('dest'); $event.stopPropagation()"
               type="button"
-              aria-label="Select destination folder"
+              [attr.aria-label]="'wizards.appOperation.selectDestFolder' | translate"
             >
               <mat-icon
                 svgIcon="folder"
@@ -279,7 +293,7 @@
             </button>
 
             @if (opFormGroup.get('dest.path')?.hasError('required')) {
-              <mat-error>Destination is required</mat-error>
+              <mat-error>{{ 'wizards.appOperation.destRequired' | translate }}</mat-error>
             }
           </mat-form-field>
         </div>
@@ -289,7 +303,7 @@
     @if (isNewRemote) {
       <div class="message warning" role="alert">
         <mat-icon svgIcon="info" class="orange"></mat-icon>
-        <span>Note: Remote path completion available after creation of the remote.</span>
+        <span>{{ 'wizards.appOperation.completionNote' | translate }}</span>
       </div>
     }
   </div>
@@ -302,19 +316,19 @@
       @if (state.isLoading) {
         <div class="menu-item">
           <mat-spinner diameter="24"></mat-spinner>
-          <span>Loading...</span>
+          <span>{{ 'wizards.appOperation.loading' | translate }}</span>
         </div>
       } @else {
         @if (state.currentPath) {
           <button cdkMenuItem class="menu-item" (click)="goUp('source')">
             <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
-            <span>Up Folder</span>
+            <span>{{ 'wizards.appOperation.upFolder' | translate }}</span>
           </button>
           <mat-divider></mat-divider>
         }
         @if (state.options.length === 0 && !state.isLoading) {
           <div class="empty-state">
-            <span>No items found in this directory.</span>
+            <span>{{ 'wizards.appOperation.noItemsFound' | translate }}</span>
           </div>
         }
         @for (entry of state.options; track trackByEntry($index, entry)) {
@@ -340,19 +354,19 @@
       @if (state.isLoading) {
         <div class="menu-item">
           <mat-spinner diameter="24"></mat-spinner>
-          <span>Loading...</span>
+          <span>{{ 'wizards.appOperation.loading' | translate }}</span>
         </div>
       } @else {
         @if (state.currentPath) {
           <button cdkMenuItem class="menu-item" (click)="goUp('dest')">
             <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
-            <span>Up Folder</span>
+            <span>{{ 'wizards.appOperation.upFolder' | translate }}</span>
           </button>
           <mat-divider></mat-divider>
         }
         @if (state.options.length === 0 && !state.isLoading) {
           <div class="empty-state">
-            <span>No items found in this directory.</span>
+            <span>{{ 'wizards.appOperation.noItemsFound' | translate }}</span>
           </div>
         }
         @for (entry of state.options; track trackByEntry($index, entry)) {

@@ -100,9 +100,9 @@ pub async fn reload_scheduled_tasks_handler(
     reload_scheduled_tasks(cache, scheduler)
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Scheduled tasks reloaded successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.scheduler.reloaded"
+    ))))
 }
 
 pub async fn clear_all_scheduled_tasks_handler(
@@ -114,9 +114,9 @@ pub async fn clear_all_scheduled_tasks_handler(
     clear_all_scheduled_tasks(cache, scheduler)
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "All scheduled tasks cleared successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.scheduler.cleared"
+    ))))
 }
 
 #[derive(Deserialize)]

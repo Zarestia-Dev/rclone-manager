@@ -1,4 +1,5 @@
 import { inject, Injectable } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { NotificationService } from '@app/services';
 import { ExportType } from '../../shared/types/ui';
@@ -43,6 +44,8 @@ export interface ExportCategory {
 export class BackupRestoreService extends TauriBaseService {
   private notificationService = inject(NotificationService);
   private fileSystemService = inject(FileSystemService);
+  private translate = inject(TranslateService);
+
   constructor() {
     super();
   }
@@ -58,7 +61,7 @@ export class BackupRestoreService extends TauriBaseService {
     userNote: string | null
   ): Promise<void> {
     try {
-      const result = await this.invokeCommand('backup_settings', {
+      await this.invokeCommand('backup_settings', {
         backupDir: selectedPath,
         exportType: selectedOption,
         password,
@@ -66,7 +69,7 @@ export class BackupRestoreService extends TauriBaseService {
         userNote,
       });
 
-      this.notificationService.showSuccess(String(result));
+      this.notificationService.showSuccess(this.translate.instant('backup.backupSuccess'));
     } catch (error) {
       this.notificationService.showError(String(error));
       throw error;
@@ -79,11 +82,11 @@ export class BackupRestoreService extends TauriBaseService {
    */
   async restoreSettings(path: string, password: string | null): Promise<void> {
     try {
-      const result = await this.invokeCommand('restore_settings', {
+      await this.invokeCommand('restore_settings', {
         backupPath: path,
         password,
       });
-      this.notificationService.showSuccess(String(result));
+      this.notificationService.showSuccess(this.translate.instant('backup.restoreSuccess'));
     } catch (error) {
       this.notificationService.showError(String(error));
       throw error;
@@ -104,7 +107,7 @@ export class BackupRestoreService extends TauriBaseService {
       return { path, analysis };
     } catch (error) {
       console.error('Failed to analyze backup:', error);
-      this.notificationService.showError('Failed to analyze backup file');
+      this.notificationService.showError(this.translate.instant('backup.analyzeFailed'));
       return null;
     }
   }

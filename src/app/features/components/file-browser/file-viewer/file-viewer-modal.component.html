@@ -17,7 +17,7 @@
           class="header-button"
           [disabled]="isDownloading()"
           (click)="download(); $event.stopPropagation()"
-          [attr.aria-label]="'Download ' + data.name"
+          [attr.aria-label]="'fileBrowser.fileViewer.download' | translate: { name: data.name }"
         >
           @if (isDownloading()) {
             <mat-spinner diameter="20"></mat-spinner>
@@ -30,7 +30,7 @@
         mat-icon-button
         class="header-button close-button"
         (click)="closeViewer.emit(); $event.stopPropagation()"
-        aria-label="Close viewer"
+        [attr.aria-label]="'fileBrowser.fileViewer.closeViewer' | translate"
       >
         <mat-icon svgIcon="circle-xmark"></mat-icon>
       </button>
@@ -43,7 +43,7 @@
         mat-icon-button
         class="nav-button prev"
         (click)="back(); $event.stopPropagation()"
-        aria-label="Previous file"
+        [attr.aria-label]="'fileBrowser.fileViewer.previousFile' | translate"
         [attr.aria-keyshortcuts]="'ArrowLeft'"
       >
         <mat-icon svgIcon="chevron-left"></mat-icon>
@@ -52,7 +52,11 @@
 
     <main role="main" aria-live="polite">
       @if (isLoading()) {
-        <div class="loading-spinner" role="status" aria-label="Loading content">
+        <div
+          class="loading-spinner"
+          role="status"
+          [attr.aria-label]="'fileBrowser.fileViewer.loadingContent' | translate"
+        >
           <mat-spinner diameter="50"></mat-spinner>
         </div>
       }
@@ -75,7 +79,9 @@
               class="preview-content video-content"
               (loadeddata)="onLoadComplete()"
               (error)="onLoadError()"
-              [attr.aria-label]="'Video: ' + data.name"
+              [attr.aria-label]="
+                'fileBrowser.fileViewer.videoLabel' | translate: { name: data.name }
+              "
             ></video>
           }
           @case ('audio') {
@@ -88,7 +94,9 @@
                 controls
                 (loadeddata)="onLoadComplete()"
                 (error)="onLoadError()"
-                [attr.aria-label]="'Audio: ' + data.name"
+                [attr.aria-label]="
+                  'fileBrowser.fileViewer.audioLabel' | translate: { name: data.name }
+                "
               ></audio>
             </div>
           }
@@ -97,7 +105,7 @@
               [src]="sanitizedUrl"
               class="pdf-viewer"
               (load)="onLoadComplete()"
-              [attr.title]="'PDF: ' + data.name"
+              [attr.title]="'fileBrowser.fileViewer.pdfTitle' | translate: { name: data.name }"
             ></iframe>
           }
           @case ('text') {
@@ -112,12 +120,22 @@
               </div>
               @if (folderSize()) {
                 <p class="unsupported-text">{{ data.name }}</p>
-                <p class="unsupported-subtext">Contains {{ folderSize()?.count ?? 0 }} files</p>
                 <p class="unsupported-subtext">
-                  Total size: {{ folderSize()?.bytes ?? 0 | formatFileSize }}
+                  {{
+                    'fileBrowser.fileViewer.containsFiles'
+                      | translate: { count: folderSize()?.count ?? 0 }
+                  }}
+                </p>
+                <p class="unsupported-subtext">
+                  {{
+                    'fileBrowser.fileViewer.totalSize'
+                      | translate: { size: (folderSize()?.bytes ?? 0 | formatFileSize) }
+                  }}
                 </p>
               } @else {
-                <p class="unsupported-text">Calculating folder size...</p>
+                <p class="unsupported-text">
+                  {{ 'fileBrowser.fileViewer.calculatingFolderSize' | translate }}
+                </p>
               }
             </div>
           }
@@ -126,7 +144,7 @@
               <div class="icon-wrapper">
                 <mat-icon svgIcon="file-zipper" aria-hidden="true"></mat-icon>
               </div>
-              <p class="unsupported-text">Binary file</p>
+              <p class="unsupported-text">{{ 'fileBrowser.fileViewer.binaryFile' | translate }}</p>
               <p class="unsupported-subtext">{{ data.name }}</p>
             </div>
           }
@@ -138,7 +156,9 @@
                   aria-hidden="true"
                 ></mat-icon>
               </div>
-              <p class="unsupported-text">Preview not available for this file type</p>
+              <p class="unsupported-text">
+                {{ 'fileBrowser.fileViewer.previewNotAvailable' | translate }}
+              </p>
               <p class="unsupported-subtext">{{ data.name }}</p>
             </div>
           }
@@ -151,7 +171,7 @@
         mat-icon-button
         class="nav-button next"
         (click)="next(); $event.stopPropagation()"
-        aria-label="Next file"
+        [attr.aria-label]="'fileBrowser.fileViewer.nextFile' | translate"
         [attr.aria-keyshortcuts]="'ArrowRight'"
       >
         <mat-icon svgIcon="chevron-right"></mat-icon>

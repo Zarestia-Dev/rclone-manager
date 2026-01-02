@@ -10,6 +10,7 @@ import {
   computed,
   effect,
 } from '@angular/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
@@ -63,88 +64,110 @@ interface ServiceConfig {
 const SERVICE_CONFIG: Record<string, ServiceConfig> = {
   vfs: {
     icon: 'vfs',
-    description: 'Virtual File System caching and performance settings',
+    description: 'modals.rcloneConfig.services.vfs',
     mainCategory: 'File System & Storage',
   },
   mount: {
     icon: 'mount',
-    description: 'Mount-specific options and FUSE configuration',
+    description: 'modals.rcloneConfig.services.mount',
     mainCategory: 'File System & Storage',
   },
   filter: {
     icon: 'filter',
-    description: 'File filtering rules and patterns',
+    description: 'modals.rcloneConfig.services.filter',
     mainCategory: 'File System & Storage',
   },
   main: {
     icon: 'gear',
-    description: 'General RClone operation and transfer settings',
+    description: 'modals.rcloneConfig.services.main',
     mainCategory: 'General Settings',
   },
   log: {
     icon: 'file-lines',
-    description: 'Logging configuration and output settings',
+    description: 'modals.rcloneConfig.services.log',
     mainCategory: 'General Settings',
   },
-  http: { icon: 'globe', description: 'HTTP server settings', mainCategory: 'Network & Servers' },
-  rc: {
-    icon: 'server',
-    description: 'Remote control server configuration',
-    mainCategory: 'General Settings',
-  },
-  dlna: { icon: 'tv', description: 'DLNA server settings', mainCategory: 'Network & Servers' },
-  ftp: {
-    icon: 'file-arrow-up',
-    description: 'FTP server configuration',
+  http: {
+    icon: 'globe',
+    description: 'modals.rcloneConfig.services.http',
     mainCategory: 'Network & Servers',
   },
-  nfs: { icon: 'database', description: 'NFS server settings', mainCategory: 'Network & Servers' },
+  rc: {
+    icon: 'server',
+    description: 'modals.rcloneConfig.services.rc',
+    mainCategory: 'General Settings',
+  },
+  dlna: {
+    icon: 'tv',
+    description: 'modals.rcloneConfig.services.dlna',
+    mainCategory: 'Network & Servers',
+  },
+  ftp: {
+    icon: 'file-arrow-up',
+    description: 'modals.rcloneConfig.services.ftp',
+    mainCategory: 'Network & Servers',
+  },
+  nfs: {
+    icon: 'database',
+    description: 'modals.rcloneConfig.services.nfs',
+    mainCategory: 'Network & Servers',
+  },
   proxy: {
     icon: 'shield-halved',
-    description: 'Proxy authentication settings',
+    description: 'modals.rcloneConfig.services.proxy',
     mainCategory: 'General Settings',
   },
   restic: {
     icon: 'box-archive',
-    description: 'Restic server configuration',
+    description: 'modals.rcloneConfig.services.restic',
     mainCategory: 'Network & Servers',
   },
-  s3: { icon: 'bucket', description: 'S3 server settings', mainCategory: 'Network & Servers' },
+  s3: {
+    icon: 'bucket',
+    description: 'modals.rcloneConfig.services.s3',
+    mainCategory: 'Network & Servers',
+  },
   sftp: {
     icon: 'lock',
-    description: 'SFTP server configuration',
+    description: 'modals.rcloneConfig.services.sftp',
     mainCategory: 'Network & Servers',
   },
   webdav: {
     icon: 'cloud',
-    description: 'WebDAV server settings',
+    description: 'modals.rcloneConfig.services.webdav',
     mainCategory: 'Network & Servers',
   },
 };
 
 const CATEGORY_CONFIG: Record<string, { icon: string; description: string }> = {
-  General: { icon: 'gear', description: 'General configuration options' },
-  Auth: { icon: 'lock', description: 'Authentication and credentials' },
-  HTTP: { icon: 'globe', description: 'HTTP-specific settings' },
-  Template: { icon: 'terminal', description: 'Template settings' },
-  MetaRules: { icon: 'chart', description: 'Meta rule configurations' },
-  RulesOpt: { icon: 'filter', description: 'Rule options' },
-  MetricsAuth: { icon: 'lock', description: 'Metrics authentication' },
-  MetricsHTTP: { icon: 'globe', description: 'Metrics HTTP settings' },
+  General: { icon: 'gear', description: 'modals.rcloneConfig.categories.General' },
+  Auth: { icon: 'lock', description: 'modals.rcloneConfig.categories.Auth' },
+  HTTP: { icon: 'globe', description: 'modals.rcloneConfig.categories.HTTP' },
+  Template: { icon: 'terminal', description: 'modals.rcloneConfig.categories.Template' },
+  MetaRules: { icon: 'chart', description: 'modals.rcloneConfig.categories.MetaRules' },
+  RulesOpt: { icon: 'filter', description: 'modals.rcloneConfig.categories.RulesOpt' },
+  MetricsAuth: { icon: 'lock', description: 'modals.rcloneConfig.categories.MetricsAuth' },
+  MetricsHTTP: { icon: 'globe', description: 'modals.rcloneConfig.categories.MetricsHTTP' },
 };
 
-const MAIN_CATEGORY_CONFIG: Record<string, { icon: string; description: string }> = {
+const MAIN_CATEGORY_CONFIG: Record<
+  string,
+  { icon: string; description: string; titleKey: string }
+> = {
   'General Settings': {
     icon: 'gear',
-    description: 'Core RClone options and logging configuration',
+    description: 'modals.rcloneConfig.mainCategories.generalSettings.description',
+    titleKey: 'modals.rcloneConfig.mainCategories.generalSettings.title',
   },
   'File System & Storage': {
     icon: 'folder',
-    description: 'Virtual file system, mounting, filtering, and storage options',
+    description: 'modals.rcloneConfig.mainCategories.fileSystemAndStorage.description',
+    titleKey: 'modals.rcloneConfig.mainCategories.fileSystemAndStorage.title',
   },
   'Network & Servers': {
     icon: 'public',
-    description: 'HTTP, FTP, SFTP, WebDAV, S3, and other network service settings',
+    description: 'modals.rcloneConfig.mainCategories.networkAndServers.description',
+    titleKey: 'modals.rcloneConfig.mainCategories.networkAndServers.title',
   },
 };
 
@@ -169,6 +192,7 @@ const MAIN_CATEGORY_CONFIG: Record<string, { icon: string; description: string }
     ScrollingModule,
     SearchContainerComponent,
     SettingControlComponent,
+    TranslateModule,
   ],
   templateUrl: './rclone-config-modal.component.html',
   styleUrls: ['./rclone-config-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -179,6 +203,7 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   private flagConfigService = inject(FlagConfigService);
   private rcloneBackendOptionsService = inject(RcloneBackendOptionsService);
   private fb = inject(FormBuilder);
+  private translate = inject(TranslateService);
 
   @ViewChild(CdkVirtualScrollViewport) virtualScrollViewport?: CdkVirtualScrollViewport;
 
@@ -289,8 +314,8 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
 
   getSearchPlaceholder(): string {
     return this.currentPage() === 'home'
-      ? 'Search all services and settings...'
-      : `Search in ${this.currentPage().toUpperCase()}...`;
+      ? 'modals.rcloneConfig.search.placeholderHome'
+      : 'modals.rcloneConfig.search.placeholderPage';
   }
 
   getMatchCountForCategory(serviceName: string, categoryName: string): number {
@@ -314,7 +339,9 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
       this.createRCloneOptionControls();
     } catch (error) {
       console.error('Failed to load RClone configuration:', error);
-      this.notificationService.showError('Failed to load RClone configuration');
+      this.notificationService.showError(
+        this.translate.instant('modals.rcloneConfig.notifications.loadError')
+      );
     }
   }
 
@@ -382,6 +409,10 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
 
   getMainCategoryIcon(name: string): string {
     return MAIN_CATEGORY_CONFIG[name]?.icon ?? 'gear';
+  }
+
+  getMainCategoryTitle(name: string): string {
+    return MAIN_CATEGORY_CONFIG[name]?.titleKey ?? name;
   }
 
   getMainCategoryDescription(name: string): string {
@@ -532,17 +563,30 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
 
       if (isAtDefault) {
         await this.rcloneBackendOptionsService.removeOption(service, fullFieldName);
-        this.notificationService.showSuccess(`Reset to default: ${fullFieldName}`);
+        this.notificationService.showSuccess(
+          this.translate.instant('modals.rcloneConfig.notifications.resetSuccess', {
+            field: fullFieldName,
+          })
+        );
       } else {
         await this.rcloneBackendOptionsService.saveOption(service, fullFieldName, valueToSave);
-        this.notificationService.showSuccess(`Saved: ${fullFieldName}`);
+        this.notificationService.showSuccess(
+          this.translate.instant('modals.rcloneConfig.notifications.saveSuccess', {
+            field: fullFieldName,
+          })
+        );
       }
       await this.flagConfigService.saveOption(service, fullFieldName, valueToSave);
 
       control.markAsPristine();
     } catch (error) {
       console.error(`Failed to save option ${optionName}:`, error);
-      this.notificationService.showError(`Failed to save ${optionName}: ${error as string}`);
+      this.notificationService.showError(
+        this.translate.instant('modals.rcloneConfig.notifications.saveError', {
+          field: optionName,
+          error: error as string,
+        })
+      );
     } finally {
       const currentSaving = new Set(this.savingOptions());
       currentSaving.delete(optionName);

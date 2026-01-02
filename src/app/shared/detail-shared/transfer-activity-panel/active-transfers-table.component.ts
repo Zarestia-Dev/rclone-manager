@@ -4,6 +4,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { TranslateModule } from '@ngx-translate/core';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 import { TransferFile } from '@app/types';
 import { FormatTimePipe } from '../../pipes/format-time.pipe';
@@ -11,14 +12,23 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
 @Component({
   selector: 'app-active-transfers-table',
   standalone: true,
-  imports: [CommonModule, MatTableModule, MatProgressBarModule, MatIconModule, MatTooltipModule],
+  imports: [
+    CommonModule,
+    MatTableModule,
+    MatProgressBarModule,
+    MatIconModule,
+    MatTooltipModule,
+    TranslateModule,
+  ],
   template: `
     <div class="transfer-table-container">
       @if (transfers().length > 0) {
         <table mat-table [dataSource]="transfers()" [trackBy]="trackByName" class="transfer-table">
           <!-- Name Column -->
           <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef>File</th>
+            <th mat-header-cell *matHeaderCellDef>
+              {{ 'shared.transferActivity.table.file' | translate }}
+            </th>
             <td mat-cell *matCellDef="let transfer" class="name-cell">
               <div class="file-info">
                 <mat-icon svgIcon="file" class="file-icon" matTooltip="{{ transfer.name }}">
@@ -30,14 +40,14 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
                   <mat-icon
                     svgIcon="circle-exclamation"
                     class="error-icon warn"
-                    matTooltip="Transfer error"
+                    [matTooltip]="'shared.transferActivity.status.transferError' | translate"
                   ></mat-icon>
                 }
                 @if (transfer.isCompleted) {
                   <mat-icon
                     svgIcon="circle-check"
                     class="success-icon primary"
-                    matTooltip="Transfer completed"
+                    [matTooltip]="'shared.transferActivity.status.transferCompleted' | translate"
                   ></mat-icon>
                 }
               </div>
@@ -46,7 +56,9 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
 
           <!-- Progress Column -->
           <ng-container matColumnDef="progress">
-            <th mat-header-cell *matHeaderCellDef>Progress</th>
+            <th mat-header-cell *matHeaderCellDef>
+              {{ 'shared.transferActivity.table.progress' | translate }}
+            </th>
             <td mat-cell *matCellDef="let transfer" class="progress-cell">
               <div class="progress-info">
                 <div class="progress-header">
@@ -64,7 +76,9 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
 
           <!-- Speed Column -->
           <ng-container matColumnDef="speed">
-            <th mat-header-cell *matHeaderCellDef>Speed</th>
+            <th mat-header-cell *matHeaderCellDef>
+              {{ 'shared.transferActivity.table.speed' | translate }}
+            </th>
             <td mat-cell *matCellDef="let transfer" class="speed-cell">
               <div class="speed-info">
                 @if (transfer.speed > 0) {
@@ -81,7 +95,9 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
 
           <!-- ETA Column -->
           <ng-container matColumnDef="eta">
-            <th mat-header-cell *matHeaderCellDef>ETA</th>
+            <th mat-header-cell *matHeaderCellDef>
+              {{ 'shared.transferActivity.table.eta' | translate }}
+            </th>
             <td mat-cell *matCellDef="let transfer" class="eta-cell">
               @if (transfer.eta > 0 && !transfer.isCompleted) {
                 <span class="eta-value">{{ FormatTimePipe.transform(transfer.eta) }}</span>
@@ -106,8 +122,8 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
       } @else {
         <div class="empty-state">
           <mat-icon svgIcon="download" class="placeholder-icon"></mat-icon>
-          <span>No active transfers</span>
-          <p>Transfers will appear here when an operation starts</p>
+          <span>{{ 'shared.transferActivity.empty.noActive' | translate }}</span>
+          <p>{{ 'shared.transferActivity.empty.activeHint' | translate }}</p>
         </div>
       }
     </div>

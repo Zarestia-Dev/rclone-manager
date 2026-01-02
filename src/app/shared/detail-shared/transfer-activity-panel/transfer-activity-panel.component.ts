@@ -6,6 +6,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatChipsModule } from '@angular/material/chips';
 import { ActiveTransfersTableComponent } from './active-transfers-table.component';
 import { CompletedTransfersTableComponent } from './completed-transfers-table.component';
+import { TranslateModule } from '@ngx-translate/core';
 import { CompletedTransfer, TransferActivityPanelConfig, TransferFile } from '../../types';
 
 @Component({
@@ -19,21 +20,22 @@ import { CompletedTransfer, TransferActivityPanelConfig, TransferFile } from '..
     MatChipsModule,
     ActiveTransfersTableComponent,
     CompletedTransfersTableComponent,
+    TranslateModule,
   ],
   template: `
     <mat-card class="detail-panel transfer-activity-panel" [ngClass]="config().operationClass">
       <mat-card-header class="panel-header">
         <mat-card-title class="panel-title-content">
           <mat-icon svgIcon="download" class="panel-icon"></mat-icon>
-          <span>Transfer Activity</span>
+          <span>{{ 'shared.transferActivity.title' | translate }}</span>
           <div class="transfer-summary">
             <mat-chip [class]="'summary-chip active' + ' ' + config().operationColor">
-              <span class="chip-label">Active:</span>
+              <span class="chip-label">{{ 'shared.transferActivity.active' | translate }}</span>
               <span class="chip-value">{{ config().activeTransfers.length }}</span>
             </mat-chip>
             @if (config().showHistory) {
               <mat-chip [class]="'summary-chip completed' + ' ' + config().operationColor">
-                <span class="chip-label">Recent:</span>
+                <span class="chip-label">{{ 'shared.transferActivity.recent' | translate }}</span>
                 <span class="chip-value">{{ config().completedTransfers.length }}</span>
               </mat-chip>
             }
@@ -47,7 +49,10 @@ import { CompletedTransfer, TransferActivityPanelConfig, TransferFile } from '..
             <!-- Active Transfers Tab -->
             <mat-tab>
               <ng-template mat-tab-label>
-                <span>Active ({{ config().activeTransfers.length }})</span>
+                <span>{{
+                  'shared.transferActivity.tabs.active'
+                    | translate: { count: config().activeTransfers.length }
+                }}</span>
               </ng-template>
               <div class="tab-content">
                 <app-active-transfers-table
@@ -61,7 +66,10 @@ import { CompletedTransfer, TransferActivityPanelConfig, TransferFile } from '..
             <!-- Completed Transfers Tab -->
             <mat-tab>
               <ng-template mat-tab-label>
-                <span>Recent ({{ config().completedTransfers.length }})</span>
+                <span>{{
+                  'shared.transferActivity.tabs.recent'
+                    | translate: { count: config().completedTransfers.length }
+                }}</span>
               </ng-template>
               <div class="tab-content">
                 <app-completed-transfers-table

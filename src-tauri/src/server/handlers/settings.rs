@@ -53,9 +53,9 @@ pub async fn save_setting_handler(
     )
     .await
     .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Setting saved successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.settings.saved"
+    ))))
 }
 
 #[derive(Deserialize)]
@@ -84,9 +84,9 @@ pub async fn reset_settings_handler(
     reset_settings(manager, state.app_handle.clone())
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Settings reset successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.settings.reset"
+    ))))
 }
 
 #[derive(Deserialize)]
@@ -114,9 +114,9 @@ pub async fn save_remote_settings_handler(
     )
     .await
     .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Remote settings saved successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.settings.remoteSaved"
+    ))))
 }
 
 #[derive(Deserialize)]
@@ -134,9 +134,9 @@ pub async fn delete_remote_settings_handler(
     delete_remote_settings(body.remote_name, manager, state.app_handle.clone())
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Remote settings deleted successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.settings.remoteDeleted"
+    ))))
 }
 
 pub async fn check_links_handler(
@@ -183,9 +183,9 @@ pub async fn save_rclone_backend_options_handler(
     save_rclone_backend_options(manager, body.options)
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "RClone backend options saved successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.settings.optionsSaved"
+    ))))
 }
 
 pub async fn reset_rclone_backend_options_handler(
@@ -196,9 +196,9 @@ pub async fn reset_rclone_backend_options_handler(
     reset_rclone_backend_options(manager)
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "RClone backend options reset successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.settings.optionsReset"
+    ))))
 }
 
 pub async fn get_rclone_backend_store_path_handler(

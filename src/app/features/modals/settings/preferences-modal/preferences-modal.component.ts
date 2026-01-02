@@ -10,6 +10,7 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -43,6 +44,7 @@ import { SearchResult, SettingMetadata, SettingTab } from '@app/types';
     MatButtonModule,
     MatProgressSpinnerModule,
     SearchContainerComponent,
+    TranslateModule,
   ],
   templateUrl: './preferences-modal.component.html',
   styleUrls: ['./preferences-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -68,18 +70,19 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
   private destroyed$ = new Subject<void>();
 
   readonly tabs: SettingTab[] = [
-    { label: 'General', icon: 'wrench', key: 'general' },
-    { label: 'Core', icon: 'puzzle-piece', key: 'core' },
-    { label: 'Developer', icon: 'flask', key: 'developer' },
+    { label: 'modals.preferences.tabs.general', icon: 'wrench', key: 'general' },
+    { label: 'modals.preferences.tabs.core', icon: 'puzzle-piece', key: 'core' },
+    { label: 'modals.preferences.tabs.developer', icon: 'flask', key: 'developer' },
   ];
 
-  readonly searchSuggestions = ['API Port', 'Start on Startup', 'Debug', 'Bandwidth'];
+  searchSuggestions: string[] = [];
 
   private dialogRef = inject(MatDialogRef<PreferencesModalComponent>);
   private fb = inject(FormBuilder);
   private appSettingsService = inject(AppSettingsService);
   private fileSystemService = inject(FileSystemService);
   private validatorRegistry = inject(ValidatorRegistryService);
+  private translate = inject(TranslateService);
 
   private readonly HOLD_DELAY = 300;
   private readonly HOLD_INTERVAL = 75;
@@ -120,6 +123,17 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     this.onResize();
     this.appSettingsService.loadSettings();
     this.subscribeToOptions();
+    this.populateSearchSuggestions();
+  }
+
+  private populateSearchSuggestions(): void {
+    const suggestionKeys = ['apiPort', 'startup', 'debug', 'bandwidth'];
+    this.translate
+      .get(suggestionKeys.map(k => `modals.preferences.searchSuggestions.${k}`))
+      .pipe(takeUntil(this.destroyed$))
+      .subscribe(translations => {
+        this.searchSuggestions = Object.values(translations);
+      });
   }
 
   ngOnDestroy(): void {
@@ -173,7 +187,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
       .join(' ');
   }
 
-  private inferValueType(meta: SettingMetadata, key: string): any {
+  private inferValueType(meta: SettingMetadata, key: string): SettingMetadata['value_type'] {
     if (meta.options && meta.options.length > 0) return 'string';
 
     // Check key patterns for specialized types
@@ -188,7 +202,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     if (typeof def === 'number') return 'int';
     if (Array.isArray(def)) return 'string[]';
 
-    return 'string';
+    return 'string' as const;
   }
 
   private buildForm(options: Record<string, SettingMetadata>): void {
@@ -256,17 +270,22 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
         if (meta.max_value !== undefined) validators.push(Validators.max(meta.max_value));
         break;
       case 'file':
-      case 'folder':
-        validators.push(this.validatorRegistry.getValidator('crossPlatformPath')!);
+      case 'folder': {
+        const validator = this.validatorRegistry.getValidator('crossPlatformPath');
+        if (validator) validators.push(validator);
         break;
+      }
       case 'string[]':
         if (fullKey === 'core.connection_check_urls') {
-          validators.push(this.validatorRegistry.getValidator('urlList')!);
+          const validator = this.validatorRegistry.getValidator('urlList');
+          if (validator) validators.push(validator);
         }
         break;
-      case 'bandwidth':
-        validators.push(this.validatorRegistry.getValidator('bandwidthFormat')!);
+      case 'bandwidth': {
+        const validator = this.validatorRegistry.getValidator('bandwidthFormat');
+        if (validator) validators.push(validator);
         break;
+      }
     }
     return validators;
   }
@@ -284,6 +303,13 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
 
     if (meta.value_type === 'string[]' && Array.isArray(finalValue)) {
       finalValue = finalValue.filter(item => item && String(item).trim() !== '');
+    }
+
+    // Special handling for language setting
+    if (category === 'general' && key === 'language') {
+      const lang = String(finalValue);
+      this.translate.use(lang);
+      localStorage.setItem('language', lang);
     }
 
     if (meta.engine_restart) {
@@ -347,7 +373,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     meta: SettingMetadata
   ): void {
     this.stopHold(false);
-    const performAction = () => {
+    const performAction = (): void => {
       if (action === 'increment') this.incrementNumber(category, key, meta);
       else this.decrementNumber(category, key, meta);
     };
@@ -404,14 +430,21 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     const ctrl = this.getFormControl(category, key);
     if (!ctrl?.errors) return '';
     const meta = this.getMetadata(category, key);
-    if (ctrl.hasError('required')) return 'This field is required.';
-    if (ctrl.hasError('integer')) return 'Must be a valid whole number.';
-    if (ctrl.hasError('min')) return `Value must be at least ${meta.min_value}.`;
-    if (ctrl.hasError('max')) return `Value must be no more than ${meta.max_value}.`;
-    if (ctrl.hasError('invalidPath')) return 'Please enter a valid absolute file path.';
-    if (ctrl.hasError('bandwidth')) return 'Invalid format (e.g., 10M or 5M:2M).';
-    if (ctrl.hasError('urlArray')) return 'All items must be valid URLs (e.g., https://...).';
-    return 'Invalid value.';
+    if (ctrl.hasError('required'))
+      return this.translate.instant('modals.preferences.validation.required');
+    if (ctrl.hasError('integer'))
+      return this.translate.instant('modals.preferences.validation.integer');
+    if (ctrl.hasError('min'))
+      return this.translate.instant('modals.preferences.validation.min', { val: meta.min_value });
+    if (ctrl.hasError('max'))
+      return this.translate.instant('modals.preferences.validation.max', { val: meta.max_value });
+    if (ctrl.hasError('invalidPath'))
+      return this.translate.instant('modals.preferences.validation.invalidPath');
+    if (ctrl.hasError('bandwidth'))
+      return this.translate.instant('modals.preferences.validation.bandwidth');
+    if (ctrl.hasError('urlArray'))
+      return this.translate.instant('modals.preferences.validation.urlArray');
+    return this.translate.instant('modals.preferences.validation.invalid');
   }
 
   onSearchTextChange(searchText: string): void {
@@ -437,7 +470,29 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
 
   getCategoryDisplayName(category: string): string {
     const tab = this.tabs.find(tab => tab.key === category);
-    return tab ? tab.label : category.charAt(0).toUpperCase() + category.slice(1);
+    if (tab) return this.translate.instant(tab.label);
+    return category.charAt(0).toUpperCase() + category.slice(1);
+  }
+
+  getSettingLabel(category: string, key: string, meta: SettingMetadata): string {
+    const transKey = `settings.${category}.${key}.label`;
+    const translation = this.translate.instant(transKey);
+    return translation !== transKey ? translation : meta.display_name || meta.label || key;
+  }
+
+  getSettingDescription(category: string, key: string, meta: SettingMetadata): string {
+    const transKey = `settings.${category}.${key}.description`;
+    const translation = this.translate.instant(transKey);
+    return translation !== transKey ? translation : meta.help_text || meta.description || '';
+  }
+
+  getOptionLabel(category: string, key: string, option: unknown): string {
+    const opt = option as { value: unknown; label: unknown };
+    const value = opt?.value ?? option;
+    const label = opt?.label ?? option;
+    const transKey = `settings.${category}.${key}.options.${value}`;
+    const translation = this.translate.instant(transKey);
+    return translation !== transKey ? translation : String(label);
   }
 
   getObjectKeys(obj: Record<string, unknown>): string[] {
@@ -482,6 +537,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     const meta = this.getMetadata(category, key);
     const control = this.getFormControl(category, key);
     if (!meta || !control) return false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const defaultValue = (meta as any).default;
     return !this.valuesEqual(defaultValue, control.value);
   }

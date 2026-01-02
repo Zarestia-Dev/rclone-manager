@@ -36,10 +36,9 @@ pub async fn save_remote_settings(
     migrate_to_multi_profile(settings.clone());
 
     // Get remotes sub-settings
-    let remotes = manager
-        .inner()
-        .sub_settings("remotes")
-        .map_err(|e| format!("Failed to get remotes sub-settings: {e}"))?;
+    let remotes = manager.inner().sub_settings("remotes").map_err(
+        |e| crate::localized_error!("backendErrors.settings.subSettingsFailed", "error" => e),
+    )?;
 
     // Check if remote already exists and merge settings
     // Note: get_value runs the registered migrator automatically
@@ -57,7 +56,7 @@ pub async fn save_remote_settings(
     // Save to rcman sub-settings
     remotes
         .set(&remote_name, &settings)
-        .map_err(|e| format!("Failed to save remote settings: {e}"))?;
+        .map_err(|e| crate::localized_error!("backendErrors.settings.saveFailed", "error" => e))?;
 
     info!("✅ Remote settings saved for '{remote_name}'");
 
@@ -81,10 +80,9 @@ pub async fn delete_remote_settings(
     manager: State<'_, JsonSettingsManager>,
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
-    let remotes = manager
-        .inner()
-        .sub_settings("remotes")
-        .map_err(|e| format!("Failed to get remotes sub-settings: {e}"))?;
+    let remotes = manager.inner().sub_settings("remotes").map_err(
+        |e| crate::localized_error!("backendErrors.settings.subSettingsFailed", "error" => e),
+    )?;
 
     // Check if exists first
     if remotes.get_value(&remote_name).is_err() {
@@ -93,9 +91,9 @@ pub async fn delete_remote_settings(
         return Ok(());
     }
 
-    remotes
-        .delete(&remote_name)
-        .map_err(|e| format!("❌ Failed to delete remote settings: {e}"))?;
+    remotes.delete(&remote_name).map_err(
+        |e| crate::localized_error!("backendErrors.settings.deleteFailed", "error" => e),
+    )?;
 
     info!("✅ Remote settings for '{remote_name}' deleted.");
     app_handle.emit(REMOTE_SETTINGS_CHANGED, remote_name).ok();
@@ -118,9 +116,9 @@ pub async fn get_remote_settings(
         .map_err(|e| format!("Failed to get remotes sub-settings: {e}"))?;
 
     // Migration is handled automatically by rcman's registered migrator
-    let settings = remotes
-        .get_value(&remote_name)
-        .map_err(|_| format!("⚠️ Remote settings for '{remote_name}' not found."))?;
+    let settings = remotes.get_value(&remote_name).map_err(
+        |_| crate::localized_error!("backendErrors.settings.notFound", "name" => remote_name),
+    )?;
 
     info!("✅ Loaded settings for remote '{remote_name}'.");
     Ok(settings)

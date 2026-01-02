@@ -1,12 +1,14 @@
 import { inject, Injectable } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
+import { TranslateService } from '@ngx-translate/core';
 import { ConfirmDialogData } from '@app/types';
 import { ConfirmModalComponent } from 'src/app/shared/modals/confirm-modal/confirm-modal.component';
 
 /**
  * Service for handling user notifications and confirmations
  * Centralizes snackbar, modal, and toast notifications
+ * Automatically translates default button texts
  */
 @Injectable({
   providedIn: 'root',
@@ -14,12 +16,16 @@ import { ConfirmModalComponent } from 'src/app/shared/modals/confirm-modal/confi
 export class NotificationService {
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
+  private translate = inject(TranslateService);
 
   /**
    * Show success message
+   * @param message Already translated message text
+   * @param action Button text (defaults to translated 'OK')
+   * @param duration Display duration in milliseconds
    */
-  showSuccess(message: string, action = 'OK', duration = 3000): void {
-    this.snackBar.open(message, action, {
+  showSuccess(message: string, action?: string, duration = 3000): void {
+    this.snackBar.open(message, action ?? this.translate.instant('common.ok'), {
       duration,
       panelClass: ['success-snackbar'],
     });
@@ -27,9 +33,12 @@ export class NotificationService {
 
   /**
    * Show error message
+   * @param message Already translated message text
+   * @param action Button text (defaults to translated 'Close')
+   * @param duration Display duration in milliseconds
    */
-  showError(message: string, action = 'Close', duration = 5000): void {
-    this.snackBar.open(message, action, {
+  showError(message: string, action?: string, duration = 5000): void {
+    this.snackBar.open(message, action ?? this.translate.instant('common.close'), {
       duration,
       panelClass: ['error-snackbar'],
     });
@@ -37,9 +46,12 @@ export class NotificationService {
 
   /**
    * Show info message
+   * @param message Already translated message text
+   * @param action Button text (defaults to translated 'OK')
+   * @param duration Display duration in milliseconds
    */
-  showInfo(message: string, action = 'OK', duration = 3000): void {
-    this.snackBar.open(message, action, {
+  showInfo(message: string, action?: string, duration = 3000): void {
+    this.snackBar.open(message, action ?? this.translate.instant('common.ok'), {
       duration,
       panelClass: ['info-snackbar'],
     });
@@ -47,9 +59,12 @@ export class NotificationService {
 
   /**
    * Show warning message
+   * @param message Already translated message text
+   * @param action Button text (defaults to translated 'OK')
+   * @param duration Display duration in milliseconds
    */
-  showWarning(message: string, action = 'OK', duration = 4000): void {
-    this.snackBar.open(message, action, {
+  showWarning(message: string, action?: string, duration = 4000): void {
+    this.snackBar.open(message, action ?? this.translate.instant('common.ok'), {
       duration,
       panelClass: ['warning-snackbar'],
     });
@@ -57,6 +72,9 @@ export class NotificationService {
 
   /**
    * Show a generic snackbar (for backward compatibility)
+   * @param message Already translated message text
+   * @param action Button text (should be pre-translated)
+   * @param duration Display duration in milliseconds
    */
   openSnackBar(message: string, action: string, duration = 2000): void {
     this.snackBar.open(message, action, { duration });
@@ -64,18 +82,22 @@ export class NotificationService {
 
   /**
    * Show confirmation modal
+   * @param title Modal title (should be pre-translated)
+   * @param message Modal message (should be pre-translated)
+   * @param confirmText Confirm button text (defaults to translated 'Yes')
+   * @param cancelText Cancel button text (defaults to translated 'No')
    */
   confirmModal(
     title: string,
     message: string,
-    confirmText = 'Yes',
-    cancelText = 'No'
+    confirmText?: string,
+    cancelText?: string
   ): Promise<boolean> {
     const dialogData: ConfirmDialogData = {
       title,
       message,
-      cancelText,
-      confirmText,
+      cancelText: cancelText ?? this.translate.instant('common.no'),
+      confirmText: confirmText ?? this.translate.instant('common.yes'),
     };
 
     return new Promise(resolve => {
@@ -93,12 +115,15 @@ export class NotificationService {
 
   /**
    * Show alert modal
+   * @param title Modal title (should be pre-translated)
+   * @param message Modal message (should be pre-translated)
+   * @param buttonText Button text (defaults to translated 'OK')
    */
-  alertModal(title: string, message: string, buttonText = 'OK'): Promise<void> {
+  alertModal(title: string, message: string, buttonText?: string): Promise<void> {
     const dialogData: ConfirmDialogData = {
       title,
       message,
-      cancelText: buttonText,
+      cancelText: buttonText ?? this.translate.instant('common.ok'),
     };
 
     return new Promise(resolve => {

@@ -1,7 +1,7 @@
 <div class="tabs-buttons">
   <button
     matIconButton
-    matTooltip="General"
+    [matTooltip]="'tabs.general' | translate"
     (click)="tabSelected.emit('general')"
     [class.selected]="currentTab === 'general'"
   >
@@ -9,7 +9,7 @@
   </button>
   <button
     matIconButton
-    matTooltip="Mount"
+    [matTooltip]="'tabs.mount' | translate"
     (click)="tabSelected.emit('mount')"
     [class.selected]="currentTab === 'mount'"
   >
@@ -17,7 +17,7 @@
   </button>
   <button
     matIconButton
-    matTooltip="Sync"
+    [matTooltip]="'tabs.sync' | translate"
     (click)="tabSelected.emit('sync')"
     [class.selected]="currentTab === 'sync'"
   >
@@ -25,7 +25,7 @@
   </button>
   <button
     matIconButton
-    matTooltip="Serve"
+    [matTooltip]="'tabs.serve' | translate"
     (click)="tabSelected.emit('serve')"
     [class.selected]="currentTab === 'serve'"
   >

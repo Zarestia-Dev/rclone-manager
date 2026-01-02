@@ -287,7 +287,9 @@ pub async fn install_mount_plugin(_state: State<'_, RcloneState>) -> Result<Stri
 #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
 #[tauri::command]
 pub async fn install_mount_plugin() -> Result<String, String> {
-    Err("Unsupported platform".to_string())
+    Err(crate::localized_error!(
+        "backendErrors.rclone.unsupportedPlatform"
+    ))
 }
 
 /// Install the plugin with admin elevation using tauri_plugin_shell

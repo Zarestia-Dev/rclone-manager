@@ -5,11 +5,17 @@
       <mat-icon [svgIcon]="isConfigEncrypted() === true ? 'shield-halved' : 'shield'"></mat-icon>
     </div>
     <div class="status-text">
-      <strong>{{ isConfigEncrypted() === true ? 'Encrypted' : 'Not Encrypted' }}</strong>
+      <strong>{{
+        (isConfigEncrypted() === true
+          ? 'modals.backend.security.encrypted'
+          : 'modals.backend.security.notEncrypted'
+        ) | translate
+      }}</strong>
       <span>{{
-        isConfigEncrypted() === true
-          ? 'Your credentials are protected'
-          : 'Credentials stored in plain text'
+        (isConfigEncrypted() === true
+          ? 'modals.backend.security.credentialsProtected'
+          : 'modals.backend.security.credentialsPlainText'
+        ) | translate
       }}</span>
     </div>
   </div>
@@ -22,8 +28,8 @@
       <div class="card-header">
         <mat-icon svgIcon="key"></mat-icon>
         <div class="card-title">
-          <strong>System Keychain</strong>
-          <span>Auto-unlock on startup</span>
+          <strong>{{ 'modals.backend.security.systemKeychain' | translate }}</strong>
+          <span>{{ 'modals.backend.security.autoUnlock' | translate }}</span>
         </div>
         <mat-slide-toggle
           color="primary"
@@ -36,7 +42,7 @@
       @if (showKeychainInput()) {
         <div class="card-form">
           <mat-form-field>
-            <mat-label>Config Password</mat-label>
+            <mat-label>{{ 'modals.backend.security.configPassword' | translate }}</mat-label>
             <input
               matInput
               formControlName="keychainPassword"
@@ -45,14 +51,16 @@
             />
           </mat-form-field>
           <div class="form-actions">
-            <button mat-button (click)="cancelKeychainStore()">Cancel</button>
+            <button mat-button (click)="cancelKeychainStore()">
+              {{ 'common.cancel' | translate }}
+            </button>
             <button
               mat-flat-button
               color="primary"
               (click)="submitKeychainStore()"
               [disabled]="encryptionLoading()"
             >
-              Save to Keychain
+              {{ 'modals.backend.security.saveToKeychain' | translate }}
             </button>
           </div>
         </div>
@@ -67,15 +75,15 @@
           <mat-panel-title class="card-header">
             <mat-icon svgIcon="refresh"></mat-icon>
             <div class="card-title">
-              <strong>Change Password</strong>
-              <span>Update your encryption password</span>
+              <strong>{{ 'modals.backend.security.changePassword' | translate }}</strong>
+              <span>{{ 'modals.backend.security.updatePasswordDesc' | translate }}</span>
             </div>
           </mat-panel-title>
         </mat-expansion-panel-header>
 
         <div class="card-form">
           <mat-form-field>
-            <mat-label>Current Password</mat-label>
+            <mat-label>{{ 'modals.backend.security.currentPassword' | translate }}</mat-label>
             <input
               matInput
               [type]="showSecurityPassword() ? 'text' : 'password'"
@@ -92,7 +100,7 @@
           </mat-form-field>
 
           <mat-form-field>
-            <mat-label>New Password</mat-label>
+            <mat-label>{{ 'modals.backend.security.newPassword' | translate }}</mat-label>
             <input
               matInput
               [type]="showNewSecurityPassword() ? 'text' : 'password'"
@@ -109,7 +117,7 @@
           </mat-form-field>
 
           <mat-form-field>
-            <mat-label>Confirm New Password</mat-label>
+            <mat-label>{{ 'modals.backend.security.confirmNewPassword' | translate }}</mat-label>
             <input
               matInput
               [type]="showNewSecurityPassword() ? 'text' : 'password'"
@@ -127,7 +135,7 @@
               @if (encryptionLoading()) {
                 <mat-spinner diameter="18"></mat-spinner>
               } @else {
-                Update Password
+                {{ 'modals.backend.security.updatePassword' | translate }}
               }
             </button>
           </div>
@@ -140,8 +148,8 @@
           <mat-panel-title class="card-header">
             <mat-icon svgIcon="lock-open"></mat-icon>
             <div class="card-title">
-              <strong>Remove Encryption</strong>
-              <span>Store credentials in plain text</span>
+              <strong>{{ 'modals.backend.security.removeEncryption' | translate }}</strong>
+              <span>{{ 'modals.backend.security.storePlainText' | translate }}</span>
             </div>
           </mat-panel-title>
         </mat-expansion-panel-header>
@@ -149,12 +157,11 @@
         <div class="card-form">
           <p class="warning-text">
             <mat-icon svgIcon="circle-exclamation"></mat-icon>
-            This will decrypt your rclone configuration. Your credentials will be visible to anyone
-            with access to your files.
+            {{ 'modals.backend.security.decryptWarning' | translate }}
           </p>
 
           <mat-form-field>
-            <mat-label>Current Password</mat-label>
+            <mat-label>{{ 'modals.backend.security.currentPassword' | translate }}</mat-label>
             <input
               matInput
               [type]="showSecurityPassword() ? 'text' : 'password'"
@@ -180,7 +187,7 @@
               @if (encryptionLoading()) {
                 <mat-spinner diameter="18"></mat-spinner>
               } @else {
-                Remove Encryption
+                {{ 'modals.backend.security.removeEncryption' | translate }}
               }
             </button>
           </div>
@@ -193,14 +200,14 @@
       <div class="card-header">
         <mat-icon svgIcon="lock"></mat-icon>
         <div class="card-title">
-          <strong>Enable Encryption</strong>
-          <span>Protect your credentials with a password</span>
+          <strong>{{ 'modals.backend.security.enableEncryption' | translate }}</strong>
+          <span>{{ 'modals.backend.security.protectCredentials' | translate }}</span>
         </div>
       </div>
 
       <div class="card-form">
         <mat-form-field>
-          <mat-label>Password</mat-label>
+          <mat-label>{{ 'modals.backend.security.password' | translate }}</mat-label>
           <input
             matInput
             [type]="showNewSecurityPassword() ? 'text' : 'password'"
@@ -217,7 +224,7 @@
         </mat-form-field>
 
         <mat-form-field>
-          <mat-label>Confirm Password</mat-label>
+          <mat-label>{{ 'modals.backend.security.confirmPassword' | translate }}</mat-label>
           <input
             matInput
             [type]="showNewSecurityPassword() ? 'text' : 'password'"
@@ -235,7 +242,7 @@
             @if (encryptionLoading()) {
               <mat-spinner diameter="18"></mat-spinner>
             } @else {
-              Enable Encryption
+              {{ 'modals.backend.security.enableEncryption' | translate }}
             }
           </button>
         </div>

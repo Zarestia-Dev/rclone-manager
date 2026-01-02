@@ -1,5 +1,6 @@
 import { Component, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
@@ -23,6 +24,7 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
     MatTooltipModule,
     MatSortModule,
     FormatFileSizePipe,
+    TranslateModule,
   ],
   styleUrls: ['./jobs-panel.component.scss'],
   template: `
@@ -30,7 +32,7 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
       <mat-card-header>
         <mat-card-title>
           <mat-icon svgIcon="jobs"></mat-icon>
-          <span>Active Jobs</span>
+          <span>{{ 'detailShared.jobs.activeJobs' | translate }}</span>
           <span class="count">{{ config().jobs.length }}</span>
         </mat-card-title>
       </mat-card-header>
@@ -39,7 +41,9 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
           <table mat-table [dataSource]="config().jobs" matSort class="jobs-table">
             <!-- Type Column -->
             <ng-container matColumnDef="type">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Type</th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                {{ 'detailShared.jobs.columns.type' | translate }}
+              </th>
               <td class="type-column" mat-cell *matCellDef="let job">
                 <div class="job-type-info">
                   <span class="job-type-text">{{ job.job_type | titlecase }}</span>
@@ -49,7 +53,9 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 
             <!-- Profile Column -->
             <ng-container matColumnDef="profile">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Profile</th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                {{ 'detailShared.jobs.columns.profile' | translate }}
+              </th>
               <td mat-cell *matCellDef="let job">
                 <span class="profile-name">{{ job.profile || 'default' }}</span>
               </td>
@@ -57,18 +63,24 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 
             <!-- Status Column -->
             <ng-container matColumnDef="status">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                {{ 'detailShared.jobs.columns.status' | translate }}
+              </th>
               <td mat-cell *matCellDef="let job">
                 <div class="status-chip" [ngClass]="getJobStatus(job)">
                   <div class="status-dot"></div>
-                  <span>{{ job.status | titlecase }}</span>
+                  <span>{{
+                    'detailShared.jobs.status.' + (getJobStatus(job) | lowercase) | translate
+                  }}</span>
                 </div>
               </td>
             </ng-container>
 
             <!-- Progress Column -->
             <ng-container matColumnDef="progress">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Progress</th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                {{ 'detailShared.jobs.columns.progress' | translate }}
+              </th>
               <td mat-cell *matCellDef="let job">
                 @if (job.job_type !== 'mount' && job.stats) {
                   <div class="progress-info">
@@ -90,7 +102,9 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 
             <!-- Start Time Column -->
             <ng-container matColumnDef="startTime">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Started</th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                {{ 'detailShared.jobs.columns.started' | translate }}
+              </th>
               <td mat-cell *matCellDef="let job">
                 <span class="start-time">{{ job.start_time | date: 'short' }}</span>
               </td>
@@ -98,14 +112,17 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 
             <!-- Actions Column -->
             <ng-container matColumnDef="actions">
-              <th mat-header-cell *matHeaderCellDef>Actions</th>
+              <th mat-header-cell *matHeaderCellDef>
+                {{ 'detailShared.jobs.columns.actions' | translate }}
+              </th>
               <td mat-cell *matCellDef="let job">
                 <div class="job-actions">
                   @if (job.status === 'Running') {
                     <button
                       matIconButton
+                      tabIndex="-1"
                       class="action-button stop-button"
-                      matTooltip="Stop Job"
+                      [matTooltip]="'detailShared.jobs.actions.stop' | translate"
                       (click)="
                         stopJob.emit({
                           type: job.job_type,
@@ -119,8 +136,9 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
                   } @else {
                     <button
                       matIconButton
+                      tabIndex="-1"
                       class="action-button delete-button"
-                      matTooltip="Delete Job"
+                      [matTooltip]="'detailShared.jobs.actions.delete' | translate"
                       (click)="deleteJob.emit(job.jobid)"
                     >
                       <mat-icon svgIcon="trash"></mat-icon>
@@ -140,7 +158,7 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
               <td class="no-data-cell" [attr.colspan]="config().displayedColumns.length">
                 <div class="no-data-content">
                   <mat-icon svgIcon="jobs" class="no-data-icon"></mat-icon>
-                  <span>No active jobs</span>
+                  <span>{{ 'detailShared.jobs.empty' | translate }}</span>
                 </div>
               </td>
             </tr>
@@ -166,17 +184,6 @@ export class JobsPanelComponent {
   }
 
   getJobStatus(job: JobInfo): string {
-    switch (job.status) {
-      case 'Running':
-        return 'running';
-      case 'Completed':
-        return 'completed';
-      case 'Failed':
-        return 'failed';
-      case 'Stopped':
-        return 'stopped';
-      default:
-        return 'unknown';
-    }
+    return job.status.toLowerCase();
   }
 }

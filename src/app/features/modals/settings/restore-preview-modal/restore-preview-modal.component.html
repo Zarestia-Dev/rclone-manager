@@ -4,8 +4,12 @@
     <button>
       <mat-icon svgIcon="box-archive"></mat-icon>
     </button>
-    <p>Restore Backup</p>
-    <button matIconButton (click)="close()" aria-label="Close restore preview">
+    <p>{{ 'backup.restore.title' | translate }}</p>
+    <button
+      matIconButton
+      (click)="close()"
+      [attr.aria-label]="'backup.restore.ariaClose' | translate"
+    >
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </div>
@@ -15,7 +19,7 @@
     <div class="info-card">
       <div class="card-header">
         <mat-icon svgIcon="circle-info" class="card-icon"></mat-icon>
-        <h4>Backup Information</h4>
+        <h4>{{ 'backup.restore.info' | translate }}</h4>
       </div>
 
       <div class="info-grid">
@@ -24,12 +28,12 @@
             <mat-icon svgIcon="calendar" class="info-icon"></mat-icon>
           </div>
           <div class="info-content">
-            <span class="label">Created</span>
+            <span class="label">{{ 'backup.restore.created' | translate }}</span>
             <span class="value">
               @if (analysis.createdAt) {
                 {{ analysis.createdAt | date: 'medium' }}
               } @else {
-                Unknown
+                {{ 'backup.restore.unknown' | translate }}
               }
             </span>
           </div>
@@ -40,8 +44,10 @@
             <mat-icon svgIcon="tag" class="info-icon"></mat-icon>
           </div>
           <div class="info-content">
-            <span class="label">Type</span>
-            <span class="value">{{ analysis.backupType || 'Unknown' }}</span>
+            <span class="label">{{ 'backup.restore.type' | translate }}</span>
+            <span class="value">{{
+              analysis.backupType || ('backup.restore.unknown' | translate)
+            }}</span>
           </div>
         </div>
 
@@ -50,7 +56,7 @@
             <mat-icon svgIcon="file-zipper" class="info-icon"></mat-icon>
           </div>
           <div class="info-content">
-            <span class="label">Format</span>
+            <span class="label">{{ 'backup.restore.format' | translate }}</span>
             <span class="value"
               >{{ analysis.archiveType | uppercase }} · v{{ analysis.formatVersion }}</span
             >
@@ -62,17 +68,17 @@
             <mat-icon [svgIcon]="isEncrypted() ? 'lock' : 'lock-open'" class="info-icon"></mat-icon>
           </div>
           <div class="info-content">
-            <span class="label">Security</span>
+            <span class="label">{{ 'backup.restore.security' | translate }}</span>
             <span class="value" [class.encrypted]="isEncrypted()">
               @if (isEncrypted()) {
                 <span class="badge">
                   <mat-icon svgIcon="shield" class="badge-icon"></mat-icon>
-                  Encrypted
+                  {{ 'backup.restore.encrypted' | translate }}
                 </span>
               } @else {
                 <span class="badge badge-default">
                   <mat-icon svgIcon="shield-halved" class="badge-icon"></mat-icon>
-                  Not Encrypted
+                  {{ 'backup.restore.notEncrypted' | translate }}
                 </span>
               }
             </span>
@@ -86,8 +92,10 @@
       <div class="info-card contents-card">
         <div class="card-header">
           <mat-icon svgIcon="file-lines" class="card-icon"></mat-icon>
-          <h4>Backup Contents</h4>
-          <span class="items-count">{{ getItemCount() }} items</span>
+          <h4>{{ 'backup.restore.contents' | translate }}</h4>
+          <span class="items-count">{{
+            'backup.restore.itemCount' | translate: { count: getItemCount() }
+          }}</span>
         </div>
 
         <div class="contents-list">
@@ -97,8 +105,10 @@
                 <mat-icon svgIcon="gear" class="item-icon"></mat-icon>
               </div>
               <div class="item-content">
-                <span class="item-title">Application Settings</span>
-                <span class="item-description">Your app preferences and configuration</span>
+                <span class="item-title">{{ 'backup.restore.settings.title' | translate }}</span>
+                <span class="item-description">{{
+                  'backup.restore.settings.description' | translate
+                }}</span>
               </div>
               <mat-icon svgIcon="circle-check" class="check-icon accent"></mat-icon>
             </div>
@@ -110,8 +120,12 @@
                 <mat-icon svgIcon="server" class="item-icon"></mat-icon>
               </div>
               <div class="item-content">
-                <span class="item-title">Backend Configuration</span>
-                <span class="item-description">RClone backend options and settings</span>
+                <span class="item-title">{{
+                  'backup.restore.backendConfig.title' | translate
+                }}</span>
+                <span class="item-description">{{
+                  'backup.restore.backendConfig.description' | translate
+                }}</span>
               </div>
               <mat-icon svgIcon="circle-check" class="check-icon accent"></mat-icon>
             </div>
@@ -123,8 +137,12 @@
                 <mat-icon svgIcon="rclone-symbolic" class="item-icon"></mat-icon>
               </div>
               <div class="item-content">
-                <span class="item-title">RClone Configuration</span>
-                <span class="item-description">Complete rclone.conf file</span>
+                <span class="item-title">{{
+                  'backup.restore.rcloneConfig.title' | translate
+                }}</span>
+                <span class="item-description">{{
+                  'backup.restore.rcloneConfig.description' | translate
+                }}</span>
               </div>
               <mat-icon svgIcon="circle-check" class="check-icon accent"></mat-icon>
             </div>
@@ -137,7 +155,7 @@
               </div>
               <div class="item-content">
                 <span class="item-title">
-                  Remote Configurations
+                  {{ 'backup.restore.remoteConfigs.title' | translate }}
                   <span class="count-badge">{{ analysis.contents!.remoteCount }}</span>
                 </span>
                 @if (analysis.contents!.remoteNames && analysis.contents!.remoteNames.length > 0) {
@@ -158,11 +176,11 @@
       <div class="info-card note-card">
         <div class="card-header">
           <mat-icon svgIcon="note-sticky" class="card-icon"></mat-icon>
-          <h4>Backup Note</h4>
+          <h4>{{ 'backup.restore.note' | translate }}</h4>
         </div>
         <div class="user-note">
           <mat-icon svgIcon="comment" class="quote-icon"></mat-icon>
-          <pre aria-label="Backup note">{{ analysis.userNote }}</pre>
+          <pre [attr.aria-label]="'backup.restore.note' | translate">{{ analysis.userNote }}</pre>
         </div>
       </div>
     }
@@ -172,13 +190,13 @@
       <div class="info-card password-card">
         <div class="card-header warning">
           <mat-icon svgIcon="lock" class="card-icon"></mat-icon>
-          <h4>Password Required</h4>
+          <h4>{{ 'backup.restore.passwordRequired' | translate }}</h4>
         </div>
 
         <div class="password-content">
           <div class="warning-banner">
             <mat-icon svgIcon="shield-halved" class="warning-icon"></mat-icon>
-            <p>This backup is encrypted. Enter the correct password to decrypt and restore.</p>
+            <p>{{ 'backup.restore.encryptedWarning' | translate }}</p>
           </div>
 
           @if (passwordError()) {
@@ -188,13 +206,13 @@
             </div>
           }
           <mat-form-field appearance="fill">
-            <mat-label>Backup Password</mat-label>
+            <mat-label>{{ 'backup.restore.passwordRequired' | translate }}</mat-label>
             <input
               matInput
               [ngModel]="password()"
               (ngModelChange)="onPasswordChange($event)"
               [type]="showPassword() ? 'text' : 'password'"
-              placeholder="Enter your backup password"
+              [placeholder]="'backup.restore.passwordPlaceholder' | translate"
               [disabled]="isVerifying()"
               (keyup.enter)="verifyAndRestore()"
               autocomplete="current-password"
@@ -204,7 +222,11 @@
               matIconButton
               matSuffix
               (click)="togglePasswordVisibility()"
-              [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+              [attr.aria-label]="
+                showPassword()
+                  ? ('backup.restore.hidePassword' | translate)
+                  : ('backup.restore.showPassword' | translate)
+              "
               [disabled]="isVerifying()"
             >
               <mat-icon [svgIcon]="showPassword() ? 'eye-slash' : 'eye'"></mat-icon>
@@ -218,7 +240,7 @@
   <!-- Modal Actions -->
   <div class="modal-actions">
     <button mat-stroked-button (click)="close()" [disabled]="isVerifying()" class="cancel-btn">
-      Cancel
+      {{ 'backup.restore.cancel' | translate }}
     </button>
 
     <button
@@ -230,9 +252,13 @@
     >
       @if (isVerifying()) {
         <mat-spinner diameter="20"></mat-spinner>
-        <span>Verifying...</span>
+        <span>{{ 'backup.restore.verifying' | translate }}</span>
       } @else {
-        <span>{{ isEncrypted() ? 'Decrypt & Restore' : 'Restore Backup' }}</span>
+        <span>{{
+          isEncrypted()
+            ? ('backup.restore.decryptAndRestore' | translate)
+            : ('backup.restore.restoreAction' | translate)
+        }}</span>
       }
     </button>
   </div>

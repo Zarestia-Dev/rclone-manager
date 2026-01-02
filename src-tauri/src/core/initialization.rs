@@ -105,7 +105,9 @@ pub fn get_config_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> 
     }
 
     // Fallback/Error if manager not available
-    Err("Settings manager not available".to_string())
+    Err(crate::localized_error!(
+        "backendErrors.system.settingsUnavailable"
+    ))
 }
 
 /// Handles async startup tasks

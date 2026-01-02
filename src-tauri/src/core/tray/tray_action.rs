@@ -20,6 +20,11 @@ pub enum TrayAction {
     // Remote-level actions
     Browse(String),
     BrowseInApp(String),
+
+    // Global actions
+    UnmountAll,
+    StopAllJobs,
+    StopAllServes,
 }
 
 impl TrayAction {
@@ -59,12 +64,23 @@ impl TrayAction {
             }
             Self::Browse(remote) => format!("browse-__{}", remote),
             Self::BrowseInApp(remote) => format!("browse_in_app__{}", remote),
+            Self::UnmountAll => "unmount_all".to_string(),
+            Self::StopAllJobs => "stop_all_jobs".to_string(),
+            Self::StopAllServes => "stop_all_serves".to_string(),
         }
     }
 
     /// Parses a unique string ID back into a TrayAction.
     /// Example: "mount_profile__myRemote__profile1" -> Some(TrayAction::MountProfile("myRemote", "profile1"))
     pub fn from_id(id: &str) -> Option<Self> {
+        // Check for global actions first (single word, no separators)
+        match id {
+            "unmount_all" => return Some(Self::UnmountAll),
+            "stop_all_jobs" => return Some(Self::StopAllJobs),
+            "stop_all_serves" => return Some(Self::StopAllServes),
+            _ => {}
+        }
+
         let parts: Vec<&str> = id.splitn(3, "__").collect();
 
         if parts.len() == 2 {

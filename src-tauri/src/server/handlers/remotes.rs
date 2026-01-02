@@ -88,9 +88,9 @@ pub async fn create_remote_handler(
     )
     .await
     .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Remote created successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.remote.created"
+    ))))
 }
 
 #[derive(Deserialize)]
@@ -173,9 +173,9 @@ pub async fn quit_rclone_oauth_handler(
     quit_rclone_oauth(rclone_state)
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "RClone OAuth process quit successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.system.oauthQuit"
+    ))))
 }
 
 #[derive(Deserialize)]
@@ -200,9 +200,9 @@ pub async fn delete_remote_handler(
     )
     .await
     .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Remote deleted successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.remote.deleted"
+    ))))
 }
 
 #[derive(Deserialize)]
@@ -225,7 +225,7 @@ pub async fn update_remote_handler(
     )
     .await
     .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Remote updated successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.remote.updated"
+    ))))
 }

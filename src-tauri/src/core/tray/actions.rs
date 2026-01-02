@@ -22,10 +22,6 @@ use crate::{
     },
 };
 
-fn notify(app: &AppHandle, title: &str, body: &str) {
-    send_notification(app, title, body);
-}
-
 pub fn show_main_window(app: AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         info!("🪟 Showing main window");
@@ -78,13 +74,18 @@ async fn handle_start_job_profile(
                 "✅ Started {} for {} profile '{}'",
                 op_name, remote_name, profile_name
             );
-            notify(
+            send_notification(
                 &app,
-                &format!("{} Started", op_name),
-                &format!(
-                    "Started {} for {} profile '{}'",
-                    op_name, remote_name, profile_name
-                ),
+                "notification.title.operationStarted",
+                &serde_json::json!({
+                    "key": "notification.body.started",
+                    "params": {
+                        "operation": op_name,
+                        "remote": remote_name,
+                        "profile": profile_name
+                    }
+                })
+                .to_string(),
             );
         }
         Err(e) => {
@@ -92,10 +93,23 @@ async fn handle_start_job_profile(
                 "🚨 Failed to start {} for {} profile '{}': {}",
                 op_name, remote_name, profile_name, e
             );
-            notify(
+            let error_str = e.to_string();
+            // Check if error is already a JSON error from backend
+            let notification_body = if error_str.starts_with('{') && error_str.contains("\"key\"") {
+                error_str // Pass backend error JSON directly
+            } else {
+                serde_json::json!({
+                    "key": "notification.body.startFailed",
+                    "params": {
+                        "error": error_str
+                    }
+                })
+                .to_string()
+            };
+            send_notification(
                 &app,
-                &format!("{} Failed", op_name),
-                &format!("Failed: {}", e),
+                "notification.title.operationFailed",
+                &notification_body,
             );
         }
     }
@@ -115,15 +129,40 @@ pub fn handle_mount_profile(app: AppHandle, remote_name: &str, profile_name: &st
         match mount_remote_profile(app_clone.clone(), params).await {
             Ok(_) => {
                 info!("✅ Mounted {} profile '{}'", remote, profile);
-                notify(
+                send_notification(
                     &app_clone,
-                    "Mount Successful",
-                    &format!("Mounted {} profile '{}'", remote, profile),
+                    "notification.title.mountSuccess",
+                    &serde_json::json!({
+                        "key": "notification.body.mounted",
+                        "params": {
+                            "remote": remote,
+                            "profile": profile
+                        }
+                    })
+                    .to_string(),
                 );
             }
             Err(e) => {
                 error!("🚨 Failed to mount {} profile '{}': {}", remote, profile, e);
-                notify(&app_clone, "Mount Failed", &format!("Failed: {}", e));
+                let error_str = e.to_string();
+                // Check if error is already a JSON error from backend
+                let notification_body =
+                    if error_str.starts_with('{') && error_str.contains("\"key\"") {
+                        error_str // Pass backend error JSON directly
+                    } else {
+                        serde_json::json!({
+                            "key": "notification.body.mountFailed",
+                            "params": {
+                                "error": error_str
+                            }
+                        })
+                        .to_string()
+                    };
+                send_notification(
+                    &app_clone,
+                    "notification.title.mountFailed",
+                    &notification_body,
+                );
             }
         }
     });
@@ -165,10 +204,16 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
 
         if mount_point.is_empty() {
             error!("❌ Mount point not found for profile '{}'", profile);
-            notify(
+            send_notification(
                 &app_clone,
-                "Unmount Failed",
-                &format!("Profile '{}' not found", profile),
+                "notification.title.unmountFailed",
+                &serde_json::json!({
+                    "key": "notification.body.profileNotFound",
+                    "params": {
+                        "profile": profile
+                    }
+                })
+                .to_string(),
             );
             return;
         }
@@ -183,10 +228,17 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
         {
             Ok(_) => {
                 info!("🛑 Unmounted {} profile '{}'", remote, profile);
-                notify(
+                send_notification(
                     &app_clone,
-                    "Unmount Successful",
-                    &format!("Unmounted {} profile '{}'", remote, profile),
+                    "notification.title.unmountSuccess",
+                    &serde_json::json!({
+                        "key": "notification.body.unmounted",
+                        "params": {
+                            "remote": remote,
+                            "profile": profile
+                        }
+                    })
+                    .to_string(),
                 );
             }
             Err(e) => {
@@ -194,7 +246,25 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
                     "🚨 Failed to unmount {} profile '{}': {}",
                     remote, profile, e
                 );
-                notify(&app_clone, "Unmount Failed", &format!("Failed: {}", e));
+                let error_str = e.to_string();
+                // Check if error is already a JSON error from backend
+                let notification_body =
+                    if error_str.starts_with('{') && error_str.contains("\"key\"") {
+                        error_str // Pass backend error JSON directly
+                    } else {
+                        serde_json::json!({
+                            "key": "notification.body.unmountFailed",
+                            "params": {
+                                "error": error_str
+                            }
+                        })
+                        .to_string()
+                    };
+                send_notification(
+                    &app_clone,
+                    "notification.title.unmountFailed",
+                    &notification_body,
+                );
             }
         }
     });
@@ -259,24 +329,43 @@ async fn handle_stop_job_profile(
                     "🛑 Stopped {} job {} for {} profile '{}'",
                     job_type, job.jobid, remote_name, profile_name
                 );
-                notify(
+                send_notification(
                     &app,
-                    &format!("{} Stopped", action_name),
-                    &format!(
-                        "Stopped {} for {} profile '{}'",
-                        job_type, remote_name, profile_name
-                    ),
+                    "notification.title.operationStopped",
+                    &serde_json::json!({
+                        "key": "notification.body.stopped",
+                        "params": {
+                            "operation": action_name,
+                            "remote": remote_name,
+                            "profile": profile_name
+                        }
+                    })
+                    .to_string(),
                 );
             }
             Err(e) => {
                 error!("🚨 Failed to stop {} job {}: {}", job_type, job.jobid, e);
-                notify(
+                let error_str = e.to_string();
+                // Check if error is already a JSON error from backend
+                let notification_body =
+                    if error_str.starts_with('{') && error_str.contains("\"key\"") {
+                        error_str // Pass backend error JSON directly
+                    } else {
+                        serde_json::json!({
+                            "key": "notification.body.stopFailed",
+                            "params": {
+                                "operation": action_name,
+                                "remote": remote_name,
+                                "profile": profile_name,
+                                "error": error_str
+                            }
+                        })
+                        .to_string()
+                    };
+                send_notification(
                     &app,
-                    &format!("Stop {} Failed", action_name),
-                    &format!(
-                        "Failed to stop {} for {} profile '{}': {}",
-                        job_type, remote_name, profile_name, e
-                    ),
+                    "notification.title.operationFailed",
+                    &notification_body,
                 );
             }
         }
@@ -285,13 +374,18 @@ async fn handle_stop_job_profile(
             "🚨 No active {} job found for {} profile '{}'",
             job_type, remote_name, profile_name
         );
-        notify(
+        send_notification(
             &app,
-            &format!("Stop {} Failed", action_name),
-            &format!(
-                "No active {} job found for {} profile '{}'",
-                job_type, remote_name, profile_name
-            ),
+            "notification.title.operationFailed",
+            &serde_json::json!({
+                "key": "notification.body.noActiveJob",
+                "params": {
+                    "operation": action_name,
+                    "remote": remote_name,
+                    "profile": profile_name
+                }
+            })
+            .to_string(),
         );
     }
 }
@@ -353,13 +447,18 @@ pub fn handle_serve_profile(app: AppHandle, remote_name: &str, profile_name: &st
                     "✅ Started serve for {} profile '{}' at {}",
                     remote, profile, response.addr
                 );
-                notify(
+                send_notification(
                     &app_clone,
-                    "Serve Started",
-                    &format!(
-                        "Started serve for {} profile '{}' at {}",
-                        remote, profile, response.addr
-                    ),
+                    "notification.title.serveStarted",
+                    &serde_json::json!({
+                        "key": "notification.body.serveStarted",
+                        "params": {
+                            "remote": remote,
+                            "profile": profile,
+                            "addr": response.addr
+                        }
+                    })
+                    .to_string(),
                 );
             }
             Err(e) => {
@@ -367,13 +466,26 @@ pub fn handle_serve_profile(app: AppHandle, remote_name: &str, profile_name: &st
                     "🚨 Failed to start serve for {} profile '{}': {}",
                     remote, profile, e
                 );
-                notify(
+                let error_str = e.to_string();
+                // Check if error is already a JSON error from backend
+                let notification_body =
+                    if error_str.starts_with('{') && error_str.contains("\"key\"") {
+                        error_str // Pass backend error JSON directly
+                    } else {
+                        serde_json::json!({
+                            "key": "notification.body.serveFailed",
+                            "params": {
+                                "remote": remote,
+                                "profile": profile,
+                                "error": error_str
+                            }
+                        })
+                        .to_string()
+                    };
+                send_notification(
                     &app_clone,
-                    "Serve Failed",
-                    &format!(
-                        "Failed to start serve for {} profile '{}': {}",
-                        remote, profile, e
-                    ),
+                    "notification.title.serveFailed",
+                    &notification_body,
                 );
             }
         }
@@ -407,18 +519,39 @@ pub fn handle_stop_serve_profile(app: AppHandle, _remote_name: &str, serve_id: &
         {
             Ok(_) => {
                 info!("🛑 Stopped serve {serve_id_clone} for {remote_name}");
-                notify(
+                send_notification(
                     &app_clone,
-                    "Serve Stopped",
-                    &format!("Stopped serve for {remote_name}"),
+                    "notification.title.serveStopped",
+                    &serde_json::json!({
+                        "key": "notification.body.serveStopped",
+                        "params": {
+                            "remote": remote_name
+                        }
+                    })
+                    .to_string(),
                 );
             }
             Err(e) => {
                 error!("🚨 Failed to stop serve {serve_id_clone}: {e}");
-                notify(
+                let error_str = e.to_string();
+                // Check if error is already a JSON error from backend
+                let notification_body =
+                    if error_str.starts_with('{') && error_str.contains("\"key\"") {
+                        error_str // Pass backend error JSON directly
+                    } else {
+                        serde_json::json!({
+                            "key": "notification.body.stopServeFailed",
+                            "params": {
+                                "remote": remote_name,
+                                "error": error_str
+                            }
+                        })
+                        .to_string()
+                    };
+                send_notification(
                     &app_clone,
-                    "Stop Serve Failed",
-                    &format!("Failed to stop serve for {remote_name}: {e}"),
+                    "notification.title.stopServeFailed",
+                    &notification_body,
                 );
             }
         }
@@ -459,10 +592,16 @@ pub fn handle_stop_all_jobs(app: AppHandle) {
             }
         }
 
-        notify(
+        send_notification(
             &app,
-            "All Jobs Stopped",
-            &format!("Stopped {} active jobs", stopped_count),
+            "notification.title.allJobsStopped",
+            &serde_json::json!({
+                "key": "notification.body.allJobsStopped",
+                "params": {
+                    "count": stopped_count.to_string()
+                }
+            })
+            .to_string(),
         );
     });
 }
@@ -532,14 +671,24 @@ pub fn handle_stop_all_serves(app: AppHandle) {
         match stop_all_serves(app_clone.clone(), app_clone.state(), "menu".to_string()).await {
             Ok(_) => {
                 info!("✅ All serves stopped successfully");
-                notify(&app_clone, "All Serves Stopped", "All serves stopped");
+                send_notification(
+                    &app_clone,
+                    "notification.title.allServesStopped",
+                    "notification.body.allServesStopped",
+                );
             }
             Err(e) => {
                 error!("🚨 Failed to stop all serves: {e}");
-                notify(
+                send_notification(
                     &app_clone,
-                    "Stop All Serves Failed",
-                    &format!("Failed to stop serves: {e}"),
+                    "notification.title.stopAllServesFailed",
+                    &serde_json::json!({
+                        "key": "notification.body.stopAllServesFailed",
+                        "params": {
+                            "error": e.to_string()
+                        }
+                    })
+                    .to_string(),
                 );
             }
         }

@@ -1,10 +1,8 @@
 @if (showDevelopmentBanner()) {
   <mat-toolbar class="development-banner">
     <span class="warning-icon">🚧</span>
-    <span class="banner-message">Development Build</span>
-    <span class="banner-subtitle"
-      >Features may be unstable • Data loss possible • Not for production use</span
-    >
+    <span class="banner-message">{{ 'banners.development.title' | translate }}</span>
+    <span class="banner-subtitle">{{ 'banners.development.subtitle' | translate }}</span>
   </mat-toolbar>
 }
 
@@ -14,20 +12,20 @@
 >
   <mat-icon
     matTooltipShowDelay="500"
-    matTooltip="Don't show again"
+    [matTooltip]="'banners.flatpak.dismissTooltip' | translate"
     (click)="dismissFlatpakWarning()"
     svgIcon="circle-xmark"
     class="warning-icon"
   ></mat-icon>
-  <span class="banner-message">Flatpak Note</span>
+  <span class="banner-message">{{ 'banners.flatpak.title' | translate }}</span>
   <span class="banner-subtitle"
-    >Some features may require manual permission adjustments.
+    >{{ 'banners.flatpak.subtitle' | translate }}
     <a
       href="https://github.com/Zarestia-Dev/rclone-manager/wiki/Troubleshooting-Linux#-issue-2-permission-errors-flatpak-security"
       target="_blank"
       rel="noopener noreferrer"
     >
-      Learn more
+      {{ 'banners.flatpak.learnMore' | translate }}
     </a></span
   >
 </mat-toolbar>
@@ -37,5 +35,5 @@
   [class.visible]="isMeteredConnection()"
   role="alert"
 >
-  You are on a metered connection. Some features may use extra data.
+  {{ 'banners.metered.message' | translate }}
 </mat-toolbar>

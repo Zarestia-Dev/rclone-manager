@@ -120,7 +120,9 @@ pub async fn analyze_backup_file(
         .to_lowercase();
 
     if ext != "rcman" {
-        return Err("Unsupported archive type. Must be a .rcman file".into());
+        return Err(crate::localized_error!(
+            "backendErrors.backup.unsupportedArchive"
+        ));
     }
 
     // Read manifest to detect format

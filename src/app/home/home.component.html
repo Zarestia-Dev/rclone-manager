@@ -40,19 +40,18 @@
             <div class="icon-container">
               <img src="assets/rclone.svg" alt="Rclone Logo" class="no-remotes-icon" />
             </div>
-            <h2>RClone Manager</h2>
+            <h2>{{ 'home.emptyState.title' | translate }}</h2>
             <p>
-              Easily manage your RClone remotes. If you're new to RClone, use "Add Quick Remote" for
-              a fast and simple setup.
+              {{ 'home.emptyState.description' | translate }}
             </p>
             <div class="no-remotes-actions">
               <button matButton="filled" class="primary" (click)="openQuickAddRemoteModal()">
                 <mat-icon svgIcon="plus"></mat-icon>
-                Add Quick Remote
+                {{ 'home.emptyState.addQuickRemote' | translate }}
               </button>
               <button matButton="filled" class="accent" (click)="openRemoteConfigModal()">
                 <mat-icon svgIcon="plus"></mat-icon>
-                Add Detailed Remote
+                {{ 'home.emptyState.addDetailedRemote' | translate }}
               </button>
             </div>
           </div>
@@ -126,7 +125,7 @@
                   $event.targetProfile
                 )
               "
-              (openInFiles)="openRemoteInFilesWithPath($event.remoteName, $event.path)"
+              (openInFiles)="openRemoteInFiles($event.remoteName, $event.path)"
               (startJob)="startJob($event.type, $event.remoteName, $event.profileName)"
               (stopJob)="
                 stopJob($event.type, $event.remoteName, $event.serveId, $event.profileName)
@@ -149,28 +148,28 @@
         [checked]="getRemoteSettingValue(remote.remoteSpecs.name, 'showOnTray')"
         (change)="saveRemoteSettings(remote.remoteSpecs.name, { showOnTray: $event.checked })"
       >
-        <span>Show in Tray Menu</span>
+        <span>{{ 'home.options.showInTray' | translate }}</span>
       </mat-checkbox>
     </button>
     <mat-divider></mat-divider>
     <!-- Remote Actions -->
     <button class="menu-item" cdkMenuItem (click)="openLogsModal(remote.remoteSpecs.name)">
-      <span>View Logs</span>
+      <span>{{ 'home.options.viewLogs' | translate }}</span>
     </button>
     <button class="menu-item" cdkMenuItem (click)="cloneRemote(remote.remoteSpecs.name)">
-      <span>Clone Remote</span>
+      <span>{{ 'home.options.cloneRemote' | translate }}</span>
     </button>
     <mat-divider></mat-divider>
     <button class="menu-item" cdkMenuItem (click)="openExportModal(remote.remoteSpecs.name)">
-      <span>Export Configuration</span>
+      <span>{{ 'home.options.exportConfig' | translate }}</span>
     </button>
     <button class="menu-item" cdkMenuItem (click)="resetRemoteSettings(remote.remoteSpecs.name)">
-      <span>Reset Settings</span>
+      <span>{{ 'home.options.resetSettings' | translate }}</span>
     </button>
     <mat-divider></mat-divider>
     <!-- Delete Remote -->
     <button class="menu-item" cdkMenuItem (click)="deleteRemote(remote.remoteSpecs.name)">
-      <span>Delete Remote</span>
+      <span>{{ 'home.options.deleteRemote' | translate }}</span>
     </button>
   </div>
 </ng-template>

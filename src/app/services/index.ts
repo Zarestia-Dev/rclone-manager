@@ -1,5 +1,7 @@
 export * from './system/system-info.service';
 export * from './system/event-listeners.service';
+export * from './system/config.service';
+export * from './system/connection.service';
 export * from './system/logging.service';
 export * from './system/rclone-update.service';
 export * from './system/app-updater.service';
@@ -13,6 +15,8 @@ export * from './ui/global-loading.service';
 export * from './ui/nautilus.service';
 export * from './ui/icon.service';
 export * from './ui/notification.service';
+export * from './ui/modal.service';
+export * from './i18n/backend-translation.service';
 export * from './remote/remote-management.service';
 export * from './remote/flag-config.service';
 export * from './remote/path-selection.service';

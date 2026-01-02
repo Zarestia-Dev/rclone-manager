@@ -65,9 +65,10 @@ pub async fn mount_remote_profile_handler(
     mount_remote_profile(state.app_handle.clone(), params)
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Remote mounted successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.mount.completed",
+        "remote" => body.params.remote_name
+    ))))
 }
 
 #[derive(Deserialize)]

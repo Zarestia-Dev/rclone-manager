@@ -8,7 +8,7 @@
       <mat-expansion-panel-header>
         <mat-panel-title>
           <mat-icon svgIcon="download"></mat-icon>
-          <span>Operations</span>
+          <span>{{ 'fileBrowser.operations.title' | translate }}</span>
           @if (activeJobs.length > 0) {
             <span class="job-count">{{ activeJobs.length }}</span>
           }
@@ -28,7 +28,12 @@
                 (click)="
                   job.status === 'Running' ? stopJob(job) : deleteJob(job); $event.stopPropagation()
                 "
-                [matTooltip]="job.status === 'Running' ? 'Cancel' : 'Remove'"
+                [matTooltip]="
+                  (job.status === 'Running'
+                    ? 'fileBrowser.operations.cancelJob'
+                    : 'fileBrowser.operations.removeJob'
+                  ) | translate
+                "
                 matTooltipShowDelay="500"
                 svgIcon="circle-xmark"
               >
@@ -52,11 +57,15 @@
                   {{ job.stats.totalBytes | formatFileSize }}</span
                 >
               } @else if (job.status === 'Completed') {
-                <span class="stats-text success">Completed</span>
+                <span class="stats-text success">{{
+                  'fileBrowser.operations.completed' | translate
+                }}</span>
               } @else if (job.status === 'Failed') {
-                <span class="stats-text error">Failed</span>
+                <span class="stats-text error">{{
+                  'fileBrowser.operations.failed' | translate
+                }}</span>
               } @else if (job.status === 'Stopped') {
-                <span class="stats-text">Cancelled</span>
+                <span class="stats-text">{{ 'fileBrowser.operations.cancelled' | translate }}</span>
               }
             </div>
           </div>

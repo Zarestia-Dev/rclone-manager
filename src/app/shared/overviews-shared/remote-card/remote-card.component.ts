@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, EventEmitter, input, Output, inject } from '@angular/core';
+import { TranslateService, TranslateModule } from '@ngx-translate/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
@@ -37,8 +38,8 @@ const OPERATION_CONFIG: Record<PrimaryActionType, OperationConfig> = {
     isActiveKey: 'mounted',
     startIcon: 'mount',
     stopIcon: 'eject',
-    startTooltip: 'Mount',
-    stopTooltip: 'Unmount',
+    startTooltip: 'overviews.remoteCard.actions.mount',
+    stopTooltip: 'overviews.remoteCard.actions.unmount',
     cssClass: 'accent',
   },
   sync: {
@@ -46,8 +47,8 @@ const OPERATION_CONFIG: Record<PrimaryActionType, OperationConfig> = {
     isActiveKey: 'isOnSync',
     startIcon: 'refresh',
     stopIcon: 'stop',
-    startTooltip: 'Start Sync',
-    stopTooltip: 'Stop Sync',
+    startTooltip: 'overviews.remoteCard.actions.startSync',
+    stopTooltip: 'overviews.remoteCard.actions.stopSync',
     cssClass: 'primary',
   },
   copy: {
@@ -55,8 +56,8 @@ const OPERATION_CONFIG: Record<PrimaryActionType, OperationConfig> = {
     isActiveKey: 'isOnCopy',
     startIcon: 'copy',
     stopIcon: 'stop',
-    startTooltip: 'Start Copy',
-    stopTooltip: 'Stop Copy',
+    startTooltip: 'overviews.remoteCard.actions.startCopy',
+    stopTooltip: 'overviews.remoteCard.actions.stopCopy',
     cssClass: 'yellow',
   },
   move: {
@@ -64,8 +65,8 @@ const OPERATION_CONFIG: Record<PrimaryActionType, OperationConfig> = {
     isActiveKey: 'isOnMove',
     startIcon: 'move',
     stopIcon: 'stop',
-    startTooltip: 'Start Move',
-    stopTooltip: 'Stop Move',
+    startTooltip: 'overviews.remoteCard.actions.startMove',
+    stopTooltip: 'overviews.remoteCard.actions.stopMove',
     cssClass: 'orange',
   },
   bisync: {
@@ -73,8 +74,8 @@ const OPERATION_CONFIG: Record<PrimaryActionType, OperationConfig> = {
     isActiveKey: 'isOnBisync',
     startIcon: 'right-left',
     stopIcon: 'stop',
-    startTooltip: 'Start BiSync',
-    stopTooltip: 'Stop BiSync',
+    startTooltip: 'overviews.remoteCard.actions.startBisync',
+    stopTooltip: 'overviews.remoteCard.actions.stopBisync',
     cssClass: 'purple',
   },
   serve: {
@@ -82,8 +83,8 @@ const OPERATION_CONFIG: Record<PrimaryActionType, OperationConfig> = {
     isActiveKey: 'isOnServe',
     startIcon: 'satellite-dish',
     stopIcon: 'stop',
-    startTooltip: 'Start Serve',
-    stopTooltip: 'Stop Serve',
+    startTooltip: 'overviews.remoteCard.actions.startServe',
+    stopTooltip: 'overviews.remoteCard.actions.stopServe',
     cssClass: 'primary',
   },
 };
@@ -99,12 +100,15 @@ const OPERATION_CONFIG: Record<PrimaryActionType, OperationConfig> = {
     MatDividerModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
+    MatTooltipModule,
     QuickActionButtonsComponent,
+    TranslateModule,
   ],
   templateUrl: './remote-card.component.html',
   styleUrl: './remote-card.component.scss',
 })
 export class RemoteCardComponent {
+  private translate = inject(TranslateService);
   remote = input.required<Remote>();
   mode = input<AppTab>('general');
   actionState = input<RemoteAction>(null);
@@ -150,7 +154,7 @@ export class RemoteCardComponent {
           buttons.push({
             id: 'open',
             icon: 'folder',
-            tooltip: 'Browse (B)',
+            tooltip: this.translate.instant('overviews.remoteCard.browse') + ' (B)',
             isLoading: this.isOpening(),
             isDisabled: this.isOpening(),
             cssClass: 'accent',
@@ -191,7 +195,7 @@ export class RemoteCardComponent {
         buttons.push({
           id: 'open',
           icon: 'folder',
-          tooltip: 'Browse Destination',
+          tooltip: this.translate.instant('overviews.remoteCard.browseDest'),
           isLoading: this.isOpening(),
           isDisabled: this.isOpening(),
           cssClass: 'accent',
@@ -213,7 +217,7 @@ export class RemoteCardComponent {
           buttons.push({
             id: type,
             icon: 'stop',
-            tooltip: config.stopTooltip,
+            tooltip: this.translate.instant(config.stopTooltip),
             isLoading: actionState === 'stop',
             isDisabled: actionState === 'stop',
             cssClass: 'warn',
@@ -270,7 +274,7 @@ export class RemoteCardComponent {
     buttons.push({
       id: 'browse',
       icon: 'folder',
-      tooltip: 'Browse',
+      tooltip: this.translate.instant('overviews.remoteCard.browse'),
       isLoading: actionState === 'open',
       isDisabled: !remote.mountState?.mounted || actionState === 'open',
       cssClass: 'accent',
@@ -334,8 +338,8 @@ export class RemoteCardComponent {
       id: actionType,
       icon: isActive ? config.stopIcon : config.startIcon,
       tooltip: isActive
-        ? `${config.stopTooltip} (${profileName})`
-        : `${config.startTooltip} (${profileName})`,
+        ? `${this.translate.instant(config.stopTooltip)} (${profileName})`
+        : `${this.translate.instant(config.startTooltip)} (${profileName})`,
       isLoading: showLoading,
       isDisabled: isActionInProgress,
       cssClass: isActive ? 'warn' : config.cssClass,
@@ -350,7 +354,7 @@ export class RemoteCardComponent {
     return {
       id: actionType,
       icon: config.startIcon,
-      tooltip: config.startTooltip,
+      tooltip: this.translate.instant(config.startTooltip),
       isLoading: isActionInProgress,
       isDisabled: isActionInProgress,
       cssClass: config.cssClass,

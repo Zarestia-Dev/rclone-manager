@@ -59,7 +59,11 @@ pub async fn check_rclone_update(
     // Get current version
     let current_version = match get_rclone_info(state.clone()).await {
         Ok(info) => info.version,
-        Err(e) => return Err(format!("Failed to get current rclone version: {e}")),
+        Err(e) => {
+            return Err(
+                crate::localized_error!("backendErrors.rclone.versionCheckFailed", "error" => e),
+            );
+        }
     };
 
     // Use rclone selfupdate --check to determine if update is available
@@ -185,9 +189,8 @@ pub async fn update_rclone(
                 "🔍 Current rclone binary not found at: {}",
                 current_path.display()
             );
-            return Err(format!(
-                "Current rclone binary not found at {}",
-                current_path.display()
+            return Err(crate::localized_error!(
+                "backendErrors.rclone.binaryNotFound"
             ));
         }
     }
@@ -256,7 +259,7 @@ pub async fn update_rclone(
                 .unwrap_or("unknown"),
         )
     {
-        return Err(format!("Failed to restart engine after update: {e}"));
+        return Err(crate::localized_error!("backendErrors.rclone.restartFailed", "error" => e));
     }
 
     update_result
@@ -406,13 +409,17 @@ async fn check_rclone_selfupdate(
         .arg("--check")
         .output()
         .await
-        .map_err(|e| format!("Failed to run rclone selfupdate --check: {e}"))?;
+        .map_err(
+            |e| crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => e),
+        )?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
 
     if !output.status.success() {
-        return Err(format!("rclone selfupdate --check failed: {}", stderr));
+        return Err(
+            crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => stderr),
+        );
     }
 
     // Parse the output
@@ -451,7 +458,7 @@ async fn check_rclone_selfupdate(
 
     if target_version.is_empty() {
         return Err(
-            "Could not parse version information from rclone selfupdate --check".to_string(),
+            crate::localized_error!("backendErrors.rclone.versionCheckFailed", "error" => "Parse error"),
         );
     }
 
@@ -589,7 +596,9 @@ async fn perform_rclone_selfupdate(
             "stable"
         }
         Some(other) => {
-            return Err(format!("Unsupported update channel: {other}"));
+            return Err(
+                crate::localized_error!("backendErrors.rclone.unsupportedChannel", "channel" => other),
+            );
         }
     };
 
@@ -597,10 +606,9 @@ async fn perform_rclone_selfupdate(
 
     debug!("Executing rclone selfupdate");
 
-    let output = cmd
-        .output()
-        .await
-        .map_err(|e| format!("Failed to run rclone selfupdate: {e}"))?;
+    let output = cmd.output().await.map_err(
+        |e| crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => e),
+    )?;
 
     if output.status.success() {
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -622,7 +630,7 @@ async fn perform_rclone_selfupdate(
         }))
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        Err(format!("Rclone selfupdate failed: {stderr}"))
+        Err(crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => stderr))
     }
 }
 

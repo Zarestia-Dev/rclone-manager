@@ -1,14 +1,16 @@
 import { Component, Input } from '@angular/core';
+import { TranslateModule } from '@ngx-translate/core';
 import { StatusBadgeConfig } from '../../types';
 
 @Component({
   selector: 'app-status-badge',
   standalone: true,
+  imports: [TranslateModule],
   styleUrls: ['./status-badge.component.scss'],
   template: `
     <div class="status-badge" [class]="config.badgeClass">
       <div class="status-dot"></div>
-      <span>{{ getStatusLabel() }}</span>
+      <span>{{ getStatusLabel() | translate }}</span>
     </div>
   `,
 })

@@ -9,7 +9,7 @@
         [disabled]="disabled"
       >
         <mat-icon [svgIcon]="tab.icon"></mat-icon>
-        <span>{{ tab.label }}</span>
+        <span>{{ tab.label | translate }}</span>
       </button>
     }
   </div>
@@ -19,17 +19,9 @@
       @case ('default') {
         <div class="option-info">
           <p>
-            {{
-              mode === 'config'
-                ? 'Use the default rclone config located in the standard path.'
-                : 'Install rclone to the system location automatically.'
-            }}
+            {{ 'shared.installationOptions.modes.' + mode + '.default.description' | translate }}
             <br />
-            {{
-              mode === 'config'
-                ? 'Choose the default config unless you have a custom configuration file.'
-                : 'This is the recommended option for most users.'
-            }}
+            {{ 'shared.installationOptions.modes.' + mode + '.default.recommendation' | translate }}
           </p>
         </div>
       }
@@ -37,27 +29,25 @@
       @case ('custom') {
         <div class="option-info">
           <p>
-            {{
-              mode === 'config'
-                ? 'Select a custom rclone configuration file.'
-                : 'Choose a custom location to install rclone.'
-            }}
+            {{ 'shared.installationOptions.modes.' + mode + '.custom.description' | translate }}
           </p>
           <mat-form-field [class]="mode === 'config' ? 'accent' : 'primary'" appearance="fill">
             <mat-label>{{
-              mode === 'config' ? 'Configuration File' : 'Installation Path'
+              'shared.installationOptions.modes.' + mode + '.custom.label' | translate
             }}</mat-label>
             <input
               matInput
               [formControl]="customPathControl"
-              [placeholder]="mode === 'config' ? '/path/to/rclone.conf' : '/path/to/install'"
+              [placeholder]="
+                'shared.installationOptions.modes.' + mode + '.custom.placeholder' | translate
+              "
             />
             <button
               matSuffix
               matIconButton
               (click)="selectCustomPath()"
               [disabled]="disabled"
-              matTooltip="Browse"
+              [matTooltip]="'shared.installationOptions.browse' | translate"
             >
               <mat-icon [svgIcon]="mode === 'config' ? 'file' : 'folder'"></mat-icon>
             </button>
@@ -71,21 +61,23 @@
       @case ('existing') {
         <div class="option-info">
           <p>
-            {{
-              mode === 'config'
-                ? 'If you have a custom rclone binary, select it here.'
-                : 'Select an existing rclone binary path on your system.'
-            }}
+            {{ 'shared.installationOptions.modes.' + mode + '.existing.description' | translate }}
           </p>
           <mat-form-field [class]="mode === 'config' ? 'accent' : 'primary'" appearance="fill">
-            <mat-label>{{ mode === 'config' ? 'Binary (optional)' : 'Binary Path' }}</mat-label>
-            <input matInput [formControl]="existingBinaryControl" placeholder="/path/to/rclone" />
+            <mat-label>{{
+              'shared.installationOptions.modes.' + mode + '.existing.label' | translate
+            }}</mat-label>
+            <input
+              matInput
+              [formControl]="existingBinaryControl"
+              [placeholder]="'shared.installationOptions.existingBinaryPlaceholder' | translate"
+            />
             <button
               matSuffix
               matIconButton
               (click)="selectBinary()"
               [disabled]="disabled"
-              matTooltip="Browse"
+              [matTooltip]="'shared.installationOptions.browse' | translate"
             >
               <mat-icon svgIcon="file"></mat-icon>
             </button>
@@ -107,7 +99,11 @@
                   (click)="testBinary()"
                   [disabled]="disabled || binaryTestResult === 'testing'"
                 >
-                  {{ binaryTestResult === 'testing' ? 'Testing...' : 'Test' }}
+                  {{
+                    binaryTestResult === 'testing'
+                      ? ('shared.installationOptions.testingAction' | translate)
+                      : ('shared.installationOptions.test' | translate)
+                  }}
                 </button>
               }
             </div>

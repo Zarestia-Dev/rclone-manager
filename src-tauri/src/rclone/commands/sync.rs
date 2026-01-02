@@ -419,9 +419,9 @@ where
 
     let specific_params = T::from_config(params.remote_name.clone(), &config, &settings)
         .ok_or_else(|| {
-            format!(
-                "Configuration incomplete for profile '{}'",
-                params.profile_name
+            crate::localized_error!(
+                "backendErrors.sync.configIncomplete",
+                "profile" => &params.profile_name
             )
         })?;
 

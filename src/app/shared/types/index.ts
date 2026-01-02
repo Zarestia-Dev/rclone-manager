@@ -5,7 +5,6 @@ export * from './filesystem';
 export * from './jobs';
 export * from './logs';
 export * from './maintenance';
-export * from './modal-data.types';
 export * from './operations';
 export * from './params';
 export * from './remote-config';

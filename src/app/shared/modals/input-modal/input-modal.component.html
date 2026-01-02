@@ -1,28 +1,38 @@
 <div class="properties-modal input-modal">
   <div class="modal-header" data-tauri-drag-region>
     <button><mat-icon [svgIcon]="data.icon || 'circle-info'"></mat-icon></button>
-    <p>{{ data.title || 'Enter Value' }}</p>
-    <button mat-icon-button (click)="onCancel()" aria-label="Close">
+    <p>{{ data.title || ('shared.inputModal.enterValue' | translate) }}</p>
+    <button mat-icon-button (click)="onCancel()" [attr.aria-label]="'common.close' | translate">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </div>
 
   <div class="modal-content">
     <mat-form-field appearance="fill" style="width: 100%">
-      <mat-label>{{ data.label || data.existingNameType || 'Name' }}</mat-label>
+      <mat-label>{{
+        data.label || data.existingNameType || ('shared.inputModal.name' | translate)
+      }}</mat-label>
       <input matInput [placeholder]="data.placeholder || ''" [formControl]="nameControl" />
       @if (nameControl.hasError('required')) {
         <mat-error>{{
-          data.label || data.existingNameType
-            ? (data.label || data.existingNameType) + ' is required'
-            : 'Name is required'
+          'shared.inputModal.required'
+            | translate
+              : {
+                  field:
+                    data.label || data.existingNameType || ('shared.inputModal.name' | translate),
+                }
         }}</mat-error>
       } @else if (nameControl.hasError('alreadyExists')) {
-        <mat-error>{{ (data.existingNameType || 'Name') + ' already exists' }}</mat-error>
+        <mat-error>{{
+          'shared.inputModal.alreadyExists'
+            | translate: { name: data.existingNameType || ('shared.inputModal.name' | translate) }
+        }}</mat-error>
       } @else if (nameControl.hasError('forbiddenChars')) {
         <mat-error>{{
           data.forbiddenCharsMessage ||
-            (data.existingNameType || 'Name') + " contains forbidden characters ('/' or ':' )"
+            ('shared.inputModal.forbiddenChars'
+              | translate
+                : { name: data.existingNameType || ('shared.inputModal.name' | translate) })
         }}</mat-error>
       }
     </mat-form-field>
@@ -30,7 +40,7 @@
 
   <div class="modal-actions">
     <button mat-flat-button class="primary" [disabled]="!nameControl.valid" (click)="onConfirm()">
-      {{ data.createLabel || 'Create' }}
+      {{ data.createLabel || ('shared.inputModal.create' | translate) }}
     </button>
   </div>
 </div>

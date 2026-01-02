@@ -3,8 +3,8 @@
     <button>
       <mat-icon></mat-icon>
     </button>
-    <p style="opacity: 0">About</p>
-    <button mat-icon-button (click)="close()" aria-label="Close">
+    <p style="opacity: 0">{{ 'modals.about.title' | translate }}</p>
+    <button mat-icon-button (click)="close()" [aria-label]="'common.close' | translate">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </div>
@@ -30,7 +30,7 @@
 
     <div class="about-list">
       <button matButton class="about-item" (click)="navigateTo('Details')">
-        <span>Details</span>
+        <span>{{ 'modals.about.details' | translate }}</span>
         <mat-icon svgIcon="chevron-right"></mat-icon>
       </button>
 
@@ -41,7 +41,7 @@
           (click)="navigateTo('Updates')"
           [matBadge]="updateAvailable || restartRequired ? '!' : null"
         >
-          <span>Updates</span>
+          <span>{{ 'modals.about.updates' | translate }}</span>
           <mat-icon svgIcon="chevron-right"></mat-icon>
         </button>
       }
@@ -52,18 +52,18 @@
         (click)="navigateTo('About Rclone')"
         [matBadge]="rcloneUpdateStatus.available ? '!' : null"
       >
-        <span>About Rclone</span>
+        <span>{{ 'modals.about.aboutRclone' | translate }}</span>
         <mat-icon svgIcon="chevron-right"></mat-icon>
       </button>
 
       <div class="stacked-buttons">
         <button matButton class="about-item" (click)="navigateTo('Credits')">
-          <span>Credits</span>
+          <span>{{ 'modals.about.credits' | translate }}</span>
           <mat-icon svgIcon="chevron-right"></mat-icon>
         </button>
         <mat-divider></mat-divider>
         <button matButton class="about-item" (click)="navigateTo('Legal')">
-          <span>Legal</span>
+          <span>{{ 'modals.about.legal' | translate }}</span>
           <mat-icon svgIcon="chevron-right"></mat-icon>
         </button>
       </div>
@@ -77,7 +77,7 @@
           <mat-icon svgIcon="chevron-left"></mat-icon>
         </button>
         <p>
-          {{ currentPage }}
+          {{ getPageTitle() }}
         </p>
         <button mat-icon-button (click)="close()">
           <mat-icon svgIcon="circle-xmark"></mat-icon>
@@ -94,7 +94,7 @@
               target="_blank"
               rel="noopener noreferrer"
             >
-              <span>Website</span>
+              <span>{{ 'modals.about.website' | translate }}</span>
               <mat-icon svgIcon="open-link"></mat-icon>
             </a>
             <mat-divider></mat-divider>
@@ -105,7 +105,7 @@
               target="_blank"
               rel="noopener noreferrer"
             >
-              <span>Report Issues</span>
+              <span>{{ 'modals.about.reportIssues' | translate }}</span>
               <mat-icon svgIcon="open-link"></mat-icon>
             </a>
           </div>
@@ -118,7 +118,7 @@
               target="_blank"
               rel="noopener noreferrer"
             >
-              <span>Rclone Website</span>
+              <span>{{ 'modals.about.rcloneWebsite' | translate }}</span>
               <mat-icon svgIcon="open-link"></mat-icon>
             </a>
           </div>
@@ -129,7 +129,7 @@
         <div class="modal-content updates-page">
           <div class="current-version-card">
             <div class="version-info">
-              <span class="version-label">Current Version</span>
+              <span class="version-label">{{ 'modals.about.currentVersion' | translate }}</span>
               <span class="version-number">{{ rCloneManagerVersion }}</span>
             </div>
           </div>
@@ -139,16 +139,15 @@
               <div class="update-header">
                 <mat-icon svgIcon="rotate-group"></mat-icon>
                 <div class="update-title">
-                  <h4>Restart Required</h4>
+                  <h4>{{ 'modals.about.restartRequired' | translate }}</h4>
                   <p class="restart-description">
-                    An update has been installed. Please restart the application to apply the
-                    changes.
+                    {{ 'modals.about.restartDescription' | translate }}
                   </p>
                 </div>
               </div>
               <div class="update-buttons">
                 <button mat-flat-button class="accent" (click)="relaunchApp()">
-                  <span>Restart Now</span>
+                  <span>{{ 'modals.about.restartNow' | translate }}</span>
                 </button>
               </div>
             </div>
@@ -157,9 +156,9 @@
               <div class="update-header">
                 <mat-icon svgIcon="circle-up"></mat-icon>
                 <div class="update-title">
-                  <h4>Update Available</h4>
+                  <h4>{{ 'modals.about.updateAvailable' | translate }}</h4>
                   <span class="new-version">
-                    Version {{ updateAvailable.version }}
+                    {{ 'modals.about.version' | translate }} {{ updateAvailable.version }}
                     @if (updateReleaseChannel) {
                       <span class="release-badge badge-{{ updateReleaseChannel }}">
                         {{ updateReleaseChannel }}
@@ -172,7 +171,7 @@
               @if (updateAvailable.releaseNotes) {
                 <button mat-stroked-button class="whats-new-button" (click)="showWhatsNew('app')">
                   <mat-icon svgIcon="file-lines"></mat-icon>
-                  What's New
+                  {{ 'modals.about.whatsNew' | translate }}
                 </button>
               }
 
@@ -183,7 +182,7 @@
                     [value]="downloadPercentage"
                   ></mat-progress-bar>
                   <div class="progress-info">
-                    <span>Downloading...</span>
+                    <span>{{ 'modals.about.downloading' | translate }}</span>
                     <span>
                       {{ downloadProgress | formatFileSize }} /
                       {{ downloadTotal | formatFileSize }}
@@ -200,13 +199,17 @@
                 >
                   @if (installingUpdate || downloadInProgress) {
                     <mat-spinner diameter="16"></mat-spinner>
-                    {{ downloadInProgress ? 'Downloading...' : 'Installing...' }}
+                    {{
+                      downloadInProgress
+                        ? ('modals.about.downloading' | translate)
+                        : ('modals.about.installing' | translate)
+                    }}
                   } @else {
-                    Install Update
+                    {{ 'modals.about.installUpdate' | translate }}
                   }
                 </button>
                 <button mat-stroked-button (click)="skipUpdate()" [disabled]="downloadInProgress">
-                  Skip Version
+                  {{ 'modals.about.skipVersion' | translate }}
                 </button>
               </div>
             </div>
@@ -214,8 +217,8 @@
             <div class="update-card up-to-date">
               <mat-icon svgIcon="circle-check"></mat-icon>
               <div class="status-text">
-                <h4>Up to Date</h4>
-                <p>You're running the latest version</p>
+                <h4>{{ 'modals.about.upToDate' | translate }}</h4>
+                <p>{{ 'modals.about.latestVersionMsg' | translate }}</p>
               </div>
             </div>
           }
@@ -228,19 +231,19 @@
           >
             @if (checkingForUpdates) {
               <mat-spinner diameter="16"></mat-spinner>
-              Checking...
+              {{ 'modals.about.checking' | translate }}
             } @else {
-              Check for Updates
+              {{ 'modals.about.checkUpdates' | translate }}
             }
           </button>
 
           <div class="settings-section">
-            <h4>Update Settings</h4>
+            <h4>{{ 'modals.about.updateSettings' | translate }}</h4>
 
             <div class="settings-card">
               <div class="setting-group">
                 <div class="setting-header">
-                  <span class="setting-title">Auto-Check Updates</span>
+                  <span class="setting-title">{{ 'modals.about.autoCheck' | translate }}</span>
                 </div>
                 <div class="setting-control">
                   <mat-slide-toggle
@@ -256,7 +259,7 @@
 
               <div class="setting-group">
                 <div class="setting-header">
-                  <span class="setting-title">Release Channel</span>
+                  <span class="setting-title">{{ 'modals.about.releaseChannel' | translate }}</span>
                 </div>
                 <div class="setting-control">
                   <mat-form-field appearance="fill">
@@ -268,11 +271,11 @@
                       @for (channel of channels; track channel.value) {
                         <mat-option
                           [value]="channel.value"
-                          [matTooltip]="channel.description"
+                          [matTooltip]="channel.description | translate"
                           matTooltipPosition="left"
                         >
                           <div class="channel-option">
-                            <span class="channel-name">{{ channel.label }}</span>
+                            <span class="channel-name">{{ channel.label | translate }}</span>
                           </div>
                         </mat-option>
                       }
@@ -285,7 +288,7 @@
 
           @if (skippedVersions.length > 0) {
             <div class="skipped-section">
-              <h4>Skipped Updates</h4>
+              <h4>{{ 'modals.about.skippedUpdates' | translate }}</h4>
               <div class="skipped-list">
                 @for (version of skippedVersions; track version) {
                   <div class="skipped-item">
@@ -293,7 +296,7 @@
                     <button
                       mat-icon-button
                       (click)="unskipVersion(version)"
-                      matTooltip="Restore update"
+                      [matTooltip]="'modals.about.restoreUpdate' | translate"
                       class="restore-button"
                     >
                       <mat-icon svgIcon="rotate-left"></mat-icon>
@@ -310,13 +313,13 @@
         <div class="modal-content updates-page">
           <div class="rclone-info">
             <div class="rclone-header">
-              <h4>Rclone Information</h4>
+              <h4>{{ 'modals.about.rcloneInfo' | translate }}</h4>
             </div>
 
             @if (loadingRclone) {
               <div class="loading">
                 <mat-spinner diameter="24"></mat-spinner>
-                <span>Loading Rclone information...</span>
+                <span>{{ 'modals.about.loadingRclone' | translate }}</span>
               </div>
             }
 
@@ -330,20 +333,20 @@
             @if (rcloneInfo && !loadingRclone) {
               <div class="rclone-details">
                 <div class="detail-row">
-                  <span class="detail-label">Version:</span>
+                  <span class="detail-label">{{ 'modals.about.version' | translate }}:</span>
                   <span class="detail-value">{{ rcloneInfo.version }}</span>
                 </div>
                 <div class="detail-row">
-                  <span class="detail-label">OS:</span>
+                  <span class="detail-label">{{ 'modals.about.os' | translate }}:</span>
                   <span class="detail-value">{{ rcloneInfo.os }} ({{ rcloneInfo.arch }})</span>
                 </div>
                 @if (rcloneInfo.pid) {
                   <div class="detail-row">
-                    <span class="detail-label">Process ID:</span>
+                    <span class="detail-label">{{ 'modals.about.pid' | translate }}:</span>
                     <span class="detail-value">{{ rcloneInfo.pid }}</span>
                     <button
                       matIconButton
-                      matTooltip="Kill Process"
+                      [matTooltip]="'modals.about.killProcess' | translate"
                       matTooltipPosition="right"
                       (click)="killProcess()"
                       class="kill-button"
@@ -353,14 +356,18 @@
                   </div>
                 }
                 <div class="detail-row">
-                  <span class="detail-label">Go Version:</span>
+                  <span class="detail-label">{{ 'modals.about.goVersion' | translate }}:</span>
                   <span class="detail-value">{{ rcloneInfo.goVersion }}</span>
                 </div>
 
                 @if (rcloneInfo.isBeta || rcloneInfo.isGit) {
                   <div class="detail-row warning">
                     <mat-icon svgIcon="warning"></mat-icon>
-                    <span>{{ rcloneInfo.isBeta ? 'Beta version' : 'Development build' }}</span>
+                    <span>{{
+                      rcloneInfo.isBeta
+                        ? ('modals.about.betaVersion' | translate)
+                        : ('modals.about.devBuild' | translate)
+                    }}</span>
                   </div>
                 }
               </div>
@@ -372,9 +379,9 @@
               <div class="update-header">
                 <mat-icon svgIcon="circle-up"></mat-icon>
                 <div class="update-title">
-                  <h4>Rclone Update Available</h4>
+                  <h4>{{ 'modals.about.rcloneUpdateAvailable' | translate }}</h4>
                   <span class="new-version">
-                    Version
+                    {{ 'modals.about.version' | translate }}
                     {{
                       rcloneUpdateStatus.updateInfo?.latest_version_clean ||
                         rcloneUpdateStatus.updateInfo?.latest_version
@@ -393,7 +400,7 @@
                   (click)="showWhatsNew('rclone')"
                 >
                   <mat-icon svgIcon="file-lines"></mat-icon>
-                  What's New in Rclone
+                  {{ 'modals.about.whatsNewRclone' | translate }}
                 </button>
               }
 
@@ -405,20 +412,26 @@
                 >
                   @if (rcloneUpdateStatus.updating) {
                     <mat-spinner diameter="16"></mat-spinner>
-                    Updating...
+                    {{
+                      rcloneUpdateStatus.updating
+                        ? ('modals.about.updating' | translate)
+                        : ('modals.about.updateRclone' | translate)
+                    }}
                   } @else {
-                    Update Rclone
+                    {{ 'modals.about.updateRclone' | translate }}
                   }
                 </button>
-                <button mat-button (click)="skipRcloneUpdate()">Skip Version</button>
+                <button mat-button (click)="skipRcloneUpdate()">
+                  {{ 'modals.about.skipVersion' | translate }}
+                </button>
               </div>
             </div>
           } @else {
             <div class="update-card up-to-date">
               <mat-icon svgIcon="circle-check"></mat-icon>
               <div class="status-text">
-                <h4>Rclone Up to Date</h4>
-                <p>You're running the latest version</p>
+                <h4>{{ 'modals.about.rcloneUpToDate' | translate }}</h4>
+                <p>{{ 'modals.about.latestVersionMsg' | translate }}</p>
               </div>
             </div>
           }
@@ -431,19 +444,19 @@
           >
             @if (rcloneUpdateStatus.checking) {
               <mat-spinner diameter="16"></mat-spinner>
-              Checking...
+              {{ 'modals.about.checking' | translate }}
             } @else {
-              Check for Rclone Updates
+              {{ 'modals.about.checkRcloneUpdates' | translate }}
             }
           </button>
 
           <div class="settings-section">
-            <h4>Rclone Update Settings</h4>
+            <h4>{{ 'modals.about.rcloneUpdateSettings' | translate }}</h4>
 
             <div class="settings-card">
               <div class="setting-group">
                 <div class="setting-header">
-                  <span class="setting-title">Auto-Check Updates</span>
+                  <span class="setting-title">{{ 'modals.about.autoCheck' | translate }}</span>
                 </div>
                 <div class="setting-control">
                   <mat-slide-toggle [checked]="rcloneAutoCheck" (change)="toggleRcloneAutoCheck()">
@@ -455,7 +468,7 @@
 
               <div class="setting-group">
                 <div class="setting-header">
-                  <span class="setting-title">Release Channel</span>
+                  <span class="setting-title">{{ 'modals.about.releaseChannel' | translate }}</span>
                 </div>
                 <div class="setting-control">
                   <mat-form-field appearance="fill">
@@ -466,11 +479,11 @@
                       @for (channel of channels; track channel.value) {
                         <mat-option
                           [value]="channel.value"
-                          [matTooltip]="channel.description"
+                          [matTooltip]="channel.description | translate"
                           matTooltipPosition="left"
                         >
                           <div class="channel-option">
-                            <span class="channel-name">{{ channel.label }}</span>
+                            <span class="channel-name">{{ channel.label | translate }}</span>
                           </div>
                         </mat-option>
                       }
@@ -483,7 +496,7 @@
 
           @if (rcloneSkippedVersions.length > 0) {
             <div class="skipped-section">
-              <h4>Skipped Rclone Updates</h4>
+              <h4>{{ 'modals.about.skippedRcloneUpdates' | translate }}</h4>
               <div class="skipped-list">
                 @for (version of rcloneSkippedVersions; track version) {
                   <div class="skipped-item">
@@ -491,7 +504,7 @@
                     <button
                       mat-icon-button
                       (click)="unskipRcloneVersion(version)"
-                      matTooltip="Restore update"
+                      [matTooltip]="'modals.about.restoreUpdate' | translate"
                       class="restore-button"
                     >
                       <mat-icon svgIcon="rotate-left"></mat-icon>
@@ -506,25 +519,24 @@
 
       @if (currentPage === 'Credits') {
         <div class="modal-content">
-          <h4>Development Team</h4>
+          <h4>{{ 'modals.about.devTeam' | translate }}</h4>
           <div class="about-item">
             <mat-icon svgIcon="terminal"></mat-icon>
-            <span>Hakan İSMAİL - Lead Developer</span>
+            <span>Hakan İSMAİL - {{ 'modals.about.leadDeveloper' | translate }}</span>
           </div>
 
-          <h4>Acknowledgments</h4>
+          <h4>{{ 'modals.about.acknowledgments' | translate }}</h4>
           <p>
-            This application is built with modern web technologies and relies on the excellent
-            Rclone project for cloud storage management.
+            {{ 'modals.about.ackText' | translate }}
           </p>
         </div>
       }
 
       @if (currentPage === 'Legal') {
         <div class="modal-content">
-          <h4>License</h4>
+          <h4>{{ 'modals.about.license' | translate }}</h4>
           <p>
-            This application is free and open source software distributed under the
+            {{ 'modals.about.licenseText1' | translate }}
             <a
               href="https://www.gnu.org/licenses/gpl-3.0.html"
               target="_blank"
@@ -532,18 +544,16 @@
             >
               GNU General Public License v3
             </a>
-            or later.
+            {{ 'modals.about.orLater' | translate }}
           </p>
 
           <p>
-            This program comes with no warranty. You are free to use, modify, and distribute this
-            software according to the GPL v3 license terms.
+            {{ 'modals.about.licenseText2' | translate }}
           </p>
 
-          <h4>Third-Party Software</h4>
+          <h4>{{ 'modals.about.thirdParty' | translate }}</h4>
           <p>
-            This application includes various third-party libraries and components, each with their
-            own licensing terms. See the project repository for a complete list.
+            {{ 'modals.about.thirdPartyText' | translate }}
           </p>
         </div>
       }
@@ -560,7 +570,7 @@
         <button mat-icon-button (click)="closeWhatsNew()">
           <mat-icon svgIcon="chevron-left"></mat-icon>
         </button>
-        <p>What's New</p>
+        <p>{{ 'modals.about.whatsNew' | translate }}</p>
         <button mat-icon-button (click)="close()">
           <mat-icon svgIcon="circle-xmark"></mat-icon>
         </button>
@@ -586,7 +596,7 @@
                 class="whats-new-button"
               >
                 <mat-icon svgIcon="open-link"></mat-icon>
-                <span style="text-wrap: nowrap">View on GitHub</span>
+                <span style="text-wrap: nowrap">{{ 'modals.about.viewOnGithub' | translate }}</span>
               </a>
             }
           </div>
@@ -622,7 +632,7 @@
                 class="whats-new-button"
               >
                 <mat-icon svgIcon="open-link"></mat-icon>
-                View on GitHub
+                {{ 'modals.about.viewOnGithub' | translate }}
               </a>
             }
           </div>

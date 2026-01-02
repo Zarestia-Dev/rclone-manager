@@ -4,12 +4,20 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { TranslateModule } from '@ngx-translate/core';
 import { StatsPanelConfig } from '../../types';
 
 @Component({
   selector: 'app-stats-panel',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatIconModule, MatProgressBarModule, MatTooltipModule],
+  imports: [
+    CommonModule,
+    MatCardModule,
+    MatIconModule,
+    MatProgressBarModule,
+    MatTooltipModule,
+    TranslateModule,
+  ],
   styleUrls: ['./stats-panel.component.scss'],
   template: `
     <mat-card>
@@ -54,8 +62,8 @@ import { StatsPanelConfig } from '../../types';
         } @else {
           <div class="empty-state">
             <mat-icon [svgIcon]="config.icon"></mat-icon>
-            <span>No statistics available</span>
-            <p>Statistics will be shown when an operation is running</p>
+            <span>{{ 'detailShared.stats.emptyTitle' | translate }}</span>
+            <p>{{ 'detailShared.stats.emptyMessage' | translate }}</p>
           </div>
         }
       </mat-card-content>

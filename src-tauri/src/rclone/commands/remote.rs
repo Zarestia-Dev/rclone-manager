@@ -59,7 +59,7 @@ pub async fn create_remote_interactive(
     let oauth_url = BACKEND_MANAGER
         .get_active_oauth_url()
         .await
-        .ok_or("No active backend or OAuth not configured")?;
+        .ok_or_else(|| crate::localized_error!("backendErrors.system.oauthNotConfigured"))?;
     let url = EndpointHelper::build_url(&oauth_url, config::CREATE);
 
     let response = state
@@ -68,13 +68,15 @@ pub async fn create_remote_interactive(
         .json(&body)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {e}"))?;
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
     let status = response.status();
     let body_text = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        return Err(format!("HTTP {status}: {body_text}"));
+        return Err(
+            crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body_text),
+        );
     }
 
     // Return the JSON payload as-is so the UI can drive the flow
@@ -127,7 +129,7 @@ pub async fn continue_create_remote_interactive(
     let oauth_url = BACKEND_MANAGER
         .get_active_oauth_url()
         .await
-        .ok_or("No active backend or OAuth not configured")?;
+        .ok_or_else(|| crate::localized_error!("backendErrors.system.oauthNotConfigured"))?;
     let url = EndpointHelper::build_url(&oauth_url, config::UPDATE);
 
     let response = tauri_state
@@ -136,13 +138,15 @@ pub async fn continue_create_remote_interactive(
         .json(&body)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {e}"))?;
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
     let status = response.status();
     let body_text = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        return Err(format!("HTTP {status}: {body_text}"));
+        return Err(
+            crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body_text),
+        );
     }
 
     let value: Value =
@@ -201,7 +205,7 @@ pub async fn create_remote(
     let oauth_url = BACKEND_MANAGER
         .get_active_oauth_url()
         .await
-        .ok_or("No active backend or OAuth not configured")?;
+        .ok_or_else(|| crate::localized_error!("backendErrors.system.oauthNotConfigured"))?;
     let url = EndpointHelper::build_url(&oauth_url, config::CREATE);
 
     let response = state
@@ -210,7 +214,7 @@ pub async fn create_remote(
         .json(&body)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {e}"))?;
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
@@ -221,7 +225,7 @@ pub async fn create_remote(
         } else if body.contains("bind: address already in use") {
             "Port already in use".to_string()
         } else {
-            format!("HTTP {status}: {body}")
+            crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body)
         };
 
         log_operation(
@@ -283,7 +287,7 @@ pub async fn update_remote(
     let oauth_url = BACKEND_MANAGER
         .get_active_oauth_url()
         .await
-        .ok_or("No active backend or OAuth not configured")?;
+        .ok_or_else(|| crate::localized_error!("backendErrors.system.oauthNotConfigured"))?;
     let url = EndpointHelper::build_url(&oauth_url, config::UPDATE);
     let body = json!({ "name": name, "parameters": parameters });
 
@@ -293,13 +297,14 @@ pub async fn update_remote(
         .json(&body)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {e}"))?;
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        let error = format!("HTTP {status}: {body}");
+        let error =
+            crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body);
         log_operation(
             LogLevel::Error,
             Some(name.clone()),
@@ -342,12 +347,13 @@ pub async fn delete_remote(
         .query(&[("name", &name)])
         .send()
         .await
-        .map_err(|e| format!("Request failed: {e}"))?;
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
     if !status.is_success() {
-        let error = format!("HTTP {status}: {body}");
+        let error =
+            crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body);
         error!("❌ Failed to delete remote: {error}");
         return Err(error);
     }

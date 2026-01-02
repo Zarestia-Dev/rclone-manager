@@ -1,27 +1,31 @@
 <div class="title-bar" data-tauri-drag-region>
   <div class="left-section">
     <!-- Main Buttons -->
-    <button matIconButton [cdkMenuTriggerFor]="addRemoteMenu" aria-label="Add remote menu">
+    <button
+      matIconButton
+      [cdkMenuTriggerFor]="addRemoteMenu"
+      [attr.aria-label]="'titlebar.addRemoteMenu' | translate"
+    >
       <mat-icon svgIcon="plus" aria-hidden="true"></mat-icon>
     </button>
 
-    <button matIconButton (click)="resetRemote()" aria-label="Home">
+    <button matIconButton (click)="resetRemote()" [attr.aria-label]="'titlebar.home' | translate">
       <mat-icon svgIcon="rclone-symbolic" aria-hidden="true"></mat-icon>
     </button>
 
     <!-- Connection Status Indicator -->
-    @if (connectionStatus === 'offline' || connectionStatus === 'checking') {
+    @if (connectionService.status() === 'offline' || connectionService.status() === 'checking') {
       <button
         matIconButton
-        (click)="runInternetCheck()"
-        [disabled]="connectionStatus === 'checking'"
-        aria-label="Internet connection status"
+        (click)="connectionService.runInternetCheck()"
+        [disabled]="connectionService.status() === 'checking'"
+        [attr.aria-label]="'titlebar.internetStatus' | translate"
         matTooltip="{{ getInternetStatusTooltip() }}"
       >
-        @if (connectionStatus !== 'checking') {
+        @if (connectionService.status() !== 'checking') {
           <mat-icon svgIcon="no-internet" aria-hidden="true"> </mat-icon>
         }
-        @if (connectionStatus === 'checking') {
+        @if (connectionService.status() === 'checking') {
           <mat-progress-spinner
             class="accent"
             diameter="24"
@@ -40,7 +44,8 @@
     <button
       matIconButton
       [cdkMenuTriggerFor]="menu"
-      aria-label="Application menu"
+      [cdkMenuTriggerFor]="menu"
+      [attr.aria-label]="'titlebar.appMenu' | translate"
       class="menu-button"
       [matBadge]="restartRequired || updateAvailable || rcloneUpdateAvailable ? '!' : null"
       [matBadgeColor]="restartRequired ? 'warn' : 'primary'"
@@ -53,13 +58,26 @@
 
     <!-- Window Controls -->
     @if (windowButtons) {
-      <button matIconButton (click)="minimizeWindow()" aria-label="Minimize window">
+      <button
+        matIconButton
+        (click)="minimizeWindow()"
+        [attr.aria-label]="'titlebar.minimize' | translate"
+      >
         <mat-icon svgIcon="remove" aria-hidden="true"></mat-icon>
       </button>
-      <button matIconButton (click)="maximizeWindow()" aria-label="Maximize window">
+      <button
+        matIconButton
+        (click)="maximizeWindow()"
+        [attr.aria-label]="'titlebar.maximize' | translate"
+      >
         <mat-icon svgIcon="check-box" aria-hidden="true"></mat-icon>
       </button>
-      <button matIconButton (click)="closeWindow()" aria-label="Close window" class="close-button">
+      <button
+        matIconButton
+        (click)="closeWindow()"
+        [attr.aria-label]="'titlebar.close' | translate"
+        class="close-button"
+      >
         <mat-icon svgIcon="close" aria-hidden="true"></mat-icon>
       </button>
     }
@@ -70,12 +88,12 @@
 <ng-template #menu>
   <div cdkMenu class="material-context-menu">
     <!-- Theme Selector -->
-    <div class="theme-selector" aria-label="Theme selection">
+    <div class="theme-selector" [attr.aria-label]="'titlebar.menu.theme' | translate">
       <button
         class="theme-button system"
         [class.selected]="(currentTheme$ | async) === 'system'"
         (click)="setTheme('system', $event)"
-        aria-label="System theme"
+        [attr.aria-label]="'titlebar.menu.system' | translate"
       >
         @if ((currentTheme$ | async) === 'system') {
           <mat-icon svgIcon="circle-check" class="checkmark accent" aria-hidden="true"></mat-icon>
@@ -86,7 +104,7 @@
         class="theme-button light"
         [class.selected]="(currentTheme$ | async) === 'light'"
         (click)="setTheme('light', $event)"
-        aria-label="Light theme"
+        [attr.aria-label]="'titlebar.menu.light' | translate"
       >
         @if ((currentTheme$ | async) === 'light') {
           <mat-icon svgIcon="circle-check" class="checkmark" aria-hidden="true"></mat-icon>
@@ -97,7 +115,7 @@
         class="theme-button dark"
         [class.selected]="(currentTheme$ | async) === 'dark'"
         (click)="setTheme('dark', $event)"
-        aria-label="Dark theme"
+        [attr.aria-label]="'titlebar.menu.dark' | translate"
       >
         @if ((currentTheme$ | async) === 'dark') {
           <mat-icon svgIcon="circle-check" class="checkmark" aria-hidden="true"></mat-icon>
@@ -108,13 +126,23 @@
     <mat-divider></mat-divider>
 
     <!-- Settings Actions -->
-    <button cdkMenuItem class="menu-item" (click)="restoreSettings()" aria-label="Import settings">
-      <span>Import</span>
+    <button
+      cdkMenuItem
+      class="menu-item"
+      (click)="restoreSettings()"
+      [attr.aria-label]="'titlebar.menu.import' | translate"
+    >
+      <span>{{ 'titlebar.menu.import' | translate }}</span>
       <span class="shortcut" aria-hidden="true">Ctrl + I</span>
     </button>
 
-    <button cdkMenuItem class="menu-item" (click)="openExportModal()" aria-label="Export settings">
-      <span>Export</span>
+    <button
+      cdkMenuItem
+      class="menu-item"
+      (click)="openExportModal()"
+      [attr.aria-label]="'titlebar.menu.export' | translate"
+    >
+      <span>{{ 'titlebar.menu.export' | translate }}</span>
       <span class="shortcut" aria-hidden="true">Ctrl + E</span>
     </button>
 
@@ -125,9 +153,9 @@
       cdkMenuItem
       class="menu-item"
       (click)="openPreferencesModal()"
-      aria-label="Open preferences"
+      [attr.aria-label]="'titlebar.menu.preferences' | translate"
     >
-      <span>Preferences</span>
+      <span>{{ 'titlebar.menu.preferences' | translate }}</span>
       <span class="shortcut" aria-hidden="true">Ctrl + ,</span>
     </button>
 
@@ -135,15 +163,20 @@
       cdkMenuItem
       class="menu-item"
       (click)="openRcloneConfigModal()"
-      aria-label="Open RClone configuration"
+      [attr.aria-label]="'titlebar.menu.configuration' | translate"
     >
-      <span>Configuration</span>
+      <span>{{ 'titlebar.menu.configuration' | translate }}</span>
       <span class="shortcut" aria-hidden="true">Ctrl + .</span>
     </button>
 
     <mat-divider></mat-divider>
-    <button cdkMenuItem class="menu-item" (click)="onBrowseClick()">
-      <span>File Browser</span>
+    <button
+      cdkMenuItem
+      class="menu-item"
+      (click)="onBrowseClick()"
+      [attr.aria-label]="'titlebar.menu.fileBrowser' | translate"
+    >
+      <span>{{ 'titlebar.menu.fileBrowser' | translate }}</span>
       <span class="shortcut" aria-hidden="true">Ctrl + B</span>
     </button>
     <mat-divider></mat-divider>
@@ -152,9 +185,9 @@
       cdkMenuItem
       class="menu-item"
       (click)="openKeyboardShortcutsModal()"
-      aria-label="View keyboard shortcuts"
+      [attr.aria-label]="'titlebar.menu.shortcuts' | translate"
     >
-      <span>Keyboard Shortcuts</span>
+      <span>{{ 'titlebar.menu.shortcuts' | translate }}</span>
       <span class="shortcut" aria-hidden="true">Ctrl + ?</span>
     </button>
 
@@ -165,9 +198,9 @@
       class="menu-item"
       [matTooltip]="getAboutMenuTooltip()"
       (click)="openAboutModal()"
-      aria-label="About application"
+      [attr.aria-label]="'titlebar.menu.about' | translate"
     >
-      <span>About RClone Manager</span>
+      <span>{{ 'titlebar.menu.about' | translate }}</span>
       @if (restartRequired || updateAvailable || rcloneUpdateAvailable) {
         <span
           [matBadge]="getAboutMenuBadge()"
@@ -186,18 +219,18 @@
       cdkMenuItem
       class="menu-item"
       (click)="openQuickAddRemoteModal()"
-      aria-label="Quick add remote"
+      [attr.aria-label]="'titlebar.menu.quickRemote' | translate"
     >
-      <span>Quick Remote</span>
+      <span>{{ 'titlebar.menu.quickRemote' | translate }}</span>
       <span class="shortcut" aria-hidden="true">Ctrl + R</span>
     </button>
     <button
       cdkMenuItem
       class="menu-item"
       (click)="openRemoteConfigModal()"
-      aria-label="Detailed remote configuration"
+      [attr.aria-label]="'titlebar.menu.detailedRemote' | translate"
     >
-      <span>Detailed Remote</span>
+      <span>{{ 'titlebar.menu.detailedRemote' | translate }}</span>
       <span class="shortcut" aria-hidden="true">Ctrl + N</span>
     </button>
   </div>

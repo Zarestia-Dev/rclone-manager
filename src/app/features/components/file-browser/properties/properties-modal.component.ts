@@ -14,6 +14,7 @@ import { RemoteManagementService, NautilusService, RemoteFacadeService } from '@
 import { Entry, FileBrowserItem, FsInfo } from '@app/types';
 import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
 import { IconService } from '@app/services';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 interface ExpiryOption {
   value: string;
@@ -36,6 +37,7 @@ interface ExpiryOption {
     MatSelectModule,
     MatFormFieldModule,
     FormatFileSizePipe,
+    TranslateModule,
   ],
   templateUrl: './properties-modal.component.html',
   styleUrls: ['./properties-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -56,6 +58,7 @@ export class PropertiesModalComponent implements OnInit {
   private nautilusService = inject(NautilusService);
   private remoteFacadeService = inject(RemoteFacadeService);
   private iconService = inject(IconService);
+  private translate = inject(TranslateService);
 
   // Separate loading states
   loadingStat = true;
@@ -85,11 +88,11 @@ export class PropertiesModalComponent implements OnInit {
 
   // Expiry options for public links
   readonly expiryOptions: ExpiryOption[] = [
-    { value: '', label: 'Never' },
-    { value: '1h', label: '1 Hour' },
-    { value: '1d', label: '1 Day' },
-    { value: '7d', label: '7 Days' },
-    { value: '30d', label: '30 Days' },
+    { value: '', label: 'fileBrowser.properties.expiry.never' },
+    { value: '1h', label: 'fileBrowser.properties.expiry.1h' },
+    { value: '1d', label: 'fileBrowser.properties.expiry.1d' },
+    { value: '7d', label: 'fileBrowser.properties.expiry.7d' },
+    { value: '30d', label: 'fileBrowser.properties.expiry.30d' },
   ];
 
   // Reactive Star State derived from Service
@@ -224,7 +227,7 @@ export class PropertiesModalComponent implements OnInit {
       }
     } catch (err) {
       console.error('Failed to load supported hashes:', err);
-      this.hashError = 'Failed to load checksums';
+      this.hashError = this.translate.instant('fileBrowser.properties.failLoadHashes');
     } finally {
       this.loadingHashes = false;
     }
@@ -357,12 +360,12 @@ export class PropertiesModalComponent implements OnInit {
       if (result.url) {
         this.publicLinkUrl = result.url;
       } else {
-        this.publicLinkError = 'Failed to get public link';
+        this.publicLinkError = this.translate.instant('fileBrowser.properties.failGetLink');
       }
     } catch (err) {
       console.error('Failed to get public link:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      this.publicLinkError = `Failed: ${errorMessage}`;
+      this.publicLinkError = `${this.translate.instant('common.error')}: ${errorMessage}`;
     } finally {
       this.loadingPublicLink = false;
     }
@@ -386,7 +389,7 @@ export class PropertiesModalComponent implements OnInit {
     } catch (err) {
       console.error('Failed to remove public link:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      this.publicLinkError = `Failed to remove: ${errorMessage}`;
+      this.publicLinkError = `${this.translate.instant('fileBrowser.properties.removeLink')} ${this.translate.instant('common.error')}: ${errorMessage}`;
     } finally {
       this.loadingPublicLink = false;
     }
@@ -409,7 +412,7 @@ export class PropertiesModalComponent implements OnInit {
     } catch {
       // Clipboard failed - log to console
       console.log('Public link:', this.publicLinkUrl);
-      this.publicLinkError = 'Failed to copy - check console';
+      this.publicLinkError = this.translate.instant('fileBrowser.properties.failCopyLink');
     }
   }
 

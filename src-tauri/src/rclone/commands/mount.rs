@@ -88,9 +88,10 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         .iter()
         .find(|m| m.mount_point == params.mount_point)
     {
-        let error_msg = format!(
-            "Mount point {} is already in use by remote {}",
-            params.mount_point, existing.fs
+        let error_msg = crate::localized_error!(
+            "backendErrors.mount.alreadyInUse",
+            "mountPoint" => &params.mount_point,
+            "remote" => &existing.fs
         );
         warn!("{error_msg}");
         return Err(error_msg);
@@ -224,7 +225,7 @@ pub async fn unmount_remote(
     let url = EndpointHelper::build_url(&backend.api_url(), mount::UNMOUNT);
     let payload = json!({ "mountPoint": mount_point });
     if mount_point.trim().is_empty() {
-        return Err("Mount point cannot be empty".to_string());
+        return Err(crate::localized_error!("backendErrors.mount.pointEmpty"));
     }
 
     log_operation(
@@ -240,7 +241,7 @@ pub async fn unmount_remote(
         .json(&payload)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {e}"))?;
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
@@ -251,7 +252,8 @@ pub async fn unmount_remote(
             // Force refresh will detect the change
         }
 
-        let error = format!("HTTP {status}: {body}");
+        let error =
+            crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body);
         log_operation(
             LogLevel::Error,
             Some(remote_name.clone()),
@@ -276,7 +278,10 @@ pub async fn unmount_remote(
         warn!("Failed to refresh mounted remotes after unmount: {e}");
     }
 
-    Ok(format!("Successfully unmounted {mount_point}"))
+    Ok(crate::localized_success!(
+        "backendSuccess.mount.unmounted",
+        "mountPoint" => &mount_point
+    ))
 }
 
 /// Unmount all remotes
@@ -303,13 +308,14 @@ pub async fn unmount_all_remotes(
         .inject_auth(state.client.post(&url))
         .send()
         .await
-        .map_err(|e| format!("Request failed: {e}"))?;
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        let error = format!("HTTP {status}: {body}");
+        let error =
+            crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body);
         error!("❌ Failed to unmount all remotes: {error}");
         return Err(error);
     }
@@ -323,7 +329,9 @@ pub async fn unmount_all_remotes(
 
     info!("✅ All remotes unmounted successfully");
 
-    Ok("✅ All remotes unmounted successfully".to_string())
+    Ok(crate::localized_success!(
+        "backendSuccess.mount.allUnmounted"
+    ))
 }
 
 // ============================================================================
@@ -344,9 +352,9 @@ pub async fn mount_remote_profile(app: AppHandle, params: ProfileParams) -> Resu
 
     let mut mount_params = MountParams::from_config(params.remote_name.clone(), &config, &settings)
         .ok_or_else(|| {
-            format!(
-                "Mount configuration incomplete for profile '{}'",
-                params.profile_name
+            crate::localized_error!(
+                "backendErrors.mount.configIncomplete",
+                "profile" => &params.profile_name
             )
         })?;
 

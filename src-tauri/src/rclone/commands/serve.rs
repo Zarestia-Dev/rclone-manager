@@ -82,12 +82,20 @@ async fn handle_rclone_response(
     let body = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        let error = format!("HTTP {status}: {body}");
+        let error = crate::localized_error!(
+            "backendErrors.http.error",
+            "status" => &status.to_string(),
+            "body" => &body
+        );
         log_operation(
             LogLevel::Error,
             Some(remote_name.to_string()),
             Some(operation.to_string()),
-            format!("Failed to {}: {error}", operation.to_lowercase()),
+            crate::localized_error!(
+                "backendErrors.serve.failed",
+                "operation" => &operation.to_lowercase(),
+                "error" => &error
+            ),
             Some(json!({"response": body})),
         );
         return Err(error);
@@ -103,7 +111,7 @@ pub async fn start_serve(
 ) -> Result<ServeStartResponse, String> {
     // Validate remote name
     if params.remote_name.trim().is_empty() {
-        return Err("Remote name cannot be empty".to_string());
+        return Err(crate::localized_error!("backendErrors.serve.remoteEmpty"));
     }
     let state = app.state::<RcloneState>();
     let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
@@ -115,7 +123,7 @@ pub async fn start_serve(
         .serve_options
         .as_ref()
         .and_then(|opts| opts.get("type"))
-        .ok_or_else(|| "Serve type must be specified".to_string())?;
+        .ok_or_else(|| crate::localized_error!("backendErrors.serve.typeRequired"))?;
 
     debug!("🚀 Starting {serve_type} serve for {}", params.remote_name);
 
@@ -220,13 +228,16 @@ pub async fn start_serve(
         .json(&payload)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {e}"))?;
+        .map_err(
+            |e| crate::localized_error!("backendErrors.request.failed", "error" => &e.to_string()),
+        )?;
 
     let body = handle_rclone_response(response, "Start serve", &params.remote_name).await?;
 
     // Parse response - serve/start returns { "id": "http-abc123", "addr": "[::]:8080" }
-    let response_json: Value =
-        serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {e}"))?;
+    let response_json: Value = serde_json::from_str(&body).map_err(
+        |e| crate::localized_error!("backendErrors.serve.parseFailed", "error" => &e.to_string()),
+    )?;
 
     // Extract serve ID (string, e.g., "http-abc123")
     let serve_id = response_json
@@ -311,7 +322,9 @@ pub async fn stop_serve(
         .json(&payload)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {e}"))?;
+        .map_err(
+            |e| crate::localized_error!("backendErrors.request.failed", "error" => &e.to_string()),
+        )?;
 
     let _body = handle_rclone_response(response, "Stop serve", &remote_name).await?;
 
@@ -330,7 +343,7 @@ pub async fn stop_serve(
 
     info!("✅ Serve {server_id} stopped successfully");
 
-    Ok(format!("Successfully stopped serve {server_id}"))
+    Ok(crate::localized_success!("backendErrors.serve.stopSuccess", "serverId" => &server_id))
 }
 
 /// Stop all running serve instances
@@ -350,7 +363,9 @@ pub async fn stop_all_serves(
         .inject_auth(state.client.post(&url))
         .send()
         .await
-        .map_err(|e| format!("Request failed: {e}"))?;
+        .map_err(
+            |e| crate::localized_error!("backendErrors.request.failed", "error" => &e.to_string()),
+        )?;
 
     let _body = handle_rclone_response(response, "Stop all serves", "").await?;
 
@@ -363,7 +378,7 @@ pub async fn stop_all_serves(
 
     info!("✅ All serves stopped successfully");
 
-    Ok("✅ All serves stopped successfully".to_string())
+    Ok(crate::localized_success!("backendSuccess.serve.stopped"))
 }
 
 // ============================================================================
@@ -387,9 +402,9 @@ pub async fn start_serve_profile(
 
     let mut serve_params = ServeParams::from_config(params.remote_name.clone(), &config, &settings)
         .ok_or_else(|| {
-            format!(
-                "Serve configuration incomplete for profile '{}'",
-                params.profile_name
+            crate::localized_error!(
+                "backendErrors.sync.configIncomplete",
+                "profile" => &params.profile_name
             )
         })?;
 

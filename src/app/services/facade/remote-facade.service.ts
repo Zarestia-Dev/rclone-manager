@@ -1,5 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { merge } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { JobManagementService } from '../file-operations/job-management.service';
@@ -18,6 +18,8 @@ import {
   REMOTE_CACHE_CHANGED,
   REMOTE_SETTINGS_CHANGED,
   DiskUsage,
+  ActionState,
+  RemoteAction,
 } from '@app/types';
 
 @Injectable({
@@ -31,11 +33,12 @@ export class RemoteFacadeService extends TauriBaseService {
   private appSettingsService = inject(AppSettingsService);
 
   // Reactive data sources from underlying services
-  private jobs = toSignal(this.jobService.jobs$, { initialValue: [] as JobInfo[] });
-  private mountedRemotes = toSignal(this.mountService.mountedRemotes$, {
+  // Expose these as readonly signals for consumers who need raw lists (e.g. HomeComponent)
+  readonly jobs = toSignal(this.jobService.jobs$, { initialValue: [] as JobInfo[] });
+  readonly mountedRemotes = toSignal(this.mountService.mountedRemotes$, {
     initialValue: [] as MountedRemote[],
   });
-  private runningServes = toSignal(this.serveService.runningServes$, {
+  readonly runningServes = toSignal(this.serveService.runningServes$, {
     initialValue: [] as ServeListItem[],
   });
 
@@ -43,6 +46,11 @@ export class RemoteFacadeService extends TauriBaseService {
   private baseRemotes = signal<Remote[]>([]);
   private remoteSettings = signal<Record<string, RemoteSettings>>({});
   private isLoading = signal<boolean>(false);
+
+  // Track actions in progress per remote
+  // Map<RemoteName, ActionState[]>
+  private actionProgressMap = signal<Record<string, ActionState[]>>({});
+  readonly actionInProgress = this.actionProgressMap.asReadonly();
 
   /**
    * Computed signal that combines all data sources to produce fully enriched Remote objects.
@@ -151,11 +159,13 @@ export class RemoteFacadeService extends TauriBaseService {
     merge(
       this.listenToEvent<unknown>(REMOTE_CACHE_CHANGED),
       this.listenToEvent<unknown>(REMOTE_SETTINGS_CHANGED)
-    ).subscribe(() => {
-      this.loadRemotes().catch(err =>
-        console.error('[RemoteFacadeService] Failed to auto-reload remotes:', err)
-      );
-    });
+    )
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => {
+        this.loadRemotes().catch(err =>
+          console.error('[RemoteFacadeService] Failed to auto-reload remotes:', err)
+        );
+      });
   }
 
   /**
@@ -177,11 +187,76 @@ export class RemoteFacadeService extends TauriBaseService {
 
       this.baseRemotes.set(this.createRemotesFromConfigs(configArray as RemoteConfig[]));
       this.remoteSettings.set(settings);
-    } catch (error) {
-      console.error('[RemoteFacadeService] Failed to load remotes:', error);
-      throw error;
     } finally {
       this.isLoading.set(false);
+    }
+  }
+
+  /**
+   * Refreshes all underlying data sources.
+   * Useful for initial load or manual refresh.
+   */
+  async refreshAll(): Promise<void> {
+    this.isLoading.set(true);
+    try {
+      await Promise.all([
+        this.mountService.getMountedRemotes(),
+        this.serveService.refreshServes(),
+        this.jobService.refreshJobs(),
+        this.loadRemotes(),
+      ]);
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
+
+  // =========================================================================================
+  // ACTION STATE MANAGEMENT
+  // =========================================================================================
+
+  startAction(remoteName: string, action: RemoteAction, profileName?: string): void {
+    this.actionProgressMap.update(map => {
+      const current = map[remoteName] || [];
+      return {
+        ...map,
+        [remoteName]: [...current, { type: action, profileName }],
+      };
+    });
+  }
+
+  endAction(remoteName: string, action: RemoteAction, profileName?: string): void {
+    this.actionProgressMap.update(map => {
+      const current = map[remoteName] || [];
+      return {
+        ...map,
+        [remoteName]: current.filter(a => !(a.type === action && a.profileName === profileName)),
+      };
+    });
+  }
+
+  getActionState(remoteName: string): ActionState[] {
+    return this.actionProgressMap()[remoteName] || [];
+  }
+
+  isActionInProgress(remoteName: string, action: RemoteAction, profileName?: string): boolean {
+    const actions = this.getActionState(remoteName);
+    return actions.some(a => a.type === action && a.profileName === profileName);
+  }
+
+  /**
+   * Helper to wrap an async operation with action state tracking
+   */
+  async executeAction<T>(
+    remoteName: string,
+    action: RemoteAction,
+    operation: () => Promise<T>,
+    profileName?: string
+  ): Promise<T> {
+    this.startAction(remoteName, action, profileName);
+    try {
+      return await operation();
+    } finally {
+      this.endAction(remoteName, action, profileName);
     }
   }
 
@@ -229,6 +304,7 @@ export class RemoteFacadeService extends TauriBaseService {
       copyState: this.calculateOperationState('copy', remoteJobs, settings),
       bisyncState: this.calculateOperationState('bisync', remoteJobs, settings),
       moveState: this.calculateOperationState('move', remoteJobs, settings),
+      // Add active actions to the remote object if needed, or consumers can query the facade
     };
 
     // 2. Enrich with Mounts
@@ -314,5 +390,250 @@ export class RemoteFacadeService extends TauriBaseService {
   private isLocalPath(path: string): boolean {
     if (!path) return false;
     return path.startsWith('/') || /^[a-zA-Z]:\\/.test(path);
+  }
+
+  // =========================================================================================
+  // LOGIC MOVED FROM HOME COMPONENT (Business Logic)
+  // =========================================================================================
+
+  async startJob(
+    remoteName: string,
+    operationType: SyncOperationType | 'mount' | 'serve',
+    profileName?: string
+  ): Promise<void> {
+    const settings = this.getRemoteSettings(remoteName);
+    const configKey = `${operationType}Configs` as keyof RemoteSettings;
+    const profiles = settings[configKey] as Record<string, unknown> | undefined;
+
+    // Get profile name - prefer provided profile, then "default", then first available
+    let targetProfile = profileName;
+    if (!targetProfile && profiles) {
+      targetProfile = profiles['default'] ? 'default' : Object.keys(profiles)[0];
+    }
+
+    if (!targetProfile || !profiles?.[targetProfile]) {
+      throw new Error(`Configuration for ${operationType} not found on ${remoteName}.`);
+    }
+
+    await this.executeAction(
+      remoteName,
+      operationType as RemoteAction, // RemoteAction includes mount/stop/open/etc, close enough
+      async () => {
+        switch (operationType) {
+          case 'mount':
+            if (targetProfile)
+              await this.mountService.mountRemoteProfile(remoteName, targetProfile);
+            break;
+          case 'serve':
+            if (targetProfile) await this.serveService.startServeProfile(remoteName, targetProfile);
+            break;
+          case 'sync':
+            if (targetProfile) await this.jobService.startSyncProfile(remoteName, targetProfile);
+            break;
+          case 'copy':
+            if (targetProfile) await this.jobService.startCopyProfile(remoteName, targetProfile);
+            break;
+          case 'bisync':
+            if (targetProfile) await this.jobService.startBisyncProfile(remoteName, targetProfile);
+            break;
+          case 'move':
+            if (targetProfile) await this.jobService.startMoveProfile(remoteName, targetProfile);
+            break;
+          default:
+            throw new Error(`Unsupported operation type: ${operationType}`);
+        }
+      },
+      profileName
+    );
+  }
+
+  async stopJob(
+    remoteName: string,
+    type: SyncOperationType | 'mount' | 'serve',
+    serveId?: string,
+    profileName?: string
+  ): Promise<void> {
+    await this.executeAction(
+      remoteName,
+      'stop',
+      async () => {
+        if (type === 'serve') {
+          let idToStop = serveId;
+          const remote = this.activeRemotes().find(r => r.remoteSpecs.name === remoteName);
+
+          if (!idToStop && profileName && remote && remote.serveState?.serves) {
+            const serve = remote.serveState.serves.find(s => s.profile === profileName);
+            idToStop = serve?.id;
+          } else if (
+            !idToStop &&
+            remote &&
+            remote.serveState?.serves &&
+            remote.serveState.serves.length > 0
+          ) {
+            // Fallback: any serve for this remote
+            const serve = remote.serveState.serves[0];
+            idToStop = serve?.id;
+          }
+
+          if (!idToStop) throw new Error('Serve ID required to stop serve');
+          await this.serveService.stopServe(idToStop, remoteName);
+        } else if (type === 'mount') {
+          const remote = this.activeRemotes().find(r => r.remoteSpecs.name === remoteName);
+          let mountPoint: string | undefined;
+
+          if (profileName && remote?.mountState?.activeProfiles) {
+            mountPoint = remote.mountState.activeProfiles[profileName];
+          } else if (remote?.mountState?.activeProfiles) {
+            // Fallback: first active profile or inferred mount
+            const activeMounts = Object.values(remote.mountState.activeProfiles);
+            if (activeMounts.length > 0) mountPoint = activeMounts[0];
+            else {
+              // Try to find raw mount
+              const mount = this.mountedRemotes().find(m => m.fs.startsWith(`${remoteName}:`));
+              mountPoint = mount?.mount_point;
+            }
+          }
+
+          if (!mountPoint) throw new Error(`Active mount logic not found for ${remoteName}`);
+          await this.mountService.unmountRemote(mountPoint, remoteName);
+        } else {
+          // Sync/Copy/Move/Bisync
+          const remote = this.activeRemotes().find(r => r.remoteSpecs.name === remoteName);
+          const state = this.getOperationState(remote, type as SyncOperationType);
+
+          let idToStop: number | undefined;
+          if (profileName && state?.activeProfiles) {
+            idToStop = (state.activeProfiles as Record<string, number>)[profileName];
+          } else if (state?.activeProfiles) {
+            const values = Object.values(state.activeProfiles) as number[];
+            if (values.length > 0) idToStop = values[0];
+          }
+
+          // FallbackLegacy ID
+          if (idToStop === undefined && state) {
+            const key = `${type}JobID` as keyof typeof state;
+            idToStop = state[key] as number | undefined;
+          }
+
+          if (idToStop === undefined)
+            throw new Error(`No active ${type} job found for ${remoteName}`);
+          await this.jobService.stopJob(idToStop, remoteName);
+        }
+      },
+      profileName
+    );
+  }
+
+  async unmountRemote(remoteName: string): Promise<void> {
+    await this.executeAction(remoteName, 'unmount', async () => {
+      // Find mount point
+      const mount = this.mountedRemotes().find(m => m.fs.startsWith(`${remoteName}:`));
+      if (!mount) throw new Error(`No mount point found for ${remoteName}`);
+      await this.mountService.unmountRemote(mount.mount_point, remoteName);
+    });
+  }
+
+  async deleteRemote(remoteName: string): Promise<void> {
+    await this.executeAction(remoteName, 'delete', async () => {
+      // Unmount if mounted
+      if (this.mountedRemotes().some(m => m.fs.startsWith(`${remoteName}:`))) {
+        await this.unmountRemote(remoteName);
+      }
+      await this.remoteService.deleteRemote(remoteName);
+      // Trigger reload is handled by event listener usually, but we can force it
+      await this.loadRemotes();
+    });
+  }
+
+  async openRemoteInFiles(remoteName: string, pathOrOperation?: string): Promise<void> {
+    // Resolve path if it's an operation type
+    let path = pathOrOperation || '';
+    const opHelper = ['mount', 'sync', 'copy', 'bisync', 'move', 'serve'];
+    if (opHelper.includes(path)) {
+      const settings = this.getRemoteSettings(remoteName);
+      const configKey = `${path}Configs` as keyof RemoteSettings;
+      const profiles = settings[configKey] as Record<string, unknown> | undefined;
+      if (profiles) {
+        const firstKey = Object.keys(profiles)[0];
+        const profile = profiles[firstKey] as any;
+        path = profile?.dest || '';
+      } else {
+        path = '';
+      }
+    }
+
+    await this.executeAction(remoteName, 'open', async () => {
+      await this.mountService.openInFiles(path);
+    });
+  }
+
+  // Usage in HomeComponent: this.remoteFacade.cloneRemote(name)
+  generateUniqueRemoteName(baseName: string): string {
+    const existingNames = this.activeRemotes().map(r => r.remoteSpecs.name);
+    let newName = baseName;
+    let counter = 1;
+    while (existingNames.includes(newName)) {
+      newName = `${baseName}-${counter++}`;
+    }
+    return newName;
+  }
+
+  async cloneRemote(remoteName: string): Promise<RemoteSettings | null> {
+    const remote = this.activeRemotes().find(r => r.remoteSpecs.name === remoteName);
+    if (!remote) return null;
+
+    const baseName = remote.remoteSpecs.name.replace(/-\d+$/, '');
+    const newName = this.generateUniqueRemoteName(baseName);
+    const clonedSpecs = { ...remote.remoteSpecs, name: newName };
+
+    // Deep clone settings
+    const settingsSource = this.getRemoteSettings(remoteName);
+    const settings: RemoteSettings = settingsSource
+      ? JSON.parse(JSON.stringify(settingsSource))
+      : {};
+
+    // Update source paths
+    const configKeys = [
+      'mountConfigs',
+      'syncConfigs',
+      'copyConfigs',
+      'bisyncConfigs',
+      'moveConfigs',
+    ] as const;
+    for (const key of configKeys) {
+      const profiles = settings[key] as Record<string, Record<string, unknown>> | undefined;
+      if (profiles) {
+        for (const profile of Object.values(profiles)) {
+          if (
+            typeof profile['source'] === 'string' &&
+            profile['source'].startsWith(`${remoteName}:`)
+          ) {
+            profile['source'] = profile['source'].replace(`${remoteName}:`, `${newName}:`);
+          }
+        }
+      }
+    }
+
+    // Return the config object so the Component can open the modal with it
+    return {
+      remoteSpecs: clonedSpecs,
+      ...settings,
+    } as RemoteSettings;
+  }
+
+  // Private helper to safe-guard operation state access
+  private getOperationState(remote: Remote | undefined, type: SyncOperationType): any {
+    if (!remote) return undefined;
+    const stateMap: Record<SyncOperationType, any> = {
+      sync: remote.syncState,
+      copy: remote.copyState,
+      bisync: remote.bisyncState,
+      move: remote.moveState,
+    };
+    return stateMap[type];
+  }
+
+  async deleteJob(jobId: number): Promise<void> {
+    await this.jobService.deleteJob(jobId);
   }
 }

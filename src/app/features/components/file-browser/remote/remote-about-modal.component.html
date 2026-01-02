@@ -5,7 +5,11 @@
       <mat-icon [svgIcon]="iconService.getIconName(data.remote.type)"></mat-icon>
     </button>
     <p>{{ data.remote.displayName }}</p>
-    <button mat-icon-button (click)="close()" aria-label="Close dialog">
+    <button
+      mat-icon-button
+      (click)="close()"
+      [attr.aria-label]="'fileBrowser.remoteAbout.close' | translate"
+    >
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </div>
@@ -13,13 +17,13 @@
   <div class="modal-content custom-scrollbar">
     <mat-tab-group animationDuration="0ms" dynamicHeight>
       <!-- OVERVIEW TAB -->
-      <mat-tab label="Overview">
+      <mat-tab [label]="'fileBrowser.remoteAbout.tabs.overview' | translate">
         <div class="tab-content">
           <!-- Loading State -->
           @if (loadingAbout()) {
             <div class="loading-placeholder">
               <mat-spinner diameter="40"></mat-spinner>
-              <p>Loading remote information...</p>
+              <p>{{ 'fileBrowser.remoteAbout.loading' | translate }}</p>
             </div>
           }
 
@@ -38,7 +42,9 @@
               <mat-card class="usage-card">
                 <div class="usage-grid">
                   <div class="usage-item">
-                    <span class="label">Total Space</span>
+                    <span class="label">{{
+                      'fileBrowser.remoteAbout.totalSpace' | translate
+                    }}</span>
                     <span class="value">
                       @if (loadingUsage()) {
                         <mat-spinner diameter="16"></mat-spinner>
@@ -50,7 +56,7 @@
                     </span>
                   </div>
                   <div class="usage-item">
-                    <span class="label">Used Space</span>
+                    <span class="label">{{ 'fileBrowser.remoteAbout.usedSpace' | translate }}</span>
                     <span class="value">
                       @if (loadingUsage()) {
                         <mat-spinner diameter="16"></mat-spinner>
@@ -62,7 +68,7 @@
                     </span>
                   </div>
                   <div class="usage-item">
-                    <span class="label">Free Space</span>
+                    <span class="label">{{ 'fileBrowser.remoteAbout.freeSpace' | translate }}</span>
                     <span class="value">
                       @if (loadingUsage()) {
                         <mat-spinner diameter="16"></mat-spinner>
@@ -74,7 +80,9 @@
                     </span>
                   </div>
                   <div class="usage-item">
-                    <span class="label">Object Count</span>
+                    <span class="label">{{
+                      'fileBrowser.remoteAbout.objectCount' | translate
+                    }}</span>
                     <span class="value">
                       @if (loadingSize()) {
                         <mat-spinner diameter="16"></mat-spinner>
@@ -89,24 +97,32 @@
               <!-- Basic Info List -->
               <div class="info-list">
                 <div class="info-row">
-                  <span class="info-label">Type</span>
-                  <span class="info-value">{{ data.remote.type || 'Unknown' | titlecase }}</span>
+                  <span class="info-label">{{ 'fileBrowser.remoteAbout.type' | translate }}</span>
+                  <span class="info-value">{{
+                    data.remote.type || ('fileBrowser.remoteAbout.unknown' | translate) | titlecase
+                  }}</span>
                 </div>
                 <div class="info-row">
-                  <span class="info-label">Root Path</span>
+                  <span class="info-label">{{
+                    'fileBrowser.remoteAbout.rootPath' | translate
+                  }}</span>
                   <span class="info-value code-font" [matTooltip]="getRoot(about)">
                     {{ getRoot(about) }}
                   </span>
                 </div>
                 <div class="info-row">
-                  <span class="info-label">Time Precision</span>
+                  <span class="info-label">{{
+                    'fileBrowser.remoteAbout.timePrecision' | translate
+                  }}</span>
                   <span class="info-value">{{ getPrecisionFormatted(about) }}</span>
                 </div>
               </div>
 
               <!-- Hashes -->
               <div class="section-container">
-                <div class="section-header">Supported Hashes</div>
+                <div class="section-header">
+                  {{ 'fileBrowser.remoteAbout.supportedHashes' | translate }}
+                </div>
                 <div class="chip-container">
                   @let hashes = getHashes(about);
                   @if (hashes.length > 0) {
@@ -116,7 +132,9 @@
                       }
                     </mat-chip-set>
                   } @else {
-                    <span class="empty-text">None supported</span>
+                    <span class="empty-text">{{
+                      'fileBrowser.remoteAbout.noneSupported' | translate
+                    }}</span>
                   }
                 </div>
               </div>
@@ -126,7 +144,7 @@
       </mat-tab>
 
       <!-- FEATURES TAB -->
-      <mat-tab label="Features">
+      <mat-tab [label]="'fileBrowser.remoteAbout.tabs.features' | translate">
         <div class="tab-content">
           @if (aboutInfo(); as about) {
             <div class="features-grid">
@@ -148,7 +166,7 @@
           @if (aboutInfo() === null && !loadingAbout()) {
             <div class="empty-state">
               <mat-icon svgIcon="circle-info"></mat-icon>
-              <span>No feature information available.</span>
+              <span>{{ 'fileBrowser.remoteAbout.noFeatureInfo' | translate }}</span>
             </div>
           }
 
@@ -161,7 +179,7 @@
       </mat-tab>
 
       <!-- METADATA TAB -->
-      <mat-tab label="Metadata Specs">
+      <mat-tab [label]="'fileBrowser.remoteAbout.tabs.metadata' | translate">
         <div class="tab-content">
           @if (aboutInfo(); as about) {
             <mat-accordion multi>
@@ -175,7 +193,7 @@
                     <mat-expansion-panel-header>
                       <mat-panel-title>{{ item.key }}</mat-panel-title>
                       <mat-panel-description>
-                        {{ item.data['Type'] || 'Unknown' }}
+                        {{ item.data['Type'] || ('fileBrowser.remoteAbout.unknown' | translate) }}
                       </mat-panel-description>
                     </mat-expansion-panel-header>
 
@@ -184,12 +202,17 @@
                       <div class="meta-props">
                         @if (item.data['Example']) {
                           <div class="prop-row">
-                            <strong>Example:</strong>
+                            <strong>{{ 'fileBrowser.remoteAbout.example' | translate }}:</strong>
                             <span class="code-bg">{{ item.data['Example'] }}</span>
                           </div>
                         }
                         <div class="prop-row">
-                          <strong>Read Only:</strong> {{ item.data['ReadOnly'] ? 'Yes' : 'No' }}
+                          <strong>{{ 'fileBrowser.remoteAbout.readOnly' | translate }}:</strong>
+                          {{
+                            item.data['ReadOnly']
+                              ? ('fileBrowser.remoteAbout.yes' | translate)
+                              : ('fileBrowser.remoteAbout.no' | translate)
+                          }}
                         </div>
                       </div>
                     </div>
@@ -200,7 +223,7 @@
               @if (getMetadataGroups(about).length === 0) {
                 <div class="empty-state">
                   <mat-icon svgIcon="circle-info"></mat-icon>
-                  <span>No metadata specifications available.</span>
+                  <span>{{ 'fileBrowser.remoteAbout.noMetadata' | translate }}</span>
                 </div>
               }
             </mat-accordion>

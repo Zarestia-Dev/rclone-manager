@@ -317,6 +317,18 @@ fn setup_app(
     }
 
     // -------------------------------------------------------------------------
+    // Initialize Backend i18n (before managing rcman_manager)
+    // -------------------------------------------------------------------------
+    if let Ok(resource_dir) = app_handle.path().resource_dir() {
+        crate::utils::i18n::init(resource_dir);
+
+        // Set initial language from settings
+        if let Ok(lang) = rcman_manager.get::<String>("general.language") {
+            crate::utils::i18n::set_language(&lang);
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Manage App State
     // -------------------------------------------------------------------------
     use crate::utils::types::all_types::RcApiEngine;
@@ -515,14 +527,28 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent)
             }
             TrayAction::Browse(remote) => handle_browse_remote(app, &remote),
             TrayAction::BrowseInApp(remote) => handle_browse_in_app(app, &remote),
+            TrayAction::UnmountAll => {
+                let app_clone = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Err(e) = unmount_all_remotes(
+                        app_clone.clone(),
+                        app_clone.state(),
+                        "menu".to_string(),
+                    )
+                    .await
+                    {
+                        error!("Failed to unmount all remotes: {e}");
+                    }
+                });
+            }
+            TrayAction::StopAllJobs => handle_stop_all_jobs(app.clone()),
+            TrayAction::StopAllServes => handle_stop_all_serves(app.clone()),
         }
         return;
     }
 
     match event.id.as_ref() {
         "show_app" => show_main_window(app.clone()),
-        "stop_all_jobs" => handle_stop_all_jobs(app.clone()),
-        "stop_all_serves" => handle_stop_all_serves(app.clone()),
         "unmount_all" => {
             let app_clone = app.clone();
             tauri::async_runtime::spawn(async move {

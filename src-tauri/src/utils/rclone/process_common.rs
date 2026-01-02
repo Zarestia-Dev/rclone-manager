@@ -34,7 +34,9 @@ pub async fn setup_rclone_environment(
         match crate::core::security::is_config_encrypted(app.clone()).await {
             Ok(true) => {
                 info!("🔒 Configuration is encrypted but no password available, stopping start");
-                return Err("Configuration is encrypted and no password provided".to_string());
+                return Err(crate::localized_error!(
+                    "backendErrors.rclone.configEncrypted"
+                ));
             }
             Ok(false) => {
                 info!("🔓 Configuration is not encrypted, proceeding without password");
@@ -64,8 +66,12 @@ pub async fn create_rclone_command(
         "main_engine" => backend.port,
         "oauth" => backend
             .oauth_port
-            .ok_or_else(|| "OAuth port not configured".to_string())?,
-        _ => return Err(format!("Unknown process type: {}", process_type)),
+            .ok_or_else(|| crate::localized_error!("backendErrors.system.oauthNotConfigured"))?,
+        _ => {
+            return Err(
+                crate::localized_error!("backendErrors.rclone.unknownProcessType", "type" => process_type),
+            );
+        }
     };
 
     // Only use auth if properly configured (non-empty username AND password)

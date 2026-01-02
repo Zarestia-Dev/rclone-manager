@@ -2,13 +2,14 @@ import { Component, Input, ChangeDetectionStrategy, inject, output } from '@angu
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { TranslateModule } from '@ngx-translate/core';
 import { AppTab } from '@app/types';
 import { BackendService } from '@app/services';
 
 @Component({
   selector: 'app-overview-header',
   standalone: true,
-  imports: [MatIconModule, MatButtonModule, MatTooltipModule],
+  imports: [MatIconModule, MatButtonModule, MatTooltipModule, TranslateModule],
   templateUrl: './overview-header.component.html',
   styleUrl: './overview-header.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -28,14 +29,14 @@ export class OverviewHeaderComponent {
   readonly backends = this.backendService.backends;
 
   private readonly TITLE_MAP: Record<string, string> = {
-    mount: 'Mount Overview',
-    sync: 'Sync Overview',
-    serve: 'Serve Overview',
-    general: 'RClone Manager',
+    mount: 'overviews.headers.mount',
+    sync: 'overviews.headers.sync',
+    serve: 'overviews.headers.serve',
+    general: 'overviews.headers.general',
   };
 
   get title(): string {
-    return this.TITLE_MAP[this.mode] || 'Remotes Overview';
+    return this.TITLE_MAP[this.mode] || 'overviews.headers.default';
   }
 
   /** Get status class for the active backend */

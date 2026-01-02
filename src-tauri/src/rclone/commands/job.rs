@@ -17,7 +17,6 @@ use crate::{
 };
 
 use super::system::RcloneError;
-use crate::utils::app::notification::send_notification;
 
 /// Metadata required to start and track a job
 #[derive(Debug, Clone)]
@@ -127,13 +126,13 @@ async fn send_job_request(
         .json(&payload)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {e}"))?;
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
     let status = response.status();
     let body_text = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        let error = format!("HTTP {status}: {body_text}");
+        let error = crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body_text);
         log_operation(
             LogLevel::Error,
             Some(metadata.remote_name.clone()),
@@ -144,8 +143,8 @@ async fn send_job_request(
         return Err(error);
     }
 
-    let response_json: Value =
-        serde_json::from_str(&body_text).map_err(|e| format!("Failed to parse response: {e}"))?;
+    let response_json: Value = serde_json::from_str(&body_text)
+        .map_err(|e| crate::localized_error!("backendErrors.serve.parseFailed", "error" => e))?;
 
     // Extract Job ID (handles both numeric jobid and string id)
     let jobid = if let Some(id) = response_json.get("jobid").and_then(|v| v.as_u64()) {
@@ -253,7 +252,9 @@ pub async fn poll_job(
             Err(e) => {
                 consecutive_errors += 1;
                 if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
-                    return Err(format!("Too many errors monitoring job: {e}"));
+                    return Err(
+                        crate::localized_error!("backendErrors.job.monitoringFailed", "error" => e),
+                    );
                 }
                 warn!("Error checking job status: {e}");
             }
@@ -412,9 +413,9 @@ pub async fn monitor_job(
                         .complete_job(jobid, false, Some(&app))
                         .await
                         .map_err(RcloneError::JobError)?;
-                    return Err(RcloneError::JobError(format!(
-                        "Too many errors monitoring job {jobid}: {e}"
-                    )));
+                    return Err(RcloneError::JobError(
+                        crate::localized_error!("backendErrors.job.monitoringFailed", "error" => e),
+                    ));
                 }
             }
         }
@@ -497,12 +498,6 @@ pub async fn handle_job_completion(
             format!("{operation} Job {jobid} failed: {error_msg}"),
             Some(json!({"jobid": jobid, "status": job_status})),
         );
-        // Send failure notification
-        send_notification(
-            app,
-            &format!("{} Failed", operation),
-            &format!("{} on {} failed: {}", operation, remote_name, error_msg),
-        );
         Err(RcloneError::JobError(error_msg))
     } else if success {
         log_operation(
@@ -511,12 +506,6 @@ pub async fn handle_job_completion(
             Some(operation.to_string()),
             format!("{operation} Job {jobid} completed successfully"),
             Some(json!({"jobid": jobid, "status": job_status})),
-        );
-        // Send success notification
-        send_notification(
-            app,
-            &format!("{} Complete", operation),
-            &format!("{} on {} completed successfully", operation, remote_name),
         );
         Ok(())
     } else {
@@ -553,7 +542,7 @@ pub async fn stop_job(
         .json(&payload)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {e}"))?;
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
@@ -571,7 +560,8 @@ pub async fn stop_job(
         warn!("Job {jobid} not found in rclone, marking as stopped.");
         true
     } else {
-        let error = format!("HTTP {status}: {body}");
+        let error =
+            crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body);
         error!("❌ Failed to stop job {jobid}: {error}");
         return Err(error);
     };

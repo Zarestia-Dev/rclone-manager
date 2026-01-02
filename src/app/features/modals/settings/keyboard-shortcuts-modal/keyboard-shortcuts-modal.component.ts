@@ -6,6 +6,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatTableModule } from '@angular/material/table';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
 
 @Component({
@@ -18,6 +19,7 @@ import { SearchContainerComponent } from '../../../../shared/components/search-c
     FormsModule,
     MatButtonModule,
     SearchContainerComponent,
+    TranslateModule,
   ],
   templateUrl: './keyboard-shortcuts-modal.component.html',
   styleUrls: ['./keyboard-shortcuts-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -28,27 +30,65 @@ export class KeyboardShortcutsModalComponent {
 
   @ViewChild(SearchContainerComponent) searchContainer!: SearchContainerComponent;
 
-  // Static list of shortcuts - much simpler than using a service
+  private translate = inject(TranslateService);
+
+  // Schema using translation keys
   shortcuts = [
-    { keys: 'Ctrl + Q', description: 'Quit Application', category: 'Global' },
-    { keys: 'Ctrl + ?', description: 'Show Keyboard Shortcuts', category: 'Application' },
-    { keys: 'Ctrl + ,', description: 'Open Preferences', category: 'Application' },
-    { keys: 'Ctrl + .', description: 'Open RClone Configuration', category: 'Application' },
+    {
+      keys: 'Ctrl + Q',
+      description: 'shortcuts.actions.quit',
+      category: 'shortcuts.categories.global',
+    },
+    {
+      keys: 'Ctrl + ?',
+      description: 'shortcuts.actions.showShortcuts',
+      category: 'shortcuts.categories.application',
+    },
+    {
+      keys: 'Ctrl + ,',
+      description: 'shortcuts.actions.openPreferences',
+      category: 'shortcuts.categories.application',
+    },
+    {
+      keys: 'Ctrl + .',
+      description: 'shortcuts.actions.openConfig',
+      category: 'shortcuts.categories.application',
+    },
     {
       keys: 'Ctrl + Shift + M',
-      description: 'Force Check Mounted Remotes',
-      category: 'Remote Management',
+      description: 'shortcuts.actions.forceCheck',
+      category: 'shortcuts.categories.remoteManagement',
     },
     {
       keys: 'Ctrl + N',
-      description: 'Create New Remote (Detailed)',
-      category: 'Remote Management',
+      description: 'shortcuts.actions.newRemoteDetailed',
+      category: 'shortcuts.categories.remoteManagement',
     },
-    { keys: 'Ctrl + R', description: 'Create New Remote (Quick)', category: 'Remote Management' },
-    { keys: 'Ctrl + I', description: 'Load Configuration', category: 'File Operations' },
-    { keys: 'Ctrl + E', description: 'Export Configuration', category: 'File Operations' },
-    { keys: 'Ctrl + B', description: 'Toggle File Browser', category: 'File Browser' },
-    { keys: 'Escape', description: 'Close Dialog/Cancel Action', category: 'Navigation' },
+    {
+      keys: 'Ctrl + R',
+      description: 'shortcuts.actions.newRemoteQuick',
+      category: 'shortcuts.categories.remoteManagement',
+    },
+    {
+      keys: 'Ctrl + I',
+      description: 'shortcuts.actions.loadConfig',
+      category: 'shortcuts.categories.fileOperations',
+    },
+    {
+      keys: 'Ctrl + E',
+      description: 'shortcuts.actions.exportConfig',
+      category: 'shortcuts.categories.fileOperations',
+    },
+    {
+      keys: 'Ctrl + B',
+      description: 'shortcuts.actions.toggleBrowser',
+      category: 'shortcuts.categories.fileBrowser',
+    },
+    {
+      keys: 'Escape',
+      description: 'shortcuts.actions.closeDialog',
+      category: 'shortcuts.categories.navigation',
+    },
   ];
 
   filteredShortcuts = [...this.shortcuts];
@@ -88,13 +128,17 @@ export class KeyboardShortcutsModalComponent {
       return;
     }
 
-    this.filteredShortcuts = this.shortcuts.filter(
-      shortcut =>
-        shortcut.description.toLowerCase().includes(searchTerm) ||
+    this.filteredShortcuts = this.shortcuts.filter(shortcut => {
+      const description = this.translate.instant(shortcut.description).toLowerCase();
+      // const category = this.translate.instant(shortcut.category).toLowerCase(); // If we were searching categories
+
+      return (
+        description.includes(searchTerm) ||
         shortcut.keys.toLowerCase().includes(searchTerm) ||
         // Also search individual key parts
         shortcut.keys.split('+').some(key => key.trim().toLowerCase().includes(searchTerm))
-    );
+      );
+    });
   }
 
   clearSearch(): void {

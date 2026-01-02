@@ -5,6 +5,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 import { FileSystemService, SystemInfoService } from '@app/services';
 import { ValidatorRegistryService } from '@app/services';
@@ -24,6 +25,7 @@ type BinaryStatus = 'untested' | 'testing' | 'valid' | 'invalid';
     MatButtonModule,
     MatIconModule,
     MatTooltipModule,
+    TranslateModule,
   ],
   templateUrl: './installation-options.component.html',
   styleUrl: './installation-options.component.scss',
@@ -32,9 +34,9 @@ export class InstallationOptionsComponent implements OnInit {
   @Input() disabled = false;
   @Input() mode: 'install' | 'config' = 'install';
   @Input() tabOptions: InstallationTabOption[] = [
-    { key: 'default', label: 'Quick Fix', icon: 'bolt' },
-    { key: 'custom', label: 'Custom', icon: 'folder' },
-    { key: 'existing', label: 'Existing', icon: 'file' },
+    { key: 'default', label: 'shared.installationOptions.tabs.quickFix', icon: 'bolt' },
+    { key: 'custom', label: 'shared.installationOptions.tabs.custom', icon: 'folder' },
+    { key: 'existing', label: 'shared.installationOptions.tabs.existing', icon: 'file' },
   ];
 
   @Output() dataChange = new EventEmitter<InstallationOptionsData>();
@@ -49,6 +51,7 @@ export class InstallationOptionsComponent implements OnInit {
   private fs = inject(FileSystemService);
   private system = inject(SystemInfoService);
   private validators = inject(ValidatorRegistryService);
+  private translate = inject(TranslateService);
 
   ngOnInit(): void {
     const pathValidator = this.validators.getValidator('crossPlatformPath');
@@ -124,12 +127,12 @@ export class InstallationOptionsComponent implements OnInit {
 
   getStatusText(): string {
     const labels: Record<BinaryStatus, string> = {
-      untested: 'Not tested',
-      testing: 'Testing...',
-      valid: 'Valid rclone binary',
-      invalid: 'Invalid or not rclone',
+      untested: 'shared.installationOptions.status.untested',
+      testing: 'shared.installationOptions.status.testing',
+      valid: 'shared.installationOptions.status.valid',
+      invalid: 'shared.installationOptions.status.invalid',
     };
-    return labels[this.binaryTestResult];
+    return this.translate.instant(labels[this.binaryTestResult]);
   }
 
   getStatusIcon(): string {
@@ -143,8 +146,10 @@ export class InstallationOptionsComponent implements OnInit {
   }
 
   getError(control: FormControl): string {
-    if (control.hasError('invalidPath')) return 'Invalid path format';
-    if (control.hasError('required')) return 'Required';
+    if (control.hasError('invalidPath'))
+      return this.translate.instant('shared.installationOptions.errors.invalidPath');
+    if (control.hasError('required'))
+      return this.translate.instant('shared.installationOptions.errors.required');
     return '';
   }
 

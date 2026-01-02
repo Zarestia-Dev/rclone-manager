@@ -8,38 +8,38 @@
       <ng-container *cdkVirtualFor="let field of formFields(); trackBy: trackByField">
         @if (field.type === 'basic-info') {
           <mat-form-field appearance="fill">
-            <mat-label>Remote Name</mat-label>
+            <mat-label>{{ 'wizards.remoteConfig.remoteName' | translate }}</mat-label>
             <input
               matInput
               formControlName="name"
               id="remoteName"
-              placeholder="e.g., my-cloud-storage"
+              [placeholder]="'wizards.remoteConfig.remoteNamePlaceholder' | translate"
             />
             @if (form().get('name')?.hasError('required')) {
-              <mat-error> Remote name is required </mat-error>
+              <mat-error> {{ 'wizards.remoteConfig.remoteNameRequired' | translate }} </mat-error>
             }
             @if (form().get('name')?.hasError('invalidChars')) {
-              <mat-error> Name contains invalid characters </mat-error>
+              <mat-error> {{ 'wizards.remoteConfig.invalidChars' | translate }} </mat-error>
             }
             @if (form().get('name')?.hasError('invalidStart')) {
-              <mat-error> Name cannot start with a dash or space </mat-error>
+              <mat-error> {{ 'wizards.remoteConfig.invalidStart' | translate }} </mat-error>
             }
             @if (form().get('name')?.hasError('invalidEnd')) {
-              <mat-error> Name cannot end with a space </mat-error>
+              <mat-error> {{ 'wizards.remoteConfig.invalidEnd' | translate }} </mat-error>
             }
             @if (form().get('name')?.hasError('nameTaken')) {
-              <mat-error> A remote with this name already exists </mat-error>
+              <mat-error> {{ 'wizards.remoteConfig.nameTaken' | translate }} </mat-error>
             }
           </mat-form-field>
 
           <mat-form-field appearance="fill">
-            <mat-label>Remote Type</mat-label>
+            <mat-label>{{ 'wizards.remoteConfig.remoteType' | translate }}</mat-label>
             <input
               type="text"
               matInput
               [formControl]="remoteSearchCtrl"
               [matAutocomplete]="auto"
-              placeholder="e.g., Google Drive"
+              [placeholder]="'wizards.remoteConfig.remoteTypePlaceholder' | translate"
             />
             <mat-autocomplete
               #auto="matAutocomplete"
@@ -55,7 +55,9 @@
                 </mat-option>
               }
               @if (filteredRemotes().length === 0) {
-                <mat-option disabled>No matching remote types</mat-option>
+                <mat-option disabled>{{
+                  'wizards.remoteConfig.noMatchingTypes' | translate
+                }}</mat-option>
               }
             </mat-autocomplete>
           </mat-form-field>
@@ -64,23 +66,25 @@
         @if (field.type === 'basic-info' && isLoading()) {
           <div class="loading-container">
             <mat-spinner diameter="30"></mat-spinner>
-            <span>Loading configuration options...</span>
+            <span>{{ 'wizards.remoteConfig.loadingOptions' | translate }}</span>
           </div>
         }
 
         @if (field.type === 'config-toggles') {
           <mat-slide-toggle (change)="toggleAdvancedOptions()" [checked]="showAdvancedOptions()">
-            Show Advanced Options
+            {{ 'wizards.remoteConfig.showAdvanced' | translate }}
           </mat-slide-toggle>
 
           <mat-slide-toggle (change)="toggleInteractiveMode()" [checked]="useInteractiveMode()">
-            Use Interactive Configuration
+            {{ 'wizards.remoteConfig.useInteractive' | translate }}
           </mat-slide-toggle>
         }
 
         @if (field.type === 'provider-field' && providerField(); as pField) {
           <mat-form-field appearance="fill">
-            <mat-label>{{ pField.Help || 'Authentication Method' }}</mat-label>
+            <mat-label>{{
+              pField.Help || ('wizards.remoteConfig.authenticationMethod' | translate)
+            }}</mat-label>
             <input
               type="text"
               matInput
@@ -103,7 +107,7 @@
               }
             </mat-autocomplete>
             @if (form().get(pField.Name)?.hasError('required')) {
-              <mat-error>Provider is required</mat-error>
+              <mat-error>{{ 'wizards.remoteConfig.providerRequired' | translate }}</mat-error>
             }
           </mat-form-field>
         }
@@ -121,7 +125,7 @@
         @if (field.type === 'advanced-section') {
           <div class="advanced-section">
             <h3 class="section-heading">
-              Advanced Options
+              {{ 'wizards.remoteConfig.advancedOptions' | translate }}
               <span>{{ advancedFields().length }}</span>
             </h3>
 

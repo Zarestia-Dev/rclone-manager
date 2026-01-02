@@ -167,7 +167,9 @@ pub async fn restore_legacy_backup(
             "Integrity check FAILED! Expected: {}, Got: {}",
             manifest.integrity.sha256, calculated_hash
         );
-        return Err("Integrity check failed! Backup may be corrupted.".into());
+        return Err(crate::localized_error!(
+            "backendErrors.backup.integrityFailed"
+        ));
     }
     info!("Integrity verified.");
 
@@ -204,7 +206,9 @@ fn validate_restore_password(
     let has_password = password.as_ref().is_some_and(|p| !p.trim().is_empty());
 
     match (is_encrypted, has_password) {
-        (true, false) => Err("This backup is encrypted. Password required.".into()),
+        (true, false) => Err(crate::localized_error!(
+            "backendErrors.backup.encryptedPasswordRequired"
+        )),
         (false, true) => {
             warn!("Password provided for unencrypted backup. Ignoring.");
             Ok(None)

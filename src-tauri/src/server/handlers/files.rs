@@ -234,7 +234,9 @@ pub async fn stream_file_handler(
 ) -> Result<impl IntoResponse, AppError> {
     let path = std::path::PathBuf::from(&query.path);
     if !path.exists() {
-        return Err(AppError::NotFound("File not found".to_string()));
+        return Err(AppError::NotFound(
+            "backendErrors.filesystem.notFound".to_string(),
+        ));
     }
 
     let file = File::open(&path).await.map_err(anyhow::Error::msg)?;

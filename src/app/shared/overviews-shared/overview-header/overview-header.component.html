@@ -4,10 +4,10 @@
     <button
       class="title-section interactive"
       (click)="onBackendClick()"
-      matTooltip="Manage Backends"
+      [matTooltip]="'shared.overviewHeader.manageBackends' | translate"
       matTooltipShowDelay="500"
       matTooltipPosition="left"
-      [attr.aria-label]="'Current mode: ' + title + ' - Click to switch backend'"
+      [attr.aria-label]="'shared.overviewHeader.backendSwitchAria' | translate: { title: title }"
     >
       <div class="logo-container">
         @if (mode === 'general') {
@@ -18,7 +18,7 @@
         <span class="status-dot" [class]="backendStatusClass"></span>
       </div>
       <div class="text-container">
-        <h2 id="overview-title">{{ title }}</h2>
+        <h2 id="overview-title">{{ title | translate }}</h2>
         <span class="backend-name">{{ activeBackend() }}</span>
       </div>
     </button>

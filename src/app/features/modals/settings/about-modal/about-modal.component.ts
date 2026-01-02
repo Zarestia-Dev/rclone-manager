@@ -15,6 +15,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { marked, Renderer } from 'marked';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 // Services
 import {
@@ -39,6 +40,7 @@ import { NotificationService } from '@app/services';
     MatTooltipModule,
     MatProgressBarModule,
     FormatFileSizePipe,
+    TranslateModule,
   ],
   templateUrl: './about-modal.component.html',
   styleUrls: ['./about-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -53,6 +55,7 @@ export class AboutModalComponent implements OnInit {
   private rcloneUpdateService = inject(RcloneUpdateService);
   private eventListenersService = inject(EventListenersService);
   private sanitizer = inject(DomSanitizer);
+  private translate = inject(TranslateService);
 
   currentPage = 'main';
   scrolled = false;
@@ -98,8 +101,16 @@ export class AboutModalComponent implements OnInit {
   restartRequired = false;
 
   readonly channels = [
-    { value: 'stable', label: 'Stable', description: 'Recommended for most users' },
-    { value: 'beta', label: 'Beta', description: 'Latest features' },
+    {
+      value: 'stable',
+      label: 'modals.about.channelStable',
+      description: 'modals.about.channelStableDesc',
+    },
+    {
+      value: 'beta',
+      label: 'modals.about.channelBeta',
+      description: 'modals.about.channelBetaDesc',
+    },
   ];
 
   async ngOnInit(): Promise<void> {
@@ -140,7 +151,12 @@ export class AboutModalComponent implements OnInit {
   }
   getFormattedReleaseNotes(markdown: string | undefined | null): SafeHtml {
     if (!markdown) {
-      return this.sanitizer.sanitize(1, '<p>No release notes available.</p>') || '';
+      return (
+        this.sanitizer.sanitize(
+          1,
+          `<p>${this.translate.instant('modals.about.noReleaseNotes')}</p>`
+        ) || ''
+      );
     }
     // Configure marked to add target="_blank" to links
     const renderer = new Renderer();
@@ -155,7 +171,8 @@ export class AboutModalComponent implements OnInit {
   formatReleaseDate(dateString: string): string {
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
+      const locale = this.translate.currentLang === 'tr' ? 'tr-TR' : 'en-US';
+      return date.toLocaleDateString(locale, {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -176,7 +193,7 @@ export class AboutModalComponent implements OnInit {
       this.rcloneInfo = { ...info, pid } as RcloneInfo;
     } catch (error) {
       console.error('Error fetching rclone info:', error);
-      this.rcloneError = 'Failed to load rclone info.';
+      this.rcloneError = this.translate.instant('modals.about.loadInfoFailed');
     } finally {
       this.loadingRclone = false;
     }
@@ -186,16 +203,25 @@ export class AboutModalComponent implements OnInit {
     if (this.rcloneInfo?.pid) {
       this.systemInfoService.killProcess(this.rcloneInfo.pid).then(
         () => {
-          this.notificationService.openSnackBar('Rclone process killed successfully', 'Close');
+          this.notificationService.openSnackBar(
+            this.translate.instant('modals.about.killSuccess'),
+            this.translate.instant('common.close')
+          );
           this.rcloneInfo = null;
         },
         error => {
           console.error('Failed to kill rclone process:', error);
-          this.notificationService.openSnackBar('Failed to kill rclone process', 'Close');
+          this.notificationService.openSnackBar(
+            this.translate.instant('modals.about.killFailed'),
+            this.translate.instant('common.close')
+          );
         }
       );
     } else {
-      this.notificationService.openSnackBar('No rclone process to kill', 'Close');
+      this.notificationService.openSnackBar(
+        this.translate.instant('modals.about.noProcessToKill'),
+        this.translate.instant('common.close')
+      );
     }
   }
 
@@ -217,17 +243,40 @@ export class AboutModalComponent implements OnInit {
   copyToClipboard(text: string): void {
     navigator.clipboard.writeText(text).then(
       () => {
-        this.notificationService.openSnackBar('Copied to clipboard', 'Close');
+        this.notificationService.openSnackBar(
+          this.translate.instant('modals.about.copied'),
+          this.translate.instant('common.close')
+        );
       },
       err => {
         console.error('Failed to copy to clipboard:', err);
-        this.notificationService.openSnackBar('Failed to copy to clipboard', 'Close');
+        this.notificationService.openSnackBar(
+          this.translate.instant('modals.about.copyFailed'),
+          this.translate.instant('common.close')
+        );
       }
     );
   }
 
   navigateTo(page: string): void {
     this.currentPage = page;
+  }
+
+  getPageTitle(): string {
+    switch (this.currentPage) {
+      case 'Details':
+        return this.translate.instant('modals.about.details');
+      case 'Updates':
+        return this.translate.instant('modals.about.updates');
+      case 'About Rclone':
+        return this.translate.instant('modals.about.aboutRclone');
+      case 'Credits':
+        return this.translate.instant('modals.about.credits');
+      case 'Legal':
+        return this.translate.instant('modals.about.legal');
+      default:
+        return this.currentPage;
+    }
   }
 
   // App Updater methods
@@ -251,7 +300,7 @@ export class AboutModalComponent implements OnInit {
       await this.appUpdaterService.relaunchApp();
     } catch (error) {
       console.error('Failed to relaunch app:', error);
-      this.notificationService.showError('Failed to restart application');
+      this.notificationService.showError(this.translate.instant('updates.restartFailed'));
     }
   }
 
@@ -263,10 +312,10 @@ export class AboutModalComponent implements OnInit {
   async unskipVersion(version: string): Promise<void> {
     try {
       await this.appUpdaterService.unskipVersion(version);
-      this.notificationService.showSuccess(`Update ${version} restored`);
+      this.notificationService.showSuccess(this.translate.instant('updates.restored', { version }));
     } catch (error) {
       console.error('Failed to unskip version:', error);
-      this.notificationService.showError('Failed to restore update');
+      this.notificationService.showError(this.translate.instant('updates.restoreFailed'));
     }
   }
 
@@ -274,12 +323,15 @@ export class AboutModalComponent implements OnInit {
     try {
       this.autoCheckUpdates = !this.autoCheckUpdates;
       await this.appUpdaterService.setAutoCheckEnabled(this.autoCheckUpdates);
-      this.notificationService.showSuccess(
-        `Auto-check updates ${this.autoCheckUpdates ? 'enabled' : 'disabled'}`
-      );
+      const msg = this.autoCheckUpdates
+        ? 'modals.about.autoCheckEnabled'
+        : 'modals.about.autoCheckDisabled';
+      this.notificationService.showSuccess(this.translate.instant(msg));
     } catch (error) {
       console.error('Failed to toggle auto-check:', error);
-      this.notificationService.showError('Failed to update setting');
+      this.notificationService.showError(
+        this.translate.instant('modals.about.updateSettingFailed')
+      );
       this.autoCheckUpdates = !this.autoCheckUpdates;
     }
   }
@@ -290,7 +342,7 @@ export class AboutModalComponent implements OnInit {
       this.updateAvailable = null;
     } catch (error) {
       console.error('Failed to change channel:', error);
-      this.notificationService.showError('Failed to change update channel');
+      this.notificationService.showError(this.translate.instant('updates.saveChannelFailed'));
       this.updateChannel = this.appUpdaterService.getCurrentChannel();
     }
   }

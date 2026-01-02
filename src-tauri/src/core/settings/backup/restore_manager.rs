@@ -97,7 +97,9 @@ pub async fn restore_settings(
         BackupFormatVersion::AppLegacy => {
             restore_legacy_backup(&backup_path, password, &manifest_json, &app_handle).await
         }
-        BackupFormatVersion::Unknown => Err("Unknown backup format".into()),
+        BackupFormatVersion::Unknown => Err(crate::localized_error!(
+            "backendErrors.backup.unknownFormat"
+        )),
     }
 }
 

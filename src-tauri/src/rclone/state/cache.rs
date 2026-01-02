@@ -155,7 +155,9 @@ impl RemoteCache {
             Ok(())
         } else {
             error!("Failed to fetch remotes");
-            Err("Failed to fetch remotes".into())
+            Err(crate::localized_error!(
+                "backendErrors.cache.fetchRemotesFailed"
+            ))
         }
     }
 
@@ -170,7 +172,9 @@ impl RemoteCache {
             Ok(())
         } else {
             error!("Failed to fetch remotes config");
-            Err("Failed to fetch remotes config".into())
+            Err(crate::localized_error!(
+                "backendErrors.cache.fetchConfigFailed"
+            ))
         }
     }
 
@@ -202,7 +206,9 @@ impl RemoteCache {
             }
             Err(e) => {
                 error!("❌ Failed to refresh mounted remotes: {e}");
-                Err("Failed to refresh mounted remotes".into())
+                Err(crate::localized_error!(
+                    "backendErrors.cache.refreshMountsFailed"
+                ))
             }
         }
     }
@@ -310,7 +316,9 @@ impl RemoteCache {
             }
             Err(e) => {
                 error!("❌ Failed to refresh serves: {e}");
-                Err("Failed to refresh serves".into())
+                Err(crate::localized_error!(
+                    "backendErrors.cache.refreshServesFailed"
+                ))
             }
         }
     }

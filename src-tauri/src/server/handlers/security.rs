@@ -42,9 +42,9 @@ pub async fn remove_config_password_handler(
     remove_config_password(env_manager, credential_store)
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Password removed successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.security.passwordRemoved"
+    ))))
 }
 
 #[derive(Deserialize)]
@@ -60,9 +60,9 @@ pub async fn validate_rclone_password_handler(
     validate_rclone_password(state.app_handle.clone(), query.password)
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Password validation successful".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.security.passwordValidated"
+    ))))
 }
 
 #[derive(Deserialize)]
@@ -87,9 +87,9 @@ pub async fn store_config_password_handler(
     )
     .await
     .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Password stored successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.security.passwordStored"
+    ))))
 }
 
 #[derive(Deserialize)]
@@ -114,9 +114,9 @@ pub async fn unencrypt_config_handler(
     )
     .await
     .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Configuration unencrypted successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.security.unencrypted"
+    ))))
 }
 
 #[derive(Deserialize)]
@@ -141,9 +141,9 @@ pub async fn encrypt_config_handler(
     )
     .await
     .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Configuration encrypted successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.security.encrypted"
+    ))))
 }
 
 pub async fn get_config_password_handler(
@@ -173,9 +173,9 @@ pub async fn set_config_password_env_handler(
     set_config_password_env(state.app_handle.clone(), env_manager, body.password)
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Config password environment variable set successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.security.envSet"
+    ))))
 }
 
 #[derive(Deserialize)]
@@ -203,7 +203,7 @@ pub async fn change_config_password_handler(
     )
     .await
     .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Config password changed successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.security.passwordChanged"
+    ))))
 }

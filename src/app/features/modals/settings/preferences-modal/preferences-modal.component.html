@@ -3,14 +3,18 @@
     <button
       matIconButton
       (click)="toggleSearch()"
-      [attr.aria-label]="searchVisible ? 'Hide search' : 'Show search'"
+      [attr.aria-label]="
+        searchVisible
+          ? ('modals.preferences.hideSearch' | translate)
+          : ('modals.preferences.showSearch' | translate)
+      "
       [class.active]="searchVisible"
     >
       <mat-icon svgIcon="search"></mat-icon>
     </button>
 
     @if (bottomTabs) {
-      <p class="modal-title">Preferences</p>
+      <p class="modal-title">{{ 'modals.preferences.title' | translate }}</p>
     } @else {
       @if (!hasSearchResults) {
         <div class="tabs desktop-tabs" data-tauri-drag-region role="tablist">
@@ -23,16 +27,18 @@
               role="tab"
             >
               <mat-icon [svgIcon]="tab.icon"></mat-icon>
-              <span class="tab-label">{{ tab.label }}</span>
+              <span class="tab-label">{{ 'modals.preferences.tabs.' + tab.key | translate }}</span>
             </button>
           }
         </div>
       } @else {
-        <h2 class="modal-title search-title">Search Results</h2>
+        <h2 class="modal-title search-title">
+          {{ 'modals.preferences.searchResults' | translate }}
+        </h2>
       }
     }
 
-    <button matIconButton (click)="close()" aria-label="Close preferences dialog">
+    <button matIconButton (click)="close()" [aria-label]="'common.close' | translate">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </div>
@@ -41,8 +47,8 @@
     [visible]="searchVisible"
     [searchText]="searchQuery"
     (searchTextChange)="onSearchTextChange($event)"
-    placeholder="Search settings..."
-    ariaLabel="Search preferences settings"
+    [placeholder]="'modals.preferences.searchPlaceholder' | translate"
+    [ariaLabel]="'modals.preferences.searchPlaceholder' | translate"
   ></app-search-container>
 
   @if (isLoading) {
@@ -107,10 +113,10 @@
                           mat-raised-button
                           class="warn"
                           (click)="resetSettings()"
-                          aria-label="Reset all settings to default values"
+                          [attr.aria-label]="'modals.preferences.aria.resetAll' | translate"
                         >
                           <mat-icon svgIcon="rotate-left"></mat-icon>
-                          Reset All Settings
+                          {{ 'modals.preferences.resetAll' | translate }}
                         </button>
                       </div>
                     }
@@ -124,16 +130,19 @@
             <div class="empty-state" role="status" aria-live="polite">
               <mat-icon svgIcon="search"></mat-icon>
               <p>
-                No settings found matching <strong>"{{ searchQuery }}"</strong>
+                {{ 'modals.preferences.noSettingsFound' | translate }}
+                <strong>"{{ searchQuery }}"</strong>
               </p>
               <div class="search-suggestions">
-                <small>Try searching for:</small>
+                <small>{{ 'modals.preferences.trySearching' | translate }}</small>
                 <div class="suggestion-chips">
                   @for (suggestion of searchSuggestions; track suggestion) {
                     <button
                       class="chip"
                       (click)="onSearchTextChange(suggestion)"
-                      [attr.aria-label]="'Search for ' + suggestion"
+                      [attr.aria-label]="
+                        'modals.preferences.aria.searchFor' | translate: { suggestion: suggestion }
+                      "
                     >
                       {{ suggestion }}
                     </button>
@@ -151,8 +160,8 @@
             <div class="header-info">
               <mat-icon svgIcon="circle-exclamation" class="warn"></mat-icon>
               <div class="header-text">
-                <h3>Settings Requiring Restart</h3>
-                <p>The following changes require an engine restart to take effect:</p>
+                <h3>{{ 'modals.preferences.restartRequiredHeader' | translate }}</h3>
+                <p>{{ 'modals.preferences.restartRequiredDesc' | translate }}</p>
               </div>
             </div>
           </div>
@@ -166,10 +175,17 @@
                 <div class="change-value">
                   @if (change.value === true || change.value === false) {
                     <span class="boolean-value" [class.enabled]="change.value">
-                      {{ change.value ? 'Enabled' : 'Disabled' }}
+                      {{
+                        change.value
+                          ? ('modals.preferences.enabled' | translate)
+                          : ('modals.preferences.disabled' | translate)
+                      }}
                     </span>
                   } @else if (isArray(change.value)) {
-                    <span class="array-value">{{ asArray(change.value).length }} items</span>
+                    <span class="array-value"
+                      >{{ asArray(change.value).length }}
+                      {{ 'modals.preferences.items' | translate }}</span
+                    >
                   } @else {
                     <span class="text-value">{{ change.value }}</span>
                   }
@@ -182,7 +198,7 @@
               matButton
               (click)="discardPendingChanges()"
               [disabled]="isDiscardingChanges"
-              aria-label="Discard pending changes"
+              [attr.aria-label]="'modals.preferences.aria.discardChanges' | translate"
             >
               @if (isDiscardingChanges) {
                 <mat-spinner diameter="16" class="inline-spinner"></mat-spinner>
@@ -190,16 +206,20 @@
               @if (!isDiscardingChanges) {
                 <mat-icon svgIcon="close"></mat-icon>
               }
-              {{ isDiscardingChanges ? 'Discarding...' : 'Discard Changes' }}
+              {{
+                isDiscardingChanges
+                  ? ('modals.preferences.discarding' | translate)
+                  : ('modals.preferences.discardChanges' | translate)
+              }}
             </button>
             <button
               mat-raised-button
               class="warn"
               (click)="savePendingChanges()"
-              aria-label="Save changes and restart engine"
+              [attr.aria-label]="'modals.preferences.aria.saveAndRestart' | translate"
             >
               <mat-icon svgIcon="rotate-left"></mat-icon>
-              Save & Restart Engine
+              {{ 'modals.preferences.saveAndRestart' | translate }}
             </button>
           </div>
         </div>
@@ -208,7 +228,11 @@
   }
 
   @if (bottomTabs && !hasSearchResults) {
-    <div class="tabs bottom-tabs" role="tablist" aria-label="Settings categories">
+    <div
+      class="tabs bottom-tabs"
+      role="tablist"
+      [attr.aria-label]="'modals.preferences.aria.settingsCategories' | translate"
+    >
       @for (tab of filteredTabs; track tab.key; let i = $index) {
         <button
           (click)="selectTab(i)"
@@ -219,7 +243,7 @@
           [attr.aria-controls]="'tab-panel-' + tab.key"
         >
           <mat-icon [svgIcon]="tab.icon"></mat-icon>
-          <span class="tab-label">{{ tab.label }}</span>
+          <span class="tab-label">{{ 'modals.preferences.tabs.' + tab.key | translate }}</span>
         </button>
       }
     </div>
@@ -234,8 +258,8 @@
     @if (getMetadata(category, key); as meta) {
       <div class="setting-item-header">
         <div class="setting-info">
-          <strong>{{ meta.display_name }}</strong>
-          <p>{{ meta.help_text }}</p>
+          <strong>{{ getSettingLabel(category, key, meta) }}</strong>
+          <p>{{ getSettingDescription(category, key, meta) }}</p>
           @if (showCategory) {
             <small class="setting-category">{{ getCategoryDisplayName(category) }}</small>
           }
@@ -245,8 +269,10 @@
             mat-icon-button
             class="reset-btn"
             (click)="resetSetting(category, key)"
-            [attr.aria-label]="'Reset ' + meta.display_name + ' to default'"
-            matTooltip="Reset to default"
+            [attr.aria-label]="
+              ('modals.preferences.resetToDefault' | translate) + ': ' + meta.display_name
+            "
+            [matTooltip]="'modals.preferences.resetToDefault' | translate"
             matTooltipPosition="above"
           >
             <mat-icon svgIcon="rotate-left"></mat-icon>
@@ -322,7 +348,7 @@
                     >
                       @for (option of meta.options; track option.value || option) {
                         <mat-option [value]="option.value ?? option">{{
-                          option.label ?? option
+                          getOptionLabel(category, key, option)
                         }}</mat-option>
                       }
                     </mat-select>
@@ -349,7 +375,7 @@
                   >
                     @for (option of meta.options; track option.value || option) {
                       <mat-option [value]="option.value ?? option">{{
-                        option.label ?? option
+                        getOptionLabel(category, key, option)
                       }}</mat-option>
                     }
                   </mat-select>
@@ -384,13 +410,18 @@
                           <input
                             matInput
                             [formControl]="getArrayItemControl(category, key, $index)"
-                            [attr.aria-label]="'Item ' + ($index + 1)"
+                            [attr.aria-label]="
+                              'modals.preferences.aria.itemIndex' | translate: { index: $index + 1 }
+                            "
                           />
                           <button
                             matIconButton
                             matSuffix
                             (click)="removeArrayItem(category, key, $index)"
-                            [attr.aria-label]="'Remove item ' + ($index + 1)"
+                            [attr.aria-label]="
+                              'modals.preferences.aria.removeItemIndex'
+                                | translate: { index: $index + 1 }
+                            "
                           >
                             <mat-icon svgIcon="close"></mat-icon>
                           </button>
@@ -408,9 +439,12 @@
                   <button
                     mat-stroked-button
                     (click)="addArrayItem(category, key)"
-                    [attr.aria-label]="'Add new ' + meta.display_name + ' item'"
+                    [attr.aria-label]="
+                      'modals.preferences.aria.addNewItem' | translate: { name: meta.display_name }
+                    "
                   >
-                    <mat-icon svgIcon="plus"></mat-icon> Add Item
+                    <mat-icon svgIcon="plus"></mat-icon>
+                    {{ 'modals.preferences.addItem' | translate }}
                   </button>
                 </div>
               }
@@ -420,13 +454,17 @@
                     matInput
                     [formControl]="$any(getFormControl(category, key))"
                     (input)="onPathInput(category, key)"
-                    [attr.aria-label]="'File path for ' + meta.display_name"
+                    [attr.aria-label]="
+                      'modals.preferences.aria.filePathFor' | translate: { name: meta.display_name }
+                    "
                   />
                   <button
                     matIconButton
                     matSuffix
                     (click)="openFilePicker(category, key)"
-                    [attr.aria-label]="'Browse for ' + meta.display_name"
+                    [attr.aria-label]="
+                      'modals.preferences.aria.browseFor' | translate: { name: meta.display_name }
+                    "
                   >
                     <mat-icon svgIcon="file"></mat-icon>
                   </button>
@@ -443,13 +481,18 @@
                     matInput
                     [formControl]="$any(getFormControl(category, key))"
                     (input)="onPathInput(category, key)"
-                    [attr.aria-label]="'Folder path for ' + meta.display_name"
+                    [attr.aria-label]="
+                      'modals.preferences.aria.folderPathFor'
+                        | translate: { name: meta.display_name }
+                    "
                   />
                   <button
                     matIconButton
                     matSuffix
                     (click)="openFolderPicker(category, key)"
-                    [attr.aria-label]="'Browse for ' + meta.display_name"
+                    [attr.aria-label]="
+                      'modals.preferences.aria.browseFor' | translate: { name: meta.display_name }
+                    "
                   >
                     <mat-icon svgIcon="folder"></mat-icon>
                   </button>
@@ -471,12 +514,13 @@
     <button
       class="floating-pending-indicator"
       (click)="scrollToPendingChanges()"
-      matTooltip="You have {{
-        pendingRestartChanges.size
-      }} unsaved changes that require engine restart. Click to scroll to them."
+      [matTooltip]="
+        'modals.preferences.pendingChangesTooltip'
+          | translate: { count: pendingRestartChanges.size }
+      "
       matTooltipPosition="left"
       matTooltipClass="pending-changes-tooltip"
-      aria-label="Scroll to pending changes section"
+      [attr.aria-label]="'modals.preferences.aria.scrollToPending' | translate"
     >
       <mat-icon svgIcon="circle-exclamation" class="warning-icon"></mat-icon>
       <span class="pending-count">{{ pendingRestartChanges.size }}</span>

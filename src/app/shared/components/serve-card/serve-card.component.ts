@@ -4,6 +4,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ServeListItem } from '@app/types';
 import { IconService } from '@app/services';
 
@@ -29,12 +30,20 @@ const URL_BASED_PROTOCOLS = ['http', 'webdav', 'ftp', 'sftp', 's3'];
 @Component({
   selector: 'app-serve-card',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatIconModule, MatButtonModule, MatTooltipModule],
+  imports: [
+    CommonModule,
+    MatCardModule,
+    MatIconModule,
+    MatButtonModule,
+    MatTooltipModule,
+    TranslateModule,
+  ],
   templateUrl: './serve-card.component.html',
   styleUrl: './serve-card.component.scss',
 })
 export class ServeCardComponent {
   readonly iconService = inject(IconService);
+  private translate = inject(TranslateService);
 
   serve = input.required<ServeListItem>();
   showRemoteName = input(false);
@@ -45,7 +54,14 @@ export class ServeCardComponent {
 
   serveTypeInfo = computed<TypeInfo>(() => {
     const serveType = this.serve().params.type.toLowerCase();
-    return TYPE_INFO[serveType] || DEFAULT_TYPE_INFO;
+    const defaultInfo = DEFAULT_TYPE_INFO;
+    const info = TYPE_INFO[serveType] || defaultInfo;
+    const typeKey = TYPE_INFO[serveType] ? serveType : 'default';
+
+    return {
+      icon: info.icon,
+      description: this.translate.instant(`shared.serveCard.types.${typeKey}`),
+    };
   });
 
   serveUrl = computed<string | null>(() => {
@@ -62,7 +78,7 @@ export class ServeCardComponent {
 
     const keys = Object.keys(options);
     if (keys.length === 0) {
-      return 'No additional options';
+      return this.translate.instant('shared.serveCard.messages.noOptions');
     }
 
     return keys
@@ -92,7 +108,8 @@ export class ServeCardComponent {
     this.stopServe.emit(this.serve());
   }
 
-  onCopyToClipboard(text: string, message: string): void {
+  onCopyToClipboard(text: string, messageKey: string): void {
+    const message = this.translate.instant(messageKey);
     this.copyToClipboard.emit({ text, message });
   }
 

@@ -5,9 +5,18 @@
       <mat-icon [svgIcon]="iconService.getIconName(remoteForm.get('type')?.value)"></mat-icon>
     </button>
     <p data-tauri-drag-region>
-      {{ editTarget ? 'Edit ' + (editTarget | titlecase) + ' Settings' : 'Add New Remote' }}
+      {{
+        editTarget
+          ? ('modals.remoteConfig.title.edit' | translate: { target: editTarget | titlecase })
+          : ('modals.remoteConfig.title.add' | translate)
+      }}
     </p>
-    <button matIconButton (click)="close()" aria-label="Close dialog" title="Close">
+    <button
+      matIconButton
+      (click)="close()"
+      [attr.aria-label]="'common.close' | translate"
+      [attr.title]="'common.close' | translate"
+    >
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </header>
@@ -15,7 +24,11 @@
   <!-- Step Progress Indicator (Only shown during multi-step create flow) -->
   @if (!interactiveFlowState.isActive && !editTarget) {
     <div class="step-indicator-container">
-      <div class="step-indicator hide-scrollbar" role="tablist" aria-label="Configuration Steps">
+      <div
+        class="step-indicator hide-scrollbar"
+        role="tablist"
+        [attr.aria-label]="'modals.remoteConfig.aria.stepIndicator' | translate"
+      >
         @for (step of stepLabels; track step; let i = $index) {
           <button
             class="step"
@@ -35,7 +48,7 @@
               }
             </div>
             @if (getStepState(i + 1) === 'current') {
-              <span class="step-label-animated">{{ step }}</span>
+              <span class="step-label-animated">{{ step | translate }}</span>
             }
           </button>
         }
@@ -83,7 +96,7 @@
         <div class="profile-header">
           @if (getProfileState(flagType).mode === 'view') {
             <mat-form-field subscriptSizing="dynamic" class="profile-select">
-              <mat-label>Profile</mat-label>
+              <mat-label>{{ 'modals.remoteConfig.profile.label' | translate }}</mat-label>
               <mat-select
                 [value]="getSelectedProfile($any(flagType))"
                 (selectionChange)="selectProfile($any(flagType), $event.value)"
@@ -95,13 +108,17 @@
             </mat-form-field>
 
             <div class="profile-actions">
-              <button mat-icon-button (click)="startAddProfile($any(flagType))" title="Add Profile">
+              <button
+                mat-icon-button
+                (click)="startAddProfile($any(flagType))"
+                [attr.title]="'modals.remoteConfig.profile.add' | translate"
+              >
                 <mat-icon svgIcon="plus"></mat-icon>
               </button>
               <button
                 mat-icon-button
                 (click)="startEditProfile($any(flagType))"
-                title="Rename Profile"
+                [attr.title]="'modals.remoteConfig.profile.rename' | translate"
                 [disabled]="getSelectedProfile($any(flagType)).toLowerCase() === 'default'"
               >
                 <mat-icon svgIcon="pen"></mat-icon>
@@ -110,7 +127,7 @@
                 mat-icon-button
                 class="warn"
                 (click)="deleteProfile($any(flagType), getSelectedProfile($any(flagType)))"
-                title="Delete Profile"
+                [attr.title]="'modals.remoteConfig.profile.delete' | translate"
                 [disabled]="
                   getProfiles($any(flagType)).length <= 1 ||
                   getSelectedProfile($any(flagType)).toLowerCase() === 'default'
@@ -123,7 +140,10 @@
             <!-- Edit/Add Mode -->
             <mat-form-field subscriptSizing="dynamic" class="profile-input">
               <mat-label>{{
-                getProfileState(flagType).mode === 'add' ? 'New Profile Name' : 'Rename Profile'
+                (getProfileState(flagType).mode === 'add'
+                  ? 'modals.remoteConfig.profile.new'
+                  : 'modals.remoteConfig.profile.rename'
+                ) | translate
               }}</mat-label>
               <input
                 matInput
@@ -140,7 +160,7 @@
                 mat-icon-button
                 class="primary"
                 (click)="saveProfile($any(flagType))"
-                title="Save"
+                [attr.title]="'modals.remoteConfig.profile.save' | translate"
               >
                 <mat-icon svgIcon="circle-check"></mat-icon>
               </button>
@@ -148,7 +168,7 @@
                 mat-icon-button
                 class="warn"
                 (click)="cancelProfileEdit($any(flagType))"
-                title="Cancel"
+                [attr.title]="'modals.remoteConfig.profile.cancel' | translate"
               >
                 <mat-icon svgIcon="circle-xmark"></mat-icon>
               </button>
@@ -163,17 +183,20 @@
           <mat-expansion-panel-header>
             <mat-panel-title>
               <mat-icon svgIcon="gear" class="panel-icon"></mat-icon>
-              <span>Advanced Profiles</span>
+              <span>{{ 'modals.remoteConfig.advancedProfiles.title' | translate }}</span>
             </mat-panel-title>
             <mat-panel-description>
-              <span class="profile-count">{{ showVfs ? '3' : '2' }} linked</span>
+              <span class="profile-count">{{
+                'modals.remoteConfig.advancedProfiles.linked'
+                  | translate: { count: showVfs ? '3' : '2' }
+              }}</span>
             </mat-panel-description>
           </mat-expansion-panel-header>
 
           <div class="linked-profiles-content">
             @if (showVfs) {
               <mat-form-field subscriptSizing="dynamic">
-                <mat-label>VFS Profile</mat-label>
+                <mat-label>{{ 'modals.remoteConfig.advancedProfiles.vfs' | translate }}</mat-label>
                 <mat-select
                   [formControl]="$any(remoteConfigForm.get(configPath)?.get('vfsProfile'))"
                 >
@@ -185,7 +208,7 @@
             }
 
             <mat-form-field subscriptSizing="dynamic">
-              <mat-label>Filter Profile</mat-label>
+              <mat-label>{{ 'modals.remoteConfig.advancedProfiles.filter' | translate }}</mat-label>
               <mat-select
                 [formControl]="$any(remoteConfigForm.get(configPath)?.get('filterProfile'))"
               >
@@ -196,7 +219,9 @@
             </mat-form-field>
 
             <mat-form-field subscriptSizing="dynamic">
-              <mat-label>Backend Profile</mat-label>
+              <mat-label>{{
+                'modals.remoteConfig.advancedProfiles.backend' | translate
+              }}</mat-label>
               <mat-select
                 [formControl]="$any(remoteConfigForm.get(configPath)?.get('backendProfile'))"
               >
@@ -270,11 +295,11 @@
           (click)="prevStep()"
           animate.enter="fade-in-out-enter"
           animate.leave="fade-in-out-leave"
-          title="Go to previous step"
-          aria-label="Previous step"
+          [attr.title]="'modals.remoteConfig.buttons.back' | translate"
+          [attr.aria-label]="'modals.remoteConfig.buttons.back' | translate"
         >
           <mat-icon svgIcon="left-arrow"></mat-icon>
-          Back
+          {{ 'modals.remoteConfig.buttons.back' | translate }}
         </button>
       }
     </div>
@@ -290,17 +315,17 @@
           animate.leave="fade-in-out-leave"
           (click)="cancelAuth()"
           [disabled]="(!isAuthInProgress && !interactiveFlowState.isActive) || isAuthCancelled"
-          title="Cancel the current operation"
-          aria-label="Cancel current operation"
+          [attr.title]="'modals.remoteConfig.buttons.cancel' | translate"
+          [attr.aria-label]="'modals.remoteConfig.buttons.cancel' | translate"
         >
-          Cancel
+          {{ 'modals.remoteConfig.buttons.cancel' | translate }}
         </button>
       }
 
       <!-- Cleanup Status (Shows when auth is cancelled) -->
       @if (isAuthCancelled) {
         <span class="cleanup-status" aria-live="polite">
-          Cleaning up
+          {{ 'modals.remoteConfig.buttons.cleanup' | translate }}
           <mat-spinner diameter="16" aria-hidden="true"></mat-spinner>
         </span>
       }
@@ -314,8 +339,16 @@
           animate.enter="fade-in-out-enter"
           animate.leave="fade-in-out-leave"
           aria-live="polite"
-          [attr.aria-label]="editTarget ? 'Save changes' : 'Save configuration and create remote'"
-          [title]="editTarget ? 'Save changes' : 'Save configuration and create remote'"
+          [attr.aria-label]="
+            editTarget
+              ? ('modals.remoteConfig.buttons.saveChanges' | translate)
+              : ('modals.remoteConfig.buttons.saveConfig' | translate)
+          "
+          [attr.title]="
+            editTarget
+              ? ('modals.remoteConfig.buttons.saveChanges' | translate)
+              : ('modals.remoteConfig.buttons.saveConfig' | translate)
+          "
         >
           <!-- Loading State -->
           @if (isAuthInProgress && !isAuthCancelled) {
@@ -325,7 +358,7 @@
           }
 
           <!-- Button Label -->
-          <span>{{ saveButtonLabel }}</span>
+          <span>{{ saveButtonLabel | translate }}</span>
         </button>
       }
 
@@ -340,16 +373,29 @@
           animate.leave="fade-in-out-leave"
           aria-live="polite"
           [attr.aria-label]="
-            interactiveFlowState.isProcessing ? 'Processing...' : 'Continue to next step'
+            (interactiveFlowState.isProcessing
+              ? 'modals.remoteConfig.buttons.processing'
+              : 'modals.remoteConfig.buttons.continue'
+            ) | translate
           "
-          [title]="interactiveFlowState.isProcessing ? 'Processing...' : 'Continue to next step'"
+          [attr.title]="
+            (interactiveFlowState.isProcessing
+              ? 'modals.remoteConfig.buttons.processing'
+              : 'modals.remoteConfig.buttons.continue'
+            ) | translate
+          "
         >
           @if (interactiveFlowState.isProcessing && !isAuthCancelled) {
             <div class="saving-overlay" aria-hidden="true">
               <mat-spinner diameter="16"></mat-spinner>
             </div>
           }
-          <span>{{ interactiveFlowState.isProcessing ? 'Processing...' : 'Continue' }}</span>
+          <span>{{
+            (interactiveFlowState.isProcessing
+              ? 'modals.remoteConfig.buttons.processing'
+              : 'modals.remoteConfig.buttons.continue'
+            ) | translate
+          }}</span>
         </button>
       }
 
@@ -362,10 +408,10 @@
           [disabled]="!remoteForm.valid || isAuthInProgress"
           animate.enter="fade-in-out-enter"
           animate.leave="fade-in-out-leave"
-          title="Go to next step"
-          aria-label="Next step"
+          [attr.title]="'modals.remoteConfig.buttons.next' | translate"
+          [attr.aria-label]="'modals.remoteConfig.buttons.next' | translate"
         >
-          Next
+          {{ 'modals.remoteConfig.buttons.next' | translate }}
           <mat-icon svgIcon="right-arrow"></mat-icon>
         </button>
       }

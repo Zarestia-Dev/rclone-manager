@@ -23,7 +23,11 @@
           [matTooltip]="getProfileTooltip('mount')"
           matTooltipShowDelay="500"
         >
-          <mat-icon svgIcon="mount" class="status-icon" aria-label="Mounted"></mat-icon>
+          <mat-icon
+            svgIcon="mount"
+            class="status-icon"
+            [attr.aria-label]="'shared.remoteCard.status.mounted' | translate"
+          ></mat-icon>
         </div>
       }
       @if (remote().syncState?.isOnSync) {
@@ -32,7 +36,11 @@
           [matTooltip]="getProfileTooltip('sync')"
           matTooltipShowDelay="500"
         >
-          <mat-icon svgIcon="refresh" class="status-icon" aria-label="Syncing"></mat-icon>
+          <mat-icon
+            svgIcon="refresh"
+            class="status-icon"
+            [attr.aria-label]="'shared.remoteCard.status.syncing' | translate"
+          ></mat-icon>
         </div>
       }
       @if (remote().copyState?.isOnCopy) {
@@ -41,7 +49,11 @@
           [matTooltip]="getProfileTooltip('copy')"
           matTooltipShowDelay="500"
         >
-          <mat-icon svgIcon="copy" class="status-icon" aria-label="Copying"></mat-icon>
+          <mat-icon
+            svgIcon="copy"
+            class="status-icon"
+            [attr.aria-label]="'shared.remoteCard.status.copying' | translate"
+          ></mat-icon>
         </div>
       }
       @if (remote().moveState?.isOnMove) {
@@ -50,7 +62,11 @@
           [matTooltip]="getProfileTooltip('move')"
           matTooltipShowDelay="500"
         >
-          <mat-icon svgIcon="move" class="status-icon" aria-label="Moving"></mat-icon>
+          <mat-icon
+            svgIcon="move"
+            class="status-icon"
+            [attr.aria-label]="'shared.remoteCard.status.moving' | translate"
+          ></mat-icon>
         </div>
       }
       @if (remote().bisyncState?.isOnBisync) {
@@ -59,7 +75,11 @@
           [matTooltip]="getProfileTooltip('bisync')"
           matTooltipShowDelay="500"
         >
-          <mat-icon svgIcon="right-left" class="status-icon" aria-label="BiSyncing"></mat-icon>
+          <mat-icon
+            svgIcon="right-left"
+            class="status-icon"
+            [attr.aria-label]="'shared.remoteCard.status.bisyncing' | translate"
+          ></mat-icon>
         </div>
       }
     </div>

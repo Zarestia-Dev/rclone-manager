@@ -12,6 +12,7 @@ import {
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { TranslateService, TranslateModule } from '@ngx-translate/core';
 import { HttpClient } from '@angular/common/http';
 import { MatIconModule } from '@angular/material/icon';
 import { catchError, takeUntil } from 'rxjs/operators';
@@ -32,7 +33,13 @@ import { Entry } from '@app/types';
 @Component({
   selector: 'app-file-viewer-modal',
   standalone: true,
-  imports: [MatButtonModule, MatProgressSpinnerModule, MatIconModule, FormatFileSizePipe],
+  imports: [
+    MatButtonModule,
+    MatProgressSpinnerModule,
+    MatIconModule,
+    FormatFileSizePipe,
+    TranslateModule,
+  ],
   templateUrl: './file-viewer-modal.component.html',
   styleUrls: ['./file-viewer-modal.component.scss'],
 })
@@ -51,6 +58,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   private fileViewerService = inject(FileViewerService);
   public iconService = inject(IconService);
+  private translate = inject(TranslateService);
   private remoteManagementService = inject(RemoteManagementService);
   private readonly notificationService = inject(NotificationService);
   private readonly pathSelectionService = inject(PathSelectionService);
@@ -129,7 +137,9 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
           })
           .catch(err => {
             console.error('Failed to get folder size:', err);
-            this.notificationService.showError('Failed to calculate folder size');
+            this.notificationService.showError(
+              this.translate.instant('fileBrowser.fileViewer.errorCalculateSize')
+            );
           })
           .finally(() => {
             this.isLoading.set(false);
@@ -151,7 +161,9 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
             takeUntil(this.destroy$),
             catchError(err => {
               console.error('Failed to load text file:', err);
-              this.notificationService.showError('Failed to load file content');
+              this.notificationService.showError(
+                this.translate.instant('fileBrowser.fileViewer.errorLoadContent')
+              );
               return of(null);
             })
           )
@@ -172,7 +184,9 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       }
     } catch (error) {
       console.error('Error updating content:', error);
-      this.notificationService.showError('An unexpected error occurred');
+      this.notificationService.showError(
+        this.translate.instant('fileBrowser.fileViewer.errorUnexpected')
+      );
       this.isLoading.set(false);
     }
   }
@@ -184,7 +198,9 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
   onLoadError(): void {
     this.isLoading.set(false);
-    this.notificationService.showError(`Failed to load ${this.data.name}`);
+    this.notificationService.showError(
+      this.translate.instant('fileBrowser.fileViewer.errorLoadFile', { name: this.data.name })
+    );
     console.error('Failed to load file:', this.data.name);
   }
 
@@ -239,7 +255,10 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       // Start the copy job
       await this.jobManagementService.copyUrl(selectedPath, fullDestPath, this.data.url, true);
 
-      this.notificationService.openSnackBar(`Downloading ${this.data.name}`, 'OK');
+      this.notificationService.openSnackBar(
+        this.translate.instant('fileBrowser.fileViewer.downloading', { name: this.data.name }),
+        'OK'
+      );
     } catch (err) {
       console.error('Failed to start download:', err);
     } finally {

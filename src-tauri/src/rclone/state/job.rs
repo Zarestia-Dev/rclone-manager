@@ -53,7 +53,7 @@ impl JobCache {
             }
             Ok(())
         } else {
-            Err("JobInfo not found".to_string())
+            Err(crate::localized_error!("backendErrors.job.notFound"))
         }
     }
 
@@ -76,7 +76,7 @@ impl JobCache {
             }
             Ok(result)
         } else {
-            Err("JobInfo not found".to_string())
+            Err(crate::localized_error!("backendErrors.job.notFound"))
         }
     }
 
@@ -87,7 +87,7 @@ impl JobCache {
             job.stats = Some(stats);
             Ok(())
         } else {
-            Err("JobInfo not found".to_string())
+            Err(crate::localized_error!("backendErrors.job.notFound"))
         }
     }
 

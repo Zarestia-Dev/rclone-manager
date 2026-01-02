@@ -27,7 +27,7 @@ pub async fn store_config_password(
 
     // Access credential manager (requires keychain feature)
     let credentials = manager.inner().credentials().ok_or_else(|| {
-        "Credential storage not available (keychain feature disabled)".to_string()
+        crate::localized_error!("backendErrors.security.credentialStorageUnavailable")
     })?;
 
     // Store using the standardized Local backend key
@@ -55,7 +55,7 @@ pub async fn store_config_password(
         }
         Err(e) => {
             error!("❌ Failed to store password: {}", e);
-            Err(format!("Failed to store password: {}", e))
+            Err(crate::localized_error!("backendErrors.security.storeFailed", "error" => e))
         }
     }
 }
@@ -69,7 +69,9 @@ pub async fn store_config_password(
     _manager: State<'_, JsonSettingsManager>,
     _password: String,
 ) -> Result<(), String> {
-    Err("Credential storage is not available on this platform".to_string())
+    Err(crate::localized_error!(
+        "backendErrors.security.credentialStorageUnavailable"
+    ))
 }
 
 /// Retrieve the stored rclone config password
@@ -80,10 +82,9 @@ pub async fn get_config_password(
 ) -> Result<String, String> {
     debug!("🔍 Retrieving stored config password via rcman");
 
-    let credentials = manager
-        .inner()
-        .credentials()
-        .ok_or_else(|| "Credential storage not available".to_string())?;
+    let credentials = manager.inner().credentials().ok_or_else(|| {
+        crate::localized_error!("backendErrors.security.credentialStorageUnavailable")
+    })?;
 
     // Try Unified Key first (Standard)
     if let Ok(Some(password)) = credentials.get(LOCAL_BACKEND_KEY) {
@@ -92,7 +93,9 @@ pub async fn get_config_password(
     }
 
     debug!("ℹ️ No password stored");
-    Err("No password stored".to_string())
+    Err(crate::localized_error!(
+        "backendErrors.security.noPasswordStored"
+    ))
 }
 
 #[tauri::command]
@@ -100,7 +103,9 @@ pub async fn get_config_password(
 pub async fn get_config_password(
     _manager: State<'_, JsonSettingsManager>,
 ) -> Result<String, String> {
-    Err("Credential storage is not available on this platform".to_string())
+    Err(crate::localized_error!(
+        "backendErrors.security.credentialStorageUnavailable"
+    ))
 }
 
 /// Check if a config password is stored
@@ -171,7 +176,9 @@ pub async fn validate_rclone_password(app: AppHandle, password: String) -> Resul
     debug!("🔐 Testing rclone password");
 
     if password.trim().is_empty() {
-        return Err("Password cannot be empty".to_string());
+        return Err(crate::localized_error!(
+            "backendErrors.security.passwordEmpty"
+        ));
     }
 
     let output = build_rclone_command(&app, None, None, None)
@@ -179,7 +186,9 @@ pub async fn validate_rclone_password(app: AppHandle, password: String) -> Resul
         .env("RCLONE_CONFIG_PASS", &password)
         .output()
         .await
-        .map_err(|e| format!("Failed to execute rclone: {}", e))?;
+        .map_err(
+            |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
+        )?;
 
     if output.status.success() {
         info!("✅ Password validation successful");
@@ -193,9 +202,9 @@ pub async fn validate_rclone_password(app: AppHandle, password: String) -> Resul
             || stderr.contains("unable to decrypt configuration")
             || stderr.contains("wrong password")
         {
-            "Incorrect password for rclone configuration".to_string()
+            crate::localized_error!("backendErrors.security.incorrectPassword")
         } else {
-            format!("Rclone error: {}", stderr.trim())
+            crate::localized_error!("backendErrors.security.rcloneError", "error" => stderr.trim())
         };
 
         Err(error_msg)
@@ -231,7 +240,9 @@ pub async fn is_config_encrypted(app: AppHandle) -> Result<bool, String> {
         .args(["listremotes", "--ask-password=false"])
         .output()
         .await
-        .map_err(|e| format!("Failed to execute rclone: {e}"))?;
+        .map_err(
+            |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
+        )?;
 
     let stderr = String::from_utf8_lossy(&output.stderr);
 
@@ -285,7 +296,9 @@ pub async fn encrypt_config(
         ])
         .output()
         .await
-        .map_err(|e| format!("Failed to execute rclone config encryption set: {e}"))?;
+        .map_err(
+            |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
+        )?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -323,15 +336,12 @@ pub async fn encrypt_config(
         info!("✅ Configuration encrypted successfully");
         Ok(())
     } else {
-        error!("❌ Failed to encrypt configuration");
-        Err(format!(
-            "Failed to encrypt configuration: {}",
-            if !stderr.trim().is_empty() {
-                stderr
-            } else {
-                stdout
-            }
-        ))
+        let err_detail = if !stderr.trim().is_empty() {
+            stderr.to_string()
+        } else {
+            stdout.to_string()
+        };
+        Err(crate::localized_error!("backendErrors.security.encryptFailed", "error" => err_detail))
     }
 }
 
@@ -343,7 +353,9 @@ pub async fn encrypt_config(
     _manager: State<'_, JsonSettingsManager>,
     _password: String,
 ) -> Result<(), String> {
-    Err("Encryption is not available on this platform".to_string())
+    Err(crate::localized_error!(
+        "backendErrors.security.encryptionUnavailable"
+    ))
 }
 
 /// Unencrypt (decrypt) the rclone configuration
@@ -378,7 +390,9 @@ pub async fn unencrypt_config(
         ])
         .output()
         .await
-        .map_err(|e| format!("Failed to execute rclone config encryption remove: {e}"))?;
+        .map_err(
+            |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
+        )?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -404,15 +418,12 @@ pub async fn unencrypt_config(
         info!("✅ Configuration unencrypted successfully");
         Ok(())
     } else {
-        error!("❌ Failed to unencrypt configuration");
-        Err(format!(
-            "Failed to unencrypt configuration: {}",
-            if !stderr.trim().is_empty() {
-                stderr
-            } else {
-                stdout
-            }
-        ))
+        let err_detail = if !stderr.trim().is_empty() {
+            stderr.to_string()
+        } else {
+            stdout.to_string()
+        };
+        Err(crate::localized_error!("backendErrors.security.decryptFailed", "error" => err_detail))
     }
 }
 
@@ -424,7 +435,9 @@ pub async fn unencrypt_config(
     _manager: State<'_, JsonSettingsManager>,
     _password: String,
 ) -> Result<(), String> {
-    Err("Decryption is not available on this platform".to_string())
+    Err(crate::localized_error!(
+        "backendErrors.security.decryptionUnavailable"
+    ))
 }
 
 /// Change the rclone configuration password
@@ -448,7 +461,7 @@ pub async fn change_config_password(
         current_password,
     )
     .await
-    .map_err(|e| format!("Failed to remove current encryption: {e}"))?;
+    .map_err(|e| crate::localized_error!("backendErrors.security.decryptFailed", "error" => e))?;
 
     // Step 2: Encrypt with new password
     debug!("🔒 Step 2: Encrypting with new password");
@@ -459,7 +472,7 @@ pub async fn change_config_password(
         new_password.clone(),
     )
     .await
-    .map_err(|e| format!("Failed to encrypt with new password: {e}"))?;
+    .map_err(|e| crate::localized_error!("backendErrors.security.encryptFailed", "error" => e))?;
 
     // Explicitly update stored password
     // (encrypt_config does this, but being explicit doesn't hurt)
@@ -480,5 +493,7 @@ pub async fn change_config_password(
     _current_password: String,
     _new_password: String,
 ) -> Result<(), String> {
-    Err("Password change is not available on this platform".to_string())
+    Err(crate::localized_error!(
+        "backendErrors.security.passwordChangeUnavailable"
+    ))
 }

@@ -20,9 +20,9 @@
         matButton="filled"
         class="cancel-btn"
         (click)="onCancel()"
-        [attr.aria-label]="'Cancel: ' + (data.cancelText || 'No')"
+        [attr.aria-label]="data.cancelText || 'common.cancel' | translate"
       >
-        {{ data.cancelText || 'Cancel' }}
+        {{ data.cancelText || 'common.cancel' | translate }}
       </button>
     }
 
@@ -31,9 +31,9 @@
         matButton="filled"
         [class]="getConfirmButtonColor()"
         (click)="onConfirm()"
-        [attr.aria-label]="'Confirm: ' + (data.confirmText || 'Yes')"
+        [attr.aria-label]="data.confirmText || 'common.ok' | translate"
       >
-        {{ data.confirmText || 'Confirm' }}
+        {{ data.confirmText || 'common.ok' | translate }}
       </button>
     }
   </div>

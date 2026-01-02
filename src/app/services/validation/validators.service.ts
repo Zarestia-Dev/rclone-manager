@@ -118,4 +118,50 @@ export class ValidatorsService {
       return null;
     };
   }
+
+  /**
+   * Password validator for backend/rclone config passwords
+   * Rules: minimum 3 characters, no single/double quotes
+   */
+  passwordValidator(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const value = control.value;
+      if (!value) return null;
+
+      if (value.length < 3) {
+        return {
+          minLength: {
+            message: 'Password must be at least 3 characters',
+            actualLength: value.length,
+            requiredLength: 3,
+          },
+        };
+      }
+
+      if (/['"]/.test(value)) {
+        return { invalidChars: { message: 'Password cannot contain quotes' } };
+      }
+
+      return null;
+    };
+  }
+
+  /**
+   * Validator for password confirmation fields
+   * Compares two password fields in a form group and returns error if they don't match
+   * @param passwordFieldName Name of the main password field
+   * @param confirmFieldName Name of the confirmation field
+   */
+  passwordMatchValidator(passwordFieldName: string, confirmFieldName: string): ValidatorFn {
+    return (group: AbstractControl): ValidationErrors | null => {
+      const password = group.get(passwordFieldName)?.value;
+      const confirm = group.get(confirmFieldName)?.value;
+
+      if (password && confirm && password !== confirm) {
+        return { passwordMismatch: { message: 'Passwords do not match' } };
+      }
+
+      return null;
+    };
+  }
 }

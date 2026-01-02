@@ -63,23 +63,65 @@ export class RepairService extends TauriBaseService {
   }
 
   /**
+   * Get repair title key based on repair type
+   * @param repairType The type of repair
+   */
+  getRepairTitleKey(repairType: string): string {
+    switch (repairType) {
+      case 'rclone_path':
+        return 'repairSheet.titles.missingRclone';
+      case 'mount_plugin':
+        return 'repairSheet.titles.missingMountPlugin';
+      case 'config_corrupt':
+        return 'repairSheet.titles.corruptConfig';
+      case 'backend_unreachable':
+        return 'repairSheet.titles.backendError';
+      case 'rclone_password':
+        return 'repairSheet.titles.passwordRequired';
+      default:
+        return 'repairSheet.titles.systemIssue';
+    }
+  }
+
+  /**
+   * Get repair message key based on repair type
+   * @param repairType The type of repair
+   */
+  getRepairMessageKey(repairType: string): string {
+    switch (repairType) {
+      case 'rclone_path':
+        return 'repairSheet.messages.missingRclone';
+      case 'mount_plugin':
+        return 'repairSheet.messages.missingMountPlugin';
+      case 'config_corrupt':
+        return 'repairSheet.messages.corruptConfig';
+      case 'backend_unreachable':
+        return 'repairSheet.messages.backendError';
+      case 'rclone_password':
+        return 'repairSheet.messages.passwordRequired';
+      default:
+        return 'repairSheet.messages.defaultParams';
+    }
+  }
+
+  /**
    * Get repair progress text based on repair type
    * @param repairType The type of repair being performed
    */
-  getRepairProgressText(repairType: string): string {
+  getRepairProgressTextKey(repairType: string): string {
     switch (repairType) {
       case 'rclone_path':
-        return 'Installing rclone...';
+        return 'repairSheet.progress.installingRclone';
       case 'mount_plugin':
-        return 'Installing plugin...';
+        return 'repairSheet.progress.installingPlugin';
       case 'config_corrupt':
-        return 'Restoring backup...';
+        return 'repairSheet.progress.restoringBackup';
       case 'backend_unreachable':
-        return 'Restarting engine...';
+        return 'repairSheet.progress.restartingEngine';
       case 'rclone_password':
-        return 'Applying password...';
+        return 'repairSheet.progress.applyingPassword';
       default:
-        return 'Repairing...';
+        return 'repairSheet.progress.repairing';
     }
   }
 
@@ -87,20 +129,20 @@ export class RepairService extends TauriBaseService {
    * Get repair button text based on repair type
    * @param repairType The type of repair to be performed
    */
-  getRepairButtonText(repairType: string): string {
+  getRepairButtonTextKey(repairType: string): string {
     switch (repairType) {
       case 'rclone_path':
-        return 'Install Rclone';
+        return 'repairSheet.actions.installRclone';
       case 'mount_plugin':
-        return 'Install Plugin';
+        return 'repairSheet.actions.installPlugin';
       case 'config_corrupt':
-        return 'Restore Backup';
+        return 'repairSheet.actions.restoreBackup';
       case 'backend_unreachable':
-        return 'Restart Engine';
+        return 'repairSheet.actions.restartEngine';
       case 'rclone_password':
-        return 'Submit Password';
+        return 'repairSheet.actions.submitPassword';
       default:
-        return 'Repair';
+        return 'repairSheet.actions.repair';
     }
   }
 
@@ -129,32 +171,74 @@ export class RepairService extends TauriBaseService {
    * Get repair details for display
    * @param repairType The type of repair
    */
-  getRepairDetails(repairType: string): { icon: string; label: string; value: string }[] | null {
+  getRepairDetails(
+    repairType: string
+  ): { icon: string; labelKey: string; valueKey: string }[] | null {
     switch (repairType) {
       case 'rclone_path':
         return [
-          { icon: 'circle-info', label: 'Issue', value: 'Rclone binary not found' },
-          { icon: 'download', label: 'Action', value: 'Download and install rclone' },
+          {
+            icon: 'circle-info',
+            labelKey: 'repairSheet.details.issueLabel',
+            valueKey: 'repairSheet.details.rclonePath.issue',
+          },
+          {
+            icon: 'download',
+            labelKey: 'repairSheet.details.actionLabel',
+            valueKey: 'repairSheet.details.rclonePath.action',
+          },
         ];
       case 'mount_plugin':
         return [
-          { icon: 'circle-info', label: 'Issue', value: 'Mount plugin missing' },
-          { icon: 'puzzle-piece', label: 'Action', value: 'Install mount support plugin' },
+          {
+            icon: 'circle-info',
+            labelKey: 'repairSheet.details.issueLabel',
+            valueKey: 'repairSheet.details.mountPlugin.issue',
+          },
+          {
+            icon: 'puzzle-piece',
+            labelKey: 'repairSheet.details.actionLabel',
+            valueKey: 'repairSheet.details.mountPlugin.action',
+          },
         ];
       case 'config_corrupt':
         return [
-          { icon: 'circle-info', label: 'Issue', value: 'Configuration file corrupted' },
-          { icon: 'rotate-left', label: 'Action', value: 'Restore from backup' },
+          {
+            icon: 'circle-info',
+            labelKey: 'repairSheet.details.issueLabel',
+            valueKey: 'repairSheet.details.configCorrupt.issue',
+          },
+          {
+            icon: 'rotate-left',
+            labelKey: 'repairSheet.details.actionLabel',
+            valueKey: 'repairSheet.details.configCorrupt.action',
+          },
         ];
       case 'backend_unreachable':
         return [
-          { icon: 'circle-info', label: 'Issue', value: 'API backend not responding' },
-          { icon: 'refresh', label: 'Action', value: 'Restart API engine' },
+          {
+            icon: 'circle-info',
+            labelKey: 'repairSheet.details.issueLabel',
+            valueKey: 'repairSheet.details.backendUnreachable.issue',
+          },
+          {
+            icon: 'refresh',
+            labelKey: 'repairSheet.details.actionLabel',
+            valueKey: 'repairSheet.details.backendUnreachable.action',
+          },
         ];
       case 'rclone_password':
         return [
-          { icon: 'circle-info', label: 'Issue', value: 'Configuration password required' },
-          { icon: 'key', label: 'Action', value: 'Enter password to unlock configuration' },
+          {
+            icon: 'circle-info',
+            labelKey: 'repairSheet.details.issueLabel',
+            valueKey: 'repairSheet.details.rclonePassword.issue',
+          },
+          {
+            icon: 'key',
+            labelKey: 'repairSheet.details.actionLabel',
+            valueKey: 'repairSheet.details.rclonePassword.action',
+          },
         ];
       default:
         return null;

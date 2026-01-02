@@ -242,6 +242,22 @@ fn handle_settings_changed(app: &AppHandle) {
                                 error!("❌ Failed to emit remote presence changed event: {e}");
                             });
                     }
+
+                    // Handle language change - update backend i18n and rebuild tray menu
+                    if let Some(language) = general.get("language").and_then(|v| v.as_str()) {
+                        debug!("🌐 Language changed to: {language}");
+                        crate::utils::i18n::set_language(language);
+
+                        #[cfg(desktop)]
+                        {
+                            let app_handle_clone = app_handle.clone();
+                            app_handle_clone
+                                .emit(UPDATE_TRAY_MENU, ())
+                                .unwrap_or_else(|e| {
+                                    error!("❌ Failed to emit tray menu update event: {e}");
+                                });
+                        }
+                    }
                 }
 
                 if let Some(core) = settings.get("core").cloned() {

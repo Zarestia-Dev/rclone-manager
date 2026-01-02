@@ -88,9 +88,9 @@ pub async fn stop_job_handler(
     )
     .await
     .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Job stopped successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.job.stopped"
+    ))))
 }
 
 #[derive(Deserialize)]
@@ -108,9 +108,9 @@ pub async fn delete_job_handler(
         .delete_job(body.jobid)
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Job deleted successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.job.deleted"
+    ))))
 }
 
 #[derive(Deserialize)]

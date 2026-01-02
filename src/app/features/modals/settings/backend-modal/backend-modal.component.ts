@@ -16,6 +16,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { ConfirmModalComponent } from 'src/app/shared/modals/confirm-modal/confirm-modal.component';
 import { firstValueFrom } from 'rxjs';
 import { BackendSecurityComponent } from './backend-security/backend-security.component';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-backend-modal',
@@ -33,6 +34,7 @@ import { BackendSecurityComponent } from './backend-security/backend-security.co
     MatSnackBarModule,
     MatTabsModule,
     BackendSecurityComponent,
+    TranslateModule,
   ],
   templateUrl: './backend-modal.component.html',
   styleUrls: ['./backend-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -43,6 +45,7 @@ export class BackendModalComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
+  private readonly translate = inject(TranslateService);
 
   // State
   readonly backends = this.backendService.backends;
@@ -133,16 +136,24 @@ export class BackendModalComponent implements OnInit {
     try {
       this.switchingTo.set(name);
       await this.backendService.switchBackend(name);
-      this.snackBar.open(`Switched to '${name}'`, 'Close', {
-        duration: 3000,
-        panelClass: 'snackbar-success',
-      });
+      this.snackBar.open(
+        this.translate.instant('modals.backend.notifications.switched', { name }),
+        this.translate.instant('common.close'),
+        {
+          duration: 3000,
+          panelClass: 'snackbar-success',
+        }
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.snackBar.open(`Failed to switch: ${message}`, 'Close', {
-        duration: 5000,
-        panelClass: 'snackbar-error',
-      });
+      this.snackBar.open(
+        this.translate.instant('modals.backend.notifications.switchFailed', { message }),
+        this.translate.instant('common.close'),
+        {
+          duration: 5000,
+          panelClass: 'snackbar-error',
+        }
+      );
     } finally {
       this.switchingTo.set(null);
       // Reload to get updated status (connected/error)
@@ -157,9 +168,12 @@ export class BackendModalComponent implements OnInit {
 
       this.snackBar.open(
         result.success
-          ? `Connection successful${result.version ? ` (${result.version})` : ''}`
-          : `Connection failed: ${result.message}`,
-        'Close',
+          ? this.translate.instant('modals.backend.notifications.connectionSuccess') +
+              (result.version ? ` (${result.version})` : '')
+          : this.translate.instant('modals.backend.notifications.connectionFailed', {
+              message: result.message,
+            }),
+        this.translate.instant('common.close'),
         {
           duration: 4000,
           panelClass: result.success ? 'snackbar-success' : 'snackbar-error',
@@ -168,10 +182,14 @@ export class BackendModalComponent implements OnInit {
         }
       );
     } catch {
-      this.snackBar.open('Test failed unexpectedly', 'Close', {
-        duration: 4000,
-        panelClass: 'snackbar-error',
-      });
+      this.snackBar.open(
+        this.translate.instant('modals.backend.notifications.testFailed'),
+        this.translate.instant('common.close'),
+        {
+          duration: 4000,
+          panelClass: 'snackbar-error',
+        }
+      );
     } finally {
       this.testingBackend.set(null);
     }
@@ -217,10 +235,10 @@ export class BackendModalComponent implements OnInit {
 
     const dialogRef = this.dialog.open(ConfirmModalComponent, {
       data: {
-        title: 'Delete Backend',
-        message: `Are you sure you want to remove the backend "${name}"?`,
-        confirmText: 'Delete',
-        cancelText: 'Cancel',
+        title: this.translate.instant('modals.backend.delete.title'),
+        message: this.translate.instant('modals.backend.delete.message', { name }),
+        confirmText: this.translate.instant('modals.backend.delete.confirm'),
+        cancelText: this.translate.instant('common.cancel'),
       },
     });
 
@@ -282,9 +300,13 @@ export class BackendModalComponent implements OnInit {
   }
 
   getStatusTooltip(backend: BackendInfo): string {
-    if (!backend.status) return 'Connection not tested';
-    if (backend.status === 'connected') return 'Connected';
-    if (backend.status.startsWith('error')) return backend.status.replace('error:', 'Error: ');
+    if (!backend.status) return this.translate.instant('modals.backend.status.notTested');
+    if (backend.status === 'connected')
+      return this.translate.instant('modals.backend.status.connected');
+    if (backend.status.startsWith('error'))
+      return this.translate.instant('modals.backend.status.error', {
+        message: backend.status.replace('error:', '').trim(),
+      });
     return backend.status;
   }
 }

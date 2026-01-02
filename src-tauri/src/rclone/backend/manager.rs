@@ -136,7 +136,9 @@ impl BackendManager {
     /// Remove a backend by name
     pub async fn remove(&self, name: &str) -> Result<(), String> {
         if name == "Local" {
-            return Err("Cannot remove the Local backend".to_string());
+            return Err(crate::localized_error!(
+                "backendErrors.backend.cannotRemoveLocal"
+            ));
         }
 
         let mut backends = self.backends.write().await;
@@ -149,7 +151,9 @@ impl BackendManager {
 
         // Can't remove active backend
         if index == active_index {
-            return Err("Cannot remove the active backend".to_string());
+            return Err(crate::localized_error!(
+                "backendErrors.backend.cannotRemoveActive"
+            ));
         }
 
         info!("➖ Removing backend: {}", name);

@@ -20,8 +20,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { DatePipe, UpperCasePipe } from '@angular/common';
 import { LogContext, RemoteLogEntry, LOG_LEVELS, LogLevel } from '@app/types';
-import { LoggingService } from '@app/services';
+import { LoggingService, BackendTranslationService } from '@app/services';
 import { AnsiToHtmlPipe } from 'src/app/shared/pipes/ansi-to-html.pipe';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-logs-modal',
@@ -39,6 +40,7 @@ import { AnsiToHtmlPipe } from 'src/app/shared/pipes/ansi-to-html.pipe';
     AnsiToHtmlPipe,
     DatePipe,
     UpperCasePipe,
+    TranslateModule,
   ],
   templateUrl: './logs-modal.component.html',
   styleUrls: ['./logs-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -49,6 +51,7 @@ export class LogsModalComponent implements OnInit {
   public data = inject(MAT_DIALOG_DATA) as { remoteName: string };
   private snackBar = inject(MatSnackBar);
   private loggingService = inject(LoggingService);
+  private backendTranslation = inject(BackendTranslationService);
 
   // Expose log levels to the template
   public readonly logLevels = LOG_LEVELS;
@@ -179,9 +182,17 @@ export class LogsModalComponent implements OnInit {
     }
   }
 
+  /**
+   * Translate log message if it's a backend error/success message
+   */
+  translateLogMessage(message: string): string {
+    return this.backendTranslation.translateBackendMessage(message);
+  }
+
   copyLog(log: RemoteLogEntry): void {
     const output = this.getCommandOutput(log);
-    let text = `[${log.timestamp}] [${log.level.toUpperCase()}] ${log.message}`;
+    const translatedMessage = this.translateLogMessage(log.message);
+    let text = `[${log.timestamp}] [${log.level.toUpperCase()}] ${translatedMessage}`;
 
     if (output) {
       // Strip ANSI codes for clipboard text

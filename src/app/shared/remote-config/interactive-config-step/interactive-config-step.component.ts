@@ -8,6 +8,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { LineBreaksPipe } from '@app/pipes';
 import { RcConfigQuestionResponse } from '@app/types';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-interactive-config-step',
@@ -21,6 +22,7 @@ import { RcConfigQuestionResponse } from '@app/types';
     MatButtonModule,
     MatIconModule,
     LineBreaksPipe,
+    TranslateModule,
   ],
   templateUrl: './interactive-config-step.component.html',
   styleUrls: ['./interactive-config-step.component.scss'],

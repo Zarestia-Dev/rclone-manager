@@ -4,6 +4,7 @@ import { EventListenersService } from './event-listeners.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { NotificationService } from '@app/services';
 import { BehaviorSubject, Subject, takeUntil } from 'rxjs';
+import { TranslateService } from '@ngx-translate/core';
 
 import { RcloneUpdateInfo, UpdateStatus, UpdateResult } from '@app/types';
 
@@ -35,6 +36,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
   private eventListenersService = inject(EventListenersService);
   private appSettingsService = inject(AppSettingsService);
   private notificationService = inject(NotificationService);
+  private translate = inject(TranslateService);
 
   constructor() {
     super();
@@ -176,7 +178,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
         }
 
         this.notificationService.openSnackBar(
-          `Rclone updated successfully (${channel} channel)`,
+          this.translate.instant('rcloneUpdate.success', { channel }),
           'Close'
         );
 
@@ -184,7 +186,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
       } else {
         this.updateStatus({
           updating: false,
-          error: result.message || 'Update failed',
+          error: result.message || this.translate.instant('rcloneUpdate.failed'),
         });
         return false;
       }
@@ -233,10 +235,16 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
         lastCheck: null,
       });
 
-      this.notificationService.openSnackBar(`Rclone update channel changed to ${channel}`, 'Close');
+      this.notificationService.openSnackBar(
+        this.translate.instant('rcloneUpdate.channelChanged', { channel }),
+        'Close'
+      );
     } catch (error) {
       console.error('Failed to save rclone update channel:', error);
-      this.notificationService.openSnackBar('Failed to save rclone update channel', 'Close');
+      this.notificationService.openSnackBar(
+        this.translate.instant('rcloneUpdate.channelSaveFailed'),
+        'Close'
+      );
     }
   }
 
@@ -280,11 +288,17 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
           });
         }
 
-        this.notificationService.openSnackBar(`Rclone version ${version} skipped`, 'Close');
+        this.notificationService.openSnackBar(
+          this.translate.instant('rcloneUpdate.skipped', { version }),
+          'Close'
+        );
       }
     } catch (error) {
       console.error('Failed to skip rclone version:', error);
-      this.notificationService.openSnackBar('Failed to skip rclone update', 'Close');
+      this.notificationService.openSnackBar(
+        this.translate.instant('rcloneUpdate.skipFailed'),
+        'Close'
+      );
     }
   }
 
@@ -298,10 +312,16 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
       // Immediately check for updates to refresh the UI
       this.checkForUpdates();
 
-      this.notificationService.openSnackBar(`Rclone version ${version} restored`, 'Close');
+      this.notificationService.openSnackBar(
+        this.translate.instant('rcloneUpdate.restored', { version }),
+        'Close'
+      );
     } catch (error) {
       console.error('Failed to unskip rclone version:', error);
-      this.notificationService.openSnackBar('Failed to restore rclone update', 'Close');
+      this.notificationService.openSnackBar(
+        this.translate.instant('rcloneUpdate.restoreFailed'),
+        'Close'
+      );
     }
   }
 
@@ -328,12 +348,17 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
       this.autoCheckSubject.next(enabled);
 
       this.notificationService.openSnackBar(
-        `Rclone auto-check updates ${enabled ? 'enabled' : 'disabled'}`,
+        this.translate.instant(
+          enabled ? 'rcloneUpdate.autoCheckEnabled' : 'rcloneUpdate.autoCheckDisabled'
+        ),
         'Close'
       );
     } catch (error) {
       console.error('Failed to save rclone auto-check setting:', error);
-      this.notificationService.openSnackBar('Failed to save rclone update settings', 'Close');
+      this.notificationService.openSnackBar(
+        this.translate.instant('rcloneUpdate.settingsSaveFailed'),
+        'Close'
+      );
     }
   }
 }

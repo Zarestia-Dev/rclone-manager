@@ -43,11 +43,31 @@ impl From<serde_json::Error> for RcloneError {
 impl std::fmt::Display for RcloneError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RcloneError::RequestFailed(e) => write!(f, "Request failed: {e}"),
-            RcloneError::ParseError(e) => write!(f, "Parse error: {e}"),
-            RcloneError::JobError(e) => write!(f, "Job error: {e}"),
-            RcloneError::OAuthError(e) => write!(f, "OAuth error: {e}"),
-            RcloneError::ConfigError(e) => write!(f, "Config error: {e}"),
+            RcloneError::RequestFailed(e) => write!(
+                f,
+                "{}",
+                crate::localized_error!("backendErrors.request.failed", "error" => e)
+            ),
+            RcloneError::ParseError(e) => write!(
+                f,
+                "{}",
+                crate::localized_error!("backendErrors.serve.parseFailed", "error" => e)
+            ),
+            RcloneError::JobError(e) => write!(
+                f,
+                "{}",
+                crate::localized_error!("backendErrors.job.executionFailed", "error" => e)
+            ),
+            RcloneError::OAuthError(e) => write!(
+                f,
+                "{}",
+                crate::localized_error!("backendErrors.request.failed", "error" => e)
+            ), // Generic fallback
+            RcloneError::ConfigError(e) => write!(
+                f,
+                "{}",
+                crate::localized_error!("backendErrors.sync.configIncomplete", "profile" => e)
+            ), // Generic fallback
         }
     }
 }
@@ -110,11 +130,11 @@ pub async fn try_auto_unlock_config(app: &AppHandle) -> Result<(), String> {
         .json(&payload)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {e}"))?;
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
     if !response.status().is_success() {
         let body = response.text().await.unwrap_or_default();
-        return Err(format!("Unlock failed: {}", body));
+        return Err(crate::localized_error!("backendErrors.system.unlockFailed", "error" => body));
     }
 
     app.emit(RCLONE_CONFIG_UNLOCKED, ())
@@ -219,7 +239,9 @@ pub async fn quit_rclone_oauth(state: State<'_, RcloneState>) -> Result<(), Stri
 
     // Check oauth is configured
     if backend.oauth_port.is_none() {
-        return Err("OAuth not configured".to_string());
+        return Err(crate::localized_error!(
+            "backendErrors.system.oauthNotConfigured"
+        ));
     }
 
     let mut found_process = false;
@@ -251,7 +273,7 @@ pub async fn quit_rclone_oauth(state: State<'_, RcloneState>) -> Result<(), Stri
     if let Some(process) = guard.take() {
         if let Err(e) = process.kill() {
             error!("❌ Failed to kill process: {e}");
-            return Err(format!("Failed to kill process: {e}"));
+            return Err(crate::localized_error!("backendErrors.system.killFailed", "error" => e));
         } else {
             info!("💀 Rclone OAuth process killed");
         }
@@ -285,13 +307,14 @@ pub async fn set_bandwidth_limit(
         .json(&payload)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {e}"))?;
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        let error = format!("HTTP {status}: {body}");
+        let error =
+            crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body);
         return Err(error);
     }
 
@@ -320,13 +343,14 @@ pub async fn unlock_rclone_config(
         .json(&payload)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {e}"))?;
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        let error = format!("HTTP {status}: {body}");
+        let error =
+            crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body);
         return Err(error);
     }
 

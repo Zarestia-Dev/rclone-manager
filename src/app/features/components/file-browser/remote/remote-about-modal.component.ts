@@ -13,6 +13,7 @@ import { MatCardModule } from '@angular/material/card';
 import { RemoteManagementService, RemoteFacadeService } from 'src/app/services';
 import { IconService } from '@app/services';
 import { FormatFileSizePipe } from 'src/app/shared/pipes';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 interface RemoteAboutData {
   remote: { displayName: string; normalizedName: string; type?: string };
@@ -34,6 +35,7 @@ interface RemoteAboutData {
     MatProgressSpinnerModule,
     MatCardModule,
     FormatFileSizePipe,
+    TranslateModule,
   ],
   templateUrl: './remote-about-modal.component.html',
   styleUrls: ['./remote-about-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -43,6 +45,7 @@ export class RemoteAboutModalComponent implements OnInit {
   private remoteManagementService = inject(RemoteManagementService);
   private remoteFacadeService = inject(RemoteFacadeService);
   public iconService = inject(IconService);
+  private translate = inject(TranslateService);
   public data: RemoteAboutData = inject(MAT_DIALOG_DATA);
 
   // Independent Signals for separate loading states
@@ -59,7 +62,9 @@ export class RemoteAboutModalComponent implements OnInit {
   errorAbout = signal<string | null>(null);
 
   ngOnInit(): void {
-    this.remoteType.set(this.data.remote.type || 'Unknown');
+    this.remoteType.set(
+      this.data.remote.type || this.translate.instant('fileBrowser.remoteAbout.unknown')
+    );
     this.remoteName.set(this.data.remote.normalizedName);
     this.loadDataSeparately();
   }
@@ -75,7 +80,7 @@ export class RemoteAboutModalComponent implements OnInit {
     this.remoteManagementService
       .getFsInfo(this.remoteName())
       .then(info => {
-        const typedInfo = info as Record<string, any>;
+        const typedInfo = info as Record<string, unknown>;
         this.aboutInfo.set(typedInfo);
         this.loadingAbout.set(false);
 
@@ -91,7 +96,7 @@ export class RemoteAboutModalComponent implements OnInit {
       })
       .catch(err => {
         console.error('Error loading fs info:', err);
-        this.errorAbout.set('Failed to load remote information.');
+        this.errorAbout.set(this.translate.instant('fileBrowser.remoteAbout.error'));
         this.loadingAbout.set(false);
         this.loadingUsage.set(false);
       });
@@ -137,33 +142,36 @@ export class RemoteAboutModalComponent implements OnInit {
 
   // --- Helpers for Template ---
 
-  getRoot(about: any): string {
+  getRoot(about: Record<string, unknown> | null): string {
     return (about?.['Root'] as string) || '/';
   }
 
-  getPrecisionFormatted(about: any): string {
+  getPrecisionFormatted(about: Record<string, unknown> | null): string {
     const ns = about?.['Precision'] as number;
     if (!ns) return '-';
-    if (ns >= 1000000000) return ns / 1000000000 + ' s';
-    if (ns >= 1000000) return ns / 1000000 + ' ms';
-    if (ns >= 1000) return ns / 1000 + ' µs';
-    return ns + ' ns';
+    if (ns >= 1000000000)
+      return ns / 1000000000 + ' ' + this.translate.instant('fileBrowser.remoteAbout.precision.s');
+    if (ns >= 1000000)
+      return ns / 1000000 + ' ' + this.translate.instant('fileBrowser.remoteAbout.precision.ms');
+    if (ns >= 1000)
+      return ns / 1000 + ' ' + this.translate.instant('fileBrowser.remoteAbout.precision.us');
+    return ns + ' ' + this.translate.instant('fileBrowser.remoteAbout.precision.ns');
   }
 
-  getHashes(about: any): string[] {
+  getHashes(about: Record<string, unknown> | null): string[] {
     const h = about?.['Hashes'];
     return Array.isArray(h) ? h : [];
   }
 
-  getFeatures(about: any): { key: string; value: boolean }[] {
-    const features = about?.['Features'];
+  getFeatures(about: Record<string, unknown> | null): { key: string; value: boolean }[] {
+    const features = about?.['Features'] as Record<string, unknown>;
     if (!features) return [];
     return Object.entries(features)
       .map(([key, value]) => ({ key, value: !!value }))
       .sort((a, b) => a.key.localeCompare(b.key));
   }
 
-  getMetadataGroups(about: any): {
+  getMetadataGroups(about: Record<string, unknown> | null): {
     name: string;
     items: { key: string; data: Record<string, unknown> }[];
   }[] {
@@ -179,7 +187,10 @@ export class RemoteAboutModalComponent implements OnInit {
         .sort((a, b) => a.key.localeCompare(b.key));
 
       if (sysItems.length) {
-        groups.push({ name: 'System Metadata', items: sysItems });
+        groups.push({
+          name: this.translate.instant('fileBrowser.remoteAbout.metadata.system'),
+          items: sysItems,
+        });
       }
     }
 
@@ -190,7 +201,10 @@ export class RemoteAboutModalComponent implements OnInit {
       .sort((a, b) => a.key.localeCompare(b.key));
 
     if (otherItems.length) {
-      groups.push({ name: 'Standard Metadata', items: otherItems });
+      groups.push({
+        name: this.translate.instant('fileBrowser.remoteAbout.metadata.standard'),
+        items: otherItems,
+      });
     }
 
     return groups;

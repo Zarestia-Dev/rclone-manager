@@ -11,6 +11,7 @@ import {
   signal,
   computed,
 } from '@angular/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -75,12 +76,12 @@ export interface DashboardPanel extends PanelConfig {
 
 // The Static Definitions (Source of Truth)
 const ALL_PANELS: PanelConfig[] = [
-  { id: 'remotes', title: 'Quick Remote Access', defaultVisible: true },
-  { id: 'bandwidth', title: 'Bandwidth Limit', defaultVisible: true },
-  { id: 'system', title: 'System Information', defaultVisible: true },
-  { id: 'jobs', title: 'Job Information', defaultVisible: true },
-  { id: 'tasks', title: 'Scheduled Tasks', defaultVisible: true },
-  { id: 'serves', title: 'Running Serves', defaultVisible: true },
+  { id: 'remotes', title: 'generalOverview.panels.remotes', defaultVisible: true },
+  { id: 'bandwidth', title: 'generalOverview.panels.bandwidth', defaultVisible: true },
+  { id: 'system', title: 'generalOverview.panels.system', defaultVisible: true },
+  { id: 'jobs', title: 'generalOverview.panels.jobs', defaultVisible: true },
+  { id: 'tasks', title: 'generalOverview.panels.tasks', defaultVisible: true },
+  { id: 'serves', title: 'generalOverview.panels.serves', defaultVisible: true },
 ];
 
 @Component({
@@ -105,7 +106,9 @@ const ALL_PANELS: PanelConfig[] = [
     ServeCardComponent,
     FormatRateValuePipe,
     FormatBytes,
+
     OverviewHeaderComponent,
+    TranslateModule,
   ],
   templateUrl: './general-overview.component.html',
   styleUrls: ['./general-overview.component.scss'],
@@ -159,7 +162,9 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   private uiStateService = inject(UiStateService);
   private appSettingsService = inject(AppSettingsService);
   public iconService = inject(IconService);
+
   readonly backendService = inject(BackendService);
+  private translate = inject(TranslateService);
 
   // Subscriptions
   private destroy$ = new Subject<void>();
@@ -223,7 +228,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   resetLayout(): void {
     this.appSettingsService.saveSetting('runtime', 'dashboard_layout', null);
     this.dashboardPanels.set(ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible })));
-    this.showSnackbar('Layout reset to default');
+    this.showSnackbar(this.translate.instant('generalOverview.layout.resetSuccess'));
   }
 
   drop(event: CdkDragDrop<DashboardPanel[]>): void {
@@ -297,7 +302,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
       await this.schedulerService.toggleScheduledTask(taskId);
     } catch (error) {
       console.error('Failed to toggle scheduled task:', error);
-      this.showSnackbar('Failed to toggle scheduled task');
+      this.showSnackbar(this.translate.instant('generalOverview.layout.toggleTaskFailed'));
     }
   }
 
@@ -324,19 +329,27 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   }
 
   async copyError(error: string): Promise<void> {
-    this.copyToClipboard(error, 'Error copied to clipboard', 'Failed to copy error');
+    this.copyToClipboard(
+      error,
+      this.translate.instant('generalOverview.layout.errorCopied'),
+      this.translate.instant('generalOverview.layout.copyErrorFailed')
+    );
   }
 
   // Task utility methods
   getFormattedNextRun(task: ScheduledTask): string {
-    if (task.status === 'disabled') return 'Task is disabled';
-    if (task.status === 'stopping') return 'Disabling after current run';
-    if (!task.nextRun) return 'Not scheduled';
+    if (task.status === 'disabled')
+      return this.translate.instant('generalOverview.tasks.disabledMsg');
+    if (task.status === 'stopping')
+      return this.translate.instant('generalOverview.tasks.stoppingMsg');
+    if (!task.nextRun) return this.translate.instant('generalOverview.tasks.notScheduledMsg');
     return new Date(task.nextRun).toLocaleString();
   }
 
   getFormattedLastRun(task: ScheduledTask): string {
-    return task.lastRun ? new Date(task.lastRun).toLocaleString() : 'Never';
+    return task.lastRun
+      ? new Date(task.lastRun).toLocaleString()
+      : this.translate.instant('generalOverview.tasks.never');
   }
 
   getTaskTypeIcon(taskType: string): string {
@@ -359,22 +372,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     return colorMap[taskType] || '';
   }
 
-  private readonly TASK_STATUS_TOOLTIPS: Record<string, string> = {
-    enabled: 'Task is enabled and will run on schedule.',
-    disabled: 'Task is disabled and will not run.',
-    running: 'Task is currently running.',
-    failed: 'Task failed on its last run.',
-    stopping: 'Task is stopping and will be disabled after the current run finishes.',
-  };
-
-  private readonly TOGGLE_TOOLTIPS: Record<string, string> = {
-    enabled: 'Disable task',
-    running: 'Disable task',
-    disabled: 'Enable task',
-    failed: 'Enable task',
-    stopping: 'Task is stopping...',
-  };
-
   private readonly TOGGLE_ICONS: Record<string, string> = {
     enabled: 'pause',
     running: 'pause',
@@ -384,11 +381,11 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   };
 
   getTaskStatusTooltip(status: string): string {
-    return this.TASK_STATUS_TOOLTIPS[status] || '';
+    return this.translate.instant(`generalOverview.tasks.status.${status}`);
   }
 
   getToggleTooltip(status: string): string {
-    return this.TOGGLE_TOOLTIPS[status] || '';
+    return this.translate.instant(`generalOverview.tasks.toggle.${status}`);
   }
 
   getToggleIcon(status: string): string {
@@ -578,7 +575,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   private copyToClipboard(
     text: string,
     successMessage: string,
-    errorMessage = 'Failed to copy to clipboard'
+    errorMessage = 'Failed to copy to clipboard' // Fallback only, usually provided by caller
   ): void {
     try {
       navigator.clipboard.writeText(text);
@@ -589,7 +586,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     }
   }
 
-  private showSnackbar(message: string, action = 'Close', duration = 2000): void {
-    this.snackBar.open(message, action, { duration });
+  private showSnackbar(message: string, action?: string, duration = 2000): void {
+    this.snackBar.open(message, action || this.translate.instant('common.close'), { duration });
   }
 }

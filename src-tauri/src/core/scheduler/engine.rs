@@ -31,9 +31,9 @@ impl CronScheduler {
     pub async fn initialize(&self, app_handle: AppHandle) -> Result<(), String> {
         info!("🕐 Initializing cron scheduler in Local...");
 
-        let scheduler = JobScheduler::new()
-            .await
-            .map_err(|e| format!("Failed to create job scheduler: {}", e))?;
+        let scheduler = JobScheduler::new().await.map_err(
+            |e| crate::localized_error!("backendErrors.scheduler.initFailed", "error" => e),
+        )?;
 
         *self.scheduler.write().await = Some(scheduler);
         *self.app_handle.write().await = Some(app_handle);
@@ -47,12 +47,11 @@ impl CronScheduler {
         let mut scheduler_guard = self.scheduler.write().await;
         let scheduler = scheduler_guard
             .as_mut()
-            .ok_or("Scheduler not initialized")?;
+            .ok_or(crate::localized_error!("backendErrors.scheduler.initFailed", "error" => "Scheduler not initialized"))?;
 
-        scheduler
-            .start()
-            .await
-            .map_err(|e| format!("Failed to start scheduler: {}", e))?;
+        scheduler.start().await.map_err(
+            |e| crate::localized_error!("backendErrors.scheduler.startFailed", "error" => e),
+        )?;
 
         info!("▶️  Cron scheduler started");
         Ok(())
@@ -63,13 +62,12 @@ impl CronScheduler {
         let mut scheduler_guard = self.scheduler.write().await;
         let scheduler = scheduler_guard
             .as_mut()
-            .ok_or("Scheduler not initialized")?;
+            .ok_or(crate::localized_error!("backendErrors.scheduler.initFailed", "error" => "Scheduler not initialized"))?;
 
         // Attempt to shutdown the scheduler. If shutdown fails, return an error.
-        scheduler
-            .shutdown()
-            .await
-            .map_err(|e| format!("Failed to stop scheduler: {}", e))?;
+        scheduler.shutdown().await.map_err(
+            |e| crate::localized_error!("backendErrors.scheduler.stopFailed", "error" => e),
+        )?;
 
         info!("⏸️  Cron scheduler stopped");
         Ok(())
@@ -82,13 +80,15 @@ impl CronScheduler {
         cache: State<'_, ScheduledTasksCache>,
     ) -> Result<Uuid, String> {
         if task.status != TaskStatus::Enabled {
-            return Err("Task is not enabled".to_string());
+            return Err(crate::localized_error!(
+                "backendErrors.scheduler.taskNotEnabled"
+            ));
         }
 
         let scheduler_guard = self.scheduler.read().await;
         let scheduler = scheduler_guard
             .as_ref()
-            .ok_or("Scheduler not initialized")?;
+            .ok_or(crate::localized_error!("backendErrors.scheduler.initFailed", "error" => "Scheduler not initialized"))?;
 
         let app_guard = self.app_handle.read().await;
         let app_handle = app_guard
@@ -110,7 +110,7 @@ impl CronScheduler {
             .with_timezone(Local)
             .with_cron_job_type()
             .with_schedule(&cron_expr_6_field)
-            .map_err(|e| format!("Invalid cron schedule ('{}'): {}", cron_expr_6_field, e))?
+            .map_err(|e| crate::localized_error!("backendErrors.scheduler.invalidCron", "error" => e))?
             .with_run_async(Box::new(move |_uuid, _l| {
                 // This is the async closure that runs on schedule
                 let task_id = task_id.clone();
@@ -135,13 +135,12 @@ impl CronScheduler {
                 })
             }))
             .build()
-            .map_err(|e| format!("Failed to build job: {}", e))?;
+            .map_err(|e| crate::localized_error!("backendErrors.scheduler.executionFailed", "error" => e))?;
 
         // 3. Add the newly built job to the scheduler
-        let job_id = scheduler
-            .add(job)
-            .await
-            .map_err(|e| format!("Failed to add job to scheduler: {}", e))?;
+        let job_id = scheduler.add(job).await.map_err(
+            |e| crate::localized_error!("backendErrors.scheduler.executionFailed", "error" => e),
+        )?;
 
         // 4. Store the scheduler's job ID in our task cache
         cache
@@ -170,10 +169,9 @@ impl CronScheduler {
             .as_ref()
             .ok_or("Scheduler not initialized")?;
 
-        scheduler
-            .remove(&job_id)
-            .await
-            .map_err(|e| format!("Failed to remove job: {}", e))?;
+        scheduler.remove(&job_id).await.map_err(
+            |e| crate::localized_error!("backendErrors.scheduler.executionFailed", "error" => e),
+        )?;
 
         debug!("🗑️  Unscheduled task with ID: {}", job_id);
         Ok(())
@@ -253,9 +251,9 @@ impl CronScheduler {
 }
 
 pub fn validate_cron_expression(cron_expr: &str) -> Result<(), String> {
-    croner::parser::CronParser::new()
-        .parse(cron_expr)
-        .map_err(|e| format!("Invalid cron expression: {}", e))?;
+    croner::parser::CronParser::new().parse(cron_expr).map_err(
+        |e| crate::localized_error!("backendErrors.scheduler.invalidCron", "error" => e),
+    )?;
     Ok(())
 }
 
@@ -266,9 +264,9 @@ pub fn get_next_run(cron_expr: &str) -> Result<chrono::DateTime<Utc>, String> {
         .map_err(|e| format!("Invalid cron expression: {}", e))?;
 
     // Calculate next occurrence in local time
-    let next_local = cron
-        .find_next_occurrence(&Local::now(), false)
-        .map_err(|e| format!("Failed to calculate next run: {}", e))?;
+    let next_local = cron.find_next_occurrence(&Local::now(), false).map_err(
+        |e| crate::localized_error!("backendErrors.scheduler.executionFailed", "error" => e),
+    )?;
 
     // Return as UTC for consistent storage/display
     Ok(next_local.with_timezone(&Utc))
@@ -280,10 +278,17 @@ async fn execute_scheduled_task(
     app_handle: &AppHandle,
     cache: State<'_, ScheduledTasksCache>,
 ) -> Result<(), String> {
-    let task = cache.get_task(task_id).await.ok_or("Task not found")?;
+    let task = cache
+        .get_task(task_id)
+        .await
+        .ok_or(crate::localized_error!(
+            "backendErrors.scheduler.taskNotFound"
+        ))?;
 
     if !task.can_run() {
-        return Err(format!("Task cannot run (status: {:?})", task.status));
+        return Err(
+            crate::localized_error!("backendErrors.scheduler.taskCannotRun", "status" => format!("{:?}", task.status)),
+        );
     }
 
     // --- Get Managed State ---
@@ -294,10 +299,9 @@ async fn execute_scheduled_task(
     let remote_name = match task.args.get("remote_name").and_then(|v| v.as_str()) {
         Some(name) => name.to_string(),
         None => {
-            return Err(format!(
-                "Task {} is invalid: missing 'remote_name' in args",
-                task.id
-            ));
+            return Err(
+                crate::localized_error!("backendErrors.scheduler.invalidTaskArgs", "error" => "missing 'remote_name' in args"),
+            );
         }
     };
     let job_type = task.task_type.as_str();
@@ -324,8 +328,9 @@ async fn execute_scheduled_task(
         )
         .await?;
 
-    let params: ProfileParams = serde_json::from_value(task.args.clone())
-        .map_err(|e| format!("Failed to parse task args: {}", e))?;
+    let params: ProfileParams = serde_json::from_value(task.args.clone()).map_err(
+        |e| crate::localized_error!("backendErrors.scheduler.invalidTaskArgs", "error" => e),
+    )?;
 
     let result = match task.task_type {
         TaskType::Copy => start_copy_profile(app_handle.clone(), rclone_state, params).await,

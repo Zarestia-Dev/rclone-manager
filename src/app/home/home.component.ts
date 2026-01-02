@@ -13,27 +13,22 @@ import { MatDrawerMode, MatSidenavModule } from '@angular/material/sidenav';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatChipsModule } from '@angular/material/chips';
-import { MatDialog } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { CdkMenuModule } from '@angular/cdk/menu';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { catchError, EMPTY, Observable, Subject, takeUntil, map } from 'rxjs';
 
 // App Types
 import {
-  ActionState,
-  DiskUsage,
   JobInfo,
-  MountedRemote,
   PrimaryActionType,
   Remote,
   RemoteAction,
   RemoteSettings,
-  ServeListItem,
-  STANDARD_MODAL_SIZE,
   SyncOperationType,
 } from '@app/types';
 
@@ -45,11 +40,6 @@ import { GeneralDetailComponent } from '../features/components/dashboard/general
 import { GeneralOverviewComponent } from '../features/components/dashboard/general-overview/general-overview.component';
 import { AppDetailComponent } from '../features/components/dashboard/app-detail/app-detail.component';
 import { AppOverviewComponent } from '../features/components/dashboard/app-overview/app-overview.component';
-import { LogsModalComponent } from '../features/modals/settings/logs-modal/logs-modal.component';
-import { ExportModalComponent } from '../features/modals/settings/export-modal/export-modal.component';
-import { RemoteConfigModalComponent } from '../features/modals/remote-management/remote-config-modal/remote-config-modal.component';
-import { QuickAddRemoteComponent } from '../features/modals/remote-management/quick-add-remote/quick-add-remote.component';
-import { BackendModalComponent } from '../features/modals/settings/backend-modal/backend-modal.component';
 
 // App Services
 import { IconService } from '@app/services';
@@ -57,13 +47,10 @@ import { NotificationService } from '@app/services';
 import {
   EventListenersService,
   UiStateService,
-  MountManagementService,
-  RemoteManagementService,
-  JobManagementService,
   SystemInfoService,
   AppSettingsService,
-  ServeManagementService,
-  PathSelectionService,
+  ModalService,
+  ConnectionService,
 } from '@app/services';
 
 @Component({
@@ -84,7 +71,9 @@ import {
     GeneralDetailComponent,
     GeneralOverviewComponent,
     AppDetailComponent,
+    AppDetailComponent,
     AppOverviewComponent,
+    TranslateModule,
   ],
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss'],
@@ -93,19 +82,16 @@ export class HomeComponent implements OnInit, OnDestroy {
   // ============================================================================
   // PROPERTIES - SERVICES
   // ============================================================================
-  private readonly dialog = inject(MatDialog);
+  private readonly modalService = inject(ModalService);
   private readonly uiStateService = inject(UiStateService);
-  private readonly mountManagementService = inject(MountManagementService);
-  private readonly serveManagementService = inject(ServeManagementService);
-  private readonly remoteManagementService = inject(RemoteManagementService);
-  private readonly jobManagementService = inject(JobManagementService);
-  private readonly appSettingsService = inject(AppSettingsService);
   private readonly notificationService = inject(NotificationService);
   private readonly eventListenersService = inject(EventListenersService);
-  private readonly pathSelectionService = inject(PathSelectionService);
   private readonly remoteFacadeService = inject(RemoteFacadeService);
+  private readonly connectionService = inject(ConnectionService);
+  private readonly appSettingsService = inject(AppSettingsService);
   readonly systemInfoService = inject(SystemInfoService);
   readonly iconService = inject(IconService);
+  private readonly translate = inject(TranslateService);
 
   // ============================================================================
   // PROPERTIES - DATA & UI STATE
@@ -117,14 +103,15 @@ export class HomeComponent implements OnInit, OnDestroy {
     initialValue: null as Remote | null,
   });
 
-  // Local data state - jobs comes from the service's unified stream
-  jobs = toSignal(this.jobManagementService.jobs$, { initialValue: [] as JobInfo[] });
-
   // Facade provides unified and enriched data
   readonly remotes = this.remoteFacadeService.activeRemotes;
 
+  // Expose raw signals from facade for template usage
+  readonly jobs = this.remoteFacadeService.jobs;
+  readonly mountedRemotes = this.remoteFacadeService.mountedRemotes;
+  readonly runningServes = this.remoteFacadeService.runningServes;
+
   // Computed Source of truth for the OBJECT (merging selection with fresh data)
-  // This ensures that when 'remotes' updates (e.g. job started), the UI sees the new object immediately.
   readonly selectedRemote = computed(() => {
     const source = this._selectedRemoteSource();
     const allRemotes = this.remotes();
@@ -142,13 +129,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     return this.remoteFacadeService.getRemoteSettings(remote.remoteSpecs.name);
   });
 
-  mountedRemotes = toSignal(this.mountManagementService.mountedRemotes$, {
-    initialValue: [] as MountedRemote[],
-  });
-  runningServes = toSignal(this.serveManagementService.runningServes$, {
-    initialValue: [] as ServeListItem[],
-  });
-
   // Local UI state
   isSidebarOpen = signal(false);
   sidebarMode = signal<MatDrawerMode>('side');
@@ -163,8 +143,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     { initialValue: true }
   );
 
-  actionInProgress = signal<Record<string, ActionState[]>>({});
-
+  actionInProgress = this.remoteFacadeService.actionInProgress;
   // ============================================================================
   // PROPERTIES - LIFECYCLE
   // ============================================================================
@@ -201,7 +180,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       await this.loadInitialData();
       this.setupTauriListeners();
     } catch (error) {
-      this.handleError('Failed to initialize component', error);
+      this.handleError(this.translate.instant('home.errors.configFailed'), error);
     }
   }
 
@@ -257,84 +236,56 @@ export class HomeComponent implements OnInit, OnDestroy {
     try {
       await this.refreshData();
     } catch (error) {
-      this.handleError('Initial data load failed', error);
+      this.handleError(this.translate.instant('home.errors.initialLoadFailed'), error);
     } finally {
       this.isLoading.set(false);
     }
   }
 
   private async refreshData(): Promise<void> {
-    // Load independent data in parallel for better performance
-    await Promise.all([
-      this.mountManagementService.getMountedRemotes(),
-      this.serveManagementService.refreshServes(),
-      this.jobManagementService.refreshJobs(),
-    ]);
-    // After parallel loads, create enriched remotes
-    await this.loadRemotes();
+    await this.remoteFacadeService.refreshAll();
   }
 
   private async loadRemotes(): Promise<void> {
     try {
       await this.remoteFacadeService.loadRemotes();
-      this.loadDiskUsageInBackground();
+      // Ensure we pass the list explicitly
+      this.loadDiskUsageInBackground(this.remotes());
     } catch (error) {
-      this.handleError('Failed to load remotes', error);
+      this.handleError(this.translate.instant('home.errors.loadRemotesFailed'), error);
     }
   }
 
-  private async updateRemoteDiskUsage(remote: Remote): Promise<void> {
-    const updateDiskUsage = (updates: Partial<DiskUsage>): void => {
-      this.remoteFacadeService.updateDiskUsage(remote.remoteSpecs.name, updates as DiskUsage);
-    };
-
-    updateDiskUsage({ loading: true });
-
+  async updateRemoteDiskUsage(remoteName: string): Promise<void> {
     try {
-      const fsName = this.pathSelectionService.normalizeRemoteForRclone(remote.remoteSpecs.name);
-      const fsInfo = await this.remoteManagementService.getFsInfo(fsName);
-      if ((fsInfo as any).Features?.About === false) {
-        updateDiskUsage({
-          total_space: 0,
-          used_space: 0,
-          free_space: 0,
-          notSupported: true,
-          loading: false,
-          error: false,
-        });
-        return;
-      }
-
-      const usage = await this.remoteManagementService.getDiskUsage(fsName);
-      updateDiskUsage({
-        total_space: usage.total || -1,
-        used_space: usage.used || -1,
-        free_space: usage.free || -1,
-        loading: false,
-        error: false,
-        notSupported: false,
-      });
+      await this.remoteFacadeService.getCachedOrFetchDiskUsage(remoteName);
     } catch (error) {
-      updateDiskUsage({ loading: false, error: true });
-      console.error(`Failed to update disk usage for ${remote.remoteSpecs.name}`, error);
+      console.error(`Failed to update disk usage for ${remoteName}:`, error);
+      this.remoteFacadeService.updateDiskUsage(remoteName, { loading: false, error: true });
     }
   }
 
-  private loadDiskUsageInBackground(): void {
-    this.remotes()
-      .filter(remote => {
-        const du = remote.diskUsage;
-        // Fetch if: no diskUsage, currently loading, has error, OR has no actual data
-        return !du || du.loading || du.error || (du.total_space === undefined && !du.notSupported);
-      })
-      .forEach(remote => {
-        this.updateRemoteDiskUsage(remote).catch(error => {
-          console.error(
-            `Background disk usage update failed for ${remote.remoteSpecs.name}:`,
-            error
-          );
-        });
-      });
+  // Load disk usage for visible remotes one by one to avoid backend congestion
+  loadDiskUsageInBackground(remotes: Remote[]): void {
+    const remotesToLoad = remotes.filter(
+      r =>
+        !r.diskUsage.loading &&
+        !r.diskUsage.error &&
+        r.diskUsage.total_space === undefined &&
+        !r.diskUsage.notSupported &&
+        r.remoteSpecs.type !== 'crypt' // Skip crypt remotes for disk usage
+    );
+
+    if (remotesToLoad.length === 0) return;
+
+    // Process one by one
+    (async () => {
+      for (const remote of remotesToLoad) {
+        await this.updateRemoteDiskUsage(remote.remoteSpecs.name);
+        // Small delay between requests
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    })();
   }
 
   // ============================================================================
@@ -401,124 +352,29 @@ export class HomeComponent implements OnInit, OnDestroy {
     try {
       await this.saveRemoteSettings(remoteName, { primaryActions: newActions });
     } catch (error) {
-      this.handleError('Failed to update quick actions', error);
+      this.handleError(this.translate.instant('home.errors.updateActionsFailed'), error);
     }
   }
 
   // ============================================================================
   // REMOTE & JOB OPERATIONS
   // ============================================================================
-  async unmountRemote(remoteName: string): Promise<void> {
-    await this.executeRemoteAction(
-      remoteName,
-      'unmount',
-      async () => {
-        const mountPoint = this.getMountPoint(remoteName);
-        if (!mountPoint) throw new Error(`No mount point found for ${remoteName}`);
-        await this.mountManagementService.unmountRemote(mountPoint, remoteName);
-      },
-      `Failed to unmount ${remoteName}`
-    );
-  }
-
-  async openRemoteInFiles(remoteName: string, usePath: PrimaryActionType): Promise<void> {
-    await this.executeRemoteAction(
-      remoteName,
-      'open',
-      () =>
-        this.mountManagementService.openInFiles(
-          this.getPathForOperation(remoteName, usePath) || ''
-        ),
-      `Failed to open ${remoteName}`
-    );
-  }
-
-  async openRemoteInFilesWithPath(remoteName: string, path?: string): Promise<void> {
-    await this.executeRemoteAction(
-      remoteName,
-      'open',
-      () => this.mountManagementService.openInFiles(path || ''),
-      `Failed to open ${remoteName}`
-    );
-  }
-
-  async deleteRemote(remoteName: string): Promise<void> {
-    if (!remoteName) return;
-    try {
-      const confirmed = await this.notificationService.confirmModal(
-        'Delete Confirmation',
-        `Are you sure you want to delete '${remoteName}'? This action cannot be undone.`
-      );
-      if (!confirmed) return;
-      await this.executeRemoteAction(
-        remoteName,
-        null,
-        async () => {
-          if (this.isRemoteMounted(remoteName)) {
-            await this.unmountRemote(remoteName);
-          }
-          await this.remoteManagementService.deleteRemote(remoteName);
-          this.handleRemoteDeletion(remoteName);
-        },
-        `Failed to delete remote ${remoteName}`
-      );
-      this.uiStateService.setSelectedRemote(null);
-    } catch (error) {
-      this.handleError(`Failed to delete remote ${remoteName}`, error);
-    }
-  }
-
   async startJob(
     operationType: PrimaryActionType,
     remoteName: string,
     profileName?: string
   ): Promise<void> {
-    await this.executeRemoteAction(
-      remoteName,
-      operationType as RemoteAction,
-      async () => {
-        const settings = this.loadRemoteSettings(remoteName);
-        const configKey = `${operationType}Configs` as keyof RemoteSettings;
-        const profiles = settings[configKey] as Record<string, unknown> | undefined;
-
-        // Get profile name - prefer provided profile, then "default", then first available
-        let targetProfile = profileName;
-        if (!targetProfile && profiles) {
-          // Prefer "default" profile if it exists
-          targetProfile = profiles['default'] ? 'default' : Object.keys(profiles)[0];
-        }
-
-        if (!targetProfile || !profiles?.[targetProfile]) {
-          throw new Error(`Configuration for ${operationType} not found on ${remoteName}.`);
-        }
-
-        // Use new profile-based APIs - backend resolves all options from settings
-        switch (operationType) {
-          case 'mount':
-            await this.mountManagementService.mountRemoteProfile(remoteName, targetProfile);
-            break;
-          case 'sync':
-            await this.jobManagementService.startSyncProfile(remoteName, targetProfile);
-            break;
-          case 'copy':
-            await this.jobManagementService.startCopyProfile(remoteName, targetProfile);
-            break;
-          case 'bisync':
-            await this.jobManagementService.startBisyncProfile(remoteName, targetProfile);
-            break;
-          case 'move':
-            await this.jobManagementService.startMoveProfile(remoteName, targetProfile);
-            break;
-          case 'serve':
-            await this.serveManagementService.startServeProfile(remoteName, targetProfile);
-            break;
-          default:
-            throw new Error(`Unsupported operation type: ${operationType}`);
-        }
-      },
-      `Failed to start ${operationType} for ${remoteName}${profileName ? ` (${profileName})` : ''}`,
-      profileName
-    );
+    try {
+      await this.remoteFacadeService.startJob(remoteName, operationType, profileName);
+    } catch (error) {
+      this.handleError(
+        this.translate.instant('home.errors.startJobFailed', {
+          type: operationType,
+          name: remoteName,
+        }) + (profileName ? ` (${profileName})` : ''),
+        error
+      );
+    }
   }
 
   async stopJob(
@@ -527,86 +383,70 @@ export class HomeComponent implements OnInit, OnDestroy {
     serveId?: string,
     profileName?: string
   ): Promise<void> {
-    await this.executeRemoteAction(
-      remoteName,
-      'stop',
-      async () => {
-        // Primary stop logic handles specific profile or serve IDs below
+    try {
+      await this.remoteFacadeService.stopJob(remoteName, type, serveId, profileName);
+    } catch (error) {
+      this.handleError(
+        this.translate.instant('home.errors.stopJobFailed', { type: type, name: remoteName }),
+        error
+      );
+    }
+  }
 
-        if (type === 'serve') {
-          let idToStop = serveId;
-          if (!idToStop && profileName) {
-            // Find active serve with this profile
-            const serves = this.runningServes();
-            const serve = serves.find(
-              s => s.params.fs.startsWith(remoteName + ':') && s.profile === profileName
-            );
-            idToStop = serve?.id;
-          } else if (!idToStop) {
-            // Fallback: try find ANY serve for this remote
-            const serves = this.runningServes();
-            const serve = serves.find(s => s.params.fs.startsWith(remoteName + ':'));
-            idToStop = serve?.id;
-          }
+  async deleteRemote(remoteName: string): Promise<void> {
+    if (!remoteName) return;
+    try {
+      const confirmed = await this.notificationService.confirmModal(
+        this.translate.instant('home.deleteRemote.title'),
+        this.translate.instant('home.deleteRemote.message', { name: remoteName })
+      );
+      if (!confirmed) return;
 
-          if (!idToStop) throw new Error('Serve ID required to stop serve');
-          await this.serveManagementService.stopServe(idToStop, remoteName);
-        } else if (type === 'mount') {
-          const remote = this.remotes().find(r => r.remoteSpecs.name === remoteName);
-          let mountPoint: string | undefined;
+      await this.remoteFacadeService.deleteRemote(remoteName);
 
-          if (profileName && remote?.mountState?.activeProfiles) {
-            mountPoint = remote.mountState.activeProfiles[profileName];
-          } else {
-            // Fallback: find first mount point for this remote
-            const mount = this.mountedRemotes().find(m => m.fs.startsWith(remoteName + ':'));
-            mountPoint = mount?.mount_point;
-          }
+      this.handleRemoteDeletion(remoteName);
+    } catch (error) {
+      this.handleError(
+        this.translate.instant('home.errors.deleteRemoteFailed', { name: remoteName }),
+        error
+      );
+    }
+  }
 
-          if (!mountPoint) throw new Error(`Active mount logic not found for ${remoteName}`);
+  async openRemoteInFiles(
+    remoteName: string,
+    pathOrOperation?: string | PrimaryActionType
+  ): Promise<void> {
+    try {
+      await this.remoteFacadeService.openRemoteInFiles(remoteName, pathOrOperation);
+    } catch (error) {
+      this.handleError(
+        this.translate.instant('home.errors.openFailed', { name: remoteName }),
+        error
+      );
+    }
+  }
 
-          await this.mountManagementService.unmountRemote(mountPoint, remoteName);
-        } else {
-          // For sync/copy/move/bisync operations - rely on Facade state
-          const remote = this.remotes().find(r => r.remoteSpecs.name === remoteName);
-          const state = this.getOperationState(remote, type as SyncOperationType);
-
-          let idToStop: number | undefined;
-
-          if (profileName && state?.activeProfiles) {
-            idToStop = state.activeProfiles[profileName];
-          } else if (state?.activeProfiles) {
-            // If checking generic stop but profiles are active, stop the first one
-            const activeProfileEntries = Object.entries(state.activeProfiles);
-            if (activeProfileEntries.length > 0) {
-              idToStop = activeProfileEntries[0][1] as number;
-            }
-          }
-
-          // Fallback: check main job ID (legacy/non-profile jobs)
-          if (idToStop === undefined && state) {
-            const key = `${type}JobID` as keyof typeof state;
-            idToStop = state[key] as number | undefined;
-          }
-
-          if (idToStop === undefined) {
-            throw new Error(`No active ${type} job found for ${remoteName}`);
-          }
-
-          await this.jobManagementService.stopJob(idToStop, remoteName);
-        }
-      },
-      `Failed to stop ${type} for ${remoteName}`,
-      profileName
-    );
+  async unmountRemote(remoteName: string): Promise<void> {
+    try {
+      await this.remoteFacadeService.unmountRemote(remoteName);
+    } catch (error) {
+      this.handleError(
+        this.translate.instant('home.errors.unmountFailed', { name: remoteName }),
+        error
+      );
+    }
   }
 
   async deleteJob(jobId: number): Promise<void> {
     try {
-      await this.jobManagementService.deleteJob(jobId);
-      this.notificationService.openSnackBar(`Job ${jobId} deleted successfully.`, 'Close');
+      await this.remoteFacadeService.deleteJob(jobId);
+      this.notificationService.openSnackBar(
+        this.translate.instant('home.notifications.jobDeleted', { id: jobId }),
+        this.translate.instant('common.close')
+      );
     } catch (error) {
-      this.handleError(`Failed to delete job ${jobId}`, error);
+      this.handleError(this.translate.instant('home.errors.deleteJobFailed', { id: jobId }), error);
     }
   }
 
@@ -614,10 +454,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   // MODAL DIALOGS
   // ============================================================================
   openQuickAddRemoteModal(): void {
-    this.dialog.open(QuickAddRemoteComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: true,
-    });
+    this.modalService.openQuickAddRemote();
   }
 
   openRemoteConfigModal(
@@ -626,74 +463,38 @@ export class HomeComponent implements OnInit, OnDestroy {
     initialSection?: string,
     targetProfile?: string
   ): void {
-    this.dialog.open(RemoteConfigModalComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: true,
-      data: {
-        name: this.selectedRemote()?.remoteSpecs.name,
-        editTarget,
-        existingConfig,
-        restrictMode: this.restrictMode(),
-        initialSection,
-        targetProfile,
-      },
+    this.modalService.openRemoteConfig({
+      remoteName: this.selectedRemote()?.remoteSpecs.name,
+      editTarget,
+      existingConfig,
+      restrictMode: this.restrictMode(),
+      initialSection,
+      targetProfile,
     });
   }
 
   openLogsModal(remoteName: string): void {
-    this.dialog.open(LogsModalComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: true,
-      data: { remoteName },
-    });
+    this.modalService.openLogs(remoteName);
   }
 
-  cloneRemote(remoteName: string): void {
-    const remote = this.remotes().find(r => r.remoteSpecs.name === remoteName);
-    if (!remote) return;
+  async cloneRemote(remoteName: string): Promise<void> {
+    const config = await this.remoteFacadeService.cloneRemote(remoteName);
+    if (!config) return;
 
-    const baseName = remote.remoteSpecs.name.replace(/-\d+$/, '');
-    const newName = this.generateUniqueRemoteName(baseName);
-    const clonedSpecs = { ...remote.remoteSpecs, name: newName };
-
-    const settings = this.loadRemoteSettings(remoteName)
-      ? JSON.parse(JSON.stringify(this.loadRemoteSettings(remoteName)))
-      : {};
-
-    const clonedSettings = this.updateSourcesForClonedRemote(settings, remoteName, newName);
-
-    this.dialog.open(RemoteConfigModalComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: true,
-      data: {
-        name: newName,
-        editTarget: undefined,
-        cloneTarget: true,
-        existingConfig: {
-          remoteSpecs: clonedSpecs,
-          ...clonedSettings,
-        },
-        restrictMode: this.restrictMode(),
-      },
+    this.modalService.openRemoteConfig({
+      remoteName: config['remoteSpecs'].name,
+      cloneTarget: true,
+      existingConfig: config,
+      restrictMode: this.restrictMode(),
     });
   }
 
   openExportModal(remoteName: string): void {
-    this.dialog.open(ExportModalComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: true,
-      data: {
-        remoteName,
-        defaultExportType: 'SpecificRemote',
-      },
-    });
+    this.modalService.openExport({ remoteName, defaultExportType: 'SpecificRemote' });
   }
 
   openBackendModal(): void {
-    this.dialog.open(BackendModalComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: false,
-    });
+    this.modalService.openBackend();
   }
 
   // ============================================================================
@@ -720,19 +521,19 @@ export class HomeComponent implements OnInit, OnDestroy {
     if (!remoteName) return;
     try {
       const confirmed = await this.notificationService.confirmModal(
-        'Reset Remote Settings',
-        `Are you sure you want to reset ALL settings for ${remoteName}?`
+        this.translate.instant('home.resetRemote.title'),
+        this.translate.instant('home.resetRemote.message', { name: remoteName })
       );
       if (confirmed) {
         await this.appSettingsService.resetRemoteSettings(remoteName);
         await this.remoteFacadeService.loadRemotes();
         this.notificationService.openSnackBar(
-          `Settings for ${remoteName} have been reset.`,
-          'Close'
+          this.translate.instant('home.notifications.settingsReset', { name: remoteName }),
+          this.translate.instant('common.close')
         );
       }
     } catch (error) {
-      this.handleError('Failed to reset remote settings', error);
+      this.handleError(this.translate.instant('home.errors.resetSettingsFailed'), error);
     }
   }
 
@@ -748,24 +549,14 @@ export class HomeComponent implements OnInit, OnDestroy {
   ): Promise<void> {
     if (!remoteName) return;
     try {
-      this.actionInProgress.update(progress => {
-        const currentActions = progress[remoteName] || [];
-        const newAction: ActionState = { type: action, profileName };
-        return { ...progress, [remoteName]: [...currentActions, newAction] };
-      });
-      await operation();
+      await this.remoteFacadeService.executeAction(remoteName, action, operation, profileName);
     } catch (error) {
       this.handleError(errorMessage, error);
-    } finally {
-      this.actionInProgress.update(progress => {
-        const currentActions = progress[remoteName] || [];
-        // Remove the action that just finished
-        const updatedActions = currentActions.filter(
-          a => !(a.type === action && a.profileName === profileName)
-        );
-        return { ...progress, [remoteName]: updatedActions };
-      });
     }
+  }
+
+  isActionInProgress(remoteName: string, action: RemoteAction, profileName?: string): boolean {
+    return this.remoteFacadeService.isActionInProgress(remoteName, action, profileName);
   }
 
   private generateUniqueRemoteName(baseName: string): string {
@@ -776,26 +567,6 @@ export class HomeComponent implements OnInit, OnDestroy {
       newName = `${baseName}-${counter++}`;
     }
     return newName;
-  }
-
-  private updateSourcesForClonedRemote(
-    settings: RemoteSettings,
-    oldName: string,
-    newName: string
-  ): RemoteSettings {
-    const updateSource = (obj: Record<string, string> | undefined, key: string): void => {
-      if (obj && typeof obj[key] === 'string' && obj[key].startsWith(`${oldName}:`)) {
-        obj[key] = obj[key].replace(`${oldName}:`, `${newName}:`);
-      }
-    };
-
-    updateSource(settings['mountConfig'], 'source');
-    updateSource(settings['syncConfig'], 'source');
-    updateSource(settings['copyConfig'], 'source');
-    updateSource(settings['bisyncConfig'], 'source');
-    updateSource(settings['moveConfig'], 'source');
-
-    return settings;
   }
 
   getJobsForRemote(remoteName: string): JobInfo[] {
@@ -830,13 +601,16 @@ export class HomeComponent implements OnInit, OnDestroy {
     if (this.selectedRemote()?.remoteSpecs.name === remoteName) {
       this.uiStateService.resetSelectedRemote();
     }
-    this.notificationService.openSnackBar(`Remote ${remoteName} deleted successfully.`, 'Close');
+    this.notificationService.openSnackBar(
+      this.translate.instant('home.notifications.deleteRemoteSuccess', { name: remoteName }),
+      this.translate.instant('common.close')
+    );
   }
 
   private handleError(message: string, error: unknown): void {
     console.error(`${message}:`, error);
     const errorMessage = error instanceof Error ? error.message : String(error);
-    this.notificationService.openSnackBar(errorMessage, 'Close');
+    this.notificationService.openSnackBar(errorMessage, this.translate.instant('common.close'));
   }
 
   private cleanup(): void {

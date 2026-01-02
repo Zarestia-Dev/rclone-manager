@@ -4,9 +4,12 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatIconModule } from '@angular/material/icon';
 import { ConfirmDialogData } from '@app/types';
 
+import { TranslateModule } from '@ngx-translate/core';
+
 @Component({
   selector: 'app-confirm-modal',
-  imports: [MatDialogModule, MatButtonModule, MatIconModule],
+  standalone: true,
+  imports: [MatDialogModule, MatButtonModule, MatIconModule, TranslateModule],
   templateUrl: './confirm-modal.component.html',
   styleUrl: './confirm-modal.component.scss',
 })

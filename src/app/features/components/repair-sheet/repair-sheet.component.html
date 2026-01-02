@@ -6,8 +6,8 @@
       </div>
 
       <div class="repair-content">
-        <h3>{{ data.title || 'Repair Required' }}</h3>
-        <p>{{ data.message || 'A problem was detected. You can try repairing it below.' }}</p>
+        <h3>{{ displayTitle() }}</h3>
+        <p>{{ displayMessage() }}</p>
       </div>
     </div>
 
@@ -16,9 +16,10 @@
         @for (detail of details; track $index) {
           <div class="detail-item">
             <mat-icon svgIcon="{{ detail.icon }}"></mat-icon>
-            <span
-              ><strong>{{ detail.label }}:</strong> {{ detail.value }}</span
-            >
+            <span>
+              <strong>{{ detail.labelKey | translate }}:</strong>
+              {{ detail.valueKey | translate }}
+            </span>
           </div>
         }
       </div>
@@ -48,7 +49,12 @@
           [disabled]="installing() || isSubmittingPassword()"
         >
           <mat-icon svgIcon="caret-down" [class.rotated]="showConfigOptions()"></mat-icon>
-          {{ showConfigOptions() ? 'Hide Config Options' : 'Use Different Config File' }}
+          {{
+            (showConfigOptions()
+              ? 'repairSheet.hideConfigOptions'
+              : 'repairSheet.useDifferentConfig'
+            ) | translate
+          }}
         </button>
       </div>
 
@@ -73,7 +79,9 @@
           [disabled]="installing()"
         >
           <mat-icon svgIcon="caret-down" [class.rotated]="showAdvanced()"></mat-icon>
-          {{ showAdvanced() ? 'Hide' : 'Show' }} Advanced Options
+          {{
+            (showAdvanced() ? 'repairSheet.hideAdvanced' : 'repairSheet.showAdvanced') | translate
+          }}
         </button>
       </div>
 
@@ -94,15 +102,17 @@
       matButton="filled"
       [disabled]="!canRepair()"
       (click)="repair()"
-      [attr.aria-label]="installing() ? 'Repairing in progress' : 'Start repair process'"
-      [matTooltip]="repairTooltip()"
+      [attr.aria-label]="
+        (installing() ? 'repairSheet.repairingAria' : 'repairSheet.startRepairAria') | translate
+      "
+      [matTooltip]="repairTooltip() ? (repairTooltip() | translate) : ''"
     >
       {{
         installing() || isSubmittingPassword()
           ? isSubmittingPassword()
-            ? 'Validating Password...'
-            : repairProgressText()
-          : repairButtonText()
+            ? ('repairSheet.validatingPassword' | translate)
+            : (repairProgressTextKey() | translate)
+          : (repairButtonTextKey() | translate)
       }}
       <mat-icon
         [svgIcon]="repairButtonIcon()"

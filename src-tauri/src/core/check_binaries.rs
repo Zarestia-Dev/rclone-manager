@@ -41,7 +41,10 @@ async fn check_rclone_available_internal(
             .await
         {
             Ok(output) => Ok(output.status.success()),
-            Err(e) => Err(format!("Failed to execute rclone: {}", e)),
+            Err(e) => Err(crate::localized_error!(
+                "backendErrors.rclone.executionFailed",
+                "error" => e
+            )),
         }
     } else {
         if emit_event {
@@ -52,9 +55,9 @@ async fn check_rclone_available_internal(
                 error!("Failed to emit path error event: {e}");
             }
         }
-        Err(format!(
-            "Rclone binary not found at {}",
-            rclone_path.display()
+        Err(crate::localized_error!(
+            "backendErrors.rclone.notFound",
+            "path" => rclone_path.display()
         ))
     }
 }

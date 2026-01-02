@@ -44,7 +44,7 @@ pub async fn get_folder_location(
             && path.parent().is_none()
         {
             debug!("Selected path is a drive root, which is not allowed for mounting");
-            return Err("Cannot select a drive root (e.g., D:\\) as a mount point. Please select or create a subfolder.".into());
+            return Err(crate::localized_error!("backendErrors.file.driveRoot"));
         }
     }
 
@@ -55,7 +55,9 @@ pub async fn get_folder_location(
         // Check if folder exists and is empty
         match tokio::fs::read_dir(path).await {
             Ok(mut entries) => match entries.next_entry().await {
-                Ok(Some(_)) => return Err("Selected folder is not empty".into()),
+                Ok(Some(_)) => {
+                    return Err(crate::localized_error!("backendErrors.file.folderNotEmpty"));
+                }
                 Ok(_) => (), // Folder is empty
                 Err(e) => {
                     error!("Error reading directory: {e}");
@@ -90,7 +92,9 @@ pub async fn get_folder_location(
     _app: AppHandle,
     _require_empty: bool,
 ) -> Result<Option<String>, String> {
-    Err("Folder picker is not available on this platform".into())
+    Err(crate::localized_error!(
+        "backendErrors.file.pickerUnavailable"
+    ))
 }
 
 #[cfg(not(feature = "web-server"))]
@@ -100,7 +104,7 @@ pub async fn open_in_files(
     path: std::path::PathBuf,
 ) -> Result<String, String> {
     if path.as_os_str().is_empty() {
-        return Err("Invalid path: Path cannot be empty.".to_string());
+        return Err(crate::localized_error!("backendErrors.file.invalidPath"));
     }
 
     if !path.exists() {
@@ -137,5 +141,7 @@ pub async fn get_file_location(window: Window) -> Result<Option<String>, String>
 #[command]
 #[cfg(not(desktop))]
 pub async fn get_file_location(_window: Window) -> Result<Option<String>, String> {
-    Err("File picker is not available on this platform".into())
+    Err(crate::localized_error!(
+        "backendErrors.file.filePickerUnavailable"
+    ))
 }

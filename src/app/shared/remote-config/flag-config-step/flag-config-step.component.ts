@@ -25,6 +25,7 @@ import { FlagType, RcConfigOption } from '@app/types';
 import { SettingControlComponent } from 'src/app/shared/components';
 import { OperationConfigComponent } from 'src/app/shared/remote-config/app-operation-config/app-operation-config.component';
 import { IconService } from '@app/services';
+import { TranslateModule } from '@ngx-translate/core';
 
 // Serve type information for icons and descriptions
 const SERVE_TYPE_INFO: Record<string, { icon: string; description: string }> = {
@@ -55,6 +56,7 @@ const SERVE_TYPE_INFO: Record<string, { icon: string; description: string }> = {
     SettingControlComponent,
     ScrollingModule,
     OperationConfigComponent,
+    TranslateModule,
   ],
   templateUrl: './flag-config-step.component.html',
   styleUrl: './flag-config-step.component.scss',
@@ -93,7 +95,7 @@ export class FlagConfigStepComponent implements OnChanges {
     }
   }
 
-  get formFields(): any[] {
+  get formFields(): { type: string }[] {
     const fields = [];
 
     // Operation config for all ops except vfs/filter/backend (serve gets it too)
@@ -127,7 +129,7 @@ export class FlagConfigStepComponent implements OnChanges {
     return fields;
   }
 
-  trackByField(index: number, field: any): string {
+  trackByField(index: number, field: { type: string }): string {
     return `${field.type}-${index}`;
   }
 

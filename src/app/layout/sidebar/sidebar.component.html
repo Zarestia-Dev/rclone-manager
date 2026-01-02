@@ -3,15 +3,15 @@
   <div
     class="sidebar-header"
     (click)="toggleSearch()"
-    matTooltip="Toggle search bar"
-    aria-label="Toggle search bar"
+    [matTooltip]="'sidebar.toggleSearch' | translate"
+    [attr.aria-label]="'sidebar.toggleSearch' | translate"
     matTooltipShowDelay="500"
     role="button"
     tabindex="0"
   >
     <h3>
       <mat-icon svgIcon="server"></mat-icon>
-      Remotes
+      {{ 'sidebar.remotes' | translate }}
     </h3>
   </div>
 
@@ -20,8 +20,8 @@
     [visible]="searchVisible()"
     [searchText]="searchTerm()"
     (searchTextChange)="onSearchTextChange($event)"
-    placeholder="Search remotes..."
-    ariaLabel="Search remotes"
+    [placeholder]="'sidebar.searchPlaceholder' | translate"
+    [ariaLabel]="'sidebar.searchAriaLabel' | translate"
   >
   </app-search-container>
 
@@ -46,29 +46,35 @@
                   @if (remote.mountState) {
                     <div
                       class="status-dot mount"
-                      [class.active]="getMountProfileCount(remote) > 0"
-                      [matTooltip]="getMountTooltip(remote)"
+                      [class.active]="statusService.getMountProfileCount(remote) > 0"
+                      [matTooltip]="statusService.getMountTooltip(remote)"
                       matTooltipShowDelay="500"
-                      aria-label="Mount status"
+                      [attr.aria-label]="'sidebar.aria.mountStatus' | translate"
                     >
                       <mat-icon svgIcon="mount"></mat-icon>
-                      @if (getMountProfileCount(remote) > 1) {
-                        <span class="count-badge">{{ getMountProfileCount(remote) }}</span>
+                      @if (statusService.getMountProfileCount(remote) > 1) {
+                        <span class="count-badge">{{
+                          statusService.getMountProfileCount(remote)
+                        }}</span>
                       }
                     </div>
                   }
 
-                  @if (hasSyncOperations(remote)) {
+                  @if (statusService.hasSyncOperations(remote)) {
                     <div
                       class="status-dot sync-operations"
-                      [class.active]="isAnySyncOperationActive(remote)"
-                      [matTooltip]="getSyncOperationsTooltip(remote)"
+                      [class.active]="statusService.isAnySyncOperationActive(remote)"
+                      [matTooltip]="statusService.getSyncOperationsTooltip(remote)"
                       matTooltipShowDelay="500"
-                      aria-label="Sync operations status"
+                      [attr.aria-label]="'sidebar.aria.syncStatus' | translate"
                     >
-                      <mat-icon [svgIcon]="getActiveSyncOperationIcon(remote)"></mat-icon>
-                      @if (getSyncProfileCount(remote) > 1) {
-                        <span class="count-badge">{{ getSyncProfileCount(remote) }}</span>
+                      <mat-icon
+                        [svgIcon]="statusService.getActiveSyncOperationIcon(remote)"
+                      ></mat-icon>
+                      @if (statusService.getSyncProfileCount(remote) > 1) {
+                        <span class="count-badge">{{
+                          statusService.getSyncProfileCount(remote)
+                        }}</span>
                       }
                     </div>
                   }
@@ -77,13 +83,15 @@
                     <div
                       class="status-dot serve"
                       [class.active]="remote.serveState.isOnServe"
-                      [matTooltip]="getServeTooltip(remote)"
+                      [matTooltip]="statusService.getServeTooltip(remote)"
                       matTooltipShowDelay="500"
-                      aria-label="Serve status"
+                      [attr.aria-label]="'sidebar.aria.serveStatus' | translate"
                     >
                       <mat-icon svgIcon="satellite-dish"></mat-icon>
-                      @if (getServeProfileCount(remote) > 1) {
-                        <span class="count-badge">{{ getServeProfileCount(remote) }}</span>
+                      @if (statusService.getServeProfileCount(remote) > 1) {
+                        <span class="count-badge">{{
+                          statusService.getServeProfileCount(remote)
+                        }}</span>
                       }
                     </div>
                   }
@@ -106,9 +114,9 @@
       <div class="no-remotes">
         <mat-icon svgIcon="server"></mat-icon>
         @if (searchTerm().trim()) {
-          No remotes found matching "{{ searchTerm() }}"
+          {{ 'sidebar.noRemotesFound' | translate: { term: searchTerm() } }}
         } @else {
-          No remotes configured
+          {{ 'sidebar.noRemotesConfigured' | translate }}
         }
       </div>
     }

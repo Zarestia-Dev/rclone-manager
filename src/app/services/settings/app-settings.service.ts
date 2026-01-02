@@ -1,26 +1,27 @@
-import { inject, Injectable, OnDestroy } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { NotificationService } from '@app/services';
-import { BehaviorSubject, firstValueFrom, Observable, Subject } from 'rxjs';
-import { map, distinctUntilChanged, filter, takeUntil, first } from 'rxjs/operators';
+import { BehaviorSubject, firstValueFrom, Observable } from 'rxjs';
+import { map, distinctUntilChanged, filter, first } from 'rxjs/operators';
+import { TranslateService } from '@ngx-translate/core';
 import { CheckResult, SettingMetadata, SYSTEM_SETTINGS_CHANGED } from '@app/types';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Injectable({
   providedIn: 'root',
 })
-export class AppSettingsService extends TauriBaseService implements OnDestroy {
+export class AppSettingsService extends TauriBaseService {
   private notificationService = inject(NotificationService);
+  private translate = inject(TranslateService);
 
   private optionsState$ = new BehaviorSubject<Record<string, SettingMetadata> | null>(null);
   public options$ = this.optionsState$.asObservable();
-
-  protected destroyed$ = new Subject<void>();
 
   constructor() {
     super();
 
     this.listenToEvent<Record<string, Record<string, unknown>>>(SYSTEM_SETTINGS_CHANGED)
-      .pipe(takeUntil(this.destroyed$))
+      .pipe(takeUntilDestroyed())
       .subscribe(payload => {
         this.updateStateFromEvent(payload as Record<string, Record<string, SettingMetadata>>);
       });
@@ -37,7 +38,7 @@ export class AppSettingsService extends TauriBaseService implements OnDestroy {
       this.optionsState$.next(response.options);
     } catch (error) {
       console.error('Failed to load settings:', error);
-      this.notificationService.showError('Could not load application settings.');
+      this.notificationService.showError(this.translate.instant('settings.loadFailed'));
     }
   }
 
@@ -49,16 +50,16 @@ export class AppSettingsService extends TauriBaseService implements OnDestroy {
     );
   }
 
-  async getSettingValue<T = any>(key: string): Promise<T | undefined> {
+  async getSettingValue<T = unknown>(key: string): Promise<T | undefined> {
     const setting$ = this.options$.pipe(
       filter(options => options !== null),
       first(),
-      map(options => options![key]?.value as T)
+      map(options => options?.[key]?.value as T)
     );
     return firstValueFrom(setting$);
   }
 
-  async saveSetting(category: string, key: string, value: any): Promise<void> {
+  async saveSetting(category: string, key: string, value: unknown): Promise<void> {
     const fullKey = `${category}.${key}`;
     const currentState = this.optionsState$.getValue();
 
@@ -80,7 +81,7 @@ export class AppSettingsService extends TauriBaseService implements OnDestroy {
    * Reset a single setting to its default value (backend command `reset_setting`).
    * Updates the local options state to reflect the default returned by the backend.
    */
-  async resetSetting(category: string, key: string): Promise<any> {
+  async resetSetting(category: string, key: string): Promise<unknown> {
     const fullKey = `${category}.${key}`;
     const currentState = this.optionsState$.getValue();
 
@@ -102,7 +103,9 @@ export class AppSettingsService extends TauriBaseService implements OnDestroy {
       return defaultValue;
     } catch (err) {
       console.error(`Failed to reset setting ${fullKey}:`, err);
-      this.notificationService.showError(`Failed to reset ${fullKey} to default.`);
+      this.notificationService.showError(
+        this.translate.instant('settings.resetFailed', { key: fullKey })
+      );
       throw err;
     }
   }
@@ -117,7 +120,7 @@ export class AppSettingsService extends TauriBaseService implements OnDestroy {
       await this.invokeCommand('reset_settings');
       this.optionsState$.next(null);
       await this.loadSettings();
-      this.notificationService.showSuccess('Settings reset successfully');
+      this.notificationService.showSuccess(this.translate.instant('settings.resetSuccess'));
       return true;
     }
     return false;
@@ -148,14 +151,14 @@ export class AppSettingsService extends TauriBaseService implements OnDestroy {
   /**
    * Save remote-specific settings
    */
-  async saveRemoteSettings(remoteName: string, settings: any): Promise<void> {
+  async saveRemoteSettings(remoteName: string, settings: Record<string, unknown>): Promise<void> {
     return this.invokeCommand('save_remote_settings', { remoteName, settings });
   }
 
   /**
    * Get remote settings
    */
-  async getRemoteSettings(): Promise<any> {
+  async getRemoteSettings(): Promise<Record<string, Record<string, unknown>>> {
     return this.invokeCommand('get_settings');
   }
 
@@ -164,7 +167,9 @@ export class AppSettingsService extends TauriBaseService implements OnDestroy {
    */
   async resetRemoteSettings(remoteName: string): Promise<void> {
     await this.invokeCommand('delete_remote_settings', { remoteName });
-    this.notificationService.showSuccess(`Settings for ${remoteName} reset successfully`);
+    this.notificationService.showSuccess(
+      this.translate.instant('settings.remoteResetSuccess', { remote: remoteName })
+    );
   }
 
   /**
@@ -180,10 +185,5 @@ export class AppSettingsService extends TauriBaseService implements OnDestroy {
       maxRetries,
       retryDelaySecs,
     });
-  }
-
-  ngOnDestroy(): void {
-    this.destroyed$.next();
-    this.destroyed$.complete();
   }
 }

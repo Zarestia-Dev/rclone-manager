@@ -31,6 +31,7 @@ import {
   MatAutocompleteModule,
   MatAutocompleteSelectedEvent,
 } from '@angular/material/autocomplete';
+import { TranslateModule } from '@ngx-translate/core';
 
 // Services
 import { AuthStateService } from '@app/services';
@@ -83,6 +84,7 @@ type WizardStep = 'setup' | 'operations' | 'interactive';
     MatTooltipModule,
     OperationConfigComponent,
     MatAutocompleteModule,
+    TranslateModule,
   ],
   templateUrl: './quick-add-remote.component.html',
   styleUrls: ['./quick-add-remote.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -118,7 +120,9 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
 
   // Computed signals
   readonly submitButtonText = computed(() =>
-    this.isAuthInProgress() && !this.isAuthCancelled() ? 'Adding Remote...' : 'Create Remote'
+    this.isAuthInProgress() && !this.isAuthCancelled()
+      ? 'modals.quickAdd.buttons.creating'
+      : 'modals.quickAdd.buttons.create'
   );
 
   readonly isInteractiveContinueDisabled = computed(() =>
@@ -127,11 +131,31 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
 
   // Operation tabs configuration for DRY template
   readonly operationTabs = [
-    { type: 'mount', label: 'Mount', description: 'Automatically mount this remote as a drive.' },
-    { type: 'sync', label: 'Sync', description: 'Sync this remote to a local folder.' },
-    { type: 'copy', label: 'Copy', description: 'Copy contents to a local folder.' },
-    { type: 'bisync', label: 'Bisync', description: 'Bidirectional sync with a local folder.' },
-    { type: 'move', label: 'Move', description: 'Move contents to a local folder.' },
+    {
+      type: 'mount',
+      label: 'modals.quickAdd.operations.mount.label',
+      description: 'modals.quickAdd.operations.mount.description',
+    },
+    {
+      type: 'sync',
+      label: 'modals.quickAdd.operations.sync.label',
+      description: 'modals.quickAdd.operations.sync.description',
+    },
+    {
+      type: 'copy',
+      label: 'modals.quickAdd.operations.copy.label',
+      description: 'modals.quickAdd.operations.copy.description',
+    },
+    {
+      type: 'bisync',
+      label: 'modals.quickAdd.operations.bisync.label',
+      description: 'modals.quickAdd.operations.bisync.description',
+    },
+    {
+      type: 'move',
+      label: 'modals.quickAdd.operations.move.label',
+      description: 'modals.quickAdd.operations.move.description',
+    },
   ] as const;
 
   // Autocomplete for remote type

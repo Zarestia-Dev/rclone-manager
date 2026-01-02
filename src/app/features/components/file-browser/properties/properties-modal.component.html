@@ -3,15 +3,21 @@
     <button
       mat-icon-button
       (click)="toggleStar()"
-      [attr.aria-label]="isStarred() ? 'Unstar' : 'Star'"
+      [attr.aria-label]="
+        (isStarred() ? 'fileBrowser.properties.unstar' : 'fileBrowser.properties.star') | translate
+      "
     >
       <mat-icon
         [svgIcon]="isStarred() ? 'star' : 'star-outline'"
         [class.starred]="isStarred()"
       ></mat-icon>
     </button>
-    <p>Properties</p>
-    <button mat-icon-button (click)="close()" aria-label="Close">
+    <p>{{ 'fileBrowser.properties.title' | translate }}</p>
+    <button
+      mat-icon-button
+      (click)="close()"
+      [attr.aria-label]="'fileBrowser.properties.close' | translate"
+    >
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </div>
@@ -20,7 +26,7 @@
     @if (loadingStat) {
       <div class="loading-container main-loader">
         <mat-spinner diameter="40"></mat-spinner>
-        <p>Loading basic info...</p>
+        <p>{{ 'fileBrowser.properties.loading' | translate }}</p>
       </div>
     } @else {
       <div class="item-overview">
@@ -32,7 +38,12 @@
             {{ item ? item.Name : displayLocation }}
           </h3>
           <span class="item-type">
-            {{ item?.MimeType || ((item?.IsDir ?? true) ? 'Directory' : 'File') }}
+            {{
+              item?.MimeType ||
+                ((item?.IsDir ?? true)
+                  ? ('fileBrowser.properties.directory' | translate)
+                  : ('fileBrowser.properties.file' | translate))
+            }}
           </span>
         </div>
       </div>
@@ -41,18 +52,18 @@
 
       <div class="properties-group">
         <div class="prop-row">
-          <span class="label">Location</span>
+          <span class="label">{{ 'fileBrowser.properties.location' | translate }}</span>
           <span class="value path" [title]="displayLocation">{{ displayLocation }}</span>
         </div>
         @if (item?.ModTime) {
           <div class="prop-row">
-            <span class="label">Modified</span>
+            <span class="label">{{ 'fileBrowser.properties.modified' | translate }}</span>
             <span class="value">{{ item?.ModTime | date: 'medium' }}</span>
           </div>
         }
         @if (item && !item.IsDir) {
           <div class="prop-row">
-            <span class="label">Size</span>
+            <span class="label">{{ 'fileBrowser.properties.size' | translate }}</span>
             <span class="value">{{ item.Size | formatFileSize }}</span>
           </div>
         }
@@ -61,20 +72,20 @@
       @if (item?.IsDir ?? true) {
         <mat-divider></mat-divider>
         <div class="properties-group">
-          <h4 class="group-title">Content Stats</h4>
+          <h4 class="group-title">{{ 'fileBrowser.properties.contentStats' | translate }}</h4>
 
           @if (loadingSize) {
             <div class="section-loader">
               <mat-spinner diameter="24"></mat-spinner>
-              <span>Calculating folder size...</span>
+              <span>{{ 'fileBrowser.properties.calculating' | translate }}</span>
             </div>
           } @else if (size) {
             <div class="prop-row">
-              <span class="label">Contained Files</span>
+              <span class="label">{{ 'fileBrowser.properties.containedFiles' | translate }}</span>
               <span class="value">{{ size.count | number }}</span>
             </div>
             <div class="prop-row">
-              <span class="label">Total Size</span>
+              <span class="label">{{ 'fileBrowser.properties.totalSize' | translate }}</span>
               <span class="value">{{ size.bytes | formatFileSize }}</span>
             </div>
           }
@@ -83,25 +94,25 @@
 
       <mat-divider></mat-divider>
       <div class="properties-group">
-        <h4 class="group-title">Storage</h4>
+        <h4 class="group-title">{{ 'fileBrowser.properties.storage' | translate }}</h4>
 
         @if (loadingDiskUsage) {
           <div class="section-loader">
             <mat-spinner diameter="24"></mat-spinner>
-            <span>Checking disk usage...</span>
+            <span>{{ 'fileBrowser.properties.checking' | translate }}</span>
           </div>
         } @else if (diskUsage) {
           <div class="usage-bars">
             <div class="prop-row">
-              <span class="label">Used</span>
+              <span class="label">{{ 'fileBrowser.properties.used' | translate }}</span>
               <span class="value">{{ diskUsage.used ?? 0 | formatFileSize }}</span>
             </div>
             <div class="prop-row">
-              <span class="label">Free</span>
+              <span class="label">{{ 'fileBrowser.properties.free' | translate }}</span>
               <span class="value">{{ diskUsage.free ?? 0 | formatFileSize }}</span>
             </div>
             <div class="prop-row">
-              <span class="label">Total Capacity</span>
+              <span class="label">{{ 'fileBrowser.properties.totalCapacity' | translate }}</span>
               <span class="value">{{ diskUsage.total ?? 0 | formatFileSize }}</span>
             </div>
           </div>
@@ -112,12 +123,12 @@
       @if (isFile) {
         <mat-divider></mat-divider>
         <div class="properties-group checksums-group">
-          <h4 class="group-title">Checksums</h4>
+          <h4 class="group-title">{{ 'fileBrowser.properties.checksums' | translate }}</h4>
 
           @if (loadingHashes) {
             <div class="section-loader">
               <mat-spinner diameter="24"></mat-spinner>
-              <span>Loading hash types...</span>
+              <span>{{ 'fileBrowser.properties.loadingHashes' | translate }}</span>
             </div>
           } @else if (hashError) {
             <div class="hash-error">
@@ -132,7 +143,12 @@
                     <span class="hash-type">{{ hash.type | uppercase }}</span>
                     <mat-icon
                       (click)="copyHash(hash.type)"
-                      [matTooltip]="copiedHash === hash.type ? 'Copied!' : 'Copy to clipboard'"
+                      [matTooltip]="
+                        (copiedHash === hash.type
+                          ? 'fileBrowser.properties.copied'
+                          : 'fileBrowser.properties.copyToClipboard'
+                        ) | translate
+                      "
                       [svgIcon]="copiedHash === hash.type ? 'circle-check' : 'copy'"
                     ></mat-icon>
                   </div>
@@ -143,7 +159,9 @@
               <!-- Uncalculated hash types as buttons -->
               @if (uncalculatedHashes.length > 0) {
                 <div class="hash-options">
-                  <span class="hash-options-label">Calculate more:</span>
+                  <span class="hash-options-label">{{
+                    'fileBrowser.properties.calculateMore' | translate
+                  }}</span>
                   <div class="hash-chips">
                     @for (hashType of uncalculatedHashes; track hashType) {
                       <button
@@ -164,7 +182,7 @@
             </div>
           } @else {
             <div class="no-hashes">
-              <span>No hash types supported for this remote</span>
+              <span>{{ 'fileBrowser.properties.noHashTypes' | translate }}</span>
             </div>
           }
         </div>
@@ -174,12 +192,16 @@
       @if (supportsPublicLink) {
         <mat-divider></mat-divider>
         <div class="properties-group public-link-group">
-          <h4 class="group-title">Public Link</h4>
+          <h4 class="group-title">{{ 'fileBrowser.properties.publicLink' | translate }}</h4>
 
           @if (loadingPublicLink) {
             <div class="section-loader">
               <mat-spinner diameter="24"></mat-spinner>
-              <span>{{ publicLinkUrl ? 'Removing link...' : 'Creating link...' }}</span>
+              <span>{{
+                publicLinkUrl
+                  ? ('fileBrowser.properties.removingLink' | translate)
+                  : ('fileBrowser.properties.creatingLink' | translate)
+              }}</span>
             </div>
           } @else if (publicLinkUrl) {
             <!-- Link exists - show URL with copy and remove options -->
@@ -188,28 +210,33 @@
                 <span class="link-url" [title]="publicLinkUrl">{{ publicLinkUrl }}</span>
                 <mat-icon
                   (click)="copyPublicLink()"
-                  [matTooltip]="copiedLink ? 'Copied!' : 'Copy to clipboard'"
+                  [matTooltip]="
+                    (copiedLink
+                      ? 'fileBrowser.properties.copied'
+                      : 'fileBrowser.properties.copyToClipboard'
+                    ) | translate
+                  "
                   [svgIcon]="copiedLink ? 'circle-check' : 'copy'"
                 ></mat-icon>
               </div>
               <button mat-stroked-button class="remove-link-btn" (click)="removePublicLink()">
-                Remove Link
+                {{ 'fileBrowser.properties.removeLink' | translate }}
               </button>
             </div>
           } @else {
             <!-- No link yet - show create button with expiry option -->
             <div class="link-create">
               <mat-form-field class="expiry-select">
-                <mat-label>Expires</mat-label>
+                <mat-label>{{ 'fileBrowser.properties.expires' | translate }}</mat-label>
                 <mat-select [(ngModel)]="selectedExpiry">
                   @for (option of expiryOptions; track option.value) {
-                    <mat-option [value]="option.value">{{ option.label }}</mat-option>
+                    <mat-option [value]="option.value">{{ option.label | translate }}</mat-option>
                   }
                 </mat-select>
               </mat-form-field>
               <button mat-flat-button class="get-link-btn primary" (click)="getPublicLink()">
                 <mat-icon svgIcon="open-link"></mat-icon>
-                Get Link
+                {{ 'fileBrowser.properties.getLink' | translate }}
               </button>
             </div>
           }

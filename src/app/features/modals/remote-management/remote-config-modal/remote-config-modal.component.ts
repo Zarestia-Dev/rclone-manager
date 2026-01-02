@@ -16,6 +16,7 @@ import {
   FormsModule,
   ReactiveFormsModule,
 } from '@angular/forms';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { Subject, takeUntil } from 'rxjs';
@@ -104,6 +105,7 @@ interface PendingRemoteData {
     MatInputModule,
     FormsModule,
     ReactiveFormsModule,
+    TranslateModule,
   ],
   templateUrl: './remote-config-modal.component.html',
   styleUrls: ['./remote-config-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -129,22 +131,23 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   readonly iconService = inject(IconService);
   private readonly nautilusService = inject(NautilusService);
   private readonly notificationService = inject(NotificationService);
+  private readonly translate = inject(TranslateService);
 
   private destroy$ = new Subject<void>();
 
   // Configuration
   readonly TOTAL_STEPS = 10; // Added Serve
   readonly stepLabels = [
-    'Remote Config',
-    'Mount',
-    'Serve',
-    'Sync',
-    'Bisync',
-    'Move',
-    'Copy',
-    'Filter',
-    'VFS',
-    'Backend',
+    'modals.remoteConfig.steps.remoteConfig',
+    'modals.remoteConfig.steps.mount',
+    'modals.remoteConfig.steps.serve',
+    'modals.remoteConfig.steps.sync',
+    'modals.remoteConfig.steps.bisync',
+    'modals.remoteConfig.steps.move',
+    'modals.remoteConfig.steps.copy',
+    'modals.remoteConfig.steps.filter',
+    'modals.remoteConfig.steps.vfs',
+    'modals.remoteConfig.steps.backend',
   ];
   // Define local type for profile management
   readonly FLAG_TYPES = FLAG_TYPES;
@@ -1240,7 +1243,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       const usage = this.getProfileUsage(type, remoteName, name);
       if (usage.inUse) {
         this.notificationService.showWarning(
-          `Cannot delete profile "${name}" - it is in use by ${usage.count} active ${usage.opType}(s)`
+          this.translate.instant('modals.remoteConfig.profile.inUseWarning', {
+            name,
+            count: usage.count,
+            type: usage.opType,
+          })
         );
         return;
       }
@@ -1752,10 +1759,10 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
   get saveButtonLabel(): string {
     return this.isAuthInProgress && !this.isAuthCancelled
-      ? 'Saving...'
+      ? 'modals.remoteConfig.buttons.saving'
       : this.editTarget
-        ? 'Save Changes'
-        : 'Save';
+        ? 'modals.remoteConfig.buttons.saveChanges'
+        : 'modals.remoteConfig.buttons.save';
   }
 
   @HostListener('document:keydown.escape')

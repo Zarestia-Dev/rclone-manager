@@ -18,7 +18,7 @@ pub async fn load_settings(
     let metadata = manager
         .inner()
         .load_settings::<AppSettings>()
-        .map_err(|e| format!("Failed to load settings: {e}"))?;
+        .map_err(|e| crate::localized_error!("backendErrors.settings.loadFailed", "error" => e))?;
 
     let response = json!({
         "options": metadata
@@ -40,13 +40,15 @@ pub async fn save_setting(
     manager
         .inner()
         .save_setting::<AppSettings>(&category, &key, value.clone())
-        .map_err(|e| format!("Failed to save setting: {e}"))?;
+        .map_err(|e| crate::localized_error!("backendErrors.settings.saveFailed", "error" => e))?;
 
     // Emit change event for UI updates
     let change_payload = json!({ category.clone(): { key.clone(): value } });
     app_handle
         .emit(SYSTEM_SETTINGS_CHANGED, change_payload)
-        .map_err(|e| format!("Failed to emit settings change event: {e}"))?;
+        .map_err(
+            |e| crate::localized_error!("backendErrors.settings.eventEmitFailed", "error" => e),
+        )?;
 
     info!("✅ Setting {}.{} saved successfully.", category, key);
     Ok(())
@@ -63,7 +65,7 @@ pub async fn reset_setting(
     let default_value = manager
         .inner()
         .reset_setting::<AppSettings>(&category, &key)
-        .map_err(|e| format!("Failed to reset setting: {e}"))?;
+        .map_err(|e| crate::localized_error!("backendErrors.settings.resetFailed", "error" => e))?;
 
     // Emit change event
     let change_payload = json!({ category.clone(): { key.clone(): default_value.clone() } });
@@ -81,16 +83,17 @@ pub async fn reset_settings(
     manager: State<'_, JsonSettingsManager>,
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
-    manager
-        .inner()
-        .reset_all()
-        .map_err(|e| format!("Failed to reset all settings: {e}"))?;
+    manager.inner().reset_all().map_err(
+        |e| crate::localized_error!("backendErrors.settings.resetAllFailed", "error" => e),
+    )?;
 
     // Emit event with default settings
     let default_settings = AppSettings::default();
     app_handle
         .emit(SYSTEM_SETTINGS_CHANGED, &default_settings)
-        .map_err(|e| format!("Failed to emit settings reset event: {e}"))?;
+        .map_err(
+            |e| crate::localized_error!("backendErrors.settings.eventEmitFailed", "error" => e),
+        )?;
 
     info!("✅ All settings have been reset to default.");
     Ok(())
@@ -100,5 +103,5 @@ pub async fn reset_settings(
 pub fn load_startup_settings(manager: &JsonSettingsManager) -> Result<AppSettings, String> {
     manager
         .settings::<AppSettings>()
-        .map_err(|e| format!("Failed to load startup settings: {e}"))
+        .map_err(|e| crate::localized_error!("backendErrors.settings.loadFailed", "error" => e))
 }

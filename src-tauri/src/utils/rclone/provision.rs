@@ -45,7 +45,9 @@ pub async fn provision_rclone(
                 {
                     error!("Failed to save settings: {e}");
                 }
-                return Ok("Rclone already installed system-wide.".into());
+                return Ok(
+                    crate::localized_success!("backendSuccess.rclone.updated", "channel" => "system"),
+                );
             }
         }
         Err(e) => {
@@ -58,7 +60,11 @@ pub async fn provision_rclone(
         "macos" => "osx",
         "linux" => "linux",
         "windows" => "windows",
-        _ => return Err("Unsupported OS.".into()),
+        _ => {
+            return Err(crate::localized_error!(
+                "backendErrors.rclone.unsupportedOS"
+            ));
+        }
     };
 
     let version = get_latest_rclone_version().await?;
@@ -106,7 +112,9 @@ pub async fn provision_rclone(
         .join(binary_name);
 
     if !extracted_path.exists() {
-        return Err("Rclone binary not found.".into());
+        return Err(crate::localized_error!(
+            "backendErrors.rclone.binaryNotFound"
+        ));
     }
 
     info!("Rclone binary verified successfully. Proceeding to copy...");
@@ -126,7 +134,7 @@ pub async fn provision_rclone(
         serde_json::json!(
             install_path
                 .to_str()
-                .ok_or("Invalid UTF-8 in install path")?
+                .ok_or_else(|| crate::localized_error!("backendErrors.rclone.binaryNotFound"))?
         ),
         app_handle.state(),
         app_handle.clone(),
@@ -136,7 +144,7 @@ pub async fn provision_rclone(
         error!("Failed to save settings: {e}");
     }
 
-    Ok(format!("Rclone installed in {}", install_path.display()))
+    Ok(crate::localized_success!("backendSuccess.rclone.updated", "channel" => "stable"))
 }
 
 /// Get the latest rclone version from GitHub releases

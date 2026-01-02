@@ -10,6 +10,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { RclonePasswordService } from 'src/app/services/security/rclone-password.service';
+import { ValidatorsService } from 'src/app/services/validation/validators.service';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-backend-security',
@@ -25,6 +27,7 @@ import { RclonePasswordService } from 'src/app/services/security/rclone-password
     MatSnackBarModule,
     MatSlideToggleModule,
     MatExpansionModule,
+    TranslateModule,
   ],
   templateUrl: './backend-security.component.html',
   styleUrls: ['./backend-security.component.scss'],
@@ -33,6 +36,8 @@ export class BackendSecurityComponent implements OnInit {
   private readonly passwordService = inject(RclonePasswordService);
   private readonly fb = inject(FormBuilder);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly translate = inject(TranslateService);
+  private readonly validators = inject(ValidatorsService);
 
   // Security UI state
   readonly showSecurityPassword = signal(false);
@@ -107,15 +112,23 @@ export class BackendSecurityComponent implements OnInit {
     try {
       await this.passwordService.validatePassword(password);
       await this.passwordService.storePassword(password);
-      this.snackBar.open('Password stored in keychain', 'Close', { duration: 4000 });
+      this.snackBar.open(
+        this.translate.instant('modals.backend.security.passwordStored'),
+        this.translate.instant('common.close'),
+        { duration: 4000 }
+      );
       this.showKeychainInput.set(false);
       this.securityForm.patchValue({ keychainPassword: '' });
       await this.loadEncryptionStatus();
     } catch (error: any) {
-      this.snackBar.open(`Failed: ${error.message || error}`, 'Close', {
-        duration: 6000,
-        panelClass: 'snackbar-error',
-      });
+      this.snackBar.open(
+        `${this.translate.instant('common.error')}: ${error.message || error}`,
+        this.translate.instant('common.close'),
+        {
+          duration: 6000,
+          panelClass: 'snackbar-error',
+        }
+      );
     } finally {
       this.encryptionLoading.set(false);
     }
@@ -132,10 +145,14 @@ export class BackendSecurityComponent implements OnInit {
     const { newPassword, confirmPassword } = this.securityForm.value;
     if (!newPassword) return;
     if (newPassword !== confirmPassword) {
-      this.snackBar.open('Passwords do not match', 'Close', {
-        duration: 3000,
-        panelClass: 'snackbar-error',
-      });
+      this.snackBar.open(
+        this.translate.instant('modals.backend.security.passwordsMismatch'),
+        this.translate.instant('common.close'),
+        {
+          duration: 3000,
+          panelClass: 'snackbar-error',
+        }
+      );
       return;
     }
 
@@ -144,13 +161,23 @@ export class BackendSecurityComponent implements OnInit {
       await this.passwordService.encryptConfig(newPassword);
       await this.passwordService.storePassword(newPassword);
       await this.loadEncryptionStatus();
-      this.snackBar.open('Configuration encrypted', 'Close', { duration: 4000 });
+      this.snackBar.open(
+        this.translate.instant('modals.backend.security.encrypted'),
+        this.translate.instant('common.close'),
+        { duration: 4000 }
+      );
       this.securityForm.reset();
     } catch (error: any) {
-      this.snackBar.open(`Encryption failed: ${error.message || error}`, 'Close', {
-        duration: 6000,
-        panelClass: 'snackbar-error',
-      });
+      this.snackBar.open(
+        this.translate.instant('modals.backend.security.encryptionFailed', {
+          message: error.message || error,
+        }),
+        this.translate.instant('common.close'),
+        {
+          duration: 6000,
+          panelClass: 'snackbar-error',
+        }
+      );
     } finally {
       this.encryptionLoading.set(false);
     }
@@ -165,13 +192,23 @@ export class BackendSecurityComponent implements OnInit {
       await this.passwordService.unencryptConfig(currentPassword);
       await this.passwordService.removeStoredPassword();
       await this.loadEncryptionStatus();
-      this.snackBar.open('Encryption removed', 'Close', { duration: 4000 });
+      this.snackBar.open(
+        this.translate.instant('modals.backend.security.removeEncryption'),
+        this.translate.instant('common.close'),
+        { duration: 4000 }
+      );
       this.securityForm.reset();
     } catch (error: any) {
-      this.snackBar.open(`Failed to remove encryption: ${error.message || error}`, 'Close', {
-        duration: 6000,
-        panelClass: 'snackbar-error',
-      });
+      this.snackBar.open(
+        this.translate.instant('modals.backend.security.decryptionFailed', {
+          message: error.message || error,
+        }),
+        this.translate.instant('common.close'),
+        {
+          duration: 6000,
+          panelClass: 'snackbar-error',
+        }
+      );
     } finally {
       this.encryptionLoading.set(false);
     }
@@ -181,10 +218,14 @@ export class BackendSecurityComponent implements OnInit {
     const { currentPassword, newPassword, confirmPassword } = this.securityForm.value;
     if (!currentPassword || !newPassword) return;
     if (newPassword !== confirmPassword) {
-      this.snackBar.open('New passwords do not match', 'Close', {
-        duration: 3000,
-        panelClass: 'snackbar-error',
-      });
+      this.snackBar.open(
+        this.translate.instant('modals.backend.security.passwordsMismatch'),
+        this.translate.instant('common.close'),
+        {
+          duration: 3000,
+          panelClass: 'snackbar-error',
+        }
+      );
       return;
     }
 
@@ -193,13 +234,23 @@ export class BackendSecurityComponent implements OnInit {
       await this.passwordService.changeConfigPassword(currentPassword, newPassword);
       await this.passwordService.storePassword(newPassword);
       await this.loadEncryptionStatus();
-      this.snackBar.open('Password changed', 'Close', { duration: 4000 });
+      this.snackBar.open(
+        this.translate.instant('modals.backend.security.passwordChanged'),
+        this.translate.instant('common.close'),
+        { duration: 4000 }
+      );
       this.securityForm.reset();
     } catch (error: any) {
-      this.snackBar.open(`Failed to change password: ${error.message || error}`, 'Close', {
-        duration: 6000,
-        panelClass: 'snackbar-error',
-      });
+      this.snackBar.open(
+        this.translate.instant('modals.backend.security.passwordChangeFailed', {
+          message: error.message || error,
+        }),
+        this.translate.instant('common.close'),
+        {
+          duration: 6000,
+          panelClass: 'snackbar-error',
+        }
+      );
     } finally {
       this.encryptionLoading.set(false);
     }
@@ -210,12 +261,20 @@ export class BackendSecurityComponent implements OnInit {
       this.encryptionLoading.set(true);
       await this.passwordService.removeStoredPassword();
       await this.loadEncryptionStatus();
-      this.snackBar.open('Password removed from keychain', 'Close', { duration: 4000 });
+      this.snackBar.open(
+        this.translate.instant('modals.backend.security.passwordRemoved'),
+        this.translate.instant('common.close'),
+        { duration: 4000 }
+      );
     } catch (error: any) {
-      this.snackBar.open(`Failed: ${error.message || error}`, 'Close', {
-        duration: 6000,
-        panelClass: 'snackbar-error',
-      });
+      this.snackBar.open(
+        `${this.translate.instant('common.error')}: ${error.message || error}`,
+        this.translate.instant('common.close'),
+        {
+          duration: 6000,
+          panelClass: 'snackbar-error',
+        }
+      );
       this.loadEncryptionStatus();
     } finally {
       this.encryptionLoading.set(false);

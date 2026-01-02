@@ -10,8 +10,8 @@
     <app-loading-overlay
       animate.enter="fade-in-out-enter"
       animate.leave="fade-in-out-leave"
-      title="Initializing RClone Manager"
-      message="Checking system configuration..."
+      [title]="'onboarding.loadingTitle' | translate"
+      [message]="'onboarding.loadingMessage' | translate"
       icon="refresh"
     >
     </app-loading-overlay>
@@ -32,27 +32,27 @@
     <div class="content-area">
       <div class="card-content">
         <div class="icon-container">
-          <img [src]="currentCard().image" alt="{{ currentCard().title }} icon" />
+          <img [src]="currentCard().image" alt="{{ currentCard().title | translate }} icon" />
         </div>
         <div class="text-content">
-          <h2 class="card-title">{{ currentCard().title }}</h2>
-          <p class="card-description">{{ currentCard().content }}</p>
+          <h2 class="card-title">{{ currentCard().title | translate }}</h2>
+          <p class="card-description">{{ currentCard().content | translate }}</p>
         </div>
-        @if (currentCard().title === 'Select RClone Config') {
+        @if (currentCard().key === 'selectConfig') {
           <div class="form-section">
             <app-installation-options
               [mode]="'config'"
               [disabled]="installing()"
               [tabOptions]="[
-                { key: 'default', label: 'Default', icon: 'file' },
-                { key: 'custom', label: 'Custom', icon: 'folder' },
+                { key: 'default', label: 'onboarding.options.default', icon: 'file' },
+                { key: 'custom', label: 'onboarding.options.custom', icon: 'folder' },
               ]"
               (dataChange)="onConfigOptionsChange($event)"
               (validChange)="onConfigValidChange($event)"
             ></app-installation-options>
           </div>
         }
-        @if (currentCard().title === 'Configuration Password Required') {
+        @if (currentCard().key === 'passwordRequired') {
           <div class="form-section">
             <app-password-manager
               [password]="configPassword()"
@@ -67,7 +67,7 @@
             </app-password-manager>
           </div>
         }
-        @if (currentCard().title === 'Install RClone' && !systemHealth.rcloneInstalled()) {
+        @if (currentCard().key === 'installRclone' && !systemHealth.rcloneInstalled()) {
           <div class="form-section">
             <app-installation-options
               [mode]="'install'"
@@ -86,7 +86,7 @@
         @if (currentCardIndex() > 0) {
           <button matButton (click)="previousCard()" class="secondary">
             <mat-icon svgIcon="left-arrow"></mat-icon>
-            Back
+            {{ 'onboarding.actions.back' | translate }}
           </button>
         }
       </div>
@@ -98,13 +98,15 @@
               class="primary"
               (click)="installRclone()"
               [disabled]="!canInstall()"
-              [matTooltip]="!canInstall() ? 'Please complete the installation options above' : ''"
+              [matTooltip]="
+                !canInstall() ? ('onboarding.validation.completeInstallation' | translate) : ''
+              "
             >
               <mat-icon
                 [svgIcon]="installing() ? 'refresh' : 'download'"
                 [class.animate-spin]="installing()"
               ></mat-icon>
-              {{ installButtonText() }}
+              {{ installButtonText() | translate }}
             </button>
           }
           @case ('install-plugin') {
@@ -118,7 +120,12 @@
                 [svgIcon]="downloadingPlugin() ? 'refresh' : 'download'"
                 [class.animate-spin]="downloadingPlugin()"
               ></mat-icon>
-              {{ downloadingPlugin() ? 'Installing...' : 'Install Plugin' }}
+              {{
+                (downloadingPlugin()
+                  ? 'onboarding.actions.installingPlugin'
+                  : 'onboarding.actions.installPlugin'
+                ) | translate
+              }}
             </button>
           }
           @case ('config-next') {
@@ -128,10 +135,10 @@
               (click)="onConfigNext()"
               [disabled]="!configValid()"
               [matTooltip]="
-                !configValid() ? 'Please select or provide a valid config option first' : ''
+                !configValid() ? ('onboarding.validation.selectConfig' | translate) : ''
               "
             >
-              Next
+              {{ 'onboarding.actions.next' | translate }}
               <mat-icon svgIcon="right-arrow"></mat-icon>
             </button>
           }
@@ -145,7 +152,7 @@
               @if (isSubmittingPassword()) {
                 <mat-progress-spinner diameter="18" mode="indeterminate"></mat-progress-spinner>
               } @else {
-                <span>Unlock</span>
+                <span>{{ 'onboarding.actions.unlock' | translate }}</span>
               }
             </button>
           }
@@ -157,12 +164,12 @@
               class="finish-button"
             >
               <mat-icon svgIcon="circle-check"></mat-icon>
-              Get Started
+              {{ 'onboarding.actions.getStarted' | translate }}
             </button>
           }
           @default {
             <button matButton="filled" class="primary" (click)="nextCard()">
-              Next
+              {{ 'onboarding.actions.next' | translate }}
               <mat-icon svgIcon="right-arrow"></mat-icon>
             </button>
           }

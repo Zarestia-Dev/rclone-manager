@@ -22,6 +22,16 @@ pub struct GeneralSettings {
     pub tray_enabled: bool,
 
     #[setting(
+        label = "Language",
+        description = "Language to use for the user interface.",
+        options(
+            ("en", "English"),
+            ("tr", "Türkçe (Turkish)")
+        )
+    )]
+    pub language: String,
+
+    #[setting(
         label = "Start on Startup",
         description = "Automatically start the app when the system starts."
     )]
@@ -44,6 +54,7 @@ impl Default for GeneralSettings {
     fn default() -> Self {
         Self {
             tray_enabled: true,
+            language: "en".to_string(),
             start_on_startup: false,
             notifications: true,
             restrict: true,

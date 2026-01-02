@@ -1,7 +1,12 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
+import { MatBottomSheet, MatBottomSheetRef } from '@angular/material/bottom-sheet';
+import { firstValueFrom } from 'rxjs';
+import { RepairSheetComponent } from '../../features/components/repair-sheet/repair-sheet.component';
+import { RepairData, RepairSheetType, PasswordPromptResult } from '@app/types';
 import { SystemInfoService } from './system-info.service';
 import { InstallationService } from '../settings/installation.service';
 import { RclonePasswordService } from '../security/rclone-password.service';
+import { EventListenersService } from './event-listeners.service';
 
 /** Types of system problems that can be detected */
 export type SystemProblem = 'rclone-missing' | 'mount-plugin-missing' | 'password-required';
@@ -17,6 +22,10 @@ export class SystemHealthService {
   private readonly systemInfoService = inject(SystemInfoService);
   private readonly installationService = inject(InstallationService);
   private readonly rclonePasswordService = inject(RclonePasswordService);
+  private readonly eventListenersService = inject(EventListenersService);
+  private readonly bottomSheet = inject(MatBottomSheet);
+
+  private readonly activeSheets = new Set<MatBottomSheetRef<RepairSheetComponent>>();
 
   // ─── Core State Signals ─────────────────────────────────────────────────────
   // null = not checked yet, true/false = checked
@@ -190,5 +199,176 @@ export class SystemHealthService {
     this.mountPluginInstalled.set(null);
     this.configEncrypted.set(null);
     this.passwordUnlocked.set(false);
+  }
+  // ─── Sheet Management ───────────────────────────────────────────────────────
+
+  async showRepairSheet(data: RepairData): Promise<void> {
+    const sheetRef = this.bottomSheet.open(RepairSheetComponent, {
+      data,
+      disableClose: true,
+    });
+
+    this.activeSheets.add(sheetRef);
+
+    sheetRef.afterDismissed().subscribe(() => {
+      this.activeSheets.delete(sheetRef);
+    });
+  }
+
+  async openRepairSheetWithResult(data: RepairData): Promise<PasswordPromptResult | null> {
+    const sheetRef = this.bottomSheet.open(RepairSheetComponent, {
+      data,
+      disableClose: true,
+    });
+
+    this.activeSheets.add(sheetRef);
+
+    try {
+      const result = await firstValueFrom(sheetRef.afterDismissed());
+      return (result as PasswordPromptResult) ?? null;
+    } catch (error) {
+      console.error('Error in repair sheet:', error);
+      return null;
+    } finally {
+      this.activeSheets.delete(sheetRef);
+    }
+  }
+
+  hasActiveSheetOfType(type: RepairSheetType): boolean {
+    return Array.from(this.activeSheets).some(
+      sheet => sheet.instance instanceof RepairSheetComponent && sheet.instance.data?.type === type
+    );
+  }
+
+  closeSheetsByType(type: RepairSheetType): void {
+    Array.from(this.activeSheets).forEach(sheet => {
+      if (sheet.instance instanceof RepairSheetComponent && sheet.instance.data?.type === type) {
+        sheet.dismiss();
+      }
+    });
+  }
+
+  closeSheetsByTypes(types: RepairSheetType[]): void {
+    Array.from(this.activeSheets).forEach(sheet => {
+      if (
+        sheet.instance instanceof RepairSheetComponent &&
+        types.includes(sheet.instance.data?.type as RepairSheetType)
+      ) {
+        sheet.dismiss();
+      }
+    });
+  }
+
+  // ─── Specific Repair Flows ──────────────────────────────────────────────────
+
+  handleRclonePathError(alreadyReported: boolean): void {
+    if (alreadyReported) return;
+
+    this.showRepairSheet({
+      type: RepairSheetType.RCLONE_PATH,
+    });
+  }
+
+  async handlePasswordRequired(isPromptInProgress: boolean): Promise<boolean> {
+    if (isPromptInProgress || this.hasActiveSheetOfType(RepairSheetType.RCLONE_PASSWORD)) {
+      console.debug('Password prompt already in progress, skipping...');
+      return false;
+    }
+
+    try {
+      const result = await this.promptForPassword();
+      if (result?.password) {
+        await this.rclonePasswordService.setConfigPasswordEnv(result.password);
+        this.markPasswordUnlocked();
+        console.debug('Password set successfully');
+        return true;
+      } else {
+        console.debug('Password prompt was cancelled or no password provided');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error handling password requirement:', error);
+      throw error;
+    }
+  }
+
+  async promptForPassword(): Promise<PasswordPromptResult | null> {
+    const repairData: RepairData = {
+      type: RepairSheetType.RCLONE_PASSWORD,
+      requiresPassword: true,
+      showStoreOption: true,
+      passwordDescription:
+        'Your rclone configuration requires a password to access encrypted remotes.',
+    };
+
+    return this.openRepairSheetWithResult(repairData);
+  }
+
+  // ─── Event Handling Logic ───────────────────────────────────────────────────
+
+  async handleRcloneOAuthEvent(event: object, isOnboardingCompleted: boolean): Promise<void> {
+    console.debug('OAuth event received:', event);
+
+    try {
+      if ('status' in event) {
+        const typedEvent = event as { status: string; message?: string };
+        switch (typedEvent.status) {
+          case 'password_error':
+            console.debug('🔑 OAuth password error detected:', typedEvent.message);
+            if (isOnboardingCompleted) {
+              await this.handlePasswordRequired(false);
+            }
+            break;
+
+          case 'spawn_failed':
+            console.error('🚫 OAuth process failed to start:', typedEvent.message);
+            break;
+
+          case 'startup_timeout':
+            console.error('⏰ OAuth process startup timeout:', typedEvent.message);
+            break;
+
+          case 'success':
+            console.debug('✅ OAuth process started successfully:', typedEvent.message);
+            break;
+
+          default:
+            console.debug(`Unhandled OAuth event status: ${typedEvent.status}`);
+            break;
+        }
+      } else {
+        console.warn('Unknown OAuth event format:', event);
+      }
+    } catch (error) {
+      console.error('Error handling OAuth event:', error);
+    }
+  }
+
+  setupMountPluginListener(): void {
+    this.eventListenersService.listenToMountPluginInstalled().subscribe(() => {
+      console.debug('Mount plugin installation event received');
+      // Re-check mount plugin status after a short delay
+      setTimeout(async () => {
+        await this.recheckMountPluginStatus();
+      }, 1000);
+    });
+  }
+
+  private async recheckMountPluginStatus(): Promise<void> {
+    try {
+      const mountPluginOk = await this.installationService.isMountPluginInstalled(1);
+      console.debug('Mount plugin re-check status:', mountPluginOk);
+
+      if (mountPluginOk) {
+        this.markMountPluginInstalled();
+        this.closeSheetsByType(RepairSheetType.MOUNT_PLUGIN);
+      } else {
+        console.warn('Mount plugin installation event received but plugin still not detected');
+      }
+    } catch (error) {
+      console.error('Error re-checking mount plugin status:', error);
+      // Still close the sheet as the installation event was likely user-initiated
+      this.closeSheetsByType(RepairSheetType.MOUNT_PLUGIN);
+    }
   }
 }

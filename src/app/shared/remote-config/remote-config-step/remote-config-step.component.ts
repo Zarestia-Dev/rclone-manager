@@ -21,6 +21,7 @@ import { RcConfigOption, RemoteType } from '@app/types';
 import { SettingControlComponent } from 'src/app/shared/components';
 import { startWith } from 'rxjs/operators';
 import { Subscription } from 'rxjs';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-remote-config-step',
@@ -34,6 +35,7 @@ import { Subscription } from 'rxjs';
     MatAutocompleteModule,
     SettingControlComponent,
     ScrollingModule,
+    TranslateModule,
   ],
   templateUrl: './remote-config-step.component.html',
   styleUrl: './remote-config-step.component.scss',
@@ -96,7 +98,7 @@ export class RemoteConfigStepComponent implements OnDestroy {
         if (control) {
           // Sync initial value without triggering cycles
           untracked(() => {
-            const currentVal = control.value || fieldDef!.DefaultStr || fieldDef!.Default;
+            const currentVal = control.value || fieldDef?.DefaultStr || fieldDef?.Default;
             this.selectedProvider.set(currentVal);
 
             // Ensure our local search control matches the form's value
@@ -330,7 +332,7 @@ export class RemoteConfigStepComponent implements OnDestroy {
 
   // --- Template Bindings ---
 
-  trackByField(index: number, field: any): string {
+  trackByField(index: number, field: { type: string }): string {
     return `${field.type}-${index}`;
   }
 

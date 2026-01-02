@@ -126,9 +126,9 @@ pub async fn kill_process_by_pid_handler(
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::utils::process::process_manager::kill_process_by_pid;
     kill_process_by_pid(query.pid).map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(format!(
-        "Process {} killed successfully",
-        query.pid
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.system.processKilled",
+        "pid" => query.pid
     ))))
 }
 
@@ -229,7 +229,9 @@ pub async fn handle_shutdown_handler(
     tokio::spawn(async move {
         handle_shutdown(app_handle).await;
     });
-    Ok(Json(ApiResponse::success("Shutdown initiated".to_string())))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.system.shutdownInitiated"
+    ))))
 }
 
 pub async fn force_check_serves_handler(
@@ -239,9 +241,9 @@ pub async fn force_check_serves_handler(
     force_check_serves(state.app_handle.clone())
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Serves checked successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.system.servesChecked"
+    ))))
 }
 
 // Logs
@@ -273,9 +275,9 @@ pub async fn clear_remote_logs_handler(
     clear_remote_logs(log_cache, query.remote_name)
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Remote logs cleared successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.system.logsCleared"
+    ))))
 }
 
 // SSE
@@ -366,9 +368,9 @@ pub async fn install_update_handler(
     install_update(state.app_handle.clone(), pending_update, download_state)
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Update installed successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.system.updateInstalled"
+    ))))
 }
 
 #[cfg(not(feature = "updater"))]

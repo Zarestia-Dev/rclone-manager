@@ -1,4 +1,4 @@
-import { Component, Output, EventEmitter, OnInit, input, computed, signal } from '@angular/core';
+import { Component, Output, EventEmitter, input, computed, signal, effect } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-password-manager',
@@ -19,11 +20,12 @@ import { MatButtonModule } from '@angular/material/button';
     MatCheckboxModule,
     MatTooltipModule,
     MatButtonModule,
+    TranslateModule,
   ],
   templateUrl: './password-manager.component.html',
   styleUrls: ['./password-manager.component.scss'],
 })
-export class PasswordManagerComponent implements OnInit {
+export class PasswordManagerComponent {
   password = input('');
   storePassword = input(true);
   isSubmitting = input(false);
@@ -31,34 +33,29 @@ export class PasswordManagerComponent implements OnInit {
   errorMessage = input('');
   showStoreOption = input(true);
   disabled = input(false);
-  placeholder = input('Enter your rclone config password');
-  label = input('Configuration Password');
+  placeholder = input('shared.passwordManager.placeholder');
+  label = input('shared.passwordManager.label');
 
   @Output() passwordChange = new EventEmitter<string>();
   @Output() storePasswordChange = new EventEmitter<boolean>();
   @Output() unlock = new EventEmitter<void>();
 
-  // Simple error counter - increments each time hasError becomes true
+  // Error counter - increments each time hasError becomes true (triggers shake animation)
   errorCount = signal(0);
   private lastErrorState = false;
 
   canSubmit = computed(() => !!(this.password() && !this.isSubmitting() && !this.disabled()));
 
-  ngOnInit(): void {
-    // Watch for error state changes
-    this.checkErrorState();
-  }
-
-  private checkErrorState(): void {
-    // Poll for error changes (simpler than effect complexity)
-    setInterval(() => {
+  constructor() {
+    // Use Angular effect() instead of setInterval for reactive error state monitoring
+    effect(() => {
       const currentError = this.hasError();
       if (currentError && !this.lastErrorState) {
         // Error just occurred - increment counter to trigger animation
         this.errorCount.update(c => c + 1);
       }
       this.lastErrorState = currentError;
-    }, 50);
+    });
   }
 
   onPasswordInput(value: string): void {

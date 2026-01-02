@@ -19,6 +19,7 @@ import {
   InstallationService,
   AppSettingsService,
 } from '@app/services';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 type RepairMode = 'standard' | 'install' | 'config';
 
@@ -39,6 +40,7 @@ type RepairMode = 'standard' | 'install' | 'config';
     MatTooltipModule,
     InstallationOptionsComponent,
     PasswordManagerComponent,
+    TranslateModule,
   ],
   templateUrl: './repair-sheet.component.html',
   styleUrl: './repair-sheet.component.scss',
@@ -69,11 +71,12 @@ export class RepairSheetComponent {
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly passwordService = inject(RclonePasswordService);
   private readonly installationService = inject(InstallationService);
+  private readonly translate = inject(TranslateService);
 
   // --- UI CONFIGURATION ---
   readonly configTabOptions: InstallationTabOption[] = [
-    { key: 'default', label: 'Default Config', icon: 'bolt' },
-    { key: 'custom', label: 'Custom Config', icon: 'file' },
+    { key: 'default', label: 'repairSheet.configTabs.default', icon: 'bolt' },
+    { key: 'custom', label: 'repairSheet.configTabs.custom', icon: 'file' },
   ];
 
   // --- COMPUTED SIGNALS ---
@@ -91,30 +94,30 @@ export class RepairSheetComponent {
 
   readonly repairDetails = computed(() => this.repairService.getRepairDetails(this.data.type));
 
-  readonly repairButtonText = computed(() => {
+  readonly repairButtonTextKey = computed(() => {
     if (this.installing()) {
-      return this.repairService.getRepairProgressText(this.data.type);
+      return this.repairService.getRepairProgressTextKey(this.data.type);
     }
     if (this.showConfigOptions()) {
-      return this.getConfigModeButtonText();
+      return this.getConfigModeButtonTextKey();
     }
     if (this.requiresPassword() && !this.password()) {
-      return 'Enter Password';
+      return 'repairSheet.buttons.enterPassword';
     }
     if (this.isRclonePathRepair() && this.showAdvanced()) {
-      return this.getInstallModeButtonText();
+      return this.getInstallModeButtonTextKey();
     }
-    return this.repairService.getRepairButtonText(this.data.type);
+    return this.repairService.getRepairButtonTextKey(this.data.type);
   });
 
-  readonly repairProgressText = computed(() => {
+  readonly repairProgressTextKey = computed(() => {
     if (
       this.currentMode() === 'install' &&
       this.installationData().installLocation === 'existing'
     ) {
-      return 'Configuring...';
+      return 'repairSheet.progress.configuring';
     }
-    return this.repairService.getRepairProgressText(this.data.type);
+    return this.repairService.getRepairProgressTextKey(this.data.type);
   });
 
   readonly repairButtonIcon = computed(() => {
@@ -138,6 +141,16 @@ export class RepairSheetComponent {
     }
   });
 
+  readonly displayTitle = computed(() => {
+    if (this.data.title) return this.data.title;
+    return this.translate.instant(this.repairService.getRepairTitleKey(this.data.type));
+  });
+
+  readonly displayMessage = computed(() => {
+    if (this.data.message) return this.data.message;
+    return this.translate.instant(this.repairService.getRepairMessageKey(this.data.type));
+  });
+
   readonly repairTooltip = computed(() => {
     if (this.canRepair() || this.installing() || this.isSubmittingPassword()) return '';
 
@@ -145,32 +158,31 @@ export class RepairSheetComponent {
 
     if (this.showConfigOptions()) {
       if (data.installLocation === 'custom' && !data.customPath.trim()) {
-        return 'Please select a config file first';
+        return 'repairSheet.tooltips.selectConfigFirst';
       }
       if (!this.installationValid()) {
-        return 'Please fix validation errors';
+        return 'repairSheet.tooltips.fixValidationErrors';
       }
       return '';
     }
 
     if (this.requiresPassword()) {
       if (!this.password()) {
-        return 'Please enter the configuration password first';
+        return 'repairSheet.tooltips.enterPasswordFirst';
       }
-      return 'Account is temporarily locked due to failed attempts';
+      return 'repairSheet.tooltips.accountLocked';
     }
 
     if (data.installLocation === 'custom' && !data.customPath.trim()) {
-      return 'Please select an installation path first';
+      return 'repairSheet.tooltips.selectInstallPathFirst';
     }
     if (data.installLocation === 'existing') {
-      if (!data.existingBinaryPath.trim()) return 'Please select a binary file first';
-      if (data.binaryTestResult === 'invalid')
-        return 'The selected file is not a valid rclone binary';
-      if (data.binaryTestResult === 'untested') return 'Please test the selected binary first';
+      if (!data.existingBinaryPath.trim()) return 'repairSheet.tooltips.selectBinaryFirst';
+      if (data.binaryTestResult === 'invalid') return 'repairSheet.tooltips.invalidBinary';
+      if (data.binaryTestResult === 'untested') return 'repairSheet.tooltips.testBinaryFirst';
     }
     if (!this.installationValid()) {
-      return 'Please fix validation errors';
+      return 'repairSheet.tooltips.fixValidationErrors';
     }
     return '';
   });
@@ -188,7 +200,7 @@ export class RepairSheetComponent {
         if (this.requiresPassword() && this.password()) {
           await this.submitPassword();
         } else if (this.requiresPassword()) {
-          this.showPasswordError('Password is required, or select a different config file.');
+          this.showPasswordError(this.translate.instant('repairSheet.errors.passwordRequired'));
         } else {
           await this.executeRepair();
         }
@@ -268,12 +280,14 @@ export class RepairSheetComponent {
       if (isInstalled) {
         this.sheetRef.dismiss('success');
       } else {
-        this.data.message = `Mount plugin status checked at ${new Date().toLocaleTimeString()}. Plugin not detected. You may need to restart the application if you recently installed it manually.`;
+        this.data.message = this.translate.instant(
+          'repairSheet.messages.mountPluginStatusChecked',
+          { time: new Date().toLocaleTimeString() }
+        );
       }
     } catch (error) {
       console.error('Error refreshing mount plugin status:', error);
-      this.data.message =
-        'Error checking mount plugin status. Please try restarting the application.';
+      this.data.message = this.translate.instant('repairSheet.messages.mountPluginStatusError');
     } finally {
       this.isRefreshingStatus.set(false);
     }
@@ -332,28 +346,28 @@ export class RepairSheetComponent {
     }
   }
 
-  private getConfigModeButtonText(): string {
+  private getConfigModeButtonTextKey(): string {
     const data = this.installationData();
     if (data.installLocation === 'custom' && !data.customPath.trim()) {
-      return 'Select Config First';
+      return 'repairSheet.buttons.selectConfigFirst';
     }
-    return 'Use This Config';
+    return 'repairSheet.buttons.useThisConfig';
   }
 
-  private getInstallModeButtonText(): string {
+  private getInstallModeButtonTextKey(): string {
     const { installLocation, customPath, existingBinaryPath, binaryTestResult } =
       this.installationData();
     if (installLocation === 'custom' && !customPath.trim()) {
-      return 'Select Path First';
+      return 'repairSheet.buttons.selectPathFirst';
     }
     if (installLocation === 'existing') {
-      if (!existingBinaryPath.trim()) return 'Select Binary First';
-      if (binaryTestResult === 'invalid') return 'Invalid Binary';
-      if (binaryTestResult === 'testing') return 'Testing Binary...';
-      if (binaryTestResult === 'valid') return 'Use This Binary';
-      return 'Test Binary First';
+      if (!existingBinaryPath.trim()) return 'repairSheet.buttons.selectBinaryFirst';
+      if (binaryTestResult === 'invalid') return 'repairSheet.buttons.invalidBinary';
+      if (binaryTestResult === 'testing') return 'repairSheet.buttons.testingBinary';
+      if (binaryTestResult === 'valid') return 'repairSheet.buttons.useThisBinary';
+      return 'repairSheet.buttons.testBinaryFirst';
     }
-    return this.repairService.getRepairButtonText(this.data.type);
+    return this.repairService.getRepairButtonTextKey(this.data.type);
   }
 
   private showPasswordError(message: string): void {
@@ -374,21 +388,25 @@ export class RepairSheetComponent {
 
   private getPasswordErrorMessage(error: unknown): string {
     if (!(error instanceof Error)) {
-      return 'Failed to validate password. Please try again.';
+      return this.translate.instant('repairSheet.passwordErrors.validateFailed');
     }
     if (error.message.includes('invalid') || error.message.includes('wrong')) {
-      return 'Invalid password. Please check your password and try again.';
+      return this.translate.instant('repairSheet.passwordErrors.invalid');
     }
     if (error.message.includes('locked') || error.message.includes('attempt')) {
-      return 'Too many failed attempts. Please wait before trying again.';
+      return this.translate.instant('repairSheet.passwordErrors.locked');
     }
-    return error.message;
+    return this.translate.instant('repairSheet.passwordErrors.generic', {
+      error: error.message,
+    });
   }
 
   private handleRepairError(error: unknown): void {
     console.error('Repair failed:', error);
     if (this.data.type === 'mount_plugin' && error instanceof Error) {
-      this.data.message = `Installation failed: ${error.message}. You may need administrator privileges or a system restart.`;
+      this.data.message = this.translate.instant('repairSheet.errors.mountPluginInstallFailed', {
+        error: error.message,
+      });
     }
     this.installing.set(false);
   }

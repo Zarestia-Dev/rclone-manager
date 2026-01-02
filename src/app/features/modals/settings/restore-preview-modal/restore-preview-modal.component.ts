@@ -15,6 +15,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { DatePipe, UpperCasePipe } from '@angular/common';
 import { BackupAnalysis, BackupRestoreService } from '@app/services';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-restore-preview-modal',
@@ -29,6 +30,7 @@ import { BackupAnalysis, BackupRestoreService } from '@app/services';
     FormsModule,
     DatePipe,
     UpperCasePipe,
+    TranslateModule,
   ],
   templateUrl: './restore-preview-modal.component.html',
   styleUrls: ['./restore-preview-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -38,6 +40,7 @@ export class RestorePreviewModalComponent {
   // Injected Services
   private readonly dialogRef = inject(MatDialogRef<RestorePreviewModalComponent>);
   private readonly backupRestoreService = inject(BackupRestoreService);
+  private readonly translate = inject(TranslateService);
   public readonly data = inject<{ backupPath: string; analysis: BackupAnalysis }>(MAT_DIALOG_DATA);
 
   // Signals
@@ -60,7 +63,7 @@ export class RestorePreviewModalComponent {
    */
   getItemCount(): number {
     let count = 0;
-    console.log(this.analysis);
+    // console.log(this.analysis);
 
     if (!this.analysis.contents) return count;
 
@@ -96,19 +99,19 @@ export class RestorePreviewModalComponent {
     if (this.isEncrypted()) {
       const rawPassword = this.password();
       if (!rawPassword) {
-        this.passwordError.set('Password is required');
+        this.passwordError.set(this.translate.instant('backup.restore.errors.passwordRequired'));
         return;
       }
 
       const trimmedPassword = rawPassword.trim();
       if (!trimmedPassword) {
-        this.passwordError.set('Password cannot be empty or whitespace');
+        this.passwordError.set(this.translate.instant('backup.restore.errors.passwordEmpty'));
         return;
       }
 
       // Check minimum password length (should match backend validation)
       if (trimmedPassword.length < 4) {
-        this.passwordError.set('Password must be at least 4 characters');
+        this.passwordError.set(this.translate.instant('backup.restore.errors.passwordLength'));
         return;
       }
     }
@@ -137,18 +140,20 @@ export class RestorePreviewModalComponent {
 
     // Check for specific error types
     if (errorMsg.includes('wrong password')) {
-      this.passwordError.set('Incorrect password. Please try again.');
+      this.passwordError.set(this.translate.instant('backup.restore.errors.wrongPassword'));
     } else if (errorMsg.includes('integrity check failed')) {
-      this.passwordError.set('Backup file is corrupted or has been tampered with.');
+      this.passwordError.set(this.translate.instant('backup.restore.errors.integrityFailed'));
     } else if (errorMsg.includes('checksum') || errorMsg.includes('hash')) {
-      this.passwordError.set('File verification failed. The backup may be corrupted.');
+      this.passwordError.set(this.translate.instant('backup.restore.errors.verificationFailed'));
     } else if (errorMsg.includes('password') && errorMsg.includes('required')) {
-      this.passwordError.set('This backup requires a password to decrypt.');
+      this.passwordError.set(this.translate.instant('backup.restore.errors.requiresPassword'));
     } else if (errorMsg.includes('decrypt') || errorMsg.includes('encryption')) {
-      this.passwordError.set('Failed to decrypt backup. Check your password.');
+      this.passwordError.set(this.translate.instant('backup.restore.errors.decryptFailed'));
     } else {
       // Generic error
-      this.passwordError.set('An error occurred during restore: ' + String(error));
+      this.passwordError.set(
+        this.translate.instant('backup.restore.errors.generic', { error: String(error) })
+      );
     }
   }
 
