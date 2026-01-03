@@ -81,6 +81,9 @@ export const EXPLICIT_ENDPOINTS: Record<string, string> = {
   get_vfs_flags: '/flags/vfs',
   get_filter_flags: '/flags/filter',
   get_backend_flags: '/flags/backend',
+
+  // Debug - nested under /debug
+  get_debug_info: '/debug/info',
 };
 
 /**
@@ -152,4 +155,6 @@ export const POST_COMMANDS = new Set([
   'rename_profile_in_cache',
   'rename_mount_profile_in_cache',
   'rename_serve_profile_in_cache',
+  // Debug Commands
+  'open_devtools',
 ]);

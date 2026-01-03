@@ -6,9 +6,33 @@ use crate::{
     rclone::backend::{BACKEND_MANAGER, types::Backend},
     utils::{
         rclone::endpoints::{EndpointHelper, serve},
-        types::all_types::RcloneState,
+        types::{ServeInstance, all_types::RcloneState},
     },
 };
+
+/// Parse serves list from API JSON response
+pub fn parse_serves_response(response: &Value) -> Vec<ServeInstance> {
+    response
+        .get("list")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|item| {
+                    let id = item.get("id")?.as_str()?.to_string();
+                    let addr = item.get("addr")?.as_str()?.to_string();
+                    let params = item.get("params")?.clone();
+
+                    Some(ServeInstance {
+                        id,
+                        addr,
+                        params,
+                        profile: None,
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
 
 /// Get all supported serve types from rclone
 #[tauri::command]

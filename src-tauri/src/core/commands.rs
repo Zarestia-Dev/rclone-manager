@@ -246,6 +246,11 @@ macro_rules! generate_invoke_handler {
             $crate::utils::app::updater::app_updates::get_download_status,
             #[cfg(all(desktop, feature = "updater"))]
             $crate::utils::app::updater::app_updates::install_update,
+            // =================================================================
+            // DEBUG TOOLS
+            // =================================================================
+            $crate::core::debug::get_debug_info,
+            $crate::core::debug::open_devtools,
         ]
     };
 }

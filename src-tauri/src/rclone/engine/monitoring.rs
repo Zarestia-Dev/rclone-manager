@@ -78,15 +78,14 @@ impl RcApiEngine {
 
     /// Check if the API is responding by making a simple request
     async fn check_api_response(&self) -> bool {
-        Self::check_api_health_on_port(self.current_api_port).await
+        Self::check_api_health().await
     }
 
-    /// Check if an API endpoint is responding on a given port (static helper)
+    /// Check if the active backend's API is responding
     ///
     /// Returns true if the API returns a successful response or 401 Unauthorized
     /// (which means the API is running but requires auth).
-    pub async fn check_api_health_on_port(_port: u16) -> bool {
-        // Use the backend's api_url() as single source of truth
+    pub async fn check_api_health() -> bool {
         let backend = BACKEND_MANAGER.get_active().await;
         let url = EndpointHelper::build_url(&backend.api_url(), core::VERSION);
 
@@ -133,12 +132,6 @@ impl RcApiEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[tokio::test]
-    async fn test_check_api_health_no_server() {
-        // Port 59999 should not have anything listening
-        assert!(!RcApiEngine::check_api_health_on_port(59999).await);
-    }
 
     #[test]
     fn test_engine_process_alive_no_process() {

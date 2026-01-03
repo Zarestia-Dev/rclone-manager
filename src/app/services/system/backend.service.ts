@@ -172,6 +172,8 @@ export class BackendService extends TauriBaseService {
             return {
               ...b,
               status: result.success ? 'connected' : 'error',
+              version: result.version,
+              os: result.os,
             };
           }
           return b;

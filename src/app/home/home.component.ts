@@ -50,7 +50,7 @@ import {
   SystemInfoService,
   AppSettingsService,
   ModalService,
-  ConnectionService,
+  BackendService,
 } from '@app/services';
 
 @Component({
@@ -87,11 +87,22 @@ export class HomeComponent implements OnInit, OnDestroy {
   private readonly notificationService = inject(NotificationService);
   private readonly eventListenersService = inject(EventListenersService);
   private readonly remoteFacadeService = inject(RemoteFacadeService);
-  private readonly connectionService = inject(ConnectionService);
   private readonly appSettingsService = inject(AppSettingsService);
+  private readonly backendService = inject(BackendService);
   readonly systemInfoService = inject(SystemInfoService);
   readonly iconService = inject(IconService);
   private readonly translate = inject(TranslateService);
+
+  /** Current active backend name */
+  readonly activeBackend = this.backendService.activeBackend;
+
+  /** Get status class for the active backend */
+  get backendStatusClass(): string {
+    const backends = this.backendService.backends();
+    const active = backends.find(b => b.is_active);
+    if (!active) return 'disconnected';
+    return this.backendService.getStatusClass(active.status);
+  }
 
   // ============================================================================
   // PROPERTIES - DATA & UI STATE
@@ -173,7 +184,6 @@ export class HomeComponent implements OnInit, OnDestroy {
   // ============================================================================
   async ngOnInit(): Promise<void> {
     try {
-      this.setupResponsiveLayout();
       this.setupResponsiveLayout();
       // Ensure settings are loaded
       await this.appSettingsService.loadSettings();
@@ -272,20 +282,25 @@ export class HomeComponent implements OnInit, OnDestroy {
         !r.diskUsage.loading &&
         !r.diskUsage.error &&
         r.diskUsage.total_space === undefined &&
-        !r.diskUsage.notSupported &&
-        r.remoteSpecs.type !== 'crypt' // Skip crypt remotes for disk usage
+        !r.diskUsage.notSupported
     );
 
     if (remotesToLoad.length === 0) return;
 
-    // Process one by one
-    (async () => {
+    // Process one by one with proper error handling
+    (async (): Promise<void> => {
       for (const remote of remotesToLoad) {
-        await this.updateRemoteDiskUsage(remote.remoteSpecs.name);
+        try {
+          await this.updateRemoteDiskUsage(remote.remoteSpecs.name);
+        } catch (error) {
+          console.error(`Failed to load disk usage for ${remote.remoteSpecs.name}:`, error);
+        }
         // Small delay between requests
         await new Promise(resolve => setTimeout(resolve, 500));
       }
-    })();
+    })().catch(error => {
+      console.error('Error in background disk usage loading:', error);
+    });
   }
 
   // ============================================================================

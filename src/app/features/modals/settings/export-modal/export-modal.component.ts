@@ -43,7 +43,6 @@ interface ExportOption {
     MatButtonModule,
     MatProgressSpinnerModule,
     MatRadioModule,
-    MatRadioModule,
     MatSlideToggleModule,
     TranslateModule,
   ],
@@ -99,9 +98,6 @@ export class ExportModalComponent implements OnInit {
         this.remoteManagementService.getRemotes(),
         this.backupRestoreService.getExportCategories(),
       ]);
-
-      console.log('remotesList', remotesList);
-      console.log('categoriesList', categoriesList);
 
       this.remotes.set(remotesList.status === 'fulfilled' ? Object.freeze(remotesList.value) : []);
 

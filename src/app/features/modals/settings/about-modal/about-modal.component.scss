@@ -579,3 +579,75 @@
     }
   }
 }
+
+// Debug Overlay Styles
+.debug-overlay {
+  z-index: 25;
+
+  .debug-content {
+    padding: var(--space-md) var(--space-lg);
+
+    .debug-section {
+      margin-bottom: var(--space-lg);
+
+      h4 {
+        margin: 0 0 var(--space-sm) 0;
+        font-size: var(--font-size-lg);
+        font-weight: 600;
+        color: var(--window-fg-color);
+      }
+    }
+
+    .debug-info-grid {
+      background: var(--view-bg-color);
+      border-radius: var(--radius-sm);
+      padding: var(--space-md);
+      box-shadow: var(--box-shadow);
+
+      .debug-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--space-sm) 0;
+
+        &:not(:last-child) {
+          border-bottom: 1px solid rgba(var(--window-fg-color-rgb), 0.08);
+        }
+
+        .label {
+          font-weight: 500;
+          color: var(--dim-color);
+        }
+
+        .value {
+          font-family: monospace;
+          color: var(--window-fg-color);
+          background: rgba(var(--window-fg-color-rgb), 0.05);
+          padding: var(--space-xs) var(--space-sm);
+          border-radius: var(--radius-xs);
+        }
+      }
+    }
+
+    .folder-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+
+    .debug-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+    }
+
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-md);
+      padding: var(--space-xl);
+      color: var(--dim-color);
+    }
+  }
+}

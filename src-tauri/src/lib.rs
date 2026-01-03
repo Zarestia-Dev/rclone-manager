@@ -31,8 +31,9 @@ mod server;
 // SHARED IMPORTS (Both modes)
 // =============================================================================
 use crate::core::{
-    initialization::{init_rclone_state, initialization, setup_config_dir},
+    initialization::{init_rclone_state, initialization},
     lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
+    paths::AppPaths,
     scheduler::engine::CronScheduler,
     settings::operations::core::load_startup_settings,
 };
@@ -251,7 +252,7 @@ fn setup_app(
     #[cfg(feature = "web-server")] cli_args: crate::core::cli::CliArgs,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let app_handle = app.handle();
-    let config_dir = setup_config_dir(app_handle)?;
+    let config_dir = AppPaths::setup(app_handle)?;
 
     // -------------------------------------------------------------------------
     // Initialize rcman Settings Manager
@@ -549,17 +550,6 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent)
 
     match event.id.as_ref() {
         "show_app" => show_main_window(app.clone()),
-        "unmount_all" => {
-            let app_clone = app.clone();
-            tauri::async_runtime::spawn(async move {
-                if let Err(e) =
-                    unmount_all_remotes(app_clone.clone(), app_clone.state(), "menu".to_string())
-                        .await
-                {
-                    error!("Failed to unmount all remotes: {e}");
-                }
-            });
-        }
         "quit" => {
             let app_clone = app.clone();
             tauri::async_runtime::spawn(async move {

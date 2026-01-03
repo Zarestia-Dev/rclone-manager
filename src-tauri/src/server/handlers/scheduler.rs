@@ -41,9 +41,14 @@ pub async fn reload_scheduled_tasks_from_configs_handler(
     use crate::rclone::state::scheduled_tasks::reload_scheduled_tasks_from_configs;
     let cache = state.app_handle.state::<ScheduledTasksCache>();
     let scheduler = state.app_handle.state::<CronScheduler>();
-    let count = reload_scheduled_tasks_from_configs(cache, scheduler, body.remote_configs)
-        .await
-        .map_err(anyhow::Error::msg)?;
+    let count = reload_scheduled_tasks_from_configs(
+        cache,
+        scheduler,
+        body.remote_configs,
+        state.app_handle.clone(),
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(count)))
 }
 
@@ -72,7 +77,7 @@ pub async fn toggle_scheduled_task_handler(
     use crate::core::scheduler::commands::toggle_scheduled_task;
     let cache = state.app_handle.state::<ScheduledTasksCache>();
     let scheduler = state.app_handle.state::<CronScheduler>();
-    let task = toggle_scheduled_task(cache, scheduler, body.task_id)
+    let task = toggle_scheduled_task(cache, scheduler, body.task_id, state.app_handle.clone())
         .await
         .map_err(anyhow::Error::msg)?;
     let json_task = serde_json::to_value(task).map_err(anyhow::Error::msg)?;
@@ -111,7 +116,7 @@ pub async fn clear_all_scheduled_tasks_handler(
     use crate::core::scheduler::commands::clear_all_scheduled_tasks;
     let cache = state.app_handle.state::<ScheduledTasksCache>();
     let scheduler = state.app_handle.state::<CronScheduler>();
-    clear_all_scheduled_tasks(cache, scheduler)
+    clear_all_scheduled_tasks(cache, scheduler, state.app_handle.clone())
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(crate::localized_success!(

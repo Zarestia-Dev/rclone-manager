@@ -871,10 +871,12 @@ export class AppDetailComponent {
     }
   }
 
-  onCopyToClipboard(event: { text: string; message: string }): void {
-    navigator.clipboard.writeText(event.text).catch(err => {
+  async onCopyToClipboard(event: { text: string; message: string }): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(event.text);
+    } catch (err) {
       console.error('Failed to copy to clipboard:', err);
-    });
+    }
   }
 
   onEditSettings(event: { section: string; settings: RemoteSettings }): void {

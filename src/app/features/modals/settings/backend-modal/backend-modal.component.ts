@@ -115,7 +115,6 @@ export class BackendModalComponent implements OnInit {
   cancelEdit(): void {
     this.formState.set({ mode: 'closed' });
     this.resetForm();
-    this.resetForm();
     this.backendForm.get('name')?.enable();
   }
 

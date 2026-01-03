@@ -5,7 +5,7 @@ use tauri::Manager;
 
 use crate::{
     core::{
-        check_binaries::check_rclone_available, initialization::get_config_dir,
+        check_binaries::check_rclone_available, paths::get_app_paths,
         settings::operations::core::save_setting,
     },
     utils::github_client,
@@ -27,7 +27,7 @@ pub async fn provision_rclone(
 
     let install_path = match path {
         Some(p) => PathBuf::from(p),
-        _none => get_config_dir(&app_handle)?,
+        _none => get_app_paths(&app_handle)?.config_dir,
     };
 
     // check_rclone_available is now async, so we need to await it

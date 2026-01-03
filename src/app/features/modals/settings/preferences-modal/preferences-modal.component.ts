@@ -139,6 +139,8 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroyed$.next();
     this.destroyed$.complete();
+    // Ensure hold timers are cleaned up
+    this.stopHold(false);
   }
 
   @HostListener('window:resize')

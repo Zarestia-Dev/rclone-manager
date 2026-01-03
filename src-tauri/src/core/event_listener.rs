@@ -303,17 +303,11 @@ fn handle_settings_changed(app: &AppHandle) {
                         core.get("rclone_config_file").and_then(|v| v.as_str())
                     {
                         debug!("🔄 Rclone config path changed to: {config_path}");
-                        // Note: rclone_config_file is now read from JsonSettingsManager which caches internally
-                        // Get old value by reading from settings before the change is applied
-                        let old_rclone_config_file: String = app_handle
-                            .try_state::<rcman::JsonSettingsManager>()
-                            .and_then(|manager| manager.inner().get("core.rclone_config_file").ok())
-                            .unwrap_or_default();
 
                         if let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
                             &app_handle,
                             "rclone_config_file",
-                            &old_rclone_config_file,
+                            "previous",
                             config_path,
                         ) {
                             error!("Failed to restart engine for rclone config file change: {e}");
@@ -323,19 +317,11 @@ fn handle_settings_changed(app: &AppHandle) {
 
                     if let Some(rclone_path) = core.get("rclone_path").and_then(|v| v.as_str()) {
                         debug!("🔄 Rclone path changed to: {rclone_path}");
-                        // Note: rclone_path is now read from JsonSettingsManager which caches internally
-                        // Get old value by reading from settings before the change is applied
-                        let old_rclone_path: String = app_handle
-                            .try_state::<rcman::JsonSettingsManager>()
-                            .and_then(|manager| manager.inner().get("core.rclone_path").ok())
-                            .unwrap_or_default();
-                        debug!("Old rclone path: {old_rclone_path}");
 
-                        // Restart engine with new rclone path
                         if let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
                             &app_handle,
                             "rclone_path",
-                            &old_rclone_path,
+                            "previous",
                             rclone_path,
                         ) {
                             error!("Failed to restart engine for rclone path change: {e}");

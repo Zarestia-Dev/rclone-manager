@@ -1,13 +1,4 @@
-import {
-  Component,
-  inject,
-  OnInit,
-  input,
-  signal,
-  computed,
-  effect,
-  ViewChild,
-} from '@angular/core';
+import { Component, inject, input, signal, computed, effect, ViewChild } from '@angular/core';
 
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatCardModule } from '@angular/material/card';
@@ -38,7 +29,7 @@ import {
 import { PathSelectionService } from 'src/app/services/remote/path-selection.service';
 import { NotificationService } from '@app/services';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
-import { FileSystemService, MountManagementService } from '@app/services';
+import { FileSystemService, MountManagementService, ServeManagementService } from '@app/services';
 
 interface VfsInstance {
   name: string;
@@ -77,7 +68,7 @@ const DELAY_SLIDER_DEFAULT = 60;
   templateUrl: './vfs-control-panel.component.html',
   styleUrl: './vfs-control-panel.component.scss',
 })
-export class VfsControlPanelComponent implements OnInit {
+export class VfsControlPanelComponent {
   // Inputs & Services
   remoteName = input.required<string>();
   private readonly vfsService = inject(VfsService);
@@ -85,6 +76,7 @@ export class VfsControlPanelComponent implements OnInit {
   private readonly fileSystemService = inject(FileSystemService);
   private readonly pathSelectionService = inject(PathSelectionService);
   private readonly mountService = inject(MountManagementService);
+  private readonly serveService = inject(ServeManagementService);
   private readonly translate = inject(TranslateService);
 
   // ViewChild for table rendering
@@ -152,12 +144,10 @@ export class VfsControlPanelComponent implements OnInit {
 
     // Listen for mount changes
     this.mountService.mountedRemotes$.pipe(takeUntilDestroyed()).subscribe(() => this.loadAll());
-  }
 
-  ngOnInit(): void {
-    this.loadAll();
+    // Listen for serve changes
+    this.serveService.runningServes$.pipe(takeUntilDestroyed()).subscribe(() => this.loadAll());
   }
-
   // ============ Data Loading ============
 
   async loadAll(): Promise<void> {

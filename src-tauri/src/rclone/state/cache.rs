@@ -12,7 +12,7 @@ use crate::{
         backend::types::Backend,
         queries::{
             get_all_remote_configs_internal, get_mounted_remotes_internal, get_remotes_internal,
-            list_serves_internal,
+            list_serves_internal, parse_serves_response,
         },
     },
     utils::types::{
@@ -271,26 +271,7 @@ impl RemoteCache {
     ) -> Result<(), String> {
         match list_serves_internal(client, backend).await {
             Ok(response) => {
-                let mut serves_list: Vec<ServeInstance> = response
-                    .get("list")
-                    .and_then(|v| v.as_array())
-                    .map(|arr| {
-                        arr.iter()
-                            .filter_map(|item| {
-                                let id = item.get("id")?.as_str()?.to_string();
-                                let addr = item.get("addr")?.as_str()?.to_string();
-                                let params = item.get("params")?.clone();
-
-                                Some(ServeInstance {
-                                    id,
-                                    addr,
-                                    params,
-                                    profile: None,
-                                })
-                            })
-                            .collect()
-                    })
-                    .unwrap_or_default();
+                let mut serves_list = parse_serves_response(&response);
 
                 // Attach profiles from our lookup table
                 let profiles = self.serve_profiles.read().await;

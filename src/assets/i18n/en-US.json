@@ -1442,7 +1442,19 @@
       "thirdParty": "Third-Party Software",
       "thirdPartyText": "This application includes various third-party libraries and components, each with their own licensing terms. See the project repository for a complete list.",
       "viewOnGithub": "View on GitHub",
-      "restoreUpdate": "Restore update"
+      "restoreUpdate": "Restore update",
+      "debugTools": "Debug Tools",
+      "systemInfo": "System Information",
+      "platform": "Platform",
+      "buildType": "Build Type",
+      "debugBuild": "Debug Build",
+      "folders": "Folders",
+      "logsFolder": "Logs Folder",
+      "configFolder": "Config Folder",
+      "cacheFolder": "Cache Folder",
+      "developerTools": "Developer Tools",
+      "openDevTools": "Open DevTools",
+      "copyDebugInfo": "Copy Debug Info"
     },
     "logs": {
       "clearAll": "Clear All Logs",

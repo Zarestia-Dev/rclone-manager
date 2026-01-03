@@ -142,9 +142,9 @@ export class AppOverviewComponent {
     }
   }
 
-  handleCopyToClipboard(data: { text: string; message: string }): void {
+  async handleCopyToClipboard(data: { text: string; message: string }): Promise<void> {
     try {
-      navigator.clipboard.writeText(data.text);
+      await navigator.clipboard.writeText(data.text);
     } catch (error) {
       console.error('Error copying to clipboard:', error);
     }

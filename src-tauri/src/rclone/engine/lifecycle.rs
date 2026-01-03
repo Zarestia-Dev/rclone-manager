@@ -37,61 +37,58 @@ impl RcApiEngine {
     pub async fn init(&mut self, app: &AppHandle) {
         let app_handle = app.clone();
 
-        // Only start and monitor process for Local backends
+        // Start engine only if Local backend is active
         if is_active_backend_local() {
-            // Test Config before starting
             if self.validate_config(app).await {
                 start(self, app).await;
             } else {
                 warn!("⚠️ Engine startup aborted due to configuration validation failure");
             }
-
-            // Monitoring task for Local backend only (async, no blocking)
-            tokio::spawn(async move {
-                let mut interval =
-                    tokio::time::interval(Duration::from_secs(MONITORING_INTERVAL_SECS));
-                interval.tick().await; // Skip immediate first tick
-
-                loop {
-                    interval.tick().await;
-
-                    // Check shutdown
-                    if app_handle.state::<RcloneState>().is_shutting_down() {
-                        break;
-                    }
-
-                    // Only monitor if we're still on a Local backend
-                    if !is_active_backend_local() {
-                        debug!("📡 Active backend is remote, skipping process monitoring");
-                        continue;
-                    }
-
-                    {
-                        use crate::utils::types::core::EngineState;
-                        let engine_state = app_handle.state::<EngineState>();
-                        let mut engine = engine_state.lock().await;
-
-                        if engine.should_exit {
-                            break;
-                        }
-
-                        if !engine.is_api_healthy().await && !engine.should_exit {
-                            debug!("🔄 Rclone API not healthy, attempting restart...");
-                            start(&mut engine, &app_handle).await;
-                        }
-                    }
-                }
-
-                info!("🛑 Engine monitoring task exiting.");
-            });
         } else {
-            // Remote backend: just refresh cache, no process management
+            // Remote backend: just refresh cache initially
             info!("📡 Active backend is remote, skipping local engine initialization");
-            let app = app.clone();
-            if let Err(e) = refresh_active_backend_cache(&app).await {
+            if let Err(e) = refresh_active_backend_cache(app).await {
                 error!("Failed to refresh remote backend cache: {e}");
             }
         }
+
+        // Always spawn monitoring task - handles backend switches gracefully
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_secs(MONITORING_INTERVAL_SECS));
+            interval.tick().await; // Skip immediate first tick
+
+            loop {
+                interval.tick().await;
+
+                // Check shutdown
+                if app_handle.state::<RcloneState>().is_shutting_down() {
+                    break;
+                }
+
+                // Skip if remote backend is active
+                if !is_active_backend_local() {
+                    continue;
+                }
+
+                // Local backend: ensure engine is healthy
+                {
+                    use crate::utils::types::core::EngineState;
+                    let engine_state = app_handle.state::<EngineState>();
+                    let mut engine = engine_state.lock().await;
+
+                    if engine.should_exit {
+                        break;
+                    }
+
+                    if !engine.is_api_healthy().await && !engine.should_exit {
+                        debug!("🔄 Rclone API not healthy, attempting restart...");
+                        start(&mut engine, &app_handle).await;
+                    }
+                }
+            }
+
+            info!("🛑 Engine monitoring task exiting.");
+        });
     }
 
     pub async fn shutdown(&mut self) {

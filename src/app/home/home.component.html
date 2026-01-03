@@ -37,9 +37,19 @@
       @if (remotes().length === 0 && !isLoading()) {
         <div class="no-remotes">
           <div class="no-remotes-content">
-            <div class="icon-container">
+            <!-- Logo with integrated Backend Indicator -->
+            <button
+              class="icon-container interactive"
+              (click)="openBackendModal()"
+              [matTooltip]="'shared.overviewHeader.manageBackends' | translate"
+              matTooltipShowDelay="500"
+              matTooltipPosition="above"
+            >
               <img src="assets/rclone.svg" alt="Rclone Logo" class="no-remotes-icon" />
-            </div>
+              <span class="status-dot" [class]="backendStatusClass"></span>
+            </button>
+            <span class="backend-name">{{ activeBackend() }}</span>
+
             <h2>{{ 'home.emptyState.title' | translate }}</h2>
             <p>
               {{ 'home.emptyState.description' | translate }}

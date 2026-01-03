@@ -162,10 +162,6 @@ export class LogsModalComponent implements OnInit {
       // Shallow clone to avoid mutating the actual log data
       const displayContext = { ...context } as any;
 
-      // If we are already showing the 'output' in the visual terminal,
-      // we can optionally hide it from the raw JSON to reduce noise,
-      // OR keep it. Let's keep it for completeness but parse strings.
-
       // If 'response' is a stringified JSON (common in HTTP logs), parse it
       if (displayContext.response && typeof displayContext.response === 'string') {
         try {
@@ -189,7 +185,7 @@ export class LogsModalComponent implements OnInit {
     return this.backendTranslation.translateBackendMessage(message);
   }
 
-  copyLog(log: RemoteLogEntry): void {
+  async copyLog(log: RemoteLogEntry): Promise<void> {
     const output = this.getCommandOutput(log);
     const translatedMessage = this.translateLogMessage(log.message);
     let text = `[${log.timestamp}] [${log.level.toUpperCase()}] ${translatedMessage}`;
@@ -205,8 +201,13 @@ export class LogsModalComponent implements OnInit {
       text += `\n\nDetails:\n${this.formatContext(log.context)}`;
     }
 
-    navigator.clipboard.writeText(text);
-    this.snackBar.open('Log copied to clipboard', undefined, { duration: 2000 });
+    try {
+      await navigator.clipboard.writeText(text);
+      this.snackBar.open('Log copied to clipboard', undefined, { duration: 2000 });
+    } catch (error) {
+      console.error('Failed to copy log to clipboard:', error);
+      this.snackBar.open('Failed to copy', undefined, { duration: 2000 });
+    }
   }
 
   scrollToBottom(): void {

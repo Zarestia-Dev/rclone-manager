@@ -1443,7 +1443,19 @@
       "thirdParty": "Üçüncü Taraf Yazılımlar",
       "thirdPartyText": "Bu uygulama, her biri kendi lisans şartlarına sahip çeşitli üçüncü taraf kütüphaneler ve bileşenler içermektedir. Tam liste için proje deposuna bakın.",
       "viewOnGithub": "GitHub'da Görüntüle",
-      "restoreUpdate": "Güncellemeyi geri yükle"
+      "restoreUpdate": "Güncellemeyi geri yükle",
+      "debugTools": "Hata Ayıklama Araçları",
+      "systemInfo": "Sistem Bilgisi",
+      "platform": "Platform",
+      "buildType": "Derleme Türü",
+      "debugBuild": "Hata Ayıklama Derlemesi",
+      "folders": "Klasörler",
+      "logsFolder": "Günlük Klasörü",
+      "configFolder": "Yapılandırma Klasörü",
+      "cacheFolder": "Önbellek Klasörü",
+      "developerTools": "Geliştirici Araçları",
+      "openDevTools": "Geliştirici Araçlarını Aç",
+      "copyDebugInfo": "Hata Ayıklama Bilgisini Kopyala"
     },
     "logs": {
       "clearAll": "Tüm Günlükleri Temizle",

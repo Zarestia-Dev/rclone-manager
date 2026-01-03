@@ -1,6 +1,5 @@
 use log::{debug, error, info};
 use rcman::JsonSettingsManager;
-use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
 use crate::{
@@ -18,16 +17,6 @@ use crate::{
     },
     utils::types::all_types::RcloneState,
 };
-
-/// Get the directory containing the executable (for portable mode)
-#[cfg(feature = "portable")]
-fn get_executable_directory() -> Result<PathBuf, String> {
-    std::env::current_exe()
-        .map_err(|e| format!("Failed to get executable path: {e}"))?
-        .parent()
-        .map(|p| p.to_path_buf())
-        .ok_or_else(|| "Failed to get executable directory".to_string())
-}
 
 // ============================================================================
 // Rclone State Initialization
@@ -57,57 +46,6 @@ pub fn init_rclone_state(app_handle: &tauri::AppHandle) -> Result<(), String> {
 
     info!("🔄 Rclone engine initialized");
     Ok(())
-}
-
-// ============================================================================
-// Config Directory Management
-// ============================================================================
-
-/// Sets up the configuration directory for the application.
-///
-/// In portable mode (`--features portable`), uses a `config` directory
-/// next to the executable. Otherwise, uses the system's app data directory.
-#[cfg(feature = "portable")]
-pub fn setup_config_dir(_app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
-    let exe_dir = get_executable_directory()?;
-    let config_dir = exe_dir.join("config");
-
-    info!("📦 Running in PORTABLE mode");
-    info!("📁 Config directory: {}", config_dir.display());
-
-    std::fs::create_dir_all(&config_dir)
-        .map_err(|e| format!("Failed to create portable config directory: {e}"))?;
-
-    Ok(config_dir)
-}
-
-/// Sets up the configuration directory for the application (standard mode).
-#[cfg(not(feature = "portable"))]
-pub fn setup_config_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
-    let config_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("Failed to get app data directory: {e}"))?;
-
-    std::fs::create_dir_all(&config_dir)
-        .map_err(|e| format!("Failed to create config directory: {e}"))?;
-
-    Ok(config_dir)
-}
-
-/// Get the app's config directory from managed state.
-/// This is the central place to retrieve the config directory after initialization.
-pub fn get_config_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
-    // Access the config directory via rcman SettingsManager
-    if let Some(manager) = app_handle.try_state::<JsonSettingsManager>() {
-        let path = manager.inner().config().settings_path();
-        return Ok(path.parent().unwrap_or(&path).to_path_buf());
-    }
-
-    // Fallback/Error if manager not available
-    Err(crate::localized_error!(
-        "backendErrors.system.settingsUnavailable"
-    ))
 }
 
 /// Handles async startup tasks
@@ -144,7 +82,7 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
         Err(_) => error!("❌ Cache refresh timed out (backend may be unresponsive)"),
     }
 
-    // Step 2: Initialize and start scheduler with loaded config
+    // Step 3: Initialize and start scheduler with loaded config
     info!("⏰ Initializing cron scheduler...");
     match initialize_scheduler(app_handle.clone()).await {
         Ok(_) => {
@@ -155,7 +93,7 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
         }
     }
 
-    // Step 3: Start watchers
+    // Step 4: Start watchers
     info!("📡 Starting mounted remote watcher...");
     tokio::spawn(start_mounted_remote_watcher(app_handle.clone()));
 

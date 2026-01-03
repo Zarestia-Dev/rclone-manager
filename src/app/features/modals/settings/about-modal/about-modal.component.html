@@ -10,7 +10,18 @@
   </div>
 
   <div class="modal-content" #content (scroll)="onScroll(content)">
-    <img src="assets/rclone.svg" alt="Rclone Logo" class="app-icon" />
+    <img
+      src="assets/rclone.svg"
+      alt="Rclone Logo"
+      class="app-icon"
+      (click)="onLogoClick()"
+      (keydown.enter)="onLogoClick()"
+      (keydown.space)="onLogoClick()"
+      tabindex="0"
+      role="button"
+      style="cursor: pointer"
+      [matTooltip]="logoClickCount >= 3 ? 'Keep clicking...' : ''"
+    />
     <h2 class="app-name">RClone Manager</h2>
     <p class="app-team">
       Zarestia
@@ -641,6 +652,86 @@
             class="release-notes"
             [innerHTML]="getFormattedReleaseNotes(rcloneUpdateStatus.updateInfo.release_notes)"
           ></div>
+        }
+      </div>
+    </div>
+  }
+  @if (showingDebugOverlay) {
+    <div
+      class="debug-overlay overlay"
+      animate.enter="slide-overlay-enter"
+      animate.leave="slide-overlay-leave"
+    >
+      <div class="modal-header" data-tauri-drag-region>
+        <button mat-icon-button (click)="closeDebugOverlay()">
+          <mat-icon svgIcon="chevron-left"></mat-icon>
+        </button>
+        <p>{{ 'modals.about.debugTools' | translate }}</p>
+        <button mat-icon-button (click)="close()">
+          <mat-icon svgIcon="circle-xmark"></mat-icon>
+        </button>
+      </div>
+
+      <div class="modal-content debug-content">
+        @if (debugInfo) {
+          <div class="debug-section">
+            <h4>{{ 'modals.about.systemInfo' | translate }}</h4>
+            <div class="debug-info-grid">
+              <div class="debug-row">
+                <span class="label">{{ 'modals.about.version' | translate }}:</span>
+                <span class="value">{{ debugInfo.appVersion }}</span>
+              </div>
+              <div class="debug-row">
+                <span class="label">{{ 'modals.about.platform' | translate }}:</span>
+                <span class="value">{{ debugInfo.platform }} ({{ debugInfo.arch }})</span>
+              </div>
+              <div class="debug-row">
+                <span class="label">{{ 'modals.about.buildType' | translate }}:</span>
+                <span class="value">{{ debugInfo.buildType ?? 'Standard' }}</span>
+              </div>
+              <div class="debug-row">
+                <span class="label">{{ 'modals.about.debugBuild' | translate }}:</span>
+                <span class="value">{{ debugInfo.isDebug ? 'Yes' : 'No' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="debug-section">
+            <h4>{{ 'modals.about.folders' | translate }}</h4>
+            <div class="folder-buttons">
+              <button matButton class="about-item" (click)="openFolder('logs')">
+                <span>{{ 'modals.about.logsFolder' | translate }}</span>
+                <mat-icon svgIcon="open-link"></mat-icon>
+              </button>
+              <button matButton class="about-item" (click)="openFolder('config')">
+                <span>{{ 'modals.about.configFolder' | translate }}</span>
+                <mat-icon svgIcon="open-link"></mat-icon>
+              </button>
+              <button matButton class="about-item" (click)="openFolder('cache')">
+                <span>{{ 'modals.about.cacheFolder' | translate }}</span>
+                <mat-icon svgIcon="open-link"></mat-icon>
+              </button>
+            </div>
+          </div>
+
+          <div class="debug-section">
+            <h4>{{ 'modals.about.developerTools' | translate }}</h4>
+            <div class="debug-actions">
+              <button matButton="filled" class="primary" (click)="openDevTools()">
+                <mat-icon svgIcon="terminal"></mat-icon>
+                {{ 'modals.about.openDevTools' | translate }}
+              </button>
+              <button matButton="outlined" (click)="copyDebugInfo()">
+                <mat-icon svgIcon="copy"></mat-icon>
+                {{ 'modals.about.copyDebugInfo' | translate }}
+              </button>
+            </div>
+          </div>
+        } @else {
+          <div class="loading">
+            <mat-spinner diameter="24"></mat-spinner>
+            <span>{{ 'common.loading' | translate }}</span>
+          </div>
         }
       </div>
     </div>

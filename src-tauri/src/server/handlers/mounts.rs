@@ -57,6 +57,7 @@ pub async fn mount_remote_profile_handler(
     Json(body): Json<ProfileParamsBody>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::rclone::commands::mount::mount_remote_profile;
+    let remote_name = body.params.remote_name.clone();
     let params = ProfileParams {
         remote_name: body.params.remote_name,
         profile_name: body.params.profile_name,
@@ -67,7 +68,7 @@ pub async fn mount_remote_profile_handler(
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(crate::localized_success!(
         "backendSuccess.mount.completed",
-        "remote" => body.params.remote_name
+        "remote" => remote_name
     ))))
 }
 

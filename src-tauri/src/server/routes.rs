@@ -22,6 +22,7 @@ pub fn build_api_router(state: WebServerState) -> Router {
         .merge(vfs_routes())
         .merge(backup_routes())
         .merge(backend_routes())
+        .merge(debug_routes())
         .nest("/jobs", jobs_router)
         .route("/events", get(handlers::sse_handler))
         .with_state(state.clone())
@@ -406,4 +407,8 @@ fn backend_routes() -> Router<WebServerState> {
             "/test-backend-connection",
             post(handlers::test_backend_connection_handler),
         )
+}
+
+fn debug_routes() -> Router<WebServerState> {
+    Router::new().route("/debug/info", get(handlers::get_debug_info_handler))
 }

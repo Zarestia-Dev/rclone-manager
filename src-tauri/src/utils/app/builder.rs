@@ -58,6 +58,7 @@ pub fn create_app_window(app_handle: AppHandle, browse_remote: Option<&str>) {
             .resizable(true)
             .center()
             .shadow(false)
+            .devtools(true)
             .min_inner_size(362.0, 240.0);
 
     // MacOS does not support transparent windows. So we set the title bar style to show

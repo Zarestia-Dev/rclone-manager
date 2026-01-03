@@ -572,13 +572,13 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     }
   }
 
-  private copyToClipboard(
+  private async copyToClipboard(
     text: string,
     successMessage: string,
-    errorMessage = 'Failed to copy to clipboard' // Fallback only, usually provided by caller
-  ): void {
+    errorMessage = 'Failed to copy to clipboard'
+  ): Promise<void> {
     try {
-      navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(text);
       this.showSnackbar(successMessage);
     } catch (error) {
       console.error('Error copying to clipboard:', error);

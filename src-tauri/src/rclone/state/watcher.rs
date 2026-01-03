@@ -103,28 +103,9 @@ async fn get_serves_from_api(
     client: &reqwest::Client,
     backend: &Backend,
 ) -> Result<Vec<ServeInstance>, String> {
+    use crate::rclone::queries::parse_serves_response;
     let api_response = list_serves_internal(client, backend).await?;
-    let api_serves: Vec<ServeInstance> = api_response
-        .get("list")
-        .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|item| {
-                    let id = item.get("id")?.as_str()?.to_string();
-                    let addr = item.get("addr")?.as_str()?.to_string();
-                    let params = item.get("params")?.clone();
-
-                    Some(ServeInstance {
-                        id,
-                        addr,
-                        params,
-                        profile: None,
-                    })
-                })
-                .collect()
-        })
-        .unwrap_or_default();
-    Ok(api_serves)
+    Ok(parse_serves_response(&api_response))
 }
 
 /// Core logic to check and reconcile running serves

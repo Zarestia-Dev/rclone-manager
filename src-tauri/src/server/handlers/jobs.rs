@@ -99,13 +99,13 @@ pub struct DeleteJobBody {
 }
 
 pub async fn delete_job_handler(
-    State(_): State<WebServerState>,
+    State(state): State<WebServerState>,
     Json(body): Json<DeleteJobBody>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::rclone::backend::BACKEND_MANAGER;
     BACKEND_MANAGER
         .job_cache
-        .delete_job(body.jobid)
+        .delete_job(body.jobid, Some(&state.app_handle))
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(crate::localized_success!(

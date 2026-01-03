@@ -501,11 +501,25 @@ export class NautilusComponent implements OnInit, OnDestroy {
         untracked(() => {
           const remote = this.allRemotesLookup().find(r => r.name === selectedMap);
           if (remote) {
-            // If we have tabs (already initialized), select it directly
             if (this.tabs().length > 0) {
               this.selectRemote(remote);
-              // Only clear signal if we successfully handled it here (found the remote)
               this.nautilusService.selectedNautilusRemote.set(null);
+            }
+          }
+        });
+      }
+    });
+
+    // Handle dynamic path navigation (e.g. from Debug menu)
+    effect(() => {
+      const targetPath = this.nautilusService.targetPath();
+      if (targetPath) {
+        untracked(() => {
+          const parsed = this.parseLocationToRemoteAndPath(targetPath);
+          if (parsed) {
+            if (this.tabs().length > 0) {
+              this._navigate(parsed.remote, parsed.path, true);
+              this.nautilusService.targetPath.set(null);
             }
           }
         });
@@ -536,7 +550,24 @@ export class NautilusComponent implements OnInit, OnDestroy {
       }
     }
 
-    // 3. If no initialLocation handled, check for requested remote (e.g. from Tray)
+    // 3. If no initialLocation handled, check for requested path (e.g. from Debug menu)
+    if (!initialRemote) {
+      const targetPath = this.nautilusService.targetPath();
+      if (targetPath) {
+        const parsed = this.parseLocationToRemoteAndPath(targetPath);
+        if (parsed) {
+          initialRemote = parsed.remote;
+          initialPath = parsed.path;
+        } else {
+          // If we can't parse it (e.g. no remote matched), try to find a default local drive and use path relative to it?
+          // Or just open local drive root.
+          // Assuming parseLocationToRemoteAndPath handles usage of "C:/" or "/" roots correctly which should cover most cases.
+        }
+        this.nautilusService.targetPath.set(null);
+      }
+    }
+
+    // 4. If still no remote, check for requested remote (e.g. from Tray)
     if (!initialRemote) {
       const requestedName = this.nautilusService.selectedNautilusRemote();
       if (requestedName) {

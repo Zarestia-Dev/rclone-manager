@@ -23,8 +23,10 @@ import {
   SystemInfoService,
   AppUpdaterService,
   RcloneUpdateService,
+  DebugService,
+  NotificationService,
+  DebugInfo,
 } from '@app/services';
-import { NotificationService } from '@app/services';
 
 @Component({
   selector: 'app-about-modal',
@@ -54,6 +56,7 @@ export class AboutModalComponent implements OnInit {
   private appUpdaterService = inject(AppUpdaterService);
   private rcloneUpdateService = inject(RcloneUpdateService);
   private eventListenersService = inject(EventListenersService);
+  private debugService = inject(DebugService);
   private sanitizer = inject(DomSanitizer);
   private translate = inject(TranslateService);
 
@@ -67,6 +70,12 @@ export class AboutModalComponent implements OnInit {
   rcloneInfo: RcloneInfo | null = null;
   loadingRclone = false;
   rcloneError: string | null = null;
+
+  // Debug overlay
+  showingDebugOverlay = false;
+  debugInfo: DebugInfo | null = null;
+  logoClickCount = 0;
+  logoClickTimeout: ReturnType<typeof setTimeout> | null = null;
 
   buildType: string | null = null;
   updatesDisabled = false;
@@ -477,5 +486,60 @@ export class AboutModalComponent implements OnInit {
       available: false,
       updateInfo: null,
     };
+  }
+
+  // Debug Overlay Methods
+  onLogoClick(): void {
+    this.logoClickCount++;
+
+    // Reset timeout on each click
+    if (this.logoClickTimeout) {
+      clearTimeout(this.logoClickTimeout);
+    }
+
+    // If 5 clicks within 2 seconds, show debug overlay
+    if (this.logoClickCount >= 5) {
+      this.logoClickCount = 0;
+      this.showDebugOverlay();
+      return;
+    }
+
+    // Reset click count after 2 seconds of no clicks
+    this.logoClickTimeout = setTimeout(() => {
+      this.logoClickCount = 0;
+    }, 2000);
+  }
+
+  async showDebugOverlay(): Promise<void> {
+    this.showingDebugOverlay = true;
+    try {
+      this.debugInfo = await this.debugService.getDebugInfo();
+    } catch (error) {
+      console.error('Failed to load debug info:', error);
+    }
+  }
+
+  closeDebugOverlay(): void {
+    this.showingDebugOverlay = false;
+  }
+
+  async openFolder(folderType: 'logs' | 'config' | 'cache'): Promise<void> {
+    try {
+      await this.debugService.openFolder(folderType);
+    } catch {
+      // Error already handled by service
+    }
+  }
+
+  async openDevTools(): Promise<void> {
+    try {
+      await this.debugService.openDevTools();
+    } catch {
+      // Error already handled by service
+    }
+  }
+
+  async copyDebugInfo(): Promise<void> {
+    await this.debugService.copyDebugInfoToClipboard();
   }
 }
