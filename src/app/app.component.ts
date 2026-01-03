@@ -72,15 +72,6 @@ export class AppComponent implements OnDestroy {
   // --- PRIVATE PROPERTIES ---
 
   constructor() {
-    // Initialize translation service
-    const savedLang = localStorage.getItem('language') || 'en';
-    this.translateService.use(savedLang).subscribe({
-      error: error => {
-        console.error(`Failed to load language '${savedLang}', falling back to 'en':`, error);
-        this.translateService.use('en');
-      },
-    });
-
     this.initializeApp().catch(error => {
       console.error('Error during app initialization:', error);
     });
@@ -95,6 +86,12 @@ export class AppComponent implements OnDestroy {
   private async initializeApp(): Promise<void> {
     try {
       await this.appSettingsService.loadSettings();
+
+      // Initialize language from settings
+      const savedLang =
+        (await this.appSettingsService.getSettingValue<string>('general.language')) || 'en-US';
+      this.translateService.use(savedLang);
+
       await this.checkOnboardingStatus();
       this.checkBrowseUrlParameter();
 
@@ -182,10 +179,17 @@ export class AppComponent implements OnDestroy {
       next: event => {
         if (typeof event === 'object' && event?.status === 'shutting_down') {
           this.loadingService.show({
-            title: 'Shutting Down',
-            message: 'Please wait while the application shuts down safely...',
+            title: this.translateService.instant('app.shutdown.title'),
+            message: this.translateService.instant('app.shutdown.message'),
             icon: 'refresh',
           });
+        }
+
+        if (typeof event === 'object' && event?.status === 'language_changed') {
+          const lang = event.language as string;
+          if (lang && lang !== this.translateService.getCurrentLang()) {
+            this.translateService.use(lang);
+          }
         }
       },
     });

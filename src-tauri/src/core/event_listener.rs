@@ -248,6 +248,19 @@ fn handle_settings_changed(app: &AppHandle) {
                         debug!("🌐 Language changed to: {language}");
                         crate::utils::i18n::set_language(language);
 
+                        // Emit APP_EVENT for frontend to handle language change
+                        app_handle
+                            .emit(
+                                crate::utils::types::events::APP_EVENT,
+                                serde_json::json!({
+                                    "status": "language_changed",
+                                    "language": language
+                                }),
+                            )
+                            .unwrap_or_else(|e| {
+                                error!("❌ Failed to emit language change event: {e}");
+                            });
+
                         #[cfg(desktop)]
                         {
                             let app_handle_clone = app_handle.clone();

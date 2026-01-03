@@ -7,6 +7,10 @@ use rcman::DeriveSettingsSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+// List of supported BCP-47 language tags
+// When adding a new language, add its BCP-47 code here and create the translation file
+const SUPPORTED_LANGUAGES: &[&str] = &["en-US", "tr-TR"];
+
 // =============================================================================
 // Struct Definitions with Derive Macro
 // =============================================================================
@@ -16,45 +20,53 @@ use serde_json::Value;
 #[schema(category = "general")]
 pub struct GeneralSettings {
     #[setting(
-        label = "Enable Tray Icon",
-        description = "Show an icon in the system tray. Also enables the background service."
-    )]
-    pub tray_enabled: bool,
-
-    #[setting(
-        label = "Language",
-        description = "Language to use for the user interface.",
+        label = "settings.general.language.label",
+        description = "settings.general.language.description",
         options(
-            ("en", "English"),
-            ("tr", "Türkçe (Turkish)")
+            ("en-US", "English (US)"),
+            ("tr-TR", "Türkçe (Türkiye)")
         )
     )]
     pub language: String,
 
     #[setting(
-        label = "Start on Startup",
-        description = "Automatically start the app when the system starts."
+        label = "settings.general.tray_enabled.label",
+        description = "settings.general.tray_enabled.description"
+    )]
+    pub tray_enabled: bool,
+
+    #[setting(
+        label = "settings.general.start_on_startup.label",
+        description = "settings.general.start_on_startup.description"
     )]
     pub start_on_startup: bool,
 
     #[setting(
-        label = "Enable Notifications",
-        description = "Show notifications for mount events."
+        label = "settings.general.notifications.label",
+        description = "settings.general.notifications.description"
     )]
     pub notifications: bool,
 
     #[setting(
-        label = "Restrict Values",
-        description = "Restrict some specific values for security purposes (e.g., Token, Client ID, etc.)"
+        label = "settings.general.restrict.label",
+        description = "settings.general.restrict.description"
     )]
     pub restrict: bool,
 }
 
 impl Default for GeneralSettings {
     fn default() -> Self {
+        let system_locale = tauri_plugin_os::locale().unwrap_or_else(|| "en-US".to_string());
+
+        let language = if SUPPORTED_LANGUAGES.contains(&system_locale.as_str()) {
+            system_locale
+        } else {
+            "en-US".to_string()
+        };
+
         Self {
             tray_enabled: true,
-            language: "en".to_string(),
+            language,
             start_on_startup: false,
             notifications: true,
             restrict: true,
@@ -67,8 +79,8 @@ impl Default for GeneralSettings {
 #[schema(category = "core")]
 pub struct CoreSettings {
     #[setting(
-        label = "Max Tray Items",
-        description = "Maximum number of items to show in the tray (1-40).",
+        label = "settings.core.max_tray_items.label",
+        description = "settings.core.max_tray_items.description",
         min = 1,
         max = 40,
         step = 1
@@ -79,28 +91,28 @@ pub struct CoreSettings {
     pub connection_check_urls: Vec<String>,
 
     #[setting(
-        label = "Rclone Config File",
-        description = "Path to rclone config file. Leave empty to use default location.",
+        label = "settings.core.rclone_config_file.label",
+        description = "settings.core.rclone_config_file.description",
         requires_restart
     )]
     pub rclone_config_file: String,
 
     #[setting(
-        label = "Rclone Binary Path",
-        description = "Path to rclone binary or directory. Leave empty for auto-detection.",
+        label = "settings.core.rclone_path.label",
+        description = "settings.core.rclone_path.description",
         requires_restart
     )]
     pub rclone_path: String,
 
     #[setting(
-        label = "Bandwidth Limit",
-        description = "Limit the bandwidth used by Rclone transfers. Format: 'upload:download'"
+        label = "settings.core.bandwidth_limit.label",
+        description = "settings.core.bandwidth_limit.description"
     )]
     pub bandwidth_limit: String,
 
     #[setting(
-        label = "Completed Onboarding",
-        description = "Indicates if the onboarding process is completed."
+        label = "settings.core.completed_onboarding.label",
+        description = "settings.core.completed_onboarding.description"
     )]
     pub completed_onboarding: bool,
 }
@@ -126,22 +138,22 @@ impl Default for CoreSettings {
 #[schema(category = "developer")]
 pub struct DeveloperSettings {
     #[setting(
-        label = "Log Level",
-        description = "Controls which log messages are recorded. Higher levels include more detail.",
+        label = "settings.developer.log_level.label",
+        description = "settings.developer.log_level.description",
         options(
-            ("error", "Error Only"),
-            ("warn", "Warnings & Errors"),
-            ("info", "Info (Recommended)"),
-            ("debug", "Debug (Verbose)"),
-            ("trace", "Trace (All, includes library logs)")
+            ("error", "settings.developer.log_level.options.error"),
+            ("warn", "settings.developer.log_level.options.warn"),
+            ("info", "settings.developer.log_level.options.info"),
+            ("debug", "settings.developer.log_level.options.debug"),
+            ("trace", "settings.developer.log_level.options.trace")
         ),
         advanced
     )]
     pub log_level: String,
 
     #[setting(
-        label = "Memory Optimization",
-        description = "Destroys the window UI when closed to free RAM. Experimental feature.",
+        label = "settings.developer.destroy_window_on_close.label",
+        description = "settings.developer.destroy_window_on_close.description",
         advanced
     )]
     pub destroy_window_on_close: bool,
@@ -160,40 +172,40 @@ impl Default for DeveloperSettings {
 #[derive(Debug, Serialize, Deserialize, Clone, DeriveSettingsSchema)]
 #[schema(category = "runtime")]
 pub struct RuntimeSettings {
-    #[setting(label = "Application Theme", options(("system", "System"), ("light", "Light"), ("dark", "Dark")))]
+    #[setting(label = "settings.runtime.theme.label", options(("system", "settings.runtime.theme.options.system"), ("light", "settings.runtime.theme.options.light"), ("dark", "settings.runtime.theme.options.dark")))]
     pub theme: String,
 
     #[setting(
-        label = "Auto Check App Updates",
-        description = "Automatically check for application updates."
+        label = "settings.runtime.app_auto_check_updates.label",
+        description = "settings.runtime.app_auto_check_updates.description"
     )]
     pub app_auto_check_updates: bool,
 
     #[setting(
-        label = "Skipped App Updates",
-        description = "List of application versions that have been skipped."
+        label = "settings.runtime.app_skipped_updates.label",
+        description = "settings.runtime.app_skipped_updates.description"
     )]
     pub app_skipped_updates: Vec<String>,
 
-    #[setting(label = "App Update Channel", options(("stable", "Stable"), ("beta", "Beta")))]
+    #[setting(label = "settings.runtime.app_update_channel.label", options(("stable", "settings.runtime.app_update_channel.options.stable"), ("beta", "settings.runtime.app_update_channel.options.beta")))]
     pub app_update_channel: String,
 
     #[setting(
-        label = "Auto Check Rclone Updates",
-        description = "Automatically check for rclone updates."
+        label = "settings.runtime.rclone_auto_check_updates.label",
+        description = "settings.runtime.rclone_auto_check_updates.description"
     )]
     pub rclone_auto_check_updates: bool,
 
     #[setting(
-        label = "Skipped Rclone Updates",
-        description = "List of rclone versions that have been skipped."
+        label = "settings.runtime.rclone_skipped_updates.label",
+        description = "settings.runtime.rclone_skipped_updates.description"
     )]
     pub rclone_skipped_updates: Vec<String>,
 
-    #[setting(label = "Rclone Update Channel", options(("stable", "Stable"), ("beta", "Beta")))]
+    #[setting(label = "settings.runtime.rclone_update_channel.label", options(("stable", "settings.runtime.rclone_update_channel.options.stable"), ("beta", "settings.runtime.rclone_update_channel.options.beta")))]
     pub rclone_update_channel: String,
 
-    #[setting(label = "Flatpak Warning Shown")]
+    #[setting(label = "settings.runtime.flatpak_warn.label")]
     pub flatpak_warn: bool,
 
     #[setting(skip)] // Complex type
@@ -220,38 +232,38 @@ impl Default for RuntimeSettings {
 #[derive(Debug, Serialize, Deserialize, Clone, DeriveSettingsSchema)]
 #[schema(category = "nautilus")]
 pub struct NautilusSettings {
-    #[setting(label = "Default Layout", description = "Default view layout for the file browser.", options(("grid", "Grid"), ("list", "List")))]
+    #[setting(label = "settings.nautilus.default_layout.label", description = "settings.nautilus.default_layout.description", options(("grid", "settings.nautilus.default_layout.options.grid"), ("list", "settings.nautilus.default_layout.options.list")))]
     pub default_layout: String,
 
     #[setting(
-        label = "Grid Icon Size",
-        description = "Preferred grid icon size in pixels.",
+        label = "settings.nautilus.grid_icon_size.label",
+        description = "settings.nautilus.grid_icon_size.description",
         min = 16,
         max = 512
     )]
     pub grid_icon_size: i32,
 
     #[setting(
-        label = "List Icon Size",
-        description = "Preferred list icon size in pixels.",
+        label = "settings.nautilus.list_icon_size.label",
+        description = "settings.nautilus.list_icon_size.description",
         min = 16,
         max = 256
     )]
     pub list_icon_size: i32,
 
     #[setting(
-        label = "Show Hidden Files",
-        description = "Show files starting with a dot by default in the file browser."
+        label = "settings.nautilus.show_hidden_items.label",
+        description = "settings.nautilus.show_hidden_items.description"
     )]
     pub show_hidden_items: bool,
 
-    #[setting(label = "Default Sort Order", options(
-        ("name-asc", "Name (A-Z)"),
-        ("name-desc", "Name (Z-A)"),
-        ("size-asc", "Size (Small-Large)"),
-        ("size-desc", "Size (Large-Small)"),
-        ("date-asc", "Date (Old-New)"),
-        ("date-desc", "Date (New-Old)")
+    #[setting(label = "settings.nautilus.sort_key.label", options(
+        ("name-asc", "settings.nautilus.sort_key.options.name-asc"),
+        ("name-desc", "settings.nautilus.sort_key.options.name-desc"),
+        ("size-asc", "settings.nautilus.sort_key.options.size-asc"),
+        ("size-desc", "settings.nautilus.sort_key.options.size-desc"),
+        ("date-asc", "settings.nautilus.sort_key.options.date-asc"),
+        ("date-desc", "settings.nautilus.sort_key.options.date-desc")
     ))]
     pub sort_key: String,
 

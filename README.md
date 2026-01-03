@@ -5,6 +5,12 @@
 <h1 align="center">
   RClone Manager
 </h1>
+
+<p align="center">
+  <a href="README.md">🇺🇸 English</a> •
+  <a href="README.tr-TR.md">🇹🇷 Türkçe</a>
+</p>
+
 <p align="center">
   <b>A powerful, cross-platform GUI for managing Rclone remotes with style and ease.</b><br>
   <i>Built with Angular 20 + Tauri · Linux • Windows • macOS • ARM Support</i>
@@ -25,6 +31,9 @@
   </a>
   <a href="https://github.com/Zarestia-Dev/rclone-manager/stargazers">
     <img src="https://img.shields.io/github/stars/Zarestia-Dev/rclone-manager?style=flat&color=3584e4" alt="Stars">
+  </a>
+  <a href="https://crowdin.com/project/rclone-manager">
+    <img src="https://badges.crowdin.net/rclone-manager/localized.svg" alt="Crowdin">
   </a>
 </p>
 
@@ -80,6 +89,7 @@ A unique blend of **GTK styling**, **Angular Material**, and **FontAwesome icons
 
 ### 🎯 Core
 
+- 🌐 Connect your remote Rclone instances.
 - 🛠 Manage remotes end-to-end (add/edit/delete/clone) with OAuth or interactive config
 - 🔑 Secure by default (keyring storage, encrypted exports) plus scheduled jobs and quick import/export
 - 📡 Works with all major clouds (Drive, OneDrive, Dropbox, S3, iCloud, Wasabi, B2, …)
@@ -88,11 +98,6 @@ A unique blend of **GTK styling**, **Angular Material**, and **FontAwesome icons
 
 - 📁 Mount and serve remotes; sync, copy, move and bisync between any two locations
 - 🎯 One-tap primary actions per remote; monitor jobs live with speeds and progress
-
-### 🎨 Experience
-
-- 🌗 Adaptive light/dark theming with GTK-inspired Material UI
-- 🖥 Tray controls, smart notifications, and full VFS/flag tuning when you need it
 
 ### 🌍 Platforms
 
@@ -174,6 +179,8 @@ Encountering an issue?
 
 We welcome contributions! Here's how you can help:
 
+
+- 🌍 **Help Translate** – [Join us on Crowdin](https://crowdin.com/project/rclone-manager)
 - 🐛 **Report Bugs** – [Open a bug report](https://github.com/Zarestia-Dev/rclone-manager/issues/new?template=bug_report.md)
 - 💡 **Suggest Features** – [Share your ideas](https://github.com/Zarestia-Dev/rclone-manager/issues/new?template=feature_request.md)
 - 📖 **Improve Docs** – Help make our [documentation](https://github.com/Zarestia-Dev/rclone-manager/wiki) clearer

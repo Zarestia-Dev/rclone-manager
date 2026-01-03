@@ -105,7 +105,7 @@
     "noRemotesConfigured": "Yapılandırılmış uzak bağlantı yok",
     "aria": {
       "mountStatus": "Bağlama durumu",
-      "syncStatus": "Eşitleme operasyonları durumu",
+      "syncStatus": "Senkronizasyon operasyonları durumu",
       "serveStatus": "Sunma durumu"
     }
   },
@@ -205,11 +205,7 @@
       },
       "language": {
         "label": "Dil",
-        "description": "Kullanıcı arayüzü için kullanılacak dil.",
-        "options": {
-          "en": "İngilizce",
-          "tr": "Türkçe"
-        }
+        "description": "Kullanıcı arayüzü için kullanılacak dil."
       },
       "start_on_startup": {
         "label": "Başlangıçta Çalıştır",
@@ -358,7 +354,7 @@
   "tabs": {
     "general": "Genel",
     "mount": "Bağlama",
-    "sync": "Eşitleme",
+    "sync": "Senkronizasyon",
     "serve": "Sunucu"
   },
   "titlebar": {
@@ -1355,7 +1351,7 @@
     }
   },
   "app": {
-    "shuttingDown": {
+    "shutdown": {
       "title": "Kapatılıyor",
       "message": "Uygulama güvenli bir şekilde kapatılırken lütfen bekleyin..."
     }
@@ -1685,8 +1681,8 @@
         "remoteConfig": "Uzak Bağlantı Yapılandırması",
         "mount": "Bağlama",
         "serve": "Sunma",
-        "sync": "Eşitleme",
-        "bisync": "Bisync",
+        "sync": "Senkronizasyon",
+        "bisync": "Çift Yönlü Senk.",
         "move": "Taşı",
         "copy": "Kopyala",
         "filter": "Filtre",

@@ -84,6 +84,7 @@ export const SENSITIVE_KEYS = [
 export interface AppEventPayload {
   status: string;
   message?: string;
+  language?: string;
 }
 
 export type AppEventPayloadType = AppEventPayload | string;

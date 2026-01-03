@@ -1,0 +1,87 @@
+---
+name: "🌍 Translation"
+description: Add or update a translation for a language
+title: "[i18n]: Add/Update LANGUAGE_NAME translation"
+labels: ["i18n", "translation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for contributing a translation! Please make sure you've followed the [Translation Guide](https://github.com/Zarestia-Dev/rclone-manager/blob/main/CONTRIBUTING.md#adding-translations).
+
+  - type: input
+    id: language-code
+    attributes:
+      label: Language Code (BCP-47)
+      description: "The BCP-47 language tag for your translation (e.g., de-DE, fr-FR, ja-JP)"
+      placeholder: "de-DE"
+    validations:
+      required: true
+
+  - type: input
+    id: language-name
+    attributes:
+      label: Language Name (Native)
+      description: "The language name as it should appear in the selector, in the language itself"
+      placeholder: "Deutsch (Deutschland)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: translation-type
+    attributes:
+      label: Translation Type
+      description: Is this a new translation or an update to an existing one?
+      options:
+        - New translation
+        - Update/fix existing translation
+    validations:
+      required: true
+
+  - type: textarea
+    id: translation-coverage
+    attributes:
+      label: Translation Coverage
+      description: "If this is a partial translation, list the sections that are translated"
+      placeholder: |
+        - ✅ Common strings
+        - ✅ Settings
+        - ✅ Modals
+        - ⏳ Error messages (in progress)
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      description: Please confirm you've completed these steps
+      options:
+        - label: Created/updated the translation file in `src/assets/i18n/`
+          required: true
+        - label: Added language to `SUPPORTED_LANGUAGES` in `schema.rs`
+          required: true
+        - label: Added language option with native name in `schema.rs`
+          required: true
+        - label: Tested the translation in the application
+          required: true
+        - label: Kept all `{{placeholder}}` variables intact
+          required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: "Optional: Screenshots showing the translation in action"
+      placeholder: "Drag and drop screenshots here"
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional Notes
+      description: "Any notes about translation choices, regional variations, or help needed"
+      placeholder: "I used formal 'Sie' form in German as it's more appropriate for software UI"
+    validations:
+      required: false

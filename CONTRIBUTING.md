@@ -12,6 +12,7 @@ Thank you for your interest in contributing to RClone Manager! We appreciate con
   - [Suggesting Features](#suggesting-features)
   - [Contributing Code](#contributing-code)
   - [Improving Documentation](#improving-documentation)
+  - [Adding Translations](#adding-translations)
 - [Development Setup](#development-setup)
   - [Prerequisites](#prerequisites)
   - [Setting Up the Project](#setting-up-the-project)
@@ -72,6 +73,84 @@ Documentation improvements are always welcome! This includes:
 - Adding examples or tutorials
 - Updating the [Wiki](https://github.com/Zarestia-Dev/rclone-manager/wiki)
 - Improving code comments
+
+### Adding Translations
+
+We use BCP-47 language tags (e.g., `en-US`, `tr-TR`, `de-DE`) for internationalization. Adding a new language is straightforward!
+
+#### Steps to Add a New Language
+
+1. **Create the translation file**:
+   
+   Copy the English translation file as a starting point:
+   ```bash
+   cp src/assets/i18n/en-US.json src/assets/i18n/YOUR-LANG.json
+   # Example: cp src/assets/i18n/en-US.json src/assets/i18n/de-DE.json
+   ```
+
+2. **Update the backend schema** (`src-tauri/src/core/settings/schema.rs`):
+   
+   Add your language to `SUPPORTED_LANGUAGES` and the language options:
+   ```rust
+   // Add your BCP-47 code here
+   const SUPPORTED_LANGUAGES: &[&str] = &["en-US", "tr-TR", "de-DE"];
+   
+   // Add your language option (use native language name)
+   options(
+       ("en-US", "English (US)"),
+       ("tr-TR", "Türkçe (Türkiye)"),
+       ("de-DE", "Deutsch (Deutschland)")  // ← New language
+   )
+   ```
+
+3. **Translate the JSON file**:
+   
+   Translate all string values in your `YOUR-LANG.json` file. Keep the JSON keys unchanged.
+
+4. **Test your translation**:
+   ```bash
+   npm run tauri dev
+   ```
+   Then change the language in Settings → General → Language.
+
+#### Translation Guidelines
+
+- **Use native language names** for the language selector (e.g., "Deutsch" not "German")
+- **Keep placeholders intact** — Don't translate `{{variable}}` placeholders
+- **Maintain JSON structure** — Only translate string values, not keys
+- **Test special characters** — Ensure UTF-8 encoding works correctly
+- **Use formal/informal consistently** — Choose one register and stick to it
+
+#### README Translation (Optional but Appreciated!)
+
+If you'd like to go the extra mile, you can also translate the README:
+
+1. Copy `README.md` to `README.YOUR-LANG.md` (e.g., `README.de-DE.md`)
+2. Translate the content (keep badges and links working)
+3. Add your language to the language selector at the top of all README files:
+   ```html
+   <p align="center">
+     <a href="README.md">English</a> •
+     <a href="README.tr-TR.md">Türkçe</a> •
+     <a href="README.de-DE.md">Deutsch</a>  <!-- New -->
+   </p>
+   ```
+
+#### BCP-47 Language Codes
+
+Common language codes:
+| Code | Language |
+|------|----------|
+| `en-US` | English (US) |
+| `en-GB` | English (UK) |
+| `tr-TR` | Turkish (Turkey) |
+| `de-DE` | German (Germany) |
+| `fr-FR` | French (France) |
+| `es-ES` | Spanish (Spain) |
+| `pt-BR` | Portuguese (Brazil) |
+| `zh-CN` | Chinese (Simplified) |
+| `ja-JP` | Japanese |
+| `ko-KR` | Korean |
 
 ---
 

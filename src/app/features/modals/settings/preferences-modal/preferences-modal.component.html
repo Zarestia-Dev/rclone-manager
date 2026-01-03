@@ -285,7 +285,10 @@
           <div class="control-field">
             @switch (meta.value_type) {
               @case ('bool') {
-                <mat-slide-toggle [formControl]="$any(getFormControl(category, key))">
+                <mat-slide-toggle
+                  [formControl]="$any(getFormControl(category, key))"
+                  (change)="onValueChange(category, key)"
+                >
                 </mat-slide-toggle>
               }
               @case ('int') {
@@ -312,6 +315,7 @@
                       type="number"
                       [formControl]="$any(getFormControl(category, key))"
                       (keydown)="onIntegerInput($event)"
+                      (blur)="onBlur(category, key)"
                       [attr.aria-label]="meta.display_name"
                     />
                     @if (
@@ -345,6 +349,7 @@
                     <mat-select
                       [formControl]="$any(getFormControl(category, key))"
                       [attr.aria-label]="meta.display_name"
+                      (selectionChange)="onValueChange(category, key)"
                     >
                       @for (option of meta.options; track option.value || option) {
                         <mat-option [value]="option.value ?? option">{{
@@ -358,6 +363,7 @@
                       [formControl]="$any(getFormControl(category, key))"
                       [attr.aria-label]="meta.display_name"
                       [placeholder]="meta.placeholder || ''"
+                      (blur)="onBlur(category, key)"
                     />
                   }
                   @if (
@@ -372,6 +378,7 @@
                   <mat-select
                     [formControl]="$any(getFormControl(category, key))"
                     [attr.aria-label]="meta.display_name"
+                    (selectionChange)="onValueChange(category, key)"
                   >
                     @for (option of meta.options; track option.value || option) {
                       <mat-option [value]="option.value ?? option">{{
@@ -393,6 +400,7 @@
                     [formControl]="$any(getFormControl(category, key))"
                     [attr.aria-label]="meta.display_name"
                     [placeholder]="meta.placeholder || ''"
+                    (blur)="onBlur(category, key)"
                   />
                   @if (
                     getFormControl(category, key).invalid && getFormControl(category, key).touched
@@ -413,6 +421,7 @@
                             [attr.aria-label]="
                               'modals.preferences.aria.itemIndex' | translate: { index: $index + 1 }
                             "
+                            (blur)="onBlur(category, key)"
                           />
                           <button
                             matIconButton
@@ -454,6 +463,7 @@
                     matInput
                     [formControl]="$any(getFormControl(category, key))"
                     (input)="onPathInput(category, key)"
+                    (blur)="onBlur(category, key)"
                     [attr.aria-label]="
                       'modals.preferences.aria.filePathFor' | translate: { name: meta.display_name }
                     "
@@ -481,6 +491,7 @@
                     matInput
                     [formControl]="$any(getFormControl(category, key))"
                     (input)="onPathInput(category, key)"
+                    (blur)="onBlur(category, key)"
                     [attr.aria-label]="
                       'modals.preferences.aria.folderPathFor'
                         | translate: { name: meta.display_name }

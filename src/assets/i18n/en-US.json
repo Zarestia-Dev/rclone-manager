@@ -204,11 +204,7 @@
       },
       "language": {
         "label": "Language",
-        "description": "Language to use for the user interface.",
-        "options": {
-          "en": "English",
-          "tr": "Türkçe"
-        }
+        "description": "Language to use for the user interface."
       },
       "start_on_startup": {
         "label": "Start on Startup",
@@ -1354,7 +1350,7 @@
     }
   },
   "app": {
-    "shuttingDown": {
+    "shutdown": {
       "title": "Shutting Down",
       "message": "Please wait while the application shuts down safely..."
     }

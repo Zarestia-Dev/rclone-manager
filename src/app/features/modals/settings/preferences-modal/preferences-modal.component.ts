@@ -22,7 +22,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
 import { Subject } from 'rxjs';
-import { takeUntil, debounceTime, pairwise, startWith } from 'rxjs/operators';
+import { takeUntil } from 'rxjs/operators';
 
 // Services and Types
 import { ValidatorRegistryService } from '@app/services';
@@ -153,7 +153,6 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
         this.enrichMetadata(options);
         this.optionsMap = options;
         this.buildForm(options);
-        this.subscribeToFormChanges();
         this.isLoading = false;
       } else {
         this.isLoading = true;
@@ -165,26 +164,11 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     for (const [fullKey, meta] of Object.entries(options)) {
       const [, key] = fullKey.split('.');
 
-      // 1. Map Labels and Descriptions
-      if (!meta.display_name) {
-        meta.display_name = meta.label || this.formatKeyToLabel(key);
-      }
-      if (!meta.help_text) {
-        meta.help_text = meta.description || '';
-      }
-
-      // 2. Infer Type if missing
+      // Infer Type if missing
       if (!meta.value_type) {
         meta.value_type = this.inferValueType(meta, key);
       }
     }
-  }
-
-  private formatKeyToLabel(key: string): string {
-    return key
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
   }
 
   private inferValueType(meta: SettingMetadata, key: string): SettingMetadata['value_type'] {
@@ -234,27 +218,24 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     this.settingsForm = this.fb.group(formGroups);
   }
 
-  private subscribeToFormChanges(): void {
-    this.settingsForm.valueChanges
-      .pipe(
-        takeUntil(this.destroyed$),
-        debounceTime(500), // Wait for user to stop typing
-        startWith(this.settingsForm.value), // Emit initial value to compare against
-        pairwise() // Get [previous, current] values
-      )
-      .subscribe(([prev, next]) => {
-        for (const category in next) {
-          for (const key in next[category]) {
-            const prevValue = prev[category]?.[key];
-            const nextValue = next[category][key];
+  /**
+   * Called on blur for text inputs - saves the current value
+   */
+  onBlur(category: string, key: string): void {
+    const control = this.getFormControl(category, key);
+    if (control?.valid) {
+      this.updateSetting(category, key, control.value);
+    }
+  }
 
-            // If value has changed, update it
-            if (!this.valuesEqual(prevValue, nextValue)) {
-              this.updateSetting(category, key, nextValue);
-            }
-          }
-        }
-      });
+  /**
+   * Called on selection change for dropdowns and toggles - saves immediately
+   */
+  onValueChange(category: string, key: string): void {
+    const control = this.getFormControl(category, key);
+    if (control?.valid) {
+      this.updateSetting(category, key, control.value);
+    }
   }
 
   private getValidators(meta: SettingMetadata, fullKey: string): ValidatorFn[] {
@@ -303,13 +284,6 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
 
     if (meta.value_type === 'string[]' && Array.isArray(finalValue)) {
       finalValue = finalValue.filter(item => item && String(item).trim() !== '');
-    }
-
-    // Special handling for language setting
-    if (category === 'general' && key === 'language') {
-      const lang = String(finalValue);
-      this.translate.use(lang);
-      localStorage.setItem('language', lang);
     }
 
     if (meta.engine_restart) {
@@ -474,25 +448,25 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     return category.charAt(0).toUpperCase() + category.slice(1);
   }
 
-  getSettingLabel(category: string, key: string, meta: SettingMetadata): string {
-    const transKey = `settings.${category}.${key}.label`;
-    const translation = this.translate.instant(transKey);
-    return translation !== transKey ? translation : meta.display_name || meta.label || key;
+  getSettingLabel(_category: string, _key: string, meta: SettingMetadata): string {
+    // Backend now sends translation keys directly, just translate them
+    const labelKey = meta.label || meta.display_name;
+    if (!labelKey) return _key;
+    return this.translate.instant(labelKey);
   }
 
-  getSettingDescription(category: string, key: string, meta: SettingMetadata): string {
-    const transKey = `settings.${category}.${key}.description`;
-    const translation = this.translate.instant(transKey);
-    return translation !== transKey ? translation : meta.help_text || meta.description || '';
+  getSettingDescription(_category: string, _key: string, meta: SettingMetadata): string {
+    // Backend now sends translation keys directly, just translate them
+    const descKey = meta.description || meta.help_text;
+    if (!descKey) return '';
+    return this.translate.instant(descKey);
   }
 
-  getOptionLabel(category: string, key: string, option: unknown): string {
+  getOptionLabel(_category: string, _key: string, option: unknown): string {
+    // Backend now sends translation keys directly for option labels
     const opt = option as { value: unknown; label: unknown };
-    const value = opt?.value ?? option;
-    const label = opt?.label ?? option;
-    const transKey = `settings.${category}.${key}.options.${value}`;
-    const translation = this.translate.instant(transKey);
-    return translation !== transKey ? translation : String(label);
+    const labelKey = opt?.label ?? option;
+    return this.translate.instant(String(labelKey));
   }
 
   getObjectKeys(obj: Record<string, unknown>): string[] {
@@ -526,10 +500,31 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
   }
 
   async resetSetting(category: string, key: string): Promise<void> {
-    try {
-      await this.appSettingsService.resetSetting(category, key);
-    } catch (error) {
-      console.error(`Failed to reset setting ${category}.${key}`, error);
+    const meta = this.getMetadata(category, key);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const defaultValue = (meta as any).default;
+
+    // Update the form control to the default value
+    const control = this.getFormControl(category, key);
+    if (control) {
+      control.setValue(defaultValue, { emitEvent: false });
+    }
+
+    // If this setting requires restart, add to pending changes
+    if (meta.engine_restart || meta.requires_restart) {
+      this.pendingRestartChanges.set(`${category}.${key}`, {
+        category,
+        key,
+        value: defaultValue,
+        metadata: meta,
+      });
+    } else {
+      // Otherwise reset immediately
+      try {
+        await this.appSettingsService.resetSetting(category, key);
+      } catch (error) {
+        console.error(`Failed to reset setting ${category}.${key}`, error);
+      }
     }
   }
 
