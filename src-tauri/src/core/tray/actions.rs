@@ -17,11 +17,12 @@ use crate::{
         state::scheduled_tasks::ScheduledTasksCache,
     },
     utils::{
-        app::{builder::create_app_window, notification::send_notification},
+        app::notification::send_notification,
         types::{core::RcloneState, jobs::JobStatus, remotes::ProfileParams},
     },
 };
 
+#[cfg(not(feature = "web-server"))]
 pub fn show_main_window(app: AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         info!("🪟 Showing main window");
@@ -29,6 +30,7 @@ pub fn show_main_window(app: AppHandle) {
             error!("🚨 Failed to show main window");
         });
     } else {
+        use crate::utils::app::builder::create_app_window;
         info!("⚠️ Main window not found. Building...");
         create_app_window(app, None);
     }
@@ -646,6 +648,7 @@ pub fn handle_browse_remote(app: &AppHandle, remote_name: &str) {
     });
 }
 
+#[cfg(not(feature = "web-server"))]
 pub fn handle_browse_in_app(app: &AppHandle, remote_name: &str) {
     info!("📂 Opening in-app browser for {}", remote_name);
     if let Some(window) = app.get_webview_window("main") {
@@ -660,7 +663,7 @@ pub fn handle_browse_in_app(app: &AppHandle, remote_name: &str) {
             error!("🚨 Failed to emit browse event: {e}");
         }
     } else {
-        create_app_window(app.clone(), Some(remote_name));
+        crate::utils::app::builder::create_app_window(app.clone(), Some(remote_name));
     }
 }
 

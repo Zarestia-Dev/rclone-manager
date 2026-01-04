@@ -61,6 +61,7 @@ fn create_mount_submenu<R: Runtime>(
             let item = MenuItem::with_id(handle, action_id, label, true, None::<&str>)?;
             items.push(Box::new(item));
         }
+    } else {
         // No profiles configured - show default option
         let action_id = TrayAction::MountProfile(remote.to_string(), "default".to_string()).to_id();
         let default_label = format!("  {} ▸ {}", t!("tray.defaultProfile"), t!("tray.mount"));
@@ -406,6 +407,7 @@ pub async fn create_tray_menu<R: Runtime>(
 
     let handle = app.clone();
     let separator = PredefinedMenuItem::separator(&handle)?;
+    #[cfg(not(feature = "web-server"))]
     let show_app_item =
         MenuItem::with_id(&handle, "show_app", t!("tray.showApp"), true, None::<&str>)?;
 
@@ -623,15 +625,18 @@ pub async fn create_tray_menu<R: Runtime>(
                 submenu_items.push(Box::new(browse_item));
             } else {
                 // Not mounted: show "Browse (In App)" to open in-app file browser
-                let browse_in_app_id = TrayAction::BrowseInApp(remote.clone()).to_id();
-                let browse_in_app_item = MenuItem::with_id(
-                    &handle,
-                    browse_in_app_id,
-                    t!("tray.browseInApp"),
-                    true,
-                    None::<&str>,
-                )?;
-                submenu_items.push(Box::new(browse_in_app_item));
+                #[cfg(not(feature = "web-server"))]
+                {
+                    let browse_in_app_id = TrayAction::BrowseInApp(remote.clone()).to_id();
+                    let browse_in_app_item = MenuItem::with_id(
+                        &handle,
+                        browse_in_app_id,
+                        t!("tray.browseInApp"),
+                        true,
+                        None::<&str>,
+                    )?;
+                    submenu_items.push(Box::new(browse_in_app_item));
+                }
             }
 
             let name = if remote.len() > 20 {
@@ -675,7 +680,13 @@ pub async fn create_tray_menu<R: Runtime>(
     }
 
     // -- Assemble the final tray menu --
-    let mut menu_items: Vec<&dyn tauri::menu::IsMenuItem<R>> = vec![&show_app_item, &separator];
+    let mut menu_items: Vec<&dyn tauri::menu::IsMenuItem<R>> = vec![];
+
+    #[cfg(not(feature = "web-server"))]
+    {
+        menu_items.push(&show_app_item);
+        menu_items.push(&separator);
+    }
 
     if !remote_menus.is_empty() {
         for submenu in &remote_menus {

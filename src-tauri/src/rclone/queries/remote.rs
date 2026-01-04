@@ -5,7 +5,7 @@ use tauri::{State, command};
 
 use crate::rclone::backend::BACKEND_MANAGER;
 use crate::rclone::backend::types::Backend;
-use crate::utils::rclone::endpoints::{EndpointHelper, config};
+use crate::utils::rclone::endpoints::config;
 use crate::utils::types::core::RcloneState;
 
 #[cfg(not(feature = "web-server"))]
@@ -21,18 +21,10 @@ pub async fn get_all_remote_configs_internal(
     client: &reqwest::Client,
     backend: &Backend,
 ) -> Result<serde_json::Value, String> {
-    let url = EndpointHelper::build_url(&backend.api_url(), config::DUMP);
-
-    let response = backend
-        .inject_auth(client.post(url))
-        .send()
+    let json = backend
+        .post_json(client, config::DUMP, None)
         .await
         .map_err(|e| format!("❌ Failed to fetch remote configs: {e}"))?;
-
-    let json: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
 
     Ok(json)
 }
@@ -48,22 +40,13 @@ pub async fn get_remotes_internal(
     client: &reqwest::Client,
     backend: &Backend,
 ) -> Result<Vec<String>, String> {
-    let url = EndpointHelper::build_url(&backend.api_url(), config::LISTREMOTES);
-    debug!("📡 Fetching remotes from: {url}");
-
-    let response = backend
-        .inject_auth(client.post(url))
-        .send()
+    let json = backend
+        .post_json(client, config::LISTREMOTES, None)
         .await
         .map_err(|e| {
             log::error!("❌ Failed to fetch remotes: {e}");
             format!("❌ Failed to fetch remotes: {e}")
         })?;
-
-    let json: Value = response.json().await.map_err(|e| {
-        log::error!("❌ Failed to parse remotes response: {e}");
-        format!("❌ Failed to parse response: {e}")
-    })?;
 
     let remotes: Vec<String> = json["remotes"]
         .as_array()
@@ -83,19 +66,14 @@ pub async fn get_remote_config(
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), config::GET);
-
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .query(&[("name", &remote_name)])
-        .send()
+    let json = backend
+        .post_json(
+            &state.client,
+            config::GET,
+            Some(&serde_json::json!({ "name": remote_name })),
+        )
         .await
         .map_err(|e| format!("❌ Failed to fetch remote config: {e}"))?;
-
-    let json: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
 
     Ok(json)
 }
@@ -105,20 +83,13 @@ async fn fetch_remote_providers(
     state: &State<'_, RcloneState>,
 ) -> Result<HashMap<String, Vec<Value>>, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), config::PROVIDERS);
-
-    let response = backend
-        .inject_auth(state.client.post(url))
-        .send()
+    let json = backend
+        .post_json(&state.client, config::PROVIDERS, None)
         .await
         .map_err(|e| format!("❌ Failed to send request: {e}"))?;
 
-    let body = response
-        .text()
-        .await
-        .map_err(|e| format!("❌ Failed to read response: {e}"))?;
     let providers: HashMap<String, Vec<Value>> =
-        serde_json::from_str(&body).map_err(|e| format!("❌ Failed to parse response: {e}"))?;
+        serde_json::from_value(json).map_err(|e| format!("❌ Failed to parse response: {e}"))?;
 
     Ok(providers)
 }

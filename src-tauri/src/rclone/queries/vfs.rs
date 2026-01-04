@@ -3,33 +3,17 @@ use serde_json::{Value, json};
 use tauri::{State, command};
 
 use crate::rclone::backend::BACKEND_MANAGER;
-use crate::utils::rclone::endpoints::{EndpointHelper, vfs};
+use crate::utils::rclone::endpoints::vfs;
 use crate::utils::types::core::RcloneState;
 
 /// List active VFSes.
 #[command]
 pub async fn vfs_list(state: State<'_, RcloneState>) -> Result<Value, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), vfs::LIST);
-    debug!("🔍 Fetching VFS list from {url}");
-
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .send()
+    let json = backend
+        .post_json(&state.client, vfs::LIST, None)
         .await
-        .map_err(|e| format!("Failed to send request: {e}"))?;
-
-    if !response.status().is_success() {
-        return Err(format!(
-            "Failed to fetch VFS list: {:?}",
-            response.text().await
-        ));
-    }
-
-    let json: Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse response: {e}"))?;
+        .map_err(|e| format!("Failed to fetch VFS list: {e}"))?;
 
     debug!("✅ VFS List: {json}");
     Ok(json)
@@ -43,9 +27,6 @@ pub async fn vfs_forget(
     file: Option<String>,
 ) -> Result<Value, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), vfs::FORGET);
-    debug!("🗑️ Forgetting paths in VFS cache via {url}");
-
     let mut payload = json!({});
 
     if let Some(f) = fs {
@@ -55,24 +36,10 @@ pub async fn vfs_forget(
         payload["file"] = Value::String(f);
     }
 
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .json(&payload)
-        .send()
+    let json = backend
+        .post_json(&state.client, vfs::FORGET, Some(&payload))
         .await
-        .map_err(|e| format!("Failed to send request: {e}"))?;
-
-    if !response.status().is_success() {
-        return Err(format!(
-            "Failed to forget paths: {:?}",
-            response.text().await
-        ));
-    }
-
-    let json: Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse response: {e}"))?;
+        .map_err(|e| format!("Failed to forget paths: {e}"))?;
 
     Ok(json)
 }
@@ -86,9 +53,6 @@ pub async fn vfs_refresh(
     recursive: bool,
 ) -> Result<Value, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), vfs::REFRESH);
-    debug!("🔄 Refreshing VFS cache via {url}");
-
     let recursive_str = if recursive { "true" } else { "false" };
     let mut payload = json!({
         "recursive": recursive_str
@@ -101,24 +65,10 @@ pub async fn vfs_refresh(
         payload["dir"] = Value::String(d);
     }
 
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .json(&payload)
-        .send()
+    let json = backend
+        .post_json(&state.client, vfs::REFRESH, Some(&payload))
         .await
-        .map_err(|e| format!("Failed to send request: {e}"))?;
-
-    if !response.status().is_success() {
-        return Err(format!(
-            "Failed to refresh cache: {:?}",
-            response.text().await
-        ));
-    }
-
-    let json: Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse response: {e}"))?;
+        .map_err(|e| format!("Failed to refresh cache: {e}"))?;
 
     Ok(json)
 }
@@ -127,32 +77,15 @@ pub async fn vfs_refresh(
 #[command]
 pub async fn vfs_stats(state: State<'_, RcloneState>, fs: Option<String>) -> Result<Value, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), vfs::STATS);
-    debug!("📊 Fetching VFS stats via {url}");
-
     let mut payload = json!({});
     if let Some(f) = fs {
         payload["fs"] = Value::String(f);
     }
 
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .json(&payload)
-        .send()
+    let json = backend
+        .post_json(&state.client, vfs::STATS, Some(&payload))
         .await
-        .map_err(|e| format!("Failed to send request: {e}"))?;
-
-    if !response.status().is_success() {
-        return Err(format!(
-            "Failed to fetch VFS stats: {:?}",
-            response.text().await
-        ));
-    }
-
-    let json: Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse response: {e}"))?;
+        .map_err(|e| format!("Failed to fetch VFS stats: {e}"))?;
 
     Ok(json)
 }
@@ -166,9 +99,6 @@ pub async fn vfs_poll_interval(
     timeout: Option<String>,
 ) -> Result<Value, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), vfs::POLL_INTERVAL);
-    debug!("⏱️ VFS poll interval via {url}");
-
     let mut payload = json!({});
     if let Some(f) = fs {
         payload["fs"] = Value::String(f);
@@ -180,24 +110,10 @@ pub async fn vfs_poll_interval(
         payload["timeout"] = Value::String(t);
     }
 
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .json(&payload)
-        .send()
+    let json = backend
+        .post_json(&state.client, vfs::POLL_INTERVAL, Some(&payload))
         .await
-        .map_err(|e| format!("Failed to send request: {e}"))?;
-
-    if !response.status().is_success() {
-        return Err(format!(
-            "Failed to set/get poll interval: {:?}",
-            response.text().await
-        ));
-    }
-
-    let json: Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse response: {e}"))?;
+        .map_err(|e| format!("Failed to set/get poll interval: {e}"))?;
 
     Ok(json)
 }
@@ -206,32 +122,15 @@ pub async fn vfs_poll_interval(
 #[command]
 pub async fn vfs_queue(state: State<'_, RcloneState>, fs: Option<String>) -> Result<Value, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), vfs::QUEUE);
-    debug!("📥 Fetching VFS queue via {url}");
-
     let mut payload = json!({});
     if let Some(f) = fs {
         payload["fs"] = Value::String(f);
     }
 
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .json(&payload)
-        .send()
+    let json = backend
+        .post_json(&state.client, vfs::QUEUE, Some(&payload))
         .await
-        .map_err(|e| format!("Failed to send request: {e}"))?;
-
-    if !response.status().is_success() {
-        return Err(format!(
-            "Failed to fetch VFS queue: {:?}",
-            response.text().await
-        ));
-    }
-
-    let json: Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse response: {e}"))?;
+        .map_err(|e| format!("Failed to fetch VFS queue: {e}"))?;
 
     debug!("✅ VFS Queue: {json}");
 
@@ -248,9 +147,6 @@ pub async fn vfs_queue_set_expiry(
     relative: bool,
 ) -> Result<Value, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), vfs::QUEUE_SET_EXPIRY);
-    debug!("⏱️ Setting VFS queue expiry via {url}");
-
     let mut payload = json!({
         "id": id,
         "expiry": expiry,
@@ -260,24 +156,10 @@ pub async fn vfs_queue_set_expiry(
         payload["fs"] = Value::String(f);
     }
 
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .json(&payload)
-        .send()
+    let json = backend
+        .post_json(&state.client, vfs::QUEUE_SET_EXPIRY, Some(&payload))
         .await
-        .map_err(|e| format!("Failed to send request: {e}"))?;
-
-    if !response.status().is_success() {
-        return Err(format!(
-            "Failed to set queue expiry: {:?}",
-            response.text().await
-        ));
-    }
-
-    let json: Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse response: {e}"))?;
+        .map_err(|e| format!("Failed to set queue expiry: {e}"))?;
 
     Ok(json)
 }

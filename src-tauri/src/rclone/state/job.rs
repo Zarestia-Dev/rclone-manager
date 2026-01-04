@@ -1,7 +1,7 @@
 use log::info;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter};
-use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+use tokio::sync::RwLock;
 
 use crate::utils::types::{
     events::JOB_CACHE_CHANGED,
@@ -29,7 +29,7 @@ impl JobCache {
     /// Add a job and emit event
     pub async fn add_job(&self, job: JobInfo, app: Option<&AppHandle>) {
         let jobid = job.jobid;
-        let mut jobs: RwLockWriteGuard<Vec<JobInfo>> = self.jobs.write().await;
+        let mut jobs = self.jobs.write().await;
         jobs.push(job);
         drop(jobs);
 
@@ -41,7 +41,7 @@ impl JobCache {
 
     /// Delete a job and emit event if successful
     pub async fn delete_job(&self, jobid: u64, app: Option<&AppHandle>) -> Result<(), String> {
-        let mut jobs: RwLockWriteGuard<Vec<JobInfo>> = self.jobs.write().await;
+        let mut jobs = self.jobs.write().await;
         let len_before = jobs.len();
         jobs.retain(|j| j.jobid != jobid);
 
@@ -64,7 +64,7 @@ impl JobCache {
         update_fn: impl FnOnce(&mut JobInfo),
         app: Option<&AppHandle>,
     ) -> Result<JobInfo, String> {
-        let mut jobs: RwLockWriteGuard<Vec<JobInfo>> = self.jobs.write().await;
+        let mut jobs = self.jobs.write().await;
         if let Some(job) = jobs.iter_mut().find(|j| j.jobid == jobid) {
             update_fn(job);
             let result = job.clone();
@@ -82,7 +82,7 @@ impl JobCache {
 
     pub async fn update_job_stats(&self, jobid: u64, stats: Value) -> Result<(), String> {
         // Stats updates are frequent, don't emit individually
-        let mut jobs: RwLockWriteGuard<Vec<JobInfo>> = self.jobs.write().await;
+        let mut jobs = self.jobs.write().await;
         if let Some(job) = jobs.iter_mut().find(|j| j.jobid == jobid) {
             job.stats = Some(stats);
             Ok(())
@@ -151,7 +151,7 @@ impl JobCache {
         job_type: &str,
         profile: Option<&str>,
     ) -> bool {
-        let jobs: RwLockReadGuard<Vec<JobInfo>> = self.jobs.read().await;
+        let jobs = self.jobs.read().await;
         jobs.iter().any(|job| {
             job.remote_name == remote_name
                 && job.job_type == job_type
@@ -173,7 +173,7 @@ impl JobCache {
     /// Rename a profile in all matching running jobs
     /// Returns the number of jobs updated
     pub async fn rename_profile(&self, remote_name: &str, old_name: &str, new_name: &str) -> usize {
-        let mut jobs: RwLockWriteGuard<Vec<JobInfo>> = self.jobs.write().await;
+        let mut jobs = self.jobs.write().await;
         let mut updated_count = 0;
 
         for job in jobs.iter_mut() {

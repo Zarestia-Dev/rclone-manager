@@ -4,7 +4,7 @@ use serde_json::json;
 use tauri::State;
 
 use crate::utils::{
-    rclone::endpoints::{EndpointHelper, operations},
+    rclone::endpoints::operations,
     types::{
         core::{DiskUsage, RcloneState},
         jobs::JobResponse,
@@ -15,28 +15,6 @@ use crate::utils::{
 use crate::rclone::backend::BACKEND_MANAGER;
 use crate::rclone::commands::job::poll_job;
 
-/// Helper to execute an async filesystem operation
-async fn execute_fs_op(
-    url: String,
-    params: serde_json::Value,
-    client: reqwest::Client,
-    backend: crate::rclone::backend::types::Backend,
-) -> Result<serde_json::Value, String> {
-    let response = backend
-        .inject_auth(client.post(&url))
-        .json(&params)
-        .send()
-        .await
-        .map_err(|e| format!("Request failed: {e}"))?;
-
-    let job: JobResponse = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse response: {e}"))?;
-
-    poll_job(job.jobid, client, backend).await
-}
-
 /// Helper to execute a filesystem command (gets backend, builds URL, runs op)
 async fn run_fs_command(
     client: reqwest::Client,
@@ -44,11 +22,18 @@ async fn run_fs_command(
     mut params: serde_json::Map<String, serde_json::Value>,
 ) -> Result<serde_json::Value, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), endpoint);
 
     params.insert("_async".to_string(), json!(true));
 
-    execute_fs_op(url, json!(params), client, backend).await
+    let json = backend
+        .post_json(&client, endpoint, Some(&json!(params)))
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+
+    let job: JobResponse =
+        serde_json::from_value(json).map_err(|e| format!("Failed to parse job response: {e}"))?;
+
+    poll_job(job.jobid, client, backend).await
 }
 
 #[derive(Serialize, Clone)]
@@ -310,7 +295,6 @@ pub async fn get_public_link(
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), operations::PUBLICLINK);
     debug!(
         "🔗 Getting public link for remote: {remote}, path: {path}, expire: {expire:?}, unlink: {unlink:?}"
     );
@@ -328,21 +312,13 @@ pub async fn get_public_link(
     }
 
     let client = state.client.clone();
-    let url_clone = url.clone();
     let params_value = json!(params);
 
     // This is NOT an async operation - it returns the URL directly
-    let response = backend
-        .inject_auth(client.post(&url_clone))
-        .json(&params_value)
-        .send()
+    let result = backend
+        .post_json(&client, operations::PUBLICLINK, Some(&params_value))
         .await
         .map_err(|e| format!("❌ Failed to get public link: {e}"))?;
-
-    let result: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
 
     Ok(result)
 }

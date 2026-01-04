@@ -4,8 +4,10 @@ use axum::{extract::State, response::Json};
 use serde::Deserialize;
 use tauri::Manager;
 
+use crate::RcloneState;
 use crate::server::handlers::jobs::ProfileParamsBody;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
+use crate::utils::types::remotes::ProfileParams;
 
 pub async fn get_mounted_remotes_handler(
     State(state): State<WebServerState>,

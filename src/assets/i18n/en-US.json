@@ -1573,6 +1573,7 @@
       "configPath": "Config Path",
       "configPathPlaceholder": "e.g. /home/user/.config/rclone/custom.conf",
       "configPathHintLocal": "Specify a custom config file for this backend (leave empty to use default).",
+      "configPathHintRemote": "Custom config file path on the remote backend (leave empty for default).",
       "selectConfigFile": "Select Config File",
       "activeConfigPath": "Active Config Path",
       "connectionTab": "Connection",
@@ -1583,6 +1584,7 @@
       "removeTooltip": "Remove",
       "switchFirst": "Switch to another backend first",
       "nameExists": "Name exists",
+      "hostExists": "This host:port is already in use",
       "status": {
         "notTested": "Connection not tested",
         "connected": "Connected",
@@ -1595,7 +1597,10 @@
         "connectionSuccess": "Connection successful",
         "connectionFailed": "Connection failed: {{message}}",
         "testFailed": "Test failed unexpectedly",
-        "fileSelectFailed": "Failed to select file"
+        "fileSelectFailed": "Failed to select file",
+        "updated": "Backend updated successfully",
+        "added": "Backend added successfully",
+        "saveFailed": "Failed to save backend: {{message}}"
       },
       "delete": {
         "title": "Delete Backend",

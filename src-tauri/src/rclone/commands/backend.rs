@@ -12,7 +12,7 @@ use crate::{
         types::{Backend, BackendInfo},
     },
     utils::{
-        rclone::endpoints::{EndpointHelper, config, core},
+        rclone::endpoints::{config, core},
         types::core::RcloneState,
     },
 };
@@ -48,27 +48,22 @@ pub async fn switch_backend(
     if !backend.is_local {
         debug!("📡 Testing remote backend connection...");
 
-        let url = EndpointHelper::build_url(&backend.api_url(), core::VERSION);
         let result = backend
-            .inject_auth(state.client.post(&url))
-            .timeout(std::time::Duration::from_secs(5))
-            .send()
+            .make_request(
+                &state.client,
+                reqwest::Method::POST,
+                core::VERSION,
+                None,
+                Some(std::time::Duration::from_secs(5)),
+            )
             .await;
 
         match result {
-            Ok(response) if response.status().is_success() => {
+            Ok(_) => {
                 info!("✅ Remote backend '{}' is reachable", name);
                 BACKEND_MANAGER.set_runtime_status(&name, "connected").await;
             }
-            Ok(response) => {
-                let err = format!("error:HTTP {}", response.status());
-                BACKEND_MANAGER.set_runtime_status(&name, &err).await;
-                return Err(format!(
-                    "Remote backend '{}' returned HTTP {}",
-                    name,
-                    response.status()
-                ));
-            }
+
             Err(e) => {
                 let err = format!("error:{}", e);
                 BACKEND_MANAGER.set_runtime_status(&name, &err).await;
@@ -88,23 +83,17 @@ pub async fn switch_backend(
             "📝 Setting config path for remote backend '{}' to: {}",
             name, config_path
         );
-        let url = EndpointHelper::build_url(&backend.api_url(), config::SETPATH);
         // Parameters: path
         let params = serde_json::json!({
             "path": config_path
         });
 
         match backend
-            .inject_auth(state.client.post(&url))
-            .json(&params)
-            .send()
+            .post_json(&state.client, config::SETPATH, Some(&params))
             .await
         {
-            Ok(res) if res.status().is_success() => {
+            Ok(_) => {
                 info!("✅ Config path set successfully");
-            }
-            Ok(res) => {
-                warn!("⚠️ Failed to set config path: HTTP {}", res.status());
             }
             Err(e) => {
                 warn!("⚠️ Failed to set config path: {}", e);
@@ -122,9 +111,8 @@ pub async fn switch_backend(
 
     // Always Refresh cache (for both Local and Remote)
     // Local backend also needs remotes refreshed from rclone
-    let refresh_future = BACKEND_MANAGER
-        .remote_cache
-        .refresh_all(&state.client, &backend);
+    // Use unified refresh logic
+    let refresh_future = BACKEND_MANAGER.refresh_active_backend(&state.client);
 
     match tokio::time::timeout(std::time::Duration::from_secs(15), refresh_future).await {
         Ok(Ok(_)) => {
@@ -135,8 +123,39 @@ pub async fn switch_backend(
             let _ = app.emit(REMOTE_CACHE_CHANGED, ());
             let _ = app.emit(BACKEND_SWITCHED, &name);
         }
-        Ok(Err(e)) => warn!("⚠️ Cache refresh failed: {}", e),
-        Err(_) => warn!("⚠️ Cache refresh timed out for backend '{}'", name),
+        Ok(Err(e)) => {
+            warn!("⚠️ Cache refresh failed for backend '{}': {}", name, e);
+            // Revert to previous backend if this wasn't Local (Local is always safe)
+            if name != "Local" {
+                info!("↩️ Reverting to previous backend due to cache failure");
+                // We're essentially failing the switch, but manager state was already updated
+                // best effort to switch back to Local for safety
+                if let Err(revert_err) = BACKEND_MANAGER.switch_to("Local").await {
+                    warn!("Failed to revert to Local backend: {}", revert_err);
+                }
+                return Err(format!(
+                    "Backend connected but failed to list items: {}. Reverted to Local.",
+                    e
+                ));
+            }
+        }
+        Err(_) => {
+            warn!("⏱️ Cache refresh timed out for backend '{}'", name);
+            // Revert to previous backend
+            if name != "Local" {
+                info!("↩️ Reverting to previous backend due to timeout");
+                if let Err(revert_err) = BACKEND_MANAGER.switch_to("Local").await {
+                    warn!("Failed to revert to Local backend: {}", revert_err);
+                }
+                BACKEND_MANAGER
+                    .set_runtime_status(&name, "error:Connection too slow")
+                    .await;
+                return Err(
+                    "Backend connection accepted but too slow to list items. Reverted to Local."
+                        .to_string(),
+                );
+            }
+        }
     }
 
     // Persist active backend selection
@@ -336,8 +355,9 @@ pub async fn test_backend_connection(
 ) -> Result<TestConnectionResult, String> {
     debug!("🔍 Testing connection: {}", name);
 
+    // Use 5s timeout for testing connections
     match BACKEND_MANAGER
-        .check_connectivity(&name, &state.client)
+        .check_connectivity_with_timeout(&name, &state.client, std::time::Duration::from_secs(5))
         .await
     {
         Ok((version, os)) => {

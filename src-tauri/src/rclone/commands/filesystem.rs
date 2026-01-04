@@ -4,7 +4,7 @@ use tauri::{AppHandle, State};
 
 use crate::rclone::backend::BACKEND_MANAGER;
 use crate::rclone::commands::job::{JobMetadata, submit_job};
-use crate::utils::rclone::endpoints::{EndpointHelper, operations};
+use crate::utils::rclone::endpoints::operations;
 use crate::utils::types::core::RcloneState;
 
 #[tauri::command]
@@ -16,23 +16,11 @@ pub async fn mkdir(
     debug!("📁 Creating directory: remote={} path={}", remote, path);
 
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), operations::MKDIR);
-
     let params = json!({ "fs": remote, "remote": path });
-
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .json(&params)
-        .send()
+    backend
+        .post_json(&state.client, operations::MKDIR, Some(&params))
         .await
         .map_err(|e| format!("❌ Failed to create directory: {e}"))?;
-
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        return Err(format!("HTTP {status}: {body}"));
-    }
 
     Ok(())
 }
@@ -50,7 +38,6 @@ pub async fn cleanup(
     );
 
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), operations::CLEANUP);
 
     // Build parameters dynamically: include `remote` only when provided
     let mut params = serde_json::Map::new();
@@ -59,19 +46,10 @@ pub async fn cleanup(
         params.insert("remote".to_string(), json!(p));
     }
 
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .json(&json!(params))
-        .send()
+    backend
+        .post_json(&state.client, operations::CLEANUP, Some(&json!(params)))
         .await
         .map_err(|e| format!("❌ Failed to cleanup remote: {e}"))?;
-
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        return Err(format!("HTTP {status}: {body}"));
-    }
 
     Ok(())
 }
@@ -92,8 +70,7 @@ pub async fn copy_url(
     );
 
     let backend = BACKEND_MANAGER.get_active().await;
-
-    let url = EndpointHelper::build_url(&backend.api_url(), operations::COPYURL);
+    let url = backend.url_for(operations::COPYURL);
 
     let payload = json!({
         "fs": remote.clone(),

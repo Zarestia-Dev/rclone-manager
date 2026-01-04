@@ -5,15 +5,13 @@
 // =============================================================================
 // STANDARD LIBRARY & EXTERNAL CRATES
 // =============================================================================
-use log::{error, info};
+use log::{debug, error, info};
 use rcman::JsonSettingsManager;
 use std::sync::atomic::AtomicBool;
 use tauri::Manager;
 
 #[cfg(feature = "web-server")]
 use clap::Parser;
-#[cfg(not(feature = "web-server"))]
-use log::debug;
 #[cfg(not(feature = "web-server"))]
 use tauri::WindowEvent;
 
@@ -58,11 +56,11 @@ use crate::utils::app::updater::app_updates::{DownloadState, PendingUpdate};
 #[cfg(desktop)]
 use crate::core::tray::{
     actions::{
-        handle_bisync_profile, handle_browse_in_app, handle_browse_remote, handle_copy_profile,
-        handle_mount_profile, handle_move_profile, handle_serve_profile, handle_stop_all_jobs,
-        handle_stop_all_serves, handle_stop_bisync_profile, handle_stop_copy_profile,
-        handle_stop_move_profile, handle_stop_serve_profile, handle_stop_sync_profile,
-        handle_sync_profile, handle_unmount_profile, show_main_window,
+        handle_bisync_profile, handle_browse_remote, handle_copy_profile, handle_mount_profile,
+        handle_move_profile, handle_serve_profile, handle_stop_all_jobs, handle_stop_all_serves,
+        handle_stop_bisync_profile, handle_stop_copy_profile, handle_stop_move_profile,
+        handle_stop_serve_profile, handle_stop_sync_profile, handle_sync_profile,
+        handle_unmount_profile,
     },
     tray_action::TrayAction,
 };
@@ -175,7 +173,7 @@ pub fn run() {
             info!("Another instance attempted to run.");
 
             #[cfg(not(feature = "web-server"))]
-            show_main_window(_app.clone());
+            core::tray::actions::show_main_window(_app.clone());
         }));
     }
 
@@ -406,24 +404,20 @@ fn setup_app(
     let app_handle_clone = app_handle.clone();
     tauri::async_runtime::spawn(async move {
         initialization(app_handle_clone.clone()).await;
-
-        #[cfg(all(desktop, not(feature = "web-server")))]
-        {
-            let force_tray = std::env::args().any(|arg| arg == "--tray");
-            if settings.general.tray_enabled || force_tray {
-                if force_tray {
-                    debug!("🧊 Setting up tray (forced by --tray argument)");
-                } else {
-                    debug!("🧊 Setting up tray (enabled in settings)");
-                }
-                if let Err(e) = utils::app::builder::setup_tray(
-                    app_handle_clone.clone(),
-                    settings.core.max_tray_items,
-                )
-                .await
-                {
-                    error!("Failed to setup tray: {e}");
-                }
+        let force_tray = std::env::args().any(|arg| arg == "--tray");
+        if settings.general.tray_enabled || force_tray {
+            if force_tray {
+                debug!("🧊 Setting up tray (forced by --tray argument)");
+            } else {
+                debug!("🧊 Setting up tray (enabled in settings)");
+            }
+            if let Err(e) = utils::app::builder::setup_tray(
+                app_handle_clone.clone(),
+                settings.core.max_tray_items,
+            )
+            .await
+            {
+                error!("Failed to setup tray: {e}");
             }
         }
 
@@ -529,7 +523,10 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent)
                 handle_stop_serve_profile(app.clone(), &remote, &serve_id)
             }
             TrayAction::Browse(remote) => handle_browse_remote(app, &remote),
-            TrayAction::BrowseInApp(remote) => handle_browse_in_app(app, &remote),
+            #[cfg(not(feature = "web-server"))]
+            TrayAction::BrowseInApp(remote) => {
+                core::tray::actions::handle_browse_in_app(app, &remote)
+            }
             TrayAction::UnmountAll => {
                 let app_clone = app.clone();
                 tauri::async_runtime::spawn(async move {
@@ -551,7 +548,8 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent)
     }
 
     match event.id.as_ref() {
-        "show_app" => show_main_window(app.clone()),
+        #[cfg(not(feature = "web-server"))]
+        "show_app" => core::tray::actions::show_main_window(app.clone()),
         "quit" => {
             let app_clone = app.clone();
             tauri::async_runtime::spawn(async move {

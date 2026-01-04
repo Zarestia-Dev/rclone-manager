@@ -252,6 +252,20 @@ form {
   }
 }
 
+.config-path-group {
+  mat-form-field {
+    width: 100%;
+  }
+
+  mat-hint {
+    line-height: 1.4;
+
+    strong {
+      color: var(--window-fg-color);
+    }
+  }
+}
+
 .local-backend-tabs {
   flex: 1;
   display: flex;

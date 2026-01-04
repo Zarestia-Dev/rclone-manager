@@ -1574,6 +1574,7 @@
       "configPath": "Yapılandırma Yolu",
       "configPathPlaceholder": "Örn: /home/user/.config/rclone/ozel.conf",
       "configPathHintLocal": "Bu arka uç için özel bir yapılandırma dosyası belirtin (varsayılanı kullanmak için boş bırakın).",
+      "configPathHintRemote": "Uzak arka uç için özel yapılandırma dosyası yolu (varsayılan için boş bırakın).",
       "selectConfigFile": "Yapılandırma Dosyası Seç",
       "activeConfigPath": "Aktif Yapılandırma Yolu",
       "connectionTab": "Bağlantı",
@@ -1584,6 +1585,7 @@
       "removeTooltip": "Kaldır",
       "switchFirst": "Önce başka bir arka uca geçin",
       "nameExists": "Bu isim zaten kullanımda",
+      "hostExists": "Bu sunucu:port zaten kullanımda",
       "status": {
         "notTested": "Bağlantı test edilmedi",
         "connected": "Bağlandı",
@@ -1596,7 +1598,10 @@
         "connectionSuccess": "Bağlantı başarılı",
         "connectionFailed": "Bağlantı hatası: {{message}}",
         "testFailed": "Test beklenmedik şekilde başarısız oldu",
-        "fileSelectFailed": "Dosya seçimi başarısız oldu"
+        "fileSelectFailed": "Dosya seçimi başarısız oldu",
+        "updated": "Arka uç başarıyla güncellendi",
+        "added": "Arka uç başarıyla eklendi",
+        "saveFailed": "Arka uç kaydedilemedi: {{message}}"
       },
       "delete": {
         "title": "Arka Uç Sil",

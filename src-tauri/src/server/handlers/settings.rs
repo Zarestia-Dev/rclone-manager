@@ -245,8 +245,8 @@ pub async fn set_rclone_option_handler(
     State(state): State<WebServerState>,
     Json(body): Json<SetRCloneOptionBody>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
+    use crate::RcloneState;
     use crate::rclone::queries::flags::set_rclone_option;
-    use RcloneState;
     let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
     let result = set_rclone_option(rclone_state, body.block_name, body.option_name, body.value)
         .await

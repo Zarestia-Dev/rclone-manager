@@ -10,7 +10,7 @@ use crate::{
             get_string, json_to_hashmap, resolve_profile_options, unwrap_nested_options,
         },
         logging::log::log_operation,
-        rclone::endpoints::{EndpointHelper, serve},
+        rclone::endpoints::serve,
         types::{core::RcloneState, logs::LogLevel, remotes::ProfileParams},
     },
 };
@@ -72,38 +72,6 @@ pub struct ServeStartResponse {
     pub addr: String, // Address server is listening on
 }
 
-/// Helper function to handle rclone API responses
-async fn handle_rclone_response(
-    response: reqwest::Response,
-    operation: &str,
-    remote_name: &str,
-) -> Result<String, String> {
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        let error = crate::localized_error!(
-            "backendErrors.http.error",
-            "status" => &status.to_string(),
-            "body" => &body
-        );
-        log_operation(
-            LogLevel::Error,
-            Some(remote_name.to_string()),
-            Some(operation.to_string()),
-            crate::localized_error!(
-                "backendErrors.serve.failed",
-                "operation" => &operation.to_lowercase(),
-                "error" => &error
-            ),
-            Some(json!({"response": body})),
-        );
-        return Err(error);
-    }
-
-    Ok(body)
-}
-
 /// Start a serve instance (not exposed as Tauri command - use start_serve_profile)
 pub async fn start_serve(
     app: AppHandle,
@@ -116,7 +84,6 @@ pub async fn start_serve(
     let state = app.state::<RcloneState>();
     let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
     let backend = backend_manager.get_active().await;
-    let api_url = backend.api_url();
 
     // Validate serve type is specified
     let serve_type = params
@@ -209,35 +176,21 @@ pub async fn start_serve(
     }
 
     let payload = Value::Object(payload);
-    let url = EndpointHelper::build_url(&api_url, serve::START);
-
-    // Call serve/start directly - serves are NOT jobs, they are long-running services
-    // Use submit_job_and_wait instead of direct call to properly track it?
-    // Wait, original code used state.client.post directly.
-    // Why did I think it used submit_job_and_wait?
-    // Ah, lines 97-272 is start_serve.
-    // Line 209: state.client.post(&url)...
-    // This calls `serve/dist`? No, `serve::START`.
-    // It returns `id` and `addr`.
-    // It's a short lived request that starts a long running process.
-    // It does NOT return a jobid.
-    // So we just use standard request, BUT we must inject auth.
-
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .json(&payload)
-        .send()
+    // Call serve/start directly
+    let response_json = backend
+        .post_json(&state.client, serve::START, Some(&payload))
         .await
-        .map_err(
-            |e| crate::localized_error!("backendErrors.request.failed", "error" => &e.to_string()),
-        )?;
-
-    let body = handle_rclone_response(response, "Start serve", &params.remote_name).await?;
-
-    // Parse response - serve/start returns { "id": "http-abc123", "addr": "[::]:8080" }
-    let response_json: Value = serde_json::from_str(&body).map_err(
-        |e| crate::localized_error!("backendErrors.serve.parseFailed", "error" => &e.to_string()),
-    )?;
+        .map_err(|e| {
+            let error = format!("Failed to start serve: {e}");
+            log_operation(
+                LogLevel::Error,
+                Some(params.remote_name.clone()),
+                Some("Start serve".to_string()),
+                error.clone(),
+                None,
+            );
+            error
+        })?;
 
     // Extract serve ID (string, e.g., "http-abc123")
     let serve_id = response_json
@@ -314,19 +267,21 @@ pub async fn stop_serve(
     // Let's use active for now, or maybe update `stop_serve` to take remote_name.
     // Given the difficulty, active is safest fallback for now.
     let backend = backend_manager.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), serve::STOP);
     let payload = json!({ "id": server_id });
-
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .json(&payload)
-        .send()
+    let _ = backend
+        .post_json(&state.client, serve::STOP, Some(&payload))
         .await
-        .map_err(
-            |e| crate::localized_error!("backendErrors.request.failed", "error" => &e.to_string()),
-        )?;
-
-    let _body = handle_rclone_response(response, "Stop serve", &remote_name).await?;
+        .map_err(|e| {
+            let error = format!("Failed to stop serve: {e}");
+            log_operation(
+                LogLevel::Error,
+                Some(remote_name.clone()),
+                Some("Stop serve".to_string()),
+                error.clone(),
+                None,
+            );
+            error
+        })?;
 
     log_operation(
         LogLevel::Info,
@@ -357,17 +312,14 @@ pub async fn stop_all_serves(
 
     let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
     let backend = backend_manager.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), serve::STOPALL);
-
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .send()
+    let _ = backend
+        .post_json(&state.client, serve::STOPALL, None)
         .await
-        .map_err(
-            |e| crate::localized_error!("backendErrors.request.failed", "error" => &e.to_string()),
-        )?;
-
-    let _body = handle_rclone_response(response, "Stop all serves", "").await?;
+        .map_err(|e| {
+            let error = format!("Failed to stop all serves: {e}");
+            // Log error but don't fail hard if shutting down context
+             crate::localized_error!("backendErrors.serve.failed", "operation" => "stop all", "error" => &error)
+        })?;
 
     if context != "shutdown" {
         // Force refresh - this will update cache and emit event if changed

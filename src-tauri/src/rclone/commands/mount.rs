@@ -1,4 +1,4 @@
-use log::{debug, error, info, warn};
+use log::{debug, info, warn};
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use tauri::{AppHandle, Manager, State};
@@ -10,7 +10,7 @@ use crate::{
             get_string, json_to_hashmap, resolve_profile_options, unwrap_nested_options,
         },
         logging::log::log_operation,
-        rclone::endpoints::{EndpointHelper, mount},
+        rclone::endpoints::mount,
         types::{core::RcloneState, logs::LogLevel, remotes::ProfileParams},
     },
 };
@@ -78,7 +78,6 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
     let backend = backend_manager.get_active().await;
     let cache = &backend_manager.remote_cache;
-    let api_url = backend.api_url();
 
     let mounted_remotes = cache.get_mounted_remotes().await;
     let state = app.state::<RcloneState>();
@@ -176,7 +175,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     }
     debug!("Final mount request payload: {payload:#?}");
 
-    let url = EndpointHelper::build_url(&api_url, mount::MOUNT);
+    let url = backend.url_for(mount::MOUNT);
 
     let (_, _) = submit_job_and_wait(
         app.clone(),
@@ -222,7 +221,6 @@ pub async fn unmount_remote(
     // But params definition for unmount_remote takes `remote_name`.
     let backend = backend_manager.get_active().await;
 
-    let url = EndpointHelper::build_url(&backend.api_url(), mount::UNMOUNT);
     let payload = json!({ "mountPoint": mount_point });
     if mount_point.trim().is_empty() {
         return Err(crate::localized_error!("backendErrors.mount.pointEmpty"));
@@ -236,34 +234,10 @@ pub async fn unmount_remote(
         None,
     );
 
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .json(&payload)
-        .send()
+    let _ = backend
+        .post_json(&state.client, mount::UNMOUNT, Some(&payload))
         .await
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
-
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        if status.as_u16() == 500 && body.contains("\"mount not found\"") {
-            warn!("🚨 Mount not found for {mount_point}, updating mount cache");
-            // Force refresh will detect the change
-        }
-
-        let error =
-            crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body);
-        log_operation(
-            LogLevel::Error,
-            Some(remote_name.clone()),
-            Some("Unmount remote".to_string()),
-            error.clone(),
-            Some(json!({"response": body})),
-        );
-        error!("❌ Failed to unmount {mount_point}: {error}");
-        return Err(error);
-    }
 
     log_operation(
         LogLevel::Info,
@@ -302,23 +276,10 @@ pub async fn unmount_all_remotes(
     // Or simply loop and ignore errors?
     let backend = backend_manager.get_active().await;
 
-    let url = EndpointHelper::build_url(&backend.api_url(), mount::UNMOUNTALL);
-
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .send()
+    let _ = backend
+        .post_json(&state.client, mount::UNMOUNTALL, None)
         .await
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
-
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        let error =
-            crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body);
-        error!("❌ Failed to unmount all remotes: {error}");
-        return Err(error);
-    }
 
     if context != "shutdown" {
         // Force refresh - this will update cache and emit event if changed

@@ -34,6 +34,10 @@ export interface AddBackendConfig {
   is_local: boolean;
   username?: string;
   password?: string;
+  /** Password for encrypted rclone config (remote backends only) */
   config_password?: string;
+  /** Custom config file path (remote backends only) */
   config_path?: string;
+  /** OAuth callback port (Local backend only) */
+  oauth_port?: number;
 }

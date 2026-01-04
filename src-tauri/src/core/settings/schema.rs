@@ -148,6 +148,7 @@ pub struct DeveloperSettings {
         description = "settings.developer.destroy_window_on_close.description",
         advanced
     )]
+    #[cfg(not(feature = "web-server"))]
     pub destroy_window_on_close: bool,
 }
 
@@ -155,6 +156,7 @@ impl Default for DeveloperSettings {
     fn default() -> Self {
         Self {
             log_level: "info".to_string(),
+            #[cfg(not(feature = "web-server"))]
             destroy_window_on_close: false,
         }
     }

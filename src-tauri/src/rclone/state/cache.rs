@@ -20,48 +20,44 @@ use crate::{
     },
 };
 
+/// Persistent context for RemoteCache (profiles)
+#[derive(Debug, Clone, Default)]
+pub struct RemoteCacheContext {
+    pub mount_profiles: HashMap<String, String>,
+    pub serve_profiles: HashMap<String, String>,
+}
+
 impl RemoteCache {
-    /// Clear only remotes and configs (refresh from backend)
-    /// but preserve mounts/serves state
-    pub async fn clear_remotes_only(&self) {
+    /// Clear ALL cache data (remotes, configs, mounts, serves)
+    /// Used when switching backends to ensure no stale data remains
+    pub async fn clear_all(&self) {
         let mut remotes = self.remotes.write().await;
         remotes.clear();
         let mut configs = self.configs.write().await;
         *configs = json!({});
+        let mut mounted = self.mounted.write().await;
+        mounted.clear();
+        let mut serves = self.serves.write().await;
+        serves.clear();
+        // Do NOT clear profiles here, they are part of the Context which is managed separately
     }
 
-    /// Get mounts/serves state (for per-backend storage)
-    pub async fn get_backend_state(
-        &self,
-    ) -> (
-        Vec<MountedRemote>,
-        Vec<ServeInstance>,
-        HashMap<String, String>,
-        HashMap<String, String>,
-    ) {
-        let mounted = self.mounted.read().await.clone();
-        let serves = self.serves.read().await.clone();
+    /// Extracted context (persistent data not available from API)
+    pub async fn get_context(&self) -> RemoteCacheContext {
         let mount_profiles = self.mount_profiles.read().await.clone();
         let serve_profiles = self.serve_profiles.read().await.clone();
-        (mounted, serves, mount_profiles, serve_profiles)
+        RemoteCacheContext {
+            mount_profiles,
+            serve_profiles,
+        }
     }
 
-    /// Set mounts/serves state (for per-backend restore)
-    pub async fn set_backend_state(
-        &self,
-        mounted: Vec<MountedRemote>,
-        serves: Vec<ServeInstance>,
-        mount_profiles: HashMap<String, String>,
-        serve_profiles: HashMap<String, String>,
-    ) {
-        let mut m = self.mounted.write().await;
-        *m = mounted;
-        let mut s = self.serves.write().await;
-        *s = serves;
+    /// Restore context (profiles)
+    pub async fn set_context(&self, context: RemoteCacheContext) {
         let mut mp = self.mount_profiles.write().await;
-        *mp = mount_profiles;
+        *mp = context.mount_profiles;
         let mut sp = self.serve_profiles.write().await;
-        *sp = serve_profiles;
+        *sp = context.serve_profiles;
     }
 
     // =========================================================================

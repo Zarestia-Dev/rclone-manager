@@ -397,8 +397,7 @@ mod tests {
     #[test]
     fn test_check_mount_plugin_returns_bool() {
         // Just verify it returns a bool without panicking
-        let result = check_mount_plugin_installed();
-        assert!(result || !result); // Always true, just checks no panic
+        let _result = check_mount_plugin_installed(); // Just verify no panic
     }
 
     // -------------------------------------------------------------------------

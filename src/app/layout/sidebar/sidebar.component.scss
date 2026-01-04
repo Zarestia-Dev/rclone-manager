@@ -66,15 +66,15 @@
     border-radius: var(--modal-radius);
     background: var(--window-bg-color);
     box-shadow: var(--box-shadow);
-    transition: var(--transition-standard);
     overflow: hidden;
 
     &:hover {
       background: var(--hover-bg-color);
     }
 
-    &:active {
-      transform: translateY(0);
+    &.selected {
+      background: var(--selected-bg-color);
+      box-shadow: none;
     }
 
     .card-content {
@@ -241,20 +241,6 @@
           }
         }
       }
-    }
-  }
-
-  /* GNOME-style selected remote indicator */
-  .remote-card.selected {
-    background: rgba(var(--primary-color-rgb), 0.04);
-
-    // Solid left accent bar (GNOME style - no gradient)
-    box-shadow:
-      inset 3px 0 0 0 var(--primary-color),
-      var(--box-shadow);
-
-    &:hover {
-      background: rgba(var(--primary-color-rgb), 0.08);
     }
   }
 

@@ -4,9 +4,9 @@ use axum::{extract::State, response::Json};
 use serde::Deserialize;
 use tauri::Manager;
 
+use crate::RcloneState;
 use crate::rclone::backend::types::BackendInfo;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
-use RcloneState;
 
 pub async fn list_backends_handler() -> Result<Json<ApiResponse<Vec<BackendInfo>>>, AppError> {
     use crate::rclone::commands::backend::list_backends;
@@ -51,6 +51,7 @@ pub struct AddBackendBody {
     pub username: Option<String>,
     pub password: Option<String>,
     pub config_password: Option<String>,
+    pub config_path: Option<String>,
     pub oauth_port: Option<u16>,
 }
 
@@ -68,6 +69,7 @@ pub async fn add_backend_handler(
         body.username,
         body.password,
         body.config_password,
+        body.config_path,
         body.oauth_port,
     )
     .await
@@ -87,6 +89,7 @@ pub struct UpdateBackendBody {
     pub username: Option<String>,
     pub password: Option<String>,
     pub config_password: Option<String>,
+    pub config_path: Option<String>,
     pub oauth_port: Option<u16>,
 }
 
@@ -103,6 +106,7 @@ pub async fn update_backend_handler(
         body.username,
         body.password,
         body.config_password,
+        body.config_path,
         body.oauth_port,
     )
     .await

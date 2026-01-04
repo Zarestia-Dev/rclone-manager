@@ -1821,297 +1821,297 @@ pub mod serve {
     pub const TYPES: &str = "serve/types";
 }
 
-/// Endpoint utilities and helpers
-pub struct EndpointHelper;
+// /// Endpoint utilities and helpers
+// pub struct EndpointHelper;
 
-impl EndpointHelper {
-    /// Build a full URL for an endpoint
-    pub fn build_url(base_url: &str, endpoint: &str) -> String {
-        format!("{}/{}", base_url.trim_end_matches('/'), endpoint)
-    }
+// impl EndpointHelper {
+//     /// Build a full URL for an endpoint
+//     pub fn build_url(base_url: &str, endpoint: &str) -> String {
+//         format!("{}/{}", base_url.trim_end_matches('/'), endpoint)
+//     }
 
-    // /// Get all endpoints as a flat list for discovery
-    // pub fn get_all_endpoints() -> Vec<&'static str> {
-    //     vec![
-    //         // Backend endpoints
-    //         backend::COMMAND,
-    //         // Config endpoints
-    //         config::CREATE,
-    //         config::DELETE,
-    //         config::DUMP,
-    //         config::GET,
-    //         config::LISTREMOTES,
-    //         config::PASSWORD,
-    //         config::PATHS,
-    //         config::PROVIDERS,
-    //         config::SETPATH,
-    //         config::UNLOCK,
-    //         config::UPDATE,
-    //         // Core endpoints
-    //         core::BWLIMIT,
-    //         core::COMMAND,
-    //         core::DU,
-    //         core::GC,
-    //         core::GROUP_LIST,
-    //         core::MEMSTATS,
-    //         core::OBSCURE,
-    //         core::PID,
-    //         core::QUIT,
-    //         core::STATS,
-    //         core::STATS_DELETE,
-    //         core::STATS_RESET,
-    //         core::TRANSFERRED,
-    //         core::VERSION,
-    //         // Debug endpoints
-    //         debug::SET_BLOCK_PROFILE_RATE,
-    //         debug::SET_GC_PERCENT,
-    //         debug::SET_MUTEX_PROFILE_FRACTION,
-    //         debug::SET_SOFT_MEMORY_LIMIT,
-    //         // Fscache endpoints
-    //         fscache::CLEAR,
-    //         fscache::ENTRIES,
-    //         // Job endpoints
-    //         job::LIST,
-    //         job::STATUS,
-    //         job::STOP,
-    //         job::STOPGROUP,
-    //         // Mount endpoints
-    //         mount::LISTMOUNTS,
-    //         mount::MOUNT,
-    //         mount::TYPES,
-    //         mount::UNMOUNT,
-    //         mount::UNMOUNTALL,
-    //         // Operations endpoints
-    //         operations::ABOUT,
-    //         operations::CHECK,
-    //         operations::CLEANUP,
-    //         operations::COPYFILE,
-    //         operations::COPYURL,
-    //         operations::DELETE,
-    //         operations::DELETEFILE,
-    //         operations::FSINFO,
-    //         operations::HASHSUM,
-    //         operations::LIST,
-    //         operations::MKDIR,
-    //         operations::MOVEFILE,
-    //         operations::PUBLICLINK,
-    //         operations::PURGE,
-    //         operations::RMDIR,
-    //         operations::RMDIRS,
-    //         operations::SETTIER,
-    //         operations::SETTIERFILE,
-    //         operations::SIZE,
-    //         operations::STAT,
-    //         operations::UPLOADFILE,
-    //         // Options endpoints
-    //         options::BLOCKS,
-    //         options::GET,
-    //         options::INFO,
-    //         options::LOCAL,
-    //         options::SET,
-    //         // Pluginsctl endpoints
-    //         pluginsctl::ADD_PLUGIN,
-    //         pluginsctl::GET_PLUGINS_FOR_TYPE,
-    //         pluginsctl::LIST_PLUGINS,
-    //         pluginsctl::LIST_TEST_PLUGINS,
-    //         pluginsctl::REMOVE_PLUGIN,
-    //         pluginsctl::REMOVE_TEST_PLUGIN,
-    //         // Rc endpoints
-    //         rc::ERROR,
-    //         rc::LIST,
-    //         rc::NOOP,
-    //         rc::NOOPAUTH,
-    //         // Serve endpoints
-    //         serve::LIST,
-    //         serve::START,
-    //         serve::STOP,
-    //         serve::STOPALL,
-    //         serve::TYPES,
-    //         // Sync endpoints
-    //         sync::BISYNC,
-    //         sync::COPY,
-    //         sync::MOVE,
-    //         sync::SYNC,
-    //         // VFS endpoints
-    //         vfs::FORGET,
-    //         vfs::LIST,
-    //         vfs::POLL_INTERVAL,
-    //         vfs::QUEUE,
-    //         vfs::QUEUE_SET_EXPIRY,
-    //         vfs::REFRESH,
-    //         vfs::STATS,
-    //     ]
-    // }
+//     // /// Get all endpoints as a flat list for discovery
+//     // pub fn get_all_endpoints() -> Vec<&'static str> {
+//     //     vec![
+//     //         // Backend endpoints
+//     //         backend::COMMAND,
+//     //         // Config endpoints
+//     //         config::CREATE,
+//     //         config::DELETE,
+//     //         config::DUMP,
+//     //         config::GET,
+//     //         config::LISTREMOTES,
+//     //         config::PASSWORD,
+//     //         config::PATHS,
+//     //         config::PROVIDERS,
+//     //         config::SETPATH,
+//     //         config::UNLOCK,
+//     //         config::UPDATE,
+//     //         // Core endpoints
+//     //         core::BWLIMIT,
+//     //         core::COMMAND,
+//     //         core::DU,
+//     //         core::GC,
+//     //         core::GROUP_LIST,
+//     //         core::MEMSTATS,
+//     //         core::OBSCURE,
+//     //         core::PID,
+//     //         core::QUIT,
+//     //         core::STATS,
+//     //         core::STATS_DELETE,
+//     //         core::STATS_RESET,
+//     //         core::TRANSFERRED,
+//     //         core::VERSION,
+//     //         // Debug endpoints
+//     //         debug::SET_BLOCK_PROFILE_RATE,
+//     //         debug::SET_GC_PERCENT,
+//     //         debug::SET_MUTEX_PROFILE_FRACTION,
+//     //         debug::SET_SOFT_MEMORY_LIMIT,
+//     //         // Fscache endpoints
+//     //         fscache::CLEAR,
+//     //         fscache::ENTRIES,
+//     //         // Job endpoints
+//     //         job::LIST,
+//     //         job::STATUS,
+//     //         job::STOP,
+//     //         job::STOPGROUP,
+//     //         // Mount endpoints
+//     //         mount::LISTMOUNTS,
+//     //         mount::MOUNT,
+//     //         mount::TYPES,
+//     //         mount::UNMOUNT,
+//     //         mount::UNMOUNTALL,
+//     //         // Operations endpoints
+//     //         operations::ABOUT,
+//     //         operations::CHECK,
+//     //         operations::CLEANUP,
+//     //         operations::COPYFILE,
+//     //         operations::COPYURL,
+//     //         operations::DELETE,
+//     //         operations::DELETEFILE,
+//     //         operations::FSINFO,
+//     //         operations::HASHSUM,
+//     //         operations::LIST,
+//     //         operations::MKDIR,
+//     //         operations::MOVEFILE,
+//     //         operations::PUBLICLINK,
+//     //         operations::PURGE,
+//     //         operations::RMDIR,
+//     //         operations::RMDIRS,
+//     //         operations::SETTIER,
+//     //         operations::SETTIERFILE,
+//     //         operations::SIZE,
+//     //         operations::STAT,
+//     //         operations::UPLOADFILE,
+//     //         // Options endpoints
+//     //         options::BLOCKS,
+//     //         options::GET,
+//     //         options::INFO,
+//     //         options::LOCAL,
+//     //         options::SET,
+//     //         // Pluginsctl endpoints
+//     //         pluginsctl::ADD_PLUGIN,
+//     //         pluginsctl::GET_PLUGINS_FOR_TYPE,
+//     //         pluginsctl::LIST_PLUGINS,
+//     //         pluginsctl::LIST_TEST_PLUGINS,
+//     //         pluginsctl::REMOVE_PLUGIN,
+//     //         pluginsctl::REMOVE_TEST_PLUGIN,
+//     //         // Rc endpoints
+//     //         rc::ERROR,
+//     //         rc::LIST,
+//     //         rc::NOOP,
+//     //         rc::NOOPAUTH,
+//     //         // Serve endpoints
+//     //         serve::LIST,
+//     //         serve::START,
+//     //         serve::STOP,
+//     //         serve::STOPALL,
+//     //         serve::TYPES,
+//     //         // Sync endpoints
+//     //         sync::BISYNC,
+//     //         sync::COPY,
+//     //         sync::MOVE,
+//     //         sync::SYNC,
+//     //         // VFS endpoints
+//     //         vfs::FORGET,
+//     //         vfs::LIST,
+//     //         vfs::POLL_INTERVAL,
+//     //         vfs::QUEUE,
+//     //         vfs::QUEUE_SET_EXPIRY,
+//     //         vfs::REFRESH,
+//     //         vfs::STATS,
+//     //     ]
+//     // }
 
-    // /// Get endpoints grouped by category
-    // pub fn get_endpoints_by_category() -> HashMap<&'static str, Vec<&'static str>> {
-    //     let mut categories = HashMap::new();
+//     // /// Get endpoints grouped by category
+//     // pub fn get_endpoints_by_category() -> HashMap<&'static str, Vec<&'static str>> {
+//     //     let mut categories = HashMap::new();
 
-    //     categories.insert("backend", vec![backend::COMMAND]);
-    //     categories.insert(
-    //         "config",
-    //         vec![
-    //             config::CREATE,
-    //             config::DELETE,
-    //             config::DUMP,
-    //             config::GET,
-    //             config::LISTREMOTES,
-    //             config::PASSWORD,
-    //             config::PATHS,
-    //             config::PROVIDERS,
-    //             config::SETPATH,
-    //             config::UNLOCK,
-    //             config::UPDATE,
-    //         ],
-    //     );
-    //     categories.insert(
-    //         "core",
-    //         vec![
-    //             core::BWLIMIT,
-    //             core::COMMAND,
-    //             core::DU,
-    //             core::GC,
-    //             core::GROUP_LIST,
-    //             core::MEMSTATS,
-    //             core::OBSCURE,
-    //             core::PID,
-    //             core::QUIT,
-    //             core::STATS,
-    //             core::STATS_DELETE,
-    //             core::STATS_RESET,
-    //             core::TRANSFERRED,
-    //             core::VERSION,
-    //         ],
-    //     );
-    //     categories.insert(
-    //         "debug",
-    //         vec![
-    //             debug::SET_BLOCK_PROFILE_RATE,
-    //             debug::SET_GC_PERCENT,
-    //             debug::SET_MUTEX_PROFILE_FRACTION,
-    //             debug::SET_SOFT_MEMORY_LIMIT,
-    //         ],
-    //     );
-    //     categories.insert("fscache", vec![fscache::CLEAR, fscache::ENTRIES]);
-    //     categories.insert(
-    //         "job",
-    //         vec![job::LIST, job::STATUS, job::STOP, job::STOPGROUP],
-    //     );
-    //     categories.insert(
-    //         "mount",
-    //         vec![
-    //             mount::LISTMOUNTS,
-    //             mount::MOUNT,
-    //             mount::TYPES,
-    //             mount::UNMOUNT,
-    //             mount::UNMOUNTALL,
-    //         ],
-    //     );
-    //     categories.insert(
-    //         "operations",
-    //         vec![
-    //             operations::ABOUT,
-    //             operations::CHECK,
-    //             operations::CLEANUP,
-    //             operations::COPYFILE,
-    //             operations::COPYURL,
-    //             operations::DELETE,
-    //             operations::DELETEFILE,
-    //             operations::FSINFO,
-    //             operations::HASHSUM,
-    //             operations::LIST,
-    //             operations::MKDIR,
-    //             operations::MOVEFILE,
-    //             operations::PUBLICLINK,
-    //             operations::PURGE,
-    //             operations::RMDIR,
-    //             operations::RMDIRS,
-    //             operations::SETTIER,
-    //             operations::SETTIERFILE,
-    //             operations::SIZE,
-    //             operations::STAT,
-    //             operations::UPLOADFILE,
-    //         ],
-    //     );
-    //     categories.insert(
-    //         "options",
-    //         vec![
-    //             options::BLOCKS,
-    //             options::GET,
-    //             options::INFO,
-    //             options::LOCAL,
-    //             options::SET,
-    //         ],
-    //     );
-    //     categories.insert(
-    //         "pluginsctl",
-    //         vec![
-    //             pluginsctl::ADD_PLUGIN,
-    //             pluginsctl::GET_PLUGINS_FOR_TYPE,
-    //             pluginsctl::LIST_PLUGINS,
-    //             pluginsctl::LIST_TEST_PLUGINS,
-    //             pluginsctl::REMOVE_PLUGIN,
-    //             pluginsctl::REMOVE_TEST_PLUGIN,
-    //         ],
-    //     );
-    //     categories.insert("rc", vec![rc::ERROR, rc::LIST, rc::NOOP, rc::NOOPAUTH]);
-    //     categories.insert(
-    //         "serve",
-    //         vec![
-    //             serve::LIST,
-    //             serve::START,
-    //             serve::STOP,
-    //             serve::STOPALL,
-    //             serve::TYPES,
-    //         ],
-    //     );
-    //     categories.insert(
-    //         "sync",
-    //         vec![sync::BISYNC, sync::COPY, sync::MOVE, sync::SYNC],
-    //     );
-    //     categories.insert(
-    //         "vfs",
-    //         vec![
-    //             vfs::FORGET,
-    //             vfs::LIST,
-    //             vfs::POLL_INTERVAL,
-    //             vfs::QUEUE,
-    //             vfs::QUEUE_SET_EXPIRY,
-    //             vfs::REFRESH,
-    //             vfs::STATS,
-    //         ],
-    //     );
+//     //     categories.insert("backend", vec![backend::COMMAND]);
+//     //     categories.insert(
+//     //         "config",
+//     //         vec![
+//     //             config::CREATE,
+//     //             config::DELETE,
+//     //             config::DUMP,
+//     //             config::GET,
+//     //             config::LISTREMOTES,
+//     //             config::PASSWORD,
+//     //             config::PATHS,
+//     //             config::PROVIDERS,
+//     //             config::SETPATH,
+//     //             config::UNLOCK,
+//     //             config::UPDATE,
+//     //         ],
+//     //     );
+//     //     categories.insert(
+//     //         "core",
+//     //         vec![
+//     //             core::BWLIMIT,
+//     //             core::COMMAND,
+//     //             core::DU,
+//     //             core::GC,
+//     //             core::GROUP_LIST,
+//     //             core::MEMSTATS,
+//     //             core::OBSCURE,
+//     //             core::PID,
+//     //             core::QUIT,
+//     //             core::STATS,
+//     //             core::STATS_DELETE,
+//     //             core::STATS_RESET,
+//     //             core::TRANSFERRED,
+//     //             core::VERSION,
+//     //         ],
+//     //     );
+//     //     categories.insert(
+//     //         "debug",
+//     //         vec![
+//     //             debug::SET_BLOCK_PROFILE_RATE,
+//     //             debug::SET_GC_PERCENT,
+//     //             debug::SET_MUTEX_PROFILE_FRACTION,
+//     //             debug::SET_SOFT_MEMORY_LIMIT,
+//     //         ],
+//     //     );
+//     //     categories.insert("fscache", vec![fscache::CLEAR, fscache::ENTRIES]);
+//     //     categories.insert(
+//     //         "job",
+//     //         vec![job::LIST, job::STATUS, job::STOP, job::STOPGROUP],
+//     //     );
+//     //     categories.insert(
+//     //         "mount",
+//     //         vec![
+//     //             mount::LISTMOUNTS,
+//     //             mount::MOUNT,
+//     //             mount::TYPES,
+//     //             mount::UNMOUNT,
+//     //             mount::UNMOUNTALL,
+//     //         ],
+//     //     );
+//     //     categories.insert(
+//     //         "operations",
+//     //         vec![
+//     //             operations::ABOUT,
+//     //             operations::CHECK,
+//     //             operations::CLEANUP,
+//     //             operations::COPYFILE,
+//     //             operations::COPYURL,
+//     //             operations::DELETE,
+//     //             operations::DELETEFILE,
+//     //             operations::FSINFO,
+//     //             operations::HASHSUM,
+//     //             operations::LIST,
+//     //             operations::MKDIR,
+//     //             operations::MOVEFILE,
+//     //             operations::PUBLICLINK,
+//     //             operations::PURGE,
+//     //             operations::RMDIR,
+//     //             operations::RMDIRS,
+//     //             operations::SETTIER,
+//     //             operations::SETTIERFILE,
+//     //             operations::SIZE,
+//     //             operations::STAT,
+//     //             operations::UPLOADFILE,
+//     //         ],
+//     //     );
+//     //     categories.insert(
+//     //         "options",
+//     //         vec![
+//     //             options::BLOCKS,
+//     //             options::GET,
+//     //             options::INFO,
+//     //             options::LOCAL,
+//     //             options::SET,
+//     //         ],
+//     //     );
+//     //     categories.insert(
+//     //         "pluginsctl",
+//     //         vec![
+//     //             pluginsctl::ADD_PLUGIN,
+//     //             pluginsctl::GET_PLUGINS_FOR_TYPE,
+//     //             pluginsctl::LIST_PLUGINS,
+//     //             pluginsctl::LIST_TEST_PLUGINS,
+//     //             pluginsctl::REMOVE_PLUGIN,
+//     //             pluginsctl::REMOVE_TEST_PLUGIN,
+//     //         ],
+//     //     );
+//     //     categories.insert("rc", vec![rc::ERROR, rc::LIST, rc::NOOP, rc::NOOPAUTH]);
+//     //     categories.insert(
+//     //         "serve",
+//     //         vec![
+//     //             serve::LIST,
+//     //             serve::START,
+//     //             serve::STOP,
+//     //             serve::STOPALL,
+//     //             serve::TYPES,
+//     //         ],
+//     //     );
+//     //     categories.insert(
+//     //         "sync",
+//     //         vec![sync::BISYNC, sync::COPY, sync::MOVE, sync::SYNC],
+//     //     );
+//     //     categories.insert(
+//     //         "vfs",
+//     //         vec![
+//     //             vfs::FORGET,
+//     //             vfs::LIST,
+//     //             vfs::POLL_INTERVAL,
+//     //             vfs::QUEUE,
+//     //             vfs::QUEUE_SET_EXPIRY,
+//     //             vfs::REFRESH,
+//     //             vfs::STATS,
+//     //         ],
+//     //     );
 
-    //     categories
-    // }
+//     //     categories
+//     // }
 
-    // /// Check if an endpoint exists
-    // pub fn endpoint_exists(endpoint: &str) -> bool {
-    //     Self::get_all_endpoints().contains(&endpoint)
-    // }
+//     // /// Check if an endpoint exists
+//     // pub fn endpoint_exists(endpoint: &str) -> bool {
+//     //     Self::get_all_endpoints().contains(&endpoint)
+//     // }
 
-    // /// Get category for an endpoint
-    // pub fn get_endpoint_category(endpoint: &str) -> Option<&'static str> {
-    //     if let Some(category) = endpoint.split('/').next() {
-    //         match category {
-    //             "backend" => Some("backend"),
-    //             "config" => Some("config"),
-    //             "core" => Some("core"),
-    //             "debug" => Some("debug"),
-    //             "fscache" => Some("fscache"),
-    //             "job" => Some("job"),
-    //             "mount" => Some("mount"),
-    //             "operations" => Some("operations"),
-    //             "options" => Some("options"),
-    //             "pluginsctl" => Some("pluginsctl"),
-    //             "rc" => Some("rc"),
-    //             "serve" => Some("serve"),
-    //             "sync" => Some("sync"),
-    //             "vfs" => Some("vfs"),
-    //             _ => None,
-    //         }
-    //     } else {
-    //         None
-    //     }
-    // }
-}
+//     // /// Get category for an endpoint
+//     // pub fn get_endpoint_category(endpoint: &str) -> Option<&'static str> {
+//     //     if let Some(category) = endpoint.split('/').next() {
+//     //         match category {
+//     //             "backend" => Some("backend"),
+//     //             "config" => Some("config"),
+//     //             "core" => Some("core"),
+//     //             "debug" => Some("debug"),
+//     //             "fscache" => Some("fscache"),
+//     //             "job" => Some("job"),
+//     //             "mount" => Some("mount"),
+//     //             "operations" => Some("operations"),
+//     //             "options" => Some("options"),
+//     //             "pluginsctl" => Some("pluginsctl"),
+//     //             "rc" => Some("rc"),
+//     //             "serve" => Some("serve"),
+//     //             "sync" => Some("sync"),
+//     //             "vfs" => Some("vfs"),
+//     //             _ => None,
+//     //         }
+//     //     } else {
+//     //         None
+//     //     }
+//     // }
+// }

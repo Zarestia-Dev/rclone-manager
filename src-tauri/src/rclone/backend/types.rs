@@ -129,6 +129,84 @@ impl Backend {
         }
         builder
     }
+
+    /// Build a full URL for a specific endpoint
+    pub fn url_for(&self, endpoint: &str) -> String {
+        format!("{}/{}", self.api_url().trim_end_matches('/'), endpoint)
+    }
+
+    /// Build a full URL for a specific endpoint using the OAuth port
+    pub fn oauth_url_for(&self, endpoint: &str) -> Option<String> {
+        self.oauth_url()
+            .map(|base| format!("{}/{}", base.trim_end_matches('/'), endpoint))
+    }
+    /// Make an authenticated request to a specific endpoint
+    pub async fn make_request(
+        &self,
+        client: &reqwest::Client,
+        method: reqwest::Method,
+        endpoint: &str,
+        payload: Option<&serde_json::Value>,
+        timeout: Option<std::time::Duration>,
+    ) -> Result<reqwest::Response, String> {
+        let url = self.url_for(endpoint);
+        let mut builder = self.inject_auth(client.request(method, &url));
+
+        if let Some(data) = payload {
+            builder = builder.json(data);
+        }
+
+        if let Some(duration) = timeout {
+            builder = builder.timeout(duration);
+        }
+
+        let response = builder
+            .send()
+            .await
+            .map_err(|e| format!("Failed to send request to {}: {}", endpoint, e))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            // Try to extract error message from JSON if possible
+            let error_msg = if let Ok(json) = serde_json::from_str::<serde_json::Value>(&body) {
+                json.get("error")
+                    .and_then(|e| e.as_str())
+                    .map(|s| s.to_string())
+                    .unwrap_or(body)
+            } else {
+                body
+            };
+
+            return Err(format!("Request failed (HTTP {}): {}", status, error_msg));
+        }
+
+        Ok(response)
+    }
+
+    /// Helper for POST requests expecting JSON response
+    ///
+    /// This handles:
+    /// 1. URL construction
+    /// 2. Authentication injection
+    /// 3. Request sending
+    /// 4. Error status checking (extracting error message)
+    /// 5. JSON response parsing
+    pub async fn post_json(
+        &self,
+        client: &reqwest::Client,
+        endpoint: &str,
+        payload: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, String> {
+        let response = self
+            .make_request(client, reqwest::Method::POST, endpoint, payload, None)
+            .await?;
+
+        response
+            .json()
+            .await
+            .map_err(|e| format!("Failed to parse response: {}", e))
+    }
 }
 
 /// Frontend-friendly backend info (for list display)

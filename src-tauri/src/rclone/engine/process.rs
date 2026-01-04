@@ -7,10 +7,7 @@ use crate::rclone::backend::BACKEND_MANAGER;
 use crate::utils::types::core::RcApiEngine;
 use crate::utils::{
     process::process_manager::kill_processes_on_port,
-    rclone::{
-        endpoints::{EndpointHelper, core},
-        process_common::create_rclone_command,
-    },
+    rclone::{endpoints::core, process_common::create_rclone_command},
 };
 
 use super::error::{EngineError, EngineResult};
@@ -87,7 +84,7 @@ impl RcApiEngine {
 
                 // Use backend's api_url() as single source of truth
                 let backend = BACKEND_MANAGER.get_active().await;
-                let quit_url = EndpointHelper::build_url(&backend.api_url(), core::QUIT);
+                let quit_url = backend.url_for(core::QUIT);
 
                 let _ = reqwest::Client::new()
                     .post(&quit_url)
@@ -153,8 +150,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_kill_process_no_process() {
-        let mut engine = RcApiEngine::default();
-        engine.running = true; // Even if marked running
+        let mut engine = RcApiEngine {
+            running: true, // Even if marked running
+            ..Default::default()
+        };
 
         // Should succeed when there's no process
         let result = engine.kill_process().await;

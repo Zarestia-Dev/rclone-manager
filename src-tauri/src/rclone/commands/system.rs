@@ -9,7 +9,7 @@ use crate::{
     rclone::backend::BACKEND_MANAGER,
     utils::{
         rclone::{
-            endpoints::{EndpointHelper, config, core},
+            endpoints::{config, core},
             process_common::create_rclone_command,
         },
         types::{
@@ -119,23 +119,13 @@ pub async fn try_auto_unlock_config(app: &AppHandle) -> Result<(), String> {
         _ => return Ok(()),
     };
 
-    info!("🔓 Auto-unlocking remote config for '{}'...", backend.name);
-
-    let state = app.state::<RcloneState>();
-    let url = EndpointHelper::build_url(&backend.api_url(), config::UNLOCK);
     let payload = json!({ "configPassword": password });
 
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .json(&payload)
-        .send()
+    let state = app.state::<RcloneState>();
+    backend
+        .post_json(&state.client, config::UNLOCK, Some(&payload))
         .await
-        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
-
-    if !response.status().is_success() {
-        let body = response.text().await.unwrap_or_default();
-        return Err(crate::localized_error!("backendErrors.system.unlockFailed", "error" => body));
-    }
+        .map_err(|e| crate::localized_error!("backendErrors.system.unlockFailed", "error" => e))?;
 
     app.emit(RCLONE_CONFIG_UNLOCKED, ())
         .map_err(|e| format!("Failed to emit event: {e}"))?;
@@ -263,11 +253,10 @@ pub async fn quit_rclone_oauth(state: State<'_, RcloneState>) -> Result<(), Stri
         return Ok(());
     }
 
-    if let Some(oauth_url) = backend.oauth_url() {
-        let url = EndpointHelper::build_url(&oauth_url, core::QUIT);
-        if let Err(e) = state.client.post(&url).send().await {
-            warn!("⚠️ Failed to send quit request: {e}");
-        }
+    if let Some(url) = backend.oauth_url_for(core::QUIT)
+        && let Err(e) = state.client.post(&url).send().await
+    {
+        warn!("⚠️ Failed to send quit request: {e}");
     }
 
     if let Some(process) = guard.take() {
@@ -299,27 +288,14 @@ pub async fn set_bandwidth_limit(
     };
 
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), core::BWLIMIT);
     let payload = json!({ "rate": rate_value });
-
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .json(&payload)
-        .send()
+    let json = backend
+        .post_json(&state.client, core::BWLIMIT, Some(&payload))
         .await
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        let error =
-            crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body);
-        return Err(error);
-    }
-
     let response_data: BandwidthLimitResponse =
-        serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {e}"))?;
+        serde_json::from_value(json).map_err(|e| format!("Failed to parse response: {e}"))?;
 
     debug!("🪢 Bandwidth limit set: {response_data:?}");
     if let Err(e) = app.emit(BANDWIDTH_LIMIT_CHANGED, response_data.clone()) {
@@ -334,25 +310,11 @@ pub async fn unlock_rclone_config(
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), config::UNLOCK);
-
     let payload = json!({ "configPassword": password });
-
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .json(&payload)
-        .send()
+    let _ = backend
+        .post_json(&state.client, config::UNLOCK, Some(&payload))
         .await
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
-
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        let error =
-            crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body);
-        return Err(error);
-    }
 
     app.emit(RCLONE_CONFIG_UNLOCKED, ())
         .map_err(|e| format!("Failed to emit config unlocked event: {e}"))?;

@@ -5,7 +5,7 @@ use tauri::State;
 use crate::{
     rclone::backend::{BACKEND_MANAGER, types::Backend},
     utils::{
-        rclone::endpoints::{EndpointHelper, serve},
+        rclone::endpoints::serve,
         types::{core::RcloneState, remotes::ServeInstance},
     },
 };
@@ -38,27 +38,11 @@ pub fn parse_serves_response(response: &Value) -> Vec<ServeInstance> {
 #[tauri::command]
 pub async fn get_serve_types(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), serve::TYPES);
 
-    debug!("🔍 Fetching serve types from {url}");
-
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .send()
+    let json = backend
+        .post_json(&state.client, serve::TYPES, None)
         .await
-        .map_err(|e| format!("Failed to send request: {e}"))?;
-
-    if !response.status().is_success() {
-        return Err(format!(
-            "Failed to fetch serve types: {:?}",
-            response.text().await
-        ));
-    }
-
-    let json: Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse response: {e}"))?;
+        .map_err(|e| format!("Failed to fetch serve types: {e}"))?;
 
     let serve_types = json["types"]
         .as_array()
@@ -77,27 +61,10 @@ pub async fn list_serves_internal(
     client: &reqwest::Client,
     backend: &Backend,
 ) -> Result<Value, String> {
-    let url = EndpointHelper::build_url(&backend.api_url(), serve::LIST);
-
-    debug!("🔍 Listing running serves from {url}");
-
-    let response = backend
-        .inject_auth(client.post(&url))
-        .send()
+    let json = backend
+        .post_json(client, serve::LIST, None)
         .await
-        .map_err(|e| format!("Failed to send request: {e}"))?;
-
-    if !response.status().is_success() {
-        return Err(format!(
-            "Failed to list serves: {:?}",
-            response.text().await
-        ));
-    }
-
-    let json: Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse response: {e}"))?;
+        .map_err(|e| format!("Failed to list serves: {e}"))?;
 
     debug!("✅ Running serves: {json}");
 

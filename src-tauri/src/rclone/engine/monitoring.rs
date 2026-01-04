@@ -2,7 +2,7 @@ use log::debug;
 use std::time::Duration;
 
 use crate::rclone::backend::BACKEND_MANAGER;
-use crate::utils::rclone::endpoints::{EndpointHelper, core};
+use crate::utils::rclone::endpoints::core;
 use crate::utils::types::core::RcApiEngine;
 
 /// Duration constants for health checks
@@ -85,7 +85,7 @@ impl RcApiEngine {
     /// (which means the API is running but requires auth).
     pub async fn check_api_health() -> bool {
         let backend = BACKEND_MANAGER.get_active().await;
-        let url = EndpointHelper::build_url(&backend.api_url(), core::VERSION);
+        let url = backend.url_for(core::VERSION);
 
         let client = reqwest::Client::new();
         match client.post(&url).timeout(API_HEALTH_TIMEOUT).send().await {
@@ -109,21 +109,28 @@ impl RcApiEngine {
     }
 
     pub async fn wait_until_ready(&mut self, timeout_secs: u64) -> bool {
-        let start = std::time::Instant::now();
         let timeout = Duration::from_secs(timeout_secs);
-
         debug!("🔍 Waiting for API to be ready (timeout: {timeout_secs}s)");
 
-        while start.elapsed() < timeout {
-            if self.is_api_healthy().await {
-                debug!("✅ API is healthy and ready");
-                return true;
+        let check_future = async {
+            loop {
+                if self.is_api_healthy().await {
+                    return true;
+                }
+                tokio::time::sleep(API_READY_POLL_INTERVAL).await;
             }
-            tokio::time::sleep(API_READY_POLL_INTERVAL).await;
-        }
+        };
 
-        debug!("⏰ API health check timed out after {timeout_secs}s");
-        false
+        match tokio::time::timeout(timeout, check_future).await {
+            Ok(_) => {
+                debug!("✅ API is healthy and ready");
+                true
+            }
+            Err(_) => {
+                debug!("⏰ API health check timed out after {timeout_secs}s");
+                false
+            }
+        }
     }
 }
 

@@ -78,6 +78,7 @@
                 mat-icon-button
                 (click)="$event.stopPropagation(); startEdit(backend)"
                 [matTooltip]="'modals.backend.editBackend' | translate"
+                [attr.aria-label]="'modals.backend.editBackend' | translate"
               >
                 <mat-icon svgIcon="pen"></mat-icon>
               </button>
@@ -87,6 +88,7 @@
                 (click)="$event.stopPropagation(); testBackend(backend.name)"
                 [disabled]="testingBackend() !== null"
                 [matTooltip]="'modals.backend.testConnection' | translate"
+                [attr.aria-label]="'modals.backend.testConnection' | translate"
               >
                 @if (testingBackend() === backend.name) {
                   <mat-spinner diameter="18"></mat-spinner>
@@ -203,10 +205,10 @@
                     </button>
                     <mat-hint>
                       {{ 'modals.backend.configPathHintLocal' | translate }}
-                      @if (activeConfigPath) {
+                      @if (activeConfigPath()) {
                         <br />
                         <strong>{{ 'modals.backend.activeConfigPath' | translate }}:</strong>
-                        {{ activeConfigPath }}
+                        {{ activeConfigPath() }}
                       }
                     </mat-hint>
                   </mat-form-field>
@@ -236,6 +238,9 @@
               <mat-label>{{ 'modals.backend.host' | translate }}</mat-label>
               <mat-icon matPrefix svgIcon="globe"></mat-icon>
               <input matInput formControlName="host" />
+              @if (hasDuplicateHost()) {
+                <mat-error>{{ 'modals.backend.hostExists' | translate }}</mat-error>
+              }
             </mat-form-field>
 
             <mat-form-field class="port-field" appearance="fill">
@@ -291,15 +296,34 @@
             </button>
           </mat-form-field>
 
-          <mat-form-field appearance="fill">
-            <mat-label>{{ 'modals.backend.configPath' | translate }}</mat-label>
-            <mat-icon matPrefix svgIcon="file-lines"></mat-icon>
-            <input
-              matInput
-              formControlName="config_path"
-              [placeholder]="'modals.backend.configPathPlaceholder' | translate"
-            />
-          </mat-form-field>
+          <div class="config-path-group">
+            <mat-form-field appearance="fill" class="full-width">
+              <mat-label>{{ 'modals.backend.configPath' | translate }}</mat-label>
+              <mat-icon matPrefix svgIcon="file-lines"></mat-icon>
+              <input
+                matInput
+                formControlName="config_path"
+                [placeholder]="'modals.backend.configPathPlaceholder' | translate"
+              />
+              <button
+                mat-icon-button
+                matSuffix
+                (click)="selectConfigFile()"
+                type="button"
+                [matTooltip]="'modals.backend.selectConfigFile' | translate"
+              >
+                <mat-icon svgIcon="file"></mat-icon>
+              </button>
+              <mat-hint>
+                {{ 'modals.backend.configPathHintRemote' | translate }}
+                @if (getEditingBackendRuntimePath()) {
+                  <br />
+                  <strong>{{ 'modals.backend.activeConfigPath' | translate }}:</strong>
+                  {{ getEditingBackendRuntimePath() }}
+                }
+              </mat-hint>
+            </mat-form-field>
+          </div>
         }
       </form>
     }

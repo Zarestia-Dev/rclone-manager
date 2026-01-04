@@ -63,11 +63,8 @@ export class BackendModalComponent implements OnInit {
   readonly showPassword = signal(false);
   readonly showConfigPassword = signal(false);
 
-  /** Get the active config path from the Local backend's runtime info */
-  get activeConfigPath(): string | null {
-    const localBackend = this.backends().find(b => b.name === 'Local');
-    return localBackend?.runtime_config_path || null;
-  }
+  /** Get the active config path from service's computed signal */
+  readonly activeConfigPath = this.backendService.activeConfigPath;
 
   // Backend form
   backendForm: FormGroup = this.fb.group({
@@ -100,6 +97,14 @@ export class BackendModalComponent implements OnInit {
       this.formState.set({ mode: 'closed' });
       this.resetForm();
     }
+  }
+
+  /** Get the runtime config path for the currently editing backend */
+  getEditingBackendRuntimePath(): string | null {
+    const state = this.formState();
+    if (state.mode !== 'edit' || !state.editingName) return null;
+    const backend = this.backends().find(b => b.name === state.editingName);
+    return backend?.runtime_config_path ?? null;
   }
 
   startEdit(backend: BackendInfo): void {
@@ -223,20 +228,34 @@ export class BackendModalComponent implements OnInit {
       password: formValue.has_auth ? formValue.password : '',
       config_password: formValue.config_password || undefined,
       config_path: formValue.config_path || undefined,
-      // OAuth fields only for Local backend
-      oauth_host: isEditingLocal ? formValue.oauth_host : undefined,
+      // OAuth port only for Local backend
       oauth_port: isEditingLocal ? formValue.oauth_port : undefined,
     };
 
     try {
       if (state.mode === 'edit' && state.editingName) {
         await this.backendService.updateBackend(backendData);
+        this.snackBar.open(
+          this.translate.instant('modals.backend.notifications.updated'),
+          this.translate.instant('common.close'),
+          { duration: 3000, panelClass: 'snackbar-success' }
+        );
       } else {
         await this.backendService.addBackend(backendData);
+        this.snackBar.open(
+          this.translate.instant('modals.backend.notifications.added'),
+          this.translate.instant('common.close'),
+          { duration: 3000, panelClass: 'snackbar-success' }
+        );
       }
       this.cancelEdit();
     } catch (error) {
-      console.error('Failed to save backend:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      this.snackBar.open(
+        this.translate.instant('modals.backend.notifications.saveFailed', { message }),
+        this.translate.instant('common.close'),
+        { duration: 5000, panelClass: 'snackbar-error' }
+      );
     }
   }
 

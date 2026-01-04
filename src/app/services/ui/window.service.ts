@@ -11,10 +11,18 @@ export class WindowService extends TauriBaseService {
   private readonly _theme$ = new BehaviorSubject<Theme>('system');
   public readonly theme$ = this._theme$.asObservable();
   appSettingsService = inject(AppSettingsService);
+  private readonly systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
   constructor() {
     super();
     this.initializeTheme();
+
+    // Listen for system theme changes
+    this.systemThemeQuery.addEventListener('change', () => {
+      if (this._theme$.value === 'system') {
+        this.applyTheme('system');
+      }
+    });
   }
 
   async quitApplication(): Promise<void> {

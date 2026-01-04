@@ -1,4 +1,4 @@
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use rcman::JsonSettingsManager;
 use tauri::{AppHandle, Manager};
 
@@ -17,6 +17,14 @@ use crate::{
     },
     utils::types::core::RcloneState,
 };
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+/// Timeout for backend connectivity checks (10 seconds)
+/// After this timeout, the app will fallback to Local backend
+const BACKEND_CONNECTIVITY_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 
 // ============================================================================
 // Rclone State Initialization
@@ -75,8 +83,52 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
 
     match tokio::time::timeout(std::time::Duration::from_secs(15), refresh_future).await {
         Ok(Ok(_)) => info!("✅ Caches refreshed successfully"),
-        Ok(Err(e)) => error!("❌ Failed to refresh caches: {e}"),
-        Err(_) => error!("❌ Cache refresh timed out (backend may be unresponsive)"),
+        Ok(Err(e)) => {
+            error!("❌ Failed to refresh caches: {e}");
+            // Fallback to Local if active is remote and failing
+            let active = BACKEND_MANAGER.get_active_name().await;
+            if active != "Local" {
+                warn!(
+                    "↩️ Startup: Active backend '{}' has weak connection. Falling back to Local.",
+                    active
+                );
+                if let Err(err) = BACKEND_MANAGER.switch_to("Local").await {
+                    error!("Critical: Failed to fallback to Local backend: {}", err);
+                } else {
+                    info!("✅ Fallback to Local successful. Retrying cache refresh for Local...");
+                    // Retry refresh for Local to ensure app starts with some data
+                    let client = app_handle.state::<RcloneState>().client.clone();
+                    let local_backend = BACKEND_MANAGER.get("Local").await.unwrap();
+                    let _ = BACKEND_MANAGER
+                        .remote_cache
+                        .refresh_all(&client, &local_backend)
+                        .await;
+                }
+            }
+        }
+        Err(_) => {
+            error!("❌ Cache refresh timed out (backend may be unresponsive)");
+            // Fallback to Local on timeout
+            let active = BACKEND_MANAGER.get_active_name().await;
+            if active != "Local" {
+                warn!(
+                    "↩️ Startup: Active backend '{}' timed out. Falling back to Local.",
+                    active
+                );
+                if let Err(err) = BACKEND_MANAGER.switch_to("Local").await {
+                    error!("Critical: Failed to fallback to Local backend: {}", err);
+                } else {
+                    info!("✅ Fallback to Local successful. Retrying cache refresh for Local...");
+                    let client = app_handle.state::<RcloneState>().client.clone();
+                    if let Some(local_backend) = BACKEND_MANAGER.get("Local").await {
+                        let _ = BACKEND_MANAGER
+                            .remote_cache
+                            .refresh_all(&client, &local_backend)
+                            .await;
+                    }
+                }
+            }
+        }
     }
 
     // Step 3: Initialize and start scheduler with loaded config
@@ -199,52 +251,21 @@ pub async fn apply_backend_settings(app_handle: &tauri::AppHandle) -> Result<(),
 /// Also spawns background checks for other backends.
 async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
     use crate::rclone::backend::BACKEND_MANAGER;
-    let active_name = BACKEND_MANAGER.get_active_name().await;
-
     // Always check Local backend (sets status to connected)
     let client = app_handle.state::<RcloneState>().client.clone();
 
-    if active_name == "Local" {
-        // Check Local backend too (to get version/OS)
-        info!("🔍 Checking Local backend for version/OS info");
-        if let Err(e) = BACKEND_MANAGER.check_connectivity("Local", &client).await {
-            log::warn!("⚠️ Local backend check failed (will retry): {}", e);
-            // Still mark as connected since it's managed by us
-            BACKEND_MANAGER
-                .set_runtime_status("Local", "connected")
-                .await;
-        }
-    } else {
-        // Check remote active backend
-        info!(
-            "🔍 Checking connectivity for active backend: {}",
-            active_name
-        );
-        if let Err(e) = BACKEND_MANAGER
-            .check_connectivity(&active_name, &client)
-            .await
-        {
-            log::warn!(
-                "⚠️ Active backend '{}' unreachable: {}. Falling back to Local.",
-                active_name,
-                e
-            );
-            // Set error status before switching
-            BACKEND_MANAGER
-                .set_runtime_status(&active_name, &format!("error:{}", e))
-                .await;
-
-            if let Err(e) = BACKEND_MANAGER.switch_to("Local").await {
-                error!("❌ Failed to fallback to Local backend: {}", e);
-            } else {
-                info!("✅ Fallback to Local backend successful");
-                BACKEND_MANAGER
-                    .set_runtime_status("Local", "connected")
-                    .await;
-            }
-        } else {
-            info!("✅ Active backend '{}' is reachable", active_name);
-        }
+    // Check connectivity with automatic fallback
+    // This single call handles:
+    // 1. Checking Active (Remote or Local)
+    // 2. Retrying (if Local)
+    // 3. Fallback to Local (if Remote fails)
+    // 4. Logging success/failure
+    if let Err(e) = BACKEND_MANAGER
+        .ensure_connectivity_or_fallback(&client, BACKEND_CONNECTIVITY_TIMEOUT)
+        .await
+    {
+        // This only happens if fallback also failed (critical error)
+        error!("🔥 Critical startup failure: {}", e);
     }
 
     // Spawn background task to check other backends (non-blocking)

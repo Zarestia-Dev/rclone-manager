@@ -4,8 +4,7 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Manager, State};
 
 use crate::rclone::backend::BACKEND_MANAGER;
-use crate::utils::rclone::endpoints::config;
-use crate::utils::rclone::endpoints::{EndpointHelper, core};
+use crate::utils::rclone::endpoints::{config, core};
 use crate::utils::types::core::{BandwidthLimitResponse, RcloneCoreVersion, RcloneState};
 
 #[tauri::command]
@@ -13,75 +12,41 @@ pub async fn get_bandwidth_limit(
     state: State<'_, RcloneState>,
 ) -> Result<BandwidthLimitResponse, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), core::BWLIMIT);
-
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .json(&json!({}))
-        .send()
+    let json = backend
+        .post_json(&state.client, core::BWLIMIT, Some(&json!({})))
         .await
         .map_err(|e| format!("Request failed: {e}"))?;
 
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        let error = format!("HTTP {status}: {body}");
-        return Err(error);
-    }
-
     let response_data: BandwidthLimitResponse =
-        serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {e}"))?;
+        serde_json::from_value(json).map_err(|e| format!("Failed to parse response: {e}"))?;
 
     Ok(response_data)
+}
+
+/// Fetch version information from Rclone
+pub async fn fetch_version_info(
+    backend: &crate::rclone::backend::types::Backend,
+    client: &reqwest::Client,
+) -> Result<RcloneCoreVersion, String> {
+    let json = backend
+        .post_json(client, core::VERSION, None)
+        .await
+        .map_err(|e| format!("Failed to get Rclone version: {e}"))?;
+
+    serde_json::from_value(json).map_err(|e| format!("Failed to parse version info: {e}"))
 }
 
 #[tauri::command]
 pub async fn get_rclone_info(state: State<'_, RcloneState>) -> Result<RcloneCoreVersion, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), core::VERSION);
-
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .send()
-        .await
-        .map_err(|e| format!("Failed to get Rclone version: {e}"))?;
-
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        return Err(format!("HTTP {status}: {body}"));
-    }
-
-    serde_json::from_str(&body).map_err(|e| format!("Failed to parse version info: {e}"))
+    fetch_version_info(&backend, &state.client).await
 }
 
 #[tauri::command]
 pub async fn get_rclone_pid(state: State<'_, RcloneState>) -> Result<Option<u32>, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), core::PID);
-    match backend.inject_auth(state.client.post(&url)).send().await {
-        Ok(resp) => {
-            debug!("📡 Querying rclone /core/pid: {url}");
-            debug!("rclone /core/pid response status: {}", resp.status());
-            if resp.status().is_success() {
-                match resp.json::<serde_json::Value>().await {
-                    Ok(json) => Ok(json.get("pid").and_then(|v| v.as_u64()).map(|v| v as u32)),
-                    Err(e) => {
-                        debug!("Failed to parse /core/pid response: {e}");
-                        Err(format!("Failed to parse /core/pid response: {e}"))
-                    }
-                }
-            } else {
-                let status = resp.status();
-                let body = resp.text().await.unwrap_or_default();
-                debug!("rclone /core/pid returned non-success status");
-                Err(format!(
-                    "rclone /core/pid returned non-success status: {status}: {body}"
-                ))
-            }
-        }
+    match backend.post_json(&state.client, core::PID, None).await {
+        Ok(json) => Ok(json.get("pid").and_then(|v| v.as_u64()).map(|v| v as u32)),
         Err(e) => {
             debug!("Failed to query /core/pid: {e}");
             Err(format!("Failed to query /core/pid: {e}"))
@@ -93,58 +58,40 @@ pub async fn get_rclone_pid(state: State<'_, RcloneState>) -> Result<Option<u32>
 #[tauri::command]
 pub async fn get_memory_stats(state: State<'_, RcloneState>) -> Result<serde_json::Value, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), core::MEMSTATS);
-
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .send()
+    let json = backend
+        .post_json(&state.client, core::MEMSTATS, None)
         .await
         .map_err(|e| format!("Failed to get memory stats: {e}"))?;
 
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        return Err(format!("HTTP {status}: {body}"));
-    }
-
-    serde_json::from_str(&body).map_err(|e| format!("Failed to parse memory stats: {e}"))
+    Ok(json)
 }
 
-#[tauri::command]
-pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {
-    let state = app.state::<RcloneState>();
-    let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), config::PATHS);
-
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .json(&json!({}))
-        .send()
+/// Fetch config path from Rclone
+pub async fn fetch_config_path(
+    backend: &crate::rclone::backend::types::Backend,
+    client: &reqwest::Client,
+) -> Result<String, String> {
+    let paths = backend
+        .post_json(client, config::PATHS, Some(&json!({})))
         .await
         .map_err(|e| format!("Failed to execute API request: {e}"))?;
-
-    if !response.status().is_success() {
-        return Err(format!(
-            "API request failed with status: {}",
-            response.status()
-        ));
-    }
-
-    let body = response
-        .text()
-        .await
-        .map_err(|e| format!("Failed to read response body: {e}"))?;
-
-    let paths: serde_json::Value =
-        serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {e}"))?;
 
     let config_path = paths
         .get("config")
         .and_then(|v| v.as_str())
         .ok_or("No config path in response")?;
 
-    Ok(PathBuf::from(config_path))
+    Ok(config_path.to_string())
+}
+
+#[tauri::command]
+pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {
+    let state = app.state::<RcloneState>();
+    let backend = BACKEND_MANAGER.get_active().await;
+    match fetch_config_path(&backend, &state.client).await {
+        Ok(path) => Ok(PathBuf::from(path)),
+        Err(e) => Err(e),
+    }
 }
 
 #[cfg(not(feature = "web-server"))]

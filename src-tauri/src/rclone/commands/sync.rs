@@ -11,7 +11,7 @@ use crate::{
             get_string, json_to_hashmap, resolve_profile_options, unwrap_nested_options,
         },
         logging::log::log_operation,
-        rclone::endpoints::{EndpointHelper, sync},
+        rclone::endpoints::sync,
         types::{core::RcloneState, logs::LogLevel, remotes::ProfileParams},
     },
 };
@@ -366,8 +366,7 @@ async fn perform_transfer(
     // 6. Get API URL
     let backend_manager = &BACKEND_MANAGER;
     let backend = backend_manager.get_active().await;
-
-    let url = EndpointHelper::build_url(&backend.api_url(), params.transfer_type.endpoint());
+    let url = backend.url_for(params.transfer_type.endpoint());
 
     // 7. Submit Job
     let (jobid, _) = submit_job(

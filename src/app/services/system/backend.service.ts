@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { computed, Injectable, signal } from '@angular/core';
 import { TauriBaseService } from '../core/tauri-base.service';
 import {
   AddBackendConfig,
@@ -22,6 +22,14 @@ export class BackendService extends TauriBaseService {
 
   /** Whether backend operations are in progress */
   readonly isLoading = signal<boolean>(false);
+
+  /** Active config path from the currently active backend's runtime info */
+  readonly activeConfigPath = computed(() => {
+    const backends = this.backends();
+    const activeName = this.activeBackend();
+    const active = backends.find(b => b.name === activeName);
+    return active?.runtime_config_path ?? null;
+  });
 
   /**
    * Load all backends from the Tauri backend
@@ -62,7 +70,7 @@ export class BackendService extends TauriBaseService {
   /**
    * Get the active config file path
    */
-  async getActiveConfigPath(): Promise<string> {
+  async getActiveConfigPathFromBackend(): Promise<string> {
     try {
       return await this.invokeCommand<string>('get_rclone_config_file');
     } catch (error) {
@@ -81,7 +89,7 @@ export class BackendService extends TauriBaseService {
       await this.invokeCommand<void>('switch_backend', { name });
       this.activeBackend.set(name);
 
-      // Update local state without reloading
+      // Update local state - backend switch already updates status
       this.backends.update(current =>
         current.map(b => ({
           ...b,
@@ -111,9 +119,10 @@ export class BackendService extends TauriBaseService {
         password: config.password,
         configPassword: config.config_password,
         configPath: config.config_path,
+        oauthPort: config.oauth_port,
       });
 
-      // Reload to ensure we have the exact state from backend (validation, etc)
+      // Reload to ensure we have the exact state from backend
       await this.loadBackends();
     } catch (error) {
       console.error(`Failed to add backend '${config.name}':`, error);
@@ -126,9 +135,7 @@ export class BackendService extends TauriBaseService {
   /**
    * Update an existing backend
    */
-  async updateBackend(
-    config: AddBackendConfig & { oauth_host?: string; oauth_port?: number }
-  ): Promise<void> {
+  async updateBackend(config: AddBackendConfig): Promise<void> {
     try {
       this.isLoading.set(true);
       await this.invokeCommand<void>('update_backend', {
@@ -212,13 +219,12 @@ export class BackendService extends TauriBaseService {
     const activeName = await this.getActiveBackend();
     if (activeName === 'Local') return;
 
-    // Rust side handles the check and fallback logic on initialization.
-    // We just need to verify if the active backend is what we think it is.
-    // If Rust fell back to Local, getActiveBackend() will return Local now?
-    // Actually getActiveBackend calling 'get_active_backend' command should be truth.
-
-    // But we also want to populate cache info (version/OS)
-    this.testConnection(activeName);
+    // Await the test to ensure we have the result before returning
+    try {
+      await this.testConnection(activeName);
+    } catch (error) {
+      console.error(`Failed to check connectivity for '${activeName}':`, error);
+    }
   }
 
   /**
@@ -226,12 +232,9 @@ export class BackendService extends TauriBaseService {
    */
   async checkAllBackends(): Promise<void> {
     const backends = this.backends();
-    for (const backend of backends) {
-      if (backend.name !== 'Local') {
-        // Run test in background (don't await individually, let them run)
-        this.testConnection(backend.name);
-      }
-    }
+    const promises = backends.filter(b => b.name !== 'Local').map(b => this.testConnection(b.name));
+
+    await Promise.allSettled(promises);
   }
 
   /**

@@ -11,8 +11,11 @@ use std::{collections::HashMap, convert::Infallible};
 use tauri::Manager;
 use tokio::sync::broadcast;
 
+use crate::LogCache;
+use crate::RcloneState;
 use crate::core::lifecycle::shutdown::handle_shutdown;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
+use crate::utils::types::core::BandwidthLimitResponse;
 
 #[cfg(feature = "updater")]
 use crate::utils::app::updater::app_updates::{

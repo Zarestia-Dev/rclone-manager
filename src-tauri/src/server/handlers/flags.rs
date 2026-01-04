@@ -8,8 +8,8 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use tauri::Manager;
 
+use crate::RcloneState;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
-use RcloneState;
 
 pub async fn get_grouped_options_with_values_handler(
     State(state): State<WebServerState>,

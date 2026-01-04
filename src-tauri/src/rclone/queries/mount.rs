@@ -1,10 +1,9 @@
 use log::debug;
-use serde_json::Value;
 use tauri::State;
 
 use crate::rclone::backend::BACKEND_MANAGER;
 use crate::rclone::backend::types::Backend;
-use crate::utils::rclone::endpoints::{EndpointHelper, mount};
+use crate::utils::rclone::endpoints::mount;
 use crate::utils::types::core::RcloneState;
 use crate::utils::types::remotes::MountedRemote;
 
@@ -12,25 +11,10 @@ pub async fn get_mounted_remotes_internal(
     client: &reqwest::Client,
     backend: &Backend,
 ) -> Result<Vec<MountedRemote>, String> {
-    let url = EndpointHelper::build_url(&backend.api_url(), mount::LISTMOUNTS);
-
-    let response = backend
-        .inject_auth(client.post(&url))
-        .send()
+    let json = backend
+        .post_json(client, mount::LISTMOUNTS, None)
         .await
-        .map_err(|e| format!("❌ Failed to send request: {e}"))?;
-
-    if !response.status().is_success() {
-        return Err(format!(
-            "❌ Failed to fetch mounted remotes: {:?}",
-            response.text().await
-        ));
-    }
-
-    let json: Value = response
-        .json()
-        .await
-        .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
+        .map_err(|e| format!("❌ Failed to fetch mounted remotes: {e}"))?;
 
     let mounts = json["mountPoints"]
         .as_array()
@@ -60,25 +44,10 @@ pub async fn get_mounted_remotes(
 #[tauri::command]
 pub async fn get_mount_types(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), mount::TYPES);
-
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .send()
+    let json = backend
+        .post_json(&state.client, mount::TYPES, None)
         .await
-        .map_err(|e| format!("❌ Failed to send request: {e}"))?;
-
-    if !response.status().is_success() {
-        return Err(format!(
-            "❌ Failed to fetch mount types: {:?}",
-            response.text().await
-        ));
-    }
-
-    let json: Value = response
-        .json()
-        .await
-        .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
+        .map_err(|e| format!("❌ Failed to fetch mount types: {e}"))?;
 
     let mount_types = json["mountTypes"]
         .as_array()

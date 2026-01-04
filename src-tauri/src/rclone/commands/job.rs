@@ -10,7 +10,7 @@ use crate::{
     rclone::{backend::BACKEND_MANAGER, state::scheduled_tasks::ScheduledTasksCache},
     utils::{
         logging::log::log_operation,
-        rclone::endpoints::{EndpointHelper, core, job},
+        rclone::endpoints::{core, job},
         types::{
             core::RcloneState,
             jobs::{JobCache, JobInfo, JobStatus},
@@ -207,8 +207,7 @@ pub async fn poll_job(
     client: reqwest::Client,
     backend: Backend,
 ) -> Result<Value, String> {
-    let api_url = backend.api_url();
-    let job_status_url = EndpointHelper::build_url(&api_url, job::STATUS);
+    let job_status_url = backend.url_for(job::STATUS);
     let mut consecutive_errors = 0;
     const MAX_CONSECUTIVE_ERRORS: u8 = 3;
 
@@ -334,8 +333,8 @@ pub async fn monitor_job(
         .ok_or_else(|| RcloneError::ConfigError(format!("Backend '{}' not found", backend_name)))?;
 
     let job_cache = &BACKEND_MANAGER.job_cache;
-    let job_status_url = EndpointHelper::build_url(&backend.api_url(), job::STATUS);
-    let stats_url = EndpointHelper::build_url(&backend.api_url(), core::STATS);
+    let job_status_url = backend.url_for(job::STATUS);
+    let stats_url = backend.url_for(core::STATS);
 
     info!("Starting monitoring for job {jobid} ({operation})");
 
@@ -537,7 +536,7 @@ pub async fn stop_job(
     // Use active backend (in simplified architecture, there's only one job cache)
     let backend = BACKEND_MANAGER.get_active().await;
     let job_cache = &BACKEND_MANAGER.job_cache;
-    let url = EndpointHelper::build_url(&backend.api_url(), job::STOP);
+    let url = backend.url_for(job::STOP);
     let payload = json!({ "jobid": jobid });
 
     let response = backend

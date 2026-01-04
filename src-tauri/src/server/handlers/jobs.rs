@@ -7,7 +7,9 @@ use axum::{
 use serde::Deserialize;
 use tauri::Manager;
 
+use crate::RcloneState;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
+use crate::utils::types::remotes::ProfileParams;
 
 pub async fn get_jobs_handler(
     State(_): State<WebServerState>,

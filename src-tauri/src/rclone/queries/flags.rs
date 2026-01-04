@@ -5,10 +5,7 @@ use tokio::try_join;
 
 use crate::{
     rclone::backend::BACKEND_MANAGER,
-    utils::{
-        rclone::endpoints::{EndpointHelper, options},
-        types::core::RcloneState,
-    },
+    utils::{rclone::endpoints::options, types::core::RcloneState},
 };
 
 // --- PRIVATE HELPERS ---
@@ -18,59 +15,33 @@ async fn fetch_all_options_info(
     state: State<'_, RcloneState>,
 ) -> Result<Value, Box<dyn Error + Send + Sync>> {
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), options::INFO);
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .json(&json!({}))
-        .send()
-        .await?;
-    if response.status().is_success() {
-        Ok(response.json().await?)
-    } else {
-        Err(format!("Failed to fetch options info: {:?}", response.text().await?).into())
-    }
+    let json = backend
+        .post_json(&state.client, options::INFO, Some(&json!({})))
+        .await
+        .map_err(|e| format!("Failed to fetch options info: {e}"))?;
+    Ok(json)
 }
 
 async fn fetch_current_options(
     state: State<'_, RcloneState>,
 ) -> Result<Value, Box<dyn Error + Send + Sync>> {
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), options::GET);
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .json(&json!({}))
-        .send()
-        .await?;
-    if response.status().is_success() {
-        Ok(response.json().await?)
-    } else {
-        Err(format!(
-            "Failed to fetch current options: {:?}",
-            response.text().await?
-        )
-        .into())
-    }
+    let json = backend
+        .post_json(&state.client, options::GET, Some(&json!({})))
+        .await
+        .map_err(|e| format!("Failed to fetch current options: {e}"))?;
+    Ok(json)
 }
 
 async fn fetch_option_blocks(
     state: State<'_, RcloneState>,
 ) -> Result<Value, Box<dyn Error + Send + Sync>> {
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), options::BLOCKS);
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .json(&json!({}))
-        .send()
-        .await?;
-    if response.status().is_success() {
-        Ok(response.json().await?)
-    } else {
-        Err(format!(
-            "Failed to fetch option blocks: {:?}",
-            response.text().await?
-        )
-        .into())
-    }
+    let json = backend
+        .post_json(&state.client, options::BLOCKS, Some(&json!({})))
+        .await
+        .map_err(|e| format!("Failed to fetch option blocks: {e}"))?;
+    Ok(json)
 }
 
 // --- DATA TRANSFORMATION LOGIC ---
@@ -414,7 +385,6 @@ pub async fn set_rclone_option(
     value: Value,
 ) -> Result<Value, String> {
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = EndpointHelper::build_url(&backend.api_url(), options::SET);
     let parts: Vec<&str> = option_name.split('.').collect();
     let nested_value = parts
         .iter()
@@ -422,26 +392,15 @@ pub async fn set_rclone_option(
         .fold(value, |acc, &part| json!({ part: acc }));
     let payload = json!({ block_name.clone(): nested_value });
 
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .json(&payload)
-        .send()
+    let json = backend
+        .post_json(&state.client, options::SET, Some(&payload))
         .await
-        .map_err(|e| format!("Failed to send request: {}", e))?;
+        .map_err(|e| {
+            format!(
+                "Failed to set option '{}' in block '{}': {}",
+                option_name, block_name, e
+            )
+        })?;
 
-    if response.status().is_success() {
-        Ok(response
-            .json()
-            .await
-            .map_err(|e| format!("Failed to parse response: {}", e))?)
-    } else {
-        let error_text = response
-            .text()
-            .await
-            .unwrap_or_else(|_| "Unknown error".to_string());
-        Err(format!(
-            "Failed to set option '{}' in block '{}': {}",
-            option_name, block_name, error_text
-        ))
-    }
+    Ok(json)
 }

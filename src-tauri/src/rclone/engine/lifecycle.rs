@@ -13,7 +13,6 @@ use crate::{
     core::{
         initialization::apply_core_settings, settings::operations::core::load_startup_settings,
     },
-    rclone::backend::BACKEND_MANAGER,
     utils::types::{
         core::{RcApiEngine, RcloneState},
         events::{
@@ -45,11 +44,10 @@ impl RcApiEngine {
                 warn!("⚠️ Engine startup aborted due to configuration validation failure");
             }
         } else {
-            // Remote backend: just refresh cache initially
+            // Remote backend: skip local engine initialization
+            // Note: Cache keys are refreshed in core/initialization.rs with proper timeout handling
+            // We should NOT do it here as this function is running in a blocking context during startup
             info!("📡 Active backend is remote, skipping local engine initialization");
-            if let Err(e) = refresh_active_backend_cache(app).await {
-                error!("Failed to refresh remote backend cache: {e}");
-            }
         }
 
         // Always spawn monitoring task - handles backend switches gracefully
@@ -106,21 +104,6 @@ impl RcApiEngine {
         self.process = None;
         self.running = false;
     }
-}
-
-/// Refresh the cache for the active backend (works for both Local and Remote)
-async fn refresh_active_backend_cache(app: &AppHandle) -> Result<(), String> {
-    let client = app.state::<RcloneState>().client.clone();
-    let backend = BACKEND_MANAGER.get_active().await;
-    let cache = BACKEND_MANAGER.remote_cache.clone();
-
-    cache.refresh_all(&client, &backend).await?;
-
-    if let Err(e) = update_tray_menu(app.clone(), 0).await {
-        error!("Failed to update tray menu: {e}");
-    }
-
-    Ok(())
 }
 
 /// **Start the Rclone engine**
@@ -263,10 +246,21 @@ fn trigger_post_start_setup(app: AppHandle) {
 
 async fn refresh_caches_and_tray(app: &AppHandle) {
     let client = app.state::<RcloneState>().client.clone();
-    let backend = crate::rclone::backend::BACKEND_MANAGER.get_active().await;
-    let cache = crate::rclone::backend::BACKEND_MANAGER.remote_cache.clone();
 
-    match cache.refresh_all(&client, &backend).await {
+    // Fetch runtime info for Local backend (version, OS, config_path)
+    // This is deterministic since we're called AFTER engine is confirmed ready
+    use crate::rclone::backend::BACKEND_MANAGER;
+    if let Err(e) = BACKEND_MANAGER.check_connectivity("Local", &client).await {
+        warn!(
+            "⚠️ Could not fetch Local runtime info after engine ready: {}",
+            e
+        );
+    } else {
+        info!("✅ Local runtime info loaded after engine ready");
+    }
+
+    // Use centralized refresh logic from BackendManager
+    match (*BACKEND_MANAGER).refresh_active_backend(&client).await {
         Ok(_) => debug!("Caches refreshed successfully after engine ready"),
         Err(e) => error!("Failed to refresh caches: {e}"),
     }
@@ -276,6 +270,7 @@ async fn refresh_caches_and_tray(app: &AppHandle) {
     }
 }
 
+#[allow(clippy::items_after_test_module)]
 #[cfg(test)]
 mod tests {
     use crate::rclone::engine::core::PauseReason;
