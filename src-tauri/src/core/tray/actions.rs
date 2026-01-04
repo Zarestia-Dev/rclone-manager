@@ -18,7 +18,7 @@ use crate::{
     },
     utils::{
         app::{builder::create_app_window, notification::send_notification},
-        types::all_types::{JobStatus, ProfileParams, RcloneState},
+        types::{core::RcloneState, jobs::JobStatus, remotes::ProfileParams},
     },
 };
 

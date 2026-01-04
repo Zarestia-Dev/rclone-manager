@@ -83,23 +83,12 @@ pub fn build_rclone_command(
         .shell()
         .command(binary_path.to_string_lossy().to_string());
 
-    // Determine config file: explicit override takes precedence, otherwise use
-    // the application settings' rclone_config_file (if set).
-    if let Some(cfg) = config_override {
-        if !cfg.is_empty() {
-            cmd = cmd.arg("--config").arg(cfg);
-        }
-    } else {
-        // Read from settings manager which caches internally
-        let cfg: String = app
-            .try_state::<rcman::JsonSettingsManager>()
-            .and_then(|manager| manager.inner().get("core.rclone_config_file").ok())
-            .unwrap_or_default();
-        if !cfg.is_empty() {
-            cmd = cmd.arg("--config").arg(cfg);
-        }
+    // Determine config file: explicit override takes precedence,
+    if let Some(cfg) = config_override
+        && !cfg.is_empty()
+    {
+        cmd = cmd.arg("--config").arg(cfg);
     }
-
     // Append any remaining args
     if let Some(a) = args
         && !a.is_empty()

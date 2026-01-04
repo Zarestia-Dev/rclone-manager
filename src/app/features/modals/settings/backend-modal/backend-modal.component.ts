@@ -17,6 +17,7 @@ import { ConfirmModalComponent } from 'src/app/shared/modals/confirm-modal/confi
 import { firstValueFrom } from 'rxjs';
 import { BackendSecurityComponent } from './backend-security/backend-security.component';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { FileSystemService } from 'src/app/services/file-operations/file-system.service';
 
 @Component({
   selector: 'app-backend-modal',
@@ -46,6 +47,7 @@ export class BackendModalComponent implements OnInit {
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
   private readonly translate = inject(TranslateService);
+  private readonly fileSystemService = inject(FileSystemService);
 
   // State
   readonly backends = this.backendService.backends;
@@ -61,6 +63,12 @@ export class BackendModalComponent implements OnInit {
   readonly showPassword = signal(false);
   readonly showConfigPassword = signal(false);
 
+  /** Get the active config path from the Local backend's runtime info */
+  get activeConfigPath(): string | null {
+    const localBackend = this.backends().find(b => b.name === 'Local');
+    return localBackend?.runtime_config_path || null;
+  }
+
   // Backend form
   backendForm: FormGroup = this.fb.group({
     name: ['', [Validators.required, Validators.pattern(/^[^/\\:*?"<>|]+$/)]],
@@ -69,6 +77,7 @@ export class BackendModalComponent implements OnInit {
     username: [''],
     password: [''],
     config_password: [''],
+    config_path: [''],
     has_auth: [false],
     // OAuth fields (for Local backend)
     oauth_host: ['127.0.0.1'],
@@ -104,6 +113,7 @@ export class BackendModalComponent implements OnInit {
       username: backend.username || '',
       password: '', // Passwords not sent from backend for security
       config_password: '', // Config passwords not sent from backend
+      config_path: backend.config_path || '',
       oauth_host: '127.0.0.1', // Default, oauth_host not tracked in BackendInfo
       oauth_port: backend.oauth_port || 51901,
     });
@@ -155,7 +165,7 @@ export class BackendModalComponent implements OnInit {
       );
     } finally {
       this.switchingTo.set(null);
-      // Reload to get updated status (connected/error)
+      // Reload to get updated status (connected/error) and runtime_config_path
       await this.backendService.loadBackends();
     }
   }
@@ -212,6 +222,7 @@ export class BackendModalComponent implements OnInit {
       username: formValue.has_auth ? formValue.username : '',
       password: formValue.has_auth ? formValue.password : '',
       config_password: formValue.config_password || undefined,
+      config_path: formValue.config_path || undefined,
       // OAuth fields only for Local backend
       oauth_host: isEditingLocal ? formValue.oauth_host : undefined,
       oauth_port: isEditingLocal ? formValue.oauth_port : undefined,
@@ -275,6 +286,28 @@ export class BackendModalComponent implements OnInit {
     return this.backends().some(
       b => b.name !== state.editingName && b.host === host && b.port === port
     );
+  }
+
+  async selectConfigFile(): Promise<void> {
+    try {
+      // The backend expects just the path string.
+      // FileSystemService.selectFile() handles the dialog (or Nautilus in headless)
+      // and returns the path string directly.
+      const selected = await this.fileSystemService.selectFile();
+
+      if (selected) {
+        this.backendForm.patchValue({ config_path: selected });
+        this.backendForm.markAsDirty();
+      }
+    } catch (error) {
+      if (String(error).includes('cancelled')) return; // Ignore cancellations
+      console.error('Failed to select config file:', error);
+      this.snackBar.open(
+        this.translate.instant('modals.backend.notifications.fileSelectFailed'),
+        this.translate.instant('common.close'),
+        { duration: 3000, panelClass: 'snackbar-error' }
+      );
+    }
   }
 
   // ============= Encryption Actions =============

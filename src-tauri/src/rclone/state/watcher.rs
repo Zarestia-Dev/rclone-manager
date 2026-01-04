@@ -7,9 +7,14 @@ use std::time::Duration;
 use tauri::{AppHandle, Manager};
 use tokio::time;
 
-use crate::rclone::backend::{BACKEND_MANAGER, types::Backend};
 use crate::rclone::queries::{mount::get_mounted_remotes_internal, serve::list_serves_internal};
-use crate::utils::types::all_types::{RemoteCache, ServeInstance};
+use crate::{
+    rclone::backend::{BACKEND_MANAGER, types::Backend},
+    utils::types::{
+        core::RcloneState,
+        remotes::{RemoteCache, ServeInstance},
+    },
+};
 
 /// Global flag to control the mounted remote watcher
 static WATCHER_RUNNING: AtomicBool = AtomicBool::new(false);
@@ -64,10 +69,7 @@ pub async fn start_mounted_remote_watcher(app_handle: AppHandle) {
 
         let backend = BACKEND_MANAGER.get_active().await;
         let cache = BACKEND_MANAGER.remote_cache.clone();
-        let client = app_handle
-            .state::<crate::utils::types::all_types::RcloneState>()
-            .client
-            .clone();
+        let client = app_handle.state::<RcloneState>().client.clone();
 
         if let Err(e) = check_and_reconcile_mounts(app_handle.clone(), backend, cache, client).await
         {
@@ -89,10 +91,7 @@ pub async fn force_check_mounted_remotes(app_handle: AppHandle) -> Result<(), St
     // Force check only checks active backend
     let backend = BACKEND_MANAGER.get_active().await;
     let cache = BACKEND_MANAGER.remote_cache.clone();
-    let client = app_handle
-        .state::<crate::utils::types::all_types::RcloneState>()
-        .client
-        .clone();
+    let client = app_handle.state::<RcloneState>().client.clone();
 
     check_and_reconcile_mounts(app_handle.clone(), backend, cache, client).await?;
     Ok(())
@@ -144,10 +143,7 @@ pub async fn force_check_serves(app_handle: AppHandle) -> Result<(), String> {
     debug!("🔍 Force checking running serves");
     let backend = BACKEND_MANAGER.get_active().await;
     let cache = BACKEND_MANAGER.remote_cache.clone();
-    let client = app_handle
-        .state::<crate::utils::types::all_types::RcloneState>()
-        .client
-        .clone();
+    let client = app_handle.state::<RcloneState>().client.clone();
 
     check_and_reconcile_serves(app_handle.clone(), backend, cache, client).await?;
     Ok(())
@@ -174,10 +170,7 @@ pub fn start_serve_watcher(app_handle: AppHandle) {
 
             let backend = BACKEND_MANAGER.get_active().await;
             let cache = BACKEND_MANAGER.remote_cache.clone();
-            let client = app_handle
-                .state::<crate::utils::types::all_types::RcloneState>()
-                .client
-                .clone();
+            let client = app_handle.state::<RcloneState>().client.clone();
 
             if let Err(e) =
                 check_and_reconcile_serves(app_handle.clone(), backend, cache, client).await

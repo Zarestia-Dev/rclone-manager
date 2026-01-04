@@ -5,10 +5,8 @@ use tauri::{AppHandle, Manager, State};
 
 use crate::rclone::backend::BACKEND_MANAGER;
 use crate::utils::rclone::endpoints::config;
-use crate::utils::{
-    rclone::endpoints::{EndpointHelper, core},
-    types::all_types::{BandwidthLimitResponse, RcloneCoreVersion, RcloneState},
-};
+use crate::utils::rclone::endpoints::{EndpointHelper, core};
+use crate::utils::types::core::{BandwidthLimitResponse, RcloneCoreVersion, RcloneState};
 
 #[tauri::command]
 pub async fn get_bandwidth_limit(

@@ -4,7 +4,7 @@ use tauri::{State, command};
 
 use crate::rclone::backend::BACKEND_MANAGER;
 use crate::utils::rclone::endpoints::{EndpointHelper, vfs};
-use crate::utils::types::all_types::RcloneState;
+use crate::utils::types::core::RcloneState;
 
 /// List active VFSes.
 #[command]

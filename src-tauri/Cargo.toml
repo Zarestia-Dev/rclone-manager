@@ -50,7 +50,7 @@ sevenz-rust2 = "0.20.0"
 # rcman - Rust Config Manager library
 # Path is used for local development, version is used when path is not available (crates.io)
 # Note: keychain feature is added via target-specific dependencies below (not supported on Android/iOS)
-rcman = { version = "0.1.0", path = "../../rcman", features = ["backup", "derive"] }
+rcman = { version = "0.1.1", path = "../../rcman", features = ["backup", "derive"] }
 
 urlencoding = "2.1"
 

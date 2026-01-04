@@ -8,16 +8,15 @@ use tokio::sync::RwLock;
 
 use crate::{
     rclone::{
-        backend::BACKEND_MANAGER,
-        backend::types::Backend,
+        backend::{BACKEND_MANAGER, types::Backend},
         queries::{
             get_all_remote_configs_internal, get_mounted_remotes_internal, get_remotes_internal,
             list_serves_internal, parse_serves_response,
         },
     },
     utils::types::{
-        MountedRemote, RemoteCache, ServeInstance,
         events::{MOUNT_STATE_CHANGED, SERVE_STATE_CHANGED},
+        remotes::{MountedRemote, RemoteCache, ServeInstance},
     },
 };
 

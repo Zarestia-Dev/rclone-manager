@@ -4,13 +4,13 @@ use tauri::AppHandle;
 use tauri_plugin_shell::process::CommandChild;
 
 use crate::rclone::backend::BACKEND_MANAGER;
+use crate::utils::types::core::RcApiEngine;
 use crate::utils::{
     process::process_manager::kill_processes_on_port,
     rclone::{
         endpoints::{EndpointHelper, core},
         process_common::create_rclone_command,
     },
-    types::all_types::RcApiEngine,
 };
 
 use super::error::{EngineError, EngineResult};

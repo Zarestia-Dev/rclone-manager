@@ -7,7 +7,7 @@ use crate::{
     rclone::backend::BACKEND_MANAGER,
     utils::{
         rclone::endpoints::{EndpointHelper, options},
-        types::all_types::RcloneState,
+        types::core::RcloneState,
     },
 };
 

@@ -11,7 +11,7 @@ use tokio::fs::File;
 use tokio_util::io::ReaderStream;
 
 use crate::server::state::{ApiResponse, AppError, WebServerState};
-use crate::utils::types::all_types::RcloneState;
+use RcloneState;
 
 #[derive(Deserialize)]
 pub struct FsInfoQuery {
@@ -40,7 +40,7 @@ pub struct DiskUsageQuery {
 pub async fn get_disk_usage_handler(
     State(state): State<WebServerState>,
     Query(query): Query<DiskUsageQuery>,
-) -> Result<Json<ApiResponse<crate::utils::types::all_types::DiskUsage>>, AppError> {
+) -> Result<Json<ApiResponse<DiskUsage>>, AppError> {
     use crate::rclone::queries::get_disk_usage;
     let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
     let usage = get_disk_usage(query.remote, query.path, rclone_state)
@@ -210,7 +210,6 @@ pub async fn get_remote_paths_handler(
     Json(body): Json<RemotePathsBody>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::queries::get_remote_paths;
-    use crate::utils::types::all_types::ListOptions;
     let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
     let options = body.options.map(|v| {
         serde_json::from_value::<ListOptions>(v).unwrap_or(ListOptions {

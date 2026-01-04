@@ -14,6 +14,9 @@ export interface BackendInfo {
   version?: string;
   os?: string;
   status?: string;
+  config_path?: string;
+  /** Actual config path being used by rclone (fetched at runtime) */
+  runtime_config_path?: string;
 }
 
 export interface TestConnectionResult {
@@ -21,6 +24,7 @@ export interface TestConnectionResult {
   message: string;
   version?: string;
   os?: string;
+  config_path?: string;
 }
 
 export interface AddBackendConfig {
@@ -31,4 +35,5 @@ export interface AddBackendConfig {
   username?: string;
   password?: string;
   config_password?: string;
+  config_path?: string;
 }

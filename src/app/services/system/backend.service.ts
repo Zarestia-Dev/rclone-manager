@@ -60,6 +60,18 @@ export class BackendService extends TauriBaseService {
   }
 
   /**
+   * Get the active config file path
+   */
+  async getActiveConfigPath(): Promise<string> {
+    try {
+      return await this.invokeCommand<string>('get_rclone_config_file');
+    } catch (error) {
+      console.error('Failed to get active config path:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Switch to a different backend
    * For remote backends, this also tests connection and refreshes cache
    */
@@ -98,6 +110,7 @@ export class BackendService extends TauriBaseService {
         username: config.username,
         password: config.password,
         configPassword: config.config_password,
+        configPath: config.config_path,
       });
 
       // Reload to ensure we have the exact state from backend (validation, etc)
@@ -125,6 +138,7 @@ export class BackendService extends TauriBaseService {
         username: config.username,
         password: config.password,
         configPassword: config.config_password,
+        configPath: config.config_path,
         oauthPort: config.oauth_port,
       });
 
@@ -174,6 +188,7 @@ export class BackendService extends TauriBaseService {
               status: result.success ? 'connected' : 'error',
               version: result.version,
               os: result.os,
+              runtime_config_path: result.config_path,
             };
           }
           return b;

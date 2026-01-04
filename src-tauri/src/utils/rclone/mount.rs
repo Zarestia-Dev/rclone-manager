@@ -36,7 +36,7 @@ use crate::utils::{
 use tauri::State;
 
 #[cfg(all(target_os = "linux", not(feature = "web-server")))]
-use crate::utils::types::all_types::RcloneState;
+use crate::utils::types::core::RcloneState;
 
 // =============================================================================
 // MOUNT PLUGIN DETECTION

@@ -1,7 +1,7 @@
 use tauri::State;
 use tokio::sync::RwLock;
 
-use crate::utils::types::all_types::{LogCache, LogEntry};
+use crate::utils::types::logs::{LogCache, LogEntry};
 
 impl LogCache {
     pub fn new(max_entries: usize) -> Self {

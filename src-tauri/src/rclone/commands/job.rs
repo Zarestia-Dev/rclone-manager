@@ -7,12 +7,15 @@ use tokio::time::sleep;
 
 use crate::{
     core::scheduler::engine::get_next_run,
-    rclone::backend::BACKEND_MANAGER,
-    rclone::state::scheduled_tasks::ScheduledTasksCache,
+    rclone::{backend::BACKEND_MANAGER, state::scheduled_tasks::ScheduledTasksCache},
     utils::{
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, core, job},
-        types::all_types::{JobCache, JobInfo, JobStatus, LogLevel, RcloneState},
+        types::{
+            core::RcloneState,
+            jobs::{JobCache, JobInfo, JobStatus},
+            logs::LogLevel,
+        },
     },
 };
 

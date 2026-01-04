@@ -18,7 +18,7 @@ use crate::{
     utils::{
         logging::log::update_log_level,
         types::{
-            all_types::RcloneState,
+            core::RcloneState,
             events::{
                 JOB_CACHE_CHANGED, RCLONE_PASSWORD_STORED, REMOTE_CACHE_CHANGED,
                 SERVE_STATE_CHANGED, SYSTEM_SETTINGS_CHANGED, UPDATE_TRAY_MENU,
@@ -78,10 +78,7 @@ fn handle_remote_presence_changed(app: &AppHandle) {
     app.listen(REMOTE_CACHE_CHANGED, move |_| {
         let app_clone = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            let client = app_clone
-                .state::<crate::utils::types::all_types::RcloneState>()
-                .client
-                .clone();
+            let client = app_clone.state::<RcloneState>().client.clone();
 
             let backend = crate::rclone::backend::BACKEND_MANAGER.get_active().await;
             // guard deleted
@@ -297,22 +294,6 @@ fn handle_settings_changed(app: &AppHandle) {
                                 error!("Failed to set bandwidth limit: {e:?}");
                             }
                         });
-                    }
-
-                    if let Some(config_path) =
-                        core.get("rclone_config_file").and_then(|v| v.as_str())
-                    {
-                        debug!("🔄 Rclone config path changed to: {config_path}");
-
-                        if let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
-                            &app_handle,
-                            "rclone_config_file",
-                            "previous",
-                            config_path,
-                        ) {
-                            error!("Failed to restart engine for rclone config file change: {e}");
-                        }
-                        info!("Rclone config file updated to: {config_path}");
                     }
 
                     if let Some(rclone_path) = core.get("rclone_path").and_then(|v| v.as_str()) {

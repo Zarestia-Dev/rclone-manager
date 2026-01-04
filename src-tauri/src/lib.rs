@@ -30,17 +30,20 @@ mod server;
 // =============================================================================
 // SHARED IMPORTS (Both modes)
 // =============================================================================
-use crate::core::{
-    initialization::{init_rclone_state, initialization},
-    lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
-    paths::AppPaths,
-    scheduler::engine::CronScheduler,
-    settings::operations::core::load_startup_settings,
-};
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
-use crate::utils::{
-    logging::log::init_logging,
-    types::{LogCache, RcloneState},
+use crate::utils::logging::log::init_logging;
+use crate::{
+    core::{
+        initialization::{init_rclone_state, initialization},
+        lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
+        paths::AppPaths,
+        scheduler::engine::CronScheduler,
+        settings::operations::core::load_startup_settings,
+    },
+    utils::types::{
+        core::{RcApiEngine, RcloneState},
+        logs::LogCache,
+    },
 };
 
 // =============================================================================
@@ -332,13 +335,12 @@ fn setup_app(
     // -------------------------------------------------------------------------
     // Manage App State
     // -------------------------------------------------------------------------
-    use crate::utils::types::all_types::RcApiEngine;
     app.manage(tokio::sync::Mutex::new(RcApiEngine::default()));
     app.manage(rcman_manager);
     app.manage(env_manager);
 
     // Note: Settings like tray_enabled, notifications_enabled, restrict_mode,
-    // rclone_path, rclone_config_file are now read from JsonSettingsManager
+    // rclone_path are now read from JsonSettingsManager
     app.manage(RcloneState {
         client: reqwest::Client::new(),
         is_shutting_down: AtomicBool::new(false),

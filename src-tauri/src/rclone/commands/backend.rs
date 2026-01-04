@@ -12,8 +12,8 @@ use crate::{
         types::{Backend, BackendInfo},
     },
     utils::{
-        rclone::endpoints::{EndpointHelper, core},
-        types::all_types::RcloneState,
+        rclone::endpoints::{EndpointHelper, config, core},
+        types::core::RcloneState,
     },
 };
 
@@ -80,6 +80,38 @@ pub async fn switch_backend(
     // Switch (only if connection test passed for remote backends)
     BACKEND_MANAGER.switch_to(&name).await?;
 
+    // Set config path if configured (Remote only)
+    if !backend.is_local
+        && let Some(config_path) = &backend.config_path
+    {
+        info!(
+            "📝 Setting config path for remote backend '{}' to: {}",
+            name, config_path
+        );
+        let url = EndpointHelper::build_url(&backend.api_url(), config::SETPATH);
+        // Parameters: path
+        let params = serde_json::json!({
+            "path": config_path
+        });
+
+        match backend
+            .inject_auth(state.client.post(&url))
+            .json(&params)
+            .send()
+            .await
+        {
+            Ok(res) if res.status().is_success() => {
+                info!("✅ Config path set successfully");
+            }
+            Ok(res) => {
+                warn!("⚠️ Failed to set config path: HTTP {}", res.status());
+            }
+            Err(e) => {
+                warn!("⚠️ Failed to set config path: {}", e);
+            }
+        }
+    }
+
     // Auto-unlock if config_password is set (Remote only)
     if !backend.is_local
         && backend.config_password.is_some()
@@ -132,6 +164,7 @@ pub async fn add_backend(
     username: Option<String>,
     password: Option<String>,
     config_password: Option<String>,
+    config_path: Option<String>,
     oauth_port: Option<u16>,
 ) -> Result<(), String> {
     info!("➕ Adding backend: {} ({}:{})", name, host, port);
@@ -157,6 +190,7 @@ pub async fn add_backend(
     backend.host = host;
     backend.port = port;
     backend.oauth_port = oauth_port;
+    backend.config_path = config_path;
 
     // Set auth if both provided and non-empty
     if let (Some(u), Some(p)) = (&username, &password)
@@ -196,6 +230,7 @@ pub async fn update_backend(
     username: Option<String>,
     password: Option<String>,
     config_password: Option<String>,
+    config_path: Option<String>,
     oauth_port: Option<u16>,
 ) -> Result<(), String> {
     info!("🔄 Updating backend: {}", name);
@@ -215,6 +250,7 @@ pub async fn update_backend(
         password: None,
         oauth_port,
         config_password: None,
+        config_path, // Updated from argument
         version: existing.version.clone(),
         os: existing.os.clone(),
     };
@@ -311,11 +347,15 @@ pub async fn test_backend_connection(
                 let _ = save_backend_to_settings(settings_manager.inner(), &backend);
             }
 
+            // Get config_path from runtime cache (was set during check_connectivity)
+            let config_path = BACKEND_MANAGER.get_runtime_config_path(&name).await;
+
             Ok(TestConnectionResult {
                 success: true,
                 message: "Connection successful".to_string(),
                 version: Some(version),
                 os: Some(os),
+                config_path,
             })
         }
         Err(e) => Ok(TestConnectionResult {
@@ -323,6 +363,7 @@ pub async fn test_backend_connection(
             message: format!("Connection failed: {}", e),
             version: None,
             os: None,
+            config_path: None,
         }),
     }
 }
@@ -333,6 +374,7 @@ pub struct TestConnectionResult {
     pub message: String,
     pub version: Option<String>,
     pub os: Option<String>,
+    pub config_path: Option<String>,
 }
 
 // =============================================================================
@@ -424,6 +466,7 @@ mod tests {
             message: "OK".to_string(),
             version: Some("1.65.0".to_string()),
             os: Some("linux".to_string()),
+            config_path: None,
         };
         assert!(result.success);
     }

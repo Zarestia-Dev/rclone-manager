@@ -3,10 +3,13 @@ use serde::Serialize;
 use serde_json::json;
 use tauri::State;
 
-use crate::utils::types::all_types::RcloneState;
 use crate::utils::{
     rclone::endpoints::{EndpointHelper, operations},
-    types::all_types::{DiskUsage, JobResponse, ListOptions},
+    types::{
+        core::{DiskUsage, RcloneState},
+        jobs::JobResponse,
+        remotes::ListOptions,
+    },
 };
 
 use crate::rclone::backend::BACKEND_MANAGER;

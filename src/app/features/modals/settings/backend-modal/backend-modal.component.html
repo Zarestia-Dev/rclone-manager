@@ -58,6 +58,17 @@
                   <span class="separator">•</span>
                   <span class="os">{{ backend.os }}</span>
                 }
+                @if (backend.runtime_config_path) {
+                  <span class="separator">•</span>
+                  <mat-icon
+                    svgIcon="file-lines"
+                    [matTooltip]="
+                      ('modals.backend.activeConfigPath' | translate) +
+                      ': ' +
+                      backend.runtime_config_path
+                    "
+                  ></mat-icon>
+                }
               </div>
             </div>
 
@@ -107,17 +118,6 @@
 
     <!-- Add/Edit Form -->
     @if (formState().mode !== 'closed') {
-      <div class="form-header">
-        <h3>
-          {{
-            (formState().mode === 'edit'
-              ? 'modals.backend.editBackend'
-              : 'modals.backend.addBackend'
-            ) | translate
-          }}
-        </h3>
-      </div>
-
       <form [formGroup]="backendForm" (ngSubmit)="saveBackend()">
         <!-- Tabbed Interface for Local Backend -->
         @if (formState().editingName === 'Local') {
@@ -181,6 +181,35 @@
                       <input matInput type="number" formControlName="oauth_port" />
                     </mat-form-field>
                   </div>
+                </div>
+
+                <div class="config-path-group">
+                  <mat-form-field appearance="fill" class="full-width">
+                    <mat-label>{{ 'modals.backend.configPath' | translate }}</mat-label>
+                    <mat-icon matPrefix svgIcon="file-lines"></mat-icon>
+                    <input
+                      matInput
+                      formControlName="config_path"
+                      [placeholder]="'modals.backend.configPathPlaceholder' | translate"
+                    />
+                    <button
+                      mat-icon-button
+                      matSuffix
+                      (click)="selectConfigFile()"
+                      type="button"
+                      [matTooltip]="'modals.backend.selectConfigFile' | translate"
+                    >
+                      <mat-icon svgIcon="file"></mat-icon>
+                    </button>
+                    <mat-hint>
+                      {{ 'modals.backend.configPathHintLocal' | translate }}
+                      @if (activeConfigPath) {
+                        <br />
+                        <strong>{{ 'modals.backend.activeConfigPath' | translate }}:</strong>
+                        {{ activeConfigPath }}
+                      }
+                    </mat-hint>
+                  </mat-form-field>
                 </div>
               </div>
             </mat-tab>
@@ -260,6 +289,16 @@
             >
               <mat-icon [svgIcon]="showConfigPassword() ? 'eye-slash' : 'eye'"></mat-icon>
             </button>
+          </mat-form-field>
+
+          <mat-form-field appearance="fill">
+            <mat-label>{{ 'modals.backend.configPath' | translate }}</mat-label>
+            <mat-icon matPrefix svgIcon="file-lines"></mat-icon>
+            <input
+              matInput
+              formControlName="config_path"
+              [placeholder]="'modals.backend.configPathPlaceholder' | translate"
+            />
           </mat-form-field>
         }
       </form>

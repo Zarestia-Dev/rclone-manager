@@ -5,7 +5,8 @@ use tauri::State;
 use crate::rclone::backend::BACKEND_MANAGER;
 use crate::rclone::backend::types::Backend;
 use crate::utils::rclone::endpoints::{EndpointHelper, mount};
-use crate::utils::types::all_types::{MountedRemote, RcloneState};
+use crate::utils::types::core::RcloneState;
+use crate::utils::types::remotes::MountedRemote;
 
 pub async fn get_mounted_remotes_internal(
     client: &reqwest::Client,

@@ -4,7 +4,7 @@ use log::{debug, error};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
-use crate::{core::lifecycle::shutdown::handle_shutdown, utils::types::all_types::RcloneState};
+use crate::{core::lifecycle::shutdown::handle_shutdown, utils::types::core::RcloneState};
 
 /// Handle global shortcut events
 pub fn handle_global_shortcut_event(app: &AppHandle, shortcut: Shortcut) {

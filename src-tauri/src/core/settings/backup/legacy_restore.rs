@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     rclone::{commands::remote::create_remote, queries::get_rclone_config_file},
     utils::types::{
-        all_types::RcloneState,
+        core::RcloneState,
         events::{REMOTE_CACHE_CHANGED, SYSTEM_SETTINGS_CHANGED},
     },
 };

@@ -1,6 +1,6 @@
+use crate::utils::types::core::RcApiEngine;
+use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
-
-use crate::utils::types::all_types::RcApiEngine;
 
 /// Default port for the rclone API
 pub const DEFAULT_API_PORT: u16 = 51900;
@@ -35,8 +35,6 @@ impl std::fmt::Display for PauseReason {
         }
     }
 }
-
-use std::fmt;
 
 impl Default for RcApiEngine {
     fn default() -> Self {

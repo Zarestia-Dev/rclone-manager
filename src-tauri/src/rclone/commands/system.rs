@@ -13,7 +13,7 @@ use crate::{
             process_common::create_rclone_command,
         },
         types::{
-            all_types::{BandwidthLimitResponse, RcloneState, SENSITIVE_KEYS},
+            core::{BandwidthLimitResponse, RcloneState},
             events::{BANDWIDTH_LIMIT_CHANGED, RCLONE_CONFIG_UNLOCKED},
         },
     },
@@ -89,7 +89,7 @@ pub fn redact_sensitive_values(
         .iter()
         .map(|(k, v)| {
             let value = if restrict_enabled
-                && SENSITIVE_KEYS
+                && crate::utils::types::core::SENSITIVE_KEYS
                     .iter()
                     .any(|sk| k.to_lowercase().contains(sk))
             {

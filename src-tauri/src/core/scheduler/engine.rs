@@ -2,8 +2,10 @@ use crate::rclone::commands::sync::{
     start_bisync_profile, start_copy_profile, start_move_profile, start_sync_profile,
 };
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
-use crate::utils::types::all_types::{JobCache, ProfileParams, RcloneState};
 
+use crate::utils::types::core::RcloneState;
+use crate::utils::types::jobs::JobCache;
+use crate::utils::types::remotes::ProfileParams;
 use crate::utils::types::scheduled_task::{ScheduledTask, TaskStatus, TaskType};
 use chrono::{Local, Utc};
 use log::{debug, error, info, warn};

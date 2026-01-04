@@ -2,10 +2,8 @@ use log::debug;
 use std::time::Duration;
 
 use crate::rclone::backend::BACKEND_MANAGER;
-use crate::utils::{
-    rclone::endpoints::{EndpointHelper, core},
-    types::all_types::RcApiEngine,
-};
+use crate::utils::rclone::endpoints::{EndpointHelper, core};
+use crate::utils::types::core::RcApiEngine;
 
 /// Duration constants for health checks
 const API_HEALTH_TIMEOUT: Duration = Duration::from_secs(2);

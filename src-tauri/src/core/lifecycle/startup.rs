@@ -13,7 +13,7 @@ use crate::{
         serve::start_serve_profile,
         sync::{start_bisync_profile, start_copy_profile, start_move_profile, start_sync_profile},
     },
-    utils::types::all_types::{ProfileParams, RcloneState},
+    utils::types::{core::RcloneState, remotes::ProfileParams},
 };
 
 /// Auto-start all profiles that have autoStart: true

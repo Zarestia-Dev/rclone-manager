@@ -15,7 +15,7 @@ use crate::{
             watcher::{start_mounted_remote_watcher, start_serve_watcher},
         },
     },
-    utils::types::all_types::RcloneState,
+    utils::types::core::RcloneState,
 };
 
 // ============================================================================
@@ -65,10 +65,7 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
 
     let refresh_future = async {
         let backend = BACKEND_MANAGER.get_active().await;
-        let client = app_handle
-            .state::<crate::utils::types::all_types::RcloneState>()
-            .client
-            .clone();
+        let client = app_handle.state::<RcloneState>().client.clone();
 
         BACKEND_MANAGER
             .remote_cache
@@ -205,10 +202,7 @@ async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
     let active_name = BACKEND_MANAGER.get_active_name().await;
 
     // Always check Local backend (sets status to connected)
-    let client = app_handle
-        .state::<crate::utils::types::all_types::RcloneState>()
-        .client
-        .clone();
+    let client = app_handle.state::<RcloneState>().client.clone();
 
     if active_name == "Local" {
         // Check Local backend too (to get version/OS)
@@ -267,10 +261,7 @@ async fn check_other_backends(app_handle: &tauri::AppHandle) {
     let backends = BACKEND_MANAGER.list_all().await;
     let active_name = BACKEND_MANAGER.get_active_name().await;
 
-    let client = app_handle
-        .state::<crate::utils::types::all_types::RcloneState>()
-        .client
-        .clone();
+    let client = app_handle.state::<RcloneState>().client.clone();
 
     for backend in backends {
         if backend.name == active_name || backend.name == "Local" {

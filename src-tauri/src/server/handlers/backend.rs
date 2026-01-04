@@ -6,7 +6,7 @@ use tauri::Manager;
 
 use crate::rclone::backend::types::BackendInfo;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
-use crate::utils::types::all_types::RcloneState;
+use RcloneState;
 
 pub async fn list_backends_handler() -> Result<Json<ApiResponse<Vec<BackendInfo>>>, AppError> {
     use crate::rclone::commands::backend::list_backends;

@@ -399,6 +399,13 @@ pub mod config {
     /// See the [config paths](/commands/rclone_config_paths/) command for more information on the above.
     pub const PATHS: &str = "config/paths";
 
+    /// Set the path of the config file.
+    ///
+    /// Parameters:
+    ///
+    /// - path - path to the config file to use
+    pub const SETPATH: &str = "config/setpath";
+
     /// Shows how providers are configured in the config file.
     ///
     /// Returns a JSON object:

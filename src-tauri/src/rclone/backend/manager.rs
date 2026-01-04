@@ -10,8 +10,13 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use super::types::{Backend, BackendInfo};
-use crate::utils::rclone::endpoints::{EndpointHelper, core};
-use crate::utils::types::all_types::{JobCache, RemoteCache};
+use crate::utils::{
+    rclone::endpoints::{EndpointHelper, core},
+    types::{
+        jobs::{JobCache, JobInfo},
+        remotes::{MountedRemote, RemoteCache, ServeInstance},
+    },
+};
 
 /// Runtime connectivity info (not persisted)
 #[derive(Debug, Clone, Default)]
@@ -19,14 +24,15 @@ pub struct RuntimeInfo {
     pub version: Option<String>,
     pub os: Option<String>,
     pub status: Option<String>,
+    pub runtime_config_path: Option<String>,
 }
 
 /// Per-backend cached state (jobs, mounts, serves)
 #[derive(Debug, Clone, Default)]
 pub struct BackendState {
-    pub jobs: Vec<crate::utils::types::all_types::JobInfo>,
-    pub mounts: Vec<crate::utils::types::MountedRemote>,
-    pub serves: Vec<crate::utils::types::ServeInstance>,
+    pub jobs: Vec<JobInfo>,
+    pub mounts: Vec<MountedRemote>,
+    pub serves: Vec<ServeInstance>,
     pub mount_profiles: HashMap<String, String>,
     pub serve_profiles: HashMap<String, String>,
 }
@@ -97,12 +103,21 @@ impl BackendManager {
                         runtime.version.clone(),
                         runtime.os.clone(),
                         runtime.status.clone(),
+                        runtime.runtime_config_path.clone(),
                     )
                 } else {
                     info
                 }
             })
             .collect()
+    }
+
+    /// Helper to get the config path of the Local backend
+    pub async fn get_local_config_path(&self) -> Result<Option<String>, String> {
+        let backend = self.get("Local").await.ok_or_else(
+            || crate::localized_error!("backendErrors.backend.notFound", "name" => "Local"),
+        )?;
+        Ok(backend.config_path.clone())
     }
 
     /// Add a new backend
@@ -303,6 +318,9 @@ impl BackendManager {
             .map(String::from)
             .unwrap_or_default();
 
+        // Fetch config path from config/paths endpoint
+        let config_path = self.fetch_config_path(&backend, client).await;
+
         // Update runtime cache (not persisted)
         {
             let mut cache = self.runtime_info.write().await;
@@ -312,6 +330,7 @@ impl BackendManager {
                     version: Some(version.clone()),
                     os: Some(os.clone()),
                     status: Some("connected".to_string()),
+                    runtime_config_path: config_path,
                 },
             );
         }
@@ -319,10 +338,64 @@ impl BackendManager {
         Ok((version, os))
     }
 
+    /// Fetch config path from a backend's config/paths endpoint
+    async fn fetch_config_path(
+        &self,
+        backend: &Backend,
+        client: &reqwest::Client,
+    ) -> Option<String> {
+        use crate::utils::rclone::endpoints::config;
+
+        let url = EndpointHelper::build_url(&backend.api_url(), config::PATHS);
+
+        let response = backend
+            .inject_auth(client.post(&url))
+            .json(&serde_json::json!({}))
+            .timeout(std::time::Duration::from_secs(5))
+            .send()
+            .await
+            .ok()?;
+
+        if !response.status().is_success() {
+            return None;
+        }
+
+        let body = response.text().await.ok()?;
+        let paths: serde_json::Value = serde_json::from_str(&body).ok()?;
+
+        paths
+            .get("config")
+            .and_then(|v| v.as_str())
+            .map(String::from)
+    }
+
     /// Update runtime status for a backend (used for error states)
+    /// When setting an error status, clears version/os/config_path so stale data isn't shown
     pub async fn set_runtime_status(&self, name: &str, status: &str) {
         let mut cache = self.runtime_info.write().await;
-        cache.entry(name.to_string()).or_default().status = Some(status.to_string());
+
+        // If this is an error status, clear runtime info so stale data isn't shown
+        if status.starts_with("error") {
+            cache.insert(
+                name.to_string(),
+                RuntimeInfo {
+                    version: None,
+                    os: None,
+                    status: Some(status.to_string()),
+                    runtime_config_path: None,
+                },
+            );
+        } else {
+            cache.entry(name.to_string()).or_default().status = Some(status.to_string());
+        }
+    }
+
+    /// Get the runtime config path for a specific backend
+    pub async fn get_runtime_config_path(&self, name: &str) -> Option<String> {
+        let cache = self.runtime_info.read().await;
+        cache
+            .get(name)
+            .and_then(|info| info.runtime_config_path.clone())
     }
 
     /// Load backends from settings
@@ -431,6 +504,8 @@ fn load_backend_secrets(_manager: &JsonSettingsManager, _backend: &mut Backend) 
 
 #[cfg(test)]
 mod tests {
+    use crate::utils::types::jobs::{JobInfo, JobStatus};
+
     use super::*;
 
     #[tokio::test]
@@ -551,7 +626,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_persistence_on_switch() {
-        use crate::utils::types::all_types::{JobInfo, JobStatus};
         use chrono::Utc;
 
         let manager = BackendManager::new();

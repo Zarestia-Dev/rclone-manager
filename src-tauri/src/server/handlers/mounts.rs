@@ -6,7 +6,6 @@ use tauri::Manager;
 
 use crate::server::handlers::jobs::ProfileParamsBody;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
-use crate::utils::types::all_types::{ProfileParams, RcloneState};
 
 pub async fn get_mounted_remotes_handler(
     State(state): State<WebServerState>,

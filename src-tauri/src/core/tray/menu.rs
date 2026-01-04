@@ -11,7 +11,10 @@ use crate::{
         get_cached_mounted_remotes, get_cached_remotes, get_cached_serves, get_settings,
     },
     t,
-    utils::types::all_types::ServeInstance,
+    utils::types::{
+        jobs::JobInfo,
+        remotes::{MountedRemote, ServeInstance},
+    },
 };
 
 use super::tray_action::TrayAction;
@@ -23,7 +26,7 @@ fn create_mount_submenu<R: Runtime>(
     handle: &AppHandle<R>,
     remote: &str,
     settings: &serde_json::Value,
-    mounted_remotes: &[crate::utils::types::all_types::MountedRemote],
+    mounted_remotes: &[MountedRemote],
     active_count: usize,
 ) -> tauri::Result<Submenu<R>> {
     let mount_configs = settings
@@ -83,7 +86,7 @@ fn create_sync_submenu<R: Runtime>(
     handle: &AppHandle<R>,
     remote: &str,
     settings: &serde_json::Value,
-    active_jobs: &[crate::utils::types::all_types::JobInfo],
+    active_jobs: &[JobInfo],
 ) -> tauri::Result<Submenu<R>> {
     let sync_configs = settings
         .get("syncConfigs")
@@ -144,7 +147,7 @@ fn create_copy_submenu<R: Runtime>(
     handle: &AppHandle<R>,
     remote: &str,
     settings: &serde_json::Value,
-    active_jobs: &[crate::utils::types::all_types::JobInfo],
+    active_jobs: &[JobInfo],
 ) -> tauri::Result<Submenu<R>> {
     let copy_configs = settings
         .get("copyConfigs")
@@ -205,7 +208,7 @@ fn create_move_submenu<R: Runtime>(
     handle: &AppHandle<R>,
     remote: &str,
     settings: &serde_json::Value,
-    active_jobs: &[crate::utils::types::all_types::JobInfo],
+    active_jobs: &[JobInfo],
 ) -> tauri::Result<Submenu<R>> {
     let move_configs = settings
         .get("moveConfigs")
@@ -266,7 +269,7 @@ fn create_bisync_submenu<R: Runtime>(
     handle: &AppHandle<R>,
     remote: &str,
     settings: &serde_json::Value,
-    active_jobs: &[crate::utils::types::all_types::JobInfo],
+    active_jobs: &[JobInfo],
 ) -> tauri::Result<Submenu<R>> {
     let bisync_configs = settings
         .get("bisyncConfigs")

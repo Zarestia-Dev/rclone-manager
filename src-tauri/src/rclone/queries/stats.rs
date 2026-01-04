@@ -4,7 +4,7 @@ use tauri::State;
 
 use crate::rclone::backend::BACKEND_MANAGER;
 use crate::utils::rclone::endpoints::{EndpointHelper, core};
-use crate::utils::types::all_types::RcloneState;
+use crate::utils::types::core::RcloneState;
 
 /// Get RClone core statistics  
 #[tauri::command]

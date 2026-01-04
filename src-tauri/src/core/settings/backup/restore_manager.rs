@@ -5,7 +5,7 @@
 use crate::{
     rclone::commands::remote::create_remote,
     utils::types::{
-        all_types::RcloneState,
+        core::RcloneState,
         events::{REMOTE_CACHE_CHANGED, SYSTEM_SETTINGS_CHANGED},
     },
 };

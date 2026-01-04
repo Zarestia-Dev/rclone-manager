@@ -4,7 +4,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::{
     core::{check_binaries::build_rclone_command, security::SafeEnvironmentManager},
     utils::types::{
-        all_types::RcApiEngine,
+        core::RcApiEngine,
         events::{RCLONE_ENGINE_ERROR, RCLONE_ENGINE_PASSWORD_ERROR, RCLONE_ENGINE_PATH_ERROR},
     },
 };
@@ -72,7 +72,18 @@ impl RcApiEngine {
         }
 
         // Run 'rclone listremotes' to test the password
-        let output = build_rclone_command(app, None, None, None)
+
+        // Fetch Local backend to get the configured config path
+        let config_path_string = crate::rclone::backend::BACKEND_MANAGER
+            .get_local_config_path()
+            .await
+            .map_err(|e| {
+                EngineError::ConfigValidationFailed(format!("Local backend error: {}", e))
+            })?;
+
+        let config_path = config_path_string.as_deref();
+
+        let output = build_rclone_command(app, None, config_path, None)
             .args(["listremotes", "--ask-password=false"])
             .envs(&env_vars)
             .output()

@@ -8,7 +8,7 @@ use serde::Deserialize;
 use tauri::Manager;
 
 use crate::server::state::{ApiResponse, AppError, WebServerState};
-use crate::utils::types::all_types::RcloneState;
+use RcloneState;
 
 pub async fn vfs_list_handler(
     State(state): State<WebServerState>,

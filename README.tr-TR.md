@@ -23,9 +23,6 @@
   <a href="https://github.com/Zarestia-Dev/rclone-manager/releases">
     <img src="https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=for-the-badge&color=2ec27e" alt="Son Sürüm">
   </a>
-  <a href="https://crowdin.com/project/rclone-manager">
-    <img src="https://badges.crowdin.net/rclone-manager/localized.svg" alt="Crowdin">
-  </a>
 </p>
 
 <p align="center">
@@ -180,7 +177,7 @@ Bir sorunla mı karşılaştınız?
 Katkıları memnuniyetle karşılıyoruz! İşte nasıl yardım edebilirsiniz:
 
 
-- 🌍 **Çevirmeye Yardım Edin** – [Crowdinde bize katılın](https://crowdin.com/project/rclone-manager)
+- 🌍 **Çevirmeye Yardım Edin** – Yakında....
 - 🐛 **Hata Bildirin** – [Hata raporu açın](https://github.com/Zarestia-Dev/rclone-manager/issues/new?template=bug_report.md)
 - 💡 **Özellik Önerin** – [Fikirlerinizi paylaşın](https://github.com/Zarestia-Dev/rclone-manager/issues/new?template=feature_request.md)
 - 📖 **Belgeleri İyileştirin** – [Dökümantasyonumuzu](https://github.com/Zarestia-Dev/rclone-manager/wiki) daha net hale getirmemize yardımcı olun

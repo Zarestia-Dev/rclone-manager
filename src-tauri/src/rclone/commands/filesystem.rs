@@ -5,7 +5,7 @@ use tauri::{AppHandle, State};
 use crate::rclone::backend::BACKEND_MANAGER;
 use crate::rclone::commands::job::{JobMetadata, submit_job};
 use crate::utils::rclone::endpoints::{EndpointHelper, operations};
-use crate::utils::types::all_types::RcloneState;
+use crate::utils::types::core::RcloneState;
 
 #[tauri::command]
 pub async fn mkdir(

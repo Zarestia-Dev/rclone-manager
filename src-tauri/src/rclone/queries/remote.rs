@@ -6,7 +6,7 @@ use tauri::{State, command};
 use crate::rclone::backend::BACKEND_MANAGER;
 use crate::rclone::backend::types::Backend;
 use crate::utils::rclone::endpoints::{EndpointHelper, config};
-use crate::utils::types::all_types::RcloneState;
+use crate::utils::types::core::RcloneState;
 
 #[cfg(not(feature = "web-server"))]
 #[command]

@@ -91,13 +91,6 @@ pub struct CoreSettings {
     pub connection_check_urls: Vec<String>,
 
     #[setting(
-        label = "settings.core.rclone_config_file.label",
-        description = "settings.core.rclone_config_file.description",
-        requires_restart
-    )]
-    pub rclone_config_file: String,
-
-    #[setting(
         label = "settings.core.rclone_path.label",
         description = "settings.core.rclone_path.description",
         requires_restart
@@ -127,7 +120,6 @@ impl Default for CoreSettings {
                 "https://onedrive.live.com".to_string(),
             ],
             bandwidth_limit: String::new(),
-            rclone_config_file: String::new(),
             rclone_path: String::new(),
             completed_onboarding: false,
         }

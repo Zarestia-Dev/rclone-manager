@@ -6,7 +6,7 @@ use crate::{
     rclone::backend::{BACKEND_MANAGER, types::Backend},
     utils::{
         rclone::endpoints::{EndpointHelper, serve},
-        types::{ServeInstance, all_types::RcloneState},
+        types::{core::RcloneState, remotes::ServeInstance},
     },
 };
 

@@ -1,7 +1,7 @@
 use crate::{
     core::scheduler::engine::{CronScheduler, get_next_run},
     utils::types::{
-        all_types::ProfileParams,
+        remotes::ProfileParams,
         scheduled_task::{ScheduledTask, ScheduledTaskStats, TaskStatus, TaskType},
     },
 };

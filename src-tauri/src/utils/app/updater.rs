@@ -2,7 +2,7 @@
 pub mod app_updates {
     use crate::{
         core::lifecycle::shutdown::handle_shutdown,
-        utils::{github_client, types::all_types::RcloneState},
+        utils::{github_client, types::core::RcloneState},
     };
     use log::{debug, info, warn};
     use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};

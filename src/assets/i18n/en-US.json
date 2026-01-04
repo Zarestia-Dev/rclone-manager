@@ -224,10 +224,6 @@
         "label": "Max Tray Items",
         "description": "Maximum number of items to show in the tray (1-40)."
       },
-      "rclone_config_file": {
-        "label": "Rclone Config File",
-        "description": "Path to rclone config file. Leave empty to use default location."
-      },
       "rclone_path": {
         "label": "Rclone Binary Path",
         "description": "Path to rclone binary or directory. Leave empty for auto-detection."
@@ -1574,6 +1570,11 @@
       "oauthHost": "OAuth Host",
       "oauthPort": "OAuth Port",
       "configPassword": "Config Password (Optional)",
+      "configPath": "Config Path",
+      "configPathPlaceholder": "e.g. /home/user/.config/rclone/custom.conf",
+      "configPathHintLocal": "Specify a custom config file for this backend (leave empty to use default).",
+      "selectConfigFile": "Select Config File",
+      "activeConfigPath": "Active Config Path",
       "connectionTab": "Connection",
       "securityTab": "Security",
       "save": "Save",
@@ -1593,7 +1594,8 @@
         "switchFailed": "Failed to switch: {{message}}",
         "connectionSuccess": "Connection successful",
         "connectionFailed": "Connection failed: {{message}}",
-        "testFailed": "Test failed unexpectedly"
+        "testFailed": "Test failed unexpectedly",
+        "fileSelectFailed": "Failed to select file"
       },
       "delete": {
         "title": "Delete Backend",

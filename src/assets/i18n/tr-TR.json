@@ -225,10 +225,6 @@
         "label": "Maksimum Tepsi Öğesi",
         "description": "Tepside gösterilecek maksimum öğe sayısı (1-40)."
       },
-      "rclone_config_file": {
-        "label": "Rclone Yapılandırma Dosyası",
-        "description": "Rclone yapılandırma dosyasının yolu. Varsayılan konumu kullanmak için boş bırakın."
-      },
       "rclone_path": {
         "label": "Rclone İkili Dosya Yolu",
         "description": "Rclone ikili dosyası veya dizininin yolu. Otomatik algılama için boş bırakın."
@@ -1575,6 +1571,11 @@
       "oauthHost": "OAuth Sunucusu",
       "oauthPort": "OAuth Portu",
       "configPassword": "Yapılandırma Parolası (İsteğe Bağlı)",
+      "configPath": "Yapılandırma Yolu",
+      "configPathPlaceholder": "Örn: /home/user/.config/rclone/ozel.conf",
+      "configPathHintLocal": "Bu arka uç için özel bir yapılandırma dosyası belirtin (varsayılanı kullanmak için boş bırakın).",
+      "selectConfigFile": "Yapılandırma Dosyası Seç",
+      "activeConfigPath": "Aktif Yapılandırma Yolu",
       "connectionTab": "Bağlantı",
       "securityTab": "Güvenlik",
       "save": "Kaydet",
@@ -1594,7 +1595,8 @@
         "switchFailed": "Değiştirme başarısız: {{message}}",
         "connectionSuccess": "Bağlantı başarılı",
         "connectionFailed": "Bağlantı hatası: {{message}}",
-        "testFailed": "Test beklenmedik şekilde başarısız oldu"
+        "testFailed": "Test beklenmedik şekilde başarısız oldu",
+        "fileSelectFailed": "Dosya seçimi başarısız oldu"
       },
       "delete": {
         "title": "Arka Uç Sil",

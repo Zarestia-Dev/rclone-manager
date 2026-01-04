@@ -1,5 +1,6 @@
-use crate::utils::types::all_types::RcloneState;
 use std::sync::atomic::Ordering;
+
+use crate::utils::types::core::RcloneState;
 
 impl RcloneState {
     /// Check if the application is shutting down

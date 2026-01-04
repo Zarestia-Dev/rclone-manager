@@ -15,7 +15,7 @@ use crate::{
     },
     rclone::backend::BACKEND_MANAGER,
     utils::types::{
-        all_types::{RcApiEngine, RcloneState},
+        core::{RcApiEngine, RcloneState},
         events::{
             ENGINE_RESTARTED, RCLONE_ENGINE_ERROR, RCLONE_ENGINE_PASSWORD_ERROR,
             RCLONE_ENGINE_PATH_ERROR, RCLONE_ENGINE_READY,
@@ -262,10 +262,7 @@ fn trigger_post_start_setup(app: AppHandle) {
 }
 
 async fn refresh_caches_and_tray(app: &AppHandle) {
-    let client = app
-        .state::<crate::utils::types::all_types::RcloneState>()
-        .client
-        .clone();
+    let client = app.state::<RcloneState>().client.clone();
     let backend = crate::rclone::backend::BACKEND_MANAGER.get_active().await;
     let cache = crate::rclone::backend::BACKEND_MANAGER.remote_cache.clone();
 
@@ -428,10 +425,6 @@ fn handle_restart_change_type(
         "rclone_path" => validate_rclone_path_change(engine, app),
         "api_port" => {
             debug!("🔄 API port updated in BACKEND_MANAGER");
-            Ok(())
-        }
-        "rclone_config_file" => {
-            debug!("🔄 Config file updated in RcloneState");
             Ok(())
         }
         _ => {

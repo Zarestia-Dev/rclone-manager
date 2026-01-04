@@ -10,7 +10,7 @@ use crate::{
     },
     utils::{
         process::process_manager::kill_all_rclone_processes,
-        types::{all_types::RcloneState, events::APP_EVENT},
+        types::{core::RcloneState, events::APP_EVENT},
     },
 };
 

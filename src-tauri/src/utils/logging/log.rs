@@ -7,10 +7,10 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use tauri::AppHandle;
 use tokio::sync::mpsc;
 
-use crate::utils::types::all_types::DynamicLogger;
-use crate::utils::types::all_types::LogCache;
-use crate::utils::types::all_types::LogEntry;
-use crate::utils::types::all_types::LogLevel;
+use crate::utils::types::core::DynamicLogger;
+use crate::utils::types::logs::LogCache;
+use crate::utils::types::logs::LogEntry;
+use crate::utils::types::logs::LogLevel;
 
 use super::file_writer::write_to_file;
 

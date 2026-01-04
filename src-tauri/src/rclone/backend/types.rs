@@ -41,6 +41,10 @@ pub struct Backend {
     #[serde(skip)]
     pub config_password: Option<String>,
 
+    /// Config file path (for remote backends mostly) - optional
+    #[serde(default)]
+    pub config_path: Option<String>,
+
     /// Rclone version (runtime only - fetched from core/version)
     #[serde(skip)]
     pub version: Option<String>,
@@ -68,6 +72,7 @@ impl Backend {
             password: None,
             oauth_port: Some(51901),
             config_password: None,
+            config_path: None,
             version: None,
             os: None,
         }
@@ -84,6 +89,7 @@ impl Backend {
             password: None,
             oauth_port: None,
             config_password: None,
+            config_path: None,
             version: None,
             os: None,
         }
@@ -136,6 +142,8 @@ pub struct BackendInfo {
     pub has_auth: bool,
     pub has_config_password: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub config_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub oauth_port: Option<u16>,
     // Include auth fields for edit form
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -147,6 +155,9 @@ pub struct BackendInfo {
     /// Connection status: "connected", "error:message", or empty
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<String>,
+    /// Actual config path being used by rclone (fetched at runtime)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub runtime_config_path: Option<String>,
 }
 
 impl BackendInfo {
@@ -159,24 +170,28 @@ impl BackendInfo {
             is_active,
             has_auth: backend.has_valid_auth(),
             has_config_password: backend.config_password.is_some(),
+            config_path: backend.config_path.clone(),
             oauth_port: backend.oauth_port,
             username: backend.username.clone(),
-            version: None, // Set from runtime cache
-            os: None,      // Set from runtime cache
-            status: None,  // Set from runtime cache
+            version: None,             // Set from runtime cache
+            os: None,                  // Set from runtime cache
+            status: None,              // Set from runtime cache
+            runtime_config_path: None, // Set from runtime cache
         }
     }
 
-    /// Merge runtime info (version, os, status) into BackendInfo
+    /// Merge runtime info (version, os, status, runtime_config_path) into BackendInfo
     pub fn with_runtime_info(
         mut self,
         version: Option<String>,
         os: Option<String>,
         status: Option<String>,
+        runtime_config_path: Option<String>,
     ) -> Self {
         self.version = version;
         self.os = os;
         self.status = status;
+        self.runtime_config_path = runtime_config_path;
         self
     }
 }

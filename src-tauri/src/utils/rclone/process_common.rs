@@ -50,12 +50,17 @@ pub async fn setup_rclone_environment(
     Ok(command)
 }
 
-/// Create and configure a new rclone command with standard settings
 pub async fn create_rclone_command(
     app: &AppHandle,
     process_type: &str,
 ) -> Result<tauri_plugin_shell::process::Command, String> {
-    let command = build_rclone_command(app, None, None, None);
+    // Fetch Local backend to get the configured config path
+    let config_path = crate::rclone::backend::BACKEND_MANAGER
+        .get_local_config_path()
+        .await
+        .unwrap_or(None);
+
+    let command = build_rclone_command(app, None, config_path.as_deref(), None);
 
     // Retrieve active backend settings to check for valid auth
     let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;

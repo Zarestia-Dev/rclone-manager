@@ -13,7 +13,6 @@ use tokio::sync::broadcast;
 
 use crate::core::lifecycle::shutdown::handle_shutdown;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
-use crate::utils::types::all_types::{LogCache, RcloneState};
 
 #[cfg(feature = "updater")]
 use crate::utils::app::updater::app_updates::{
@@ -72,7 +71,7 @@ pub async fn get_memory_stats_handler(
 
 pub async fn get_bandwidth_limit_handler(
     State(state): State<WebServerState>,
-) -> Result<Json<ApiResponse<crate::utils::types::all_types::BandwidthLimitResponse>>, AppError> {
+) -> Result<Json<ApiResponse<BandwidthLimitResponse>>, AppError> {
     use crate::rclone::queries::get_bandwidth_limit;
     let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
     let limit = get_bandwidth_limit(rclone_state)

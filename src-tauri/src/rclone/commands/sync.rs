@@ -12,7 +12,7 @@ use crate::{
         },
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, sync},
-        types::all_types::{LogLevel, ProfileParams, RcloneState},
+        types::{core::RcloneState, logs::LogLevel, remotes::ProfileParams},
     },
 };
 

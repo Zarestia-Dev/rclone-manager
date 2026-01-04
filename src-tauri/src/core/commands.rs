@@ -59,6 +59,7 @@ macro_rules! generate_invoke_handler {
             $crate::rclone::queries::get_remote_types,
             $crate::rclone::queries::get_oauth_supported_remotes,
             $crate::rclone::queries::get_mounted_remotes,
+            $crate::rclone::queries::get_rclone_config_file,
             $crate::rclone::commands::system::set_bandwidth_limit,
             // =================================================================
             // SYNC OPERATIONS

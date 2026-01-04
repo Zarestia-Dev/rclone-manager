@@ -32,9 +32,6 @@
   <a href="https://github.com/Zarestia-Dev/rclone-manager/stargazers">
     <img src="https://img.shields.io/github/stars/Zarestia-Dev/rclone-manager?style=flat&color=3584e4" alt="Stars">
   </a>
-  <a href="https://crowdin.com/project/rclone-manager">
-    <img src="https://badges.crowdin.net/rclone-manager/localized.svg" alt="Crowdin">
-  </a>
 </p>
 
 ---
@@ -180,7 +177,7 @@ Encountering an issue?
 We welcome contributions! Here's how you can help:
 
 
-- 🌍 **Help Translate** – [Join us on Crowdin](https://crowdin.com/project/rclone-manager)
+- 🌍 **Help Translate** – Soon....
 - 🐛 **Report Bugs** – [Open a bug report](https://github.com/Zarestia-Dev/rclone-manager/issues/new?template=bug_report.md)
 - 💡 **Suggest Features** – [Share your ideas](https://github.com/Zarestia-Dev/rclone-manager/issues/new?template=feature_request.md)
 - 📖 **Improve Docs** – Help make our [documentation](https://github.com/Zarestia-Dev/rclone-manager/wiki) clearer

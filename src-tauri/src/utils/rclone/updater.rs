@@ -22,10 +22,8 @@ use crate::core::check_binaries::{build_rclone_command, get_rclone_binary_path, 
 use crate::core::paths::get_app_paths;
 use crate::core::settings::operations::core::save_setting;
 use crate::utils::github_client;
-use crate::{
-    rclone::queries::get_rclone_info,
-    utils::types::{all_types::RcloneState, events::RCLONE_ENGINE_UPDATING},
-};
+use crate::utils::types::core::RcloneState;
+use crate::{rclone::queries::get_rclone_info, utils::types::events::RCLONE_ENGINE_UPDATING};
 
 // ============================================================================
 // Types and Constants

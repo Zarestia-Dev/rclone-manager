@@ -8,7 +8,6 @@ use serde::Deserialize;
 use tauri::Manager;
 
 use crate::server::state::{ApiResponse, AppError, WebServerState};
-use crate::utils::types::all_types::{ProfileParams, RcloneState};
 
 pub async fn get_jobs_handler(
     State(_): State<WebServerState>,

@@ -11,7 +11,7 @@ use crate::{
         },
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, mount},
-        types::all_types::{LogLevel, ProfileParams, RcloneState},
+        types::{core::RcloneState, logs::LogLevel, remotes::ProfileParams},
     },
 };
 

@@ -181,7 +181,14 @@ pub async fn validate_rclone_password(app: AppHandle, password: String) -> Resul
         ));
     }
 
-    let output = build_rclone_command(&app, None, None, None)
+    let config_path = crate::rclone::backend::BACKEND_MANAGER
+        .get_local_config_path()
+        .await
+        .map_err(
+            |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
+        )?;
+
+    let output = build_rclone_command(&app, None, config_path.as_deref(), None)
         .args(["listremotes", "--ask-password=false"])
         .env("RCLONE_CONFIG_PASS", &password)
         .output()
@@ -236,7 +243,14 @@ pub async fn set_config_password_env(
 pub async fn is_config_encrypted(app: AppHandle) -> Result<bool, String> {
     debug!("🔍 Checking if rclone config is encrypted");
 
-    let output = build_rclone_command(&app, None, None, None)
+    let config_path = crate::rclone::backend::BACKEND_MANAGER
+        .get_local_config_path()
+        .await
+        .map_err(
+            |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
+        )?;
+
+    let output = build_rclone_command(&app, None, config_path.as_deref(), None)
         .args(["listremotes", "--ask-password=false"])
         .output()
         .await
@@ -274,7 +288,14 @@ pub async fn encrypt_config(
 ) -> Result<(), String> {
     info!("🔐 Encrypting rclone configuration (using password-command)");
 
-    let rclone_command = build_rclone_command(&app, None, None, None);
+    let config_path = crate::rclone::backend::BACKEND_MANAGER
+        .get_local_config_path()
+        .await
+        .map_err(
+            |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
+        )?;
+
+    let rclone_command = build_rclone_command(&app, None, config_path.as_deref(), None);
 
     // Create a cross-platform command that outputs the password
     let password_command = if cfg!(windows) {
@@ -369,7 +390,14 @@ pub async fn unencrypt_config(
 ) -> Result<(), String> {
     info!("🔓 Unencrypting rclone configuration");
 
-    let rclone_command = build_rclone_command(&app, None, None, None);
+    let config_path = crate::rclone::backend::BACKEND_MANAGER
+        .get_local_config_path()
+        .await
+        .map_err(
+            |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
+        )?;
+
+    let rclone_command = build_rclone_command(&app, None, config_path.as_deref(), None);
 
     let password_command = if cfg!(windows) {
         format!(
