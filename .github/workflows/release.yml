@@ -1,46 +1,62 @@
-name: "Release All"
+name: "Release Production"
 
 on:
   workflow_dispatch:
 
 jobs:
-  publish-tauri:
+  release-tauri:
     permissions:
       contents: write
     strategy:
       fail-fast: false
       matrix:
         include:
+          # --- MacOS ---
           - platform: "macos-latest"
             args: "--target aarch64-apple-darwin"
             arch: "silicon"
             type: "aarch64"
+            assetPattern: "RClone.Manager_[version]_[arch][ext]"
           - platform: "macos-latest"
             args: "--target x86_64-apple-darwin"
-            arch: "silicon"
+            arch: "intel"
             type: "x86_64"
+            assetPattern: "RClone.Manager_[version]_[arch][ext]"
+
+          # --- Linux Standard (Ubuntu 22.04 - For RHEL and enterprise LTS linux distros) ---
           - platform: "ubuntu-22.04"
             args: ""
+            arch: "amd64"
+            assetPattern: "RClone.Manager_[version]_[arch][ext]"
+
+          # --- Linux Alternate (Ubuntu 24.04 - Fixes Modern Linux) ---
+          - platform: "ubuntu-24.04"
+            # We disable the updater artifacts for this one to avoid conflicts
+            args: '--config ''{"bundle":{"createUpdaterArtifacts":false}}'''
+            arch: "amd64"
+            assetPattern: "RClone.Manager_[version]_[arch]_Modern[ext]"
+
+          # --- Linux ARM ---
           - platform: "ubuntu-22.04-arm"
             args: ""
+            arch: "arm64"
+            assetPattern: "RClone.Manager_[version]_[arch][ext]"
+
+          # --- Windows ---
           - platform: "windows-latest"
             args: "--target x86_64-pc-windows-msvc"
-            arch: "arm64"
+            arch: "x64"
             type: "x86_64"
+            assetPattern: "RClone.Manager_[version]_[arch][ext]"
           - platform: "windows-latest"
             args: "--target aarch64-pc-windows-msvc"
             arch: "arm64"
             type: "aarch64"
+            assetPattern: "RClone.Manager_[version]_[arch][ext]"
 
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: install dependencies (ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04' || matrix.platform == 'ubuntu-22.04-arm'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils
 
       - name: setup node
         uses: actions/setup-node@v4
@@ -48,24 +64,27 @@ jobs:
           node-version: lts/*
           cache: "npm"
 
-      - name: install Rust stable (macos only)
+      # --- Rust Installation ---
+      - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
-        if: matrix.platform == 'macos-latest'
         with:
-          targets: ${{ matrix.type == 'aarch64' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin' }}
-
-      - name: install Rust stable (windows only)
-        uses: dtolnay/rust-toolchain@stable
-        if: matrix.platform == 'windows-latest'
-        with:
-          targets: ${{ matrix.type == 'aarch64' && 'aarch64-pc-windows-msvc' || 'x86_64-pc-windows-msvc' }}
+          # Automatically detects targets based on the matrix
+          targets: ${{ matrix.platform == 'macos-latest' && (matrix.type == 'aarch64' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin') || matrix.platform == 'windows-latest' && (matrix.type == 'aarch64' && 'aarch64-pc-windows-msvc' || 'x86_64-pc-windows-msvc') || '' }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
-          key: ${{ runner.os }}-${{ runner.arch }}
+          key: ${{ matrix.platform }}-${{ matrix.args }}
 
+      # --- Linux Dependencies (Standard & Alternate) ---
+      - name: install dependencies (ubuntu)
+        if: startsWith(matrix.platform, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils libssl-dev file curl wget build-essential
+
+      # --- Frontend Build ---
       - name: install frontend dependencies
         run: npm install
 
