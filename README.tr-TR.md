@@ -8,7 +8,8 @@
 
 <p align="center">
   <a href="README.md">🇺🇸 English</a> •
-  <a href="README.tr-TR.md">🇹🇷 Türkçe</a>
+  <a href="README.tr-TR.md">🇹🇷 Türkçe</a> •
+  <a href="soon">Çeviriye Yardım Edin</a>
 </p>
 
 <p align="center">
@@ -53,12 +54,6 @@
 
 ---
 
-## 🎨 Tasarım Felsefesi
-
-**GTK stili**, **Angular Material** ve **FontAwesome ikonlarının** benzersiz karışımı, modern ve duyarlı bir deneyimi korurken herhangi bir platformda kendini evinde hisseden temiz, minimalist bir arayüz oluşturur.
-
----
-
 ## 📸 Ekran Görüntüleri
 
 <p align="center">
@@ -66,39 +61,15 @@
 </p>
 <p align="center">
 
-|                                Ana Sayfa                                 |                             Uzak Bağlantı Genel Bakış                             |                             Bağlama Kontrolü                             |
-| :----------------------------------------------------------------------: | :-------------------------------------------------------------------------------: | :----------------------------------------------------------------------: |
-| <img src="assets/general-home.png" alt="Genel Ana Sayfa" width="250"/>   | <img src="assets/general-remote.png" alt="Genel Uzak Bağlantı" width="250"/>      | <img src="assets/mount-control.png" alt="Bağlama Kontrolü" width="250"/> |
+|                               Ana Sayfa                                |                          Uzak Bağlantı Genel Bakış                           |                             Bağlama Kontrolü                             |
+| :--------------------------------------------------------------------: | :--------------------------------------------------------------------------: | :----------------------------------------------------------------------: |
+| <img src="assets/general-home.png" alt="Genel Ana Sayfa" width="250"/> | <img src="assets/general-remote.png" alt="Genel Uzak Bağlantı" width="250"/> | <img src="assets/mount-control.png" alt="Bağlama Kontrolü" width="250"/> |
 
 |                            Görev İzleyici                            |                             Sunma Kontrolü                             |                          Karanlık Mod                          |
 | :------------------------------------------------------------------: | :--------------------------------------------------------------------: | :------------------------------------------------------------: |
 | <img src="assets/job-watcher.png" alt="Görev İzleyici" width="250"/> | <img src="assets/serve-control.png" alt="Sunma Kontrolü" width="250"/> | <img src="assets/dark-ui.png" alt="Karanlık Mod" width="250"/> |
 
 </p>
-
-<p align="center">
-  <em>Sistem tercihlerinize uyacak şekilde açık ve karanlık modlar arasında sorunsuz geçiş yapar.</em>
-</p>
-
----
-
-## 🚀 Özellikler
-
-### 🎯 Çekirdek
-
-- 🌐 Uzakta bulunan Rclone sunucuları ile bağlantı kurun.
-- 🛠 OAuth veya etkileşimli yapılandırma ile uzak bağlantıları uçtan uca yönetin (ekle/düzenle/sil/klonla)
-- 🔑 Varsayılan olarak güvenli (anahtar deposu, şifreli dışa aktarmalar) artı zamanlanmış görevler ve hızlı içe/dışa aktarma
-- 📡 Tüm büyük bulutlarla çalışır (Drive, OneDrive, Dropbox, S3, iCloud, Wasabi, B2, …)
-
-### ⚡ İşlemler
-
-- 📁 Uzakta bağlantıları bağlayın ve sunun; herhangi iki konum arasında senkronize edin, kopyalayın, taşıyın ve çift yönlü senkronize edin
-- 🎯 Uzak bağlantı başına tek dokunuşla birincil eylemler; hız ve ilerleme ile görevleri canlı izleyin
-
-### 🌍 Platformlar
-
-- Linux, Windows, macOS; masaüstü ve mobil için duyarlı düzen
 
 ---
 
@@ -108,34 +79,34 @@ Favori paket yöneticinizden yükleyin veya doğrudan indirin.
 
 ### Linux
 
-| Depo                | Sürüm                                                                                                                                                                                   | Kurulum Komutu                                                                                                                                                              |
-| :------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **AUR**             | [![AUR Sürümü](https://img.shields.io/aur/version/rclone-manager?style=flat&label=)](https://aur.archlinux.org/packages/rclone-manager)                                                 | `yay -S rclone-manager`                                                                                                                                                     |
-| **AUR (Git)**       | [![AUR Sürümü](https://img.shields.io/aur/version/rclone-manager-git?style=flat&label=)](https://aur.archlinux.org/packages/rclone-manager-git)                                         | `yay -S rclone-manager-git`                                                                                                                                                 |
-| **Flathub**         | [![Flathub](https://img.shields.io/flathub/v/io.github.zarestia_dev.rclone-manager?style=flat&label=&color=2ec27e)](https://flathub.org/en/apps/io.github.zarestia_dev.rclone-manager)  | `flatpak install io.github.zarestia_dev.rclone-manager`                                                                                                                     |
-| **Doğrudan İndirme**| [![Son Sürüm](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)     | <a href="https://github.com/Zarestia-Dev/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/İndir-3584e4?style=flat&logo=github" alt="İndir"></a>      |
+| Depo                 | Sürüm                                                                                                                                                                                  | Kurulum Komutu                                                                                                                                                        |
+| :------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **AUR**              | [![AUR Sürümü](https://img.shields.io/aur/version/rclone-manager?style=flat&label=)](https://aur.archlinux.org/packages/rclone-manager)                                                | `yay -S rclone-manager`                                                                                                                                               |
+| **AUR (Git)**        | [![AUR Sürümü](https://img.shields.io/aur/version/rclone-manager-git?style=flat&label=)](https://aur.archlinux.org/packages/rclone-manager-git)                                        | `yay -S rclone-manager-git`                                                                                                                                           |
+| **Flathub**          | [![Flathub](https://img.shields.io/flathub/v/io.github.zarestia_dev.rclone-manager?style=flat&label=&color=2ec27e)](https://flathub.org/en/apps/io.github.zarestia_dev.rclone-manager) | `flatpak install io.github.zarestia_dev.rclone-manager`                                                                                                               |
+| **Doğrudan İndirme** | [![Son Sürüm](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)     | <a href="https://github.com/Zarestia-Dev/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/İndir-3584e4?style=flat&logo=github" alt="İndir"></a> |
 
 > 📚 **Detaylı Kılavuz:** [Wiki: Kurulum - Linux](https://github.com/Zarestia-Dev/rclone-manager/wiki/Installation-Linux)  
 > _Flatpak için sorun giderme içerir._
 
 ### macOS
 
-| Depo                | Sürüm                                                                                                                                                                                   | Kurulum Komutu                                                                                                                                                              |
-| :------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Homebrew**        | ![Beklemede](https://img.shields.io/badge/Beklemede-gray?style=flat)                                                                                                                    | _Yakında_                                                                                                                                                                   |
-| **Doğrudan İndirme**| [![Son Sürüm](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)     | <a href="https://github.com/Zarestia-Dev/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/İndir-3584e4?style=flat&logo=github" alt="İndir"></a>      |
+| Depo                 | Sürüm                                                                                                                                                                              | Kurulum Komutu                                                                                                                                                        |
+| :------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Homebrew**         | ![Beklemede](https://img.shields.io/badge/Beklemede-gray?style=flat)                                                                                                               | _Yakında_                                                                                                                                                             |
+| **Doğrudan İndirme** | [![Son Sürüm](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | <a href="https://github.com/Zarestia-Dev/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/İndir-3584e4?style=flat&logo=github" alt="İndir"></a> |
 
 > 📚 **Detaylı Kılavuz:** [Wiki: Kurulum - macOS](https://github.com/Zarestia-Dev/rclone-manager/wiki/Installation-macOS)  
 > _Önemli: "Uygulama Hasarlı" düzeltmesi ve macFUSE kurulumu için bunu okuyun._
 
 ### Windows
 
-| Depo                | Sürüm                                                                                                                                                                                   | Kurulum Komutu                                                                                                                                                              |
-| :------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Chocolatey**      | [![Chocolatey](https://img.shields.io/chocolatey/v/rclone-manager?style=flat&label=&color=2ec27e)](https://community.chocolatey.org/packages/rclone-manager)                            | `choco install rclone-manager`                                                                                                                                              |
-| **Scoop**           | [![Scoop](https://img.shields.io/scoop/v/rclone-manager?bucket=extras&style=flat&label=&color=2ec27e)](https://github.com/ScoopInstaller/Extras/blob/master/bucket/rclone-manager.json) | `scoop bucket add extras` sonra `scoop install rclone-manager`                                                                                                              |
-| **Winget**          | ![Winget](https://img.shields.io/winget/v/RClone-Manager.rclone-manager?style=flat&label=&color=2ec27e)                                                                                 | `winget install RClone-Manager.rclone-manager`                                                                                                                              |
-| **Doğrudan İndirme**| [![Son Sürüm](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)     | <a href="https://github.com/Zarestia-Dev/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/İndir-3584e4?style=flat&logo=github" alt="İndir"></a>      |
+| Depo                 | Sürüm                                                                                                                                                                                   | Kurulum Komutu                                                                                                                                                        |
+| :------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Chocolatey**       | [![Chocolatey](https://img.shields.io/chocolatey/v/rclone-manager?style=flat&label=&color=2ec27e)](https://community.chocolatey.org/packages/rclone-manager)                            | `choco install rclone-manager`                                                                                                                                        |
+| **Scoop**            | [![Scoop](https://img.shields.io/scoop/v/rclone-manager?bucket=extras&style=flat&label=&color=2ec27e)](https://github.com/ScoopInstaller/Extras/blob/master/bucket/rclone-manager.json) | `scoop bucket add extras` sonra `scoop install rclone-manager`                                                                                                        |
+| **Winget**           | ![Winget](https://img.shields.io/winget/v/RClone-Manager.rclone-manager?style=flat&label=&color=2ec27e)                                                                                 | `winget install RClone-Manager.rclone-manager`                                                                                                                        |
+| **Doğrudan İndirme** | [![Son Sürüm](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)      | <a href="https://github.com/Zarestia-Dev/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/İndir-3584e4?style=flat&logo=github" alt="İndir"></a> |
 
 > 📚 **Detaylı Kılavuz:** [Wiki: Kurulum - Windows](https://github.com/Zarestia-Dev/rclone-manager/wiki/Installation-Windows)  
 > _WinFsp (bağlama için gerekli) ve SmartScreen talimatlarını içerir._
@@ -175,7 +146,6 @@ Bir sorunla mı karşılaştınız?
 ## 🤝 Katkıda Bulunma
 
 Katkıları memnuniyetle karşılıyoruz! İşte nasıl yardım edebilirsiniz:
-
 
 - 🌍 **Çevirmeye Yardım Edin** – Yakında....
 - 🐛 **Hata Bildirin** – [Hata raporu açın](https://github.com/Zarestia-Dev/rclone-manager/issues/new?template=bug_report.md)

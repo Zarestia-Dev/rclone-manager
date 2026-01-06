@@ -81,7 +81,7 @@ impl AppPaths {
             .map_err(|e| format!("Failed to get config directory: {}", e))?;
 
         // Logs are stored in cache/logs
-        let logs_dir = cache_dir.join("logs");
+        let logs_dir = config_dir.join("logs");
 
         Ok(Self {
             config_dir,

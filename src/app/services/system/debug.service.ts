@@ -10,8 +10,7 @@ export interface DebugInfo {
   logsDir: string;
   configDir: string;
   cacheDir: string;
-  buildType: string | null;
-  isDebug: boolean;
+  mode: string;
   appVersion: string;
   platform: string;
   arch: string;
@@ -120,10 +119,9 @@ export class DebugService {
     return `
 === Rclone Manager Debug Info ===
 App Version: ${info.appVersion}
+Mode: ${info.mode}
 Platform: ${info.platform}
 Architecture: ${info.arch}
-Build Type: ${info.buildType ?? 'Standard'}
-Debug Build: ${info.isDebug ? 'Yes' : 'No'}
 
 === Paths ===
 Logs: ${info.logsDir}

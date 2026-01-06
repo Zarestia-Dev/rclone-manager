@@ -28,7 +28,7 @@ impl LogCache {
             .iter()
             .filter_map(|e| {
                 if let Some(name) = &e.remote_name {
-                    if remote_name.is_none() || name == remote_name.unwrap() {
+                    if remote_name.is_none_or(|rn| name == rn) {
                         Some(LogEntry {
                             timestamp: e.timestamp,
                             remote_name: Some(name.clone()),

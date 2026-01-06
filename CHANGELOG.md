@@ -35,6 +35,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Nautilus Component: Added hash calculation support for files. Now you can calculate the hash of a file and copy it to clipboard on the properties dialog.
 - Nautilus Component: Added public link generation support for files and directories. If remote supports public link generation, it will be available in the properties dialog.
 - Nautilus Component: Enabled download button for remote files. Now you can download remote files to your local machine.
+- Debugging page added on `About Modal`. Click the app logo 5 times in 2 seconds to open the debugging page.
 
 ### Changed
 - On linux remove the rclone to required dependencies when installing via deb or rpm packages. Because app handle the rclone binary installation and update itself correctly.  

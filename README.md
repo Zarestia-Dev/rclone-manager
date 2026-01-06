@@ -8,7 +8,8 @@
 
 <p align="center">
   <a href="README.md">🇺🇸 English</a> •
-  <a href="README.tr-TR.md">🇹🇷 Türkçe</a>
+  <a href="README.tr-TR.md">🇹🇷 Türkçe</a> •
+  <a href="soon">Help to translate</a>
 </p>
 
 <p align="center">
@@ -53,12 +54,6 @@
 
 ---
 
-## 🎨 Design Philosophy
-
-A unique blend of **GTK styling**, **Angular Material**, and **FontAwesome icons** creates a clean, minimalist interface that feels at home on any platform while maintaining a modern, responsive experience.
-
----
-
 ## 📸 Screenshots
 
 <p align="center">
@@ -74,33 +69,7 @@ A unique blend of **GTK styling**, **Angular Material**, and **FontAwesome icons
 | :---------------------------------------------------------------: | :-------------------------------------------------------------------: | :---------------------------------------------------------: |
 | <img src="assets/job-watcher.png" alt="Job Watcher" width="250"/> | <img src="assets/serve-control.png" alt="Serve Control" width="250"/> | <img src="assets/dark-ui.png" alt="Dark Mode" width="250"/> |
 
-</p>
-
-<p align="center">
-  <em>Seamlessly switches between light and dark modes to match your system preferences.</em>
-</p>
-
----
-
-## 🚀 Features
-
-### 🎯 Core
-
-- 🌐 Connect your remote Rclone instances.
-- 🛠 Manage remotes end-to-end (add/edit/delete/clone) with OAuth or interactive config
-- 🔑 Secure by default (keyring storage, encrypted exports) plus scheduled jobs and quick import/export
-- 📡 Works with all major clouds (Drive, OneDrive, Dropbox, S3, iCloud, Wasabi, B2, …)
-
-### ⚡ Operations
-
-- 📁 Mount and serve remotes; sync, copy, move and bisync between any two locations
-- 🎯 One-tap primary actions per remote; monitor jobs live with speeds and progress
-
-### 🌍 Platforms
-
-- Linux, Windows, macOS; responsive layout for desktop and mobile
-
----
+## </p>
 
 ## 📦 Downloads
 
@@ -175,7 +144,6 @@ Encountering an issue?
 ## 🤝 Contributing
 
 We welcome contributions! Here's how you can help:
-
 
 - 🌍 **Help Translate** – Soon....
 - 🐛 **Report Bugs** – [Open a bug report](https://github.com/Zarestia-Dev/rclone-manager/issues/new?template=bug_report.md)

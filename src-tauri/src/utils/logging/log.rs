@@ -1,6 +1,5 @@
 use chrono::Utc;
 use log::LevelFilter;
-use log::SetLoggerError;
 use once_cell::sync::OnceCell;
 use serde_json::Value;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -70,17 +69,16 @@ fn parse_log_level(level: &str) -> LevelFilter {
 }
 
 // --- Modified function to accept AppHandle ---
-pub fn init_logging(
-    log_level: &str,
-    app_handle: AppHandle,
-    cache_dir: &std::path::Path,
-) -> Result<(), SetLoggerError> {
+pub fn init_logging(log_level: &str, app_handle: AppHandle) -> Result<(), String> {
     // Initialize rotating file logger using cache directory
     use tauri::Manager;
 
-    let log_dir = cache_dir.join("logs");
+    let paths = crate::core::paths::get_app_paths(&app_handle)?;
+    let log_dir = paths.logs_dir;
+
     if let Err(e) = super::file_writer::init_file_writer(&log_dir) {
         eprintln!("Failed to initialize file logger: {e}");
+        return Err(format!("Failed to initialize file logger: {e}"));
     }
 
     let (tx, mut rx) = mpsc::channel::<LogEntry>(1000);
@@ -101,7 +99,7 @@ pub fn init_logging(
 
     LOG_LEVEL.store(level as usize, Ordering::Relaxed);
     log::set_max_level(level);
-    log::set_logger(&DynamicLogger)?;
+    log::set_logger(&DynamicLogger).map_err(|e| e.to_string())?;
     Ok(())
 }
 

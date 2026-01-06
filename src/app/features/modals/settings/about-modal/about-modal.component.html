@@ -682,16 +682,12 @@
                 <span class="value">{{ debugInfo.appVersion }}</span>
               </div>
               <div class="debug-row">
+                <span class="label">{{ 'modals.about.mode' | translate }}:</span>
+                <span class="value">{{ debugInfo.mode }}</span>
+              </div>
+              <div class="debug-row">
                 <span class="label">{{ 'modals.about.platform' | translate }}:</span>
                 <span class="value">{{ debugInfo.platform }} ({{ debugInfo.arch }})</span>
-              </div>
-              <div class="debug-row">
-                <span class="label">{{ 'modals.about.buildType' | translate }}:</span>
-                <span class="value">{{ debugInfo.buildType ?? 'Standard' }}</span>
-              </div>
-              <div class="debug-row">
-                <span class="label">{{ 'modals.about.debugBuild' | translate }}:</span>
-                <span class="value">{{ debugInfo.isDebug ? 'Yes' : 'No' }}</span>
               </div>
             </div>
           </div>

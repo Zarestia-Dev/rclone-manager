@@ -254,53 +254,17 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   private async refreshData(): Promise<void> {
     await this.remoteFacadeService.refreshAll();
+    this.remoteFacadeService.loadDiskUsageInBackground(this.remotes());
   }
 
   private async loadRemotes(): Promise<void> {
     try {
       await this.remoteFacadeService.loadRemotes();
-      // Ensure we pass the list explicitly
-      this.loadDiskUsageInBackground(this.remotes());
+      // Load disk usage in background using the facade service
+      this.remoteFacadeService.loadDiskUsageInBackground(this.remotes());
     } catch (error) {
       this.handleError(this.translate.instant('home.errors.loadRemotesFailed'), error);
     }
-  }
-
-  async updateRemoteDiskUsage(remoteName: string): Promise<void> {
-    try {
-      await this.remoteFacadeService.getCachedOrFetchDiskUsage(remoteName);
-    } catch (error) {
-      console.error(`Failed to update disk usage for ${remoteName}:`, error);
-      this.remoteFacadeService.updateDiskUsage(remoteName, { loading: false, error: true });
-    }
-  }
-
-  // Load disk usage for visible remotes one by one to avoid backend congestion
-  loadDiskUsageInBackground(remotes: Remote[]): void {
-    const remotesToLoad = remotes.filter(
-      r =>
-        !r.diskUsage.loading &&
-        !r.diskUsage.error &&
-        r.diskUsage.total_space === undefined &&
-        !r.diskUsage.notSupported
-    );
-
-    if (remotesToLoad.length === 0) return;
-
-    // Process one by one with proper error handling
-    (async (): Promise<void> => {
-      for (const remote of remotesToLoad) {
-        try {
-          await this.updateRemoteDiskUsage(remote.remoteSpecs.name);
-        } catch (error) {
-          console.error(`Failed to load disk usage for ${remote.remoteSpecs.name}:`, error);
-        }
-        // Small delay between requests
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-    })().catch(error => {
-      console.error('Error in background disk usage loading:', error);
-    });
   }
 
   // ============================================================================
@@ -354,7 +318,6 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   async togglePrimaryAction(type: PrimaryActionType): Promise<void> {
-    //Has problems
     const remote = this.selectedRemote();
     if (!remote) return;
 

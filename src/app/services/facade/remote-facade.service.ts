@@ -15,6 +15,7 @@ import {
   ServeListItem,
   RemoteSettings,
   SyncOperationType,
+  PrimaryActionType,
   REMOTE_CACHE_CHANGED,
   REMOTE_SETTINGS_CHANGED,
   DiskUsage,
@@ -116,6 +117,9 @@ export class RemoteFacadeService extends TauriBaseService {
     try {
       const fsName = normalizedName || `${remoteName}:`;
 
+      // Set loading state before fetching
+      this.updateDiskUsage(remoteName, { loading: true, error: false });
+
       // First check if About feature is supported
       const fsInfo = await this.remoteService.getFsInfo(fsName);
       if (fsInfo.Features?.['About'] === false) {
@@ -155,15 +159,17 @@ export class RemoteFacadeService extends TauriBaseService {
 
   constructor() {
     super();
-    // Auto-refresh when remote cache or settings updates
+    // Auto-refresh all data when remote cache changes (e.g., backend switch)
+    // or when settings change
     merge(
       this.listenToEvent<unknown>(REMOTE_CACHE_CHANGED),
       this.listenToEvent<unknown>(REMOTE_SETTINGS_CHANGED)
     )
       .pipe(takeUntilDestroyed())
       .subscribe(() => {
-        this.loadRemotes().catch(err =>
-          console.error('[RemoteFacadeService] Failed to auto-reload remotes:', err)
+        // Use refreshAll to also refresh jobs, mounts, serves - not just remote configs
+        this.refreshAll().catch(err =>
+          console.error('[RemoteFacadeService] Failed to auto-refresh:', err)
         );
       });
   }
@@ -185,7 +191,20 @@ export class RemoteFacadeService extends TauriBaseService {
         ...(configs[name] as any),
       }));
 
-      this.baseRemotes.set(this.createRemotesFromConfigs(configArray as RemoteConfig[]));
+      // Preserve existing diskUsage data when recreating remotes
+      const existingRemotes = this.baseRemotes();
+      const existingDiskUsageMap = new Map(
+        existingRemotes.map(r => [r.remoteSpecs.name, r.diskUsage])
+      );
+
+      const newRemotes = this.createRemotesFromConfigs(configArray as RemoteConfig[]).map(
+        remote => ({
+          ...remote,
+          diskUsage: existingDiskUsageMap.get(remote.remoteSpecs.name) || remote.diskUsage,
+        })
+      );
+
+      this.baseRemotes.set(newRemotes);
       this.remoteSettings.set(settings);
     } finally {
       this.isLoading.set(false);
@@ -205,9 +224,42 @@ export class RemoteFacadeService extends TauriBaseService {
         this.jobService.refreshJobs(),
         this.loadRemotes(),
       ]);
+      // Load disk usage for any remotes that need it (e.g., after backend switch)
+      this.loadDiskUsageInBackground();
     } finally {
       this.isLoading.set(false);
     }
+  }
+
+  /**
+   * Load disk usage for remotes in background.
+   * Processes one at a time to avoid backend congestion.
+   */
+  loadDiskUsageInBackground(remotes?: Remote[]): void {
+    const remotesToProcess = remotes ?? this.activeRemotes();
+    const remotesToLoad = remotesToProcess.filter(
+      r =>
+        !r.diskUsage.error &&
+        !r.diskUsage.notSupported &&
+        (r.diskUsage.loading || r.diskUsage.total_space === undefined)
+    );
+
+    if (remotesToLoad.length === 0) return;
+
+    // Process one by one with proper error handling
+    (async (): Promise<void> => {
+      for (const remote of remotesToLoad) {
+        try {
+          await this.getCachedOrFetchDiskUsage(remote.remoteSpecs.name);
+        } catch (error) {
+          console.error(`Failed to load disk usage for ${remote.remoteSpecs.name}:`, error);
+        }
+        // Small delay between requests
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    })().catch(error => {
+      console.error('[RemoteFacadeService] Error in background disk usage loading:', error);
+    });
   }
 
   // =========================================================================================
@@ -268,7 +320,7 @@ export class RemoteFacadeService extends TauriBaseService {
     return configs.map(config => ({
       remoteSpecs: config as any,
       diskUsage: {
-        loading: false,
+        loading: true,
         error: false,
       },
       mountState: {
@@ -287,6 +339,34 @@ export class RemoteFacadeService extends TauriBaseService {
     }));
   }
 
+  /**
+   * Generic helper to build activeProfiles map from items with optional profile property.
+   * Handles null-profile items by assigning them to first configured profile or 'default'.
+   */
+  private buildActiveProfiles<T, V>(
+    items: T[],
+    configuredProfileNames: string[],
+    getProfile: (item: T) => string | null | undefined,
+    getValue: (item: T) => V
+  ): Record<string, V> {
+    const activeProfiles: Record<string, V> = {};
+
+    items.forEach(item => {
+      const profile = getProfile(item);
+      if (profile && configuredProfileNames.includes(profile)) {
+        activeProfiles[profile] = getValue(item);
+      } else if (!profile) {
+        // Assign null-profile item to first configured profile or 'default'
+        const targetProfile = configuredProfileNames[0] || 'default';
+        if (!(targetProfile in activeProfiles)) {
+          activeProfiles[targetProfile] = getValue(item);
+        }
+      }
+    });
+
+    return activeProfiles;
+  }
+
   private enrichRemote(
     remote: Remote,
     jobs: JobInfo[],
@@ -294,65 +374,53 @@ export class RemoteFacadeService extends TauriBaseService {
     serves: ServeListItem[],
     settings: RemoteSettings
   ): Remote {
-    // 1. Enrich with Jobs
-    const remoteJobs = jobs.filter(j => j.remote_name === remote.remoteSpecs.name);
+    const remoteName = remote.remoteSpecs.name;
 
-    const enrichedWithJobs = {
+    // Filter items for this remote
+    const remoteJobs = jobs.filter(j => j.remote_name === remoteName);
+    const remoteMounts = mounts.filter(m => m.fs.startsWith(`${remoteName}:`));
+    const remoteServes = serves.filter(s => s.params?.fs?.split(':')[0] === remoteName);
+
+    // Get profile configs
+    const mountProfileNames = Object.keys(
+      (settings['mountConfigs'] as Record<string, unknown>) || {}
+    );
+    const serveProfileNames = Object.keys(
+      (settings['serveConfigs'] as Record<string, unknown>) || {}
+    );
+
+    // Build active profiles using helper
+    const activeMountProfiles = this.buildActiveProfiles(
+      remoteMounts,
+      mountProfileNames,
+      m => m.profile,
+      m => m.mount_point
+    );
+
+    const activeServeProfiles = this.buildActiveProfiles(
+      remoteServes,
+      serveProfileNames,
+      s => s.profile,
+      s => s.id
+    );
+
+    return {
       ...remote,
-      primaryActions: settings['primaryActions'] || [],
+      primaryActions: (settings['primaryActions'] as PrimaryActionType[]) || [],
       syncState: this.calculateOperationState('sync', remoteJobs, settings),
       copyState: this.calculateOperationState('copy', remoteJobs, settings),
       bisyncState: this.calculateOperationState('bisync', remoteJobs, settings),
       moveState: this.calculateOperationState('move', remoteJobs, settings),
-      // Add active actions to the remote object if needed, or consumers can query the facade
-    };
-
-    // 2. Enrich with Mounts
-    const remoteMounts = mounts.filter(m => m.fs.startsWith(`${remote.remoteSpecs.name}:`));
-    const isMounted = remoteMounts.length > 0;
-    const activeMountProfiles: Record<string, string> = {};
-
-    if (isMounted) {
-      remoteMounts.forEach(mount => {
-        if (mount.profile) {
-          activeMountProfiles[mount.profile] = mount.mount_point;
-        } else {
-          // Fallback logic
-          const profiles = settings['mountConfigs'] as
-            | Record<string, Record<string, unknown>>
-            | undefined;
-          if (profiles) {
-            const matchEntry = Object.entries(profiles).find(
-              ([_, p]) => (p as any).dest === mount.mount_point
-            );
-            if (matchEntry) {
-              activeMountProfiles[matchEntry[0]] = mount.mount_point;
-            }
-          }
-        }
-      });
-    }
-
-    const enrichedWithMounts = {
-      ...enrichedWithJobs,
       mountState: {
         ...remote.mountState,
-        mounted: isMounted,
+        mounted: remoteMounts.length > 0,
         activeProfiles: activeMountProfiles,
       },
-    };
-
-    // 3. Enrich with Serves
-    const remoteServes = serves.filter(
-      s => s.params && s.params.fs && s.params.fs.split(':')[0] === remote.remoteSpecs.name
-    );
-
-    return {
-      ...enrichedWithMounts,
       serveState: {
         isOnServe: remoteServes.length > 0,
         serveCount: remoteServes.length,
         serves: remoteServes,
+        activeProfiles: activeServeProfiles,
       },
     };
   }
@@ -368,12 +436,23 @@ export class RemoteFacadeService extends TauriBaseService {
     const activeProfiles: Record<string, number> = {};
 
     if (profiles) {
-      Object.keys(profiles).forEach(profileName => {
-        const match = runningJobs.find(j => j.profile === profileName);
-        if (match) {
-          activeProfiles[profileName] = match.jobid;
+      const profileNames = Object.keys(profiles);
+
+      runningJobs.forEach(job => {
+        // If job has a profile, match it; otherwise assign to first profile or 'default'
+        if (job.profile && profileNames.includes(job.profile)) {
+          activeProfiles[job.profile] = job.jobid;
+        } else if (!job.profile) {
+          // Job without profile - assign to first profile or 'default'
+          const targetProfile = profileNames[0] || 'default';
+          if (!activeProfiles[targetProfile]) {
+            activeProfiles[targetProfile] = job.jobid;
+          }
         }
       });
+    } else if (runningJobs.length > 0) {
+      // No profiles configured, but we have running jobs - use 'default'
+      activeProfiles['default'] = runningJobs[0].jobid;
     }
 
     const firstProfileKey = profiles ? Object.keys(profiles)[0] : undefined;

@@ -58,9 +58,16 @@ pub async fn create_remote_interactive(
     body["opt"] = opt_obj;
 
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = backend
-        .oauth_url_for(config::CREATE)
-        .ok_or_else(|| crate::localized_error!("backendErrors.system.oauthNotConfigured"))?;
+
+    // For Local backend: use OAuth port (separate rclone instance)
+    // For Remote backend: use main API directly (no separate OAuth process)
+    let url = if backend.is_local {
+        backend
+            .oauth_url_for(config::CREATE)
+            .ok_or_else(|| crate::localized_error!("backendErrors.system.oauthNotConfigured"))?
+    } else {
+        backend.url_for(config::CREATE)
+    };
 
     let response = state
         .client
@@ -127,9 +134,16 @@ pub async fn continue_create_remote_interactive(
     body["opt"] = opt_obj;
 
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = backend
-        .oauth_url_for(config::UPDATE)
-        .ok_or_else(|| crate::localized_error!("backendErrors.system.oauthNotConfigured"))?;
+
+    // For Local backend: use OAuth port (separate rclone instance)
+    // For Remote backend: use main API directly (no separate OAuth process)
+    let url = if backend.is_local {
+        backend
+            .oauth_url_for(config::UPDATE)
+            .ok_or_else(|| crate::localized_error!("backendErrors.system.oauthNotConfigured"))?
+    } else {
+        backend.url_for(config::UPDATE)
+    };
 
     let response = tauri_state
         .client
@@ -202,9 +216,16 @@ pub async fn create_remote(
     });
 
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = backend
-        .oauth_url_for(config::CREATE)
-        .ok_or_else(|| crate::localized_error!("backendErrors.system.oauthNotConfigured"))?;
+
+    // For Local backend: use OAuth port (separate rclone instance)
+    // For Remote backend: use main API directly (no separate OAuth process)
+    let url = if backend.is_local {
+        backend
+            .oauth_url_for(config::CREATE)
+            .ok_or_else(|| crate::localized_error!("backendErrors.system.oauthNotConfigured"))?
+    } else {
+        backend.url_for(config::CREATE)
+    };
 
     let response = state
         .client
@@ -282,9 +303,16 @@ pub async fn update_remote(
         .map_err(|e| e.to_string())?;
 
     let backend = BACKEND_MANAGER.get_active().await;
-    let url = backend
-        .oauth_url_for(config::UPDATE)
-        .ok_or_else(|| crate::localized_error!("backendErrors.system.oauthNotConfigured"))?;
+
+    // For Local backend: use OAuth port (separate rclone instance)
+    // For Remote backend: use main API directly (no separate OAuth process)
+    let url = if backend.is_local {
+        backend
+            .oauth_url_for(config::UPDATE)
+            .ok_or_else(|| crate::localized_error!("backendErrors.system.oauthNotConfigured"))?
+    } else {
+        backend.url_for(config::UPDATE)
+    };
     let body = json!({ "name": name, "parameters": parameters });
 
     let response = state
