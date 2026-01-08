@@ -1,5 +1,5 @@
 use log::{error, info};
-use rcman::JsonSettingsManager;
+use crate::core::settings::AppSettingsManager;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_opener::OpenerExt;
 
@@ -184,7 +184,7 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
         // We removed locks.
         let cache = &backend_manager.remote_cache;
 
-        let manager = app_clone.state::<JsonSettingsManager>();
+        let manager = app_clone.state::<AppSettingsManager>();
         let remote_names = cache.get_remotes().await;
         let settings_val = crate::core::settings::remote::manager::get_all_remote_settings_sync(
             manager.inner(),
@@ -616,7 +616,7 @@ pub fn handle_browse_remote(app: &AppHandle, remote_name: &str) {
 
         let cache = backend_manager.remote_cache.clone();
 
-        let manager = app_clone.state::<JsonSettingsManager>();
+        let manager = app_clone.state::<AppSettingsManager>();
         let remote_names = cache.get_remotes().await;
         let settings_val = crate::core::settings::remote::manager::get_all_remote_settings_sync(
             manager.inner(),

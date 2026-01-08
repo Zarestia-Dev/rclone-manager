@@ -6,7 +6,7 @@
 //!
 //! To remove: Delete this file and remove its `mod` declaration from `mod.rs`.
 
-use rcman::JsonSettingsManager;
+use crate::core::settings::AppSettingsManager;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -268,7 +268,7 @@ async fn restore_legacy_files(
     info!("Restoring from: {:?}", extracted_dir);
 
     // Get config directory from rcman manager
-    let manager = app_handle.state::<JsonSettingsManager>();
+    let manager = app_handle.state::<AppSettingsManager>();
     let config_dir = manager.config().config_dir.clone();
 
     // Restore rclone remotes via RC API

@@ -23,6 +23,7 @@ export interface BackupContentsInfo {
   rcloneConfig: boolean;
   remoteCount?: number;
   remoteNames?: string[];
+  profiles?: string[];
 }
 
 // Matches ExportCategoryResponse from backend
@@ -58,7 +59,8 @@ export class BackupRestoreService extends TauriBaseService {
     selectedOption: ExportType,
     password: string | null,
     remoteName: string,
-    userNote: string | null
+    userNote: string | null,
+    includeProfiles?: string[]
   ): Promise<void> {
     try {
       await this.invokeCommand('backup_settings', {
@@ -67,6 +69,7 @@ export class BackupRestoreService extends TauriBaseService {
         password,
         remoteName,
         userNote,
+        includeProfiles,
       });
 
       this.notificationService.showSuccess(this.translate.instant('backup.backupSuccess'));
@@ -80,11 +83,18 @@ export class BackupRestoreService extends TauriBaseService {
    * Restore settings from a .rcman backup
    * This command now handles both encrypted and unencrypted files.
    */
-  async restoreSettings(path: string, password: string | null): Promise<void> {
+  async restoreSettings(
+    path: string,
+    password: string | null,
+    restoreProfile?: string,
+    restoreProfileAs?: string
+  ): Promise<void> {
     try {
       await this.invokeCommand('restore_settings', {
         backupPath: path,
         password,
+        restoreProfile,
+        restoreProfileAs,
       });
       this.notificationService.showSuccess(this.translate.instant('backup.restoreSuccess'));
     } catch (error) {
@@ -129,5 +139,12 @@ export class BackupRestoreService extends TauriBaseService {
    */
   async getExportCategories(): Promise<ExportCategory[]> {
     return this.invokeCommand<ExportCategory[]>('get_export_categories', {});
+  }
+
+  /**
+   * Get available backend profiles from backend
+   */
+  async getBackendProfiles(): Promise<string[]> {
+    return this.invokeCommand<string[]>('get_backend_profiles', {});
   }
 }

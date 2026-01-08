@@ -1,5 +1,5 @@
 use log::{debug, error, info};
-use rcman::JsonSettingsManager;
+use crate::core::settings::AppSettingsManager;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Listener, Manager};
 
@@ -93,7 +93,7 @@ fn handle_remote_presence_changed(app: &AppHandle) {
             }
 
             let remote_names = cache.get_remotes().await;
-            let manager = app_clone.state::<JsonSettingsManager>();
+            let manager = app_clone.state::<AppSettingsManager>();
             let all_configs = crate::core::settings::remote::manager::get_all_remote_settings_sync(
                 manager.inner(),
                 &remote_names,
@@ -176,7 +176,7 @@ fn handle_settings_changed(app: &AppHandle) {
                         general.get("notifications").and_then(|v| v.as_bool())
                     {
                         debug!("💬 Notifications changed to: {notification}");
-                        // Note: notifications setting is now read from JsonSettingsManager which caches internally
+                        // Note: notifications setting is now read from AppSettingsManager which caches internally
                     }
 
                     if let Some(startup) = general.get("start_on_startup").and_then(|v| v.as_bool())
@@ -210,7 +210,7 @@ fn handle_settings_changed(app: &AppHandle) {
                         {
                             let app_handle_clone = app_handle.clone();
                             tauri::async_runtime::spawn(async move {
-                                // Note: tray_enabled setting is now read from JsonSettingsManager which caches internally
+                                // Note: tray_enabled setting is now read from AppSettingsManager which caches internally
                                 debug!("🛠️ Tray visibility changed to: {tray_enabled}");
                                 if let Some(tray) = app_handle_clone.tray_by_id("main-tray") {
                                     let _ = tray.set_visible(tray_enabled);
@@ -231,7 +231,7 @@ fn handle_settings_changed(app: &AppHandle) {
                     }
                     if let Some(restrict) = general.get("restrict").and_then(|v| v.as_bool()) {
                         debug!("🔒 Restrict mode changed to: {restrict}");
-                        // Note: restrict setting is now read from JsonSettingsManager which caches internally
+                        // Note: restrict setting is now read from AppSettingsManager which caches internally
                         let app_handle_clone = app_handle.clone();
                         app_handle_clone
                             .emit(REMOTE_CACHE_CHANGED, "restrict_mode_changed")
@@ -332,7 +332,7 @@ fn handle_settings_changed(app: &AppHandle) {
                         .and_then(|v| v.as_bool())
                     {
                         debug!("♻️ Destroy window on close changed to: {destroy_window}");
-                        // Note: destroy_window_on_close is now read from JsonSettingsManager which caches internally
+                        // Note: destroy_window_on_close is now read from AppSettingsManager which caches internally
                     }
                 }
             }

@@ -4210,6 +4210,7 @@ dependencies = [
  "dirs 6.0.0",
  "keyring",
  "log",
+ "parking_lot",
  "rcman-derive",
  "regex",
  "serde",

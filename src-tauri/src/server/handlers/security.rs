@@ -4,7 +4,7 @@ use axum::{
     extract::{Query, State},
     response::Json,
 };
-use rcman::JsonSettingsManager;
+use crate::core::settings::AppSettingsManager;
 use serde::Deserialize;
 use tauri::Manager;
 
@@ -14,7 +14,7 @@ pub async fn has_stored_password_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<bool>>, AppError> {
     use crate::core::security::commands::has_stored_password;
-    let credential_store = state.app_handle.state::<JsonSettingsManager>();
+    let credential_store = state.app_handle.state::<AppSettingsManager>();
     let has_password = has_stored_password(credential_store)
         .await
         .map_err(anyhow::Error::msg)?;
@@ -38,7 +38,7 @@ pub async fn remove_config_password_handler(
     let env_manager = state
         .app_handle
         .state::<crate::core::security::SafeEnvironmentManager>();
-    let credential_store = state.app_handle.state::<JsonSettingsManager>();
+    let credential_store = state.app_handle.state::<AppSettingsManager>();
     remove_config_password(env_manager, credential_store)
         .await
         .map_err(anyhow::Error::msg)?;
@@ -78,7 +78,7 @@ pub async fn store_config_password_handler(
     let env_manager = state
         .app_handle
         .state::<crate::core::security::SafeEnvironmentManager>();
-    let credential_store = state.app_handle.state::<JsonSettingsManager>();
+    let credential_store = state.app_handle.state::<AppSettingsManager>();
     store_config_password(
         state.app_handle.clone(),
         env_manager,
@@ -105,7 +105,7 @@ pub async fn unencrypt_config_handler(
     let env_manager = state
         .app_handle
         .state::<crate::core::security::SafeEnvironmentManager>();
-    let manager = state.app_handle.state::<JsonSettingsManager>();
+    let manager = state.app_handle.state::<AppSettingsManager>();
     unencrypt_config(
         state.app_handle.clone(),
         env_manager,
@@ -132,7 +132,7 @@ pub async fn encrypt_config_handler(
     let env_manager = state
         .app_handle
         .state::<crate::core::security::SafeEnvironmentManager>();
-    let credential_store = state.app_handle.state::<JsonSettingsManager>();
+    let credential_store = state.app_handle.state::<AppSettingsManager>();
     encrypt_config(
         state.app_handle.clone(),
         env_manager,
@@ -150,7 +150,7 @@ pub async fn get_config_password_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::core::security::commands::get_config_password;
-    let credential_store = state.app_handle.state::<JsonSettingsManager>();
+    let credential_store = state.app_handle.state::<AppSettingsManager>();
     let password = get_config_password(credential_store)
         .await
         .map_err(anyhow::Error::msg)?;
@@ -193,7 +193,7 @@ pub async fn change_config_password_handler(
     let env_manager = state
         .app_handle
         .state::<crate::core::security::SafeEnvironmentManager>();
-    let credential_store = state.app_handle.state::<JsonSettingsManager>();
+    let credential_store = state.app_handle.state::<AppSettingsManager>();
     change_config_password(
         state.app_handle.clone(),
         env_manager,

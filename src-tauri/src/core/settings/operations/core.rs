@@ -4,7 +4,7 @@
 
 use crate::core::settings::schema::AppSettings;
 use log::info;
-use rcman::JsonSettingsManager;
+use crate::core::settings::AppSettingsManager;
 use serde_json::json;
 use tauri::{Emitter, State};
 
@@ -13,11 +13,11 @@ use crate::utils::types::events::SYSTEM_SETTINGS_CHANGED;
 /// Load all settings with metadata (for UI)
 #[tauri::command]
 pub async fn load_settings(
-    manager: State<'_, JsonSettingsManager>,
+    manager: State<'_, AppSettingsManager>,
 ) -> Result<serde_json::Value, String> {
     let metadata = manager
         .inner()
-        .load_settings::<AppSettings>()
+        .load_settings()
         .map_err(|e| crate::localized_error!("backendErrors.settings.loadFailed", "error" => e))?;
 
     let response = json!({
@@ -34,12 +34,12 @@ pub async fn save_setting(
     category: String,
     key: String,
     value: serde_json::Value,
-    manager: State<'_, JsonSettingsManager>,
+    manager: State<'_, AppSettingsManager>,
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
     manager
         .inner()
-        .save_setting::<AppSettings>(&category, &key, value.clone())
+        .save_setting(&category, &key, value.clone())
         .map_err(|e| crate::localized_error!("backendErrors.settings.saveFailed", "error" => e))?;
 
     // Emit change event for UI updates
@@ -59,12 +59,12 @@ pub async fn save_setting(
 pub async fn reset_setting(
     category: String,
     key: String,
-    manager: State<'_, JsonSettingsManager>,
+    manager: State<'_, AppSettingsManager>,
     app_handle: tauri::AppHandle,
 ) -> Result<serde_json::Value, String> {
     let default_value = manager
         .inner()
-        .reset_setting::<AppSettings>(&category, &key)
+        .reset_setting(&category, &key)
         .map_err(|e| crate::localized_error!("backendErrors.settings.resetFailed", "error" => e))?;
 
     // Emit change event
@@ -80,7 +80,7 @@ pub async fn reset_setting(
 /// Reset all settings to defaults
 #[tauri::command]
 pub async fn reset_settings(
-    manager: State<'_, JsonSettingsManager>,
+    manager: State<'_, AppSettingsManager>,
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
     manager.inner().reset_all().map_err(
@@ -100,8 +100,8 @@ pub async fn reset_settings(
 }
 
 /// Load startup settings (blocking, for initialization)
-pub fn load_startup_settings(manager: &JsonSettingsManager) -> Result<AppSettings, String> {
+pub fn load_startup_settings(manager: &AppSettingsManager) -> Result<AppSettings, String> {
     manager
-        .settings::<AppSettings>()
+        .settings()
         .map_err(|e| crate::localized_error!("backendErrors.settings.loadFailed", "error" => e))
 }

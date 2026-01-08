@@ -2,9 +2,9 @@
 //!
 //! This module provides backup and analysis commands using the rcman library.
 
+use crate::core::settings::AppSettingsManager;
 use crate::utils::types::backup_types::{BackupAnalysis, BackupContentsInfo, ExportType};
 use log::{error, info};
-use rcman::JsonSettingsManager;
 use std::{fs::File, io::BufReader, path::PathBuf};
 use tauri::{AppHandle, State};
 use zip::ZipArchive;
@@ -20,7 +20,8 @@ pub async fn backup_settings(
     password: Option<String>,
     remote_name: Option<String>,
     user_note: Option<String>,
-    manager: State<'_, JsonSettingsManager>,
+    include_profiles: Option<Vec<String>>,
+    manager: State<'_, AppSettingsManager>,
     _app_handle: AppHandle,
 ) -> Result<String, String> {
     info!("Starting backup with rcman to: {}", backup_dir);
@@ -95,7 +96,13 @@ pub async fn backup_settings(
         options = options.note(note);
     }
 
-    let backup_path = manager.backup().create(options).map_err(|e| {
+    if let Some(profiles) = include_profiles {
+        for profile in profiles {
+            options = options.include_profile(profile);
+        }
+    }
+
+    let backup_path = manager.backup().create(&options).map_err(|e| {
         error!("❌ Backup failed: {}", e);
         format!("Backup failed: {}", e)
     })?;
@@ -111,7 +118,7 @@ pub async fn backup_settings(
 #[tauri::command]
 pub async fn analyze_backup_file(
     path: PathBuf,
-    manager: State<'_, JsonSettingsManager>,
+    manager: State<'_, AppSettingsManager>,
 ) -> Result<BackupAnalysis, String> {
     let ext = path
         .extension()
@@ -167,14 +174,32 @@ pub async fn analyze_backup_file(
                     |r| match r {
                         rcman::SubSettingsManifestEntry::MultiFile(items) => items.len(),
                         rcman::SubSettingsManifestEntry::SingleFile(_) => 1,
+                        rcman::SubSettingsManifestEntry::Profiled { profiles, .. } => {
+                            profiles.len()
+                        }
                     },
                 ),
                 remote_names: analysis.manifest.contents.sub_settings.get("remotes").map(
                     |r| match r {
                         rcman::SubSettingsManifestEntry::MultiFile(items) => items.clone(),
                         rcman::SubSettingsManifestEntry::SingleFile(name) => vec![name.clone()],
+                        rcman::SubSettingsManifestEntry::Profiled { profiles, .. } => profiles
+                            .iter()
+                            .map(|p| format!("[Profile] {}", p))
+                            .collect(),
                     },
                 ),
+                profiles: analysis
+                    .manifest
+                    .contents
+                    .sub_settings
+                    .get("remotes")
+                    .and_then(|r| match r {
+                        rcman::SubSettingsManifestEntry::Profiled { profiles, .. } => {
+                            Some(profiles.clone())
+                        }
+                        _ => None,
+                    }),
             };
 
         Ok(BackupAnalysis {
@@ -210,6 +235,7 @@ pub async fn analyze_backup_file(
                 rclone_config: manifest.contents.rclone_config,
                 remote_count: manifest.contents.remote_configs.as_ref().map(|r| r.count),
                 remote_names: manifest.contents.remote_configs.and_then(|r| r.names),
+                profiles: None,
             }),
         })
     }

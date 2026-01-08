@@ -2,6 +2,7 @@
 //!
 //! Supports both rcman library format and legacy app format backups.
 
+use crate::core::settings::AppSettingsManager;
 use crate::{
     rclone::commands::remote::create_remote,
     utils::types::{
@@ -10,7 +11,6 @@ use crate::{
     },
 };
 use log::{info, warn};
-use rcman::JsonSettingsManager;
 use serde_json::json;
 use std::{fs::File, io::BufReader, path::Path};
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -68,7 +68,9 @@ fn detect_manifest_format(manifest_json: &serde_json::Value) -> BackupFormatVers
 pub async fn restore_settings(
     backup_path: std::path::PathBuf,
     password: Option<String>,
-    manager: State<'_, JsonSettingsManager>,
+    restore_profile: Option<String>,
+    restore_profile_as: Option<String>,
+    manager: State<'_, AppSettingsManager>,
     app_handle: AppHandle,
 ) -> Result<String, String> {
     info!("Starting restore from: {:?}", backup_path);
@@ -91,7 +93,15 @@ pub async fn restore_settings(
 
     match format {
         BackupFormatVersion::Rcman => {
-            restore_rcman_backup(&backup_path, password, &manager, &app_handle).await
+            restore_rcman_backup(
+                &backup_path,
+                password,
+                restore_profile,
+                restore_profile_as,
+                &manager,
+                &app_handle,
+            )
+            .await
         }
         // DEPRECATION (2026-2027): Delete this match arm when removing legacy support
         BackupFormatVersion::AppLegacy => {
@@ -110,7 +120,9 @@ pub async fn restore_settings(
 async fn restore_rcman_backup(
     backup_path: &Path,
     password: Option<String>,
-    manager: &JsonSettingsManager,
+    restore_profile: Option<String>,
+    restore_profile_as: Option<String>,
+    manager: &AppSettingsManager,
     app_handle: &AppHandle,
 ) -> Result<String, String> {
     info!("Restoring using rcman library...");
@@ -128,10 +140,18 @@ async fn restore_rcman_backup(
         }
     }
 
+    if let Some(profile) = restore_profile {
+        options = options.restore_profile(profile);
+    }
+
+    if let Some(name) = restore_profile_as {
+        options = options.restore_profile_as(name);
+    }
+
     // Perform restore
     let result = manager
         .backup()
-        .restore(options)
+        .restore(&options)
         .map_err(|e| format!("Restore failed: {}", e))?;
 
     // Emit events to notify frontend
@@ -141,7 +161,7 @@ async fn restore_rcman_backup(
         // Reload settings to get new values
         manager.invalidate_cache();
         if let Some(app_settings) = manager
-            .settings::<crate::core::settings::schema::AppSettings>()
+            .settings()
             .ok()
             .and_then(|s| serde_json::to_value(s).ok())
             .and_then(|v| v.get("app_settings").cloned())

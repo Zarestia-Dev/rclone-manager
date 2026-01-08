@@ -10,6 +10,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 import { ExportModalData, ExportType } from '@app/types';
@@ -43,7 +44,9 @@ interface ExportOption {
     MatButtonModule,
     MatProgressSpinnerModule,
     MatRadioModule,
+    MatRadioModule,
     MatSlideToggleModule,
+    MatCheckboxModule,
     TranslateModule,
   ],
   templateUrl: './export-modal.component.html',
@@ -65,6 +68,8 @@ export class ExportModalComponent implements OnInit {
   readonly password = signal('');
   readonly showPassword = signal(false);
   readonly remotes = signal<readonly string[]>([]);
+  readonly availableProfiles = signal<string[]>([]);
+  readonly selectedProfiles = signal<string[]>([]);
   readonly isLoading = signal(false);
   readonly isExporting = signal(false);
   readonly userNote = signal('');
@@ -94,12 +99,26 @@ export class ExportModalComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     this.isLoading.set(true);
     try {
-      const [remotesList, categoriesList] = await Promise.allSettled([
+      const [remotesList, categoriesList, profilesList] = await Promise.allSettled([
         this.remoteManagementService.getRemotes(),
         this.backupRestoreService.getExportCategories(),
+        this.backupRestoreService.getBackendProfiles(),
       ]);
 
       this.remotes.set(remotesList.status === 'fulfilled' ? Object.freeze(remotesList.value) : []);
+      
+      // Handle profiles
+      if (profilesList.status === 'fulfilled') {
+          this.availableProfiles.set(profilesList.value);
+          // Default to all profiles or just default? Let's default to all for now or active?
+          // For now empty means "default behavior" which might be active only or none.
+          // Let's pre-select "default" if it exists.
+          if (profilesList.value.includes('default')) {
+              this.selectedProfiles.set(['default']);
+          } else if (profilesList.value.length > 0) {
+             this.selectedProfiles.set([profilesList.value[0]]);
+          }
+      }
 
       // Build export options from backend categories
       const backendCategories = categoriesList.status === 'fulfilled' ? categoriesList.value : [];
@@ -247,7 +266,8 @@ export class ExportModalComponent implements OnInit {
         exportParams.type,
         exportParams.password,
         exportParams.remoteName,
-        exportParams.userNote
+        exportParams.userNote,
+        this.selectedProfiles()
       );
     } catch (error) {
       console.error('Export failed:', error);
@@ -283,5 +303,20 @@ export class ExportModalComponent implements OnInit {
       this.password.set('');
       this.showPassword.set(false);
     }
+  }
+  onProfileSelectionChange(profiles: string[]): void {
+      this.selectedProfiles.set(profiles);
+  }
+
+  toggleProfile(profile: string, checked: boolean): void {
+    this.selectedProfiles.update(current => {
+      if (checked) {
+          // Add if not exists
+          return current.includes(profile) ? current : [...current, profile];
+      } else {
+          // Remove
+          return current.filter(p => p !== profile);
+      }
+    });
   }
 }

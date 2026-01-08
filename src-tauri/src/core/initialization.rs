@@ -1,5 +1,5 @@
 use log::{debug, error, info, warn};
-use rcman::JsonSettingsManager;
+use crate::core::settings::AppSettingsManager;
 use tauri::{AppHandle, Manager};
 
 use crate::{
@@ -38,7 +38,7 @@ pub fn init_rclone_state(app_handle: &tauri::AppHandle) -> Result<(), String> {
 
     tauri::async_runtime::block_on(async {
         // Load persistent connections
-        let settings_state = app_handle.state::<JsonSettingsManager>();
+        let settings_state = app_handle.state::<AppSettingsManager>();
         if let Err(e) = BACKEND_MANAGER
             .load_from_settings(settings_state.inner())
             .await
@@ -92,7 +92,8 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
                     "↩️ Startup: Active backend '{}' has weak connection. Falling back to Local.",
                     active
                 );
-                if let Err(err) = BACKEND_MANAGER.switch_to("Local").await {
+                let manager = app_handle.state::<AppSettingsManager>();
+                if let Err(err) = BACKEND_MANAGER.switch_to(manager.inner(), "Local").await {
                     error!("Critical: Failed to fallback to Local backend: {}", err);
                 } else {
                     info!("✅ Fallback to Local successful. Retrying cache refresh for Local...");
@@ -115,7 +116,8 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
                     "↩️ Startup: Active backend '{}' timed out. Falling back to Local.",
                     active
                 );
-                if let Err(err) = BACKEND_MANAGER.switch_to("Local").await {
+                let manager = app_handle.state::<AppSettingsManager>();
+                if let Err(err) = BACKEND_MANAGER.switch_to(manager.inner(), "Local").await {
                     error!("Critical: Failed to fallback to Local backend: {}", err);
                 } else {
                     info!("✅ Fallback to Local successful. Retrying cache refresh for Local...");
@@ -156,7 +158,7 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
 async fn initialize_scheduler(app_handle: AppHandle) -> Result<(), String> {
     let cache_state = app_handle.state::<ScheduledTasksCache>();
     let scheduler_state = app_handle.state::<CronScheduler>();
-    let manager = app_handle.state::<JsonSettingsManager>();
+    let manager = app_handle.state::<AppSettingsManager>();
 
     use crate::rclone::backend::BACKEND_MANAGER;
     let remote_names = BACKEND_MANAGER.remote_cache.get_remotes().await;
@@ -211,7 +213,7 @@ pub async fn apply_backend_settings(app_handle: &tauri::AppHandle) -> Result<(),
 
     debug!("🔧 Applying RClone backend settings from rcman");
 
-    let manager = app_handle.state::<JsonSettingsManager>();
+    let manager = app_handle.state::<AppSettingsManager>();
     let backend_options = load_backend_options_sync(manager.inner());
 
     let rclone_state = app_handle.state::<RcloneState>();

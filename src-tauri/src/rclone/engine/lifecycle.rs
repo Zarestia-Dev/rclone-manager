@@ -21,7 +21,6 @@ use crate::{
         },
     },
 };
-use rcman::{JsonStorage, SettingsManager};
 
 // Mobile no-op stub for update_tray_menu
 #[cfg(not(desktop))]
@@ -226,7 +225,7 @@ fn handle_start_failure(engine: &mut RcApiEngine, app: &AppHandle, e: String) {
 fn trigger_post_start_setup(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         // Load and apply settings
-        match load_startup_settings(&app.state::<SettingsManager<JsonStorage>>()) {
+        match load_startup_settings(&app.state::<crate::core::settings::AppSettingsManager>()) {
             Ok(settings) => {
                 apply_core_settings(&app, &settings).await;
 

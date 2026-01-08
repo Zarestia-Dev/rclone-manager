@@ -4,7 +4,7 @@
 //! to automatically start any profiles that are configured with autoStart: true
 
 use log::{error, info, warn};
-use rcman::JsonSettingsManager;
+use crate::core::settings::AppSettingsManager;
 use tauri::{AppHandle, Manager};
 
 use crate::{
@@ -21,7 +21,7 @@ use crate::{
 pub async fn handle_startup(app: AppHandle) {
     info!("🚀 Starting auto-start profiles check...");
 
-    let manager = app.state::<JsonSettingsManager>();
+    let manager = app.state::<AppSettingsManager>();
 
     let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
 

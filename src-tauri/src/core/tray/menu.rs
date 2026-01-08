@@ -1,5 +1,5 @@
 use log::{error, warn};
-use rcman::JsonSettingsManager;
+use crate::core::settings::AppSettingsManager;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tauri::{
     AppHandle, Manager, Runtime,
@@ -455,7 +455,7 @@ pub async fn create_tray_menu<R: Runtime>(
         .get_active_jobs()
         .await;
 
-    let cached_settings = get_settings(app.state::<JsonSettingsManager>())
+    let cached_settings = get_settings(app.state::<AppSettingsManager>())
         .await
         .unwrap_or_else(|_| {
             error!("Failed to fetch cached settings");

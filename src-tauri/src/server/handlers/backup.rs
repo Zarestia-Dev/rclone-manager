@@ -25,7 +25,7 @@ pub async fn backup_settings_handler(
     Query(query): Query<BackupSettingsQuery>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::core::settings::backup::backup_manager::backup_settings;
-    let manager: tauri::State<SettingsManager<JsonStorage>> = state.app_handle.state();
+    let manager: tauri::State<crate::core::settings::AppSettingsManager> = state.app_handle.state();
     let result = backup_settings(
         query.backup_dir,
         query.export_type,
@@ -52,7 +52,7 @@ pub async fn analyze_backup_file_handler(
     use crate::core::settings::backup::backup_manager::analyze_backup_file;
     use std::path::PathBuf;
     let path = PathBuf::from(query.path);
-    let manager: tauri::State<SettingsManager<JsonStorage>> = state.app_handle.state();
+    let manager: tauri::State<crate::core::settings::AppSettingsManager> = state.app_handle.state();
     let analysis = analyze_backup_file(path, manager)
         .await
         .map_err(anyhow::Error::msg)?;
@@ -72,7 +72,7 @@ pub async fn restore_settings_handler(
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::core::settings::backup::restore_manager::restore_settings;
     use std::path::PathBuf;
-    let manager: tauri::State<SettingsManager<JsonStorage>> = state.app_handle.state();
+    let manager: tauri::State<crate::core::settings::AppSettingsManager> = state.app_handle.state();
     let backup_path = PathBuf::from(body.backup_path);
     let result = restore_settings(
         backup_path,
@@ -94,7 +94,7 @@ pub async fn get_export_categories_handler(
     AppError,
 > {
     use crate::core::settings::backup::export_categories::get_export_categories;
-    let manager: tauri::State<SettingsManager<JsonStorage>> = state.app_handle.state();
+    let manager: tauri::State<crate::core::settings::AppSettingsManager> = state.app_handle.state();
     let categories = get_export_categories(manager);
     Ok(Json(ApiResponse::success(categories)))
 }

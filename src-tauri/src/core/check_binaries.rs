@@ -111,7 +111,7 @@ pub fn get_rclone_binary_path(base_path: &std::path::Path) -> PathBuf {
 pub fn read_rclone_path(app: &AppHandle) -> PathBuf {
     // Read from settings manager which caches internally
     let configured_base_path: PathBuf = app
-        .try_state::<rcman::JsonSettingsManager>()
+        .try_state::<crate::core::settings::AppSettingsManager>()
         .and_then(|manager| {
             manager
                 .inner()

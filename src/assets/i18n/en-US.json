@@ -1028,6 +1028,15 @@
       "remoteConfigs": {
         "title": "Remote Configurations"
       },
+      "profiles": {
+        "title": "Profiles"
+      },
+      "options": "Restore Options",
+      "scope": {
+        "all": "Restore Everything",
+        "profile": "Restore Specific Profile"
+      },
+      "selectProfile": "Select Profile",
       "note": "Backup Note",
       "passwordRequired": "Password Required",
       "encryptedWarning": "This backup is encrypted. Enter the correct password to decrypt and restore.",
@@ -1552,7 +1561,9 @@
       "singleRemoteDesc": "Export one specific remote config",
       "appPreferences": "Application preferences",
       "configFiles": "Configuration files",
-      "externalConfig": "External configuration file"
+      "externalConfig": "External configuration file",
+      "profiles": "Include Profiles",
+      "profilesHint": "Select specific profiles to include in the backup."
     },
     "backend": {
       "title": "Backend Management",

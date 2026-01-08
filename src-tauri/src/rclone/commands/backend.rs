@@ -3,7 +3,7 @@
 // Tauri commands for backend CRUD operations and connection testing.
 
 use log::{debug, info, warn};
-use rcman::JsonSettingsManager;
+use crate::core::settings::AppSettingsManager;
 use tauri::{AppHandle, Manager, State};
 
 use crate::{
@@ -27,6 +27,24 @@ pub async fn list_backends() -> Result<Vec<BackendInfo>, String> {
 #[tauri::command]
 pub async fn get_active_backend() -> Result<String, String> {
     Ok(BACKEND_MANAGER.get_active_name().await)
+}
+
+/// Get list of available backend profiles
+#[tauri::command]
+pub async fn get_backend_profiles(
+    manager: State<'_, AppSettingsManager>,
+) -> Result<Vec<String>, String> {
+    let remotes = manager
+        .sub_settings("remotes")
+        .map_err(|e| format!("Failed to access remotes sub-settings: {}", e))?;
+
+    let profiles = remotes
+        .profiles()
+        .map_err(|_| "Profiles not enabled for remotes".to_string())?
+        .list()
+        .map_err(|e| format!("Failed to list profiles: {}", e))?;
+
+    Ok(profiles)
 }
 
 /// Switch to a different backend
@@ -73,7 +91,8 @@ pub async fn switch_backend(
     }
 
     // Switch (only if connection test passed for remote backends)
-    BACKEND_MANAGER.switch_to(&name).await?;
+    let settings_manager = app.state::<AppSettingsManager>();
+    BACKEND_MANAGER.switch_to(settings_manager.inner(), &name).await?;
 
     // Set config path if configured (Remote only)
     if !backend.is_local
@@ -130,7 +149,7 @@ pub async fn switch_backend(
                 info!("↩️ Reverting to previous backend due to cache failure");
                 // We're essentially failing the switch, but manager state was already updated
                 // best effort to switch back to Local for safety
-                if let Err(revert_err) = BACKEND_MANAGER.switch_to("Local").await {
+                if let Err(revert_err) = BACKEND_MANAGER.switch_to(settings_manager.inner(), "Local").await {
                     warn!("Failed to revert to Local backend: {}", revert_err);
                 }
                 return Err(format!(
@@ -144,7 +163,7 @@ pub async fn switch_backend(
             // Revert to previous backend
             if name != "Local" {
                 info!("↩️ Reverting to previous backend due to timeout");
-                if let Err(revert_err) = BACKEND_MANAGER.switch_to("Local").await {
+                if let Err(revert_err) = BACKEND_MANAGER.switch_to(settings_manager.inner(), "Local").await {
                     warn!("Failed to revert to Local backend: {}", revert_err);
                 }
                 BACKEND_MANAGER
@@ -159,7 +178,7 @@ pub async fn switch_backend(
     }
 
     // Persist active backend selection
-    let settings_manager = app.state::<JsonSettingsManager>();
+    // let settings_manager = app.state::<AppSettingsManager>(); // Already retrieved above
     if let Err(e) = crate::rclone::backend::BackendManager::save_active_to_settings(
         settings_manager.inner(),
         &name,
@@ -231,7 +250,7 @@ pub async fn add_backend(
     BACKEND_MANAGER.add(backend.clone()).await?;
 
     // Persist to settings
-    let settings_manager = app.state::<JsonSettingsManager>();
+    let settings_manager = app.state::<AppSettingsManager>();
     save_backend_to_settings(settings_manager.inner(), &backend)?;
 
     info!("✅ Backend '{}' added", name);
@@ -274,7 +293,7 @@ pub async fn update_backend(
         os: existing.os.clone(),
     };
 
-    let settings_manager = app.state::<JsonSettingsManager>();
+    let settings_manager = app.state::<AppSettingsManager>();
 
     // Handle auth
     match (username.as_deref(), password.as_deref()) {
@@ -339,7 +358,7 @@ pub async fn remove_backend(app: AppHandle, name: String) -> Result<(), String> 
     BACKEND_MANAGER.remove(&name).await?;
 
     // Remove from settings
-    let settings_manager = app.state::<JsonSettingsManager>();
+    let settings_manager = app.state::<AppSettingsManager>();
     delete_backend_from_settings(settings_manager.inner(), &name)?;
 
     info!("✅ Backend '{}' removed", name);
@@ -363,7 +382,7 @@ pub async fn test_backend_connection(
         Ok((version, os)) => {
             // Persist to settings (optional but good)
             if let Some(backend) = BACKEND_MANAGER.get(&name).await {
-                let settings_manager = app.state::<JsonSettingsManager>();
+                let settings_manager = app.state::<AppSettingsManager>();
                 let _ = save_backend_to_settings(settings_manager.inner(), &backend);
             }
 
@@ -402,7 +421,7 @@ pub struct TestConnectionResult {
 // =============================================================================
 
 fn save_backend_to_settings(
-    manager: &JsonSettingsManager,
+    manager: &AppSettingsManager,
     backend: &Backend,
 ) -> Result<(), String> {
     // Store secrets in keychain (desktop only)
@@ -442,7 +461,7 @@ fn save_backend_to_settings(
     Ok(())
 }
 
-fn delete_backend_from_settings(manager: &JsonSettingsManager, name: &str) -> Result<(), String> {
+fn delete_backend_from_settings(manager: &AppSettingsManager, name: &str) -> Result<(), String> {
     // Remove secrets (desktop only)
     #[cfg(desktop)]
     if let Some(creds) = manager.credentials() {

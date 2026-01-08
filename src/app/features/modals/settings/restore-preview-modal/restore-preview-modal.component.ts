@@ -13,6 +13,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatRadioModule } from '@angular/material/radio';
+import { MatSelectModule } from '@angular/material/select';
 import { DatePipe, UpperCasePipe } from '@angular/common';
 import { BackupAnalysis, BackupRestoreService } from '@app/services';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -27,6 +29,8 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
+    MatRadioModule,
+    MatSelectModule,
     FormsModule,
     DatePipe,
     UpperCasePipe,
@@ -48,6 +52,8 @@ export class RestorePreviewModalComponent {
   readonly isVerifying = signal(false);
   readonly passwordError = signal<string | null>(null);
   readonly showPassword = signal(false);
+  readonly selectedProfile = signal<string | null>(null);
+  readonly restoreScope = signal<'all' | 'profile'>('all');
 
   // Data from injection
   readonly analysis: BackupAnalysis = this.data.analysis;
@@ -57,6 +63,19 @@ export class RestorePreviewModalComponent {
   readonly isEncrypted = computed(() => this.analysis.isEncrypted);
   readonly hasContents = computed(() => !!this.analysis.contents);
   readonly hasUserNote = computed(() => !!this.analysis.userNote);
+  readonly profiles = computed(() => this.analysis.contents?.profiles || []);
+
+  /**
+   * Toggles restore scope
+   */
+  toggleRestoreScope(scope: 'all' | 'profile'): void {
+    this.restoreScope.set(scope);
+    if (scope === 'all') {
+      this.selectedProfile.set(null);
+    } else if (this.profiles().length > 0 && !this.selectedProfile()) {
+      this.selectedProfile.set(this.profiles()[0]);
+    }
+  }
 
   /**
    * Gets the total count of items in the backup
@@ -120,9 +139,10 @@ export class RestorePreviewModalComponent {
     this.passwordError.set(null);
 
     const password = this.isEncrypted() ? this.password().trim() : null;
+    const restoreProfile = this.restoreScope() === 'profile' ? this.selectedProfile() ?? undefined : undefined;
 
     try {
-      await this.backupRestoreService.restoreSettings(this.backupPath, password);
+      await this.backupRestoreService.restoreSettings(this.backupPath, password, restoreProfile);
       // Close modal with success
       this.dialogRef.close(true);
     } catch (error: any) {

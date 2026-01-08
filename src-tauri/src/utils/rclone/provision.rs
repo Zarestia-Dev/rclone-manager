@@ -127,7 +127,7 @@ pub async fn provision_rclone(
     );
 
     // Persist the new rclone path to settings
-    // Note: In-memory caching is no longer used - we read from JsonSettingsManager which caches internally
+    // Note: In-memory caching is no longer used - we read from AppSettingsManager which caches internally
     if let Err(e) = save_setting(
         "core".to_string(),
         "rclone_path".to_string(),

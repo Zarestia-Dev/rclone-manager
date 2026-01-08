@@ -4,7 +4,7 @@
 //! All backend blocks stored in a single backend.json file.
 
 use log::{debug, info};
-use rcman::JsonSettingsManager;
+use crate::core::settings::AppSettingsManager;
 use serde_json::json;
 use tauri::State;
 
@@ -16,7 +16,7 @@ use tauri::State;
 #[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn load_rclone_backend_options(
-    manager: State<'_, JsonSettingsManager>,
+    manager: State<'_, AppSettingsManager>,
 ) -> Result<serde_json::Value, String> {
     debug!("Loading RClone backend options via rcman sub-settings");
 
@@ -27,7 +27,7 @@ pub async fn load_rclone_backend_options(
 }
 
 /// Sync version for use in initialization
-pub fn load_backend_options_sync(manager: &JsonSettingsManager) -> serde_json::Value {
+pub fn load_backend_options_sync(manager: &AppSettingsManager) -> serde_json::Value {
     let sub = match manager.sub_settings("backend") {
         Ok(s) => s,
         Err(_) => return json!({}),
@@ -54,7 +54,7 @@ pub fn load_backend_options_sync(manager: &JsonSettingsManager) -> serde_json::V
 /// Save all RClone backend options
 #[tauri::command]
 pub async fn save_rclone_backend_options(
-    manager: State<'_, JsonSettingsManager>,
+    manager: State<'_, AppSettingsManager>,
     options: serde_json::Value,
 ) -> Result<(), String> {
     debug!("Saving RClone backend options via rcman sub-settings");
@@ -82,7 +82,7 @@ pub async fn save_rclone_backend_options(
 /// Save a single RClone backend option (block.option format)
 #[tauri::command]
 pub async fn save_rclone_backend_option(
-    manager: State<'_, JsonSettingsManager>,
+    manager: State<'_, AppSettingsManager>,
     block: String,
     option: String,
     value: serde_json::Value,
@@ -121,7 +121,7 @@ pub async fn save_rclone_backend_option(
 /// Reset RClone backend options to defaults (delete all)
 #[tauri::command]
 pub async fn reset_rclone_backend_options(
-    manager: State<'_, JsonSettingsManager>,
+    manager: State<'_, AppSettingsManager>,
 ) -> Result<(), String> {
     debug!("Resetting RClone backend options");
 
@@ -146,7 +146,7 @@ pub async fn reset_rclone_backend_options(
 /// Remove a single RClone backend option
 #[tauri::command]
 pub async fn remove_rclone_backend_option(
-    manager: State<'_, JsonSettingsManager>,
+    manager: State<'_, AppSettingsManager>,
     block: String,
     option: String,
 ) -> Result<(), String> {
@@ -194,7 +194,7 @@ pub async fn remove_rclone_backend_option(
 /// Get RClone backend store path for backup/export
 #[tauri::command]
 pub async fn get_rclone_backend_store_path(
-    manager: State<'_, JsonSettingsManager>,
+    manager: State<'_, AppSettingsManager>,
 ) -> Result<String, String> {
     // Backend is stored in config/backend.json (single file mode)
     let backend_path = manager.inner().config().config_dir.join("backend.json");

@@ -1029,6 +1029,15 @@
       "remoteConfigs": {
         "title": "Uzak Sunucu Yapılandırmaları"
       },
+      "profiles": {
+        "title": "Profiller"
+      },
+      "options": "Geri Yükleme Seçenekleri",
+      "scope": {
+        "all": "Her Şeyi Geri Yükle",
+        "profile": "Belirli Profili Geri Yükle"
+      },
+      "selectProfile": "Profil Seç",
       "note": "Yedekleme Notu",
       "passwordRequired": "Şifre Gerekli",
       "encryptedWarning": "Bu yedekleme şifrelenmiş. Şifresini çözmek ve geri yüklemek için doğru parolayı girin.",
@@ -1553,7 +1562,9 @@
       "singleRemoteDesc": "Belirli bir uzak bağlantı yapılandırmasını dışa aktar",
       "appPreferences": "Uygulama tercihleri",
       "configFiles": "Yapılandırma dosyaları",
-      "externalConfig": "Harici yapılandırma dosyası"
+      "externalConfig": "Harici yapılandırma dosyası",
+      "profiles": "Profilleri Dahil Et",
+      "profilesHint": "Yedeklemeye dahil edilecek belirli profilleri seçin."
     },
     "backend": {
       "title": "Arka Uç Yönetimi",

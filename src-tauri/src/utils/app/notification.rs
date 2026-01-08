@@ -84,7 +84,7 @@ fn translate_text(text: &str) -> String {
 /// ```
 pub fn send_notification(app: &tauri::AppHandle, title: &str, body: &str) {
     let enabled: bool = app
-        .try_state::<rcman::JsonSettingsManager>()
+        .try_state::<crate::core::settings::AppSettingsManager>()
         .and_then(|manager| manager.inner().get("general.notifications").ok())
         .unwrap_or(false);
 

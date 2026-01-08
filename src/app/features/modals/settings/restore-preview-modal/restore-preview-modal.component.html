@@ -167,6 +167,24 @@
               <mat-icon svgIcon="circle-check" class="check-icon accent"></mat-icon>
             </div>
           }
+
+          @if (analysis.contents!.profiles && analysis.contents!.profiles.length > 0) {
+            <div class="content-item">
+              <div class="item-icon-wrapper">
+                <mat-icon svgIcon="users" class="item-icon"></mat-icon>
+              </div>
+              <div class="item-content">
+                <span class="item-title">
+                  {{ 'backup.restore.profiles.title' | translate }}
+                  <span class="count-badge">{{ analysis.contents!.profiles.length }}</span>
+                </span>
+                <span class="item-description">{{
+                  analysis.contents!.profiles.join(', ')
+                }}</span>
+              </div>
+              <mat-icon svgIcon="circle-check" class="check-icon accent"></mat-icon>
+            </div>
+          }
         </div>
       </div>
     }
@@ -181,6 +199,38 @@
         <div class="user-note">
           <mat-icon svgIcon="comment" class="quote-icon"></mat-icon>
           <pre [attr.aria-label]="'backup.restore.note' | translate">{{ analysis.userNote }}</pre>
+        </div>
+      </div>
+    }
+
+    <!-- Restore Options Card -->
+    @if (profiles().length > 0) {
+      <div class="info-card options-card">
+        <div class="card-header">
+          <mat-icon svgIcon="sliders" class="card-icon"></mat-icon>
+          <h4>{{ 'backup.restore.options' | translate }}</h4>
+        </div>
+        
+        <div class="options-content">
+            <div class="form-row">
+                <mat-radio-group [ngModel]="restoreScope()" (change)="toggleRestoreScope($event.value)" color="primary" class="scope-radio-group">
+                    <mat-radio-button value="all" class="scope-radio">{{ 'backup.restore.scope.all' | translate }}</mat-radio-button>
+                    <mat-radio-button value="profile" class="scope-radio">{{ 'backup.restore.scope.profile' | translate }}</mat-radio-button>
+                </mat-radio-group>
+            </div>
+
+            @if (restoreScope() === 'profile') {
+                <div class="form-row profile-select-row">
+                    <mat-form-field appearance="outline" class="full-width">
+                        <mat-label>{{ 'backup.restore.selectProfile' | translate }}</mat-label>
+                        <mat-select [value]="selectedProfile()" (selectionChange)="selectedProfile.set($event.value)">
+                            @for (profile of profiles(); track profile) {
+                                <mat-option [value]="profile">{{ profile }}</mat-option>
+                            }
+                        </mat-select>
+                    </mat-form-field>
+                </div>
+            }
         </div>
       </div>
     }

@@ -5,8 +5,9 @@
 // =============================================================================
 // STANDARD LIBRARY & EXTERNAL CRATES
 // =============================================================================
+use crate::core::settings::AppSettingsManager;
+use crate::core::settings::schema::AppSettings;
 use log::{debug, error, info};
-use rcman::JsonSettingsManager;
 use std::sync::atomic::AtomicBool;
 use tauri::Manager;
 
@@ -106,13 +107,12 @@ pub fn run() {
             WindowEvent::CloseRequested { api, .. } => {
                 let app_handle = window.app_handle();
 
-                // Read settings from JsonSettingsManager which caches internally
+                // Read settings from AppSettingsManager which caches internally
                 let (tray_enabled, destroy_on_close) = app_handle
-                    .try_state::<rcman::JsonSettingsManager>()
+                    .try_state::<AppSettingsManager>()
                     .and_then(|manager| {
                         manager
-                            .inner()
-                            .settings::<crate::core::settings::schema::AppSettings>()
+                            .settings()
                             .ok()
                             .map(|s| (s.general.tray_enabled, s.developer.destroy_window_on_close))
                     })
@@ -258,17 +258,46 @@ fn setup_app(
     // -------------------------------------------------------------------------
     // Initialize rcman Settings Manager
     // -------------------------------------------------------------------------
-    let rcman_manager: JsonSettingsManager =
-        rcman::SettingsManager::builder(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
-            .config_dir(&config_dir)
-            .with_credentials()
+    let config = rcman::SettingsConfig::builder(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
+        .config_dir(&config_dir)
+        .with_credentials()
+        .with_schema::<AppSettings>()
+        .with_migrator(|mut value: serde_json::Value| {
+            if let Some(root) = value.as_object_mut()
+                && let Some(app_settings) = root.remove("app_settings")
+            {
+                log::info!("found legacy app_settings, flattening to root");
+                if let Some(app_settings_obj) = app_settings.as_object() {
+                    for (k, v) in app_settings_obj {
+                        if !root.contains_key(k) {
+                            root.insert(k.clone(), v.clone());
+                        }
+                    }
+                }
+            }
+            value
+        })
+        .build();
+
+    let rcman_manager = rcman::SettingsManager::new(config)
+        .map_err(|e| format!("Failed to create rcman settings manager: {e}"))?;
+
+    // Register sub-settings (can't be done in config builder yet - design limitation)
+    rcman_manager.register_sub_settings(
+        rcman::SubSettingsConfig::new("remotes")
+            .with_profiles()
+            .with_migrator(crate::core::settings::remote::manager::migrate_to_multi_profile),
+    );
+    rcman_manager.register_sub_settings(
+        rcman::SubSettingsConfig::new("backend")
+            .single_file()
             .with_migrator(|mut value: serde_json::Value| {
                 if let Some(root) = value.as_object_mut()
-                    && let Some(app_settings) = root.remove("app_settings")
+                    && let Some(backend_settings) = root.remove("backend")
                 {
-                    log::info!("found legacy app_settings, flattening to root");
-                    if let Some(app_settings_obj) = app_settings.as_object() {
-                        for (k, v) in app_settings_obj {
+                    log::info!("found legacy backend settings, flattening to root");
+                    if let Some(backend_obj) = backend_settings.as_object() {
+                        for (k, v) in backend_obj {
                             if !root.contains_key(k) {
                                 root.insert(k.clone(), v.clone());
                             }
@@ -276,34 +305,9 @@ fn setup_app(
                     }
                 }
                 value
-            })
-            .with_sub_settings(
-                rcman::SubSettingsConfig::new("remotes").with_migrator(
-                    crate::core::settings::remote::manager::migrate_to_multi_profile,
-                ),
-            )
-            .with_sub_settings(
-                rcman::SubSettingsConfig::new("backend")
-                    .single_file()
-                    .with_migrator(|mut value: serde_json::Value| {
-                        if let Some(root) = value.as_object_mut()
-                            && let Some(backend_settings) = root.remove("backend")
-                        {
-                            log::info!("found legacy backend settings, flattening to root");
-                            if let Some(backend_obj) = backend_settings.as_object() {
-                                for (k, v) in backend_obj {
-                                    if !root.contains_key(k) {
-                                        root.insert(k.clone(), v.clone());
-                                    }
-                                }
-                            }
-                        }
-                        value
-                    }),
-            )
-            .with_sub_settings(rcman::SubSettingsConfig::new("connections").single_file())
-            .build()
-            .map_err(|e| format!("Failed to create rcman settings manager: {e}"))?;
+            }),
+    );
+    rcman_manager.register_sub_settings(rcman::SubSettingsConfig::new("connections").single_file());
 
     // -------------------------------------------------------------------------
     // Load Settings & Initialize State
@@ -338,7 +342,7 @@ fn setup_app(
     app.manage(env_manager);
 
     // Note: Settings like tray_enabled, notifications_enabled, restrict_mode,
-    // rclone_path are now read from JsonSettingsManager
+    // rclone_path are now read from AppSettingsManager
     app.manage(RcloneState {
         client: reqwest::Client::new(),
         is_shutting_down: AtomicBool::new(false),

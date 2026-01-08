@@ -73,7 +73,7 @@ impl std::fmt::Display for RcloneError {
 }
 
 /// Redact sensitive values from parameters for logging
-/// Reads restrict setting from JsonSettingsManager internally
+/// Reads restrict setting from AppSettingsManager internally
 pub fn redact_sensitive_values(
     params: &std::collections::HashMap<String, Value>,
     app: &tauri::AppHandle,
@@ -81,7 +81,7 @@ pub fn redact_sensitive_values(
     use tauri::Manager;
 
     let restrict_enabled: bool = app
-        .try_state::<rcman::JsonSettingsManager>()
+        .try_state::<crate::core::settings::AppSettingsManager>()
         .and_then(|manager| manager.inner().get("general.restrict").ok())
         .unwrap_or(false);
 

@@ -45,6 +45,25 @@
       </div>
 
       <div class="section-group config-section">
+        @if (selectedOption() === 'full' && availableProfiles().length > 0) {
+          <div class="form-row profile-section">
+            <h4 class="subsection-label">{{ 'modals.export.profiles' | translate }}</h4>
+            <div class="profiles-grid">
+              @for (profile of availableProfiles(); track profile) {
+                <mat-checkbox
+                  [checked]="selectedProfiles().includes(profile)"
+                  (change)="toggleProfile(profile, $event.checked)"
+                  [disabled]="isExporting()"
+                  color="primary"
+                >
+                  {{ profile }}
+                </mat-checkbox>
+              }
+            </div>
+            <p class="section-hint">{{ 'modals.export.profilesHint' | translate }}</p>
+          </div>
+        }
+
         @if (showSpecificRemoteSection()) {
           <div class="form-row">
             <mat-form-field class="full-width">

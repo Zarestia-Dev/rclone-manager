@@ -1,4 +1,4 @@
-use rcman::JsonSettingsManager;
+use crate::core::settings::AppSettingsManager;
 use serde_json::Value;
 use tauri::{AppHandle, Manager};
 
@@ -25,7 +25,7 @@ pub async fn resolve_profile_settings(
 
     let cache = &backend_manager.remote_cache;
 
-    let manager = app.state::<JsonSettingsManager>();
+    let manager = app.state::<AppSettingsManager>();
     let remote_names = cache.get_remotes().await;
 
     // We use the sync version of retrieving all settings because rcman's inner implementation

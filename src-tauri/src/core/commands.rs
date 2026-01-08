@@ -200,6 +200,7 @@ macro_rules! generate_invoke_handler {
             // =================================================================
             $crate::rclone::commands::backend::list_backends,
             $crate::rclone::commands::backend::get_active_backend,
+            $crate::rclone::commands::backend::get_backend_profiles,
             $crate::rclone::commands::backend::switch_backend,
             $crate::rclone::commands::backend::add_backend,
             $crate::rclone::commands::backend::update_backend,

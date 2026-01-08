@@ -151,7 +151,7 @@ pub async fn update_rclone(
     }
 
     // Get current rclone path from settings and resolve the actual binary path
-    let manager = app_handle.state::<rcman::JsonSettingsManager>();
+    let manager = app_handle.state::<crate::core::settings::AppSettingsManager>();
     let base_path: PathBuf = manager
         .inner()
         .get::<String>("core.rclone_path")
@@ -354,7 +354,7 @@ fn can_update_in_place(rclone_path: &Path) -> bool {
 /// Get the local rclone path in the app's data directory
 fn get_local_rclone_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
     // Prefer any configured rclone_path in settings (if not "system" or empty)
-    let manager = app_handle.state::<rcman::JsonSettingsManager>();
+    let manager = app_handle.state::<crate::core::settings::AppSettingsManager>();
     let configured: PathBuf = manager
         .inner()
         .get::<String>("core.rclone_path")
@@ -374,7 +374,7 @@ fn get_local_rclone_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
 
 /// Update the rclone path in application settings
 async fn update_rclone_path_in_settings(app_handle: &AppHandle, new_path: &Path) {
-    // Note: In-memory caching is no longer used - we read from JsonSettingsManager which caches internally
+    // Note: In-memory caching is no longer used - we read from AppSettingsManager which caches internally
     // Persist to settings store
     match save_setting(
         "core".to_string(),

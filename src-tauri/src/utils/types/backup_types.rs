@@ -46,4 +46,6 @@ pub struct BackupContentsInfo {
     pub remote_count: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub remote_names: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub profiles: Option<Vec<String>>,
 }

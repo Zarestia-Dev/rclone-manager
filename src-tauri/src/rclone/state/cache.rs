@@ -1,4 +1,4 @@
-use rcman::JsonSettingsManager;
+use crate::core::settings::AppSettingsManager;
 use std::collections::HashMap;
 
 use log::{debug, error, info};
@@ -387,7 +387,7 @@ pub async fn get_configs() -> Result<serde_json::Value, String> {
 /// Get all remote settings from rcman sub-settings
 #[tauri::command]
 pub async fn get_settings(
-    manager: tauri::State<'_, JsonSettingsManager>,
+    manager: tauri::State<'_, AppSettingsManager>,
 ) -> Result<serde_json::Value, String> {
     use serde_json::json;
 
