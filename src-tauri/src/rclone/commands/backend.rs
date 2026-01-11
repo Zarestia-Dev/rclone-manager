@@ -2,8 +2,8 @@
 //
 // Tauri commands for backend CRUD operations and connection testing.
 
-use log::{debug, info, warn};
 use crate::core::settings::AppSettingsManager;
+use log::{debug, info, warn};
 use tauri::{AppHandle, Manager, State};
 
 use crate::{
@@ -92,7 +92,9 @@ pub async fn switch_backend(
 
     // Switch (only if connection test passed for remote backends)
     let settings_manager = app.state::<AppSettingsManager>();
-    BACKEND_MANAGER.switch_to(settings_manager.inner(), &name).await?;
+    BACKEND_MANAGER
+        .switch_to(settings_manager.inner(), &name)
+        .await?;
 
     // Set config path if configured (Remote only)
     if !backend.is_local
@@ -149,7 +151,10 @@ pub async fn switch_backend(
                 info!("↩️ Reverting to previous backend due to cache failure");
                 // We're essentially failing the switch, but manager state was already updated
                 // best effort to switch back to Local for safety
-                if let Err(revert_err) = BACKEND_MANAGER.switch_to(settings_manager.inner(), "Local").await {
+                if let Err(revert_err) = BACKEND_MANAGER
+                    .switch_to(settings_manager.inner(), "Local")
+                    .await
+                {
                     warn!("Failed to revert to Local backend: {}", revert_err);
                 }
                 return Err(format!(
@@ -163,7 +168,10 @@ pub async fn switch_backend(
             // Revert to previous backend
             if name != "Local" {
                 info!("↩️ Reverting to previous backend due to timeout");
-                if let Err(revert_err) = BACKEND_MANAGER.switch_to(settings_manager.inner(), "Local").await {
+                if let Err(revert_err) = BACKEND_MANAGER
+                    .switch_to(settings_manager.inner(), "Local")
+                    .await
+                {
                     warn!("Failed to revert to Local backend: {}", revert_err);
                 }
                 BACKEND_MANAGER
@@ -204,6 +212,8 @@ pub async fn add_backend(
     config_password: Option<String>,
     config_path: Option<String>,
     oauth_port: Option<u16>,
+    copy_backend_from: Option<String>,
+    copy_remotes_from: Option<String>,
 ) -> Result<(), String> {
     info!("➕ Adding backend: {} ({}:{})", name, host, port);
 
@@ -246,11 +256,18 @@ pub async fn add_backend(
         backend.config_password = Some(cp.clone());
     }
 
-    // Add to manager
-    BACKEND_MANAGER.add(backend.clone()).await?;
+    // Add to manager with optional copy
+    let settings_manager = app.state::<AppSettingsManager>();
+    BACKEND_MANAGER
+        .add(
+            settings_manager.inner(),
+            backend.clone(),
+            copy_backend_from.as_deref(),
+            copy_remotes_from.as_deref(),
+        )
+        .await?;
 
     // Persist to settings
-    let settings_manager = app.state::<AppSettingsManager>();
     save_backend_to_settings(settings_manager.inner(), &backend)?;
 
     info!("✅ Backend '{}' added", name);
@@ -327,7 +344,9 @@ pub async fn update_backend(
     }
 
     // Update manager
-    BACKEND_MANAGER.update(&name, backend.clone()).await?;
+    BACKEND_MANAGER
+        .update(settings_manager.inner(), &name, backend.clone())
+        .await?;
 
     // Persist
     save_backend_to_settings(settings_manager.inner(), &backend)?;
@@ -354,11 +373,14 @@ pub async fn update_backend(
 pub async fn remove_backend(app: AppHandle, name: String) -> Result<(), String> {
     info!("➖ Removing backend: {}", name);
 
+    let settings_manager = app.state::<AppSettingsManager>();
+
     // Remove from manager
-    BACKEND_MANAGER.remove(&name).await?;
+    BACKEND_MANAGER
+        .remove(settings_manager.inner(), &name)
+        .await?;
 
     // Remove from settings
-    let settings_manager = app.state::<AppSettingsManager>();
     delete_backend_from_settings(settings_manager.inner(), &name)?;
 
     info!("✅ Backend '{}' removed", name);
@@ -420,10 +442,7 @@ pub struct TestConnectionResult {
 // Persistence Helpers
 // =============================================================================
 
-fn save_backend_to_settings(
-    manager: &AppSettingsManager,
-    backend: &Backend,
-) -> Result<(), String> {
+fn save_backend_to_settings(manager: &AppSettingsManager, backend: &Backend) -> Result<(), String> {
     // Store secrets in keychain (desktop only)
     #[cfg(desktop)]
     if let Some(creds) = manager.credentials() {

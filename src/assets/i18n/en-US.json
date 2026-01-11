@@ -1031,6 +1031,11 @@
       "profiles": {
         "title": "Profiles"
       },
+      "legacy": {
+        "title": "Legacy Backup Detected",
+        "description": "This backup was created before the profile system was introduced. It will be restored to the 'default' profile.",
+        "defaultProfile": "All settings will be added to the default profile automatically"
+      },
       "options": "Restore Options",
       "scope": {
         "all": "Restore Everything",
@@ -1570,6 +1575,7 @@
       "addBackend": "Add Backend",
       "editBackend": "Edit Backend",
       "active": "Active",
+      "local": "Local",
       "host": "Host",
       "port": "Port",
       "name": "Name",
@@ -1595,6 +1601,15 @@
       "switchFirst": "Switch to another backend first",
       "nameExists": "Name exists",
       "hostExists": "This host:port is already in use",
+      "copyOptions": {
+        "title": "Copy from Existing Backend",
+        "description": "Start with settings from an existing backend or create from scratch",
+        "backendConfig": "Copy Backend Settings",
+        "remotesConfig": "Copy Remotes",
+        "fromZero": "Start from Zero",
+        "backendHint": "Copy backend-specific settings (filters, flags, etc.)",
+        "remotesHint": "Copy configured remotes (cloud providers)"
+      },
       "status": {
         "notTested": "Connection not tested",
         "connected": "Connected",

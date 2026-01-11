@@ -112,7 +112,7 @@ pub fn run() {
                     .try_state::<AppSettingsManager>()
                     .and_then(|manager| {
                         manager
-                            .settings()
+                            .get_all()
                             .ok()
                             .map(|s| (s.general.tray_enabled, s.developer.destroy_window_on_close))
                     })
@@ -258,46 +258,19 @@ fn setup_app(
     // -------------------------------------------------------------------------
     // Initialize rcman Settings Manager
     // -------------------------------------------------------------------------
-    let config = rcman::SettingsConfig::builder(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
-        .config_dir(&config_dir)
-        .with_credentials()
-        .with_schema::<AppSettings>()
-        .with_migrator(|mut value: serde_json::Value| {
-            if let Some(root) = value.as_object_mut()
-                && let Some(app_settings) = root.remove("app_settings")
-            {
-                log::info!("found legacy app_settings, flattening to root");
-                if let Some(app_settings_obj) = app_settings.as_object() {
-                    for (k, v) in app_settings_obj {
-                        if !root.contains_key(k) {
-                            root.insert(k.clone(), v.clone());
-                        }
-                    }
-                }
-            }
-            value
-        })
-        .build();
-
-    let rcman_manager = rcman::SettingsManager::new(config)
-        .map_err(|e| format!("Failed to create rcman settings manager: {e}"))?;
-
-    // Register sub-settings (can't be done in config builder yet - design limitation)
-    rcman_manager.register_sub_settings(
-        rcman::SubSettingsConfig::new("remotes")
-            .with_profiles()
-            .with_migrator(crate::core::settings::remote::manager::migrate_to_multi_profile),
-    );
-    rcman_manager.register_sub_settings(
-        rcman::SubSettingsConfig::new("backend")
-            .single_file()
+    let rcman_manager =
+        rcman::SettingsManager::builder(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
+            // .with_storage::<rcman::TomlStorage>()
+            .with_config_dir(&config_dir)
+            .with_credentials()
+            .with_schema::<AppSettings>()
             .with_migrator(|mut value: serde_json::Value| {
                 if let Some(root) = value.as_object_mut()
-                    && let Some(backend_settings) = root.remove("backend")
+                    && let Some(app_settings) = root.remove("app_settings")
                 {
-                    log::info!("found legacy backend settings, flattening to root");
-                    if let Some(backend_obj) = backend_settings.as_object() {
-                        for (k, v) in backend_obj {
+                    log::info!("found legacy app_settings, flattening to root");
+                    if let Some(app_settings_obj) = app_settings.as_object() {
+                        for (k, v) in app_settings_obj {
                             if !root.contains_key(k) {
                                 root.insert(k.clone(), v.clone());
                             }
@@ -305,9 +278,36 @@ fn setup_app(
                     }
                 }
                 value
-            }),
-    );
-    rcman_manager.register_sub_settings(rcman::SubSettingsConfig::new("connections").single_file());
+            })
+            .with_sub_settings(
+                rcman::SubSettingsConfig::new("remotes")
+                    .with_profiles()
+                    .with_migrator(
+                        crate::core::settings::remote::manager::migrate_to_multi_profile,
+                    ),
+            )
+            .with_sub_settings(
+                rcman::SubSettingsConfig::singlefile("backend")
+                    .with_profiles()
+                    .with_migrator(|mut value: serde_json::Value| {
+                        if let Some(root) = value.as_object_mut()
+                            && let Some(backend_settings) = root.remove("backend")
+                        {
+                            log::info!("found legacy backend settings, flattening to root");
+                            if let Some(backend_obj) = backend_settings.as_object() {
+                                for (k, v) in backend_obj {
+                                    if !root.contains_key(k) {
+                                        root.insert(k.clone(), v.clone());
+                                    }
+                                }
+                            }
+                        }
+                        value
+                    }),
+            )
+            .with_sub_settings(rcman::SubSettingsConfig::singlefile("connections"))
+            .build()
+            .map_err(|e| format!("Failed to create rcman settings manager: {e}"))?;
 
     // -------------------------------------------------------------------------
     // Load Settings & Initialize State

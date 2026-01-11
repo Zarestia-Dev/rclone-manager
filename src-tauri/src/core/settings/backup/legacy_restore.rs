@@ -4,6 +4,17 @@
 //! This module is kept for backward compatibility with legacy backups.
 //! It will be removed approximately **2026-2027**.
 //!
+//! **PROFILE MAPPING FOR LEGACY BACKUPS**
+//! Legacy backups were created before the profile system was introduced.
+//! When restoring, all settings are mapped to the "default" profile:
+//! - `backend.json` → `backend/profiles/default.json` (singlefile with profiles)
+//! - `remotes/*.json` → `remotes/profiles/default/{remote}.json` (multifile with profiles)
+//! - `rclone.conf` → system rclone config (shared across profiles)
+//! - `settings.json` → root settings.json (shared across profiles)
+//!
+//! This ensures that old backups work correctly with the new profile system
+//! by treating them as if they were always part of the "default" profile.
+//!
 //! To remove: Delete this file and remove its `mod` declaration from `mod.rs`.
 
 use crate::core::settings::AppSettingsManager;
@@ -116,6 +127,14 @@ fn calculate_file_hash(path: &Path) -> Result<(String, u64), String> {
 // =============================================================================
 
 /// Restores a legacy app-format backup
+///
+/// **IMPORTANT: Profile Mapping**
+/// Legacy backups were created before the profile system existed.
+/// All settings are restored to the "default" profile:
+/// - `backend.json` → `backend/profiles/default.json` (singlefile with profiles)
+/// - `remotes/*.json` → `remotes/profiles/default/{remote}.json` (multifile with profiles)
+/// - `rclone.conf` → system rclone config (shared)
+/// - `settings.json` → root settings.json (shared)
 pub async fn restore_legacy_backup(
     backup_path: &Path,
     password: Option<String>,
@@ -374,16 +393,23 @@ async fn determine_restore_path(
 ) -> Result<PathBuf, String> {
     let path = match file_name {
         "settings.json" => config_dir.join("settings.json"),
-        "backend.json" => config_dir.join("backend.json"),
+        // Legacy backup: backend.json goes to backend/profiles/backend.json (singlefile with profiles)
+        "backend.json" => {
+            let backend_profiles_dir = config_dir.join("backend").join("profiles");
+            fs::create_dir_all(&backend_profiles_dir)
+                .map_err(|e| format!("Failed to create backend profiles dir: {e}"))?;
+            backend_profiles_dir.join("backend.json")
+        }
         "rclone.conf" => get_rclone_config_file(app_handle.clone())
             .await
             .unwrap_or_else(|_| config_dir.join("rclone.conf")),
+        // Legacy backup: remotes/*.json goes to remotes/profiles/default/*.json (multifile with profiles)
         name if name.starts_with("remotes/") => {
             let remote_name = name.trim_start_matches("remotes/");
-            let remotes_dir = config_dir.join("remotes");
-            fs::create_dir_all(&remotes_dir)
-                .map_err(|e| format!("Failed to create remotes dir: {e}"))?;
-            remotes_dir.join(remote_name)
+            let remotes_default_dir = config_dir.join("remotes").join("profiles").join("default");
+            fs::create_dir_all(&remotes_default_dir)
+                .map_err(|e| format!("Failed to create remotes default profile dir: {e}"))?;
+            remotes_default_dir.join(remote_name)
         }
         _ => {
             debug!("Skipping unknown file: {}", file_name);

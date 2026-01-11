@@ -87,6 +87,25 @@
       </div>
     </div>
 
+    <!-- Legacy Backup Info Banner -->
+    @if (isLegacy()) {
+      <div class="info-card legacy-banner">
+        <div class="banner-content">
+          <div class="banner-icon-wrapper">
+            <mat-icon svgIcon="clock-rotate-left" class="banner-icon"></mat-icon>
+          </div>
+          <div class="banner-text">
+            <h4 class="banner-title">{{ 'backup.restore.legacy.title' | translate }}</h4>
+            <p class="banner-description">{{ 'backup.restore.legacy.description' | translate }}</p>
+            <div class="banner-details">
+              <mat-icon svgIcon="circle-info" class="detail-icon"></mat-icon>
+              <span>{{ 'backup.restore.legacy.defaultProfile' | translate }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
     <!-- Contents Card -->
     @if (hasContents()) {
       <div class="info-card contents-card">
@@ -156,9 +175,15 @@
               <div class="item-content">
                 <span class="item-title">
                   {{ 'backup.restore.remoteConfigs.title' | translate }}
-                  <span class="count-badge">{{ analysis.contents!.remoteCount }}</span>
+                  @if (shouldShowRemoteCount()) {
+                    <span class="count-badge">{{ analysis.contents!.remoteCount }}</span>
+                  }
                 </span>
-                @if (analysis.contents!.remoteNames && analysis.contents!.remoteNames.length > 0) {
+                @if (
+                  shouldShowRemoteDetails() &&
+                  analysis.contents!.remoteNames &&
+                  analysis.contents!.remoteNames.length > 0
+                ) {
                   <span class="item-description">{{
                     analysis.contents!.remoteNames.join(', ')
                   }}</span>
@@ -178,9 +203,7 @@
                   {{ 'backup.restore.profiles.title' | translate }}
                   <span class="count-badge">{{ analysis.contents!.profiles.length }}</span>
                 </span>
-                <span class="item-description">{{
-                  analysis.contents!.profiles.join(', ')
-                }}</span>
+                <span class="item-description">{{ analysis.contents!.profiles.join(', ') }}</span>
               </div>
               <mat-icon svgIcon="circle-check" class="check-icon accent"></mat-icon>
             </div>
@@ -204,33 +227,45 @@
     }
 
     <!-- Restore Options Card -->
-    @if (profiles().length > 0) {
+    @if (profiles().length > 0 && !isLegacy()) {
       <div class="info-card options-card">
         <div class="card-header">
           <mat-icon svgIcon="sliders" class="card-icon"></mat-icon>
           <h4>{{ 'backup.restore.options' | translate }}</h4>
         </div>
-        
-        <div class="options-content">
-            <div class="form-row">
-                <mat-radio-group [ngModel]="restoreScope()" (change)="toggleRestoreScope($event.value)" color="primary" class="scope-radio-group">
-                    <mat-radio-button value="all" class="scope-radio">{{ 'backup.restore.scope.all' | translate }}</mat-radio-button>
-                    <mat-radio-button value="profile" class="scope-radio">{{ 'backup.restore.scope.profile' | translate }}</mat-radio-button>
-                </mat-radio-group>
-            </div>
 
-            @if (restoreScope() === 'profile') {
-                <div class="form-row profile-select-row">
-                    <mat-form-field appearance="outline" class="full-width">
-                        <mat-label>{{ 'backup.restore.selectProfile' | translate }}</mat-label>
-                        <mat-select [value]="selectedProfile()" (selectionChange)="selectedProfile.set($event.value)">
-                            @for (profile of profiles(); track profile) {
-                                <mat-option [value]="profile">{{ profile }}</mat-option>
-                            }
-                        </mat-select>
-                    </mat-form-field>
-                </div>
-            }
+        <div class="options-content">
+          <div class="form-row">
+            <mat-radio-group
+              [ngModel]="restoreScope()"
+              (change)="toggleRestoreScope($event.value)"
+              color="primary"
+              class="scope-radio-group"
+            >
+              <mat-radio-button value="all" class="scope-radio">{{
+                'backup.restore.scope.all' | translate
+              }}</mat-radio-button>
+              <mat-radio-button value="profile" class="scope-radio">{{
+                'backup.restore.scope.profile' | translate
+              }}</mat-radio-button>
+            </mat-radio-group>
+          </div>
+
+          @if (restoreScope() === 'profile') {
+            <div class="form-row profile-select-row">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>{{ 'backup.restore.selectProfile' | translate }}</mat-label>
+                <mat-select
+                  [value]="selectedProfile()"
+                  (selectionChange)="selectedProfile.set($event.value)"
+                >
+                  @for (profile of profiles(); track profile) {
+                    <mat-option [value]="profile">{{ profile }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            </div>
+          }
         </div>
       </div>
     }

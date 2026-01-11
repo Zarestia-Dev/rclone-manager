@@ -14,6 +14,7 @@ use zip::ZipArchive;
 // =============================================================================
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn backup_settings(
     backup_dir: String,
     export_type: ExportType,
@@ -174,19 +175,35 @@ pub async fn analyze_backup_file(
                     |r| match r {
                         rcman::SubSettingsManifestEntry::MultiFile(items) => items.len(),
                         rcman::SubSettingsManifestEntry::SingleFile(_) => 1,
-                        rcman::SubSettingsManifestEntry::Profiled { profiles, .. } => {
-                            profiles.len()
-                        }
+                        rcman::SubSettingsManifestEntry::Profiled { profiles } => profiles
+                            .values()
+                            .map(|entry| match entry {
+                                rcman::ProfileEntry::Single(_) => 1,
+                                rcman::ProfileEntry::Multiple(items) => items.len(),
+                            })
+                            .sum(),
                     },
                 ),
                 remote_names: analysis.manifest.contents.sub_settings.get("remotes").map(
                     |r| match r {
                         rcman::SubSettingsManifestEntry::MultiFile(items) => items.clone(),
                         rcman::SubSettingsManifestEntry::SingleFile(name) => vec![name.clone()],
-                        rcman::SubSettingsManifestEntry::Profiled { profiles, .. } => profiles
-                            .iter()
-                            .map(|p| format!("[Profile] {}", p))
-                            .collect(),
+                        rcman::SubSettingsManifestEntry::Profiled { profiles } => {
+                            let mut names = Vec::new();
+                            for (profile, entry) in profiles {
+                                match entry {
+                                    rcman::ProfileEntry::Single(item) => {
+                                        names.push(format!("{}: {}", profile, item));
+                                    }
+                                    rcman::ProfileEntry::Multiple(items) => {
+                                        for item in items {
+                                            names.push(format!("{}: {}", profile, item));
+                                        }
+                                    }
+                                }
+                            }
+                            names
+                        }
                     },
                 ),
                 profiles: analysis
@@ -195,8 +212,8 @@ pub async fn analyze_backup_file(
                     .sub_settings
                     .get("remotes")
                     .and_then(|r| match r {
-                        rcman::SubSettingsManifestEntry::Profiled { profiles, .. } => {
-                            Some(profiles.clone())
+                        rcman::SubSettingsManifestEntry::Profiled { profiles } => {
+                            Some(profiles.keys().cloned().collect())
                         }
                         _ => None,
                     }),
@@ -214,6 +231,7 @@ pub async fn analyze_backup_file(
             backup_type: Some(format_export_type(&analysis.manifest.backup.export_type)),
             user_note: analysis.manifest.backup.user_note,
             contents: Some(contents),
+            is_legacy: Some(false), // Rcman format has profile support
         })
     } else {
         // DEPRECATION (2026-2027): Delete this else block when removing legacy support
@@ -235,8 +253,9 @@ pub async fn analyze_backup_file(
                 rclone_config: manifest.contents.rclone_config,
                 remote_count: manifest.contents.remote_configs.as_ref().map(|r| r.count),
                 remote_names: manifest.contents.remote_configs.and_then(|r| r.names),
-                profiles: None,
+                profiles: Some(vec!["default".to_string()]), // Legacy backups always restore to "default"
             }),
+            is_legacy: Some(true), // This is a legacy backup without profile support
         })
     }
 }

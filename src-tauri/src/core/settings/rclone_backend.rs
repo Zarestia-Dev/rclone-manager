@@ -3,8 +3,8 @@
 //! Manages RClone backend options using rcman's sub-settings with single_file() mode.
 //! All backend blocks stored in a single backend.json file.
 
-use log::{debug, info};
 use crate::core::settings::AppSettingsManager;
+use log::{debug, info};
 use serde_json::json;
 use tauri::State;
 
@@ -196,7 +196,14 @@ pub async fn remove_rclone_backend_option(
 pub async fn get_rclone_backend_store_path(
     manager: State<'_, AppSettingsManager>,
 ) -> Result<String, String> {
-    // Backend is stored in config/backend.json (single file mode)
-    let backend_path = manager.inner().config().config_dir.join("backend.json");
-    Ok(backend_path.to_string_lossy().to_string())
+    let sub = manager
+        .inner()
+        .sub_settings("backend")
+        .map_err(|e| format!("Failed to get backend sub-settings: {}", e))?;
+
+    let path = sub
+        .file_path()
+        .ok_or_else(|| "Backend settings is not in single-file mode".to_string())?;
+
+    Ok(path.to_string_lossy().to_string())
 }

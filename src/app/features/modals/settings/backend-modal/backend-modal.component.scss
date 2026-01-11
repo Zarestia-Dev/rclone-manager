@@ -36,6 +36,55 @@
   gap: var(--space-sm);
 }
 
+// ============================================================================
+// Copy Options Section
+// ============================================================================
+.copy-options-section {
+  background: var(--headerbar-bg-color);
+  padding: var(--space-md);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-md);
+  border: 1px solid var(--border-color);
+
+  h4 {
+    margin: 0 0 var(--space-xs) 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--window-fg-color);
+  }
+
+  .description {
+    margin: 0 0 var(--space-md) 0;
+    font-size: 0.8125rem;
+    color: var(--dim-color);
+    line-height: 1.4;
+  }
+
+  .copy-selects {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-md);
+
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+    }
+
+    mat-form-field {
+      margin: 0;
+    }
+  }
+
+  .badge {
+    display: inline-block;
+    margin-left: var(--space-xs);
+    padding: 2px 6px;
+    font-size: 0.7rem;
+    border-radius: var(--radius-xs);
+    background: rgba(var(--primary-color-rgb), 0.1);
+    color: var(--primary-color);
+  }
+}
+
 .backend-card {
   display: flex;
   align-items: center;

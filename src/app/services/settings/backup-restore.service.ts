@@ -10,6 +10,7 @@ export interface BackupAnalysis {
   isEncrypted: boolean;
   archiveType: string;
   formatVersion: string;
+  isLegacy?: boolean;
   createdAt?: string;
   backupType?: string;
   userNote?: string;

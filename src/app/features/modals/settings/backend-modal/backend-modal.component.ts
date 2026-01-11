@@ -63,6 +63,10 @@ export class BackendModalComponent implements OnInit {
   readonly showPassword = signal(false);
   readonly showConfigPassword = signal(false);
 
+  // Copy options for new backend
+  readonly copyBackendFrom = signal<string>('none');
+  readonly copyRemotesFrom = signal<string>('none');
+
   /** Get the active config path from service's computed signal */
   readonly activeConfigPath = this.backendService.activeConfigPath;
 
@@ -93,6 +97,8 @@ export class BackendModalComponent implements OnInit {
     const current = this.formState();
     if (current.mode === 'closed') {
       this.formState.set({ mode: 'add' });
+      this.copyBackendFrom.set('none');
+      this.copyRemotesFrom.set('none');
     } else {
       this.formState.set({ mode: 'closed' });
       this.resetForm();
@@ -241,7 +247,12 @@ export class BackendModalComponent implements OnInit {
           { duration: 3000, panelClass: 'snackbar-success' }
         );
       } else {
-        await this.backendService.addBackend(backendData);
+        // Check if copy options are selected
+        const copyBackend = this.copyBackendFrom() !== 'none' ? this.copyBackendFrom() : undefined;
+        const copyRemotes = this.copyRemotesFrom() !== 'none' ? this.copyRemotesFrom() : undefined;
+
+        await this.backendService.addBackend(backendData, copyBackend, copyRemotes);
+
         this.snackBar.open(
           this.translate.instant('modals.backend.notifications.added'),
           this.translate.instant('common.close'),

@@ -1,10 +1,10 @@
+use crate::core::settings::AppSettingsManager;
 use crate::utils::types::events::RCLONE_PASSWORD_STORED;
 use crate::{
     core::{check_binaries::build_rclone_command, security::SafeEnvironmentManager},
     rclone::commands::system::unlock_rclone_config,
 };
 use log::{debug, error, info, warn};
-use crate::core::settings::AppSettingsManager;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 const LOCAL_BACKEND_KEY: &str = "backend:Local:config_password";
@@ -45,7 +45,7 @@ pub async fn store_config_password(
             if let Some(mut backend) = crate::rclone::backend::BACKEND_MANAGER.get("Local").await {
                 backend.config_password = Some(password.clone());
                 let _ = crate::rclone::backend::BACKEND_MANAGER
-                    .update("Local", backend)
+                    .update(manager.inner(), "Local", backend)
                     .await;
                 debug!("📝 Updated in-memory Local backend config password");
             }
@@ -77,9 +77,7 @@ pub async fn store_config_password(
 /// Retrieve the stored rclone config password
 #[tauri::command]
 #[cfg(desktop)]
-pub async fn get_config_password(
-    manager: State<'_, AppSettingsManager>,
-) -> Result<String, String> {
+pub async fn get_config_password(manager: State<'_, AppSettingsManager>) -> Result<String, String> {
     debug!("🔍 Retrieving stored config password via rcman");
 
     let credentials = manager.inner().credentials().ok_or_else(|| {
@@ -142,7 +140,7 @@ pub async fn remove_config_password(
         if let Some(mut backend) = crate::rclone::backend::BACKEND_MANAGER.get("Local").await {
             backend.config_password = None;
             let _ = crate::rclone::backend::BACKEND_MANAGER
-                .update("Local", backend)
+                .update(manager.inner(), "Local", backend)
                 .await;
             debug!("📝 Cleared in-memory Local backend config password");
         }
@@ -344,7 +342,7 @@ pub async fn encrypt_config(
             if let Some(mut backend) = crate::rclone::backend::BACKEND_MANAGER.get("Local").await {
                 backend.config_password = Some(password.clone());
                 let _ = crate::rclone::backend::BACKEND_MANAGER
-                    .update("Local", backend)
+                    .update(manager.inner(), "Local", backend)
                     .await;
             }
         }
@@ -437,7 +435,7 @@ pub async fn unencrypt_config(
             if let Some(mut backend) = crate::rclone::backend::BACKEND_MANAGER.get("Local").await {
                 backend.config_password = None;
                 let _ = crate::rclone::backend::BACKEND_MANAGER
-                    .update("Local", backend)
+                    .update(manager.inner(), "Local", backend)
                     .await;
             }
         }

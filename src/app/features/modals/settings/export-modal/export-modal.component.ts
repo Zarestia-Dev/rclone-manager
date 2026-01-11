@@ -96,6 +96,13 @@ export class ExportModalComponent implements OnInit {
 
   readonly showSpecificRemoteSection = computed(() => this.selectedOption() === 'specific_remote');
 
+  /**
+   * Only show profile selection when there are multiple profiles
+   */
+  readonly shouldShowProfileSelection = computed(
+    () => this.selectedOption() === 'full' && this.availableProfiles().length > 1
+  );
+
   async ngOnInit(): Promise<void> {
     this.isLoading.set(true);
     try {
@@ -106,18 +113,18 @@ export class ExportModalComponent implements OnInit {
       ]);
 
       this.remotes.set(remotesList.status === 'fulfilled' ? Object.freeze(remotesList.value) : []);
-      
+
       // Handle profiles
       if (profilesList.status === 'fulfilled') {
-          this.availableProfiles.set(profilesList.value);
-          // Default to all profiles or just default? Let's default to all for now or active?
-          // For now empty means "default behavior" which might be active only or none.
-          // Let's pre-select "default" if it exists.
-          if (profilesList.value.includes('default')) {
-              this.selectedProfiles.set(['default']);
-          } else if (profilesList.value.length > 0) {
-             this.selectedProfiles.set([profilesList.value[0]]);
-          }
+        this.availableProfiles.set(profilesList.value);
+        // Default to all profiles or just default? Let's default to all for now or active?
+        // For now empty means "default behavior" which might be active only or none.
+        // Let's pre-select "default" if it exists.
+        if (profilesList.value.includes('default')) {
+          this.selectedProfiles.set(['default']);
+        } else if (profilesList.value.length > 0) {
+          this.selectedProfiles.set([profilesList.value[0]]);
+        }
       }
 
       // Build export options from backend categories
@@ -305,17 +312,17 @@ export class ExportModalComponent implements OnInit {
     }
   }
   onProfileSelectionChange(profiles: string[]): void {
-      this.selectedProfiles.set(profiles);
+    this.selectedProfiles.set(profiles);
   }
 
   toggleProfile(profile: string, checked: boolean): void {
     this.selectedProfiles.update(current => {
       if (checked) {
-          // Add if not exists
-          return current.includes(profile) ? current : [...current, profile];
+        // Add if not exists
+        return current.includes(profile) ? current : [...current, profile];
       } else {
-          // Remove
-          return current.filter(p => p !== profile);
+        // Remove
+        return current.filter(p => p !== profile);
       }
     });
   }

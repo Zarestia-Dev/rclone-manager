@@ -5,6 +5,7 @@ import {
   ChangeDetectionStrategy,
   computed,
   HostListener,
+  OnInit,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
@@ -40,7 +41,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
   styleUrls: ['./restore-preview-modal.component.scss', '../../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class RestorePreviewModalComponent {
+export class RestorePreviewModalComponent implements OnInit {
   // Injected Services
   private readonly dialogRef = inject(MatDialogRef<RestorePreviewModalComponent>);
   private readonly backupRestoreService = inject(BackupRestoreService);
@@ -59,11 +60,32 @@ export class RestorePreviewModalComponent {
   readonly analysis: BackupAnalysis = this.data.analysis;
   readonly backupPath: string = this.data.backupPath;
 
+  ngOnInit(): void {
+    console.log('Restore Analysis:', this.analysis);
+  }
+
   // Computed Signals
   readonly isEncrypted = computed(() => this.analysis.isEncrypted);
   readonly hasContents = computed(() => !!this.analysis.contents);
   readonly hasUserNote = computed(() => !!this.analysis.userNote);
   readonly profiles = computed(() => this.analysis.contents?.profiles || []);
+  readonly isLegacy = computed(() => this.analysis.isLegacy === true);
+
+  /**
+   * Check if we should show remote details (only for multiple remotes)
+   */
+  readonly shouldShowRemoteDetails = computed(() => {
+    const count = this.analysis.contents?.remoteCount || 0;
+    return count > 1;
+  });
+
+  /**
+   * Check if we should show count badge
+   */
+  readonly shouldShowRemoteCount = computed(() => {
+    const count = this.analysis.contents?.remoteCount || 0;
+    return count > 1;
+  });
 
   /**
    * Toggles restore scope
@@ -139,7 +161,8 @@ export class RestorePreviewModalComponent {
     this.passwordError.set(null);
 
     const password = this.isEncrypted() ? this.password().trim() : null;
-    const restoreProfile = this.restoreScope() === 'profile' ? this.selectedProfile() ?? undefined : undefined;
+    const restoreProfile =
+      this.restoreScope() === 'profile' ? (this.selectedProfile() ?? undefined) : undefined;
 
     try {
       await this.backupRestoreService.restoreSettings(this.backupPath, password, restoreProfile);

@@ -21,6 +21,9 @@ pub struct BackupAnalysis {
     pub archive_type: String,
     /// The manifest format version (e.g., "1.0.0" for legacy, "1" for rcman).
     pub format_version: String,
+    /// Is this a legacy backup (without profile support)? If true, should restore to "default" profile.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_legacy: Option<bool>,
     /// The date the backup was created.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_at: Option<String>,

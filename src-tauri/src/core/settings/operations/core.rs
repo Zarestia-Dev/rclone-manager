@@ -2,9 +2,9 @@
 //!
 //! These commands use the rcman SettingsManager for settings operations.
 
+use crate::core::settings::AppSettingsManager;
 use crate::core::settings::schema::AppSettings;
 use log::info;
-use crate::core::settings::AppSettingsManager;
 use serde_json::json;
 use tauri::{Emitter, State};
 
@@ -17,8 +17,8 @@ pub async fn load_settings(
 ) -> Result<serde_json::Value, String> {
     let metadata = manager
         .inner()
-        .load_settings()
-        .map_err(|e| crate::localized_error!("backendErrors.settings.loadFailed", "error" => e))?;
+        .metadata()
+        .map_err(|e: rcman::Error| crate::localized_error!("backendErrors.settings.loadFailed", "error" => e))?;
 
     let response = json!({
         "options": metadata
@@ -39,7 +39,7 @@ pub async fn save_setting(
 ) -> Result<(), String> {
     manager
         .inner()
-        .save_setting(&category, &key, value.clone())
+        .save_setting(&category, &key, &value)
         .map_err(|e| crate::localized_error!("backendErrors.settings.saveFailed", "error" => e))?;
 
     // Emit change event for UI updates
@@ -102,6 +102,6 @@ pub async fn reset_settings(
 /// Load startup settings (blocking, for initialization)
 pub fn load_startup_settings(manager: &AppSettingsManager) -> Result<AppSettings, String> {
     manager
-        .settings()
-        .map_err(|e| crate::localized_error!("backendErrors.settings.loadFailed", "error" => e))
+        .get_all()
+        .map_err(|e: rcman::Error| crate::localized_error!("backendErrors.settings.loadFailed", "error" => e))
 }

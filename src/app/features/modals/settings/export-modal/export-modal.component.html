@@ -45,7 +45,7 @@
       </div>
 
       <div class="section-group config-section">
-        @if (selectedOption() === 'full' && availableProfiles().length > 0) {
+        @if (shouldShowProfileSelection()) {
           <div class="form-row profile-section">
             <h4 class="subsection-label">{{ 'modals.export.profiles' | translate }}</h4>
             <div class="profiles-grid">

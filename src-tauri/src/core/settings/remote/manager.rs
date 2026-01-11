@@ -7,8 +7,8 @@
 //! Migration from legacy formats is handled automatically by rcman's
 //! `with_migrator()` feature when loading entries.
 
-use log::{info, warn};
 use crate::core::settings::AppSettingsManager;
+use log::{info, warn};
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, State};
 
@@ -31,9 +31,6 @@ pub async fn save_remote_settings(
     if let Some(settings_obj) = settings.as_object_mut() {
         settings_obj.insert("name".to_string(), Value::String(remote_name.clone()));
     }
-
-    // Sanitize incoming payload (don't save legacy keys)
-    migrate_to_multi_profile(settings.clone());
 
     // Get remotes sub-settings
     let remotes = manager.inner().sub_settings("remotes").map_err(

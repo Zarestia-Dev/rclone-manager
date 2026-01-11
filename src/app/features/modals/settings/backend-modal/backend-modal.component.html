@@ -224,6 +224,59 @@
           </mat-tab-group>
         } @else {
           <!-- Standard Form for Remote Backends -->
+
+          <!-- Copy Options (only in Add mode) -->
+          @if (formState().mode === 'add') {
+            <div class="copy-options-section">
+              <h4>{{ 'modals.backend.copyOptions.title' | translate }}</h4>
+              <p class="description">{{ 'modals.backend.copyOptions.description' | translate }}</p>
+
+              <div class="copy-selects">
+                <mat-form-field appearance="fill">
+                  <mat-label>{{
+                    'modals.backend.copyOptions.backendConfig' | translate
+                  }}</mat-label>
+                  <mat-icon matPrefix svgIcon="file-lines"></mat-icon>
+                  <mat-select [(value)]="copyBackendFrom">
+                    <mat-option value="none">
+                      {{ 'modals.backend.copyOptions.fromZero' | translate }}
+                    </mat-option>
+                    @for (backend of backends(); track backend.name) {
+                      <mat-option [value]="backend.name">
+                        {{ backend.name }}
+                        @if (backend.is_local) {
+                          <span class="badge">{{ 'modals.backend.local' | translate }}</span>
+                        }
+                      </mat-option>
+                    }
+                  </mat-select>
+                  <mat-hint>{{ 'modals.backend.copyOptions.backendHint' | translate }}</mat-hint>
+                </mat-form-field>
+
+                <mat-form-field appearance="fill">
+                  <mat-label>{{
+                    'modals.backend.copyOptions.remotesConfig' | translate
+                  }}</mat-label>
+                  <mat-icon matPrefix svgIcon="cloud"></mat-icon>
+                  <mat-select [(value)]="copyRemotesFrom">
+                    <mat-option value="none">
+                      {{ 'modals.backend.copyOptions.fromZero' | translate }}
+                    </mat-option>
+                    @for (backend of backends(); track backend.name) {
+                      <mat-option [value]="backend.name">
+                        {{ backend.name }}
+                        @if (backend.is_local) {
+                          <span class="badge">{{ 'modals.backend.local' | translate }}</span>
+                        }
+                      </mat-option>
+                    }
+                  </mat-select>
+                  <mat-hint>{{ 'modals.backend.copyOptions.remotesHint' | translate }}</mat-hint>
+                </mat-form-field>
+              </div>
+            </div>
+          }
+
           <mat-form-field appearance="fill">
             <mat-label>{{ 'modals.backend.name' | translate }}</mat-label>
             <mat-icon matPrefix svgIcon="tag"></mat-icon>

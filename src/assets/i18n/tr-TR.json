@@ -1032,6 +1032,11 @@
       "profiles": {
         "title": "Profiller"
       },
+      "legacy": {
+        "title": "Eski Yedekleme Tespit Edildi",
+        "description": "Bu yedekleme, profil sistemi tanıtılmadan önce oluşturulmuştu. 'Varsayılan' profile geri yüklenecektir.",
+        "defaultProfile": "Tüm ayarlar otomatik olarak varsayılan profile (Local) eklenecektir"
+      },
       "options": "Geri Yükleme Seçenekleri",
       "scope": {
         "all": "Her Şeyi Geri Yükle",
@@ -1571,6 +1576,7 @@
       "addBackend": "Arka Uç Ekle",
       "editBackend": "Arka Uç Düzenle",
       "active": "Aktif",
+      "local": "Yerel",
       "host": "Sunucu",
       "port": "Port",
       "name": "Ad",
@@ -1596,6 +1602,15 @@
       "switchFirst": "Önce başka bir arka uca geçin",
       "nameExists": "Bu isim zaten kullanımda",
       "hostExists": "Bu sunucu:port zaten kullanımda",
+      "copyOptions": {
+        "title": "Mevcut Arka Uçtan Kopyala",
+        "description": "Mevcut bir arka uçtan ayarlarla başlayın veya sıfırdan oluşturun",
+        "backendConfig": "Arka Uç Ayarlarını Kopyala",
+        "remotesConfig": "Uzak Bağlantıları Kopyala",
+        "fromZero": "Sıfırdan Başla",
+        "backendHint": "Arka uç özel ayarlarını kopyala (filtreler, bayraklar, vb.)",
+        "remotesHint": "Yapılandırılmış uzak bağlantıları kopyala (bulut sağlayıcıları)"
+      },
       "status": {
         "notTested": "Bağlantı test edilmedi",
         "connected": "Bağlandı",

@@ -104,6 +104,8 @@ pub async fn restore_settings(
             .await
         }
         // DEPRECATION (2026-2027): Delete this match arm when removing legacy support
+        // IMPORTANT: Legacy backups are always restored to the "default" profile
+        // because they were created before the profile system existed.
         BackupFormatVersion::AppLegacy => {
             restore_legacy_backup(&backup_path, password, &manifest_json, &app_handle).await
         }
@@ -161,10 +163,10 @@ async fn restore_rcman_backup(
         // Reload settings to get new values
         manager.invalidate_cache();
         if let Some(app_settings) = manager
-            .settings()
+            .get_all()
             .ok()
             .and_then(|s| serde_json::to_value(s).ok())
-            .and_then(|v| v.get("app_settings").cloned())
+            .and_then(|v: serde_json::Value| v.get("app_settings").cloned())
         {
             app_handle.emit(SYSTEM_SETTINGS_CHANGED, app_settings).ok();
         }
