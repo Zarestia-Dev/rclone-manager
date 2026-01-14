@@ -163,6 +163,23 @@
             }
           }
         </mat-accordion>
+
+        <div class="actions">
+          <button
+            mat-raised-button
+            class="warn"
+            (click)="resetAllOptions()"
+            [disabled]="isResetting()"
+            [attr.aria-label]="'modals.rcloneConfig.reset.aria' | translate"
+          >
+            @if (isResetting()) {
+              <mat-spinner diameter="16" class="inline-spinner"></mat-spinner>
+            } @else {
+              <mat-icon svgIcon="rotate-left"></mat-icon>
+            }
+            {{ 'modals.rcloneConfig.reset.button' | translate }}
+          </button>
+        </div>
       }
     </div>
   }

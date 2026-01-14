@@ -139,6 +139,65 @@
     margin-right: var(--space-sm);
     color: var(--dim-color);
   }
+
+  // Profile Selection Special Styling
+  .profile-section {
+    margin-bottom: var(--space-xl);
+    border-bottom: 1px solid var(--border-color);
+
+    .subsection-label {
+      font-size: var(--font-size-md);
+      font-weight: 600;
+      color: var(--window-fg-color);
+      margin-top: 0;
+      margin-bottom: var(--space-md);
+      display: block;
+    }
+
+    .profiles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: var(--space-sm);
+      margin-bottom: var(--space-sm);
+
+      mat-checkbox {
+        display: flex;
+        align-items: center;
+        padding: var(--space-sm) var(--space-md);
+        background: rgba(var(--window-fg-color-rgb), 0.03);
+        border: 1px solid transparent;
+        border-radius: var(--radius-sm);
+        transition: var(--transition-fast);
+
+        &:hover {
+          background: rgba(var(--window-fg-color-rgb), 0.06);
+        }
+
+        &.mat-mdc-checkbox-checked {
+          background: rgba(var(--primary-color-rgb), 0.08);
+          border-color: var(--primary-color);
+        }
+
+        // Fix click area to cover entire card
+        position: relative;
+        ::ng-deep label {
+          &::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            cursor: pointer;
+          }
+        }
+      }
+    }
+
+    .section-hint {
+      font-size: var(--font-size-sm);
+      color: var(--dim-color);
+      margin-top: var(--space-xs);
+    }
+  }
 }
 
 // Security Section

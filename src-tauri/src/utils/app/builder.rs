@@ -5,19 +5,9 @@ use tauri::{AppHandle, Emitter, image::Image, tray::TrayIconBuilder};
 use crate::core::tray::menu::create_tray_menu;
 use crate::utils::types::events::UPDATE_TRAY_MENU;
 
-pub async fn setup_tray(app: AppHandle, max_tray_items: usize) -> tauri::Result<()> {
-    let mut old_max_tray_items = 0;
-
-    let max_tray_items = if max_tray_items == 0 {
-        old_max_tray_items
-    } else {
-        old_max_tray_items = max_tray_items;
-        old_max_tray_items
-    };
-
+pub async fn setup_tray(app: AppHandle) -> tauri::Result<()> {
     let app_clone = app.clone();
-
-    let tray_menu = create_tray_menu(&app_clone, max_tray_items).await?;
+    let tray_menu = create_tray_menu(&app_clone).await?;
 
     #[allow(unused_mut)]
     let mut tray = TrayIconBuilder::with_id("main-tray")

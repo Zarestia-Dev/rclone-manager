@@ -1,4 +1,3 @@
-pub mod app_state;
 pub mod check_binaries;
 pub mod debug;
 pub mod event_listener;

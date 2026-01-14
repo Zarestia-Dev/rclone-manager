@@ -11,7 +11,7 @@ import {
   effect,
 } from '@angular/core';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { MatDialogRef } from '@angular/material/dialog';
+import { MatDialogRef, MatDialog } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -31,13 +31,14 @@ import {
 import { ScrollingModule, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { MatSelectModule } from '@angular/material/select';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { distinctUntilChanged, Subject, takeUntil, debounceTime } from 'rxjs';
+import { distinctUntilChanged, Subject, takeUntil, debounceTime, firstValueFrom } from 'rxjs';
 
 import { FlagConfigService, RcloneBackendOptionsService } from '@app/services';
 import { NotificationService } from '@app/services';
 import { RcConfigOption } from '@app/types';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
 import { SettingControlComponent } from 'src/app/shared/components';
+import { ConfirmModalComponent } from 'src/app/shared/modals/confirm-modal/confirm-modal.component';
 
 type PageType = 'home' | string;
 type GroupedRCloneOptions = Record<string, Record<string, RcConfigOption[]>>;
@@ -202,6 +203,7 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   private notificationService = inject(NotificationService);
   private flagConfigService = inject(FlagConfigService);
   private rcloneBackendOptionsService = inject(RcloneBackendOptionsService);
+  private dialog = inject(MatDialog);
   private fb = inject(FormBuilder);
   private translate = inject(TranslateService);
 
@@ -214,6 +216,7 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   searchQuery = signal('');
   isSearchVisible = signal(false);
   savingOptions = signal(new Set<string>());
+  isResetting = signal(false);
   services = signal<RCloneService[]>([]);
   filteredServices = signal<RCloneService[]>([]);
   globalSearchResults = signal<SearchResult[]>([]);
@@ -605,6 +608,41 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
 
   getUniqueControlKey(option: RcConfigOption): string {
     return `${this.currentPage()}---${this.currentCategory()}---${option.Name}`;
+  }
+
+  async resetAllOptions(): Promise<void> {
+    // Show confirmation dialog
+    const dialogRef = this.dialog.open(ConfirmModalComponent, {
+      data: {
+        title: this.translate.instant('modals.rcloneConfig.reset.title'),
+        message: this.translate.instant('modals.rcloneConfig.reset.message'),
+        confirmText: this.translate.instant('modals.rcloneConfig.reset.confirm'),
+        cancelText: this.translate.instant('common.cancel'),
+      },
+    });
+
+    const confirmed = await firstValueFrom(dialogRef.afterClosed());
+    if (!confirmed) return;
+
+    this.isResetting.set(true);
+    try {
+      // Backend now handles both: delete file + restart engine
+      await this.rcloneBackendOptionsService.resetOptions();
+
+      // Reload options to refresh the form with defaults
+      await this.loadAndBuildOptions();
+
+      this.notificationService.showSuccess(
+        this.translate.instant('modals.rcloneConfig.notifications.resetAllSuccess')
+      );
+    } catch (error) {
+      console.error('Failed to reset all options:', error);
+      this.notificationService.showError(
+        this.translate.instant('modals.rcloneConfig.notifications.resetAllError')
+      );
+    } finally {
+      this.isResetting.set(false);
+    }
   }
 
   @HostListener('document:keydown.escape')

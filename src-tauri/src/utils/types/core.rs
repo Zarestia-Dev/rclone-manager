@@ -17,6 +17,20 @@ pub struct RcloneState {
     pub oauth_process: tokio::sync::Mutex<Option<CommandChild>>,
 }
 
+impl RcloneState {
+    /// Check if the application is shutting down
+    pub fn is_shutting_down(&self) -> bool {
+        self.is_shutting_down
+            .load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    /// Set the application shutdown flag
+    pub fn set_shutting_down(&self) {
+        self.is_shutting_down
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+    }
+}
+
 pub struct RcApiEngine {
     pub process: Option<CommandChild>,
     pub should_exit: bool,

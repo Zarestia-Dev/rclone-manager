@@ -1601,14 +1601,24 @@
       "switchFirst": "Switch to another backend first",
       "nameExists": "Name exists",
       "hostExists": "This host:port is already in use",
+
+      "remoteSecurity": {
+        "title": "Config Security",
+        "description": "Manage the encryption password for this remote rclone instance.",
+        "passwordStored": "Password Stored",
+        "noPasswordStored": "No Password Stored",
+        "status": "Status",
+        "limitation": "Note: Rclone does not support changing or verifying remote config passwords via API. You can only unlock the remote config via this password.",
+        "removePassword": "Remove Stored Password"
+      },
       "copyOptions": {
-        "title": "Copy from Existing Backend",
-        "description": "Start with settings from an existing backend or create from scratch",
+        "title": "Copy Settings",
+        "description": "Copy already existing settings",
         "backendConfig": "Copy Backend Settings",
-        "remotesConfig": "Copy Remotes",
+        "remotesConfig": "Copy Remote Settings",
         "fromZero": "Start from Zero",
-        "backendHint": "Copy backend-specific settings (filters, flags, etc.)",
-        "remotesHint": "Copy configured remotes (cloud providers)"
+        "backendHint": "Copy backend-specific settings",
+        "remotesHint": "Copy configured remote settings"
       },
       "status": {
         "notTested": "Connection not tested",
@@ -1625,7 +1635,8 @@
         "fileSelectFailed": "Failed to select file",
         "updated": "Backend updated successfully",
         "added": "Backend added successfully",
-        "saveFailed": "Failed to save backend: {{message}}"
+        "saveFailed": "Failed to save backend: {{message}}",
+        "onlyActiveBackend": "Please switch to this backend to change its configuration file."
       },
       "delete": {
         "title": "Delete Backend",
@@ -1783,7 +1794,16 @@
         "resetSuccess": "Reset to default: {{field}}",
         "saveSuccess": "Saved: {{field}}",
         "saveError": "Failed to save {{field}}: {{error}}",
-        "loadError": "Failed to load RClone configuration"
+        "loadError": "Failed to load RClone configuration",
+        "resetAllSuccess": "All RClone backend options reset to defaults",
+        "resetAllError": "Failed to reset RClone backend options"
+      },
+      "reset": {
+        "button": "Reset All to Default",
+        "aria": "Reset all RClone backend options to default values",
+        "title": "Reset Backend Options",
+        "message": "This will reset all RClone backend options to their default values and restart the rclone engine. Any custom settings will be lost. Continue?",
+        "confirm": "Reset & Restart"
       },
       "mainCategories": {
         "generalSettings": {

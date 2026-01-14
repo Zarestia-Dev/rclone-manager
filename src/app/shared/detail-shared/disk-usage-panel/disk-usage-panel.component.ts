@@ -50,11 +50,7 @@ import { FormatFileSizePipe } from '@app/pipes';
                 class="legend-spinner"
                 style="display:flex;align-items:center;justify-content:center;height:40px;"
               >
-                <mat-progress-spinner
-                  diameter="24"
-                  mode="indeterminate"
-                  color="primary"
-                ></mat-progress-spinner>
+                <mat-progress-spinner diameter="24" mode="indeterminate"></mat-progress-spinner>
               </div>
             } @else {
               <div class="legend-item">

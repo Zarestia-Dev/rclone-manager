@@ -40,37 +40,20 @@
 // Copy Options Section
 // ============================================================================
 .copy-options-section {
-  background: var(--headerbar-bg-color);
-  padding: var(--space-md);
-  border-radius: var(--radius-sm);
   margin-bottom: var(--space-md);
-  border: 1px solid var(--border-color);
-
-  h4 {
-    margin: 0 0 var(--space-xs) 0;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--window-fg-color);
-  }
-
-  .description {
-    margin: 0 0 var(--space-md) 0;
-    font-size: 0.8125rem;
-    color: var(--dim-color);
-    line-height: 1.4;
-  }
 
   .copy-selects {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--space-md);
+    margin-top: var(--space-sm);
 
     @media (max-width: 768px) {
       grid-template-columns: 1fr;
     }
 
     mat-form-field {
-      margin: 0;
+      width: 100%;
     }
   }
 
@@ -268,20 +251,7 @@ form {
 }
 
 .auth-group {
-  background: var(--view-bg-color);
-  padding: var(--space-md);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--box-shadow);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-
-  .auth-fields {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-sm);
-    padding-top: var(--space-sm);
-  }
+  margin-bottom: var(--space-md);
 }
 
 .oauth-group {
@@ -346,6 +316,13 @@ form {
   justify-content: flex-end;
   padding: var(--space-md);
   border-top: 1px solid var(--border-color);
+  background: var(--window-bg-color);
+
+  &.sticky {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+  }
 }
 
 // ============================================================================
@@ -363,5 +340,102 @@ form {
       border-top: 1px solid var(--border-color);
       opacity: 1;
     }
+  }
+}
+
+// ============================================================================
+// Security Tab Elements
+// ============================================================================
+.security-tab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  padding: var(--space-sm) 0;
+
+  .status-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    border-radius: var(--radius-sm);
+    background: var(--surface-bg-color);
+    box-shadow: var(--box-shadow);
+
+    &.encrypted {
+      background: rgba(var(--success-color-rgb), 0.1);
+      border-color: rgba(var(--success-color-rgb), 0.3);
+      color: var(--success-color);
+
+      .status-text strong {
+        color: var(--success-color);
+      }
+    }
+
+    &.unencrypted {
+      background: rgba(var(--text-color-rgb), 0.05);
+      border-color: var(--border-color);
+      color: var(--text-secondary);
+
+      .status-text strong {
+        color: var(--text-color);
+      }
+    }
+
+    .status-icon {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 50%;
+
+      mat-icon {
+        width: 24px;
+        height: 24px;
+      }
+    }
+
+    .status-text {
+      display: flex;
+      flex-direction: column;
+
+      strong {
+        font-size: 1rem;
+        font-weight: 500;
+      }
+
+      span {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+      }
+    }
+  }
+
+  .info-card {
+    display: flex;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    border-radius: var(--radius-sm);
+    background: rgba(var(--primary-color-rgb), 0.05);
+    border: 1px solid rgba(var(--primary-color-rgb), 0.1);
+    color: var(--text-color);
+
+    mat-icon {
+      color: var(--primary-color);
+      flex-shrink: 0;
+    }
+
+    p {
+      margin: 0;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+  }
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: var(--space-md);
   }
 }

@@ -32,7 +32,6 @@
           <span>{{ 'modals.backend.security.autoUnlock' | translate }}</span>
         </div>
         <mat-slide-toggle
-          color="primary"
           [checked]="hasStoredPassword()"
           (change)="onKeychainToggle($event)"
           [disabled]="encryptionLoading()"
@@ -56,7 +55,6 @@
             </button>
             <button
               mat-flat-button
-              color="primary"
               (click)="submitKeychainStore()"
               [disabled]="encryptionLoading()"
             >
@@ -128,7 +126,6 @@
           <div class="form-actions">
             <button
               mat-flat-button
-              color="primary"
               (click)="submitChangePassword()"
               [disabled]="encryptionLoading()"
             >
@@ -180,7 +177,7 @@
           <div class="form-actions">
             <button
               mat-flat-button
-              color="warn"
+              class="warn"
               (click)="submitDecrypt()"
               [disabled]="encryptionLoading()"
             >
@@ -233,12 +230,7 @@
         </mat-form-field>
 
         <div class="form-actions">
-          <button
-            mat-flat-button
-            color="primary"
-            (click)="submitEncrypt()"
-            [disabled]="encryptionLoading()"
-          >
+          <button mat-flat-button (click)="submitEncrypt()" [disabled]="encryptionLoading()">
             @if (encryptionLoading()) {
               <mat-spinner diameter="18"></mat-spinner>
             } @else {

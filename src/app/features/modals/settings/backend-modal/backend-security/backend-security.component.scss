@@ -14,7 +14,7 @@
   padding: var(--space-md) var(--space-lg);
   border-radius: var(--radius-sm);
   background: rgba(var(--warning-color-rgb), 0.08);
-  border: 1px solid rgba(var(--warning-color-rgb), 0.2);
+  box-shadow: 0 0 0 1px var(--warning-color);
 
   .status-icon {
     width: 40px;

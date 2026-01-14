@@ -1,6 +1,16 @@
 use log::{debug, error, info, warn};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
+
+// Startup flag to prevent premature health checks
+static INITIAL_STARTUP: AtomicBool = AtomicBool::new(true);
+
+/// Mark initial startup as complete to enable health monitoring
+pub fn mark_startup_complete() {
+    INITIAL_STARTUP.store(false, Ordering::Relaxed);
+    debug!("✅ Initial startup complete, health monitoring enabled");
+}
 
 // Timeout and interval constants
 const API_READY_TIMEOUT_SECS: u64 = 10;
@@ -24,7 +34,7 @@ use crate::{
 
 // Mobile no-op stub for update_tray_menu
 #[cfg(not(desktop))]
-async fn update_tray_menu(_app: AppHandle, _max_items: usize) -> Result<(), String> {
+async fn update_tray_menu(_app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
@@ -75,6 +85,12 @@ impl RcApiEngine {
 
                     if engine.should_exit {
                         break;
+                    }
+
+                    // Skip health check during initial startup to prevent premature restarts
+                    if INITIAL_STARTUP.load(Ordering::Relaxed) {
+                        debug!("⏭️ Skipping health check during initial startup");
+                        continue;
                     }
 
                     if !engine.is_api_healthy().await && !engine.should_exit {
@@ -264,7 +280,7 @@ async fn refresh_caches_and_tray(app: &AppHandle) {
         Err(e) => error!("Failed to refresh caches: {e}"),
     }
 
-    if let Err(e) = update_tray_menu(app.clone(), 0).await {
+    if let Err(e) = update_tray_menu(app.clone()).await {
         error!("Failed to update tray menu: {e}");
     }
 }

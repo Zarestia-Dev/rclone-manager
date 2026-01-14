@@ -152,6 +152,9 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
     start_serve_watcher(app_handle.clone());
 
     info!("🎉 Initialization complete");
+
+    // Enable engine health monitoring now that startup is complete
+    crate::rclone::engine::lifecycle::mark_startup_complete();
 }
 
 /// Initialize the cron scheduler with tasks loaded from remote configs
@@ -266,7 +269,6 @@ async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
         .ensure_connectivity_or_fallback(&client, BACKEND_CONNECTIVITY_TIMEOUT)
         .await
     {
-        // This only happens if fallback also failed (critical error)
         error!("🔥 Critical startup failure: {}", e);
     }
 

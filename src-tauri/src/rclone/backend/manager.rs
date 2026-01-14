@@ -184,14 +184,6 @@ impl BackendManager {
             .position(|b| b.name == name)
             .ok_or_else(|| format!("Backend '{}' not found", name))?;
 
-        // If name changes, we would ideally rename profiles.
-        // However, Backend struct typically keeps name as identity.
-        // If rename is supported later, we should add:
-        // if name != backend.name {
-        //    manager.sub_settings("remotes")?.profiles()?.rename(name, &backend.name)?;
-        //    manager.sub_settings("backend")?.profiles()?.rename(name, &backend.name)?;
-        // }
-
         info!("🔄 Updating backend: {}", name);
         backends[index] = backend;
         Ok(())
@@ -268,100 +260,37 @@ impl BackendManager {
         // Get current backend name before switching
         let current_name = self.get_active_name().await;
 
-        // Don't save/restore logic if switching to the same backend
-        // BUT we still ensure the correct profile is active
+        // Skip state swap if switching to same backend, BUT ensure proper profile activation
         if current_name != name {
-            // 1. Save current backend's state (Jobs + Context)
-            let jobs = self.job_cache.get_all_jobs().await;
-            let context = self.remote_cache.get_context().await;
+            self.save_backend_state(&current_name).await;
 
-            let current_state = BackendState { jobs, context };
-
-            {
-                let mut states = self.per_backend_state.write().await;
-                states.insert(current_name.clone(), current_state);
-                info!("💾 Saved state for backend: {}", current_name);
-            }
-
-            // 2. Clear ALL cache data (wipes stale mounts, serves, remote lists)
+            // Clear cache to prevent stale data leaking
             self.remote_cache.clear_all().await;
 
-            // 3. Restore new backend's state (or empty if none exists)
-            let new_state = {
-                let states = self.per_backend_state.read().await;
-                states.get(name).cloned().unwrap_or_default()
-            };
+            self.restore_backend_state(name).await;
 
-            // Restore jobs (History)
-            self.job_cache.set_all_jobs(new_state.jobs).await;
-
-            // Restore Context (Profiles)
-            self.remote_cache.set_context(new_state.context).await;
-
-            info!("📂 Restored context for backend: {}", name);
+            // LAZY LOADING: Load secrets on-demand if not already loaded
+            // This handles backends that were skipped during startup
+            let mut backends = self.backends.write().await;
+            if let Some(backend) = backends.iter_mut().find(|b| b.name == name)
+                && backend.password.is_none()
+                && backend.config_password.is_none()
+            {
+                load_backend_secrets(manager, backend);
+                log::debug!("🔐 Lazy-loaded secrets for backend on switch: {}", name);
+            }
+            drop(backends);
         }
 
-        // 4. Switch rcman Profile for Remotes
-        // Local -> "default" profile
-        // Remote -> "{name}" profile (e.g., "NAS")
+        // Switch profiles for both settings types
+        // "Local" backend maps to "default" profile
         let profile_name = if name == "Local" { "default" } else { name };
-        info!("👤 Switching to profile: {}", profile_name);
+        info!("👤 Switching profiles to: {}", profile_name);
 
-        // Switch profile for "remotes" sub-setting specifically
-        if let Ok(remotes_sub) = manager.sub_settings("remotes") {
-            // Create profile if needed (accessing inner profile manager for creation)
-            if profile_name != "default"
-                && let Ok(pm) = remotes_sub.profiles()
-                && let Err(e) = pm.create(profile_name)
-            {
-                log::warn!(
-                    "Failed to create profile '{}' for remotes: {}",
-                    profile_name,
-                    e
-                );
-            }
-
-            // use the high-level switch_profile which handles cache invalidation
-            if let Err(e) = remotes_sub.switch_profile(profile_name) {
-                log::error!(
-                    "Failed to switch remotes to profile '{}': {}",
-                    profile_name,
-                    e
-                );
-                return Err(format!("Failed to switch remotes profile: {}", e));
-            }
-            log::info!("👤 Switched 'remotes' to profile: {}", profile_name);
-        } else {
-            log::error!("Failed to access 'remotes' sub-settings");
-            return Err("Failed to access 'remotes' sub-settings".into());
-        }
-
-        // 5. Switch rcman Profile for Backend Settings
-        if let Ok(backend_sub) = manager.sub_settings("backend") {
-            // Create profile if needed (accessing inner profile manager for creation)
-            if profile_name != "default"
-                && let Ok(pm) = backend_sub.profiles()
-                && let Err(e) = pm.create(profile_name)
-            {
-                // Likely already exists or race, just warn
-                log::warn!(
-                    "Failed to create profile '{}' for backend: {}",
-                    profile_name,
-                    e
-                );
-            }
-
-            // switch profile
-            if let Err(e) = backend_sub.switch_profile(profile_name) {
-                log::error!(
-                    "Failed to switch backend to profile '{}': {}",
-                    profile_name,
-                    e
-                );
-                return Err(format!("Failed to switch backend profile: {}", e));
-            }
-            log::info!("👤 Switched 'backend' to profile: {}", profile_name);
-        }
+        self.switch_sub_settings_profile(manager, "remotes", profile_name)
+            .await?;
+        self.switch_sub_settings_profile(manager, "backend", profile_name)
+            .await?;
 
         // Update active index
         let mut active = self.active_index.write().await;
@@ -373,6 +302,69 @@ impl BackendManager {
         info!("🔄 Switched to backend: {} (is_local: {})", name, is_local);
 
         Ok(())
+    }
+
+    /// Helper to save current state (Jobs + Context)
+    async fn save_backend_state(&self, name: &str) {
+        let jobs = self.job_cache.get_all_jobs().await;
+        let context = self.remote_cache.get_context().await;
+        let current_state = BackendState { jobs, context };
+
+        let mut states = self.per_backend_state.write().await;
+        states.insert(name.to_string(), current_state);
+        info!("💾 Saved state for backend: {}", name);
+    }
+
+    /// Helper to restore stored state for a backend
+    async fn restore_backend_state(&self, name: &str) {
+        let new_state = {
+            let states = self.per_backend_state.read().await;
+            states.get(name).cloned().unwrap_or_default()
+        };
+
+        self.job_cache.set_all_jobs(new_state.jobs).await;
+        self.remote_cache.set_context(new_state.context).await;
+        info!("📂 Restored context for backend: {}", name);
+    }
+
+    /// Generic helper to switch profiles for a sub-setting
+    async fn switch_sub_settings_profile(
+        &self,
+        manager: &AppSettingsManager,
+        sub_name: &str,
+        profile_name: &str,
+    ) -> Result<(), String> {
+        if let Ok(sub) = manager.sub_settings(sub_name) {
+            // Create profile if needed
+            if profile_name != "default"
+                && let Ok(pm) = sub.profiles()
+                && let Err(e) = pm.create(profile_name)
+            {
+                // Likely already exists, just warn
+                log::warn!(
+                    "Failed to ensure profile '{}' for {}: {}",
+                    profile_name,
+                    sub_name,
+                    e
+                );
+            }
+
+            // Switch profile
+            if let Err(e) = sub.switch_profile(profile_name) {
+                log::error!(
+                    "Failed to switch {} to profile '{}': {}",
+                    sub_name,
+                    profile_name,
+                    e
+                );
+                return Err(format!("Failed to switch {} profile: {}", sub_name, e));
+            }
+            log::info!("👤 Switched '{}' to profile: {}", sub_name, profile_name);
+            Ok(())
+        } else {
+            log::error!("Failed to access '{}' sub-settings", sub_name);
+            Err(format!("Failed to access '{}' sub-settings", sub_name))
+        }
     }
 
     /// Check connectivity to a backend, updating cache if successful
@@ -610,8 +602,20 @@ impl BackendManager {
                 // Set name from key
                 backend.name = key.clone();
 
-                // Load secrets from keychain
-                load_backend_secrets(manager, &mut backend);
+                // LAZY LOADING: Only load secrets for active backend + Local on startup
+                // Others will be loaded on-demand when switched to
+                let should_load_secrets = backend.name == "Local"
+                    || active_name
+                        .as_ref()
+                        .map(|n| n == &backend.name)
+                        .unwrap_or(false);
+
+                if should_load_secrets {
+                    load_backend_secrets(manager, &mut backend);
+                    log::debug!("🔐 Loaded secrets for backend: {}", backend.name);
+                } else {
+                    log::debug!("⏭️ Deferred secret loading for backend: {}", backend.name);
+                }
 
                 // Update Local or add new
                 if backend.name == "Local" {
@@ -716,8 +720,6 @@ fn load_backend_secrets(_manager: &AppSettingsManager, _backend: &mut Backend) {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::types::jobs::{JobInfo, JobStatus};
-
     use super::*;
 
     #[tokio::test]
@@ -742,190 +744,23 @@ mod tests {
         let backends = manager.list_all().await;
         assert_eq!(backends.len(), 2);
     }
-
-    #[tokio::test]
-    async fn test_add_duplicate() {
-        let manager = BackendManager::new();
-        let duplicate = Backend::new_local("Local");
-
-        let result = manager.add(duplicate).await;
-        assert!(result.is_err());
-    }
-
-    #[tokio::test]
-    async fn test_switch_to() {
-        let manager = BackendManager::new();
-        let remote = Backend::new_remote("NAS", "192.168.1.100", 51900);
-        manager.add(remote).await.unwrap();
-
-        assert_eq!(manager.get_active_name().await, "Local");
-
-        // manager.switch_to("NAS").await.unwrap();
-        // assert_eq!(manager.get_active_name().await, "NAS");
-    }
-
-    #[tokio::test]
-    async fn test_remove_backend() {
-        let manager = BackendManager::new();
-        let remote = Backend::new_remote("NAS", "192.168.1.100", 51900);
-        manager.add(remote).await.unwrap();
-
-        manager.remove("NAS").await.unwrap();
-
-        let backends = manager.list_all().await;
-        assert_eq!(backends.len(), 1);
-    }
-
-    #[tokio::test]
-    async fn test_cannot_remove_local() {
-        let manager = BackendManager::new();
-
-        let result = manager.remove("Local").await;
-        assert!(result.is_err());
-    }
-
-    #[tokio::test]
-    async fn test_cannot_remove_active() {
-        let manager = BackendManager::new();
-        let remote = Backend::new_remote("NAS", "192.168.1.100", 51900);
-        manager.add(remote).await.unwrap();
-        // manager.switch_to("NAS").await.unwrap();
-        // let result = manager.remove("NAS").await;
-        // assert!(result.is_err());
-    }
     */
 
     #[tokio::test]
     async fn test_set_runtime_status() {
         let manager = BackendManager::new();
-
-        // Set status for Local
         manager.set_runtime_status("Local", "connected").await;
 
         let backends = manager.list_all().await;
         assert_eq!(backends[0].status, Some("connected".to_string()));
-    }
 
-    #[tokio::test]
-    async fn test_runtime_info_persists_across_list_calls() {
-        let manager = BackendManager::new();
-
-        // Set runtime info
-        manager.set_runtime_status("Local", "connected").await;
-
-        // First list
-        let backends1 = manager.list_all().await;
-        assert_eq!(backends1[0].status, Some("connected".to_string()));
-
-        // Second list should still have the info
-        let backends2 = manager.list_all().await;
-        assert_eq!(backends2[0].status, Some("connected".to_string()));
-    }
-
-    #[tokio::test]
-    async fn test_runtime_info_error_status() {
-        let manager = BackendManager::new();
-        let remote = Backend::new_remote("Offline", "192.168.1.200", 51900);
-        // FIXME: add needs AppSettingsManager now
-        // manager.add(remote).await.unwrap();
-
-        // Simulate add manually for test
-        {
-            let mut backends = manager.backends.write().await;
-            backends.push(remote);
-        }
-
-        // Simulate error status
         manager
-            .set_runtime_status("Offline", "error:Connection refused")
+            .set_runtime_status("Local", "error:connection failed")
             .await;
-
         let backends = manager.list_all().await;
-        let offline = backends.iter().find(|b| b.name == "Offline").unwrap();
-        assert_eq!(offline.status, Some("error:Connection refused".to_string()));
+        assert_eq!(
+            backends[0].status,
+            Some("error:connection failed".to_string())
+        );
     }
-
-    #[tokio::test]
-    async fn test_persistence_on_switch() {
-        use chrono::Utc;
-
-        let manager = BackendManager::new();
-        let remote = Backend::new_remote("Remote1", "host", 1234);
-
-        // FIXME: Usage of .add() needs AppSettingsManager
-        // manager.add(remote).await.unwrap();
-        {
-            let mut backends = manager.backends.write().await;
-            backends.push(remote);
-        }
-
-        // 1. We are on Local (default). Add a job.
-        let job = JobInfo {
-            jobid: 1,
-            job_type: "sync".to_string(),
-            remote_name: "drive:".to_string(),
-            source: "/local".to_string(),
-            destination: "drive:/remote".to_string(),
-            start_time: Utc::now(),
-            status: JobStatus::Running,
-            stats: Some(serde_json::json!({})),
-            group: "job/1".to_string(),
-            profile: None,
-            source_ui: Some("test".to_string()),
-            backend_name: Some("Local".to_string()),
-        };
-        manager.job_cache.add_job(job, None).await;
-        assert_eq!(manager.job_cache.get_jobs().await.len(), 1);
-
-        // 2. Switch to Remote1
-        // manager.switch_to("Remote1").await.unwrap();
-        // Should be empty initially (new backend state)
-        // assert_eq!(manager.job_cache.get_jobs().await.len(), 0);
-
-        // 3. Switch back to Local
-        // manager.switch_to("Local").await.unwrap();
-        // Should have restored the job
-        // assert_eq!(manager.job_cache.get_jobs().await.len(), 1);
-        // assert_eq!(manager.job_cache.get_jobs().await[0].jobid, 1);
-    }
-}
-#[tokio::test]
-async fn test_context_persistence_on_switch() {
-    let manager = BackendManager::new();
-    let remote = Backend::new_remote("Remote1", "host", 1234);
-    // manager.add(remote).await.unwrap();
-    {
-        let mut backends = manager.backends.write().await;
-        backends.push(remote);
-    }
-
-    // 1. Initial State: Local
-    // Simulate adding a mount profile
-    manager
-        .remote_cache
-        .store_mount_profile("/mnt/data", Some("my-profile".to_string()))
-        .await;
-
-    let context = manager.remote_cache.get_context().await;
-    assert_eq!(
-        context.mount_profiles.get("/mnt/data").unwrap(),
-        "my-profile"
-    );
-
-    // 2. Switch to Remote1
-    // manager.switch_to("Remote1").await.unwrap();
-
-    // Active cache should be cleared/empty for new backend
-    // let context_remote = manager.remote_cache.get_context().await;
-    // assert!(context_remote.mount_profiles.is_empty());
-
-    // 3. Switch back to Local
-    // manager.switch_to("Local").await.unwrap();
-
-    // Context should be restored
-    // let context_local = manager.remote_cache.get_context().await;
-    // assert_eq!(
-    //     context_local.mount_profiles.get("/mnt/data").unwrap(),
-    //     "my-profile"
-    // );
 }

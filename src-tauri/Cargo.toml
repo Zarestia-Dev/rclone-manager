@@ -53,11 +53,11 @@ sevenz-rust2 = "0.20.0"
 rcman = { version = "0.1.2", path = "../../rcman", features = ["backup", "derive", "profiles"] }
 
 urlencoding = "2.1"
+futures = { version = "0.3" }
 
 # Web server dependencies (optional)
 axum = { version = "0.7", optional = true }
 tower-http = { version = "0.5", features = ["cors", "fs", "trace"], optional = true }
-futures = { version = "0.3", optional = true }
 async-stream = { version = "0.3", optional = true }
 base64 = { version = "0.22", optional = true }
 axum-server = { version = "0.7", features = ["tls-rustls"], optional = true }
@@ -95,7 +95,7 @@ rcman = { version = "0.1.2", path = "../../rcman", features = ["keychain", "prof
 [features]
 default = ["updater"]
 updater = ["tauri-plugin-updater", "url"]
-web-server = ["axum", "tower-http", "futures", "async-stream", "axum-server", "rustls", "base64", "anyhow", "clap"]
+web-server = ["axum", "tower-http", "async-stream", "axum-server", "rustls", "base64", "anyhow", "clap"]
 portable = []
 flatpak = []
 deb = []

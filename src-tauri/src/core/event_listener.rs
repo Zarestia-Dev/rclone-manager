@@ -3,12 +3,6 @@ use log::{debug, error, info};
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Listener, Manager};
 
-#[cfg(desktop)]
-use crate::core::tray::core::update_tray_menu;
-
-#[cfg(desktop)]
-use crate::utils::app::builder::setup_tray;
-
 use crate::{
     core::{lifecycle::shutdown::handle_shutdown, scheduler::engine::CronScheduler},
     rclone::{
@@ -27,17 +21,26 @@ use crate::{
     },
 };
 
-// Mobile no-op stub for update_tray_menu
+// ============================================================================
+// Platform-specific stubs
+// ============================================================================
+
+#[cfg(desktop)]
+use crate::{core::tray::core::update_tray_menu, utils::app::builder::setup_tray};
+
 #[cfg(not(desktop))]
-async fn update_tray_menu(_app: AppHandle, _max_items: usize) -> Result<(), String> {
+async fn update_tray_menu(_app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-// Mobile no-op stub for setup_tray
 #[cfg(not(desktop))]
 async fn setup_tray(_app: AppHandle, _max_items: usize) -> tauri::Result<()> {
     Ok(())
 }
+
+// ============================================================================
+// Helpers
+// ============================================================================
 
 fn parse_payload<T: for<'de> serde::Deserialize<'de>>(payload: Option<&str>) -> Result<T, String> {
     payload
@@ -45,11 +48,18 @@ fn parse_payload<T: for<'de> serde::Deserialize<'de>>(payload: Option<&str>) -> 
         .and_then(|p| serde_json::from_str(p).map_err(|e| e.to_string()))
 }
 
+// ============================================================================
+// Event Handlers
+// ============================================================================
+
 fn handle_ctrl_c(app: &AppHandle) {
     let app_handle_clone = app.clone();
     tauri::async_runtime::spawn(async move {
         use tokio::signal::ctrl_c;
-        ctrl_c().await.expect("Failed to install Ctrl+C handler");
+        if let Err(e) = ctrl_c().await {
+            error!("Failed to install Ctrl+C handler: {}", e);
+            return;
+        }
         info!("🧹 Ctrl+C received via tokio. Initiating shutdown...");
         handle_shutdown(app_handle_clone.clone()).await;
         app_handle_clone.exit(0);
@@ -59,15 +69,12 @@ fn handle_ctrl_c(app: &AppHandle) {
 fn handle_rclone_password_stored(app: &AppHandle) {
     let app_clone = app.clone();
     app.listen(RCLONE_PASSWORD_STORED, move |_| {
-        let _app = app_clone.clone();
+        let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            // Clear the engine flag using the new helper
-            tauri::async_runtime::spawn_blocking(move || {
-                use crate::utils::types::core::EngineState;
-                _app.state::<EngineState>()
-                    .blocking_lock()
-                    .set_password_error(false);
-            });
+            use crate::utils::types::core::EngineState;
+            let state = app.state::<EngineState>();
+            let mut engine = state.lock().await;
+            engine.set_password_error(false);
         });
     });
 }
@@ -81,19 +88,21 @@ fn handle_remote_presence_changed(app: &AppHandle) {
             let client = app_clone.state::<RcloneState>().client.clone();
 
             let backend = crate::rclone::backend::BACKEND_MANAGER.get_active().await;
-            // guard deleted
             let cache = &crate::rclone::backend::BACKEND_MANAGER.remote_cache;
 
             let refresh_tasks: (Result<(), String>, Result<(), String>) = tokio::join!(
                 cache.refresh_remote_list(&client, &backend),
                 cache.refresh_remote_configs(&client, &backend),
             );
+
             if let (Err(e1), Err(e2)) = refresh_tasks {
                 error!("Failed to refresh cache: {e1}, {e2}");
             }
 
             let remote_names = cache.get_remotes().await;
             let manager = app_clone.state::<AppSettingsManager>();
+
+            // Note: This is a synchronous call, might block momentarily but is usually fast
             let all_configs = crate::core::settings::remote::manager::get_all_remote_settings_sync(
                 manager.inner(),
                 &remote_names,
@@ -113,21 +122,213 @@ fn handle_remote_presence_changed(app: &AppHandle) {
                 error!("❌ Failed to reload scheduled tasks after remote change: {e}");
             }
 
-            if let Err(e) = update_tray_menu(app_clone.clone(), 0).await {
+            if let Err(e) = update_tray_menu(app_clone.clone()).await {
                 error!("Failed to update tray menu: {e}");
             }
-
-            // Event already emitted by command, no need to re-emit
         });
     });
 }
+
+// ============================================================================
+// Settings Change Handlers (Refactored)
+// ============================================================================
+
+fn handle_general_settings_change(app: &AppHandle, general: &Value) {
+    // 1. Notifications
+    // Note: notifications setting is now read from AppSettingsManager which caches internally
+    if let Some(notification) = general.get("notifications").and_then(|v| v.as_bool()) {
+        debug!("💬 Notifications changed to: {notification}");
+    }
+
+    // 2. Start on Startup
+    if let Some(startup) = general.get("start_on_startup").and_then(|v| v.as_bool()) {
+        debug!("🚀 Start on Startup changed to: {startup}");
+
+        #[cfg(feature = "flatpak")]
+        {
+            use crate::utils::app::platform::manage_flatpak_autostart;
+            if let Err(e) = manage_flatpak_autostart(startup) {
+                error!("Failed to update flatpak autostart: {e}");
+            }
+        }
+
+        #[cfg(all(desktop, not(feature = "flatpak")))]
+        {
+            use tauri_plugin_autostart::ManagerExt;
+            let autostart = app.autolaunch();
+            let _ = if startup {
+                autostart.enable()
+            } else {
+                autostart.disable()
+            };
+        }
+    }
+
+    // 3. Tray Visibility
+    if let Some(tray_enabled) = general.get("tray_enabled").and_then(|v| v.as_bool()) {
+        #[cfg(desktop)]
+        {
+            let app_clone = app.clone();
+            tauri::async_runtime::spawn(async move {
+                debug!("🛠️ Tray visibility changed to: {tray_enabled}");
+                if let Some(tray) = app_clone.tray_by_id("main-tray") {
+                    let _ = tray.set_visible(tray_enabled);
+                } else {
+                    let app = app_clone.clone();
+                    // Double spawn to ensure independent task if setup_tray blocks/failures shouldn't crash
+                    tauri::async_runtime::spawn(async move {
+                        if let Err(e) = setup_tray(app).await {
+                            error!("Failed to set up tray: {e}");
+                        }
+                    });
+                }
+            });
+        }
+        #[cfg(not(desktop))]
+        {
+            let _ = tray_enabled; // Silence unused warning
+        }
+    }
+
+    // 4. Restrict Mode
+    if let Some(restrict) = general.get("restrict").and_then(|v| v.as_bool()) {
+        debug!("🔒 Restrict mode changed to: {restrict}");
+        // Note: restrict setting is now read from AppSettingsManager which caches internally
+        let app_clone = app.clone();
+        if let Err(e) = app_clone.emit(REMOTE_CACHE_CHANGED, "restrict_mode_changed") {
+            error!("❌ Failed to emit remote presence changed event: {e}");
+        }
+    }
+
+    // 5. Language
+    if let Some(language) = general.get("language").and_then(|v| v.as_str()) {
+        debug!("🌐 Language changed to: {language}");
+        crate::utils::i18n::set_language(language);
+
+        // Emit APP_EVENT for frontend
+        if let Err(e) = app.emit(
+            crate::utils::types::events::APP_EVENT,
+            serde_json::json!({
+                "status": "language_changed",
+                "language": language
+            }),
+        ) {
+            error!("❌ Failed to emit language change event: {e}");
+        }
+
+        #[cfg(desktop)]
+        {
+            if let Err(e) = app.emit(UPDATE_TRAY_MENU, ()) {
+                error!("❌ Failed to emit tray menu update event: {e}");
+            }
+        }
+    }
+}
+
+fn handle_core_settings_change(app: &AppHandle, core: &Value) {
+    // 1. Bandwidth Limit
+    if let Some(bandwidth_limit) = core.get("bandwidth_limit") {
+        debug!("🌐 Bandwidth limit changed to: {bandwidth_limit}");
+        let app = app.clone();
+
+        // Parse bandwidth limit safely
+        let bandwidth_limit_opt = if bandwidth_limit.is_null() {
+            None
+        } else if let Some(s) = bandwidth_limit.as_str() {
+            Some(s.to_string())
+        } else {
+            bandwidth_limit.as_u64().map(|n| n.to_string())
+        };
+
+        tauri::async_runtime::spawn(async move {
+            let rclone_state = app.state::<RcloneState>();
+            if let Err(e) =
+                set_bandwidth_limit(app.clone(), bandwidth_limit_opt, rclone_state).await
+            {
+                error!("Failed to set bandwidth limit: {e:?}");
+            }
+        });
+    }
+
+    // 2. Rclone Config Path
+    if let Some(rclone_path) = core.get("rclone_path").and_then(|v| v.as_str()) {
+        debug!("🔄 Rclone path changed to: {rclone_path}");
+
+        match crate::rclone::engine::lifecycle::restart_for_config_change(
+            app,
+            "rclone_path",
+            "previous",
+            rclone_path,
+        ) {
+            Ok(_) => info!("Rclone path updated to: {rclone_path}"),
+            Err(e) => error!("Failed to restart engine for rclone path change: {e}"),
+        }
+    }
+
+    // 3. Max Tray Items
+    if let Some(max_items) = core.get("max_tray_items").and_then(|v| v.as_u64()) {
+        debug!("🗂️ Max tray items changed to: {max_items}");
+        let app = app.clone();
+        tauri::async_runtime::spawn(async move {
+            if let Err(e) = update_tray_menu(app).await {
+                error!("Failed to update tray menu: {e}");
+            }
+        });
+    }
+}
+
+fn handle_developer_settings_change(_app: &AppHandle, developer: &Value) {
+    // 1. Log Level
+    if let Some(log_level) = developer.get("log_level").and_then(|v| v.as_str()) {
+        debug!("📊 Log level changed to: {log_level}");
+        update_log_level(log_level);
+    }
+
+    // 2. Destroy Window On Close
+    if let Some(destroy_window) = developer
+        .get("destroy_window_on_close")
+        .and_then(|v| v.as_bool())
+    {
+        debug!("♻️ Destroy window on close changed to: {destroy_window}");
+        // Note: destroy_window_on_close is read from AppSettingsManager
+    }
+}
+
+fn handle_settings_changed(app: &AppHandle) {
+    let app_clone = app.clone();
+    app.listen(SYSTEM_SETTINGS_CHANGED, move |event| {
+        let app = app_clone.clone();
+        debug!("🔄 Settings saved! Raw payload: {:?}", event.payload());
+
+        match parse_payload::<Value>(Some(event.payload())) {
+            Ok(settings) => {
+                if let Some(general) = settings.get("general") {
+                    handle_general_settings_change(&app, general);
+                }
+
+                if let Some(core) = settings.get("core") {
+                    handle_core_settings_change(&app, core);
+                }
+
+                if let Some(developer) = settings.get("developer") {
+                    handle_developer_settings_change(&app, developer);
+                }
+            }
+            Err(e) => error!("❌ Failed to parse settings change: {e}"),
+        }
+    });
+}
+
+// ============================================================================
+// Other Handlers
+// ============================================================================
 
 fn tray_menu_updated(app: &AppHandle) {
     let app_clone = app.clone();
     app.listen(UPDATE_TRAY_MENU, move |_| {
         let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            if let Err(e) = update_tray_menu(app, 0).await {
+            if let Err(e) = update_tray_menu(app).await {
                 error!("Failed to update tray menu: {e}");
             }
         });
@@ -141,7 +342,7 @@ fn handle_job_cache_changed(app: &AppHandle) {
 
         let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            if let Err(e) = update_tray_menu(app, 0).await {
+            if let Err(e) = update_tray_menu(app).await {
                 error!("Failed to update tray menu: {e}");
             }
         });
@@ -154,190 +355,10 @@ fn handle_serve_state_changed(app: &AppHandle) {
         let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
             debug!("🔄 Serve state changed! Raw payload: {:?}", event.payload());
-            if let Err(e) = update_tray_menu(app.clone(), 0).await {
+            if let Err(e) = update_tray_menu(app.clone()).await {
                 error!("Failed to update tray menu after serve change: {e}");
             }
         });
-    });
-}
-
-fn handle_settings_changed(app: &AppHandle) {
-    let app_handle = app.clone();
-
-    let app_handle_clone = app_handle.clone();
-    app.listen(SYSTEM_SETTINGS_CHANGED, move |event| {
-        let app_handle = app_handle_clone.clone();
-        debug!("🔄 Settings saved! Raw payload: {:?}", event.payload());
-
-        match parse_payload::<Value>(Some(event.payload())) {
-            Ok(settings) => {
-                if let Some(general) = settings.get("general") {
-                    if let Some(notification) =
-                        general.get("notifications").and_then(|v| v.as_bool())
-                    {
-                        debug!("💬 Notifications changed to: {notification}");
-                        // Note: notifications setting is now read from AppSettingsManager which caches internally
-                    }
-
-                    if let Some(startup) = general.get("start_on_startup").and_then(|v| v.as_bool())
-                    {
-                        debug!("🚀 Start on Startup changed to: {startup}");
-
-                        #[cfg(feature = "flatpak")]
-                        {
-                            use crate::utils::app::platform::manage_flatpak_autostart;
-                            if let Err(e) = manage_flatpak_autostart(startup) {
-                                error!("Failed to update flatpak autostart: {e}");
-                            }
-                        }
-
-                        #[cfg(all(desktop, not(feature = "flatpak")))]
-                        {
-                            use tauri_plugin_autostart::ManagerExt;
-                            let autostart = app_handle.autolaunch();
-                            let _ = if startup {
-                                autostart.enable()
-                            } else {
-                                autostart.disable()
-                            };
-                        }
-                    }
-
-                    if let Some(tray_enabled) =
-                        general.get("tray_enabled").and_then(|v| v.as_bool())
-                    {
-                        #[cfg(desktop)]
-                        {
-                            let app_handle_clone = app_handle.clone();
-                            tauri::async_runtime::spawn(async move {
-                                // Note: tray_enabled setting is now read from AppSettingsManager which caches internally
-                                debug!("🛠️ Tray visibility changed to: {tray_enabled}");
-                                if let Some(tray) = app_handle_clone.tray_by_id("main-tray") {
-                                    let _ = tray.set_visible(tray_enabled);
-                                } else {
-                                    let app = app_handle_clone.clone();
-                                    tauri::async_runtime::spawn(async move {
-                                        if let Err(e) = setup_tray(app, 0).await {
-                                            error!("Failed to set up tray: {e}");
-                                        }
-                                    });
-                                }
-                            });
-                        }
-                        #[cfg(not(desktop))]
-                        {
-                            let _ = tray_enabled; // Silence unused warning
-                        }
-                    }
-                    if let Some(restrict) = general.get("restrict").and_then(|v| v.as_bool()) {
-                        debug!("🔒 Restrict mode changed to: {restrict}");
-                        // Note: restrict setting is now read from AppSettingsManager which caches internally
-                        let app_handle_clone = app_handle.clone();
-                        app_handle_clone
-                            .emit(REMOTE_CACHE_CHANGED, "restrict_mode_changed")
-                            .unwrap_or_else(|e| {
-                                error!("❌ Failed to emit remote presence changed event: {e}");
-                            });
-                    }
-
-                    // Handle language change - update backend i18n and rebuild tray menu
-                    if let Some(language) = general.get("language").and_then(|v| v.as_str()) {
-                        debug!("🌐 Language changed to: {language}");
-                        crate::utils::i18n::set_language(language);
-
-                        // Emit APP_EVENT for frontend to handle language change
-                        app_handle
-                            .emit(
-                                crate::utils::types::events::APP_EVENT,
-                                serde_json::json!({
-                                    "status": "language_changed",
-                                    "language": language
-                                }),
-                            )
-                            .unwrap_or_else(|e| {
-                                error!("❌ Failed to emit language change event: {e}");
-                            });
-
-                        #[cfg(desktop)]
-                        {
-                            let app_handle_clone = app_handle.clone();
-                            app_handle_clone
-                                .emit(UPDATE_TRAY_MENU, ())
-                                .unwrap_or_else(|e| {
-                                    error!("❌ Failed to emit tray menu update event: {e}");
-                                });
-                        }
-                    }
-                }
-
-                if let Some(core) = settings.get("core").cloned() {
-                    if let Some(bandwidth_limit) = core.get("bandwidth_limit") {
-                        debug!("🌐 Bandwidth limit changed to: {bandwidth_limit}");
-                        let app = app_handle.clone();
-                        let bandwidth_limit_opt = if bandwidth_limit.is_null() {
-                            None
-                        } else if let Some(s) = bandwidth_limit.as_str() {
-                            Some(s.to_string())
-                        } else {
-                            bandwidth_limit.as_u64().map(|n| n.to_string())
-                        };
-                        tauri::async_runtime::spawn(async move {
-                            let app_clone = app.clone();
-                            let rclone_state = app.state::<RcloneState>();
-                            if let Err(e) = set_bandwidth_limit(
-                                app_clone.clone(),
-                                bandwidth_limit_opt.clone(),
-                                rclone_state,
-                            )
-                            .await
-                            {
-                                error!("Failed to set bandwidth limit: {e:?}");
-                            }
-                        });
-                    }
-
-                    if let Some(rclone_path) = core.get("rclone_path").and_then(|v| v.as_str()) {
-                        debug!("🔄 Rclone path changed to: {rclone_path}");
-
-                        if let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
-                            &app_handle,
-                            "rclone_path",
-                            "previous",
-                            rclone_path,
-                        ) {
-                            error!("Failed to restart engine for rclone path change: {e}");
-                        }
-                        info!("Rclone path updated to: {rclone_path}");
-                    }
-
-                    if let Some(max_items) = core.get("max_tray_items").and_then(|v| v.as_u64()) {
-                        debug!("🗂️ Max tray items changed to: {max_items}");
-                        let app = app_handle.clone();
-                        tauri::async_runtime::spawn(async move {
-                            if let Err(e) = update_tray_menu(app, max_items as usize).await {
-                                error!("Failed to update tray menu: {e}");
-                            }
-                        });
-                    }
-                }
-
-                if let Some(developer) = settings.get("developer") {
-                    if let Some(log_level) = developer.get("log_level").and_then(|v| v.as_str()) {
-                        debug!("📊 Log level changed to: {log_level}");
-                        update_log_level(log_level);
-                    }
-
-                    if let Some(destroy_window) = developer
-                        .get("destroy_window_on_close")
-                        .and_then(|v| v.as_bool())
-                    {
-                        debug!("♻️ Destroy window on close changed to: {destroy_window}");
-                        // Note: destroy_window_on_close is now read from AppSettingsManager which caches internally
-                    }
-                }
-            }
-            Err(e) => error!("❌ Failed to parse settings change: {e}"),
-        }
     });
 }
 
@@ -349,8 +370,23 @@ fn handle_backend_switched(app: &AppHandle) {
         let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
             // Update tray menu to reflect potentially new remotes
-            if let Err(e) = update_tray_menu(app.clone(), 0).await {
+            if let Err(e) = update_tray_menu(app.clone()).await {
                 error!("Failed to update tray menu: {e}");
+            }
+        });
+    });
+}
+
+fn handle_remote_settings_changed(app: &AppHandle) {
+    let app_clone = app.clone();
+    use crate::utils::types::events::REMOTE_SETTINGS_CHANGED;
+    app.listen(REMOTE_SETTINGS_CHANGED, move |event| {
+        debug!("🔄 Remote settings changed! Payload: {:?}", event.payload());
+        let app = app_clone.clone();
+        tauri::async_runtime::spawn(async move {
+            // Update tray menu since showOnTray or other display settings may have changed
+            if let Err(e) = update_tray_menu(app).await {
+                error!("Failed to update tray menu after remote settings change: {e}");
             }
         });
     });
@@ -363,6 +399,7 @@ pub fn setup_event_listener(app: &AppHandle) {
     handle_serve_state_changed(app);
     handle_remote_presence_changed(app);
     handle_settings_changed(app);
+    handle_remote_settings_changed(app);
     tray_menu_updated(app);
     handle_job_cache_changed(app);
     handle_backend_switched(app);

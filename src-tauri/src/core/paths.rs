@@ -132,10 +132,3 @@ impl AppPaths {
             .join(format!("{}.log", process_type))
     }
 }
-
-/// Get AppPaths from a Tauri AppHandle
-///
-/// Convenience function for common usage pattern.
-pub fn get_app_paths(app: &AppHandle) -> Result<AppPaths, String> {
-    AppPaths::from_app_handle(app)
-}

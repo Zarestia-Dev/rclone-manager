@@ -19,7 +19,6 @@ use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::core::check_binaries::{build_rclone_command, get_rclone_binary_path, read_rclone_path};
-use crate::core::paths::get_app_paths;
 use crate::core::settings::operations::core::save_setting;
 use crate::utils::github_client;
 use crate::utils::types::core::RcloneState;
@@ -369,7 +368,7 @@ fn get_local_rclone_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
     }
 
     // Fallback to the app's config directory (same default as provision_rclone)
-    Ok(get_app_paths(app_handle)?.config_dir)
+    Ok(crate::core::paths::AppPaths::from_app_handle(app_handle)?.config_dir)
 }
 
 /// Update the rclone path in application settings

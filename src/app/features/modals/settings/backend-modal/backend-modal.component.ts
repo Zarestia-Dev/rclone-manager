@@ -13,6 +13,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { ConfirmModalComponent } from 'src/app/shared/modals/confirm-modal/confirm-modal.component';
 import { firstValueFrom } from 'rxjs';
 import { BackendSecurityComponent } from './backend-security/backend-security.component';
@@ -36,6 +37,7 @@ import { FileSystemService } from 'src/app/services/file-operations/file-system.
     MatTabsModule,
     BackendSecurityComponent,
     TranslateModule,
+    MatExpansionModule,
   ],
   templateUrl: './backend-modal.component.html',
   styleUrls: ['./backend-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -55,7 +57,11 @@ export class BackendModalComponent implements OnInit {
   readonly isLoading = this.backendService.isLoading;
 
   // UI state - consolidated form state
-  readonly formState = signal<{ mode: 'closed' | 'add' | 'edit'; editingName?: string }>({
+  readonly formState = signal<{
+    mode: 'closed' | 'add' | 'edit';
+    editingName?: string;
+    isLoading?: boolean;
+  }>({
     mode: 'closed',
   });
   readonly testingBackend = signal<string | null>(null);
@@ -111,6 +117,13 @@ export class BackendModalComponent implements OnInit {
     if (state.mode !== 'edit' || !state.editingName) return null;
     const backend = this.backends().find(b => b.name === state.editingName);
     return backend?.runtime_config_path ?? null;
+  }
+
+  /** Check if the backend currently being edited is the active one */
+  isEditingActiveBackend(): boolean {
+    const state = this.formState();
+    if (state.mode !== 'edit' || !state.editingName) return false;
+    return this.activeBackend() === state.editingName;
   }
 
   startEdit(backend: BackendInfo): void {
@@ -300,6 +313,50 @@ export class BackendModalComponent implements OnInit {
     this.showConfigPassword.update(v => !v);
   }
 
+  setAuthStatus(enabled: boolean): void {
+    this.backendForm.get('has_auth')?.setValue(enabled);
+  }
+
+  hasConfigPassword(): boolean {
+    const state = this.formState();
+    if (state.mode !== 'edit' || !state.editingName) return false;
+    const backend = this.backends().find(b => b.name === state.editingName);
+    return backend?.has_config_password || false;
+  }
+
+  async removeConfigPassword(): Promise<void> {
+    const state = this.formState();
+    if (state.mode !== 'edit' || !state.editingName) return;
+
+    try {
+      this.formState.update(s => ({ ...s, isLoading: true }));
+      // Updating with empty config_password will trigger the removal logic in backend
+      await this.backendService.updateBackend({
+        name: state.editingName,
+        is_local: false,
+        host: '', // Not needed for password update but required by type
+        port: 0, // Not needed
+        config_password: '', // Empty string removes the password
+      });
+
+      this.snackBar.open(
+        this.translate.instant('modals.backend.notifications.updated'),
+        this.translate.instant('common.close'),
+        { duration: 3000, panelClass: 'snackbar-success' }
+      );
+    } catch (error) {
+      this.snackBar.open(
+        this.translate.instant('modals.backend.notifications.saveFailed', {
+          message: String(error),
+        }),
+        this.translate.instant('common.close'),
+        { duration: 5000, panelClass: 'snackbar-error' }
+      );
+    } finally {
+      this.formState.update(s => ({ ...s, isLoading: false }));
+    }
+  }
+
   hasDuplicateName(): boolean {
     const name = this.backendForm.get('name')?.value?.toLowerCase();
     const state = this.formState();
@@ -319,18 +376,32 @@ export class BackendModalComponent implements OnInit {
   }
 
   async selectConfigFile(): Promise<void> {
-    try {
-      // The backend expects just the path string.
-      // FileSystemService.selectFile() handles the dialog (or Nautilus in headless)
-      // and returns the path string directly.
-      const selected = await this.fileSystemService.selectFile();
+    // strict check: only allow for active backend
+    if (!this.isEditingActiveBackend()) {
+      this.snackBar.open(
+        this.translate.instant('modals.backend.notifications.onlyActiveBackend'),
+        this.translate.instant('common.close'),
+        { duration: 3000, panelClass: 'snackbar-error' }
+      );
+      return;
+    }
 
-      if (selected) {
-        this.backendForm.patchValue({ config_path: selected });
+    try {
+      // Use internal Nautilus picker to ensure we can see rclone mounts/files
+      // regardless of system state (as requested)
+      const result = await this.fileSystemService.selectPathWithNautilus({
+        mode: 'local',
+        selection: 'files',
+        multi: false,
+        initialLocation: this.backendForm.get('config_path')?.value || undefined,
+      });
+
+      if (!result.cancelled && result.paths.length > 0) {
+        this.backendForm.patchValue({ config_path: result.paths[0] });
         this.backendForm.markAsDirty();
       }
     } catch (error) {
-      if (String(error).includes('cancelled')) return; // Ignore cancellations
+      if (String(error).includes('cancelled')) return;
       console.error('Failed to select config file:', error);
       this.snackBar.open(
         this.translate.instant('modals.backend.notifications.fileSelectFailed'),

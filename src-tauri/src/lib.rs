@@ -410,12 +410,7 @@ fn setup_app(
             } else {
                 debug!("🧊 Setting up tray (enabled in settings)");
             }
-            if let Err(e) = utils::app::builder::setup_tray(
-                app_handle_clone.clone(),
-                settings.core.max_tray_items,
-            )
-            .await
-            {
+            if let Err(e) = utils::app::builder::setup_tray(app_handle_clone.clone()).await {
                 error!("Failed to setup tray: {e}");
             }
         }

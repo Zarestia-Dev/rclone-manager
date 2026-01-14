@@ -4,27 +4,25 @@ use log::{debug, error, info};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_shell::ShellExt;
 
-/// Internal helper that borrows the `AppHandle` so Rust call-sites don't need to clone it.
-/// Returns Ok(true) if rclone is available, Ok(false) if not found.
-/// Emits RCLONE_ENGINE_PATH_ERROR event when binary is missing.
-#[tauri::command]
-pub async fn check_rclone_available(app: AppHandle, path: &str) -> Result<bool, String> {
-    check_rclone_available_internal(&app, path, true).await
+/// Resolve rclone binary path with optional override
+///
+/// Handles path resolution logic with priority:
+/// 1. Explicit override path (if provided and non-empty)
+/// 2. Configured path from app settings (via read_rclone_path)
+fn resolve_rclone_binary(app: &AppHandle, override_path: Option<&str>) -> PathBuf {
+    if let Some(path_str) = override_path
+        && !path_str.is_empty()
+    {
+        return get_rclone_binary_path(&PathBuf::from(path_str));
+    }
+    read_rclone_path(app)
 }
 
 /// Internal version that optionally emits events
-async fn check_rclone_available_internal(
-    app: &AppHandle,
-    path: &str,
-    emit_event: bool,
-) -> Result<bool, String> {
-    let rclone_path = if !path.is_empty() {
-        // Use the explicit path if provided
-        get_rclone_binary_path(&PathBuf::from(path))
-    } else {
-        // Read the configured path from app state
-        read_rclone_path(app)
-    };
+#[tauri::command]
+pub async fn check_rclone_available(app: AppHandle, path: &str) -> Result<bool, String> {
+    let path_override = if path.is_empty() { None } else { Some(path) };
+    let rclone_path = resolve_rclone_binary(&app, path_override);
 
     debug!(
         "Checking rclone availability at path: {}",
@@ -47,14 +45,12 @@ async fn check_rclone_available_internal(
             )),
         }
     } else {
-        if emit_event {
-            use crate::utils::types::events::RCLONE_ENGINE_PATH_ERROR;
-            use tauri::Emitter;
-
-            if let Err(e) = app.emit(RCLONE_ENGINE_PATH_ERROR, ()) {
-                error!("Failed to emit path error event: {e}");
-            }
+        use crate::utils::types::events::RCLONE_ENGINE_PATH_ERROR;
+        use tauri::Emitter;
+        if let Err(e) = app.emit(RCLONE_ENGINE_PATH_ERROR, ()) {
+            error!("Failed to emit path error event: {e}");
         }
+
         Err(crate::localized_error!(
             "backendErrors.rclone.notFound",
             "path" => rclone_path.display()
@@ -68,16 +64,8 @@ pub fn build_rclone_command(
     config_override: Option<&str>,
     args: Option<&[&str]>,
 ) -> tauri_plugin_shell::process::Command {
-    // Determine binary path
-    let binary_path = if let Some(b) = bin_override {
-        if !b.is_empty() {
-            get_rclone_binary_path(&PathBuf::from(b))
-        } else {
-            read_rclone_path(app)
-        }
-    } else {
-        read_rclone_path(app)
-    };
+    // Determine binary path using helper
+    let binary_path = resolve_rclone_binary(app, bin_override);
 
     let mut cmd = app
         .shell()

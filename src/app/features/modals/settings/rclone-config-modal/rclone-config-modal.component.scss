@@ -199,4 +199,17 @@
     background: var(--window-bg-color);
     z-index: 100;
   }
+
+  // Actions Section
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    padding: var(--space-md);
+    gap: var(--space-sm);
+
+    .inline-spinner {
+      display: inline-block;
+      margin-right: var(--space-xs);
+    }
+  }
 }

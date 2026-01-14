@@ -5,7 +5,7 @@
 use serde::Serialize;
 use tauri::AppHandle;
 
-use crate::core::paths::get_app_paths;
+use crate::core::paths::AppPaths;
 
 /// Debug information response
 #[derive(Debug, Serialize)]
@@ -24,7 +24,7 @@ pub struct DebugInfo {
 #[tauri::command]
 pub fn get_debug_info(app: AppHandle) -> Result<DebugInfo, String> {
     // Get paths from centralized AppPaths
-    let paths = get_app_paths(&app)?;
+    let paths = AppPaths::from_app_handle(&app)?;
 
     // Runtime mode (build-time selected, but user-visible as runtime behavior)
     let mode = if cfg!(feature = "web-server") {

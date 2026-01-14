@@ -118,9 +118,10 @@ pub async fn save_rclone_backend_option(
 // RESET BACKEND OPTIONS
 // -----------------------------------------------------------------------------
 
-/// Reset RClone backend options to defaults (delete all)
+/// Reset RClone backend options to defaults (delete all) and restart engine
 #[tauri::command]
 pub async fn reset_rclone_backend_options(
+    app: tauri::AppHandle,
     manager: State<'_, AppSettingsManager>,
 ) -> Result<(), String> {
     debug!("Resetting RClone backend options");
@@ -135,7 +136,14 @@ pub async fn reset_rclone_backend_options(
         let _ = sub.delete(&block); // Ignore errors for non-existent
     }
 
-    info!("✅ RClone backend options reset successfully");
+    info!("✅ RClone backend options file cleared");
+
+    // Restart the engine to apply defaults
+    use crate::rclone::engine::lifecycle::restart_for_config_change;
+    restart_for_config_change(&app, "backend_options_reset", "custom", "defaults")
+        .map_err(|e| format!("Failed to restart engine: {}", e))?;
+
+    info!("✅ RClone engine restart initiated");
     Ok(())
 }
 

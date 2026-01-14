@@ -17,7 +17,8 @@ use crate::{
 };
 
 /// Auto-start all profiles that have autoStart: true
-/// This is called during app initialization
+/// This is called during app initialization.
+/// Profiles are started in parallel for faster startup.
 pub async fn handle_startup(app: AppHandle) {
     info!("🚀 Starting auto-start profiles check...");
 
@@ -48,46 +49,82 @@ pub async fn handle_startup(app: AppHandle) {
         ("bisyncConfigs", "bisync"),
     ];
 
+    // Collect all auto-start tasks to run in parallel
+    let mut tasks: Vec<tokio::task::JoinHandle<()>> = Vec::new();
+
     for (remote_name, settings) in settings_map.iter() {
-        // Auto-start mount profiles
-        check_and_start_profiles(settings, "mountConfigs", |profile_name| {
-            let app = app.clone();
-            let remote = remote_name.clone();
-            async move { auto_start_mount(&app, &remote, &profile_name).await }
-        })
-        .await;
+        // Collect mount profiles
+        collect_auto_start_tasks(
+            &mut tasks,
+            settings,
+            "mountConfigs",
+            &app,
+            remote_name,
+            |app, remote, profile| {
+                Box::pin(async move { auto_start_mount(&app, &remote, &profile).await })
+            },
+        );
 
-        // Auto-start serve profiles
-        check_and_start_profiles(settings, "serveConfigs", |profile_name| {
-            let app = app.clone();
-            let remote = remote_name.clone();
-            async move { auto_start_serve(&app, &remote, &profile_name).await }
-        })
-        .await;
+        // Collect serve profiles
+        collect_auto_start_tasks(
+            &mut tasks,
+            settings,
+            "serveConfigs",
+            &app,
+            remote_name,
+            |app, remote, profile| {
+                Box::pin(async move { auto_start_serve(&app, &remote, &profile).await })
+            },
+        );
 
-        // Auto-start sync/copy/move/bisync profiles (unified loop)
+        // Collect sync/copy/move/bisync profiles
         for (config_key, op_type) in SYNC_PROFILE_TYPES {
-            check_and_start_profiles(settings, config_key, |profile_name| {
-                let app = app.clone();
-                let remote = remote_name.clone();
-                let op = op_type.to_string();
-                async move { auto_start_sync(&app, &remote, &profile_name, &op).await }
-            })
-            .await;
+            let op = (*op_type).to_string();
+            collect_auto_start_tasks(
+                &mut tasks,
+                settings,
+                config_key,
+                &app,
+                remote_name,
+                move |app, remote, profile| {
+                    let op = op.clone();
+                    Box::pin(async move { auto_start_sync(&app, &remote, &profile, &op).await })
+                },
+            );
         }
+    }
+
+    let task_count = tasks.len();
+    if task_count > 0 {
+        info!(
+            "⚡ Starting {} auto-start profile(s) in parallel...",
+            task_count
+        );
+
+        // Run all tasks in parallel and wait for completion
+        let _ = futures::future::join_all(tasks).await;
     }
 
     info!("✅ Auto-start profiles check complete");
 }
 
-/// Helper to iterate profiles and start those with autoStart: true
-async fn check_and_start_profiles<F, Fut>(
+/// Helper to collect auto-start tasks for parallel execution
+fn collect_auto_start_tasks<F>(
+    tasks: &mut Vec<tokio::task::JoinHandle<()>>,
     settings: &serde_json::Value,
     config_key: &str,
+    app: &AppHandle,
+    remote_name: &str,
     starter: F,
 ) where
-    F: Fn(String) -> Fut,
-    Fut: std::future::Future<Output = ()>,
+    F: Fn(
+            AppHandle,
+            String,
+            String,
+        ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
+        + Clone
+        + Send
+        + 'static,
 {
     if let Some(configs) = settings.get(config_key).and_then(|v| v.as_object()) {
         for (profile_name, config) in configs {
@@ -96,7 +133,14 @@ async fn check_and_start_profiles<F, Fut>(
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false)
             {
-                starter(profile_name.clone()).await;
+                let app = app.clone();
+                let remote = remote_name.to_string();
+                let profile = profile_name.clone();
+                let starter = starter.clone();
+
+                tasks.push(tokio::spawn(async move {
+                    starter(app, remote, profile).await;
+                }));
             }
         }
     }

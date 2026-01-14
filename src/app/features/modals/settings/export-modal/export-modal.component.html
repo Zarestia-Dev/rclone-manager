@@ -54,7 +54,6 @@
                   [checked]="selectedProfiles().includes(profile)"
                   (change)="toggleProfile(profile, $event.checked)"
                   [disabled]="isExporting()"
-                  color="primary"
                 >
                   {{ profile }}
                 </mat-checkbox>

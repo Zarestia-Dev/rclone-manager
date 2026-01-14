@@ -55,7 +55,7 @@ pub async fn create_rclone_command(
     process_type: &str,
 ) -> Result<tauri_plugin_shell::process::Command, String> {
     // Get paths for logging (directories already created during app startup)
-    let paths = crate::core::paths::get_app_paths(app)?;
+    let paths = crate::core::paths::AppPaths::from_app_handle(app)?;
 
     // Fetch Local backend to get the configured config path
     let config_path = crate::rclone::backend::BACKEND_MANAGER
