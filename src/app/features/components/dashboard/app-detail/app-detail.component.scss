@@ -167,7 +167,7 @@
 
   .serves-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: var(--space-md);
     padding: var(--space-md);
     background: var(--view-bg-color);

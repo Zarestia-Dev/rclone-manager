@@ -234,7 +234,7 @@ pub fn run() {
                     #[cfg(target_os = "linux")]
                     {
                         std::thread::spawn(|| {
-                            std::thread::sleep(std::time::Duration::from_millis(1000));
+                            std::thread::sleep(std::time::Duration::from_millis(5000));
                             utils::process::process_manager::cleanup_webkit_zombies();
                         });
                     }
@@ -260,7 +260,6 @@ fn setup_app(
     // -------------------------------------------------------------------------
     let rcman_manager =
         rcman::SettingsManager::builder(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
-            // .with_storage::<rcman::TomlStorage>()
             .with_config_dir(&config_dir)
             .with_credentials()
             .with_schema::<AppSettings>()

@@ -595,25 +595,22 @@ mat-nav-list {
 
   .buttons {
     display: flex;
-    border-radius: var(--radius-xs);
     overflow: hidden;
 
     button {
-      border-radius: 0;
       height: 28px;
       width: 28px;
+      border-radius: var(--radius-xs);
 
       mat-icon {
         width: var(--icon-size-sm);
         height: var(--icon-size-sm);
+        border-radius: var(--radius-xxs);
+        background: var(--window-bg-color) !important;
       }
 
       &:hover {
         background: var(--hover-bg-color);
-      }
-
-      &:first-child {
-        box-shadow: inset -1px 0 0 var(--card-shade-color);
       }
     }
   }

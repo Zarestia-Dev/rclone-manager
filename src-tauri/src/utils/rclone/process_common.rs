@@ -54,6 +54,9 @@ pub async fn create_rclone_command(
     app: &AppHandle,
     process_type: &str,
 ) -> Result<tauri_plugin_shell::process::Command, String> {
+    // Get paths for logging (directories already created during app startup)
+    let paths = crate::core::paths::get_app_paths(app)?;
+
     // Fetch Local backend to get the configured config path
     let config_path = crate::rclone::backend::BACKEND_MANAGER
         .get_local_config_path()
@@ -89,13 +92,22 @@ pub async fn create_rclone_command(
         None
     };
 
-    // Standard rclone daemon arguments
+    // Get log file path from centralized locations
+    let log_file = paths.get_rclone_log_file(process_type);
+
+    // Standard rclone daemon arguments with built-in log rotation
     let mut args = vec![
         "rcd".to_string(),
         "--rc-serve".to_string(),
         format!("--rc-addr={}:{}", backend.host, port),
         "--rc-allow-origin".to_string(),
         "*".to_string(),
+        "--log-file".to_string(),
+        log_file.to_string_lossy().to_string(),
+        "--log-file-max-size".to_string(),
+        "5M".to_string(),
+        "--log-file-max-backups".to_string(),
+        "5".to_string(),
     ];
 
     if let Some((user, pass)) = auth_args {

@@ -128,8 +128,10 @@ export class IconService {
       bookmark: 'assets/icons/general/bookmark.svg',
       calendar: 'assets/icons/general/calendar.svg',
       clock: 'assets/icons/general/clock.svg',
+      'clock-rotate-left': 'assets/icons/general/clock-rotate-left.svg',
       vfs: 'assets/icons/general/vfs.svg',
       mount: 'assets/icons/general/mount.svg',
+      user: 'assets/icons/general/user.svg',
 
       // ------------------- Titlebar Icons -------------------
       'check-box': 'assets/icons/titlebar/check-box.svg',

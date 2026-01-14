@@ -1,9 +1,10 @@
 //! Rotating file writer for log files
 //!
 //! Provides a thread-safe rotating file writer that automatically rotates
-//! log files when they exceed a maximum size, keeping only a configurable
-//! number of backup files.
+//! log files when they exceed a maximum size, using timestamp-based naming
+//! similar to rclone's log rotation.
 
+use chrono::Utc;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -47,31 +48,31 @@ impl RotatingFileWriter {
         })
     }
 
-    /// Rotate log files
+    /// Rotate log files using timestamp-based naming
     fn rotate(&mut self) -> io::Result<()> {
         // Close current file
         self.current_file = None;
 
-        // Delete oldest backup if we have too many
-        let oldest = format!("{}.{}", self.base_path.display(), MAX_BACKUP_FILES);
-        if Path::new(&oldest).exists() {
-            fs::remove_file(&oldest)?;
-        }
+        // Create timestamped backup name: rclone-manager-2025-04-11T17-15-29.998.log
+        let timestamp = Utc::now().format("%Y-%m-%dT%H-%M-%S%.3f");
+        let file_stem = self
+            .base_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("rclone-manager");
+        let backup_path = self
+            .base_path
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .join(format!("{}-{}.log", file_stem, timestamp));
 
-        // Rotate existing backups: .4 -> .5, .3 -> .4, etc.
-        for i in (1..MAX_BACKUP_FILES).rev() {
-            let from = format!("{}.{}", self.base_path.display(), i);
-            let to = format!("{}.{}", self.base_path.display(), i + 1);
-            if Path::new(&from).exists() {
-                fs::rename(&from, &to)?;
-            }
-        }
-
-        // Rename current log to .1
+        // Rename current log to timestamped backup
         if self.base_path.exists() {
-            let backup_path = format!("{}.1", self.base_path.display());
-            fs::rename(&self.base_path, backup_path)?;
+            fs::rename(&self.base_path, &backup_path)?;
         }
+
+        // Clean up old backups if we have too many
+        self.cleanup_old_backups()?;
 
         // Open new file
         let file = OpenOptions::new()
@@ -82,6 +83,50 @@ impl RotatingFileWriter {
 
         self.current_file = Some(file);
         self.current_size = 0;
+
+        Ok(())
+    }
+
+    /// Remove old backup files, keeping only MAX_BACKUP_FILES
+    fn cleanup_old_backups(&self) -> io::Result<()> {
+        let log_dir = self.base_path.parent().unwrap_or_else(|| Path::new("."));
+        let file_stem = self
+            .base_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("rclone-manager");
+
+        // Get all backup files and sort by modification time
+        let mut backups: Vec<PathBuf> = fs::read_dir(log_dir)?
+            .filter_map(|entry| entry.ok())
+            .map(|entry| entry.path())
+            .filter(|path| {
+                path.file_name()
+                    .and_then(|name| name.to_str())
+                    .map(|name| {
+                        name.starts_with(file_stem) && name.contains('-') && name.ends_with(".log")
+                    })
+                    .unwrap_or(false)
+                    && path != &self.base_path // Don't delete the current log
+            })
+            .collect();
+
+        // Sort by modification time (oldest first)
+        backups.sort_by_key(|path| {
+            fs::metadata(path)
+                .and_then(|m| m.modified())
+                .unwrap_or(chrono::Utc::now().into())
+        });
+
+        // Delete oldest backups if we have too many
+        while backups.len() >= MAX_BACKUP_FILES {
+            if let Some(old) = backups.first() {
+                let _ = fs::remove_file(old);
+                backups.remove(0);
+            } else {
+                break;
+            }
+        }
 
         Ok(())
     }

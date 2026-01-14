@@ -108,7 +108,28 @@ impl AppPaths {
             .map_err(|e| format!("Failed to create cache directory: {}", e))?;
         std::fs::create_dir_all(&self.logs_dir)
             .map_err(|e| format!("Failed to create logs directory: {}", e))?;
+        // Create log subdirectories
+        std::fs::create_dir_all(self.get_app_log_dir())
+            .map_err(|e| format!("Failed to create app log directory: {}", e))?;
+        std::fs::create_dir_all(self.get_rclone_log_dir())
+            .map_err(|e| format!("Failed to create rclone log directory: {}", e))?;
         Ok(())
+    }
+
+    /// Get the rclone-manager log directory path
+    pub fn get_app_log_dir(&self) -> PathBuf {
+        self.logs_dir.join("rclone-manager")
+    }
+
+    /// Get the rclone process log directory path
+    pub fn get_rclone_log_dir(&self) -> PathBuf {
+        self.logs_dir.join("rclone")
+    }
+
+    /// Get the rclone log file path for a specific process type
+    pub fn get_rclone_log_file(&self, process_type: &str) -> PathBuf {
+        self.get_rclone_log_dir()
+            .join(format!("{}.log", process_type))
     }
 }
 

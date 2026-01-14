@@ -12,6 +12,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Multiple backend support added. Now you can connect multiple and remote rclone instances via a single app. Remote config unlock supported (via rc config/unlock). Path change support added to (via rc config/setpath).
 - Multiple profile support added for backends. Every backend has a own remote settings profile. Also supported the export and import.
 - Multiple language support added. Now you can change the language of the app. Needs community help for translations.
+- Log file support added (both app and rclone logs). You can manage the log settings from configuration modal (Log file location cannot be changed on rclone. I think rclone has problem on that. Rclone version 1.72.1 :/).
+- Modals now transforms to bottom sheet on mobile devices. Like how it works on gnome. Basic SCSS trick but looks more native.
+
 
 ### Changed
 - Removed legacy integrated settings manager in favor of the new rcman library

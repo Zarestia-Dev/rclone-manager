@@ -220,18 +220,18 @@ pub async fn analyze_backup_file(
             };
 
         Ok(BackupAnalysis {
-            is_encrypted: analysis.requires_password,
+            is_encrypted: analysis.is_encrypted,
             archive_type: if analysis.requires_password {
                 "zip-aes".into()
             } else {
                 "zip".into()
             },
-            format_version: analysis.manifest.version.to_string(),
-            created_at: Some(analysis.manifest.backup.created_at.to_rfc3339()),
-            backup_type: Some(format_export_type(&analysis.manifest.backup.export_type)),
-            user_note: analysis.manifest.backup.user_note,
+            format_version: analysis.format_version,
+            created_at: Some(analysis.created_at),
+            backup_type: Some(analysis.backup_type),
+            user_note: analysis.user_note,
             contents: Some(contents),
-            is_legacy: Some(false), // Rcman format has profile support
+            is_legacy: Some(false),
         })
     } else {
         // DEPRECATION (2026-2027): Delete this else block when removing legacy support
@@ -257,17 +257,5 @@ pub async fn analyze_backup_file(
             }),
             is_legacy: Some(true), // This is a legacy backup without profile support
         })
-    }
-}
-
-/// Format rcman ExportType as a human-readable string
-fn format_export_type(export_type: &rcman::ExportType) -> String {
-    match export_type {
-        rcman::ExportType::Full => "Full Backup".into(),
-        rcman::ExportType::SettingsOnly => "Settings Only".into(),
-        rcman::ExportType::Single {
-            settings_type,
-            name,
-        } => format!("Single {} Backup: {}", settings_type, name),
     }
 }

@@ -196,7 +196,7 @@
           @if (analysis.contents!.profiles && analysis.contents!.profiles.length > 0) {
             <div class="content-item">
               <div class="item-icon-wrapper">
-                <mat-icon svgIcon="users" class="item-icon"></mat-icon>
+                <mat-icon svgIcon="user" class="item-icon"></mat-icon>
               </div>
               <div class="item-content">
                 <span class="item-title">
@@ -230,7 +230,7 @@
     @if (profiles().length > 0 && !isLegacy()) {
       <div class="info-card options-card">
         <div class="card-header">
-          <mat-icon svgIcon="sliders" class="card-icon"></mat-icon>
+          <mat-icon svgIcon="file-zipper" class="card-icon"></mat-icon>
           <h4>{{ 'backup.restore.options' | translate }}</h4>
         </div>
 
@@ -253,7 +253,7 @@
 
           @if (restoreScope() === 'profile') {
             <div class="form-row profile-select-row">
-              <mat-form-field appearance="outline" class="full-width">
+              <mat-form-field>
                 <mat-label>{{ 'backup.restore.selectProfile' | translate }}</mat-label>
                 <mat-select
                   [value]="selectedProfile()"

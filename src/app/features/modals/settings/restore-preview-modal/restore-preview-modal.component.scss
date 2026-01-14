@@ -15,7 +15,7 @@
 
   // Info Cards
   .info-card {
-    background: var(--window-bg-color);
+    background: var(--view-bg-color);
     border-radius: var(--card-border-radius);
     padding: var(--space-md);
     box-shadow: var(--shadow-gnome);
@@ -67,6 +67,7 @@
         padding: var(--space-sm);
         border-radius: var(--radius-sm);
         box-shadow: var(--box-shadow);
+        background: var(--window-bg-color);
 
         .info-icon-wrapper {
           display: flex;
@@ -156,6 +157,7 @@
           padding: var(--space-md);
           border-radius: var(--radius-sm);
           box-shadow: var(--box-shadow);
+          background: var(--window-bg-color);
 
           .item-icon-wrapper {
             display: flex;
@@ -315,10 +317,10 @@
   .legacy-banner {
     background: linear-gradient(
       135deg,
-      rgba(var(--blue-rgb), 0.08) 0%,
-      rgba(var(--purple-rgb), 0.08) 100%
+      rgba(var(--accent-color-rgb), 0.1) 0%,
+      rgba(var(--purple-rgb), 0.1) 100%
     );
-    border: 1px solid rgba(var(--blue-rgb), 0.2);
+    box-shadow: var(--shadow-gnome);
 
     .banner-content {
       display: flex;
@@ -333,8 +335,8 @@
         height: 48px;
         min-width: 48px;
         border-radius: var(--radius-md);
-        background: linear-gradient(135deg, var(--blue), var(--purple));
-        box-shadow: 0 4px 12px rgba(var(--blue-rgb), 0.3);
+        background: linear-gradient(135deg, var(--accent-color), var(--purple));
+        box-shadow: 0 4px 12px rgba(var(--accent-color-rgb), 0.3);
 
         .banner-icon {
           font-size: 24px;

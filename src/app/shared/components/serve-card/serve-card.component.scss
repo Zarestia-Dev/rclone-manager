@@ -12,6 +12,8 @@
   }
 
   .serve-card-header {
+    padding: var(--space-md) var(--space-md) 0 var(--space-md);
+
     .serve-info {
       display: flex;
       gap: var(--space-xs);

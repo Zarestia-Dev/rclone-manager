@@ -10,7 +10,6 @@ use tauri::Manager;
 use crate::core::scheduler::engine::CronScheduler;
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
-use rcman::{JsonStorage, SettingsManager};
 
 pub async fn get_settings_handler(
     State(state): State<WebServerState>,

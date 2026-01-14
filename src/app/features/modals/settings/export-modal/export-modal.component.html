@@ -66,7 +66,7 @@
 
         @if (showSpecificRemoteSection()) {
           <div class="form-row">
-            <mat-form-field class="full-width">
+            <mat-form-field>
               <mat-label>{{ 'modals.export.selectRemote' | translate }}</mat-label>
               <mat-icon matPrefix svgIcon="hard-drive" class="field-icon"></mat-icon>
               <mat-select
@@ -86,7 +86,7 @@
         }
 
         <div class="form-row">
-          <mat-form-field class="full-width">
+          <mat-form-field>
             <mat-label>{{ 'modals.export.destination' | translate }}</mat-label>
             <mat-icon matPrefix svgIcon="folder" class="field-icon"></mat-icon>
             <input
@@ -109,7 +109,7 @@
         </div>
 
         <div class="form-row">
-          <mat-form-field class="full-width">
+          <mat-form-field>
             <mat-label>{{ 'modals.export.noteLabel' | translate }}</mat-label>
             <mat-icon matPrefix svgIcon="note-sticky" class="field-icon"></mat-icon>
             <textarea
@@ -137,7 +137,7 @@
 
         @if (withPassword()) {
           <div class="password-field-wrapper">
-            <mat-form-field class="full-width">
+            <mat-form-field>
               <mat-label>{{ 'modals.export.passwordLabel' | translate }}</mat-label>
               <mat-icon matPrefix svgIcon="lock" class="field-icon"></mat-icon>
               <input

@@ -74,7 +74,7 @@ pub fn init_logging(log_level: &str, app_handle: AppHandle) -> Result<(), String
     use tauri::Manager;
 
     let paths = crate::core::paths::get_app_paths(&app_handle)?;
-    let log_dir = paths.logs_dir;
+    let log_dir = paths.get_app_log_dir();
 
     if let Err(e) = super::file_writer::init_file_writer(&log_dir) {
         eprintln!("Failed to initialize file logger: {e}");
