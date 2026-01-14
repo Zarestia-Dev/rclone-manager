@@ -1,5 +1,5 @@
-use log::{error, info};
 use crate::core::settings::AppSettingsManager;
+use log::{error, info};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_opener::OpenerExt;
 

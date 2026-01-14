@@ -1,5 +1,5 @@
-use log::{debug, error, info};
 use crate::core::settings::AppSettingsManager;
+use log::{debug, error, info};
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Listener, Manager};
 

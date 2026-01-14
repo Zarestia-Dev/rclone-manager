@@ -1,5 +1,5 @@
-use log::{error, warn};
 use crate::core::settings::AppSettingsManager;
+use log::{error, warn};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tauri::{
     AppHandle, Manager, Runtime,

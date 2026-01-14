@@ -1,10 +1,10 @@
 //! Security handlers
 
+use crate::core::settings::AppSettingsManager;
 use axum::{
     extract::{Query, State},
     response::Json,
 };
-use crate::core::settings::AppSettingsManager;
 use serde::Deserialize;
 use tauri::Manager;
 

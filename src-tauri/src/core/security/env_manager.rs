@@ -1,7 +1,7 @@
 const LOCAL_BACKEND_KEY: &str = "backend:Local:config_password";
 
-use log::{debug, info};
 use crate::core::settings::AppSettingsManager;
+use log::{debug, info};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -20,10 +20,7 @@ impl SafeEnvironmentManager {
 
     /// Initialize with stored credentials from rcman
     #[cfg(desktop)]
-    pub fn init_with_stored_credentials(
-        &self,
-        manager: &AppSettingsManager,
-    ) -> Result<(), String> {
+    pub fn init_with_stored_credentials(&self, manager: &AppSettingsManager) -> Result<(), String> {
         // Only try to load if credentials are supported
         if let Some(creds) = manager.credentials() {
             // Strict Unified Key Check

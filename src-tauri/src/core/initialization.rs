@@ -1,5 +1,5 @@
-use log::{debug, error, info, warn};
 use crate::core::settings::AppSettingsManager;
+use log::{debug, error, info, warn};
 use tauri::{AppHandle, Manager};
 
 use crate::{

@@ -3,8 +3,8 @@
 //! This module provides the `handle_startup` function that runs on app startup
 //! to automatically start any profiles that are configured with autoStart: true
 
-use log::{error, info, warn};
 use crate::core::settings::AppSettingsManager;
+use log::{error, info, warn};
 use tauri::{AppHandle, Manager};
 
 use crate::{
