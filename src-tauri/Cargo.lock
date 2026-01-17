@@ -4244,6 +4244,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.17",
  "time",
+ "winapi",
  "windows-acl",
  "zip 7.0.0",
 ]
