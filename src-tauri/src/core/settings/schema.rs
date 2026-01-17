@@ -139,14 +139,12 @@ pub struct DeveloperSettings {
             ("debug", "settings.developer.log_level.options.debug"),
             ("trace", "settings.developer.log_level.options.trace")
         ),
-        advanced
     )]
     pub log_level: String,
 
     #[setting(
         label = "settings.developer.destroy_window_on_close.label",
-        description = "settings.developer.destroy_window_on_close.description",
-        advanced
+        description = "settings.developer.destroy_window_on_close.description"
     )]
     #[cfg(not(feature = "web-server"))]
     pub destroy_window_on_close: bool,

@@ -242,15 +242,15 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
 
   private getValidators(meta: SettingMetadata, fullKey: string): ValidatorFn[] {
     const validators: ValidatorFn[] = [];
-    if (meta.required) {
+    if (meta.metadata.required) {
       validators.push(Validators.required);
     }
 
     switch (meta.value_type) {
       case 'int':
         validators.push(this.validatorRegistry.integerValidator());
-        if (meta.min_value !== undefined) validators.push(Validators.min(meta.min_value));
-        if (meta.max_value !== undefined) validators.push(Validators.max(meta.max_value));
+        if (meta.min !== undefined) validators.push(Validators.min(meta.min));
+        if (meta.max !== undefined) validators.push(Validators.max(meta.max));
         break;
       case 'file':
       case 'folder': {
@@ -288,7 +288,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
       finalValue = finalValue.filter(item => item && String(item).trim() !== '');
     }
 
-    if (meta.engine_restart) {
+    if (meta.metadata.engine_restart) {
       this.pendingRestartChanges.set(`${category}.${key}`, {
         category,
         key,
@@ -369,7 +369,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
   incrementNumber(category: string, key: string, meta: SettingMetadata): void {
     const control = this.getFormControl(category, key) as FormControl;
     const step = meta.step || 1;
-    const max = meta.max_value ?? Infinity;
+    const max = meta.max ?? Infinity;
     const newValue = (Number(control.value) || 0) + step;
     if (newValue <= max) control.setValue(newValue);
   }
@@ -377,7 +377,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
   decrementNumber(category: string, key: string, meta: SettingMetadata): void {
     const control = this.getFormControl(category, key) as FormControl;
     const step = meta.step || 1;
-    const min = meta.min_value ?? -Infinity;
+    const min = meta.min ?? -Infinity;
     const newValue = (Number(control.value) || 0) - step;
     if (newValue >= min) control.setValue(newValue);
   }
@@ -411,9 +411,9 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     if (ctrl.hasError('integer'))
       return this.translate.instant('modals.preferences.validation.integer');
     if (ctrl.hasError('min'))
-      return this.translate.instant('modals.preferences.validation.min', { val: meta.min_value });
+      return this.translate.instant('modals.preferences.validation.min', { val: meta.min });
     if (ctrl.hasError('max'))
-      return this.translate.instant('modals.preferences.validation.max', { val: meta.max_value });
+      return this.translate.instant('modals.preferences.validation.max', { val: meta.max });
     if (ctrl.hasError('invalidPath'))
       return this.translate.instant('modals.preferences.validation.invalidPath');
     if (ctrl.hasError('bandwidth'))
@@ -431,8 +431,8 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
       return;
     }
     for (const [fullKey, meta] of Object.entries(this.optionsMap)) {
-      const displayName = meta.display_name || meta.label || '';
-      const helpText = meta.help_text || meta.description || '';
+      const displayName = meta.metadata.display_name || meta.metadata.label || '';
+      const helpText = meta.metadata.help_text || meta.metadata.description || '';
 
       if (
         displayName.toLowerCase().includes(this.searchQuery) ||
@@ -452,14 +452,14 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
 
   getSettingLabel(_category: string, _key: string, meta: SettingMetadata): string {
     // Backend now sends translation keys directly, just translate them
-    const labelKey = meta.label || meta.display_name;
+    const labelKey = meta.metadata.label || meta.metadata.display_name;
     if (!labelKey) return _key;
     return this.translate.instant(labelKey);
   }
 
   getSettingDescription(_category: string, _key: string, meta: SettingMetadata): string {
     // Backend now sends translation keys directly, just translate them
-    const descKey = meta.description || meta.help_text;
+    const descKey = meta.metadata.description || meta.metadata.help_text;
     if (!descKey) return '';
     return this.translate.instant(descKey);
   }
@@ -513,7 +513,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     }
 
     // If this setting requires restart, add to pending changes
-    if (meta.engine_restart || meta.requires_restart) {
+    if (meta.metadata.engine_restart || meta.metadata.requires_restart) {
       this.pendingRestartChanges.set(`${category}.${key}`, {
         category,
         key,
@@ -579,7 +579,8 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     value: unknown;
   }[] {
     return Array.from(this.pendingRestartChanges.values()).map(change => ({
-      displayName: change.metadata.display_name || change.metadata.label || change.key,
+      displayName:
+        change.metadata.metadata.display_name || change.metadata.metadata.label || change.key,
       category: change.category,
       key: change.key,
       value: change.value,

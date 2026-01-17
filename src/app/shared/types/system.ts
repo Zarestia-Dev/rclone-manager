@@ -148,28 +148,14 @@ export interface SettingTab {
 }
 
 export interface SettingMetadata {
-  // Legacy/Frontend fields
-  display_name?: string;
-  help_text?: string;
-
-  // Backend fields
-  label?: string;
-  description?: string;
-
   value_type?: 'bool' | 'int' | 'string' | 'select' | 'bandwidth' | 'file' | 'folder' | 'string[]';
   default: any;
   value?: any;
-  min_value?: number; // Backend sends 'min' often, map this? Rust schema says "min".
   min?: number;
-  max_value?: number;
   max?: number;
   step?: number;
-  placeholder?: string;
   options?: any[]; // Backend sends tuples or objects? Schema says options(("val", "Label"))
-  required?: boolean;
-  engine_restart?: boolean;
-  requires_restart?: boolean; // Backend attribute is 'requires_restart'
-  advanced?: boolean;
+  metadata?: any;
 }
 
 export interface SearchResult {

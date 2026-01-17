@@ -6,7 +6,7 @@ use crate::core::settings::AppSettingsManager;
 use crate::utils::types::backup_types::{BackupAnalysis, BackupContentsInfo, ExportType};
 use log::{error, info};
 use std::{fs::File, io::BufReader, path::PathBuf};
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 use zip::ZipArchive;
 
 // =============================================================================
@@ -23,7 +23,7 @@ pub async fn backup_settings(
     user_note: Option<String>,
     include_profiles: Option<Vec<String>>,
     manager: State<'_, AppSettingsManager>,
-    _app_handle: AppHandle,
+    app_handle: AppHandle,
 ) -> Result<String, String> {
     info!("Starting backup with rcman to: {}", backup_dir);
 
@@ -59,12 +59,16 @@ pub async fn backup_settings(
 
         // If category is "remotes", we should also include rclone.conf
         if category == "remotes" {
+            register_rclone_config_provider(&app_handle, &manager).await?;
             options = options.include_external("rclone.conf");
         }
     }
 
     // Always include remotes/rclone.conf for Full backup
     if matches!(export_type, ExportType::All) {
+        // Register provider for rclone.conf (if not already handled)
+        register_rclone_config_provider(&app_handle, &manager).await?;
+
         options = options.include_sub_settings("remotes");
         options = options.include_external("rclone.conf");
         options = options.include_sub_settings("backend");
@@ -81,7 +85,8 @@ pub async fn backup_settings(
         let all_configs = BACKEND_MANAGER.remote_cache.get_configs().await;
         let remote_config = all_configs.get(name).cloned();
 
-        let provider = RcloneConfigProvider::for_remote(name, remote_config);
+        let provider = RcloneConfigProvider::for_remote(name, remote_config)
+            .map_err(|e| format!("Failed to serialize remote config: {}", e))?;
         manager.register_external_provider(Box::new(provider));
         options = options.include_external(format!("remote:{}", name));
     }
@@ -110,6 +115,30 @@ pub async fn backup_settings(
 
     info!("Backup complete: {}", backup_path.display());
     Ok(format!("Backup created at: {}", backup_path.display()))
+}
+
+/// Helper to register the dynamic rclone config provider
+async fn register_rclone_config_provider(
+    app_handle: &AppHandle,
+    manager: &AppSettingsManager,
+) -> Result<(), String> {
+    use crate::core::settings::backup::rclone_config_provider::RcloneConfigProvider;
+    use crate::rclone::backend::BACKEND_MANAGER;
+    use crate::rclone::queries::system::fetch_config_path;
+    use crate::utils::types::core::RcloneState;
+
+    let state = app_handle.state::<RcloneState>();
+    let backend = BACKEND_MANAGER.get_active().await;
+
+    let config_path_str = fetch_config_path(&backend, &state.client)
+        .await
+        .map_err(|e| format!("Failed to fetch rclone config path: {}", e))?;
+
+    manager.register_external_provider(Box::new(RcloneConfigProvider::from_path(PathBuf::from(
+        config_path_str,
+    ))));
+
+    Ok(())
 }
 
 // =============================================================================
