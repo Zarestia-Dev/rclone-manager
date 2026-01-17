@@ -62,10 +62,10 @@ pub async fn get_fs_info(
             {
                 use crate::utils::json_helpers::normalize_windows_path;
                 let mut data = data;
-                if let Some(root) = data.get_mut("Root") {
-                    if let Some(root_str) = root.as_str() {
-                        *root = json!(normalize_windows_path(root_str));
-                    }
+                if let Some(root) = data.get_mut("Root")
+                    && let Some(root_str) = root.as_str()
+                {
+                    *root = json!(normalize_windows_path(root_str));
                 }
                 Ok(data)
             }

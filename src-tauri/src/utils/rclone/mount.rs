@@ -9,7 +9,7 @@
 use log::debug;
 
 #[cfg(any(target_os = "macos", target_os = "windows"))]
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 use log::info;
@@ -28,8 +28,7 @@ use tauri_plugin_shell::ShellExt;
 
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 use crate::utils::{
-    github_client,
-    types::{all_types::RcloneState, events::MOUNT_PLUGIN_INSTALLED},
+    github_client, types::core::RcloneState, types::events::MOUNT_PLUGIN_INSTALLED,
 };
 
 #[cfg(all(target_os = "linux", not(feature = "web-server")))]
@@ -98,13 +97,12 @@ fn check_winfsp_installed() -> bool {
     if let Ok(output) = std::process::Command::new("sc")
         .args(["query", "WinFsp.Launcher"])
         .output()
+        && output.status.success()
     {
-        if output.status.success() {
-            let output_str = String::from_utf8_lossy(&output.stdout);
-            if output_str.contains("WinFsp.Launcher") {
-                debug!("Windows: WinFsp service found via sc query");
-                return true;
-            }
+        let output_str = String::from_utf8_lossy(&output.stdout);
+        if output_str.contains("WinFsp.Launcher") {
+            debug!("Windows: WinFsp service found via sc query");
+            return true;
         }
     }
 
@@ -125,7 +123,7 @@ pub fn check_mount_plugin_installed() -> bool {
     }
     #[cfg(target_os = "windows")]
     {
-        return check_winfsp_installed();
+        check_winfsp_installed()
     }
     #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
     {
@@ -294,7 +292,7 @@ pub async fn install_mount_plugin() -> Result<String, String> {
 
 /// Install the plugin with admin elevation using tauri_plugin_shell
 #[cfg(any(target_os = "macos", target_os = "windows"))]
-async fn install_with_elevation(app_handle: &AppHandle, file_path: &PathBuf) -> Result<(), String> {
+async fn install_with_elevation(app_handle: &AppHandle, file_path: &Path) -> Result<(), String> {
     let file_path_str = file_path.to_str().ok_or("Invalid UTF-8 in file path")?;
 
     #[cfg(target_os = "macos")]
