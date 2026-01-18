@@ -298,7 +298,10 @@ export class NautilusService {
     const config = this.collections[type];
     try {
       const fullKey = `${config.category}.${config.key}`;
-      const rawItems = (await this.appSettingsService.getSettingValue<unknown[]>(fullKey)) ?? [];
+      let rawItems = (await this.appSettingsService.getSettingValue<unknown[]>(fullKey)) ?? [];
+      if (!Array.isArray(rawItems)) {
+        rawItems = [];
+      }
       const items: FileBrowserItem[] = rawItems.map((item: unknown) => {
         const rec = item as Record<string, unknown>;
         if (rec && 'remote' in rec && 'entry' in rec) {

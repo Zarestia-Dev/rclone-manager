@@ -10,27 +10,17 @@ import {
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
   FormBuilder,
+  FormControl,
   FormGroup,
   ReactiveFormsModule,
   Validators,
-  FormControl,
 } from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
-import { MatInputModule } from '@angular/material/input';
-import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
-import { MatExpansionModule } from '@angular/material/expansion';
 import { takeUntil, Subject } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import {
-  MatAutocompleteModule,
-  MatAutocompleteSelectedEvent,
-} from '@angular/material/autocomplete';
 import { TranslateModule } from '@ngx-translate/core';
 
 // Services
@@ -43,7 +33,6 @@ import {
   FileSystemService,
   NautilusService,
 } from '@app/services';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import {
   RemoteType,
   RemoteConfigSections,
@@ -53,6 +42,7 @@ import {
 import { OperationConfigComponent } from '../../../../shared/remote-config/app-operation-config/app-operation-config.component';
 import { ValidatorRegistryService } from '@app/services';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
+import { RemoteConfigStepComponent } from 'src/app/shared/remote-config/remote-config-step/remote-config-step.component';
 import { IconService } from '@app/services';
 import {
   buildPathString,
@@ -70,20 +60,13 @@ type WizardStep = 'setup' | 'operations' | 'interactive';
   standalone: true,
   imports: [
     ReactiveFormsModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatDividerModule,
     MatProgressSpinnerModule,
     MatIconModule,
     MatButtonModule,
-    MatExpansionModule,
-    MatSlideToggleModule,
     MatTabsModule,
     InteractiveConfigStepComponent,
-    MatTooltipModule,
+    RemoteConfigStepComponent,
     OperationConfigComponent,
-    MatAutocompleteModule,
     TranslateModule,
   ],
   templateUrl: './quick-add-remote.component.html',
@@ -158,20 +141,6 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     },
   ] as const;
 
-  // Autocomplete for remote type
-  readonly remoteTypeSearchControl = new FormControl('');
-  private readonly remoteTypesSignal = signal<RemoteType[]>([]);
-  private readonly searchTermSignal = signal('');
-
-  readonly filteredRemoteTypes = computed(() => {
-    const term = this.searchTermSignal().toLowerCase();
-    const types = this.remoteTypesSignal();
-    if (!term) return types;
-    return types.filter(
-      r => r.label.toLowerCase().includes(term) || r.value.toLowerCase().includes(term)
-    );
-  });
-
   private readonly destroy$ = new Subject<void>();
   private pendingConfig: {
     remoteData: { name: string; type: string };
@@ -189,14 +158,6 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   constructor() {
     this.quickAddForm = this.createQuickAddForm();
     this.setupFormListeners();
-    this.setupRemoteTypeSearch();
-  }
-
-  private setupRemoteTypeSearch(): void {
-    this.remoteTypeSearchControl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(value => {
-      // Update search term for filtering
-      this.searchTermSignal.set(typeof value === 'string' ? value : '');
-    });
   }
 
   ngOnInit(): void {
@@ -216,11 +177,10 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
         value: remote.name,
         label: remote.description,
       }));
-      this.remoteTypesSignal.set(this.remoteTypes);
       this.existingRemotes = await this.remoteManagementService.getRemotes();
 
       // Update the remote name validator with the loaded remotes
-      const remoteNameControl = this.quickAddForm.get('setup.remoteName');
+      const remoteNameControl = this.quickAddForm.get('setup.name');
       if (remoteNameControl) {
         remoteNameControl.setValidators([
           Validators.required,
@@ -233,16 +193,8 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Autocomplete helper methods
-  displayRemoteType(value: string): string {
-    const remote = this.remoteTypes.find(r => r.value === value);
-    return remote ? remote.label : value || '';
-  }
-
-  onRemoteTypeSelected(event: MatAutocompleteSelectedEvent): void {
-    const value = event.option.value;
-    this.quickAddForm.get('setup.remoteType')?.setValue(value);
-    this.onRemoteTypeChange(value);
+  onInteractiveModeToggled(value: boolean): void {
+    this.quickAddForm.get('setup.useInteractiveMode')?.setValue(value);
   }
 
   private createOperationPathGroup(
@@ -275,14 +227,14 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   private createQuickAddForm(): FormGroup {
     return this.fb.group({
       setup: this.fb.group({
-        remoteName: [
+        name: [
           '',
           [
             Validators.required,
             this.validatorRegistry.createRemoteNameValidator(this.existingRemotes),
           ],
         ],
-        remoteType: ['', Validators.required],
+        type: ['', Validators.required],
         useInteractiveMode: [false],
       }),
       operations: this.fb.group({
@@ -298,7 +250,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   private setupFormListeners(): void {
     // Remote type change listener
     this.quickAddForm
-      .get('setup.remoteType')
+      .get('setup.type')
       ?.valueChanges.pipe(takeUntil(this.destroy$))
       .subscribe(remoteType => {
         if (remoteType) {
@@ -428,7 +380,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
       return;
     }
 
-    await this.authStateService.startAuth(setup.remoteName, false);
+    await this.authStateService.startAuth(setup.name, false);
 
     try {
       if (setup.useInteractiveMode) {
@@ -447,19 +399,19 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   }
 
   private async handleStandardCreation(setup: any, operations: any): Promise<void> {
-    const finalConfig = this.buildFinalConfig(setup.remoteName, operations);
-    await this.remoteManagementService.createRemote(setup.remoteName, {
-      name: setup.remoteName,
-      type: setup.remoteType,
+    const finalConfig = this.buildFinalConfig(setup.name, operations);
+    await this.remoteManagementService.createRemote(setup.name, {
+      name: setup.name,
+      type: setup.type,
     });
-    await this.appSettingsService.saveRemoteSettings(setup.remoteName, finalConfig);
-    await this.triggerAutoStartOperations(setup.remoteName, finalConfig);
+    await this.appSettingsService.saveRemoteSettings(setup.name, finalConfig);
+    await this.triggerAutoStartOperations(setup.name, finalConfig);
   }
 
   private async handleInteractiveCreation(setup: any, operations: any): Promise<void> {
-    const finalConfig = this.buildFinalConfig(setup.remoteName, operations);
+    const finalConfig = this.buildFinalConfig(setup.name, operations);
     this.pendingConfig = {
-      remoteData: { name: setup.remoteName, type: setup.remoteType },
+      remoteData: { name: setup.name, type: setup.type },
       finalConfig,
     };
     await this.startInteractiveRemoteConfig();
@@ -639,7 +591,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   }
 
   get selectedRemoteLabel(): string {
-    const remoteType = this.quickAddForm.get('setup.remoteType')?.value;
+    const remoteType = this.quickAddForm.get('setup.type')?.value;
     const remote = this.remoteTypes.find(r => r.value === remoteType);
     return remote ? remote.label : 'Select Remote Type';
   }

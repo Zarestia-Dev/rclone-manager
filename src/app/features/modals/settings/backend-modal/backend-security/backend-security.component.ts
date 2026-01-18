@@ -1,5 +1,12 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import {
+  FormBuilder,
+  FormGroup,
+  ReactiveFormsModule,
+  Validators,
+  AbstractControl,
+  ValidationErrors,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -50,12 +57,16 @@ export class BackendSecurityComponent implements OnInit {
   readonly encryptionLoading = signal(false);
 
   // Security Form (Inline)
-  securityForm: FormGroup = this.fb.group({
-    currentPassword: [''],
-    newPassword: [''],
-    confirmPassword: [''],
-    keychainPassword: [''],
-  });
+  // Security Form (Inline)
+  securityForm: FormGroup = this.fb.group(
+    {
+      currentPassword: ['', Validators.required],
+      newPassword: ['', Validators.required],
+      confirmPassword: ['', Validators.required],
+      keychainPassword: ['', Validators.required],
+    },
+    { validators: this.passwordMatchValidator }
+  );
 
   async ngOnInit(): Promise<void> {
     await this.loadEncryptionStatus();
@@ -94,6 +105,7 @@ export class BackendSecurityComponent implements OnInit {
     const isChecked = event.checked;
 
     if (!isChecked) {
+      this.showKeychainInput.set(false);
       await this.removeStoredPassword();
     } else {
       this.showKeychainInput.set(true);
@@ -101,8 +113,13 @@ export class BackendSecurityComponent implements OnInit {
   }
 
   async submitKeychainStore(): Promise<void> {
-    const password = this.securityForm.get('keychainPassword')?.value;
-    if (!password) return;
+    const passwordControl = this.securityForm.get('keychainPassword');
+    const password = passwordControl?.value;
+
+    if (!password) {
+      passwordControl?.markAsTouched();
+      return;
+    }
 
     this.encryptionLoading.set(true);
     try {
@@ -110,7 +127,7 @@ export class BackendSecurityComponent implements OnInit {
       await this.passwordService.storePassword(password);
       this.showSuccess('modals.backend.security.passwordStored');
       this.showKeychainInput.set(false);
-      this.securityForm.patchValue({ keychainPassword: '' });
+      passwordControl?.reset();
       await this.loadEncryptionStatus();
     } catch (error: unknown) {
       this.showError(error);
@@ -119,17 +136,17 @@ export class BackendSecurityComponent implements OnInit {
     }
   }
 
-  cancelKeychainStore(): void {
+  async cancelKeychainStore(): Promise<void> {
     this.showKeychainInput.set(false);
     this.securityForm.patchValue({ keychainPassword: '' });
-    this.loadEncryptionStatus();
+    await this.loadEncryptionStatus();
   }
 
   // Action Submits
   async submitEncrypt(): Promise<void> {
-    const { newPassword, confirmPassword } = this.securityForm.value;
-    if (!newPassword) return;
-    if (!this.validatePasswordsMatch(newPassword, confirmPassword)) return;
+    if (this.isFormInvalidForEncrypt()) return;
+
+    const { newPassword } = this.securityForm.value;
 
     this.encryptionLoading.set(true);
     try {
@@ -146,12 +163,15 @@ export class BackendSecurityComponent implements OnInit {
   }
 
   async submitDecrypt(): Promise<void> {
-    const { currentPassword } = this.securityForm.value;
-    if (!currentPassword) return;
+    const currentPasswordControl = this.securityForm.get('currentPassword');
+    if (!currentPasswordControl?.value) {
+      currentPasswordControl?.markAsTouched();
+      return;
+    }
 
     this.encryptionLoading.set(true);
     try {
-      await this.passwordService.unencryptConfig(currentPassword);
+      await this.passwordService.unencryptConfig(currentPasswordControl.value);
       await this.passwordService.removeStoredPassword();
       await this.loadEncryptionStatus();
       this.showSuccess('modals.backend.security.removeEncryption');
@@ -164,9 +184,9 @@ export class BackendSecurityComponent implements OnInit {
   }
 
   async submitChangePassword(): Promise<void> {
-    const { currentPassword, newPassword, confirmPassword } = this.securityForm.value;
-    if (!currentPassword || !newPassword) return;
-    if (!this.validatePasswordsMatch(newPassword, confirmPassword)) return;
+    if (this.isFormInvalidForChangePassword()) return;
+
+    const { currentPassword, newPassword } = this.securityForm.value;
 
     this.encryptionLoading.set(true);
     try {
@@ -198,17 +218,32 @@ export class BackendSecurityComponent implements OnInit {
 
   // ============= Helper Methods =============
 
-  /** Validate passwords match and show error if not */
-  private validatePasswordsMatch(newPassword: string, confirmPassword: string): boolean {
-    if (newPassword !== confirmPassword) {
-      this.snackBar.open(
-        this.translate.instant('modals.backend.security.passwordsMismatch'),
-        this.translate.instant('common.close'),
-        { duration: 3000, panelClass: 'snackbar-error' }
-      );
-      return false;
+  private passwordMatchValidator(group: AbstractControl): ValidationErrors | null {
+    const newPassword = group.get('newPassword')?.value;
+    const confirmPassword = group.get('confirmPassword')?.value;
+
+    return newPassword === confirmPassword ? null : { passwordMismatch: true };
+  }
+
+  // Specific validation checks for different actions since we share one form
+  isFormInvalidForEncrypt(): boolean {
+    const newPass = this.securityForm.get('newPassword');
+    const confirmPass = this.securityForm.get('confirmPassword');
+
+    // Check validity without side effects
+    if (!newPass?.valid || !confirmPass?.valid || this.securityForm.hasError('passwordMismatch')) {
+      return true;
     }
-    return true;
+    return false;
+  }
+
+  isFormInvalidForChangePassword(): boolean {
+    const currentPass = this.securityForm.get('currentPassword');
+
+    if (!currentPass?.valid || this.isFormInvalidForEncrypt()) {
+      return true;
+    }
+    return false;
   }
 
   /** Show success snackbar with translated message */

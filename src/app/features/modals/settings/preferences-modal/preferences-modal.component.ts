@@ -513,7 +513,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     }
 
     // If this setting requires restart, add to pending changes
-    if (meta.metadata.engine_restart || meta.metadata.requires_restart) {
+    if (meta.metadata.engine_restart) {
       this.pendingRestartChanges.set(`${category}.${key}`, {
         category,
         key,

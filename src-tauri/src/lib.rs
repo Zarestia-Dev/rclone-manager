@@ -234,7 +234,7 @@ pub fn run() {
                     #[cfg(target_os = "linux")]
                     {
                         std::thread::spawn(|| {
-                            std::thread::sleep(std::time::Duration::from_millis(5000));
+                            std::thread::sleep(std::time::Duration::from_millis(500));
                             utils::process::process_manager::cleanup_webkit_zombies();
                         });
                     }

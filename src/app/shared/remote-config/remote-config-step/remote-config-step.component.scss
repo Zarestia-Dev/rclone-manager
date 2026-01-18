@@ -21,7 +21,97 @@ form {
   // Virtual Scroll Viewport
   .virtual-scroll-viewport {
     width: 100%;
+    height: 100%;
     flex: 1;
+  }
+
+  // ===== SECTIONS =====
+  .section-group {
+    display: flex;
+    flex-direction: column;
+
+    // Error message for radio group
+    .grid-error {
+      margin-top: 8px;
+      font-size: 0.75rem;
+    }
+  }
+
+  // ===== REMOTE TYPE AUTOCOMPLETE =====
+  .remote-type-field {
+    .field-icon {
+      color: var(--dim-color);
+    }
+  }
+
+  .remote-option-content {
+    display: flex;
+    align-items: center;
+
+    .remote-icon {
+      color: var(--primary-color);
+    }
+
+    .remote-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow: hidden;
+
+      .remote-label {
+        font-weight: 500;
+        font-size: 0.9rem;
+        color: var(--window-fg-color);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .remote-value {
+        font-size: 0.75rem;
+        color: var(--dim-color);
+      }
+    }
+  }
+
+  // ===== CONFIG SECTION =====
+  .config-section {
+    background: var(--view-bg-color);
+    padding: 16px;
+    border-radius: 12px;
+    box-shadow: var(--shadow-gnome);
+
+    .field-icon {
+      color: var(--dim-color);
+    }
+  }
+
+  // ===== INTERACTIVE OPTION =====
+  .interactive-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-block: 8px;
+    border-top: 1px solid var(--border-color);
+
+    .option-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+
+      .option-title {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--window-fg-color);
+      }
+
+      .option-desc {
+        margin: 0;
+        font-size: 0.75rem;
+        color: var(--dim-color);
+        max-width: 300px;
+      }
+    }
   }
 
   // =============================================
@@ -73,6 +163,19 @@ form {
   // =============================================
   // RESPONSIVE ADJUSTMENTS
   // =============================================
+  @media (max-width: 600px) {
+    .interactive-option {
+      flex-direction: column;
+      gap: 12px;
+
+      mat-slide-toggle {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+      }
+    }
+  }
+
   @media (max-width: 768px) {
     .advanced-section {
       padding: var(--space-md);

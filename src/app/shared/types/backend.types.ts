@@ -11,6 +11,7 @@ export interface BackendInfo {
   has_config_password: boolean;
   oauth_port?: number;
   username?: string;
+  password?: string;
   version?: string;
   os?: string;
   status?: string;

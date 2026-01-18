@@ -351,16 +351,28 @@ pub async fn update_backend(
     // Persist
     save_backend_to_settings(settings_manager.inner(), &backend)?;
 
-    // Restart engine if Local backend
+    // Restart engine if Local backend AND configuration changed
     if name == "Local" {
-        info!("🔄 Restarting engine for Local backend update");
-        if let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
-            &app,
-            "backend_settings",
-            "updated",
-            "updated",
-        ) {
-            warn!("Failed to restart engine: {}", e);
+        // Check if critical settings changed that require a restart
+        let restart_required = existing.host != backend.host
+            || existing.port != backend.port
+            || existing.username != backend.username
+            || existing.password != backend.password
+            || existing.config_path != backend.config_path
+            || existing.config_password != backend.config_password;
+
+        if restart_required {
+            info!("🔄 Restarting engine for Local backend update");
+            if let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
+                &app,
+                "backend_settings",
+                "updated",
+                "updated",
+            ) {
+                warn!("Failed to restart engine: {}", e);
+            }
+        } else {
+            info!("✨ Skipping engine restart (only non-critical settings changed)");
         }
     }
 

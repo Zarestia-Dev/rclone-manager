@@ -203,13 +203,8 @@
   // Actions Section
   .actions {
     display: flex;
-    justify-content: flex-end;
+    justify-content: center;
     padding: var(--space-md);
     gap: var(--space-sm);
-
-    .inline-spinner {
-      display: inline-block;
-      margin-right: var(--space-xs);
-    }
   }
 }

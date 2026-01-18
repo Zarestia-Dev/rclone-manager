@@ -13,8 +13,8 @@
   gap: var(--space-md);
   padding: var(--space-md) var(--space-lg);
   border-radius: var(--radius-sm);
-  background: rgba(var(--warning-color-rgb), 0.08);
-  box-shadow: 0 0 0 1px var(--warning-color);
+  background: rgba(var(--warn-color-rgb), 0.08);
+  box-shadow: 0 0 0 1px var(--warn-color);
 
   .status-icon {
     width: 40px;
@@ -23,7 +23,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--warning-bg-color);
+    background: var(--warn-color);
     color: white;
     flex-shrink: 0;
 
@@ -40,25 +40,45 @@
 
     strong {
       font-size: var(--font-size-base);
-      color: var(--warning-color);
+      color: var(--warn-color);
     }
 
     span {
       font-size: var(--font-size-sm);
       color: var(--dim-color);
     }
+
+    .keyring-status {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xxs);
+      margin-top: var(--space-xs);
+      padding: var(--space-xs) var(--space-sm);
+      background: rgba(var(--primary-color-rgb), 0.1);
+      border-radius: var(--radius-xs);
+      color: var(--primary-color);
+      font-weight: 500;
+      width: fit-content;
+
+      mat-icon {
+        width: 16px;
+        height: 16px;
+        font-size: 16px;
+      }
+    }
   }
 
   &.encrypted {
-    background: rgba(var(--success-color-rgb), 0.08);
-    border-color: rgba(var(--success-color-rgb), 0.2);
+    background: rgba(var(--primary-color-rgb), 0.08);
+    border-color: rgba(var(--primary-color-rgb), 0.2);
+    box-shadow: 0 0 0 1px var(--primary-color);
 
     .status-icon {
-      background: var(--success-bg-color);
+      background: var(--primary-color);
     }
 
     .status-text strong {
-      color: var(--success-color);
+      color: var(--primary-color);
     }
   }
 }
@@ -67,31 +87,21 @@
 // Action Cards (Includes Accordion Styling)
 // ============================================================================
 .action-card {
-  background: var(--card-bg-color);
+  background: var(--view-bg-color);
   border-radius: var(--radius-sm);
+  padding: var(--space-md) var(--space-lg);
+  box-shadow: var(--shadow-gnome);
   overflow: hidden;
 
-  &.highlight {
-    border-color: var(--primary-color);
-    background: rgba(var(--primary-color-rgb), 0.02);
-  }
-
-  &.danger .card-header {
-    .card-title strong {
-      color: var(--destructive-color);
-    }
-
-    mat-icon:first-child {
-      color: var(--destructive-color);
-    }
+  .card-form {
+    padding: var(--space-sm) 0 0 0;
   }
 }
 
 .card-header {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
-  padding: var(--space-md) var(--space-lg);
+  gap: var(--space-xs);
   text-align: left;
 
   mat-icon {
@@ -118,54 +128,30 @@
   }
 }
 
-.card-form {
-  padding: 0 var(--space-lg) var(--space-lg);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-  border-top: 1px solid var(--border-color);
-  padding-top: var(--space-md);
-
-  mat-form-field {
-    width: 100%;
-  }
-}
-
 .form-actions {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-sm);
   margin-top: var(--space-xs);
+
+  @media (max-width: 600px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 // Warning text
 .warning-text {
   display: flex;
-  align-items: flex-start;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
-  background: rgba(var(--warning-color-rgb), 0.08);
-  border-radius: var(--radius-sm);
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) 0;
   color: var(--warning-color);
   font-size: var(--font-size-sm);
-  line-height: 1.5;
   margin: 0;
 
   mat-icon {
-    flex-shrink: 0;
     width: 18px;
     height: 18px;
-    margin-top: 2px;
-  }
-}
-
-// Security Accordion Container
-.security-accordion {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-
-  .mat-expansion-panel-spacing {
-    margin: 0 !important;
   }
 }

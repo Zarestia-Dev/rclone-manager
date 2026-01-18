@@ -538,8 +538,4 @@ export class AboutModalComponent implements OnInit {
       // Error already handled by service
     }
   }
-
-  async copyDebugInfo(): Promise<void> {
-    await this.debugService.copyDebugInfoToClipboard();
-  }
 }

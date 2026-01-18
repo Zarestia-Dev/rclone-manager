@@ -1464,7 +1464,7 @@
       "cacheFolder": "Önbellek Klasörü",
       "developerTools": "Geliştirici Araçları",
       "openDevTools": "Geliştirici Araçlarını Aç",
-      "copyDebugInfo": "Hata Ayıklama Bilgisini Kopyala"
+      "restartApp": "Uygulamayı Yeniden Başlat"
     },
     "logs": {
       "clearAll": "Tüm Günlükleri Temizle",
@@ -1608,7 +1608,6 @@
         "description": "Bu uzak rclone örneği için şifreleme parolasını yönetin.",
         "passwordStored": "Parola Kayıtlı",
         "noPasswordStored": "Parola Kayıtlı Değil",
-        "status": "Durum",
         "limitation": "Not: Rclone, API üzerinden uzak yapılandırma parolalarını değiştirmeyi veya doğrulamayı desteklemez. Sadece uzak yapılandırma konfigürasyonunun kilidini açmak için kullanabilirsiniz.",
         "removePassword": "Kayıtlı Parolayı Kaldır"
       },
@@ -1656,6 +1655,7 @@
         "changePassword": "Parolayı Değiştir",
         "updatePasswordDesc": "Şifreleme parolanızı güncelleyin",
         "currentPassword": "Mevcut Parola",
+        "password": "Parola",
         "newPassword": "Yeni Parola",
         "confirmNewPassword": "Yeni Parolayı Onayla",
         "confirmPassword": "Parolayı Onayla",
@@ -1670,6 +1670,7 @@
         "passwordChanged": "Parola değiştirildi",
         "passwordChangeFailed": "Parola değiştirilemedi: {{message}}",
         "passwordStored": "Parola anahtarlığa kaydedildi",
+        "passwordStoredInKeyring": "Parola sistem anahtarlığında saklanıyor",
         "passwordRemoved": "Parola anahtarlıktan kaldırıldı",
         "passwordsMismatch": "Parolalar eşleşmiyor"
       }

@@ -87,13 +87,16 @@ pub struct CoreSettings {
     )]
     pub max_tray_items: usize,
 
-    #[setting(skip)] // Complex type, skip from schema
+    #[setting(
+        label = "settings.core.connection_check_urls.label",
+        description = "settings.core.connection_check_urls.description"
+    )]
     pub connection_check_urls: Vec<String>,
 
     #[setting(
         label = "settings.core.rclone_path.label",
         description = "settings.core.rclone_path.description",
-        requires_restart
+        engine_restart = true
     )]
     pub rclone_path: String,
 
@@ -200,7 +203,10 @@ pub struct RuntimeSettings {
     #[setting(label = "settings.runtime.flatpak_warn.label")]
     pub flatpak_warn: bool,
 
-    #[setting(skip)] // Complex type
+    #[setting(
+        label = "settings.runtime.dashboard_layout.label",
+        description = "settings.runtime.dashboard_layout.description"
+    )]
     pub dashboard_layout: Option<Vec<String>>,
 }
 
@@ -259,10 +265,16 @@ pub struct NautilusSettings {
     ))]
     pub sort_key: String,
 
-    #[setting(skip)] // Complex type
+    #[setting(
+        label = "settings.nautilus.starred.label",
+        description = "settings.nautilus.starred.description"
+    )]
     pub starred: Option<Vec<Value>>,
 
-    #[setting(skip)] // Complex type
+    #[setting(
+        label = "settings.nautilus.bookmarks.label",
+        description = "settings.nautilus.bookmarks.description"
+    )]
     pub bookmarks: Option<Vec<Value>>,
 }
 

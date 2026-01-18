@@ -18,107 +18,13 @@
 // ===== CONTENT AREA =====
 .modal-content {
   flex: 1;
-  padding: var(--space-md);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-xl);
-}
 
-// ===== SECTIONS =====
-.section-group {
-  display: flex;
-  flex-direction: column;
-
-  .section-label {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--window-fg-color);
-    margin-bottom: var(--space-sm);
-    opacity: 0.9;
-  }
-
-  // Error message for radio group
-  .grid-error {
-    margin-top: 8px;
-    font-size: 0.75rem;
-  }
-}
-
-// ===== REMOTE TYPE AUTOCOMPLETE =====
-.remote-type-field {
-  .field-icon {
-    color: var(--dim-color);
-  }
-}
-
-.remote-option-content {
-  display: flex;
-  align-items: center;
-
-  .remote-icon {
-    color: var(--primary-color);
-  }
-
-  .remote-text {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    overflow: hidden;
-
-    .remote-label {
-      font-weight: 500;
-      font-size: 0.9rem;
-      color: var(--window-fg-color);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .remote-value {
-      font-size: 0.75rem;
-      color: var(--dim-color);
-    }
-  }
-}
-
-// ===== CONFIG SECTION =====
-.config-section {
-  background: var(--view-bg-color);
-  padding: 16px;
-  border-radius: 12px;
-  box-shadow: var(--shadow-gnome);
-  gap: 16px;
-
-  .field-icon {
-    color: var(--dim-color);
-  }
-}
-
-// ===== INTERACTIVE OPTION =====
-.interactive-option {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 8px;
-  border-top: 1px solid var(--border-color);
-
-  .option-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-
-    .option-title {
-      font-size: 0.9rem;
-      font-weight: 500;
-      color: var(--window-fg-color);
-    }
-
-    .option-desc {
-      font-size: 0.75rem;
-      color: var(--dim-color);
-      max-width: 300px;
-    }
+  .step-content {
+    height: 100%;
   }
 }
 
@@ -128,7 +34,11 @@
   flex-direction: column;
 
   .section-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--window-fg-color);
     margin-bottom: 0;
+    opacity: 0.9;
   }
 
   .section-description {
@@ -146,6 +56,11 @@
   .operation-config {
     padding: var(--space-sm);
   }
+}
+
+.section-group {
+  display: flex;
+  flex-direction: column;
 }
 
 // ===== INTERACTIVE STEP =====

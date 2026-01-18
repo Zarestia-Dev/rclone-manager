@@ -226,6 +226,9 @@ pub struct BackendInfo {
     // Include auth fields for edit form
     #[serde(skip_serializing_if = "Option::is_none")]
     pub username: Option<String>,
+    // Include password for edit form (NOTE: Only sent to frontend, never stored in JSON)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -251,10 +254,11 @@ impl BackendInfo {
             config_path: backend.config_path.clone(),
             oauth_port: backend.oauth_port,
             username: backend.username.clone(),
-            version: None,             // Set from runtime cache
-            os: None,                  // Set from runtime cache
-            status: None,              // Set from runtime cache
-            runtime_config_path: None, // Set from runtime cache
+            password: backend.password.clone(), // Include password for edit form
+            version: None,                      // Set from runtime cache
+            os: None,                           // Set from runtime cache
+            status: None,                       // Set from runtime cache
+            runtime_config_path: None,          // Set from runtime cache
         }
     }
 

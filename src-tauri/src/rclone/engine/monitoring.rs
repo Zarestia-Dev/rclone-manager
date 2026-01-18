@@ -11,14 +11,14 @@ const API_READY_POLL_INTERVAL: Duration = Duration::from_millis(500);
 
 impl RcApiEngine {
     /// Check if both the process is running AND the API is responding
-    pub async fn is_api_healthy(&mut self) -> bool {
+    pub async fn is_api_healthy(&mut self, client: &reqwest::Client) -> bool {
         // First check if process is still alive
         if !self.is_process_alive() {
             debug!("🔍 Process is not alive");
             return false;
         }
 
-        self.check_api_response().await
+        self.check_api_response(client).await
     }
 
     /// Check if the process is still alive using native PID checking
@@ -75,31 +75,30 @@ impl RcApiEngine {
     }
 
     /// Check if the API is responding by making a simple request
-    async fn check_api_response(&self) -> bool {
-        Self::check_api_health().await
+    async fn check_api_response(&self, client: &reqwest::Client) -> bool {
+        Self::check_api_health(client).await
     }
 
     /// Check if the active backend's API is responding
     ///
-    /// Returns true if the API returns a successful response or 401 Unauthorized
-    /// (which means the API is running but requires auth).
-    pub async fn check_api_health() -> bool {
+    /// Returns true if the API returns a successful response.
+    pub async fn check_api_health(client: &reqwest::Client) -> bool {
         let backend = BACKEND_MANAGER.get_active().await;
-        let url = backend.url_for(core::VERSION);
+        let endpoint = core::VERSION;
 
-        let client = reqwest::Client::new();
-        match client.post(&url).timeout(API_HEALTH_TIMEOUT).send().await {
-            Ok(response) => {
-                let status = response.status();
-                // Treat 401 Unauthorized as healthy - it means the API is responding
-                // but requires authentication (which we'll provide in actual requests)
-                let is_healthy = status.is_success() || status == reqwest::StatusCode::UNAUTHORIZED;
-                debug!(
-                    "🔍 API health check: {} (status: {})",
-                    if is_healthy { "healthy" } else { "unhealthy" },
-                    status
-                );
-                is_healthy
+        match backend
+            .make_request(
+                client,
+                reqwest::Method::POST,
+                endpoint,
+                None,
+                Some(API_HEALTH_TIMEOUT),
+            )
+            .await
+        {
+            Ok(_) => {
+                debug!("🔍 API health check: healthy");
+                true
             }
             Err(e) => {
                 debug!("🔍 API health check failed: {e}");
@@ -108,13 +107,13 @@ impl RcApiEngine {
         }
     }
 
-    pub async fn wait_until_ready(&mut self, timeout_secs: u64) -> bool {
+    pub async fn wait_until_ready(&mut self, client: &reqwest::Client, timeout_secs: u64) -> bool {
         let timeout = Duration::from_secs(timeout_secs);
         debug!("🔍 Waiting for API to be ready (timeout: {timeout_secs}s)");
 
         let check_future = async {
             loop {
-                if self.is_api_healthy().await {
+                if self.is_api_healthy(client).await {
                     return true;
                 }
                 tokio::time::sleep(API_READY_POLL_INTERVAL).await;
@@ -150,7 +149,8 @@ mod tests {
         // With no process and no API, should timeout quickly
         // Using 1 second timeout to keep test fast
         let start = std::time::Instant::now();
-        let result = engine.wait_until_ready(1).await;
+        let client = reqwest::Client::new();
+        let result = engine.wait_until_ready(&client, 1).await;
         let elapsed = start.elapsed();
 
         assert!(!result);

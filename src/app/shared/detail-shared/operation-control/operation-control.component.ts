@@ -43,21 +43,22 @@ import { TranslateModule } from '@ngx-translate/core';
 
         <mat-panel-description>
           <div class="quick-action-wrapper" [class.hidden]="isExpanded">
-            @if (config().isLoading) {
-              <mat-spinner diameter="20" class="panel-spinner"></mat-spinner>
-            } @else {
-              <button
-                mat-icon-button
-                class="quick-action"
-                [ngClass]="buttonClass()"
-                (click)="handleQuickAction($event)"
-                [matTooltip]="(config().isActive ? 'actions.stop' : 'actions.start') | translate"
-              >
+            <button
+              mat-icon-button
+              class="quick-action"
+              [ngClass]="buttonClass()"
+              (click)="handleQuickAction($event)"
+              [disabled]="config().isLoading"
+              [matTooltip]="(config().isActive ? 'actions.stop' : 'actions.start') | translate"
+            >
+              @if (config().isLoading) {
+                <mat-spinner diameter="20" class="panel-spinner"></mat-spinner>
+              } @else {
                 <mat-icon
                   [svgIcon]="config().isActive ? config().secondaryIcon : config().primaryIcon"
                 ></mat-icon>
-              </button>
-            }
+              }
+            </button>
           </div>
         </mat-panel-description>
       </mat-expansion-panel-header>
@@ -71,7 +72,7 @@ import { TranslateModule } from '@ngx-translate/core';
         <div class="panel-actions">
           <button
             mat-flat-button
-            [color]="config().isActive ? 'warn' : 'primary'"
+            [ngClass]="buttonClass()"
             (click)="
               config().isActive
                 ? stopJob.emit(config().operationType)

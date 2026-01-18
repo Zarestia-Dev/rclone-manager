@@ -19,6 +19,7 @@ import { firstValueFrom } from 'rxjs';
 import { BackendSecurityComponent } from './backend-security/backend-security.component';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { FileSystemService } from 'src/app/services/file-operations/file-system.service';
+import { MatSlideToggle } from '@angular/material/slide-toggle';
 
 @Component({
   selector: 'app-backend-modal',
@@ -38,6 +39,8 @@ import { FileSystemService } from 'src/app/services/file-operations/file-system.
     BackendSecurityComponent,
     TranslateModule,
     MatExpansionModule,
+    MatTooltipModule,
+    MatSlideToggle,
   ],
   templateUrl: './backend-modal.component.html',
   styleUrls: ['./backend-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -135,12 +138,15 @@ export class BackendModalComponent implements OnInit {
       port: backend.port,
       has_auth: backend.has_auth,
       username: backend.username || '',
-      password: '', // Passwords not sent from backend for security
+      password: backend.password || '', // Password now sent from backend for editing
       config_password: '', // Config passwords not sent from backend
       config_path: backend.config_path || '',
       oauth_host: '127.0.0.1', // Default, oauth_host not tracked in BackendInfo
       oauth_port: backend.oauth_port || 51901,
     });
+
+    // Update validators based on initial state
+    this.updateAuthValidators(backend.has_auth);
 
     // Name is always read-only in edit mode (users can delete and re-create to rename)
     this.backendForm.get('name')?.disable();
@@ -160,6 +166,7 @@ export class BackendModalComponent implements OnInit {
       oauth_host: '127.0.0.1',
       oauth_port: 51901,
     });
+    this.updateAuthValidators(false); // Reset validators
     this.showPassword.set(false);
     this.showConfigPassword.set(false);
   }
@@ -315,6 +322,23 @@ export class BackendModalComponent implements OnInit {
 
   setAuthStatus(enabled: boolean): void {
     this.backendForm.get('has_auth')?.setValue(enabled);
+    this.updateAuthValidators(enabled);
+  }
+
+  private updateAuthValidators(enabled: boolean): void {
+    const usernameCtrl = this.backendForm.get('username');
+    const passwordCtrl = this.backendForm.get('password');
+
+    if (enabled) {
+      usernameCtrl?.setValidators([Validators.required]);
+      passwordCtrl?.setValidators([Validators.required]);
+    } else {
+      usernameCtrl?.clearValidators();
+      passwordCtrl?.clearValidators();
+    }
+
+    usernameCtrl?.updateValueAndValidity();
+    passwordCtrl?.updateValueAndValidity();
   }
 
   hasConfigPassword(): boolean {

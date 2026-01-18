@@ -7,6 +7,7 @@ import {
   computed,
   untracked,
   OnDestroy,
+  inject,
 } from '@angular/core';
 
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
@@ -22,6 +23,8 @@ import { SettingControlComponent } from 'src/app/shared/components';
 import { startWith } from 'rxjs/operators';
 import { Subscription } from 'rxjs';
 import { TranslateModule } from '@ngx-translate/core';
+import { MatIcon } from '@angular/material/icon';
+import { IconService } from '@app/services';
 
 @Component({
   selector: 'app-remote-config-step',
@@ -36,6 +39,7 @@ import { TranslateModule } from '@ngx-translate/core';
     SettingControlComponent,
     ScrollingModule,
     TranslateModule,
+    MatIcon,
   ],
   templateUrl: './remote-config-step.component.html',
   styleUrl: './remote-config-step.component.scss',
@@ -49,6 +53,7 @@ export class RemoteConfigStepComponent implements OnDestroy {
   restrictMode = input(false);
   useInteractiveMode = input(false);
   remoteTypes = input<RemoteType[]>([]);
+  showAdvancedToggle = input(true); // Hide advanced toggle for quick-add modal
 
   // --- Signal Outputs ---
   remoteTypeChanged = output<void>();
@@ -72,6 +77,7 @@ export class RemoteConfigStepComponent implements OnDestroy {
   });
 
   private providerSub?: Subscription;
+  readonly iconService = inject(IconService);
 
   constructor() {
     // Effect 1: Detect Provider Field and sync with form
@@ -229,10 +235,7 @@ export class RemoteConfigStepComponent implements OnDestroy {
   formFields = computed(() => {
     const fields = [];
     fields.push({ type: 'basic-info' });
-
-    if (this.remoteFields().length > 0) {
-      fields.push({ type: 'config-toggles' });
-    }
+    fields.push({ type: 'config-toggles' });
 
     if (this.providerField()) {
       fields.push({ type: 'provider-field' });
@@ -338,7 +341,28 @@ export class RemoteConfigStepComponent implements OnDestroy {
 
   onTypeSelected(value: string): void {
     this.form().get('type')?.setValue(value);
+    this.generateRemoteName(value);
     this.remoteTypeChanged.emit();
+  }
+
+  private generateRemoteName(remoteType: string): void {
+    const nameControl = this.form().get('name');
+    // Only auto-generate if the field is empty or hasn't been manually edited
+    if (!nameControl || (nameControl.value && nameControl.dirty)) {
+      return;
+    }
+
+    const baseName = remoteType.replace(/\s+/g, '');
+    const existingNames = this.existingRemotes();
+    let newName = baseName;
+    let counter = 1;
+
+    while (existingNames.includes(newName)) {
+      newName = `${baseName}-${counter}`;
+      counter++;
+    }
+
+    nameControl.setValue(newName, { emitEvent: true });
   }
 
   displayRemote(remoteValue: string): string {

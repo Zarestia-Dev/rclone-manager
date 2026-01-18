@@ -148,7 +148,7 @@ export class IconService {
       mega: 'assets/icons/remotes/mega.svg',
       protondrive: 'assets/icons/remotes/protondrive.svg',
       iclouddrive: 'assets/icons/remotes/iclouddrive.svg',
-      http: 'assets/icons/remotes/http.svg',
+      http: 'assets/icons/devices/globe.svg',
       webdav: 'assets/icons/remotes/webdav.svg',
       sftp: 'assets/icons/remotes/sftp.svg',
       hdfs: 'assets/icons/remotes/hdfs.svg',
@@ -159,6 +159,10 @@ export class IconService {
       jottacloud: 'assets/icons/remotes/jottacloud.svg',
       hidrive: 'assets/icons/remotes/hidrive.svg',
       pcloud: 'assets/icons/remotes/pcloud.svg',
+      storj: 'assets/icons/remotes/storj.svg',
+      internetarchive: 'assets/icons/remotes/internetarchive.svg',
+      azureblob: 'assets/icons/remotes/azure.svg',
+      azurefiles: 'assets/icons/remotes/azure.svg',
       'rclone-symbolic': 'assets/rclone-symbolic.svg',
     };
 

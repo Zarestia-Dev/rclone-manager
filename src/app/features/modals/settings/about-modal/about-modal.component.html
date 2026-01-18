@@ -717,9 +717,9 @@
                 <mat-icon svgIcon="terminal"></mat-icon>
                 {{ 'modals.about.openDevTools' | translate }}
               </button>
-              <button matButton="outlined" (click)="copyDebugInfo()">
-                <mat-icon svgIcon="copy"></mat-icon>
-                {{ 'modals.about.copyDebugInfo' | translate }}
+              <button matButton="outlined" class="warn" (click)="relaunchApp()">
+                <mat-icon svgIcon="rotate-group"></mat-icon>
+                {{ 'modals.about.restartApp' | translate }}
               </button>
             </div>
           </div>

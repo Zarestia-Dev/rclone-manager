@@ -96,37 +96,4 @@ export class DebugService {
       throw error;
     }
   }
-
-  /**
-   * Copy all debug information to clipboard as formatted text
-   */
-  async copyDebugInfoToClipboard(): Promise<void> {
-    try {
-      const info = await this.getDebugInfo();
-      const text = this.formatDebugInfo(info);
-      await navigator.clipboard.writeText(text);
-      this.notificationService.openSnackBar('Debug info copied to clipboard', 'Close');
-    } catch (error) {
-      console.error('Failed to copy debug info:', error);
-      this.notificationService.openSnackBar('Failed to copy debug info', 'Close');
-    }
-  }
-
-  /**
-   * Format debug info as a readable string
-   */
-  private formatDebugInfo(info: DebugInfo): string {
-    return `
-=== Rclone Manager Debug Info ===
-App Version: ${info.appVersion}
-Mode: ${info.mode}
-Platform: ${info.platform}
-Architecture: ${info.arch}
-
-=== Paths ===
-Logs: ${info.logsDir}
-Config: ${info.configDir}
-Cache: ${info.cacheDir}
-`.trim();
-  }
 }

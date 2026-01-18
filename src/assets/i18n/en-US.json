@@ -811,7 +811,9 @@
       "noMatchingTypes": "No matching remote types",
       "loadingOptions": "Loading configuration options...",
       "showAdvanced": "Show Advanced Options",
+      "showAdvancedDesc": "Display additional configuration options for power users",
       "useInteractive": "Use Interactive Configuration",
+      "useInteractiveDesc": "Step-by-step configuration wizard with guided setup",
       "authenticationMethod": "Authentication Method",
       "providerRequired": "Provider is required",
       "advancedOptions": "Advanced Options",
@@ -1463,7 +1465,7 @@
       "cacheFolder": "Cache Folder",
       "developerTools": "Developer Tools",
       "openDevTools": "Open DevTools",
-      "copyDebugInfo": "Copy Debug Info"
+      "restartApp": "Restart App"
     },
     "logs": {
       "clearAll": "Clear All Logs",
@@ -1607,7 +1609,6 @@
         "description": "Manage the encryption password for this remote rclone instance.",
         "passwordStored": "Password Stored",
         "noPasswordStored": "No Password Stored",
-        "status": "Status",
         "limitation": "Note: Rclone does not support changing or verifying remote config passwords via API. You can only unlock the remote config via this password.",
         "removePassword": "Remove Stored Password"
       },
@@ -1655,6 +1656,7 @@
         "changePassword": "Change Password",
         "updatePasswordDesc": "Update your encryption password",
         "currentPassword": "Current Password",
+        "password": "Password",
         "newPassword": "New Password",
         "confirmNewPassword": "Confirm New Password",
         "confirmPassword": "Confirm Password",
@@ -1669,6 +1671,7 @@
         "passwordChanged": "Password changed",
         "passwordChangeFailed": "Failed to change password: {{message}}",
         "passwordStored": "Password stored in keychain",
+        "passwordStoredInKeyring": "Password stored in system keyring",
         "passwordRemoved": "Password removed from keychain",
         "passwordsMismatch": "Passwords do not match"
       }

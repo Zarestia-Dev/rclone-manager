@@ -93,7 +93,8 @@ impl RcApiEngine {
                         continue;
                     }
 
-                    if !engine.is_api_healthy().await && !engine.should_exit {
+                    let client = app_handle.state::<RcloneState>().client.clone();
+                    if !engine.is_api_healthy(&client).await && !engine.should_exit {
                         debug!("🔄 Rclone API not healthy, attempting restart...");
                         start(&mut engine, &app_handle).await;
                     }
@@ -144,7 +145,8 @@ pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
     }
 
     // 2. Check if already healthy
-    if engine.is_api_healthy().await {
+    let client = app.state::<RcloneState>().client.clone();
+    if engine.is_api_healthy(&client).await {
         debug!("✅ API is already healthy, skipping restart");
         return;
     }
@@ -162,7 +164,10 @@ pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
             engine.process = Some(child);
 
             // Wait for the API to be ready before declaring success
-            if engine.wait_until_ready(API_READY_TIMEOUT_SECS).await {
+            if engine
+                .wait_until_ready(&client, API_READY_TIMEOUT_SECS)
+                .await
+            {
                 engine.running = true;
                 let port = engine.current_api_port;
                 info!("✅ Rclone API started successfully on port {port}");
