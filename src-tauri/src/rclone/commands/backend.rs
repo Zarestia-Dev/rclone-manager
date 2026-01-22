@@ -7,10 +7,12 @@ use log::{debug, info, warn};
 use tauri::{AppHandle, Manager, State};
 
 use crate::{
+    core::scheduler::engine::CronScheduler,
     rclone::backend::{
         BACKEND_MANAGER,
         types::{Backend, BackendInfo},
     },
+    rclone::state::scheduled_tasks::ScheduledTasksCache,
     utils::{
         rclone::endpoints::{config, core},
         types::core::RcloneState,
@@ -93,7 +95,7 @@ pub async fn switch_backend(
     // Switch (only if connection test passed for remote backends)
     let settings_manager = app.state::<AppSettingsManager>();
     BACKEND_MANAGER
-        .switch_to(settings_manager.inner(), &name)
+        .switch_to(settings_manager.inner(), &name, None, None)
         .await?;
 
     // Set config path if configured (Remote only)
@@ -152,7 +154,7 @@ pub async fn switch_backend(
                 // We're essentially failing the switch, but manager state was already updated
                 // best effort to switch back to Local for safety
                 if let Err(revert_err) = BACKEND_MANAGER
-                    .switch_to(settings_manager.inner(), "Local")
+                    .switch_to(settings_manager.inner(), "Local", None, None)
                     .await
                 {
                     warn!("Failed to revert to Local backend: {}", revert_err);
@@ -169,7 +171,7 @@ pub async fn switch_backend(
             if name != "Local" {
                 info!("↩️ Reverting to previous backend due to timeout");
                 if let Err(revert_err) = BACKEND_MANAGER
-                    .switch_to(settings_manager.inner(), "Local")
+                    .switch_to(settings_manager.inner(), "Local", None, None)
                     .await
                 {
                     warn!("Failed to revert to Local backend: {}", revert_err);
@@ -382,7 +384,12 @@ pub async fn update_backend(
 
 /// Remove a backend
 #[tauri::command]
-pub async fn remove_backend(app: AppHandle, name: String) -> Result<(), String> {
+pub async fn remove_backend(
+    app: AppHandle,
+    name: String,
+    scheduler: State<'_, CronScheduler>,
+    task_cache: State<'_, ScheduledTasksCache>,
+) -> Result<(), String> {
     info!("➖ Removing backend: {}", name);
 
     let settings_manager = app.state::<AppSettingsManager>();
@@ -394,6 +401,24 @@ pub async fn remove_backend(app: AppHandle, name: String) -> Result<(), String> 
 
     // Remove from settings
     delete_backend_from_settings(settings_manager.inner(), &name)?;
+
+    // Cleanup tasks
+    let tasks = task_cache.get_tasks_for_backend(&name).await;
+    if !tasks.is_empty() {
+        info!(
+            "🗑️ Cleaning up {} tasks for backend '{}'",
+            tasks.len(),
+            name
+        );
+        for task in tasks {
+            if let Some(job_id_str) = &task.scheduler_job_id
+                && let Ok(job_id) = uuid::Uuid::parse_str(job_id_str)
+            {
+                let _ = scheduler.unschedule_task(job_id).await;
+            }
+        }
+        task_cache.clear_backend_tasks(&name).await;
+    }
 
     info!("✅ Backend '{}' removed", name);
     Ok(())

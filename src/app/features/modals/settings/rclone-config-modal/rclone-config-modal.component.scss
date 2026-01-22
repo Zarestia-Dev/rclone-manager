@@ -59,6 +59,12 @@
     }
   }
 
+  .main-category-panel {
+    .mat-expansion-panel {
+      background: var(--window-bg-color) !important;
+    }
+  }
+
   // Main Category Panel
   .main-category-panel .main-category-title-text .main-category-header {
     display: flex;
@@ -100,9 +106,9 @@
   .config-item {
     display: flex;
     align-items: center;
-    background-color: var(--window-bg-color);
+    background-color: var(--view-bg-color);
     border-radius: var(--radius-md);
-    color: var(--window-fg-color);
+    transition: box-shadow 0.2s ease-in-out;
     padding: var(--space-xs) var(--space-md);
 
     &.search-result-item {
@@ -153,7 +159,7 @@
     }
 
     > mat-icon:last-child {
-      color: var(--dim-color);
+      color: var(--dim-color) !important;
       width: var(--icon-size-sm);
       height: var(--icon-size-sm);
     }

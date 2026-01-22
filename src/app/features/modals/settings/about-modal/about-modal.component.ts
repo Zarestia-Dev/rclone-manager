@@ -1,11 +1,11 @@
-import { Component, HostListener, OnInit, inject } from '@angular/core';
+import { Component, HostListener, OnInit, computed, inject } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { version as appVersion } from '../../../../../../package.json';
-import { RcloneInfo, UpdateMetadata, UpdateStatus } from '@app/types';
+import { UpdateMetadata, UpdateStatus } from '@app/types';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -19,13 +19,15 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 // Services
 import {
-  EventListenersService,
   SystemInfoService,
   AppUpdaterService,
   RcloneUpdateService,
   DebugService,
   NotificationService,
   DebugInfo,
+  RcloneStatusService,
+  BackendService,
+  ModalService,
 } from '@app/services';
 
 @Component({
@@ -55,11 +57,14 @@ export class AboutModalComponent implements OnInit {
   private notificationService = inject(NotificationService);
   private appUpdaterService = inject(AppUpdaterService);
   private rcloneUpdateService = inject(RcloneUpdateService);
-  private eventListenersService = inject(EventListenersService);
   private debugService = inject(DebugService);
   private sanitizer = inject(DomSanitizer);
   private translate = inject(TranslateService);
 
+  // Use RcloneStatusService as single source of truth for rclone info
+  readonly rcloneStatusService = inject(RcloneStatusService);
+  readonly backendService = inject(BackendService);
+  readonly modalService = inject(ModalService);
   currentPage = 'main';
   scrolled = false;
 
@@ -67,9 +72,21 @@ export class AboutModalComponent implements OnInit {
   showingWhatsNew = false;
   whatsNewType: 'app' | 'rclone' | null = null;
 
-  rcloneInfo: RcloneInfo | null = null;
-  loadingRclone = false;
-  rcloneError: string | null = null;
+  // Computed signals using RcloneStatusService as single source of truth
+  readonly rcloneInfo = computed(() => {
+    const info = this.rcloneStatusService.rcloneInfo();
+    if (!info) return null;
+    // Merge with PID from service
+    return { ...info, pid: this.rcloneStatusService.rclonePID() };
+  });
+
+  readonly loadingRclone = computed(() => this.rcloneStatusService.isLoading());
+
+  readonly rcloneError = computed(() =>
+    this.rcloneStatusService.rcloneStatus() === 'error'
+      ? this.translate.instant('modals.about.loadInfoFailed')
+      : null
+  );
 
   // Debug overlay
   showingDebugOverlay = false;
@@ -125,7 +142,6 @@ export class AboutModalComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     await Promise.all([
       this.loadPlatformInfo(),
-      this.loadRcloneInfoWithPID(),
       this.appUpdaterService.initialize(),
       this.rcloneUpdateService.initialize(),
     ]);
@@ -136,16 +152,6 @@ export class AboutModalComponent implements OnInit {
     this.loadAutoCheckSetting();
     this.loadChannelSetting();
     this.loadRcloneSettings();
-
-    this.eventListenersService.listenToRcloneEngineReady().subscribe({
-      next: async () => {
-        try {
-          await this.loadRcloneInfoWithPID();
-        } catch (error) {
-          console.error('Error handling Rclone API ready event:', error);
-        }
-      },
-    });
   }
 
   // What's New Methods
@@ -191,44 +197,42 @@ export class AboutModalComponent implements OnInit {
     }
   }
 
-  async loadRcloneInfoWithPID(): Promise<void> {
-    this.loadingRclone = true;
-    this.rcloneError = null;
+  /**
+   * Kill/quit rclone engine
+   * - Local backend: Direct PID kill (fast and reliable)
+   * - Remote backend: API-based quit (safe, won't kill wrong process)
+   */
+  async quitRcloneEngine(): Promise<void> {
     try {
-      const [info, pid] = await Promise.all([
-        this.systemInfoService.getRcloneInfo(),
-        this.systemInfoService.getRclonePID(),
-      ]);
-      this.rcloneInfo = { ...info, pid } as RcloneInfo;
-    } catch (error) {
-      console.error('Error fetching rclone info:', error);
-      this.rcloneError = this.translate.instant('modals.about.loadInfoFailed');
-    } finally {
-      this.loadingRclone = false;
-    }
-  }
+      const activeBackend = this.backendService.activeBackend();
+      const isLocal = activeBackend === 'Local';
 
-  killProcess(): void {
-    if (this.rcloneInfo?.pid) {
-      this.systemInfoService.killProcess(this.rcloneInfo.pid).then(
-        () => {
+      if (isLocal) {
+        // For local backend: use direct PID kill (safe and reliable)
+        const pid = this.rcloneStatusService.rclonePID();
+        if (!pid) {
           this.notificationService.openSnackBar(
-            this.translate.instant('modals.about.killSuccess'),
+            this.translate.instant('modals.about.noProcessToKill'),
             this.translate.instant('common.close')
           );
-          this.rcloneInfo = null;
-        },
-        error => {
-          console.error('Failed to kill rclone process:', error);
-          this.notificationService.openSnackBar(
-            this.translate.instant('modals.about.killFailed'),
-            this.translate.instant('common.close')
-          );
+          return;
         }
-      );
-    } else {
+        await this.systemInfoService.killProcess(pid);
+      } else {
+        // For remote backend: use API quit (won't kill wrong local process)
+        await this.systemInfoService.quitRcloneEngine();
+      }
+
       this.notificationService.openSnackBar(
-        this.translate.instant('modals.about.noProcessToKill'),
+        this.translate.instant('modals.about.killSuccess'),
+        this.translate.instant('common.close')
+      );
+      // Trigger immediate refresh to update status
+      await this.rcloneStatusService.refresh();
+    } catch (error) {
+      console.error('Failed to quit rclone engine:', error);
+      this.notificationService.openSnackBar(
+        this.translate.instant('modals.about.killFailed'),
         this.translate.instant('common.close')
       );
     }
@@ -245,7 +249,7 @@ export class AboutModalComponent implements OnInit {
     } else if (this.currentPage !== 'main') {
       this.navigateTo('main');
     } else {
-      this.dialogRef.close();
+      this.modalService.animatedClose(this.dialogRef);
     }
   }
 

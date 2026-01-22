@@ -7,12 +7,6 @@
   padding: var(--container-padding);
 }
 
-/* --- Header Section --- */
-.detail-header {
-  text-align: center;
-  margin-bottom: var(--panel-gap);
-}
-
 .header-content {
   display: flex;
   flex-direction: column;
@@ -243,7 +237,7 @@
     gap: var(--header-gap);
   }
 
-  .detail-header .header-content .remote-info-section {
+  .remote-info-section {
     flex-direction: column;
     text-align: center;
     gap: var(--header-gap);

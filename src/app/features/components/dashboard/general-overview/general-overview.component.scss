@@ -486,11 +486,7 @@
   border-radius: var(--card-border-radius);
   border: 2px dashed transparent;
   padding: 0;
-  transition:
-    border-color 0.3s ease,
-    background-color 0.3s ease,
-    padding 0.3s ease,
-    margin 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 
   &.editing {
     border-color: rgba(var(--primary-color-rgb), 0.4);
@@ -505,10 +501,7 @@
   }
 
   .panel-content-wrapper {
-    transition:
-      opacity 0.3s ease,
-      filter 0.3s ease,
-      transform 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 
     &.panel-hidden-visual {
       opacity: 0.4;
@@ -523,9 +516,9 @@
   align-items: center;
   gap: 12px;
   padding: 10px 16px;
+  margin-bottom: 12px;
   background: var(--view-bg-color);
   border-radius: 8px;
-  margin-bottom: 12px;
   box-shadow: var(--shadow-gnome);
   overflow: hidden;
 
@@ -608,7 +601,7 @@
   border-radius: 8px;
   flex-direction: column;
   box-shadow: var(--box-shadow);
-  background: var(--view-bg-color);
+  background: var(--window-bg-color);
 
   .label {
     font-size: clamp(10px, 2vw, 12px);

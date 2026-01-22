@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatTableModule } from '@angular/material/table';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
+import { ModalService } from '@app/services';
 
 @Component({
   selector: 'app-keyboard-shortcuts-modal',
@@ -94,10 +95,11 @@ export class KeyboardShortcutsModalComponent {
   filteredShortcuts = [...this.shortcuts];
 
   private dialogRef = inject(MatDialogRef<KeyboardShortcutsModalComponent>);
+  private modalService = inject(ModalService);
 
   @HostListener('document:keydown.escape')
   close(): void {
-    this.dialogRef.close();
+    this.modalService.animatedClose(this.dialogRef);
   }
 
   @HostListener('document:keydown.control.f')

@@ -44,7 +44,16 @@ export class SystemInfoService extends TauriBaseService {
   }
 
   /**
+   * Quit rclone engine gracefully via API
+   * Use for remote backends to avoid killing wrong local process
+   */
+  async quitRcloneEngine(): Promise<void> {
+    return this.invokeCommand('quit_rclone_engine');
+  }
+
+  /**
    * Kill a process by PID
+   * Safe to use for local backends, DO NOT use for remote backends
    */
   async killProcess(pid: number): Promise<void> {
     return this.invokeCommand('kill_process_by_pid', { pid });

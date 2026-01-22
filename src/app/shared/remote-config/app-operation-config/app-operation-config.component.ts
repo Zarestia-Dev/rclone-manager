@@ -67,6 +67,7 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
   @Input() existingRemotes: string[] = [];
   @Input() description = '';
   @Input() isNewRemote = true;
+  @Input() searchQuery = '';
 
   // These outputs might be less relevant now that we handle selection internally,
   // but keeping them for compatibility.
@@ -90,6 +91,30 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
   // Inline autocomplete state
   sourcePathState$!: Observable<PathSelectionState>;
   destPathState$!: Observable<PathSelectionState>;
+
+  // Search helper method
+  private matchesSearch(keywords: string): boolean {
+    if (!this.searchQuery) return true;
+    const query = this.searchQuery.toLowerCase();
+    const keywordList = keywords.toLowerCase();
+    return keywordList.includes(query) || query.split(' ').some(term => keywordList.includes(term));
+  }
+
+  get showAutoStart(): boolean {
+    return this.matchesSearch('auto start enable automatic');
+  }
+
+  get showCronSection(): boolean {
+    return this.matchesSearch('cron schedule task scheduled timing');
+  }
+
+  get showSourcePath(): boolean {
+    return this.matchesSearch('source path input from origin');
+  }
+
+  get showDestPath(): boolean {
+    return this.matchesSearch('destination dest output target');
+  }
 
   get cronExpression(): string | null {
     return this.opFormGroup.get('cronExpression')?.value || null;

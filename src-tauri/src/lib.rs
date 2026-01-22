@@ -5,7 +5,6 @@
 // =============================================================================
 // STANDARD LIBRARY & EXTERNAL CRATES
 // =============================================================================
-use crate::core::settings::AppSettingsManager;
 use crate::core::settings::schema::AppSettings;
 use log::{debug, error, info};
 use std::sync::atomic::AtomicBool;
@@ -109,7 +108,7 @@ pub fn run() {
 
                 // Read settings from AppSettingsManager which caches internally
                 let (tray_enabled, destroy_on_close) = app_handle
-                    .try_state::<AppSettingsManager>()
+                    .try_state::<core::settings::AppSettingsManager>()
                     .and_then(|manager| {
                         manager
                             .get_all()
@@ -183,16 +182,24 @@ pub fn run() {
     builder = builder
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_os::init())
-        .plugin(tauri_plugin_http::init())
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_opener::init())
-        .setup(move |app| {
-            setup_app(
-                app,
-                #[cfg(feature = "web-server")]
-                cli_args,
-            )
-        });
+        .plugin(tauri_plugin_http::init());
+
+    // Desktop-only plugins (not needed in headless/web-server mode)
+    #[cfg(not(feature = "web-server"))]
+    {
+        builder = builder
+            .plugin(tauri_plugin_dialog::init())
+            .plugin(tauri_plugin_opener::init())
+            .plugin(tauri_plugin_window_state::Builder::default().build());
+    }
+
+    builder = builder.setup(move |app| {
+        setup_app(
+            app,
+            #[cfg(feature = "web-server")]
+            cli_args,
+        )
+    });
 
     // -------------------------------------------------------------------------
     // Tray Menu Events (Desktop)

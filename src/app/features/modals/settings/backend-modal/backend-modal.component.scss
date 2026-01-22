@@ -128,11 +128,11 @@
     background: var(--dim-color);
 
     &.connected {
-      background: var(--success-color);
+      background: var(--primary-color);
     }
 
     &.error {
-      background: var(--destructive-color);
+      background: var(--warn-color);
     }
 
     &.unknown {

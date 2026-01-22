@@ -120,11 +120,11 @@
               z-index: 1;
 
               &.connected {
-                background-color: var(--success-color);
-                box-shadow: 0 0 8px rgba(var(--success-color-rgb), 0.5);
+                background-color: var(--primary-color);
+                box-shadow: 0 0 8px rgba(var(--primary-color-rgb), 0.5);
               }
               &.disconnected {
-                background-color: var(--destructive-color);
+                background-color: var(--warn-color);
               }
             }
           }

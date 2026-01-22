@@ -24,8 +24,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { RemoteConfigStepComponent } from '../../../../shared/remote-config/remote-config-step/remote-config-step.component';
 import { FlagConfigStepComponent } from '../../../../shared/remote-config/flag-config-step/flag-config-step.component';
+import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
 import { AuthStateService } from '@app/services';
 import { ValidatorRegistryService } from '@app/services';
 import {
@@ -37,6 +39,7 @@ import {
   FileSystemService,
   ServeManagementService,
   NautilusService,
+  ModalService,
 } from '@app/services';
 import { NotificationService } from '@app/services';
 import {
@@ -95,10 +98,12 @@ interface PendingRemoteData {
     CommonModule,
     MatIconModule,
     MatButtonModule,
+    MatTooltipModule,
     MatExpansionModule,
     RemoteConfigStepComponent,
     FlagConfigStepComponent,
     InteractiveConfigStepComponent,
+    SearchContainerComponent,
     MatProgressSpinner,
     MatSelectModule,
     MatFormFieldModule,
@@ -132,6 +137,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   private readonly nautilusService = inject(NautilusService);
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
+  private readonly modalService = inject(ModalService);
 
   private destroy$ = new Subject<void>();
 
@@ -206,6 +212,10 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   private optionToFlagTypeMap: Record<string, FlagType> = {};
   private optionToFieldNameMap: Record<string, string> = {};
   private isPopulatingForm = false;
+
+  // Search state
+  isSearchVisible = false;
+  searchQuery = '';
 
   // ============================================================================
   // LIFECYCLE HOOKS
@@ -850,18 +860,20 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
 
   // Step icons mapping - accessed directly in template via stepIcons[i]
-  readonly stepIcons: Record<number, string> = {
-    0: 'hard-drive', // Remote Config
-    1: 'mount',
-    2: 'satellite-dish', // Serve
-    3: 'sync',
-    4: 'right-left', // Bisync
-    5: 'move',
-    6: 'copy',
-    7: 'filter',
-    8: 'vfs',
-    9: 'server', // Backend
-  };
+  get stepIcons(): Record<number, string> {
+    return {
+      0: this.iconService.getIconName(this.remoteForm?.get('type')?.value || 'hard-drive'),
+      1: 'mount',
+      2: 'satellite-dish', // Serve
+      3: 'sync',
+      4: 'right-left', // Bisync
+      5: 'move',
+      6: 'copy',
+      7: 'filter',
+      8: 'vfs',
+      9: 'server', // Backend
+    };
+  }
 
   goToStep(step: number): void {
     if (step >= 1 && step <= this.currentTotalSteps) {
@@ -991,6 +1003,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   // --- Remote Type / Interactive Mode ---
   async onRemoteTypeChange(): Promise<void> {
     this.isRemoteConfigLoading = true;
+    this.dynamicRemoteFields = [];
     try {
       const remoteType = this.remoteForm.get('type')?.value;
       this.useInteractiveMode = INTERACTIVE_REMOTES.includes(remoteType?.toLowerCase());
@@ -1765,11 +1778,35 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         : 'modals.remoteConfig.buttons.save';
   }
 
+  // ============================================================================
+  // SEARCH FUNCTIONALITY
+  // ============================================================================
+  toggleSearchVisibility(): void {
+    this.isSearchVisible = !this.isSearchVisible;
+    if (!this.isSearchVisible) {
+      this.searchQuery = '';
+    }
+    this.cdRef.markForCheck();
+  }
+
+  onSearchInput(searchText: string): void {
+    this.searchQuery = searchText;
+    this.cdRef.markForCheck();
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  handleSearchKeyboard(event: KeyboardEvent): void {
+    if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
+      event.preventDefault();
+      this.toggleSearchVisibility();
+    }
+  }
+
   @HostListener('document:keydown.escape')
   close(): void {
     if (this.nautilusService.isNautilusOverlayOpen) {
       return;
     }
-    this.dialogRef.close(false);
+    this.modalService.animatedClose(this.dialogRef, false);
   }
 }

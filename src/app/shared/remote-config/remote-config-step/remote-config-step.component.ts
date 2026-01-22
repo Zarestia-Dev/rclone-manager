@@ -53,7 +53,8 @@ export class RemoteConfigStepComponent implements OnDestroy {
   restrictMode = input(false);
   useInteractiveMode = input(false);
   remoteTypes = input<RemoteType[]>([]);
-  showAdvancedToggle = input(true); // Hide advanced toggle for quick-add modal
+  showAdvancedToggle = input(true);
+  searchQuery = input('');
 
   // --- Signal Outputs ---
   remoteTypeChanged = output<void>();
@@ -205,30 +206,56 @@ export class RemoteConfigStepComponent implements OnDestroy {
     );
   });
 
-  /** Basic config fields, filtered by selected provider */
+  /** Basic config fields, filtered by selected provider and search query */
   basicFields = computed(() => {
     const fields = this.remoteFields();
     const providerName = this.providerField()?.Name;
     const currentProvider = this.selectedProvider();
+    const query = this.searchQuery().toLowerCase().trim();
 
-    return fields
+    let filtered = fields
       .filter(f => !f.Advanced)
       .filter(f => f.Name !== providerName) // Don't show provider field here
       .filter(f => this.shouldShowField(f, currentProvider))
       .map(f => this.getFilteredField(f, currentProvider));
+
+    // Apply search filter
+    if (query) {
+      filtered = filtered.filter(field => {
+        const nameMatch = field.Name?.toLowerCase().includes(query);
+        const fieldNameMatch = field.FieldName?.toLowerCase().includes(query);
+        const helpMatch = field.Help?.toLowerCase().includes(query);
+        return nameMatch || fieldNameMatch || helpMatch;
+      });
+    }
+
+    return filtered;
   });
 
-  /** Advanced config fields, filtered by selected provider */
+  /** Advanced config fields, filtered by selected provider and search query */
   advancedFields = computed(() => {
     const fields = this.remoteFields();
     const providerName = this.providerField()?.Name;
     const currentProvider = this.selectedProvider();
+    const query = this.searchQuery().toLowerCase().trim();
 
-    return fields
+    let filtered = fields
       .filter(f => f.Advanced)
       .filter(f => f.Name !== providerName)
       .filter(f => this.shouldShowField(f, currentProvider))
       .map(f => this.getFilteredField(f, currentProvider));
+
+    // Apply search filter
+    if (query) {
+      filtered = filtered.filter(field => {
+        const nameMatch = field.Name?.toLowerCase().includes(query);
+        const fieldNameMatch = field.FieldName?.toLowerCase().includes(query);
+        const helpMatch = field.Help?.toLowerCase().includes(query);
+        return nameMatch || fieldNameMatch || helpMatch;
+      });
+    }
+
+    return filtered;
   });
 
   /** Virtual Scroll Data Source */

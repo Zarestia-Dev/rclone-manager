@@ -29,6 +29,7 @@ impl ScheduledTasksCache {
     pub async fn load_from_remote_configs(
         &self,
         all_settings: &Value,
+        backend_name: &str,                  // Backend these tasks belong to
         scheduler: State<'_, CronScheduler>, // Pass in scheduler state
         app: Option<&AppHandle>,
     ) -> Result<usize, String> {
@@ -58,6 +59,7 @@ impl ScheduledTasksCache {
                     for (profile_name, profile_config) in configs_object {
                         match self
                             .parse_task_from_config(
+                                backend_name,
                                 remote_name,
                                 profile_name,
                                 &task_type,
@@ -135,7 +137,8 @@ impl ScheduledTasksCache {
         // Phase 3: Remove obsolete tasks
         let all_tasks = self.get_all_tasks().await;
         for task in all_tasks {
-            if !new_task_ids.contains(&task.id) {
+            // Only remove tasks that belong to THIS backend and are no longer in configs
+            if task.backend_name == backend_name && !new_task_ids.contains(&task.id) {
                 info!(
                     "🗑️ Removing task no longer in configs: {} ({})",
                     task.name, task.id
@@ -217,6 +220,7 @@ impl ScheduledTasksCache {
     /// Add or update tasks for a specific remote
     pub async fn add_or_update_task_for_remote(
         &self,
+        backend_name: &str,
         remote_name: &str,
         remote_settings: &Value,
         scheduler: State<'_, CronScheduler>, // Pass in scheduler
@@ -237,6 +241,7 @@ impl ScheduledTasksCache {
                 for (profile_name, profile_config) in configs_object {
                     match self
                         .parse_task_from_config(
+                            backend_name,
                             remote_name,
                             profile_name,
                             &task_type,
@@ -317,14 +322,21 @@ impl ScheduledTasksCache {
     /// Parse a task from a specific profile config
     async fn parse_task_from_config(
         &self,
+        backend_name: &str,
         remote_name: &str,
         profile_name: &str,
         task_type: &TaskType,
         profile_config: &Value,
         _remote_settings: &Value,
     ) -> Result<Option<ScheduledTask>, String> {
-        // Task ID now includes profile name: "remote-operation-profile"
-        let task_id = format!("{}-{}-{}", remote_name, task_type.as_str(), profile_name);
+        // Task ID now includes backend prefix: "backend:remote-operation-profile"
+        let task_id = format!(
+            "{}:{}-{}-{}",
+            backend_name,
+            remote_name,
+            task_type.as_str(),
+            profile_name
+        );
 
         // Check if cron is enabled for this profile
         let cron_enabled = profile_config
@@ -372,11 +384,12 @@ impl ScheduledTasksCache {
         // Calculate next run
         let next_run = get_next_run(&cron).ok();
 
-        // Create the task struct with profile name in the display name
+        // Create the task struct with backend and profile name in the display name
         let task = ScheduledTask {
             id: task_id,
             name: format!(
-                "{} - {} - {}",
+                "{} - {} - {} ({})",
+                backend_name,
                 remote_name,
                 task_type.as_str(),
                 profile_name
@@ -385,6 +398,7 @@ impl ScheduledTasksCache {
             cron_expression: cron,
             status: TaskStatus::Enabled,
             args,
+            backend_name: backend_name.to_string(),
             created_at: chrono::Utc::now(),
             last_run: None,
             next_run,
@@ -541,6 +555,50 @@ impl ScheduledTasksCache {
         }
         Ok(())
     }
+
+    /// Get all tasks for a specific backend
+    pub async fn get_tasks_for_backend(&self, backend_name: &str) -> Vec<ScheduledTask> {
+        let tasks = self.tasks.read().await;
+        tasks
+            .values()
+            .filter(|t| t.backend_name == backend_name)
+            .cloned()
+            .collect()
+    }
+
+    /// Replace all tasks for a backend (used during backend switch)
+    pub async fn replace_tasks_for_backend(
+        &self,
+        backend_name: &str,
+        new_tasks: HashMap<String, ScheduledTask>,
+    ) {
+        let task_count = new_tasks.len();
+        let mut tasks = self.tasks.write().await;
+
+        // Remove old tasks for this backend
+        tasks.retain(|_, task| task.backend_name != backend_name);
+
+        // Add new tasks
+        for (id, task) in new_tasks {
+            tasks.insert(id, task);
+        }
+
+        debug!(
+            "🔄 Replaced tasks for backend '{}': {} tasks",
+            backend_name, task_count
+        );
+    }
+
+    /// Clear tasks for a specific backend (used when backend is removed)
+    pub async fn clear_backend_tasks(&self, backend_name: &str) {
+        let mut tasks = self.tasks.write().await;
+        let count = tasks
+            .values()
+            .filter(|t| t.backend_name == backend_name)
+            .count();
+        tasks.retain(|_, task| task.backend_name != backend_name);
+        info!("🗑️ Cleared {} tasks for backend '{}'", count, backend_name);
+    }
 }
 
 // Tauri commands
@@ -576,9 +634,13 @@ pub async fn reload_scheduled_tasks_from_configs(
 ) -> Result<usize, String> {
     info!("🔄 Reloading scheduled tasks from configs...");
 
+    // Get the active backend name
+    use crate::rclone::backend::BACKEND_MANAGER;
+    let backend_name = BACKEND_MANAGER.get_active_name().await;
+
     // Load tasks from configs (this preserves existing task states)
     let task_count = cache
-        .load_from_remote_configs(&all_settings, scheduler.clone(), Some(&app))
+        .load_from_remote_configs(&all_settings, &backend_name, scheduler.clone(), Some(&app))
         .await?;
 
     info!("📅 Loaded/updated {} scheduled task(s)", task_count);

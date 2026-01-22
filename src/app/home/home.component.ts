@@ -185,8 +185,6 @@ export class HomeComponent implements OnInit, OnDestroy {
   async ngOnInit(): Promise<void> {
     try {
       this.setupResponsiveLayout();
-      // Ensure settings are loaded
-      await this.appSettingsService.loadSettings();
       await this.loadInitialData();
       this.setupTauriListeners();
     } catch (error) {

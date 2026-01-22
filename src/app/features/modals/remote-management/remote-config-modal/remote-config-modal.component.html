@@ -1,8 +1,15 @@
 <div class="modal-container">
   <!-- Modal Header -->
   <header class="modal-header" data-tauri-drag-region>
-    <button>
-      <mat-icon [svgIcon]="iconService.getIconName(remoteForm.get('type')?.value)"></mat-icon>
+    <button
+      mat-icon-button
+      (click)="toggleSearchVisibility()"
+      [matTooltip]="'shared.search.toggle' | translate"
+      [attr.aria-label]="'shared.search.toggle' | translate"
+      [disabled]="interactiveFlowState.isActive"
+      type="button"
+    >
+      <mat-icon svgIcon="search"></mat-icon>
     </button>
     <p data-tauri-drag-region>
       {{
@@ -20,6 +27,15 @@
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </header>
+
+  <!-- Search Container -->
+  <app-search-container
+    [visible]="isSearchVisible"
+    [searchText]="searchQuery"
+    (searchTextChange)="onSearchInput($event)"
+    [placeholder]="'shared.search.placeholder'"
+    [ariaLabel]="'shared.search.ariaLabel'"
+  ></app-search-container>
 
   <!-- Step Progress Indicator (Only shown during multi-step create flow) -->
   @if (!interactiveFlowState.isActive && !editTarget) {
@@ -84,6 +100,7 @@
             [existingRemotes]="existingRemotes"
             [restrictMode]="restrictMode"
             [useInteractiveMode]="useInteractiveMode"
+            [searchQuery]="searchQuery"
             (remoteTypeChanged)="onRemoteTypeChange()"
             (interactiveModeToggled)="onInteractiveModeToggled($event)"
             (fieldChanged)="onRemoteFieldChanged($event.fieldName, $event.isChanged)"
@@ -273,6 +290,7 @@
               [availableServeTypes]="availableServeTypes"
               [selectedServeType]="selectedServeType"
               [isLoadingServeFields]="isLoadingServeFields"
+              [searchQuery]="searchQuery"
               (sourceFolderSelected)="handleSourceFolderSelect(flagType)"
               (destFolderSelected)="handleDestFolderSelect(flagType)"
               (serveTypeChange)="onServeTypeChange($event)"

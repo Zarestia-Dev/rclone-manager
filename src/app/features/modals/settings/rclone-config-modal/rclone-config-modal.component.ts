@@ -39,6 +39,7 @@ import { RcConfigOption } from '@app/types';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
 import { SettingControlComponent } from 'src/app/shared/components';
 import { ConfirmModalComponent } from 'src/app/shared/modals/confirm-modal/confirm-modal.component';
+import { ModalService } from '@app/services';
 
 type PageType = 'home' | string;
 type GroupedRCloneOptions = Record<string, Record<string, RcConfigOption[]>>;
@@ -206,6 +207,7 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   private dialog = inject(MatDialog);
   private fb = inject(FormBuilder);
   private translate = inject(TranslateService);
+  private modalService = inject(ModalService);
 
   @ViewChild(CdkVirtualScrollViewport) virtualScrollViewport?: CdkVirtualScrollViewport;
 
@@ -647,6 +649,6 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
 
   @HostListener('document:keydown.escape')
   close(): void {
-    this.dialogRef.close();
+    this.modalService.animatedClose(this.dialogRef);
   }
 }

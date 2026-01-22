@@ -38,7 +38,7 @@
               </div>
 
               <div class="tabs-container">
-                <mat-tab-group animationDuration="0ms">
+                <mat-tab-group>
                   @for (tab of operationTabs; track tab.type) {
                     <mat-tab [label]="tab.label | translate">
                       <div class="operation-config">

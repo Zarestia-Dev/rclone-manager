@@ -174,6 +174,10 @@ fn system_routes() -> Router<WebServerState> {
             get(handlers::are_updates_disabled_handler),
         )
         .route("/get-build-type", get(handlers::get_build_type_handler))
+        .route(
+            "/quit-rclone-engine",
+            post(handlers::quit_rclone_engine_handler),
+        )
 }
 
 fn file_operations_routes() -> Router<WebServerState> {
@@ -406,6 +410,10 @@ fn backend_routes() -> Router<WebServerState> {
         .route(
             "/test-backend-connection",
             post(handlers::test_backend_connection_handler),
+        )
+        .route(
+            "/get-backend-profiles",
+            get(handlers::get_backend_profiles_handler),
         )
 }
 

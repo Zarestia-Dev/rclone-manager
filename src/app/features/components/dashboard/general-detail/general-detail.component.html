@@ -1,61 +1,59 @@
 <div class="remote-details">
-  <div class="detail-header">
-    <div class="header-content">
-      <div class="remote-info-section">
-        <div class="icon-container">
-          <mat-icon
-            [svgIcon]="iconService.getIconName(selectedRemote().remoteSpecs.type)"
-            class="remote-type-icon"
-          ></mat-icon>
-        </div>
-        <div class="remote-text-info">
-          <h2 class="remote-name" matTooltip="{{ selectedRemote().remoteSpecs.name }}">
-            {{ selectedRemote().remoteSpecs.name }}
-          </h2>
-          <span class="remote-type">{{ selectedRemote().remoteSpecs.type | titlecase }}</span>
-        </div>
+  <div class="header-content">
+    <div class="remote-info-section">
+      <div class="icon-container">
+        <mat-icon
+          [svgIcon]="iconService.getIconName(selectedRemote().remoteSpecs.type)"
+          class="remote-type-icon"
+        ></mat-icon>
       </div>
-      <div
-        class="remote-status-indicators"
-        role="group"
-        [attr.aria-label]="'dashboard.generalDetail.remoteActionQuickSelection' | translate"
-      >
-        @for (actionConfig of actionConfigs; track trackByActionKey($index, actionConfig)) {
-          <div
-            class="status-chip"
-            [class]="actionConfig.key"
-            [class.selected]="isActionSelected(actionConfig.key)"
-            [class.active]="isActionActive(actionConfig.key)"
-            [class.disabled]="!isActionSelected(actionConfig.key) && !canSelectMoreActions()"
-            role="button"
-            tabindex="0"
-            [attr.aria-pressed]="isActionSelected(actionConfig.key)"
-            [attr.aria-label]="getAriaLabel(actionConfig.key)"
-            [matTooltip]="getActionTooltip(actionConfig.key)"
-            (click)="onToggleAction(actionConfig.key)"
-            (keydown.enter)="onToggleAction(actionConfig.key)"
-            (keydown.space)="onToggleAction(actionConfig.key)"
-          >
-            <div class="status-dot">
-              <mat-icon [svgIcon]="actionConfig.icon"></mat-icon>
-            </div>
-
-            @if (isActionSelected(actionConfig.key)) {
-              <span class="selection-badge" aria-hidden="true">
-                {{ getActionPosition(actionConfig.key) }}
-              </span>
-            }
-
-            <span class="status-label">{{ actionConfig.label | translate }}</span>
-
-            @if (isActionSelected(actionConfig.key)) {
-              <span class="cdk-visually-hidden">
-                {{ getAriaLabel(actionConfig.key) }}
-              </span>
-            }
+      <div class="remote-text-info">
+        <h2 class="remote-name" matTooltip="{{ selectedRemote().remoteSpecs.name }}">
+          {{ selectedRemote().remoteSpecs.name }}
+        </h2>
+        <span class="remote-type">{{ selectedRemote().remoteSpecs.type | titlecase }}</span>
+      </div>
+    </div>
+    <div
+      class="remote-status-indicators"
+      role="group"
+      [attr.aria-label]="'dashboard.generalDetail.remoteActionQuickSelection' | translate"
+    >
+      @for (actionConfig of actionConfigs; track trackByActionKey($index, actionConfig)) {
+        <div
+          class="status-chip"
+          [class]="actionConfig.key"
+          [class.selected]="isActionSelected(actionConfig.key)"
+          [class.active]="isActionActive(actionConfig.key)"
+          [class.disabled]="!isActionSelected(actionConfig.key) && !canSelectMoreActions()"
+          role="button"
+          tabindex="0"
+          [attr.aria-pressed]="isActionSelected(actionConfig.key)"
+          [attr.aria-label]="getAriaLabel(actionConfig.key)"
+          [matTooltip]="getActionTooltip(actionConfig.key)"
+          (click)="onToggleAction(actionConfig.key)"
+          (keydown.enter)="onToggleAction(actionConfig.key)"
+          (keydown.space)="onToggleAction(actionConfig.key)"
+        >
+          <div class="status-dot">
+            <mat-icon [svgIcon]="actionConfig.icon"></mat-icon>
           </div>
-        }
-      </div>
+
+          @if (isActionSelected(actionConfig.key)) {
+            <span class="selection-badge" aria-hidden="true">
+              {{ getActionPosition(actionConfig.key) }}
+            </span>
+          }
+
+          <span class="status-label">{{ actionConfig.label | translate }}</span>
+
+          @if (isActionSelected(actionConfig.key)) {
+            <span class="cdk-visually-hidden">
+              {{ getAriaLabel(actionConfig.key) }}
+            </span>
+          }
+        </div>
+      }
     </div>
   </div>
 

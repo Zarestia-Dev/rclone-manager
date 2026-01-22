@@ -1,10 +1,6 @@
 <form [formGroup]="configGroup" class="flag-form">
   <!-- Virtual Scroll Viewport -->
-  <cdk-virtual-scroll-viewport
-    [itemSize]="20"
-    [style.height.px]="700"
-    class="virtual-scroll-viewport"
-  >
+  <cdk-virtual-scroll-viewport [itemSize]="20" class="virtual-scroll-viewport">
     <div class="form-container">
       <!-- Virtual scrolling content -->
       <div *cdkVirtualFor="let field of formFields; trackBy: trackByField">
@@ -16,6 +12,7 @@
             [currentRemoteName]="currentRemoteName"
             [existingRemotes]="isType('serve') ? [] : existingRemotes"
             [isNewRemote]="isType('serve') ? false : isNewRemote"
+            [searchQuery]="searchQuery"
             [description]="
               isType('serve')
                 ? ('wizards.remoteConfig.serveDescription' | translate)
@@ -84,7 +81,7 @@
         @if (field.type === 'dynamic-fields') {
           <ng-container formGroupName="options">
             <div class="dynamic-fields">
-              @for (field of this.dynamicFlagFields; track field.Name) {
+              @for (field of filteredDynamicFlagFields; track field.Name) {
                 <app-setting-control
                   [option]="field"
                   [formControlName]="getControlKey(flagType, field)"

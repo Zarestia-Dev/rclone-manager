@@ -5,7 +5,9 @@ use serde::Deserialize;
 use tauri::Manager;
 
 use crate::RcloneState;
+use crate::core::scheduler::engine::CronScheduler;
 use crate::rclone::backend::types::BackendInfo;
+use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
 
 pub async fn list_backends_handler() -> Result<Json<ApiResponse<Vec<BackendInfo>>>, AppError> {
@@ -53,6 +55,8 @@ pub struct AddBackendBody {
     pub config_password: Option<String>,
     pub config_path: Option<String>,
     pub oauth_port: Option<u16>,
+    pub copy_backend_from: Option<String>,
+    pub copy_remotes_from: Option<String>,
 }
 
 pub async fn add_backend_handler(
@@ -71,6 +75,8 @@ pub async fn add_backend_handler(
         body.config_password,
         body.config_path,
         body.oauth_port,
+        body.copy_backend_from,
+        body.copy_remotes_from,
     )
     .await
     .map_err(anyhow::Error::msg)?;
@@ -128,9 +134,16 @@ pub async fn remove_backend_handler(
     Json(body): Json<RemoveBackendBody>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::rclone::commands::backend::remove_backend;
-    remove_backend(state.app_handle.clone(), body.name.clone())
-        .await
-        .map_err(anyhow::Error::msg)?;
+    let scheduler = state.app_handle.state::<CronScheduler>();
+    let task_cache = state.app_handle.state::<ScheduledTasksCache>();
+    remove_backend(
+        state.app_handle.clone(),
+        body.name.clone(),
+        scheduler,
+        task_cache,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(crate::localized_success!(
         "backendSuccess.backend.removed",
         "name" => body.name
@@ -153,4 +166,15 @@ pub async fn test_backend_connection_handler(
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(result)))
+}
+
+pub async fn get_backend_profiles_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<Vec<String>>>, AppError> {
+    use crate::rclone::commands::backend::get_backend_profiles;
+    let manager: tauri::State<crate::core::settings::AppSettingsManager> = state.app_handle.state();
+    let profiles = get_backend_profiles(manager)
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(profiles)))
 }

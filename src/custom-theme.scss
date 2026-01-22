@@ -93,6 +93,9 @@
   --window-bg-color: #fafafb;
   --window-fg-color: rgba(0, 0, 6, 0.8);
 
+  // Banner Colors
+  --banner-bg-color: #d4d4d7;
+
   // View Colors (content areas)
   --view-bg-color: #ffffff;
   --view-fg-color: var(--window-fg-color);
@@ -161,6 +164,9 @@
   // Window Colors
   --window-bg-color: #222226;
   --window-fg-color: #ffffff;
+
+  // Banner Colors
+  --banner-bg-color: #3d3d42;
 
   // View Colors
   --view-bg-color: #1e1e1e;
@@ -881,17 +887,6 @@ button {
   }
 }
 
-// Adaptive modal bottom sheet styling
-// Used when ModalService opens as sheet on narrow screens (≤450px)
-.adaptive-sheet {
-  .mat-bottom-sheet-container {
-    max-height: 92vh;
-    padding: 0;
-    border-radius: var(--modal-radius) var(--modal-radius) 0 0 !important;
-    background: var(--window-bg-color);
-  }
-}
-
 // Form fields
 .mat-mdc-form-field {
   width: 100%;
@@ -899,6 +894,11 @@ button {
 
 .mat-mdc-dialog-container .mdc-dialog__surface {
   border-radius: var(--modal-radius) !important;
+
+  @media (max-width: 450px) {
+    border-radius: var(--modal-radius) var(--modal-radius) var(--app-border-radius)
+      var(--app-border-radius) !important;
+  }
 }
 
 // ============================================================================
@@ -922,8 +922,15 @@ button {
     margin: 0 !important;
   }
 
-  .mat-mdc-dialog-container {
-    animation: slideUpSheet 250ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  mat-dialog-container.mat-mdc-dialog-container,
+  .mat-mdc-dialog-container.mdc-dialog {
+    // Apply our custom slide-up animation
+    animation: slideUpSheet 250ms cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+
+    // Closing animation - triggered by adding 'closing' class via ModalService.animatedClose()
+    &.closing {
+      animation: slideDownSheet 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards !important;
+    }
   }
 }
 
@@ -934,20 +941,20 @@ button {
 @media (max-width: 540px) {
   mat-accordion {
     gap: var(--space-sm);
+  }
 
-    .mat-expansion-panel-header {
-      padding: var(--space-sm);
-      min-height: 56px;
-    }
+  .mat-expansion-panel-header {
+    padding: var(--space-sm);
+    min-height: 56px;
+  }
 
-    mat-panel-title {
-      gap: var(--space-sm);
+  mat-panel-title {
+    gap: var(--space-sm);
 
-      mat-icon:first-child {
-        font-size: 20px;
-        width: 20px;
-        height: 20px;
-      }
+    mat-icon:first-child {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
     }
   }
 }

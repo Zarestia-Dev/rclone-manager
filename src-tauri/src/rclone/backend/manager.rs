@@ -17,17 +17,20 @@ use super::{
 use crate::utils::types::{
     jobs::{JobCache, JobInfo},
     remotes::RemoteCache,
+    scheduled_task::ScheduledTask,
 };
 
 use crate::rclone::state::cache::RemoteCacheContext;
 
 // RuntimeInfo is now imported from the runtime module
 
-/// Per-backend cached state (jobs + persistent context)
+/// Per-backend cached state (jobs, remote context, scheduled tasks)
 #[derive(Debug, Clone, Default)]
 pub struct BackendState {
     pub jobs: Vec<JobInfo>,
     pub context: RemoteCacheContext,
+    /// Scheduled tasks for this backend (task_id → task)
+    pub tasks: HashMap<String, ScheduledTask>,
 }
 
 /// Central manager for rclone backends
@@ -246,7 +249,13 @@ impl BackendManager {
     }
 
     /// Switch to a different backend
-    pub async fn switch_to(&self, manager: &AppSettingsManager, name: &str) -> Result<(), String> {
+    pub async fn switch_to(
+        &self,
+        manager: &AppSettingsManager,
+        name: &str,
+        scheduler: Option<&crate::core::scheduler::engine::CronScheduler>,
+        task_cache: Option<&crate::rclone::state::scheduled_tasks::ScheduledTasksCache>,
+    ) -> Result<(), String> {
         // Get the new backend info
         let backends = self.backends.read().await;
         let (new_index, is_local) = backends
@@ -262,12 +271,29 @@ impl BackendManager {
 
         // Skip state swap if switching to same backend, BUT ensure proper profile activation
         if current_name != name {
-            self.save_backend_state(&current_name).await;
+            // Unschedule old backend's tasks
+            if let (Some(sched), Some(cache)) = (scheduler, task_cache) {
+                let old_tasks = cache.get_tasks_for_backend(&current_name).await;
+                for task in &old_tasks {
+                    if let Some(job_id_str) = &task.scheduler_job_id
+                        && let Ok(job_id) = uuid::Uuid::parse_str(job_id_str)
+                    {
+                        let _ = sched.unschedule_task(job_id).await;
+                    }
+                }
+                info!(
+                    "⏸️  Unscheduled {} tasks for backend '{}'",
+                    old_tasks.len(),
+                    current_name
+                );
+            }
+
+            self.save_backend_state(&current_name, task_cache).await;
 
             // Clear cache to prevent stale data leaking
             self.remote_cache.clear_all().await;
 
-            self.restore_backend_state(name).await;
+            self.restore_backend_state(name, task_cache).await;
 
             // LAZY LOADING: Load secrets on-demand if not already loaded
             // This handles backends that were skipped during startup
@@ -299,24 +325,62 @@ impl BackendManager {
         // Update cached is_local flag for engine
         crate::rclone::engine::core::set_active_is_local(is_local);
 
+        // Tasks restored for new backend (caller must trigger scheduler reload)
+        if let (Some(_), Some(cache)) = (scheduler, task_cache) {
+            let task_count = cache.get_tasks_for_backend(name).await.len();
+            info!(
+                "▶️  Restored {} tasks for backend '{}' (will resched on reload)",
+                task_count, name
+            );
+        }
+
         info!("🔄 Switched to backend: {} (is_local: {})", name, is_local);
 
         Ok(())
     }
 
-    /// Helper to save current state (Jobs + Context)
-    async fn save_backend_state(&self, name: &str) {
+    /// Helper to save current state (Jobs + Context + Tasks)
+    async fn save_backend_state(
+        &self,
+        name: &str,
+        task_cache: Option<&crate::rclone::state::scheduled_tasks::ScheduledTasksCache>,
+    ) {
         let jobs = self.job_cache.get_all_jobs().await;
         let context = self.remote_cache.get_context().await;
-        let current_state = BackendState { jobs, context };
+
+        // Get tasks for this backend
+        let tasks = if let Some(cache) = task_cache {
+            cache
+                .get_tasks_for_backend(name)
+                .await
+                .into_iter()
+                .map(|task| (task.id.clone(), task))
+                .collect()
+        } else {
+            HashMap::new()
+        };
+
+        let task_count = tasks.len(); // Capture length before move
+        let current_state = BackendState {
+            jobs,
+            context,
+            tasks,
+        };
 
         let mut states = self.per_backend_state.write().await;
         states.insert(name.to_string(), current_state);
-        info!("💾 Saved state for backend: {}", name);
+        info!(
+            "💾 Saved state for backend: {} ({} tasks)",
+            name, task_count
+        );
     }
 
     /// Helper to restore stored state for a backend
-    async fn restore_backend_state(&self, name: &str) {
+    async fn restore_backend_state(
+        &self,
+        name: &str,
+        task_cache: Option<&crate::rclone::state::scheduled_tasks::ScheduledTasksCache>,
+    ) {
         let new_state = {
             let states = self.per_backend_state.read().await;
             states.get(name).cloned().unwrap_or_default()
@@ -324,7 +388,19 @@ impl BackendManager {
 
         self.job_cache.set_all_jobs(new_state.jobs).await;
         self.remote_cache.set_context(new_state.context).await;
-        info!("📂 Restored context for backend: {}", name);
+
+        // Restore tasks for this backend
+        if let Some(cache) = task_cache {
+            cache
+                .replace_tasks_for_backend(name, new_state.tasks.clone())
+                .await;
+        }
+
+        info!(
+            "📂 Restored state for backend: {} ({} tasks)",
+            name,
+            new_state.tasks.len()
+        );
     }
 
     /// Generic helper to switch profiles for a sub-setting
@@ -628,7 +704,7 @@ impl BackendManager {
 
         // Set active backend if found
         if let Some(name) = active_name {
-            if let Err(e) = self.switch_to(manager, &name).await {
+            if let Err(e) = self.switch_to(manager, &name, None, None).await {
                 log::warn!("Failed to restore active backend '{}': {}", name, e);
             } else {
                 log::info!("✅ Restored active backend: {}", name);

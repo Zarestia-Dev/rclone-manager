@@ -93,7 +93,10 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
                     active
                 );
                 let manager = app_handle.state::<AppSettingsManager>();
-                if let Err(err) = BACKEND_MANAGER.switch_to(manager.inner(), "Local").await {
+                if let Err(err) = BACKEND_MANAGER
+                    .switch_to(manager.inner(), "Local", None, None)
+                    .await
+                {
                     error!("Critical: Failed to fallback to Local backend: {}", err);
                 } else {
                     info!("✅ Fallback to Local successful. Retrying cache refresh for Local...");
@@ -117,7 +120,10 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
                     active
                 );
                 let manager = app_handle.state::<AppSettingsManager>();
-                if let Err(err) = BACKEND_MANAGER.switch_to(manager.inner(), "Local").await {
+                if let Err(err) = BACKEND_MANAGER
+                    .switch_to(manager.inner(), "Local", None, None)
+                    .await
+                {
                     error!("Critical: Failed to fallback to Local backend: {}", err);
                 } else {
                     info!("✅ Fallback to Local successful. Retrying cache refresh for Local...");
@@ -172,8 +178,17 @@ async fn initialize_scheduler(app_handle: AppHandle) -> Result<(), String> {
     );
 
     info!("📋 Loading scheduled tasks from remote configs...");
+
+    // Get the active backend name
+    let backend_name = BACKEND_MANAGER.get_active_name().await;
+
     let task_count = cache_state
-        .load_from_remote_configs(&all_settings, scheduler_state.clone(), Some(&app_handle))
+        .load_from_remote_configs(
+            &all_settings,
+            &backend_name,
+            scheduler_state.clone(),
+            Some(&app_handle),
+        )
         .await?;
 
     info!("📅 Loaded {} scheduled task(s)", task_count);

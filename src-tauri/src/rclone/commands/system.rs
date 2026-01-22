@@ -214,6 +214,34 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
     Err(RcloneError::OAuthError(timeout_error))
 }
 
+/// Quit the main rclone engine via API (works for both local and remote backends)
+#[tauri::command]
+pub async fn quit_rclone_engine(state: State<'_, RcloneState>) -> Result<(), String> {
+    info!("🛑 Quitting Rclone engine via API");
+
+    let backend = BACKEND_MANAGER.get_active().await;
+    let quit_url = backend.url_for(core::QUIT);
+
+    // Send quit request to rclone API
+    match backend
+        .inject_auth(state.client.post(&quit_url))
+        .send()
+        .await
+    {
+        Ok(_) => {
+            info!("✅ Rclone engine quit request sent successfully");
+            Ok(())
+        }
+        Err(e) => {
+            error!("❌ Failed to quit rclone engine: {e}");
+            Err(crate::localized_error!(
+                "backendErrors.system.quitFailed",
+                "error" => e
+            ))
+        }
+    }
+}
+
 /// Clean up OAuth process
 #[tauri::command]
 pub async fn quit_rclone_oauth(state: State<'_, RcloneState>) -> Result<(), String> {
@@ -254,7 +282,7 @@ pub async fn quit_rclone_oauth(state: State<'_, RcloneState>) -> Result<(), Stri
     }
 
     if let Some(url) = backend.oauth_url_for(core::QUIT)
-        && let Err(e) = state.client.post(&url).send().await
+        && let Err(e) = backend.inject_auth(state.client.post(&url)).send().await
     {
         warn!("⚠️ Failed to send quit request: {e}");
     }

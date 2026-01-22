@@ -453,14 +453,15 @@
     }
   },
   "shared": {
-    "remoteCard": {
-      "status": {
-        "mounted": "Bağlı",
-        "syncing": "Eşitleniyor",
-        "copying": "Kopyalanıyor",
-        "moving": "Taşınıyor",
-        "bisyncing": "İki Yönlü Eşitleniyor"
-      }
+    "search": {
+      "toggle": "Aramayı aç/kapat",
+      "placeholder": "Ara...",
+      "ariaLabel": "Ara",
+      "title": "Aramanızla eşleşen seçenek yok",
+      "description": "Farklı bir terim aramayı deneyin veya aramanızı temizleyin.",
+      "action": "Aramayı Temizle",
+      "hideSearch": "Aramayı gizle",
+      "showSearch": "Aramayı göster"
     },
     "installationOptions": {
       "tabs": {
@@ -775,10 +776,6 @@
       "loadingOverlay": {
         "defaultTitle": "Yükleniyor",
         "defaultMessage": "Lütfen bekleyin..."
-      },
-      "search": {
-        "placeholder": "Ara...",
-        "ariaLabel": "Ara"
       },
       "passwordManager": {
         "placeholder": "Rclone yapılandırma şifrenizi girin",
@@ -1317,13 +1314,6 @@
     "ariaSearch": "Klavye kısayollarını ara",
     "ariaClose": "Kısayol penceresini kapat",
     "ariaList": "Klavye kısayolları listesi",
-    "hideSearch": "Aramayı gizle",
-    "showSearch": "Aramayı göster",
-    "noResults": {
-      "title": "Kısayol bulunamadı",
-      "description": "Farklı bir terim aramayı deneyin veya aramanızı temizleyin.",
-      "action": "Aramayı Temizle"
-    },
     "actions": {
       "quit": "Uygulamadan Çık",
       "showShortcuts": "Klavye Kısayollarını Göster",
@@ -1417,6 +1407,7 @@
       "os": "İşletim Sistemi",
       "pid": "İşlem Kimliği (PID)",
       "killProcess": "İşlemi Sonlandır",
+      "quitRclone": "Rclone'u Kapat",
       "goVersion": "Go Sürümü",
       "betaVersion": "Beta sürümü",
       "devBuild": "Geliştirme sürümü",
@@ -1491,8 +1482,6 @@
       "resetAll": "Tüm Ayarları Sıfırla",
       "noSettingsFound": "Eşleşen ayar bulunamadı",
       "trySearching": "Şunu aramayı deneyin:",
-      "hideSearch": "Aramayı gizle",
-      "showSearch": "Aramayı göster",
       "restartRequiredHeader": "Yeniden Başlatma Gerektiren Ayarlar",
       "restartRequiredDesc": "Aşağıdaki değişikliklerin etkili olması için motorun yeniden başlatılması gerekir:",
       "discarding": "İptal ediliyor...",
@@ -2246,7 +2235,8 @@
       "settingsUnavailable": "Ayarlar yöneticisi kullanılamıyor",
       "oauthNotConfigured": "OAuth yapılandırılmamış",
       "unlockFailed": "Kilit açma başarısız: {{error}}",
-      "killFailed": "İşlem sonlandırılamadı: {{error}}"
+      "killFailed": "İşlem sonlandırılamadı: {{error}}",
+      "quitFailed": "Rclone motoru kapatılamadı: {{error}}"
     },
     "remote": {
       "httpError": "HTTP {{status}}: {{body}}",

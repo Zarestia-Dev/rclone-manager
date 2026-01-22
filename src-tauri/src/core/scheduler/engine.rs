@@ -4,7 +4,6 @@ use crate::rclone::commands::sync::{
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 
 use crate::utils::types::core::RcloneState;
-use crate::utils::types::jobs::JobCache;
 use crate::utils::types::remotes::ProfileParams;
 use crate::utils::types::scheduled_task::{ScheduledTask, TaskStatus, TaskType};
 use chrono::{Local, Utc};
@@ -293,8 +292,8 @@ async fn execute_scheduled_task(
         );
     }
 
-    // --- Get Managed State ---
-    let job_cache = app_handle.state::<JobCache>();
+    use crate::rclone::backend::BACKEND_MANAGER;
+    let job_cache = &BACKEND_MANAGER.job_cache;
     let rclone_state = app_handle.state::<RcloneState>();
 
     // --- Add Job Cache Check ---

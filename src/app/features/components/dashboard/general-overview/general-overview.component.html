@@ -23,8 +23,8 @@
                 <div
                   class="panel-edit-controls"
                   cdkDragHandle
-                  animate.enter="slide-down-enter"
-                  animate.leave="slide-down-leave"
+                  animate.enter="expand-height-enter"
+                  animate.leave="expand-height-leave"
                 >
                   <div>
                     <mat-icon svgIcon="menu-bar"></mat-icon>
@@ -132,7 +132,7 @@
                           <span>{{ bandwidthLimit()?.error }}</span>
                           <button
                             matIconButton
-                            (click)="loadBandwidthLimit()"
+                            (click)="rcloneStatusService.loadBandwidthLimit()"
                             [matTooltip]="'generalOverview.bandwidth.retry' | translate"
                             [aria-label]="'generalOverview.bandwidth.retry' | translate"
                           >

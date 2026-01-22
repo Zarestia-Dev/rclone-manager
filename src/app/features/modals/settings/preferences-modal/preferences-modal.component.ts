@@ -25,7 +25,7 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
 // Services and Types
-import { ValidatorRegistryService } from '@app/services';
+import { ValidatorRegistryService, ModalService } from '@app/services';
 import { AppSettingsService, FileSystemService } from '@app/services';
 import { SearchResult, SettingMetadata, SettingTab } from '@app/types';
 
@@ -83,6 +83,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
   private fileSystemService = inject(FileSystemService);
   private validatorRegistry = inject(ValidatorRegistryService);
   private translate = inject(TranslateService);
+  private modalService = inject(ModalService);
 
   private readonly HOLD_DELAY = 300;
   private readonly HOLD_INTERVAL = 75;
@@ -121,7 +122,6 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.onResize();
-    this.appSettingsService.loadSettings();
     this.subscribeToOptions();
     this.populateSearchSuggestions();
   }
@@ -477,7 +477,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
 
   @HostListener('document:keydown.escape')
   close(): void {
-    this.dialogRef.close();
+    this.modalService.animatedClose(this.dialogRef);
   }
 
   @HostListener('document:keydown.control.f', ['$event'])

@@ -146,4 +146,46 @@ export class ModalService {
       },
     });
   }
+
+  // ============================================================================
+  // Animated Close Utility
+  // ============================================================================
+
+  /**
+   * Close a dialog with a slide-down animation.
+   * Use this instead of dialogRef.close() for animated closing on mobile.
+   *
+   * @param dialogRef - The MatDialogRef to close
+   * @param result - Optional result to pass to afterClosed()
+   * @param animationDuration - Duration of the close animation in ms (default: 200)
+   */
+  animatedClose<T, R = unknown>(
+    dialogRef: MatDialogRef<T>,
+    result?: R,
+    animationDuration = 200
+  ): void {
+    // Only apply animation on mobile widths where bottom sheet behavior is active
+    const isMobile = window.innerWidth <= 450;
+
+    if (isMobile) {
+      // Find the dialog container and add closing class
+      const overlayPane = document.querySelector('.cdk-overlay-pane.mat-mdc-dialog-panel');
+      const dialogContainer = overlayPane?.querySelector('mat-dialog-container');
+
+      if (dialogContainer) {
+        dialogContainer.classList.add('closing');
+
+        // Wait for animation to complete, then close
+        setTimeout(() => {
+          dialogRef.close(result);
+        }, animationDuration);
+      } else {
+        // Fallback if container not found
+        dialogRef.close(result);
+      }
+    } else {
+      // Desktop - close immediately
+      dialogRef.close(result);
+    }
+  }
 }

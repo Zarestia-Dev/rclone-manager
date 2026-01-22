@@ -72,10 +72,26 @@
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 450px) {
   .confirm-modal {
+    padding: var(--space-lg) var(--space-md);
+    min-height: 180px;
+
+    .modal-title {
+      font-size: var(--font-size-lg);
+      margin-bottom: var(--space-sm);
+    }
+
     .modal-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+
       .modal-icon {
+        width: 56px;
+        height: 56px;
         margin-bottom: var(--space-md);
 
         mat-icon {
@@ -88,6 +104,8 @@
     .modal-actions {
       flex-direction: column;
       gap: var(--space-sm);
+      padding-top: var(--space-md);
+      border-top: 1px solid rgba(var(--dim-color-rgb), 0.1);
 
       button {
         width: 100%;

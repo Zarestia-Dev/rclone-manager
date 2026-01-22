@@ -128,6 +128,7 @@ export const POST_COMMANDS = new Set([
   'stop_serve',
   'stop_all_serves',
   'handle_shutdown',
+  'quit_rclone_engine',
   'set_config_password_env',
   'change_config_password',
   'restore_settings',

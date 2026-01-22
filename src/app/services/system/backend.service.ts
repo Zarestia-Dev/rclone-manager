@@ -249,7 +249,6 @@ export class BackendService extends TauriBaseService {
   getStatusClass(status?: string): string {
     if (!status) return 'disconnected';
     if (status === 'connected') return 'connected';
-    if (status.startsWith('error')) return 'error';
     return 'disconnected';
   }
 }

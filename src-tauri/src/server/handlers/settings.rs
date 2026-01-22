@@ -192,7 +192,7 @@ pub async fn reset_rclone_backend_options_handler(
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::core::settings::rclone_backend::reset_rclone_backend_options;
     let manager: tauri::State<crate::core::settings::AppSettingsManager> = state.app_handle.state();
-    reset_rclone_backend_options(manager)
+    reset_rclone_backend_options(state.app_handle.clone(), manager)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(crate::localized_success!(

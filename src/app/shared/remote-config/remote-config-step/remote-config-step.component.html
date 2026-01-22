@@ -26,15 +26,10 @@
               >
                 @for (remote of filteredRemotes(); track remote.value) {
                   <mat-option [value]="remote.value" class="remote-option">
-                    <div class="remote-option-content">
-                      <mat-icon
-                        [svgIcon]="iconService.getIconName(remote.value)"
-                        class="remote-icon"
-                      ></mat-icon>
-                      <div class="remote-text">
-                        <span class="remote-label">{{ remote.label }}</span>
-                        <span class="remote-value">{{ remote.value }}</span>
-                      </div>
+                    <mat-icon [svgIcon]="iconService.getIconName(remote.value)"></mat-icon>
+                    <div class="option-content">
+                      <span class="option-label">{{ remote.label }}</span>
+                      <small class="option-description">{{ remote.value }}</small>
                     </div>
                   </mat-option>
                 }
@@ -123,6 +118,11 @@
             <mat-label>{{
               pField.Help || ('wizards.remoteConfig.authenticationMethod' | translate)
             }}</mat-label>
+            <mat-icon
+              matPrefix
+              [svgIcon]="iconService.getIconName(form().get(pField.Name)?.value || 'hard-drive')"
+              class="field-icon"
+            ></mat-icon>
             <input
               type="text"
               matInput
@@ -137,6 +137,7 @@
             >
               @for (option of filteredProviders(); track option.Value) {
                 <mat-option [value]="option.Value">
+                  <mat-icon [svgIcon]="iconService.getIconName(option.Value)"></mat-icon>
                   <div class="option-content">
                     <span class="option-label">{{ option.Help }}</span>
                     <small class="option-description">{{ option.Value }}</small>

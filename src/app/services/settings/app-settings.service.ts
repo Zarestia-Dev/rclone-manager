@@ -131,11 +131,11 @@ export class AppSettingsService extends TauriBaseService {
   /**
    * Merges incoming changes from backend events into the current state.
    */
-  private updateStateFromEvent(payload: Record<string, Record<string, SettingMetadata>>): void {
+  private updateStateFromEvent(payload: Record<string, Record<string, unknown>>): void {
     const currentState = this.optionsState$.getValue();
     if (!currentState) return;
-
     const newState = { ...currentState };
+    let hasChanges = false;
 
     for (const category in payload) {
       for (const key in payload[category]) {
@@ -143,11 +143,21 @@ export class AppSettingsService extends TauriBaseService {
         const newValue = payload[category][key];
 
         if (newState[fullKey]) {
-          newState[fullKey] = { ...newState[fullKey], value: newValue };
+          // Only update if the value actually changed
+          if (newState[fullKey].value !== newValue) {
+            newState[fullKey] = { ...newState[fullKey], value: newValue };
+            hasChanges = true;
+          }
         }
       }
     }
-    this.optionsState$.next(newState);
+
+    // Only emit new state if something actually changed
+    if (hasChanges) {
+      this.optionsState$.next(newState);
+    } else {
+      console.log('No actual changes detected, skipping state update');
+    }
   }
 
   /**

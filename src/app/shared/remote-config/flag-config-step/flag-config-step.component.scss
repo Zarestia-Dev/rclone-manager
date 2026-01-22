@@ -3,6 +3,7 @@ form {
   flex-direction: column;
   overflow: hidden;
   height: 100%;
+  position: relative;
 
   .form-container {
     padding: var(--space-md);
@@ -19,31 +20,12 @@ form {
     flex: 1;
   }
 
-  .slide-toggle {
-    margin: var(--space-lg);
-  }
-
   mat-spinner {
     display: flex;
     position: absolute;
     right: 8px;
     top: 50%;
     transform: translateY(-50%);
-  }
-
-  .field-card {
-    margin-bottom: 12px;
-    padding: 8px 12px;
-    gap: 6px;
-    overflow: clip;
-
-    &.advanced-field {
-      border-left: 4px solid var(--purple);
-    }
-  }
-
-  .section-heading {
-    margin: 16px 0 8px 0;
   }
 }
 

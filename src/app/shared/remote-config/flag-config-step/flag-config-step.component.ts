@@ -3,10 +3,7 @@ import {
   EventEmitter,
   Input,
   Output,
-  OnChanges,
-  SimpleChanges,
   ChangeDetectionStrategy,
-  ChangeDetectorRef,
   inject,
 } from '@angular/core';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
@@ -62,9 +59,8 @@ const SERVE_TYPE_INFO: Record<string, { icon: string; description: string }> = {
   styleUrl: './flag-config-step.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class FlagConfigStepComponent implements OnChanges {
+export class FlagConfigStepComponent {
   readonly iconService = inject(IconService);
-  private cdRef = inject(ChangeDetectorRef);
 
   @Input() form!: FormGroup;
   @Input() flagType!: FlagType;
@@ -72,6 +68,7 @@ export class FlagConfigStepComponent implements OnChanges {
   @Input() existingRemotes: string[] = [];
   @Input({ required: true }) currentRemoteName = 'remote';
   @Input() isNewRemote = false;
+  @Input() searchQuery = '';
 
   @Input() dynamicFlagFields: RcConfigOption[] = [];
   @Input() mountTypes: string[] = [];
@@ -87,12 +84,19 @@ export class FlagConfigStepComponent implements OnChanges {
   @Output() destFolderSelected = new EventEmitter<void>();
   @Output() serveTypeChange = new EventEmitter<string>();
 
-  public showAdvancedOptions = false;
-
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['dynamicFlagFields'] || changes['mountTypes'] || changes['isLoadingServeFields']) {
-      this.cdRef.markForCheck();
+  // Filtered dynamic fields based on search query
+  get filteredDynamicFlagFields(): RcConfigOption[] {
+    const query = this.searchQuery?.toLowerCase().trim();
+    if (!query) {
+      return this.dynamicFlagFields;
     }
+
+    return this.dynamicFlagFields.filter(field => {
+      const nameMatch = field.Name?.toLowerCase().includes(query);
+      const fieldNameMatch = field.FieldName?.toLowerCase().includes(query);
+      const helpMatch = field.Help?.toLowerCase().includes(query);
+      return nameMatch || fieldNameMatch || helpMatch;
+    });
   }
 
   get formFields(): { type: string }[] {

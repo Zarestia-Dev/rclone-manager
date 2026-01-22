@@ -23,19 +23,13 @@ import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 
-import { catchError, EMPTY, from, Subject, Subscription, switchMap, takeUntil, timer } from 'rxjs';
+import { Subject, Subscription, takeUntil } from 'rxjs';
 
 import {
-  BandwidthLimitResponse,
-  DEFAULT_JOB_STATS,
-  GlobalStats,
   JobInfo,
-  MemoryStats,
   PrimaryActionType,
-  RcloneStatus,
   Remote,
   RemoteActionProgress,
-  SystemStats,
   ScheduledTask,
   ServeListItem,
 } from '@app/types';
@@ -51,7 +45,7 @@ import {
   EventListenersService,
   SchedulerService,
   UiStateService,
-  SystemInfoService,
+  RcloneStatusService,
   AppSettingsService,
   BackendService,
 } from '@app/services';
@@ -59,7 +53,6 @@ import { IconService } from '@app/services';
 import { FormatRateValuePipe } from '../../../../shared/pipes/format-rate-value.pipe';
 import { FormatBytes } from '../../../../shared/pipes/format-bytes.pipe';
 
-const POLLING_INTERVAL = 5000;
 const SCROLL_DELAY = 60;
 
 export type PanelId = 'remotes' | 'bandwidth' | 'system' | 'jobs' | 'tasks' | 'serves';
@@ -132,11 +125,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   @Output() openBackendModal = new EventEmitter<void>();
 
   // State signals
-  rcloneStatus = signal<RcloneStatus>('inactive');
-  systemStats = signal<SystemStats>({ memoryUsage: null, uptime: 0 });
-  jobStats = signal<GlobalStats>({ ...DEFAULT_JOB_STATS });
-  isLoadingStats = signal(false);
-  bandwidthLimit = signal<BandwidthLimitResponse | null>(null);
   isEditingLayout = signal(false);
   panelOpenStates = signal<Record<string, boolean>>({
     remotes: true,
@@ -157,18 +145,27 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   // Services
   private eventListenersService = inject(EventListenersService);
   private snackBar = inject(MatSnackBar);
-  private systemInfoService = inject(SystemInfoService);
   private schedulerService = inject(SchedulerService);
   private uiStateService = inject(UiStateService);
   private appSettingsService = inject(AppSettingsService);
+  public rcloneStatusService = inject(RcloneStatusService);
   public iconService = inject(IconService);
 
   readonly backendService = inject(BackendService);
   private translate = inject(TranslateService);
 
+  // Expose status service signals for template
+  readonly rcloneStatus = this.rcloneStatusService.rcloneStatus;
+  readonly jobStats = this.rcloneStatusService.jobStats;
+  readonly bandwidthLimit = this.rcloneStatusService.bandwidthLimit;
+  readonly systemStats = computed(() => ({
+    memoryUsage: this.rcloneStatusService.memoryUsage(),
+    uptime: this.rcloneStatusService.uptime(),
+  }));
+  readonly isLoadingStats = this.rcloneStatusService.isLoading;
+
   // Subscriptions
   private destroy$ = new Subject<void>();
-  private pollingSubscription: Subscription | null = null;
   private scheduledTasksSubscription: Subscription | null = null;
 
   // Track by functions
@@ -210,7 +207,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.setupTauriListeners();
-    this.setupPolling();
     this.loadInitialData();
     this.setupScheduledTasksListener();
   }
@@ -421,80 +417,13 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   }
 
   private cleanup(): void {
-    this.stopPolling();
     this.scheduledTasksSubscription?.unsubscribe();
     this.destroy$.next();
     this.destroy$.complete();
   }
 
-  private setupPolling(): void {
-    this.stopPolling();
-    this.pollingSubscription = timer(0, POLLING_INTERVAL)
-      .pipe(
-        takeUntil(this.destroy$),
-        switchMap(() => from(this.loadSystemStats()).pipe(catchError(() => EMPTY)))
-      )
-      .subscribe();
-  }
-  private stopPolling(): void {
-    this.pollingSubscription?.unsubscribe();
-    this.pollingSubscription = null;
-  }
-
   private async loadInitialData(): Promise<void> {
-    await Promise.all([this.checkRcloneStatus(), this.loadBandwidthLimit()]);
-  }
-
-  private async checkRcloneStatus(): Promise<void> {
-    try {
-      const rcloneInfo = await this.systemInfoService.getRcloneInfo();
-      this.rcloneStatus.set(rcloneInfo ? 'active' : 'inactive');
-    } catch {
-      this.rcloneStatus.set('error');
-    }
-  }
-
-  private async loadSystemStats(): Promise<void> {
-    const hasData = this.systemStats().uptime > 0 || this.systemStats().memoryUsage !== null;
-
-    if (!hasData) {
-      this.isLoadingStats.set(true);
-    }
-
-    try {
-      const [memoryStats, coreStats] = await Promise.all([
-        this.systemInfoService.getMemoryStats().catch(() => null as MemoryStats | null),
-        this.systemInfoService.getCoreStats().catch(() => null as GlobalStats | null),
-      ]);
-
-      this.updateSystemStats(memoryStats, coreStats);
-      await this.checkRcloneStatus();
-    } catch (error) {
-      console.error('Error loading system stats:', error);
-      if (!hasData) {
-        this.resetStats();
-      }
-    } finally {
-      this.isLoadingStats.set(false);
-    }
-  }
-
-  private updateSystemStats(memoryStats: MemoryStats | null, coreStats: GlobalStats | null): void {
-    if (coreStats) {
-      this.jobStats.update(stats => ({ ...stats, ...coreStats }));
-      this.systemStats.set({
-        memoryUsage: memoryStats,
-        uptime: coreStats.elapsedTime || 0,
-      });
-    } else {
-      this.resetStats();
-      this.systemStats.update(stats => ({ ...stats, memoryUsage: memoryStats }));
-    }
-  }
-
-  private resetStats(): void {
-    this.jobStats.set({ ...DEFAULT_JOB_STATS });
-    this.systemStats.set({ memoryUsage: null, uptime: 0 });
+    // Bandwidth limit is already loaded by RcloneStatusService
   }
 
   private setupTauriListeners(): void {
@@ -503,10 +432,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: async () => {
-          const limit = await this.systemInfoService
-            .getBandwidthLimit()
-            .catch(() => null as BandwidthLimitResponse | null);
-          this.bandwidthLimit.set(limit);
+          await this.rcloneStatusService.loadBandwidthLimit();
         },
       });
   }
@@ -528,35 +454,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
       console.error('Error loading scheduled tasks:', error);
     } finally {
       this.isLoadingScheduledTasks.set(false);
-    }
-  }
-
-  async loadBandwidthLimit(): Promise<void> {
-    try {
-      if (!this.bandwidthLimit()) {
-        this.bandwidthLimit.set({
-          bytesPerSecond: 0,
-          bytesPerSecondRx: 0,
-          bytesPerSecondTx: 0,
-          rate: 'Loading...',
-          loading: true,
-        });
-      }
-
-      const response = await this.systemInfoService
-        .getBandwidthLimit()
-        .catch(() => null as BandwidthLimitResponse | null);
-
-      this.bandwidthLimit.set(response);
-    } catch (error) {
-      this.bandwidthLimit.set({
-        bytesPerSecond: -1,
-        bytesPerSecondRx: -1,
-        bytesPerSecondTx: -1,
-        rate: 'off',
-        loading: false,
-        error: `Failed to load bandwidth limit: ${error}`,
-      });
     }
   }
 

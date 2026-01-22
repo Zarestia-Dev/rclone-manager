@@ -58,8 +58,11 @@ pub async fn save_remote_settings(
     info!("✅ Remote settings saved for '{remote_name}'");
 
     // Update scheduled tasks
+    use crate::rclone::backend::BACKEND_MANAGER;
+    let backend_name = BACKEND_MANAGER.get_active_name().await;
+
     match cache
-        .add_or_update_task_for_remote(&remote_name, &settings, scheduler)
+        .add_or_update_task_for_remote(&backend_name, &remote_name, &settings, scheduler)
         .await
     {
         Ok(_) => info!("✅ Scheduled tasks updated for remote '{remote_name}'"),

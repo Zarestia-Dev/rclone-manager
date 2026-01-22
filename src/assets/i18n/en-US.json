@@ -452,14 +452,15 @@
     }
   },
   "shared": {
-    "remoteCard": {
-      "status": {
-        "mounted": "Mounted",
-        "syncing": "Syncing",
-        "copying": "Copying",
-        "moving": "Moving",
-        "bisyncing": "BiSyncing"
-      }
+    "search": {
+      "toggle": "Toggle Search",
+      "placeholder": "Search...",
+      "ariaLabel": "Search",
+      "title": "No results found",
+      "description": "No options match your search",
+      "action": "Clear Search",
+      "hideSearch": "Hide search",
+      "showSearch": "Show search"
     },
     "installationOptions": {
       "tabs": {
@@ -774,10 +775,6 @@
       "loadingOverlay": {
         "defaultTitle": "Loading",
         "defaultMessage": "Please wait..."
-      },
-      "search": {
-        "placeholder": "Search...",
-        "ariaLabel": "Search"
       },
       "passwordManager": {
         "placeholder": "Enter your rclone config password",
@@ -1318,13 +1315,6 @@
     "ariaSearch": "Search keyboard shortcuts",
     "ariaClose": "Close shortcuts dialog",
     "ariaList": "Keyboard shortcuts list",
-    "hideSearch": "Hide search",
-    "showSearch": "Show search",
-    "noResults": {
-      "title": "No shortcuts found",
-      "description": "Try searching for a different term or clear your search.",
-      "action": "Clear Search"
-    },
     "actions": {
       "quit": "Quit Application",
       "showShortcuts": "Show Keyboard Shortcuts",
@@ -1418,6 +1408,7 @@
       "os": "OS",
       "pid": "Process ID",
       "killProcess": "Kill Process",
+      "quitRclone": "Quit Rclone",
       "goVersion": "Go Version",
       "betaVersion": "Beta version",
       "devBuild": "Development build",
@@ -1492,8 +1483,6 @@
       "resetAll": "Reset All Settings",
       "noSettingsFound": "No settings found matching",
       "trySearching": "Try searching for:",
-      "hideSearch": "Hide search",
-      "showSearch": "Show search",
       "restartRequiredHeader": "Settings Requiring Restart",
       "restartRequiredDesc": "The following changes require an engine restart to take effect:",
       "discarding": "Discarding...",
@@ -2247,7 +2236,8 @@
       "settingsUnavailable": "Settings manager not available",
       "oauthNotConfigured": "OAuth not configured",
       "unlockFailed": "Unlock failed: {{error}}",
-      "killFailed": "Failed to kill process: {{error}}"
+      "killFailed": "Failed to kill process: {{error}}",
+      "quitFailed": "Failed to quit rclone engine: {{error}}"
     },
     "remote": {
       "httpError": "HTTP {{status}}: {{body}}",

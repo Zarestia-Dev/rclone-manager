@@ -20,7 +20,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { DatePipe, UpperCasePipe } from '@angular/common';
 import { LogContext, RemoteLogEntry, LOG_LEVELS, LogLevel } from '@app/types';
-import { LoggingService, BackendTranslationService } from '@app/services';
+import { LoggingService, BackendTranslationService, ModalService } from '@app/services';
 import { AnsiToHtmlPipe } from 'src/app/shared/pipes/ansi-to-html.pipe';
 import { TranslateModule } from '@ngx-translate/core';
 
@@ -52,6 +52,7 @@ export class LogsModalComponent implements OnInit {
   private snackBar = inject(MatSnackBar);
   private loggingService = inject(LoggingService);
   private backendTranslation = inject(BackendTranslationService);
+  private modalService = inject(ModalService);
 
   // Expose log levels to the template
   public readonly logLevels = LOG_LEVELS;
@@ -226,6 +227,6 @@ export class LogsModalComponent implements OnInit {
 
   @HostListener('document:keydown.escape')
   close(): void {
-    this.dialogRef.close();
+    this.modalService.animatedClose(this.dialogRef);
   }
 }

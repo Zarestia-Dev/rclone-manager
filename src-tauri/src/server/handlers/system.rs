@@ -407,3 +407,16 @@ pub async fn get_build_type_handler(
     let build_type = get_build_type().map(|s| s.to_string());
     Ok(Json(ApiResponse::success(build_type)))
 }
+
+pub async fn quit_rclone_engine_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::rclone::commands::system::quit_rclone_engine;
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+    quit_rclone_engine(rclone_state)
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.system.engineQuit"
+    ))))
+}

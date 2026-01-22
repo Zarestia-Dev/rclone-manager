@@ -69,9 +69,8 @@ pub async fn create_remote_interactive(
         backend.url_for(config::CREATE)
     };
 
-    let response = state
-        .client
-        .post(&url)
+    let response = backend
+        .inject_auth(state.client.post(&url))
         .json(&body)
         .send()
         .await
@@ -145,9 +144,8 @@ pub async fn continue_create_remote_interactive(
         backend.url_for(config::UPDATE)
     };
 
-    let response = tauri_state
-        .client
-        .post(&url)
+    let response = backend
+        .inject_auth(tauri_state.client.post(&url))
         .json(&body)
         .send()
         .await
@@ -227,9 +225,8 @@ pub async fn create_remote(
         backend.url_for(config::CREATE)
     };
 
-    let response = state
-        .client
-        .post(&url)
+    let response = backend
+        .inject_auth(state.client.post(&url))
         .json(&body)
         .send()
         .await
@@ -315,9 +312,8 @@ pub async fn update_remote(
     };
     let body = json!({ "name": name, "parameters": parameters });
 
-    let response = state
-        .client
-        .post(&url)
+    let response = backend
+        .inject_auth(state.client.post(&url))
         .json(&body)
         .send()
         .await

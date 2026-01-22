@@ -70,6 +70,7 @@ export class IconService {
 
       // ------------------- Action Icons -------------------
       plus: 'assets/icons/titlebar/add.svg',
+      new: 'assets/icons/titlebar/add.svg',
       remove: 'assets/icons/titlebar/remove.svg',
       close: 'assets/icons/titlebar/close.svg',
       copy: 'assets/icons/actions/copy.svg',
@@ -91,6 +92,7 @@ export class IconService {
       stop: 'assets/icons/actions/stop.svg',
       eye: 'assets/icons/actions/eye.svg',
       'eye-slash': 'assets/icons/actions/eye-slash.svg',
+      'power-off': 'assets/icons/actions/power-off.svg',
 
       // ------------------- Device Icons -------------------
       'hard-drive': 'assets/icons/devices/hard-drive.svg',
@@ -163,7 +165,8 @@ export class IconService {
       internetarchive: 'assets/icons/remotes/internetarchive.svg',
       azureblob: 'assets/icons/remotes/azure.svg',
       azurefiles: 'assets/icons/remotes/azure.svg',
-      'rclone-symbolic': 'assets/rclone-symbolic.svg',
+      rclone: 'assets/rclone-symbolic.svg',
+      aws: 'assets/icons/remotes/s3.svg',
     };
 
     this.icons = icons;
@@ -174,8 +177,8 @@ export class IconService {
   }
 
   getIconName(name: string | undefined | null): string {
-    if (name && this.icons[name]) {
-      return name;
+    if (name && this.icons[name.toLowerCase()]) {
+      return name.toLowerCase();
     }
     return this.fallbackIcon;
   }

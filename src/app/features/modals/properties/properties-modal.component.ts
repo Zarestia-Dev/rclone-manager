@@ -10,7 +10,12 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { RemoteManagementService, NautilusService, RemoteFacadeService } from '@app/services';
+import {
+  RemoteManagementService,
+  NautilusService,
+  RemoteFacadeService,
+  ModalService,
+} from '@app/services';
 import { Entry, FileBrowserItem, FsInfo } from '@app/types';
 import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
 import { IconService } from '@app/services';
@@ -40,7 +45,7 @@ interface ExpiryOption {
     TranslateModule,
   ],
   templateUrl: './properties-modal.component.html',
-  styleUrls: ['./properties-modal.component.scss', '../../../../styles/_shared-modal.scss'],
+  styleUrls: ['./properties-modal.component.scss', '../../../styles/_shared-modal.scss'],
 })
 export class PropertiesModalComponent implements OnInit {
   private dialogRef = inject(MatDialogRef<PropertiesModalComponent>);
@@ -59,6 +64,7 @@ export class PropertiesModalComponent implements OnInit {
   private remoteFacadeService = inject(RemoteFacadeService);
   private iconService = inject(IconService);
   private translate = inject(TranslateService);
+  private modalService = inject(ModalService);
 
   // Separate loading states
   loadingStat = true;
@@ -446,7 +452,7 @@ export class PropertiesModalComponent implements OnInit {
 
   @HostListener('keydown.escape')
   close(): void {
-    this.dialogRef.close();
+    this.modalService.animatedClose(this.dialogRef);
   }
 
   getIcon(item?: Entry | null): string {

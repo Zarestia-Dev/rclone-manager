@@ -1,4 +1,5 @@
 export * from './system/system-info.service';
+export * from './system/rclone-status.service';
 export * from './system/event-listeners.service';
 export * from './system/config.service';
 export * from './system/connection.service';

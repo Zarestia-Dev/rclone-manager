@@ -1,11 +1,5 @@
 <div class="properties-modal input-modal">
-  <div class="modal-header" data-tauri-drag-region>
-    <button><mat-icon [svgIcon]="data.icon || 'circle-info'"></mat-icon></button>
-    <p>{{ data.title || ('shared.inputModal.enterValue' | translate) }}</p>
-    <button mat-icon-button (click)="onCancel()" [attr.aria-label]="'common.close' | translate">
-      <mat-icon svgIcon="circle-xmark"></mat-icon>
-    </button>
-  </div>
+  <h1 class="modal-title">{{ data.title }}</h1>
 
   <div class="modal-content">
     <mat-form-field appearance="fill" style="width: 100%">
@@ -41,6 +35,9 @@
   <div class="modal-actions">
     <button mat-flat-button class="primary" [disabled]="!nameControl.valid" (click)="onConfirm()">
       {{ data.createLabel || ('shared.inputModal.create' | translate) }}
+    </button>
+    <button mat-flat-button class="accent" (click)="onCancel()">
+      {{ 'common.cancel' | translate }}
     </button>
   </div>
 </div>

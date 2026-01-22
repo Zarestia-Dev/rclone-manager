@@ -10,7 +10,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCardModule } from '@angular/material/card';
-import { RemoteManagementService, RemoteFacadeService } from 'src/app/services';
+import { RemoteManagementService, RemoteFacadeService, ModalService } from 'src/app/services';
 import { IconService } from '@app/services';
 import { FormatFileSizePipe } from 'src/app/shared/pipes';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -38,7 +38,7 @@ interface RemoteAboutData {
     TranslateModule,
   ],
   templateUrl: './remote-about-modal.component.html',
-  styleUrls: ['./remote-about-modal.component.scss', '../../../../styles/_shared-modal.scss'],
+  styleUrls: ['./remote-about-modal.component.scss', '../../../styles/_shared-modal.scss'],
 })
 export class RemoteAboutModalComponent implements OnInit {
   private dialogRef = inject(MatDialogRef<RemoteAboutModalComponent>);
@@ -46,6 +46,7 @@ export class RemoteAboutModalComponent implements OnInit {
   private remoteFacadeService = inject(RemoteFacadeService);
   public iconService = inject(IconService);
   private translate = inject(TranslateService);
+  private modalService = inject(ModalService);
   public data: RemoteAboutData = inject(MAT_DIALOG_DATA);
 
   // Independent Signals for separate loading states
@@ -212,6 +213,6 @@ export class RemoteAboutModalComponent implements OnInit {
 
   @HostListener('window:escape')
   close(): void {
-    this.dialogRef.close();
+    this.modalService.animatedClose(this.dialogRef);
   }
 }

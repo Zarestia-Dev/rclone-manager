@@ -32,12 +32,14 @@ import {
   AppSettingsService,
   FileSystemService,
   NautilusService,
+  ModalService,
 } from '@app/services';
 import {
   RemoteType,
   RemoteConfigSections,
   InteractiveFlowState,
   INTERACTIVE_REMOTES,
+  DEFAULT_PROFILE_NAME,
 } from '@app/types';
 import { OperationConfigComponent } from '../../../../shared/remote-config/app-operation-config/app-operation-config.component';
 import { ValidatorRegistryService } from '@app/services';
@@ -84,6 +86,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   private readonly validatorRegistry = inject(ValidatorRegistryService);
   readonly iconService = inject(IconService);
   private readonly nautilusService = inject(NautilusService);
+  private readonly modalService = inject(ModalService);
 
   readonly quickAddForm: FormGroup;
   remoteTypes: RemoteType[] = [];
@@ -387,7 +390,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
         await this.handleInteractiveCreation(setup, operations);
       } else {
         await this.handleStandardCreation(setup, operations);
-        if (!this.isAuthCancelled()) this.dialogRef.close(true);
+        if (!this.isAuthCancelled()) this.modalService.animatedClose(this.dialogRef, true);
       }
     } catch (error) {
       console.error('Error in onSubmit:', error);
@@ -426,22 +429,41 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
       autoStart: boolean;
       cronEnabled?: boolean;
       cronExpression?: string | null;
+      filterProfile: string;
+      backendProfile: string;
     } => ({
       source: buildPathString(op.source, remoteName),
       dest: buildPathString(op.dest, remoteName),
       autoStart: op.autoStart || false,
       cronEnabled: op.cronEnabled || false,
       cronExpression: op.cronExpression || null,
+      filterProfile: DEFAULT_PROFILE_NAME,
+      backendProfile: DEFAULT_PROFILE_NAME,
     });
 
     return {
-      mountConfigs: { default: { ...createConfig(operations.mount), type: 'mount' } },
+      mountConfigs: {
+        default: {
+          ...createConfig(operations.mount),
+          type: 'mount',
+          vfsProfile: DEFAULT_PROFILE_NAME,
+        },
+      },
       copyConfigs: { default: createConfig(operations.copy) },
       syncConfigs: { default: createConfig(operations.sync) },
       bisyncConfigs: { default: createConfig(operations.bisync) },
       moveConfigs: { default: createConfig(operations.move) },
       filterConfigs: { default: {} },
-      vfsConfigs: { default: { options: { CacheMode: 'full', ChunkSize: '32M' } } },
+      vfsConfigs: {
+        default: {
+          options: {
+            CacheMode: 'writes',
+            ChunkSize: '128M',
+            DirCacheTime: '5m',
+            VfsCacheMaxAge: '1h',
+          },
+        },
+      },
       backendConfigs: { default: {} },
       showOnTray: true,
     };
@@ -536,7 +558,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     await this.appSettingsService.saveRemoteSettings(remoteData.name, finalConfig);
     await this.triggerAutoStartOperations(remoteData.name, finalConfig);
     this.authStateService.resetAuthState();
-    this.dialogRef.close(true);
+    this.modalService.animatedClose(this.dialogRef, true);
   }
 
   private async triggerAutoStartOperations(
@@ -582,14 +604,6 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     this.interactiveFlowState.set(createInitialInteractiveFlowState());
   }
 
-  private setFormState(disabled: boolean): void {
-    if (disabled) {
-      this.quickAddForm.disable();
-    } else {
-      this.quickAddForm.enable();
-    }
-  }
-
   get selectedRemoteLabel(): string {
     const remoteType = this.quickAddForm.get('setup.type')?.value;
     const remote = this.remoteTypes.find(r => r.value === remoteType);
@@ -601,6 +615,6 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     if (this.nautilusService.isNautilusOverlayOpen) {
       return;
     }
-    this.dialogRef.close();
+    this.modalService.animatedClose(this.dialogRef);
   }
 }

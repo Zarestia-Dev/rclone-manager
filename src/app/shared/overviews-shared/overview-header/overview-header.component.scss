@@ -54,11 +54,11 @@
           transition: background-color 0.3s ease;
 
           &.connected {
-            background-color: var(--success-color);
+            background-color: var(--primary-color);
             box-shadow: 0 0 0 2px var(--window-bg-color);
           }
           &.disconnected {
-            background-color: var(--destructive-color);
+            background-color: var(--warn-color);
           }
         }
       }

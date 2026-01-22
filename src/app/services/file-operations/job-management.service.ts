@@ -109,14 +109,6 @@ export class JobManagementService extends TauriBaseService {
   }
 
   /**
-   * Get all jobs (fetches from backend and updates state)
-   * @deprecated Use refreshJobs() instead for clarity
-   */
-  async getJobs(): Promise<JobInfo[]> {
-    return this.refreshJobs();
-  }
-
-  /**
    * Get active jobs (returns from cached state after refresh)
    * Updates the unified state and returns active jobs
    */

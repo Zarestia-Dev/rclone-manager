@@ -19,6 +19,7 @@ import {
   ExportCategory,
   RemoteManagementService,
   FileSystemService,
+  ModalService,
 } from '@app/services';
 
 // Display option for UI
@@ -58,6 +59,7 @@ export class ExportModalComponent implements OnInit {
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly fileSystemService = inject(FileSystemService);
   private readonly translate = inject(TranslateService);
+  private readonly modalService = inject(ModalService);
   public readonly data = inject<ExportModalData>(MAT_DIALOG_DATA);
 
   // Signals
@@ -220,7 +222,7 @@ export class ExportModalComponent implements OnInit {
   @HostListener('document:keydown.escape')
   close(): void {
     if (!this.isExporting()) {
-      this.dialogRef.close(false);
+      this.modalService.animatedClose(this.dialogRef, false);
     }
   }
 

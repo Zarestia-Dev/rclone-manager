@@ -28,7 +28,6 @@ import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
 import {
   ActionState,
   CompletedTransfer,
-  DEFAULT_JOB_STATS,
   GlobalStats,
   JobInfoConfig,
   OperationControlConfig,
@@ -54,7 +53,7 @@ import {
   TransferActivityPanelComponent,
 } from '../../../../shared/detail-shared';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
-import { IconService } from '@app/services';
+import { IconService, RcloneStatusService } from '@app/services';
 import { JobManagementService } from '@app/services';
 import { toString as cronstrue } from 'cronstrue';
 import { VfsControlPanelComponent } from '../../../../shared/detail-shared/vfs-control/vfs-control-panel.component';
@@ -118,6 +117,7 @@ export class AppDetailComponent {
 
   // --- Services ---
   private readonly jobService = inject(JobManagementService);
+  private readonly rcloneStatusService = inject(RcloneStatusService);
   readonly iconService = inject(IconService);
   private readonly translate = inject(TranslateService);
   private readonly langChange = toSignal(this.translate.onLangChange);
@@ -125,7 +125,11 @@ export class AppDetailComponent {
   private readonly formatTime = new FormatTimePipe();
 
   // --- State Signals ---
-  jobStats = signal<GlobalStats>({ ...DEFAULT_JOB_STATS });
+  // Job-specific stats (when a specific job is being tracked)
+  private jobSpecificStats = signal<GlobalStats | null>(null);
+  // Use job-specific stats if available, otherwise fall back to global stats from service
+  jobStats = computed(() => this.jobSpecificStats() || this.rcloneStatusService.jobStats());
+
   isLoading = signal(false);
   activeTransfers = signal<TransferFile[]>([]);
   completedTransfers = signal<CompletedTransfer[]>([]);
@@ -136,8 +140,6 @@ export class AppDetailComponent {
 
   // --- Constants ---
   readonly POLL_INTERVAL_MS = 1000;
-  // readonly sharedSettingsHeading = 'Shared Settings';
-  // readonly sharedSettingsDescription = 'Applies to all operations, regardless of sync or mount mode.';
   readonly syncOperations: SyncOperation[] = [
     {
       type: 'sync',
@@ -961,7 +963,8 @@ export class AppDetailComponent {
     const transferring = this.processTransfers(job.stats.transferring);
     this.activeTransfers.set(transferring);
 
-    this.jobStats.set({ ...job.stats, transferring });
+    // Update job-specific stats when tracking a particular job
+    this.jobSpecificStats.set({ ...job.stats, transferring });
   }
 
   // --- Logic Helpers ---
@@ -1039,7 +1042,8 @@ export class AppDetailComponent {
     this.activeTransfers.set([]);
     this.completedTransfers.set([]);
     this.lastTransferCount = 0;
-    this.jobStats.set({ ...DEFAULT_JOB_STATS });
+    // Clear job-specific stats so it falls back to global stats from service
+    this.jobSpecificStats.set(null);
   }
 
   // --- Stats Formatting Helpers ---

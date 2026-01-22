@@ -102,6 +102,7 @@ macro_rules! generate_invoke_handler {
             $crate::rclone::commands::remote::create_remote,
             $crate::rclone::commands::remote::update_remote,
             $crate::rclone::commands::remote::delete_remote,
+            $crate::rclone::commands::system::quit_rclone_engine,
             $crate::rclone::commands::system::quit_rclone_oauth,
             $crate::rclone::queries::get_remote_paths,
             // =================================================================

@@ -17,7 +17,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
 import { DatePipe, UpperCasePipe } from '@angular/common';
-import { BackupAnalysis, BackupRestoreService } from '@app/services';
+import { BackupAnalysis, BackupRestoreService, ModalService } from '@app/services';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
@@ -46,6 +46,7 @@ export class RestorePreviewModalComponent implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<RestorePreviewModalComponent>);
   private readonly backupRestoreService = inject(BackupRestoreService);
   private readonly translate = inject(TranslateService);
+  private readonly modalService = inject(ModalService);
   public readonly data = inject<{ backupPath: string; analysis: BackupAnalysis }>(MAT_DIALOG_DATA);
 
   // Signals
@@ -167,7 +168,7 @@ export class RestorePreviewModalComponent implements OnInit {
     try {
       await this.backupRestoreService.restoreSettings(this.backupPath, password, restoreProfile);
       // Close modal with success
-      this.dialogRef.close(true);
+      this.modalService.animatedClose(this.dialogRef, true);
     } catch (error: any) {
       this.handleRestoreError(error);
     } finally {
@@ -206,7 +207,7 @@ export class RestorePreviewModalComponent implements OnInit {
   @HostListener('document:keydown.escape')
   close(): void {
     if (!this.isVerifying()) {
-      this.dialogRef.close(false);
+      this.modalService.animatedClose(this.dialogRef, false);
     }
   }
 }

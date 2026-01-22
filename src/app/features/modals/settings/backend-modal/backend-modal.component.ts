@@ -20,6 +20,7 @@ import { BackendSecurityComponent } from './backend-security/backend-security.co
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { FileSystemService } from 'src/app/services/file-operations/file-system.service';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
+import { ModalService } from '@app/services';
 
 @Component({
   selector: 'app-backend-modal',
@@ -53,6 +54,7 @@ export class BackendModalComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly translate = inject(TranslateService);
   private readonly fileSystemService = inject(FileSystemService);
+  private readonly modalService = inject(ModalService);
 
   // State
   readonly backends = this.backendService.backends;
@@ -99,7 +101,7 @@ export class BackendModalComponent implements OnInit {
   }
 
   close(): void {
-    this.dialogRef.close();
+    this.modalService.animatedClose(this.dialogRef);
   }
 
   toggleAddForm(): void {

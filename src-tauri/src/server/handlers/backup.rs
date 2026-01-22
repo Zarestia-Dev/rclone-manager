@@ -8,7 +8,6 @@ use serde::Deserialize;
 use tauri::Manager;
 
 use crate::server::state::{ApiResponse, AppError, WebServerState};
-use rcman::{JsonStorage, SettingsManager};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -18,6 +17,7 @@ pub struct BackupSettingsQuery {
     pub password: Option<String>,
     pub remote_name: Option<String>,
     pub user_note: Option<String>,
+    pub include_profiles: Option<Vec<String>>,
 }
 
 pub async fn backup_settings_handler(
@@ -32,6 +32,7 @@ pub async fn backup_settings_handler(
         query.password,
         query.remote_name,
         query.user_note,
+        query.include_profiles,
         manager,
         state.app_handle.clone(),
     )
@@ -64,6 +65,8 @@ pub async fn analyze_backup_file_handler(
 pub struct RestoreSettingsBody {
     pub backup_path: String,
     pub password: Option<String>,
+    pub restore_profile: Option<String>,
+    pub restore_profile_as: Option<String>,
 }
 
 pub async fn restore_settings_handler(
@@ -77,6 +80,8 @@ pub async fn restore_settings_handler(
     let result = restore_settings(
         backup_path,
         body.password,
+        body.restore_profile,
+        body.restore_profile_as,
         manager,
         state.app_handle.clone(),
     )

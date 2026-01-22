@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Multiple language support added. Now you can change the language of the app. Needs community help for translations.
 - Log file support added (both app and rclone logs). You can manage the log settings from configuration modal (Log file location cannot be changed on rclone. I think rclone has problem on that. Rclone version 1.72.1 :/).
 - Modals now transforms to bottom sheet on mobile devices. Like how it works on gnome. Basic SCSS trick but looks more native.
+- Window state persistence support added. Now the app remembers the window size on close and restores it on next launch.
 
 
 ### Changed
