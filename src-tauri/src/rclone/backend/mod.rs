@@ -7,4 +7,4 @@ pub mod manager;
 pub mod runtime;
 pub mod types;
 
-pub use manager::{BACKEND_MANAGER, BackendManager};
+pub use manager::BackendManager;

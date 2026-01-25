@@ -324,25 +324,26 @@ pub async fn create_tray_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<M
 
     // --- Get state from app handle ---
 
-    let remotes = get_cached_remotes().await.unwrap_or_else(|err| {
+    let remotes = get_cached_remotes(app.clone()).await.unwrap_or_else(|err| {
         error!("Failed to fetch cached remotes: {err}");
         vec![]
     });
-    let mounted_remotes = get_cached_mounted_remotes().await.unwrap_or_else(|err| {
-        error!("Failed to fetch mounted remotes: {err}");
-        vec![]
-    });
-    let all_serves = get_cached_serves().await.unwrap_or_else(|err| {
+    let mounted_remotes = get_cached_mounted_remotes(app.clone())
+        .await
+        .unwrap_or_else(|err| {
+            error!("Failed to fetch mounted remotes: {err}");
+            vec![]
+        });
+    let all_serves = get_cached_serves(app.clone()).await.unwrap_or_else(|err| {
         error!("Failed to fetch cached serves: {err}");
         vec![]
     });
 
-    let active_jobs = crate::rclone::backend::BACKEND_MANAGER
-        .job_cache
-        .get_active_jobs()
-        .await;
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app.state::<BackendManager>();
+    let active_jobs = backend_manager.job_cache.get_active_jobs().await;
 
-    let cached_settings = get_settings(app.state::<AppSettingsManager>())
+    let cached_settings = get_settings(app.clone(), app.state::<AppSettingsManager>())
         .await
         .unwrap_or_else(|_| {
             error!("Failed to fetch cached settings");

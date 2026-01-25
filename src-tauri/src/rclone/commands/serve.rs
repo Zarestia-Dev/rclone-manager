@@ -1,7 +1,7 @@
 use log::{debug, info, warn};
 use serde_json::{Value, json};
 use std::collections::HashMap;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager};
 
 use crate::{
     rclone::state::watcher::force_check_serves,
@@ -15,7 +15,7 @@ use crate::{
     },
 };
 
-use super::system::redact_sensitive_values;
+use super::common::redact_sensitive_values;
 
 /// Parameters for starting a serve instance
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
@@ -82,7 +82,8 @@ pub async fn start_serve(
         return Err(crate::localized_error!("backendErrors.serve.remoteEmpty"));
     }
     let state = app.state::<RcloneState>();
-    let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
     // Validate serve type is specified
@@ -249,7 +250,6 @@ pub async fn stop_serve(
     app: AppHandle,
     server_id: String,
     remote_name: String,
-    state: State<'_, RcloneState>,
 ) -> Result<String, String> {
     log_operation(
         LogLevel::Info,
@@ -259,17 +259,17 @@ pub async fn stop_serve(
         None,
     );
 
-    let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
-    // Serve stop needs remote_name to find backend. But stop_serve(server_id) doesn't have remote_name in params?
-    // We stored profile mapping, maybe we can find it?
-    // Actually `stop_serve` relies on ID. `cache` stores serve_id -> profile.
-    // If we iterate backends to find serve_id, or if we assume active backend.
-    // Let's use active for now, or maybe update `stop_serve` to take remote_name.
-    // Given the difficulty, active is safest fallback for now.
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app.state::<BackendManager>();
+
     let backend = backend_manager.get_active().await;
     let payload = json!({ "id": server_id });
     let _ = backend
-        .post_json(&state.client, serve::STOP, Some(&payload))
+        .post_json(
+            &app.state::<RcloneState>().client,
+            serve::STOP,
+            Some(&payload),
+        )
         .await
         .map_err(|e| {
             let error = format!("Failed to stop serve: {e}");
@@ -303,17 +303,14 @@ pub async fn stop_serve(
 
 /// Stop all running serve instances
 #[tauri::command]
-pub async fn stop_all_serves(
-    app: AppHandle,
-    state: State<'_, RcloneState>,
-    context: String,
-) -> Result<String, String> {
+pub async fn stop_all_serves(app: AppHandle, context: String) -> Result<String, String> {
     info!("🗑️ Stopping all serves");
 
-    let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
     let _ = backend
-        .post_json(&state.client, serve::STOPALL, None)
+        .post_json(&app.state::<RcloneState>().client, serve::STOPALL, None)
         .await
         .map_err(|e| {
             let error = format!("Failed to stop all serves: {e}");

@@ -6,8 +6,8 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use crate::{
     core::scheduler::engine::CronScheduler,
     rclone::{
-        backend::BACKEND_MANAGER,
-        commands::system::{ensure_oauth_process, redact_sensitive_values},
+        backend::BackendManager,
+        commands::{common::redact_sensitive_values, system::ensure_oauth_process},
         state::scheduled_tasks::ScheduledTasksCache,
     },
     utils::{
@@ -28,10 +28,10 @@ pub async fn create_remote_interactive(
     app: AppHandle,
     name: String,
     rclone_type: String,
-    parameters: Option<Value>,
+    parameters: Option<HashMap<String, Value>>,
     opt: Option<Value>,
-    state: State<'_, RcloneState>,
 ) -> Result<Value, String> {
+    let state = app.state::<RcloneState>();
     // Ensure OAuth/RC helper is running (used for providers requiring OAuth)
     ensure_oauth_process(&app)
         .await
@@ -43,7 +43,7 @@ pub async fn create_remote_interactive(
     });
 
     if let Some(params) = parameters {
-        body["parameters"] = params;
+        body["parameters"] = json!(params);
     }
 
     let mut opt_obj = json!({ "nonInteractive": true });
@@ -57,7 +57,8 @@ pub async fn create_remote_interactive(
     }
     body["opt"] = opt_obj;
 
-    let backend = BACKEND_MANAGER.get_active().await;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
 
     // For Local backend: use OAuth port (separate rclone instance)
     // For Remote backend: use main API directly (no separate OAuth process)
@@ -99,10 +100,10 @@ pub async fn continue_create_remote_interactive(
     name: String,
     state_token: String,
     result: Value,
-    parameters: Option<Value>,
+    parameters: Option<HashMap<String, Value>>,
     opt: Option<Value>,
-    tauri_state: State<'_, RcloneState>,
 ) -> Result<Value, String> {
+    let tauri_state = app.state::<RcloneState>();
     // Ensure OAuth/RC helper is running
     ensure_oauth_process(&app)
         .await
@@ -113,7 +114,7 @@ pub async fn continue_create_remote_interactive(
     });
 
     if let Some(params) = parameters.clone() {
-        body["parameters"] = params;
+        body["parameters"] = json!(params);
     }
 
     // Build opt object with continue flow
@@ -132,7 +133,8 @@ pub async fn continue_create_remote_interactive(
     }
     body["opt"] = opt_obj;
 
-    let backend = BACKEND_MANAGER.get_active().await;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
 
     // For Local backend: use OAuth port (separate rclone instance)
     // For Remote backend: use main API directly (no separate OAuth process)
@@ -174,22 +176,16 @@ pub async fn continue_create_remote_interactive(
 pub async fn create_remote(
     app: AppHandle,
     name: String,
-    parameters: Value,
-    state: State<'_, RcloneState>,
+    parameters: HashMap<String, Value>,
 ) -> Result<(), String> {
+    let state = app.state::<RcloneState>();
     let remote_type = parameters
         .get("type")
         .and_then(|v| v.as_str())
         .ok_or("Missing remote type")?;
 
     // Enhanced logging with parameter values
-    let params_map: HashMap<String, Value> = parameters
-        .as_object()
-        .ok_or("Parameters must be an object")?
-        .clone()
-        .into_iter()
-        .collect();
-    let params_obj = redact_sensitive_values(&params_map, &app);
+    let params_obj = redact_sensitive_values(&parameters, &app);
 
     log_operation(
         LogLevel::Info,
@@ -210,10 +206,11 @@ pub async fn create_remote(
     let body = json!({
         "name": name,
         "type": remote_type,
-        "parameters": parameters
+        "parameters": json!(parameters)
     });
 
-    let backend = BACKEND_MANAGER.get_active().await;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
 
     // For Local backend: use OAuth port (separate rclone instance)
     // For Remote backend: use main API directly (no separate OAuth process)
@@ -274,8 +271,8 @@ pub async fn update_remote(
     app: AppHandle,
     name: String,
     parameters: HashMap<String, Value>,
-    state: State<'_, RcloneState>,
 ) -> Result<(), String> {
+    let state = app.state::<RcloneState>();
     let remote_type = parameters
         .get("type")
         .and_then(|v| v.as_str())
@@ -299,7 +296,8 @@ pub async fn update_remote(
         .await
         .map_err(|e| e.to_string())?;
 
-    let backend = BACKEND_MANAGER.get_active().await;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
 
     // For Local backend: use OAuth port (separate rclone instance)
     // For Remote backend: use main API directly (no separate OAuth process)
@@ -352,13 +350,14 @@ pub async fn update_remote(
 pub async fn delete_remote(
     app: AppHandle,
     name: String,
-    state: State<'_, RcloneState>,
     cache: State<'_, ScheduledTasksCache>,
     scheduler: State<'_, CronScheduler>,
 ) -> Result<(), String> {
+    let state = app.state::<RcloneState>();
     info!("🗑️ Deleting remote: {name}");
 
-    let backend = BACKEND_MANAGER.get_active().await;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
     let _ = backend
         .post_json(&state.client, config::DELETE, Some(&json!({"name": name})))
         .await

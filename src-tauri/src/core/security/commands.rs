@@ -42,9 +42,11 @@ pub async fn store_config_password(
             }
 
             // Update BackendManager's Local instance in memory
-            if let Some(mut backend) = crate::rclone::backend::BACKEND_MANAGER.get("Local").await {
+            use crate::rclone::backend::BackendManager;
+            let backend_manager = app.state::<BackendManager>();
+            if let Some(mut backend) = backend_manager.get("Local").await {
                 backend.config_password = Some(password.clone());
-                let _ = crate::rclone::backend::BACKEND_MANAGER
+                let _ = backend_manager
                     .update(manager.inner(), "Local", backend)
                     .await;
                 debug!("📝 Updated in-memory Local backend config password");
@@ -129,6 +131,7 @@ pub async fn has_stored_password(_manager: State<'_, AppSettingsManager>) -> Res
 #[tauri::command]
 #[cfg(desktop)]
 pub async fn remove_config_password(
+    app: AppHandle,
     env_manager: State<'_, SafeEnvironmentManager>,
     manager: State<'_, AppSettingsManager>,
 ) -> Result<(), String> {
@@ -137,9 +140,12 @@ pub async fn remove_config_password(
     if let Some(credentials) = manager.inner().credentials() {
         let _ = credentials.remove(LOCAL_BACKEND_KEY);
 
-        if let Some(mut backend) = crate::rclone::backend::BACKEND_MANAGER.get("Local").await {
+        use crate::rclone::backend::BackendManager;
+        let backend_manager = app.state::<BackendManager>();
+
+        if let Some(mut backend) = backend_manager.get("Local").await {
             backend.config_password = None;
-            let _ = crate::rclone::backend::BACKEND_MANAGER
+            let _ = backend_manager
                 .update(manager.inner(), "Local", backend)
                 .await;
             debug!("📝 Cleared in-memory Local backend config password");
@@ -157,6 +163,7 @@ pub async fn remove_config_password(
 #[tauri::command]
 #[cfg(not(desktop))]
 pub async fn remove_config_password(
+    _app: AppHandle,
     env_manager: State<'_, SafeEnvironmentManager>,
     _manager: State<'_, AppSettingsManager>,
 ) -> Result<(), String> {
@@ -179,12 +186,11 @@ pub async fn validate_rclone_password(app: AppHandle, password: String) -> Resul
         ));
     }
 
-    let config_path = crate::rclone::backend::BACKEND_MANAGER
-        .get_local_config_path()
-        .await
-        .map_err(
-            |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
-        )?;
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app.state::<BackendManager>();
+    let config_path = backend_manager.get_local_config_path().await.map_err(
+        |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
+    )?;
 
     let output = build_rclone_command(&app, None, config_path.as_deref(), None)
         .args(["listremotes", "--ask-password=false"])
@@ -241,12 +247,11 @@ pub async fn set_config_password_env(
 pub async fn is_config_encrypted(app: AppHandle) -> Result<bool, String> {
     debug!("🔍 Checking if rclone config is encrypted");
 
-    let config_path = crate::rclone::backend::BACKEND_MANAGER
-        .get_local_config_path()
-        .await
-        .map_err(
-            |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
-        )?;
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app.state::<BackendManager>();
+    let config_path = backend_manager.get_local_config_path().await.map_err(
+        |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
+    )?;
 
     let output = build_rclone_command(&app, None, config_path.as_deref(), None)
         .args(["listremotes", "--ask-password=false"])
@@ -286,12 +291,11 @@ pub async fn encrypt_config(
 ) -> Result<(), String> {
     info!("🔐 Encrypting rclone configuration (using password-command)");
 
-    let config_path = crate::rclone::backend::BACKEND_MANAGER
-        .get_local_config_path()
-        .await
-        .map_err(
-            |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
-        )?;
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app.state::<BackendManager>();
+    let config_path = backend_manager.get_local_config_path().await.map_err(
+        |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
+    )?;
 
     let rclone_command = build_rclone_command(&app, None, config_path.as_deref(), None);
 
@@ -339,9 +343,9 @@ pub async fn encrypt_config(
             );
         } else {
             // Update BackendManager in memory
-            if let Some(mut backend) = crate::rclone::backend::BACKEND_MANAGER.get("Local").await {
+            if let Some(mut backend) = backend_manager.get("Local").await {
                 backend.config_password = Some(password.clone());
-                let _ = crate::rclone::backend::BACKEND_MANAGER
+                let _ = backend_manager
                     .update(manager.inner(), "Local", backend)
                     .await;
             }
@@ -350,7 +354,7 @@ pub async fn encrypt_config(
         // Set environment variable for current session
         env_manager.set_config_password(password.clone());
         // Ensure config is unlocked for current session
-        unlock_rclone_config(app.clone(), password, app.state()).await?;
+        unlock_rclone_config(app.clone(), password).await?;
 
         info!("✅ Configuration encrypted successfully");
         Ok(())
@@ -388,12 +392,11 @@ pub async fn unencrypt_config(
 ) -> Result<(), String> {
     info!("🔓 Unencrypting rclone configuration");
 
-    let config_path = crate::rclone::backend::BACKEND_MANAGER
-        .get_local_config_path()
-        .await
-        .map_err(
-            |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
-        )?;
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app.state::<BackendManager>();
+    let config_path = backend_manager.get_local_config_path().await.map_err(
+        |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
+    )?;
 
     let rclone_command = build_rclone_command(&app, None, config_path.as_deref(), None);
 
@@ -432,9 +435,9 @@ pub async fn unencrypt_config(
             let _ = credentials.remove(LOCAL_BACKEND_KEY);
 
             // Update BackendManager in memory
-            if let Some(mut backend) = crate::rclone::backend::BACKEND_MANAGER.get("Local").await {
+            if let Some(mut backend) = backend_manager.get("Local").await {
                 backend.config_password = None;
-                let _ = crate::rclone::backend::BACKEND_MANAGER
+                let _ = backend_manager
                     .update(manager.inner(), "Local", backend)
                     .await;
             }

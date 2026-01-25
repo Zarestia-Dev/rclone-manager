@@ -162,7 +162,7 @@ export class FlagConfigStepComponent {
 
   get shouldRequireEmptyFolder(): boolean {
     if (this.isType('mount')) {
-      const allowNonEmpty = this.configGroup?.get('options.AllowNonEmpty')?.value;
+      const allowNonEmpty = this.configGroup?.get('options.mount---allow_non_empty')?.value;
       return !allowNonEmpty;
     }
     return false;

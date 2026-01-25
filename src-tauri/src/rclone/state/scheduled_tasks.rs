@@ -8,7 +8,7 @@ use crate::{
 use log::{debug, info, warn};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::sync::RwLock;
 
 use crate::utils::types::events::SCHEDULED_TASKS_CACHE_CHANGED;
@@ -635,8 +635,9 @@ pub async fn reload_scheduled_tasks_from_configs(
     info!("🔄 Reloading scheduled tasks from configs...");
 
     // Get the active backend name
-    use crate::rclone::backend::BACKEND_MANAGER;
-    let backend_name = BACKEND_MANAGER.get_active_name().await;
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app.state::<BackendManager>();
+    let backend_name = backend_manager.get_active_name().await;
 
     // Load tasks from configs (this preserves existing task states)
     let task_count = cache

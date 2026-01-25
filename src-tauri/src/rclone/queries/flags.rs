@@ -1,44 +1,49 @@
 use serde_json::{Map, Value, json};
 use std::error::Error;
-use tauri::{State, command};
+use tauri::command;
 use tokio::try_join;
 
 use crate::{
-    rclone::backend::BACKEND_MANAGER,
+    rclone::backend::BackendManager,
     utils::{rclone::endpoints::options, types::core::RcloneState},
 };
+use tauri::AppHandle;
+use tauri::Manager;
 
 // --- PRIVATE HELPERS ---
 // These functions perform the raw API calls and are the foundation.
 
 async fn fetch_all_options_info(
-    state: State<'_, RcloneState>,
+    client: &reqwest::Client,
+    backend_manager: &BackendManager,
 ) -> Result<Value, Box<dyn Error + Send + Sync>> {
-    let backend = BACKEND_MANAGER.get_active().await;
+    let backend = backend_manager.get_active().await;
     let json = backend
-        .post_json(&state.client, options::INFO, Some(&json!({})))
+        .post_json(client, options::INFO, Some(&json!({})))
         .await
         .map_err(|e| format!("Failed to fetch options info: {e}"))?;
     Ok(json)
 }
 
 async fn fetch_current_options(
-    state: State<'_, RcloneState>,
+    client: &reqwest::Client,
+    backend_manager: &BackendManager,
 ) -> Result<Value, Box<dyn Error + Send + Sync>> {
-    let backend = BACKEND_MANAGER.get_active().await;
+    let backend = backend_manager.get_active().await;
     let json = backend
-        .post_json(&state.client, options::GET, Some(&json!({})))
+        .post_json(client, options::GET, Some(&json!({})))
         .await
         .map_err(|e| format!("Failed to fetch current options: {e}"))?;
     Ok(json)
 }
 
 async fn fetch_option_blocks(
-    state: State<'_, RcloneState>,
+    client: &reqwest::Client,
+    backend_manager: &BackendManager,
 ) -> Result<Value, Box<dyn Error + Send + Sync>> {
-    let backend = BACKEND_MANAGER.get_active().await;
+    let backend = backend_manager.get_active().await;
     let json = backend
-        .post_json(&state.client, options::BLOCKS, Some(&json!({})))
+        .post_json(client, options::BLOCKS, Some(&json!({})))
         .await
         .map_err(|e| format!("Failed to fetch option blocks: {e}"))?;
     Ok(json)
@@ -138,11 +143,14 @@ fn group_options(merged_info: &Value) -> Value {
 }
 
 // --- MASTER DATA COMMANDS ---
+
 #[command]
-pub async fn get_all_options_with_values(state: State<'_, RcloneState>) -> Result<Value, String> {
+pub async fn get_all_options_with_values(app: AppHandle) -> Result<Value, String> {
+    let backend_manager = app.state::<BackendManager>();
+    let state = app.state::<RcloneState>();
     let (mut options_info, current_options) = try_join!(
-        fetch_all_options_info(state.clone()),
-        fetch_current_options(state)
+        fetch_all_options_info(&state.client, &backend_manager),
+        fetch_current_options(&state.client, &backend_manager)
     )
     .map_err(|e| e.to_string())?;
 
@@ -151,18 +159,21 @@ pub async fn get_all_options_with_values(state: State<'_, RcloneState>) -> Resul
 }
 
 #[command]
-pub async fn get_grouped_options_with_values(
-    state: State<'_, RcloneState>,
-) -> Result<Value, String> {
-    let merged_flat_data = get_all_options_with_values(state).await?;
+
+pub async fn get_grouped_options_with_values(app: AppHandle) -> Result<Value, String> {
+    let merged_flat_data = get_all_options_with_values(app).await?;
     let grouped_data = group_options(&merged_flat_data);
     Ok(grouped_data)
 }
 
 // --- GENERAL & FLAG-SPECIFIC COMMANDS ---
 #[command]
-pub async fn get_option_blocks(state: State<'_, RcloneState>) -> Result<Value, String> {
-    fetch_option_blocks(state).await.map_err(|e| e.to_string())
+
+pub async fn get_option_blocks(app: AppHandle) -> Result<Value, String> {
+    let backend_manager = app.state::<BackendManager>();
+    fetch_option_blocks(&app.state::<RcloneState>().client, &backend_manager)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 fn get_flags_by_category_internal(
@@ -198,12 +209,12 @@ fn get_flags_by_category_internal(
 
 #[command]
 pub async fn get_flags_by_category(
-    state: State<'_, RcloneState>,
+    app: AppHandle,
     category: String,
     filter_groups: Option<Vec<String>>,
     exclude_flags: Option<Vec<String>>,
 ) -> Result<Vec<Value>, String> {
-    let merged_json = get_all_options_with_values(state).await?;
+    let merged_json = get_all_options_with_values(app).await?;
     Ok(get_flags_by_category_internal(
         &merged_json,
         &category,
@@ -213,8 +224,9 @@ pub async fn get_flags_by_category(
 }
 
 #[command]
-pub async fn get_copy_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
-    let merged_json = get_all_options_with_values(state).await?;
+
+pub async fn get_copy_flags(app: AppHandle) -> Result<Vec<Value>, String> {
+    let merged_json = get_all_options_with_values(app).await?;
     Ok(get_flags_by_category_internal(
         &merged_json,
         "main",
@@ -224,8 +236,9 @@ pub async fn get_copy_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>,
 }
 
 #[command]
-pub async fn get_sync_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
-    let merged_json = get_all_options_with_values(state).await?;
+
+pub async fn get_sync_flags(app: AppHandle) -> Result<Vec<Value>, String> {
+    let merged_json = get_all_options_with_values(app).await?;
     Ok(get_flags_by_category_internal(
         &merged_json,
         "main",
@@ -239,8 +252,9 @@ pub async fn get_sync_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>,
 }
 
 #[command]
-pub async fn get_filter_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
-    let merged_json = get_all_options_with_values(state).await?;
+
+pub async fn get_filter_flags(app: AppHandle) -> Result<Vec<Value>, String> {
+    let merged_json = get_all_options_with_values(app).await?;
     let filter_flags = get_flags_by_category_internal(&merged_json, "filter", None, None);
 
     let filtered: Vec<Value> = filter_flags
@@ -264,8 +278,9 @@ pub async fn get_filter_flags(state: State<'_, RcloneState>) -> Result<Vec<Value
 }
 
 #[command]
-pub async fn get_backend_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
-    let merged_json = get_all_options_with_values(state).await?;
+
+pub async fn get_backend_flags(app: AppHandle) -> Result<Vec<Value>, String> {
+    let merged_json = get_all_options_with_values(app).await?;
     let main_flags = get_flags_by_category_internal(&merged_json, "main", None, None);
 
     let mut backend_flags: Vec<Value> = main_flags
@@ -294,8 +309,9 @@ pub async fn get_backend_flags(state: State<'_, RcloneState>) -> Result<Vec<Valu
 }
 
 #[command]
-pub async fn get_vfs_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
-    let merged_json = get_all_options_with_values(state).await?;
+
+pub async fn get_vfs_flags(app: AppHandle) -> Result<Vec<Value>, String> {
+    let merged_json = get_all_options_with_values(app).await?;
     Ok(get_flags_by_category_internal(
         &merged_json,
         "vfs",
@@ -305,8 +321,9 @@ pub async fn get_vfs_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, 
 }
 
 #[command]
-pub async fn get_mount_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
-    let merged_json = get_all_options_with_values(state).await?;
+
+pub async fn get_mount_flags(app: AppHandle) -> Result<Vec<Value>, String> {
+    let merged_json = get_all_options_with_values(app).await?;
     Ok(get_flags_by_category_internal(
         &merged_json,
         "mount",
@@ -320,8 +337,9 @@ pub async fn get_mount_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>
 }
 
 #[command]
-pub async fn get_move_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
-    let merged_json = get_all_options_with_values(state).await?;
+
+pub async fn get_move_flags(app: AppHandle) -> Result<Vec<Value>, String> {
+    let merged_json = get_all_options_with_values(app).await?;
     // Move largely shares the same main groups as copy; expose Copy + Performance flags
     Ok(get_flags_by_category_internal(
         &merged_json,
@@ -332,8 +350,9 @@ pub async fn get_move_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>,
 }
 
 #[command]
-pub async fn get_bisync_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
-    let merged_json = get_all_options_with_values(state).await?;
+
+pub async fn get_bisync_flags(app: AppHandle) -> Result<Vec<Value>, String> {
+    let merged_json = get_all_options_with_values(app).await?;
     // Bisync needs a mix of Sync and Copy related flags; include Performance as well
     Ok(get_flags_by_category_internal(
         &merged_json,
@@ -350,12 +369,13 @@ pub async fn get_bisync_flags(state: State<'_, RcloneState>) -> Result<Vec<Value
 /// Get flags/options for a specific serve type
 /// If no serve_type is provided, defaults to "http"
 #[command]
+
 pub async fn get_serve_flags(
+    app: AppHandle,
     serve_type: Option<String>,
-    state: State<'_, RcloneState>,
 ) -> Result<Vec<Value>, String> {
     let serve_type = serve_type.unwrap_or_else(|| "http".to_string());
-    let merged_json = get_all_options_with_values(state).await?;
+    let merged_json = get_all_options_with_values(app).await?;
     let flags = get_flags_by_category_internal(&merged_json, &serve_type, None, None);
 
     // Simplify FieldName to only the part after the last dot
@@ -378,13 +398,15 @@ pub async fn get_serve_flags(
 
 /// Saves a single RClone option value by building a nested JSON payload.
 #[command]
+
 pub async fn set_rclone_option(
-    state: State<'_, RcloneState>,
+    app: AppHandle,
     block_name: String,
     option_name: String,
     value: Value,
 ) -> Result<Value, String> {
-    let backend = BACKEND_MANAGER.get_active().await;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
     let parts: Vec<&str> = option_name.split('.').collect();
     let nested_value = parts
         .iter()
@@ -393,7 +415,11 @@ pub async fn set_rclone_option(
     let payload = json!({ block_name.clone(): nested_value });
 
     let json = backend
-        .post_json(&state.client, options::SET, Some(&payload))
+        .post_json(
+            &app.state::<RcloneState>().client,
+            options::SET,
+            Some(&payload),
+        )
         .await
         .map_err(|e| {
             format!(

@@ -431,6 +431,12 @@
                           >
                             <mat-icon svgIcon="close"></mat-icon>
                           </button>
+                          @if (
+                            getArrayItemControl(category, key, $index).invalid &&
+                            getArrayItemControl(category, key, $index).touched
+                          ) {
+                            <mat-error>{{ getValidationMessage(category, key, $index) }}</mat-error>
+                          }
                         </mat-form-field>
                       </div>
                     }

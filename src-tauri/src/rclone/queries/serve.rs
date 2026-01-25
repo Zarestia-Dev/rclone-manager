@@ -1,9 +1,8 @@
 use log::debug;
 use serde_json::Value;
-use tauri::State;
 
 use crate::{
-    rclone::backend::{BACKEND_MANAGER, types::Backend},
+    rclone::backend::types::Backend,
     utils::{
         rclone::endpoints::serve,
         types::{core::RcloneState, remotes::ServeInstance},
@@ -36,11 +35,14 @@ pub fn parse_serves_response(response: &Value) -> Vec<ServeInstance> {
 
 /// Get all supported serve types from rclone
 #[tauri::command]
-pub async fn get_serve_types(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
-    let backend = BACKEND_MANAGER.get_active().await;
+pub async fn get_serve_types(app: tauri::AppHandle) -> Result<Vec<String>, String> {
+    use crate::rclone::backend::BackendManager;
+    use tauri::Manager;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
 
     let json = backend
-        .post_json(&state.client, serve::TYPES, None)
+        .post_json(&app.state::<RcloneState>().client, serve::TYPES, None)
         .await
         .map_err(|e| format!("Failed to fetch serve types: {e}"))?;
 
@@ -73,7 +75,10 @@ pub async fn list_serves_internal(
 
 #[cfg(not(feature = "web-server"))]
 #[tauri::command]
-pub async fn list_serves(state: State<'_, RcloneState>) -> Result<Value, String> {
-    let backend = BACKEND_MANAGER.get_active().await;
-    list_serves_internal(&state.client, &backend).await
+pub async fn list_serves(app: tauri::AppHandle) -> Result<Value, String> {
+    use crate::rclone::backend::BackendManager;
+    use tauri::Manager;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    list_serves_internal(&app.state::<RcloneState>().client, &backend).await
 }

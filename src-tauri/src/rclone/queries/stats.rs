@@ -1,17 +1,18 @@
 use log::{debug, error};
 use serde_json::json;
-use tauri::State;
 
-use crate::rclone::backend::BACKEND_MANAGER;
+use crate::rclone::backend::BackendManager;
 use crate::utils::rclone::endpoints::core;
 use crate::utils::types::core::RcloneState;
+use tauri::{AppHandle, Manager};
 
 /// Get RClone core statistics  
 #[tauri::command]
-pub async fn get_core_stats(state: State<'_, RcloneState>) -> Result<serde_json::Value, String> {
-    let backend = BACKEND_MANAGER.get_active().await;
+pub async fn get_core_stats(app: AppHandle) -> Result<serde_json::Value, String> {
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
     backend
-        .post_json(&state.client, core::STATS, None)
+        .post_json(&app.state::<RcloneState>().client, core::STATS, None)
         .await
         .map_err(|e| format!("Failed to get core stats: {e}"))
 }
@@ -19,11 +20,12 @@ pub async fn get_core_stats(state: State<'_, RcloneState>) -> Result<serde_json:
 /// Get RClone core statistics filtered by group/job
 #[tauri::command]
 pub async fn get_core_stats_filtered(
-    state: State<'_, RcloneState>,
+    app: AppHandle,
     jobid: Option<u64>,
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    let backend = BACKEND_MANAGER.get_active().await;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
     let mut payload = json!({});
 
     if let Some(group) = group {
@@ -38,7 +40,11 @@ pub async fn get_core_stats_filtered(
     }
 
     backend
-        .post_json(&state.client, core::STATS, Some(&payload))
+        .post_json(
+            &app.state::<RcloneState>().client,
+            core::STATS,
+            Some(&payload),
+        )
         .await
         .map_err(|e| {
             error!("❌ Failed to get filtered core stats: {e}");
@@ -49,10 +55,11 @@ pub async fn get_core_stats_filtered(
 /// Get completed transfers using core/transferred API
 #[tauri::command]
 pub async fn get_completed_transfers(
-    state: State<'_, RcloneState>,
+    app: AppHandle,
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    let backend = BACKEND_MANAGER.get_active().await;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
     let mut payload = json!({});
     if let Some(group) = group {
         payload["group"] = json!(group);
@@ -63,7 +70,11 @@ pub async fn get_completed_transfers(
 
     #[cfg_attr(not(target_os = "windows"), allow(unused_mut))]
     let mut value = backend
-        .post_json(&state.client, core::TRANSFERRED, Some(&payload))
+        .post_json(
+            &app.state::<RcloneState>().client,
+            core::TRANSFERRED,
+            Some(&payload),
+        )
         .await
         .map_err(|e| {
             error!("❌ Failed to get completed transfers: {e}");

@@ -4,7 +4,7 @@ use tauri::{AppHandle, Emitter, Manager, async_runtime::spawn_blocking};
 
 use crate::{
     rclone::{
-        backend::BACKEND_MANAGER,
+        backend::BackendManager,
         commands::{job::stop_job, mount::unmount_all_remotes, serve::stop_all_serves},
         state::watcher::{stop_mounted_remote_watcher, stop_serve_watcher},
     },
@@ -38,8 +38,10 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     let scheduler_state = app_handle.state::<CronScheduler>();
 
     // Count active jobs/serves (for logging) from shared caches
-    let job_cache = &BACKEND_MANAGER.job_cache;
-    let remote_cache = &BACKEND_MANAGER.remote_cache;
+    // Count active jobs/serves (for logging) from shared caches
+    let backend_manager = app_handle.state::<BackendManager>();
+    let job_cache = &backend_manager.job_cache;
+    let remote_cache = &backend_manager.remote_cache;
 
     let job_count = job_cache.get_active_jobs().await.len();
     let serve_count = remote_cache.get_serves().await.len();
@@ -57,11 +59,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     // Unmount all remotes (using global helper which currently only handles active)
     let unmount_task = tokio::time::timeout(
         tokio::time::Duration::from_secs(5),
-        unmount_all_remotes(
-            app_handle.clone(),
-            app_handle.state(),
-            "shutdown".to_string(),
-        ),
+        unmount_all_remotes(app_handle.clone(), "shutdown".to_string()),
     );
 
     let stop_jobs_task = tokio::time::timeout(
@@ -71,11 +69,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
 
     let stop_serves_task = tokio::time::timeout(
         tokio::time::Duration::from_secs(5),
-        stop_all_serves(
-            app_handle.clone(),
-            app_handle.state(),
-            "shutdown".to_string(),
-        ),
+        stop_all_serves(app_handle.clone(), "shutdown".to_string()),
     );
 
     let (unmount_result, stop_jobs_result, stop_serves_result) =
@@ -137,7 +131,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
             // Use blocking_lock to get the guard synchronously
             let mut engine = engine_state.blocking_lock();
             // Use block_on to run the async shutdown method
-            tauri::async_runtime::block_on(engine.shutdown());
+            tauri::async_runtime::block_on(engine.shutdown(&app_handle_clone));
             Ok(())
         }),
     );
@@ -176,7 +170,9 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
 }
 
 async fn stop_all_active_jobs(app: AppHandle) -> Result<(), String> {
-    let job_cache = &BACKEND_MANAGER.job_cache;
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app.state::<BackendManager>();
+    let job_cache = &backend_manager.job_cache;
     let active_jobs = job_cache.get_active_jobs().await;
     let mut errors = Vec::new();
     let scheduled_cache = app.state::<ScheduledTasksCache>();
@@ -187,7 +183,6 @@ async fn stop_all_active_jobs(app: AppHandle) -> Result<(), String> {
             scheduled_cache.clone(),
             job.jobid,
             job.remote_name.clone(),
-            app.state(),
         )
         .await
         {

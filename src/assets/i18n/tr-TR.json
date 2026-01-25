@@ -229,6 +229,10 @@
         "label": "Rclone İkili Dosya Yolu",
         "description": "Rclone ikili dosyası veya dizininin yolu. Otomatik algılama için boş bırakın."
       },
+      "rclone_flags": {
+        "label": "Ek Rclone Bayrakları",
+        "description": "Rclone işlemine ek bayraklar ekleyin (örn. --cache-dir=/path/to/cache). Bazı bayraklar ayrılmıştır."
+      },
       "bandwidth_limit": {
         "label": "Bant Genişliği Sınırı",
         "description": "Rclone transferleri tarafından kullanılan bant genişliğini sınırlar. Format: 'yükleme:indirme'"
@@ -1504,6 +1508,7 @@
         "invalidPath": "Lütfen geçerli bir mutlak dosya yolu girin.",
         "bandwidth": "Geçersiz biçim (örn., 10M veya 5M:2M).",
         "urlArray": "Tüm ögeler geçerli URL ler olmalıdır (örn., https://...).",
+        "reserved": "Ayrılmış değer: {{value}}",
         "invalid": "Geçersiz değer."
       },
       "tabs": {

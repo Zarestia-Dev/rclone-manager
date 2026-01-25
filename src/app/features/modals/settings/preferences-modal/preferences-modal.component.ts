@@ -207,13 +207,18 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
       }
 
       const validators = this.getValidators(meta, fullKey);
-      const control =
-        meta.value_type === 'string[]'
-          ? this.fb.array(
-              ((meta.value || []) as string[]).map(val => this.fb.control(val)),
-              validators
-            )
-          : this.fb.control(meta.value, validators);
+
+      let control: FormControl | FormArray;
+
+      if (meta.value_type === 'string[]') {
+        const itemValidators = this.getItemValidators(meta);
+        control = this.fb.array(
+          ((meta.value || []) as string[]).map(val => this.fb.control(val, itemValidators)),
+          validators
+        );
+      } else {
+        control = this.fb.control(meta.value, validators);
+      }
 
       formGroups[category].addControl(key, control);
     }
@@ -238,6 +243,33 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     if (control?.valid) {
       this.updateSetting(category, key, control.value);
     }
+  }
+
+  private getItemValidators(meta: SettingMetadata): ValidatorFn[] {
+    const validators: ValidatorFn[] = [];
+    if (meta.reserved && meta.reserved.length > 0) {
+      validators.push(this.createReservedValidator(meta.reserved));
+    }
+    return validators;
+  }
+
+  private createReservedValidator(reserved: string[]): ValidatorFn {
+    return (control: AbstractControl): Record<string, any> | null => {
+      const value = control.value;
+      if (!value) return null;
+
+      // Check for exact match or starts with (for flags)
+      // Reserved: ["--rc-serve"]
+      // Input: "--rc-serve" -> Invalid
+      // Input: "--rc-serve=123" -> Invalid
+      // Input: "--log-file" -> Invalid
+
+      const isReserved = reserved.some(
+        r => value === r || value.startsWith(r + '=') || value.startsWith(r + ' ')
+      );
+
+      return isReserved ? { reserved: { value, reservedValues: reserved } } : null;
+    };
   }
 
   private getValidators(meta: SettingMetadata, fullKey: string): ValidatorFn[] {
@@ -384,7 +416,9 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
 
   addArrayItem(category: string, key: string): void {
     const control = this.getFormControl(category, key) as FormArray;
-    control.push(this.fb.control(''));
+    const meta = this.getMetadata(category, key);
+    const itemValidators = this.getItemValidators(meta);
+    control.push(this.fb.control('', itemValidators));
   }
 
   removeArrayItem(category: string, key: string, index: number): void {
@@ -402,8 +436,15 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     if (result) this.getFormControl(category, key).setValue(result);
   }
 
-  getValidationMessage(category: string, key: string): string {
-    const ctrl = this.getFormControl(category, key);
+  getValidationMessage(category: string, key: string, index?: number): string {
+    let ctrl: AbstractControl | null;
+
+    if (index !== undefined) {
+      ctrl = this.getArrayItemControl(category, key, index);
+    } else {
+      ctrl = this.getFormControl(category, key);
+    }
+
     if (!ctrl?.errors) return '';
     const meta = this.getMetadata(category, key);
     if (ctrl.hasError('required'))
@@ -420,6 +461,11 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
       return this.translate.instant('modals.preferences.validation.bandwidth');
     if (ctrl.hasError('urlArray'))
       return this.translate.instant('modals.preferences.validation.urlArray');
+    if (ctrl.hasError('reserved'))
+      return this.translate.instant('modals.preferences.validation.reserved', {
+        value: ctrl.errors['reserved'].value,
+      });
+
     return this.translate.instant('modals.preferences.validation.invalid');
   }
 

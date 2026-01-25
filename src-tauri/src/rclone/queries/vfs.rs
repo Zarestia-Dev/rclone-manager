@@ -1,15 +1,18 @@
 use log::debug;
 use serde_json::{Value, json};
-use tauri::{State, command};
+use tauri::command;
 
-use crate::rclone::backend::BACKEND_MANAGER;
+use crate::rclone::backend::BackendManager;
 use crate::utils::rclone::endpoints::vfs;
 use crate::utils::types::core::RcloneState;
+use tauri::{AppHandle, Manager};
 
 /// List active VFSes.
 #[command]
-pub async fn vfs_list(state: State<'_, RcloneState>) -> Result<Value, String> {
-    let backend = BACKEND_MANAGER.get_active().await;
+pub async fn vfs_list(app: AppHandle) -> Result<Value, String> {
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let state = app.state::<RcloneState>();
     let json = backend
         .post_json(&state.client, vfs::LIST, None)
         .await
@@ -22,11 +25,12 @@ pub async fn vfs_list(state: State<'_, RcloneState>) -> Result<Value, String> {
 /// Forget files or directories in the directory cache.
 #[command]
 pub async fn vfs_forget(
-    state: State<'_, RcloneState>,
+    app: AppHandle,
     fs: Option<String>,
     file: Option<String>,
 ) -> Result<Value, String> {
-    let backend = BACKEND_MANAGER.get_active().await;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
     let mut payload = json!({});
 
     if let Some(f) = fs {
@@ -36,6 +40,7 @@ pub async fn vfs_forget(
         payload["file"] = Value::String(f);
     }
 
+    let state = app.state::<RcloneState>();
     let json = backend
         .post_json(&state.client, vfs::FORGET, Some(&payload))
         .await
@@ -47,12 +52,13 @@ pub async fn vfs_forget(
 /// Refresh the directory cache.
 #[command]
 pub async fn vfs_refresh(
-    state: State<'_, RcloneState>,
+    app: AppHandle,
     fs: Option<String>,
     dir: Option<String>,
     recursive: bool,
 ) -> Result<Value, String> {
-    let backend = BACKEND_MANAGER.get_active().await;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
     let recursive_str = if recursive { "true" } else { "false" };
     let mut payload = json!({
         "recursive": recursive_str
@@ -65,6 +71,7 @@ pub async fn vfs_refresh(
         payload["dir"] = Value::String(d);
     }
 
+    let state = app.state::<RcloneState>();
     let json = backend
         .post_json(&state.client, vfs::REFRESH, Some(&payload))
         .await
@@ -75,13 +82,15 @@ pub async fn vfs_refresh(
 
 /// Get stats for a VFS.
 #[command]
-pub async fn vfs_stats(state: State<'_, RcloneState>, fs: Option<String>) -> Result<Value, String> {
-    let backend = BACKEND_MANAGER.get_active().await;
+pub async fn vfs_stats(app: AppHandle, fs: Option<String>) -> Result<Value, String> {
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
     let mut payload = json!({});
     if let Some(f) = fs {
         payload["fs"] = Value::String(f);
     }
 
+    let state = app.state::<RcloneState>();
     let json = backend
         .post_json(&state.client, vfs::STATS, Some(&payload))
         .await
@@ -93,12 +102,13 @@ pub async fn vfs_stats(state: State<'_, RcloneState>, fs: Option<String>) -> Res
 /// Get or update the value of the poll-interval option.
 #[command]
 pub async fn vfs_poll_interval(
-    state: State<'_, RcloneState>,
+    app: AppHandle,
     fs: Option<String>,
     interval: Option<String>,
     timeout: Option<String>,
 ) -> Result<Value, String> {
-    let backend = BACKEND_MANAGER.get_active().await;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
     let mut payload = json!({});
     if let Some(f) = fs {
         payload["fs"] = Value::String(f);
@@ -110,6 +120,7 @@ pub async fn vfs_poll_interval(
         payload["timeout"] = Value::String(t);
     }
 
+    let state = app.state::<RcloneState>();
     let json = backend
         .post_json(&state.client, vfs::POLL_INTERVAL, Some(&payload))
         .await
@@ -120,13 +131,15 @@ pub async fn vfs_poll_interval(
 
 /// Get VFS queue info
 #[command]
-pub async fn vfs_queue(state: State<'_, RcloneState>, fs: Option<String>) -> Result<Value, String> {
-    let backend = BACKEND_MANAGER.get_active().await;
+pub async fn vfs_queue(app: AppHandle, fs: Option<String>) -> Result<Value, String> {
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
     let mut payload = json!({});
     if let Some(f) = fs {
         payload["fs"] = Value::String(f);
     }
 
+    let state = app.state::<RcloneState>();
     let json = backend
         .post_json(&state.client, vfs::QUEUE, Some(&payload))
         .await
@@ -140,13 +153,14 @@ pub async fn vfs_queue(state: State<'_, RcloneState>, fs: Option<String>) -> Res
 /// Set the expiry time for an item queued for upload
 #[command]
 pub async fn vfs_queue_set_expiry(
-    state: State<'_, RcloneState>,
+    app: AppHandle,
     fs: Option<String>,
     id: u64,
     expiry: f64,
     relative: bool,
 ) -> Result<Value, String> {
-    let backend = BACKEND_MANAGER.get_active().await;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
     let mut payload = json!({
         "id": id,
         "expiry": expiry,
@@ -156,6 +170,7 @@ pub async fn vfs_queue_set_expiry(
         payload["fs"] = Value::String(f);
     }
 
+    let state = app.state::<RcloneState>();
     let json = backend
         .post_json(&state.client, vfs::QUEUE_SET_EXPIRY, Some(&payload))
         .await

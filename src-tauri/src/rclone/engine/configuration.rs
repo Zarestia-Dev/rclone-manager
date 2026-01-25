@@ -74,12 +74,11 @@ impl RcApiEngine {
         // Run 'rclone listremotes' to test the password
 
         // Fetch Local backend to get the configured config path
-        let config_path_string = crate::rclone::backend::BACKEND_MANAGER
-            .get_local_config_path()
-            .await
-            .map_err(|e| {
-                EngineError::ConfigValidationFailed(format!("Local backend error: {}", e))
-            })?;
+        use crate::rclone::backend::BackendManager;
+        let backend_manager = app.state::<BackendManager>();
+        let config_path_string = backend_manager.get_local_config_path().await.map_err(|e| {
+            EngineError::ConfigValidationFailed(format!("Local backend error: {}", e))
+        })?;
 
         let config_path = config_path_string.as_deref();
 

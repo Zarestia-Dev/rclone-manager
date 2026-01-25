@@ -87,8 +87,10 @@ fn handle_remote_presence_changed(app: &AppHandle) {
         tauri::async_runtime::spawn(async move {
             let client = app_clone.state::<RcloneState>().client.clone();
 
-            let backend = crate::rclone::backend::BACKEND_MANAGER.get_active().await;
-            let cache = &crate::rclone::backend::BACKEND_MANAGER.remote_cache;
+            use crate::rclone::backend::BackendManager;
+            let backend_manager = app_clone.state::<BackendManager>();
+            let backend = backend_manager.get_active().await;
+            let cache = &backend_manager.remote_cache;
 
             let refresh_tasks: (Result<(), String>, Result<(), String>) = tokio::join!(
                 cache.refresh_remote_list(&client, &backend),
@@ -241,10 +243,7 @@ fn handle_core_settings_change(app: &AppHandle, core: &Value) {
         };
 
         tauri::async_runtime::spawn(async move {
-            let rclone_state = app.state::<RcloneState>();
-            if let Err(e) =
-                set_bandwidth_limit(app.clone(), bandwidth_limit_opt, rclone_state).await
-            {
+            if let Err(e) = set_bandwidth_limit(app.clone(), bandwidth_limit_opt).await {
                 error!("Failed to set bandwidth limit: {e:?}");
             }
         });
@@ -262,6 +261,27 @@ fn handle_core_settings_change(app: &AppHandle, core: &Value) {
         ) {
             Ok(_) => info!("Rclone path updated to: {rclone_path}"),
             Err(e) => error!("Failed to restart engine for rclone path change: {e}"),
+        }
+    }
+
+    // 3. Rclone Additional Flags
+    if let Some(flags) = core
+        .get("rclone_additional_flags")
+        .and_then(|v| v.as_array())
+    {
+        debug!("🚩 Rclone additional flags changed to: {:?}", flags);
+
+        // Convert flags to string representation for logging
+        let flags_str = serde_json::to_string(flags).unwrap_or_default();
+
+        match crate::rclone::engine::lifecycle::restart_for_config_change(
+            app,
+            "rclone_additional_flags",
+            "previous",
+            &flags_str,
+        ) {
+            Ok(_) => info!("Engine restarting due to additional flags change"),
+            Err(e) => error!("Failed to restart engine for flags change: {e}"),
         }
     }
 

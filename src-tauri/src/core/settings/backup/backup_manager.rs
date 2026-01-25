@@ -80,9 +80,10 @@ pub async fn backup_settings(
         && let Some(ref name) = remote_name
     {
         use super::rclone_config_provider::RcloneConfigProvider;
-        use crate::rclone::backend::BACKEND_MANAGER;
+        use crate::rclone::backend::BackendManager;
+        let backend_manager = app_handle.state::<BackendManager>();
 
-        let all_configs = BACKEND_MANAGER.remote_cache.get_configs().await;
+        let all_configs = backend_manager.remote_cache.get_configs().await;
         let remote_config = all_configs.get(name).cloned();
 
         let provider = RcloneConfigProvider::for_remote(name, remote_config)
@@ -123,12 +124,13 @@ async fn register_rclone_config_provider(
     manager: &AppSettingsManager,
 ) -> Result<(), String> {
     use crate::core::settings::backup::rclone_config_provider::RcloneConfigProvider;
-    use crate::rclone::backend::BACKEND_MANAGER;
+    use crate::rclone::backend::BackendManager;
     use crate::rclone::queries::system::fetch_config_path;
     use crate::utils::types::core::RcloneState;
 
     let state = app_handle.state::<RcloneState>();
-    let backend = BACKEND_MANAGER.get_active().await;
+    let backend_manager = app_handle.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
 
     let config_path_str = fetch_config_path(&backend, &state.client)
         .await

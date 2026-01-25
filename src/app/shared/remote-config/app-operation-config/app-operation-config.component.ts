@@ -318,7 +318,12 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   private async selectLocalPath(group: PathGroup): Promise<void> {
-    const requireEmpty = this.isMount && group === 'dest';
+    // Mount dest folder should be empty unless AllowNonEmpty is enabled
+    let requireEmpty = false;
+    if (this.isMount && group === 'dest') {
+      const allowNonEmpty = this.opFormGroup.get('options.mount---allow_non_empty')?.value;
+      requireEmpty = !allowNonEmpty;
+    }
     const currentPath = this.getPathControl(group)?.value || '';
     try {
       const selectedPath = await this.fileSystemService.selectFolder(requireEmpty, currentPath);

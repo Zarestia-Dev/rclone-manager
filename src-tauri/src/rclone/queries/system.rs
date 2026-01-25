@@ -1,19 +1,22 @@
 use log::debug;
 use serde_json::json;
 use std::path::PathBuf;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager};
 
-use crate::rclone::backend::BACKEND_MANAGER;
+use crate::rclone::backend::BackendManager;
 use crate::utils::rclone::endpoints::{config, core};
 use crate::utils::types::core::{BandwidthLimitResponse, RcloneCoreVersion, RcloneState};
 
 #[tauri::command]
-pub async fn get_bandwidth_limit(
-    state: State<'_, RcloneState>,
-) -> Result<BandwidthLimitResponse, String> {
-    let backend = BACKEND_MANAGER.get_active().await;
+pub async fn get_bandwidth_limit(app: AppHandle) -> Result<BandwidthLimitResponse, String> {
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
     let json = backend
-        .post_json(&state.client, core::BWLIMIT, Some(&json!({})))
+        .post_json(
+            &app.state::<RcloneState>().client,
+            core::BWLIMIT,
+            Some(&json!({})),
+        )
         .await
         .map_err(|e| format!("Request failed: {e}"))?;
 
@@ -37,15 +40,20 @@ pub async fn fetch_version_info(
 }
 
 #[tauri::command]
-pub async fn get_rclone_info(state: State<'_, RcloneState>) -> Result<RcloneCoreVersion, String> {
-    let backend = BACKEND_MANAGER.get_active().await;
-    fetch_version_info(&backend, &state.client).await
+pub async fn get_rclone_info(app: AppHandle) -> Result<RcloneCoreVersion, String> {
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    fetch_version_info(&backend, &app.state::<RcloneState>().client).await
 }
 
 #[tauri::command]
-pub async fn get_rclone_pid(state: State<'_, RcloneState>) -> Result<Option<u32>, String> {
-    let backend = BACKEND_MANAGER.get_active().await;
-    match backend.post_json(&state.client, core::PID, None).await {
+pub async fn get_rclone_pid(app: AppHandle) -> Result<Option<u32>, String> {
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    match backend
+        .post_json(&app.state::<RcloneState>().client, core::PID, None)
+        .await
+    {
         Ok(json) => Ok(json.get("pid").and_then(|v| v.as_u64()).map(|v| v as u32)),
         Err(e) => {
             debug!("Failed to query /core/pid: {e}");
@@ -56,10 +64,11 @@ pub async fn get_rclone_pid(state: State<'_, RcloneState>) -> Result<Option<u32>
 
 /// Get RClone memory statistics
 #[tauri::command]
-pub async fn get_memory_stats(state: State<'_, RcloneState>) -> Result<serde_json::Value, String> {
-    let backend = BACKEND_MANAGER.get_active().await;
+pub async fn get_memory_stats(app: AppHandle) -> Result<serde_json::Value, String> {
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
     let json = backend
-        .post_json(&state.client, core::MEMSTATS, None)
+        .post_json(&app.state::<RcloneState>().client, core::MEMSTATS, None)
         .await
         .map_err(|e| format!("Failed to get memory stats: {e}"))?;
 
@@ -87,7 +96,8 @@ pub async fn fetch_config_path(
 #[tauri::command]
 pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {
     let state = app.state::<RcloneState>();
-    let backend = BACKEND_MANAGER.get_active().await;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
     match fetch_config_path(&backend, &state.client).await {
         Ok(path) => Ok(PathBuf::from(path)),
         Err(e) => Err(e),
@@ -96,7 +106,8 @@ pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {
 
 #[cfg(not(feature = "web-server"))]
 #[tauri::command]
-pub async fn get_rclone_rc_url() -> Result<String, String> {
-    let backend = BACKEND_MANAGER.get_active().await;
+pub async fn get_rclone_rc_url(app: AppHandle) -> Result<String, String> {
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
     Ok(backend.api_url())
 }

@@ -16,12 +16,11 @@
 use log::{debug, info};
 use serde_json::json;
 use std::path::{Path, PathBuf};
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::core::check_binaries::{build_rclone_command, get_rclone_binary_path, read_rclone_path};
 use crate::core::settings::operations::core::save_setting;
 use crate::utils::github_client;
-use crate::utils::types::core::RcloneState;
 use crate::{rclone::queries::get_rclone_info, utils::types::events::RCLONE_ENGINE_UPDATING};
 
 // ============================================================================
@@ -50,11 +49,10 @@ struct UpdateCheckResult {
 #[tauri::command]
 pub async fn check_rclone_update(
     app_handle: tauri::AppHandle,
-    state: State<'_, RcloneState>,
     channel: Option<String>,
 ) -> Result<serde_json::Value, String> {
     // Get current version
-    let current_version = match get_rclone_info(state.clone()).await {
+    let current_version = match get_rclone_info(app_handle.clone()).await {
         Ok(info) => info.version,
         Err(e) => {
             return Err(
@@ -111,7 +109,6 @@ fn clean_version(version: &str) -> String {
 /// 6. Restarts the engine
 #[tauri::command]
 pub async fn update_rclone(
-    state: State<'_, RcloneState>,
     app_handle: tauri::AppHandle,
     channel: Option<String>,
 ) -> Result<serde_json::Value, String> {
@@ -125,7 +122,7 @@ pub async fn update_rclone(
     debug!("🔍 Starting rclone update process");
 
     // Step 2: Check if update is available
-    let update_check = check_rclone_update(app_handle.clone(), state, channel.clone()).await?;
+    let update_check = check_rclone_update(app_handle.clone(), channel.clone()).await?;
     let update_available = update_check
         .get("update_available")
         .and_then(|v| v.as_bool())
@@ -202,7 +199,7 @@ pub async fn update_rclone(
         use crate::utils::types::core::EngineState;
         let engine_state = app_handle.state::<EngineState>();
         let mut engine = engine_state.lock().await;
-        if let Err(e) = engine.kill_process().await {
+        if let Err(e) = engine.kill_process(&app_handle).await {
             log::error!("Failed to stop engine before update: {e}");
         }
         engine.running = false;

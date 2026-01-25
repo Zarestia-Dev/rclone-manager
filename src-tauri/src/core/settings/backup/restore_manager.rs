@@ -5,15 +5,12 @@
 use crate::core::settings::AppSettingsManager;
 use crate::{
     rclone::commands::remote::create_remote,
-    utils::types::{
-        core::RcloneState,
-        events::{REMOTE_CACHE_CHANGED, SYSTEM_SETTINGS_CHANGED},
-    },
+    utils::types::events::{REMOTE_CACHE_CHANGED, SYSTEM_SETTINGS_CHANGED},
 };
 use log::{info, warn};
 use serde_json::json;
 use std::{fs::File, io::BufReader, path::Path};
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, State};
 use zip::ZipArchive;
 
 // DEPRECATION (2026-2027): Delete this line when removing legacy support
@@ -247,14 +244,14 @@ async fn restore_remote_from_json(
         obj.insert("config_is_local".to_string(), json!("false"));
     }
 
-    create_remote(
-        app_handle.clone(),
-        remote_name.to_string(),
-        config,
-        app_handle.state::<RcloneState>(),
-    )
-    .await
-    .map_err(|e| format!("Failed to create remote: {}", e))?;
+    // Convert to HashMap
+    let config_map: std::collections::HashMap<String, serde_json::Value> =
+        serde_json::from_value(config)
+            .map_err(|e| format!("Failed to convert config to map: {e}"))?;
+
+    create_remote(app_handle.clone(), remote_name.to_string(), config_map)
+        .await
+        .map_err(|e| format!("Failed to create remote: {}", e))?;
 
     Ok(())
 }

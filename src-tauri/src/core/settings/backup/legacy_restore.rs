@@ -22,10 +22,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     rclone::{commands::remote::create_remote, queries::get_rclone_config_file},
-    utils::types::{
-        core::RcloneState,
-        events::{REMOTE_CACHE_CHANGED, SYSTEM_SETTINGS_CHANGED},
-    },
+    utils::types::events::{REMOTE_CACHE_CHANGED, SYSTEM_SETTINGS_CHANGED},
 };
 use log::{debug, error, info, warn};
 use serde_json::json;
@@ -372,14 +369,13 @@ async fn restore_remote_from_file(path: &Path, app_handle: &AppHandle) -> Result
         .ok_or("Invalid filename")?
         .to_string();
 
-    create_remote(
-        app_handle.clone(),
-        remote_name.clone(),
-        config,
-        app_handle.state::<RcloneState>(),
-    )
-    .await
-    .map_err(|e| format!("Failed to create remote '{}': {}", remote_name, e))?;
+    let config_map: std::collections::HashMap<String, serde_json::Value> =
+        serde_json::from_value(config)
+            .map_err(|e| format!("Failed to convert config to map: {e}"))?;
+
+    create_remote(app_handle.clone(), remote_name.clone(), config_map)
+        .await
+        .map_err(|e| format!("Failed to create remote '{}': {}", remote_name, e))?;
 
     info!("Restored remote: {}", remote_name);
     Ok(())

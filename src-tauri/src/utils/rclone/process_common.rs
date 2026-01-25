@@ -3,6 +3,9 @@ use tauri::{AppHandle, Manager};
 
 use crate::core::check_binaries::build_rclone_command;
 use crate::core::security::SafeEnvironmentManager;
+use crate::core::settings::AppSettingsManager;
+use crate::core::settings::schema::CoreSettings;
+use rcman::SettingsSchema;
 
 /// Setup environment variables for rclone processes (main engine or OAuth)
 /// Password is retrieved from SafeEnvironmentManager (single source of truth)
@@ -58,7 +61,11 @@ pub async fn create_rclone_command(
     let paths = crate::core::paths::AppPaths::from_app_handle(app)?;
 
     // Fetch Local backend to get the configured config path
-    let config_path = crate::rclone::backend::BACKEND_MANAGER
+    // Fetch Local backend to get the configured config path
+    use crate::rclone::backend::BackendManager;
+    let backend_manager_state = app.state::<BackendManager>();
+
+    let config_path = backend_manager_state
         .get_local_config_path()
         .await
         .unwrap_or(None);
@@ -66,8 +73,7 @@ pub async fn create_rclone_command(
     let command = build_rclone_command(app, None, config_path.as_deref(), None);
 
     // Retrieve active backend settings to check for valid auth
-    let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
-    let backend = backend_manager.get_active().await;
+    let backend = backend_manager_state.get_active().await;
 
     // Determine port based on process type
     let port = match process_type {
@@ -109,6 +115,48 @@ pub async fn create_rclone_command(
         "--log-file-max-backups".to_string(),
         "5".to_string(),
     ];
+
+    // Inject user-defined flags from settings
+    {
+        let settings_manager = app.state::<AppSettingsManager>();
+        // get_all returns the typed AppSettings struct (Result)
+        if let Ok(settings) = settings_manager.get_all() {
+            let extra_flags = &settings.core.rclone_additional_flags;
+
+            if !extra_flags.is_empty() {
+                // Retrieve metadata to validate flags (checks for reserved values)
+                let metadata = CoreSettings::get_metadata();
+                if let Some(meta) = metadata.get("core.rclone_additional_flags") {
+                    let flags_value =
+                        serde_json::to_value(extra_flags).map_err(|e| e.to_string())?;
+
+                    if let Err(e) = meta.validate(&flags_value) {
+                        info!("❌ Blocked reserved/invalid flags: {}", e);
+                        return Err(crate::localized_error!(
+                            "backendErrors.rclone.invalidFlags",
+                            "error" => e
+                        ));
+                    }
+                }
+
+                info!("🚩 Appending user-defined flags: {:?}", extra_flags);
+
+                // Allow space-separated flags (e.g., "--log-level DEBUG") to be passed as separate arguments
+                for flag in extra_flags {
+                    if let Some((key, value)) = flag.split_once(' ') {
+                        // Split only on the FIRST space to preserve spaces in values
+                        // e.g. "--user-agent My Agent" -> "--user-agent", "My Agent"
+                        args.push(key.to_string());
+                        args.push(value.to_string());
+                    } else {
+                        args.push(flag.clone());
+                    }
+                }
+            }
+        } else {
+            info!("⚠️ Could not load settings to check for additional flags");
+        }
+    }
 
     if let Some((user, pass)) = auth_args {
         // Use auth args

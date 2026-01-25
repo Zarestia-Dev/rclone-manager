@@ -5,7 +5,7 @@ use tauri_plugin_opener::OpenerExt;
 
 use crate::{
     rclone::{
-        backend::BACKEND_MANAGER,
+        backend::BackendManager,
         commands::{
             job::stop_job,
             mount::{mount_remote_profile, unmount_remote},
@@ -18,7 +18,7 @@ use crate::{
     },
     utils::{
         app::notification::send_notification,
-        types::{core::RcloneState, jobs::JobStatus, remotes::ProfileParams},
+        types::{jobs::JobStatus, remotes::ProfileParams},
     },
 };
 
@@ -52,21 +52,11 @@ async fn handle_start_job_profile(
         profile_name: profile_name.clone(),
     };
 
-    let rclone_state = app.state::<RcloneState>();
-
     let result = match op_type {
-        "sync" => start_sync_profile(app.clone(), rclone_state, params)
-            .await
-            .map(|_| ()),
-        "copy" => start_copy_profile(app.clone(), rclone_state, params)
-            .await
-            .map(|_| ()),
-        "move" => start_move_profile(app.clone(), rclone_state, params)
-            .await
-            .map(|_| ()),
-        "bisync" => start_bisync_profile(app.clone(), rclone_state, params)
-            .await
-            .map(|_| ()),
+        "sync" => start_sync_profile(app.clone(), params).await.map(|_| ()),
+        "copy" => start_copy_profile(app.clone(), params).await.map(|_| ()),
+        "move" => start_move_profile(app.clone(), params).await.map(|_| ()),
+        "bisync" => start_bisync_profile(app.clone(), params).await.map(|_| ()),
         _ => Err(format!("Unknown operation type: {}", op_type)),
     };
 
@@ -176,7 +166,7 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
     let profile = profile_name.to_string();
 
     tauri::async_runtime::spawn(async move {
-        let backend_manager = &BACKEND_MANAGER;
+        let backend_manager = app_clone.state::<BackendManager>();
         // active backend check removed as get_active returns Backend directly
         // We can just rely on get_active or if logic requires checking if active...
         // But get_active returns the backend logic.
@@ -220,14 +210,7 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
             return;
         }
 
-        match unmount_remote(
-            app_clone.clone(),
-            mount_point.clone(),
-            remote.clone(),
-            app_clone.state(),
-        )
-        .await
-        {
+        match unmount_remote(app_clone.clone(), mount_point.clone(), remote.clone()).await {
             Ok(_) => {
                 info!("🛑 Unmounted {} profile '{}'", remote, profile);
                 send_notification(
@@ -305,7 +288,7 @@ async fn handle_stop_job_profile(
     job_type: &str,
     action_name: &str,
 ) {
-    let backend_manager = &BACKEND_MANAGER;
+    let backend_manager = app.state::<BackendManager>();
 
     let job_cache = backend_manager.job_cache.clone();
 
@@ -317,15 +300,7 @@ async fn handle_stop_job_profile(
             && j.status == JobStatus::Running
     }) {
         let scheduled_cache = app.state::<ScheduledTasksCache>();
-        match stop_job(
-            app.clone(),
-            scheduled_cache,
-            job.jobid,
-            remote_name.clone(),
-            app.state(),
-        )
-        .await
-        {
+        match stop_job(app.clone(), scheduled_cache, job.jobid, remote_name.clone()).await {
             Ok(_) => {
                 info!(
                     "🛑 Stopped {} job {} for {} profile '{}'",
@@ -499,7 +474,7 @@ pub fn handle_stop_serve_profile(app: AppHandle, _remote_name: &str, serve_id: &
     let serve_id_clone = serve_id.to_string();
 
     tauri::async_runtime::spawn(async move {
-        let backend_manager = &BACKEND_MANAGER;
+        let backend_manager = app_clone.state::<BackendManager>();
 
         let cache = backend_manager.remote_cache.clone();
 
@@ -515,7 +490,6 @@ pub fn handle_stop_serve_profile(app: AppHandle, _remote_name: &str, serve_id: &
             app_clone.clone(),
             serve_id_clone.clone(),
             remote_name.clone(),
-            app_clone.state(),
         )
         .await
         {
@@ -567,7 +541,8 @@ pub fn handle_stop_all_jobs(app: AppHandle) {
         // Stop all jobs across ALL backends
         // Stop all jobs across ALL backends -> Now just active job cache
         // Simplify to just job_cache
-        let job_cache = &BACKEND_MANAGER.job_cache;
+        let backend_manager = app.state::<BackendManager>();
+        let job_cache = &backend_manager.job_cache;
         let active_jobs = job_cache.get_active_jobs().await;
         let mut stopped_count = 0;
 
@@ -579,7 +554,6 @@ pub fn handle_stop_all_jobs(app: AppHandle) {
                     scheduled_cache,
                     job.jobid,
                     job.remote_name.clone(),
-                    app.state(),
                 )
                 .await
                 {
@@ -612,7 +586,7 @@ pub fn handle_browse_remote(app: &AppHandle, remote_name: &str) {
     let remote = remote_name.to_string();
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
-        let backend_manager = &BACKEND_MANAGER;
+        let backend_manager = app_clone.state::<BackendManager>();
 
         let cache = backend_manager.remote_cache.clone();
 
@@ -671,7 +645,7 @@ pub fn handle_stop_all_serves(app: AppHandle) {
     info!("🛑 Stopping all active serves from tray action");
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
-        match stop_all_serves(app_clone.clone(), app_clone.state(), "menu".to_string()).await {
+        match stop_all_serves(app_clone.clone(), "menu".to_string()).await {
             Ok(_) => {
                 info!("✅ All serves stopped successfully");
                 send_notification(

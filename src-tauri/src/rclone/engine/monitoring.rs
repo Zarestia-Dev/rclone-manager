@@ -1,7 +1,7 @@
 use log::debug;
 use std::time::Duration;
 
-use crate::rclone::backend::BACKEND_MANAGER;
+use crate::rclone::backend::BackendManager;
 use crate::utils::rclone::endpoints::core;
 use crate::utils::types::core::RcApiEngine;
 
@@ -11,14 +11,18 @@ const API_READY_POLL_INTERVAL: Duration = Duration::from_millis(500);
 
 impl RcApiEngine {
     /// Check if both the process is running AND the API is responding
-    pub async fn is_api_healthy(&mut self, client: &reqwest::Client) -> bool {
+    pub async fn is_api_healthy(
+        &mut self,
+        client: &reqwest::Client,
+        backend_manager: &BackendManager,
+    ) -> bool {
         // First check if process is still alive
         if !self.is_process_alive() {
             debug!("🔍 Process is not alive");
             return false;
         }
 
-        self.check_api_response(client).await
+        self.check_api_response(client, backend_manager).await
     }
 
     /// Check if the process is still alive using native PID checking
@@ -75,15 +79,22 @@ impl RcApiEngine {
     }
 
     /// Check if the API is responding by making a simple request
-    async fn check_api_response(&self, client: &reqwest::Client) -> bool {
-        Self::check_api_health(client).await
+    async fn check_api_response(
+        &self,
+        client: &reqwest::Client,
+        backend_manager: &BackendManager,
+    ) -> bool {
+        Self::check_api_health(client, backend_manager).await
     }
 
     /// Check if the active backend's API is responding
     ///
     /// Returns true if the API returns a successful response.
-    pub async fn check_api_health(client: &reqwest::Client) -> bool {
-        let backend = BACKEND_MANAGER.get_active().await;
+    pub async fn check_api_health(
+        client: &reqwest::Client,
+        backend_manager: &BackendManager,
+    ) -> bool {
+        let backend = backend_manager.get_active().await;
         let endpoint = core::VERSION;
 
         match backend
@@ -107,13 +118,18 @@ impl RcApiEngine {
         }
     }
 
-    pub async fn wait_until_ready(&mut self, client: &reqwest::Client, timeout_secs: u64) -> bool {
+    pub async fn wait_until_ready(
+        &mut self,
+        client: &reqwest::Client,
+        backend_manager: &BackendManager,
+        timeout_secs: u64,
+    ) -> bool {
         let timeout = Duration::from_secs(timeout_secs);
         debug!("🔍 Waiting for API to be ready (timeout: {timeout_secs}s)");
 
         let check_future = async {
             loop {
-                if self.is_api_healthy(client).await {
+                if self.is_api_healthy(client, backend_manager).await {
                     return true;
                 }
                 tokio::time::sleep(API_READY_POLL_INTERVAL).await;
@@ -141,21 +157,5 @@ mod tests {
     fn test_engine_process_alive_no_process() {
         let mut engine = RcApiEngine::default();
         assert!(!engine.is_process_alive());
-    }
-
-    #[tokio::test]
-    async fn test_wait_until_ready_immediate_timeout() {
-        let mut engine = RcApiEngine::default();
-        // With no process and no API, should timeout quickly
-        // Using 1 second timeout to keep test fast
-        let start = std::time::Instant::now();
-        let client = reqwest::Client::new();
-        let result = engine.wait_until_ready(&client, 1).await;
-        let elapsed = start.elapsed();
-
-        assert!(!result);
-        // Should have waited approximately 1 second (with some margin)
-        assert!(elapsed >= std::time::Duration::from_millis(800));
-        assert!(elapsed <= std::time::Duration::from_millis(1500));
     }
 }

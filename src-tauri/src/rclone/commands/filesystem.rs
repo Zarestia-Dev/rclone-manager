@@ -1,21 +1,19 @@
 use log::debug;
 use serde_json::json;
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager};
 
-use crate::rclone::backend::BACKEND_MANAGER;
+use crate::rclone::backend::BackendManager;
 use crate::rclone::commands::job::{JobMetadata, submit_job};
 use crate::utils::rclone::endpoints::operations;
 use crate::utils::types::core::RcloneState;
 
 #[tauri::command]
-pub async fn mkdir(
-    remote: String,
-    path: String,
-    state: State<'_, RcloneState>,
-) -> Result<(), String> {
+pub async fn mkdir(app: AppHandle, remote: String, path: String) -> Result<(), String> {
+    let state = app.state::<RcloneState>();
     debug!("📁 Creating directory: remote={} path={}", remote, path);
 
-    let backend = BACKEND_MANAGER.get_active().await;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
     let params = json!({ "fs": remote, "remote": path });
     backend
         .post_json(&state.client, operations::MKDIR, Some(&params))
@@ -26,18 +24,16 @@ pub async fn mkdir(
 }
 
 #[tauri::command]
-pub async fn cleanup(
-    remote: String,
-    path: Option<String>,
-    state: State<'_, RcloneState>,
-) -> Result<(), String> {
+pub async fn cleanup(app: AppHandle, remote: String, path: Option<String>) -> Result<(), String> {
+    let state = app.state::<RcloneState>();
     debug!(
         "🧹 Cleanup remote trash: remote={} path={}",
         remote,
         path.as_deref().unwrap_or("")
     );
 
-    let backend = BACKEND_MANAGER.get_active().await;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
 
     // Build parameters dynamically: include `remote` only when provided
     let mut params = serde_json::Map::new();
@@ -58,18 +54,19 @@ pub async fn cleanup(
 #[tauri::command]
 pub async fn copy_url(
     app: AppHandle,
-    state: State<'_, RcloneState>,
     remote: String,
     path: String,
     url_to_copy: String,
     auto_filename: bool,
 ) -> Result<u64, String> {
+    let state = app.state::<RcloneState>();
     debug!(
         "🔗 Copying URL: remote={}, path={}, url={}, auto_filename={}",
         remote, path, url_to_copy, auto_filename
     );
 
-    let backend = BACKEND_MANAGER.get_active().await;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
     let url = backend.url_for(operations::COPYURL);
 
     let payload = json!({
@@ -81,7 +78,7 @@ pub async fn copy_url(
     });
 
     let (jobid, _) = submit_job(
-        app,
+        app.clone(),
         state.client.clone(),
         backend.inject_auth(state.client.clone().post(&url)),
         payload,

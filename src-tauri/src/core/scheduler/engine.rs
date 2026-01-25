@@ -3,7 +3,6 @@ use crate::rclone::commands::sync::{
 };
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 
-use crate::utils::types::core::RcloneState;
 use crate::utils::types::remotes::ProfileParams;
 use crate::utils::types::scheduled_task::{ScheduledTask, TaskStatus, TaskType};
 use chrono::{Local, Utc};
@@ -292,9 +291,9 @@ async fn execute_scheduled_task(
         );
     }
 
-    use crate::rclone::backend::BACKEND_MANAGER;
-    let job_cache = &BACKEND_MANAGER.job_cache;
-    let rclone_state = app_handle.state::<RcloneState>();
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app_handle.state::<BackendManager>();
+    let job_cache = &backend_manager.job_cache;
 
     // --- Add Job Cache Check ---
     let remote_name = match task.args.get("remote_name").and_then(|v| v.as_str()) {
@@ -334,10 +333,10 @@ async fn execute_scheduled_task(
     )?;
 
     let result = match task.task_type {
-        TaskType::Copy => start_copy_profile(app_handle.clone(), rclone_state, params).await,
-        TaskType::Sync => start_sync_profile(app_handle.clone(), rclone_state, params).await,
-        TaskType::Move => start_move_profile(app_handle.clone(), rclone_state, params).await,
-        TaskType::Bisync => start_bisync_profile(app_handle.clone(), rclone_state, params).await,
+        TaskType::Copy => start_copy_profile(app_handle.clone(), params).await,
+        TaskType::Sync => start_sync_profile(app_handle.clone(), params).await,
+        TaskType::Move => start_move_profile(app_handle.clone(), params).await,
+        TaskType::Bisync => start_bisync_profile(app_handle.clone(), params).await,
     };
 
     match result {

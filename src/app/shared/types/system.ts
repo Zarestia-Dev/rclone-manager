@@ -156,6 +156,7 @@ export interface SettingMetadata {
   step?: number;
   options?: any[]; // Backend sends tuples or objects? Schema says options(("val", "Label"))
   metadata?: any;
+  reserved?: string[];
 }
 
 export interface SearchResult {

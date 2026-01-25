@@ -228,6 +228,10 @@
         "label": "Rclone Binary Path",
         "description": "Path to rclone binary or directory. Leave empty for auto-detection."
       },
+      "rclone_flags": {
+        "label": "Additional Rclone Flags",
+        "description": "Add extra flags to the rclone process (e.g., --cache-dir=/path/to/cache). Some flags are reserved."
+      },
       "bandwidth_limit": {
         "label": "Bandwidth Limit",
         "description": "Limit the bandwidth used by Rclone transfers. Format: 'upload:download'"
@@ -1505,6 +1509,7 @@
         "invalidPath": "Please enter a valid absolute file path.",
         "bandwidth": "Invalid format (e.g., 10M or 5M:2M).",
         "urlArray": "All items must be valid URLs (e.g., https://...).",
+        "reserved": "Reserved value: {{value}}",
         "invalid": "Invalid value."
       },
       "tabs": {

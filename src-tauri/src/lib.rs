@@ -32,7 +32,7 @@ use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 use crate::utils::logging::log::init_logging;
 use crate::{
     core::{
-        initialization::{init_rclone_state, initialization},
+        initialization::initialization,
         lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
         paths::AppPaths,
         scheduler::engine::CronScheduler,
@@ -316,6 +316,13 @@ fn setup_app(
             .map_err(|e| format!("Failed to create rcman settings manager: {e}"))?;
 
     // -------------------------------------------------------------------------
+    // Initialize Backend Manager (Core Dependency)
+    // -------------------------------------------------------------------------
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = BackendManager::new();
+    app.manage(backend_manager);
+
+    // -------------------------------------------------------------------------
     // Load Settings & Initialize State
     // -------------------------------------------------------------------------
     let settings = load_startup_settings(&rcman_manager)
@@ -397,12 +404,10 @@ fn setup_app(
     }
 
     // -------------------------------------------------------------------------
-    // Initialize Logging & Rclone
+    // Initialize Logging
     // -------------------------------------------------------------------------
     init_logging(&settings.developer.log_level, app_handle.clone())
         .map_err(|e| format!("Failed to initialize logging: {e}"))?;
-
-    init_rclone_state(app_handle).map_err(|e| format!("Rclone initialization failed: {e}"))?;
 
     // -------------------------------------------------------------------------
     // Async Initialization
@@ -531,12 +536,7 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent)
             TrayAction::UnmountAll => {
                 let app_clone = app.clone();
                 tauri::async_runtime::spawn(async move {
-                    if let Err(e) = unmount_all_remotes(
-                        app_clone.clone(),
-                        app_clone.state(),
-                        "menu".to_string(),
-                    )
-                    .await
+                    if let Err(e) = unmount_all_remotes(app_clone.clone(), "menu".to_string()).await
                     {
                         error!("Failed to unmount all remotes: {e}");
                     }

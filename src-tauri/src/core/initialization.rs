@@ -1,5 +1,5 @@
 use crate::core::settings::AppSettingsManager;
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use tauri::{AppHandle, Manager};
 
 use crate::{
@@ -31,26 +31,25 @@ const BACKEND_CONNECTIVITY_TIMEOUT: std::time::Duration = std::time::Duration::f
 // ============================================================================
 
 /// Initializes Rclone API and OAuth state, and launches the Rclone engine.
-pub fn init_rclone_state(app_handle: &tauri::AppHandle) -> Result<(), String> {
+pub async fn init_rclone_state(app_handle: &tauri::AppHandle) -> Result<(), String> {
     // Load any persistent connections
-    use crate::rclone::backend::BACKEND_MANAGER;
+    use crate::rclone::backend::BackendManager;
     use crate::utils::types::core::EngineState;
 
-    tauri::async_runtime::block_on(async {
-        // Load persistent connections
-        let settings_state = app_handle.state::<AppSettingsManager>();
-        if let Err(e) = BACKEND_MANAGER
-            .load_from_settings(settings_state.inner())
-            .await
-        {
-            error!("Failed to load persistent connections: {e}");
-        }
+    // Load persistent connections
+    let backend_manager = app_handle.state::<BackendManager>();
+    let settings_state = app_handle.state::<AppSettingsManager>();
+    if let Err(e) = backend_manager
+        .load_from_settings(settings_state.inner())
+        .await
+    {
+        error!("Failed to load persistent connections: {e}");
+    }
 
-        // Initialize engine
-        let engine_state = app_handle.state::<EngineState>();
-        let mut engine = engine_state.lock().await;
-        engine.init(app_handle).await;
-    });
+    // Initialize engine
+    let engine_state = app_handle.state::<EngineState>();
+    let mut engine = engine_state.lock().await;
+    engine.init(app_handle).await;
 
     info!("🔄 Rclone engine initialized");
     Ok(())
@@ -60,83 +59,30 @@ pub fn init_rclone_state(app_handle: &tauri::AppHandle) -> Result<(), String> {
 pub async fn initialization(app_handle: tauri::AppHandle) {
     debug!("🚀 Starting async startup tasks");
 
+    init_rclone_state(&app_handle)
+        .await
+        .map_err(|e| format!("Rclone initialization failed: {e}"))
+        .unwrap();
+
     setup_event_listener(&app_handle);
 
     // Step 1: Check connectivity FIRST to ensure backend is ready
     // This allows fallback to Local if Active is down, preventing cache refresh errors
+    // Use the injected BackendManager to handle connectivity checks and fallbacks
     check_active_backend_connectivity(&app_handle).await;
 
     // Step 2: Refresh caches (now that we know backend is reachable)
-    // Use timeout to prevent indefinite hang if backend becomes unresponsive
     info!("📊 Refreshing caches...");
-    use crate::rclone::backend::BACKEND_MANAGER;
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app_handle.state::<BackendManager>();
 
-    let refresh_future = async {
-        let backend = BACKEND_MANAGER.get_active().await;
-        let client = app_handle.state::<RcloneState>().client.clone();
+    let client = app_handle.state::<RcloneState>().client.clone();
 
-        BACKEND_MANAGER
-            .remote_cache
-            .refresh_all(&client, &backend)
-            .await
-    };
-
-    match tokio::time::timeout(std::time::Duration::from_secs(15), refresh_future).await {
-        Ok(Ok(_)) => info!("✅ Caches refreshed successfully"),
-        Ok(Err(e)) => {
-            error!("❌ Failed to refresh caches: {e}");
-            // Fallback to Local if active is remote and failing
-            let active = BACKEND_MANAGER.get_active_name().await;
-            if active != "Local" {
-                warn!(
-                    "↩️ Startup: Active backend '{}' has weak connection. Falling back to Local.",
-                    active
-                );
-                let manager = app_handle.state::<AppSettingsManager>();
-                if let Err(err) = BACKEND_MANAGER
-                    .switch_to(manager.inner(), "Local", None, None)
-                    .await
-                {
-                    error!("Critical: Failed to fallback to Local backend: {}", err);
-                } else {
-                    info!("✅ Fallback to Local successful. Retrying cache refresh for Local...");
-                    // Retry refresh for Local to ensure app starts with some data
-                    let client = app_handle.state::<RcloneState>().client.clone();
-                    let local_backend = BACKEND_MANAGER.get("Local").await.unwrap();
-                    let _ = BACKEND_MANAGER
-                        .remote_cache
-                        .refresh_all(&client, &local_backend)
-                        .await;
-                }
-            }
-        }
-        Err(_) => {
-            error!("❌ Cache refresh timed out (backend may be unresponsive)");
-            // Fallback to Local on timeout
-            let active = BACKEND_MANAGER.get_active_name().await;
-            if active != "Local" {
-                warn!(
-                    "↩️ Startup: Active backend '{}' timed out. Falling back to Local.",
-                    active
-                );
-                let manager = app_handle.state::<AppSettingsManager>();
-                if let Err(err) = BACKEND_MANAGER
-                    .switch_to(manager.inner(), "Local", None, None)
-                    .await
-                {
-                    error!("Critical: Failed to fallback to Local backend: {}", err);
-                } else {
-                    info!("✅ Fallback to Local successful. Retrying cache refresh for Local...");
-                    let client = app_handle.state::<RcloneState>().client.clone();
-                    if let Some(local_backend) = BACKEND_MANAGER.get("Local").await {
-                        let _ = BACKEND_MANAGER
-                            .remote_cache
-                            .refresh_all(&client, &local_backend)
-                            .await;
-                    }
-                }
-            }
-        }
+    // We can directly call refresh_active_backend now, as ensure_connectivity_or_fallback
+    // guarantees a reachable backend (active or fallback Local)
+    match backend_manager.refresh_active_backend(&client).await {
+        Ok(_) => info!("✅ Caches refreshed successfully"),
+        Err(e) => error!("❌ Failed to refresh caches: {e}"),
     }
 
     // Step 3: Initialize and start scheduler with loaded config
@@ -169,8 +115,9 @@ async fn initialize_scheduler(app_handle: AppHandle) -> Result<(), String> {
     let scheduler_state = app_handle.state::<CronScheduler>();
     let manager = app_handle.state::<AppSettingsManager>();
 
-    use crate::rclone::backend::BACKEND_MANAGER;
-    let remote_names = BACKEND_MANAGER.remote_cache.get_remotes().await;
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app_handle.state::<BackendManager>();
+    let remote_names = backend_manager.remote_cache.get_remotes().await;
 
     let all_settings = crate::core::settings::remote::manager::get_all_remote_settings_sync(
         manager.inner(),
@@ -180,7 +127,7 @@ async fn initialize_scheduler(app_handle: AppHandle) -> Result<(), String> {
     info!("📋 Loading scheduled tasks from remote configs...");
 
     // Get the active backend name
-    let backend_name = BACKEND_MANAGER.get_active_name().await;
+    let backend_name = backend_manager.get_active_name().await;
 
     let task_count = cache_state
         .load_from_remote_configs(
@@ -206,12 +153,10 @@ pub async fn apply_core_settings(app_handle: &tauri::AppHandle, settings: &AppSe
             "🌐 Setting bandwidth limit: {}",
             settings.core.bandwidth_limit
         );
-        let rclone_state = app_handle.state::<RcloneState>();
 
         if let Err(e) = set_bandwidth_limit(
             app_handle.clone(),
             Some(settings.core.bandwidth_limit.clone()),
-            rclone_state,
         )
         .await
         {
@@ -234,8 +179,6 @@ pub async fn apply_backend_settings(app_handle: &tauri::AppHandle) -> Result<(),
     let manager = app_handle.state::<AppSettingsManager>();
     let backend_options = load_backend_options_sync(manager.inner());
 
-    let rclone_state = app_handle.state::<RcloneState>();
-
     if let Some(backend_obj) = backend_options.as_object() {
         for (block_name, block_options) in backend_obj {
             if let Some(options_obj) = block_options.as_object() {
@@ -246,7 +189,7 @@ pub async fn apply_backend_settings(app_handle: &tauri::AppHandle) -> Result<(),
                     );
 
                     if let Err(e) = set_rclone_option(
-                        rclone_state.clone(),
+                        app_handle.clone(),
                         block_name.clone(),
                         option_name.clone(),
                         option_value.clone(),
@@ -270,7 +213,9 @@ pub async fn apply_backend_settings(app_handle: &tauri::AppHandle) -> Result<(),
 /// Check if the active backend is reachable; fallback to Local if not.
 /// Also spawns background checks for other backends.
 async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
-    use crate::rclone::backend::BACKEND_MANAGER;
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app_handle.state::<BackendManager>();
+
     // Always check Local backend (sets status to connected)
     let client = app_handle.state::<RcloneState>().client.clone();
 
@@ -280,7 +225,7 @@ async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
     // 2. Retrying (if Local)
     // 3. Fallback to Local (if Remote fails)
     // 4. Logging success/failure
-    if let Err(e) = BACKEND_MANAGER
+    if let Err(e) = backend_manager
         .ensure_connectivity_or_fallback(&client, BACKEND_CONNECTIVITY_TIMEOUT)
         .await
     {
@@ -296,29 +241,10 @@ async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
 
 /// Background check for non-active backends
 async fn check_other_backends(app_handle: &tauri::AppHandle) {
-    use crate::rclone::backend::BACKEND_MANAGER;
-
-    let backends = BACKEND_MANAGER.list_all().await;
-    let active_name = BACKEND_MANAGER.get_active_name().await;
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app_handle.state::<BackendManager>();
 
     let client = app_handle.state::<RcloneState>().client.clone();
 
-    for backend in backends {
-        if backend.name == active_name || backend.name == "Local" {
-            continue; // Already checked
-        }
-
-        info!("🔍 Background check for backend: {}", backend.name);
-        if let Err(e) = BACKEND_MANAGER
-            .check_connectivity(&backend.name, &client)
-            .await
-        {
-            log::warn!("⚠️ Backend '{}' unreachable: {}", backend.name, e);
-            BACKEND_MANAGER
-                .set_runtime_status(&backend.name, &format!("error:{}", e))
-                .await;
-        } else {
-            info!("✅ Backend '{}' is reachable", backend.name);
-        }
-    }
+    backend_manager.check_other_backends(&client).await;
 }

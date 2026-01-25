@@ -12,16 +12,18 @@ use crate::utils::{
     },
 };
 
-use crate::rclone::backend::BACKEND_MANAGER;
+use crate::rclone::backend::BackendManager;
 use crate::rclone::commands::job::poll_job;
+use tauri::{AppHandle, Manager};
 
 /// Helper to execute a filesystem command (gets backend, builds URL, runs op)
 async fn run_fs_command(
+    backend_manager: &BackendManager,
     client: reqwest::Client,
     endpoint: &str,
     mut params: serde_json::Map<String, serde_json::Value>,
 ) -> Result<serde_json::Value, String> {
-    let backend = BACKEND_MANAGER.get_active().await;
+    let backend = backend_manager.get_active().await;
 
     params.insert("_async".to_string(), json!(true));
 
@@ -44,6 +46,7 @@ pub struct LocalDrive {
 
 #[tauri::command]
 pub async fn get_fs_info(
+    app: AppHandle,
     remote: String,
     path: Option<String>,
     state: State<'_, RcloneState>,
@@ -54,7 +57,14 @@ pub async fn get_fs_info(
     params.insert("fs".to_string(), json!(remote));
     params.insert("remote".to_string(), json!(path));
 
-    let result = run_fs_command(state.client.clone(), operations::FSINFO, params).await;
+    let backend_manager = app.state::<BackendManager>();
+    let result = run_fs_command(
+        &backend_manager,
+        state.client.clone(),
+        operations::FSINFO,
+        params,
+    )
+    .await;
 
     match result {
         Ok(data) => {
@@ -78,6 +88,7 @@ pub async fn get_fs_info(
 
 #[tauri::command]
 pub async fn get_remote_paths(
+    app: AppHandle,
     remote: String,
     path: Option<String>,
     options: Option<ListOptions>,
@@ -95,7 +106,14 @@ pub async fn get_remote_paths(
     }
     params.insert("opt".to_string(), json!(opt));
 
-    run_fs_command(state.client.clone(), operations::LIST, params).await
+    let backend_manager = app.state::<BackendManager>();
+    run_fs_command(
+        &backend_manager,
+        state.client.clone(),
+        operations::LIST,
+        params,
+    )
+    .await
 }
 
 #[cfg(windows)]
@@ -186,12 +204,13 @@ pub async fn get_local_drives() -> Result<Vec<LocalDrive>, String> {
 /// Get disk usage (async by default)
 #[tauri::command]
 pub async fn get_disk_usage(
+    app: AppHandle,
     remote: String,
     path: Option<String>,
     state: State<'_, RcloneState>,
 ) -> Result<DiskUsage, String> {
     // Delegate to get_about_remote (which is now async)
-    let json = get_about_remote(remote.clone(), path.clone(), state).await?;
+    let json = get_about_remote(app, remote.clone(), path.clone(), state).await?;
 
     // Extract usage information
     let total = json["total"].as_i64().unwrap_or(0);
@@ -216,6 +235,7 @@ pub async fn get_disk_usage(
 
 #[tauri::command]
 pub async fn get_about_remote(
+    app: AppHandle,
     remote: String,
     path: Option<String>,
     state: State<'_, RcloneState>,
@@ -226,11 +246,19 @@ pub async fn get_about_remote(
     params.insert("fs".to_string(), json!(remote));
     params.insert("remote".to_string(), json!(path));
 
-    run_fs_command(state.client.clone(), operations::ABOUT, params).await
+    let backend_manager = app.state::<BackendManager>();
+    run_fs_command(
+        &backend_manager,
+        state.client.clone(),
+        operations::ABOUT,
+        params,
+    )
+    .await
 }
 
 #[tauri::command]
 pub async fn get_size(
+    app: AppHandle,
     remote: String,
     path: Option<String>,
     state: State<'_, RcloneState>,
@@ -241,11 +269,19 @@ pub async fn get_size(
     params.insert("fs".to_string(), json!(remote));
     params.insert("remote".to_string(), json!(path));
 
-    run_fs_command(state.client.clone(), operations::SIZE, params).await
+    let backend_manager = app.state::<BackendManager>();
+    run_fs_command(
+        &backend_manager,
+        state.client.clone(),
+        operations::SIZE,
+        params,
+    )
+    .await
 }
 
 #[tauri::command]
 pub async fn get_stat(
+    app: AppHandle,
     remote: String,
     path: String,
     state: State<'_, RcloneState>,
@@ -256,13 +292,21 @@ pub async fn get_stat(
     params.insert("fs".to_string(), json!(remote));
     params.insert("remote".to_string(), json!(path));
 
-    run_fs_command(state.client.clone(), operations::STAT, params).await
+    let backend_manager = app.state::<BackendManager>();
+    run_fs_command(
+        &backend_manager,
+        state.client.clone(),
+        operations::STAT,
+        params,
+    )
+    .await
 }
 
 /// Get hashsum for a file
 /// Returns the hash of the file using the specified hash type
 #[tauri::command]
 pub async fn get_hashsum(
+    app: AppHandle,
     remote: String,
     path: String,
     hash_type: String,
@@ -281,20 +325,29 @@ pub async fn get_hashsum(
     params.insert("fs".to_string(), json!(fs_with_path));
     params.insert("hashType".to_string(), json!(hash_type));
 
-    run_fs_command(state.client.clone(), operations::HASHSUM, params).await
+    let backend_manager = app.state::<BackendManager>();
+    run_fs_command(
+        &backend_manager,
+        state.client.clone(),
+        operations::HASHSUM,
+        params,
+    )
+    .await
 }
 
 /// Get or create a public link for a file or folder
 /// Returns the public URL for sharing
 #[tauri::command]
 pub async fn get_public_link(
+    app: AppHandle,
     remote: String,
     path: String,
     unlink: Option<bool>,
     expire: Option<String>,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let backend = BACKEND_MANAGER.get_active().await;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
     debug!(
         "🔗 Getting public link for remote: {remote}, path: {path}, expire: {expire:?}, unlink: {unlink:?}"
     );

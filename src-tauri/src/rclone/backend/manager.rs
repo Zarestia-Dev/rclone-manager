@@ -4,7 +4,6 @@
 
 use crate::core::settings::AppSettingsManager;
 use log::info;
-use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -756,6 +755,27 @@ impl BackendManager {
         let backend = self.get_active().await;
         self.remote_cache.refresh_all(client, &backend).await
     }
+
+    /// Check non-active backends in background
+    pub async fn check_other_backends(&self, client: &reqwest::Client) {
+        let backends = self.list_all().await;
+        let active_name = self.get_active_name().await;
+
+        for backend in backends {
+            if backend.name == active_name || backend.name == "Local" {
+                continue; // Already checked
+            }
+
+            info!("🔍 Background check for backend: {}", backend.name);
+            if let Err(e) = self.check_connectivity(&backend.name, client).await {
+                log::warn!("⚠️ Backend '{}' unreachable: {}", backend.name, e);
+                self.set_runtime_status(&backend.name, &format!("error:{}", e))
+                    .await;
+            } else {
+                info!("✅ Backend '{}' is reachable", backend.name);
+            }
+        }
+    }
 }
 
 impl Default for BackendManager {
@@ -763,9 +783,6 @@ impl Default for BackendManager {
         Self::new()
     }
 }
-
-/// Global backend manager instance
-pub static BACKEND_MANAGER: Lazy<BackendManager> = Lazy::new(BackendManager::new);
 
 /// Load backend secrets from keychain
 #[cfg(desktop)]

@@ -2,20 +2,19 @@ use log::debug;
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
 use std::collections::HashMap;
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager};
 
 use crate::{
-    rclone::backend::BACKEND_MANAGER,
+    rclone::backend::BackendManager,
     utils::{
-        json_helpers::{
-            get_string, json_to_hashmap, resolve_profile_options, unwrap_nested_options,
-        },
+        json_helpers::unwrap_nested_options,
         logging::log::log_operation,
         rclone::endpoints::sync,
         types::{core::RcloneState, logs::LogLevel, remotes::ProfileParams},
     },
 };
 
+use super::common::{FromConfig, parse_common_config};
 use super::job::{JobMetadata, submit_job};
 
 // ============================================================================
@@ -70,6 +69,81 @@ pub struct GenericTransferParams {
     pub backend_options: Option<HashMap<String, Value>>,
     pub profile: Option<String>,
     pub transfer_type: TransferType,
+}
+
+impl GenericTransferParams {
+    pub fn to_rclone_body(&self) -> Value {
+        let mut body = Map::new();
+
+        // Bisync uses path1/path2, others use srcFs/dstFs
+        if self.transfer_type == TransferType::Bisync {
+            body.insert("path1".to_string(), Value::String(self.source.clone()));
+            body.insert("path2".to_string(), Value::String(self.dest.clone()));
+        } else {
+            body.insert("srcFs".to_string(), Value::String(self.source.clone()));
+            body.insert("dstFs".to_string(), Value::String(self.dest.clone()));
+        }
+        body.insert("_async".to_string(), Value::Bool(true));
+
+        let mut opts = self.options.clone().unwrap_or_default();
+
+        // Handle Special Top-Level Parameters
+        let top_level_keys = [
+            "createEmptySrcDirs", // sync, copy, move, bisync
+            "deleteEmptySrcDirs", // move
+            // bisync specific:
+            "resync",
+            "checkAccess",
+            "checkFilename",
+            "maxDelete",
+            "force",
+            "checkSync",
+            "removeEmptyDirs",
+            "filtersFile",
+            "ignoreListingChecksum",
+            "resilient",
+            "workDir",
+            "backupDir1",
+            "backupDir2",
+            "noCleanup",
+            "dryRun",
+        ];
+
+        for key in top_level_keys {
+            if let Some(val) = opts.remove(key) {
+                match val {
+                    Value::Bool(b) => {
+                        if b {
+                            body.insert(key.to_string(), Value::Bool(true));
+                        }
+                    }
+                    _ => {
+                        body.insert(key.to_string(), val);
+                    }
+                }
+            }
+        }
+
+        // Merge Remaining Options into _config
+        let config_map = merge_options(Some(opts), self.backend_options.clone());
+        if !config_map.is_empty() {
+            body.insert(
+                "_config".to_string(),
+                Value::Object(config_map.into_iter().collect()),
+            );
+        }
+
+        // Add Filters
+        if let Some(filters) = self.filter_options.clone() {
+            let unwrapped_filters = unwrap_nested_options(filters);
+            body.insert(
+                "_filter".to_string(),
+                Value::Object(unwrapped_filters.into_iter().collect()),
+            );
+        }
+
+        Value::Object(body)
+    }
 }
 
 // ============================================================================
@@ -188,39 +262,21 @@ impl From<BisyncParams> for GenericTransferParams {
 // CONFIG PARSING HELPER
 // ============================================================================
 
-trait FromConfig: Sized {
-    /// Create Params from a profile config and settings
-    fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self>;
-}
-
 // Macro to avoid repeating from_config logic
 macro_rules! impl_from_config {
     ($type:ty, $opt_field:ident) => {
         impl FromConfig for $type {
             fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self> {
-                let source = get_string(config, &["source"]);
-                let dest = get_string(config, &["dest"]);
-
-                if source.is_empty() || dest.is_empty() {
-                    return None;
-                }
-
-                let filter_profile = config.get("filterProfile").and_then(|v| v.as_str());
-                let backend_profile = config.get("backendProfile").and_then(|v| v.as_str());
-
-                let filter_options =
-                    resolve_profile_options(settings, filter_profile, "filterConfigs");
-                let backend_options =
-                    resolve_profile_options(settings, backend_profile, "backendConfigs");
+                let common = parse_common_config(config, settings)?;
 
                 Some(Self {
                     remote_name,
-                    source,
-                    dest,
-                    $opt_field: json_to_hashmap(config.get("options")),
-                    filter_options,
-                    backend_options,
-                    profile: Some(get_string(config, &["name"])).filter(|s| !s.is_empty()),
+                    source: common.source,
+                    dest: common.dest,
+                    $opt_field: common.options,
+                    filter_options: common.filter_options,
+                    backend_options: common.backend_options,
+                    profile: common.profile,
                 })
             }
         }
@@ -256,11 +312,8 @@ fn merge_options(
 }
 
 /// Generic function to perform any transfer operation
-async fn perform_transfer(
-    app: AppHandle,
-    rclone_state: State<'_, RcloneState>,
-    params: GenericTransferParams,
-) -> Result<u64, String> {
+async fn perform_transfer(app: AppHandle, params: GenericTransferParams) -> Result<u64, String> {
+    let client = app.state::<RcloneState>().client.clone();
     debug!(
         "Starting {} with params: {:#?}",
         params.transfer_type.as_str(),
@@ -290,90 +343,19 @@ async fn perform_transfer(
     );
 
     // 2. Build Request Body
-    let mut body = Map::new();
-
-    // Bisync uses path1/path2, others use srcFs/dstFs
-    if params.transfer_type == TransferType::Bisync {
-        body.insert("path1".to_string(), Value::String(params.source.clone()));
-        body.insert("path2".to_string(), Value::String(params.dest.clone()));
-    } else {
-        body.insert("srcFs".to_string(), Value::String(params.source.clone()));
-        body.insert("dstFs".to_string(), Value::String(params.dest.clone()));
-    }
-    body.insert("_async".to_string(), Value::Bool(true));
-
-    let mut opts = params.options.unwrap_or_default();
-
-    // 3. Handle Special Top-Level Parameters
-    // Some parameters must be pulled out of 'options' and placed at the top level of the JSON body.
-    // We define a superset of such keys for all operations.
-    // It's safe to check/remove them even if not relevant for a specific op (they just won't exist).
-    let top_level_keys = [
-        "createEmptySrcDirs", // sync, copy, move, bisync
-        "deleteEmptySrcDirs", // move
-        // bisync specific:
-        "resync",
-        "checkAccess",
-        "checkFilename",
-        "maxDelete",
-        "force",
-        "checkSync",
-        "removeEmptyDirs",
-        "filtersFile",
-        "ignoreListingChecksum",
-        "resilient",
-        "workDir",
-        "backupDir1",
-        "backupDir2",
-        "noCleanup",
-        "dryRun",
-    ];
-
-    for key in top_level_keys {
-        if let Some(val) = opts.remove(key) {
-            // Only add boolean true flags if they are booleans, or pass value through if not
-            match val {
-                Value::Bool(b) => {
-                    if b {
-                        body.insert(key.to_string(), Value::Bool(true));
-                    }
-                }
-                _ => {
-                    body.insert(key.to_string(), val);
-                }
-            }
-        }
-    }
-
-    // 4. Merge Remaining Options into _config
-    let config_map = merge_options(Some(opts), params.backend_options);
-    if !config_map.is_empty() {
-        body.insert(
-            "_config".to_string(),
-            Value::Object(config_map.into_iter().collect()),
-        );
-    }
-
-    // 5. Add Filters
-    if let Some(filters) = params.filter_options {
-        let unwrapped_filters = unwrap_nested_options(filters);
-        body.insert(
-            "_filter".to_string(),
-            Value::Object(unwrapped_filters.into_iter().collect()),
-        );
-    }
+    let body = params.to_rclone_body();
 
     // 6. Get API URL
-    let backend_manager = &BACKEND_MANAGER;
+    let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
     let url = backend.url_for(params.transfer_type.endpoint());
 
     // 7. Submit Job
     let (jobid, _) = submit_job(
         app,
-        rclone_state.client.clone(),
-        backend.inject_auth(rclone_state.client.clone().post(&url)),
-        Value::Object(body),
+        client.clone(),
+        backend.inject_auth(client.clone().post(&url)),
+        body,
         JobMetadata {
             remote_name: params.remote_name,
             job_type: params.transfer_type.as_str().to_string(),
@@ -401,7 +383,6 @@ async fn perform_transfer(
 /// But we can simplify the body significantly.
 async fn load_profile_and_run<T>(
     app: AppHandle,
-    rclone_state: State<'_, RcloneState>,
     params: ProfileParams,
     config_key: &str,
 ) -> Result<u64, String>
@@ -426,41 +407,25 @@ where
 
     // specific_params.profile is set in from_config, but we ensure consistency here if needed
     // The From implementation handles conversion to GenericTransferParams
-    perform_transfer(app, rclone_state, specific_params.into()).await
+    perform_transfer(app, specific_params.into()).await
 }
 
 #[tauri::command]
-pub async fn start_sync_profile(
-    app: AppHandle,
-    rclone_state: State<'_, RcloneState>,
-    params: ProfileParams,
-) -> Result<u64, String> {
-    load_profile_and_run::<SyncParams>(app, rclone_state, params, "syncConfigs").await
+pub async fn start_sync_profile(app: AppHandle, params: ProfileParams) -> Result<u64, String> {
+    load_profile_and_run::<SyncParams>(app, params, "syncConfigs").await
 }
 
 #[tauri::command]
-pub async fn start_copy_profile(
-    app: AppHandle,
-    rclone_state: State<'_, RcloneState>,
-    params: ProfileParams,
-) -> Result<u64, String> {
-    load_profile_and_run::<CopyParams>(app, rclone_state, params, "copyConfigs").await
+pub async fn start_copy_profile(app: AppHandle, params: ProfileParams) -> Result<u64, String> {
+    load_profile_and_run::<CopyParams>(app, params, "copyConfigs").await
 }
 
 #[tauri::command]
-pub async fn start_move_profile(
-    app: AppHandle,
-    rclone_state: State<'_, RcloneState>,
-    params: ProfileParams,
-) -> Result<u64, String> {
-    load_profile_and_run::<MoveParams>(app, rclone_state, params, "moveConfigs").await
+pub async fn start_move_profile(app: AppHandle, params: ProfileParams) -> Result<u64, String> {
+    load_profile_and_run::<MoveParams>(app, params, "moveConfigs").await
 }
 
 #[tauri::command]
-pub async fn start_bisync_profile(
-    app: AppHandle,
-    rclone_state: State<'_, RcloneState>,
-    params: ProfileParams,
-) -> Result<u64, String> {
-    load_profile_and_run::<BisyncParams>(app, rclone_state, params, "bisyncConfigs").await
+pub async fn start_bisync_profile(app: AppHandle, params: ProfileParams) -> Result<u64, String> {
+    load_profile_and_run::<BisyncParams>(app, params, "bisyncConfigs").await
 }

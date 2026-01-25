@@ -237,13 +237,13 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     // Always load serve types as it's part of the standard flow now
     await this.loadServeTypes();
     await this.loadServeFields();
+    this.mountTypes = await this.mountManagementService.getMountTypes();
 
     this.initProfiles();
     this.initCurrentStep();
     this.populateFormIfEditingOrCloning();
     this.setupAutoStartValidators();
     this.setupAuthStateListeners();
-    this.mountTypes = await this.mountManagementService.getMountTypes();
   }
 
   private initCurrentStep(): void {
@@ -752,6 +752,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       backendProfile: config.backendProfile || DEFAULT_PROFILE_NAME,
     };
 
+    // Mount type - patch if defined in config
+    if (type === 'mount' && config.type !== undefined) {
+      patchData.type = config.type;
+    }
+
     // Paths - only patch if defined in config
     if (config.source !== undefined) {
       patchData.source = this.parsePathString(config.source, 'currentRemote', this.getRemoteName());
@@ -1050,8 +1055,13 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   handleDestFolderSelect(flagType: FlagType): void {
     // Mount dest is a simple string, others are nested
     const formPath = flagType === 'mount' ? 'mountConfig.dest' : `${flagType}Config.dest.path`;
-    // Mount dest folder should be empty
-    const requireEmpty = flagType === 'mount';
+    // Mount dest folder should be empty unless AllowNonEmpty is enabled
+    let requireEmpty = false;
+    if (flagType === 'mount') {
+      const allowNonEmpty =
+        this.remoteConfigForm.get('mountConfig.options')?.value?.['mount---allow_non_empty'];
+      requireEmpty = !allowNonEmpty;
+    }
 
     this.fileSystemService
       .selectFolder(requireEmpty)

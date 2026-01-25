@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Log file support added (both app and rclone logs). You can manage the log settings from configuration modal (Log file location cannot be changed on rclone. I think rclone has problem on that. Rclone version 1.72.1 :/).
 - Modals now transforms to bottom sheet on mobile devices. Like how it works on gnome. Basic SCSS trick but looks more native.
 - Window state persistence support added. Now the app remembers the window size on close and restores it on next launch.
+- Added support for additional rclone flags. Users can now configure and pass custom flags to rclone commands through the settings. Some rclone flags are reserved and cannot be used (App prevent these flags to use in the settings). 
 
 
 ### Changed

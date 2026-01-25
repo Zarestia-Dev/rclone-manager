@@ -3,12 +3,12 @@ use std::collections::HashMap;
 
 use log::{debug, error, info};
 use serde_json::json;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tokio::sync::RwLock;
 
 use crate::{
     rclone::{
-        backend::{BACKEND_MANAGER, types::Backend},
+        backend::types::Backend,
         queries::{
             get_all_remote_configs_internal, get_mounted_remotes_internal, get_remotes_internal,
             list_serves_internal, parse_serves_response,
@@ -375,20 +375,32 @@ impl RemoteCache {
 // --- Tauri Commands ---
 
 #[tauri::command]
-pub async fn get_cached_remotes() -> Result<Vec<String>, String> {
-    Ok(BACKEND_MANAGER.remote_cache.get_remotes().await)
+pub async fn get_cached_remotes<R: Runtime>(app: AppHandle<R>) -> Result<Vec<String>, String> {
+    use crate::rclone::backend::BackendManager;
+    Ok(app
+        .state::<BackendManager>()
+        .remote_cache
+        .get_remotes()
+        .await)
 }
 
 #[tauri::command]
-pub async fn get_configs() -> Result<serde_json::Value, String> {
-    Ok(BACKEND_MANAGER.remote_cache.get_configs().await)
+pub async fn get_configs<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Value, String> {
+    use crate::rclone::backend::BackendManager;
+    Ok(app
+        .state::<BackendManager>()
+        .remote_cache
+        .get_configs()
+        .await)
 }
 
 /// Get all remote settings from rcman sub-settings
 #[tauri::command]
-pub async fn get_settings(
+pub async fn get_settings<R: Runtime>(
+    app: AppHandle<R>,
     manager: tauri::State<'_, AppSettingsManager>,
 ) -> Result<serde_json::Value, String> {
+    use crate::rclone::backend::BackendManager;
     use serde_json::json;
 
     let remotes = manager
@@ -396,7 +408,8 @@ pub async fn get_settings(
         .sub_settings("remotes")
         .map_err(|e| format!("Failed to get remotes sub-settings: {e}"))?;
 
-    let remote_names = BACKEND_MANAGER.remote_cache.get_remotes().await;
+    let backend_manager = app.state::<BackendManager>();
+    let remote_names = backend_manager.remote_cache.get_remotes().await;
     let mut all_settings = serde_json::Map::new();
 
     for remote_name in remote_names {
@@ -409,24 +422,41 @@ pub async fn get_settings(
 }
 
 #[tauri::command]
-pub async fn get_cached_mounted_remotes() -> Result<Vec<MountedRemote>, String> {
-    Ok(BACKEND_MANAGER.remote_cache.get_mounted_remotes().await)
+pub async fn get_cached_mounted_remotes<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<Vec<MountedRemote>, String> {
+    use crate::rclone::backend::BackendManager;
+    Ok(app
+        .state::<BackendManager>()
+        .remote_cache
+        .get_mounted_remotes()
+        .await)
 }
 
 #[tauri::command]
-pub async fn get_cached_serves() -> Result<Vec<ServeInstance>, String> {
-    Ok(BACKEND_MANAGER.remote_cache.get_serves().await)
+pub async fn get_cached_serves<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<Vec<ServeInstance>, String> {
+    use crate::rclone::backend::BackendManager;
+    Ok(app
+        .state::<BackendManager>()
+        .remote_cache
+        .get_serves()
+        .await)
 }
 
 /// Rename a profile in all cached mounts
 #[cfg(not(feature = "web-server"))]
 #[tauri::command]
-pub async fn rename_mount_profile_in_cache(
+pub async fn rename_mount_profile_in_cache<R: Runtime>(
+    app: AppHandle<R>,
     remote_name: String,
     old_name: String,
     new_name: String,
 ) -> Result<usize, String> {
-    Ok(BACKEND_MANAGER
+    use crate::rclone::backend::BackendManager;
+    Ok(app
+        .state::<BackendManager>()
         .remote_cache
         .rename_profile_in_mounts(&remote_name, &old_name, &new_name)
         .await)
@@ -435,12 +465,15 @@ pub async fn rename_mount_profile_in_cache(
 /// Rename a profile in all cached serves
 #[cfg(not(feature = "web-server"))]
 #[tauri::command]
-pub async fn rename_serve_profile_in_cache(
+pub async fn rename_serve_profile_in_cache<R: Runtime>(
+    app: AppHandle<R>,
     remote_name: String,
     old_name: String,
     new_name: String,
 ) -> Result<usize, String> {
-    Ok(BACKEND_MANAGER
+    use crate::rclone::backend::BackendManager;
+    Ok(app
+        .state::<BackendManager>()
         .remote_cache
         .rename_profile_in_serves(&remote_name, &old_name, &new_name)
         .await)

@@ -101,6 +101,24 @@ pub struct CoreSettings {
     pub rclone_path: String,
 
     #[setting(
+        label = "settings.core.rclone_flags.label",
+        description = "settings.core.rclone_flags.description",
+        engine_restart = true,
+        reserved(
+            "--rc-serve",
+            "--rc-addr",
+            "--rc-allow-origin",
+            "--log-file",
+            "--rc-user",
+            "--rc-pass",
+            "--rc-no-auth",
+            "--log-file-max-size",
+            "--log-file-max-backups",
+        )
+    )]
+    pub rclone_additional_flags: Vec<String>,
+
+    #[setting(
         label = "settings.core.bandwidth_limit.label",
         description = "settings.core.bandwidth_limit.description"
     )]
@@ -124,6 +142,7 @@ impl Default for CoreSettings {
             ],
             bandwidth_limit: String::new(),
             rclone_path: String::new(),
+            rclone_additional_flags: vec![],
             completed_onboarding: false,
         }
     }

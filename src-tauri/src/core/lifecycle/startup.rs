@@ -4,27 +4,26 @@
 //! to automatically start any profiles that are configured with autoStart: true
 
 use crate::core::settings::AppSettingsManager;
-use log::{error, info, warn};
-use tauri::{AppHandle, Manager};
-
 use crate::{
     rclone::commands::{
         mount::mount_remote_profile,
         serve::start_serve_profile,
         sync::{start_bisync_profile, start_copy_profile, start_move_profile, start_sync_profile},
     },
-    utils::types::{core::RcloneState, remotes::ProfileParams},
+    utils::types::remotes::ProfileParams,
 };
+use log::{error, info, warn};
+use tauri::{AppHandle, Manager};
 
 /// Auto-start all profiles that have autoStart: true
 /// This is called during app initialization.
 /// Profiles are started in parallel for faster startup.
 pub async fn handle_startup(app: AppHandle) {
     info!("🚀 Starting auto-start profiles check...");
-
     let manager = app.state::<AppSettingsManager>();
 
-    let backend_manager = &crate::rclone::backend::BACKEND_MANAGER;
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app.state::<BackendManager>();
 
     let remote_names = backend_manager.remote_cache.get_remotes().await;
     let settings_val = crate::core::settings::remote::manager::get_all_remote_settings_sync(
@@ -196,21 +195,11 @@ async fn auto_start_sync(app: &AppHandle, remote_name: &str, profile_name: &str,
         profile_name: profile_name.to_string(),
     };
 
-    let rclone_state = app.state::<RcloneState>();
-
     let result = match op_type {
-        "sync" => start_sync_profile(app.clone(), rclone_state, params)
-            .await
-            .map(|_| ()),
-        "copy" => start_copy_profile(app.clone(), rclone_state, params)
-            .await
-            .map(|_| ()),
-        "move" => start_move_profile(app.clone(), rclone_state, params)
-            .await
-            .map(|_| ()),
-        "bisync" => start_bisync_profile(app.clone(), rclone_state, params)
-            .await
-            .map(|_| ()),
+        "sync" => start_sync_profile(app.clone(), params).await.map(|_| ()),
+        "copy" => start_copy_profile(app.clone(), params).await.map(|_| ()),
+        "move" => start_move_profile(app.clone(), params).await.map(|_| ()),
+        "bisync" => start_bisync_profile(app.clone(), params).await.map(|_| ()),
         _ => {
             error!("Unknown sync type: {}", op_type);
             return;

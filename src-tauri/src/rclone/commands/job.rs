@@ -7,7 +7,7 @@ use tokio::time::sleep;
 
 use crate::{
     core::scheduler::engine::get_next_run,
-    rclone::{backend::BACKEND_MANAGER, state::scheduled_tasks::ScheduledTasksCache},
+    rclone::{backend::BackendManager, state::scheduled_tasks::ScheduledTasksCache},
     utils::{
         logging::log::log_operation,
         rclone::endpoints::{core, job},
@@ -46,17 +46,19 @@ pub async fn submit_job(
     let (jobid, response_json) = send_job_request(request, payload, &metadata).await?;
 
     // Determine active backend to associate job with
-    let backend = BACKEND_MANAGER.get_active().await;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let backend_name = backend.name.clone();
+
     // Add to cache - this emits JOB_CACHE_CHANGED
     add_job_to_cache(
-        &BACKEND_MANAGER.job_cache,
+        &backend_manager.job_cache,
         jobid,
         &metadata,
         &backend.name,
         Some(&app),
     )
     .await;
-    let backend_name = backend.name.clone();
 
     // Monitor in background - don't wait
     let app_clone = app.clone();
@@ -90,17 +92,19 @@ pub async fn submit_job_and_wait(
     let (jobid, response_json) = send_job_request(request, payload, &metadata).await?;
 
     // Determine active backend
-    let backend = BACKEND_MANAGER.get_active().await;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let backend_name = backend.name.clone();
+
     // Add to cache - this emits JOB_CACHE_CHANGED
     add_job_to_cache(
-        &BACKEND_MANAGER.job_cache,
+        &backend_manager.job_cache,
         jobid,
         &metadata,
         &backend.name,
         Some(&app),
     )
     .await;
-    let backend_name = backend.name.clone();
 
     // Monitor and WAIT for completion
     let result = monitor_job(
@@ -271,14 +275,16 @@ pub async fn poll_job(
 
 #[cfg(not(feature = "web-server"))]
 #[tauri::command]
-pub async fn get_jobs() -> Result<Vec<JobInfo>, String> {
-    Ok(BACKEND_MANAGER.job_cache.get_jobs().await)
+pub async fn get_jobs(app: AppHandle) -> Result<Vec<JobInfo>, String> {
+    let backend_manager = app.state::<BackendManager>();
+    Ok(backend_manager.job_cache.get_jobs().await)
 }
 
 #[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn delete_job(app: AppHandle, jobid: u64) -> Result<(), String> {
-    BACKEND_MANAGER
+    let backend_manager = app.state::<BackendManager>();
+    backend_manager
         .job_cache
         .delete_job(jobid, Some(&app))
         .await
@@ -286,31 +292,36 @@ pub async fn delete_job(app: AppHandle, jobid: u64) -> Result<(), String> {
 
 #[cfg(not(feature = "web-server"))]
 #[tauri::command]
-pub async fn get_job_status(jobid: u64) -> Result<Option<JobInfo>, String> {
-    Ok(BACKEND_MANAGER.job_cache.get_job(jobid).await)
+pub async fn get_job_status(app: AppHandle, jobid: u64) -> Result<Option<JobInfo>, String> {
+    let backend_manager = app.state::<BackendManager>();
+    Ok(backend_manager.job_cache.get_job(jobid).await)
 }
 
 #[cfg(not(feature = "web-server"))]
 #[tauri::command]
-pub async fn get_active_jobs() -> Result<Vec<JobInfo>, String> {
-    Ok(BACKEND_MANAGER.job_cache.get_active_jobs().await)
+pub async fn get_active_jobs(app: AppHandle) -> Result<Vec<JobInfo>, String> {
+    let backend_manager = app.state::<BackendManager>();
+    Ok(backend_manager.job_cache.get_active_jobs().await)
 }
 
 #[cfg(not(feature = "web-server"))]
 #[tauri::command]
-pub async fn get_jobs_by_source(source: String) -> Result<Vec<JobInfo>, String> {
-    Ok(BACKEND_MANAGER.job_cache.get_jobs_by_source(&source).await)
+pub async fn get_jobs_by_source(app: AppHandle, source: String) -> Result<Vec<JobInfo>, String> {
+    let backend_manager = app.state::<BackendManager>();
+    Ok(backend_manager.job_cache.get_jobs_by_source(&source).await)
 }
 
 /// Rename a profile in all cached running jobs
 #[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn rename_profile_in_cache(
+    app: AppHandle,
     remote_name: String,
     old_name: String,
     new_name: String,
 ) -> Result<usize, String> {
-    Ok(BACKEND_MANAGER
+    let backend_manager = app.state::<BackendManager>();
+    Ok(backend_manager
         .job_cache
         .rename_profile(&remote_name, &old_name, &new_name)
         .await)
@@ -326,13 +337,15 @@ pub async fn monitor_job(
 ) -> Result<(), RcloneError> {
     let scheduled_tasks_cache = app.state::<ScheduledTasksCache>();
 
+    let backend_manager = app.state::<BackendManager>();
+
     // Get backend for API calls
-    let backend = BACKEND_MANAGER
+    let backend = backend_manager
         .get(&backend_name)
         .await
         .ok_or_else(|| RcloneError::ConfigError(format!("Backend '{}' not found", backend_name)))?;
 
-    let job_cache = &BACKEND_MANAGER.job_cache;
+    let job_cache = &backend_manager.job_cache;
     let job_status_url = backend.url_for(job::STATUS);
     let stats_url = backend.url_for(core::STATS);
 
@@ -531,16 +544,16 @@ pub async fn stop_job(
     scheduled_tasks_cache: State<'_, ScheduledTasksCache>,
     jobid: u64,
     remote_name: String,
-    state: State<'_, RcloneState>,
 ) -> Result<(), String> {
     // Use active backend (in simplified architecture, there's only one job cache)
-    let backend = BACKEND_MANAGER.get_active().await;
-    let job_cache = &BACKEND_MANAGER.job_cache;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let job_cache = &backend_manager.job_cache;
     let url = backend.url_for(job::STOP);
     let payload = json!({ "jobid": jobid });
 
     let response = backend
-        .inject_auth(state.client.post(&url))
+        .inject_auth(app.state::<RcloneState>().client.post(&url))
         .json(&payload)
         .send()
         .await

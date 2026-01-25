@@ -9,7 +9,7 @@ use tokio::time;
 
 use crate::rclone::queries::{mount::get_mounted_remotes_internal, serve::list_serves_internal};
 use crate::{
-    rclone::backend::{BACKEND_MANAGER, types::Backend},
+    rclone::backend::{BackendManager, types::Backend},
     utils::types::{
         core::RcloneState,
         remotes::{RemoteCache, ServeInstance},
@@ -67,8 +67,9 @@ pub async fn start_mounted_remote_watcher(app_handle: AppHandle) {
             break;
         }
 
-        let backend = BACKEND_MANAGER.get_active().await;
-        let cache = BACKEND_MANAGER.remote_cache.clone();
+        let backend_manager = app_handle.state::<BackendManager>();
+        let backend = backend_manager.get_active().await;
+        let cache = backend_manager.remote_cache.clone();
         let client = app_handle.state::<RcloneState>().client.clone();
 
         if let Err(e) = check_and_reconcile_mounts(app_handle.clone(), backend, cache, client).await
@@ -89,8 +90,9 @@ pub fn stop_mounted_remote_watcher() {
 pub async fn force_check_mounted_remotes(app_handle: AppHandle) -> Result<(), String> {
     debug!("🔍 Force checking mounted remotes");
     // Force check only checks active backend
-    let backend = BACKEND_MANAGER.get_active().await;
-    let cache = BACKEND_MANAGER.remote_cache.clone();
+    let backend_manager = app_handle.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let cache = backend_manager.remote_cache.clone();
     let client = app_handle.state::<RcloneState>().client.clone();
 
     check_and_reconcile_mounts(app_handle.clone(), backend, cache, client).await?;
@@ -141,8 +143,9 @@ async fn check_and_reconcile_serves(
 #[tauri::command]
 pub async fn force_check_serves(app_handle: AppHandle) -> Result<(), String> {
     debug!("🔍 Force checking running serves");
-    let backend = BACKEND_MANAGER.get_active().await;
-    let cache = BACKEND_MANAGER.remote_cache.clone();
+    let backend_manager = app_handle.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let cache = backend_manager.remote_cache.clone();
     let client = app_handle.state::<RcloneState>().client.clone();
 
     check_and_reconcile_serves(app_handle.clone(), backend, cache, client).await?;
@@ -168,8 +171,9 @@ pub fn start_serve_watcher(app_handle: AppHandle) {
                 break;
             }
 
-            let backend = BACKEND_MANAGER.get_active().await;
-            let cache = BACKEND_MANAGER.remote_cache.clone();
+            let backend_manager = app_handle.state::<BackendManager>();
+            let backend = backend_manager.get_active().await;
+            let cache = backend_manager.remote_cache.clone();
             let client = app_handle.state::<RcloneState>().client.clone();
 
             if let Err(e) =

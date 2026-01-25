@@ -10,7 +10,7 @@
 use crate::core::settings::AppSettingsManager;
 use log::{info, warn};
 use serde_json::Value;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::utils::types::events::REMOTE_SETTINGS_CHANGED;
 use crate::{
@@ -58,8 +58,9 @@ pub async fn save_remote_settings(
     info!("✅ Remote settings saved for '{remote_name}'");
 
     // Update scheduled tasks
-    use crate::rclone::backend::BACKEND_MANAGER;
-    let backend_name = BACKEND_MANAGER.get_active_name().await;
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app_handle.state::<BackendManager>();
+    let backend_name = backend_manager.get_active_name().await;
 
     match cache
         .add_or_update_task_for_remote(&backend_name, &remote_name, &settings, scheduler)
