@@ -224,6 +224,10 @@
         "label": "Max Tray Items",
         "description": "Maximum number of items to show in the tray (1-40)."
       },
+      "connection_check_urls": {
+        "label": "Connectivity Check URLs",
+        "description": "List of URLs used to verify internet connectivity. The app checks these URLs periodically."
+      },
       "rclone_path": {
         "label": "Rclone Binary Path",
         "description": "Path to rclone binary or directory. Leave empty for auto-detection."
@@ -299,6 +303,10 @@
       },
       "flatpak_warn": {
         "label": "Flatpak Warning Shown"
+      },
+      "dashboard_layout": {
+        "label": "Dashboard Layout",
+        "description": "Custom layout configuration for the dashboard."
       }
     },
     "nautilus": {
@@ -332,6 +340,14 @@
           "date-asc": "Date (Old-New)",
           "date-desc": "Date (New-Old)"
         }
+      },
+      "starred": {
+        "label": "Starred Items",
+        "description": "List of starred files and folders in the file browser."
+      },
+      "bookmarks": {
+        "label": "Bookmarks",
+        "description": "List of bookmarked locations for quick access."
       }
     }
   },
@@ -604,15 +620,6 @@
         "removeItem": "Remove {{name}} item",
         "date": "{{name}} date",
         "time": "{{name}} time"
-      },
-      "hints": {
-        "selectMultiple": "Select one or more items",
-        "dumpFlags": "Select items to dump (multiple allowed)",
-        "encodingFlags": "Select one or more encoding flags",
-        "flags": "Select one or more flags",
-        "bandwidth": "Bandwidth limit in KiB/s, or use suffix B|K|M|G|T|P or full timetable format",
-        "duration": "Format: 1h30m45s",
-        "sizeSuffix": "Format: 100Ki, 16Mi, 1Gi"
       },
       "errors": {
         "invalidValue": "Invalid value"
@@ -1380,6 +1387,7 @@
   "modals": {
     "about": {
       "title": "About",
+      "keepClicking": "Keep clicking...",
       "details": "Details",
       "updates": "Updates",
       "aboutRclone": "About Rclone",
@@ -2566,5 +2574,25 @@
     "repairingAria": "Repair in progress",
     "startRepairAria": "Start repair",
     "validatingPassword": "Validating..."
+  },
+  "rclone": {
+    "options": {
+      "host": {
+        "title": "Host",
+        "help": "FTP host to connect to"
+      },
+      "user": {
+        "title": "Username",
+        "help": "FTP username"
+      },
+      "pass": {
+        "title": "Password",
+        "help": "FTP password"
+      },
+      "port": {
+        "title": "Port",
+        "help": "FTP port number"
+      }
+    }
   }
 }

@@ -1,27 +1,13 @@
-.operation-config {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-}
-
 // ============================================================================
 // HEADER SECTION (Auto-start & Cron Scheduling)
 // ============================================================================
 
 .header-section {
-  display: flex;
-  flex-direction: column;
+  margin-bottom: var(--space-md);
   padding: var(--space-sm);
   box-shadow: 0 0 0 2px var(--primary-color);
   border-radius: var(--panel-radius);
   background: rgba(var(--primary-color-rgb), 0.05);
-}
-
-.paths-container {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-  margin-block: var(--space-md);
 }
 
 .header-section {
@@ -105,10 +91,11 @@
 .message {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-sm);
+  gap: var(--space-xxs);
+  padding: var(--space-xs);
   border-radius: var(--border-radius);
   font-size: var(--font-size-sm);
+  margin-bottom: var(--space-md);
 
   mat-icon {
     height: 1.2rem;

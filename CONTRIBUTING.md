@@ -80,21 +80,26 @@ We use BCP-47 language tags (e.g., `en-US`, `tr-TR`, `de-DE`) for internationali
 
 #### Steps to Add a New Language
 
-1. **Create the translation file**:
-   
-   Copy the English translation file as a starting point:
+1. **Create the translation directory**:
+
    ```bash
-   cp src/assets/i18n/en-US.json src/assets/i18n/YOUR-LANG.json
-   # Example: cp src/assets/i18n/en-US.json src/assets/i18n/de-DE.json
+   mkdir -p src/assets/i18n/YOUR-LANG
    ```
 
-2. **Update the backend schema** (`src-tauri/src/core/settings/schema.rs`):
-   
+2. **Copy base translation files**:
+
+   ```bash
+   cp -r src/assets/i18n/en-US/* src/assets/i18n/YOUR-LANG/
+   ```
+
+3. **Update the backend schema** (`src-tauri/src/core/settings/schema.rs`):
+
    Add your language to `SUPPORTED_LANGUAGES` and the language options:
+
    ```rust
    // Add your BCP-47 code here
    const SUPPORTED_LANGUAGES: &[&str] = &["en-US", "tr-TR", "de-DE"];
-   
+
    // Add your language option (use native language name)
    options(
        ("en-US", "English (US)"),
@@ -103,11 +108,15 @@ We use BCP-47 language tags (e.g., `en-US`, `tr-TR`, `de-DE`) for internationali
    )
    ```
 
-3. **Translate the JSON file**:
-   
-   Translate all string values in your `YOUR-LANG.json` file. Keep the JSON keys unchanged.
+4. **Translate the JSON files**:
 
-4. **Test your translation**:
+   Translate all string values in the files under `src/assets/i18n/YOUR-LANG/`.
+   - `main.json`: General UI strings.
+   - `rclone.json`: Rclone flag names and help texts.
+
+   Keep the JSON keys unchanged.
+
+5. **Test your translation**:
    ```bash
    npm run tauri dev
    ```
@@ -130,9 +139,9 @@ If you'd like to go the extra mile, you can also translate the README:
 3. Add your language to the language selector at the top of all README files:
    ```html
    <p align="center">
-     <a href="README.md">English</a> •
-     <a href="README.tr-TR.md">Türkçe</a> •
-     <a href="README.de-DE.md">Deutsch</a>  <!-- New -->
+     <a href="README.md">English</a> • <a href="README.tr-TR.md">Türkçe</a> •
+     <a href="README.de-DE.md">Deutsch</a>
+     <!-- New -->
    </p>
    ```
 
@@ -142,15 +151,48 @@ Common language codes:
 | Code | Language |
 |------|----------|
 | `en-US` | English (US) |
-| `en-GB` | English (UK) |
 | `tr-TR` | Turkish (Turkey) |
 | `de-DE` | German (Germany) |
 | `fr-FR` | French (France) |
-| `es-ES` | Spanish (Spain) |
-| `pt-BR` | Portuguese (Brazil) |
 | `zh-CN` | Chinese (Simplified) |
-| `ja-JP` | Japanese |
-| `ko-KR` | Korean |
+
+---
+
+### Managing Rclone Flags
+
+The Rclone flags (options) are stored in `src/assets/i18n/{lang}/rclone.json`. These are used to provide translated titles and help text for Rclone's various options.
+
+#### Updating Flag Definitions
+
+To update the flag definitions from a running Rclone instance:
+
+1. **Start the app in dev mode**:
+
+   ```bash
+   npm run tauri dev
+   ```
+
+2. **Find the RC port**:
+   Check the console logs or `ps aux | grep rclone` for the `--rc-addr` port (e.g., `51900`).
+
+3. **Fetch new definitions**:
+
+   ```bash
+   curl -X POST http://127.0.0.1:PORT/options/info -d "{}" -o flags.json
+   ```
+
+4. **Process and Update**:
+   Extract the `Name` and `Help` fields and update the `rclone.json` files. Maintain the flat structure:
+   ```json
+   {
+     "options": {
+       "flag_name": {
+         "title": "Title",
+         "help": "Description"
+       }
+     }
+   }
+   ```
 
 ---
 

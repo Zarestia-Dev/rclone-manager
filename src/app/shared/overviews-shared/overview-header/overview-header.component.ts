@@ -4,7 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
 import { AppTab } from '@app/types';
-import { BackendService } from '@app/services';
+import { BackendService, RcloneStatusService } from '@app/services';
 
 @Component({
   selector: 'app-overview-header',
@@ -16,6 +16,7 @@ import { BackendService } from '@app/services';
 })
 export class OverviewHeaderComponent {
   private readonly backendService = inject(BackendService);
+  private readonly rcloneStatusService = inject(RcloneStatusService);
 
   @Input() mode: AppTab = 'general';
 
@@ -41,9 +42,9 @@ export class OverviewHeaderComponent {
 
   /** Get status class for the active backend */
   get backendStatusClass(): string {
-    const active = this.backends().find(b => b.is_active);
-    if (!active) return 'disconnected';
-    return this.backendService.getStatusClass(active.status);
+    const status = this.rcloneStatusService.rcloneStatus();
+    if (status === 'active') return 'connected';
+    return 'disconnected';
   }
 
   onBackendClick(): void {

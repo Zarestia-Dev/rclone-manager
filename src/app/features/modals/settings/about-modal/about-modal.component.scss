@@ -322,7 +322,7 @@
 
     .update-buttons {
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       gap: var(--space-sm);
     }
 
@@ -398,6 +398,7 @@
     .skipped-item {
       display: flex;
       justify-content: space-between;
+      background: var(--view-bg-color);
       align-items: center;
       padding: var(--space-sm) var(--space-md);
       box-shadow: var(--box-shadow);

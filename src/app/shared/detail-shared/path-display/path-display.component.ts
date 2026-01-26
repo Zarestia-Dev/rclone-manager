@@ -59,7 +59,7 @@ import { PathDisplayConfig } from '../../types';
               [matTooltip]="'detailShared.pathDisplay.openInExplorer' | translate"
             >
               @if (config.actionInProgress === 'open') {
-                <mat-spinner diameter="20"></mat-spinner>
+                <mat-spinner diameter="24"></mat-spinner>
               } @else {
                 <mat-icon svgIcon="folder"></mat-icon>
               }

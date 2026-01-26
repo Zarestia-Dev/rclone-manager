@@ -225,6 +225,10 @@
         "label": "Maksimum Tepsi Öğesi",
         "description": "Tepside gösterilecek maksimum öğe sayısı (1-40)."
       },
+      "connection_check_urls": {
+        "label": "Bağlantı Kontrol URL'leri",
+        "description": "İnternet bağlantısını doğrulamak için kullanılan URL listesi. Uygulama bu URL'leri periyodik olarak kontrol eder."
+      },
       "rclone_path": {
         "label": "Rclone İkili Dosya Yolu",
         "description": "Rclone ikili dosyası veya dizininin yolu. Otomatik algılama için boş bırakın."
@@ -300,6 +304,10 @@
       },
       "flatpak_warn": {
         "label": "Flatpak Uyarısı Gösterildi"
+      },
+      "dashboard_layout": {
+        "label": "Panel Düzeni",
+        "description": "Panel için özel düzen yapılandırması."
       }
     },
     "nautilus": {
@@ -333,6 +341,14 @@
           "date-asc": "Tarih (Eski-Yeni)",
           "date-desc": "Tarih (Yeni-Eski)"
         }
+      },
+      "starred": {
+        "label": "Yıldızlı Öğeler",
+        "description": "Dosya tarayıcısındaki yıldızlı dosya ve klasörlerin listesi."
+      },
+      "bookmarks": {
+        "label": "Yer İmleri",
+        "description": "Hızlı erişim için yer imlerine eklenen konumların listesi."
       }
     }
   },
@@ -605,15 +621,6 @@
         "removeItem": "Ögeyi kaldır",
         "date": "Tarih",
         "time": "Saat"
-      },
-      "hints": {
-        "selectMultiple": "Bir veya daha fazla öge seçin",
-        "dumpFlags": "Dökülecek ögeleri seçin (birden fazlasına izin verilir)",
-        "encodingFlags": "Bir veya daha fazla kodlama bayrağı seçin",
-        "flags": "Bir veya daha fazla bayrak seçin",
-        "bandwidth": "KiB/sn cinsinden bant genişliği sınırı veya B|K|M|G|T|P soneki veya tam zaman çizelgesi formatı kullanın",
-        "duration": "Biçim: 1h30m45s",
-        "sizeSuffix": "Biçim: 100Ki, 16Mi, 1Gi"
       },
       "errors": {
         "invalidValue": "Geçersiz değer"
@@ -1379,6 +1386,7 @@
   "modals": {
     "about": {
       "title": "Hakkında",
+      "keepClicking": "Tıklamaya devam et...",
       "details": "Detaylar",
       "updates": "Güncellemeler",
       "aboutRclone": "Rclone Hakkında",
@@ -1447,7 +1455,7 @@
       "licenseText2": "Bu program herhangi bir garanti olmaksızın sunulmaktadır. GPL v3 lisans şartlarına göre bu yazılımı kullanmakta, değiştirmekte ve dağıtmakta özgürsünüz.",
       "thirdParty": "Üçüncü Taraf Yazılımlar",
       "thirdPartyText": "Bu uygulama, her biri kendi lisans şartlarına sahip çeşitli üçüncü taraf kütüphaneler ve bileşenler içermektedir. Tam liste için proje deposuna bakın.",
-      "viewOnGithub": "GitHub'da Görüntüle",
+      "viewOnGithub": "GitHub'da Göster",
       "restoreUpdate": "Güncellemeyi geri yükle",
       "debugTools": "Hata Ayıklama Araçları",
       "systemInfo": "Sistem Bilgisi",
@@ -1611,8 +1619,8 @@
         "backendConfig": "Arka Uç Ayarlarını Kopyala",
         "remotesConfig": "Uzak Bağlantıları Kopyala",
         "fromZero": "Sıfırdan Başla",
-        "backendHint": "Arka uç özel ayarlarını kopyala (filtreler, bayraklar, vb.)",
-        "remotesHint": "Yapılandırılmış uzak bağlantıları kopyala (bulut sağlayıcıları)"
+        "backendHint": "Arka uç özel ayarlarını kopyala (Günlük ayarları vb.)",
+        "remotesHint": "Yapılandırılmış uzak bağlantı ayarlarını kopyala"
       },
       "status": {
         "notTested": "Bağlantı test edilmedi",

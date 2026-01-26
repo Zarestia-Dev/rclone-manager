@@ -41,16 +41,18 @@
 
 **RClone Manager**, [Rclone](https://rclone.org/) uzak bağlantılarını yönetmeyi zahmetsiz hale getiren **modern, çapraz platform bir GUI**'dir. Bulut depolama sağlayıcıları arasında dosya senkronizasyonu, uzak sürücüleri bağlama veya karmaşık dosya işlemleri gerçekleştirme olsun, RClone Manager en gelişmiş Rclone özelliklerini bile basitleştiren sezgisel bir arayüz sunar.
 
+> Büyük `RC` harfleri `Rclone RC`'yi temsil ediyor.
+
 <div align="center">
 
-> ### 🌐 **Headless Modu mu Arıyorsunuz?**
->
-> **[RClone Manager Headless](headless/README.md)** – GUI olmadan Linux sunucularında web sunucusu olarak çalıştırın!  
-> NAS, VPS ve uzak sistemler için mükemmel. Herhangi bir tarayıcıdan erişin. 🚀
+### 🌐 **Headless Modu mu Arıyorsunuz?**
+
+**[RClone Manager Headless](headless/README.md)** – GUI olmadan Linux sunucularında web sunucusu olarak çalıştırın!  
+NAS, VPS ve uzak sistemler için mükemmel. Herhangi bir tarayıcıdan erişin. 🚀
 
 </div>
 
-> Yeni özellikler ve iyileştirmelerle düzenli güncellemeler. Sırada ne olduğunu görmek için [yol haritamıza](https://github.com/users/Zarestia-Dev/projects/2) göz atın!
+Yeni özellikler ve iyileştirmelerle düzenli güncellemeler. Sırada ne olduğunu görmek için [yol haritamıza](https://github.com/users/Zarestia-Dev/projects/2) göz atın!
 
 ---
 

@@ -259,7 +259,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
         'runtime.rclone_skipped_updates'
       );
       console.debug('Skipped rclone versions:', skipped);
-      return [];
+      return skipped || [];
     } catch (error) {
       console.error('Failed to load skipped rclone versions:', error);
       return [];

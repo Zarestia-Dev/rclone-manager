@@ -5,3 +5,4 @@ export * from './format-eta.pipe';
 export * from './format-memory-usage.pipe';
 export * from './format-rate-value.pipe';
 export * from './linebreaks.pipe';
+export * from './rclone-option-translate.pipe';

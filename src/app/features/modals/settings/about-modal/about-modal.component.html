@@ -1,5 +1,5 @@
 <div class="about-modal">
-  <div class="modal-header" data-tauri-drag-region [class.scrolled]="scrolled">
+  <div class="modal-header" data-tauri-drag-region [class.scrolled]="scrolled()">
     <button>
       <mat-icon></mat-icon>
     </button>
@@ -20,7 +20,7 @@
       tabindex="0"
       role="button"
       style="cursor: pointer"
-      [matTooltip]="logoClickCount >= 3 ? 'Keep clicking...' : ''"
+      [matTooltip]="logoClickCount >= 3 ? ('modals.about.keepClicking' | translate) : ''"
     />
     <h2 class="app-name">RClone Manager</h2>
     <p class="app-team">
@@ -31,10 +31,14 @@
       <button class="version-badge" (click)="copyToClipboard(rCloneManagerVersion)">
         {{ rCloneManagerVersion }}
       </button>
-      @if (buildType) {
-        <span class="platform-badge" [class]="buildType" [matTooltip]="buildType + ' package'">
+      @if (buildType()) {
+        <span
+          class="platform-badge"
+          [class]="buildType()"
+          [matTooltip]="getChannelLabel(buildType()) | translate"
+        >
           <mat-icon svgIcon="package"></mat-icon>
-          {{ buildType }}
+          {{ getChannelLabel(buildType()) | translate }}
         </span>
       }
     </div>
@@ -45,12 +49,12 @@
         <mat-icon svgIcon="chevron-right"></mat-icon>
       </button>
 
-      @if (!updatesDisabled) {
+      @if (!updatesDisabled()) {
         <button
           matButton
           class="about-item"
           (click)="navigateTo('Updates')"
-          [matBadge]="updateAvailable || restartRequired ? '!' : null"
+          [matBadge]="appUpdateAvailable() || appRestartRequired() ? '!' : null"
         >
           <span>{{ 'modals.about.updates' | translate }}</span>
           <mat-icon svgIcon="chevron-right"></mat-icon>
@@ -61,7 +65,7 @@
         matButton
         class="about-item"
         (click)="navigateTo('About Rclone')"
-        [matBadge]="rcloneUpdateStatus.available ? '!' : null"
+        [matBadge]="rcloneUpdateStatus().available ? '!' : null"
       >
         <span>{{ 'modals.about.aboutRclone' | translate }}</span>
         <mat-icon svgIcon="chevron-right"></mat-icon>
@@ -81,7 +85,7 @@
     </div>
   </div>
 
-  @if (currentPage !== 'main') {
+  @if (currentPage() !== 'main') {
     <div class="overlay" animate.enter="slide-overlay-enter" animate.leave="slide-overlay-leave">
       <div class="modal-header" data-tauri-drag-region>
         <button mat-icon-button (click)="navigateTo('main')">
@@ -95,7 +99,7 @@
         </button>
       </div>
 
-      @if (currentPage === 'Details') {
+      @if (currentPage() === 'Details') {
         <div class="modal-content">
           <div class="stacked-buttons">
             <a
@@ -136,7 +140,7 @@
         </div>
       }
 
-      @if (currentPage === 'Updates') {
+      @if (currentPage() === 'Updates') {
         <div class="modal-content updates-page">
           <div class="current-version-card">
             <div class="version-info">
@@ -145,7 +149,7 @@
             </div>
           </div>
 
-          @if (restartRequired) {
+          @if (appRestartRequired()) {
             <div class="update-card restart-required">
               <div class="update-header">
                 <mat-icon svgIcon="rotate-group"></mat-icon>
@@ -162,41 +166,41 @@
                 </button>
               </div>
             </div>
-          } @else if (updateAvailable) {
+          } @else if (appUpdateAvailable()) {
             <div class="update-card available">
               <div class="update-header">
                 <mat-icon svgIcon="circle-up"></mat-icon>
                 <div class="update-title">
                   <h4>{{ 'modals.about.updateAvailable' | translate }}</h4>
                   <span class="new-version">
-                    {{ 'modals.about.version' | translate }} {{ updateAvailable.version }}
-                    @if (updateReleaseChannel) {
-                      <span class="release-badge badge-{{ updateReleaseChannel }}">
-                        {{ updateReleaseChannel }}
+                    {{ 'modals.about.version' | translate }} {{ appUpdateAvailable()?.version }}
+                    @if (appUpdateReleaseChannel()) {
+                      <span class="release-badge badge-{{ appUpdateReleaseChannel() }}">
+                        {{ getChannelLabel(appUpdateReleaseChannel()) | translate }}
                       </span>
                     }
                   </span>
                 </div>
               </div>
 
-              @if (updateAvailable.releaseNotes) {
+              @if (appUpdateAvailable()?.releaseNotes) {
                 <button mat-stroked-button class="whats-new-button" (click)="showWhatsNew('app')">
                   <mat-icon svgIcon="file-lines"></mat-icon>
                   {{ 'modals.about.whatsNew' | translate }}
                 </button>
               }
 
-              @if (downloadInProgress) {
+              @if (appDownloadInProgress()) {
                 <div class="download-progress">
                   <mat-progress-bar
                     mode="determinate"
-                    [value]="downloadPercentage"
+                    [value]="appDownloadPercentage()"
                   ></mat-progress-bar>
                   <div class="progress-info">
                     <span>{{ 'modals.about.downloading' | translate }}</span>
                     <span>
-                      {{ downloadProgress | formatFileSize }} /
-                      {{ downloadTotal | formatFileSize }}
+                      {{ appDownloadProgress() | formatFileSize }} /
+                      {{ appDownloadTotal() | formatFileSize }}
                     </span>
                   </div>
                 </div>
@@ -206,12 +210,12 @@
                 <button
                   mat-flat-button
                   (click)="installUpdate()"
-                  [disabled]="installingUpdate || downloadInProgress"
+                  [disabled]="appUpdateInProgress() || appDownloadInProgress()"
                 >
-                  @if (installingUpdate || downloadInProgress) {
+                  @if (appUpdateInProgress() || appDownloadInProgress()) {
                     <mat-spinner diameter="16"></mat-spinner>
                     {{
-                      downloadInProgress
+                      appDownloadInProgress()
                         ? ('modals.about.downloading' | translate)
                         : ('modals.about.installing' | translate)
                     }}
@@ -219,25 +223,26 @@
                     {{ 'modals.about.installUpdate' | translate }}
                   }
                 </button>
-                <button mat-stroked-button (click)="skipUpdate()" [disabled]="downloadInProgress">
+                <button
+                  mat-stroked-button
+                  (click)="skipUpdate()"
+                  [disabled]="appDownloadInProgress()"
+                >
                   {{ 'modals.about.skipVersion' | translate }}
                 </button>
               </div>
             </div>
           } @else {
-            <div class="update-card up-to-date">
-              <mat-icon svgIcon="circle-check"></mat-icon>
-              <div class="status-text">
-                <h4>{{ 'modals.about.upToDate' | translate }}</h4>
-                <p>{{ 'modals.about.latestVersionMsg' | translate }}</p>
-              </div>
-            </div>
+            <!-- Up to Date Card -->
+            <ng-container
+              *ngTemplateOutlet="upToDateCard; context: { $implicit: 'modals.about.upToDate' }"
+            ></ng-container>
           }
 
           <button
             mat-stroked-button
             (click)="checkForUpdates()"
-            [disabled]="checkingForUpdates || downloadInProgress || restartRequired"
+            [disabled]="checkingForUpdates || appDownloadInProgress() || appRestartRequired()"
             class="check-button"
           >
             @if (checkingForUpdates) {
@@ -250,77 +255,31 @@
 
           <div class="settings-section">
             <h4>{{ 'modals.about.updateSettings' | translate }}</h4>
-
-            <div class="settings-card">
-              <div class="setting-group">
-                <div class="setting-header">
-                  <span class="setting-title">{{ 'modals.about.autoCheck' | translate }}</span>
-                </div>
-                <div class="setting-control">
-                  <mat-slide-toggle
-                    [checked]="autoCheckUpdates"
-                    (change)="toggleAutoCheck()"
-                    [disabled]="downloadInProgress"
-                  >
-                  </mat-slide-toggle>
-                </div>
-              </div>
-
-              <mat-divider></mat-divider>
-
-              <div class="setting-group">
-                <div class="setting-header">
-                  <span class="setting-title">{{ 'modals.about.releaseChannel' | translate }}</span>
-                </div>
-                <div class="setting-control">
-                  <mat-form-field appearance="fill">
-                    <mat-select
-                      [value]="updateChannel"
-                      (selectionChange)="changeChannel($event.value)"
-                      [disabled]="downloadInProgress"
-                    >
-                      @for (channel of channels; track channel.value) {
-                        <mat-option
-                          [value]="channel.value"
-                          [matTooltip]="channel.description | translate"
-                          matTooltipPosition="left"
-                        >
-                          <div class="channel-option">
-                            <span class="channel-name">{{ channel.label | translate }}</span>
-                          </div>
-                        </mat-option>
-                      }
-                    </mat-select>
-                  </mat-form-field>
-                </div>
-              </div>
-            </div>
+            <ng-container
+              *ngTemplateOutlet="
+                settingsControls;
+                context: {
+                  autoCheck: appAutoCheckUpdates(),
+                  channel: appUpdateChannel(),
+                  channels: channels,
+                  disabled: appDownloadInProgress(),
+                }
+              "
+            ></ng-container>
           </div>
 
-          @if (skippedVersions.length > 0) {
+          @if (appSkippedVersions().length > 0) {
             <div class="skipped-section">
               <h4>{{ 'modals.about.skippedUpdates' | translate }}</h4>
-              <div class="skipped-list">
-                @for (version of skippedVersions; track version) {
-                  <div class="skipped-item">
-                    <span class="version">{{ version }}</span>
-                    <button
-                      mat-icon-button
-                      (click)="unskipVersion(version)"
-                      [matTooltip]="'modals.about.restoreUpdate' | translate"
-                      class="restore-button"
-                    >
-                      <mat-icon svgIcon="rotate-left"></mat-icon>
-                    </button>
-                  </div>
-                }
-              </div>
+              <ng-container
+                *ngTemplateOutlet="skippedList; context: { versions: appSkippedVersions() }"
+              ></ng-container>
             </div>
           }
         </div>
       }
 
-      @if (currentPage === 'About Rclone') {
+      @if (currentPage() === 'About Rclone') {
         <div class="modal-content updates-page">
           <div class="rclone-info">
             <div class="rclone-header">
@@ -396,7 +355,7 @@
             }
           </div>
 
-          @if (rcloneUpdateStatus.updateInfo?.update_available) {
+          @if (rcloneUpdateStatus().updateInfo?.update_available) {
             <div class="update-card available">
               <div class="update-header">
                 <mat-icon svgIcon="circle-up"></mat-icon>
@@ -405,17 +364,17 @@
                   <span class="new-version">
                     {{ 'modals.about.version' | translate }}
                     {{
-                      rcloneUpdateStatus.updateInfo?.latest_version_clean ||
-                        rcloneUpdateStatus.updateInfo?.latest_version
+                      rcloneUpdateStatus().updateInfo?.latest_version_clean ||
+                        rcloneUpdateStatus().updateInfo?.latest_version
                     }}
-                    <span class="release-badge badge-{{ rcloneUpdateChannel }}">
-                      {{ rcloneUpdateChannel }}
+                    <span class="release-badge badge-{{ rcloneUpdateChannel() }}">
+                      {{ getChannelLabel(rcloneUpdateChannel()) | translate }}
                     </span>
                   </span>
                 </div>
               </div>
 
-              @if (rcloneUpdateStatus.updateInfo?.release_notes) {
+              @if (rcloneUpdateStatus().updateInfo?.release_notes) {
                 <button
                   mat-stroked-button
                   class="whats-new-button"
@@ -430,12 +389,12 @@
                 <button
                   matButton="filled"
                   (click)="installRcloneUpdate()"
-                  [disabled]="rcloneUpdateStatus.updating"
+                  [disabled]="rcloneUpdateStatus().updating"
                 >
-                  @if (rcloneUpdateStatus.updating) {
+                  @if (rcloneUpdateStatus().updating) {
                     <mat-spinner diameter="16"></mat-spinner>
                     {{
-                      rcloneUpdateStatus.updating
+                      rcloneUpdateStatus().updating
                         ? ('modals.about.updating' | translate)
                         : ('modals.about.updateRclone' | translate)
                     }}
@@ -449,22 +408,22 @@
               </div>
             </div>
           } @else {
-            <div class="update-card up-to-date">
-              <mat-icon svgIcon="circle-check"></mat-icon>
-              <div class="status-text">
-                <h4>{{ 'modals.about.rcloneUpToDate' | translate }}</h4>
-                <p>{{ 'modals.about.latestVersionMsg' | translate }}</p>
-              </div>
-            </div>
+            <!-- Up to Date Card -->
+            <ng-container
+              *ngTemplateOutlet="
+                upToDateCard;
+                context: { $implicit: 'modals.about.rcloneUpToDate' }
+              "
+            ></ng-container>
           }
 
           <button
             matButton="outlined"
             (click)="checkForRcloneUpdates()"
-            [disabled]="rcloneUpdateStatus.checking"
+            [disabled]="rcloneUpdateStatus().checking"
             class="check-button"
           >
-            @if (rcloneUpdateStatus.checking) {
+            @if (rcloneUpdateStatus().checking) {
               <mat-spinner diameter="16"></mat-spinner>
               {{ 'modals.about.checking' | translate }}
             } @else {
@@ -474,72 +433,34 @@
 
           <div class="settings-section">
             <h4>{{ 'modals.about.rcloneUpdateSettings' | translate }}</h4>
-
-            <div class="settings-card">
-              <div class="setting-group">
-                <div class="setting-header">
-                  <span class="setting-title">{{ 'modals.about.autoCheck' | translate }}</span>
-                </div>
-                <div class="setting-control">
-                  <mat-slide-toggle [checked]="rcloneAutoCheck" (change)="toggleRcloneAutoCheck()">
-                  </mat-slide-toggle>
-                </div>
-              </div>
-
-              <mat-divider></mat-divider>
-
-              <div class="setting-group">
-                <div class="setting-header">
-                  <span class="setting-title">{{ 'modals.about.releaseChannel' | translate }}</span>
-                </div>
-                <div class="setting-control">
-                  <mat-form-field appearance="fill">
-                    <mat-select
-                      [value]="rcloneUpdateChannel"
-                      (selectionChange)="changeRcloneChannel($event.value)"
-                    >
-                      @for (channel of channels; track channel.value) {
-                        <mat-option
-                          [value]="channel.value"
-                          [matTooltip]="channel.description | translate"
-                          matTooltipPosition="left"
-                        >
-                          <div class="channel-option">
-                            <span class="channel-name">{{ channel.label | translate }}</span>
-                          </div>
-                        </mat-option>
-                      }
-                    </mat-select>
-                  </mat-form-field>
-                </div>
-              </div>
-            </div>
+            <ng-container
+              *ngTemplateOutlet="
+                settingsControls;
+                context: {
+                  autoCheck: rcloneAutoCheck(),
+                  channel: rcloneUpdateChannel(),
+                  channels: channels,
+                  isRclone: true,
+                }
+              "
+            ></ng-container>
           </div>
 
-          @if (rcloneSkippedVersions.length > 0) {
+          @if (rcloneSkippedVersions().length > 0) {
             <div class="skipped-section">
               <h4>{{ 'modals.about.skippedRcloneUpdates' | translate }}</h4>
-              <div class="skipped-list">
-                @for (version of rcloneSkippedVersions; track version) {
-                  <div class="skipped-item">
-                    <span class="version">{{ version }}</span>
-                    <button
-                      mat-icon-button
-                      (click)="unskipRcloneVersion(version)"
-                      [matTooltip]="'modals.about.restoreUpdate' | translate"
-                      class="restore-button"
-                    >
-                      <mat-icon svgIcon="rotate-left"></mat-icon>
-                    </button>
-                  </div>
-                }
-              </div>
+              <ng-container
+                *ngTemplateOutlet="
+                  skippedList;
+                  context: { versions: rcloneSkippedVersions(), isRclone: true }
+                "
+              ></ng-container>
             </div>
           }
         </div>
       }
 
-      @if (currentPage === 'Credits') {
+      @if (currentPage() === 'Credits') {
         <div class="modal-content">
           <h4>{{ 'modals.about.devTeam' | translate }}</h4>
           <div class="about-item">
@@ -554,7 +475,7 @@
         </div>
       }
 
-      @if (currentPage === 'Legal') {
+      @if (currentPage() === 'Legal') {
         <div class="modal-content">
           <h4>{{ 'modals.about.license' | translate }}</h4>
           <p>
@@ -582,7 +503,7 @@
     </div>
   }
 
-  @if (showingWhatsNew) {
+  @if (showingWhatsNew()) {
     <div
       class="whats-new-overlay"
       animate.enter="slide-overlay-enter"
@@ -599,20 +520,20 @@
       </div>
 
       <div class="modal-content whats-new-content">
-        @if (whatsNewType === 'app' && updateAvailable) {
+        @if (whatsNewType() === 'app' && appUpdateAvailable()) {
           <div class="release-header">
             <div class="release-version">
-              <h2>Version {{ updateAvailable.version }}</h2>
-              @if (updateAvailable.releaseDate) {
+              <h2>Version {{ appUpdateAvailable()?.version }}</h2>
+              @if (appUpdateAvailable()?.releaseDate) {
                 <span class="release-date">
-                  {{ formatReleaseDate(updateAvailable.releaseDate) }}
+                  {{ formatReleaseDate(appUpdateAvailable()!.releaseDate!) }}
                 </span>
               }
             </div>
-            @if (updateAvailable.releaseUrl) {
+            @if (appUpdateAvailable()?.releaseUrl) {
               <a
                 mat-stroked-button
-                [href]="updateAvailable.releaseUrl"
+                [href]="appUpdateAvailable()!.releaseUrl"
                 target="_blank"
                 rel="noopener noreferrer"
                 class="whats-new-button"
@@ -625,30 +546,30 @@
 
           <div
             class="release-notes"
-            [innerHTML]="getFormattedReleaseNotes(updateAvailable.releaseNotes)"
+            [innerHTML]="getFormattedReleaseNotes(appUpdateAvailable()!.releaseNotes)"
           ></div>
         }
 
-        @if (whatsNewType === 'rclone' && rcloneUpdateStatus.updateInfo) {
+        @if (whatsNewType() === 'rclone' && rcloneUpdateStatus().updateInfo) {
           <div class="release-header">
             <div class="release-version">
               <h2>
                 Rclone
                 {{
-                  rcloneUpdateStatus.updateInfo.latest_version_clean ||
-                    rcloneUpdateStatus.updateInfo.latest_version
+                  rcloneUpdateStatus().updateInfo?.latest_version_clean ||
+                    rcloneUpdateStatus().updateInfo?.latest_version
                 }}
               </h2>
-              @if (rcloneUpdateStatus.updateInfo.release_date) {
+              @if (rcloneUpdateStatus().updateInfo?.release_date) {
                 <span class="release-date">
-                  {{ formatReleaseDate(rcloneUpdateStatus.updateInfo.release_date) }}
+                  {{ formatReleaseDate(rcloneUpdateStatus().updateInfo!.release_date!) }}
                 </span>
               }
             </div>
-            @if (rcloneUpdateStatus.updateInfo.release_url) {
+            @if (rcloneUpdateStatus().updateInfo?.release_url) {
               <a
                 mat-stroked-button
-                [href]="rcloneUpdateStatus.updateInfo.release_url"
+                [href]="rcloneUpdateStatus().updateInfo!.release_url"
                 target="_blank"
                 rel="noopener noreferrer"
                 class="whats-new-button"
@@ -661,13 +582,13 @@
 
           <div
             class="release-notes"
-            [innerHTML]="getFormattedReleaseNotes(rcloneUpdateStatus.updateInfo.release_notes)"
+            [innerHTML]="getFormattedReleaseNotes(rcloneUpdateStatus().updateInfo?.release_notes)"
           ></div>
         }
       </div>
     </div>
   }
-  @if (showingDebugOverlay) {
+  @if (showingDebugOverlay()) {
     <div
       class="debug-overlay overlay"
       animate.enter="slide-overlay-enter"
@@ -684,21 +605,21 @@
       </div>
 
       <div class="modal-content debug-content">
-        @if (debugInfo) {
+        @if (debugInfo()) {
           <div class="debug-section">
             <h4>{{ 'modals.about.systemInfo' | translate }}</h4>
             <div class="debug-info-grid">
               <div class="debug-row">
                 <span class="label">{{ 'modals.about.version' | translate }}:</span>
-                <span class="value">{{ debugInfo.appVersion }}</span>
+                <span class="value">{{ debugInfo()!.appVersion }}</span>
               </div>
               <div class="debug-row">
                 <span class="label">{{ 'modals.about.mode' | translate }}:</span>
-                <span class="value">{{ debugInfo.mode }}</span>
+                <span class="value">{{ debugInfo()!.mode }}</span>
               </div>
               <div class="debug-row">
                 <span class="label">{{ 'modals.about.platform' | translate }}:</span>
-                <span class="value">{{ debugInfo.platform }} ({{ debugInfo.arch }})</span>
+                <span class="value">{{ debugInfo()!.platform }} ({{ debugInfo()!.arch }})</span>
               </div>
             </div>
           </div>
@@ -744,3 +665,92 @@
     </div>
   }
 </div>
+
+<!-- Templates -->
+
+<!-- Up To Date template -->
+<ng-template #upToDateCard let-title>
+  <div class="update-card up-to-date">
+    <mat-icon svgIcon="circle-check"></mat-icon>
+    <div class="status-text">
+      <h4>{{ title | translate }}</h4>
+      <p>{{ 'modals.about.latestVersionMsg' | translate }}</p>
+    </div>
+  </div>
+</ng-template>
+
+<!-- Settings Controls Template -->
+<ng-template
+  #settingsControls
+  let-autoCheck="autoCheck"
+  let-channel="channel"
+  let-channels="channels"
+  let-disabled="disabled"
+  let-isRclone="isRclone"
+>
+  <div class="settings-card">
+    <div class="setting-group">
+      <div class="setting-header">
+        <span class="setting-title">{{ 'modals.about.autoCheck' | translate }}</span>
+      </div>
+      <div class="setting-control">
+        <mat-slide-toggle
+          [checked]="autoCheck"
+          (change)="isRclone ? toggleRcloneAutoCheck() : toggleAutoCheck()"
+          [disabled]="disabled"
+        >
+        </mat-slide-toggle>
+      </div>
+    </div>
+
+    <mat-divider></mat-divider>
+
+    <div class="setting-group">
+      <div class="setting-header">
+        <span class="setting-title">{{ 'modals.about.releaseChannel' | translate }}</span>
+      </div>
+      <div class="setting-control">
+        <mat-form-field appearance="fill">
+          <mat-select
+            [value]="channel"
+            (selectionChange)="
+              isRclone ? changeRcloneChannel($event.value) : changeChannel($event.value)
+            "
+            [disabled]="disabled"
+          >
+            @for (ch of channels; track ch.value) {
+              <mat-option
+                [value]="ch.value"
+                [matTooltip]="ch.description | translate"
+                matTooltipPosition="left"
+              >
+                <div class="channel-option">
+                  <span class="channel-name">{{ ch.label | translate }}</span>
+                </div>
+              </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </div>
+  </div>
+</ng-template>
+
+<!-- Skipped List Template -->
+<ng-template #skippedList let-versions="versions" let-isRclone="isRclone">
+  <div class="skipped-list">
+    @for (version of versions; track version) {
+      <div class="skipped-item">
+        <span class="version">{{ version }}</span>
+        <button
+          mat-icon-button
+          (click)="isRclone ? unskipRcloneVersion(version) : unskipVersion(version)"
+          [matTooltip]="'modals.about.restoreUpdate' | translate"
+          class="restore-button"
+        >
+          <mat-icon svgIcon="rotate-left"></mat-icon>
+        </button>
+      </div>
+    }
+  </div>
+</ng-template>

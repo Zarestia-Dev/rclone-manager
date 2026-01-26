@@ -20,7 +20,7 @@
           [attr.aria-label]="'fileBrowser.fileViewer.download' | translate: { name: data.name }"
         >
           @if (isDownloading()) {
-            <mat-spinner diameter="20"></mat-spinner>
+            <mat-spinner diameter="24"></mat-spinner>
           } @else {
             <mat-icon svgIcon="download"></mat-icon>
           }

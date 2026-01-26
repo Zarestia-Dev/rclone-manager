@@ -13,7 +13,7 @@
   "bundle": {
     "resources": {
       "../dist/rclone-manager/browser": "browser",
-      "../src/assets/i18n/*": "i18n/"
+      "../src/assets/i18n/**/*": "i18n/"
     },
     "active": true,
     "createUpdaterArtifacts": true,

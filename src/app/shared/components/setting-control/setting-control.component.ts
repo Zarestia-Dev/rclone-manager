@@ -38,6 +38,7 @@ import { RcConfigOption } from '@app/types';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { LineBreaksPipe } from '../../pipes/linebreaks.pipe';
+import { RcloneOptionTranslatePipe } from '../../pipes/rclone-option-translate.pipe';
 import { RcloneValueMapperService } from '@app/services';
 import { ValidatorRegistryService } from '@app/services';
 
@@ -60,6 +61,7 @@ import { ValidatorRegistryService } from '@app/services';
     ScrollingModule,
     NgxMatTimepickerModule,
     LineBreaksPipe,
+    RcloneOptionTranslatePipe,
     TranslateModule,
   ],
   templateUrl: './setting-control.component.html',

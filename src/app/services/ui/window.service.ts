@@ -15,7 +15,12 @@ export class WindowService extends TauriBaseService {
 
   constructor() {
     super();
-    this.initializeTheme();
+    // Reactively listen to settings changes
+    this.appSettingsService.selectSetting('runtime.theme').subscribe(setting => {
+      const theme = (setting?.value as Theme) || 'system';
+      this.applyTheme(theme);
+      this._theme$.next(theme);
+    });
 
     // Listen for system theme changes
     this.systemThemeQuery.addEventListener('change', () => {
@@ -94,20 +99,6 @@ export class WindowService extends TauriBaseService {
     }
   }
 
-  async initializeTheme(): Promise<void> {
-    try {
-      const savedTheme = await this.appSettingsService.getSettingValue<Theme>('runtime.theme');
-      const themeToApply = savedTheme || 'system';
-
-      await this.applyTheme(themeToApply);
-      this._theme$.next(themeToApply);
-    } catch (error) {
-      console.error('Failed to initialize theme:', error);
-      await this.applyTheme('system');
-      this._theme$.next('system');
-    }
-  }
-
   async setTheme(theme: Theme): Promise<void> {
     // Avoid unnecessary work if the theme is already active
     if (this._theme$.value === theme) {
@@ -115,8 +106,6 @@ export class WindowService extends TauriBaseService {
     }
 
     try {
-      await this.applyTheme(theme);
-      this._theme$.next(theme);
       await this.appSettingsService.saveSetting('runtime', 'theme', theme);
     } catch (error) {
       console.error(`Failed to set and save theme "${theme}":`, error);

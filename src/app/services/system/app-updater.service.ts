@@ -307,6 +307,7 @@ export class AppUpdaterService extends TauriBaseService {
       const newSkipped = currentSkipped.filter(v => v !== version);
       await this.appSettingsService.saveSetting('runtime', 'app_skipped_updates', newSkipped);
       this.skippedVersionsSubject.next(newSkipped);
+      await this.checkForUpdates();
     } catch (error) {
       console.error('Failed to unskip version:', error);
       this.notificationService.showError(this.translate.instant('updates.unskipFailed'));

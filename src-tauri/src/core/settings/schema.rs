@@ -105,6 +105,9 @@ pub struct CoreSettings {
         description = "settings.core.rclone_flags.description",
         engine_restart = true,
         reserved(
+            "rcd",
+            "--config",
+            "--rc",
             "--rc-serve",
             "--rc-addr",
             "--rc-allow-origin",

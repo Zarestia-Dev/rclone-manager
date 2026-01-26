@@ -12,7 +12,7 @@ use std::sync::RwLock;
 
 /// Directory where backend translation files are stored (relative to executable)
 const I18N_DIR: &str = "i18n";
-const DEFAULT_LANG: &str = "en";
+const DEFAULT_LANG: &str = "en-US";
 
 /// Global translations state
 static TRANSLATIONS: Lazy<Translations> = Lazy::new(Translations::new);
@@ -44,34 +44,48 @@ impl Translations {
         self.load_language(DEFAULT_LANG);
     }
 
-    /// Load a language file into the cache
+    /// Load a language directory into the cache
     fn load_language(&self, lang: &str) -> bool {
         let base_path = self.base_path.read().ok().and_then(|p| p.clone());
 
         if let Some(path) = base_path {
-            let lang_file = path.join(format!("{}.json", lang));
+            let lang_dir = path.join(lang);
+            let mut merged_translations = serde_json::Map::new();
 
-            match std::fs::read_to_string(&lang_file) {
-                Ok(content) => match serde_json::from_str::<Value>(&content) {
-                    Ok(translations) => {
-                        if let Ok(mut cache) = self.cache.write() {
-                            cache.insert(lang.to_string(), translations);
-                            log::info!("🌐 Loaded translations for: {}", lang);
-                            return true;
+            if lang_dir.exists() && lang_dir.is_dir() {
+                if let Ok(entries) = std::fs::read_dir(&lang_dir) {
+                    for entry in entries.flatten() {
+                        let path = entry.path();
+                        if path.extension().and_then(|s| s.to_str()) == Some("json") {
+                            match std::fs::read_to_string(&path) {
+                                Ok(content) => match serde_json::from_str::<Value>(&content) {
+                                    Ok(Value::Object(map)) => {
+                                        merged_translations.extend(map);
+                                    }
+                                    Ok(_) => {
+                                        log::warn!("Skipping non-object JSON file: {:?}", path);
+                                    }
+                                    Err(e) => {
+                                        log::warn!("Failed to parse {:?}: {}", path, e);
+                                    }
+                                },
+                                Err(e) => {
+                                    log::warn!("Failed to read {:?}: {}", path, e);
+                                }
+                            }
                         }
                     }
-                    Err(e) => {
-                        log::warn!("Failed to parse {}.json: {}", lang, e);
-                    }
-                },
-                Err(e) => {
-                    log::warn!(
-                        "Failed to read {}.json: {} (path: {:?})",
-                        lang,
-                        e,
-                        lang_file
-                    );
                 }
+            } else {
+                log::warn!("Language directory not found: {:?}", lang_dir);
+            }
+
+            if !merged_translations.is_empty()
+                && let Ok(mut cache) = self.cache.write()
+            {
+                cache.insert(lang.to_string(), Value::Object(merged_translations));
+                log::info!("🌐 Loaded translations for: {}", lang);
+                return true;
             }
         } else {
             log::warn!("i18n base path not initialized yet");
@@ -186,7 +200,9 @@ macro_rules! t {
         $crate::utils::i18n::t($key)
     };
     ($key:expr, $($param_key:expr => $param_value:expr),+ $(,)?) => {{
-        $crate::utils::i18n::t_with_params($key, &[$(($param_key, $param_value)),+])
+        let params = [$(($param_key, $param_value.to_string())),+];
+        let params_ref: Vec<(&str, &str)> = params.iter().map(|(k, v)| (*k, v.as_str())).collect();
+        $crate::utils::i18n::t_with_params($key, &params_ref)
     }};
 }
 
@@ -194,35 +210,24 @@ macro_rules! t {
 // Frontend-facing macros (unchanged from original)
 // ============================================================================
 
-/// Create a localized error string for frontend translation
 #[macro_export]
 macro_rules! localized_error {
     ($key:expr) => {
-        $key.to_string()
+        $crate::t!($key)
     };
     ($key:expr, $($param_key:expr => $param_value:expr),+ $(,)?) => {{
-        serde_json::json!({
-            "key": $key,
-            "params": {
-                $($param_key: $param_value.to_string()),+
-            }
-        }).to_string()
+        $crate::t!($key, $($param_key => $param_value),+)
     }};
 }
 
-/// Create a localized success message string for frontend translation
+/// Create a localized success message string for frontend
 #[macro_export]
 macro_rules! localized_success {
     ($key:expr) => {
-        $key.to_string()
+        $crate::t!($key)
     };
     ($key:expr, $($param_key:expr => $param_value:expr),+ $(,)?) => {{
-        serde_json::json!({
-            "key": $key,
-            "params": {
-                $($param_key: $param_value.to_string()),+
-            }
-        }).to_string()
+        $crate::t!($key, $($param_key => $param_value),+)
     }};
 }
 

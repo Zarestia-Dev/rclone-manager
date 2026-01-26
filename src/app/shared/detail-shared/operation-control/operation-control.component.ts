@@ -52,7 +52,7 @@ import { TranslateModule } from '@ngx-translate/core';
               [matTooltip]="(config().isActive ? 'actions.stop' : 'actions.start') | translate"
             >
               @if (config().isLoading) {
-                <mat-spinner diameter="20" class="panel-spinner"></mat-spinner>
+                <mat-spinner diameter="24"></mat-spinner>
               } @else {
                 <mat-icon
                   [svgIcon]="config().isActive ? config().secondaryIcon : config().primaryIcon"
@@ -82,7 +82,7 @@ import { TranslateModule } from '@ngx-translate/core';
             class="full-action-button"
           >
             @if (config().isLoading) {
-              <mat-spinner diameter="20"></mat-spinner>
+              <mat-spinner diameter="24"></mat-spinner>
             } @else {
               <mat-icon
                 [svgIcon]="config().isActive ? config().secondaryIcon : config().primaryIcon"

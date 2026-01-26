@@ -1,4 +1,4 @@
-name: "Release Portable"
+name: 'Release Portable'
 
 on:
   workflow_dispatch:
@@ -12,23 +12,23 @@ jobs:
       matrix:
         include:
           # --- Windows ---
-          - platform: "windows-latest"
-            os: "windows"
-            arch: "x86_64"
-            rust_target: "x86_64-pc-windows-msvc"
-          - platform: "windows-latest"
-            os: "windows"
-            arch: "aarch64"
-            rust_target: "aarch64-pc-windows-msvc"
+          - platform: 'windows-latest'
+            os: 'windows'
+            arch: 'x86_64'
+            rust_target: 'x86_64-pc-windows-msvc'
+          - platform: 'windows-latest'
+            os: 'windows'
+            arch: 'aarch64'
+            rust_target: 'aarch64-pc-windows-msvc'
           # --- Linux ---
-          - platform: "ubuntu-22.04"
-            os: "linux"
-            arch: "x86_64"
-            rust_target: "x86_64-unknown-linux-gnu"
-          - platform: "ubuntu-22.04-arm"
-            os: "linux"
-            arch: "aarch64"
-            rust_target: "aarch64-unknown-linux-gnu"
+          - platform: 'ubuntu-22.04'
+            os: 'linux'
+            arch: 'x86_64'
+            rust_target: 'x86_64-unknown-linux-gnu'
+          - platform: 'ubuntu-22.04-arm'
+            os: 'linux'
+            arch: 'aarch64'
+            rust_target: 'aarch64-unknown-linux-gnu'
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -38,7 +38,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
-          cache: "npm"
+          cache: 'npm'
 
       - name: Install dependencies (Ubuntu only)
         if: matrix.os == 'linux'
@@ -54,7 +54,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: "./src-tauri -> target"
+          workspaces: './src-tauri -> target'
           key: portable-${{ matrix.os }}-${{ matrix.arch }}
 
       - name: Install frontend dependencies
@@ -97,8 +97,9 @@ jobs:
           '@
           Set-Content -Path "$dirName/config/settings.json" -Value $settingsJson
 
-          # 2. Copy Binary
+          # 2. Copy Binary and Resources
           Copy-Item "src-tauri/target/${{ matrix.rust_target }}/release/rclone-manager.exe" "$dirName/RCloneManager.exe"
+          Copy-Item -Path "src/assets/i18n" -Destination "$dirName/i18n" -Recurse
 
           # 3. Create README with Dependencies
           $readme = @"
@@ -140,8 +141,9 @@ jobs:
             }
           }' > "$DIR_NAME/config/settings.json"
 
-          # 2. Copy Binary & Make Executable
+          # 2. Copy Binary, Resources & Make Executable
           cp src-tauri/target/${{ matrix.rust_target }}/release/rclone-manager "$DIR_NAME/RCloneManager"
+          cp -r src/assets/i18n "$DIR_NAME/i18n"
           chmod +x "$DIR_NAME/RCloneManager"
 
           # 3. Create README with Dependencies
@@ -155,7 +157,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.get_version.outputs.VERSION }}
-          name: "RClone Manager v${{ steps.get_version.outputs.VERSION }}"
+          name: 'RClone Manager v${{ steps.get_version.outputs.VERSION }}'
           draft: false
           prerelease: false
           files: |

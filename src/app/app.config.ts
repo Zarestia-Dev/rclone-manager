@@ -1,16 +1,17 @@
 import { ApplicationConfig } from '@angular/core';
-import { provideHttpClient, withFetch } from '@angular/common/http';
-import { provideTranslateService } from '@ngx-translate/core';
-import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
+import { provideHttpClient, withFetch, HttpClient } from '@angular/common/http';
+import { provideTranslateService, TranslateLoader } from '@ngx-translate/core';
+import { MultiFileLoader } from './core/i18n/multi-file-loader';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideHttpClient(withFetch()),
     provideTranslateService({
-      loader: provideTranslateHttpLoader({
-        prefix: '/assets/i18n/',
-        suffix: '.json',
-      }),
+      loader: {
+        provide: TranslateLoader,
+        useClass: MultiFileLoader,
+        deps: [HttpClient],
+      },
       fallbackLang: 'en-US',
       lang: 'en-US',
     }),

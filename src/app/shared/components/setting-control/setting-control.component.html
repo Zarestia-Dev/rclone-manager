@@ -2,8 +2,11 @@
   <ng-template #settingInfo let-opt>
     <div class="setting">
       <div class="setting-info">
-        <strong>{{ opt.FieldName || opt.Name }}</strong>
-        <p class="help-text" [innerHTML]="opt.Help | linebreaks"></p>
+        <strong>{{ opt.Name | rcloneOptionTranslate: 'title' : opt.FieldName || opt.Name }}</strong>
+        <p
+          class="help-text"
+          [innerHTML]="opt.Name | rcloneOptionTranslate: 'help' : opt.Help | linebreaks"
+        ></p>
         <small class="default-value">{{
           'shared.settingControl.default' | translate: { value: getDisplayDefault() }
         }}</small>
@@ -22,13 +25,7 @@
     </div>
   </ng-template>
 
-  <ng-template
-    #standardInput
-    let-opt
-    let-inputType="inputType"
-    let-inputStep="inputStep"
-    let-inputHint="inputHint"
-  >
+  <ng-template #standardInput let-opt let-inputType="inputType" let-inputStep="inputStep">
     <div class="setting-full-width">
       <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }"></ng-container>
       <div class="setting-control">
@@ -42,9 +39,6 @@
             [placeholder]="opt.DefaultStr || ''"
             (blur)="commitValue()"
           />
-          @if (inputHint) {
-            <mat-hint>{{ inputHint }}</mat-hint>
-          }
           @if (control()?.invalid && control()?.touched) {
             <mat-error>{{ getControlError() }}</mat-error>
           }
@@ -127,7 +121,7 @@
     </div>
   </ng-template>
 
-  <ng-template #multiSelect let-opt let-optionsList="optionsList" let-inputHint="inputHint">
+  <ng-template #multiSelect let-opt let-optionsList="optionsList">
     <div class="setting-full-width">
       <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }"></ng-container>
       <div class="setting-control">
@@ -150,9 +144,6 @@
               </mat-option>
             }
           </mat-select>
-          <mat-hint>{{
-            inputHint || ('shared.settingControl.hints.selectMultiple' | translate)
-          }}</mat-hint>
           @if (control()?.invalid && control()?.touched) {
             <mat-error>{{ getControlError() }}</mat-error>
           }
@@ -198,7 +189,6 @@
             standardInput;
             context: {
               $implicit: option,
-              inputHint: ('shared.settingControl.hints.duration' | translate),
             }
           "
         ></ng-container>
@@ -285,7 +275,6 @@
             standardInput;
             context: {
               $implicit: option,
-              inputHint: ('shared.settingControl.hints.bandwidth' | translate),
             }
           "
         ></ng-container>
@@ -296,7 +285,6 @@
             standardInput;
             context: {
               $implicit: option,
-              inputHint: ('shared.settingControl.hints.sizeSuffix' | translate),
             }
           "
         ></ng-container>
@@ -345,7 +333,6 @@
             context: {
               $implicit: option,
               optionsList: option.Examples || bitsFlags,
-              inputHint: ('shared.settingControl.hints.flags' | translate),
             }
           "
         ></ng-container>
@@ -357,7 +344,6 @@
             context: {
               $implicit: option,
               optionsList: option.Examples || encodingFlags,
-              inputHint: ('shared.settingControl.hints.encodingFlags' | translate),
             }
           "
         ></ng-container>
@@ -379,7 +365,6 @@
                 'openfiles',
                 'mapper',
               ],
-              inputHint: ('shared.settingControl.hints.dumpFlags' | translate),
             }
           "
         ></ng-container>
@@ -494,8 +479,10 @@
         } @else {
           <div class="setting-full-width">
             <div class="setting-info">
-              <strong>{{ option.FieldName || option.Name }}</strong>
-              <p>{{ option.Help }}</p>
+              <strong>{{
+                option.Name | rcloneOptionTranslate: 'title' : option.FieldName || option.Name
+              }}</strong>
+              <p>{{ option.Name | rcloneOptionTranslate: 'help' : option.Help }}</p>
               <small class="type-info">{{
                 'shared.settingControl.typeNotImplemented' | translate: { type: option.Type }
               }}</small>

@@ -1,9 +1,8 @@
-#[cfg(not(feature = "web-server"))]
+#![cfg(not(feature = "web-server"))]
 use tauri::Theme;
 
 /// Set the application theme
 #[tauri::command]
-#[cfg(all(desktop, not(feature = "web-server")))]
 pub async fn set_theme(theme: String, window: tauri::Window) -> Result<(), String> {
     let theme_enum = match theme.as_str() {
         "dark" => Theme::Dark,
@@ -19,15 +18,6 @@ pub async fn set_theme(theme: String, window: tauri::Window) -> Result<(), Strin
     Ok(())
 }
 
-/// Set the application theme (mobile no-op)
-#[tauri::command]
-#[cfg(not(desktop))]
-pub async fn set_theme(_theme: String, _window: tauri::Window) -> Result<(), String> {
-    // Theme setting is not supported on mobile
-    Ok(())
-}
-
-#[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub fn get_system_theme() -> String {
     match detect_system_theme() {
@@ -37,7 +27,6 @@ pub fn get_system_theme() -> String {
     }
 }
 
-#[cfg(not(feature = "web-server"))]
 fn detect_system_theme() -> Theme {
     #[cfg(target_os = "macos")]
     {
@@ -138,7 +127,7 @@ fn parse_windows_registry_value(output: &str) -> Option<Theme> {
     None
 }
 
-#[cfg(all(target_os = "linux", not(feature = "web-server")))]
+#[cfg(target_os = "linux")]
 fn detect_linux_theme() -> Theme {
     use std::process::Command;
 

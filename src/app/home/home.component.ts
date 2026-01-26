@@ -51,6 +51,7 @@ import {
   AppSettingsService,
   ModalService,
   BackendService,
+  RcloneStatusService,
 } from '@app/services';
 
 @Component({
@@ -89,6 +90,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   private readonly remoteFacadeService = inject(RemoteFacadeService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly backendService = inject(BackendService);
+  private readonly rcloneStatusService = inject(RcloneStatusService);
   readonly systemInfoService = inject(SystemInfoService);
   readonly iconService = inject(IconService);
   private readonly translate = inject(TranslateService);
@@ -98,10 +100,9 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   /** Get status class for the active backend */
   get backendStatusClass(): string {
-    const backends = this.backendService.backends();
-    const active = backends.find(b => b.is_active);
-    if (!active) return 'disconnected';
-    return this.backendService.getStatusClass(active.status);
+    const status = this.rcloneStatusService.rcloneStatus();
+    if (status === 'active') return 'connected';
+    return 'disconnected';
   }
 
   // ============================================================================
@@ -585,8 +586,8 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   private handleError(message: string, error: unknown): void {
     console.error(`${message}:`, error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    this.notificationService.openSnackBar(errorMessage, this.translate.instant('common.close'));
+    const backendMessage = error instanceof Error ? error.message : String(error);
+    this.notificationService.showError(`${message}: ${backendMessage}`);
   }
 
   private cleanup(): void {

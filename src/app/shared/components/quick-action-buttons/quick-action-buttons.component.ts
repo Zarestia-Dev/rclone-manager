@@ -28,7 +28,7 @@ import { TranslateModule } from '@ngx-translate/core';
           (click)="onButtonClick(button.id, $event)"
         >
           @if (button.isLoading) {
-            <mat-spinner diameter="20"></mat-spinner>
+            <mat-spinner diameter="24"></mat-spinner>
           } @else {
             <mat-icon [svgIcon]="button.icon"></mat-icon>
           }

@@ -1,6 +1,4 @@
 form {
-  display: flex;
-  flex-direction: column;
   height: 100%;
   overflow: hidden;
 
@@ -8,7 +6,7 @@ form {
   .form-container {
     display: flex;
     flex-direction: column;
-    gap: var(--space-sm);
+    gap: var(--space-md);
     padding: var(--space-md);
   }
 
@@ -27,13 +25,10 @@ form {
 
   // ===== SECTIONS =====
   .section-group {
-    display: flex;
-    flex-direction: column;
-
     // Error message for radio group
     .grid-error {
       margin-top: 8px;
-      font-size: 0.75rem;
+      font-size: var(--font-size-xs);
     }
   }
 
@@ -100,14 +95,14 @@ form {
       gap: 4px;
 
       .option-title {
-        font-size: 0.9rem;
+        font-size: var(--font-size-md);
         font-weight: 500;
         color: var(--window-fg-color);
       }
 
       .option-desc {
         margin: 0;
-        font-size: 0.75rem;
+        font-size: var(--font-size-sm);
         color: var(--dim-color);
         max-width: 300px;
       }
@@ -115,23 +110,16 @@ form {
   }
 
   // =============================================
-  // TOGGLE CONTROLS
-  // =============================================
-  mat-slide-toggle {
-    display: block;
-    font-size: 14px;
-  }
-
-  // =============================================
   // SECTION HEADING
   // =============================================
   .section-heading {
-    font-size: 16px;
+    font-size: var(--font-size-md);
     font-weight: 600;
     color: var(--window-fg-color);
     display: flex;
     align-items: center;
     gap: var(--space-sm);
+    margin: 0;
 
     span {
       font-size: var(--font-size-md);
@@ -160,23 +148,15 @@ form {
     margin: var(--space-md) 0;
   }
 
-  // =============================================
-  // RESPONSIVE ADJUSTMENTS
-  // =============================================
-  @media (max-width: 600px) {
+  @media (max-width: 768px) {
     .interactive-option {
       flex-direction: column;
-      gap: 12px;
 
-      mat-slide-toggle {
-        width: 100%;
-        display: flex;
-        justify-content: center;
+      .option-info {
+        text-align: center;
       }
     }
-  }
 
-  @media (max-width: 768px) {
     .advanced-section {
       padding: var(--space-md);
       gap: var(--space-sm);
@@ -194,18 +174,6 @@ form {
     mat-slide-toggle {
       margin: var(--space-sm) 0;
       font-size: 13px;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .advanced-section {
-      border-left-width: 3px;
-      padding: var(--space-md);
-    }
-
-    .section-heading {
-      font-size: 14px;
-      flex-wrap: wrap;
     }
   }
 }

@@ -130,7 +130,7 @@ export class ModalService {
       maxWidth: '362px',
       minWidth: '362px',
       height: '80vh',
-      maxHeight: '600px',
+      maxHeight: '62vh',
       minHeight: '240px',
       disableClose: true,
     });

@@ -15,9 +15,7 @@ import { BannerComponent } from './layout/banners/banner.component';
 import {
   UiStateService,
   AppSettingsService,
-  InstallationService,
   EventListenersService,
-  RclonePasswordService,
   OnboardingStateService,
   RcloneUpdateService,
   AppUpdaterService,
@@ -48,11 +46,9 @@ export class AppComponent implements OnDestroy {
   readonly alreadyReported = signal(false);
 
   // --- INJECTED DEPENDENCIES & SERVICES ---
-  private readonly installationService = inject(InstallationService);
   readonly uiStateService = inject(UiStateService);
   readonly appSettingsService = inject(AppSettingsService);
   private readonly eventListenersService = inject(EventListenersService);
-  private readonly rclonePasswordService = inject(RclonePasswordService);
   readonly onboardingStateService = inject(OnboardingStateService);
   private readonly appUpdaterService = inject(AppUpdaterService);
   private readonly rcloneUpdateService = inject(RcloneUpdateService);
@@ -69,7 +65,6 @@ export class AppComponent implements OnDestroy {
 
   // --- PRIVATE PROPERTIES ---
   private readonly destroy$ = new Subject<void>();
-  // --- PRIVATE PROPERTIES ---
 
   constructor() {
     this.initializeApp().catch(error => {

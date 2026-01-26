@@ -29,8 +29,8 @@
           role="button"
           tabindex="0"
           [attr.aria-pressed]="isActionSelected(actionConfig.key)"
-          [attr.aria-label]="getAriaLabel(actionConfig.key)"
-          [matTooltip]="getActionTooltip(actionConfig.key)"
+          [attr.aria-label]="getAriaLabel(actionConfig.key) | translate"
+          [matTooltip]="getActionTooltip(actionConfig.key) | translate"
           (click)="onToggleAction(actionConfig.key)"
           (keydown.enter)="onToggleAction(actionConfig.key)"
           (keydown.space)="onToggleAction(actionConfig.key)"
@@ -49,7 +49,7 @@
 
           @if (isActionSelected(actionConfig.key)) {
             <span class="cdk-visually-hidden">
-              {{ getAriaLabel(actionConfig.key) }}
+              {{ getAriaLabel(actionConfig.key) | translate }}
             </span>
           }
         </div>

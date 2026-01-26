@@ -124,7 +124,7 @@ pub async fn auth_middleware(
         .status(StatusCode::UNAUTHORIZED)
         .header(
             "WWW-Authenticate",
-            format!("Basic realm=\"Rclone Manager\""),
+            format!("Basic realm=\"RClone Manager\""),
         )
         .body(axum::body::Body::from("Unauthorized"))
         .unwrap();

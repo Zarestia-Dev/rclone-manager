@@ -340,6 +340,8 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   private async loadAndBuildOptions(): Promise<void> {
     try {
       this.groupedRcloneOptions = await this.flagConfigService.getGroupedOptions();
+      console.log(this.groupedRcloneOptions);
+
       this.buildServices();
       this.createRCloneOptionControls();
     } catch (error) {
