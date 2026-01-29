@@ -20,7 +20,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { catchError, EMPTY, Observable, Subject, takeUntil, map } from 'rxjs';
+import { catchError, EMPTY, Observable, Subject, takeUntil } from 'rxjs';
 
 // App Types
 import {
@@ -146,14 +146,6 @@ export class HomeComponent implements OnInit, OnDestroy {
   sidebarMode = signal<MatDrawerMode>('side');
   selectedSyncOperation = signal<SyncOperationType>('sync');
   isLoading = signal(false);
-
-  // Reactive restriction mode from settings
-  restrictMode = toSignal(
-    this.appSettingsService
-      .selectSetting('general.restrict')
-      .pipe(map(setting => (setting?.value as boolean) ?? true)),
-    { initialValue: true }
-  );
 
   actionInProgress = this.remoteFacadeService.actionInProgress;
   // ============================================================================
@@ -444,7 +436,6 @@ export class HomeComponent implements OnInit, OnDestroy {
       remoteName: this.selectedRemote()?.remoteSpecs.name,
       editTarget,
       existingConfig,
-      restrictMode: this.restrictMode(),
       initialSection,
       targetProfile,
     });
@@ -462,7 +453,6 @@ export class HomeComponent implements OnInit, OnDestroy {
       remoteName: config['remoteSpecs'].name,
       cloneTarget: true,
       existingConfig: config,
-      restrictMode: this.restrictMode(),
     });
   }
 

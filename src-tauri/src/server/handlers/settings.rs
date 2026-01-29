@@ -16,7 +16,9 @@ pub async fn get_settings_handler(
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::state::cache::get_settings;
     let manager: tauri::State<crate::core::settings::AppSettingsManager> = state.app_handle.state();
-    let settings = get_settings(manager).await.map_err(anyhow::Error::msg)?;
+    let settings = get_settings(state.app_handle.clone(), manager)
+        .await
+        .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(settings)))
 }
 
@@ -244,12 +246,15 @@ pub async fn set_rclone_option_handler(
     State(state): State<WebServerState>,
     Json(body): Json<SetRCloneOptionBody>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::RcloneState;
     use crate::rclone::queries::flags::set_rclone_option;
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let result = set_rclone_option(rclone_state, body.block_name, body.option_name, body.value)
-        .await
-        .map_err(anyhow::Error::msg)?;
+    let result = set_rclone_option(
+        state.app_handle.clone(),
+        body.block_name,
+        body.option_name,
+        body.value,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(result)))
 }
 

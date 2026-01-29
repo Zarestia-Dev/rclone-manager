@@ -91,7 +91,6 @@ export class AppDetailComponent {
   selectedSyncOperation = model<SyncOperationType>('sync');
   selectedRemote = input.required<Remote>();
   remoteSettings = input<RemoteSettings>({});
-  restrictMode = input<boolean>(false);
   actionInProgress = input<ActionState[] | null | undefined>(null);
 
   // --- Outputs ---
@@ -910,7 +909,6 @@ export class AppDetailComponent {
       section,
       settings: specificSettings,
       hasSettings: Object.keys(specificSettings).length > 0,
-      restrictMode: this.restrictMode(),
       buttonColor: this.operationColor(),
       buttonLabel: undefined,
       sensitiveKeys: SENSITIVE_KEYS,

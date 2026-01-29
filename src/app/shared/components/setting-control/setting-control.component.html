@@ -32,11 +32,15 @@
         <mat-form-field class="input-field" appearance="fill">
           <input
             matInput
-            [type]="inputType || 'text'"
+            [type]="isSensitiveField() ? 'password' : inputType || 'text'"
             [step]="inputStep || null"
             [formControl]="$any(control())"
             [attr.aria-label]="opt.Name"
             [placeholder]="opt.DefaultStr || ''"
+            [attr.autocomplete]="isSensitiveField() ? 'off' : null"
+            (paste)="preventClipboardOnSensitive($event)"
+            (copy)="preventClipboardOnSensitive($event)"
+            (cut)="preventClipboardOnSensitive($event)"
             (blur)="commitValue()"
           />
           @if (control()?.invalid && control()?.touched) {
@@ -66,11 +70,15 @@
         <mat-form-field class="input-field stepper-input" appearance="fill">
           <input
             matInput
-            [type]="inputType"
+            [type]="isSensitiveField() ? 'password' : inputType"
             [step]="inputStep"
             [formControl]="$any(control())"
             [attr.aria-label]="opt.Name"
             [placeholder]="opt.DefaultStr || ''"
+            [attr.autocomplete]="isSensitiveField() ? 'off' : null"
+            (paste)="preventClipboardOnSensitive($event)"
+            (copy)="preventClipboardOnSensitive($event)"
+            (cut)="preventClipboardOnSensitive($event)"
             (keydown)="onIntegerInput($event)"
             (blur)="commitValue()"
           />
@@ -204,11 +212,16 @@
                 <mat-form-field appearance="fill" class="array-input">
                   <input
                     matInput
+                    [type]="isSensitiveField() ? 'password' : 'text'"
                     [formControl]="$any(itemControl)"
                     [attr.aria-label]="
                       'shared.settingControl.aria.item'
                         | translate: { name: option.Name, index: $index + 1 }
                     "
+                    [attr.autocomplete]="isSensitiveField() ? 'off' : null"
+                    (paste)="preventClipboardOnSensitive($event)"
+                    (copy)="preventClipboardOnSensitive($event)"
+                    (cut)="preventClipboardOnSensitive($event)"
                     (blur)="commitValue()"
                   />
                   <button
@@ -406,11 +419,16 @@
                 <mat-form-field appearance="fill" class="array-input">
                   <input
                     matInput
+                    [type]="isSensitiveField() ? 'password' : 'text'"
                     [formControl]="$any(itemControl)"
                     [attr.aria-label]="
                       'shared.settingControl.aria.item'
                         | translate: { name: option.Name, index: $index + 1 }
                     "
+                    [attr.autocomplete]="isSensitiveField() ? 'off' : null"
+                    (paste)="preventClipboardOnSensitive($event)"
+                    (copy)="preventClipboardOnSensitive($event)"
+                    (cut)="preventClipboardOnSensitive($event)"
                     (blur)="commitValue()"
                   />
                   <button
@@ -444,11 +462,16 @@
                 <mat-form-field appearance="fill" class="array-input">
                   <input
                     matInput
+                    [type]="isSensitiveField() ? 'password' : 'text'"
                     [formControl]="$any(itemControl)"
                     [attr.aria-label]="
                       'shared.settingControl.aria.item'
                         | translate: { name: option.Name, index: $index + 1 }
                     "
+                    [attr.autocomplete]="isSensitiveField() ? 'off' : null"
+                    (paste)="preventClipboardOnSensitive($event)"
+                    (copy)="preventClipboardOnSensitive($event)"
+                    (cut)="preventClipboardOnSensitive($event)"
                     (blur)="commitValue()"
                   />
                   <button

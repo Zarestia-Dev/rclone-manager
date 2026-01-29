@@ -1,5 +1,6 @@
-import { inject, Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { DestroyRef, inject, Injectable } from '@angular/core';
+import { BehaviorSubject, merge } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TranslateService } from '@ngx-translate/core';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { NotificationService } from '@app/services';
@@ -17,6 +18,7 @@ export class ServeManagementService extends TauriBaseService {
   private readonly notificationService = inject(NotificationService);
   private readonly eventListeners = inject(EventListenersService);
   private readonly translate = inject(TranslateService);
+  private readonly destroyRef = inject(DestroyRef);
 
   // Observable for running serves list
   private runningServesSubject = new BehaviorSubject<ServeListItem[]>([]);
@@ -29,12 +31,17 @@ export class ServeManagementService extends TauriBaseService {
       console.error('Failed to initialize running serves:', error);
     });
 
-    // Subscribe to serve state changes emitted from the backend and refresh list
-    this.eventListeners.listenToServeStateChanged().subscribe(() => {
-      this.refreshServes().catch(err => {
-        console.error('Failed to refresh serves after serve_state_changed:', err);
+    // Subscribe to serve state changes and engine ready events
+    merge(
+      this.eventListeners.listenToServeStateChanged(),
+      this.eventListeners.listenToRcloneEngineReady()
+    )
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.refreshServes().catch(err => {
+          console.error('[ServeManagementService] Failed to refresh serves:', err);
+        });
       });
-    });
   }
 
   /**

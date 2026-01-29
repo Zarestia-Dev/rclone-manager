@@ -4,21 +4,28 @@ use axum::{extract::State, response::Json};
 use serde::Deserialize;
 use tauri::Manager;
 
-use crate::RcloneState;
 use crate::core::scheduler::engine::CronScheduler;
 use crate::rclone::backend::types::BackendInfo;
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
 
-pub async fn list_backends_handler() -> Result<Json<ApiResponse<Vec<BackendInfo>>>, AppError> {
+pub async fn list_backends_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<Vec<BackendInfo>>>, AppError> {
     use crate::rclone::commands::backend::list_backends;
-    let backends = list_backends().await.map_err(anyhow::Error::msg)?;
+    let backends = list_backends(state.app_handle.clone())
+        .await
+        .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(backends)))
 }
 
-pub async fn get_active_backend_handler() -> Result<Json<ApiResponse<String>>, AppError> {
+pub async fn get_active_backend_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::rclone::commands::backend::get_active_backend;
-    let active = get_active_backend().await.map_err(anyhow::Error::msg)?;
+    let active = get_active_backend(state.app_handle.clone())
+        .await
+        .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(active)))
 }
 
@@ -33,8 +40,7 @@ pub async fn switch_backend_handler(
     Json(body): Json<SwitchBackendBody>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::rclone::commands::backend::switch_backend;
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    switch_backend(state.app_handle.clone(), body.name.clone(), rclone_state)
+    switch_backend(state.app_handle.clone(), body.name.clone())
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(crate::localized_success!(
@@ -161,8 +167,7 @@ pub async fn test_backend_connection_handler(
     Json(body): Json<TestBackendConnectionBody>,
 ) -> Result<Json<ApiResponse<crate::rclone::commands::backend::TestConnectionResult>>, AppError> {
     use crate::rclone::commands::backend::test_backend_connection;
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let result = test_backend_connection(state.app_handle.clone(), body.name, rclone_state)
+    let result = test_backend_connection(state.app_handle.clone(), body.name)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(result)))

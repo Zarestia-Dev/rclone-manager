@@ -359,7 +359,7 @@
                       matInput
                       [formControl]="$any(getFormControl(category, key))"
                       [attr.aria-label]="meta.metadata.display_name"
-                      [placeholder]="meta.metadata.placeholder || ''"
+                      [placeholder]="(meta.metadata.placeholder | translate) || ''"
                       (blur)="onBlur(category, key)"
                     />
                   }
@@ -396,7 +396,7 @@
                     matInput
                     [formControl]="$any(getFormControl(category, key))"
                     [attr.aria-label]="meta.metadata.display_name"
-                    [placeholder]="meta.metadata.placeholder || ''"
+                    [placeholder]="(meta.metadata.placeholder | translate) || ''"
                     (blur)="onBlur(category, key)"
                   />
                   @if (

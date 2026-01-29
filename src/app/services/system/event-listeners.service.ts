@@ -21,7 +21,6 @@ import {
   RCLONE_PASSWORD_STORED,
   OPEN_INTERNAL_ROUTE,
 } from '@app/types';
-
 /**
  * Service for handling installations of rclone and plugins
  * Manages the provisioning and setup of required components

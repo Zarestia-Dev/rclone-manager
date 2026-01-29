@@ -7,24 +7,25 @@ use axum::{
 use serde::Deserialize;
 use tauri::Manager;
 
-use crate::RcloneState;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
 use crate::utils::types::remotes::ProfileParams;
 
 pub async fn get_jobs_handler(
-    State(_): State<WebServerState>,
+    State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::rclone::backend::BACKEND_MANAGER;
-    let jobs = BACKEND_MANAGER.job_cache.get_jobs().await;
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = state.app_handle.state::<BackendManager>();
+    let jobs = backend_manager.job_cache.get_jobs().await;
     let json_jobs = serde_json::to_value(jobs).map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(json_jobs)))
 }
 
 pub async fn get_active_jobs_handler(
-    State(_): State<WebServerState>,
+    State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::rclone::backend::BACKEND_MANAGER;
-    let active_jobs = BACKEND_MANAGER.job_cache.get_active_jobs().await;
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = state.app_handle.state::<BackendManager>();
+    let active_jobs = backend_manager.job_cache.get_active_jobs().await;
     let json_active_jobs = serde_json::to_value(active_jobs).map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(json_active_jobs)))
 }
@@ -35,11 +36,12 @@ pub struct JobsBySourceQuery {
 }
 
 pub async fn get_jobs_by_source_handler(
-    State(_): State<WebServerState>,
+    State(state): State<WebServerState>,
     Query(query): Query<JobsBySourceQuery>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::rclone::backend::BACKEND_MANAGER;
-    let jobs = BACKEND_MANAGER
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = state.app_handle.state::<BackendManager>();
+    let jobs = backend_manager
         .job_cache
         .get_jobs_by_source(&query.source)
         .await;
@@ -53,11 +55,12 @@ pub struct JobStatusQuery {
 }
 
 pub async fn get_job_status_handler(
-    State(_): State<WebServerState>,
+    State(state): State<WebServerState>,
     Query(query): Query<JobStatusQuery>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::rclone::backend::BACKEND_MANAGER;
-    let opt = BACKEND_MANAGER.job_cache.get_job(query.jobid).await;
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = state.app_handle.state::<BackendManager>();
+    let opt = backend_manager.job_cache.get_job(query.jobid).await;
     let json = match opt {
         Some(j) => serde_json::to_value(j).map_err(anyhow::Error::msg)?,
         None => serde_json::Value::Null,
@@ -79,13 +82,11 @@ pub async fn stop_job_handler(
     use crate::rclone::commands::job::stop_job;
     use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
     let scheduled_cache = state.app_handle.state::<ScheduledTasksCache>();
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
     stop_job(
         state.app_handle.clone(),
         scheduled_cache,
         body.jobid,
         body.remote_name,
-        rclone_state,
     )
     .await
     .map_err(anyhow::Error::msg)?;
@@ -103,8 +104,9 @@ pub async fn delete_job_handler(
     State(state): State<WebServerState>,
     Json(body): Json<DeleteJobBody>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
-    use crate::rclone::backend::BACKEND_MANAGER;
-    BACKEND_MANAGER
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = state.app_handle.state::<BackendManager>();
+    backend_manager
         .job_cache
         .delete_job(body.jobid, Some(&state.app_handle))
         .await
@@ -134,9 +136,7 @@ pub async fn start_sync_profile_handler(
         remote_name: body.params.remote_name,
         profile_name: body.params.profile_name,
     };
-    // Removed job_cache
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let jobid = start_sync_profile(state.app_handle.clone(), rclone_state, params)
+    let jobid = start_sync_profile(state.app_handle.clone(), params)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(jobid)))
@@ -151,8 +151,7 @@ pub async fn start_copy_profile_handler(
         remote_name: body.params.remote_name,
         profile_name: body.params.profile_name,
     };
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let jobid = start_copy_profile(state.app_handle.clone(), rclone_state, params)
+    let jobid = start_copy_profile(state.app_handle.clone(), params)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(jobid)))
@@ -167,8 +166,7 @@ pub async fn start_move_profile_handler(
         remote_name: body.params.remote_name,
         profile_name: body.params.profile_name,
     };
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let jobid = start_move_profile(state.app_handle.clone(), rclone_state, params)
+    let jobid = start_move_profile(state.app_handle.clone(), params)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(jobid)))
@@ -183,8 +181,7 @@ pub async fn start_bisync_profile_handler(
         remote_name: body.params.remote_name,
         profile_name: body.params.profile_name,
     };
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let jobid = start_bisync_profile(state.app_handle.clone(), rclone_state, params)
+    let jobid = start_bisync_profile(state.app_handle.clone(), params)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(jobid)))
@@ -199,11 +196,12 @@ pub struct RenameProfileBody {
 }
 
 pub async fn rename_job_profile_handler(
-    State(_): State<WebServerState>,
+    State(state): State<WebServerState>,
     Json(body): Json<RenameProfileBody>,
 ) -> Result<Json<ApiResponse<usize>>, AppError> {
-    use crate::rclone::backend::BACKEND_MANAGER;
-    let count = BACKEND_MANAGER
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = state.app_handle.state::<BackendManager>();
+    let count = backend_manager
         .job_cache
         .rename_profile(&body.remote_name, &body.old_name, &body.new_name)
         .await;

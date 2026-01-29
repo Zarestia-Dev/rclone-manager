@@ -39,7 +39,7 @@ pub async fn remove_config_password_handler(
         .app_handle
         .state::<crate::core::security::SafeEnvironmentManager>();
     let credential_store = state.app_handle.state::<AppSettingsManager>();
-    remove_config_password(env_manager, credential_store)
+    remove_config_password(state.app_handle.clone(), env_manager, credential_store)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(crate::localized_success!(

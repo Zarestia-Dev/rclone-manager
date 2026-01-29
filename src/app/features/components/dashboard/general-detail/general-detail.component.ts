@@ -122,7 +122,6 @@ export class GeneralDetailComponent {
   // Inputs
   selectedRemote = input.required<Remote>();
   jobs = input<JobInfo[]>([]);
-  restrictMode = input.required<boolean>();
 
   // Outputs
   @Output() openRemoteConfigModal = new EventEmitter<{
@@ -228,7 +227,6 @@ export class GeneralDetailComponent {
     },
     settings: this.selectedRemote().remoteSpecs,
     hasSettings: Object.keys(this.selectedRemote().remoteSpecs).length > 0,
-    restrictMode: this.restrictMode(),
     buttonColor: 'primary',
     buttonLabel: 'dashboard.generalDetail.editConfiguration',
   }));

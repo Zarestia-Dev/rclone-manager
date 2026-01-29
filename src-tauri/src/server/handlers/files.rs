@@ -27,9 +27,14 @@ pub async fn get_fs_info_handler(
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::queries::get_fs_info;
     let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let info = get_fs_info(query.remote, query.path, rclone_state)
-        .await
-        .map_err(anyhow::Error::msg)?;
+    let info = get_fs_info(
+        state.app_handle.clone(),
+        query.remote,
+        query.path,
+        rclone_state,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(info)))
 }
 
@@ -45,9 +50,14 @@ pub async fn get_disk_usage_handler(
 ) -> Result<Json<ApiResponse<DiskUsage>>, AppError> {
     use crate::rclone::queries::get_disk_usage;
     let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let usage = get_disk_usage(query.remote, query.path, rclone_state)
-        .await
-        .map_err(anyhow::Error::msg)?;
+    let usage = get_disk_usage(
+        state.app_handle.clone(),
+        query.remote,
+        query.path,
+        rclone_state,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(usage)))
 }
 
@@ -71,9 +81,14 @@ pub async fn get_size_handler(
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::queries::filesystem::get_size;
     let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let result = get_size(query.remote, query.path, rclone_state)
-        .await
-        .map_err(anyhow::Error::msg)?;
+    let result = get_size(
+        state.app_handle.clone(),
+        query.remote,
+        query.path,
+        rclone_state,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(result)))
 }
 
@@ -89,9 +104,14 @@ pub async fn get_stat_handler(
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::queries::filesystem::get_stat;
     let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let result = get_stat(query.remote, query.path, rclone_state)
-        .await
-        .map_err(anyhow::Error::msg)?;
+    let result = get_stat(
+        state.app_handle.clone(),
+        query.remote,
+        query.path,
+        rclone_state,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(result)))
 }
 
@@ -109,9 +129,15 @@ pub async fn get_hashsum_handler(
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::queries::filesystem::get_hashsum;
     let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let result = get_hashsum(query.remote, query.path, query.hash_type, rclone_state)
-        .await
-        .map_err(anyhow::Error::msg)?;
+    let result = get_hashsum(
+        state.app_handle.clone(),
+        query.remote,
+        query.path,
+        query.hash_type,
+        rclone_state,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(result)))
 }
 
@@ -130,9 +156,16 @@ pub async fn get_public_link_handler(
     use crate::rclone::queries::filesystem::get_public_link;
     let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
     let expire = query.expire.filter(|s| !s.is_empty());
-    let result = get_public_link(query.remote, query.path, query.unlink, expire, rclone_state)
-        .await
-        .map_err(anyhow::Error::msg)?;
+    let result = get_public_link(
+        state.app_handle.clone(),
+        query.remote,
+        query.path,
+        query.unlink,
+        expire,
+        rclone_state,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(result)))
 }
 
@@ -147,8 +180,7 @@ pub async fn mkdir_handler(
     Json(body): Json<MkdirBody>,
 ) -> Result<Json<ApiResponse<()>>, AppError> {
     use crate::rclone::commands::filesystem::mkdir;
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    mkdir(body.remote, body.path, rclone_state)
+    mkdir(state.app_handle.clone(), body.remote, body.path)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(())))
@@ -165,8 +197,7 @@ pub async fn cleanup_handler(
     Json(body): Json<CleanupBody>,
 ) -> Result<Json<ApiResponse<()>>, AppError> {
     use crate::rclone::commands::filesystem::cleanup;
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    cleanup(body.remote, body.path, rclone_state)
+    cleanup(state.app_handle.clone(), body.remote, body.path)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(())))
@@ -186,10 +217,8 @@ pub async fn copy_url_handler(
     Json(body): Json<CopyUrlBody>,
 ) -> Result<Json<ApiResponse<u64>>, AppError> {
     use crate::rclone::commands::filesystem::copy_url;
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
     let jobid = copy_url(
         state.app_handle.clone(),
-        rclone_state,
         body.remote,
         body.path,
         body.url_to_copy,
@@ -218,10 +247,16 @@ pub async fn get_remote_paths_handler(
             extra: std::collections::HashMap::new(),
         })
     });
-    let value = get_remote_paths(body.remote, body.path, options, rclone_state)
-        .await
-        .map_err(anyhow::Error::msg)
-        .map_err(AppError::BadRequest)?;
+    let value = get_remote_paths(
+        state.app_handle.clone(),
+        body.remote,
+        body.path,
+        options,
+        rclone_state,
+    )
+    .await
+    .map_err(anyhow::Error::msg)
+    .map_err(AppError::BadRequest)?;
     Ok(Json(ApiResponse::success(value)))
 }
 

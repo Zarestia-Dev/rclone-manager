@@ -1,7 +1,8 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject, map } from 'rxjs';
+import { DestroyRef, inject, Injectable } from '@angular/core';
+import { BehaviorSubject, map, merge } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../core/tauri-base.service';
-import { JobInfo, JOB_CACHE_CHANGED } from '@app/types';
+import { JobInfo, JOB_CACHE_CHANGED, RCLONE_ENGINE_READY } from '@app/types';
 
 /**
  * Service for managing rclone jobs (sync, copy, etc.)
@@ -32,6 +33,8 @@ export class JobManagementService extends TauriBaseService {
   private nautilusJobsSubject = new BehaviorSubject<JobInfo[]>([]);
   public nautilusJobs$ = this.nautilusJobsSubject.asObservable();
 
+  private destroyRef = inject(DestroyRef);
+
   constructor() {
     super();
     this.initializeEventListeners();
@@ -39,14 +42,19 @@ export class JobManagementService extends TauriBaseService {
 
   /**
    * Initialize event listeners for job cache changes
-   * Service auto-refreshes when backend emits job state changes
+   * Service auto-refreshes when backend emits job state changes or engine becomes ready
    */
   private initializeEventListeners(): void {
-    this.listenToEvent<unknown>(JOB_CACHE_CHANGED).subscribe(() => {
-      this.refreshJobs().catch(err =>
-        console.error('Failed to refresh jobs on cache change:', err)
-      );
-    });
+    merge(
+      this.listenToEvent<unknown>(JOB_CACHE_CHANGED),
+      this.listenToEvent<unknown>(RCLONE_ENGINE_READY)
+    )
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.refreshJobs().catch(err =>
+          console.error('[JobManagementService] Failed to refresh jobs:', err)
+        );
+      });
   }
 
   // ============================================================================

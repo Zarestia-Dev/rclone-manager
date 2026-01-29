@@ -123,7 +123,8 @@ pub struct CoreSettings {
 
     #[setting(
         label = "settings.core.bandwidth_limit.label",
-        description = "settings.core.bandwidth_limit.description"
+        description = "settings.core.bandwidth_limit.description",
+        placeholder = "settings.core.bandwidth_limit.placeholder"
     )]
     pub bandwidth_limit: String,
 

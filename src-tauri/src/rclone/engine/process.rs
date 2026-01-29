@@ -25,20 +25,13 @@ impl RcApiEngine {
 
         self.current_api_port = port;
 
-        let engine_app_result = create_rclone_command(app, "main_engine")
-            .await
-            .map_err(|e| {
-                error!("❌ Failed to create engine command: {e}");
-                if e.contains("Configuration is encrypted and no password provided") {
-                    EngineError::PasswordRequired
-                } else {
-                    EngineError::SpawnFailed(e)
-                }
-            });
-
-        let engine_app = match engine_app_result {
+        // create_rclone_command now returns EngineError directly
+        // No need for string matching - just pattern match on the error variant!
+        let engine_app = match create_rclone_command(app, "main_engine").await {
             Ok(cmd) => cmd,
             Err(e) => {
+                error!("❌ Failed to create engine command: {e}");
+                // Pattern match on EngineError variants (language-independent!)
                 if let EngineError::PasswordRequired = e {
                     self.set_password_error(true);
                 }
@@ -56,12 +49,8 @@ impl RcApiEngine {
                 error!("❌ Failed to spawn Rclone process: {e}");
                 let err_text = e.to_string();
 
-                // Specific check for missing password in encrypted config
-                if err_text.contains("Configuration is encrypted and no password provided") {
-                    self.set_password_error(true);
-                    return Err(EngineError::PasswordRequired);
-                }
-
+                // Check OS-level errors (these come from tauri-plugin-shell, not our code)
+                // These errors are in English and come from Rust std library
                 let is_path_error = err_text.contains("No such file or directory")
                     || err_text.contains("os error 2");
                 self.set_path_error(is_path_error);
@@ -69,6 +58,7 @@ impl RcApiEngine {
                 if is_path_error {
                     Err(EngineError::InvalidPath)
                 } else {
+                    // For other spawn errors, wrap the OS error message
                     Err(EngineError::SpawnFailed(err_text))
                 }
             }

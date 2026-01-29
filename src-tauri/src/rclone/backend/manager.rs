@@ -10,27 +10,11 @@ use tokio::sync::RwLock;
 
 use super::{
     runtime::RuntimeInfo,
+    state::BackendState,
     types::{Backend, BackendInfo},
 };
 
-use crate::utils::types::{
-    jobs::{JobCache, JobInfo},
-    remotes::RemoteCache,
-    scheduled_task::ScheduledTask,
-};
-
-use crate::rclone::state::cache::RemoteCacheContext;
-
-// RuntimeInfo is now imported from the runtime module
-
-/// Per-backend cached state (jobs, remote context, scheduled tasks)
-#[derive(Debug, Clone, Default)]
-pub struct BackendState {
-    pub jobs: Vec<JobInfo>,
-    pub context: RemoteCacheContext,
-    /// Scheduled tasks for this backend (task_id → task)
-    pub tasks: HashMap<String, ScheduledTask>,
-}
+use crate::utils::types::{jobs::JobCache, remotes::RemoteCache};
 
 /// Central manager for rclone backends
 pub struct BackendManager {
@@ -287,12 +271,12 @@ impl BackendManager {
                 );
             }
 
-            self.save_backend_state(&current_name, task_cache).await;
+            super::state::save_backend_state(self, &current_name, task_cache).await;
 
             // Clear cache to prevent stale data leaking
             self.remote_cache.clear_all().await;
 
-            self.restore_backend_state(name, task_cache).await;
+            super::state::restore_backend_state(self, name, task_cache).await;
 
             // LAZY LOADING: Load secrets on-demand if not already loaded
             // This handles backends that were skipped during startup
@@ -338,70 +322,6 @@ impl BackendManager {
         Ok(())
     }
 
-    /// Helper to save current state (Jobs + Context + Tasks)
-    async fn save_backend_state(
-        &self,
-        name: &str,
-        task_cache: Option<&crate::rclone::state::scheduled_tasks::ScheduledTasksCache>,
-    ) {
-        let jobs = self.job_cache.get_all_jobs().await;
-        let context = self.remote_cache.get_context().await;
-
-        // Get tasks for this backend
-        let tasks = if let Some(cache) = task_cache {
-            cache
-                .get_tasks_for_backend(name)
-                .await
-                .into_iter()
-                .map(|task| (task.id.clone(), task))
-                .collect()
-        } else {
-            HashMap::new()
-        };
-
-        let task_count = tasks.len(); // Capture length before move
-        let current_state = BackendState {
-            jobs,
-            context,
-            tasks,
-        };
-
-        let mut states = self.per_backend_state.write().await;
-        states.insert(name.to_string(), current_state);
-        info!(
-            "💾 Saved state for backend: {} ({} tasks)",
-            name, task_count
-        );
-    }
-
-    /// Helper to restore stored state for a backend
-    async fn restore_backend_state(
-        &self,
-        name: &str,
-        task_cache: Option<&crate::rclone::state::scheduled_tasks::ScheduledTasksCache>,
-    ) {
-        let new_state = {
-            let states = self.per_backend_state.read().await;
-            states.get(name).cloned().unwrap_or_default()
-        };
-
-        self.job_cache.set_all_jobs(new_state.jobs).await;
-        self.remote_cache.set_context(new_state.context).await;
-
-        // Restore tasks for this backend
-        if let Some(cache) = task_cache {
-            cache
-                .replace_tasks_for_backend(name, new_state.tasks.clone())
-                .await;
-        }
-
-        info!(
-            "📂 Restored state for backend: {} ({} tasks)",
-            name,
-            new_state.tasks.len()
-        );
-    }
-
     /// Generic helper to switch profiles for a sub-setting
     async fn switch_sub_settings_profile(
         &self,
@@ -442,190 +362,80 @@ impl BackendManager {
         }
     }
 
-    /// Check connectivity to a backend, updating cache if successful
-    /// Returns (version, os) on success
+    // ============================================================================
+    // Connectivity methods (delegate to connectivity module)
+    // ============================================================================
+
+    /// Check connectivity - delegates to connectivity module
     pub async fn check_connectivity(
         &self,
         name: &str,
         client: &reqwest::Client,
     ) -> Result<(String, String), String> {
-        let backend = self
-            .get(name)
-            .await
-            .ok_or_else(|| format!("Backend '{}' not found", name))?;
-
-        // Use fetch_runtime_info to fetch all runtime info
-        let timeout = std::time::Duration::from_secs(5);
-        let runtime_info =
-            crate::rclone::backend::runtime::fetch_runtime_info(&backend, client, timeout).await;
-
-        // Extract version and os for return value (for backward compatibility)
-        let version = runtime_info.version().unwrap_or_default();
-        let os = runtime_info.os().unwrap_or_default();
-
-        // Check if fetch was successful
-        if !runtime_info.is_connected() {
-            if let Some(error) = runtime_info.error_message() {
-                return Err(error);
-            }
-            return Err("Connection failed".to_string());
-        }
-
-        // Update runtime cache
-        {
-            let mut cache = self.runtime_info.write().await;
-            cache.insert(name.to_string(), runtime_info);
-        }
-
-        Ok((version, os))
+        super::connectivity::check_connectivity(self, name, client).await
     }
 
-    /// Check connectivity with a specified timeout
-    /// Returns detailed error message on failure or timeout
+    /// Check connectivity with timeout - delegates to connectivity module
     pub async fn check_connectivity_with_timeout(
         &self,
         name: &str,
         client: &reqwest::Client,
         timeout: std::time::Duration,
     ) -> Result<(String, String), String> {
-        let check_future = self.check_connectivity(name, client);
-
-        match tokio::time::timeout(timeout, check_future).await {
-            Ok(result) => result,
-            Err(_) => Err(format!("Connection timed out after {}s", timeout.as_secs())),
-        }
+        super::connectivity::check_connectivity_with_timeout(self, name, client, timeout).await
     }
 
-    /// Check Local backend connectivity with retries (used during startup)
-    /// Retries every 500ms until timeout
-    pub async fn check_local_connectivity_retrying(
-        &self,
-        client: &reqwest::Client,
-        timeout: std::time::Duration,
-    ) -> Result<(String, String), String> {
-        let check_local_future = async {
-            let mut attempts = 0;
-            loop {
-                match self.check_connectivity("Local", client).await {
-                    Ok(info) => return Ok(info),
-                    Err(e) => {
-                        attempts += 1;
-                        if attempts % 2 == 0 {
-                            log::debug!(
-                                "⚠️ Local backend check attempt {} failed: {}",
-                                attempts,
-                                e
-                            );
-                        }
-                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                    }
-                }
-            }
-        };
-
-        match tokio::time::timeout(timeout, check_local_future).await {
-            Ok(result) => result,
-            Err(_) => {
-                // Return a clear error if we timed out
-                Err(format!(
-                    "Local backend check timed out after {}s",
-                    timeout.as_secs()
-                ))
-            }
-        }
-    }
-
-    /// Ensure valid connectivity for the active backend, automatically failing back to Local if needed.
-    /// This orchestrates the entire startup connectivity check process.
+    /// Ensure connectivity or fallback - delegates to connectivity module
     pub async fn ensure_connectivity_or_fallback(
         &self,
+        app: &tauri::AppHandle,
         client: &reqwest::Client,
         timeout: std::time::Duration,
     ) -> Result<(), String> {
-        let active_name = self.get_active_name().await;
-
-        if active_name == "Local" {
-            // Case 1: Active is Local - Just check with retries
-            info!(
-                "🔍 Checking Local backend for version/OS info (timeout: {}s)",
-                timeout.as_secs()
-            );
-
-            match self
-                .check_local_connectivity_retrying(client, timeout)
-                .await
-            {
-                Ok(_) => {
-                    info!("✅ Local backend is reachable and runtime info loaded");
-                    Ok(())
-                }
-                Err(_) => {
-                    log::warn!(
-                        "⚠️ Local backend check timed out after {}s. Marking as connected but runtime info may be missing.",
-                        timeout.as_secs()
-                    );
-                    // Still mark as connected since it's managed by us
-                    self.set_runtime_status("Local", "connected").await;
-                    Ok(())
-                }
-            }
-        } else {
-            // Case 2: Active is Remote - Check with timeout and fallback
-            info!(
-                "🔍 Checking connectivity for active backend: {} (timeout: {}s)",
-                active_name,
-                timeout.as_secs()
-            );
-
-            match self
-                .check_connectivity_with_timeout(&active_name, client, timeout)
-                .await
-            {
-                Ok(_) => {
-                    info!("✅ Active backend '{}' is reachable", active_name);
-                    Ok(())
-                }
-                Err(e) => {
-                    log::warn!(
-                        "⚠️ Active backend '{}' connectivity failed: {}. Falling back to Local.",
-                        active_name,
-                        e
-                    );
-
-                    // Set error status
-                    self.set_runtime_status(&active_name, &format!("error:{}", e))
-                        .await;
-
-                    // Fallback switch
-                    // Note: We need a manager reference here, but don't have one in check_connectivity_with_timeout.
-                    // However, we can't easily access the AppHandle/State here.
-                    // Since fallback is a critical error path, and Local uses "default" profile which is likely already active
-                    // or will be switched to next time a command runs, checking constraints...
-
-                    // CRITICAL: We cannot invoke profile switch here without manager.
-                    // Ideally check_connectivity_or_fallback should assume backend manager orchestration.
-                    // For now, we accept we can't switch the PROFILE here, but we switch the active index.
-                    // The Frontend will likely reload/retry calling commands which will properly switch context if needed.
-                    if let Err(fallback_err) = self.switch_to_local_fallback().await {
-                        let msg = format!(
-                            "Critical: Failed to fallback to Local backend: {}",
-                            fallback_err
-                        );
-                        log::error!("{}", msg);
-                        Err(msg)
-                    } else {
-                        info!("✅ Fallback to Local backend successful");
-                        // Mark Local as connected - runtime info (version, OS, config_path)
-                        // will be fetched by lifecycle.rs when engine is ready (deterministic)
-                        self.set_runtime_status("Local", "connected").await;
-                        Ok(())
-                    }
-                }
-            }
-        }
+        super::connectivity::ensure_connectivity_or_fallback(self, app, client, timeout).await
     }
 
-    // fetch_config_path removed - now handled by RuntimeDetector
+    /// Check other backends - delegates to connectivity module
+    pub async fn check_other_backends(&self, client: &reqwest::Client) {
+        super::connectivity::check_other_backends(self, client).await
+    }
+
+    // ============================================================================
+    // Helper methods for internal module access
+    // ============================================================================
+
+    /// Set runtime info for a backend (used by connectivity module)
+    pub(super) async fn set_runtime_info(&self, name: &str, info: RuntimeInfo) {
+        let mut cache = self.runtime_info.write().await;
+        cache.insert(name.to_string(), info);
+    }
+
+    /// Switch active index to Local (used by connectivity fallback)
+    pub(super) async fn switch_to_local_index(&self) -> Result<(), String> {
+        let backends = self.backends.read().await;
+        let (index, _) = backends
+            .iter()
+            .enumerate()
+            .find(|(_, b)| b.name == "Local")
+            .ok_or_else(|| "Local backend not found".to_string())?;
+        drop(backends);
+
+        let mut active = self.active_index.write().await;
+        *active = index;
+        Ok(())
+    }
+
+    /// Save backend state internally (used by state module)
+    pub(super) async fn save_state(&self, name: &str, state: super::state::BackendState) {
+        let mut states = self.per_backend_state.write().await;
+        states.insert(name.to_string(), state);
+    }
+
+    /// Get backend state (used by state module)
+    pub(super) async fn get_state(&self, name: &str) -> super::state::BackendState {
+        let states = self.per_backend_state.read().await;
+        states.get(name).cloned().unwrap_or_default()
+    }
 
     /// Get the runtime config path for a specific backend
     pub async fn get_runtime_config_path(&self, name: &str) -> Option<String> {
@@ -727,54 +537,9 @@ impl BackendManager {
         Ok(())
     }
 
-    /// Internal fallback helper without profile switching (best effort)
-    pub async fn switch_to_local_fallback(&self) -> Result<(), String> {
-        let backends = self.backends.read().await;
-        let (index, _) = backends
-            .iter()
-            .enumerate()
-            .find(|(_, b)| b.name == "Local")
-            .ok_or_else(|| "Local backend not found".to_string())?;
-
-        let mut active = self.active_index.write().await;
-        *active = index;
-
-        crate::rclone::engine::core::set_active_is_local(true);
-        info!("🔄 Fallback switched to internal Local backend state");
-        Ok(())
-    }
-
-    /// Refresh all caches for the currently active backend
-    ///
-    /// This is the central method for updating state from the API.
-    /// It should be used by:
-    /// 1. Backend switching logic
-    /// 2. Engine startup/initialization
-    /// 3. Manual refresh actions
+    /// Refresh active backend - delegates to cache module
     pub async fn refresh_active_backend(&self, client: &reqwest::Client) -> Result<(), String> {
-        let backend = self.get_active().await;
-        self.remote_cache.refresh_all(client, &backend).await
-    }
-
-    /// Check non-active backends in background
-    pub async fn check_other_backends(&self, client: &reqwest::Client) {
-        let backends = self.list_all().await;
-        let active_name = self.get_active_name().await;
-
-        for backend in backends {
-            if backend.name == active_name || backend.name == "Local" {
-                continue; // Already checked
-            }
-
-            info!("🔍 Background check for backend: {}", backend.name);
-            if let Err(e) = self.check_connectivity(&backend.name, client).await {
-                log::warn!("⚠️ Backend '{}' unreachable: {}", backend.name, e);
-                self.set_runtime_status(&backend.name, &format!("error:{}", e))
-                    .await;
-            } else {
-                info!("✅ Backend '{}' is reachable", backend.name);
-            }
-        }
+        super::cache::refresh_active_backend(self, client).await
     }
 }
 

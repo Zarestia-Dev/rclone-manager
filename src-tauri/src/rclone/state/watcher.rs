@@ -53,30 +53,37 @@ async fn check_and_reconcile_mounts(
 }
 
 /// Background task that monitors mounted remotes
-pub async fn start_mounted_remote_watcher(app_handle: AppHandle) {
+/// Spawns itself in a tokio task for consistency with serve watcher
+pub fn start_mounted_remote_watcher(app_handle: AppHandle) {
     if WATCHER_RUNNING.swap(true, Ordering::SeqCst) {
         debug!("🔍 Mounted remote watcher already running");
         return;
     }
-    let mut interval = time::interval(Duration::from_secs(5));
 
-    loop {
-        interval.tick().await;
-        if !WATCHER_RUNNING.load(Ordering::SeqCst) {
-            debug!("🔍 Stopping mounted remote watcher");
-            break;
+    tokio::spawn(async move {
+        debug!("🔍 Starting mounted remote watcher");
+        let mut interval = time::interval(Duration::from_secs(5));
+
+        loop {
+            interval.tick().await;
+            if !WATCHER_RUNNING.load(Ordering::SeqCst) {
+                debug!("🔍 Stopping mounted remote watcher");
+                break;
+            }
+
+            let backend_manager = app_handle.state::<BackendManager>();
+            let backend = backend_manager.get_active().await;
+            let cache = backend_manager.remote_cache.clone();
+            let client = app_handle.state::<RcloneState>().client.clone();
+
+            if let Err(e) =
+                check_and_reconcile_mounts(app_handle.clone(), backend, cache, client).await
+            {
+                debug!("🔍 Watcher failed to reconcile mounts: {e}");
+            }
         }
-
-        let backend_manager = app_handle.state::<BackendManager>();
-        let backend = backend_manager.get_active().await;
-        let cache = backend_manager.remote_cache.clone();
-        let client = app_handle.state::<RcloneState>().client.clone();
-
-        if let Err(e) = check_and_reconcile_mounts(app_handle.clone(), backend, cache, client).await
-        {
-            debug!("🔍 Watcher failed to reconcile mounts: {e}");
-        }
-    }
+    });
+    debug!("✅ Mounted remote watcher started");
 }
 
 /// Stop the mounted remote watcher

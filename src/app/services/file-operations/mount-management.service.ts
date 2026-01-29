@@ -1,10 +1,11 @@
-import { inject, Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { DestroyRef, inject, Injectable } from '@angular/core';
+import { BehaviorSubject, merge } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TranslateService } from '@ngx-translate/core';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { NotificationService } from '@app/services';
 import { BackendTranslationService } from '../i18n/backend-translation.service';
-import { MountedRemote, MOUNT_STATE_CHANGED } from '@app/types';
+import { MountedRemote, MOUNT_STATE_CHANGED, RCLONE_ENGINE_READY } from '@app/types';
 
 /**
  * Service for managing rclone mounts
@@ -21,6 +22,7 @@ export class MountManagementService extends TauriBaseService {
   private notificationService = inject(NotificationService);
   private translate = inject(TranslateService);
   private backendTranslation = inject(BackendTranslationService);
+  private destroyRef = inject(DestroyRef);
 
   constructor() {
     super();
@@ -29,13 +31,19 @@ export class MountManagementService extends TauriBaseService {
 
   /**
    * Initialize event listeners for mount state changes
+   * Service auto-refreshes when backend emits mount state changes or engine becomes ready
    */
   private initializeEventListeners(): void {
-    this.listenToEvent<unknown>(MOUNT_STATE_CHANGED).subscribe(() => {
-      this.getMountedRemotes().catch(err =>
-        console.error('Failed to refresh mounts on state change:', err)
-      );
-    });
+    merge(
+      this.listenToEvent<unknown>(MOUNT_STATE_CHANGED),
+      this.listenToEvent<unknown>(RCLONE_ENGINE_READY)
+    )
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.getMountedRemotes().catch(err =>
+          console.error('[MountManagementService] Failed to refresh mounts:', err)
+        );
+      });
   }
 
   /**

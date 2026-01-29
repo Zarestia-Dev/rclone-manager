@@ -238,7 +238,8 @@
       },
       "bandwidth_limit": {
         "label": "Bandwidth Limit",
-        "description": "Limit the bandwidth used by Rclone transfers. Format: 'upload:download'"
+        "description": "Limit the bandwidth used by Rclone transfers. Format: 'upload:download'",
+        "placeholder": "e.g., 10M:5M or 1G"
       },
       "completed_onboarding": {
         "label": "Completed Onboarding",
@@ -364,6 +365,20 @@
     },
     "metered": {
       "message": "You are on a metered connection. Some features may use extra data."
+    },
+    "engine": {
+      "password": {
+        "title": "Rclone Configuration Password Required",
+        "subtitle": "Please unlock your configuration to start the engine"
+      },
+      "path": {
+        "title": "Rclone Binary Not Found",
+        "subtitle": "Please check your rclone installation path in settings"
+      },
+      "generic": {
+        "title": "Engine Failed to Start",
+        "subtitle": "Please check logs for more details"
+      }
     }
   },
   "tabs": {

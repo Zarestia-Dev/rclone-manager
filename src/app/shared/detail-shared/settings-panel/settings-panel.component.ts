@@ -1,11 +1,14 @@
 import { Component, input, output, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
+import { map } from 'rxjs';
 
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { AppSettingsService } from '@app/services';
 import { SENSITIVE_KEYS, SettingsPanelConfig } from '@app/types';
 
 @Component({
@@ -94,6 +97,16 @@ import { SENSITIVE_KEYS, SettingsPanelConfig } from '@app/types';
 })
 export class SettingsPanelComponent {
   private translate = inject(TranslateService);
+  private appSettingsService = inject(AppSettingsService);
+
+  // Reactive restriction mode from settings
+  restrictMode = toSignal(
+    this.appSettingsService
+      .selectSetting('general.restrict')
+      .pipe(map(setting => (setting?.value as boolean) ?? true)),
+    { initialValue: true }
+  );
+
   config = input.required<SettingsPanelConfig>();
   editSettings = output<{ section: string; settings: Record<string, unknown> }>();
 
@@ -147,11 +160,9 @@ export class SettingsPanelComponent {
   }
 
   isSensitiveKey(key: string): boolean {
+    if (!this.restrictMode()) return false;
     const sensitiveKeys = SENSITIVE_KEYS;
-    return (
-      sensitiveKeys.some(sensitive => key.toLowerCase().includes(sensitive)) &&
-      this.config().restrictMode
-    );
+    return sensitiveKeys.some(sensitive => key.toLowerCase().includes(sensitive));
   }
 
   getDisplayValue(key: string, value: unknown): string {

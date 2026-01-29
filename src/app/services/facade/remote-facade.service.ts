@@ -17,6 +17,7 @@ import {
   SyncOperationType,
   PrimaryActionType,
   REMOTE_CACHE_CHANGED,
+  RCLONE_ENGINE_READY,
   REMOTE_SETTINGS_CHANGED,
   DiskUsage,
   ActionState,
@@ -160,10 +161,11 @@ export class RemoteFacadeService extends TauriBaseService {
   constructor() {
     super();
     // Auto-refresh all data when remote cache changes (e.g., backend switch)
-    // or when settings change
+    // or when settings change, or when engine becomes ready after restart
     merge(
       this.listenToEvent<unknown>(REMOTE_CACHE_CHANGED),
-      this.listenToEvent<unknown>(REMOTE_SETTINGS_CHANGED)
+      this.listenToEvent<unknown>(REMOTE_SETTINGS_CHANGED),
+      this.listenToEvent<unknown>(RCLONE_ENGINE_READY)
     )
       .pipe(takeUntilDestroyed())
       .subscribe(() => {

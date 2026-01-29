@@ -37,3 +37,27 @@
 >
   {{ 'banners.metered.message' | translate }}
 </mat-toolbar>
+
+<!-- Single Dynamic Engine Error Banner -->
+@if (engineError(); as errorType) {
+  <mat-toolbar class="engine-error-banner slide-toggle-banner visible" role="alert">
+    <!-- Dynamic icon based on error type -->
+    @switch (errorType) {
+      @case ('password') {
+        <mat-icon svgIcon="key" class="error-icon"></mat-icon>
+      }
+      @case ('path') {
+        <mat-icon svgIcon="triangle-exclamation" class="error-icon"></mat-icon>
+      }
+      @case ('generic') {
+        <mat-icon svgIcon="circle-exclamation" class="error-icon"></mat-icon>
+      }
+    }
+
+    <!-- Dynamic content based on error type -->
+    <span class="banner-message">{{ 'banners.engine.' + errorType + '.title' | translate }}</span>
+    <span class="banner-subtitle">{{
+      'banners.engine.' + errorType + '.subtitle' | translate
+    }}</span>
+  </mat-toolbar>
+}

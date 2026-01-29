@@ -36,6 +36,21 @@ mat-toolbar {
     background-color: var(--banner-bg-color);
   }
 
+  &.engine-error-banner {
+    background: var(--warn-color);
+    color: white;
+
+    .error-icon {
+      color: white;
+      height: 20px;
+      width: 20px;
+    }
+
+    .banner-message {
+      font-weight: 700;
+    }
+  }
+
   // CSS-based slide toggle animation
   &.slide-toggle-banner {
     max-height: 0;

@@ -13,7 +13,7 @@ pub async fn setup_rclone_environment(
     app: &AppHandle,
     mut command: tauri_plugin_shell::process::Command,
     process_type: &str,
-) -> Result<tauri_plugin_shell::process::Command, String> {
+) -> Result<tauri_plugin_shell::process::Command, crate::rclone::engine::error::EngineError> {
     let mut password_found = false;
 
     // Get password from SafeEnvironmentManager (synced from backend at startup)
@@ -37,9 +37,8 @@ pub async fn setup_rclone_environment(
         match crate::core::security::is_config_encrypted(app.clone()).await {
             Ok(true) => {
                 info!("🔒 Configuration is encrypted but no password available, stopping start");
-                return Err(crate::localized_error!(
-                    "backendErrors.rclone.configEncrypted"
-                ));
+                // Return EngineError variant directly, not localized string
+                return Err(crate::rclone::engine::error::EngineError::PasswordRequired);
             }
             Ok(false) => {
                 info!("🔓 Configuration is not encrypted, proceeding without password");
@@ -56,9 +55,10 @@ pub async fn setup_rclone_environment(
 pub async fn create_rclone_command(
     app: &AppHandle,
     process_type: &str,
-) -> Result<tauri_plugin_shell::process::Command, String> {
+) -> Result<tauri_plugin_shell::process::Command, crate::rclone::engine::error::EngineError> {
     // Get paths for logging (directories already created during app startup)
-    let paths = crate::core::paths::AppPaths::from_app_handle(app)?;
+    let paths = crate::core::paths::AppPaths::from_app_handle(app)
+        .map_err(crate::rclone::engine::error::EngineError::SpawnFailed)?;
 
     // Fetch Local backend to get the configured config path
     // Fetch Local backend to get the configured config path
@@ -78,13 +78,15 @@ pub async fn create_rclone_command(
     // Determine port based on process type
     let port = match process_type {
         "main_engine" => backend.port,
-        "oauth" => backend
-            .oauth_port
-            .ok_or_else(|| crate::localized_error!("backendErrors.system.oauthNotConfigured"))?,
+        "oauth" => backend.oauth_port.ok_or_else(|| {
+            crate::rclone::engine::error::EngineError::SpawnFailed(crate::localized_error!(
+                "backendErrors.system.oauthNotConfigured"
+            ))
+        })?,
         _ => {
-            return Err(
+            return Err(crate::rclone::engine::error::EngineError::SpawnFailed(
                 crate::localized_error!("backendErrors.rclone.unknownProcessType", "type" => process_type),
-            );
+            ));
         }
     };
 
@@ -127,15 +129,22 @@ pub async fn create_rclone_command(
                 // Retrieve metadata to validate flags (checks for reserved values)
                 let metadata = CoreSettings::get_metadata();
                 if let Some(meta) = metadata.get("core.rclone_additional_flags") {
-                    let flags_value =
-                        serde_json::to_value(extra_flags).map_err(|e| e.to_string())?;
+                    let flags_value = serde_json::to_value(extra_flags).map_err(|e| {
+                        crate::rclone::engine::error::EngineError::ConfigValidationFailed(
+                            e.to_string(),
+                        )
+                    })?;
 
                     if let Err(e) = meta.validate(&flags_value) {
                         info!("❌ Blocked reserved/invalid flags: {}", e);
-                        return Err(crate::localized_error!(
-                            "backendErrors.rclone.invalidFlags",
-                            "error" => e
-                        ));
+                        return Err(
+                            crate::rclone::engine::error::EngineError::ConfigValidationFailed(
+                                crate::localized_error!(
+                                    "backendErrors.rclone.invalidFlags",
+                                    "error" => e
+                                ),
+                            ),
+                        );
                     }
                 }
 

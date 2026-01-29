@@ -106,7 +106,6 @@
         @switch (currentTab()) {
           @case ('general') {
             <app-general-detail
-              [restrictMode]="restrictMode()"
               [jobs]="getJobsForRemote(remote.remoteSpecs.name)"
               [selectedRemote]="remote"
               (stopJob)="stopJob($event.type, $event.remoteName)"
@@ -124,7 +123,6 @@
               [selectedSyncOperation]="selectedSyncOperation()"
               [selectedRemote]="remote"
               [remoteSettings]="selectedRemoteSettings()"
-              [restrictMode]="restrictMode()"
               [actionInProgress]="actionInProgress()[remote.remoteSpecs.name]"
               (syncOperationChange)="onSyncOperationChange($event)"
               (openRemoteConfigModal)="

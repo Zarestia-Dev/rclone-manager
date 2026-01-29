@@ -35,11 +35,13 @@ import { MatNativeDateModule, provideNativeDateAdapter } from '@angular/material
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { NgxMatTimepickerModule } from 'ngx-mat-timepicker';
 import { RcConfigOption } from '@app/types';
-import { Subject } from 'rxjs';
+import { SENSITIVE_KEYS } from '@app/types';
+import { Subject, map } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { LineBreaksPipe } from '../../pipes/linebreaks.pipe';
 import { RcloneOptionTranslatePipe } from '../../pipes/rclone-option-translate.pipe';
-import { RcloneValueMapperService } from '@app/services';
+import { RcloneValueMapperService, AppSettingsService } from '@app/services';
 import { ValidatorRegistryService } from '@app/services';
 
 @Component({
@@ -80,6 +82,16 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   private valueMapper = inject(RcloneValueMapperService);
   private validatorRegistry = inject(ValidatorRegistryService);
   private translate = inject(TranslateService);
+  private appSettingsService = inject(AppSettingsService);
+
+  // Reactive restriction mode from settings
+  restrictMode = toSignal(
+    this.appSettingsService
+      .selectSetting('general.restrict')
+      .pipe(map(setting => (setting?.value as boolean) ?? true)),
+    { initialValue: true }
+  );
+
   /** Caller-provided per-option overrides. Parent components may bind to this Input to change
    * how specific options are presented (for example override DefaultStr for certain options).
    */
@@ -274,6 +286,16 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
       return _val.join(', ') || '[]';
     }
     return _val.toString();
+  }
+
+  /**
+   * Determines if the current field is sensitive and should be restricted
+   * based on the restrictMode setting
+   */
+  isSensitiveField(): boolean {
+    if (!this.restrictMode()) return false;
+    const fieldName = this.option?.Name?.toLowerCase() || '';
+    return SENSITIVE_KEYS.some(key => fieldName.includes(key.toLowerCase()));
   }
 
   isAtDefault(): boolean {
@@ -776,5 +798,14 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   ngOnDestroy(): void {
     this.destroyed$.next();
     this.destroyed$.complete();
+  }
+
+  /**
+   * Prevents clipboard events (paste, copy, cut) on sensitive fields when restrict mode is enabled
+   */
+  preventClipboardOnSensitive(event: ClipboardEvent): void {
+    if (this.isSensitiveField()) {
+      event.preventDefault();
+    }
   }
 }

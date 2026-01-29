@@ -239,7 +239,8 @@
       },
       "bandwidth_limit": {
         "label": "Bant Genişliği Sınırı",
-        "description": "Rclone transferleri tarafından kullanılan bant genişliğini sınırlar. Format: 'yükleme:indirme'"
+        "description": "Rclone transferleri tarafından kullanılan bant genişliğini sınırlar. Format: 'yükleme:indirme'",
+        "placeholder": "örn. 10M:5M veya 1G"
       },
       "completed_onboarding": {
         "label": "Tanıtım Tamamlandı",
@@ -365,6 +366,20 @@
     },
     "metered": {
       "message": "Tarifeli bağlantıdasınız. Bazı özellikler ekstra veri kullanabilir."
+    },
+    "engine": {
+      "password": {
+        "title": "Rclone Yapılandırma Şifresi Gerekli",
+        "subtitle": "Motor'u başlatmak için lütfen yapılandırmanızın kilidini açın"
+      },
+      "path": {
+        "title": "Rclone İkili Dosyası Bulunamadı",
+        "subtitle": "Lütfen ayarlarda rclone kurulum yolunuzu kontrol edin"
+      },
+      "generic": {
+        "title": "Motor Başlatılamadı",
+        "subtitle": "Daha fazla detay için lütfen logları kontrol edin"
+      }
     }
   },
   "tabs": {
@@ -2484,7 +2499,7 @@
       "testBinaryFirst": "Önce İkili Dosyayı Test Edin"
     },
     "titles": {
-      "missingRclone": "RClone Eksik",
+      "missingRclone": "Rclone Eksik",
       "missingMountPlugin": "Bağlama Eklentisi Eksik",
       "corruptConfig": "Yapılandırma Bozuk",
       "backendError": "Arka Uç Hatası",
@@ -2502,7 +2517,7 @@
       "mountPluginStatusError": "Durum kontrol edilemedi"
     },
     "progress": {
-      "installingRclone": "RClone Kuruluyor...",
+      "installingRclone": "Rclone Kuruluyor...",
       "installingPlugin": "Eklenti Kuruluyor...",
       "restoringBackup": "Yapılandırma Geri Yükleniyor...",
       "restartingEngine": "Motor Yeniden Başlatılıyor...",
@@ -2511,7 +2526,7 @@
       "configuring": "Yapılandırılıyor..."
     },
     "actions": {
-      "installRclone": "RClone Kur",
+      "installRclone": "Rclone Kur",
       "installPlugin": "Eklenti Kur",
       "restoreBackup": "Yedeği Geri Yükle",
       "restartEngine": "Motoru Yeniden Başlat",

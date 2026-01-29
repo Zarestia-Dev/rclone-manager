@@ -12,7 +12,6 @@ export interface SettingsPanelConfig {
   section: SettingsSection;
   settings: any;
   hasSettings: boolean;
-  restrictMode: boolean;
   buttonColor?: string;
   buttonLabel?: string;
   sensitiveKeys?: string[];

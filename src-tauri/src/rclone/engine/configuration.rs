@@ -25,15 +25,13 @@ impl RcApiEngine {
             Ok(available) => {
                 if !available {
                     let path = crate::core::check_binaries::read_rclone_path(app);
-                    let err_msg = format!("Rclone binary not found at: {}", path.display());
-                    error!("❌ {}", err_msg);
-                    return Err(EngineError::ConfigValidationFailed(err_msg));
+                    error!("❌ Rclone binary not found at: {}", path.display());
+                    return Err(EngineError::RcloneNotFound);
                 }
             }
             Err(e) => {
-                let err_msg = format!("Failed to check rclone availability: {}", e);
-                error!("❌ {}", err_msg);
-                return Err(EngineError::ConfigValidationFailed(err_msg));
+                error!("❌ Failed to check rclone availability: {}", e);
+                return Err(EngineError::RcloneNotFound);
             }
         }
 
@@ -107,9 +105,8 @@ impl RcApiEngine {
                 || stderr.contains("most likely wrong password")
                 || stderr.contains("unable to decrypt configuration")
             {
-                let error_msg = "Wrong password for encrypted rclone configuration";
-                error!("❌ {}", error_msg);
-                Err(EngineError::ConfigValidationFailed(error_msg.to_string()))
+                error!("❌ Wrong password for encrypted rclone configuration");
+                Err(EngineError::WrongPassword)
             } else if stderr.contains("Failed to load config file") {
                 let error_msg = format!("Failed to load rclone config file: {}", stderr.trim());
                 error!("❌ {}", error_msg);
@@ -127,6 +124,8 @@ impl RcApiEngine {
 
     /// Test configuration and password without starting the engine (async)
     pub async fn validate_config(&mut self, app: &AppHandle) -> bool {
+        use super::error::EngineError;
+
         info!("🧪 Testing rclone configuration and password...");
 
         let result = self.validate_config_before_start(app).await;
@@ -137,30 +136,23 @@ impl RcApiEngine {
                 self.clear_errors();
                 true
             }
-            Err(e) => {
-                let error_msg = e.to_string();
-                error!("❌ Rclone configuration validation failed: {}", error_msg);
+            Err(ref e) => {
+                error!("❌ Rclone configuration validation failed: {}", e);
 
-                if error_msg.contains("Rclone binary not found") {
-                    // Missing executable on filesystem
-                    self.set_password_error(false);
-                    self.set_path_error(true);
-                } else if error_msg.contains("Wrong password")
-                    || error_msg.contains("Invalid environment password")
-                {
-                    // Stored password is incorrect
-                    self.set_password_error(true);
-                    self.set_path_error(false);
-                } else if error_msg.contains("no password is available") {
-                    // Encrypted config without password
-                    self.set_password_error(true);
-                    self.set_path_error(false);
-                } else if error_msg.contains("Failed to load rclone config file") {
-                    // Config file issue, treat as generic error for now
-                    self.clear_errors();
-                } else {
-                    // Unknown error, fall back to generic handling
-                    self.clear_errors();
+                // Match on error type - no string parsing needed
+                match e {
+                    EngineError::RcloneNotFound => {
+                        self.set_password_error(false);
+                        self.set_path_error(true);
+                    }
+                    EngineError::WrongPassword | EngineError::PasswordRequired => {
+                        self.set_password_error(true);
+                        self.set_path_error(false);
+                    }
+                    _ => {
+                        // Generic error, clear specific flags
+                        self.clear_errors();
+                    }
                 }
 
                 let event = if self.path_error {

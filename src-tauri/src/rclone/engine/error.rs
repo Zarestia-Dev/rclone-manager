@@ -12,23 +12,45 @@ pub enum EngineError {
     RestartFailed(String),
     CacheRefreshFailed(String),
     PasswordRequired,
+    RcloneNotFound,
+    WrongPassword,
 }
 
 impl fmt::Display for EngineError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            EngineError::SpawnFailed(msg) => write!(f, "Spawn failed: {msg}"),
-            EngineError::InvalidPath => write!(f, "Invalid rclone path"),
-            EngineError::KillFailed(msg) => write!(f, "Kill failed: {msg}"),
-            EngineError::PortCleanupFailed(msg) => write!(f, "Port cleanup failed: {msg}"),
-            EngineError::ConfigValidationFailed(msg) => {
-                write!(f, "Config validation failed: {msg}")
+        // Helper to reduce boilerplate - directly write localized message
+        let msg = match self {
+            Self::SpawnFailed(err) => {
+                crate::localized_error!("backendErrors.rclone.spawnFailed", "error" => err)
             }
-            EngineError::LockFailed(msg) => write!(f, "Lock acquisition failed: {msg}"),
-            EngineError::RestartFailed(msg) => write!(f, "Restart failed: {msg}"),
-            EngineError::CacheRefreshFailed(msg) => write!(f, "Cache refresh failed: {msg}"),
-            EngineError::PasswordRequired => write!(f, "Configuration password required"),
-        }
+            Self::InvalidPath => crate::localized_error!("backendErrors.rclone.invalidPath"),
+            Self::KillFailed(err) => {
+                crate::localized_error!("backendErrors.rclone.killFailed", "error" => err)
+            }
+            Self::PortCleanupFailed(err) => {
+                crate::localized_error!("backendErrors.rclone.portCleanupFailed", "error" => err)
+            }
+            Self::ConfigValidationFailed(err) => {
+                crate::localized_error!("backendErrors.rclone.configValidationFailed", "error" => err)
+            }
+            Self::LockFailed(err) => {
+                crate::localized_error!("backendErrors.rclone.lockFailed", "error" => err)
+            }
+            Self::RestartFailed(err) => {
+                crate::localized_error!("backendErrors.rclone.restartFailed", "error" => err)
+            }
+            Self::CacheRefreshFailed(err) => {
+                crate::localized_error!("backendErrors.rclone.cacheRefreshFailed", "error" => err)
+            }
+            Self::PasswordRequired => {
+                crate::localized_error!("backendErrors.rclone.configEncrypted")
+            }
+            Self::RcloneNotFound => crate::localized_error!("backendErrors.rclone.binaryNotFound"),
+            Self::WrongPassword => {
+                crate::localized_error!("backendErrors.security.incorrectPassword")
+            }
+        };
+        write!(f, "{}", msg)
     }
 }
 
