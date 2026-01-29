@@ -11,6 +11,16 @@
       </div>
     </div>
     <div class="header-actions">
+      @if (isMarkdownFile() && (data.fileType === 'text' || data.fileType === 'previewable')) {
+        <button
+          mat-icon-button
+          class="header-button"
+          (click)="toggleMarkdownPreview(); $event.stopPropagation()"
+          [attr.aria-label]="showMarkdownPreview() ? 'Show Raw Text' : 'Show Preview'"
+        >
+          <mat-icon [svgIcon]="showMarkdownPreview() ? 'code' : 'eye'"></mat-icon>
+        </button>
+      }
       @if (!this.data.isLocal) {
         <button
           mat-icon-button
@@ -109,9 +119,22 @@
             ></iframe>
           }
           @case ('text') {
-            <div class="text-container" role="document">
-              <pre>{{ textContent() }}</pre>
-            </div>
+            @if (isMarkdownFile() && showMarkdownPreview()) {
+              <div class="markdown-preview markdown-body" [innerHTML]="renderedMarkdown()"></div>
+            } @else {
+              <div class="text-container" role="document">
+                <pre><code class="hljs" [innerHTML]="highlightedContent()"></code></pre>
+              </div>
+            }
+          }
+          @case ('previewable') {
+            @if (isMarkdownFile() && showMarkdownPreview()) {
+              <div class="markdown-preview markdown-body" [innerHTML]="renderedMarkdown()"></div>
+            } @else {
+              <div class="text-container" role="document">
+                <pre><code class="hljs" [innerHTML]="highlightedContent()"></code></pre>
+              </div>
+            }
           }
           @case ('directory') {
             <div class="unsupported-container" role="status">

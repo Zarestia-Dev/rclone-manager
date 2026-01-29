@@ -18,12 +18,6 @@
     color: var(--window-fg-color);
 
     .header-left {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-xxs);
-      flex: 1;
-      min-width: 0;
-
       .file-name {
         font-size: 1.1rem;
         font-weight: 500;
@@ -170,17 +164,19 @@
       box-shadow: var(--shadow-gnome);
     }
 
+    .markdown-preview,
     .text-container {
       width: calc(100vw - 200px);
       height: calc(100vh - 120px);
       overflow: auto;
+      padding-inline: var(--space-xl);
+      padding-block: var(--space-sm);
       background: var(--view-bg-color);
       color: var(--window-fg-color);
       border-radius: var(--radius-sm);
       box-shadow: var(--shadow-gnome);
 
       pre {
-        padding: var(--space-xl);
         font-family: monospace;
         font-size: var(--font-size-md);
         white-space: pre-wrap;

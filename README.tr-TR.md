@@ -9,7 +9,7 @@
 <p align="center">
   <a href="README.md">🇺🇸 English</a> •
   <a href="README.tr-TR.md">🇹🇷 Türkçe</a> •
-  <a href="soon">Çeviriye Yardım Edin</a>
+  <a href="CONTRIBUTING.md#adding-translations">Çeviriye Yardım Edin</a>
 </p>
 
 <p align="center">
@@ -149,7 +149,7 @@ Bir sorunla mı karşılaştınız?
 
 Katkıları memnuniyetle karşılıyoruz! İşte nasıl yardım edebilirsiniz:
 
-- 🌍 **Çevirmeye Yardım Edin** – Yakında....
+- 🌍 **Çevirmeye Yardım Edin** – [Çeviri Kılavuzuna](CONTRIBUTING.md#adding-translations) bakın
 - 🐛 **Hata Bildirin** – [Hata raporu açın](https://github.com/Zarestia-Dev/rclone-manager/issues/new?template=bug_report.md)
 - 💡 **Özellik Önerin** – [Fikirlerinizi paylaşın](https://github.com/Zarestia-Dev/rclone-manager/issues/new?template=feature_request.md)
 - 📖 **Belgeleri İyileştirin** – [Dökümantasyonumuzu](https://github.com/Zarestia-Dev/rclone-manager/wiki) daha net hale getirmemize yardımcı olun

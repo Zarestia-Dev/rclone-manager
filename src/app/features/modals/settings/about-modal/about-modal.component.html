@@ -545,7 +545,7 @@
           </div>
 
           <div
-            class="release-notes"
+            class="release-notes markdown-body"
             [innerHTML]="getFormattedReleaseNotes(appUpdateAvailable()!.releaseNotes)"
           ></div>
         }
@@ -581,7 +581,7 @@
           </div>
 
           <div
-            class="release-notes"
+            class="release-notes markdown-body"
             [innerHTML]="getFormattedReleaseNotes(rcloneUpdateStatus().updateInfo?.release_notes)"
           ></div>
         }

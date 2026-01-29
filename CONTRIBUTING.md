@@ -76,7 +76,11 @@ Documentation improvements are always welcome! This includes:
 
 ### Adding Translations
 
-We use BCP-47 language tags (e.g., `en-US`, `tr-TR`, `de-DE`) for internationalization. Adding a new language is straightforward!
+We use BCP-47 language tags (e.g., `en-US`, `tr-TR`, `de-DE`) for internationalization.
+
+> [!IMPORTANT]
+> **We currently do not use any automated translation provider** (like Crowdin, Transifex, etc.).
+> All translations must be submitted manually via **Pull Requests**.
 
 #### Steps to Add a New Language
 

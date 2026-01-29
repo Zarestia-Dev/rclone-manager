@@ -134,6 +134,7 @@ export class IconService {
       vfs: 'assets/icons/general/vfs.svg',
       mount: 'assets/icons/general/mount.svg',
       user: 'assets/icons/general/user.svg',
+      code: 'assets/icons/general/code.svg',
 
       // ------------------- Titlebar Icons -------------------
       'check-box': 'assets/icons/titlebar/check-box.svg',

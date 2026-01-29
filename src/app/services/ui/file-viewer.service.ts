@@ -61,103 +61,137 @@ export class FileViewerService {
   }
 
   /**
-   * Detect file type based on MIME type, extension, and content inspection.
-   * For unknown files, fetches content to determine if binary or text.
+   * Simplified file type detection - returns category for rendering strategy.
+   * No pre-detection downloads. Let browser try to render, handle failures gracefully.
    */
-  async getFileType(item: Entry, remoteName: string, isLocal: boolean): Promise<string> {
-    const syncType = this.getFileTypeSync(item);
-    if (syncType !== 'unknown') {
-      return syncType;
-    }
-
-    // Unknown file type → detect if binary or text by inspecting content
-    try {
-      const url = await this.generateUrl(item, remoteName, isLocal);
-      const response = await fetch(url, {
-        headers: { Range: 'bytes=0-1023' },
-      });
-
-      if (!response.ok) {
-        // Range request not supported, fetch full content (may be slow for large files)
-        const fullResponse = await fetch(url);
-        const buffer = await fullResponse.arrayBuffer();
-        return this.isBinaryContent(buffer) ? 'binary' : 'text';
-      }
-
-      const sampleBuffer = await response.arrayBuffer();
-      return this.isBinaryContent(sampleBuffer) ? 'binary' : 'text';
-    } catch (error) {
-      console.error('Error detecting file type:', error);
-      return 'binary'; // Fallback to binary on error
-    }
+  async getFileType(item: Entry, _remoteName: string, _isLocal: boolean): Promise<string> {
+    return this.getFileTypeSync(item);
   }
 
   /**
-   * Synchronous file type detection based on MIME type and extension only.
-   * Use this for quick lookups like icons. Returns 'binary' for unknown files.
+   * Categorize files by rendering strategy needed.
+   * Returns: 'image', 'video', 'audio', 'pdf', 'directory', 'binary', or 'previewable'
    */
   getFileTypeSync(item: Entry): string {
     if (item.IsDir) {
       return 'directory';
     }
 
-    // Check MIME type for media files (browsers handle these natively)
+    // Check MIME type and extension
     const mimeType = item.MimeType;
-    if (mimeType) {
-      if (mimeType.startsWith('image/')) return 'image';
-      if (mimeType.startsWith('video/')) return 'video';
-      if (mimeType.startsWith('audio/')) return 'audio';
-      if (mimeType === 'application/pdf') return 'pdf';
-      if (mimeType.startsWith('text/')) return 'text';
-    }
-
-    // Extension fallback for media types (browsers render these natively)
     const extension = item.Name.split('.').pop()?.toLowerCase() || '';
+
+    // Media types that need special HTML elements
+    if (mimeType?.startsWith('image/')) return 'image';
+    if (mimeType?.startsWith('video/')) return 'video';
+    if (mimeType?.startsWith('audio/')) return 'audio';
+    if (mimeType === 'application/pdf') return 'pdf';
+    if (mimeType?.startsWith('text/')) return 'previewable';
+
+    // Extension-based detection for media (when MIME is missing)
     if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg', 'ico'].includes(extension))
       return 'image';
     if (['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv'].includes(extension)) return 'video';
     if (['mp3', 'wav', 'flac', 'aac', 'm4a'].includes(extension)) return 'audio';
     if (extension === 'pdf') return 'pdf';
 
-    // Unknown - would need content inspection to determine if text or binary
-    return 'unknown';
-  }
+    // Known binary extensions that definitely cannot be previewed
+    const knownBinary = [
+      // Executables
+      'exe',
+      'dll',
+      'so',
+      'dylib',
+      'bin',
+      'app',
+      // Archives
+      'zip',
+      'rar',
+      '7z',
+      'tar',
+      'gz',
+      'bz2',
+      'xz',
+      'tgz',
+      // Documents (non-previewable)
+      'doc',
+      'docx',
+      'xls',
+      'xlsx',
+      'ppt',
+      'pptx',
+      'odt',
+      'ods',
+      // Databases
+      'db',
+      'sqlite',
+      'mdb',
+      // Images (not handled by browser)
+      'psd',
+      'ai',
+      'indd',
+      'raw',
+      'cr2',
+      'nef',
+      // Compiled/Binary
+      'o',
+      'a',
+      'lib',
+      'class',
+      'pyc',
+      'jar',
+    ];
 
-  /**
-   * Detect if content is binary by checking for NULL bytes and non-printable characters.
-   * This is how VSCode and other editors detect binary content.
-   * @param buffer ArrayBuffer of file content (first 512-1024 bytes is sufficient)
-   * @returns true if content appears to be binary, false if it looks like text
-   */
-  isBinaryContent(buffer: ArrayBuffer): boolean {
-    const bytes = new Uint8Array(buffer);
-    const checkLength = Math.min(bytes.length, 512);
-
-    if (checkLength === 0) return false; // Empty file is text
-
-    let nonPrintable = 0;
-    for (let i = 0; i < checkLength; i++) {
-      // NULL byte is a strong indicator of binary content
-      if (bytes[i] === 0) {
-        return true;
-      }
-
-      // Count non-printable characters (excluding tab, newline, carriage return)
-      if (bytes[i] < 32 && bytes[i] !== 9 && bytes[i] !== 10 && bytes[i] !== 13) {
-        nonPrintable++;
-      }
+    if (knownBinary.includes(extension)) {
+      return 'binary';
     }
 
-    // If more than 30% of characters are non-printable, it's likely binary
-    return nonPrintable / checkLength > 0.3;
+    // Everything else: let browser try to render as text
+    // This includes: code files, JSON, XML, config files, dotfiles, etc.
+    return 'previewable';
   }
 
   async generateUrl(item: Entry, remoteName: string, isLocal: boolean): Promise<string> {
+    return this.generateUrlFromPath(item.Path, remoteName, isLocal);
+  }
+
+  async resolveRelativePath(
+    baseItem: Entry,
+    remoteName: string,
+    isLocal: boolean,
+    relativePath: string
+  ): Promise<string> {
+    // Skip absolute URLs
+    if (/^(?:[a-z]+:|\/|#)/i.test(relativePath)) return relativePath;
+
+    try {
+      // 1. Determine the directory of the base file
+      const lastSlash = baseItem.Path.lastIndexOf('/');
+      const fileDir = lastSlash === -1 ? '' : baseItem.Path.substring(0, lastSlash);
+
+      // 2. Construct full target path relative to remote/local root
+      // If fileDir is "docs", relative is "../img.png" -> target is "img.png"
+      const combined = fileDir ? `${fileDir}/${relativePath}` : relativePath;
+      const normalizedPath = this.normalizePath(combined);
+
+      // 3. Generate URL for this new path
+      return this.generateUrlFromPath(normalizedPath, remoteName, isLocal);
+    } catch (e) {
+      console.warn('Failed to resolve relative path:', relativePath, e);
+      return relativePath;
+    }
+  }
+
+  private async generateUrlFromPath(
+    path: string,
+    remoteName: string,
+    isLocal: boolean
+  ): Promise<string> {
     const baseUrl = this.configService.rcloneServeUrl();
 
     if (isLocal) {
       const separator = remoteName.endsWith('/') || remoteName.endsWith('\\') ? '' : '/';
-      const fullPath = `${remoteName}${separator}${item.Path}`;
+      const fullPath = `${remoteName}${separator}${path}`;
 
       if (this.apiClient.isHeadless()) {
         const encodedPath = encodeURIComponent(fullPath);
@@ -166,6 +200,26 @@ export class FileViewerService {
       return convertFileSrc(fullPath);
     }
     const rName = remoteName.includes(':') ? remoteName : `${remoteName}:`;
-    return `${baseUrl}/[${rName}]/${item.Path}`;
+    // For remote files, we strictly follow the server format
+    // Ensure path is URL encoded for the browser fetch
+    const encodedPath = path
+      .split('/')
+      .map(p => encodeURIComponent(p))
+      .join('/');
+    return `${baseUrl}/[${rName}]/${encodedPath}`;
+  }
+
+  private normalizePath(p: string): string {
+    const parts = p.split(/[/\\]/);
+    const stack: string[] = [];
+    for (const part of parts) {
+      if (part === '' || part === '.') continue;
+      if (part === '..') {
+        if (stack.length > 0) stack.pop();
+      } else {
+        stack.push(part);
+      }
+    }
+    return stack.join('/');
   }
 }

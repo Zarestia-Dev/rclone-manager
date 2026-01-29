@@ -13,6 +13,7 @@
 @use "@angular/material" as mat;
 @use "sass:map";
 @use "sass:color";
+@use "app/styles/syntax-highlighting" as syntax;
 @use "animations";
 
 // ============================================================================
@@ -347,6 +348,7 @@ $dark-theme: (
 // Apply Material themes with Libadwaita surface overrides
 :root,
 .light {
+  @include syntax.syntax-highlighting-light;
   @include mat.theme($light-theme);
 
   // ===== MATERIAL M3 SURFACE OVERRIDES =====
@@ -408,6 +410,7 @@ $dark-theme: (
 }
 
 .dark {
+  @include syntax.syntax-highlighting-dark;
   @include mat.theme($dark-theme);
 
   // ===== MATERIAL M3 SURFACE OVERRIDES =====
@@ -1112,5 +1115,217 @@ mat-accordion {
     font-size: var(--font-size-sm);
     opacity: 0.8;
     margin-block: var(--space-xxs);
+  }
+}
+
+// ============================================================================
+// SECTION 6: MARKDOWN STYLING
+// ============================================================================
+// Reusable styles for rendering markdown content to match the application theme.
+// Mimics VS Code's markdown preview.
+
+.markdown-body {
+  // VS Code-like Markdown Styling
+  font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  line-height: 1.6;
+  word-wrap: break-word;
+  color: var(--window-fg-color);
+
+  // Headings
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin-top: 24px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--window-fg-color);
+  }
+
+  h1 {
+    font-size: 2em;
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid rgba(var(--window-fg-color-rgb), 0.2);
+  }
+
+  h2 {
+    font-size: 1.5em;
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid rgba(var(--window-fg-color-rgb), 0.1);
+  }
+
+  h3 {
+    font-size: 1.25em;
+  }
+
+  h4 {
+    font-size: 1em;
+  }
+
+  // Paragraphs & Lists
+  p,
+  ul,
+  ol {
+    margin-top: 0;
+    margin-bottom: 16px;
+  }
+
+  li {
+    margin: 4px 0;
+    > p {
+      margin-top: 16px;
+    }
+  }
+
+  ul {
+    list-style-type: disc;
+    padding-left: 2em;
+  }
+
+  ol {
+    list-style-type: decimal;
+    padding-left: 2em;
+  }
+
+  // Links
+  a {
+    color: var(--accent-color);
+    text-decoration: none;
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  // Emphasis
+  strong {
+    font-weight: 600;
+    color: var(--window-fg-color);
+  }
+
+  em {
+    font-style: italic;
+    color: var(--dim-color);
+  }
+
+  // Code
+  code {
+    padding: 0.2em 0.4em;
+    margin: 0;
+    font-size: 85%;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    background-color: rgba(var(--window-fg-color-rgb), 0.1);
+    border-radius: 6px;
+  }
+
+  pre {
+    padding: 16px;
+    overflow: auto;
+    font-size: 85%;
+    line-height: 1.45;
+    background-color: rgba(var(--window-fg-color-rgb), 0.05);
+    border-radius: 6px;
+    margin-top: 0;
+    margin-bottom: 16px;
+
+    code {
+      padding: 0;
+      margin: 0;
+      font-size: 100%;
+      word-break: normal;
+      white-space: pre;
+      background: transparent;
+      border: 0;
+      color: var(--window-fg-color);
+    }
+  }
+
+  // Blockquotes
+  blockquote {
+    padding: 0 1em;
+    color: var(--dim-color);
+    border-left: 0.25em solid rgba(var(--window-fg-color-rgb), 0.2);
+    margin-top: 0;
+    margin-bottom: 16px;
+    background: rgba(var(--window-fg-color-rgb), 0.02);
+    padding-block: 8px;
+
+    > :first-child {
+      margin-top: 0;
+    }
+    > :last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  // Horizontal Rule
+  hr {
+    height: 0.25em;
+    padding: 0;
+    margin: 24px 0;
+    background-color: rgba(var(--window-fg-color-rgb), 0.2);
+    border: 0;
+  }
+
+  // Tables
+  table {
+    border-spacing: 0;
+    border-collapse: collapse;
+    margin-top: 0;
+    margin-bottom: 16px;
+    width: max-content;
+    max-width: 100%;
+    overflow: auto;
+    display: block; // Allows scrolling for wide tables
+
+    th,
+    td {
+      padding: 6px 13px;
+      border: 1px solid rgba(var(--window-fg-color-rgb), 0.2);
+    }
+
+    th {
+      font-weight: 600;
+      background-color: rgba(var(--window-fg-color-rgb), 0.1);
+    }
+
+    tr {
+      background-color: transparent;
+      border-top: 1px solid rgba(var(--window-fg-color-rgb), 0.1);
+
+      &:nth-child(2n) {
+        background-color: rgba(var(--window-fg-color-rgb), 0.03);
+      }
+    }
+  }
+
+  // Images
+  img {
+    max-width: 100%;
+    box-sizing: border-box;
+    background-color: transparent;
+    margin: 16px 0;
+    border-radius: 4px;
+    display: block;
+    height: auto;
+    margin: var(--space-md) auto;
+  }
+
+  // Task Lists
+  ul.contains-task-list {
+    list-style-type: none;
+    padding-left: 0;
+  }
+
+  .task-list-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+
+    input[type="checkbox"] {
+      margin-top: 0.3em;
+    }
   }
 }

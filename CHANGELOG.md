@@ -9,6 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - **Settings Management Library (rcman)**: Extracted and refactored the internal settings management system into a standalone, reusable Rust library called [rcman](https://github.com/Zarestia-Dev/rcman). This provides schema-based configuration, backup/restore, secret storage, and a derive macro for automatic schema generation. The app now uses rcman as an external dependency.
 - Nautilus Component: Added dot and other text files preview support. Now you can preview the content of dot and other text files.
+- Nautilus Component: Added markdown preview support. Now you can preview the content of markdown files.
+- Nautilus Component: Added code highlight support. Now you can preview the content of code files with syntax highlighting.
 - Multiple backend support added. Now you can connect multiple and remote rclone instances via a single app. Remote config unlock supported (via rc config/unlock). Path change support added to (via rc config/setpath).
 - Multiple profile support added for backends. Every backend has a own remote settings profile. Also supported the export and import.
 - Multiple language support added. Now you can change the language of the app. Needs community help for translations.
