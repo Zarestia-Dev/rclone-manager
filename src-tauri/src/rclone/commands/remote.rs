@@ -368,7 +368,7 @@ pub async fn delete_remote(
         })?;
 
     match cache
-        .remove_tasks_for_remote(&name, scheduler, Some(&app))
+        .remove_tasks_for_remote(&backend.name, &name, scheduler, Some(&app))
         .await
     {
         Ok(removed_ids) => {

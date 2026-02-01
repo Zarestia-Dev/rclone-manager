@@ -193,18 +193,6 @@ export class HomeComponent implements OnInit, OnDestroy {
   // HELPER METHODS
   // ============================================================================
 
-  /** Get operation state from a remote */
-  private getOperationState(remote: Remote | undefined, type: SyncOperationType): any {
-    if (!remote) return undefined;
-    const stateMap: Record<SyncOperationType, any> = {
-      sync: remote.syncState,
-      copy: remote.copyState,
-      bisync: remote.bisyncState,
-      move: remote.moveState,
-    };
-    return stateMap[type];
-  }
-
   @HostListener('window:resize')
   onResize(): void {
     this.updateSidebarMode();
@@ -246,16 +234,6 @@ export class HomeComponent implements OnInit, OnDestroy {
   private async refreshData(): Promise<void> {
     await this.remoteFacadeService.refreshAll();
     this.remoteFacadeService.loadDiskUsageInBackground(this.remotes());
-  }
-
-  private async loadRemotes(): Promise<void> {
-    try {
-      await this.remoteFacadeService.loadRemotes();
-      // Load disk usage in background using the facade service
-      this.remoteFacadeService.loadDiskUsageInBackground(this.remotes());
-    } catch (error) {
-      this.handleError(this.translate.instant('home.errors.loadRemotesFailed'), error);
-    }
   }
 
   // ============================================================================
@@ -367,7 +345,15 @@ export class HomeComponent implements OnInit, OnDestroy {
     try {
       const confirmed = await this.notificationService.confirmModal(
         this.translate.instant('home.deleteRemote.title'),
-        this.translate.instant('home.deleteRemote.message', { name: remoteName })
+        this.translate.instant('home.deleteRemote.message', { name: remoteName }),
+        undefined,
+        undefined,
+        {
+          icon: 'trash',
+          iconColor: 'warn',
+          iconClass: 'destructive',
+          confirmButtonColor: 'warn',
+        }
       );
       if (!confirmed) return;
 
@@ -489,7 +475,15 @@ export class HomeComponent implements OnInit, OnDestroy {
     try {
       const confirmed = await this.notificationService.confirmModal(
         this.translate.instant('home.resetRemote.title'),
-        this.translate.instant('home.resetRemote.message', { name: remoteName })
+        this.translate.instant('home.resetRemote.message', { name: remoteName }),
+        undefined,
+        undefined,
+        {
+          icon: 'rotate-left',
+          iconColor: 'warn',
+          iconClass: 'destructive',
+          confirmButtonColor: 'warn',
+        }
       );
       if (confirmed) {
         await this.appSettingsService.resetRemoteSettings(remoteName);
@@ -507,57 +501,13 @@ export class HomeComponent implements OnInit, OnDestroy {
   // ============================================================================
   // UTILITY & HELPER METHODS
   // ============================================================================
-  private async executeRemoteAction(
-    remoteName: string,
-    action: RemoteAction,
-    operation: () => Promise<void>,
-    errorMessage: string,
-    profileName?: string
-  ): Promise<void> {
-    if (!remoteName) return;
-    try {
-      await this.remoteFacadeService.executeAction(remoteName, action, operation, profileName);
-    } catch (error) {
-      this.handleError(errorMessage, error);
-    }
-  }
 
   isActionInProgress(remoteName: string, action: RemoteAction, profileName?: string): boolean {
     return this.remoteFacadeService.isActionInProgress(remoteName, action, profileName);
   }
 
-  private generateUniqueRemoteName(baseName: string): string {
-    const existingNames = this.remotes().map(r => r.remoteSpecs.name);
-    let newName = baseName;
-    let counter = 1;
-    while (existingNames.includes(newName)) {
-      newName = `${baseName}-${counter++}`;
-    }
-    return newName;
-  }
-
   getJobsForRemote(remoteName: string): JobInfo[] {
     return this.jobs().filter(j => j.remote_name === remoteName);
-  }
-
-  private getMountPoint(remoteName: string): string | undefined {
-    const mount = this.mountedRemotes().find(m => m.fs.startsWith(`${remoteName}:`));
-    return mount?.mount_point;
-  }
-
-  private isRemoteMounted(remoteName: string): boolean {
-    return this.mountedRemotes().some(m => m.fs.startsWith(`${remoteName}:`));
-  }
-
-  private getPathForOperation(remoteName: string, usePath: PrimaryActionType): string | undefined {
-    const settings = this.loadRemoteSettings(remoteName);
-    const configKey = `${usePath}Configs` as keyof RemoteSettings;
-    const profiles = settings[configKey] as Record<string, unknown> | undefined;
-    if (!profiles) return undefined;
-
-    const firstProfileKey = Object.keys(profiles)[0];
-    const firstProfile = firstProfileKey ? (profiles as any)[firstProfileKey] : undefined;
-    return firstProfile?.dest;
   }
 
   private handleRemoteDeletion(remoteName: string): void {

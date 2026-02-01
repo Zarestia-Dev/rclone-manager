@@ -32,14 +32,13 @@
   padding: 1.25rem 1rem;
   box-shadow: 0 0 0 2px var(--border-color);
   border-radius: 0.75rem;
-  background: var(--surface-color, #fff);
+  background: var(--window-bg-color);
   transition: all 0.2s ease;
   text-align: center;
 
   &:hover:not(:disabled) {
     box-shadow: 0 0 0 2px var(--accent-color);
     background: rgba(var(--accent-color-rgb), 0.04);
-    transform: translateY(-2px);
   }
 
   &.selected {

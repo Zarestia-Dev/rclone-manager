@@ -231,16 +231,15 @@
                     matSuffix
                     (click)="selectConfigFile()"
                     type="button"
-                    [disabled]="!isEditingActiveBackend()"
+                    [disabled]="!isConfigSelectionAllowed()"
                     [matTooltip]="
-                      isEditingActiveBackend()
+                      isConfigSelectionAllowed()
                         ? ('modals.backend.selectConfigFile' | translate)
                         : ('modals.backend.notifications.onlyActiveBackend' | translate)
                     "
                   >
                     <mat-icon svgIcon="file"></mat-icon>
                   </button>
-                  <!-- <mat-hint>{{ 'modals.backend.configPathHintLocal' | translate }}</mat-hint> -->
                 </mat-form-field>
               </div>
             </mat-tab>
@@ -429,11 +428,15 @@
                     matSuffix
                     (click)="selectConfigFile()"
                     type="button"
-                    [matTooltip]="'modals.backend.selectConfigFile' | translate"
+                    [disabled]="!isConfigSelectionAllowed()"
+                    [matTooltip]="
+                      isConfigSelectionAllowed()
+                        ? ('modals.backend.selectConfigFile' | translate)
+                        : ('modals.backend.notifications.onlyActiveBackend' | translate)
+                    "
                   >
                     <mat-icon svgIcon="file"></mat-icon>
                   </button>
-                  <!-- <mat-hint>{{ 'modals.backend.configPathHintRemote' | translate }}</mat-hint> -->
                 </mat-form-field>
               </div>
             </mat-tab>

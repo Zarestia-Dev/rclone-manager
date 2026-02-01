@@ -293,7 +293,6 @@
             border-radius: 10px;
             font-size: 10px;
             font-weight: 700;
-            text-transform: uppercase;
             letter-spacing: 0.5px;
 
             @each $status, $color in ("enabled", primary-color), ("disabled", --dim-color),

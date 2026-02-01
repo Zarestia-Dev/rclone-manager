@@ -206,8 +206,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.setupTauriListeners();
-    this.loadInitialData();
     this.setupScheduledTasksListener();
   }
 
@@ -334,18 +332,16 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
 
   // Task utility methods
   getFormattedNextRun(task: ScheduledTask): string {
-    if (task.status === 'disabled')
-      return this.translate.instant('generalOverview.tasks.disabledMsg');
-    if (task.status === 'stopping')
-      return this.translate.instant('generalOverview.tasks.stoppingMsg');
-    if (!task.nextRun) return this.translate.instant('generalOverview.tasks.notScheduledMsg');
+    if (task.status === 'disabled') return this.translate.instant('task.nextRun.disabled');
+    if (task.status === 'stopping') return this.translate.instant('task.nextRun.stopping');
+    if (!task.nextRun) return this.translate.instant('task.nextRun.notScheduled');
     return new Date(task.nextRun).toLocaleString();
   }
 
   getFormattedLastRun(task: ScheduledTask): string {
     return task.lastRun
       ? new Date(task.lastRun).toLocaleString()
-      : this.translate.instant('generalOverview.tasks.never');
+      : this.translate.instant('task.lastRun.never');
   }
 
   getTaskTypeIcon(taskType: string): string {
@@ -377,11 +373,17 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   };
 
   getTaskStatusTooltip(status: string): string {
-    return this.translate.instant(`generalOverview.tasks.status.${status}`);
+    return this.translate.instant(`task.status.${status}`);
   }
 
   getToggleTooltip(status: string): string {
-    return this.translate.instant(`generalOverview.tasks.toggle.${status}`);
+    let key = 'enable'; // Default to enable
+    if (status === 'enabled' || status === 'running') {
+      key = 'disable';
+    } else if (status === 'stopping') {
+      key = 'stopping';
+    }
+    return this.translate.instant(`task.toggle.${key}`);
   }
 
   getToggleIcon(status: string): string {
@@ -420,21 +422,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     this.scheduledTasksSubscription?.unsubscribe();
     this.destroy$.next();
     this.destroy$.complete();
-  }
-
-  private async loadInitialData(): Promise<void> {
-    // Bandwidth limit is already loaded by RcloneStatusService
-  }
-
-  private setupTauriListeners(): void {
-    this.eventListenersService
-      .listenToBandwidthLimitChanged()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: async () => {
-          await this.rcloneStatusService.loadBandwidthLimit();
-        },
-      });
   }
 
   private setupScheduledTasksListener(): void {

@@ -61,6 +61,7 @@ Regular updates with new features and improvements. Check out our [roadmap](http
 <p align="center">
   <img src="assets/desktop-ui.png" alt="Desktop UI" width="40%">
 </p>
+
 <p align="center">
 
 |                                Home                                 |                             Remote Overview                             |                             Mount Control                             |
@@ -71,7 +72,9 @@ Regular updates with new features and improvements. Check out our [roadmap](http
 | :---------------------------------------------------------------: | :-------------------------------------------------------------------: | :---------------------------------------------------------: |
 | <img src="assets/job-watcher.png" alt="Job Watcher" width="250"/> | <img src="assets/serve-control.png" alt="Serve Control" width="250"/> | <img src="assets/dark-ui.png" alt="Dark Mode" width="250"/> |
 
-## </p>
+</p>
+
+---
 
 ## 📦 Downloads
 

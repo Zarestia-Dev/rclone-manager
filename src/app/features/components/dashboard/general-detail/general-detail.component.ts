@@ -278,16 +278,14 @@ export class GeneralDetailComponent {
 
   // Methods for scheduled tasks
   getFormattedNextRun(task: ScheduledTask): string {
-    if (task.status === 'disabled')
-      return this.translate.instant('dashboard.generalDetail.taskDisabled');
-    if (task.status === 'stopping')
-      return this.translate.instant('dashboard.generalDetail.taskStopping');
-    if (!task.nextRun) return this.translate.instant('dashboard.generalDetail.notScheduled');
+    if (task.status === 'disabled') return this.translate.instant('task.nextRun.disabled');
+    if (task.status === 'stopping') return this.translate.instant('task.nextRun.stopping');
+    if (!task.nextRun) return this.translate.instant('task.nextRun.notScheduled');
     return new Date(task.nextRun).toLocaleString();
   }
 
   getFormattedLastRun(task: ScheduledTask): string {
-    if (!task.lastRun) return this.translate.instant('dashboard.generalDetail.never');
+    if (!task.lastRun) return this.translate.instant('task.lastRun.never');
     return new Date(task.lastRun).toLocaleString();
   }
 

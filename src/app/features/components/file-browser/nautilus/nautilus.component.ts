@@ -1107,7 +1107,15 @@ export class NautilusComponent implements OnInit, OnDestroy {
     if (!r) return;
     const confirmed = await this.notificationService.confirmModal(
       this.translate.instant('nautilus.modals.emptyTrash.title'),
-      this.translate.instant('nautilus.modals.emptyTrash.message', { remote: r.name })
+      this.translate.instant('nautilus.modals.emptyTrash.message', { remote: r.name }),
+      undefined,
+      undefined,
+      {
+        icon: 'trash',
+        iconColor: 'warn',
+        iconClass: 'destructive',
+        confirmButtonColor: 'warn',
+      }
     );
     if (!confirmed) return;
     try {

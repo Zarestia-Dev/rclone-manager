@@ -86,7 +86,6 @@ pub fn run() {
     // -------------------------------------------------------------------------
     // Initialize Tauri Builder
     // -------------------------------------------------------------------------
-    #[allow(unused_mut)]
     let mut builder = tauri::Builder::default().plugin(tauri_plugin_shell::init());
 
     // -------------------------------------------------------------------------
@@ -167,13 +166,31 @@ pub fn run() {
     // -------------------------------------------------------------------------
     #[cfg(desktop)]
     {
-        builder = builder.plugin(tauri_plugin_single_instance::init(|_app, _, _| {
-            #[cfg(feature = "web-server")]
-            info!("Another instance attempted to run.");
+        #[cfg(target_os = "linux")]
+        {
+            builder = builder.plugin(
+                tauri_plugin_single_instance::Builder::new()
+                    .dbus_id("io.github.zarestia_dev.rclone-manager".to_string())
+                    .build(Box::new(|_app: &tauri::AppHandle, _, _| {
+                        #[cfg(feature = "web-server")]
+                        info!("Another instance attempted to run.");
 
-            #[cfg(not(feature = "web-server"))]
-            core::tray::actions::show_main_window(_app.clone());
-        }));
+                        #[cfg(not(feature = "web-server"))]
+                        core::tray::actions::show_main_window(_app.clone());
+                    })),
+            );
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        {
+            builder = builder.plugin(tauri_plugin_single_instance::init(|_app, _, _| {
+                #[cfg(feature = "web-server")]
+                info!("Another instance attempted to run.");
+
+                #[cfg(not(feature = "web-server"))]
+                core::tray::actions::show_main_window(_app.clone());
+            }));
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -182,14 +199,14 @@ pub fn run() {
     builder = builder
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_os::init())
-        .plugin(tauri_plugin_http::init());
+        .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_opener::init());
 
     // Desktop-only plugins (not needed in headless/web-server mode)
     #[cfg(not(feature = "web-server"))]
     {
         builder = builder
             .plugin(tauri_plugin_dialog::init())
-            .plugin(tauri_plugin_opener::init())
             .plugin(tauri_plugin_window_state::Builder::default().build());
     }
 
@@ -197,7 +214,7 @@ pub fn run() {
         setup_app(
             app,
             #[cfg(feature = "web-server")]
-            cli_args,
+            cli_args.clone(),
         )
     });
 
@@ -241,7 +258,6 @@ pub fn run() {
                     #[cfg(target_os = "linux")]
                     {
                         std::thread::spawn(|| {
-                            std::thread::sleep(std::time::Duration::from_millis(500));
                             utils::process::process_manager::cleanup_webkit_zombies();
                         });
                     }
@@ -325,6 +341,10 @@ fn setup_app(
     // -------------------------------------------------------------------------
     // Load Settings & Initialize State
     // -------------------------------------------------------------------------
+
+    #[cfg(feature = "web-server")]
+    app.manage(cli_args.clone());
+
     let settings = load_startup_settings(&rcman_manager)
         .map_err(|e| format!("Failed to load startup settings: {e}"))?;
 
@@ -551,6 +571,26 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent)
     match event.id.as_ref() {
         #[cfg(not(feature = "web-server"))]
         "show_app" => core::tray::actions::show_main_window(app.clone()),
+        #[cfg(feature = "web-server")]
+        "open_web_ui" => {
+            let args = app.state::<crate::core::cli::CliArgs>();
+            let host = if args.host == "0.0.0.0" {
+                "127.0.0.1"
+            } else {
+                &args.host
+            };
+            let protocol = if args.tls_cert.is_some() {
+                "https"
+            } else {
+                "http"
+            };
+            let url = format!("{}://{}:{}", protocol, host, args.port);
+
+            use tauri_plugin_opener::OpenerExt;
+            if let Err(e) = app.opener().open_url(&url, None::<&str>) {
+                error!("Failed to open web UI: {}", e);
+            }
+        }
         "quit" => {
             let app_clone = app.clone();
             tauri::async_runtime::spawn(async move {

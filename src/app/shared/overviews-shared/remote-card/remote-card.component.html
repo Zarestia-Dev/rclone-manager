@@ -82,6 +82,19 @@
           ></mat-icon>
         </div>
       }
+      @if (remote().serveState?.isOnServe) {
+        <div
+          class="status-badge serving"
+          [matTooltip]="getProfileTooltip('serve')"
+          matTooltipShowDelay="500"
+        >
+          <mat-icon
+            svgIcon="satellite-dish"
+            class="status-icon"
+            [attr.aria-label]="'detailShared.status.serving' | translate"
+          ></mat-icon>
+        </div>
+      }
     </div>
   </mat-card-header>
 

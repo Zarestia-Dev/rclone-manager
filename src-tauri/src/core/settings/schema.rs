@@ -181,7 +181,7 @@ impl Default for DeveloperSettings {
         Self {
             log_level: "info".to_string(),
             #[cfg(not(feature = "web-server"))]
-            destroy_window_on_close: false,
+            destroy_window_on_close: true,
         }
     }
 }

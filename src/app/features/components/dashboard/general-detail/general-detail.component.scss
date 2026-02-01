@@ -64,7 +64,7 @@
 .remote-type {
   font-size: var(--font-size-base);
   color: var(--dim-color);
-  font-weight: 400;
+  font-weight: 500;
 }
 
 /* --- Status Indicators Section --- */
@@ -214,7 +214,7 @@
 
 .status-label {
   font-size: var(--font-size-sm);
-  font-weight: 500;
+  font-weight: 600;
   color: var(--dim-color);
   letter-spacing: 0.2px;
 }
@@ -404,7 +404,6 @@
           border-radius: 12px;
           font-size: 11px;
           font-weight: 700;
-          text-transform: uppercase;
           letter-spacing: 0.5px;
 
           &.enabled {

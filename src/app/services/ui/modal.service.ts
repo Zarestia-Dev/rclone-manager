@@ -18,7 +18,6 @@ export interface RemoteConfigModalOptions {
   remoteName?: string;
   editTarget?: string;
   existingConfig?: RemoteSettings;
-  restrictMode?: boolean;
   initialSection?: string;
   targetProfile?: string;
   cloneTarget?: boolean;
@@ -65,7 +64,6 @@ export class ModalService {
         name: options.remoteName,
         editTarget: options.editTarget,
         existingConfig: options.existingConfig,
-        restrictMode: options.restrictMode ?? true,
         initialSection: options.initialSection,
         targetProfile: options.targetProfile,
         cloneTarget: options.cloneTarget,

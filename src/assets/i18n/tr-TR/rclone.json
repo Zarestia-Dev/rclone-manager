@@ -1082,5 +1082,69 @@
   "disable_dir_list": {
     "title": "Dizin Listesini Devre Dışı Bırak",
     "help": "Bir dizin için GET isteğinde HTML dizin listesini devre dışı bırak"
+  },
+  "create_empty_src_dirs": {
+    "title": "Boş Kaynak Dizinleri Oluştur",
+    "help": "Taşıma/kopyalama/senkronizasyon sonrası hedefte boş kaynak dizinleri oluştur."
+  },
+  "delete_empty_src_dirs": {
+    "title": "Boş Kaynak Dizinleri Sil",
+    "help": "Taşıma sonrası boş kaynak dizinleri sil."
+  },
+  "dryRun": {
+    "title": "Deneme Çalıştırması",
+    "help": "Kalıcı değişiklikler olmadan deneme çalıştırması yap."
+  },
+  "resync": {
+    "title": "Yeniden Senkronizasyon",
+    "help": "Yeniden senkronizasyon çalıştırmasını gerçekleştirir."
+  },
+  "checkAccess": {
+    "title": "Erişim Kontrolü",
+    "help": "RCLONE_TEST dosyaları her iki dosya sisteminde de bulunamazsa iptal et."
+  },
+  "checkFilename": {
+    "title": "Kontrol Dosya Adı",
+    "help": "--check-access için dosya adı."
+  },
+  "maxDelete": {
+    "title": "Maksimum Silme",
+    "help": "Silinen dosya yüzdesi bu eşiğin üzerindeyse senkronizasyonu iptal et."
+  },
+  "force": {
+    "title": "Zorla",
+    "help": "--max-delete güvenlik kontrolünü atla ve senkronizasyonu çalıştır."
+  },
+  "checkSync": {
+    "title": "Senkronizasyon Kontrolü",
+    "help": "Son listelemelerin karşılaştırılmasını kontrol eder."
+  },
+  "remove_empty_dirs": {
+    "title": "Boş Dizinleri Kaldır",
+    "help": "Son temizlik adımında boş dizinleri kaldır."
+  },
+  "filters_file": {
+    "title": "Filtre Dosyası",
+    "help": "Filtreleme desenlerini bir dosyadan oku."
+  },
+  "ignore_listing_checksum": {
+    "title": "Oluşturma Sağlama Toplamını Yoksay",
+    "help": "Listelemeler için sağlama toplamlarını kullanma."
+  },
+  "resilient": {
+    "title": "Esnek (Resilient)",
+    "help": "Belirli daha az ciddi hatalardan sonra gelecekteki çalıştırmaların yeniden denenmesine izin ver."
+  },
+  "work_dir": {
+    "title": "Çalışma Dizini",
+    "help": "Geçmiş dosyaları için sunucu dizini."
+  },
+  "backup_dir1": {
+    "title": "Yedek Dizini 1",
+    "help": "Yol1 için --backup-dir."
+  },
+  "backup_dir2": {
+    "title": "Yedek Dizini 2",
+    "help": "Yol2 için --backup-dir."
   }
 }

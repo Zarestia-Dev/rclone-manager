@@ -21,6 +21,32 @@
     "retry": "Retry",
     "default": "Default"
   },
+  "validators": {
+    "integer": "Must be a valid integer",
+    "float": "Must be a valid decimal number",
+    "duration": "Invalid duration format. Use: 1h30m45s, 5m, 1h",
+    "sizeSuffix": "Invalid size format. Use: 100Ki, 16Mi, 1Gi, or \"off\"",
+    "tristate": "Value must be true, false, or unset",
+    "time": "Invalid datetime format. Use ISO 8601: YYYY-MM-DDTHH:mm:ssZ",
+    "spaceSepList": "List cannot contain only whitespace",
+    "bwTimetable": "Invalid bandwidth format",
+    "fileMode": "Must be octal format (3-4 digits, each 0-7). Example: 755",
+    "enum": "Must be one of: {{values}}",
+    "invalidPath": "Path must be absolute",
+    "urlArray": "All URLs must be valid and start with http:// or https://",
+    "bandwidth": "Invalid bandwidth format. Use: 10M, 1G, 100K or combinations",
+    "passwordMismatch": "Passwords do not match",
+    "remoteName": {
+      "invalidChars": "Remote name contains invalid characters",
+      "invalidStart": "Remote name cannot start with dash or space",
+      "invalidEnd": "Remote name cannot end with space",
+      "nameTaken": "This remote name is already in use"
+    },
+    "password": {
+      "minLength": "Password must be at least 3 characters",
+      "invalidChars": "Password cannot contain quotes"
+    }
+  },
   "mount": {
     "notMounted": "Not Mounted",
     "mounted": "Mounted",
@@ -66,11 +92,11 @@
   },
   "task": {
     "status": {
-      "enabled": "Task is enabled and will run on schedule.",
-      "disabled": "Task is disabled and will not run.",
-      "running": "Task is currently running.",
-      "failed": "Task failed on its last run.",
-      "stopping": "Task is stopping and will be disabled after the current run finishes."
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "running": "Running",
+      "failed": "Failed",
+      "stopping": "Stopping"
     },
     "toggle": {
       "enable": "Enable task",
@@ -193,6 +219,10 @@
   },
   "settings": {
     "resetToDefault": "Reset to default",
+    "resetAll": {
+      "title": "Reset Settings",
+      "message": "Are you sure you want to reset all app settings? This cannot be undone."
+    },
     "resetSuccess": "Settings reset successfully",
     "resetFailed": "Failed to reset {{key}} to default.",
     "loadFailed": "Could not load application settings.",
@@ -679,7 +709,6 @@
       "queued": "queued",
       "controlsUnavailable": "VFS Controls Unavailable",
       "indexedWarning": "This VFS instance has an index suffix (e.g., {{suffix}}) which is not supported by rclone's VFS API. This is a known limitation when multiple mounts exist for the same remote.",
-      "learnMore": "Learn more on the rclone forum →",
       "stats": {
         "metadata": "Metadata",
         "items": "items",
@@ -1487,7 +1516,9 @@
       "cacheFolder": "Cache Folder",
       "developerTools": "Developer Tools",
       "openDevTools": "Open DevTools",
-      "restartApp": "Restart App"
+      "restartApp": "Restart App",
+      "remoteBackend": "Remote Backend",
+      "remoteUpdateInfo": "This instance is controlled by a remote server. Updates cannot be managed from here. For more information, please visit rclone issue"
     },
     "logs": {
       "clearAll": "Clear All Logs",
@@ -1611,8 +1642,6 @@
       "configPassword": "Config Password (Optional)",
       "configPath": "Config Path",
       "configPathPlaceholder": "e.g. /home/user/.config/rclone/custom.conf",
-      "configPathHintLocal": "Specify a custom config file for this backend (leave empty to use default).",
-      "configPathHintRemote": "Custom config file path on the remote backend (leave empty for default).",
       "selectConfigFile": "Select Config File",
       "activeConfigPath": "Active Config Path",
       "connectionTab": "Connection",
@@ -1992,9 +2021,11 @@
     },
     "notifications": {
       "jobDeleted": "Job {{id}} deleted successfully.",
-      "settingsReset": "Settings for {{name}} have been reset."
+      "settingsReset": "Settings for {{name}} have been reset.",
+      "deleteRemoteSuccess": "Remote {{name}} deleted successfully."
     },
     "errors": {
+      "configFailed": "Failed to configure component",
       "initFailed": "Failed to initialize component",
       "initialLoadFailed": "Initial data load failed",
       "loadRemotesFailed": "Failed to load remotes",
@@ -2098,27 +2129,8 @@
       },
       "noConfigured": "No scheduled tasks configured. Configure auto-start operations with cron expressions to create scheduled tasks.",
       "ariaLabel": "Scheduled {{type}} task for {{remote}}. Status: {{status}}",
-      "running": "Running",
-      "toggle": {
-        "enabled": "Disable task",
-        "running": "Disable task",
-        "disabled": "Enable task",
-        "failed": "Enable task",
-        "stopping": "Task is stopping..."
-      },
-      "status": {
-        "enabled": "Task is enabled and will run on schedule.",
-        "disabled": "Task is disabled and will not run.",
-        "running": "Task is currently running.",
-        "failed": "Task failed on its last run.",
-        "stopping": "Task is stopping and will be disabled after the current run finishes."
-      },
       "nextRun": "Next Run:",
       "lastRun": "Last Run:",
-      "never": "Never",
-      "disabledMsg": "Task is disabled",
-      "stoppingMsg": "Disabling after current run",
-      "notScheduledMsg": "Not scheduled",
       "stats": {
         "success": "Success count",
         "failure": "Failure count",
@@ -2411,6 +2423,7 @@
     }
   },
   "tray": {
+    "openWebUI": "Open Web UI",
     "showApp": "Show App",
     "unmountAll": "Unmount All",
     "stopAllJobs": "Stop All Jobs",

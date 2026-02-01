@@ -63,7 +63,13 @@ pub async fn save_remote_settings(
     let backend_name = backend_manager.get_active_name().await;
 
     match cache
-        .add_or_update_task_for_remote(&backend_name, &remote_name, &settings, scheduler)
+        .add_or_update_task_for_remote(
+            cache.clone(),
+            &backend_name,
+            &remote_name,
+            &settings,
+            scheduler,
+        )
         .await
     {
         Ok(_) => info!("✅ Scheduled tasks updated for remote '{remote_name}'"),

@@ -340,6 +340,43 @@
         }
       }
     }
+
+    &.not-supported {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      gap: var(--space-md);
+      background: rgba(var(--window-fg-color-rgb), 0.05);
+      box-shadow: 0 0 0 1px rgba(var(--window-fg-color-rgb), 0.1);
+
+      mat-icon {
+        color: var(--dim-color);
+        flex-shrink: 0;
+      }
+
+      .status-text {
+        h4 {
+          margin: 0 0 var(--space-xs) 0;
+          color: var(--window-fg-color);
+          font-weight: 600;
+        }
+        p {
+          margin: 0;
+          color: var(--dim-color);
+          line-height: 1.5;
+
+          a {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-weight: 500;
+
+            &:hover {
+              text-decoration: underline;
+            }
+          }
+        }
+      }
+    }
   }
 
   .settings-section {

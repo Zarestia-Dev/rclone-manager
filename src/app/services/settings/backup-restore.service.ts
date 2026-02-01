@@ -130,7 +130,16 @@ export class BackupRestoreService extends TauriBaseService {
     try {
       return await this.invokeCommand<BackupAnalysis>('analyze_backup_file', { path });
     } catch (error) {
-      this.notificationService.alertModal('Error', String(error));
+      this.notificationService.alertModal(
+        this.translate.instant('common.error'),
+        String(error),
+        undefined,
+        {
+          icon: 'circle-exclamation',
+          iconColor: 'warn',
+          iconClass: 'destructive',
+        }
+      );
       throw error;
     }
   }

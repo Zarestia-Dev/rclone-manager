@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { AbstractControl, ValidatorFn, ValidationErrors } from '@angular/forms';
-import { ValidatorsService } from '@app/services';
+import { TranslateService } from '@ngx-translate/core';
+import { UiStateService } from '../ui/ui-state.service';
 import { REMOTE_NAME_REGEX } from '@app/types';
 
 @Injectable({
@@ -8,7 +9,8 @@ import { REMOTE_NAME_REGEX } from '@app/types';
 })
 export class ValidatorRegistryService {
   private validators = new Map<string, ValidatorFn>();
-  private validatorsService = inject(ValidatorsService);
+  private translate = inject(TranslateService);
+  private uiStateService = inject(UiStateService);
   private regexCache = new Map<string, RegExp>();
 
   constructor() {
@@ -37,7 +39,7 @@ export class ValidatorRegistryService {
       const value = control.value.toString().trim();
       if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
       if (!this.getCachedRegex('^-?\\d+$').test(value)) {
-        return { integer: { value, message: 'Must be a valid integer' } };
+        return { integer: { value, message: this.translate.instant('validators.integer') } };
       }
       return null;
     };
@@ -49,7 +51,7 @@ export class ValidatorRegistryService {
       const value = control.value.toString().trim();
       if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
       if (!this.getCachedRegex('^-?\\d+(\\.\\d+)?$').test(value)) {
-        return { float: { value, message: 'Must be a valid decimal number' } };
+        return { float: { value, message: this.translate.instant('validators.float') } };
       }
       return null;
     };
@@ -60,8 +62,8 @@ export class ValidatorRegistryService {
       if (!control.value || control.value === '') return null;
       const value = control.value.toString().trim();
       if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
-      if (!this.getCachedRegex('^(\\d+(\\.\\d+)?(ns|us|µs|ms|s|m|h))+$').test(value)) {
-        return { duration: { value, message: 'Invalid duration format. Use: 1h30m45s, 5m, 1h' } };
+      if (!this.getCachedRegex('^(\\d+(\\.\\d+)?(ns|us|µs|ms|s|m|h|d))+$').test(value)) {
+        return { duration: { value, message: this.translate.instant('validators.duration') } };
       }
       return null;
     };
@@ -77,7 +79,7 @@ export class ValidatorRegistryService {
         !this.getCachedRegex('^\\d+(\\.\\d+)?(b|B|k|K|Ki|M|Mi|G|Gi|T|Ti|P|Pi|E|Ei)?$').test(value)
       ) {
         return {
-          sizeSuffix: { value, message: 'Invalid size format. Use: 100Ki, 16Mi, 1Gi, or "off"' },
+          sizeSuffix: { value, message: this.translate.instant('validators.sizeSuffix') },
         };
       }
       return null;
@@ -89,7 +91,7 @@ export class ValidatorRegistryService {
       const allowedValues = [null, true, false];
       if (allowedValues.includes(control.value)) return null;
       return {
-        tristate: { value: control.value, message: 'Value must be true, false, or unset.' },
+        tristate: { value: control.value, message: this.translate.instant('validators.tristate') },
       };
     };
   }
@@ -107,7 +109,7 @@ export class ValidatorRegistryService {
         const date = new Date(value);
         if (isNaN(date.getTime())) {
           return {
-            time: { value, message: 'Invalid datetime format. Use ISO 8601: YYYY-MM-DDTHH:mm:ssZ' },
+            time: { value, message: this.translate.instant('validators.time') },
           };
         }
       }
@@ -121,7 +123,9 @@ export class ValidatorRegistryService {
       const value = control.value.toString().trim();
       if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
       if (value.length > 0 && !/\S/.test(value)) {
-        return { spaceSepList: { value, message: 'List cannot contain only whitespace' } };
+        return {
+          spaceSepList: { value, message: this.translate.instant('validators.spaceSepList') },
+        };
       }
       return null;
     };
@@ -139,7 +143,9 @@ export class ValidatorRegistryService {
         !hasTimetable &&
         value.length > 0
       ) {
-        return { bwTimetable: { value, message: 'Invalid bandwidth format' } };
+        return {
+          bwTimetable: { value, message: this.translate.instant('validators.bwTimetable') },
+        };
       }
       return null;
     };
@@ -152,7 +158,7 @@ export class ValidatorRegistryService {
       if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
       if (!this.getCachedRegex('^[0-7]{3,4}$').test(value)) {
         return {
-          fileMode: { value, message: 'Must be octal format (3-4 digits, each 0-7). Example: 755' },
+          fileMode: { value, message: this.translate.instant('validators.fileMode') },
         };
       }
       return null;
@@ -166,7 +172,13 @@ export class ValidatorRegistryService {
       const value = control.value.toString().trim().toLowerCase();
       if (!lowerValues.includes(value)) {
         return {
-          enum: { value, allowedValues, message: `Must be one of: ${allowedValues.join(', ')}` },
+          enum: {
+            value,
+            allowedValues,
+            message: this.translate.instant('validators.enum', {
+              values: allowedValues.join(', '),
+            }),
+          },
         };
       }
       return null;
@@ -178,16 +190,19 @@ export class ValidatorRegistryService {
    */
   private registerBuiltinValidators(): void {
     // Cross-platform path validator
-    this.registerValidator(
-      'crossPlatformPath',
-      this.validatorsService.crossPlatformPathValidator()
-    );
+    this.registerValidator('crossPlatformPath', this.crossPlatformPathValidator());
 
     // URL array validator (for arrays of URLs)
-    this.registerValidator('urlList', this.validatorsService.urlArrayValidator());
+    this.registerValidator('urlList', this.urlArrayValidator());
 
     // Bandwidth format validator
-    this.registerValidator('bandwidthFormat', this.validatorsService.bandwidthValidator());
+    this.registerValidator('bandwidthFormat', this.bandwidthValidator());
+
+    // Password validator
+    this.registerValidator('password', this.passwordValidator());
+
+    // Remote name validator (requires existingNames parameter, so not pre-registered)
+    // Use createRemoteNameValidator() instead
   }
 
   /**
@@ -239,7 +254,159 @@ export class ValidatorRegistryService {
     existingNames: string[],
     allowedPattern: RegExp = REMOTE_NAME_REGEX
   ): ValidatorFn {
-    return this.validatorsService.remoteNameValidator(existingNames, allowedPattern);
+    return this.remoteNameValidator(existingNames, allowedPattern);
+  }
+
+  /**
+   * Remote name validator implementation
+   */
+  private remoteNameValidator(existingNames: string[], allowedPattern?: RegExp): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const raw = control.value;
+      const value = typeof raw === 'string' ? raw.trim() : raw;
+      if (!value) return null;
+
+      // Check allowed characters if pattern provided
+      if (allowedPattern && !allowedPattern.test(value)) {
+        return {
+          invalidChars: { message: this.translate.instant('validators.remoteName.invalidChars') },
+        };
+      }
+
+      // Check start character
+      if (value.startsWith('-') || value.startsWith(' ')) {
+        return {
+          invalidStart: { message: this.translate.instant('validators.remoteName.invalidStart') },
+        };
+      }
+
+      // Check end character
+      if (control.value.endsWith(' ')) {
+        return {
+          invalidEnd: { message: this.translate.instant('validators.remoteName.invalidEnd') },
+        };
+      }
+
+      // Check uniqueness (case-insensitive, trimmed)
+      const normalized = String(value).toLowerCase();
+      const existingNormalized = existingNames.map(n => String(n).toLowerCase());
+      return existingNormalized.includes(normalized)
+        ? { nameTaken: { message: this.translate.instant('validators.remoteName.nameTaken') } }
+        : null;
+    };
+  }
+
+  /**
+   * Platform-aware path validator
+   */
+  private crossPlatformPathValidator(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const value = control.value;
+      if (!value) return null;
+
+      if (this.uiStateService.platform === 'windows') {
+        const winAbs =
+          /^(?:[a-zA-Z]:(?:[\\/].*)?|\\\\[?]?[\\]?[^\\/]+[\\/][^\\/]+|\\\\[a-zA-Z0-9_\-.]+[\\/][^\\/]+.*)$/;
+        if (winAbs.test(value)) return null;
+      } else {
+        const unixAbs = /^(\/[^\0]*)$/;
+        if (unixAbs.test(value)) return null;
+      }
+
+      return { invalidPath: { message: this.translate.instant('validators.invalidPath') } };
+    };
+  }
+
+  /**
+   * URL array validator
+   */
+  private urlArrayValidator(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const urls = control.value;
+      if (!Array.isArray(urls)) return null;
+      if (urls.length === 0) return null;
+
+      const urlPattern = /^https?:\/\/[^\s;]+$/;
+
+      for (const url of urls) {
+        if (typeof url !== 'string' || !urlPattern.test(url.trim())) {
+          return {
+            urlArray: {
+              message: this.translate.instant('validators.urlArray'),
+              invalidUrl: url,
+            },
+          };
+        }
+      }
+      return null;
+    };
+  }
+
+  /**
+   * Bandwidth format validator
+   */
+  private bandwidthValidator(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      if (!control.value) return null;
+
+      const bandwidthPattern =
+        /^(\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?(\|\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?)*)(:\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?(\|\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?)*|)?$/;
+
+      if (!bandwidthPattern.test(control.value)) {
+        return {
+          bandwidth: {
+            message: this.translate.instant('validators.bandwidth'),
+          },
+        };
+      }
+      return null;
+    };
+  }
+
+  /**
+   * Password validator for backend/rclone config passwords
+   */
+  private passwordValidator(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const value = control.value;
+      if (!value) return null;
+
+      if (value.length < 3) {
+        return {
+          minLength: {
+            message: this.translate.instant('validators.password.minLength'),
+            actualLength: value.length,
+            requiredLength: 3,
+          },
+        };
+      }
+
+      if (/['"]/.test(value)) {
+        return {
+          invalidChars: { message: this.translate.instant('validators.password.invalidChars') },
+        };
+      }
+
+      return null;
+    };
+  }
+
+  /**
+   * Password match validator for confirmation fields
+   */
+  passwordMatchValidator(passwordFieldName: string, confirmFieldName: string): ValidatorFn {
+    return (group: AbstractControl): ValidationErrors | null => {
+      const password = group.get(passwordFieldName)?.value;
+      const confirm = group.get(confirmFieldName)?.value;
+
+      if (password && confirm && password !== confirm) {
+        return {
+          passwordMismatch: { message: this.translate.instant('validators.passwordMismatch') },
+        };
+      }
+
+      return null;
+    };
   }
 
   /**

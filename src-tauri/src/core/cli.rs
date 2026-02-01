@@ -6,7 +6,7 @@
 use clap::Parser;
 
 /// RClone Manager - Headless Web Server Mode
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[command(name = "rclone-manager")]
 #[command(about = "RClone Manager headless web server", long_about = None)]
 pub struct CliArgs {

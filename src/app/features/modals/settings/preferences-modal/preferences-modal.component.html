@@ -71,14 +71,16 @@
                   getMetadata(result.category, result.key).value_type === 'int'
                 "
               >
-                <ng-container
-                  [ngTemplateOutlet]="settingTemplate"
-                  [ngTemplateOutletContext]="{
-                    category: result.category,
-                    key: result.key,
-                    showCategory: true,
-                  }"
-                ></ng-container>
+                @if (getFormControl(result.category, result.key)) {
+                  <ng-container
+                    [ngTemplateOutlet]="settingTemplate"
+                    [ngTemplateOutletContext]="{
+                      category: result.category,
+                      key: result.key,
+                      showCategory: true,
+                    }"
+                  ></ng-container>
+                }
               </div>
             }
           }
@@ -363,9 +365,7 @@
                       (blur)="onBlur(category, key)"
                     />
                   }
-                  @if (
-                    getFormControl(category, key).invalid && getFormControl(category, key).touched
-                  ) {
+                  @if (isControlInvalid(category, key)) {
                     <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
                   }
                 </mat-form-field>
@@ -383,9 +383,7 @@
                       }}</mat-option>
                     }
                   </mat-select>
-                  @if (
-                    getFormControl(category, key).invalid && getFormControl(category, key).touched
-                  ) {
+                  @if (isControlInvalid(category, key)) {
                     <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
                   }
                 </mat-form-field>
@@ -399,9 +397,7 @@
                     [placeholder]="(meta.metadata.placeholder | translate) || ''"
                     (blur)="onBlur(category, key)"
                   />
-                  @if (
-                    getFormControl(category, key).invalid && getFormControl(category, key).touched
-                  ) {
+                  @if (isControlInvalid(category, key)) {
                     <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
                   }
                 </mat-form-field>
@@ -409,7 +405,7 @@
               @case ('string[]') {
                 <div class="array-control-wrapper">
                   <div class="array-items">
-                    @for (item of getFormControl(category, key).value; track $index) {
+                    @for (item of getArrayControls(category, key); track $index) {
                       <div class="array-item">
                         <mat-form-field appearance="fill" class="input-field">
                           <input
@@ -431,19 +427,14 @@
                           >
                             <mat-icon svgIcon="close"></mat-icon>
                           </button>
-                          @if (
-                            getArrayItemControl(category, key, $index).invalid &&
-                            getArrayItemControl(category, key, $index).touched
-                          ) {
+                          @if (isControlInvalid(category, key, $index)) {
                             <mat-error>{{ getValidationMessage(category, key, $index) }}</mat-error>
                           }
                         </mat-form-field>
                       </div>
                     }
                   </div>
-                  @if (
-                    getFormControl(category, key).invalid && getFormControl(category, key).touched
-                  ) {
+                  @if (isControlInvalid(category, key)) {
                     <mat-error class="array-error">{{
                       getValidationMessage(category, key)
                     }}</mat-error>

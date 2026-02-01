@@ -39,4 +39,3 @@ export * from './security/auth-state.service';
 export * from './security/password-manager.service';
 export * from './facade/remote-facade.service';
 export * from './validation/validator-registry.service';
-export * from './validation/validators.service';

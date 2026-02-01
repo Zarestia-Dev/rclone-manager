@@ -305,7 +305,7 @@ async fn execute_scheduled_task(
         }
     };
     let job_type = task.task_type.as_str();
-    let profile = task.args.get("profile").and_then(|v| v.as_str());
+    let profile = task.args.get("profile_name").and_then(|v| v.as_str());
 
     if job_cache
         .is_job_running(&remote_name, job_type, profile)

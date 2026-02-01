@@ -81,7 +81,6 @@ interface DialogData {
   existingConfig?: RemoteConfigSections;
   name?: string;
   targetProfile?: string;
-  restrictMode: boolean;
   initialSection?: string;
 }
 
@@ -193,7 +192,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
   editTarget: EditTarget = null;
   cloneTarget = false;
-  restrictMode = false;
   initialSection: string | null = null;
   useInteractiveMode = false;
 
@@ -223,7 +221,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   constructor() {
     this.editTarget = this.dialogData?.editTarget || null;
     this.cloneTarget = this.dialogData?.cloneTarget || false;
-    this.restrictMode = this.dialogData?.restrictMode || false;
     this.initialSection = this.dialogData?.initialSection || null;
     this.remoteForm = this.createRemoteForm();
     this.remoteConfigForm = this.createRemoteConfigForm();
@@ -1604,7 +1601,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     if (mountConfigs) {
       for (const [profileName, config] of Object.entries(mountConfigs)) {
         if (config.autoStart && config.dest) {
-          await this.mountManagementService.mountRemoteProfile(remoteName, profileName);
+          void this.mountManagementService.mountRemoteProfile(remoteName, profileName);
         }
       }
     }
@@ -1613,7 +1610,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     if (copyConfigs) {
       for (const [profileName, config] of Object.entries(copyConfigs)) {
         if (config.autoStart && config.source && config.dest) {
-          await this.jobManagementService.startCopyProfile(remoteName, profileName);
+          void this.jobManagementService.startCopyProfile(remoteName, profileName);
         }
       }
     }
@@ -1622,7 +1619,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     if (syncConfigs) {
       for (const [profileName, config] of Object.entries(syncConfigs)) {
         if (config.autoStart && config.source && config.dest) {
-          await this.jobManagementService.startSyncProfile(remoteName, profileName);
+          void this.jobManagementService.startSyncProfile(remoteName, profileName);
         }
       }
     }
@@ -1631,7 +1628,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     if (bisyncConfigs) {
       for (const [profileName, config] of Object.entries(bisyncConfigs)) {
         if (config.autoStart && config.source && config.dest) {
-          await this.jobManagementService.startBisyncProfile(remoteName, profileName);
+          void this.jobManagementService.startBisyncProfile(remoteName, profileName);
         }
       }
     }
@@ -1640,7 +1637,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     if (moveConfigs) {
       for (const [profileName, config] of Object.entries(moveConfigs)) {
         if (config.autoStart && config.source && config.dest) {
-          await this.jobManagementService.startMoveProfile(remoteName, profileName);
+          void this.jobManagementService.startMoveProfile(remoteName, profileName);
         }
       }
     }
@@ -1649,7 +1646,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     if (serveConfigs) {
       for (const [profileName, config] of Object.entries(serveConfigs)) {
         if (config.autoStart && config.options) {
-          await this.serveManagementService.startServeProfile(remoteName, profileName);
+          void this.serveManagementService.startServeProfile(remoteName, profileName);
         }
       }
     }

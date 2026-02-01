@@ -80,12 +80,6 @@ export class UiStateService {
     this.selectedRemoteSource.next(null);
   }
 
-  // === State Reset ===
-  resetAppState(): void {
-    this.resetSelectedRemote();
-    this.setTab('mount');
-  }
-
   // === Path Utilities ===
   /**
    * Extract filename from a path using OS-aware separators.

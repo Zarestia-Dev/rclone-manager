@@ -98,7 +98,7 @@
             [remoteTypes]="remoteTypes"
             [isLoading]="isRemoteConfigLoading"
             [existingRemotes]="existingRemotes"
-            [restrictMode]="restrictMode"
+            [isTypeLocked]="!!editTarget || cloneTarget"
             [useInteractiveMode]="useInteractiveMode"
             [searchQuery]="searchQuery"
             (remoteTypeChanged)="onRemoteTypeChange()"

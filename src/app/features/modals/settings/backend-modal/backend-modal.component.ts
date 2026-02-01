@@ -21,6 +21,8 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { FileSystemService } from 'src/app/services/file-operations/file-system.service';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { ModalService } from '@app/services';
+import { ApiClientService } from 'src/app/services/core/api-client.service';
+import { FilePickerConfig } from 'src/app/shared/types/ui';
 
 @Component({
   selector: 'app-backend-modal',
@@ -55,6 +57,7 @@ export class BackendModalComponent implements OnInit {
   private readonly translate = inject(TranslateService);
   private readonly fileSystemService = inject(FileSystemService);
   private readonly modalService = inject(ModalService);
+  private readonly apiClient = inject(ApiClientService);
 
   // State
   readonly backends = this.backendService.backends;
@@ -401,33 +404,80 @@ export class BackendModalComponent implements OnInit {
     );
   }
 
-  async selectConfigFile(): Promise<void> {
-    // strict check: only allow for active backend
-    if (!this.isEditingActiveBackend()) {
-      this.snackBar.open(
-        this.translate.instant('modals.backend.notifications.onlyActiveBackend'),
-        this.translate.instant('common.close'),
-        { duration: 3000, panelClass: 'snackbar-error' }
-      );
-      return;
+  isConfigSelectionAllowed(): boolean {
+    const state = this.formState();
+    // 3. On new backend hide or disable this button (disable in this case as we return false)
+    if (state.mode === 'add') return false;
+
+    // Determine if editing local backend
+    const isEditingLocal = state.editingName === 'Local';
+
+    if (isEditingLocal) {
+      // In headless mode, selecting a config path for the Local backend is problematic
+      // because the internal file picker (Nautilus) relies on a working backend connection.
+      if (this.apiClient.isHeadless()) return false;
+      return true;
     }
 
-    try {
-      // Use internal Nautilus picker to ensure we can see rclone mounts/files
-      // regardless of system state (as requested)
-      const result = await this.fileSystemService.selectPathWithNautilus({
-        mode: 'local',
-        selection: 'files',
-        multi: false,
-        initialLocation: this.backendForm.get('config_path')?.value || undefined,
-      });
+    // 2. On remote backends... Its needs to be selected (active). Or else disable or hide.
+    return this.isEditingActiveBackend();
+  }
 
-      if (!result.cancelled && result.paths.length > 0) {
-        this.backendForm.patchValue({ config_path: result.paths[0] });
+  async selectConfigFile(): Promise<void> {
+    if (!this.isConfigSelectionAllowed()) return;
+
+    const state = this.formState();
+    const isEditingLocal = state.mode === 'edit' && state.editingName === 'Local';
+
+    try {
+      let selectedPath: string | null = null;
+
+      // 1. Local backend selector logic
+      if (isEditingLocal) {
+        // In headless mode, use Nautilus file browser
+        if (this.apiClient.isHeadless()) {
+          const config: FilePickerConfig = {
+            mode: 'local',
+            selection: 'files',
+            multi: false,
+            initialLocation: this.backendForm.get('config_path')?.value || undefined,
+          };
+          const result = await this.fileSystemService.selectPathWithNautilus(config);
+          if (!result.cancelled && result.paths.length > 0) {
+            selectedPath = result.paths[0];
+          }
+        } else {
+          // In Tauri mode, use native dialog
+          // Use 'get_file_location' as requested, via apiClient.invoke to handle tauri invoke
+          // Ideally this command opens a native file dialog and returns the path
+          selectedPath = await this.apiClient.invoke<string>('get_file_location');
+        }
+      } else {
+        // 2. Remote backends... use the nautilus file picker
+        // We already checked isConfigSelectionAllowed() so we know it is active if we are here
+        const config: FilePickerConfig = {
+          mode: 'local', // We are selecting a local path for the config file? Or remote?
+          // Usually strict config path selection is on the filesystem where rclone runs.
+          // Nautilus picker 'local' mode browses the FS where rclone-manager runs.
+          selection: 'files',
+          multi: false,
+          initialLocation: this.backendForm.get('config_path')?.value || undefined,
+        };
+
+        const result = await this.fileSystemService.selectPathWithNautilus(config);
+
+        if (!result.cancelled && result.paths.length > 0) {
+          selectedPath = result.paths[0];
+        }
+      }
+
+      if (selectedPath) {
+        this.backendForm.patchValue({ config_path: selectedPath });
         this.backendForm.markAsDirty();
       }
     } catch (error) {
-      if (String(error).includes('cancelled')) return;
+      if (String(error).includes('cancelled') || String(error).includes('File selection cancelled'))
+        return;
       console.error('Failed to select config file:', error);
       this.snackBar.open(
         this.translate.instant('modals.backend.notifications.fileSelectFailed'),

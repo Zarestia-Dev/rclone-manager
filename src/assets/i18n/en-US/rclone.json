@@ -1082,5 +1082,69 @@
   "disable_dir_list": {
     "title": "Disable Dir List",
     "help": "Disable HTML directory list on GET request for a directory"
+  },
+  "create_empty_src_dirs": {
+    "title": "Create Empty Src Dirs",
+    "help": "Create empty source directories on destination after move."
+  },
+  "delete_empty_src_dirs": {
+    "title": "Delete Empty Src Dirs",
+    "help": "Delete empty source directories after move."
+  },
+  "dryRun": {
+    "title": "Dry Run",
+    "help": "Perform a dry-run."
+  },
+  "resync": {
+    "title": "Resync",
+    "help": "Performs the resync run."
+  },
+  "checkAccess": {
+    "title": "Check Access",
+    "help": "Abort if RCLONE_TEST files are not found on both filesystems."
+  },
+  "checkFilename": {
+    "title": "Check Filename",
+    "help": "File name for --check-access."
+  },
+  "maxDelete": {
+    "title": "Max Delete",
+    "help": "Abort sync if percentage of deleted files is above this threshold."
+  },
+  "force": {
+    "title": "Force",
+    "help": "Bypass --max-delete safety check and run the sync."
+  },
+  "checkSync": {
+    "title": "Check Sync",
+    "help": "Controls comparison of final listings."
+  },
+  "remove_empty_dirs": {
+    "title": "Remove Empty Dirs",
+    "help": "Remove empty directories at the final cleanup step."
+  },
+  "filters_file": {
+    "title": "Filters File",
+    "help": "Read filtering patterns from a file."
+  },
+  "ignore_listing_checksum": {
+    "title": "Ignore Listing Checksum",
+    "help": "Do not use checksums for listings."
+  },
+  "resilient": {
+    "title": "Resilient",
+    "help": "Allow future runs to retry after certain less-serious errors."
+  },
+  "work_dir": {
+    "title": "Work Dir",
+    "help": "Server directory for history files."
+  },
+  "backup_dir1": {
+    "title": "Backup Dir 1",
+    "help": "--backup-dir for Path1."
+  },
+  "backup_dir2": {
+    "title": "Backup Dir 2",
+    "help": "--backup-dir for Path2."
   }
 }

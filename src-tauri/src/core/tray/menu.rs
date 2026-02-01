@@ -298,6 +298,15 @@ pub async fn create_tray_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<M
     let show_app_item =
         MenuItem::with_id(&handle, "show_app", t!("tray.showApp"), true, None::<&str>)?;
 
+    #[cfg(feature = "web-server")]
+    let open_web_ui_item = MenuItem::with_id(
+        &handle,
+        "open_web_ui",
+        t!("tray.openWebUI"),
+        true,
+        None::<&str>,
+    )?;
+
     let unmount_all_item = MenuItem::with_id(
         &handle,
         "unmount_all",
@@ -593,6 +602,11 @@ pub async fn create_tray_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<M
     #[cfg(not(feature = "web-server"))]
     {
         menu_items.push(&show_app_item);
+        menu_items.push(&separator);
+    }
+    #[cfg(feature = "web-server")]
+    {
+        menu_items.push(&open_web_ui_item);
         menu_items.push(&separator);
     }
 

@@ -86,18 +86,21 @@ export class NotificationService {
    * @param message Modal message (should be pre-translated)
    * @param confirmText Confirm button text (defaults to translated 'Yes')
    * @param cancelText Cancel button text (defaults to translated 'No')
+   * @param options Optional icon and styling options
    */
   confirmModal(
     title: string,
     message: string,
     confirmText?: string,
-    cancelText?: string
+    cancelText?: string,
+    options?: Pick<ConfirmDialogData, 'icon' | 'iconColor' | 'iconClass' | 'confirmButtonColor'>
   ): Promise<boolean> {
     const dialogData: ConfirmDialogData = {
       title,
       message,
       cancelText: cancelText ?? this.translate.instant('common.no'),
       confirmText: confirmText ?? this.translate.instant('common.yes'),
+      ...options,
     };
 
     return new Promise(resolve => {
@@ -118,12 +121,19 @@ export class NotificationService {
    * @param title Modal title (should be pre-translated)
    * @param message Modal message (should be pre-translated)
    * @param buttonText Button text (defaults to translated 'OK')
+   * @param options Optional icon and styling options
    */
-  alertModal(title: string, message: string, buttonText?: string): Promise<void> {
+  alertModal(
+    title: string,
+    message: string,
+    buttonText?: string,
+    options?: Pick<ConfirmDialogData, 'icon' | 'iconColor' | 'iconClass'>
+  ): Promise<void> {
     const dialogData: ConfirmDialogData = {
       title,
       message,
       cancelText: buttonText ?? this.translate.instant('common.ok'),
+      ...options,
     };
 
     return new Promise(resolve => {

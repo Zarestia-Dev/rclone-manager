@@ -143,6 +143,8 @@ export class AboutModalComponent implements OnInit {
     return { ...info, pid };
   });
 
+  readonly isLocalBackend = computed(() => this.backendService.activeBackend() === 'Local');
+
   readonly loadingRclone = this.rcloneStatusService.isLoading;
 
   readonly rcloneError = computed(() =>

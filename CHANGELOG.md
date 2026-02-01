@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [v0.2.0] - 2026-02-2
 
 ### Added
 - **Settings Management Library (rcman)**: Extracted and refactored the internal settings management system into a standalone, reusable Rust library called [rcman](https://github.com/Zarestia-Dev/rcman). This provides schema-based configuration, backup/restore, secret storage, and a derive macro for automatic schema generation. The app now uses rcman as an external dependency.

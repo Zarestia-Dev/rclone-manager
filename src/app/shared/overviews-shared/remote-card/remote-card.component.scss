@@ -11,6 +11,7 @@
     background: var(--hover-bg-color);
   }
 
+  &.serving,
   &.mounted {
     box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.2);
     will-change: box-shadow;
@@ -226,6 +227,14 @@
         background: rgba(var(--purple-rgb), 0.1);
         color: var(--purple);
         box-shadow: 0 0 0 1px rgba(var(--purple-rgb), 0.2);
+      }
+
+      &.serving {
+        background: rgba(var(--accent-color-rgb), 0.1);
+        color: var(--accent-color);
+        box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.2);
+
+        animation: pulseBlue 1.5s infinite;
       }
     }
   }

@@ -111,13 +111,15 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     this.filteredTabs = [...this.tabs];
   }
 
+  private normalizeValue(val: unknown): string {
+    return val === null || val === undefined || val === '' ? '' : String(val);
+  }
+
   private valuesEqual(a: unknown, b: unknown): boolean {
     if (Array.isArray(a) && Array.isArray(b)) {
       return a.length === b.length && a.every((val, idx) => val === b[idx]);
     }
-    const normalizeEmpty = (val: unknown): string =>
-      val === null || val === undefined || val === '' ? '' : String(val);
-    return normalizeEmpty(a) === normalizeEmpty(b);
+    return this.normalizeValue(a) === this.normalizeValue(b);
   }
 
   ngOnInit(): void {
@@ -152,9 +154,9 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     this.appSettingsService.options$.pipe(takeUntil(this.destroyed$)).subscribe(options => {
       if (options) {
         // Enchant metadata with inferred types and labels if missing
-        this.enrichMetadata(options);
-        this.optionsMap = options;
-        this.buildForm(options);
+        const enriched = this.enrichMetadata(options);
+        this.optionsMap = enriched;
+        this.buildForm(enriched);
         this.isLoading = false;
       } else {
         this.isLoading = true;
@@ -162,15 +164,21 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     });
   }
 
-  private enrichMetadata(options: Record<string, SettingMetadata>): void {
+  private enrichMetadata(
+    options: Record<string, SettingMetadata>
+  ): Record<string, SettingMetadata> {
+    const enriched: Record<string, SettingMetadata> = {};
     for (const [fullKey, meta] of Object.entries(options)) {
       const [, key] = fullKey.split('.');
 
       // Infer Type if missing
       if (!meta.value_type) {
-        meta.value_type = this.inferValueType(meta, key);
+        enriched[fullKey] = { ...meta, value_type: this.inferValueType(meta, key) };
+      } else {
+        enriched[fullKey] = meta;
       }
     }
+    return enriched;
   }
 
   private inferValueType(meta: SettingMetadata, key: string): SettingMetadata['value_type'] {
@@ -196,7 +204,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
 
     for (const fullKey in options) {
       const meta = options[fullKey];
-      const [category, key] = fullKey.split('.');
+      const { category, key } = this.splitKey(fullKey);
 
       if (!formGroups[category]) {
         if (this.tabs.some(t => t.key === category)) {
@@ -229,16 +237,17 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
    * Called on blur for text inputs - saves the current value
    */
   onBlur(category: string, key: string): void {
-    const control = this.getFormControl(category, key);
-    if (control?.valid) {
-      this.updateSetting(category, key, control.value);
-    }
+    this.commitSetting(category, key);
   }
 
   /**
    * Called on selection change for dropdowns and toggles - saves immediately
    */
   onValueChange(category: string, key: string): void {
+    this.commitSetting(category, key);
+  }
+
+  private commitSetting(category: string, key: string): void {
     const control = this.getFormControl(category, key);
     if (control?.valid) {
       this.updateSetting(category, key, control.value);
@@ -321,14 +330,20 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     }
 
     if (meta.metadata.engine_restart) {
-      this.pendingRestartChanges.set(`${category}.${key}`, {
-        category,
-        key,
-        value: finalValue,
-        metadata: meta,
-      });
+      if (this.valuesEqual(meta.value, finalValue)) {
+        this.pendingRestartChanges.delete(`${category}.${key}`);
+      } else {
+        this.pendingRestartChanges.set(`${category}.${key}`, {
+          category,
+          key,
+          value: finalValue,
+          metadata: meta,
+        });
+      }
     } else {
-      this.appSettingsService.saveSetting(category, key, finalValue);
+      if (!this.valuesEqual(meta.value, finalValue)) {
+        this.appSettingsService.saveSetting(category, key, finalValue);
+      }
     }
   }
 
@@ -346,6 +361,19 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
 
   getMetadata(category: string, key: string): SettingMetadata {
     return this.optionsMap[`${category}.${key}`];
+  }
+
+  isControlInvalid(category: string, key: string, index?: number): boolean {
+    const ctrl =
+      index !== undefined
+        ? this.getArrayItemControl(category, key, index)
+        : this.getFormControl(category, key);
+    return !!ctrl && ctrl.invalid && ctrl.touched;
+  }
+
+  private splitKey(fullKey: string): { category: string; key: string } {
+    const [category, key] = fullKey.split('.');
+    return { category, key };
   }
 
   onIntegerInput(event: KeyboardEvent): void {
@@ -424,6 +452,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
   removeArrayItem(category: string, key: string, index: number): void {
     const control = this.getFormControl(category, key) as FormArray;
     control.removeAt(index);
+    this.updateSetting(category, key, control.value);
   }
 
   async openFilePicker(category: string, key: string): Promise<void> {
@@ -484,8 +513,10 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
         displayName.toLowerCase().includes(this.searchQuery) ||
         helpText.toLowerCase().includes(this.searchQuery)
       ) {
-        const [category, key] = fullKey.split('.');
-        this.searchResults.push({ category, key });
+        const { category, key } = this.splitKey(fullKey);
+        if (this.tabs.some(t => t.key === category) && this.getFormControl(category, key)) {
+          this.searchResults.push({ category, key });
+        }
       }
     }
   }
@@ -554,9 +585,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
 
     // Update the form control to the default value
     const control = this.getFormControl(category, key);
-    if (control) {
-      control.setValue(defaultValue, { emitEvent: false });
-    }
+    if (control) this.resetControlValue(control, defaultValue, meta);
 
     // If this setting requires restart, add to pending changes
     if (meta.metadata.engine_restart) {
@@ -610,12 +639,27 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     this.isDiscardingChanges = true;
     for (const change of this.pendingRestartChanges.values()) {
       const originalValue = this.getMetadata(change.category, change.key).value;
-      this.getFormControl(change.category, change.key).setValue(originalValue, {
-        emitEvent: false,
-      });
+      const control = this.getFormControl(change.category, change.key);
+      if (control) this.resetControlValue(control, originalValue, change.metadata);
     }
     this.pendingRestartChanges.clear();
     this.isDiscardingChanges = false;
+  }
+
+  private resetControlValue(
+    control: FormControl | FormArray,
+    value: unknown,
+    meta: SettingMetadata
+  ): void {
+    if (control instanceof FormArray) {
+      const itemValidators = this.getItemValidators(meta);
+      control.clear();
+      (Array.isArray(value) ? value : []).forEach(val => {
+        control.push(this.fb.control(val, itemValidators));
+      });
+    } else {
+      control.setValue(value, { emitEvent: false });
+    }
   }
 
   getPendingChangesList(): {

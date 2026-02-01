@@ -25,39 +25,37 @@
   }
 
   @if (!isMount && !isServe && isCronEnabled && showCronSection) {
-    <mat-accordion class="cron-accordion" [multi]="false">
-      <mat-expansion-panel class="cron-panel">
-        <mat-expansion-panel-header>
-          <mat-panel-title> {{ 'wizards.appOperation.cronSchedule' | translate }} </mat-panel-title>
-          <mat-panel-description>
-            <span [class.no-schedule]="!cronExpression">
-              {{ cronExpression || ('wizards.appOperation.notConfigured' | translate) }}
-            </span>
-            @if (cronExpression) {
-              <button
-                mat-icon-button
-                class="clear-schedule-btn"
-                (click)="clearSchedule($event)"
-                [matTooltip]="'wizards.appOperation.clearSchedule' | translate"
-                type="button"
-                [attr.aria-label]="'wizards.appOperation.clearSchedule' | translate"
-              >
-                <mat-icon svgIcon="circle-xmark"></mat-icon>
-              </button>
-            }
-          </mat-panel-description>
-        </mat-expansion-panel-header>
+    <mat-expansion-panel style="margin-bottom: var(--space-md)">
+      <mat-expansion-panel-header>
+        <mat-panel-title> {{ 'wizards.appOperation.cronSchedule' | translate }} </mat-panel-title>
+        <mat-panel-description>
+          <span [class.no-schedule]="!cronExpression">
+            {{ cronExpression || ('wizards.appOperation.notConfigured' | translate) }}
+          </span>
+          @if (cronExpression) {
+            <button
+              mat-icon-button
+              class="clear-schedule-btn"
+              (click)="clearSchedule($event)"
+              [matTooltip]="'wizards.appOperation.clearSchedule' | translate"
+              type="button"
+              [attr.aria-label]="'wizards.appOperation.clearSchedule' | translate"
+            >
+              <mat-icon svgIcon="circle-xmark"></mat-icon>
+            </button>
+          }
+        </mat-panel-description>
+      </mat-expansion-panel-header>
 
-        <div class="cron-content">
-          <app-cron-input
-            [initialValue]="cronExpression"
-            [taskName]="operationType"
-            (cronChange)="onCronChange($event)"
-            (validationChange)="onCronValidationChange($event)"
-          ></app-cron-input>
-        </div>
-      </mat-expansion-panel>
-    </mat-accordion>
+      <div class="cron-content">
+        <app-cron-input
+          [initialValue]="cronExpression"
+          [taskName]="operationType"
+          (cronChange)="onCronChange($event)"
+          (validationChange)="onCronValidationChange($event)"
+        ></app-cron-input>
+      </div>
+    </mat-expansion-panel>
   }
 
   <!-- Source Path Section -->

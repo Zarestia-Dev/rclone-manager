@@ -1,8 +1,9 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal, effect } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { interval, switchMap, catchError, EMPTY, from } from 'rxjs';
 import { SystemInfoService } from './system-info.service';
 import { BackendService } from './backend.service';
+import { EventListenersService } from './event-listeners.service';
 import {
   BandwidthLimitResponse,
   DEFAULT_JOB_STATS,
@@ -40,10 +41,31 @@ export class RcloneStatusService {
 
   private systemInfoService = inject(SystemInfoService);
   private backendService = inject(BackendService);
+  private eventListenersService = inject(EventListenersService);
 
   constructor() {
     this.startPolling();
-    this.loadBandwidthLimit();
+    this.setupListeners();
+  }
+
+  private setupListeners(): void {
+    // 1. Listen for backend changes
+    // When the active backend changes, we need to reload the bandwidth limit
+    // because it might be different for the new backend context
+    effect(() => {
+      const backend = this.backendService.activeBackend();
+      if (backend) {
+        void this.loadBandwidthLimit();
+      }
+    });
+
+    // 2. Listen for bandwidth change events from backend/tray
+    this.eventListenersService
+      .listenToBandwidthLimitChanged()
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => {
+        void this.loadBandwidthLimit();
+      });
   }
 
   /**
@@ -122,6 +144,9 @@ export class RcloneStatusService {
       this.rcloneInfo.set(null);
       this.rclonePID.set(null);
       this.previousRcloneStatus = 'error';
+
+      // Reload bandwidth limit to reflect error state
+      void this.loadBandwidthLimit();
 
       // Update active backend to error state
       const activeBackend = this.backendService.activeBackend();

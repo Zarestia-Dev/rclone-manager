@@ -130,13 +130,19 @@ export class ShortcutHandlerDirective {
 
   /**
    * Check if shortcuts should be blocked
-   * Returns true if any modal is open or onboarding is active
+   * Returns true if any modal is open, file viewer is open, or onboarding is active
    * Critical shortcuts (like Ctrl+Q) bypass this check
    */
   private shouldBlockShortcuts(event: KeyboardEvent): boolean {
     // Always allow critical shortcuts
     if (this.isCriticalShortcut(event)) {
       return false;
+    }
+
+    // Block if file viewer is open
+    if (this.isFileViewerOpen()) {
+      console.debug('Shortcuts blocked: File viewer is open');
+      return true;
     }
 
     // Block if any modal is open
@@ -152,6 +158,13 @@ export class ShortcutHandlerDirective {
     }
 
     return false;
+  }
+
+  /**
+   * Check if file viewer modal is open
+   */
+  private isFileViewerOpen(): boolean {
+    return document.querySelector('app-file-viewer-modal') !== null;
   }
 
   /**

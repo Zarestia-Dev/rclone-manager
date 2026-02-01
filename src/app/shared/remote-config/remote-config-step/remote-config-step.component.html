@@ -20,7 +20,7 @@
               />
               <mat-autocomplete
                 #auto="matAutocomplete"
-                [displayWith]="displayRemote.bind(this)"
+                [displayWith]="displayRemote"
                 (optionSelected)="onTypeSelected($event.option.value)"
                 class="remote-type-autocomplete"
               >
@@ -132,7 +132,7 @@
             />
             <mat-autocomplete
               #providerAuto="matAutocomplete"
-              [displayWith]="displayProvider.bind(this)"
+              [displayWith]="displayProvider"
               (optionSelected)="onProviderSelected($event.option.value)"
             >
               @for (option of filteredProviders(); track option.Value) {

@@ -25,6 +25,22 @@ impl ScheduledTasksCache {
         }
     }
 
+    /// Generate a consistent task ID
+    pub fn generate_task_id(
+        backend_name: &str,
+        remote_name: &str,
+        task_type: &TaskType,
+        profile_name: &str,
+    ) -> String {
+        format!(
+            "{}:{}-{}-{}",
+            backend_name,
+            remote_name,
+            task_type.as_str(),
+            profile_name
+        )
+    }
+
     /// Load tasks from remote configs, preserving existing task states
     pub async fn load_from_remote_configs(
         &self,
@@ -190,6 +206,7 @@ impl ScheduledTasksCache {
     /// Remove all tasks for a specific remote
     pub async fn remove_tasks_for_remote(
         &self,
+        backend_name: &str,
         remote_name: &str,
         scheduler: State<'_, CronScheduler>, // Pass in scheduler
         app: Option<&AppHandle>,
@@ -198,11 +215,13 @@ impl ScheduledTasksCache {
         let mut removed_ids = Vec::new();
 
         for task in tasks {
-            // Check if task ID starts with the remote name (format: "remotename-operation")
-            if task.id.starts_with(&format!("{}-", remote_name)) {
+            // Check if task ID starts with the backend and remote name
+            // format: "backend:remote-operation-profile"
+            let prefix = format!("{}:{}-", backend_name, remote_name);
+            if task.id.starts_with(&prefix) {
                 info!(
-                    "🗑️ Removing task '{}' associated with remote '{}'",
-                    task.name, remote_name
+                    "🗑️ Removing task '{}' associated with remote '{}' (backend: {})",
+                    task.name, remote_name, backend_name
                 );
                 self.remove_task(&task.id, scheduler.clone(), None).await?;
                 removed_ids.push(task.id);
@@ -220,6 +239,7 @@ impl ScheduledTasksCache {
     /// Add or update tasks for a specific remote
     pub async fn add_or_update_task_for_remote(
         &self,
+        cache_state: State<'_, ScheduledTasksCache>,
         backend_name: &str,
         remote_name: &str,
         remote_settings: &Value,
@@ -292,11 +312,25 @@ impl ScheduledTasksCache {
                                 self.add_task(task_from_config.clone(), None).await?;
                                 info!("➕ Added new task: {} ({})", task_from_config.name, task_id);
                             }
+
+                            // Sync with scheduler
+                            // We need to retrieve the latest task state to ensure consistency
+                            if let Some(current_task) = self.get_task(&task_id).await
+                                && let Err(e) = scheduler
+                                    .reschedule_task(&current_task, cache_state.clone())
+                                    .await
+                            {
+                                warn!("Failed to reschedule task {}: {}", task_id, e);
+                            }
                         }
                         Ok(None) => {
                             // Task is disabled or invalid, check if we need to remove it
-                            let task_id =
-                                format!("{}-{}-{}", remote_name, task_type.as_str(), profile_name);
+                            let task_id = Self::generate_task_id(
+                                backend_name,
+                                remote_name,
+                                &task_type,
+                                profile_name,
+                            );
                             if self.get_task(&task_id).await.is_some() {
                                 info!("🗑️ Removing disabled/invalid task: {}", task_id);
                                 self.remove_task(&task_id, scheduler.clone(), None).await?;
@@ -330,13 +364,7 @@ impl ScheduledTasksCache {
         _remote_settings: &Value,
     ) -> Result<Option<ScheduledTask>, String> {
         // Task ID now includes backend prefix: "backend:remote-operation-profile"
-        let task_id = format!(
-            "{}:{}-{}-{}",
-            backend_name,
-            remote_name,
-            task_type.as_str(),
-            profile_name
-        );
+        let task_id = Self::generate_task_id(backend_name, remote_name, task_type, profile_name);
 
         // Check if cron is enabled for this profile
         let cron_enabled = profile_config

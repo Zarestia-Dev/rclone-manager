@@ -25,6 +25,10 @@ export interface ConfirmDialogData {
   message: string;
   confirmText?: string; // Defaults to "Yes"
   cancelText?: string; // Defaults to "No"
+  icon?: string; // Optional icon name for modal header
+  iconColor?: 'primary' | 'accent' | 'warn';
+  iconClass?: string;
+  confirmButtonColor?: 'primary' | 'accent' | 'warn';
 }
 
 export type ExportType = 'All' | 'Settings' | 'SpecificRemote' | { Category: string };

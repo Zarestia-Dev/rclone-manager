@@ -3,6 +3,7 @@ import { TauriBaseService } from '../core/tauri-base.service';
 import { NotificationService } from '@app/services';
 import { NautilusService } from '../ui/nautilus.service';
 import { FilePickerConfig, FilePickerResult } from '@app/types';
+import { TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 
 /**
@@ -15,6 +16,7 @@ import { firstValueFrom } from 'rxjs';
 export class FileSystemService extends TauriBaseService {
   private notificationService = inject(NotificationService);
   private nautilusService = inject(NautilusService);
+  private translate = inject(TranslateService);
 
   constructor() {
     super();
@@ -47,7 +49,16 @@ export class FileSystemService extends TauriBaseService {
         requireEmpty: requireEmpty || false,
       });
     } catch (error) {
-      this.notificationService.alertModal('Error', String(error));
+      this.notificationService.alertModal(
+        this.translate.instant('common.error'),
+        String(error),
+        undefined,
+        {
+          icon: 'circle-exclamation',
+          iconColor: 'warn',
+          iconClass: 'destructive',
+        }
+      );
       throw error;
     }
   }
@@ -85,7 +96,16 @@ export class FileSystemService extends TauriBaseService {
     try {
       return await this.invokeCommand<string>('get_file_location');
     } catch (error) {
-      this.notificationService.alertModal('Error', String(error));
+      this.notificationService.alertModal(
+        this.translate.instant('common.error'),
+        String(error),
+        undefined,
+        {
+          icon: 'circle-exclamation',
+          iconColor: 'warn',
+          iconClass: 'destructive',
+        }
+      );
       throw error;
     }
   }

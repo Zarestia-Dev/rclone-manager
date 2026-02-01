@@ -391,6 +391,7 @@ export class RemoteCardComponent {
       copying: !!remote.copyState?.isOnCopy,
       moving: !!remote.moveState?.isOnMove,
       bisyncing: !!remote.bisyncState?.isOnBisync,
+      serving: !!remote.serveState?.isOnServe,
     };
   });
 
@@ -487,7 +488,8 @@ export class RemoteCardComponent {
       this.isOperationActive('sync') ||
       this.isOperationActive('copy') ||
       this.isOperationActive('move') ||
-      this.isOperationActive('bisync')
+      this.isOperationActive('bisync') ||
+      this.isOperationActive('serve')
     );
   }
 

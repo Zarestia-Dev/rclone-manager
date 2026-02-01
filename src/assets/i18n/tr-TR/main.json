@@ -21,6 +21,32 @@
     "retry": "Yeniden Dene",
     "default": "Varsayılan"
   },
+  "validators": {
+    "integer": "Geçerli bir tam sayı olmalıdır",
+    "float": "Geçerli bir ondalık sayı olmalıdır",
+    "duration": "Geçersiz süre formatı. Kullanım: 1h30m45s, 5m, 1h",
+    "sizeSuffix": "Geçersiz boyut formatı. Kullanım: 100Ki, 16Mi, 1Gi veya \"off\"",
+    "tristate": "Değer true, false veya boş olmalıdır",
+    "time": "Geçersiz tarih/saat formatı. ISO 8601 kullanın: YYYY-MM-DDTHH:mm:ssZ",
+    "spaceSepList": "Liste sadece boşluk içeremez",
+    "bwTimetable": "Geçersiz bant genişliği formatı",
+    "fileMode": "Sekizli formatta olmalıdır (3-4 rakam, her biri 0-7). Örnek: 755",
+    "enum": "Şunlardan biri olmalıdır: {{values}}",
+    "invalidPath": "Yol mutlak olmalıdır",
+    "urlArray": "Tüm URL'ler geçerli olmalı ve http:// veya https:// ile başlamalıdır",
+    "bandwidth": "Geçersiz bant genişliği formatı. Kullanım: 10M, 1G, 100K veya kombinasyonlar",
+    "passwordMismatch": "Şifreler eşleşmiyor",
+    "remoteName": {
+      "invalidChars": "Uzak sunucu adı geçersiz karakterler içeriyor",
+      "invalidStart": "Uzak sunucu adı tire veya boşlukla başlayamaz",
+      "invalidEnd": "Uzak sunucu adı boşlukla bitemez",
+      "nameTaken": "Bu uzak sunucu adı zaten kullanılıyor"
+    },
+    "password": {
+      "minLength": "Şifre en az 3 karakter olmalıdır",
+      "invalidChars": "Şifre tırnak işareti içeremez"
+    }
+  },
   "mount": {
     "notMounted": "Bağlı Değil",
     "mounted": "Bağlı",
@@ -66,11 +92,11 @@
   },
   "task": {
     "status": {
-      "enabled": "Görev etkinleştirildi ve zamanlamaya göre çalışacak.",
-      "disabled": "Görev devre dışı bırakıldı ve çalışmayacak.",
-      "running": "Görev şu anda çalışıyor.",
-      "failed": "Görev son çalışmasında başarısız oldu.",
-      "stopping": "Görev durduruluyor ve mevcut çalışma bittikten sonra devre dışı bırakılacak."
+      "enabled": "Etkin",
+      "disabled": "Devre dışı",
+      "running": "Çalışıyor",
+      "failed": "Başarısız",
+      "stopping": "Durduruluyor"
     },
     "toggle": {
       "enable": "Görevi etkinleştir",
@@ -194,6 +220,10 @@
   "settings": {
     "edit": "Ayarları Düzenle",
     "resetToDefault": "Varsayılana sıfırla",
+    "resetAll": {
+      "title": "Ayarları Sıfırla",
+      "message": "Tüm uygulama ayarlarını sıfırlamak istediğinizden emin misiniz? Bu işlem geri alınamaz."
+    },
     "resetSuccess": "Ayarlar başarıyla sıfırlandı",
     "resetFailed": "{{key}} varsayılana sıfırlanamadı.",
     "loadFailed": "Uygulama ayarları yüklenemedi.",
@@ -680,7 +710,6 @@
       "queued": "kuyrukta",
       "controlsUnavailable": "VFS Denetimleri Kullanılamıyor",
       "indexedWarning": "Bu VFS örneği, rclone'un VFS API'si tarafından desteklenmeyen bir dizin sonekine (örn. {{suffix}}) sahip. Bu, aynı uzak bağlantı için birden fazla bağlama olduğunda bilinen bir kısıtlamadır.",
-      "learnMore": "rclone forumunda daha fazla bilgi edinin →",
       "stats": {
         "metadata": "Meta Veri",
         "items": "öge",
@@ -1488,7 +1517,9 @@
       "cacheFolder": "Önbellek Klasörü",
       "developerTools": "Geliştirici Araçları",
       "openDevTools": "Geliştirici Araçlarını Aç",
-      "restartApp": "Uygulamayı Yeniden Başlat"
+      "restartApp": "Uygulamayı Yeniden Başlat",
+      "remoteBackend": "Uzak Sunucu",
+      "remoteUpdateInfo": "Bu örnek uzak bir sunucu tarafından kontrol edilmektedir. Güncellemeler buradan yönetilemez. Daha fazla bilgi için lütfen rclone sorun kaydını ziyaret edin:"
     },
     "logs": {
       "clearAll": "Tüm Günlükleri Temizle",
@@ -1612,8 +1643,6 @@
       "configPassword": "Yapılandırma Parolası (İsteğe Bağlı)",
       "configPath": "Yapılandırma Yolu",
       "configPathPlaceholder": "Örn: /home/user/.config/rclone/ozel.conf",
-      "configPathHintLocal": "Bu arka uç için özel bir yapılandırma dosyası belirtin (varsayılanı kullanmak için boş bırakın).",
-      "configPathHintRemote": "Uzak arka uç için özel yapılandırma dosyası yolu (varsayılan için boş bırakın).",
       "selectConfigFile": "Yapılandırma Dosyası Seç",
       "activeConfigPath": "Aktif Yapılandırma Yolu",
       "connectionTab": "Bağlantı",
@@ -1993,9 +2022,11 @@
     },
     "notifications": {
       "jobDeleted": "İş {{id}} başarıyla silindi.",
-      "settingsReset": "{{name}} ayarları sıfırlandı."
+      "settingsReset": "{{name}} ayarları sıfırlandı.",
+      "deleteRemoteSuccess": "Uzak sunucu {{name}} başarıyla silindi."
     },
     "errors": {
+      "configFailed": "Bileşen yapılandırılamadı",
       "initFailed": "Bileşen başlatılamadı",
       "initialLoadFailed": "İlk veri yüklemesi başarısız oldu",
       "loadRemotesFailed": "Uzak bağlantılar yüklenemedi",
@@ -2099,27 +2130,8 @@
       },
       "noConfigured": "Zamanlanmış görev yapılandırılmamış. Otomatik başlatma operasyonları oluşturmak için cron ifadeleri kullanın.",
       "ariaLabel": "{{remote}} için zamanlanmış {{type}} görevi. Durum: {{status}}",
-      "running": "Çalışıyor",
-      "toggle": {
-        "enabled": "Görevi devre dışı bırak",
-        "running": "Görevi devre dışı bırak",
-        "disabled": "Görevi etkinleştir",
-        "failed": "Görevi etkinleştir",
-        "stopping": "Görev durduruluyor..."
-      },
-      "status": {
-        "enabled": "Görev etkinleştirildi ve zamanlamaya göre çalışacak.",
-        "disabled": "Görev devre dışı bırakıldı ve çalışmayacak.",
-        "running": "Görev şu anda çalışıyor.",
-        "failed": "Görev son çalışmasında başarısız oldu.",
-        "stopping": "Görev durduruluyor ve mevcut çalışma bittikten sonra devre dışı bırakılacak."
-      },
       "nextRun": "Sonraki Çalışma:",
       "lastRun": "Son Çalışma:",
-      "never": "Hiçbir zaman",
-      "disabledMsg": "Görev devre dışı",
-      "stoppingMsg": "Mevcut çalışmadan sonra devre dışı bırakılıyor",
-      "notScheduledMsg": "Zamanlanmadı",
       "stats": {
         "success": "Başarı sayısı",
         "failure": "Hata sayısı",
@@ -2412,6 +2424,7 @@
     }
   },
   "tray": {
+    "openWebUI": "Web Arayüzünü Aç",
     "showApp": "Uygulamayı Göster",
     "unmountAll": "Tümünü Ayır",
     "stopAllJobs": "Tüm İşleri Durdur",
