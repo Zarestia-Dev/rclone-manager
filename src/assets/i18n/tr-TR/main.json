@@ -835,7 +835,9 @@
       "noMatchingTypes": "Eşleşen tür yok",
       "loadingOptions": "Yapılandırma seçenekleri yükleniyor...",
       "showAdvanced": "Gelişmiş Seçenekleri Göster",
+      "showAdvancedDesc": "İleri düzey kullanıcılar için ek yapılandırma seçeneklerini göster",
       "useInteractive": "İnteraktif Yapılandırmayı Kullan",
+      "useInteractiveDesc": "Adım adım yapılandırma rehberini kullan",
       "authenticationMethod": "Kimlik Doğrulama Yöntemi",
       "providerRequired": "Sağlayıcı gerekli",
       "advancedOptions": "Gelişmiş Seçenekler",
@@ -1205,7 +1207,11 @@
       "failGetLink": "Bağlantı alınamadı",
       "failCopyLink": "Kopyalanamadı - konsolu kontrol edin",
       "star": "Yıldızla",
-      "unstar": "Yıldızı Kaldır"
+      "unstar": "Yıldızı Kaldır",
+      "generatedChecksums": "Oluşturulan Sağlama Toplamları",
+      "calculateAnother": "Başka Bir Tane Hesapla",
+      "bulkHashInstruction": "Bu dizindeki tüm dosyalar için sağlama toplamı hesaplamak üzere bir karma türü seçin.",
+      "noHashesFound": "Hiçbir karma döndürülmedi"
     },
     "operations": {
       "title": "İşlemler",

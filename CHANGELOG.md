@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Nautilus Component: Added dot and other text files preview support. Now you can preview the content of dot and other text files.
 - Nautilus Component: Added markdown preview support. Now you can preview the content of markdown files.
 - Nautilus Component: Added code highlight support. Now you can preview the content of code files with syntax highlighting.
+- Nautilus Component: Added bulk hash calculation support. Now you can calculate the hash of multiple files inside a directory.
 - Multiple backend support added. Now you can connect multiple and remote rclone instances via a single app. Remote config unlock supported (via rc config/unlock). Path change support added to (via rc config/setpath).
 - Multiple profile support added for backends. Every backend has a own remote settings profile. Also supported the export and import.
 - Multiple language support added. Now you can change the language of the app. Needs community help for translations.

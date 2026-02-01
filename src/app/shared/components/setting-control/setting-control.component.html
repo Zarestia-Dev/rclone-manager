@@ -2,10 +2,12 @@
   <ng-template #settingInfo let-opt>
     <div class="setting">
       <div class="setting-info">
-        <strong>{{ opt.Name | rcloneOptionTranslate: 'title' : opt.FieldName || opt.Name }}</strong>
+        <strong>{{
+          opt.Name | rcloneOptionTranslate: 'title' : opt.FieldName || opt.Name : provider
+        }}</strong>
         <p
           class="help-text"
-          [innerHTML]="opt.Name | rcloneOptionTranslate: 'help' : opt.Help | linebreaks"
+          [innerHTML]="opt.Name | rcloneOptionTranslate: 'help' : opt.Help : provider | linebreaks"
         ></p>
         <small class="default-value">{{
           'shared.settingControl.default' | translate: { value: getDisplayDefault() }
@@ -503,9 +505,10 @@
           <div class="setting-full-width">
             <div class="setting-info">
               <strong>{{
-                option.Name | rcloneOptionTranslate: 'title' : option.FieldName || option.Name
+                option.Name
+                  | rcloneOptionTranslate: 'title' : option.FieldName || option.Name : provider
               }}</strong>
-              <p>{{ option.Name | rcloneOptionTranslate: 'help' : option.Help }}</p>
+              <p>{{ option.Name | rcloneOptionTranslate: 'help' : option.Help : provider }}</p>
               <small class="type-info">{{
                 'shared.settingControl.typeNotImplemented' | translate: { type: option.Type }
               }}</small>

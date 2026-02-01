@@ -105,6 +105,9 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
     max_age: { DefaultStr: '0s', Default: 0 },
   };
 
+  /** The provider context for translations (e.g. 's3', 'drive') */
+  @Input() provider?: string | null;
+
   // option stored as a signal for better reactivity
   private optionSignal: WritableSignal<RcConfigOption | null> = signal<RcConfigOption | null>(null);
   // Derived default shown in the UI as a signal
@@ -699,8 +702,8 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
    * @param commit Final value after stopping. Defaults to true.
    */
   stopHold(commit = true): void {
-    clearTimeout(this.holdTimeout);
-    clearInterval(this.holdInterval);
+    if (this.holdTimeout) clearTimeout(this.holdTimeout);
+    if (this.holdInterval) clearInterval(this.holdInterval);
     this.holdTimeout = null;
     this.holdInterval = null;
 

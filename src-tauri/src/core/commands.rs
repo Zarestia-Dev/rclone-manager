@@ -52,6 +52,7 @@ macro_rules! generate_invoke_handler {
             $crate::rclone::queries::get_size,
             $crate::rclone::queries::get_stat,
             $crate::rclone::queries::get_hashsum,
+            $crate::rclone::queries::get_hashsum_file,
             $crate::rclone::queries::get_public_link,
             $crate::rclone::queries::get_memory_stats,
             $crate::rclone::queries::get_remotes,

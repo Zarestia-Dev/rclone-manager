@@ -419,13 +419,6 @@ pub mod config {
     /// [option blocks](#option-blocks) section.
     pub const PROVIDERS: &str = "config/providers";
 
-    // /// Set the path of the config file.
-    // ///
-    // /// Parameters:
-    // ///
-    // /// - path - path to the config file to use
-    // pub const SETPATH: &str = "config/setpath";
-
     /// Unlock the config file.
     ///
     /// Unlocks the config file if it is locked.
@@ -460,6 +453,28 @@ pub mod config {
 
 /// Job management endpoints
 pub mod job {
+    // /// Run a batch of rclone rc commands concurrently.
+    // ///
+    // /// This takes the following parameters:
+    // ///
+    // /// - concurrency - int - do this many commands concurrently. Defaults to `--transfers` if not set.
+    // /// - inputs - an list of inputs to the commands with an extra `_path` parameter
+    // ///
+    // /// ```json
+    // /// {
+    // ///     "_path": "rc/path",
+    // ///     "param1": "parameter for the path as documented",
+    // ///     "param2": "parameter for the path as documented, etc",
+    // /// }
+    // /// ```
+    // ///
+    // /// The inputs may use `_async`, `_group`, `_config` and `_filter` as normal when using the rc.
+    // ///
+    // /// Returns:
+    // ///
+    // /// - results - a list of results from the commands with one entry for each in inputs.
+    // pub const BATCH: &str = "job/batch";
+
     // /// Lists the IDs of the running jobs.
     // ///
     // /// Parameters: None.
@@ -468,6 +483,8 @@ pub mod job {
     // ///
     // /// - executeId - string id of rclone executing (change after restart)
     // /// - jobids - array of integer job ids (starting at 1 on each restart)
+    // /// - runningIds - array of integer job ids that are running
+    // /// - finishedIds - array of integer job ids that are finished
     // pub const LIST: &str = "job/list";
 
     /// Reads the status of the job ID.
@@ -861,23 +878,30 @@ pub mod operations {
     ///
     /// - hashsum - array of strings of the hashes
     /// - hashType - type of hash used
-    ///
-    /// Example:
-    ///
-    /// ```text
-    ///     $ rclone rc --loopback operations/hashsum fs=bin hashType=MD5 download=true base64=true
-    ///     {
-    ///         "hashType": "md5",
-    ///         "hashsum": [
-    ///             "WTSVLpuiXyJO_kGzJerRLg==  backend-versions.sh",
-    ///             "v1b_OlWCJO9LtNq3EIKkNQ==  bisect-go-rclone.sh",
-    ///             "VHbmHzHh4taXzgag8BAIKQ==  bisect-rclone.sh",
-    ///         ]
-    ///     }
-    /// ```
-    ///
-    /// See the [hashsum](/commands/rclone_hashsum/) command for more information on the above.
     pub const HASHSUM: &str = "operations/hashsum";
+
+    /// Produces a hash for a single file.
+    ///
+    /// Produces a hash for a single file using the hash named.
+    ///
+    /// This takes the following parameters:
+    ///
+    /// - fs - a remote name string e.g. "drive:"
+    /// - remote - a path within that remote e.g. "file.txt"
+    /// - hashType - type of hash to be used
+    /// - download - check by downloading rather than with hash (boolean)
+    /// - base64 - output the hashes in base64 rather than hex (boolean)
+    ///
+    /// If you supply the download flag, it will download the data from the
+    /// remote and create the hash on the fly. This can be useful for remotes
+    /// that don't support the given hash or if you really want to read all
+    /// the data.
+    ///
+    /// Returns:
+    ///
+    /// - hash - hash for the file
+    /// - hashType - type of hash used
+    pub const HASHSUMFILE: &str = "operations/hashsumfile";
 
     /// List the given remote and path in JSON format.
     ///
@@ -1659,18 +1683,24 @@ pub mod options {
 //     /// Useful for testing error handling.
 //     pub const ERROR: &str = "rc/error";
 
-//     /// List all the registered remote control commands.
+//     /// This returns an fatal error.
 //     ///
-//     /// This lists all the registered remote control commands as a JSON map in
-//     /// the commands response.
-//     pub const LIST: &str = "rc/list";
+//     /// This returns an error with the input as part of its error string.
+//     /// Useful for testing error handling.
+//     pub const FATAL: &str = "rc/fatal";
 
-//     /// Echo the input to the output parameters.
-//     ///
-//     /// This echoes the input parameters to the output parameters for testing
-//     /// purposes. It can be used to check that rclone is still alive and to
-//     /// check that parameter passing is working properly.
-//     pub const NOOP: &str = "rc/noop";
+//     //     /// List all the registered remote control commands.
+//     //     ///
+//     //     /// This lists all the registered remote control commands as a JSON map in
+//     //     /// the commands response.
+//     //     pub const LIST: &str = "rc/list";
+
+//     //     /// Echo the input to the output parameters.
+//     //     ///
+//     //     /// This echoes the input parameters to the output parameters for testing
+//     //     /// purposes. It can be used to check that rclone is still alive and to
+//     //     /// check that parameter passing is working properly.
+//     //     pub const NOOP: &str = "rc/noop";
 
 //     /// Echo the input to the output parameters requiring auth.
 //     ///
@@ -1678,6 +1708,12 @@ pub mod options {
 //     /// purposes. It can be used to check that rclone is still alive and to
 //     /// check that parameter passing is working properly.
 //     pub const NOOPAUTH: &str = "rc/noopauth";
+
+//     /// This returns an error by panicking.
+//     ///
+//     /// This returns an error with the input as part of its error string.
+//     /// Useful for testing error handling.
+//     pub const PANIC: &str = "rc/panic";
 // }
 
 /// Serve endpoints
@@ -1820,298 +1856,3 @@ pub mod serve {
     /// ```
     pub const TYPES: &str = "serve/types";
 }
-
-// /// Endpoint utilities and helpers
-// pub struct EndpointHelper;
-
-// impl EndpointHelper {
-//     /// Build a full URL for an endpoint
-//     pub fn build_url(base_url: &str, endpoint: &str) -> String {
-//         format!("{}/{}", base_url.trim_end_matches('/'), endpoint)
-//     }
-
-//     // /// Get all endpoints as a flat list for discovery
-//     // pub fn get_all_endpoints() -> Vec<&'static str> {
-//     //     vec![
-//     //         // Backend endpoints
-//     //         backend::COMMAND,
-//     //         // Config endpoints
-//     //         config::CREATE,
-//     //         config::DELETE,
-//     //         config::DUMP,
-//     //         config::GET,
-//     //         config::LISTREMOTES,
-//     //         config::PASSWORD,
-//     //         config::PATHS,
-//     //         config::PROVIDERS,
-//     //         config::SETPATH,
-//     //         config::UNLOCK,
-//     //         config::UPDATE,
-//     //         // Core endpoints
-//     //         core::BWLIMIT,
-//     //         core::COMMAND,
-//     //         core::DU,
-//     //         core::GC,
-//     //         core::GROUP_LIST,
-//     //         core::MEMSTATS,
-//     //         core::OBSCURE,
-//     //         core::PID,
-//     //         core::QUIT,
-//     //         core::STATS,
-//     //         core::STATS_DELETE,
-//     //         core::STATS_RESET,
-//     //         core::TRANSFERRED,
-//     //         core::VERSION,
-//     //         // Debug endpoints
-//     //         debug::SET_BLOCK_PROFILE_RATE,
-//     //         debug::SET_GC_PERCENT,
-//     //         debug::SET_MUTEX_PROFILE_FRACTION,
-//     //         debug::SET_SOFT_MEMORY_LIMIT,
-//     //         // Fscache endpoints
-//     //         fscache::CLEAR,
-//     //         fscache::ENTRIES,
-//     //         // Job endpoints
-//     //         job::LIST,
-//     //         job::STATUS,
-//     //         job::STOP,
-//     //         job::STOPGROUP,
-//     //         // Mount endpoints
-//     //         mount::LISTMOUNTS,
-//     //         mount::MOUNT,
-//     //         mount::TYPES,
-//     //         mount::UNMOUNT,
-//     //         mount::UNMOUNTALL,
-//     //         // Operations endpoints
-//     //         operations::ABOUT,
-//     //         operations::CHECK,
-//     //         operations::CLEANUP,
-//     //         operations::COPYFILE,
-//     //         operations::COPYURL,
-//     //         operations::DELETE,
-//     //         operations::DELETEFILE,
-//     //         operations::FSINFO,
-//     //         operations::HASHSUM,
-//     //         operations::LIST,
-//     //         operations::MKDIR,
-//     //         operations::MOVEFILE,
-//     //         operations::PUBLICLINK,
-//     //         operations::PURGE,
-//     //         operations::RMDIR,
-//     //         operations::RMDIRS,
-//     //         operations::SETTIER,
-//     //         operations::SETTIERFILE,
-//     //         operations::SIZE,
-//     //         operations::STAT,
-//     //         operations::UPLOADFILE,
-//     //         // Options endpoints
-//     //         options::BLOCKS,
-//     //         options::GET,
-//     //         options::INFO,
-//     //         options::LOCAL,
-//     //         options::SET,
-//     //         // Pluginsctl endpoints
-//     //         pluginsctl::ADD_PLUGIN,
-//     //         pluginsctl::GET_PLUGINS_FOR_TYPE,
-//     //         pluginsctl::LIST_PLUGINS,
-//     //         pluginsctl::LIST_TEST_PLUGINS,
-//     //         pluginsctl::REMOVE_PLUGIN,
-//     //         pluginsctl::REMOVE_TEST_PLUGIN,
-//     //         // Rc endpoints
-//     //         rc::ERROR,
-//     //         rc::LIST,
-//     //         rc::NOOP,
-//     //         rc::NOOPAUTH,
-//     //         // Serve endpoints
-//     //         serve::LIST,
-//     //         serve::START,
-//     //         serve::STOP,
-//     //         serve::STOPALL,
-//     //         serve::TYPES,
-//     //         // Sync endpoints
-//     //         sync::BISYNC,
-//     //         sync::COPY,
-//     //         sync::MOVE,
-//     //         sync::SYNC,
-//     //         // VFS endpoints
-//     //         vfs::FORGET,
-//     //         vfs::LIST,
-//     //         vfs::POLL_INTERVAL,
-//     //         vfs::QUEUE,
-//     //         vfs::QUEUE_SET_EXPIRY,
-//     //         vfs::REFRESH,
-//     //         vfs::STATS,
-//     //     ]
-//     // }
-
-//     // /// Get endpoints grouped by category
-//     // pub fn get_endpoints_by_category() -> HashMap<&'static str, Vec<&'static str>> {
-//     //     let mut categories = HashMap::new();
-
-//     //     categories.insert("backend", vec![backend::COMMAND]);
-//     //     categories.insert(
-//     //         "config",
-//     //         vec![
-//     //             config::CREATE,
-//     //             config::DELETE,
-//     //             config::DUMP,
-//     //             config::GET,
-//     //             config::LISTREMOTES,
-//     //             config::PASSWORD,
-//     //             config::PATHS,
-//     //             config::PROVIDERS,
-//     //             config::SETPATH,
-//     //             config::UNLOCK,
-//     //             config::UPDATE,
-//     //         ],
-//     //     );
-//     //     categories.insert(
-//     //         "core",
-//     //         vec![
-//     //             core::BWLIMIT,
-//     //             core::COMMAND,
-//     //             core::DU,
-//     //             core::GC,
-//     //             core::GROUP_LIST,
-//     //             core::MEMSTATS,
-//     //             core::OBSCURE,
-//     //             core::PID,
-//     //             core::QUIT,
-//     //             core::STATS,
-//     //             core::STATS_DELETE,
-//     //             core::STATS_RESET,
-//     //             core::TRANSFERRED,
-//     //             core::VERSION,
-//     //         ],
-//     //     );
-//     //     categories.insert(
-//     //         "debug",
-//     //         vec![
-//     //             debug::SET_BLOCK_PROFILE_RATE,
-//     //             debug::SET_GC_PERCENT,
-//     //             debug::SET_MUTEX_PROFILE_FRACTION,
-//     //             debug::SET_SOFT_MEMORY_LIMIT,
-//     //         ],
-//     //     );
-//     //     categories.insert("fscache", vec![fscache::CLEAR, fscache::ENTRIES]);
-//     //     categories.insert(
-//     //         "job",
-//     //         vec![job::LIST, job::STATUS, job::STOP, job::STOPGROUP],
-//     //     );
-//     //     categories.insert(
-//     //         "mount",
-//     //         vec![
-//     //             mount::LISTMOUNTS,
-//     //             mount::MOUNT,
-//     //             mount::TYPES,
-//     //             mount::UNMOUNT,
-//     //             mount::UNMOUNTALL,
-//     //         ],
-//     //     );
-//     //     categories.insert(
-//     //         "operations",
-//     //         vec![
-//     //             operations::ABOUT,
-//     //             operations::CHECK,
-//     //             operations::CLEANUP,
-//     //             operations::COPYFILE,
-//     //             operations::COPYURL,
-//     //             operations::DELETE,
-//     //             operations::DELETEFILE,
-//     //             operations::FSINFO,
-//     //             operations::HASHSUM,
-//     //             operations::LIST,
-//     //             operations::MKDIR,
-//     //             operations::MOVEFILE,
-//     //             operations::PUBLICLINK,
-//     //             operations::PURGE,
-//     //             operations::RMDIR,
-//     //             operations::RMDIRS,
-//     //             operations::SETTIER,
-//     //             operations::SETTIERFILE,
-//     //             operations::SIZE,
-//     //             operations::STAT,
-//     //             operations::UPLOADFILE,
-//     //         ],
-//     //     );
-//     //     categories.insert(
-//     //         "options",
-//     //         vec![
-//     //             options::BLOCKS,
-//     //             options::GET,
-//     //             options::INFO,
-//     //             options::LOCAL,
-//     //             options::SET,
-//     //         ],
-//     //     );
-//     //     categories.insert(
-//     //         "pluginsctl",
-//     //         vec![
-//     //             pluginsctl::ADD_PLUGIN,
-//     //             pluginsctl::GET_PLUGINS_FOR_TYPE,
-//     //             pluginsctl::LIST_PLUGINS,
-//     //             pluginsctl::LIST_TEST_PLUGINS,
-//     //             pluginsctl::REMOVE_PLUGIN,
-//     //             pluginsctl::REMOVE_TEST_PLUGIN,
-//     //         ],
-//     //     );
-//     //     categories.insert("rc", vec![rc::ERROR, rc::LIST, rc::NOOP, rc::NOOPAUTH]);
-//     //     categories.insert(
-//     //         "serve",
-//     //         vec![
-//     //             serve::LIST,
-//     //             serve::START,
-//     //             serve::STOP,
-//     //             serve::STOPALL,
-//     //             serve::TYPES,
-//     //         ],
-//     //     );
-//     //     categories.insert(
-//     //         "sync",
-//     //         vec![sync::BISYNC, sync::COPY, sync::MOVE, sync::SYNC],
-//     //     );
-//     //     categories.insert(
-//     //         "vfs",
-//     //         vec![
-//     //             vfs::FORGET,
-//     //             vfs::LIST,
-//     //             vfs::POLL_INTERVAL,
-//     //             vfs::QUEUE,
-//     //             vfs::QUEUE_SET_EXPIRY,
-//     //             vfs::REFRESH,
-//     //             vfs::STATS,
-//     //         ],
-//     //     );
-
-//     //     categories
-//     // }
-
-//     // /// Check if an endpoint exists
-//     // pub fn endpoint_exists(endpoint: &str) -> bool {
-//     //     Self::get_all_endpoints().contains(&endpoint)
-//     // }
-
-//     // /// Get category for an endpoint
-//     // pub fn get_endpoint_category(endpoint: &str) -> Option<&'static str> {
-//     //     if let Some(category) = endpoint.split('/').next() {
-//     //         match category {
-//     //             "backend" => Some("backend"),
-//     //             "config" => Some("config"),
-//     //             "core" => Some("core"),
-//     //             "debug" => Some("debug"),
-//     //             "fscache" => Some("fscache"),
-//     //             "job" => Some("job"),
-//     //             "mount" => Some("mount"),
-//     //             "operations" => Some("operations"),
-//     //             "options" => Some("options"),
-//     //             "pluginsctl" => Some("pluginsctl"),
-//     //             "rc" => Some("rc"),
-//     //             "serve" => Some("serve"),
-//     //             "sync" => Some("sync"),
-//     //             "vfs" => Some("vfs"),
-//     //             _ => None,
-//     //         }
-//     //     } else {
-//     //         None
-//     //     }
-//     // }
-// }

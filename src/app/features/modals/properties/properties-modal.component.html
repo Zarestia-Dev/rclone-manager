@@ -119,22 +119,23 @@
         }
       </div>
 
-      <!-- Checksums section - only for files -->
-      @if (isFile) {
-        <mat-divider></mat-divider>
-        <div class="properties-group checksums-group">
-          <h4 class="group-title">{{ 'fileBrowser.properties.checksums' | translate }}</h4>
+      <!-- Checksums section - for files and directories -->
+      <mat-divider></mat-divider>
+      <div class="properties-group checksums-group">
+        <h4 class="group-title">{{ 'fileBrowser.properties.checksums' | translate }}</h4>
 
-          @if (loadingHashes) {
-            <div class="section-loader">
-              <mat-spinner diameter="24"></mat-spinner>
-              <span>{{ 'fileBrowser.properties.loadingHashes' | translate }}</span>
-            </div>
-          } @else if (hashError) {
-            <div class="hash-error">
-              <span class="error-text">{{ hashError }}</span>
-            </div>
-          } @else if (supportedHashes.length > 0) {
+        @if (loadingHashes) {
+          <div class="section-loader">
+            <mat-spinner diameter="24"></mat-spinner>
+            <span>{{ 'fileBrowser.properties.loadingHashes' | translate }}</span>
+          </div>
+        } @else if (hashError) {
+          <div class="hash-error">
+            <span class="error-text">{{ hashError }}</span>
+          </div>
+        } @else if (supportedHashes.length > 0) {
+          <!-- FILE MODE: Show calculated list -->
+          @if (isFile) {
             <div class="hash-content custom-scrollbar">
               <!-- Calculated hashes -->
               @for (hash of hashEntries; track hash.type) {
@@ -181,12 +182,74 @@
               }
             </div>
           } @else {
-            <div class="no-hashes">
-              <span>{{ 'fileBrowser.properties.noHashTypes' | translate }}</span>
+            <!-- DIRECTORY MODE: Bulk Actions -->
+            <div class="bulk-hash-container">
+              <!-- Result State -->
+              @if (bulkHashResult) {
+                <div class="bulk-result-area">
+                  <div class="bulk-header">
+                    <span class="bulk-label">
+                      {{ 'fileBrowser.properties.generatedChecksums' | translate }} ({{
+                        bulkHashType | uppercase
+                      }})
+                    </span>
+                    <div class="bulk-actions">
+                      <button
+                        mat-icon-button
+                        (click)="copyBulkHash()"
+                        [matTooltip]="'fileBrowser.properties.copyToClipboard' | translate"
+                      >
+                        <mat-icon
+                          [svgIcon]="copiedHash === 'bulk' ? 'circle-check' : 'copy'"
+                        ></mat-icon>
+                      </button>
+                    </div>
+                  </div>
+                  <!-- Use a read-only textarea for code-block feel -->
+                  <textarea class="bulk-textarea custom-scrollbar" readonly>{{
+                    bulkHashResult
+                  }}</textarea>
+
+                  <button mat-stroked-button class="reset-bulk-btn" (click)="bulkHashResult = null">
+                    {{ 'fileBrowser.properties.calculateAnother' | translate }}
+                  </button>
+                </div>
+              } @else {
+                <!-- Initial State: Selection -->
+                <p class="bulk-instruction">
+                  {{ 'fileBrowser.properties.bulkHashInstruction' | translate }}
+                </p>
+
+                @if (bulkHashError) {
+                  <div class="hash-error">
+                    <span class="error-text">{{ bulkHashError }}</span>
+                  </div>
+                }
+
+                <div class="hash-chips bulk-chips">
+                  @for (hashType of supportedHashes; track hashType) {
+                    <button
+                      class="hash-chip"
+                      [class.loading]="calculatingBulkHash && bulkHashType === hashType"
+                      [disabled]="calculatingBulkHash"
+                      (click)="calculateBulkHash(hashType)"
+                    >
+                      @if (calculatingBulkHash && bulkHashType === hashType) {
+                        <mat-spinner diameter="14"></mat-spinner>
+                      }
+                      {{ hashType | uppercase }}
+                    </button>
+                  }
+                </div>
+              }
             </div>
           }
-        </div>
-      }
+        } @else {
+          <div class="no-hashes">
+            <span>{{ 'fileBrowser.properties.noHashTypes' | translate }}</span>
+          </div>
+        }
+      </div>
 
       <!-- Public Link section - only for remotes that support it -->
       @if (supportsPublicLink) {

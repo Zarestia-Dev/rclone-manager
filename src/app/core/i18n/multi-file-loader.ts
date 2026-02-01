@@ -10,7 +10,7 @@ export class MultiFileLoader implements TranslateLoader {
   constructor(
     private http: HttpClient,
     private prefix = '/assets/i18n/',
-    private files: string[] = ['main', 'rclone']
+    private files: string[] = ['main', 'rclone', 'rclone-providers']
   ) {}
 
   public getTranslation(lang: string): Observable<any> {

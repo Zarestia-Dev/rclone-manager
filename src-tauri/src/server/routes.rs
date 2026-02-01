@@ -188,6 +188,7 @@ fn file_operations_routes() -> Router<WebServerState> {
         .route("/get-size", get(handlers::get_size_handler))
         .route("/get-stat", get(handlers::get_stat_handler))
         .route("/get-hashsum", get(handlers::get_hashsum_handler))
+        .route("/get-hashsum-file", get(handlers::get_hashsum_file_handler))
         .route("/get-public-link", get(handlers::get_public_link_handler))
         .route("/mkdir", post(handlers::mkdir_handler))
         .route("/cleanup", post(handlers::cleanup_handler))

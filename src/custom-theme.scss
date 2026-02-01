@@ -790,6 +790,11 @@ textarea,
 [contenteditable="true"] {
   user-select: text;
   cursor: text;
+
+  span {
+    user-select: text;
+    cursor: text;
+  }
 }
 
 // Fix for mat-icon overflow issues in Windows

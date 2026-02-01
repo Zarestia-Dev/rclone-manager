@@ -1206,7 +1206,11 @@
       "failGetLink": "Failed to get public link",
       "failCopyLink": "Failed to copy - check console",
       "star": "Star",
-      "unstar": "Unstar"
+      "unstar": "Unstar",
+      "generatedChecksums": "Generated Checksums",
+      "calculateAnother": "Calculate Another",
+      "bulkHashInstruction": "Select a hash type to calculate checksums for all files in this directory.",
+      "noHashesFound": "No hashes returned"
     },
     "operations": {
       "title": "Operations",

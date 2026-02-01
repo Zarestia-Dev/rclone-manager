@@ -300,3 +300,63 @@
     }
   }
 }
+
+// Bulk Hash styles
+.bulk-hash-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+
+  .bulk-instruction {
+    font-size: 13px;
+    color: var(--dim-color);
+    margin: 0;
+  }
+
+  .bulk-result-area {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+
+    .bulk-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      .bulk-label {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--primary-color);
+      }
+
+      .bulk-actions {
+        display: flex;
+        gap: 4px;
+      }
+    }
+
+    .bulk-textarea {
+      width: 100%;
+      height: 150px;
+      resize: none;
+      border-radius: var(--radius-sm);
+      background: rgba(var(--window-fg-color-rgb), 0.03);
+      color: var(--window-fg-color);
+      font-family: "Roboto Mono", "Consolas", monospace;
+      font-size: 11px;
+      padding: var(--space-sm);
+      line-height: 1.5;
+      white-space: pre;
+      box-sizing: border-box;
+    }
+
+    .reset-bulk-btn {
+      align-self: flex-start;
+      margin-top: 4px;
+    }
+  }
+
+  .bulk-chips {
+    margin-top: 4px;
+  }
+}

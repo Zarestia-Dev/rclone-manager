@@ -15,6 +15,7 @@ import {
   NautilusService,
   RemoteFacadeService,
   ModalService,
+  NotificationService,
 } from '@app/services';
 import { Entry, FileBrowserItem, FsInfo } from '@app/types';
 import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
@@ -65,6 +66,7 @@ export class PropertiesModalComponent implements OnInit {
   private iconService = inject(IconService);
   private translate = inject(TranslateService);
   private modalService = inject(ModalService);
+  private notificationService = inject(NotificationService);
 
   // Separate loading states
   loadingStat = true;
@@ -145,10 +147,8 @@ export class PropertiesModalComponent implements OnInit {
     // 2. Get Disk Usage - try cache first for remote roots
     this.loadDiskUsage(remoteName, path, isLocal, item);
 
-    // 3. Load supported hashes (only for files, not directories)
-    if (!targetIsDir && this.item) {
-      this.loadSupportedHashes();
-    }
+    // 3. Load supported hashes (for both files and directories)
+    this.loadSupportedHashes();
 
     // 4. Check PublicLink support (only for remote filesystems)
     if (!isLocal) {
@@ -227,8 +227,10 @@ export class PropertiesModalComponent implements OnInit {
 
       this.supportedHashes = fsInfo?.Hashes ?? [];
 
-      // Auto-calculate only the first hash (usually md5)
-      if (this.supportedHashes.length > 0) {
+      // Auto-calculate only the first hash (usually md5) for single files
+      // For directories, we wait for user action (bulk op)
+      const isFile = this.item && !this.item.IsDir;
+      if (this.supportedHashes.length > 0 && isFile) {
         await this.calculateHash(this.supportedHashes[0]);
       }
     } catch (err) {
@@ -259,11 +261,14 @@ export class PropertiesModalComponent implements OnInit {
    */
   private buildHashPath(): string {
     const { remoteName, path, isLocal } = this.data;
-    if (isLocal && this.item) {
+    if (isLocal && this.item && !this.item.IsDir) {
       // For local files, remoteName is the directory path, and we need the full path
       const dir = remoteName.endsWith('/') ? remoteName : `${remoteName}/`;
       return `${dir}${this.item.Name}`;
     }
+    // For local directories, path is likely empty string in this.data.path logic,
+    // but let's check. In the component, path is usually relative or empty for local root.
+    // If it's a directory, we simply pass the path.
     return path;
   }
 
@@ -281,13 +286,14 @@ export class PropertiesModalComponent implements OnInit {
       const fsRemote = this.buildFsRemote();
       const hashPath = this.buildHashPath();
 
-      const result = await this.remoteManagementService.getHashsum(fsRemote, hashPath, hashType);
+      const result = await this.remoteManagementService.getHashsumFile(
+        fsRemote,
+        hashPath,
+        hashType
+      );
 
-      if (result.hashsum && result.hashsum.length > 0) {
-        // Extract just the hash part (before the spaces and filename)
-        const hashLine = result.hashsum[0];
-        const hash = hashLine.split(/\s{2}/)[0]; // Split on double space
-        this.fileHashes[hashType] = hash;
+      if (result.hash) {
+        this.fileHashes[hashType] = result.hash;
       }
     } catch (err) {
       console.warn(`Failed to calculate ${hashType} hash:`, err);
@@ -479,5 +485,78 @@ export class PropertiesModalComponent implements OnInit {
   /** Check if this is a file (not directory) */
   get isFile(): boolean {
     return this.item !== null && !this.item.IsDir;
+  }
+
+  // Bulk Hash State (Directories)
+  bulkHashResult: string | null = null;
+  bulkHashType: string | null = null;
+  calculatingBulkHash = false;
+  bulkHashError: string | null = null;
+
+  /**
+   * Calculate hash for all files in the directory
+   */
+  async calculateBulkHash(hashType: string): Promise<void> {
+    if (this.calculatingBulkHash) return;
+
+    this.calculatingBulkHash = true;
+    this.bulkHashError = null;
+    this.bulkHashResult = null;
+    this.bulkHashType = hashType;
+
+    try {
+      let fsRemote = this.buildFsRemote();
+      let hashPath = this.buildHashPath();
+
+      // For local bulk hashing, we need to manually construct the full absolute path
+      // and send it as 'fs' (remote), leaving 'path' empty.
+      // This avoids backend string concatenation issues (e.g. missing slashes or double slashes)
+      if (this.data.isLocal) {
+        // If hashPath is absolute (starts with /), use it directly
+        // Otherwise, join remoteName (base) and hashPath
+        fsRemote = hashPath.startsWith('/')
+          ? hashPath
+          : `${this.data.remoteName.endsWith('/') ? this.data.remoteName : this.data.remoteName + '/'}${hashPath}`;
+
+        // Clear hashPath so backend doesn't append it
+        hashPath = '';
+      }
+
+      // For directories, we use getHashsum (bulk)
+      const result = await this.remoteManagementService.getHashsum(fsRemote, hashPath, hashType);
+
+      if (result.hashsum && Array.isArray(result.hashsum)) {
+        this.bulkHashResult = result.hashsum.join('\n');
+      } else {
+        this.bulkHashError = this.translate.instant('fileBrowser.properties.noHashesFound');
+      }
+    } catch (err) {
+      console.error('Failed to calculate bulk hash:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      this.bulkHashError = `${this.translate.instant('common.error')}: ${errorMessage}`;
+    } finally {
+      this.calculatingBulkHash = false;
+    }
+  }
+
+  /**
+   * Copy the generated bulk hashsum to clipboard
+   */
+  async copyBulkHash(): Promise<void> {
+    if (!this.bulkHashResult) return;
+
+    try {
+      await navigator.clipboard.writeText(this.bulkHashResult);
+      this.copiedHash = 'bulk';
+
+      setTimeout(() => {
+        if (this.copiedHash === 'bulk') {
+          this.copiedHash = null;
+        }
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy bulk hash:', err);
+      this.notificationService.showError(this.translate.instant('common.error'));
+    }
   }
 }

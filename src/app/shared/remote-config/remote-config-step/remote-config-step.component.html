@@ -156,6 +156,7 @@
             <app-setting-control
               [option]="item"
               [formControlName]="item.Name"
+              [provider]="form().get('type')?.value"
               (valueChanged)="onFieldChanged(item.Name, $event)"
             ></app-setting-control>
           }
@@ -172,6 +173,7 @@
               <app-setting-control
                 [option]="item"
                 [formControlName]="item.Name"
+                [provider]="form().get('type')?.value"
                 (valueChanged)="onFieldChanged(item.Name, $event)"
               ></app-setting-control>
             }

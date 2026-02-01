@@ -141,6 +141,24 @@ pub async fn get_hashsum_handler(
     Ok(Json(ApiResponse::success(result)))
 }
 
+pub async fn get_hashsum_file_handler(
+    State(state): State<WebServerState>,
+    Query(query): Query<GetHashsumQuery>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
+    use crate::rclone::queries::filesystem::get_hashsum_file;
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+    let result = get_hashsum_file(
+        state.app_handle.clone(),
+        query.remote,
+        query.path,
+        query.hash_type,
+        rclone_state,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(result)))
+}
+
 #[derive(Deserialize)]
 pub struct GetPublicLinkQuery {
     pub remote: String,

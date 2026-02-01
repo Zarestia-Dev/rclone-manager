@@ -187,7 +187,8 @@ export class FileViewerService {
     remoteName: string,
     isLocal: boolean
   ): Promise<string> {
-    const baseUrl = this.configService.rcloneServeUrl();
+    // Always fetch the latest URL to handle dynamic engine port/host changes
+    const baseUrl = await this.configService.loadRcloneServeUrl();
 
     if (isLocal) {
       const separator = remoteName.endsWith('/') || remoteName.endsWith('\\') ? '' : '/';

@@ -188,6 +188,21 @@ export class RemoteManagementService extends TauriBaseService {
   }
 
   /**
+   * Get hashsum for a single file
+   * @param remote - Remote name (e.g., "drive:")
+   * @param path - Path to the file
+   * @param hashType - Hash algorithm (e.g., "md5", "sha1")
+   * @returns Hash result with hash and hashType
+   */
+  async getHashsumFile(
+    remote: string,
+    path: string,
+    hashType: string
+  ): Promise<{ hash: string; hashType: string }> {
+    return this.invokeCommand('get_hashsum_file', { remote, path, hashType });
+  }
+
+  /**
    * Get or create a public link for a file or folder
    * @param remote - Remote name (e.g., "drive:")
    * @param path - Path to the file or folder

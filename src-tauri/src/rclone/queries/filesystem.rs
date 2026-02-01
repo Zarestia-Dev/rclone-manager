@@ -302,8 +302,8 @@ pub async fn get_stat(
     .await
 }
 
-/// Get hashsum for a file
-/// Returns the hash of the file using the specified hash type
+/// Get hashsum for a path (file or directory)
+/// Returns list of hashes
 #[tauri::command]
 pub async fn get_hashsum(
     app: AppHandle,
@@ -315,11 +315,12 @@ pub async fn get_hashsum(
     debug!("🔐 Getting hashsum for remote: {remote}, path: {path}, hash_type: {hash_type}");
 
     let mut params = serde_json::Map::new();
-    // For single file hash, we need to include the filename in fs path
-    // e.g., fs="remote:path/to/file.txt"
+    // For hashsum (bulk/directory), 'fs' points to the root of the listing
     let fs_with_path = if path.is_empty() {
         remote.clone()
     } else {
+        // Ensure separation if needed, though usually remote includes ':'
+        // and path is relative.
         format!("{}{}", remote, path)
     };
     params.insert("fs".to_string(), json!(fs_with_path));
@@ -330,6 +331,37 @@ pub async fn get_hashsum(
         &backend_manager,
         state.client.clone(),
         operations::HASHSUM,
+        params,
+    )
+    .await
+}
+
+/// Get hashsum for a single file
+/// Returns the hash of the file using the specified hash type
+#[tauri::command]
+pub async fn get_hashsum_file(
+    app: AppHandle,
+    remote: String,
+    path: String,
+    hash_type: String,
+    state: State<'_, RcloneState>,
+) -> Result<serde_json::Value, String> {
+    debug!("🔐 Getting hashsum file for remote: {remote}, path: {path}, hash_type: {hash_type}");
+
+    let mut params = serde_json::Map::new();
+    params.insert("fs".to_string(), json!(remote));
+    params.insert("remote".to_string(), json!(path));
+    params.insert("hashType".to_string(), json!(hash_type));
+
+    // Default to true for download and base64 for consistency/safety if hash not supported?
+    // The user didn't specify defaults, but 'download' is useful fallback.
+    // However, sticking to bare minimum inputs is safer unless requested.
+
+    let backend_manager = app.state::<BackendManager>();
+    run_fs_command(
+        &backend_manager,
+        state.client.clone(),
+        operations::HASHSUMFILE,
         params,
     )
     .await

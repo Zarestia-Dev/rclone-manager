@@ -10,7 +10,7 @@ import {
   computed,
 } from '@angular/core';
 
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { DomSanitizer, SafeResourceUrl, SafeHtml } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
@@ -106,15 +106,16 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   fileSize = signal<number | null>(null);
 
   // Computed highlighted content for direct text view
-  highlightedContent = computed(() => {
+  highlightedContent = computed<SafeHtml | string>(() => {
     const text = this.textContent();
     if (!text) return '';
     try {
       // Auto-detect language and highlight
-      return hljs.highlightAuto(text).value;
+      const highlighted = hljs.highlightAuto(text).value;
+      return this.sanitizer.bypassSecurityTrustHtml(highlighted);
     } catch (e) {
       console.warn('HighlightJS failed, returning raw text', e);
-      return text;
+      return text; // Raw text is safe
     }
   });
 
@@ -123,7 +124,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
   // Markdown preview
   showMarkdownPreview = signal(false);
-  renderedMarkdown = signal('');
+  renderedMarkdown = signal<SafeHtml>('');
 
   // Cancel pending requests when component updates or destroys
   private destroy$ = new Subject<void>();
@@ -235,7 +236,9 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
         }
       );
 
-      this.renderedMarkdown.set(marked.parse(content) as string);
+      this.renderedMarkdown.set(
+        this.sanitizer.bypassSecurityTrustHtml(marked.parse(content) as string)
+      );
     }
     this.showMarkdownPreview.update(v => !v);
   }

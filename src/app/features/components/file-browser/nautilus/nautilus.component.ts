@@ -1051,7 +1051,8 @@ export class NautilusComponent implements OnInit, OnDestroy {
       },
       height: '60vh',
       maxHeight: '800px',
-      minWidth: '362px',
+      width: '60vw',
+      maxWidth: '400px',
     });
   }
 
