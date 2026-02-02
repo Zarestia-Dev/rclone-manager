@@ -293,14 +293,30 @@ pub async fn get_backend_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     let mut backend_flags: Vec<Value> = main_flags
         .into_iter()
         .filter(|flag| {
-            let name = flag["Name"].as_str().unwrap_or("");
-            if name == "use_server_modtime" {
-                return true;
-            }
             if let Some(groups) = flag["Groups"].as_str() {
-                return ["Performance", "Listing", "Networking", "Check"]
+                // Exclude groups handled by specific queries
+                if ["Filter", "Mount", "VFS", "RC", "WebDAV"]
                     .iter()
-                    .any(|g| groups.contains(g));
+                    .any(|g| groups.contains(g))
+                {
+                    return false;
+                }
+
+                return [
+                    "Performance",
+                    "Listing",
+                    "Networking",
+                    "Check",
+                    "Config",
+                    "Sync",
+                    "Copy",
+                    "Logging",
+                    "Debugging",
+                    "Metadata",
+                    "Important",
+                ]
+                .iter()
+                .any(|g| groups.contains(g));
             }
             false
         })
