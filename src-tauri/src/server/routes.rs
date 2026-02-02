@@ -178,6 +178,12 @@ fn system_routes() -> Router<WebServerState> {
             "/quit-rclone-engine",
             post(handlers::quit_rclone_engine_handler),
         )
+        .route("/gc", post(handlers::run_garbage_collector_handler))
+        .route(
+            "/get-fscache-entries",
+            get(handlers::get_fscache_entries_handler),
+        )
+        .route("/clear-fscache", post(handlers::clear_fscache_handler))
 }
 
 fn file_operations_routes() -> Router<WebServerState> {

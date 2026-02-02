@@ -413,3 +413,37 @@ pub async fn quit_rclone_engine_handler(
         "backendSuccess.system.engineQuit"
     ))))
 }
+
+pub async fn run_garbage_collector_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::rclone::commands::system::run_garbage_collector;
+    run_garbage_collector(state.app_handle.clone())
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.system.garbageCollectorRun"
+    ))))
+}
+
+pub async fn get_fscache_entries_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<usize>>, AppError> {
+    use crate::rclone::commands::system::get_fscache_entries;
+    let entries = get_fscache_entries(state.app_handle.clone())
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(entries)))
+}
+
+pub async fn clear_fscache_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::rclone::commands::system::clear_fscache;
+    clear_fscache(state.app_handle.clone())
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.system.fscacheCleared"
+    ))))
+}

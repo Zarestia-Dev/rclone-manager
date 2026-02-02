@@ -413,8 +413,8 @@ mat-card-actions {
         grid-template-columns: 1fr 1.5fr;
         gap: 12px;
         padding: 10px 12px;
-        background: var(--window-bg-color);
         transition: background-color 0.2s;
+        background: var(--view-bg-color);
 
         &:hover {
           background: var(--hover-bg-color);

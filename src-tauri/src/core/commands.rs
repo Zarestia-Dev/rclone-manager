@@ -106,6 +106,9 @@ macro_rules! generate_invoke_handler {
             $crate::rclone::commands::system::quit_rclone_engine,
             $crate::rclone::commands::system::quit_rclone_oauth,
             $crate::rclone::queries::get_remote_paths,
+            $crate::rclone::commands::system::run_garbage_collector,
+            $crate::rclone::commands::system::get_fscache_entries,
+            $crate::rclone::commands::system::clear_fscache,
             // =================================================================
             // FILESYSTEM COMMANDS
             // =================================================================

@@ -7,7 +7,10 @@ use crate::{
     core::scheduler::engine::CronScheduler,
     rclone::{
         backend::BackendManager,
-        commands::{common::redact_sensitive_values, system::ensure_oauth_process},
+        commands::{
+            common::redact_sensitive_values,
+            system::{ensure_oauth_process, get_fscache_entries},
+        },
         state::scheduled_tasks::ScheduledTasksCache,
     },
     utils::{
@@ -311,6 +314,8 @@ pub async fn update_remote(
     app.emit(REMOTE_CACHE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
+    let _ = get_fscache_entries(app).await;
+
     Ok(())
 }
 
@@ -362,6 +367,9 @@ pub async fn delete_remote(
 
     let log_cache = app.state::<LogCache>();
     log_cache.clear_for_remote(&name).await;
+
+    // Clear filesystem cache to ensure new settings take effect immediately
+    let _ = get_fscache_entries(app).await;
 
     info!("✅ Remote {name} deleted successfully");
     Ok(())

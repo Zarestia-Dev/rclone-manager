@@ -351,6 +351,40 @@
                     }}</span>
                   </div>
                 }
+
+                @if (memoryStats()) {
+                  <div class="detail-row highlight-row">
+                    <span class="detail-label">{{ 'modals.about.memory' | translate }}:</span>
+                    <span class="detail-value">{{ memoryStats()!.Alloc | formatFileSize }}</span>
+                    <button
+                      mat-icon-button
+                      class="action-button"
+                      (click)="showMemoryOverlay()"
+                      [matTooltip]="'modals.about.viewMemoryStats' | translate"
+                    >
+                      <mat-icon svgIcon="chart"></mat-icon>
+                    </button>
+                  </div>
+                }
+                <div class="detail-row">
+                  <span class="detail-label">{{ 'modals.about.backendCache' | translate }}:</span>
+                  <span class="detail-value"
+                    >{{ fsCacheEntries() }} {{ 'modals.about.entries' | translate }}</span
+                  >
+                  <button
+                    mat-icon-button
+                    class="action-button"
+                    (click)="clearFsCache()"
+                    [disabled]="clearingFsCache()"
+                    [matTooltip]="'modals.about.clear' | translate"
+                  >
+                    @if (clearingFsCache()) {
+                      <mat-spinner diameter="16"></mat-spinner>
+                    } @else {
+                      <mat-icon svgIcon="trash" class="warn"></mat-icon>
+                    }
+                  </button>
+                </div>
               </div>
             }
           </div>
@@ -672,6 +706,119 @@
               <button matButton="outlined" class="warn" (click)="relaunchApp()">
                 <mat-icon svgIcon="rotate-group"></mat-icon>
                 {{ 'modals.about.restartApp' | translate }}
+              </button>
+            </div>
+          </div>
+        } @else {
+          <div class="loading">
+            <mat-spinner diameter="24"></mat-spinner>
+            <span>{{ 'common.loading' | translate }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  }
+  @if (showingMemoryOverlay()) {
+    <div
+      class="debug-overlay overlay"
+      animate.enter="slide-overlay-enter"
+      animate.leave="slide-overlay-leave"
+    >
+      <div class="modal-header" data-tauri-drag-region>
+        <button mat-icon-button (click)="closeMemoryOverlay()">
+          <mat-icon svgIcon="chevron-left"></mat-icon>
+        </button>
+        <p>{{ 'modals.about.memoryStats' | translate }}</p>
+        <button mat-icon-button (click)="close()">
+          <mat-icon svgIcon="circle-xmark"></mat-icon>
+        </button>
+      </div>
+
+      <div class="modal-content debug-content">
+        @if (memoryStats()) {
+          <div class="debug-section">
+            <h4>{{ 'modals.about.generalMemory' | translate }}</h4>
+            <div class="debug-info-grid">
+              <div class="debug-row">
+                <span class="label">{{ 'modals.about.memAlloc' | translate }}</span>
+                <span class="value">{{ memoryStats()!.Alloc | formatFileSize }}</span>
+              </div>
+              <div class="debug-row">
+                <span class="label">{{ 'modals.about.memTotalAlloc' | translate }}</span>
+                <span class="value">{{ memoryStats()!.TotalAlloc | formatFileSize }}</span>
+              </div>
+              <div class="debug-row">
+                <span class="label">{{ 'modals.about.memSys' | translate }}</span>
+                <span class="value">{{ memoryStats()!.Sys | formatFileSize }}</span>
+              </div>
+              <div class="debug-row">
+                <span class="label">{{ 'modals.about.memMallocs' | translate }}</span>
+                <span class="value">{{ memoryStats()!.Mallocs }}</span>
+              </div>
+              <div class="debug-row">
+                <span class="label">{{ 'modals.about.memFrees' | translate }}</span>
+                <span class="value">{{ memoryStats()!.Frees }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="debug-section">
+            <h4>{{ 'modals.about.heapMemory' | translate }}</h4>
+            <div class="debug-info-grid">
+              <div class="debug-row">
+                <span class="label">{{ 'modals.about.memHeapAlloc' | translate }}</span>
+                <span class="value">{{ memoryStats()!.HeapAlloc | formatFileSize }}</span>
+              </div>
+              <div class="debug-row">
+                <span class="label">{{ 'modals.about.memHeapSys' | translate }}</span>
+                <span class="value">{{ memoryStats()!.HeapSys | formatFileSize }}</span>
+              </div>
+              <div class="debug-row">
+                <span class="label">{{ 'modals.about.memHeapIdle' | translate }}</span>
+                <span class="value">{{ memoryStats()!.HeapIdle | formatFileSize }}</span>
+              </div>
+              <div class="debug-row">
+                <span class="label">{{ 'modals.about.memHeapInuse' | translate }}</span>
+                <span class="value">{{ memoryStats()!.HeapInuse | formatFileSize }}</span>
+              </div>
+              <div class="debug-row">
+                <span class="label">{{ 'modals.about.memHeapReleased' | translate }}</span>
+                <span class="value">{{ memoryStats()!.HeapReleased | formatFileSize }}</span>
+              </div>
+              <div class="debug-row">
+                <span class="label">{{ 'modals.about.memHeapObjects' | translate }}</span>
+                <span class="value">{{ memoryStats()!.HeapObjects }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="debug-section">
+            <h4>{{ 'modals.about.stackMemory' | translate }}</h4>
+            <div class="debug-info-grid">
+              <div class="debug-row">
+                <span class="label">{{ 'modals.about.memStackInuse' | translate }}</span>
+                <span class="value">{{ memoryStats()!.StackInuse | formatFileSize }}</span>
+              </div>
+              <div class="debug-row">
+                <span class="label">{{ 'modals.about.memStackSys' | translate }}</span>
+                <span class="value">{{ memoryStats()!.StackSys | formatFileSize }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="debug-section">
+            <h4>{{ 'modals.about.gc' | translate }}</h4>
+            <div class="debug-actions">
+              <button mat-stroked-button (click)="runGarbageCollector()" [disabled]="runningGc()">
+                @if (runningGc()) {
+                  <mat-spinner diameter="16"></mat-spinner>
+                  {{ 'modals.about.runningGc' | translate }}
+                } @else {
+                  <ng-container>
+                    <mat-icon svgIcon="trash"></mat-icon>
+                  </ng-container>
+                  {{ 'modals.about.runGc' | translate }}
+                }
               </button>
             </div>
           </div>

@@ -121,12 +121,12 @@ pub mod core {
     // /// ```
     // pub const DU: &str = "core/du";
 
-    // /// Runs a garbage collection.
-    // ///
-    // /// This tells the go runtime to do a garbage collection run. It isn't
-    // /// necessary to call this normally, but it can be useful for debugging
-    // /// memory problems.
-    // pub const GC: &str = "core/gc";
+    /// Runs a garbage collection.
+    ///
+    /// This tells the go runtime to do a garbage collection run. It isn't
+    /// necessary to call this normally, but it can be useful for debugging
+    /// memory problems.
+    pub const GC: &str = "core/gc";
 
     // /// Returns list of stats.
     // ///
@@ -1473,26 +1473,26 @@ pub mod vfs {
 //     pub const SET_SOFT_MEMORY_LIMIT: &str = "debug/set-soft-memory-limit";
 // }
 
-// /// File system cache endpoints
-// pub mod fscache {
-//     /// Clear the Fs cache.
-//     ///
-//     /// This clears the fs cache. This is where remotes created from backends
-//     /// are cached for a short while to make repeated rc calls more efficient.
-//     ///
-//     /// If you change the parameters of a backend then you may want to call
-//     /// this to clear an existing remote out of the cache before re-creating
-//     /// it.
-//     pub const CLEAR: &str = "fscache/clear";
+/// File system cache endpoints
+pub mod fscache {
+    /// Clear the Fs cache.
+    ///
+    /// This clears the fs cache. This is where remotes created from backends
+    /// are cached for a short while to make repeated rc calls more efficient.
+    ///
+    /// If you change the parameters of a backend then you may want to call
+    /// this to clear an existing remote out of the cache before re-creating
+    /// it.
+    pub const CLEAR: &str = "fscache/clear";
 
-//     /// Returns the number of entries in the fs cache.
-//     ///
-//     /// This returns the number of entries in the fs cache.
-//     ///
-//     /// Returns
-//     /// - entries - number of items in the cache
-//     pub const ENTRIES: &str = "fscache/entries";
-// }
+    /// Returns the number of entries in the fs cache.
+    ///
+    /// This returns the number of entries in the fs cache.
+    ///
+    /// Returns
+    /// - entries - number of items in the cache
+    pub const ENTRIES: &str = "fscache/entries";
+}
 
 /// Option management endpoints
 pub mod options {
@@ -1689,18 +1689,18 @@ pub mod options {
 //     /// Useful for testing error handling.
 //     pub const FATAL: &str = "rc/fatal";
 
-//     //     /// List all the registered remote control commands.
-//     //     ///
-//     //     /// This lists all the registered remote control commands as a JSON map in
-//     //     /// the commands response.
-//     //     pub const LIST: &str = "rc/list";
+// /// List all the registered remote control commands.
+// ///
+// /// This lists all the registered remote control commands as a JSON map in
+// /// the commands response.
+// pub const LIST: &str = "rc/list";
 
-//     //     /// Echo the input to the output parameters.
-//     //     ///
-//     //     /// This echoes the input parameters to the output parameters for testing
-//     //     /// purposes. It can be used to check that rclone is still alive and to
-//     //     /// check that parameter passing is working properly.
-//     //     pub const NOOP: &str = "rc/noop";
+// /// Echo the input to the output parameters.
+// ///
+// /// This echoes the input parameters to the output parameters for testing
+// /// purposes. It can be used to check that rclone is still alive and to
+// /// check that parameter passing is working properly.
+// pub const NOOP: &str = "rc/noop";
 
 //     /// Echo the input to the output parameters requiring auth.
 //     ///

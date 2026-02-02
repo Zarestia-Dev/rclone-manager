@@ -19,6 +19,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Modals now transforms to bottom sheet on mobile devices. Like how it works on gnome. Basic SCSS trick but looks more native.
 - Window state persistence support added. Now the app remembers the window size on close and restores it on next launch.
 - Added support for additional rclone flags. Users can now configure and pass custom flags to rclone commands through the settings. Some rclone flags are reserved and cannot be used (App prevent these flags to use in the settings). 
+- Rclone garbage collector added. You can run the garbage collector from the About Modal -> About Rclone -> Memory.
+- Rclone cache cleaner added (Remote backend caches). You can run the cache cleaner from the About Modal -> About Rclone -> Backend Cache. App also automatically cleans the cache when remote updated or deleted.
+ 
 
 
 ### Changed

@@ -59,7 +59,10 @@ export const EXPLICIT_ENDPOINTS: Record<string, string> = {
   // System - shortened
   get_rclone_info: '/rclone-info',
   get_rclone_pid: '/rclone-pid',
+  run_garbage_collector: '/gc',
   get_disk_usage: '/disk-usage',
+  get_fscache_entries: '/get-fscache-entries',
+  clear_fscache: '/clear-fscache',
 
   // Settings - shortened/nested
   get_settings: '/settings',
@@ -129,6 +132,7 @@ export const POST_COMMANDS = new Set([
   'stop_all_serves',
   'handle_shutdown',
   'quit_rclone_engine',
+  'run_garbage_collector',
   'set_config_password_env',
   'change_config_password',
   'restore_settings',
@@ -158,4 +162,5 @@ export const POST_COMMANDS = new Set([
   'rename_serve_profile_in_cache',
   // Debug Commands
   'open_devtools',
+  'clear_fscache',
 ]);

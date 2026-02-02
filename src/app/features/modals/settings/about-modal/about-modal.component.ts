@@ -153,9 +153,17 @@ export class AboutModalComponent implements OnInit {
       : null
   );
 
+  readonly memoryStats = this.rcloneStatusService.memoryUsage;
+  readonly runningGc = signal(false);
+  readonly showingMemoryOverlay = signal(false);
+
   // Platform Info Signals
   readonly buildType = signal<string | null>(null);
   readonly updatesDisabled = signal<boolean>(false);
+
+  // Fscache Signals
+  readonly fsCacheEntries = signal<number>(0);
+  readonly clearingFsCache = signal<boolean>(false);
 
   // Constants
   readonly channels = [
@@ -186,6 +194,7 @@ export class AboutModalComponent implements OnInit {
 
     // Load manual setting for app auto-check
     this.loadAppAutoCheckSetting();
+    this.loadFsCacheEntries();
   }
 
   // --- Actions ---
@@ -375,7 +384,6 @@ export class AboutModalComponent implements OnInit {
         this.translate.instant('modals.about.killSuccess'),
         this.translate.instant('common.close')
       );
-      // Trigger immediate refresh to update status
       await this.rcloneStatusService.refresh();
     } catch (error) {
       console.error('Failed to quit rclone engine:', error);
@@ -383,6 +391,46 @@ export class AboutModalComponent implements OnInit {
         this.translate.instant('modals.about.killFailed'),
         this.translate.instant('common.close')
       );
+    }
+  }
+
+  async runGarbageCollector(): Promise<void> {
+    if (this.runningGc()) return;
+    this.runningGc.set(true);
+    try {
+      await this.systemInfoService.runGarbageCollector();
+      this.notificationService.showSuccess(this.translate.instant('modals.about.gcSuccess'));
+      // Trigger immediate refresh to see memory changes
+      await this.rcloneStatusService.refresh();
+    } catch (error) {
+      console.error('Failed to run garbage collector:', error);
+      this.notificationService.showError(this.translate.instant('modals.about.gcFailed'));
+    } finally {
+      this.runningGc.set(false);
+    }
+  }
+
+  async loadFsCacheEntries(): Promise<void> {
+    try {
+      const entries = await this.systemInfoService.getFsCacheEntries();
+      this.fsCacheEntries.set(entries);
+    } catch (error) {
+      console.error('Failed to load fscache entries:', error);
+    }
+  }
+
+  async clearFsCache(): Promise<void> {
+    if (this.clearingFsCache()) return;
+    this.clearingFsCache.set(true);
+    try {
+      await this.systemInfoService.clearFsCache();
+      this.notificationService.showSuccess(this.translate.instant('modals.about.cacheCleared'));
+      await this.loadFsCacheEntries();
+    } catch (error) {
+      console.error('Failed to clear fscache:', error);
+      this.notificationService.showError(this.translate.instant('modals.about.cacheClearFailed'));
+    } finally {
+      this.clearingFsCache.set(false);
     }
   }
 
@@ -417,6 +465,14 @@ export class AboutModalComponent implements OnInit {
 
   closeDebugOverlay(): void {
     this.showingDebugOverlay.set(false);
+  }
+
+  showMemoryOverlay(): void {
+    this.showingMemoryOverlay.set(true);
+  }
+
+  closeMemoryOverlay(): void {
+    this.showingMemoryOverlay.set(false);
   }
 
   async openFolder(folderType: 'logs' | 'config' | 'cache'): Promise<void> {

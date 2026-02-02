@@ -9,7 +9,7 @@ use crate::{
     rclone::backend::BackendManager,
     utils::{
         rclone::{
-            endpoints::{config, core},
+            endpoints::{config, core, fscache},
             process_common::create_rclone_command,
         },
         types::{
@@ -331,5 +331,65 @@ pub async fn unlock_rclone_config(app: AppHandle, password: String) -> Result<()
     app.emit(RCLONE_CONFIG_UNLOCKED, ())
         .map_err(|e| format!("Failed to emit config unlocked event: {e}"))?;
 
+    Ok(())
+}
+
+/// Runs the garbage collector
+#[tauri::command]
+pub async fn run_garbage_collector(app: AppHandle) -> Result<(), String> {
+    info!("🧹 Running garbage collector");
+
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+
+    // Use empty payload for GC
+    let payload = json!({});
+
+    let _ = backend
+        .post_json(&app.state::<RcloneState>().client, core::GC, Some(&payload))
+        .await
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
+
+    info!("✅ Garbage collector run successfully");
+    Ok(())
+}
+
+/// Get the number of entries in the filesystem cache
+#[tauri::command]
+pub async fn get_fscache_entries(app: AppHandle) -> Result<usize, String> {
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+
+    let json = backend
+        .post_json(&app.state::<RcloneState>().client, fscache::ENTRIES, None)
+        .await
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
+
+    let entries = json
+        .get("entries")
+        .and_then(|v| v.as_u64())
+        .map(|v| v as usize)
+        .ok_or_else(|| "Failed to parse entries count".to_string())?;
+
+    Ok(entries)
+}
+
+/// Clear the filesystem cache
+#[tauri::command]
+pub async fn clear_fscache(app: AppHandle) -> Result<(), String> {
+    info!("🧹 Clearing filesystem cache");
+
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+
+    let _ = backend
+        .post_json(&app.state::<RcloneState>().client, fscache::CLEAR, None)
+        .await
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
+
+    info!("✅ Filesystem cache cleared successfully");
     Ok(())
 }
