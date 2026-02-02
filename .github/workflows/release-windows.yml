@@ -11,12 +11,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: "windows-11-arm"
+          - platform: "windows-latest"
             args: "--target x86_64-pc-windows-msvc"
             arch: "arm64"
             type: "x86_64"
             assetPattern: "[name]_[ver]_[arch][ext]"
-          - platform: "windows-11-arm"
+          - platform: "windows-latest"
             args: "--target aarch64-pc-windows-msvc"
             arch: "arm64"
             type: "aarch64"
