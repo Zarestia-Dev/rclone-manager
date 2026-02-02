@@ -21,7 +21,7 @@
   "bundle": {
     "active": true,
     "resources": {
-      "../src/assets/i18n/**/*": "i18n/"
+      "../src/assets/i18n": "i18n/"
     },
     "createUpdaterArtifacts": true,
     "targets": ["nsis", "msi", "dmg", "app", "deb", "rpm", "appimage"],
