@@ -26,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 - Removed legacy integrated settings manager in favor of the new rcman library
+- **TLS Implementation**: Migrated from default TLS features to explicit `rustls-tls` for HTTP/HTTPS dependencies (`tauri-plugin-http`, `reqwest`, `tauri-plugin-updater`). This provides a pure Rust TLS implementation using rustls instead of the default native-tls, ensuring consistent behavior across all platforms and reducing dependency on system TLS libraries. This change improves portability, security, and maintainability of the application.
 - Mount plugin detector and installer improved. Dynamic checks for the latest plugin version for installation.
 - Terminal remote support removed. App can handle the all remote operations.
 - UI simplified and modernized.

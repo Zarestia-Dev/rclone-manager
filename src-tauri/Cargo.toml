@@ -25,9 +25,13 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri-plugin-dialog = "2"
 tokio = { version = "1.45.1", features = ["full", "process"] }
+# Use rustls-tls instead of default native-tls for consistent cross-platform TLS implementation
+# and to avoid system-specific TLS library dependencies. This provides better portability,
+# reproducible behavior, and reduces attack surface by using a pure Rust TLS stack.
 tauri-plugin-http = { version = "2", default-features = false, features = ["rustls-tls"] }
 tauri-plugin-os = "2"
 zip = "4.0.0"
+# Use rustls-tls for HTTP client to match TLS implementation across all HTTP dependencies
 reqwest = { version = "0.12.19", default-features = false, features = ["json", "blocking", "rustls-tls"] }
 tauri-plugin-store = "2"
 tauri-plugin-notification = "2"
@@ -92,6 +96,7 @@ tauri-plugin-global-shortcut = "2"
 # TODO: Remove this when the plugin is merged into tauri
 # https://github.com/tauri-apps/plugins-workspace/pull/3194
 tauri-plugin-single-instance = { git = "https://github.com/mrquantumoff/plugins-workspace", branch = "single-instance" }
+# Use rustls-tls for updater plugin to maintain consistent TLS implementation
 tauri-plugin-updater = { version = "2", default-features = false, features = ["rustls-tls"], optional = true }
 url = { version = "2.5", optional = true }
 rcman = { version = "0.1.4", features = ["keychain", "profiles"] }
