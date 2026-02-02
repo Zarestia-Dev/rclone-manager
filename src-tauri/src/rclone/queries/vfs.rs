@@ -94,7 +94,14 @@ pub async fn vfs_stats(app: AppHandle, fs: Option<String>) -> Result<Value, Stri
     }
 
     let state = app.state::<RcloneState>();
+    #[cfg(target_os = "windows")]
     let mut json = backend
+        .post_json(&state.client, vfs::STATS, Some(&payload))
+        .await
+        .map_err(|e| format!("Failed to fetch VFS stats: {e}"))?;
+
+    #[cfg(not(target_os = "windows"))]
+    let json = backend
         .post_json(&state.client, vfs::STATS, Some(&payload))
         .await
         .map_err(|e| format!("Failed to fetch VFS stats: {e}"))?;

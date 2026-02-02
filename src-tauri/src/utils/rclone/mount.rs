@@ -115,7 +115,7 @@ fn check_winfsp_installed() -> bool {
 pub fn check_mount_plugin_installed() -> bool {
     #[cfg(target_os = "macos")]
     {
-        return check_fuse_installed();
+        check_fuse_installed()
     }
     #[cfg(target_os = "linux")]
     {

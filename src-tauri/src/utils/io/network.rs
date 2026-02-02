@@ -196,6 +196,7 @@ pub fn is_metered() -> bool {
 #[cfg(target_os = "macos")]
 pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
     // Always emit is_metered: false, since macOS does not support metered detection.
+    use crate::utils::types::core::NetworkStatusPayload;
     use log::error;
     let payload = NetworkStatusPayload { is_metered: false };
     if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
