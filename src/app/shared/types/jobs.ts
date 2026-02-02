@@ -81,4 +81,6 @@ export interface JobInfo {
   profile?: string;
   /** Source UI that started this job (e.g., "nautilus", "dashboard", "scheduled") */
   source_ui?: string;
+  /** The backend instance this job belongs to (e.g., "Local", "NAS") */
+  backend_name?: string;
 }

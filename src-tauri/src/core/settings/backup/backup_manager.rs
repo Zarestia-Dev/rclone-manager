@@ -1,156 +1,157 @@
-use crate::{
-    rclone::queries::{get_rclone_config_file, get_remote_config},
-    utils::types::{
-        all_types::RcloneState,
-        backup_types::{
-            BackupAnalysis, BackupInfo, BackupManifest, ContentsInfo, ExportType, FormatInfo,
-            IntegrityInfo, MetadataInfo, RemoteConfigsInfo,
-        },
-        settings::SettingsState,
-    },
-};
-use chrono::{Local, Utc};
-use log::{info, warn};
-use sha2::{Digest, Sha256};
-use std::{
-    fs::{self, File},
-    io::{BufReader, Write},
-    path::{Path, PathBuf},
-};
+//! Backup management using rcman library
+//!
+//! This module provides backup and analysis commands using the rcman library.
+
+use crate::core::settings::AppSettingsManager;
+use crate::utils::types::backup_types::{BackupAnalysis, BackupContentsInfo, ExportType};
+use log::{error, info};
+use std::{fs::File, io::BufReader, path::PathBuf};
 use tauri::{AppHandle, Manager, State};
-use walkdir::WalkDir;
-use zip::{ZipArchive, ZipWriter, write::FileOptions};
+use zip::ZipArchive;
 
-const RCMAN_VERSION: &str = "1.0.0";
-const RCMAN_CREATED_BY: &str = concat!(env!("CARGO_PKG_NAME"), " v", env!("CARGO_PKG_VERSION"));
-pub const INNER_DATA_ARCHIVE_NAME: &str = "data";
-
-// -----------------------------------------------------------------------------
-// MAIN BACKUP COMMAND
-// -----------------------------------------------------------------------------
+// =============================================================================
+// BACKUP COMMAND
+// =============================================================================
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn backup_settings(
     backup_dir: String,
     export_type: ExportType,
     password: Option<String>,
     remote_name: Option<String>,
     user_note: Option<String>,
-    state: State<'_, SettingsState<tauri::Wry>>,
+    include_profiles: Option<Vec<String>>,
+    manager: State<'_, AppSettingsManager>,
     app_handle: AppHandle,
 ) -> Result<String, String> {
-    // Validate and sanitize password
-    let validated_password = validate_password(password)?;
-    let has_password = validated_password.is_some();
+    info!("Starting backup with rcman to: {}", backup_dir);
 
-    // Setup paths
-    let backup_path = PathBuf::from(&backup_dir);
-    fs::create_dir_all(&backup_path)
-        .map_err(|e| format!("Failed to create backup directory: {e}"))?;
-
-    let compression_type = if has_password { "7z" } else { "zip" };
-    let timestamp = Local::now();
-    let timestamp_str = timestamp.format("%Y%m%d_%H%M%S").to_string();
-
-    let rcman_archive_name = match export_type {
-        ExportType::SpecificRemote => format!(
-            "remote_{}_{}.rcman",
-            sanitize_filename(&remote_name.clone().unwrap_or_default()),
-            timestamp_str
-        ),
-        _ => format!("full_backup_{}.rcman", timestamp_str),
+    // Map app's ExportType to rcman's ExportType
+    let rcman_export_type = match &export_type {
+        ExportType::All => rcman::ExportType::Full,
+        ExportType::Settings => rcman::ExportType::SettingsOnly,
+        ExportType::SpecificRemote => rcman::ExportType::Single {
+            settings_type: "remotes".into(),
+            name: remote_name.clone().unwrap_or_default(),
+        },
+        ExportType::Category(_) => rcman::ExportType::SettingsOnly,
     };
-    let rcman_archive_path = backup_path.join(&rcman_archive_name);
 
-    info!("Starting backup: {}", rcman_archive_path.display());
+    // Build rcman backup options
+    let mut options = rcman::BackupOptions::new()
+        .output_dir(&backup_dir)
+        .export_type(rcman_export_type);
 
-    // Create temporary workspace
-    let temp_dir = tempfile::tempdir().map_err(|e| format!("Failed to create temp dir: {e}"))?;
-    let data_export_dir = temp_dir.path().join("export");
-    fs::create_dir_all(&data_export_dir)
-        .map_err(|e| format!("Failed to create export dir: {e}"))?;
-
-    // Gather files
-    let (contents_info, uncompressed_size) = gather_files_to_backup(
-        &data_export_dir,
-        &export_type,
-        &remote_name,
-        &state,
-        &app_handle,
-    )
-    .await?;
-
-    // Create inner archive
-    let inner_archive_filename = format!("{}.{}", INNER_DATA_ARCHIVE_NAME, compression_type);
-    let inner_archive_path = temp_dir.path().join(&inner_archive_filename);
-
-    if has_password {
-        info!("Creating encrypted archive...");
-        create_7z_archive(
-            &data_export_dir,
-            &inner_archive_path,
-            validated_password.as_ref().unwrap(),
-        )?;
-    } else {
-        info!("Creating zip archive...");
-        create_zip_archive(&data_export_dir, &inner_archive_path)?;
+    // Disable settings.json for partial exports (Categories or SpecificRemote)
+    if matches!(
+        export_type,
+        ExportType::Category(_) | ExportType::SpecificRemote
+    ) {
+        options = options.include_settings(false);
     }
 
-    // Calculate integrity hash
-    let (sha256, compressed_size) = calculate_file_hash(&inner_archive_path)?;
-    info!(
-        "Archive created. Hash: {}, Size: {} bytes",
-        sha256, compressed_size
-    );
+    // Handle dynamic categories
+    if let ExportType::Category(ref category) = export_type {
+        // Special handling for legacy "remotes" category if needed,
+        // but generally we just pass the category name to rcman
+        options = options.include_sub_settings(category);
 
-    // Build manifest
-    let manifest = BackupManifest {
-        format: FormatInfo {
-            version: RCMAN_VERSION.to_string(),
-            created_by: RCMAN_CREATED_BY.to_string(),
-        },
-        backup: BackupInfo {
-            created_at: Utc::now().to_rfc3339(),
-            backup_type: format!("{:?}", export_type),
-            encrypted: has_password,
-            compression: compression_type.to_string(),
-        },
-        contents: contents_info,
-        integrity: IntegrityInfo {
-            sha256,
-            size_bytes: uncompressed_size,
-            compressed_size_bytes: compressed_size,
-        },
-        metadata: user_note.map(|note| MetadataInfo {
-            user_note: Some(note),
-        }),
-    };
+        // If category is "remotes", we should also include rclone.conf
+        if category == "remotes" {
+            register_rclone_config_provider(&app_handle, &manager).await?;
+            options = options.include_external("rclone.conf");
+        }
+    }
 
-    let manifest_json = serde_json::to_string_pretty(&manifest)
-        .map_err(|e| format!("Failed to serialize manifest: {e}"))?;
+    // Always include remotes/rclone.conf for Full backup
+    if matches!(export_type, ExportType::All) {
+        // Register provider for rclone.conf (if not already handled)
+        register_rclone_config_provider(&app_handle, &manager).await?;
 
-    // Create final .rcman container
-    info!("Creating .rcman container...");
-    create_rcman_container(
-        &rcman_archive_path,
-        &manifest_json,
-        &inner_archive_path,
-        &inner_archive_filename,
-    )?;
+        options = options.include_sub_settings("remotes");
+        options = options.include_external("rclone.conf");
+        options = options.include_sub_settings("backend");
+        options = options.include_sub_settings("connections");
+    }
 
-    info!("Backup complete: {}", rcman_archive_path.display());
-    Ok(format!(
-        "Backup created at: {}",
-        rcman_archive_path.display()
-    ))
+    // Single remote export: register dynamic provider for just this remote's config
+    if matches!(export_type, ExportType::SpecificRemote)
+        && let Some(ref name) = remote_name
+    {
+        use super::rclone_config_provider::RcloneConfigProvider;
+        use crate::rclone::backend::BackendManager;
+        let backend_manager = app_handle.state::<BackendManager>();
+
+        let all_configs = backend_manager.remote_cache.get_configs().await;
+        let remote_config = all_configs.get(name).cloned();
+
+        let provider = RcloneConfigProvider::for_remote(name, remote_config)
+            .map_err(|e| format!("Failed to serialize remote config: {}", e))?;
+        manager.register_external_provider(Box::new(provider));
+        options = options.include_external(format!("remote:{}", name));
+    }
+
+    if let Some(ref pw) = password {
+        let trimmed = pw.trim();
+        if !trimmed.is_empty() {
+            options = options.password(trimmed);
+        }
+    }
+
+    if let Some(note) = user_note {
+        options = options.note(note);
+    }
+
+    if let Some(profiles) = include_profiles {
+        for profile in profiles {
+            options = options.include_profile(profile);
+        }
+    }
+
+    let backup_path = manager.backup().create(&options).map_err(|e| {
+        error!("❌ Backup failed: {}", e);
+        format!("Backup failed: {}", e)
+    })?;
+
+    info!("Backup complete: {}", backup_path.display());
+    Ok(format!("Backup created at: {}", backup_path.display()))
 }
 
-// -----------------------------------------------------------------------------
-// BACKUP ANALYSIS COMMAND
-// -----------------------------------------------------------------------------
+/// Helper to register the dynamic rclone config provider
+async fn register_rclone_config_provider(
+    app_handle: &AppHandle,
+    manager: &AppSettingsManager,
+) -> Result<(), String> {
+    use crate::core::settings::backup::rclone_config_provider::RcloneConfigProvider;
+    use crate::rclone::backend::BackendManager;
+    use crate::rclone::queries::system::fetch_config_path;
+    use crate::utils::types::core::RcloneState;
+
+    let state = app_handle.state::<RcloneState>();
+    let backend_manager = app_handle.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+
+    let config_path_str = fetch_config_path(&backend, &state.client)
+        .await
+        .map_err(|e| format!("Failed to fetch rclone config path: {}", e))?;
+
+    manager.register_external_provider(Box::new(RcloneConfigProvider::from_path(PathBuf::from(
+        config_path_str,
+    ))));
+
+    Ok(())
+}
+
+// =============================================================================
+// BACKUP ANALYSIS
+// =============================================================================
 
 #[tauri::command]
-pub async fn analyze_backup_file(path: PathBuf) -> Result<BackupAnalysis, String> {
+pub async fn analyze_backup_file(
+    path: PathBuf,
+    manager: State<'_, AppSettingsManager>,
+) -> Result<BackupAnalysis, String> {
     let ext = path
         .extension()
         .and_then(|s| s.to_str())
@@ -158,263 +159,134 @@ pub async fn analyze_backup_file(path: PathBuf) -> Result<BackupAnalysis, String
         .to_lowercase();
 
     if ext != "rcman" {
-        return Err("Unsupported archive type. Must be a .rcman file".into());
+        return Err(crate::localized_error!(
+            "backendErrors.backup.unsupportedArchive"
+        ));
     }
 
+    // Read manifest to detect format
     let file = File::open(&path).map_err(|e| format!("Failed to open .rcman: {e}"))?;
-    let mut archive = ZipArchive::new(BufReader::new(file))
-        .map_err(|e| format!("Invalid .rcman file (not a valid zip): {e}"))?;
+    let mut archive =
+        ZipArchive::new(BufReader::new(file)).map_err(|e| format!("Invalid .rcman file: {e}"))?;
 
     let manifest_file = archive
         .by_name("manifest.json")
-        .map_err(|_| "Invalid .rcman: Missing manifest.json".to_string())?;
+        .map_err(|_| "Invalid .rcman: Missing manifest.json")?;
 
-    let manifest: BackupManifest = serde_json::from_reader(manifest_file)
-        .map_err(|e| format!("Failed to parse manifest.json: {e}"))?;
+    let manifest_json: serde_json::Value = serde_json::from_reader(manifest_file)
+        .map_err(|e| format!("Failed to parse manifest: {e}"))?;
 
-    Ok(BackupAnalysis {
-        is_encrypted: manifest.backup.encrypted,
-        archive_type: manifest.backup.compression,
-        format_version: manifest.format.version,
-        created_at: Some(manifest.backup.created_at),
-        backup_type: Some(manifest.backup.backup_type),
-        metadata: manifest.metadata,
-        contents: Some(manifest.contents),
-    })
-}
+    // Detect format: rcman has root "version" as int
+    let is_rcman_format = manifest_json
+        .get("version")
+        .and_then(|v| v.as_u64())
+        .is_some();
 
-// -----------------------------------------------------------------------------
-// HELPER FUNCTIONS
-// -----------------------------------------------------------------------------
+    if is_rcman_format {
+        let analysis = manager.backup().analyze(&path).map_err(|e| {
+            error!("❌ Backup analysis failed: {}", e);
+            format!("Analysis failed: {}", e)
+        })?;
 
-/// Validates password: ensures minimum length and no whitespace-only
-fn validate_password(password: Option<String>) -> Result<Option<String>, String> {
-    match password {
-        None => Ok(None),
-        Some(pw) => {
-            let trimmed = pw.trim();
-            if trimmed.is_empty() {
-                Ok(None) // Treat empty password as no password
+        let contents =
+            BackupContentsInfo {
+                settings: analysis.manifest.contents.settings,
+                backend_config: analysis
+                    .manifest
+                    .contents
+                    .sub_settings
+                    .contains_key("backend"),
+                rclone_config: analysis
+                    .manifest
+                    .contents
+                    .external_configs
+                    .iter()
+                    .any(|id| id == "rclone.conf" || id == "rclone_config"),
+                remote_count: analysis.manifest.contents.sub_settings.get("remotes").map(
+                    |r| match r {
+                        rcman::SubSettingsManifestEntry::MultiFile(items) => items.len(),
+                        rcman::SubSettingsManifestEntry::SingleFile(_) => 1,
+                        rcman::SubSettingsManifestEntry::Profiled { profiles } => profiles
+                            .values()
+                            .map(|entry| match entry {
+                                rcman::ProfileEntry::Single(_) => 1,
+                                rcman::ProfileEntry::Multiple(items) => items.len(),
+                            })
+                            .sum(),
+                    },
+                ),
+                remote_names: analysis.manifest.contents.sub_settings.get("remotes").map(
+                    |r| match r {
+                        rcman::SubSettingsManifestEntry::MultiFile(items) => items.clone(),
+                        rcman::SubSettingsManifestEntry::SingleFile(name) => vec![name.clone()],
+                        rcman::SubSettingsManifestEntry::Profiled { profiles } => {
+                            let mut names = Vec::new();
+                            for (profile, entry) in profiles {
+                                match entry {
+                                    rcman::ProfileEntry::Single(item) => {
+                                        names.push(format!("{}: {}", profile, item));
+                                    }
+                                    rcman::ProfileEntry::Multiple(items) => {
+                                        for item in items {
+                                            names.push(format!("{}: {}", profile, item));
+                                        }
+                                    }
+                                }
+                            }
+                            names
+                        }
+                    },
+                ),
+                profiles: analysis
+                    .manifest
+                    .contents
+                    .sub_settings
+                    .get("remotes")
+                    .and_then(|r| match r {
+                        rcman::SubSettingsManifestEntry::Profiled { profiles } => {
+                            Some(profiles.keys().cloned().collect())
+                        }
+                        _ => None,
+                    }),
+            };
+
+        Ok(BackupAnalysis {
+            is_encrypted: analysis.is_encrypted,
+            archive_type: if analysis.requires_password {
+                "zip-aes".into()
             } else {
-                Ok(Some(trimmed.to_string()))
-            }
-        }
-    }
-}
-
-/// Sanitizes filename by replacing invalid characters
-fn sanitize_filename(name: &str) -> String {
-    name.chars()
-        .map(|c| match c {
-            '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '_',
-            _ => c,
+                "zip".into()
+            },
+            format_version: analysis.format_version,
+            created_at: Some(analysis.created_at),
+            backup_type: Some(analysis.backup_type),
+            user_note: analysis.user_note,
+            contents: Some(contents),
+            is_legacy: Some(false),
         })
-        .collect()
-}
+    } else {
+        // DEPRECATION (2026-2027): Delete this else block when removing legacy support
+        use super::legacy_restore::BackupManifest;
 
-/// Gathers all necessary files into export directory
-async fn gather_files_to_backup(
-    export_dir: &Path,
-    export_type: &ExportType,
-    remote_name: &Option<String>,
-    state: &SettingsState<tauri::Wry>,
-    app_handle: &AppHandle,
-) -> Result<(ContentsInfo, u64), String> {
-    let mut total_size: u64 = 0;
-    let mut contents = ContentsInfo {
-        settings: false,
-        backend_config: false,
-        rclone_config: false,
-        remote_configs: None,
-    };
-    let mut remote_names: Vec<String> = Vec::new();
+        let manifest: BackupManifest = serde_json::from_value(manifest_json)
+            .map_err(|e| format!("Failed to parse legacy manifest: {e}"))?;
 
-    // Helper to copy file and track size
-    let copy_and_track = |src: &Path, dest: &Path| -> Result<u64, String> {
-        fs::copy(src, dest).map_err(|e| format!("Failed to copy {}: {}", src.display(), e))?;
-        Ok(fs::metadata(dest).map(|m| m.len()).unwrap_or(0))
-    };
-
-    // Settings export
-    if matches!(export_type, ExportType::All | ExportType::Settings) {
-        let settings_path = state.config_dir.join("settings.json");
-        if settings_path.exists() {
-            total_size += copy_and_track(&settings_path, &export_dir.join("settings.json"))?;
-            contents.settings = true;
-        }
+        Ok(BackupAnalysis {
+            is_encrypted: manifest.backup.encrypted,
+            archive_type: manifest.backup.compression,
+            format_version: manifest.format.version,
+            created_at: Some(manifest.backup.created_at),
+            backup_type: Some(manifest.backup.backup_type),
+            user_note: manifest.metadata.and_then(|m| m.user_note),
+            contents: Some(BackupContentsInfo {
+                settings: manifest.contents.settings,
+                backend_config: manifest.contents.backend_config,
+                rclone_config: manifest.contents.rclone_config,
+                remote_count: manifest.contents.remote_configs.as_ref().map(|r| r.count),
+                remote_names: manifest.contents.remote_configs.and_then(|r| r.names),
+                profiles: Some(vec!["default".to_string()]), // Legacy backups always restore to "default"
+            }),
+            is_legacy: Some(true), // This is a legacy backup without profile support
+        })
     }
-
-    // Backend export
-    if matches!(export_type, ExportType::All | ExportType::RCloneBackend) {
-        let backend_path = state.config_dir.join("backend.json");
-        if backend_path.exists() {
-            total_size += copy_and_track(&backend_path, &export_dir.join("backend.json"))?;
-            contents.backend_config = true;
-        }
-    }
-
-    // Remote configs export
-    if matches!(
-        export_type,
-        ExportType::All
-            | ExportType::RemoteConfigs
-            | ExportType::SpecificRemote
-            | ExportType::Remotes
-    ) {
-        let remotes_dir = state.config_dir.join("remotes");
-        if remotes_dir.exists() {
-            let out_remotes = export_dir.join("remotes");
-            fs::create_dir_all(&out_remotes)
-                .map_err(|e| format!("Failed to create remotes dir: {e}"))?;
-
-            for entry in fs::read_dir(&remotes_dir)
-                .map_err(|e| format!("Failed to read remotes dir: {e}"))?
-            {
-                let path = entry.map_err(|e| e.to_string())?.path();
-                if path.extension().and_then(|s| s.to_str()) == Some("json") {
-                    let file_stem = path
-                        .file_stem()
-                        .and_then(|s| s.to_str())
-                        .ok_or("Invalid filename")?;
-
-                    let should_copy = match export_type {
-                        ExportType::SpecificRemote => remote_name.as_deref() == Some(file_stem),
-                        _ => true,
-                    };
-
-                    if should_copy {
-                        let dest = out_remotes.join(path.file_name().unwrap());
-                        total_size += copy_and_track(&path, &dest)?;
-                        remote_names.push(file_stem.to_string());
-                    }
-                }
-            }
-        }
-    }
-
-    // Export specific remote from rclone.conf via RC API
-    if let ExportType::SpecificRemote = export_type
-        && let Some(name) = remote_name
-    {
-        match get_remote_config(name.to_string(), app_handle.state::<RcloneState>()).await {
-            Ok(config) => {
-                let remote_config_dir = export_dir.join("remote_config");
-                fs::create_dir_all(&remote_config_dir)
-                    .map_err(|e| format!("Failed to create remote_config dir: {e}"))?;
-                let config_file = remote_config_dir.join(format!("{}.json", name));
-                let config_str = serde_json::to_string_pretty(&config)
-                    .map_err(|e| format!("Failed to serialize remote config: {e}"))?;
-                fs::write(&config_file, &config_str)
-                    .map_err(|e| format!("Failed to write remote config: {e}"))?;
-                total_size += config_str.len() as u64;
-                if !remote_names.contains(name) {
-                    remote_names.push(name.to_string());
-                }
-            }
-            Err(e) => warn!("Failed to export remote '{}': {}", name, e),
-        }
-    }
-
-    // Full rclone.conf export
-    if matches!(export_type, ExportType::All | ExportType::Remotes) {
-        let resolved_config_path = get_rclone_config_file(app_handle.clone()).await?;
-        if resolved_config_path.exists() {
-            total_size += copy_and_track(&resolved_config_path, &export_dir.join("rclone.conf"))?;
-            contents.rclone_config = true;
-        }
-    }
-
-    if !remote_names.is_empty() {
-        contents.remote_configs = Some(RemoteConfigsInfo {
-            count: remote_names.len(),
-            names: Some(remote_names),
-        });
-    }
-
-    Ok((contents, total_size))
-}
-
-/// Creates an encrypted 7z archive with password
-fn create_7z_archive(source_dir: &Path, output_path: &Path, password: &str) -> Result<(), String> {
-    // Remove existing archive if present
-    if output_path.exists() {
-        fs::remove_file(output_path)
-            .map_err(|e| format!("Failed to remove existing archive: {e}"))?;
-    }
-
-    sevenz_rust2::compress_to_path_encrypted(source_dir, output_path, password.into())
-        .map_err(|e| format!("Failed to create 7z archive: {e}"))
-}
-
-/// Creates a zip archive from a directory
-fn create_zip_archive(source_dir: &Path, output_path: &Path) -> Result<(), String> {
-    // Remove existing archive if present
-    if output_path.exists() {
-        fs::remove_file(output_path)
-            .map_err(|e| format!("Failed to remove existing archive: {e}"))?;
-    }
-
-    let file = File::create(output_path).map_err(|e| format!("Failed to create zip: {e}"))?;
-    let mut zip = ZipWriter::new(file);
-    let options = FileOptions::<()>::default().compression_method(zip::CompressionMethod::Deflated);
-
-    for entry in WalkDir::new(source_dir).min_depth(1) {
-        let entry = entry.map_err(|e| format!("Walk error: {e}"))?;
-        let path = entry.path();
-        let rel_path = path.strip_prefix(source_dir).unwrap();
-
-        if path.is_file() {
-            zip.start_file(rel_path.to_string_lossy(), options)
-                .map_err(|e| format!("Failed to start zip entry: {e}"))?;
-            let mut f = File::open(path).map_err(|e| format!("Failed to open file: {e}"))?;
-            std::io::copy(&mut f, &mut zip).map_err(|e| format!("Failed to copy to zip: {e}"))?;
-        } else if path.is_dir() {
-            zip.add_directory(rel_path.to_string_lossy(), options)
-                .map_err(|e| format!("Failed to add directory: {e}"))?;
-        }
-    }
-
-    zip.finish()
-        .map_err(|e| format!("Failed to finish zip: {e}"))?;
-    Ok(())
-}
-
-/// Creates the final .rcman zip container
-fn create_rcman_container(
-    rcman_path: &Path,
-    manifest_json: &str,
-    inner_archive_path: &Path,
-    inner_archive_filename: &str,
-) -> Result<(), String> {
-    let file = File::create(rcman_path).map_err(|e| format!("Failed to create .rcman: {e}"))?;
-    let mut zip = ZipWriter::new(file);
-    let options = FileOptions::<()>::default().compression_method(zip::CompressionMethod::Stored);
-
-    // Add manifest
-    zip.start_file("manifest.json", options)
-        .map_err(|e| format!("Failed to add manifest: {e}"))?;
-    zip.write_all(manifest_json.as_bytes())
-        .map_err(|e| format!("Failed to write manifest: {e}"))?;
-
-    // Add inner archive
-    zip.start_file(inner_archive_filename, options)
-        .map_err(|e| format!("Failed to add inner archive: {e}"))?;
-    let mut data_file =
-        File::open(inner_archive_path).map_err(|e| format!("Failed to open inner archive: {e}"))?;
-    std::io::copy(&mut data_file, &mut zip)
-        .map_err(|e| format!("Failed to copy inner archive: {e}"))?;
-
-    zip.finish()
-        .map_err(|e| format!("Failed to finish .rcman: {e}"))?;
-    Ok(())
-}
-
-/// Calculates SHA-256 hash and file size
-pub fn calculate_file_hash(path: &Path) -> Result<(String, u64), String> {
-    let mut file = File::open(path).map_err(|e| format!("Failed to open file: {e}"))?;
-    let mut hasher = Sha256::new();
-    let bytes_copied =
-        std::io::copy(&mut file, &mut hasher).map_err(|e| format!("Failed to read file: {e}"))?;
-    let hash = format!("{:x}", hasher.finalize());
-    Ok((hash, bytes_copied))
 }

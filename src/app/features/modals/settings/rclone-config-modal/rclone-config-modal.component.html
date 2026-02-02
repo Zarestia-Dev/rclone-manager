@@ -1,10 +1,25 @@
 <div class="rclone-config-modal">
   <div class="modal-header" data-tauri-drag-region>
-    <button mat-icon-button (click)="toggleSearchVisibility()" aria-label="Toggle Search">
+    <button
+      mat-icon-button
+      (click)="toggleSearchVisibility()"
+      [attr.aria-label]="'modals.rcloneConfig.search.toggle' | translate"
+    >
       <mat-icon svgIcon="search"></mat-icon>
     </button>
-    <p>{{ getPageTitle() }}</p>
-    <button mat-icon-button (click)="close()" aria-label="Close">
+    <p>
+      @if (currentPage() === 'home') {
+        {{ 'modals.rcloneConfig.pageTitle.home' | translate }}
+      } @else if (currentCategory()) {
+        {{
+          'modals.rcloneConfig.pageTitle.category'
+            | translate: { page: currentPage() | uppercase, category: currentCategory() }
+        }}
+      } @else {
+        {{ 'modals.rcloneConfig.pageTitle.backend' | translate }}
+      }
+    </p>
+    <button mat-icon-button (click)="close()" [attr.aria-label]="'common.close' | translate">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </div>
@@ -13,8 +28,8 @@
     [visible]="isSearchVisible()"
     [searchText]="searchQuery()"
     (searchTextChange)="onSearchInput($event)"
-    [placeholder]="getSearchPlaceholder()"
-    ariaLabel="Search RClone settings"
+    [placeholder]="getSearchPlaceholder() | translate"
+    [ariaLabel]="'modals.rcloneConfig.search.label' | translate"
   ></app-search-container>
 
   @if (isLoading()) {
@@ -68,7 +83,7 @@
         } @else {
           <div class="empty-state">
             <mat-icon svgIcon="search"></mat-icon>
-            <span>No Rclone settings found</span>
+            <span>{{ 'modals.rcloneConfig.search.emptyResult' | translate }}</span>
           </div>
         }
       } @else {
@@ -82,9 +97,11 @@
                 <mat-expansion-panel-header>
                   <mat-panel-title class="main-category-title-text">
                     <div class="main-category-header">
-                      <span class="category-name">{{ mainCategory }}</span>
+                      <span class="category-name">{{
+                        getMainCategoryTitle(mainCategory) | translate
+                      }}</span>
                       <small class="category-desc">{{
-                        getMainCategoryDescription(mainCategory)
+                        getMainCategoryDescription(mainCategory) | translate
                       }}</small>
                     </div>
                   </mat-panel-title>
@@ -104,7 +121,7 @@
                           <div class="category-header-text">
                             <span class="category-title">{{ service.name | titlecase }}</span>
                             <small class="category-description">{{
-                              getServiceDescription(service.name)
+                              getServiceDescription(service.name) | translate
                             }}</small>
                           </div>
                         </mat-panel-title>
@@ -131,7 +148,7 @@
                                   {{ categoryName }}
                                 </span>
                                 <small class="config-item-description">{{
-                                  getCategoryDescription(categoryName)
+                                  getCategoryDescription(categoryName) | translate
                                 }}</small>
                               </div>
                             </div>
@@ -145,29 +162,24 @@
               </mat-expansion-panel>
             }
           }
-
-          <!-- Security Section -->
-          <div class="security-section">
-            <div
-              class="config-item"
-              (click)="navigateTo('security')"
-              (keydown)="handleKeyboardNavigation($event, 'security')"
-              [tabindex]="0"
-              aria-label="Navigate to Security Settings"
-            >
-              <div class="config-item-content">
-                <mat-icon svgIcon="shield"></mat-icon>
-                <div class="config-item-text">
-                  <span class="config-item-title">Security Settings</span>
-                  <small class="config-item-description"
-                    >Configuration encryption and password management</small
-                  >
-                </div>
-              </div>
-              <mat-icon svgIcon="chevron-right"></mat-icon>
-            </div>
-          </div>
         </mat-accordion>
+
+        <div class="actions">
+          <button
+            mat-raised-button
+            class="warn"
+            (click)="resetAllOptions()"
+            [disabled]="isResetting()"
+            [attr.aria-label]="'modals.rcloneConfig.reset.aria' | translate"
+          >
+            @if (isResetting()) {
+              <mat-spinner diameter="16"></mat-spinner>
+            } @else {
+              <mat-icon svgIcon="rotate-left"></mat-icon>
+            }
+            {{ 'modals.rcloneConfig.reset.button' | translate }}
+          </button>
+        </div>
       }
     </div>
   }
@@ -176,54 +188,66 @@
   @if (currentPage() !== 'home' && !isLoading()) {
     <div class="overlay" animate.enter="slide-overlay-enter" animate.leave="slide-overlay-leave">
       <div class="modal-header" data-tauri-drag-region>
-        <button mat-icon-button (click)="navigateTo('home')" aria-label="Back to home">
+        <button
+          mat-icon-button
+          (click)="navigateTo('home')"
+          [attr.aria-label]="'modals.remoteConfig.buttons.back' | translate"
+        >
           <mat-icon svgIcon="chevron-left"></mat-icon>
         </button>
-        <p>{{ getPageTitle() }}</p>
-        <button mat-icon-button (click)="close()" aria-label="Close">
+        <p>
+          @if (currentPage() === 'home') {
+            {{ 'modals.rcloneConfig.pageTitle.home' | translate }}
+          } @else if (currentCategory()) {
+            {{
+              'modals.rcloneConfig.pageTitle.category'
+                | translate: { page: currentPage() | uppercase, category: currentCategory() }
+            }}
+          } @else {
+            {{ 'modals.rcloneConfig.pageTitle.backend' | translate }}
+          }
+        </p>
+        <button mat-icon-button (click)="close()" [attr.aria-label]="'common.close' | translate">
           <mat-icon svgIcon="circle-xmark"></mat-icon>
         </button>
       </div>
 
       <div class="modal-content">
-        @if (isSecurityPage()) {
-          <app-security-settings></app-security-settings>
-        } @else {
-          @if (hasSearchQuery()) {
-            <div class="search-results-info">
-              <small
-                >Showing {{ filteredOptionsCount() }} of {{ totalOptionsCount() }} settings</small
-              >
-            </div>
-          }
+        @if (hasSearchQuery()) {
+          <div class="search-results-info">
+            <small>{{
+              'modals.rcloneConfig.search.showing'
+                | translate: { count: filteredOptionsCount(), total: totalOptionsCount() }
+            }}</small>
+          </div>
+        }
 
-          @if (filteredOptionsCount() === 0 && hasSearchQuery()) {
-            <div class="empty-state">
-              <mat-icon svgIcon="search"></mat-icon>
-              <span>No settings found</span>
-              <p>Try adjusting your search terms</p>
-            </div>
-          } @else {
-            <!-- VIRTUAL SCROLL IMPLEMENTATION -->
-            <cdk-virtual-scroll-viewport [itemSize]="20" class="virtual-scroll-viewport">
-              <form [formGroup]="rcloneOptionsForm">
-                @for (option of virtualScrollData(); track trackByOptionIndex($index, option)) {
-                  <app-setting-control
-                    [id]="'setting-' + option.Name"
-                    [option]="option"
-                    [formControlName]="getUniqueControlKey(option)"
-                    (valueCommit)="
-                      saveRCloneOption(
-                        getUniqueControlKey(option),
-                        isOptionAtDefault(getUniqueControlKey(option))
-                      )
-                    "
-                    (valueChanged)="onOptionValueChanged(getUniqueControlKey(option), $event)"
-                  ></app-setting-control>
-                }
-              </form>
-            </cdk-virtual-scroll-viewport>
-          }
+        @if (filteredOptionsCount() === 0 && hasSearchQuery()) {
+          <div class="empty-state">
+            <mat-icon svgIcon="search"></mat-icon>
+            <span>{{ 'modals.rcloneConfig.search.emptySettings' | translate }}</span>
+            <p>{{ 'modals.rcloneConfig.search.adjustTerms' | translate }}</p>
+          </div>
+        } @else {
+          <!-- VIRTUAL SCROLL IMPLEMENTATION -->
+          <cdk-virtual-scroll-viewport [itemSize]="20" class="virtual-scroll-viewport">
+            <form [formGroup]="rcloneOptionsForm">
+              @for (option of virtualScrollData(); track trackByOptionIndex($index, option)) {
+                <app-setting-control
+                  [id]="'setting-' + option.Name"
+                  [option]="option"
+                  [formControlName]="getUniqueControlKey(option)"
+                  (valueCommit)="
+                    saveRCloneOption(
+                      getUniqueControlKey(option),
+                      isOptionAtDefault(getUniqueControlKey(option))
+                    )
+                  "
+                  (valueChanged)="onOptionValueChanged(getUniqueControlKey(option), $event)"
+                ></app-setting-control>
+              }
+            </form>
+          </cdk-virtual-scroll-viewport>
         }
       </div>
     </div>

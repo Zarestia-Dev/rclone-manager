@@ -80,6 +80,7 @@ export interface Remote {
     isOnServe?: boolean;
     serveCount?: number;
     serves?: ServeListItem[];
+    activeProfiles?: Record<string, string>;
   };
   primaryActions?: PrimaryActionType[];
   selectedSyncOperation?: SyncOperationType;

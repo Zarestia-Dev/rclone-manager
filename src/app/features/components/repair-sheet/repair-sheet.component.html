@@ -2,23 +2,24 @@
   <div class="sheet-header">
     <div class="repair-header-top">
       <div class="repair-icon">
-        <mat-icon [svgIcon]="getRepairIcon()"></mat-icon>
+        <mat-icon [svgIcon]="repairIcon()"></mat-icon>
       </div>
 
       <div class="repair-content">
-        <h3>{{ data.title || 'Repair Required' }}</h3>
-        <p>{{ data.message || 'A problem was detected. You can try repairing it below.' }}</p>
+        <h3>{{ displayTitle() }}</h3>
+        <p>{{ displayMessage() }}</p>
       </div>
     </div>
 
-    @if (getRepairDetails()) {
+    @if (repairDetails(); as details) {
       <div class="repair-details">
-        @for (detail of getRepairDetails(); track $index) {
+        @for (detail of details; track $index) {
           <div class="detail-item">
             <mat-icon svgIcon="{{ detail.icon }}"></mat-icon>
-            <span
-              ><strong>{{ detail.label }}:</strong> {{ detail.value }}</span
-            >
+            <span>
+              <strong>{{ detail.labelKey | translate }}:</strong>
+              {{ detail.valueKey | translate }}
+            </span>
           </div>
         }
       </div>
@@ -34,26 +35,26 @@
           [errorMessage]="passwordErrorMessage()"
           [showStoreOption]="!!data.showStoreOption"
           [disabled]="installing() || showConfigOptions()"
-          [shakeTrigger]="errorCount()"
           (passwordChange)="password.set($event)"
           (storePasswordChange)="storePassword.set($event)"
           (unlock)="submitPassword()"
         ></app-password-manager>
       </div>
 
-      <div class="advanced-toggle" style="margin-top: 1rem">
+      <div style="margin-top: 1rem">
         <button
           matButton="filled"
           class="accent"
           (click)="toggleConfigOptions()"
           [disabled]="installing() || isSubmittingPassword()"
         >
-          <mat-icon
-            svgIcon="caret-down"
-            [style.transform]="showConfigOptions() ? 'rotate(180deg)' : 'rotate(0deg)'"
-            style="transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
-          ></mat-icon>
-          {{ showConfigOptions() ? 'Hide Config Options' : 'Use Different Config File' }}
+          <mat-icon svgIcon="caret-down" [class.rotated]="showConfigOptions()"></mat-icon>
+          {{
+            (showConfigOptions()
+              ? 'repairSheet.hideConfigOptions'
+              : 'repairSheet.useDifferentConfig'
+            ) | translate
+          }}
         </button>
       </div>
 
@@ -70,19 +71,17 @@
     }
 
     @if (isRclonePathRepair()) {
-      <div class="advanced-toggle">
+      <div>
         <button
           matButton="filled"
           class="accent"
           (click)="toggleInstallOptions()"
           [disabled]="installing()"
         >
-          <mat-icon
-            svgIcon="caret-down"
-            [style.transform]="showAdvanced() ? 'rotate(180deg)' : 'rotate(0deg)'"
-            style="transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
-          ></mat-icon>
-          {{ showAdvanced() ? 'Hide' : 'Show' }} Advanced Options
+          <mat-icon svgIcon="caret-down" [class.rotated]="showAdvanced()"></mat-icon>
+          {{
+            (showAdvanced() ? 'repairSheet.hideAdvanced' : 'repairSheet.showAdvanced') | translate
+          }}
         </button>
       </div>
 
@@ -102,46 +101,18 @@
     <button
       matButton="filled"
       [disabled]="!canRepair()"
-      class="repair-button"
       (click)="repair()"
-      [attr.aria-label]="installing() ? 'Repairing in progress' : 'Start repair process'"
-      [matTooltip]="
-        !canRepair() && !installing() && !isSubmittingPassword()
-          ? showConfigOptions()
-            ? installationData().installLocation === 'custom' &&
-              installationData().customPath.trim().length === 0
-              ? 'Please select a config file first'
-              : !installationValid()
-                ? 'Please fix validation errors'
-                : ''
-            : requiresPassword() && !password()
-              ? 'Please enter the configuration password first'
-              : requiresPassword()
-                ? 'Account is temporarily locked due to failed attempts'
-                : installationData().installLocation === 'custom' &&
-                    installationData().customPath.trim().length === 0
-                  ? 'Please select an installation path first'
-                  : installationData().installLocation === 'existing' &&
-                      installationData().existingBinaryPath.trim().length === 0
-                    ? 'Please select a binary file first'
-                    : installationData().installLocation === 'existing' &&
-                        installationData().binaryTestResult === 'invalid'
-                      ? 'The selected file is not a valid rclone binary'
-                      : installationData().installLocation === 'existing' &&
-                          installationData().binaryTestResult === 'untested'
-                        ? 'Please test the selected binary first'
-                        : !installationValid()
-                          ? 'Please fix validation errors'
-                          : ''
-          : ''
+      [attr.aria-label]="
+        (installing() ? 'repairSheet.repairingAria' : 'repairSheet.startRepairAria') | translate
       "
+      [matTooltip]="repairTooltip() ? (repairTooltip() | translate) : ''"
     >
       {{
         installing() || isSubmittingPassword()
           ? isSubmittingPassword()
-            ? 'Validating Password...'
-            : repairProgressText()
-          : repairButtonText()
+            ? ('repairSheet.validatingPassword' | translate)
+            : (repairProgressTextKey() | translate)
+          : (repairButtonTextKey() | translate)
       }}
       <mat-icon
         [svgIcon]="repairButtonIcon()"

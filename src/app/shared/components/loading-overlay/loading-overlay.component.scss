@@ -18,10 +18,10 @@
     gap: 24px;
     text-align: center;
     padding: 32px;
-    background: var(--app-background);
+    background: var(--window-bg-color);
     border-radius: var(--border-radius);
     box-shadow: var(--box-shadow);
-    border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+    box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2);
     max-width: 400px;
     width: 90%;
 
@@ -37,7 +37,7 @@
         rgba(var(--primary-color-rgb), 0.1) 0%,
         rgba(var(--accent-color-rgb), 0.1) 100%
       );
-      border: 2px solid rgba(var(--primary-color-rgb), 0.2);
+      box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.4);
 
       mat-icon {
         width: 32px;
@@ -50,14 +50,14 @@
       margin: 0;
       font-size: var(--font-size-2xl);
       font-weight: 500;
-      color: var(--app-text-color);
+      color: var(--window-fg-color);
       letter-spacing: -0.025em;
     }
 
     p {
       margin: 0;
       font-size: var(--font-size-base);
-      color: var(--secondary-text-color);
+      color: var(--dim-color);
       opacity: 0.8;
       max-width: 300px;
       line-height: 1.5;

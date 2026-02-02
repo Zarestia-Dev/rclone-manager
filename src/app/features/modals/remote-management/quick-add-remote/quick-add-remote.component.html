@@ -2,11 +2,11 @@
   <div class="modal-header" data-tauri-drag-region>
     <button>
       <mat-icon
-        [svgIcon]="iconService.getIconName(quickAddForm.get('setup.remoteType')?.value)"
+        [svgIcon]="iconService.getIconName(quickAddForm.get('setup.type')?.value)"
       ></mat-icon>
     </button>
-    <p>Quick Add Remote</p>
-    <button mat-icon-button (click)="close()" aria-label="Close dialog">
+    <p>{{ 'modals.quickAdd.title' | translate }}</p>
+    <button mat-icon-button (click)="close()" [attr.aria-label]="'common.close' | translate">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </div>
@@ -15,84 +15,15 @@
     <div class="modal-content custom-scrollbar">
       @switch (currentStep()) {
         @case ('setup') {
-          <div class="step-content" formGroupName="setup">
-            <!-- Remote Type Selection -->
-            <div class="section-group">
-              <h3 class="section-label">Select Remote Type</h3>
-              <mat-form-field appearance="fill" class="full-width remote-type-field">
-                <mat-label>Search and select remote type</mat-label>
-                <mat-icon matPrefix svgIcon="server" class="field-icon"></mat-icon>
-                <input
-                  matInput
-                  type="text"
-                  [formControl]="remoteTypeSearchControl"
-                  [matAutocomplete]="remoteTypeAuto"
-                  placeholder="Type to search..."
-                />
-                <mat-autocomplete
-                  #remoteTypeAuto="matAutocomplete"
-                  [displayWith]="displayRemoteType.bind(this)"
-                  (optionSelected)="onRemoteTypeSelected($event)"
-                  class="remote-type-autocomplete"
-                >
-                  @for (remote of filteredRemoteTypes(); track remote.value) {
-                    <mat-option [value]="remote.value" class="remote-option">
-                      <div class="remote-option-content">
-                        <mat-icon
-                          [svgIcon]="iconService.getIconName(remote.value)"
-                          class="remote-icon"
-                        ></mat-icon>
-                        <div class="remote-text">
-                          <span class="remote-label">{{ remote.label }}</span>
-                          <span class="remote-value">{{ remote.value }}</span>
-                        </div>
-                      </div>
-                    </mat-option>
-                  }
-                </mat-autocomplete>
-                @if (
-                  quickAddForm.get('setup.remoteType')?.hasError('required') &&
-                  quickAddForm.get('setup.remoteType')?.touched
-                ) {
-                  <mat-error>Please select a remote type</mat-error>
-                }
-              </mat-form-field>
-            </div>
-
-            <!-- Configuration Section -->
-            <div class="section-group config-section">
-              <div class="form-row">
-                <mat-form-field appearance="fill" class="full-width">
-                  <mat-label>Remote Name</mat-label>
-                  <mat-icon matPrefix svgIcon="cloud" class="field-icon"></mat-icon>
-                  <input
-                    matInput
-                    formControlName="remoteName"
-                    placeholder="Enter a unique name..."
-                    required
-                    type="text"
-                  />
-                  @if (quickAddForm.get('setup.remoteName')?.hasError('required')) {
-                    <mat-error>Remote name is required</mat-error>
-                  }
-                  @if (quickAddForm.get('setup.remoteName')?.hasError('nameTaken')) {
-                    <mat-error>That name is already taken</mat-error>
-                  }
-                </mat-form-field>
-              </div>
-
-              <div class="interactive-option">
-                <div class="option-info">
-                  <span class="option-title">Interactive Configuration</span>
-                  <p class="option-desc">
-                    Required for providers like iCloud, OneDrive that need configuration after
-                    authentication.
-                  </p>
-                </div>
-                <mat-slide-toggle formControlName="useInteractiveMode" color="primary">
-                </mat-slide-toggle>
-              </div>
-            </div>
+          <div class="step-content">
+            <app-remote-config-step
+              [form]="$any(quickAddForm.get('setup'))"
+              [remoteTypes]="remoteTypes"
+              [existingRemotes]="existingRemotes"
+              [useInteractiveMode]="quickAddForm.get('setup.useInteractiveMode')?.value"
+              [showAdvancedToggle]="false"
+              (interactiveModeToggled)="onInteractiveModeToggled($event)"
+            />
           </div>
         }
 
@@ -100,25 +31,23 @@
           <div formGroupName="operations" class="step-content">
             <div class="section-group">
               <div class="operations-header">
-                <h3 class="section-label">Operation Options (Optional)</h3>
+                <h3 class="section-label">{{ 'modals.quickAdd.operations.title' | translate }}</h3>
                 <p class="section-description">
-                  Configure operations to run automatically after the remote is created.
+                  {{ 'modals.quickAdd.operations.description' | translate }}
                 </p>
               </div>
 
               <div class="tabs-container">
-                <mat-tab-group animationDuration="0ms">
+                <mat-tab-group>
                   @for (tab of operationTabs; track tab.type) {
-                    <mat-tab [label]="tab.label">
+                    <mat-tab [label]="tab.label | translate">
                       <div class="operation-config">
                         <app-operation-config
                           [opFormGroup]="$any(quickAddForm.get('operations.' + tab.type))"
                           [operationType]="tab.type"
-                          [currentRemoteName]="
-                            quickAddForm.get('setup.remoteName')?.value || 'remote'
-                          "
+                          [currentRemoteName]="quickAddForm.get('setup.name')?.value || 'remote'"
                           [existingRemotes]="existingRemotes"
-                          [description]="tab.description"
+                          [description]="tab.description | translate"
                           (destFolderSelected)="selectFolder(tab.type, 'dest')"
                           (sourceFolderSelected)="selectFolder(tab.type, 'source')"
                         ></app-operation-config>
@@ -153,26 +82,28 @@
       @if (currentStep() === 'interactive' && !isAuthCancelled()) {
         <div class="message info">
           <mat-icon svgIcon="info"></mat-icon>
-          <span>Please follow the steps to configure your remote.</span>
+          <span>{{ 'modals.quickAdd.interactive.followSteps' | translate }}</span>
         </div>
       }
       @if (isAuthCancelled()) {
         <div class="message warning">
           <mat-spinner diameter="16"></mat-spinner>
-          <span>Cancelling operation...</span>
+          <span>{{ 'modals.quickAdd.interactive.cancelling' | translate }}</span>
         </div>
       }
       @if (isAuthInProgress() && !isAuthCancelled() && currentStep() !== 'interactive') {
         <div class="message info">
           <mat-icon svgIcon="globe"></mat-icon>
-          <span>A browser window may open for authentication.</span>
+          <span>{{ 'modals.quickAdd.interactive.browserOpen' | translate }}</span>
         </div>
       }
     </div>
 
     <div class="modal-actions">
       @if (currentStep() === 'setup') {
-        <button mat-button type="button" (click)="close()">Cancel</button>
+        <button mat-button type="button" (click)="close()">
+          {{ 'common.cancel' | translate }}
+        </button>
         <button
           mat-flat-button
           class="primary"
@@ -180,7 +111,7 @@
           [disabled]="!isSetupStepValid()"
           type="button"
         >
-          Next Step
+          {{ 'common.nextStep' | translate }}
           <mat-icon iconPositionEnd svgIcon="right-arrow"></mat-icon>
         </button>
       }
@@ -188,11 +119,13 @@
       @if (currentStep() === 'operations') {
         <button mat-button type="button" (click)="prevStep()" [disabled]="isAuthInProgress()">
           <mat-icon iconPositionStart svgIcon="left-arrow"></mat-icon>
-          Back
+          {{ 'common.back' | translate }}
         </button>
 
         @if (isAuthInProgress() && !isAuthCancelled()) {
-          <button mat-button class="warn" type="button" (click)="cancelAuth()">Cancel</button>
+          <button mat-button class="warn" type="button" (click)="cancelAuth()">
+            {{ 'common.cancel' | translate }}
+          </button>
         }
 
         <button
@@ -207,12 +140,14 @@
           } @else {
             <mat-icon iconPositionEnd svgIcon="plus"></mat-icon>
           }
-          {{ submitButtonText() }}
+          {{ submitButtonText() | translate }}
         </button>
       }
 
       @if (currentStep() === 'interactive') {
-        <button mat-button class="warn" type="button" (click)="cancelAuth()">Cancel</button>
+        <button mat-button class="warn" type="button" (click)="cancelAuth()">
+          {{ 'common.cancel' | translate }}
+        </button>
 
         <button
           mat-flat-button
@@ -224,7 +159,12 @@
           @if (interactiveFlowState().isProcessing) {
             <mat-spinner diameter="18" class="button-spinner"></mat-spinner>
           }
-          {{ interactiveFlowState().isProcessing ? 'Processing...' : 'Continue' }}
+          {{
+            (interactiveFlowState().isProcessing
+              ? 'modals.quickAdd.buttons.processing'
+              : 'common.continue'
+            ) | translate
+          }}
         </button>
       }
     </div>

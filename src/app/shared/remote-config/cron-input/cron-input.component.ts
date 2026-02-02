@@ -23,6 +23,7 @@ import { Subject, distinctUntilChanged, takeUntil, debounceTime } from 'rxjs';
 import { SchedulerService } from '@app/services';
 import { CronValidationResponse } from '@app/types';
 import { toString as cronstrue } from 'cronstrue';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 type PresetKey =
   | 'daily-9am'
@@ -45,6 +46,7 @@ type PresetKey =
     MatSelectModule,
     MatButtonModule,
     NgxMatTimepickerModule,
+    TranslateModule,
   ],
   templateUrl: './cron-input.component.html',
   styleUrls: ['./cron-input.component.scss'],
@@ -56,6 +58,7 @@ export class CronInputComponent implements OnInit, OnDestroy, OnChanges {
   @Output() validationChange = new EventEmitter<CronValidationResponse>();
 
   private readonly schedulerService = inject(SchedulerService);
+  private readonly translate = inject(TranslateService);
   private readonly destroy$ = new Subject<void>();
   private isInternalUpdate = false;
 
@@ -456,8 +459,7 @@ export class CronInputComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   formatNextRun(dateString: string | null): string {
-    if (!dateString) return 'Unknown';
-
+    if (!dateString) return '';
     try {
       const date = new Date(dateString);
 
@@ -470,11 +472,17 @@ export class CronInputComponent implements OnInit, OnDestroy, OnChanges {
       const deltaSeconds = (date.getTime() - now.getTime()) / 1000;
 
       if (deltaSeconds < 0) {
-        return `in the past (${date.toLocaleString()})`;
+        return this.translate.instant('wizards.appOperation.relativeTime.inPast', {
+          date: date.toLocaleString(),
+        });
       }
 
       const relativeTime = this.formatRelativeTime(deltaSeconds);
-      return `${relativeTime} (${date.toLocaleString()})`;
+      return (
+        this.translate.instant('wizards.appOperation.relativeTime.in', {
+          time: relativeTime,
+        }) + ` (${date.toLocaleString()})`
+      );
     } catch {
       return dateString;
     }
@@ -482,7 +490,7 @@ export class CronInputComponent implements OnInit, OnDestroy, OnChanges {
 
   private formatRelativeTime(seconds: number): string {
     if (seconds < 60) {
-      return 'in less than a minute';
+      return this.translate.instant('wizards.appOperation.relativeTime.lessThanMinute');
     }
 
     const days = Math.floor(seconds / 86400);
@@ -491,15 +499,54 @@ export class CronInputComponent implements OnInit, OnDestroy, OnChanges {
 
     const parts: string[] = [];
     if (days > 0) {
-      parts.push(`${days} day${days > 1 ? 's' : ''}`);
-      if (hours > 0) parts.push(`${hours} hour${hours > 1 ? 's' : ''}`);
+      parts.push(
+        this.translate.instant(
+          days === 1
+            ? 'wizards.appOperation.relativeTime.days.one'
+            : 'wizards.appOperation.relativeTime.days.other',
+          { count: days }
+        )
+      );
+      if (hours > 0) {
+        parts.push(
+          this.translate.instant(
+            hours === 1
+              ? 'wizards.appOperation.relativeTime.hours.one'
+              : 'wizards.appOperation.relativeTime.hours.other',
+            { count: hours }
+          )
+        );
+      }
     } else if (hours > 0) {
-      parts.push(`${hours} hour${hours > 1 ? 's' : ''}`);
-      if (minutes > 0) parts.push(`${minutes} minute${minutes > 1 ? 's' : ''}`);
+      parts.push(
+        this.translate.instant(
+          hours === 1
+            ? 'wizards.appOperation.relativeTime.hours.one'
+            : 'wizards.appOperation.relativeTime.hours.other',
+          { count: hours }
+        )
+      );
+      if (minutes > 0) {
+        parts.push(
+          this.translate.instant(
+            minutes === 1
+              ? 'wizards.appOperation.relativeTime.minutes.one'
+              : 'wizards.appOperation.relativeTime.minutes.other',
+            { count: minutes }
+          )
+        );
+      }
     } else {
-      parts.push(`${minutes} minute${minutes > 1 ? 's' : ''}`);
+      parts.push(
+        this.translate.instant(
+          minutes === 1
+            ? 'wizards.appOperation.relativeTime.minutes.one'
+            : 'wizards.appOperation.relativeTime.minutes.other',
+          { count: minutes }
+        )
+      );
     }
 
-    return `in ${parts.join(', ')}`;
+    return parts.join(', ');
   }
 }

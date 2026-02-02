@@ -11,15 +11,9 @@
     flex: 1;
     min-width: 250px;
     padding: var(--item-padding);
-    background: rgba(var(--app-text-color-rgb), var(--background-opacity));
+    background: var(--sidebar-bg-color);
     border-radius: var(--item-radius);
-    border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
     transition: var(--transition-fast);
-
-    &:hover {
-      background: rgba(var(--primary-color-rgb), var(--background-opacity));
-      border-color: rgba(var(--primary-color-rgb), var(--active-opacity));
-    }
 
     .path-icon-container {
       .folder-button {
@@ -29,8 +23,8 @@
         }
 
         &.inactive {
-          background: rgba(var(--app-text-color-rgb), var(--inactive-opacity));
-          color: var(--secondary-text-color);
+          background: rgba(var(--window-fg-color-rgb), var(--inactive-opacity));
+          color: var(--dim-color);
         }
 
         mat-icon {
@@ -46,14 +40,14 @@
 
       .path-label {
         font-size: var(--font-size-sm);
-        color: var(--secondary-text-color);
+        color: var(--dim-color);
         font-weight: 500;
         margin-bottom: 4px;
       }
 
       .path-value {
         font-size: var(--font-size-base);
-        color: var(--app-text-color);
+        color: var(--window-fg-color);
         font-weight: 400;
         white-space: nowrap;
         overflow: hidden;
@@ -69,7 +63,7 @@
     justify-content: center;
 
     .arrow-icon {
-      color: var(--secondary-text-color);
+      color: var(--dim-color);
       width: var(--icon-size-lg);
       height: var(--icon-size-lg);
     }

@@ -14,20 +14,20 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
-import { CommonModule } from '@angular/common';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { DatePipe, UpperCasePipe } from '@angular/common';
 import { LogContext, RemoteLogEntry, LOG_LEVELS, LogLevel } from '@app/types';
-import { LoggingService } from '@app/services';
+import { LoggingService, BackendTranslationService, ModalService } from '@app/services';
 import { AnsiToHtmlPipe } from 'src/app/shared/pipes/ansi-to-html.pipe';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-logs-modal',
   standalone: true,
   imports: [
-    CommonModule,
     MatProgressSpinnerModule,
     MatIconModule,
     MatFormFieldModule,
@@ -38,6 +38,9 @@ import { AnsiToHtmlPipe } from 'src/app/shared/pipes/ansi-to-html.pipe';
     MatButtonModule,
     MatTooltipModule,
     AnsiToHtmlPipe,
+    DatePipe,
+    UpperCasePipe,
+    TranslateModule,
   ],
   templateUrl: './logs-modal.component.html',
   styleUrls: ['./logs-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -48,6 +51,8 @@ export class LogsModalComponent implements OnInit {
   public data = inject(MAT_DIALOG_DATA) as { remoteName: string };
   private snackBar = inject(MatSnackBar);
   private loggingService = inject(LoggingService);
+  private backendTranslation = inject(BackendTranslationService);
+  private modalService = inject(ModalService);
 
   // Expose log levels to the template
   public readonly logLevels = LOG_LEVELS;
@@ -158,10 +163,6 @@ export class LogsModalComponent implements OnInit {
       // Shallow clone to avoid mutating the actual log data
       const displayContext = { ...context } as any;
 
-      // If we are already showing the 'output' in the visual terminal,
-      // we can optionally hide it from the raw JSON to reduce noise,
-      // OR keep it. Let's keep it for completeness but parse strings.
-
       // If 'response' is a stringified JSON (common in HTTP logs), parse it
       if (displayContext.response && typeof displayContext.response === 'string') {
         try {
@@ -178,9 +179,17 @@ export class LogsModalComponent implements OnInit {
     }
   }
 
-  copyLog(log: RemoteLogEntry): void {
+  /**
+   * Translate log message if it's a backend error/success message
+   */
+  translateLogMessage(message: string): string {
+    return this.backendTranslation.translateBackendMessage(message);
+  }
+
+  async copyLog(log: RemoteLogEntry): Promise<void> {
     const output = this.getCommandOutput(log);
-    let text = `[${log.timestamp}] [${log.level.toUpperCase()}] ${log.message}`;
+    const translatedMessage = this.translateLogMessage(log.message);
+    let text = `[${log.timestamp}] [${log.level.toUpperCase()}] ${translatedMessage}`;
 
     if (output) {
       // Strip ANSI codes for clipboard text
@@ -193,8 +202,13 @@ export class LogsModalComponent implements OnInit {
       text += `\n\nDetails:\n${this.formatContext(log.context)}`;
     }
 
-    navigator.clipboard.writeText(text);
-    this.snackBar.open('Log copied to clipboard', undefined, { duration: 2000 });
+    try {
+      await navigator.clipboard.writeText(text);
+      this.snackBar.open('Log copied to clipboard', undefined, { duration: 2000 });
+    } catch (error) {
+      console.error('Failed to copy log to clipboard:', error);
+      this.snackBar.open('Failed to copy', undefined, { duration: 2000 });
+    }
   }
 
   scrollToBottom(): void {
@@ -213,6 +227,6 @@ export class LogsModalComponent implements OnInit {
 
   @HostListener('document:keydown.escape')
   close(): void {
-    this.dialogRef.close();
+    this.modalService.animatedClose(this.dialogRef);
   }
 }

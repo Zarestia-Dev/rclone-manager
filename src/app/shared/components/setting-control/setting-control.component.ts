@@ -11,6 +11,7 @@ import {
   WritableSignal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import {
   AbstractControl,
   ControlValueAccessor,
@@ -27,17 +28,21 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule, provideNativeDateAdapter } from '@angular/material/core';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { NgxMatTimepickerModule } from 'ngx-mat-timepicker';
 import { RcConfigOption } from '@app/types';
-import { Subject } from 'rxjs';
+import { SENSITIVE_KEYS } from '@app/types';
+import { Subject, map } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { LineBreaksPipe } from '../../pipes/linebreaks.pipe';
-import { RcloneValueMapperService } from '../../services/rclone-value-mapper.service';
-import { ValidatorRegistryService } from '../../services/validator-registry.service';
+import { RcloneOptionTranslatePipe } from '../../pipes/rclone-option-translate.pipe';
+import { RcloneValueMapperService, AppSettingsService } from '@app/services';
+import { ValidatorRegistryService } from '@app/services';
 
 @Component({
   selector: 'app-setting-control',
@@ -51,12 +56,15 @@ import { ValidatorRegistryService } from '../../services/validator-registry.serv
     MatSelectModule,
     MatSlideToggleModule,
     MatIconModule,
+    MatTooltipModule,
     MatButtonModule,
     MatDatepickerModule,
     MatNativeDateModule,
     ScrollingModule,
     NgxMatTimepickerModule,
     LineBreaksPipe,
+    RcloneOptionTranslatePipe,
+    TranslateModule,
   ],
   templateUrl: './setting-control.component.html',
   styleUrls: ['./setting-control.component.scss'],
@@ -73,6 +81,17 @@ import { ValidatorRegistryService } from '../../services/validator-registry.serv
 export class SettingControlComponent implements ControlValueAccessor, OnDestroy {
   private valueMapper = inject(RcloneValueMapperService);
   private validatorRegistry = inject(ValidatorRegistryService);
+  private translate = inject(TranslateService);
+  private appSettingsService = inject(AppSettingsService);
+
+  // Reactive restriction mode from settings
+  restrictMode = toSignal(
+    this.appSettingsService
+      .selectSetting('general.restrict')
+      .pipe(map(setting => (setting?.value as boolean) ?? true)),
+    { initialValue: true }
+  );
+
   /** Caller-provided per-option overrides. Parent components may bind to this Input to change
    * how specific options are presented (for example override DefaultStr for certain options).
    */
@@ -85,6 +104,9 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
     min_age: { DefaultStr: '0s', Default: 0 },
     max_age: { DefaultStr: '0s', Default: 0 },
   };
+
+  /** The provider context for translations (e.g. 's3', 'drive') */
+  @Input() provider?: string | null;
 
   // option stored as a signal for better reactivity
   private optionSignal: WritableSignal<RcConfigOption | null> = signal<RcConfigOption | null>(null);
@@ -261,12 +283,22 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   getDisplayDefault(): string {
     const _val = this.uiDefaultValue();
     if (_val === null || _val === undefined || _val === '') {
-      return 'none';
+      return this.translate.instant('shared.settingControl.none');
     }
     if (Array.isArray(_val)) {
       return _val.join(', ') || '[]';
     }
     return _val.toString();
+  }
+
+  /**
+   * Determines if the current field is sensitive and should be restricted
+   * based on the restrictMode setting
+   */
+  isSensitiveField(): boolean {
+    if (!this.restrictMode()) return false;
+    const fieldName = this.option?.Name?.toLowerCase() || '';
+    return SENSITIVE_KEYS.some(key => fieldName.includes(key.toLowerCase()));
   }
 
   isAtDefault(): boolean {
@@ -670,8 +702,8 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
    * @param commit Final value after stopping. Defaults to true.
    */
   stopHold(commit = true): void {
-    clearTimeout(this.holdTimeout);
-    clearInterval(this.holdInterval);
+    if (this.holdTimeout) clearTimeout(this.holdTimeout);
+    if (this.holdInterval) clearInterval(this.holdInterval);
     this.holdTimeout = null;
     this.holdInterval = null;
 
@@ -762,12 +794,21 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
       errors['bwTimetable']?.message ||
       errors['fileMode']?.message ||
       errors['enum']?.message ||
-      'Invalid value'
+      this.translate.instant('shared.settingControl.errors.invalidValue')
     );
   }
 
   ngOnDestroy(): void {
     this.destroyed$.next();
     this.destroyed$.complete();
+  }
+
+  /**
+   * Prevents clipboard events (paste, copy, cut) on sensitive fields when restrict mode is enabled
+   */
+  preventClipboardOnSensitive(event: ClipboardEvent): void {
+    if (this.isSensitiveField()) {
+      event.preventDefault();
+    }
   }
 }

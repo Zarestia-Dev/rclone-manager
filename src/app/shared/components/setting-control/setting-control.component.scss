@@ -29,19 +29,15 @@
 }
 
 .setting-item {
-  background: var(--secondary-background);
+  background: var(--view-bg-color);
   border-radius: var(--radius-lg);
   padding: var(--space-lg);
-  box-shadow: var(--shadow-light);
+  box-shadow: var(--shadow-gnome);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-md);
   transition: var(--transition-fast);
-
-  &:hover {
-    box-shadow: var(--shadow-elevated);
-  }
 
   .setting-control {
     .stepper-container {

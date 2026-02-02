@@ -7,29 +7,26 @@ use axum::{
 use serde::Deserialize;
 use tauri::Manager;
 
-use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
-use crate::utils::types::all_types::{JobCache, ProfileParams, RcloneState};
+use crate::utils::types::remotes::ProfileParams;
 
 pub async fn get_jobs_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::rclone::state::job::get_jobs;
-    let job_cache = state.app_handle.state::<JobCache>();
-    let jobs = get_jobs(job_cache).await.map_err(anyhow::Error::msg)?;
-    let json_jobs = serde_json::to_value(jobs)?;
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = state.app_handle.state::<BackendManager>();
+    let jobs = backend_manager.job_cache.get_jobs().await;
+    let json_jobs = serde_json::to_value(jobs).map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(json_jobs)))
 }
 
 pub async fn get_active_jobs_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::rclone::state::job::get_active_jobs;
-    let job_cache = state.app_handle.state::<JobCache>();
-    let active_jobs = get_active_jobs(job_cache)
-        .await
-        .map_err(anyhow::Error::msg)?;
-    let json_active_jobs = serde_json::to_value(active_jobs)?;
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = state.app_handle.state::<BackendManager>();
+    let active_jobs = backend_manager.job_cache.get_active_jobs().await;
+    let json_active_jobs = serde_json::to_value(active_jobs).map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(json_active_jobs)))
 }
 
@@ -42,12 +39,13 @@ pub async fn get_jobs_by_source_handler(
     State(state): State<WebServerState>,
     Query(query): Query<JobsBySourceQuery>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::rclone::state::job::get_jobs_by_source;
-    let job_cache = state.app_handle.state::<JobCache>();
-    let jobs = get_jobs_by_source(job_cache, query.source)
-        .await
-        .map_err(anyhow::Error::msg)?;
-    let json_jobs = serde_json::to_value(jobs)?;
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = state.app_handle.state::<BackendManager>();
+    let jobs = backend_manager
+        .job_cache
+        .get_jobs_by_source(&query.source)
+        .await;
+    let json_jobs = serde_json::to_value(jobs).map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(json_jobs)))
 }
 
@@ -60,13 +58,11 @@ pub async fn get_job_status_handler(
     State(state): State<WebServerState>,
     Query(query): Query<JobStatusQuery>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::rclone::state::job::get_job_status;
-    let job_cache = state.app_handle.state::<JobCache>();
-    let opt = get_job_status(job_cache, query.jobid)
-        .await
-        .map_err(anyhow::Error::msg)?;
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = state.app_handle.state::<BackendManager>();
+    let opt = backend_manager.job_cache.get_job(query.jobid).await;
     let json = match opt {
-        Some(j) => serde_json::to_value(j)?,
+        Some(j) => serde_json::to_value(j).map_err(anyhow::Error::msg)?,
         None => serde_json::Value::Null,
     };
     Ok(Json(ApiResponse::success(json)))
@@ -84,22 +80,19 @@ pub async fn stop_job_handler(
     Json(body): Json<StopJobBody>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::rclone::commands::job::stop_job;
-    let job_cache = state.app_handle.state::<JobCache>();
+    use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
     let scheduled_cache = state.app_handle.state::<ScheduledTasksCache>();
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
     stop_job(
         state.app_handle.clone(),
-        job_cache,
         scheduled_cache,
         body.jobid,
         body.remote_name,
-        rclone_state,
     )
     .await
     .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Job stopped successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.job.stopped"
+    ))))
 }
 
 #[derive(Deserialize)]
@@ -111,14 +104,16 @@ pub async fn delete_job_handler(
     State(state): State<WebServerState>,
     Json(body): Json<DeleteJobBody>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
-    use crate::rclone::state::job::delete_job;
-    let job_cache = state.app_handle.state::<JobCache>();
-    delete_job(job_cache, body.jobid)
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = state.app_handle.state::<BackendManager>();
+    backend_manager
+        .job_cache
+        .delete_job(body.jobid, Some(&state.app_handle))
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Job deleted successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.job.deleted"
+    ))))
 }
 
 #[derive(Deserialize)]
@@ -141,9 +136,7 @@ pub async fn start_sync_profile_handler(
         remote_name: body.params.remote_name,
         profile_name: body.params.profile_name,
     };
-    let job_cache = state.app_handle.state::<JobCache>();
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let jobid = start_sync_profile(state.app_handle.clone(), job_cache, rclone_state, params)
+    let jobid = start_sync_profile(state.app_handle.clone(), params)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(jobid)))
@@ -158,9 +151,7 @@ pub async fn start_copy_profile_handler(
         remote_name: body.params.remote_name,
         profile_name: body.params.profile_name,
     };
-    let job_cache = state.app_handle.state::<JobCache>();
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let jobid = start_copy_profile(state.app_handle.clone(), job_cache, rclone_state, params)
+    let jobid = start_copy_profile(state.app_handle.clone(), params)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(jobid)))
@@ -175,9 +166,7 @@ pub async fn start_move_profile_handler(
         remote_name: body.params.remote_name,
         profile_name: body.params.profile_name,
     };
-    let job_cache = state.app_handle.state::<JobCache>();
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let jobid = start_move_profile(state.app_handle.clone(), job_cache, rclone_state, params)
+    let jobid = start_move_profile(state.app_handle.clone(), params)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(jobid)))
@@ -192,10 +181,29 @@ pub async fn start_bisync_profile_handler(
         remote_name: body.params.remote_name,
         profile_name: body.params.profile_name,
     };
-    let job_cache = state.app_handle.state::<JobCache>();
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let jobid = start_bisync_profile(state.app_handle.clone(), job_cache, rclone_state, params)
+    let jobid = start_bisync_profile(state.app_handle.clone(), params)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(jobid)))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RenameProfileBody {
+    pub remote_name: String,
+    pub old_name: String,
+    pub new_name: String,
+}
+
+pub async fn rename_job_profile_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<RenameProfileBody>,
+) -> Result<Json<ApiResponse<usize>>, AppError> {
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = state.app_handle.state::<BackendManager>();
+    let count = backend_manager
+        .job_cache
+        .rename_profile(&body.remote_name, &body.old_name, &body.new_name)
+        .await;
+    Ok(Json(ApiResponse::success(count)))
 }

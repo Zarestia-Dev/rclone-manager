@@ -1,42 +1,31 @@
 use log::{debug, error};
 use serde_json::json;
-use tauri::State;
 
-use crate::rclone::state::engine::ENGINE_STATE;
-use crate::utils::rclone::endpoints::{EndpointHelper, core};
-use crate::utils::types::all_types::RcloneState;
+use crate::rclone::backend::BackendManager;
+use crate::utils::rclone::endpoints::core;
+use crate::utils::types::core::RcloneState;
+use tauri::{AppHandle, Manager};
 
 /// Get RClone core statistics  
 #[tauri::command]
-pub async fn get_core_stats(state: State<'_, RcloneState>) -> Result<serde_json::Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::STATS);
-
-    let response = state
-        .client
-        .post(&url)
-        .send()
+pub async fn get_core_stats(app: AppHandle) -> Result<serde_json::Value, String> {
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    backend
+        .post_json(&app.state::<RcloneState>().client, core::STATS, None)
         .await
-        .map_err(|e| format!("Failed to get core stats: {e}"))?;
-
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        return Err(format!("HTTP {status}: {body}"));
-    }
-
-    serde_json::from_str(&body).map_err(|e| format!("Failed to parse core stats: {e}"))
+        .map_err(|e| format!("Failed to get core stats: {e}"))
 }
 
 /// Get RClone core statistics filtered by group/job
 #[tauri::command]
 pub async fn get_core_stats_filtered(
-    state: State<'_, RcloneState>,
+    app: AppHandle,
     jobid: Option<u64>,
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::STATS);
-
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
     let mut payload = json!({});
 
     if let Some(group) = group {
@@ -50,42 +39,27 @@ pub async fn get_core_stats_filtered(
         debug!("📊 Getting global core stats");
     }
 
-    debug!("📡 Requesting core stats from: {url} with payload: {payload}");
-
-    let response = state
-        .client
-        .post(&url)
-        .json(&payload)
-        .send()
+    backend
+        .post_json(
+            &app.state::<RcloneState>().client,
+            core::STATS,
+            Some(&payload),
+        )
         .await
         .map_err(|e| {
             error!("❌ Failed to get filtered core stats: {e}");
             format!("Failed to get filtered core stats: {e}")
-        })?;
-
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        error!("❌ HTTP error getting core stats: {status} - {body}");
-        return Err(format!("HTTP {status}: {body}"));
-    }
-
-    debug!("✅ Core stats response: {body}");
-    serde_json::from_str(&body).map_err(|e| {
-        error!("❌ Failed to parse filtered core stats: {e}");
-        format!("Failed to parse filtered core stats: {e}")
-    })
+        })
 }
 
 /// Get completed transfers using core/transferred API
 #[tauri::command]
 pub async fn get_completed_transfers(
-    state: State<'_, RcloneState>,
+    app: AppHandle,
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::TRANSFERRED);
-
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
     let mut payload = json!({});
     if let Some(group) = group {
         payload["group"] = json!(group);
@@ -94,34 +68,18 @@ pub async fn get_completed_transfers(
         debug!("📋 Getting all completed transfers");
     }
 
-    debug!("📡 Requesting completed transfers from: {url} with payload: {payload}");
-
-    let response = state
-        .client
-        .post(&url)
-        .json(&payload)
-        .send()
+    #[cfg_attr(not(target_os = "windows"), allow(unused_mut))]
+    let mut value = backend
+        .post_json(
+            &app.state::<RcloneState>().client,
+            core::TRANSFERRED,
+            Some(&payload),
+        )
         .await
         .map_err(|e| {
             error!("❌ Failed to get completed transfers: {e}");
             format!("Failed to get completed transfers: {e}")
         })?;
-
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        error!("❌ HTTP error getting completed transfers: {status} - {body}");
-        return Err(format!("HTTP {status}: {body}"));
-    }
-
-    debug!("✅ Completed transfers response: {body}");
-
-    #[cfg_attr(not(target_os = "windows"), allow(unused_mut))]
-    let mut value: serde_json::Value = serde_json::from_str(&body).map_err(|e| {
-        error!("❌ Failed to parse completed transfers: {e}");
-        format!("Failed to parse completed transfers: {e}")
-    })?;
 
     // Only normalize on Windows
     #[cfg(target_os = "windows")]

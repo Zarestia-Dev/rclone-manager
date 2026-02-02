@@ -3,8 +3,8 @@
     <button>
       <mat-icon svgIcon="export"></mat-icon>
     </button>
-    <p>Export Settings</p>
-    <button mat-icon-button (click)="close()" aria-label="Close">
+    <p>{{ 'modals.export.title' | translate }}</p>
+    <button mat-icon-button (click)="close()" [aria-label]="'common.close' | translate">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </div>
@@ -12,31 +12,31 @@
   @if (isLoading()) {
     <div class="loading-container">
       <mat-spinner diameter="40"></mat-spinner>
-      <p>Preparing export options...</p>
+      <p>{{ 'modals.export.preparing' | translate }}</p>
     </div>
   } @else {
-    <div class="modal-content custom-scrollbar">
+    <div class="modal-content">
       <div class="section-group">
-        <h3 class="section-label">Select Export Type</h3>
+        <h3 class="section-label">{{ 'modals.export.selectType' | translate }}</h3>
 
         <mat-radio-group
           [ngModel]="selectedOption()"
           (ngModelChange)="onExportOptionChange($event)"
           class="options-grid"
         >
-          @for (option of exportOptions; track option.value) {
+          @for (option of exportOptions(); track option.id) {
             <mat-radio-button
-              [value]="option.value"
+              [value]="option.id"
               class="option-card-radio"
-              [class.selected]="selectedOption() === option.value"
+              [class.selected]="selectedOption() === option.id"
             >
               <div class="option-card-content">
                 <div class="icon-wrapper">
                   <mat-icon [svgIcon]="option.icon"></mat-icon>
                 </div>
                 <div class="text-wrapper">
-                  <span class="option-label">{{ option.label }}</span>
-                  <span class="option-desc">{{ option.description }}</span>
+                  <span class="option-label">{{ option.label | translate }}</span>
+                  <span class="option-desc">{{ option.description | translate }}</span>
                 </div>
               </div>
             </mat-radio-button>
@@ -45,16 +45,34 @@
       </div>
 
       <div class="section-group config-section">
+        @if (shouldShowProfileSelection()) {
+          <div class="form-row profile-section">
+            <h4 class="subsection-label">{{ 'modals.export.profiles' | translate }}</h4>
+            <div class="profiles-grid">
+              @for (profile of availableProfiles(); track profile) {
+                <mat-checkbox
+                  [checked]="selectedProfiles().includes(profile)"
+                  (change)="toggleProfile(profile, $event.checked)"
+                  [disabled]="isExporting()"
+                >
+                  {{ profile }}
+                </mat-checkbox>
+              }
+            </div>
+            <p class="section-hint">{{ 'modals.export.profilesHint' | translate }}</p>
+          </div>
+        }
+
         @if (showSpecificRemoteSection()) {
           <div class="form-row">
-            <mat-form-field class="full-width">
-              <mat-label>Select Remote to Export</mat-label>
+            <mat-form-field>
+              <mat-label>{{ 'modals.export.selectRemote' | translate }}</mat-label>
               <mat-icon matPrefix svgIcon="hard-drive" class="field-icon"></mat-icon>
               <mat-select
                 [ngModel]="selectedRemoteName()"
                 (ngModelChange)="onRemoteSelectionChange($event)"
                 [disabled]="isExporting()"
-                placeholder="Choose a remote..."
+                [placeholder]="'modals.export.chooseRemote' | translate"
               >
                 @for (remote of remotes(); track remote) {
                   <mat-option [value]="remote">
@@ -67,14 +85,14 @@
         }
 
         <div class="form-row">
-          <mat-form-field class="full-width">
-            <mat-label>Destination Folder</mat-label>
+          <mat-form-field>
+            <mat-label>{{ 'modals.export.destination' | translate }}</mat-label>
             <mat-icon matPrefix svgIcon="folder" class="field-icon"></mat-icon>
             <input
               matInput
               [value]="exportPath()"
               readonly
-              placeholder="Select destination..."
+              [placeholder]="'modals.export.selectDestination' | translate"
               [disabled]="isExporting()"
             />
             <button
@@ -82,7 +100,7 @@
               matSuffix
               (click)="selectFolder()"
               [disabled]="isExporting()"
-              matTooltip="Browse Folder"
+              [matTooltip]="'modals.export.browseFolder' | translate"
             >
               <mat-icon svgIcon="folder"></mat-icon>
             </button>
@@ -90,15 +108,15 @@
         </div>
 
         <div class="form-row">
-          <mat-form-field class="full-width">
-            <mat-label>Backup Note (Optional)</mat-label>
+          <mat-form-field>
+            <mat-label>{{ 'modals.export.noteLabel' | translate }}</mat-label>
             <mat-icon matPrefix svgIcon="note-sticky" class="field-icon"></mat-icon>
             <textarea
               matInput
               [ngModel]="userNote()"
               (ngModelChange)="onNoteChange($event)"
               rows="1"
-              placeholder="Add a description..."
+              [placeholder]="'modals.export.notePlaceholder' | translate"
               [disabled]="isExporting()"
             ></textarea>
           </mat-form-field>
@@ -112,14 +130,14 @@
             (ngModelChange)="onPasswordProtectionChange($event)"
             [disabled]="isExporting()"
           >
-            Encrypt Export
+            {{ 'modals.export.encrypt' | translate }}
           </mat-slide-toggle>
         </div>
 
         @if (withPassword()) {
           <div class="password-field-wrapper">
-            <mat-form-field class="full-width">
-              <mat-label>Encryption Password</mat-label>
+            <mat-form-field>
+              <mat-label>{{ 'modals.export.passwordLabel' | translate }}</mat-label>
               <mat-icon matPrefix svgIcon="lock" class="field-icon"></mat-icon>
               <input
                 matInput
@@ -127,7 +145,7 @@
                 (ngModelChange)="onPasswordChange($event)"
                 [type]="showPassword() ? 'text' : 'password'"
                 [disabled]="isExporting()"
-                placeholder="Enter password"
+                [placeholder]="'modals.export.passwordPlaceholder' | translate"
                 autocomplete="new-password"
               />
               <button mat-icon-button matSuffix (click)="togglePasswordVisibility()" type="button">
@@ -136,7 +154,7 @@
             </mat-form-field>
             <p class="security-hint">
               <mat-icon svgIcon="info"></mat-icon>
-              This password will be required to restore the backup.
+              {{ 'modals.export.passwordHint' | translate }}
             </p>
           </div>
         }
@@ -144,7 +162,9 @@
     </div>
 
     <div class="modal-actions">
-      <button mat-button (click)="close()" [disabled]="isExporting()">Cancel</button>
+      <button mat-button (click)="close()" [disabled]="isExporting()">
+        {{ 'common.cancel' | translate }}
+      </button>
       <button
         mat-flat-button
         class="primary"
@@ -153,11 +173,11 @@
       >
         @if (isExporting()) {
           <mat-spinner diameter="18" class="button-spinner"></mat-spinner>
-          Exporting...
+          {{ 'modals.export.exporting' | translate }}
         } @else {
           <ng-container>
             <mat-icon svgIcon="export"></mat-icon>
-            Export Now
+            {{ 'modals.export.exportNow' | translate }}
           </ng-container>
         }
       </button>

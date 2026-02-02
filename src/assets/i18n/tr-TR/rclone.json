@@ -1,0 +1,1150 @@
+{
+  "addr": {
+    "title": "Adres",
+    "help": "Sunucunun bağlanacağı IPadresi:Port veya :Port"
+  },
+  "name": {
+    "title": "İsim",
+    "help": "DLNA sunucusunun adı"
+  },
+  "log_trace": {
+    "title": "Log İzleme",
+    "help": "SOAP trafiğinin iz kaydı günlüğünü etkinleştir"
+  },
+  "interface": {
+    "title": "Arayüz",
+    "help": "SSDP için kullanılacak arayüz (gerektikçe tekrarlayın)"
+  },
+  "announce_interval": {
+    "title": "Duyuru Aralığı",
+    "help": "SSDP duyuruları arasındaki aralık"
+  },
+  "delete_excluded": {
+    "title": "Hariç Tutulanları Sil",
+    "help": "Senkronizasyondan hariç tutulan dosyaları hedeften sil"
+  },
+  "exclude_if_present": {
+    "title": "Varsa Hariç Tut",
+    "help": "Dosya adı mevcutsa dizinleri hariç tut"
+  },
+  "files_from": {
+    "title": "Dosyadan Oku",
+    "help": "Kaynak dosya adlarının listesini dosyadan oku (stdinden okumak için - kullanın)"
+  },
+  "files_from_raw": {
+    "title": "Ham Dosyadan Oku",
+    "help": "Kaynak dosya adlarının listesini satırları işlemeden dosyadan oku (stdinden okumak için - kullanın)"
+  },
+  "min_age": {
+    "title": "Minimum Yaş",
+    "help": "Sadece bundan daha eski dosyaları transfer et (saniye veya ms|s|m|h|d|w|M|y soneki)"
+  },
+  "max_age": {
+    "title": "Maksimum Yaş",
+    "help": "Sadece bundan daha yeni dosyaları transfer et (saniye veya ms|s|m|h|d|w|M|y soneki)"
+  },
+  "min_size": {
+    "title": "Minimum Boyut",
+    "help": "Sadece bundan daha büyük dosyaları transfer et (KiB veya B|K|M|G|T|P soneki)"
+  },
+  "max_size": {
+    "title": "Maksimum Boyut",
+    "help": "Sadece bundan daha küçük dosyaları transfer et (KiB veya B|K|M|G|T|P soneki)"
+  },
+  "ignore_case": {
+    "title": "Büyük/Küçük Harf Yoksay",
+    "help": "Filtrelerde büyük/küçük harf duyarlılığını yoksay"
+  },
+  "hash_filter": {
+    "title": "Hash Filtresi",
+    "help": "Dosya adlarını hash k/n veya rastgele @/n ile bölümle"
+  },
+  "filter": {
+    "title": "Filtre",
+    "help": "Bir dosya filtreleme kuralı ekle"
+  },
+  "filter_from": {
+    "title": "Filtre Dosyası",
+    "help": "Dosya filtreleme desenlerini bir dosyadan oku (stdinden okumak için - kullanın)"
+  },
+  "exclude": {
+    "title": "Hariç Tut",
+    "help": "Desene uyan dosyaları hariç tut"
+  },
+  "exclude_from": {
+    "title": "Hariç Tutma Dosyası",
+    "help": "Dosya hariç tutma desenlerini dosyadan oku (stdinden okumak için - kullanın)"
+  },
+  "include": {
+    "title": "Dahil Et",
+    "help": "Desene uyan dosyaları dahil et"
+  },
+  "include_from": {
+    "title": "Dahil Etme Dosyası",
+    "help": "Dosya dahil etme desenlerini dosyadan oku (stdinden okumak için - kullanın)"
+  },
+  "metadata_filter": {
+    "title": "Meta Veri Filtresi",
+    "help": "Bir meta veri filtreleme kuralı ekle"
+  },
+  "metadata_filter_from": {
+    "title": "Meta Veri Filtreleme Dosyası",
+    "help": "Meta veri filtreleme desenlerini bir dosyadan oku (stdinden okumak için - kullanın)"
+  },
+  "metadata_exclude": {
+    "title": "Meta Veri Hariç Tut",
+    "help": "Desene uyan meta verileri hariç tut"
+  },
+  "metadata_exclude_from": {
+    "title": "Meta Veri Hariç Tutma Dosyası",
+    "help": "Meta veri hariç tutma desenlerini dosyadan oku (stdinden okumak için - kullanın)"
+  },
+  "metadata_include": {
+    "title": "Meta Veri Dahil Et",
+    "help": "Desene uyan meta verileri dahil et"
+  },
+  "metadata_include_from": {
+    "title": "Meta Veri Dahil Etme Dosyası",
+    "help": "Meta veri dahil etme desenlerini dosyadan oku (stdinden okumak için - kullanın)"
+  },
+  "public_ip": {
+    "title": "Genel IP",
+    "help": "Pasif bağlantılar için ilan edilecek genel IP adresi"
+  },
+  "passive_port": {
+    "title": "Pasif Port",
+    "help": "Kullanılacak pasif port aralığı"
+  },
+  "user": {
+    "title": "Kullanıcı",
+    "help": "Kimlik doğrulama için kullanıcı adı"
+  },
+  "pass": {
+    "title": "Şifre",
+    "help": "Kimlik doğrulama için şifre"
+  },
+  "cert": {
+    "title": "Sertifika",
+    "help": "TLS PEM anahtarı (sertifika ve CA sertifikasının birleşimi)"
+  },
+  "key": {
+    "title": "Anahtar",
+    "help": "TLS PEM Özel anahtarı"
+  },
+  "server_read_timeout": {
+    "title": "Sunucu Okuma Zaman Aşımı",
+    "help": "Sunucu veri okuma zaman aşımı"
+  },
+  "server_write_timeout": {
+    "title": "Sunucu Yazma Zaman Aşımı",
+    "help": "Sunucu veri yazma zaman aşımı"
+  },
+  "max_header_bytes": {
+    "title": "Maksimum Başlık Baytı",
+    "help": "Maksimum istek başlığı boyutu"
+  },
+  "client_ca": {
+    "title": "İstemci CA",
+    "help": "İstemcileri doğrulamak için istemci sertifika otoritesi"
+  },
+  "baseurl": {
+    "title": "Temel URL",
+    "help": "URL'ler için önek - kök dizin için boş bırakın"
+  },
+  "min_tls_version": {
+    "title": "Minimum TLS Sürümü",
+    "help": "Kabul edilebilir minimum TLS sürümü"
+  },
+  "allow_origin": {
+    "title": "Origin İzni",
+    "help": "Çapraz etki alanı isteğinin (CORS) yürütülebileceği kaynak"
+  },
+  "htpasswd": {
+    "title": "htpasswd Dosyası",
+    "help": "Bir htpasswd dosyası - sağlanmazsa kimlik doğrulama yapılmaz"
+  },
+  "realm": {
+    "title": "Alan (Realm)",
+    "help": "Kimlik doğrulama için alan (realm)"
+  },
+  "salt": {
+    "title": "Tuz (Salt)",
+    "help": "Şifre hashleme tuzu (salt)"
+  },
+  "user_from_header": {
+    "title": "Başlıktan Kullanıcı",
+    "help": "Tanımlanmış bir HTTP başlığından kullanıcı adı"
+  },
+  "template": {
+    "title": "Şablon",
+    "help": "Kullanıcı tanımlı şablon"
+  },
+  "log_file": {
+    "title": "Günlük Dosyası",
+    "help": "Her şeyi bu dosyaya günlüğe kaydet"
+  },
+  "log_file_max_size": {
+    "title": "Günlük Maksimum Boyut",
+    "help": "Döndürülmeden önce günlük dosyasının maksimum boyutu (örn. \"10M\")"
+  },
+  "log_file_max_backups": {
+    "title": "Maksimum Günlük Yedeği",
+    "help": "Saklanacak maksimum eski günlük dosyası sayısı."
+  },
+  "log_file_max_age": {
+    "title": "Günlük Maksimum Yaş",
+    "help": "Eski günlük dosyalarını saklamak için maksimum süre (örn. \"7d\")"
+  },
+  "log_file_compress": {
+    "title": "Günlük Sıkıştırma",
+    "help": "Ayarlanırsa, döndürülen günlük dosyalarını gzip kullanarak sıkıştır."
+  },
+  "log_format": {
+    "title": "Günlük Biçimi",
+    "help": "Günlük biçimi seçeneklerinin virgülle ayrılmış listesi"
+  },
+  "syslog": {
+    "title": "Sistem Günlüğü",
+    "help": "Günlük kaydı için Syslog kullan"
+  },
+  "syslog_facility": {
+    "title": "Sistem Günlüğü Tesisi",
+    "help": "Syslog için tesis (facility), örn. KERN,USER"
+  },
+  "log_systemd": {
+    "title": "Systemd Günlüğü",
+    "help": "Günlükçü için systemd entegrasyonunu etkinleştir"
+  },
+  "windows_event_log_level": {
+    "title": "Windows Olay Günlük Seviyesi",
+    "help": "Windows Olay Günlüğü seviyesi DEBUG|INFO|NOTICE|ERROR|OFF"
+  },
+  "modify_window": {
+    "title": "Değiştirme Penceresi",
+    "help": "Aynı kabul edilmesi için maksimum zaman farkı"
+  },
+  "checkers": {
+    "title": "Denetleyiciler",
+    "help": "Paralel olarak çalıştırılacak denetleyici sayısı"
+  },
+  "transfers": {
+    "title": "Transferler",
+    "help": "Paralel olarak çalıştırılacak dosya transferi sayısı"
+  },
+  "checksum": {
+    "title": "Sağlama Toplamı",
+    "help": "Boyut ve sağlama toplamı ile değişiklikleri kontrol et (varsa, yoksa sadece boyut)"
+  },
+  "size_only": {
+    "title": "Sadece Boyut",
+    "help": "Modtime veya sağlama toplamı değil, yalnızca boyuta göre atla"
+  },
+  "ignore_times": {
+    "title": "Zamanları Yoksay",
+    "help": "Boyut ve zamanla eşleşen öğeleri atlama - hepsini koşulsuz aktar"
+  },
+  "ignore_existing": {
+    "title": "Mevcutları Yoksay",
+    "help": "Hedefte var olan tüm dosyaları atla"
+  },
+  "ignore_errors": {
+    "title": "Hataları Yoksay",
+    "help": "G/Ç hataları olsa bile sil"
+  },
+  "dry_run": {
+    "title": "Deneme Çalıştırması",
+    "help": "Kalıcı değişiklikler yapmadan bir deneme çalıştırması yap"
+  },
+  "interactive": {
+    "title": "Etkileşimli",
+    "help": "Etkileşimli modu etkinleştir"
+  },
+  "links": {
+    "title": "Bağlantılar (Links)",
+    "help": "Sembolik linkleri '.rclonelink' uzantılı normal dosyalara/dosyalardan çevir."
+  },
+  "contimeout": {
+    "title": "Bağlantı Zaman Aşımı",
+    "help": "Bağlantı zaman aşımı"
+  },
+  "timeout": {
+    "title": "Zaman Aşımı",
+    "help": "G/Ç boşta kalma zaman aşımı"
+  },
+  "expect_continue_timeout": {
+    "title": "Bekleme Devam Zaman Aşımı",
+    "help": "HTTP'de expect / 100-continue kullanırken zaman aşımı"
+  },
+  "no_check_certificate": {
+    "title": "Sertifika Kontrolü Yok",
+    "help": "Sunucu SSL sertifikasını doğrulama (güvensiz)"
+  },
+  "ask_password": {
+    "title": "Şifre Sor",
+    "help": "Şifreli yapılandırma için şifre istemeye izin ver"
+  },
+  "password_command": {
+    "title": "Şifre Komutu",
+    "help": "Şifreli yapılandırma için şifre sağlama komutu"
+  },
+  "max_delete": {
+    "title": "Maksimum Silme",
+    "help": "Senkronizasyon yaparken, silme sayısını sınırla"
+  },
+  "max_delete_size": {
+    "title": "Maksimum Silme Boyutu",
+    "help": "Senkronizasyon yaparken, silmelerin toplam boyutunu sınırla"
+  },
+  "track_renames": {
+    "title": "Yeniden Adlandırmaları İzle",
+    "help": "Senkronizasyon yaparken, dosya yeniden adlandırmalarını izle ve mümkünse sunucu tarafı taşıma yap"
+  },
+  "track_renames_strategy": {
+    "title": "İzleme Stratejisi",
+    "help": "Track-renames hash|modtime|leaf kullanırken senkronizasyon stratejileri"
+  },
+  "retries": {
+    "title": "Yeniden Denemeler",
+    "help": "Başarısız olursa işlemleri bu kadar kez yeniden dene"
+  },
+  "retries_sleep": {
+    "title": "Yeniden Deneme Beklemesi",
+    "help": "Başarısız olursa işlemleri yeniden deneme arasındaki aralık, örn. 500ms, 60s, 5m (devre dışı bırakmak için 0)"
+  },
+  "low_level_retries": {
+    "title": "Düşük Seviye Yeniden Denemeler",
+    "help": "Yapılacak düşük seviyeli yeniden deneme sayısı"
+  },
+  "update": {
+    "title": "Güncelle",
+    "help": "Hedefte daha yeni olan dosyaları atla"
+  },
+  "use_server_modtime": {
+    "title": "Sunucu Zamanını Kullan",
+    "help": "Nesne meta verisi yerine sunucu değişiklik zamanını kullan"
+  },
+  "no_gzip_encoding": {
+    "title": "Gzip Kodlaması Yok",
+    "help": "Accept-Encoding: gzip ayarlama"
+  },
+  "max_depth": {
+    "title": "Maksimum Derinlik",
+    "help": "Ayarlanırsa özyineleme derinliğini bununla sınırlar"
+  },
+  "ignore_size": {
+    "title": "Boyutu Yoksay",
+    "help": "Modtime veya sağlama toplamı kullanırken boyutu yoksay"
+  },
+  "ignore_checksum": {
+    "title": "Sağlama Toplamını Yoksay",
+    "help": "Kopyalama sonrası sağlama toplamı kontrolünü atla"
+  },
+  "ignore_case_sync": {
+    "title": "Senkronizasyonda Harf Yoksay",
+    "help": "Senkronizasyon sırasında büyük/küçük harf durumunu yoksay"
+  },
+  "fix_case": {
+    "title": "Harf Durumunu Düzelt",
+    "help": "Kaynağa uyması için büyük/küçük harf duyarsız hedefin yeniden adlandırılmasını zorla"
+  },
+  "no_traverse": {
+    "title": "Dolaşma Yok",
+    "help": "Kopyalama sırasında hedef dosya sistemini dolaşma"
+  },
+  "check_first": {
+    "title": "Önce Kontrol Et",
+    "help": "Transferlere başlamadan önce tüm kontrolleri yap"
+  },
+  "no_check_dest": {
+    "title": "Hedefi Kontrol Etme",
+    "help": "Hedefi kontrol etme, ne olursa olsun kopyala"
+  },
+  "no_unicode_normalization": {
+    "title": "Unicode Normalleştirmesi Yok",
+    "help": "Dosya adlarındaki unicode karakterleri normalleştirme"
+  },
+  "no_update_modtime": {
+    "title": "Zamanı Güncelleme",
+    "help": "Dosyalar aynıysa hedef modtime'ı güncelleme"
+  },
+  "no_update_dir_modtime": {
+    "title": "Dizin Zamanını Güncelleme",
+    "help": "Dizin değişiklik zamanlarını güncelleme"
+  },
+  "compare_dest": {
+    "title": "Hedefi Karşılaştır",
+    "help": "Karşılaştırma sırasında ek sunucu tarafı yolları dahil et"
+  },
+  "copy_dest": {
+    "title": "Hedefe Kopyala",
+    "help": "--compare-dest anlamına gelir ancak aynı zamanda yollardan hedefe dosyaları kopyalar"
+  },
+  "backup_dir": {
+    "title": "Yedek Dizini",
+    "help": "DIR içindeki hiyerarşiye göre yedekler oluştur"
+  },
+  "suffix": {
+    "title": "Sonek",
+    "help": "Değiştirilen dosyalara eklenecek sonek"
+  },
+  "suffix_keep_extension": {
+    "title": "Sonekte Uzantıyı Koru",
+    "help": "--suffix kullanırken uzantıyı koru"
+  },
+  "fast_list": {
+    "title": "Hızlı Liste",
+    "help": "Mümkünse özyinelemeli liste kullan; daha fazla bellek kullanır ancak daha az işlem yapar"
+  },
+  "list_cutoff": {
+    "title": "Liste Sınırı",
+    "help": "Bellekten tasarruf etmek için, bu eşiğin üzerindeki dizin listelerini diskte sırala"
+  },
+  "tpslimit": {
+    "title": "Saniye Başı İşlem Sınırı",
+    "help": "Saniyedeki HTTP işlemlerini bununla sınırla"
+  },
+  "tpslimit_burst": {
+    "title": "Patlama İşlem Sınırı",
+    "help": "--tpslimit için maks işlem patlaması"
+  },
+  "user_agent": {
+    "title": "User Agent",
+    "help": "User-agent'ı belirtilen dizgeye ayarla"
+  },
+  "immutable": {
+    "title": "Değiştirilemez",
+    "help": "Dosyaları değiştirme, mevcut dosyalar değiştirilmişse hata ver"
+  },
+  "auto_confirm": {
+    "title": "Otomatik Onay",
+    "help": "Etkinleştirilirse, konsol onayı isteme"
+  },
+  "stats_unit": {
+    "title": "İstatistik Birimi",
+    "help": "İstatistiklerde veri hızını 'bits' veya 'bytes' / saniye olarak göster"
+  },
+  "stats_file_name_length": {
+    "title": "İstatistik Dosya Adı Uzunluğu",
+    "help": "İstatistiklerde maksimum dosya adı uzunluğu (sınırsız için 0)"
+  },
+  "log_level": {
+    "title": "Günlük Seviyesi",
+    "help": "Günlük seviyesi DEBUG|INFO|NOTICE|ERROR"
+  },
+  "stats_log_level": {
+    "title": "İstatistik Günlük Seviyesi",
+    "help": "--stats çıktısını göstermek için günlük seviyesi DEBUG|INFO|NOTICE|ERROR"
+  },
+  "bwlimit": {
+    "title": "Bant Genişliği Sınırı",
+    "help": "KiB/s cinsinden bant genişliği sınırı, veya B|K|M|G|T|P soneki ya da tam bir zaman tablosu kullanın"
+  },
+  "bwlimit_file": {
+    "title": "Dosya Başı Bant Genişliği Sınırı",
+    "help": "KiB/s cinsinden dosya başına bant genişliği sınırı, veya B|K|M|G|T|P soneki ya da tam bir zaman tablosu kullanın"
+  },
+  "buffer_size": {
+    "title": "Tampon Boyutu",
+    "help": "Her --transfer için dosya okurken bellek içi tampon boyutu"
+  },
+  "streaming_upload_cutoff": {
+    "title": "Akış Yükleme Sınırı",
+    "help": "Dosya boyutu bilinmiyorsa parçalı yüklemeye geçiş eşiği, yükleme eşiğe ulaşıldığında veya dosya bittiğinde başlar"
+  },
+  "dump": {
+    "title": "Döküm (Dump)",
+    "help": "Şunlardan dökülecek öğelerin listesi: headers, bodies, requests, responses, auth, filters, goroutines, openfiles, mapper"
+  },
+  "max_transfer": {
+    "title": "Maksimum Transfer",
+    "help": "Transfer edilecek maksimum veri boyutu"
+  },
+  "max_duration": {
+    "title": "Maksimum Süre",
+    "help": "Rclone'un veri transferi yapacağı maksimum süre"
+  },
+  "cutoff_mode": {
+    "title": "Kesme Modu",
+    "help": "Maksimum transfer limitine ulaşıldığında transferleri durdurma modu HARD|SOFT|CAUTIOUS"
+  },
+  "max_backlog": {
+    "title": "Maksimum Birikmiş İş",
+    "help": "Senkronizasyon veya kontrol birikimindeki maksimum nesne sayısı"
+  },
+  "max_stats_groups": {
+    "title": "Maksimum İstatistik Grubu",
+    "help": "Bellekte tutulacak maksimum istatistik grubu sayısı, maksimumda en eski atılır"
+  },
+  "stats_one_line": {
+    "title": "Tek Satır İstatistik",
+    "help": "İstatistikleri tek satıra sığdır"
+  },
+  "stats_one_line_date": {
+    "title": "Tarihli Tek Satır İstatistik",
+    "help": "--stats-one-line etkinleştir ve geçerli tarih/saat önekini ekle"
+  },
+  "stats_one_line_date_format": {
+    "title": "İstatistik Tarih Biçimi",
+    "help": "--stats-one-line-date etkinleştir ve özel biçimlendirilmiş tarih kullan: Tarih dizgesini çift tırnak (\") içine alın"
+  },
+  "error_on_no_transfer": {
+    "title": "Transfer Olmazsa Hata Ver",
+    "help": "Hiçbir dosya aktarılmazsa çıkış kodu 9 ayarlar, scriptlerde kullanışlıdır"
+  },
+  "progress": {
+    "title": "İlerleme",
+    "help": "Transfer sırasında ilerlemeyi göster"
+  },
+  "progress_terminal_title": {
+    "title": "Terminal Başlığında İlerleme",
+    "help": "İlerlemeyi terminal başlığında göster (-P/--progress gerektirir)"
+  },
+  "use_cookies": {
+    "title": "Çerezleri Kullan",
+    "help": "Oturum cookiejar'ını etkinleştir"
+  },
+  "use_mmap": {
+    "title": "Mmap Kullan",
+    "help": "Mmap tahsis edicisi kullan (belgelere bakın)"
+  },
+  "max_buffer_memory": {
+    "title": "Maksimum Tampon Belleği",
+    "help": "Ayarlanırsa, tampon olarak bu miktardan fazla bellek tahsis etme"
+  },
+  "ca_cert": {
+    "title": "CA Sertifikası",
+    "help": "Sunucuları doğrulamak için kullanılan CA sertifikası"
+  },
+  "client_cert": {
+    "title": "İstemci Sertifikası",
+    "help": "Karşılıklı TLS kimlik doğrulaması için istemci SSL sertifikası (PEM)"
+  },
+  "client_key": {
+    "title": "İstemci Anahtarı",
+    "help": "Karşılıklı TLS kimlik doğrulaması için istemci SSL özel anahtarı (PEM)"
+  },
+  "client_pass": {
+    "title": "İstemci Şifresi",
+    "help": "Karşılıklı TLS kimlik doğrulaması için istemci SSL özel anahtarı şifresi (gizlenmiş)"
+  },
+  "multi_thread_cutoff": {
+    "title": "Çok Kanallı Sınırı",
+    "help": "Bu boyuttan büyük dosyalar için çok iş parçacıklı indirmeleri kullan"
+  },
+  "multi_thread_streams": {
+    "title": "Çok Kanallı Akışlar",
+    "help": "Çok iş parçacıklı indirmeler için kullanılacak akış sayısı"
+  },
+  "multi_thread_write_buffer_size": {
+    "title": "Çok Kanallı Yazma Tamponu",
+    "help": "Çok iş parçacıklı modda yazarken bellek içi tampon boyutu"
+  },
+  "multi_thread_chunk_size": {
+    "title": "Çok Kanallı Parça Boyutu",
+    "help": "Dosya sistemi tarafından ayarlanmamışsa, çok iş parçacıklı indirmeler / yüklemeler için parça boyutu"
+  },
+  "use_json_log": {
+    "title": "JSON Günlüğü Kullan",
+    "help": "Json günlük formatını kullan"
+  },
+  "order_by": {
+    "title": "Sıralama",
+    "help": "Transferlerin nasıl sıralanacağına dair talimatlar, örn. 'size,descending'"
+  },
+  "refresh_times": {
+    "title": "Zamanları Yenile",
+    "help": "Uzak dosyaların modtime'ını yenile"
+  },
+  "no_console": {
+    "title": "Konsol Yok",
+    "help": "Konsol penceresini gizle (yalnızca Windows'ta desteklenir)"
+  },
+  "fs_cache_expire_duration": {
+    "title": "Önbellek Süresi",
+    "help": "Uzakları bu kadar süre önbelleğe al (devre dışı bırakmak için 0)"
+  },
+  "fs_cache_expire_interval": {
+    "title": "Önbellek Kontrol Aralığı",
+    "help": "Süresi dolmuş uzakları kontrol etme aralığı"
+  },
+  "disable_http2": {
+    "title": "HTTP/2 Devre Dışı",
+    "help": "Global taşımada HTTP/2'yi devre dışı bırak"
+  },
+  "human_readable": {
+    "title": "Okunabilir Biçim",
+    "help": "Sayıları insan tarafından okunabilir bir biçimde yazdır, boyutlar Ki|Mi|Gi|Ti|Pi sonekiyle"
+  },
+  "kv_lock_time": {
+    "title": "KV Kilitleme Süresi",
+    "help": "Anahtar-değer veritabanını süreç tarafından kilitli tutmak için maksimum süre"
+  },
+  "disable_http_keep_alives": {
+    "title": "HTTP Canlı Tutma Devre Dışı",
+    "help": "HTTP keep-alive'ları devre dışı bırak ve her bağlantıyı bir kez kullan."
+  },
+  "metadata": {
+    "title": "Meta Veri",
+    "help": "Ayarlanırsa, nesneleri kopyalarken meta verileri koru"
+  },
+  "server_side_across_configs": {
+    "title": "Sunucu Tarafı Çapraz Yapılandırma",
+    "help": "Farklı yapılandırmalar arasında sunucu tarafı işlemlerine (örn. kopyalama) izin ver"
+  },
+  "color": {
+    "title": "Renk",
+    "help": "Renklerin (ve diğer ANSI kodlarının) ne zaman gösterileceği AUTO|NEVER|ALWAYS"
+  },
+  "default_time": {
+    "title": "Varsayılan Zaman",
+    "help": "Dosyalar ve dizinler için modtime bilinmiyorsa gösterilecek zaman"
+  },
+  "inplace": {
+    "title": "Yerinde Yaz (Inplace)",
+    "help": "Temp/yeniden adlandırma ile atomik indirme yerine doğrudan hedef dosyaya indir"
+  },
+  "metadata_mapper": {
+    "title": "Meta Veri Eşleştirici",
+    "help": "Yüklemeden önce meta verileri dönüştürmek için çalıştırılacak program"
+  },
+  "partial_suffix": {
+    "title": "Kısmi Sonek",
+    "help": "--inplace kullanılmadığında geçici dosya adına kısmi sonek ekle"
+  },
+  "max_connections": {
+    "title": "Maksimum Bağlantı",
+    "help": "Maksimum eşzamanlı arka uç API bağlantı sayısı, sınırsız için 0."
+  },
+  "name_transform": {
+    "title": "İsim Dönüşümü",
+    "help": "Kopyalama işlemi sırasında yolları dönüştür."
+  },
+  "http_proxy": {
+    "title": "HTTP Proxy",
+    "help": "HTTP proxy URL'si."
+  },
+  "debug_fuse": {
+    "title": "FUSE Hata Ayıklama",
+    "help": "FUSE dahili hata ayıklaması -v gerektirir"
+  },
+  "attr_timeout": {
+    "title": "Öznitelik Zaman Aşımı",
+    "help": "Dosya/dizin özniteliklerinin önbelleğe alındığı süre"
+  },
+  "option": {
+    "title": "Seçenek",
+    "help": "libfuse/WinFsp için seçenek (gerekirse tekrarlayın)"
+  },
+  "fuse_flag": {
+    "title": "FUSE Bayrağı",
+    "help": "libfuse/WinFsp'ye doğrudan iletilecek bayraklar veya argümanlar (gerekirse tekrarlayın)"
+  },
+  "daemon": {
+    "title": "Daemon (Arka Plan)",
+    "help": "Mount'u arka planda çalıştır ve ana süreci sonlandır (arka plan çıktısı bastırıldığı için, izlemek için --log-file ile --log-format=pid,... kullanın) (Windows'ta desteklenmez)"
+  },
+  "daemon_timeout": {
+    "title": "Daemon Zaman Aşımı",
+    "help": "Rclone'un çekirdeğe yanıt vermesi için zaman sınırı (Windows'ta desteklenmez)"
+  },
+  "default_permissions": {
+    "title": "Varsayılan İzinler",
+    "help": "Çekirdeğin erişim kontrolünü dosya moduna göre uygulamasını sağlar (Windows'ta desteklenmez)"
+  },
+  "allow_non_empty": {
+    "title": "Boş Olmayana İzin Ver",
+    "help": "Boş olmayan bir dizin üzerine mount etmeye izin ver (Windows'ta desteklenmez)"
+  },
+  "allow_root": {
+    "title": "Root İzni",
+    "help": "Root kullanıcısına erişim izni ver (Windows'ta desteklenmez)"
+  },
+  "allow_other": {
+    "title": "Diğer İzinler",
+    "help": "Diğer kullanıcılara erişim izni ver (Windows'ta desteklenmez)"
+  },
+  "async_read": {
+    "title": "Asenkron Okuma",
+    "help": "Asenkron okumaları kullan (Windows'ta desteklenmez)"
+  },
+  "max_read_ahead": {
+    "title": "Maksimum Ön Okuma",
+    "help": "Sıralı okumalar için önceden getirilebilecek bayt sayısı (Windows'ta desteklenmez)"
+  },
+  "write_back_cache": {
+    "title": "Geri Yazma Önbelleği",
+    "help": "Çekirdeğin yazmaları rclone'a göndermeden önce tamponlamasını sağlar (bu olmadan writethrough önbellekleme kullanılır) (Windows'ta desteklenmez)"
+  },
+  "devname": {
+    "title": "Cihaz Adı",
+    "help": "Cihaz adını ayarla - varsayılan remote:path"
+  },
+  "mount_case_insensitive": {
+    "title": "Büyük/Küçük Harf Duyarsız Bağlama",
+    "help": "İşletim sistemine mount'un büyük/küçük harf duyarsız (true) veya duyarlı (false) olduğunu söyle (arka uca bakılmaksızın) (auto)"
+  },
+  "direct_io": {
+    "title": "Doğrudan IO",
+    "help": "Doğrudan G/Ç kullan, veri önbelleklemesini devre dışı bırakır"
+  },
+  "volname": {
+    "title": "Birim Adı",
+    "help": "Birim adını ayarla (yalnızca Windows ve OSX'te desteklenir)"
+  },
+  "noappledouble": {
+    "title": "Apple Double Yok",
+    "help": "Apple Double (._) ve .DS_Store dosyalarını yoksay (yalnızca OSX'te desteklenir)"
+  },
+  "noapplexattr": {
+    "title": "Apple Xattr Yok",
+    "help": "Tüm \"com.apple.*\" genişletilmiş özniteliklerini yoksay (yalnızca OSX'te desteklenir)"
+  },
+  "network_mode": {
+    "title": "Ağ Modu",
+    "help": "Sabit disk sürücüsü yerine uzak ağ sürücüsü olarak bağla (yalnızca Windows'ta desteklenir)"
+  },
+  "daemon_wait": {
+    "title": "Daemon Bekleme",
+    "help": "Daemon'dan hazır mount için bekleme süresi (Linux'ta maksimum süre, OSX/BSD'de sabit uyku süresi) (Windows'ta desteklenmez)"
+  },
+  "nfs_cache_handle_limit": {
+    "title": "NFS Önbellek Sınırı",
+    "help": "eşzamanlı önbelleğe alınan maksimum dosya tutamacı (min 5)"
+  },
+  "nfs_cache_type": {
+    "title": "NFS Önbellek Türü",
+    "help": "Kullanılacak NFS tutamaç önbellek türü"
+  },
+  "nfs_cache_dir": {
+    "title": "NFS Önbellek Dizini",
+    "help": "Ayarlanırsa NFS tutamaç önbelleğinin kullanacağı dizin"
+  },
+  "auth_proxy": {
+    "title": "Yetkilendirme Proxy",
+    "help": "Kimlik doğrulamasından arka uç oluşturmak için kullanılacak bir program"
+  },
+  "rc": {
+    "title": "Uzaktan Kontrol (RC)",
+    "help": "Uzaktan kontrol sunucusunu etkinleştir"
+  },
+  "rc_files": {
+    "title": "RC Dosyaları",
+    "help": "HTTP sunucusunda sunulacak yerel dosyaların yolu"
+  },
+  "rc_serve": {
+    "title": "RC Sunumu",
+    "help": "Uzak nesnelerin sunumunu etkinleştir"
+  },
+  "rc_serve_no_modtime": {
+    "title": "RC Sunumu Zaman Yok",
+    "help": "Değişiklik zamanını okuma (işleri hızlandırabilir)"
+  },
+  "rc_no_auth": {
+    "title": "RC Yetkisiz Erişim",
+    "help": "Belirli yöntemler için kimlik doğrulama gerektirme"
+  },
+  "rc_web_gui": {
+    "title": "RC Web Arayüzü",
+    "help": "WebGUI'yi localhost'ta başlat"
+  },
+  "rc_web_gui_update": {
+    "title": "RC Web Arayüzü Güncelleme",
+    "help": "Web gui'nin en son sürümünü kontrol et ve güncelle"
+  },
+  "rc_web_gui_force_update": {
+    "title": "RC Web Arayüzü Zorla Güncelleme",
+    "help": "Web gui'nin en son sürümüne güncellemeyi zorla"
+  },
+  "rc_web_gui_no_open_browser": {
+    "title": "RC Web Arayüzü Tarayıcıyı Açma",
+    "help": "Tarayıcıyı otomatik olarak açma"
+  },
+  "rc_web_fetch_url": {
+    "title": "RC Web Getirme URL",
+    "help": "webgui için sürümleri getirme URL'si"
+  },
+  "rc_enable_metrics": {
+    "title": "RC Metrikleri Etkinleştir",
+    "help": "Uzaktan kontrol sunucusunda Prometheus metrik yolunu etkinleştir"
+  },
+  "rc_job_expire_duration": {
+    "title": "RC İş Bitirme Süresi",
+    "help": "Bu değerden daha eski bitmiş asenkron işleri sonlandır"
+  },
+  "rc_job_expire_interval": {
+    "title": "RC İş Kontrol Aralığı",
+    "help": "Süresi dolmuş asenkron işleri kontrol etme aralığı"
+  },
+  "metrics_addr": {
+    "title": "Metrik Adresi",
+    "help": "Sunucunun bağlanacağı IPadresi:Port veya :Port"
+  },
+  "rc_addr": {
+    "title": "RC Adresi",
+    "help": "Sunucunun bağlanacağı IPadresi:Port veya :Port"
+  },
+  "rc_server_read_timeout": {
+    "title": "RC Sunucu Okuma Zaman Aşımı",
+    "help": "Sunucu veri okuma zaman aşımı"
+  },
+  "rc_server_write_timeout": {
+    "title": "RC Sunucu Yazma Zaman Aşımı",
+    "help": "Sunucu veri yazma zaman aşımı"
+  },
+  "rc_max_header_bytes": {
+    "title": "RC Maksimum Başlık Baytı",
+    "help": "Maksimum istek başlığı boyutu"
+  },
+  "rc_cert": {
+    "title": "RC Sertifikası",
+    "help": "TLS PEM anahtarı (sertifika ve CA sertifikasının birleşimi)"
+  },
+  "rc_key": {
+    "title": "RC Anahtarı",
+    "help": "TLS PEM Özel anahtarı"
+  },
+  "rc_client_ca": {
+    "title": "RC İstemci CA",
+    "help": "İstemcileri doğrulamak için istemci sertifika otoritesi"
+  },
+  "rc_baseurl": {
+    "title": "RC Temel URL",
+    "help": "URL'ler için önek - kök dizin için boş bırakın"
+  },
+  "rc_min_tls_version": {
+    "title": "RC Minimum TLS Sürümü",
+    "help": "Kabul edilebilir minimum TLS sürümü"
+  },
+  "rc_allow_origin": {
+    "title": "RC Origin İzni",
+    "help": "Çapraz etki alanı isteğinin (CORS) yürütülebileceği kaynak"
+  },
+  "rc_htpasswd": {
+    "title": "RC htpasswd Dosyası",
+    "help": "Bir htpasswd dosyası - sağlanmazsa kimlik doğrulama yapılmaz"
+  },
+  "rc_realm": {
+    "title": "RC Alan (Realm)",
+    "help": "Kimlik doğrulama için alan"
+  },
+  "rc_user": {
+    "title": "RC Kullanıcı",
+    "help": "Kimlik doğrulama için kullanıcı adı"
+  },
+  "rc_pass": {
+    "title": "RC Şifre",
+    "help": "Kimlik doğrulama için şifre"
+  },
+  "rc_salt": {
+    "title": "RC Tuz (Salt)",
+    "help": "Şifre hashleme tuzu"
+  },
+  "rc_user_from_header": {
+    "title": "RC Başlıktan Kullanıcı",
+    "help": "Tanımlanmış bir HTTP başlığından kullanıcı adı"
+  },
+  "rc_template": {
+    "title": "RC Şablon",
+    "help": "Kullanıcı tanımlı şablon"
+  },
+  "metrics_server_read_timeout": {
+    "title": "Metrik Sunucu Okuma Zaman Aşımı",
+    "help": "Sunucu veri okuma zaman aşımı"
+  },
+  "metrics_server_write_timeout": {
+    "title": "Metrik Sunucu Yazma Zaman Aşımı",
+    "help": "Sunucu veri yazma zaman aşımı"
+  },
+  "metrics_max_header_bytes": {
+    "title": "Metrik Maksimum Başlık Baytı",
+    "help": "Maksimum istek başlığı boyutu"
+  },
+  "metrics_cert": {
+    "title": "Metrik Sertifikası",
+    "help": "TLS PEM anahtarı (sertifika ve CA sertifikasının birleşimi)"
+  },
+  "metrics_key": {
+    "title": "Metrik Anahtarı",
+    "help": "TLS PEM Özel anahtarı"
+  },
+  "metrics_client_ca": {
+    "title": "Metrik İstemci CA",
+    "help": "İstemcileri doğrulamak için istemci sertifika otoritesi"
+  },
+  "metrics_baseurl": {
+    "title": "Metrik Temel URL",
+    "help": "URL'ler için önek - kök dizin için boş bırakın"
+  },
+  "metrics_min_tls_version": {
+    "title": "Metrik Minimum TLS Sürümü",
+    "help": "Kabul edilebilir minimum TLS sürümü"
+  },
+  "metrics_allow_origin": {
+    "title": "Metrik Origin İzni",
+    "help": "Çapraz etki alanı isteğinin (CORS) yürütülebileceği kaynak"
+  },
+  "metrics_htpasswd": {
+    "title": "Metrik htpasswd Dosyası",
+    "help": "Bir htpasswd dosyası - sağlanmazsa kimlik doğrulama yapılmaz"
+  },
+  "metrics_realm": {
+    "title": "Metrik Alan (Realm)",
+    "help": "Kimlik doğrulama için alan"
+  },
+  "metrics_user": {
+    "title": "Metrik Kullanıcı",
+    "help": "Kimlik doğrulama için kullanıcı adı"
+  },
+  "metrics_pass": {
+    "title": "Metrik Şifre",
+    "help": "Kimlik doğrulama için şifre"
+  },
+  "metrics_salt": {
+    "title": "Metrik Tuz (Salt)",
+    "help": "Şifre hashleme tuzu"
+  },
+  "metrics_user_from_header": {
+    "title": "Metrik Başlıktan Kullanıcı",
+    "help": "Tanımlanmış bir HTTP başlığından kullanıcı adı"
+  },
+  "metrics_template": {
+    "title": "Metrik Şablon",
+    "help": "Kullanıcı tanımlı şablon"
+  },
+  "stdio": {
+    "title": "Stdio",
+    "help": "Stdin/stdout üzerinde bir sftp sunucusu çalıştır"
+  },
+  "append_only": {
+    "title": "Sadece Ekleme",
+    "help": "Depo verilerinin silinmesine izin verme"
+  },
+  "private_repos": {
+    "title": "Özel Depolar",
+    "help": "Kullanıcılar sadece kendi özel depolarına erişebilir"
+  },
+  "cache_objects": {
+    "title": "Nesneleri Önbelleğe Al",
+    "help": "Listelenen nesneleri önbelleğe al"
+  },
+  "force_path_style": {
+    "title": "Yol Stilini Zorla",
+    "help": "Doğruysa yol stili erişimi, yanlışsa sanal barındırma stilini kullan"
+  },
+  "etag_hash": {
+    "title": "ETag Hashı",
+    "help": "ETag için hangi hash kullanılacak, veya otomatik ya da kapalı olması için boş"
+  },
+  "auth_key": {
+    "title": "Yetkilendirme Anahtarı",
+    "help": "v4 yetkilendirmesi için anahtar çiftini ayarla: access_key_id,secret_access_key"
+  },
+  "no_cleanup": {
+    "title": "Temizlik Yapma",
+    "help": "Nesne silindikten sonra boş klasörü temizleme"
+  },
+  "authorized_keys": {
+    "title": "Yetkili Anahtarlar",
+    "help": "Yetkili anahtarlar dosyası"
+  },
+  "no_auth": {
+    "title": "Yetkilendirme Yok",
+    "help": "Ayarlanırsa kimlik doğrulama olmadan bağlantılara izin ver"
+  },
+  "no_modtime": {
+    "title": "Zaman Yok",
+    "help": "Değişiklik zamanını okuma/yazma (işleri hızlandırabilir)"
+  },
+  "no_checksum": {
+    "title": "Sağlama Toplamı Yok",
+    "help": "Yükleme/indirme sırasında sağlama toplamlarını karşılaştırma"
+  },
+  "no_seek": {
+    "title": "Arama Yok (No Seek)",
+    "help": "Dosyalarda aramaya (seek) izin verme"
+  },
+  "dir_cache_time": {
+    "title": "Dizin Önbellek Süresi",
+    "help": "Dizin girdilerini önbelleğe alma süresi"
+  },
+  "vfs_refresh": {
+    "title": "VFS Yenile",
+    "help": "Başlangıçta arka planda dizin önbelleğini özyinelemeli olarak yeniler"
+  },
+  "poll_interval": {
+    "title": "Sorgulama Aralığı",
+    "help": "Değişiklikleri sorgulamak için bekleme süresi, dir-cache-time'dan küçük olmalı ve yalnızca desteklenen uzaktan kumandalarda (devre dışı bırakmak için 0)"
+  },
+  "read_only": {
+    "title": "Sadece Okunur",
+    "help": "Sadece salt okunur erişime izin ver"
+  },
+  "vfs_links": {
+    "title": "VFS Bağlantıları",
+    "help": "VFS için sembolik linkleri '.rclonelink' uzantılı normal dosyalara/dosyalardan çevir"
+  },
+  "vfs_cache_mode": {
+    "title": "VFS Önbellek Modu",
+    "help": "Önbellek modu off|minimal|writes|full"
+  },
+  "vfs_cache_poll_interval": {
+    "title": "VFS Önbellek Sorgulama Aralığı",
+    "help": "Bayat nesneler için önbelleği sorgulama aralığı"
+  },
+  "vfs_cache_max_age": {
+    "title": "VFS Önbellek Maksimum Yaş",
+    "help": "Önbellekteki nesnelerin son erişiminden bu yana geçen maksimum süre"
+  },
+  "vfs_cache_max_size": {
+    "title": "VFS Önbellek Maksimum Boyut",
+    "help": "Önbellekteki nesnelerin maksimum toplam boyutu (0 sınırsız)"
+  },
+  "vfs_cache_min_free_space": {
+    "title": "VFS Önbellek Minimum Boş Alan",
+    "help": "Önbelleği içeren diskteki hedef minimum boş alan"
+  },
+  "vfs_read_chunk_size": {
+    "title": "VFS Okuma Parça Boyutu",
+    "help": "Kaynak nesneleri parçalar halinde oku"
+  },
+  "vfs_read_chunk_size_limit": {
+    "title": "VFS Okuma Parça Boyut Sınırı",
+    "help": "--vfs-read-chunk-size'den büyükse, sınıra ulaşılana kadar her parça okumasından sonra parça boyutunu ikiye katla ('off' sınırsızdır)"
+  },
+  "vfs_read_chunk_streams": {
+    "title": "VFS Okuma Parça Akışları",
+    "help": "Aynı anda okunacak paralel akış sayısı"
+  },
+  "dir_perms": {
+    "title": "Dizin İzinleri",
+    "help": "Dizin izinleri"
+  },
+  "file_perms": {
+    "title": "Dosya İzinleri",
+    "help": "Dosya izinleri"
+  },
+  "link_perms": {
+    "title": "Bağlantı İzinleri",
+    "help": "Bağlantı (link) izinleri"
+  },
+  "vfs_case_insensitive": {
+    "title": "VFS Harf Duyarsız",
+    "help": "Dosya adı bulunamazsa, büyük/küçük harf duyarsız eşleşme bul"
+  },
+  "vfs_block_norm_dupes": {
+    "title": "VFS Kopya Engelleme",
+    "help": "Aynı dizinde (normalleştirmeden sonra) kopya dosya adları varsa, hata günlüğü kaydet ve kopyaları gizle (performans maliyeti olabilir)"
+  },
+  "vfs_write_wait": {
+    "title": "VFS Yazma Bekleme",
+    "help": "Hata vermeden önce sıralı yazma için bekleme süresi"
+  },
+  "vfs_read_wait": {
+    "title": "VFS Okuma Bekleme",
+    "help": "Arama (seek) yapmadan önce sıralı okuma için bekleme süresi"
+  },
+  "vfs_write_back": {
+    "title": "VFS Geri Yazma",
+    "help": "Önbellek kullanırken son kullanımdan sonra dosyaları geri yazma süresi"
+  },
+  "vfs_read_ahead": {
+    "title": "VFS Ön Okuma",
+    "help": "Cache-mode full kullanırken --buffer-size üzerine ekstra okuma"
+  },
+  "vfs_used_is_size": {
+    "title": "VFS Kullanılan Boyut Hesabı",
+    "help": "Kullanılan boyut için `rclone size` algoritmasını kullan"
+  },
+  "vfs_fast_fingerprint": {
+    "title": "VFS Hızlı Parmak İzi",
+    "help": "Değişiklik tespiti için hızlı (daha az doğru) parmak izlerini kullan"
+  },
+  "vfs_disk_space_total_size": {
+    "title": "VFS Toplam Disk Alanı",
+    "help": "Diskin toplam alanını belirt"
+  },
+  "umask": {
+    "title": "Umask",
+    "help": "Dosya sistemi tarafından ayarlanan izin bitlerini geçersiz kıl (Windows'ta desteklenmez)"
+  },
+  "uid": {
+    "title": "Kullanıcı ID (UID)",
+    "help": "Dosya sistemi tarafından ayarlanan uid alanını geçersiz kıl (Windows'ta desteklenmez)"
+  },
+  "gid": {
+    "title": "Grup ID (GID)",
+    "help": "Dosya sistemi tarafından ayarlanan gid alanını geçersiz kıl (Windows'ta desteklenmez)"
+  },
+  "vfs_metadata_extension": {
+    "title": "VFS Meta Veri Uzantısı",
+    "help": "Meta verileri okumak için uzantıyı ayarla."
+  },
+  "disable_dir_list": {
+    "title": "Dizin Listesini Devre Dışı Bırak",
+    "help": "Bir dizin için GET isteğinde HTML dizin listesini devre dışı bırak"
+  },
+  "create_empty_src_dirs": {
+    "title": "Boş Kaynak Dizinleri Oluştur",
+    "help": "Taşıma/kopyalama/senkronizasyon sonrası hedefte boş kaynak dizinleri oluştur."
+  },
+  "delete_empty_src_dirs": {
+    "title": "Boş Kaynak Dizinleri Sil",
+    "help": "Taşıma sonrası boş kaynak dizinleri sil."
+  },
+  "dryRun": {
+    "title": "Deneme Çalıştırması",
+    "help": "Kalıcı değişiklikler olmadan deneme çalıştırması yap."
+  },
+  "resync": {
+    "title": "Yeniden Senkronizasyon",
+    "help": "Yeniden senkronizasyon çalıştırmasını gerçekleştirir."
+  },
+  "checkAccess": {
+    "title": "Erişim Kontrolü",
+    "help": "RCLONE_TEST dosyaları her iki dosya sisteminde de bulunamazsa iptal et."
+  },
+  "checkFilename": {
+    "title": "Kontrol Dosya Adı",
+    "help": "--check-access için dosya adı."
+  },
+  "maxDelete": {
+    "title": "Maksimum Silme",
+    "help": "Silinen dosya yüzdesi bu eşiğin üzerindeyse senkronizasyonu iptal et."
+  },
+  "force": {
+    "title": "Zorla",
+    "help": "--max-delete güvenlik kontrolünü atla ve senkronizasyonu çalıştır."
+  },
+  "checkSync": {
+    "title": "Senkronizasyon Kontrolü",
+    "help": "Son listelemelerin karşılaştırılmasını kontrol eder."
+  },
+  "remove_empty_dirs": {
+    "title": "Boş Dizinleri Kaldır",
+    "help": "Son temizlik adımında boş dizinleri kaldır."
+  },
+  "filters_file": {
+    "title": "Filtre Dosyası",
+    "help": "Filtreleme desenlerini bir dosyadan oku."
+  },
+  "ignore_listing_checksum": {
+    "title": "Oluşturma Sağlama Toplamını Yoksay",
+    "help": "Listelemeler için sağlama toplamlarını kullanma."
+  },
+  "resilient": {
+    "title": "Esnek (Resilient)",
+    "help": "Belirli daha az ciddi hatalardan sonra gelecekteki çalıştırmaların yeniden denenmesine izin ver."
+  },
+  "work_dir": {
+    "title": "Çalışma Dizini",
+    "help": "Geçmiş dosyaları için sunucu dizini."
+  },
+  "backup_dir1": {
+    "title": "Yedek Dizini 1",
+    "help": "Yol1 için --backup-dir."
+  },
+  "backup_dir2": {
+    "title": "Yedek Dizini 2",
+    "help": "Yol2 için --backup-dir."
+  }
+}

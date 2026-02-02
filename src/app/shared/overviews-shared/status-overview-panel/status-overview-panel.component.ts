@@ -1,4 +1,5 @@
-import { Component, input, computed } from '@angular/core';
+import { Component, input, computed, inject } from '@angular/core';
+import { TranslateService, TranslateModule } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { AppTab } from '@app/types';
@@ -6,11 +7,12 @@ import { AppTab } from '@app/types';
 @Component({
   selector: 'app-status-overview-panel',
   standalone: true,
-  imports: [MatCardModule, MatIconModule],
+  imports: [MatCardModule, MatIconModule, TranslateModule],
   templateUrl: './status-overview-panel.component.html',
   styleUrl: './status-overview-panel.component.scss',
 })
 export class StatusOverviewPanelComponent {
+  private translate = inject(TranslateService);
   mode = input<AppTab>('general');
   totalCount = input(0);
   activeCount = input(0);
@@ -18,22 +20,27 @@ export class StatusOverviewPanelComponent {
 
   title = computed(() => {
     const mode = this.mode();
-    return `${mode.charAt(0).toUpperCase() + mode.slice(1)} Status Overview`;
+    // Use the specific translation key for the title
+    return this.translate.instant('overviews.status.titles.' + mode);
   });
 
   private readonly ACTIVE_LABELS: Record<string, string> = {
-    mount: 'Mounted',
-    sync: 'Syncing',
+    mount: 'overviews.status.labels.mounted',
+    sync: 'overviews.status.labels.syncing',
   };
 
   private readonly INACTIVE_LABELS: Record<string, string> = {
-    mount: 'Unmounted',
-    sync: 'Off Sync',
+    mount: 'overviews.status.labels.unmounted',
+    sync: 'overviews.status.labels.offSync',
   };
 
-  activeLabel = computed(() => this.ACTIVE_LABELS[this.mode()] || 'Active');
+  activeLabel = computed(() =>
+    this.translate.instant(this.ACTIVE_LABELS[this.mode()] || 'overviews.status.labels.active')
+  );
 
-  inactiveLabel = computed(() => this.INACTIVE_LABELS[this.mode()] || 'Inactive');
+  inactiveLabel = computed(() =>
+    this.translate.instant(this.INACTIVE_LABELS[this.mode()] || 'overviews.status.labels.inactive')
+  );
 
   activePercentage = computed(() => {
     const total = this.totalCount();

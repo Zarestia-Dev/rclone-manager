@@ -1,3 +1,4 @@
+#![cfg(not(feature = "web-server"))]
 use tauri::Theme;
 
 /// Set the application theme
@@ -9,9 +10,9 @@ pub async fn set_theme(theme: String, window: tauri::Window) -> Result<(), Strin
     };
 
     if window.theme().unwrap_or(Theme::Light) != theme_enum {
-        window
-            .set_theme(Some(theme_enum))
-            .map_err(|e| format!("Failed to set theme: {e}"))?;
+        window.set_theme(Some(theme_enum)).map_err(
+            |e| crate::localized_error!("backendErrors.system.themeSetFailed", "error" => e),
+        )?;
     }
 
     Ok(())

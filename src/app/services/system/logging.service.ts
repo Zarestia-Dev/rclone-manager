@@ -21,6 +21,5 @@ export class LoggingService extends TauriBaseService {
    */
   async clearRemoteLogs(remoteName: string): Promise<void> {
     await this.invokeCommand('clear_remote_logs', { remoteName });
-    console.log(`Logs for ${remoteName} cleared successfully.`);
   }
 }

@@ -1,10 +1,10 @@
-use log::{debug, error, info, warn};
+use log::{error, info, warn};
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
     core::{check_binaries::build_rclone_command, security::SafeEnvironmentManager},
     utils::types::{
-        all_types::RcApiEngine,
+        core::RcApiEngine,
         events::{RCLONE_ENGINE_ERROR, RCLONE_ENGINE_PASSWORD_ERROR, RCLONE_ENGINE_PATH_ERROR},
     },
 };
@@ -12,7 +12,12 @@ use crate::{
 impl RcApiEngine {
     /// Validate rclone configuration and password before starting the engine
     /// This prevents engine startup failures due to wrong passwords
-    pub async fn validate_config_before_start(&self, app: &AppHandle) -> Result<(), String> {
+    pub async fn validate_config_before_start(
+        &self,
+        app: &AppHandle,
+    ) -> super::error::EngineResult<()> {
+        use super::error::EngineError;
+
         info!("🔍 Validating rclone configuration before engine start...");
 
         // Check if rclone binary exists and is available using shared helpers
@@ -20,21 +25,24 @@ impl RcApiEngine {
             Ok(available) => {
                 if !available {
                     let path = crate::core::check_binaries::read_rclone_path(app);
-                    let err_msg = format!("Rclone binary not found at: {}", path.display());
-                    error!("❌ {}", err_msg);
-                    return Err(err_msg);
+                    error!("❌ Rclone binary not found at: {}", path.display());
+                    return Err(EngineError::RcloneNotFound);
                 }
             }
             Err(e) => {
-                let err_msg = format!("Failed to check rclone availability: {}", e);
-                error!("❌ {}", err_msg);
-                return Err(err_msg);
+                error!("❌ Failed to check rclone availability: {}", e);
+                return Err(EngineError::RcloneNotFound);
             }
         }
 
-        // Use dedicated method to check if config is encrypted
-        // This uses a combination of methods to reliably detect encryption
-        let is_encrypted = self.is_config_encrypted(app).await;
+        // Use shared method from core security to check if config is encrypted
+        let is_encrypted = match crate::core::security::is_config_encrypted(app.clone()).await {
+            Ok(encrypted) => encrypted,
+            Err(e) => {
+                warn!("⚠️ Unexpected error checking encryption: {}", e);
+                false
+            }
+        };
 
         // If config is not encrypted, we're done - no password needed
         if !is_encrypted {
@@ -56,16 +64,33 @@ impl RcApiEngine {
         // Check if we have a password to test
         if !env_vars.contains_key("RCLONE_CONFIG_PASS") {
             warn!("🔑 No password available for encrypted configuration");
-            return Err("Configuration is encrypted but no password is available".to_string());
+            return Err(EngineError::ConfigValidationFailed(
+                "Configuration is encrypted but no password is available".to_string(),
+            ));
         }
 
         // Run 'rclone listremotes' to test the password
-        let output = build_rclone_command(app, None, None, None)
+
+        // Fetch Local backend to get the configured config path
+        use crate::rclone::backend::BackendManager;
+        let backend_manager = app.state::<BackendManager>();
+        let config_path_string = backend_manager.get_local_config_path().await.map_err(|e| {
+            EngineError::ConfigValidationFailed(format!("Local backend error: {}", e))
+        })?;
+
+        let config_path = config_path_string.as_deref();
+
+        let output = build_rclone_command(app, None, config_path, None)
             .args(["listremotes", "--ask-password=false"])
             .envs(&env_vars)
             .output()
             .await
-            .map_err(|e| format!("Failed to execute rclone command: {}", e))?;
+            .map_err(|e| {
+                EngineError::ConfigValidationFailed(format!(
+                    "Failed to execute rclone command: {}",
+                    e
+                ))
+            })?;
 
         let stderr = String::from_utf8_lossy(&output.stderr);
 
@@ -80,13 +105,12 @@ impl RcApiEngine {
                 || stderr.contains("most likely wrong password")
                 || stderr.contains("unable to decrypt configuration")
             {
-                let error_msg = "Wrong password for encrypted rclone configuration";
-                error!("❌ {}", error_msg);
-                Err(error_msg.to_string())
+                error!("❌ Wrong password for encrypted rclone configuration");
+                Err(EngineError::WrongPassword)
             } else if stderr.contains("Failed to load config file") {
                 let error_msg = format!("Failed to load rclone config file: {}", stderr.trim());
                 error!("❌ {}", error_msg);
-                Err(error_msg)
+                Err(EngineError::ConfigValidationFailed(error_msg))
             } else {
                 // Unknown error, but we can still try to start the engine
                 warn!(
@@ -98,83 +122,37 @@ impl RcApiEngine {
         }
     }
 
-    /// Quick check if configuration is encrypted without requiring password
-    pub async fn is_config_encrypted(&self, _app: &AppHandle) -> bool {
-        debug!("🔍 Checking if rclone configuration is encrypted...");
+    /// Test configuration and password without starting the engine (async)
+    pub async fn validate_config(&mut self, app: &AppHandle) -> bool {
+        use super::error::EngineError;
 
-        let rclone_command = build_rclone_command(_app, None, None, None);
+        info!("🧪 Testing rclone configuration and password...");
 
-        // Don't use env_clear() as it removes PATH and prevents rclone from finding
-        // system utilities like getent on Linux systems.
-        let output = match rclone_command
-            .args(["listremotes", "--ask-password=false"])
-            .output()
-            .await
-        {
-            Ok(output) => output,
-            Err(e) => {
-                warn!("Failed to execute rclone command: {}", e);
-                return false;
-            }
-        };
-
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        debug!("🔍 rclone listremotes stderr: {}", stderr.trim());
-
-        // Check for encryption error message
-        if stderr.contains("unable to decrypt configuration and not allowed to ask for password")
-            || stderr.contains("Failed to load config file") && stderr.contains("unable to decrypt")
-        {
-            debug!("🔒 Configuration is encrypted");
-            true
-        } else if output.status.success() {
-            debug!("🔓 Configuration is NOT encrypted");
-            false
-        } else {
-            // Other error - assume not encrypted if we can't determine
-            warn!("⚠️ Unexpected error checking encryption: {}", stderr);
-            false
-        }
-    }
-
-    /// Test configuration and password without starting the engine (synchronous version for init)
-    pub fn validate_config_sync(&mut self, app: &AppHandle) -> bool {
-        info!("🧪 Testing rclone configuration and password synchronously...");
-
-        // Use blocking call for synchronous validation
-        let result = tauri::async_runtime::block_on(self.validate_config_before_start(app));
+        let result = self.validate_config_before_start(app).await;
 
         match result {
             Ok(_) => {
                 info!("✅ Rclone configuration and password are valid");
-                self.password_error = false;
-                self.path_error = false;
+                self.clear_errors();
                 true
             }
-            Err(e) => {
+            Err(ref e) => {
                 error!("❌ Rclone configuration validation failed: {}", e);
 
-                if e.contains("Rclone binary not found") {
-                    // Missing executable on filesystem
-                    self.password_error = false;
-                    self.path_error = true;
-                } else if e.contains("Wrong password") || e.contains("Invalid environment password")
-                {
-                    // Stored password is incorrect
-                    self.password_error = true;
-                    self.path_error = false;
-                } else if e.contains("no password is available") {
-                    // Encrypted config without password
-                    self.password_error = true;
-                    self.path_error = false;
-                } else if e.contains("Failed to load rclone config file") {
-                    // Config file issue, treat as generic error for now
-                    self.password_error = false;
-                    self.path_error = false;
-                } else {
-                    // Unknown error, fall back to generic handling
-                    self.password_error = false;
-                    self.path_error = false;
+                // Match on error type - no string parsing needed
+                match e {
+                    EngineError::RcloneNotFound => {
+                        self.set_password_error(false);
+                        self.set_path_error(true);
+                    }
+                    EngineError::WrongPassword | EngineError::PasswordRequired => {
+                        self.set_password_error(true);
+                        self.set_path_error(false);
+                    }
+                    _ => {
+                        // Generic error, clear specific flags
+                        self.clear_errors();
+                    }
                 }
 
                 let event = if self.path_error {
@@ -191,19 +169,5 @@ impl RcApiEngine {
                 false
             }
         }
-    }
-
-    pub fn update_port(&mut self, app: &AppHandle, new_port: u16) {
-        info!(
-            "🔄 Updating Rclone API port from {} to {}",
-            self.current_api_port, new_port
-        );
-
-        // Import the stop and start methods from lifecycle module
-        if let Err(e) = crate::rclone::engine::lifecycle::stop(self) {
-            error!("Failed to stop Rclone process: {e}");
-        }
-        self.current_api_port = new_port;
-        crate::rclone::engine::lifecycle::start(self, app);
     }
 }

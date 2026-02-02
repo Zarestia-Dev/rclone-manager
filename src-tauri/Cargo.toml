@@ -1,6 +1,6 @@
 [package]
 name = "rclone-manager"
-version = "0.1.9"
+version = "0.2.0"
 description = "RClone Manager is a user-friendly GUI for Rclone, designed to simplify the process of managing and transferring files across various cloud storage services. With its intuitive interface, users can easily configure and execute Rclone commands without needing extensive technical knowledge."
 authors = ["Hakan İSMAİL"]
 edition = "2024"
@@ -19,16 +19,16 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["protocol-asset", "tray-icon", "image-png"] }
+tauri = { version = "2", features = ["protocol-asset", "tray-icon", "image-png", "devtools"] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri-plugin-dialog = "2"
 tokio = { version = "1.45.1", features = ["full", "process"] }
-tauri-plugin-http = "2"
+tauri-plugin-http = { version = "2", default-features = false, features = ["rustls-tls"] }
 tauri-plugin-os = "2"
 zip = "4.0.0"
-reqwest = { version = "0.12.19", features = ["json", "blocking"] }
+reqwest = { version = "0.12.19", default-features = false, features = ["json", "blocking", "rustls-tls"] }
 tauri-plugin-store = "2"
 tauri-plugin-notification = "2"
 once_cell = "1.21.3"
@@ -43,25 +43,30 @@ thiserror = "2.0"
 netstat2 = "0.11.2"
 sysinfo = "0.33.1"
 tauri-plugin-shell = "2"
+tauri-plugin-window-state = "2"
 tokio-cron-scheduler = "0.13.0"
 croner = "3.0.1"
 sevenz-rust2 = "0.20.0"
 
-# Implementation based on: https://github.com/tauri-apps/tauri/issues/12022
-# Until Tauri provides a built-in Rust API, this manual implementation is required
+# rcman - Rust Config Manager library
+# Path is used for local development, version is used when path is not available (crates.io)
+# Note: keychain feature is added via target-specific dependencies below (not supported on Android/iOS)
+rcman = { version = "0.1.4", features = ["backup", "derive", "profiles"] }
+
 urlencoding = "2.1"
-dunce = "1.0"
+futures = { version = "0.3" }
 
 # Web server dependencies (optional)
 axum = { version = "0.7", optional = true }
 tower-http = { version = "0.5", features = ["cors", "fs", "trace"], optional = true }
-futures = { version = "0.3", optional = true }
 async-stream = { version = "0.3", optional = true }
 base64 = { version = "0.22", optional = true }
 axum-server = { version = "0.7", features = ["tls-rustls"], optional = true }
 rustls = { version = "0.23", features = ["ring"], optional = true }
 anyhow = {version = "1.0.98", optional = true}
 clap = { version = "4.5", features = ["derive", "env"], optional = true }
+tokio-util = { version = "0.7.17", features = ["io"] }
+mime_guess = "2.0.5"
 
 [target.'cfg(unix)'.dependencies]
 nix = "0.30.1"
@@ -83,14 +88,18 @@ keyring = { version = "3", features = ["apple-native"] }
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-autostart = "2"
 tauri-plugin-global-shortcut = "2"
-tauri-plugin-single-instance = "2"
-tauri-plugin-updater = { version = "2", optional = true }
+# Single instance plugin
+# TODO: Remove this when the plugin is merged into tauri
+# https://github.com/tauri-apps/plugins-workspace/pull/3194
+tauri-plugin-single-instance = { git = "https://github.com/mrquantumoff/plugins-workspace", branch = "single-instance" }
+tauri-plugin-updater = { version = "2", default-features = false, features = ["rustls-tls"], optional = true }
 url = { version = "2.5", optional = true }
+rcman = { version = "0.1.4", features = ["keychain", "profiles"] }
 
 [features]
 default = ["updater"]
 updater = ["tauri-plugin-updater", "url"]
-web-server = ["axum", "tower-http", "futures", "async-stream", "axum-server", "rustls", "base64", "anyhow", "clap"]
+web-server = ["axum", "tower-http", "async-stream", "axum-server", "rustls", "base64", "anyhow", "clap"]
 portable = []
 flatpak = []
 deb = []

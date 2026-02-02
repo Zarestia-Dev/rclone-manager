@@ -47,7 +47,7 @@ export class FormatRateValuePipe implements PipeTransform {
   private formatBytesPerSecond(bytes: number): string {
     if (bytes <= 0) return 'Unlimited';
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
     return `${parseFloat((bytes / Math.pow(1024, i)).toFixed(2))} ${units[i]}/s`;
   }
 }

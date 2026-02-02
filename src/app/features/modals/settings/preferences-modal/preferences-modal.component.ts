@@ -10,6 +10,7 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -21,10 +22,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
 import { Subject } from 'rxjs';
-import { takeUntil, debounceTime, pairwise, startWith } from 'rxjs/operators';
+import { takeUntil } from 'rxjs/operators';
 
 // Services and Types
-import { ValidatorRegistryService } from '../../../../shared/services/validator-registry.service';
+import { ValidatorRegistryService, ModalService } from '@app/services';
 import { AppSettingsService, FileSystemService } from '@app/services';
 import { SearchResult, SettingMetadata, SettingTab } from '@app/types';
 
@@ -43,6 +44,7 @@ import { SearchResult, SettingMetadata, SettingTab } from '@app/types';
     MatButtonModule,
     MatProgressSpinnerModule,
     SearchContainerComponent,
+    TranslateModule,
   ],
   templateUrl: './preferences-modal.component.html',
   styleUrls: ['./preferences-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -68,18 +70,20 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
   private destroyed$ = new Subject<void>();
 
   readonly tabs: SettingTab[] = [
-    { label: 'General', icon: 'wrench', key: 'general' },
-    { label: 'Core', icon: 'puzzle-piece', key: 'core' },
-    { label: 'Developer', icon: 'flask', key: 'developer' },
+    { label: 'modals.preferences.tabs.general', icon: 'wrench', key: 'general' },
+    { label: 'modals.preferences.tabs.core', icon: 'puzzle-piece', key: 'core' },
+    { label: 'modals.preferences.tabs.developer', icon: 'flask', key: 'developer' },
   ];
 
-  readonly searchSuggestions = ['API Port', 'Start on Startup', 'Debug', 'Bandwidth'];
+  searchSuggestions: string[] = [];
 
   private dialogRef = inject(MatDialogRef<PreferencesModalComponent>);
   private fb = inject(FormBuilder);
   private appSettingsService = inject(AppSettingsService);
   private fileSystemService = inject(FileSystemService);
   private validatorRegistry = inject(ValidatorRegistryService);
+  private translate = inject(TranslateService);
+  private modalService = inject(ModalService);
 
   private readonly HOLD_DELAY = 300;
   private readonly HOLD_INTERVAL = 75;
@@ -107,24 +111,38 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     this.filteredTabs = [...this.tabs];
   }
 
+  private normalizeValue(val: unknown): string {
+    return val === null || val === undefined || val === '' ? '' : String(val);
+  }
+
   private valuesEqual(a: unknown, b: unknown): boolean {
     if (Array.isArray(a) && Array.isArray(b)) {
       return a.length === b.length && a.every((val, idx) => val === b[idx]);
     }
-    const normalizeEmpty = (val: unknown): string =>
-      val === null || val === undefined || val === '' ? '' : String(val);
-    return normalizeEmpty(a) === normalizeEmpty(b);
+    return this.normalizeValue(a) === this.normalizeValue(b);
   }
 
   ngOnInit(): void {
     this.onResize();
-    this.appSettingsService.loadSettings();
     this.subscribeToOptions();
+    this.populateSearchSuggestions();
+  }
+
+  private populateSearchSuggestions(): void {
+    const suggestionKeys = ['apiPort', 'startup', 'debug', 'bandwidth'];
+    this.translate
+      .get(suggestionKeys.map(k => `modals.preferences.searchSuggestions.${k}`))
+      .pipe(takeUntil(this.destroyed$))
+      .subscribe(translations => {
+        this.searchSuggestions = Object.values(translations);
+      });
   }
 
   ngOnDestroy(): void {
     this.destroyed$.next();
     this.destroyed$.complete();
+    // Ensure hold timers are cleaned up
+    this.stopHold(false);
   }
 
   @HostListener('window:resize')
@@ -135,9 +153,10 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
   private subscribeToOptions(): void {
     this.appSettingsService.options$.pipe(takeUntil(this.destroyed$)).subscribe(options => {
       if (options) {
-        this.optionsMap = options;
-        this.buildForm(options);
-        this.subscribeToFormChanges();
+        // Enchant metadata with inferred types and labels if missing
+        const enriched = this.enrichMetadata(options);
+        this.optionsMap = enriched;
+        this.buildForm(enriched);
         this.isLoading = false;
       } else {
         this.isLoading = true;
@@ -145,12 +164,47 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     });
   }
 
+  private enrichMetadata(
+    options: Record<string, SettingMetadata>
+  ): Record<string, SettingMetadata> {
+    const enriched: Record<string, SettingMetadata> = {};
+    for (const [fullKey, meta] of Object.entries(options)) {
+      const [, key] = fullKey.split('.');
+
+      // Infer Type if missing
+      if (!meta.value_type) {
+        enriched[fullKey] = { ...meta, value_type: this.inferValueType(meta, key) };
+      } else {
+        enriched[fullKey] = meta;
+      }
+    }
+    return enriched;
+  }
+
+  private inferValueType(meta: SettingMetadata, key: string): SettingMetadata['value_type'] {
+    if (meta.options && meta.options.length > 0) return 'string';
+
+    // Check key patterns for specialized types
+    if (key.includes('bandwidth')) return 'bandwidth';
+    if (key.endsWith('_urls') || key.endsWith('_apps')) return 'string[]'; // Lists
+    if (key.includes('path') || key.includes('file')) return 'file';
+    if (key.includes('folder') || key.includes('directory')) return 'folder';
+
+    // Fallback to type of default value
+    const def = meta.default;
+    if (typeof def === 'boolean') return 'bool';
+    if (typeof def === 'number') return 'int';
+    if (Array.isArray(def)) return 'string[]';
+
+    return 'string' as const;
+  }
+
   private buildForm(options: Record<string, SettingMetadata>): void {
     const formGroups: Record<string, FormGroup> = {};
 
     for (const fullKey in options) {
       const meta = options[fullKey];
-      const [category, key] = fullKey.split('.');
+      const { category, key } = this.splitKey(fullKey);
 
       if (!formGroups[category]) {
         if (this.tabs.some(t => t.key === category)) {
@@ -161,66 +215,101 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
       }
 
       const validators = this.getValidators(meta, fullKey);
-      const control =
-        meta.value_type === 'string[]'
-          ? this.fb.array(
-              ((meta.value || []) as string[]).map(val => this.fb.control(val)),
-              validators
-            )
-          : this.fb.control(meta.value, validators);
+
+      let control: FormControl | FormArray;
+
+      if (meta.value_type === 'string[]') {
+        const itemValidators = this.getItemValidators(meta);
+        control = this.fb.array(
+          ((meta.value || []) as string[]).map(val => this.fb.control(val, itemValidators)),
+          validators
+        );
+      } else {
+        control = this.fb.control(meta.value, validators);
+      }
 
       formGroups[category].addControl(key, control);
     }
     this.settingsForm = this.fb.group(formGroups);
   }
 
-  private subscribeToFormChanges(): void {
-    this.settingsForm.valueChanges
-      .pipe(
-        takeUntil(this.destroyed$),
-        debounceTime(500), // Wait for user to stop typing
-        startWith(this.settingsForm.value), // Emit initial value to compare against
-        pairwise() // Get [previous, current] values
-      )
-      .subscribe(([prev, next]) => {
-        for (const category in next) {
-          for (const key in next[category]) {
-            const prevValue = prev[category]?.[key];
-            const nextValue = next[category][key];
+  /**
+   * Called on blur for text inputs - saves the current value
+   */
+  onBlur(category: string, key: string): void {
+    this.commitSetting(category, key);
+  }
 
-            // If value has changed, update it
-            if (!this.valuesEqual(prevValue, nextValue)) {
-              this.updateSetting(category, key, nextValue);
-            }
-          }
-        }
-      });
+  /**
+   * Called on selection change for dropdowns and toggles - saves immediately
+   */
+  onValueChange(category: string, key: string): void {
+    this.commitSetting(category, key);
+  }
+
+  private commitSetting(category: string, key: string): void {
+    const control = this.getFormControl(category, key);
+    if (control?.valid) {
+      this.updateSetting(category, key, control.value);
+    }
+  }
+
+  private getItemValidators(meta: SettingMetadata): ValidatorFn[] {
+    const validators: ValidatorFn[] = [];
+    if (meta.reserved && meta.reserved.length > 0) {
+      validators.push(this.createReservedValidator(meta.reserved));
+    }
+    return validators;
+  }
+
+  private createReservedValidator(reserved: string[]): ValidatorFn {
+    return (control: AbstractControl): Record<string, any> | null => {
+      const value = control.value;
+      if (!value) return null;
+
+      // Check for exact match or starts with (for flags)
+      // Reserved: ["--rc-serve"]
+      // Input: "--rc-serve" -> Invalid
+      // Input: "--rc-serve=123" -> Invalid
+      // Input: "--log-file" -> Invalid
+
+      const isReserved = reserved.some(
+        r => value === r || value.startsWith(r + '=') || value.startsWith(r + ' ')
+      );
+
+      return isReserved ? { reserved: { value, reservedValues: reserved } } : null;
+    };
   }
 
   private getValidators(meta: SettingMetadata, fullKey: string): ValidatorFn[] {
     const validators: ValidatorFn[] = [];
-    if (meta.required) {
+    if (meta.metadata.required) {
       validators.push(Validators.required);
     }
 
     switch (meta.value_type) {
       case 'int':
         validators.push(this.validatorRegistry.integerValidator());
-        if (meta.min_value !== undefined) validators.push(Validators.min(meta.min_value));
-        if (meta.max_value !== undefined) validators.push(Validators.max(meta.max_value));
+        if (meta.min !== undefined) validators.push(Validators.min(meta.min));
+        if (meta.max !== undefined) validators.push(Validators.max(meta.max));
         break;
       case 'file':
-      case 'folder':
-        validators.push(this.validatorRegistry.getValidator('crossPlatformPath')!);
+      case 'folder': {
+        const validator = this.validatorRegistry.getValidator('crossPlatformPath');
+        if (validator) validators.push(validator);
         break;
+      }
       case 'string[]':
         if (fullKey === 'core.connection_check_urls') {
-          validators.push(this.validatorRegistry.getValidator('urlList')!);
+          const validator = this.validatorRegistry.getValidator('urlList');
+          if (validator) validators.push(validator);
         }
         break;
-      case 'bandwidth':
-        validators.push(this.validatorRegistry.getValidator('bandwidthFormat')!);
+      case 'bandwidth': {
+        const validator = this.validatorRegistry.getValidator('bandwidthFormat');
+        if (validator) validators.push(validator);
         break;
+      }
     }
     return validators;
   }
@@ -240,15 +329,21 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
       finalValue = finalValue.filter(item => item && String(item).trim() !== '');
     }
 
-    if (meta.engine_restart) {
-      this.pendingRestartChanges.set(`${category}.${key}`, {
-        category,
-        key,
-        value: finalValue,
-        metadata: meta,
-      });
+    if (meta.metadata.engine_restart) {
+      if (this.valuesEqual(meta.value, finalValue)) {
+        this.pendingRestartChanges.delete(`${category}.${key}`);
+      } else {
+        this.pendingRestartChanges.set(`${category}.${key}`, {
+          category,
+          key,
+          value: finalValue,
+          metadata: meta,
+        });
+      }
     } else {
-      this.appSettingsService.saveSetting(category, key, finalValue);
+      if (!this.valuesEqual(meta.value, finalValue)) {
+        this.appSettingsService.saveSetting(category, key, finalValue);
+      }
     }
   }
 
@@ -266,6 +361,19 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
 
   getMetadata(category: string, key: string): SettingMetadata {
     return this.optionsMap[`${category}.${key}`];
+  }
+
+  isControlInvalid(category: string, key: string, index?: number): boolean {
+    const ctrl =
+      index !== undefined
+        ? this.getArrayItemControl(category, key, index)
+        : this.getFormControl(category, key);
+    return !!ctrl && ctrl.invalid && ctrl.touched;
+  }
+
+  private splitKey(fullKey: string): { category: string; key: string } {
+    const [category, key] = fullKey.split('.');
+    return { category, key };
   }
 
   onIntegerInput(event: KeyboardEvent): void {
@@ -301,7 +409,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     meta: SettingMetadata
   ): void {
     this.stopHold(false);
-    const performAction = () => {
+    const performAction = (): void => {
       if (action === 'increment') this.incrementNumber(category, key, meta);
       else this.decrementNumber(category, key, meta);
     };
@@ -321,7 +429,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
   incrementNumber(category: string, key: string, meta: SettingMetadata): void {
     const control = this.getFormControl(category, key) as FormControl;
     const step = meta.step || 1;
-    const max = meta.max_value ?? Infinity;
+    const max = meta.max ?? Infinity;
     const newValue = (Number(control.value) || 0) + step;
     if (newValue <= max) control.setValue(newValue);
   }
@@ -329,19 +437,22 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
   decrementNumber(category: string, key: string, meta: SettingMetadata): void {
     const control = this.getFormControl(category, key) as FormControl;
     const step = meta.step || 1;
-    const min = meta.min_value ?? -Infinity;
+    const min = meta.min ?? -Infinity;
     const newValue = (Number(control.value) || 0) - step;
     if (newValue >= min) control.setValue(newValue);
   }
 
   addArrayItem(category: string, key: string): void {
     const control = this.getFormControl(category, key) as FormArray;
-    control.push(this.fb.control(''));
+    const meta = this.getMetadata(category, key);
+    const itemValidators = this.getItemValidators(meta);
+    control.push(this.fb.control('', itemValidators));
   }
 
   removeArrayItem(category: string, key: string, index: number): void {
     const control = this.getFormControl(category, key) as FormArray;
     control.removeAt(index);
+    this.updateSetting(category, key, control.value);
   }
 
   async openFilePicker(category: string, key: string): Promise<void> {
@@ -354,18 +465,37 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     if (result) this.getFormControl(category, key).setValue(result);
   }
 
-  getValidationMessage(category: string, key: string): string {
-    const ctrl = this.getFormControl(category, key);
+  getValidationMessage(category: string, key: string, index?: number): string {
+    let ctrl: AbstractControl | null;
+
+    if (index !== undefined) {
+      ctrl = this.getArrayItemControl(category, key, index);
+    } else {
+      ctrl = this.getFormControl(category, key);
+    }
+
     if (!ctrl?.errors) return '';
     const meta = this.getMetadata(category, key);
-    if (ctrl.hasError('required')) return 'This field is required.';
-    if (ctrl.hasError('integer')) return 'Must be a valid whole number.';
-    if (ctrl.hasError('min')) return `Value must be at least ${meta.min_value}.`;
-    if (ctrl.hasError('max')) return `Value must be no more than ${meta.max_value}.`;
-    if (ctrl.hasError('invalidPath')) return 'Please enter a valid absolute file path.';
-    if (ctrl.hasError('bandwidth')) return 'Invalid format (e.g., 10M or 5M:2M).';
-    if (ctrl.hasError('urlArray')) return 'All items must be valid URLs (e.g., https://...).';
-    return 'Invalid value.';
+    if (ctrl.hasError('required'))
+      return this.translate.instant('modals.preferences.validation.required');
+    if (ctrl.hasError('integer'))
+      return this.translate.instant('modals.preferences.validation.integer');
+    if (ctrl.hasError('min'))
+      return this.translate.instant('modals.preferences.validation.min', { val: meta.min });
+    if (ctrl.hasError('max'))
+      return this.translate.instant('modals.preferences.validation.max', { val: meta.max });
+    if (ctrl.hasError('invalidPath'))
+      return this.translate.instant('modals.preferences.validation.invalidPath');
+    if (ctrl.hasError('bandwidth'))
+      return this.translate.instant('modals.preferences.validation.bandwidth');
+    if (ctrl.hasError('urlArray'))
+      return this.translate.instant('modals.preferences.validation.urlArray');
+    if (ctrl.hasError('reserved'))
+      return this.translate.instant('modals.preferences.validation.reserved', {
+        value: ctrl.errors['reserved'].value,
+      });
+
+    return this.translate.instant('modals.preferences.validation.invalid');
   }
 
   onSearchTextChange(searchText: string): void {
@@ -376,19 +506,46 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
       return;
     }
     for (const [fullKey, meta] of Object.entries(this.optionsMap)) {
+      const displayName = meta.metadata.display_name || meta.metadata.label || '';
+      const helpText = meta.metadata.help_text || meta.metadata.description || '';
+
       if (
-        meta.display_name.toLowerCase().includes(this.searchQuery) ||
-        meta.help_text.toLowerCase().includes(this.searchQuery)
+        displayName.toLowerCase().includes(this.searchQuery) ||
+        helpText.toLowerCase().includes(this.searchQuery)
       ) {
-        const [category, key] = fullKey.split('.');
-        this.searchResults.push({ category, key });
+        const { category, key } = this.splitKey(fullKey);
+        if (this.tabs.some(t => t.key === category) && this.getFormControl(category, key)) {
+          this.searchResults.push({ category, key });
+        }
       }
     }
   }
 
   getCategoryDisplayName(category: string): string {
     const tab = this.tabs.find(tab => tab.key === category);
-    return tab ? tab.label : category.charAt(0).toUpperCase() + category.slice(1);
+    if (tab) return this.translate.instant(tab.label);
+    return category.charAt(0).toUpperCase() + category.slice(1);
+  }
+
+  getSettingLabel(_category: string, _key: string, meta: SettingMetadata): string {
+    // Backend now sends translation keys directly, just translate them
+    const labelKey = meta.metadata.label || meta.metadata.display_name;
+    if (!labelKey) return _key;
+    return this.translate.instant(labelKey);
+  }
+
+  getSettingDescription(_category: string, _key: string, meta: SettingMetadata): string {
+    // Backend now sends translation keys directly, just translate them
+    const descKey = meta.metadata.description || meta.metadata.help_text;
+    if (!descKey) return '';
+    return this.translate.instant(descKey);
+  }
+
+  getOptionLabel(_category: string, _key: string, option: unknown): string {
+    // Backend now sends translation keys directly for option labels
+    const opt = option as { value: unknown; label: unknown };
+    const labelKey = opt?.label ?? option;
+    return this.translate.instant(String(labelKey));
   }
 
   getObjectKeys(obj: Record<string, unknown>): string[] {
@@ -397,7 +554,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
 
   @HostListener('document:keydown.escape')
   close(): void {
-    this.dialogRef.close();
+    this.modalService.animatedClose(this.dialogRef);
   }
 
   @HostListener('document:keydown.control.f', ['$event'])
@@ -422,10 +579,29 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
   }
 
   async resetSetting(category: string, key: string): Promise<void> {
-    try {
-      await this.appSettingsService.resetSetting(category, key);
-    } catch (error) {
-      console.error(`Failed to reset setting ${category}.${key}`, error);
+    const meta = this.getMetadata(category, key);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const defaultValue = (meta as any).default;
+
+    // Update the form control to the default value
+    const control = this.getFormControl(category, key);
+    if (control) this.resetControlValue(control, defaultValue, meta);
+
+    // If this setting requires restart, add to pending changes
+    if (meta.metadata.engine_restart) {
+      this.pendingRestartChanges.set(`${category}.${key}`, {
+        category,
+        key,
+        value: defaultValue,
+        metadata: meta,
+      });
+    } else {
+      // Otherwise reset immediately
+      try {
+        await this.appSettingsService.resetSetting(category, key);
+      } catch (error) {
+        console.error(`Failed to reset setting ${category}.${key}`, error);
+      }
     }
   }
 
@@ -433,6 +609,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     const meta = this.getMetadata(category, key);
     const control = this.getFormControl(category, key);
     if (!meta || !control) return false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const defaultValue = (meta as any).default;
     return !this.valuesEqual(defaultValue, control.value);
   }
@@ -462,12 +639,27 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     this.isDiscardingChanges = true;
     for (const change of this.pendingRestartChanges.values()) {
       const originalValue = this.getMetadata(change.category, change.key).value;
-      this.getFormControl(change.category, change.key).setValue(originalValue, {
-        emitEvent: false,
-      });
+      const control = this.getFormControl(change.category, change.key);
+      if (control) this.resetControlValue(control, originalValue, change.metadata);
     }
     this.pendingRestartChanges.clear();
     this.isDiscardingChanges = false;
+  }
+
+  private resetControlValue(
+    control: FormControl | FormArray,
+    value: unknown,
+    meta: SettingMetadata
+  ): void {
+    if (control instanceof FormArray) {
+      const itemValidators = this.getItemValidators(meta);
+      control.clear();
+      (Array.isArray(value) ? value : []).forEach(val => {
+        control.push(this.fb.control(val, itemValidators));
+      });
+    } else {
+      control.setValue(value, { emitEvent: false });
+    }
   }
 
   getPendingChangesList(): {
@@ -477,7 +669,8 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     value: unknown;
   }[] {
     return Array.from(this.pendingRestartChanges.values()).map(change => ({
-      displayName: change.metadata.display_name,
+      displayName:
+        change.metadata.metadata.display_name || change.metadata.metadata.label || change.key,
       category: change.category,
       key: change.key,
       value: change.value,

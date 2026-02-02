@@ -1,0 +1,537 @@
+<div class="modal">
+  <div class="modal-header" data-tauri-drag-region>
+    <button>
+      <mat-icon svgIcon="server"></mat-icon>
+    </button>
+    <p>{{ 'modals.backend.title' | translate }}</p>
+    <button mat-icon-button (click)="close()" [attr.aria-label]="'common.close' | translate">
+      <mat-icon svgIcon="circle-xmark"></mat-icon>
+    </button>
+  </div>
+
+  <div class="modal-content">
+    @if (isLoading()) {
+      <div class="loading-overlay">
+        <mat-spinner diameter="40"></mat-spinner>
+      </div>
+    }
+
+    <!-- Backend List -->
+    @if (formState().mode === 'closed') {
+      <div class="backends-list">
+        @for (backend of backends(); track backend.name) {
+          <div
+            class="backend-card"
+            [class.active]="backend.is_active"
+            [class.switching]="switchingTo() === backend.name"
+            (click)="!backend.is_active && switchToBackend(backend.name)"
+            (keydown.enter)="!backend.is_active && switchToBackend(backend.name)"
+            tabindex="0"
+            [attr.aria-label]="'modals.backend.switchTitle' | translate: { name: backend.name }"
+          >
+            <!-- Backend Icon with Status -->
+            <div
+              class="backend-icon"
+              [class.local]="backend.is_local"
+              [class]="getStatusClass(backend)"
+              [matTooltip]="getStatusTooltip(backend)"
+            >
+              <mat-icon [svgIcon]="getBackendIcon(backend)"></mat-icon>
+              <span class="status-dot" [class]="getStatusClass(backend)"></span>
+            </div>
+
+            <!-- Backend Info -->
+            <div class="backend-info">
+              <div class="backend-title">
+                <span class="name">{{ backend.name }}</span>
+                @if (backend.is_active) {
+                  <span class="badge active">{{ 'modals.backend.active' | translate }}</span>
+                }
+              </div>
+              <div class="backend-subtitle">
+                <span class="address">{{ backend.host }}:{{ backend.port }}</span>
+                @if (backend.version) {
+                  <span class="separator">•</span>
+                  <span class="version">{{ backend.version }}</span>
+                }
+                @if (backend.os) {
+                  <span class="separator">•</span>
+                  <span class="os">{{ backend.os }}</span>
+                }
+                @if (backend.runtime_config_path) {
+                  <span class="separator">•</span>
+                  <mat-icon
+                    svgIcon="file-lines"
+                    [matTooltip]="
+                      ('modals.backend.activeConfigPath' | translate) +
+                      ': ' +
+                      backend.runtime_config_path
+                    "
+                  ></mat-icon>
+                }
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="backend-actions">
+              <button
+                mat-icon-button
+                (click)="$event.stopPropagation(); startEdit(backend)"
+                [matTooltip]="'modals.backend.editBackend' | translate"
+                [attr.aria-label]="'modals.backend.editBackend' | translate"
+              >
+                <mat-icon svgIcon="pen"></mat-icon>
+              </button>
+
+              <button
+                mat-icon-button
+                (click)="$event.stopPropagation(); testBackend(backend.name)"
+                [disabled]="testingBackend() !== null"
+                [matTooltip]="'modals.backend.testConnection' | translate"
+                [attr.aria-label]="'modals.backend.testConnection' | translate"
+              >
+                @if (testingBackend() === backend.name) {
+                  <mat-spinner diameter="18"></mat-spinner>
+                } @else {
+                  <mat-icon svgIcon="bolt"></mat-icon>
+                }
+              </button>
+
+              @if (backend.name !== 'Local') {
+                <button
+                  mat-icon-button
+                  class="warn"
+                  (click)="$event.stopPropagation(); removeBackend(backend.name)"
+                  [disabled]="backend.is_active"
+                  [matTooltip]="
+                    backend.is_active
+                      ? ('modals.backend.switchFirst' | translate)
+                      : ('modals.backend.removeTooltip' | translate)
+                  "
+                >
+                  <mat-icon svgIcon="trash"></mat-icon>
+                </button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Add/Edit Form -->
+    @if (formState().mode !== 'closed') {
+      <form [formGroup]="backendForm" (ngSubmit)="saveBackend()">
+        <!-- Tabbed Interface for Local Backend -->
+        @if (formState().editingName === 'Local') {
+          <mat-tab-group>
+            <!-- Tab 1: Connection & OAuth -->
+            <mat-tab [label]="'modals.backend.connectionTab' | translate">
+              <div class="tab-content">
+                <div class="form-row">
+                  <mat-form-field class="host-field" appearance="fill">
+                    <mat-label>{{ 'modals.backend.host' | translate }}</mat-label>
+                    <mat-icon matPrefix svgIcon="globe"></mat-icon>
+                    <input matInput formControlName="host" />
+                  </mat-form-field>
+
+                  <mat-form-field class="port-field" appearance="fill">
+                    <mat-label>{{ 'modals.backend.port' | translate }}</mat-label>
+                    <input matInput type="number" formControlName="port" />
+                  </mat-form-field>
+                </div>
+
+                <div class="auth-group">
+                  <mat-expansion-panel
+                    [expanded]="backendForm.get('has_auth')?.value"
+                    (opened)="setAuthStatus(true)"
+                    (closed)="setAuthStatus(false)"
+                    hideToggle="true"
+                  >
+                    <mat-expansion-panel-header>
+                      <mat-panel-title>
+                        <mat-icon svgIcon="key"></mat-icon>
+                        {{ 'modals.backend.enableAuth' | translate }}
+                      </mat-panel-title>
+                      <mat-slide-toggle
+                        [checked]="backendForm.get('has_auth')?.value"
+                        (change)="setAuthStatus($event.checked)"
+                        (click)="$event.stopPropagation()"
+                      ></mat-slide-toggle>
+                    </mat-expansion-panel-header>
+
+                    <div class="auth-fields">
+                      <mat-form-field appearance="fill">
+                        <mat-icon matPrefix svgIcon="user"></mat-icon>
+                        <mat-label>{{ 'modals.backend.username' | translate }}</mat-label>
+                        <input matInput formControlName="username" />
+                        @if (backendForm.get('username')?.hasError('required')) {
+                          <mat-error>{{ 'common.required' | translate }}</mat-error>
+                        }
+                      </mat-form-field>
+                      <mat-form-field appearance="fill">
+                        <mat-icon matPrefix svgIcon="lock"></mat-icon>
+                        <mat-label>{{ 'modals.backend.password' | translate }}</mat-label>
+                        <input
+                          matInput
+                          [type]="showPassword() ? 'text' : 'password'"
+                          formControlName="password"
+                        />
+                        <button
+                          mat-icon-button
+                          matSuffix
+                          (click)="togglePasswordVisibility()"
+                          type="button"
+                        >
+                          <mat-icon [svgIcon]="showPassword() ? 'eye-slash' : 'eye'"></mat-icon>
+                        </button>
+                        @if (backendForm.get('password')?.hasError('required')) {
+                          <mat-error>{{ 'common.required' | translate }}</mat-error>
+                        }
+                      </mat-form-field>
+                    </div>
+                  </mat-expansion-panel>
+                </div>
+
+                <div class="oauth-group">
+                  <h4>{{ 'modals.backend.oauthSettings' | translate }}</h4>
+                  <div class="form-row">
+                    <mat-form-field class="host-field" appearance="fill">
+                      <mat-label>{{ 'modals.backend.oauthHost' | translate }}</mat-label>
+                      <input matInput formControlName="oauth_host" />
+                    </mat-form-field>
+
+                    <mat-form-field class="port-field" appearance="fill">
+                      <mat-label>{{ 'modals.backend.oauthPort' | translate }}</mat-label>
+                      <input matInput type="number" formControlName="oauth_port" />
+                    </mat-form-field>
+                  </div>
+                </div>
+
+                <mat-form-field appearance="fill">
+                  <mat-label>{{ 'modals.backend.configPath' | translate }}</mat-label>
+                  <mat-icon
+                    matPrefix
+                    svgIcon="file-lines"
+                    [class]="getEditingBackendRuntimePath() ? 'primary' : ''"
+                    matTooltip="{{
+                      getEditingBackendRuntimePath()
+                        ? ('modals.backend.activeConfigPath' | translate) +
+                          ': ' +
+                          getEditingBackendRuntimePath()
+                        : ''
+                    }}"
+                  ></mat-icon>
+                  <input
+                    matInput
+                    formControlName="config_path"
+                    [placeholder]="'modals.backend.configPathPlaceholder' | translate"
+                  />
+                  <button
+                    mat-icon-button
+                    matSuffix
+                    (click)="selectConfigFile()"
+                    type="button"
+                    [disabled]="!isConfigSelectionAllowed()"
+                    [matTooltip]="
+                      isConfigSelectionAllowed()
+                        ? ('modals.backend.selectConfigFile' | translate)
+                        : ('modals.backend.notifications.onlyActiveBackend' | translate)
+                    "
+                  >
+                    <mat-icon svgIcon="file"></mat-icon>
+                  </button>
+                </mat-form-field>
+              </div>
+            </mat-tab>
+
+            <mat-tab [label]="'modals.backend.securityTab' | translate">
+              <div class="tab-content">
+                <app-backend-security></app-backend-security>
+              </div>
+            </mat-tab>
+          </mat-tab-group>
+        } @else {
+          <!-- Tabbed Interface for Remote Backends -->
+          <mat-tab-group>
+            <!-- Tab 1: Connection & Settings -->
+            <mat-tab [label]="'modals.backend.connectionTab' | translate">
+              <div class="tab-content">
+                <!-- Copy Options (only in Add mode) -->
+                @if (formState().mode === 'add') {
+                  <div class="copy-options-section">
+                    <mat-expansion-panel>
+                      <mat-expansion-panel-header>
+                        <mat-panel-title>
+                          <mat-icon svgIcon="copy"></mat-icon>
+                          <span>{{ 'modals.backend.copyOptions.title' | translate }}</span>
+                        </mat-panel-title>
+                        <mat-panel-description>
+                          {{ 'modals.backend.copyOptions.description' | translate }}
+                        </mat-panel-description>
+                      </mat-expansion-panel-header>
+
+                      <div class="copy-panel-content">
+                        <div class="copy-selects">
+                          <mat-form-field appearance="fill" subscriptSizing="dynamic">
+                            <mat-label>{{
+                              'modals.backend.copyOptions.backendConfig' | translate
+                            }}</mat-label>
+                            <mat-icon matPrefix svgIcon="file-lines"></mat-icon>
+                            <mat-select [(value)]="copyBackendFrom">
+                              <mat-option value="none">
+                                {{ 'modals.backend.copyOptions.fromZero' | translate }}
+                              </mat-option>
+                              @for (backend of backends(); track backend.name) {
+                                <mat-option [value]="backend.name">
+                                  {{ backend.name }}
+                                  @if (backend.is_local) {
+                                    <span class="badge">{{
+                                      'modals.backend.local' | translate
+                                    }}</span>
+                                  }
+                                </mat-option>
+                              }
+                            </mat-select>
+                            <mat-hint>{{
+                              'modals.backend.copyOptions.backendHint' | translate
+                            }}</mat-hint>
+                          </mat-form-field>
+
+                          <mat-form-field appearance="fill" subscriptSizing="dynamic">
+                            <mat-label>{{
+                              'modals.backend.copyOptions.remotesConfig' | translate
+                            }}</mat-label>
+                            <mat-icon matPrefix svgIcon="cloud"></mat-icon>
+                            <mat-select [(value)]="copyRemotesFrom">
+                              <mat-option value="none">
+                                {{ 'modals.backend.copyOptions.fromZero' | translate }}
+                              </mat-option>
+                              @for (backend of backends(); track backend.name) {
+                                <mat-option [value]="backend.name">
+                                  {{ backend.name }}
+                                  @if (backend.is_local) {
+                                    <span class="badge">{{
+                                      'modals.backend.local' | translate
+                                    }}</span>
+                                  }
+                                </mat-option>
+                              }
+                            </mat-select>
+                            <mat-hint>{{
+                              'modals.backend.copyOptions.remotesHint' | translate
+                            }}</mat-hint>
+                          </mat-form-field>
+                        </div>
+                      </div>
+                    </mat-expansion-panel>
+                  </div>
+                }
+
+                <mat-form-field appearance="fill">
+                  <mat-label>{{ 'modals.backend.name' | translate }}</mat-label>
+                  <mat-icon matPrefix svgIcon="tag"></mat-icon>
+                  <input matInput formControlName="name" />
+                  @if (hasDuplicateName()) {
+                    <mat-error>{{ 'modals.backend.nameExists' | translate }}</mat-error>
+                  }
+                </mat-form-field>
+
+                <div class="form-row">
+                  <mat-form-field class="host-field" appearance="fill">
+                    <mat-label>{{ 'modals.backend.host' | translate }}</mat-label>
+                    <mat-icon matPrefix svgIcon="globe"></mat-icon>
+                    <input matInput formControlName="host" />
+                    @if (hasDuplicateHost()) {
+                      <mat-error>{{ 'modals.backend.hostExists' | translate }}</mat-error>
+                    }
+                  </mat-form-field>
+
+                  <mat-form-field class="port-field" appearance="fill">
+                    <mat-label>{{ 'modals.backend.port' | translate }}</mat-label>
+                    <input matInput type="number" formControlName="port" />
+                  </mat-form-field>
+                </div>
+
+                <div class="auth-group">
+                  <mat-expansion-panel
+                    [expanded]="backendForm.get('has_auth')?.value"
+                    (opened)="setAuthStatus(true)"
+                    (closed)="setAuthStatus(false)"
+                    hideToggle="true"
+                  >
+                    <mat-expansion-panel-header>
+                      <mat-panel-title>
+                        <mat-icon svgIcon="key"></mat-icon>
+                        {{ 'modals.backend.enableAuth' | translate }}
+                      </mat-panel-title>
+                      <mat-slide-toggle
+                        [checked]="backendForm.get('has_auth')?.value"
+                        (change)="setAuthStatus($event.checked)"
+                        (click)="$event.stopPropagation()"
+                      ></mat-slide-toggle>
+                    </mat-expansion-panel-header>
+
+                    <div class="auth-fields">
+                      <mat-form-field appearance="fill">
+                        <mat-icon matPrefix svgIcon="user"></mat-icon>
+                        <mat-label>{{ 'modals.backend.username' | translate }}</mat-label>
+                        <input matInput formControlName="username" />
+                        @if (backendForm.get('username')?.hasError('required')) {
+                          <mat-error>{{ 'common.required' | translate }}</mat-error>
+                        }
+                      </mat-form-field>
+                      <mat-form-field appearance="fill">
+                        <mat-icon matPrefix svgIcon="lock"></mat-icon>
+                        <mat-label>{{ 'modals.backend.password' | translate }}</mat-label>
+                        <input
+                          matInput
+                          [type]="showPassword() ? 'text' : 'password'"
+                          formControlName="password"
+                        />
+                        <button
+                          mat-icon-button
+                          matSuffix
+                          (click)="togglePasswordVisibility()"
+                          type="button"
+                        >
+                          <mat-icon [svgIcon]="showPassword() ? 'eye-slash' : 'eye'"></mat-icon>
+                        </button>
+                        @if (backendForm.get('password')?.hasError('required')) {
+                          <mat-error>{{ 'common.required' | translate }}</mat-error>
+                        }
+                      </mat-form-field>
+                    </div>
+                  </mat-expansion-panel>
+                </div>
+
+                <mat-form-field appearance="fill">
+                  <mat-label>{{ 'modals.backend.configPath' | translate }}</mat-label>
+                  <mat-icon
+                    matPrefix
+                    svgIcon="file-lines"
+                    [class]="getEditingBackendRuntimePath() ? 'primary' : ''"
+                    matTooltip="{{
+                      getEditingBackendRuntimePath()
+                        ? ('modals.backend.activeConfigPath' | translate) +
+                          ': ' +
+                          getEditingBackendRuntimePath()
+                        : ''
+                    }}"
+                  ></mat-icon>
+                  <input
+                    matInput
+                    formControlName="config_path"
+                    [placeholder]="'modals.backend.configPathPlaceholder' | translate"
+                  />
+                  <button
+                    mat-icon-button
+                    matSuffix
+                    (click)="selectConfigFile()"
+                    type="button"
+                    [disabled]="!isConfigSelectionAllowed()"
+                    [matTooltip]="
+                      isConfigSelectionAllowed()
+                        ? ('modals.backend.selectConfigFile' | translate)
+                        : ('modals.backend.notifications.onlyActiveBackend' | translate)
+                    "
+                  >
+                    <mat-icon svgIcon="file"></mat-icon>
+                  </button>
+                </mat-form-field>
+              </div>
+            </mat-tab>
+
+            <!-- Tab 2: Security (Only in Edit mode for status/remove, always for input) -->
+            <mat-tab [label]="'modals.backend.remoteSecurity.title' | translate">
+              <div class="tab-content">
+                <!-- Config Password Input (Always visible) -->
+                <mat-form-field appearance="fill">
+                  <mat-label>{{ 'modals.backend.configPassword' | translate }}</mat-label>
+                  <mat-icon matPrefix svgIcon="lock"></mat-icon>
+                  <input
+                    matInput
+                    [type]="showConfigPassword() ? 'text' : 'password'"
+                    formControlName="config_password"
+                  />
+                  <button
+                    mat-icon-button
+                    matSuffix
+                    (click)="toggleConfigPasswordVisibility()"
+                    type="button"
+                  >
+                    <mat-icon [svgIcon]="showConfigPassword() ? 'eye-slash' : 'eye'"></mat-icon>
+                  </button>
+                </mat-form-field>
+
+                <!-- Limitation Warning -->
+                <div class="info-card">
+                  <mat-icon svgIcon="circle-info"></mat-icon>
+                  <p>{{ 'modals.backend.remoteSecurity.limitation' | translate }}</p>
+                </div>
+
+                @if (formState().mode === 'edit') {
+                  <!-- Status Banner -->
+                  <div
+                    class="status-banner"
+                    [class.encrypted]="hasConfigPassword()"
+                    [class.unencrypted]="!hasConfigPassword()"
+                  >
+                    <div class="status-icon">
+                      <mat-icon
+                        [svgIcon]="hasConfigPassword() ? 'shield-halved' : 'shield'"
+                      ></mat-icon>
+                    </div>
+                    <div class="status-text">
+                      <strong>{{
+                        (hasConfigPassword()
+                          ? 'modals.backend.remoteSecurity.passwordStored'
+                          : 'modals.backend.remoteSecurity.noPasswordStored'
+                        ) | translate
+                      }}</strong>
+                    </div>
+                  </div>
+
+                  <!-- Action: Remove Password -->
+                  <div class="actions">
+                    <button
+                      mat-flat-button
+                      class="warn"
+                      (click)="removeConfigPassword()"
+                      [disabled]="!hasConfigPassword() || formState().isLoading"
+                    >
+                      @if (formState().isLoading) {
+                        <mat-spinner diameter="18"></mat-spinner>
+                      } @else {
+                        {{ 'modals.backend.remoteSecurity.removePassword' | translate }}
+                      }
+                    </button>
+                  </div>
+                }
+              </div>
+            </mat-tab>
+          </mat-tab-group>
+        }
+      </form>
+    }
+  </div>
+
+  <div class="modal-footer">
+    @if (formState().mode === 'closed') {
+      <button mat-flat-button class="primary" (click)="toggleAddForm()">
+        <mat-icon svgIcon="plus"></mat-icon>
+        {{ 'modals.backend.addBackend' | translate }}
+      </button>
+    }
+    @if (formState().mode !== 'closed') {
+      <button mat-stroked-button (click)="cancelEdit()">{{ 'common.cancel' | translate }}</button>
+      <button
+        mat-flat-button
+        class="primary"
+        [disabled]="backendForm.invalid || hasDuplicateName() || hasDuplicateHost()"
+        (click)="saveBackend()"
+      >
+        {{ 'modals.backend.save' | translate }}
+      </button>
+    }
+  </div>
+</div>

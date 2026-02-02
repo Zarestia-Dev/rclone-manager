@@ -4,11 +4,18 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { QuickActionButton } from '@app/types';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-quick-action-buttons',
   standalone: true,
-  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, MatTooltipModule],
+  imports: [
+    MatButtonModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    MatTooltipModule,
+    TranslateModule,
+  ],
   template: `
     <div class="quick-actions">
       @for (button of buttons(); track button.id) {
@@ -21,7 +28,7 @@ import { QuickActionButton } from '@app/types';
           (click)="onButtonClick(button.id, $event)"
         >
           @if (button.isLoading) {
-            <mat-spinner diameter="20"></mat-spinner>
+            <mat-spinner diameter="24"></mat-spinner>
           } @else {
             <mat-icon [svgIcon]="button.icon"></mat-icon>
           }

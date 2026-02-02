@@ -1,132 +1,142 @@
-use log::{debug, error, info, warn};
+use log::{info, warn};
 use serde_json::{Value, json};
 use std::collections::HashMap;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Manager};
 
 use crate::{
     rclone::{
-        commands::job::submit_job_and_wait,
-        state::{engine::ENGINE_STATE, watcher::force_check_mounted_remotes},
+        backend::BackendManager, commands::job::submit_job_and_wait,
+        state::watcher::force_check_mounted_remotes,
     },
     utils::{
-        json_helpers::{
-            get_string, json_to_hashmap, resolve_profile_options, unwrap_nested_options,
-        },
+        json_helpers::unwrap_nested_options,
         logging::log::log_operation,
-        rclone::endpoints::{EndpointHelper, mount},
-        types::{
-            all_types::{LogLevel, ProfileParams, RcloneState, RemoteCache},
-            events::REMOTE_STATE_CHANGED,
-        },
+        rclone::endpoints::mount,
+        types::{core::RcloneState, logs::LogLevel, remotes::ProfileParams},
     },
 };
 
-use super::{job::JobMetadata, system::redact_sensitive_values};
+use super::common::{FromConfig, parse_common_config, redact_sensitive_values};
+use super::job::JobMetadata;
 
 /// Parameters for mounting a remote filesystem
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Debug, serde::Deserialize, Clone)]
 pub struct MountParams {
     pub remote_name: String,
     pub source: String,
     pub mount_point: String,
     pub mount_type: String,
-    pub mount_options: Option<HashMap<String, Value>>, // rc mount options
-    pub vfs_options: Option<HashMap<String, Value>>,   // vfs options
-    pub filter_options: Option<HashMap<String, Value>>, // filter options
-    pub backend_options: Option<HashMap<String, Value>>, // backend options
+    pub mount_options: Option<HashMap<String, Value>>,
+    pub vfs_options: Option<HashMap<String, Value>>,
+    pub filter_options: Option<HashMap<String, Value>>,
+    pub backend_options: Option<HashMap<String, Value>>,
     pub profile: Option<String>,
 }
 
-impl MountParams {
-    /// Create MountParams from a profile config and settings
-    /// `config` - the specific mount profile configuration
-    /// `settings` - the full remote settings (for resolving profile references)
-    pub fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self> {
-        let source = get_string(config, &["source"]);
-        let dest = get_string(config, &["dest"]);
+/// Internal struct for Rclone API serialization
+#[derive(serde::Serialize)]
+struct RcloneMountBody {
+    pub fs: String,
+    #[serde(rename = "mountPoint")]
+    pub mount_point: String,
+    #[serde(rename = "mountType", skip_serializing_if = "Option::is_none")]
+    pub mount_type: Option<String>,
+    #[serde(rename = "mountOpt", skip_serializing_if = "Option::is_none")]
+    pub mount_options: Option<HashMap<String, Value>>,
+    #[serde(rename = "vfsOpt", skip_serializing_if = "Option::is_none")]
+    pub vfs_options: Option<HashMap<String, Value>>,
+    #[serde(rename = "_config", skip_serializing_if = "Option::is_none")]
+    pub config: Option<HashMap<String, Value>>,
+    #[serde(rename = "_filter", skip_serializing_if = "Option::is_none")]
+    pub filter: Option<HashMap<String, Value>>,
+    #[serde(rename = "_async")]
+    pub async_mode: bool,
+}
 
-        if source.is_empty() || dest.is_empty() {
-            return None;
-        }
-
-        // Get profile references from config
-        let vfs_profile = config.get("vfsProfile").and_then(|v| v.as_str());
-        let filter_profile = config.get("filterProfile").and_then(|v| v.as_str());
-        let backend_profile = config.get("backendProfile").and_then(|v| v.as_str());
-
-        // Resolve profile references
-        let vfs_options = resolve_profile_options(settings, vfs_profile, "vfsConfigs");
-        let filter_options = resolve_profile_options(settings, filter_profile, "filterConfigs");
-        let backend_options = resolve_profile_options(settings, backend_profile, "backendConfigs");
+impl FromConfig for MountParams {
+    fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self> {
+        let common = parse_common_config(config, settings)?;
 
         Some(Self {
             remote_name,
-            source,
-            mount_point: dest,
+            source: common.source,
+            mount_point: common.dest,
             mount_type: config
                 .get("type")
                 .and_then(|v| v.as_str())
                 .unwrap_or("mount")
                 .to_string(),
-            mount_options: json_to_hashmap(config.get("options")),
-            vfs_options,
-            filter_options,
-            backend_options,
-            profile: Some(get_string(config, &["name"])).filter(|s| !s.is_empty()),
+            mount_options: common.options,
+            vfs_options: common.vfs_options,
+            filter_options: common.filter_options,
+            backend_options: common.backend_options,
+            profile: common.profile,
         })
     }
 }
 
-/// Mount a remote filesystem (not exposed as Tauri command - use mount_remote_profile)
-pub async fn mount_remote(
-    app: AppHandle,
-    cache: State<'_, RemoteCache>,
-    params: MountParams,
-) -> Result<(), String> {
-    debug!("Received mount_remote params: {params:#?}");
-    let mounted_remotes = cache.get_mounted_remotes().await;
-    let state = app.state::<RcloneState>();
+impl MountParams {
+    pub fn to_rclone_body(&self) -> Value {
+        // Flatten backend options
+        let backend_opts = self.backend_options.clone().map(unwrap_nested_options);
+        // Clean implementation detail: filter out empty/null values from backend options
+        let final_backend_opts = backend_opts
+            .map(|opts| {
+                opts.into_iter()
+                    .filter(|(_, v)| !v.is_null() && !matches!(v, Value::String(s) if s.is_empty()))
+                    .collect()
+            })
+            .filter(|m: &HashMap<String, Value>| !m.is_empty());
 
-    // Check if mount point is in use
+        let body = RcloneMountBody {
+            fs: self.source.clone(),
+            mount_point: self.mount_point.clone(),
+            mount_type: if self.mount_type.is_empty() {
+                None
+            } else {
+                Some(self.mount_type.clone())
+            },
+            mount_options: self.mount_options.clone(),
+            vfs_options: self.vfs_options.clone().map(unwrap_nested_options),
+            config: final_backend_opts,
+            filter: self.filter_options.clone().map(unwrap_nested_options),
+            async_mode: true,
+        };
+
+        serde_json::to_value(body).unwrap_or(json!({}))
+    }
+}
+
+/// Mount a remote filesystem (not exposed as Tauri command - use mount_remote_profile)
+pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), String> {
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let cache = &backend_manager.remote_cache;
+
+    let mounted_remotes = cache.get_mounted_remotes().await;
     if let Some(existing) = mounted_remotes
         .iter()
         .find(|m| m.mount_point == params.mount_point)
     {
-        let error_msg = format!(
-            "Mount point {} is already in use by remote {}",
-            params.mount_point, existing.fs
+        let error_msg = crate::localized_error!(
+            "backendErrors.mount.alreadyInUse",
+            "mountPoint" => &params.mount_point,
+            "remote" => &existing.fs
         );
         warn!("{error_msg}");
         return Err(error_msg);
     }
 
-    // Check if remote is already mounted
     if mounted_remotes.iter().any(|m| m.fs == params.remote_name) {
         info!("Remote {} already mounted", params.remote_name);
         return Ok(());
     }
 
-    // Prepare logging context
     let log_context = json!({
         "mount_point": params.mount_point,
         "remote_name": params.remote_name,
         "mount_type": params.mount_type,
-        "mount_options": params
-            .mount_options
-            .as_ref()
-            .map(|opts| redact_sensitive_values(opts, &state.restrict_mode)),
-        "vfs_options": params
-            .vfs_options
-            .as_ref()
-            .map(|opts| redact_sensitive_values(opts, &state.restrict_mode)),
-        "filter_options": params
-            .filter_options
-            .as_ref()
-            .map(|opts| redact_sensitive_values(opts, &state.restrict_mode)),
-        "backend_options": params
-            .backend_options
-            .as_ref()
-            .map(|opts| redact_sensitive_values(opts, &state.restrict_mode)),
+        "options": redact_sensitive_values(&params.mount_options.clone().unwrap_or_default(), &app),
     });
 
     log_operation(
@@ -137,54 +147,15 @@ pub async fn mount_remote(
         Some(log_context),
     );
 
-    // Prepare payload
-    let mut payload = json!({
-        "fs": params.source,
-        "mountPoint": params.mount_point,
-        "_async": true,
-    });
+    // Submit Job
+    let state = app.state::<RcloneState>();
+    let url = backend.url_for(mount::MOUNT);
+    let payload = params.to_rclone_body();
 
-    debug!("Mount request payload: {payload:#?}");
-
-    // Only include mountType if it's not an empty string
-    if !params.mount_type.is_empty() {
-        payload["mountType"] = json!(params.mount_type);
-    }
-
-    if let Some(opts) = params.mount_options.clone() {
-        payload["mountOpt"] = json!(opts);
-    }
-
-    if let Some(opts) = params.vfs_options.clone() {
-        let vfs_opts = unwrap_nested_options(opts);
-        payload["vfsOpt"] = json!(vfs_opts);
-    }
-
-    if let Some(opts) = params.backend_options.clone() {
-        let backend_opts = unwrap_nested_options(opts);
-        let filtered_opts: HashMap<String, Value> = backend_opts
-            .into_iter()
-            .filter(|(_, v)| {
-                !matches!(v, Value::Null) && !matches!(v, Value::String(s) if s.is_empty())
-            })
-            .collect();
-        if !filtered_opts.is_empty() {
-            payload["_config"] = json!(filtered_opts);
-        }
-    }
-
-    if let Some(opts) = params.filter_options.clone() {
-        let filter_opts = unwrap_nested_options(opts);
-        payload["_filter"] = json!(filter_opts);
-    }
-    debug!("Final mount request payload: {payload:#?}");
-
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, mount::MOUNT);
-
-    let (_, _) = submit_job_and_wait(
+    let (_, _, _) = submit_job_and_wait(
         app.clone(),
         state.client.clone(),
-        url,
+        backend.inject_auth(state.client.post(&url)),
         payload,
         JobMetadata {
             remote_name: params.remote_name.clone(),
@@ -198,20 +169,19 @@ pub async fn mount_remote(
     )
     .await?;
 
-    // Store the profile mapping for this mount point
+    // Store state and refresh
     cache
         .store_mount_profile(&params.mount_point, params.profile.clone())
         .await;
-
-    app.emit(REMOTE_STATE_CHANGED, &params.remote_name)
-        .map_err(|e| format!("Failed to emit event: {e}"))?;
-
-    // Force refresh mounted remotes after mount operation
-    if let Err(e) = force_check_mounted_remotes(app).await {
-        warn!("Failed to refresh mounted remotes after mount: {e}");
-    }
+    refresh_mounted_remotes_safely(&app).await;
 
     Ok(())
+}
+
+async fn refresh_mounted_remotes_safely(app: &AppHandle) {
+    if let Err(e) = force_check_mounted_remotes(app.clone()).await {
+        warn!("Failed to refresh mounted remotes: {e}");
+    }
 }
 
 /// Unmount a remote filesystem
@@ -220,10 +190,14 @@ pub async fn unmount_remote(
     app: AppHandle,
     mount_point: String,
     remote_name: String,
-    state: State<'_, RcloneState>,
 ) -> Result<String, String> {
+    let state = app.state::<RcloneState>();
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+
+    let payload = json!({ "mountPoint": mount_point });
     if mount_point.trim().is_empty() {
-        return Err("Mount point cannot be empty".to_string());
+        return Err(crate::localized_error!("backendErrors.mount.pointEmpty"));
     }
 
     log_operation(
@@ -234,39 +208,10 @@ pub async fn unmount_remote(
         None,
     );
 
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, mount::UNMOUNT);
-    let payload = json!({ "mountPoint": mount_point });
-
-    let response = state
-        .client
-        .post(&url)
-        .json(&payload)
-        .send()
+    let _ = backend
+        .post_json(&state.client, mount::UNMOUNT, Some(&payload))
         .await
-        .map_err(|e| format!("Request failed: {e}"))?;
-
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        if status.as_u16() == 500 && body.contains("\"mount not found\"") {
-            warn!("🚨 Mount not found for {mount_point}, updating mount cache",);
-            // Update the cached mounted remotes
-            app.emit(REMOTE_STATE_CHANGED, &mount_point)
-                .map_err(|e| format!("Failed to emit event: {e}"))?;
-        }
-
-        let error = format!("HTTP {status}: {body}");
-        log_operation(
-            LogLevel::Error,
-            Some(remote_name.clone()),
-            Some("Unmount remote".to_string()),
-            error.clone(),
-            Some(json!({"response": body})),
-        );
-        error!("❌ Failed to unmount {mount_point}: {error}");
-        return Err(error);
-    }
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
     log_operation(
         LogLevel::Info,
@@ -276,96 +221,61 @@ pub async fn unmount_remote(
         None,
     );
 
-    app.emit(REMOTE_STATE_CHANGED, &mount_point)
-        .map_err(|e| format!("Failed to emit event: {e}"))?;
+    refresh_mounted_remotes_safely(&app).await;
 
-    // Force refresh mounted remotes after unmount operation
-    if let Err(e) = force_check_mounted_remotes(app).await {
-        warn!("Failed to refresh mounted remotes after unmount: {e}");
-    }
-
-    Ok(format!("Successfully unmounted {mount_point}"))
+    Ok(crate::localized_success!(
+        "backendSuccess.mount.unmounted",
+        "mountPoint" => &mount_point
+    ))
 }
 
 /// Unmount all remotes
 #[tauri::command]
-pub async fn unmount_all_remotes(
-    app: AppHandle,
-    state: State<'_, RcloneState>,
-    context: String,
-) -> Result<String, String> {
+pub async fn unmount_all_remotes(app: AppHandle, context: String) -> Result<String, String> {
+    let state = app.state::<RcloneState>();
     info!("🗑️ Unmounting all remotes");
 
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, mount::UNMOUNTALL);
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
 
-    let response = state
-        .client
-        .post(&url)
-        .send()
+    let _ = backend
+        .post_json(&state.client, mount::UNMOUNTALL, None)
         .await
-        .map_err(|e| format!("Request failed: {e}"))?;
-
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        let error = format!("HTTP {status}: {body}");
-        error!("❌ Failed to unmount all remotes: {error}");
-        return Err(error);
-    }
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
     if context != "shutdown" {
-        app.emit(REMOTE_STATE_CHANGED, "all")
-            .map_err(|e| format!("Failed to emit event: {e}"))?;
-
-        // Force refresh mounted remotes after unmount all operation
-        if let Err(e) = force_check_mounted_remotes(app).await {
-            warn!("Failed to refresh mounted remotes after unmount all: {e}");
-        }
+        refresh_mounted_remotes_safely(&app).await;
     }
 
     info!("✅ All remotes unmounted successfully");
 
-    Ok("✅ All remotes unmounted successfully".to_string())
+    Ok(crate::localized_success!(
+        "backendSuccess.mount.allUnmounted"
+    ))
 }
-
-// ============================================================================
-// PROFILE-BASED COMMAND
-// ============================================================================
 
 /// Mount a remote using a named profile
 /// Resolves all options (mount, vfs, filter, backend) from cached settings
 #[tauri::command]
-pub async fn mount_remote_profile(
-    app: AppHandle,
-    cache: State<'_, RemoteCache>,
-    params: ProfileParams,
-) -> Result<(), String> {
-    let settings_map = cache.get_settings().await;
+pub async fn mount_remote_profile(app: AppHandle, params: ProfileParams) -> Result<(), String> {
+    let (config, settings) = crate::rclone::commands::common::resolve_profile_settings(
+        &app,
+        &params.remote_name,
+        &params.profile_name,
+        "mountConfigs",
+    )
+    .await?;
 
-    let settings = settings_map
-        .get(&params.remote_name)
-        .ok_or_else(|| format!("Remote '{}' not found in settings", params.remote_name))?;
-
-    let mount_configs = settings
-        .get("mountConfigs")
-        .and_then(|v| v.as_object())
-        .ok_or_else(|| format!("No mountConfigs found for '{}'", params.remote_name))?;
-
-    let config = mount_configs
-        .get(&params.profile_name)
-        .ok_or_else(|| format!("Mount profile '{}' not found", params.profile_name))?;
-
-    let mut mount_params = MountParams::from_config(params.remote_name.clone(), config, settings)
+    let mut mount_params = MountParams::from_config(params.remote_name.clone(), &config, &settings)
         .ok_or_else(|| {
-        format!(
-            "Mount configuration incomplete for profile '{}'",
-            params.profile_name
-        )
-    })?;
+            crate::localized_error!(
+                "backendErrors.mount.configIncomplete",
+                "profile" => &params.profile_name
+            )
+        })?;
 
     // Ensure profile is set from the function parameter, not the config object
     mount_params.profile = Some(params.profile_name.clone());
 
-    mount_remote(app, cache, mount_params).await
+    mount_remote(app, mount_params).await
 }

@@ -16,6 +16,7 @@ import {
   FormsModule,
   ReactiveFormsModule,
 } from '@angular/forms';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { Subject, takeUntil } from 'rxjs';
@@ -23,10 +24,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { RemoteConfigStepComponent } from '../../../../shared/remote-config/remote-config-step/remote-config-step.component';
 import { FlagConfigStepComponent } from '../../../../shared/remote-config/flag-config-step/flag-config-step.component';
-import { AuthStateService } from '../../../../shared/services/auth-state.service';
-import { ValidatorRegistryService } from '../../../../shared/services/validator-registry.service';
+import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
+import { AuthStateService } from '@app/services';
+import { ValidatorRegistryService } from '@app/services';
 import {
   FlagConfigService,
   RemoteManagementService,
@@ -36,8 +39,9 @@ import {
   FileSystemService,
   ServeManagementService,
   NautilusService,
+  ModalService,
 } from '@app/services';
-import { NotificationService } from '../../../../shared/services/notification.service';
+import { NotificationService } from '@app/services';
 import {
   BackendConfig,
   MountConfig,
@@ -61,7 +65,7 @@ import {
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
-import { IconService } from '../../../../shared/services/icon.service';
+import { IconService } from '@app/services';
 import {
   buildPathString,
   getDefaultAnswerFromQuestion,
@@ -77,7 +81,6 @@ interface DialogData {
   existingConfig?: RemoteConfigSections;
   name?: string;
   targetProfile?: string;
-  restrictMode: boolean;
   initialSection?: string;
 }
 
@@ -94,16 +97,19 @@ interface PendingRemoteData {
     CommonModule,
     MatIconModule,
     MatButtonModule,
+    MatTooltipModule,
     MatExpansionModule,
     RemoteConfigStepComponent,
     FlagConfigStepComponent,
     InteractiveConfigStepComponent,
+    SearchContainerComponent,
     MatProgressSpinner,
     MatSelectModule,
     MatFormFieldModule,
     MatInputModule,
     FormsModule,
     ReactiveFormsModule,
+    TranslateModule,
   ],
   templateUrl: './remote-config-modal.component.html',
   styleUrls: ['./remote-config-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -129,22 +135,24 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   readonly iconService = inject(IconService);
   private readonly nautilusService = inject(NautilusService);
   private readonly notificationService = inject(NotificationService);
+  private readonly translate = inject(TranslateService);
+  private readonly modalService = inject(ModalService);
 
   private destroy$ = new Subject<void>();
 
   // Configuration
   readonly TOTAL_STEPS = 10; // Added Serve
   readonly stepLabels = [
-    'Remote Config',
-    'Mount',
-    'Serve',
-    'Sync',
-    'Bisync',
-    'Move',
-    'Copy',
-    'Filter',
-    'VFS',
-    'Backend',
+    'modals.remoteConfig.steps.remoteConfig',
+    'modals.remoteConfig.steps.mount',
+    'modals.remoteConfig.steps.serve',
+    'modals.remoteConfig.steps.sync',
+    'modals.remoteConfig.steps.bisync',
+    'modals.remoteConfig.steps.move',
+    'modals.remoteConfig.steps.copy',
+    'modals.remoteConfig.steps.filter',
+    'modals.remoteConfig.steps.vfs',
+    'modals.remoteConfig.steps.backend',
   ];
   // Define local type for profile management
   readonly FLAG_TYPES = FLAG_TYPES;
@@ -184,7 +192,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
   editTarget: EditTarget = null;
   cloneTarget = false;
-  restrictMode = false;
   initialSection: string | null = null;
   useInteractiveMode = false;
 
@@ -204,13 +211,16 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   private optionToFieldNameMap: Record<string, string> = {};
   private isPopulatingForm = false;
 
+  // Search state
+  isSearchVisible = false;
+  searchQuery = '';
+
   // ============================================================================
   // LIFECYCLE HOOKS
   // ============================================================================
   constructor() {
     this.editTarget = this.dialogData?.editTarget || null;
     this.cloneTarget = this.dialogData?.cloneTarget || false;
-    this.restrictMode = this.dialogData?.restrictMode || false;
     this.initialSection = this.dialogData?.initialSection || null;
     this.remoteForm = this.createRemoteForm();
     this.remoteConfigForm = this.createRemoteConfigForm();
@@ -224,13 +234,13 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     // Always load serve types as it's part of the standard flow now
     await this.loadServeTypes();
     await this.loadServeFields();
+    this.mountTypes = await this.mountManagementService.getMountTypes();
 
     this.initProfiles();
     this.initCurrentStep();
     this.populateFormIfEditingOrCloning();
     this.setupAutoStartValidators();
     this.setupAuthStateListeners();
-    this.mountTypes = await this.mountManagementService.getMountTypes();
   }
 
   private initCurrentStep(): void {
@@ -739,6 +749,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       backendProfile: config.backendProfile || DEFAULT_PROFILE_NAME,
     };
 
+    // Mount type - patch if defined in config
+    if (type === 'mount' && config.type !== undefined) {
+      patchData.type = config.type;
+    }
+
     // Paths - only patch if defined in config
     if (config.source !== undefined) {
       patchData.source = this.parsePathString(config.source, 'currentRemote', this.getRemoteName());
@@ -847,18 +862,20 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
 
   // Step icons mapping - accessed directly in template via stepIcons[i]
-  readonly stepIcons: Record<number, string> = {
-    0: 'hard-drive', // Remote Config
-    1: 'mount',
-    2: 'satellite-dish', // Serve
-    3: 'sync',
-    4: 'right-left', // Bisync
-    5: 'move',
-    6: 'copy',
-    7: 'filter',
-    8: 'vfs',
-    9: 'server', // Backend
-  };
+  get stepIcons(): Record<number, string> {
+    return {
+      0: this.iconService.getIconName(this.remoteForm?.get('type')?.value || 'hard-drive'),
+      1: 'mount',
+      2: 'satellite-dish', // Serve
+      3: 'sync',
+      4: 'right-left', // Bisync
+      5: 'move',
+      6: 'copy',
+      7: 'filter',
+      8: 'vfs',
+      9: 'server', // Backend
+    };
+  }
 
   goToStep(step: number): void {
     if (step >= 1 && step <= this.currentTotalSteps) {
@@ -988,6 +1005,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   // --- Remote Type / Interactive Mode ---
   async onRemoteTypeChange(): Promise<void> {
     this.isRemoteConfigLoading = true;
+    this.dynamicRemoteFields = [];
     try {
       const remoteType = this.remoteForm.get('type')?.value;
       this.useInteractiveMode = INTERACTIVE_REMOTES.includes(remoteType?.toLowerCase());
@@ -1034,8 +1052,13 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   handleDestFolderSelect(flagType: FlagType): void {
     // Mount dest is a simple string, others are nested
     const formPath = flagType === 'mount' ? 'mountConfig.dest' : `${flagType}Config.dest.path`;
-    // Mount dest folder should be empty
-    const requireEmpty = flagType === 'mount';
+    // Mount dest folder should be empty unless AllowNonEmpty is enabled
+    let requireEmpty = false;
+    if (flagType === 'mount') {
+      const allowNonEmpty =
+        this.remoteConfigForm.get('mountConfig.options')?.value?.['mount---allow_non_empty'];
+      requireEmpty = !allowNonEmpty;
+    }
 
     this.fileSystemService
       .selectFolder(requireEmpty)
@@ -1240,7 +1263,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       const usage = this.getProfileUsage(type, remoteName, name);
       if (usage.inUse) {
         this.notificationService.showWarning(
-          `Cannot delete profile "${name}" - it is in use by ${usage.count} active ${usage.opType}(s)`
+          this.translate.instant('modals.remoteConfig.profile.inUseWarning', {
+            name,
+            count: usage.count,
+            type: usage.opType,
+          })
         );
         return;
       }
@@ -1574,7 +1601,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     if (mountConfigs) {
       for (const [profileName, config] of Object.entries(mountConfigs)) {
         if (config.autoStart && config.dest) {
-          await this.mountManagementService.mountRemoteProfile(remoteName, profileName);
+          void this.mountManagementService.mountRemoteProfile(remoteName, profileName);
         }
       }
     }
@@ -1583,7 +1610,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     if (copyConfigs) {
       for (const [profileName, config] of Object.entries(copyConfigs)) {
         if (config.autoStart && config.source && config.dest) {
-          await this.jobManagementService.startCopyProfile(remoteName, profileName);
+          void this.jobManagementService.startCopyProfile(remoteName, profileName);
         }
       }
     }
@@ -1592,7 +1619,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     if (syncConfigs) {
       for (const [profileName, config] of Object.entries(syncConfigs)) {
         if (config.autoStart && config.source && config.dest) {
-          await this.jobManagementService.startSyncProfile(remoteName, profileName);
+          void this.jobManagementService.startSyncProfile(remoteName, profileName);
         }
       }
     }
@@ -1601,7 +1628,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     if (bisyncConfigs) {
       for (const [profileName, config] of Object.entries(bisyncConfigs)) {
         if (config.autoStart && config.source && config.dest) {
-          await this.jobManagementService.startBisyncProfile(remoteName, profileName);
+          void this.jobManagementService.startBisyncProfile(remoteName, profileName);
         }
       }
     }
@@ -1610,7 +1637,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     if (moveConfigs) {
       for (const [profileName, config] of Object.entries(moveConfigs)) {
         if (config.autoStart && config.source && config.dest) {
-          await this.jobManagementService.startMoveProfile(remoteName, profileName);
+          void this.jobManagementService.startMoveProfile(remoteName, profileName);
         }
       }
     }
@@ -1619,7 +1646,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     if (serveConfigs) {
       for (const [profileName, config] of Object.entries(serveConfigs)) {
         if (config.autoStart && config.options) {
-          await this.serveManagementService.startServeProfile(remoteName, profileName);
+          void this.serveManagementService.startServeProfile(remoteName, profileName);
         }
       }
     }
@@ -1752,10 +1779,34 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
   get saveButtonLabel(): string {
     return this.isAuthInProgress && !this.isAuthCancelled
-      ? 'Saving...'
+      ? 'modals.remoteConfig.buttons.saving'
       : this.editTarget
-        ? 'Save Changes'
-        : 'Save';
+        ? 'modals.remoteConfig.buttons.saveChanges'
+        : 'modals.remoteConfig.buttons.save';
+  }
+
+  // ============================================================================
+  // SEARCH FUNCTIONALITY
+  // ============================================================================
+  toggleSearchVisibility(): void {
+    this.isSearchVisible = !this.isSearchVisible;
+    if (!this.isSearchVisible) {
+      this.searchQuery = '';
+    }
+    this.cdRef.markForCheck();
+  }
+
+  onSearchInput(searchText: string): void {
+    this.searchQuery = searchText;
+    this.cdRef.markForCheck();
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  handleSearchKeyboard(event: KeyboardEvent): void {
+    if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
+      event.preventDefault();
+      this.toggleSearchVisibility();
+    }
   }
 
   @HostListener('document:keydown.escape')
@@ -1763,6 +1814,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     if (this.nautilusService.isNautilusOverlayOpen) {
       return;
     }
-    this.dialogRef.close(false);
+    this.modalService.animatedClose(this.dialogRef, false);
   }
 }

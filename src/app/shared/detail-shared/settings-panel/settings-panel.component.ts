@@ -1,29 +1,44 @@
-import { Component, input, output } from '@angular/core';
+import { Component, input, output, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { TranslateService, TranslateModule } from '@ngx-translate/core';
+import { map } from 'rxjs';
 
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { AppSettingsService } from '@app/services';
 import { SENSITIVE_KEYS, SettingsPanelConfig } from '@app/types';
 
 @Component({
   selector: 'app-settings-panel',
   standalone: true,
-  imports: [MatCardModule, MatIconModule, MatButtonModule, MatTooltipModule, MatExpansionModule],
+  imports: [
+    MatCardModule,
+    MatIconModule,
+    MatButtonModule,
+    MatTooltipModule,
+    MatExpansionModule,
+    TranslateModule,
+  ],
   styleUrls: ['./settings-panel.component.scss'],
   template: `
     <mat-expansion-panel class="settings-expansion-panel">
       <mat-expansion-panel-header>
         <mat-panel-title>
           <mat-icon [svgIcon]="config().section.icon" class="panel-icon"></mat-icon>
-          <span>{{ config().section.title }}</span>
+          <span>{{ config().section.title | translate }}</span>
         </mat-panel-title>
         <mat-panel-description>
           @if (hasMeaningfulSettings()) {
-            <span class="settings-count">{{ getSettingsCount() }} settings</span>
+            <span class="settings-count">{{
+              'detailShared.settings.metrics' | translate: { count: getSettingsCount() }
+            }}</span>
           } @else {
-            <span class="no-settings-hint">Not configured</span>
+            <span class="no-settings-hint">{{
+              'detailShared.settings.notConfigured' | translate
+            }}</span>
           }
         </mat-panel-description>
       </mat-expansion-panel-header>
@@ -62,7 +77,7 @@ import { SENSITIVE_KEYS, SettingsPanelConfig } from '@app/types';
         } @else {
           <div class="no-settings">
             <mat-icon [svgIcon]="config().section.icon" class="no-settings-icon"></mat-icon>
-            <span>No configuration data available</span>
+            <span>{{ 'detailShared.settings.noData' | translate }}</span>
           </div>
         }
 
@@ -73,7 +88,7 @@ import { SENSITIVE_KEYS, SettingsPanelConfig } from '@app/types';
             (click)="onEditSettings()"
           >
             <mat-icon svgIcon="pen"></mat-icon>
-            <span>{{ config().buttonLabel || 'Edit Settings' }}</span>
+            <span>{{ config().buttonLabel || 'detailShared.settings.edit' | translate }}</span>
           </button>
         </div>
       </div>
@@ -81,6 +96,17 @@ import { SENSITIVE_KEYS, SettingsPanelConfig } from '@app/types';
   `,
 })
 export class SettingsPanelComponent {
+  private translate = inject(TranslateService);
+  private appSettingsService = inject(AppSettingsService);
+
+  // Reactive restriction mode from settings
+  restrictMode = toSignal(
+    this.appSettingsService
+      .selectSetting('general.restrict')
+      .pipe(map(setting => (setting?.value as boolean) ?? true)),
+    { initialValue: true }
+  );
+
   config = input.required<SettingsPanelConfig>();
   editSettings = output<{ section: string; settings: Record<string, unknown> }>();
 
@@ -134,28 +160,26 @@ export class SettingsPanelComponent {
   }
 
   isSensitiveKey(key: string): boolean {
+    if (!this.restrictMode()) return false;
     const sensitiveKeys = SENSITIVE_KEYS;
-    return (
-      sensitiveKeys.some(sensitive => key.toLowerCase().includes(sensitive)) &&
-      this.config().restrictMode
-    );
+    return sensitiveKeys.some(sensitive => key.toLowerCase().includes(sensitive));
   }
 
   getDisplayValue(key: string, value: unknown): string {
     if (this.isSensitiveKey(key)) {
-      return 'RESTRICTED';
+      return this.translate.instant('detailShared.settings.restricted');
     }
     return this.truncateValue(value, 15);
   }
 
   getTooltip(key: string, value: unknown): string {
     if (this.isSensitiveKey(key)) {
-      return '[RESTRICTED]';
+      return '[' + this.translate.instant('detailShared.settings.restricted') + ']';
     }
     try {
       return typeof value === 'object' ? JSON.stringify(value) : String(value);
     } catch {
-      return '[Invalid JSON]';
+      return this.translate.instant('detailShared.settings.invalidJson');
     }
   }
 
@@ -167,7 +191,7 @@ export class SettingsPanelComponent {
         const jsonString = JSON.stringify(value);
         return jsonString.length > length ? `${jsonString.slice(0, length)}...` : jsonString;
       } catch {
-        return '[Invalid JSON]';
+        return this.translate.instant('detailShared.settings.invalidJson');
       }
     }
 

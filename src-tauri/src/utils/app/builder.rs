@@ -1,46 +1,39 @@
-use tauri::{
-    AppHandle, Emitter,
-    image::Image,
-    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-};
+#![cfg(desktop)]
 
-use crate::core::tray::{actions::show_main_window, menu::create_tray_menu};
+use tauri::{AppHandle, Emitter, image::Image, tray::TrayIconBuilder};
+
+use crate::core::tray::menu::create_tray_menu;
 use crate::utils::types::events::UPDATE_TRAY_MENU;
 
-pub async fn setup_tray(app: AppHandle, max_tray_items: usize) -> tauri::Result<()> {
-    let mut old_max_tray_items = 0;
-
-    let max_tray_items = if max_tray_items == 0 {
-        old_max_tray_items
-    } else {
-        old_max_tray_items = max_tray_items;
-        old_max_tray_items
-    };
-
+pub async fn setup_tray(app: AppHandle) -> tauri::Result<()> {
     let app_clone = app.clone();
+    let tray_menu = create_tray_menu(&app_clone).await?;
 
-    let tray_menu = create_tray_menu(&app_clone, max_tray_items).await?;
-
-    TrayIconBuilder::with_id("main-tray")
+    #[allow(unused_mut)]
+    let mut tray = TrayIconBuilder::with_id("main-tray")
         .icon(Image::from_bytes(include_bytes!(
             "../../../icons/rclone_symbolic.png"
         ))?)
         .tooltip("RClone Manager")
-        .menu(&tray_menu)
-        .on_tray_icon_event(move |tray, event| {
-            let app = tray.app_handle();
+        .menu(&tray_menu);
 
-            if let TrayIconEvent::Click {
-                button: MouseButton::Left,
-                button_state: MouseButtonState::Up,
+    #[cfg(not(feature = "web-server"))]
+    {
+        tray = tray.on_tray_icon_event(move |tray, event| {
+            let app = tray.app_handle();
+            if let tauri::tray::TrayIconEvent::Click {
+                button: tauri::tray::MouseButton::Left,
+                button_state: tauri::tray::MouseButtonState::Up,
                 ..
             } = event
             {
                 // Show the main window on left click
-                show_main_window(app.clone());
+                crate::core::tray::actions::show_main_window(app.clone());
             }
-        })
-        .build(&app_clone)?;
+        });
+    }
+
+    tray.build(&app_clone)?;
 
     app.emit(UPDATE_TRAY_MENU, ())?;
     Ok(())
@@ -48,6 +41,7 @@ pub async fn setup_tray(app: AppHandle, max_tray_items: usize) -> tauri::Result<
 
 /// Creates the main app window.
 /// Optionally accepts a remote name to navigate to the in-app browser for that remote.
+#[cfg(not(feature = "web-server"))]
 pub fn create_app_window(app_handle: AppHandle, browse_remote: Option<&str>) {
     let mut main_window =
         tauri::WebviewWindowBuilder::new(&app_handle, "main", tauri::WebviewUrl::default())
@@ -56,6 +50,7 @@ pub fn create_app_window(app_handle: AppHandle, browse_remote: Option<&str>) {
             .resizable(true)
             .center()
             .shadow(false)
+            .devtools(true)
             .min_inner_size(362.0, 240.0);
 
     // MacOS does not support transparent windows. So we set the title bar style to show

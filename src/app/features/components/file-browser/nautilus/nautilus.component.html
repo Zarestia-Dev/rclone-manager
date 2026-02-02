@@ -12,7 +12,7 @@
           <button class="nav-button" (click)="toggleSearchMode()" [class.active]="isSearchMode()">
             <mat-icon svgIcon="search"></mat-icon>
           </button>
-          <span>{{ title() }}</span>
+          <span>{{ title() | translate }}</span>
           <button class="nav-button" disabled>
             <mat-icon svgIcon="menu-bar"></mat-icon>
           </button>
@@ -34,7 +34,7 @@
             <span class="remote-info">
               <span class="remote-icon">
                 <mat-icon svgIcon="star"></mat-icon>
-                <p matLine>Starred</p>
+                <p matLine>{{ 'nautilus.titles.starred' | translate }}</p>
               </span>
             </span>
           </mat-list-item>
@@ -50,7 +50,7 @@
           >
             <div class="new-bookmark-placeholder">
               <mat-icon svgIcon="bookmark"></mat-icon>
-              <span>New Bookmark</span>
+              <span>{{ 'nautilus.sidebar.newBookmark' | translate }}</span>
             </div>
 
             @for (drive of localDrives(); track trackByRemote($index, drive)) {
@@ -148,7 +148,7 @@
           <input
             #searchInput
             class="path-input"
-            placeholder="Search files..."
+            [placeholder]="'nautilus.titles.searchPlaceholder' | translate"
             [value]="searchFilter()"
             (input)="searchFilter.set(searchInput.value)"
             (keydown.escape)="toggleSearchMode(); searchInput.blur()"
@@ -159,7 +159,7 @@
             <div class="path-scroll-view hide-scrollbar">
               <button class="path-segment">
                 <mat-icon svgIcon="star"></mat-icon>
-                Starred
+                {{ 'nautilus.titles.starred' | translate }}
               </button>
             </div>
           } @else {
@@ -176,7 +176,7 @@
                       : this.iconService.getIconName(nautilusRemote()?.type || '')
                   "
                 ></mat-icon>
-                {{ nautilusRemote()?.label || 'Local' }}
+                {{ nautilusRemote()?.label || ('nautilus.titles.local' | translate) }}
               </button>
 
               @for (segment of pathSegments(); track $index) {
@@ -247,7 +247,7 @@
             <button
               class="close-tab"
               (click)="$event.stopPropagation(); closeTab($index)"
-              aria-label="Close tab"
+              [attr.aria-label]="'common.close' | translate"
             >
               <mat-icon svgIcon="close"></mat-icon>
             </button>
@@ -286,13 +286,15 @@
               >
                 <mat-card-content>
                   <mat-icon
-                    [ngClass]="{ accent: item.entry.IsDir }"
+                    [class.accent]="item.entry.IsDir"
                     [style.width.px]="iconSize()"
                     [style.height.px]="iconSize()"
                     [svgIcon]="
                       item.entry.IsDir
                         ? 'folder'
-                        : iconService.getIconForFileType(fileViewerService.getFileType(item.entry))
+                        : iconService.getIconForFileType(
+                            fileViewerService.getFileTypeSync(item.entry)
+                          )
                     "
                   ></mat-icon>
                   <p class="folder-title">{{ item.entry.Name }}</p>
@@ -351,11 +353,11 @@
           <table mat-table [dataSource]="files()" class="nautilus-table">
             <ng-template #nameCellContent let-item="item" let-rowTitle="rowTitle">
               <mat-icon
-                [ngClass]="{ accent: item.entry.IsDir }"
+                [class.accent]="item.entry.IsDir"
                 [svgIcon]="
                   item.entry.IsDir
                     ? 'folder'
-                    : iconService.getIconForFileType(fileViewerService.getFileType(item.entry))
+                    : iconService.getIconForFileType(fileViewerService.getFileTypeSync(item.entry))
                 "
               ></mat-icon>
               <span [class.row-title]="rowTitle">{{ item.entry.Name }}</span>
@@ -368,7 +370,7 @@
                 class="sortable-header"
               >
                 <div class="header-content">
-                  Name
+                  {{ 'nautilus.columns.name' | translate }}
                   @if (sortKey().startsWith('name')) {
                     <mat-icon
                       [svgIcon]="sortDirection() === 'asc' ? 'chevron-up' : 'chevron-down'"
@@ -399,7 +401,7 @@
                       [svgIcon]="sortDirection() === 'asc' ? 'chevron-up' : 'chevron-down'"
                     ></mat-icon>
                   }
-                  Size
+                  {{ 'nautilus.columns.size' | translate }}
                 </div>
               </th>
               <td mat-cell *matCellDef="let item">
@@ -420,7 +422,7 @@
                       [svgIcon]="sortDirection() === 'asc' ? 'chevron-up' : 'chevron-down'"
                     ></mat-icon>
                   }
-                  Modified
+                  {{ 'nautilus.columns.modified' | translate }}
                 </div>
               </th>
               <td mat-cell *matCellDef="let item">
@@ -469,18 +471,18 @@
       @if (errorState()) {
         <div class="empty-folder-container">
           <mat-icon svgIcon="circle-exclamation"></mat-icon>
-          <h2>Connection Failed</h2>
+          <h2>{{ 'nautilus.errors.connectionFailed' | translate }}</h2>
           <p>{{ errorState() }}</p>
-          <button mat-stroked-button (click)="refresh()">Retry</button>
+          <button mat-stroked-button (click)="refresh()">{{ 'common.retry' | translate }}</button>
         </div>
       } @else if (files().length === 0 && !isLoading()) {
         <div class="empty-folder-container">
           @if (starredMode()) {
             <mat-icon svgIcon="star"></mat-icon>
-            <h2>No Starred Files</h2>
+            <h2>{{ 'nautilus.empty.noStarred' | translate }}</h2>
           } @else {
             <mat-icon svgIcon="folder"></mat-icon>
-            <h2>Folder is Empty</h2>
+            <h2>{{ 'nautilus.empty.folderEmpty' | translate }}</h2>
           }
         </div>
       }
@@ -488,7 +490,7 @@
       @if (isLoading()) {
         <div class="loading-overlay">
           <mat-spinner diameter="24"></mat-spinner>
-          <span>Loading...</span>
+          <span>{{ 'common.loading' | translate }}</span>
           <button class="nav-button" (click)="cancelLoad()">
             <mat-icon svgIcon="close"></mat-icon>
           </button>
@@ -534,11 +536,11 @@
         @if (!errorState()) {
           @if (item) {
             <button class="menu-item" cdkMenuItem (click)="openContextMenuOpen()">
-              <span>Open</span>
+              <span>{{ 'nautilus.contextMenu.open' | translate }}</span>
             </button>
             @if (item.entry.IsDir) {
               <button class="menu-item" cdkMenuItem (click)="openContextMenuOpenInNewTab()">
-                <span>Open in New Tab</span>
+                <span>{{ 'nautilus.contextMenu.openNewTab' | translate }}</span>
               </button>
             }
             <button
@@ -547,25 +549,25 @@
               (click)="openContextMenuSelectToggle()"
               [disabled]="isPickerMode() && !pickerOptions().multi"
             >
-              <span>Toggle Select</span>
+              <span>{{ 'nautilus.contextMenu.toggleSelect' | translate }}</span>
             </button>
             <button class="menu-item" cdkMenuItem (click)="openContextMenuCopyPath()">
-              <span>Copy Path</span>
+              <span>{{ 'nautilus.contextMenu.copyPath' | translate }}</span>
             </button>
           }
           @if (!item && !starredMode()) {
             <button class="menu-item" cdkMenuItem (click)="openContextMenuNewFolder()">
-              <span>New Folder</span>
+              <span>{{ 'nautilus.contextMenu.newFolder' | translate }}</span>
             </button>
             <mat-divider></mat-divider>
           }
         }
         <button class="menu-item" cdkMenuItem (click)="refresh()">
-          <span>Refresh</span>
+          <span>{{ 'nautilus.contextMenu.refresh' | translate }}</span>
         </button>
         @if (!errorState() && (item || !starredMode())) {
           <button class="menu-item" cdkMenuItem (click)="openPropertiesDialog('contextMenu')">
-            <span>Properties</span>
+            <span>{{ 'nautilus.contextMenu.properties' | translate }}</span>
           </button>
         }
       </div>
@@ -576,20 +578,20 @@
         @if (!errorState()) {
           @if (!starredMode()) {
             <button class="menu-item" cdkMenuItem (click)="openContextMenuNewFolder()">
-              <span>New Folder...</span>
+              <span>{{ 'nautilus.contextMenu.newFolder' | translate }}...</span>
             </button>
             <mat-divider></mat-divider>
           }
         }
 
         <button class="menu-item" cdkMenuItem (click)="refresh()">
-          <span>Reload</span>
+          <span>{{ 'nautilus.contextMenu.reload' | translate }}</span>
         </button>
 
         @if (!errorState()) {
           @if (!starredMode()) {
             <button class="menu-item" cdkMenuItem (click)="copyCurrentLocation()">
-              <span>Copy Location</span>
+              <span>{{ 'nautilus.contextMenu.copyLocation' | translate }}</span>
             </button>
           }
           <mat-divider></mat-divider>
@@ -600,7 +602,7 @@
             (click)="selectAll()"
             [disabled]="isPickerMode() && !pickerOptions().multi"
           >
-            <span>Select All</span>
+            <span>{{ 'nautilus.contextMenu.selectAll' | translate }}</span>
           </button>
 
           @if (!starredMode()) {
@@ -611,7 +613,7 @@
               cdkMenuItem
               (click)="setContextItem(null); openPropertiesDialog('contextMenu')"
             >
-              <span>Properties</span>
+              <span>{{ 'nautilus.contextMenu.properties' | translate }}</span>
             </button>
           }
         }
@@ -620,14 +622,14 @@
 
     @if (isPickerMode()) {
       <div class="picker-actions" [class.mobile-picker]="isMobile()">
-        <button mat-stroked-button (click)="onClose()">Cancel</button>
+        <button mat-stroked-button (click)="onClose()">{{ 'common.cancel' | translate }}</button>
         <button
           mat-flat-button
           class="primary"
           (click)="confirmSelection()"
           [disabled]="isConfirmDisabled()"
         >
-          Open
+          {{ 'nautilus.contextMenu.open' | translate }}
         </button>
       </div>
     }
@@ -642,10 +644,10 @@
 <ng-template #sidebarStarredMenu>
   <div class="material-context-menu" cdkMenu>
     <button class="menu-item" cdkMenuItem (click)="selectStarred()">
-      <span>Open</span>
+      <span>{{ 'nautilus.contextMenu.open' | translate }}</span>
     </button>
     <button class="menu-item" cdkMenuItem (click)="openStarredInNewTab()">
-      <span>Open in New Tab</span>
+      <span>{{ 'nautilus.contextMenu.openNewTab' | translate }}</span>
     </button>
   </div>
 </ng-template>
@@ -653,13 +655,13 @@
 <ng-template #sidebarRemoteMenu let-remote>
   <div class="material-context-menu" cdkMenu>
     <button class="menu-item" cdkMenuItem (click)="selectRemote(remote)">
-      <span>Open</span>
+      <span>{{ 'nautilus.contextMenu.open' | translate }}</span>
     </button>
     <button class="menu-item" cdkMenuItem (click)="createTab(remote, '')">
-      <span>Open in New Tab</span>
+      <span>{{ 'nautilus.contextMenu.openNewTab' | translate }}</span>
     </button>
     <button class="menu-item" cdkMenuItem (click)="openRemoteAboutFromSidebar()">
-      <span>About</span>
+      <span>{{ 'nautilus.contextMenu.about' | translate }}</span>
     </button>
     <button
       class="menu-item"
@@ -667,7 +669,7 @@
       (click)="openSidebarCleanup()"
       [disabled]="!sideRemoteSupportsCleanup()"
     >
-      <span>Empty Trash</span>
+      <span>{{ 'nautilus.contextMenu.emptyTrash' | translate }}</span>
     </button>
   </div>
 </ng-template>
@@ -675,13 +677,13 @@
 <ng-template #sidebarBookmarkMenu let-bookmark>
   <div class="material-context-menu" cdkMenu>
     <button class="menu-item" cdkMenuItem (click)="openBookmark(bookmark)">
-      <span>Open</span>
+      <span>{{ 'nautilus.contextMenu.open' | translate }}</span>
     </button>
     <button class="menu-item" cdkMenuItem (click)="openPropertiesDialog('bookmark')">
-      <span>Properties</span>
+      <span>{{ 'nautilus.contextMenu.properties' | translate }}</span>
     </button>
     <button class="menu-item" cdkMenuItem (click)="deleteContextBookmark()">
-      <span>Remove Bookmark</span>
+      <span>{{ 'nautilus.contextMenu.removeBookmark' | translate }}</span>
     </button>
   </div>
 </ng-template>
@@ -689,7 +691,7 @@
 <ng-template #viewMenu>
   <div class="material-context-menu" cdkMenu>
     <div class="icon-size-control">
-      <span>Icon Size</span>
+      <span>{{ 'nautilus.view.iconSize' | translate }}</span>
       <div class="buttons">
         <button (click)="decreaseIconSize()" [disabled]="decreaseIconDisabled()">
           <mat-icon svgIcon="remove"></mat-icon>
@@ -703,14 +705,14 @@
     <mat-divider></mat-divider>
 
     <div class="sort-options">
-      <span class="sort-label">Sort</span>
+      <span class="sort-label">{{ 'nautilus.sort.label' | translate }}</span>
       <mat-radio-group
         class="sort-radio-group"
         [value]="sortKey()"
         (change)="setSort($event.value)"
       >
         @for (opt of sortOptions; track trackBySortOption($index, opt)) {
-          <mat-radio-button [value]="opt.key">{{ opt.label }}</mat-radio-button>
+          <mat-radio-button [value]="opt.key">{{ opt.label | translate }}</mat-radio-button>
         }
       </mat-radio-group>
     </div>
@@ -718,7 +720,7 @@
     <mat-divider></mat-divider>
 
     <mat-checkbox [checked]="showHidden()" (change)="toggleShowHidden($event.checked)">
-      <span>Show Hidden Files</span>
+      <span>{{ 'nautilus.view.showHidden' | translate }}</span>
     </mat-checkbox>
   </div>
 </ng-template>

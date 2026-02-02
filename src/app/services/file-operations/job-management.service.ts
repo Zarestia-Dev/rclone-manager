@@ -1,31 +1,134 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { DestroyRef, inject, Injectable } from '@angular/core';
+import { BehaviorSubject, map, merge } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../core/tauri-base.service';
-import { JobInfo } from '@app/types';
+import { JobInfo, JOB_CACHE_CHANGED, RCLONE_ENGINE_READY } from '@app/types';
 
 /**
  * Service for managing rclone jobs (sync, copy, etc.)
  * Handles job creation, monitoring, and lifecycle management
+ *
+ * Single source of truth architecture:
+ * - jobsSubject holds ALL jobs
+ * - activeJobs$ is derived from jobs$ (filtered by Running status)
+ * - All other job queries filter from the same source
+ * - Self-refreshes on JOB_CACHE_CHANGED events from backend
  */
 @Injectable({
   providedIn: 'root',
 })
 export class JobManagementService extends TauriBaseService {
-  private activeJobsSubject = new BehaviorSubject<JobInfo[]>([]);
-  public activeJobs$ = this.activeJobsSubject.asObservable();
+  // ============================================================================
+  // UNIFIED JOB STATE - Single Source of Truth
+  // ============================================================================
 
-  // Nautilus-specific jobs stream
+  /** All jobs (running, completed, failed, stopped) */
+  private jobsSubject = new BehaviorSubject<JobInfo[]>([]);
+  public jobs$ = this.jobsSubject.asObservable();
+
+  /** Active (running) jobs - derived from jobs$ */
+  public activeJobs$ = this.jobs$.pipe(map(jobs => jobs.filter(job => job.status === 'Running')));
+
+  // Nautilus-specific jobs stream (kept for nautilus file browser)
   private nautilusJobsSubject = new BehaviorSubject<JobInfo[]>([]);
   public nautilusJobs$ = this.nautilusJobsSubject.asObservable();
 
+  private destroyRef = inject(DestroyRef);
+
   constructor() {
     super();
+    this.initializeEventListeners();
+  }
+
+  /**
+   * Initialize event listeners for job cache changes
+   * Service auto-refreshes when backend emits job state changes or engine becomes ready
+   */
+  private initializeEventListeners(): void {
+    merge(
+      this.listenToEvent<unknown>(JOB_CACHE_CHANGED),
+      this.listenToEvent<unknown>(RCLONE_ENGINE_READY)
+    )
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.refreshJobs().catch(err =>
+          console.error('[JobManagementService] Failed to refresh jobs:', err)
+        );
+      });
   }
 
   // ============================================================================
-  // PROFILE-BASED METHODS
-  // These methods only require remote and profile names - the backend resolves
-  // all options (sync, filter, backend, vfs) from cached settings.
+  // JOB STATE ACCESSORS
+  // ============================================================================
+
+  /** Get current jobs snapshot (synchronous) */
+  getJobsSnapshot(): JobInfo[] {
+    return this.jobsSubject.value;
+  }
+
+  /** Get active jobs snapshot (synchronous) */
+  getActiveJobsSnapshot(): JobInfo[] {
+    return this.jobsSubject.value.filter(job => job.status === 'Running');
+  }
+
+  /**
+   * Get active jobs for a specific remote (synchronous)
+   * Filters from the unified jobs source
+   */
+  getActiveJobsForRemote(remoteName: string, profile?: string): JobInfo[] {
+    const activeJobs = this.getActiveJobsSnapshot();
+    return activeJobs.filter(job => {
+      const matchRemote = job.remote_name === remoteName;
+      if (profile) {
+        return matchRemote && job.profile === profile;
+      }
+      return matchRemote;
+    });
+  }
+
+  /**
+   * Get jobs filtered by a specific remote (all statuses)
+   */
+  getJobsForRemote(remoteName: string): JobInfo[] {
+    return this.jobsSubject.value.filter(job => job.remote_name === remoteName);
+  }
+
+  // ============================================================================
+  // JOB STATE MANAGEMENT
+  // ============================================================================
+
+  /**
+   * Refresh all jobs from backend and update the unified state
+   * This is the primary method for syncing frontend state with backend
+   */
+  async refreshJobs(): Promise<JobInfo[]> {
+    const jobs = await this.invokeCommand<JobInfo[]>('get_jobs');
+    this.jobsSubject.next(jobs);
+    console.debug(
+      '[JobManagementService] Jobs refreshed:',
+      jobs.map(j => ({
+        jobid: j.jobid,
+        remote_name: j.remote_name,
+        status: j.status,
+        profile: j.profile,
+      }))
+    );
+    return jobs;
+  }
+
+  /**
+   * Get active jobs (returns from cached state after refresh)
+   * Updates the unified state and returns active jobs
+   */
+  async getActiveJobs(): Promise<JobInfo[]> {
+    await this.refreshJobs();
+    const activeJobs = this.getActiveJobsSnapshot();
+    console.debug('[JobManagementService] Active jobs:', activeJobs.length);
+    return activeJobs;
+  }
+
+  // ============================================================================
+  // PROFILE-BASED JOB OPERATIONS
   // ============================================================================
 
   /**
@@ -67,33 +170,40 @@ export class JobManagementService extends TauriBaseService {
 
   /**
    * Copy a file from a URL to the remote
-   * @param remote The remote to copy to
-   * @param path The path on the remote to copy to
-   * @param url The URL to copy from
-   * @param autoFilename Whether to automatically determine the filename
    */
   async copyUrl(remote: string, path: string, url: string, autoFilename: boolean): Promise<void> {
     await this.invokeCommand('copy_url', { remote, path, urlToCopy: url, autoFilename });
     this.refreshNautilusJobs();
   }
 
+  // ============================================================================
+  // JOB LIFECYCLE OPERATIONS
+  // ============================================================================
+
   /**
-   * Get all jobs
+   * Stop a job
    */
-  async getJobs(): Promise<JobInfo[]> {
-    return this.invokeCommand<JobInfo[]>('get_jobs');
+  async stopJob(jobid: number, remoteName: string): Promise<void> {
+    await this.invokeCommand('stop_job', { jobid, remoteName });
   }
 
   /**
-   * Get active jobs
+   * Delete a job from the cache
    */
-  async getActiveJobs(): Promise<JobInfo[]> {
-    const jobs = await this.invokeCommand<JobInfo[]>('get_active_jobs');
-    this.activeJobsSubject.next(jobs);
-    console.log('Active jobs updated:', jobs);
-
-    return jobs;
+  async deleteJob(jobid: number): Promise<void> {
+    await this.invokeCommand('delete_job', { jobid });
   }
+
+  /**
+   * Get job status
+   */
+  async getJobStatus(jobid: number): Promise<JobInfo | null> {
+    return this.invokeCommand('get_job_status', { jobid });
+  }
+
+  // ============================================================================
+  // SPECIALIZED JOB QUERIES
+  // ============================================================================
 
   /**
    * Get jobs filtered by source UI
@@ -105,7 +215,6 @@ export class JobManagementService extends TauriBaseService {
 
   /**
    * Refresh the nautilus jobs stream
-   * This method fetches the latest nautilus jobs and updates the BehaviorSubject
    */
   async refreshNautilusJobs(): Promise<void> {
     try {
@@ -124,47 +233,12 @@ export class JobManagementService extends TauriBaseService {
   }
 
   /**
-   * Get job status
-   */
-  async getJobStatus(jobid: number): Promise<JobInfo | null> {
-    return this.invokeCommand('get_job_status', { jobid });
-  }
-
-  /**
-   * Stop a job
-   */
-  async stopJob(jobid: number, remoteName: string): Promise<void> {
-    return this.invokeCommand('stop_job', { jobid, remoteName });
-  }
-
-  /**
-   * Delete a job
-   */
-  async deleteJob(jobid: number): Promise<void> {
-    return this.invokeCommand('delete_job', { jobid });
-  }
-
-  /**
-   * Get active jobs for a specific remote from the current state
-   */
-  getActiveJobsForRemote(remoteName: string, profile?: string): JobInfo[] {
-    const activeJobs = this.activeJobsSubject.value;
-    return activeJobs.filter(job => {
-      const matchRemote = job.remote_name === remoteName;
-      if (profile) {
-        return matchRemote && job.profile === profile;
-      }
-      return matchRemote;
-    });
-  }
-
-  /**
    * Get completed transfers for a job/remote (using core/transferred API)
    */
-  async getCompletedTransfers(group?: string): Promise<any[]> {
-    const params: any = {};
+  async getCompletedTransfers(group?: string): Promise<unknown[]> {
+    const params: Record<string, string> = {};
     if (group) {
-      params.group = group;
+      params['group'] = group;
     }
     return this.invokeCommand('get_completed_transfers', params);
   }
@@ -172,25 +246,13 @@ export class JobManagementService extends TauriBaseService {
   /**
    * Get remote-specific core stats (filtered by group)
    */
-  async getCoreStatsForRemote(remoteName: string, jobid?: number): Promise<any | null> {
-    const params: any = { remote_name: remoteName };
+  async getCoreStatsForRemote(remoteName: string, jobid?: number): Promise<unknown | null> {
+    const params: Record<string, unknown> = { remote_name: remoteName };
     if (jobid) {
-      params.jobid = jobid;
-      params.group = `job/${jobid}`;
+      params['jobid'] = jobid;
+      params['group'] = `job/${jobid}`;
     }
     return this.invokeCommand('get_core_stats_filtered', params);
-  }
-
-  /**
-   * Validate source and destination paths
-   */
-  private validatePaths(source: string, dest: string): void {
-    if (!source) {
-      throw new Error('Source is required');
-    }
-    if (!dest) {
-      throw new Error('Destination is required');
-    }
   }
 
   /**

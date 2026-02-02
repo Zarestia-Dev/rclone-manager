@@ -1,55 +1,39 @@
 use log::debug;
 use serde_json::json;
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager};
 
+use crate::rclone::backend::BackendManager;
 use crate::rclone::commands::job::{JobMetadata, submit_job};
-use crate::rclone::state::engine::ENGINE_STATE;
-use crate::utils::rclone::endpoints::{EndpointHelper, operations};
-use crate::utils::types::all_types::RcloneState;
+use crate::utils::rclone::endpoints::operations;
+use crate::utils::types::core::RcloneState;
 
 #[tauri::command]
-pub async fn mkdir(
-    remote: String,
-    path: String,
-    state: State<'_, RcloneState>,
-) -> Result<(), String> {
+pub async fn mkdir(app: AppHandle, remote: String, path: String) -> Result<(), String> {
+    let state = app.state::<RcloneState>();
     debug!("📁 Creating directory: remote={} path={}", remote, path);
 
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::MKDIR);
-
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
     let params = json!({ "fs": remote, "remote": path });
-
-    let response = state
-        .client
-        .post(&url)
-        .json(&params)
-        .send()
+    backend
+        .post_json(&state.client, operations::MKDIR, Some(&params))
         .await
         .map_err(|e| format!("❌ Failed to create directory: {e}"))?;
-
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        return Err(format!("HTTP {status}: {body}"));
-    }
 
     Ok(())
 }
 
 #[tauri::command]
-pub async fn cleanup(
-    remote: String,
-    path: Option<String>,
-    state: State<'_, RcloneState>,
-) -> Result<(), String> {
+pub async fn cleanup(app: AppHandle, remote: String, path: Option<String>) -> Result<(), String> {
+    let state = app.state::<RcloneState>();
     debug!(
         "🧹 Cleanup remote trash: remote={} path={}",
         remote,
         path.as_deref().unwrap_or("")
     );
 
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::CLEANUP);
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
 
     // Build parameters dynamically: include `remote` only when provided
     let mut params = serde_json::Map::new();
@@ -58,20 +42,10 @@ pub async fn cleanup(
         params.insert("remote".to_string(), json!(p));
     }
 
-    let response = state
-        .client
-        .post(&url)
-        .json(&json!(params))
-        .send()
+    backend
+        .post_json(&state.client, operations::CLEANUP, Some(&json!(params)))
         .await
         .map_err(|e| format!("❌ Failed to cleanup remote: {e}"))?;
-
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        return Err(format!("HTTP {status}: {body}"));
-    }
 
     Ok(())
 }
@@ -80,18 +54,20 @@ pub async fn cleanup(
 #[tauri::command]
 pub async fn copy_url(
     app: AppHandle,
-    state: State<'_, RcloneState>,
     remote: String,
     path: String,
     url_to_copy: String,
     auto_filename: bool,
 ) -> Result<u64, String> {
+    let state = app.state::<RcloneState>();
     debug!(
         "🔗 Copying URL: remote={}, path={}, url={}, auto_filename={}",
         remote, path, url_to_copy, auto_filename
     );
 
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::COPYURL);
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let url = backend.url_for(operations::COPYURL);
 
     let payload = json!({
         "fs": remote.clone(),
@@ -101,10 +77,10 @@ pub async fn copy_url(
         "_async": true,
     });
 
-    let (jobid, _) = submit_job(
-        app,
+    let (jobid, _, _) = submit_job(
+        app.clone(),
         state.client.clone(),
-        url,
+        backend.inject_auth(state.client.clone().post(&url)),
         payload,
         JobMetadata {
             remote_name: remote,

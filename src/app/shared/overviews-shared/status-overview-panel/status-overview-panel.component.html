@@ -2,7 +2,7 @@
   <mat-card-header class="status-header">
     <mat-card-title class="panel-title-content">
       <mat-icon [svgIcon]="mode()" class="status-icon"></mat-icon>
-      <span>{{ title() }}</span>
+      <span>{{ title() | translate }}</span>
       <span class="remote-count">{{ totalCount() }}</span>
     </mat-card-title>
   </mat-card-header>
@@ -20,13 +20,13 @@
           @if (activeCount() > 0) {
             <div class="legend-item">
               <span class="color-box active"></span>
-              {{ activeLabel() }}: {{ activeCount() }}
+              {{ activeLabel() | translate }}: {{ activeCount() }}
             </div>
           }
           @if (inactiveCount() > 0) {
             <div class="legend-item">
               <span class="color-box inactive"></span>
-              {{ inactiveLabel() }}: {{ inactiveCount() }}
+              {{ inactiveLabel() | translate }}: {{ inactiveCount() }}
             </div>
           }
         </div>

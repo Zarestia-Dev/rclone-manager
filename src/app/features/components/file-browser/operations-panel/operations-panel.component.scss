@@ -15,7 +15,7 @@
       display: flex;
       align-items: center;
       gap: var(--space-xs);
-      color: var(--secondary-text-color);
+      color: var(--dim-color);
       font-weight: 600;
       letter-spacing: 0.5px;
       font-size: 11px;
@@ -62,7 +62,7 @@
     }
 
     &:hover {
-      background: rgba(var(--app-text-color-rgb), 0.02);
+      background: rgba(var(--window-fg-color-rgb), 0.02);
     }
 
     &.completed {
@@ -79,7 +79,7 @@
         flex: 1;
         font-size: 13px;
         font-weight: 500;
-        color: var(--app-text-color);
+        color: var(--window-fg-color);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -107,7 +107,7 @@
     .job-stats {
       .stats-text {
         font-size: 11px;
-        color: var(--secondary-text-color);
+        color: var(--dim-color);
 
         &.success {
           color: var(--primary-color);

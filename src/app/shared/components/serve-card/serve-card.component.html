@@ -21,9 +21,12 @@
           <div class="serve-url-container">
             <span
               class="serve-url"
-              matTooltip="Click to copy URL"
+              [matTooltip]="'shared.serveCard.tooltips.copyUrl' | translate"
               matTooltipShowDelay="500"
-              (click)="onCopyToClipboard(url, 'URL Copied!'); $event.stopPropagation()"
+              (click)="
+                onCopyToClipboard(url, 'shared.serveCard.messages.urlCopied');
+                $event.stopPropagation()
+              "
               role="button"
               tabindex="0"
             >
@@ -40,7 +43,7 @@
       mat-icon-button
       class="warn"
       (click)="onStopServe(); $event.stopPropagation()"
-      matTooltip="Stop this serve"
+      [matTooltip]="'shared.serveCard.tooltips.stop' | translate"
       matTooltipShowDelay="500"
     >
       <mat-icon svgIcon="stop"></mat-icon>
@@ -50,12 +53,15 @@
   <mat-card-footer class="serve-metadata">
     <div class="metadata-row">
       <mat-icon svgIcon="fingerprint" class="metadata-icon"></mat-icon>
-      <span class="metadata-label">ID:</span>
+      <span class="metadata-label">{{ 'shared.serveCard.labels.id' | translate }}</span>
       <span
         class="metadata-value"
-        matTooltip="Click to copy ID"
+        [matTooltip]="'shared.serveCard.tooltips.copyId' | translate"
         matTooltipShowDelay="500"
-        (click)="onCopyToClipboard(serve().id, 'ID Copied!'); $event.stopPropagation()"
+        (click)="
+          onCopyToClipboard(serve().id, 'shared.serveCard.messages.idCopied');
+          $event.stopPropagation()
+        "
         role="button"
         tabindex="1"
       >
@@ -66,13 +72,13 @@
     @if (optionKeys().length > 0) {
       <div class="metadata-row">
         <mat-icon svgIcon="gear" class="metadata-icon"></mat-icon>
-        <span class="metadata-label">Options:</span>
+        <span class="metadata-label">{{ 'shared.serveCard.labels.options' | translate }}</span>
         <span
           class="metadata-value options-value"
           [matTooltip]="optionsTooltip()"
           matTooltipShowDelay="500"
         >
-          {{ optionKeys().length }} active
+          {{ optionKeys().length }} {{ 'shared.serveCard.labels.active' | translate }}
         </span>
       </div>
     }

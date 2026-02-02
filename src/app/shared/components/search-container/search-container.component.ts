@@ -10,33 +10,36 @@ import {
 } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatIconModule } from '@angular/material/icon';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-search-container',
   standalone: true,
-  imports: [FormsModule, MatInputModule],
+  imports: [FormsModule, MatFormFieldModule, MatInputModule, MatIconModule, TranslateModule],
   template: `
     <div class="search-container" [class.visible]="visible">
-      <div class="search-input-wrapper">
+      <mat-form-field subscriptSizing="dynamic">
+        <mat-icon matPrefix svgIcon="search"></mat-icon>
         <input
           #searchInput
           matInput
           [(ngModel)]="searchText"
           (ngModelChange)="onSearchTextChange($event)"
-          [placeholder]="placeholder"
-          [attr.aria-label]="ariaLabel"
-          class="search-input"
+          [placeholder]="placeholder | translate"
+          [attr.aria-label]="ariaLabel | translate"
         />
-      </div>
+      </mat-form-field>
     </div>
   `,
   styleUrls: ['./search-container.component.scss'],
 })
 export class SearchContainerComponent implements OnChanges {
   @Input() visible = false;
-  @Input() placeholder = 'Search...';
-  @Input() ariaLabel = 'Search';
+  @Input() placeholder = 'shared.search.placeholder';
+  @Input() ariaLabel = 'shared.search.ariaLabel';
   @Input() searchText = '';
 
   @Output() searchTextChange = new EventEmitter<string>();

@@ -1,22 +1,137 @@
+use crate::core::settings::AppSettingsManager;
 use std::collections::HashMap;
 
-use log::{debug, error};
+use log::{debug, error, info};
 use serde_json::json;
-use tauri::{Manager, State};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tokio::sync::RwLock;
 
 use crate::{
-    core::settings::remote::manager::get_remote_settings,
-    rclone::queries::{get_all_remote_configs, get_mounted_remotes, get_remotes, list_serves},
-    utils::types::all_types::{MountedRemote, RemoteCache, ServeInstance},
+    rclone::{
+        backend::types::Backend,
+        queries::{
+            get_all_remote_configs_internal, get_mounted_remotes_internal, get_remotes_internal,
+            list_serves_internal, parse_serves_response,
+        },
+    },
+    utils::types::{
+        events::{MOUNT_STATE_CHANGED, SERVE_STATE_CHANGED},
+        remotes::{MountedRemote, RemoteCache, ServeInstance},
+    },
 };
 
+/// Persistent context for RemoteCache (profiles)
+#[derive(Debug, Clone, Default)]
+pub struct RemoteCacheContext {
+    pub mount_profiles: HashMap<String, String>,
+    pub serve_profiles: HashMap<String, String>,
+}
+
 impl RemoteCache {
+    /// Clear ALL cache data (remotes, configs, mounts, serves)
+    /// Used when switching backends to ensure no stale data remains
+    pub async fn clear_all(&self) {
+        let mut remotes = self.remotes.write().await;
+        remotes.clear();
+        let mut configs = self.configs.write().await;
+        *configs = json!({});
+        let mut mounted = self.mounted.write().await;
+        mounted.clear();
+        let mut serves = self.serves.write().await;
+        serves.clear();
+        // Do NOT clear profiles here, they are part of the Context which is managed separately
+    }
+
+    /// Extracted context (persistent data not available from API)
+    pub async fn get_context(&self) -> RemoteCacheContext {
+        let mount_profiles = self.mount_profiles.read().await.clone();
+        let serve_profiles = self.serve_profiles.read().await.clone();
+        RemoteCacheContext {
+            mount_profiles,
+            serve_profiles,
+        }
+    }
+
+    /// Restore context (profiles)
+    pub async fn set_context(&self, context: RemoteCacheContext) {
+        let mut mp = self.mount_profiles.write().await;
+        *mp = context.mount_profiles;
+        let mut sp = self.serve_profiles.write().await;
+        *sp = context.serve_profiles;
+    }
+
+    // =========================================================================
+    // REACTIVE CACHE UPDATES - Emit events only when data actually changes
+    // =========================================================================
+
+    /// Update mounted remotes cache and emit event if changed.
+    /// Attaches profiles automatically. Returns true if changed.
+    pub async fn update_mounts_if_changed(
+        &self,
+        new_mounts: Vec<MountedRemote>,
+        app_handle: &AppHandle,
+    ) -> bool {
+        // Attach profiles
+        let profiles = self.mount_profiles.read().await;
+        let enriched: Vec<MountedRemote> = new_mounts
+            .into_iter()
+            .map(|mut m| {
+                m.profile = profiles.get(&m.mount_point).cloned();
+                m
+            })
+            .collect();
+        drop(profiles);
+
+        // Compare and update
+        let mut cache = self.mounted.write().await;
+        if *cache == enriched {
+            return false;
+        }
+        *cache = enriched;
+        drop(cache);
+
+        // Emit
+        info!("📡 Mount cache changed");
+        let _ = app_handle.emit(MOUNT_STATE_CHANGED, "cache_updated");
+        true
+    }
+
+    /// Update serves cache and emit event if changed.
+    /// Attaches profiles automatically. Returns true if changed.
+    pub async fn update_serves_if_changed(
+        &self,
+        new_serves: Vec<ServeInstance>,
+        app_handle: &AppHandle,
+    ) -> bool {
+        // Attach profiles
+        let profiles = self.serve_profiles.read().await;
+        let enriched: Vec<ServeInstance> = new_serves
+            .into_iter()
+            .map(|mut s| {
+                s.profile = profiles.get(&s.id).cloned();
+                s
+            })
+            .collect();
+        drop(profiles);
+
+        // Compare and update
+        let mut cache = self.serves.write().await;
+        if *cache == enriched {
+            return false;
+        }
+        *cache = enriched;
+        drop(cache);
+
+        // Emit
+        info!("📡 Serve cache changed");
+        let _ = app_handle.emit(SERVE_STATE_CHANGED, "cache_updated");
+        true
+    }
+
     pub fn new() -> Self {
         Self {
             remotes: RwLock::new(Vec::new()),
             configs: RwLock::new(json!({})),
-            settings: RwLock::new(json!({})),
             mounted: RwLock::new(Vec::new()),
             serves: RwLock::new(Vec::new()),
             mount_profiles: RwLock::new(HashMap::new()),
@@ -24,56 +139,46 @@ impl RemoteCache {
         }
     }
 
-    pub async fn refresh_remote_list(&self, app_handle: tauri::AppHandle) -> Result<(), String> {
+    pub async fn refresh_remote_list(
+        &self,
+        client: &reqwest::Client,
+        backend: &Backend,
+    ) -> Result<(), String> {
         let mut remotes = self.remotes.write().await;
-        if let Ok(remote_list) = get_remotes(app_handle.state()).await {
+        if let Ok(remote_list) = get_remotes_internal(client, backend).await {
             *remotes = remote_list;
             Ok(())
         } else {
             error!("Failed to fetch remotes");
-            Err("Failed to fetch remotes".into())
+            Err(crate::localized_error!(
+                "backendErrors.cache.fetchRemotesFailed"
+            ))
         }
     }
 
-    pub async fn refresh_remote_configs(&self, app_handle: tauri::AppHandle) -> Result<(), String> {
+    pub async fn refresh_remote_configs(
+        &self,
+        client: &reqwest::Client,
+        backend: &Backend,
+    ) -> Result<(), String> {
         let mut configs = self.configs.write().await;
-        if let Ok(remote_list) = get_all_remote_configs(app_handle.state()).await {
+        if let Ok(remote_list) = get_all_remote_configs_internal(client, backend).await {
             *configs = remote_list;
             Ok(())
         } else {
             error!("Failed to fetch remotes config");
-            Err("Failed to fetch remotes config".into())
+            Err(crate::localized_error!(
+                "backendErrors.cache.fetchConfigFailed"
+            ))
         }
-    }
-
-    pub async fn refresh_remote_settings(
-        &self,
-        app_handle: tauri::AppHandle,
-    ) -> Result<(), String> {
-        let remotes: Vec<String> = {
-            let remotes_guard = self.remotes.read().await;
-            remotes_guard.clone() // Quick clone, release lock
-        };
-
-        let mut all_settings = serde_json::Map::new();
-        for remote in remotes {
-            // IO without holding cache locks
-            if let Ok(settings) = get_remote_settings(remote.clone(), app_handle.state()).await {
-                all_settings.insert(remote, settings);
-            }
-        }
-
-        // Brief write lock only for the final update
-        let mut settings = self.settings.write().await;
-        *settings = serde_json::Value::Object(all_settings);
-        Ok(())
     }
 
     pub async fn refresh_mounted_remotes(
         &self,
-        app_handle: tauri::AppHandle,
+        client: &reqwest::Client,
+        backend: &Backend,
     ) -> Result<(), String> {
-        match get_mounted_remotes(app_handle.state()).await {
+        match get_mounted_remotes_internal(client, backend).await {
             Ok(mut remotes) => {
                 // Attach profiles from our lookup table
                 let profiles = self.mount_profiles.read().await;
@@ -96,7 +201,9 @@ impl RemoteCache {
             }
             Err(e) => {
                 error!("❌ Failed to refresh mounted remotes: {e}");
-                Err("Failed to refresh mounted remotes".into())
+                Err(crate::localized_error!(
+                    "backendErrors.cache.refreshMountsFailed"
+                ))
             }
         }
     }
@@ -114,28 +221,34 @@ impl RemoteCache {
         }
     }
 
-    pub async fn refresh_all(&self, app_handle: tauri::AppHandle) -> Result<(), String> {
-        let (res1, res2, res3, res4, res5) = tokio::join!(
-            self.refresh_remote_list(app_handle.clone()),
-            self.refresh_remote_settings(app_handle.clone()),
-            self.refresh_remote_configs(app_handle.clone()),
-            self.refresh_mounted_remotes(app_handle.clone()),
-            self.refresh_serves(app_handle.clone()),
+    #[allow(clippy::type_complexity)]
+    pub async fn refresh_all(
+        &self,
+        client: &reqwest::Client,
+        backend: &Backend,
+    ) -> Result<(), String> {
+        let (res1, res2, res3, res4): (
+            Result<(), String>,
+            Result<(), String>,
+            Result<(), String>,
+            Result<(), String>,
+        ) = tokio::join!(
+            self.refresh_remote_list(client, backend),
+            self.refresh_remote_configs(client, backend),
+            self.refresh_mounted_remotes(client, backend),
+            self.refresh_serves(client, backend),
         );
 
         if let Err(e) = res1 {
             error!("Failed to refresh remote list: {e}");
         }
         if let Err(e) = res2 {
-            error!("Failed to refresh remote settings: {e}");
-        }
-        if let Err(e) = res3 {
             error!("Failed to refresh remote configs: {e}");
         }
-        if let Err(e) = res4 {
+        if let Err(e) = res3 {
             error!("Failed to refresh mounted remotes: {e}");
         }
-        if let Err(e) = res5 {
+        if let Err(e) = res4 {
             error!("Failed to refresh serves: {e}");
         }
 
@@ -146,29 +259,14 @@ impl RemoteCache {
         self.mounted.read().await.clone()
     }
 
-    pub async fn refresh_serves(&self, app_handle: tauri::AppHandle) -> Result<(), String> {
-        match list_serves(app_handle.state()).await {
+    pub async fn refresh_serves(
+        &self,
+        client: &reqwest::Client,
+        backend: &Backend,
+    ) -> Result<(), String> {
+        match list_serves_internal(client, backend).await {
             Ok(response) => {
-                let mut serves_list: Vec<ServeInstance> = response
-                    .get("list")
-                    .and_then(|v| v.as_array())
-                    .map(|arr| {
-                        arr.iter()
-                            .filter_map(|item| {
-                                let id = item.get("id")?.as_str()?.to_string();
-                                let addr = item.get("addr")?.as_str()?.to_string();
-                                let params = item.get("params")?.clone();
-
-                                Some(ServeInstance {
-                                    id,
-                                    addr,
-                                    params,
-                                    profile: None,
-                                })
-                            })
-                            .collect()
-                    })
-                    .unwrap_or_default();
+                let mut serves_list = parse_serves_response(&response);
 
                 // Attach profiles from our lookup table
                 let profiles = self.serve_profiles.read().await;
@@ -194,7 +292,9 @@ impl RemoteCache {
             }
             Err(e) => {
                 error!("❌ Failed to refresh serves: {e}");
-                Err("Failed to refresh serves".into())
+                Err(crate::localized_error!(
+                    "backendErrors.cache.refreshServesFailed"
+                ))
             }
         }
     }
@@ -217,15 +317,13 @@ impl RemoteCache {
     }
 
     pub async fn get_remotes(&self) -> Vec<String> {
-        self.remotes.read().await.clone()
+        let guard = self.remotes.read().await;
+        let v: Vec<String> = guard.clone();
+        v
     }
 
     pub async fn get_configs(&self) -> serde_json::Value {
         self.configs.read().await.clone()
-    }
-
-    pub async fn get_settings(&self) -> serde_json::Value {
-        self.settings.read().await.clone()
     }
 
     // === Profile Management for Mounts ===
@@ -277,56 +375,106 @@ impl RemoteCache {
 // --- Tauri Commands ---
 
 #[tauri::command]
-pub async fn get_cached_remotes(cache: State<'_, RemoteCache>) -> Result<Vec<String>, String> {
-    Ok(cache.get_remotes().await)
+pub async fn get_cached_remotes<R: Runtime>(app: AppHandle<R>) -> Result<Vec<String>, String> {
+    use crate::rclone::backend::BackendManager;
+    Ok(app
+        .state::<BackendManager>()
+        .remote_cache
+        .get_remotes()
+        .await)
 }
 
 #[tauri::command]
-pub async fn get_configs(cache: State<'_, RemoteCache>) -> Result<serde_json::Value, String> {
-    Ok(cache.get_configs().await)
+pub async fn get_configs<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Value, String> {
+    use crate::rclone::backend::BackendManager;
+    Ok(app
+        .state::<BackendManager>()
+        .remote_cache
+        .get_configs()
+        .await)
+}
+
+/// Get all remote settings from rcman sub-settings
+#[tauri::command]
+pub async fn get_settings<R: Runtime>(
+    app: AppHandle<R>,
+    manager: tauri::State<'_, AppSettingsManager>,
+) -> Result<serde_json::Value, String> {
+    use crate::rclone::backend::BackendManager;
+    use serde_json::json;
+
+    let remotes = manager
+        .inner()
+        .sub_settings("remotes")
+        .map_err(|e| format!("Failed to get remotes sub-settings: {e}"))?;
+
+    let backend_manager = app.state::<BackendManager>();
+    let remote_names = backend_manager.remote_cache.get_remotes().await;
+    let mut all_settings = serde_json::Map::new();
+
+    for remote_name in remote_names {
+        if let Ok(settings) = remotes.get_value(&remote_name) {
+            all_settings.insert(remote_name, settings);
+        }
+    }
+
+    Ok(json!(all_settings))
 }
 
 #[tauri::command]
-pub async fn get_settings(cache: State<'_, RemoteCache>) -> Result<serde_json::Value, String> {
-    Ok(cache.get_settings().await)
-}
-
-#[tauri::command]
-pub async fn get_cached_mounted_remotes(
-    cache: State<'_, RemoteCache>,
+pub async fn get_cached_mounted_remotes<R: Runtime>(
+    app: AppHandle<R>,
 ) -> Result<Vec<MountedRemote>, String> {
-    Ok(cache.get_mounted_remotes().await)
+    use crate::rclone::backend::BackendManager;
+    Ok(app
+        .state::<BackendManager>()
+        .remote_cache
+        .get_mounted_remotes()
+        .await)
 }
 
 #[tauri::command]
-pub async fn get_cached_serves(
-    cache: State<'_, RemoteCache>,
+pub async fn get_cached_serves<R: Runtime>(
+    app: AppHandle<R>,
 ) -> Result<Vec<ServeInstance>, String> {
-    Ok(cache.get_serves().await)
+    use crate::rclone::backend::BackendManager;
+    Ok(app
+        .state::<BackendManager>()
+        .remote_cache
+        .get_serves()
+        .await)
 }
 
 /// Rename a profile in all cached mounts
+#[cfg(not(feature = "web-server"))]
 #[tauri::command]
-pub async fn rename_mount_profile_in_cache(
-    cache: State<'_, RemoteCache>,
+pub async fn rename_mount_profile_in_cache<R: Runtime>(
+    app: AppHandle<R>,
     remote_name: String,
     old_name: String,
     new_name: String,
 ) -> Result<usize, String> {
-    Ok(cache
+    use crate::rclone::backend::BackendManager;
+    Ok(app
+        .state::<BackendManager>()
+        .remote_cache
         .rename_profile_in_mounts(&remote_name, &old_name, &new_name)
         .await)
 }
 
 /// Rename a profile in all cached serves
+#[cfg(not(feature = "web-server"))]
 #[tauri::command]
-pub async fn rename_serve_profile_in_cache(
-    cache: State<'_, RemoteCache>,
+pub async fn rename_serve_profile_in_cache<R: Runtime>(
+    app: AppHandle<R>,
     remote_name: String,
     old_name: String,
     new_name: String,
 ) -> Result<usize, String> {
-    Ok(cache
+    use crate::rclone::backend::BackendManager;
+    Ok(app
+        .state::<BackendManager>()
+        .remote_cache
         .rename_profile_in_serves(&remote_name, &old_name, &new_name)
         .await)
 }

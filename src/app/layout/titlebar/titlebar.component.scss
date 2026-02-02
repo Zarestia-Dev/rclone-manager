@@ -3,7 +3,7 @@
   justify-content: space-between;
   align-items: center;
   height: var(--titlebar-height);
-  color: var(--app-text-color);
+  color: var(--window-fg-color);
   padding: 4px var(--title-bar-padding);
 
   .left-section {
@@ -32,8 +32,8 @@
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  border: 2px solid var(--theme-border);
-  color: var(--app-text-color);
+  outline: 2px solid var(--border-color);
+  color: var(--window-fg-color);
   display: flex;
   align-items: end;
   position: relative;
@@ -42,26 +42,27 @@
 
   .checkmark {
     width: 20px;
+    opacity: 1;
     height: 20px;
-    background-color: white;
+    background: var(--gnome-light-1);
     border-radius: 50%;
     display: flex;
     justify-content: center;
     align-items: center;
     margin: -8px;
-    color: var(--accent-color);
+    color: var(--gnome-blue-3);
   }
 }
 .light {
-  background: #ffffff;
+  background: var(--gnome-light-1);
 }
 
 .dark {
-  background: #000000;
+  background: var(--gnome-dark-5);
 }
 
 .system {
-  background: linear-gradient(45deg, #000000 50%, #ffffff 50%);
+  background: linear-gradient(45deg, var(--gnome-dark-5) 50%, var(--gnome-light-1) 50%);
 }
 
 .selected {

@@ -5,10 +5,10 @@ use tauri::Manager;
 
 use crate::{
     core::{
-        check_binaries::check_rclone_available, initialization::get_config_dir,
+        check_binaries::check_rclone_available, paths::AppPaths,
         settings::operations::core::save_setting,
     },
-    utils::{github_client, types::all_types::RcloneState},
+    utils::github_client,
 };
 
 use super::{
@@ -27,7 +27,7 @@ pub async fn provision_rclone(
 
     let install_path = match path {
         Some(p) => PathBuf::from(p),
-        _none => get_config_dir(&app_handle)?,
+        _none => AppPaths::from_app_handle(&app_handle)?.config_dir,
     };
 
     // check_rclone_available is now async, so we need to await it
@@ -45,7 +45,9 @@ pub async fn provision_rclone(
                 {
                     error!("Failed to save settings: {e}");
                 }
-                return Ok("Rclone already installed system-wide.".into());
+                return Ok(
+                    crate::localized_success!("backendSuccess.rclone.updated", "channel" => "system"),
+                );
             }
         }
         Err(e) => {
@@ -58,7 +60,11 @@ pub async fn provision_rclone(
         "macos" => "osx",
         "linux" => "linux",
         "windows" => "windows",
-        _ => return Err("Unsupported OS.".into()),
+        _ => {
+            return Err(crate::localized_error!(
+                "backendErrors.rclone.unsupportedOS"
+            ));
+        }
     };
 
     let version = get_latest_rclone_version().await?;
@@ -106,7 +112,9 @@ pub async fn provision_rclone(
         .join(binary_name);
 
     if !extracted_path.exists() {
-        return Err("Rclone binary not found.".into());
+        return Err(crate::localized_error!(
+            "backendErrors.rclone.binaryNotFound"
+        ));
     }
 
     info!("Rclone binary verified successfully. Proceeding to copy...");
@@ -117,24 +125,16 @@ pub async fn provision_rclone(
         "Rclone installed successfully at {}",
         install_path.display()
     );
-    // 🔥 Save setting AND update in-memory state immediately
-    // The event listener would update this too, but it's async and may not complete before we return
-    let rclone_state = app_handle.state::<RcloneState>();
-    if let Ok(mut path_guard) = rclone_state.rclone_path.write() {
-        *path_guard = install_path.clone();
-        info!(
-            "✅ Updated in-memory rclone_path to: {}",
-            install_path.display()
-        );
-    }
 
+    // Persist the new rclone path to settings
+    // Note: In-memory caching is no longer used - we read from AppSettingsManager which caches internally
     if let Err(e) = save_setting(
         "core".to_string(),
         "rclone_path".to_string(),
         serde_json::json!(
             install_path
                 .to_str()
-                .ok_or("Invalid UTF-8 in install path")?
+                .ok_or_else(|| crate::localized_error!("backendErrors.rclone.binaryNotFound"))?
         ),
         app_handle.state(),
         app_handle.clone(),
@@ -144,7 +144,7 @@ pub async fn provision_rclone(
         error!("Failed to save settings: {e}");
     }
 
-    Ok(format!("Rclone installed in {}", install_path.display()))
+    Ok(crate::localized_success!("backendSuccess.rclone.updated", "channel" => "stable"))
 }
 
 /// Get the latest rclone version from GitHub releases

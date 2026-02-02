@@ -1,9 +1,6 @@
-@use "../../../styles/_shared_components";
-
 .jobs-table-container {
-  background: var(--app-background);
+  background: var(--window-bg-color);
   border-radius: var(--item-radius);
-  border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
   max-height: clamp(300px, 50vh, 600px);
   overflow-y: auto;
   position: relative;
@@ -15,8 +12,8 @@
     contain: layout style paint;
 
     .mat-mdc-header-row {
-      background: rgba(var(--app-text-color-rgb), var(--background-opacity));
-      border-bottom: 1px solid rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
+      background: var(--sidebar-bg-color);
+      border-bottom: 1px solid rgba(var(--window-fg-color-rgb), var(--panel-hover-opacity));
       position: sticky;
       top: 0;
       z-index: 10;
@@ -24,14 +21,14 @@
     }
 
     .mat-mdc-header-cell {
-      color: var(--app-text-color);
+      color: var(--window-fg-color);
       font-weight: 600;
       font-size: var(--font-size-sm);
-      background: var(--app-background);
+      background: var(--window-bg-color);
     }
 
     .job-row {
-      border-bottom: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
+      border-bottom: 1px solid rgba(var(--window-fg-color-rgb), var(--border-opacity));
 
       &:hover {
         background: rgba(var(--primary-color-rgb), var(--background-opacity));
@@ -50,7 +47,7 @@
 
         .job-type-text {
           font-weight: 500;
-          color: var(--app-text-color);
+          color: var(--window-fg-color);
         }
       }
     }
@@ -74,7 +71,7 @@
       &.running {
         background: rgba(var(--primary-color-rgb), var(--active-opacity));
         color: var(--primary-color);
-        border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+        box-shadow: 0 0 0 1px var(--card-shade-color);
 
         .status-dot {
           background: var(--primary-color);
@@ -84,7 +81,7 @@
       &.completed {
         background: rgba(var(--accent-color-rgb), var(--active-opacity));
         color: var(--accent-color);
-        border: 1px solid rgba(var(--accent-color-rgb), 0.2);
+        box-shadow: 0 0 0 1px var(--card-shade-color);
 
         .status-dot {
           background: var(--accent-color);
@@ -94,7 +91,7 @@
       &.failed {
         background: rgba(var(--warn-color-rgb), var(--active-opacity));
         color: var(--warn-color);
-        border: 1px solid rgba(var(--warn-color-rgb), 0.2);
+        box-shadow: 0 0 0 1px var(--card-shade-color);
 
         .status-dot {
           background: var(--warn-color);
@@ -104,7 +101,7 @@
       &.stopped {
         background: rgba(var(--orange-rgb), var(--active-opacity));
         color: var(--orange);
-        border: 1px solid rgba(var(--orange-rgb), 0.2);
+        box-shadow: 0 0 0 1px var(--card-shade-color);
 
         .status-dot {
           background: var(--orange);
@@ -112,12 +109,11 @@
       }
 
       &.unknown {
-        background: rgba(var(--app-text-color-rgb), var(--border-opacity));
-        color: var(--secondary-text-color);
-        border: 1px solid rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
+        background: rgba(var(--window-fg-color-rgb), var(--border-opacity));
+        color: var(--dim-color);
 
         .status-dot {
-          background: var(--secondary-text-color);
+          background: var(--dim-color);
         }
       }
     }
@@ -129,18 +125,18 @@
 
       .progress-text {
         font-size: var(--font-size-sm);
-        color: var(--secondary-text-color);
+        color: var(--dim-color);
         font-weight: 500;
       }
     }
 
     .no-progress {
-      color: var(--secondary-text-color);
+      color: var(--dim-color);
       font-style: italic;
     }
 
     .start-time {
-      color: var(--app-text-color);
+      color: var(--window-fg-color);
       font-size: var(--font-size-sm);
     }
 
@@ -162,8 +158,8 @@
         }
 
         &.delete-button {
-          color: var(--secondary-text-color);
-          background: rgba(var(--app-text-color-rgb), var(--border-opacity));
+          color: var(--dim-color);
+          background: rgba(var(--window-fg-color-rgb), var(--border-opacity));
 
           &:hover {
             background: rgba(var(--warn-color-rgb), var(--active-opacity));
@@ -177,14 +173,13 @@
       .no-data-cell {
         padding: 40px var(--panel-padding);
         text-align: center;
-        border: none;
 
         .no-data-content {
           display: flex;
           flex-direction: column;
           align-items: center;
           gap: 12px;
-          color: var(--secondary-text-color);
+          color: var(--dim-color);
 
           .no-data-icon {
             width: 48px;

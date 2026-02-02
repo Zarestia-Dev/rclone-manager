@@ -100,3 +100,77 @@ pub async fn verify_rclone_sha256(
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    #[test]
+    fn test_get_arch_returns_known_value() {
+        let arch = get_arch();
+        // Should return one of the known architecture mappings
+        assert!(
+            ["amd64", "arm64", "386", "unknown"].contains(&arch.as_str()),
+            "Unexpected arch: {}",
+            arch
+        );
+    }
+
+    #[test]
+    fn test_get_arch_is_consistent() {
+        // Multiple calls should return the same value
+        let arch1 = get_arch();
+        let arch2 = get_arch();
+        assert_eq!(arch1, arch2);
+    }
+
+    #[test]
+    fn test_compute_sha256_known_content() {
+        // Create a temp file with known content
+        let temp_dir = std::env::temp_dir();
+        let test_file = temp_dir.join("sha256_test_file.txt");
+
+        let content = b"Hello, World!";
+        {
+            let mut file = File::create(&test_file).expect("Failed to create test file");
+            file.write_all(content)
+                .expect("Failed to write test content");
+        }
+
+        let hash = compute_sha256(&test_file).expect("Failed to compute hash");
+
+        // Known SHA256 of "Hello, World!"
+        let expected = "dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f";
+        assert_eq!(hash, expected);
+
+        // Cleanup
+        std::fs::remove_file(&test_file).ok();
+    }
+
+    #[test]
+    fn test_compute_sha256_nonexistent_file() {
+        let result = compute_sha256("/nonexistent/path/to/file.txt");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Failed to open file"));
+    }
+
+    #[test]
+    fn test_compute_sha256_empty_file() {
+        let temp_dir = std::env::temp_dir();
+        let test_file = temp_dir.join("sha256_empty_file.txt");
+
+        {
+            File::create(&test_file).expect("Failed to create test file");
+        }
+
+        let hash = compute_sha256(&test_file).expect("Failed to compute hash");
+
+        // Known SHA256 of empty content
+        let expected = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        assert_eq!(hash, expected);
+
+        // Cleanup
+        std::fs::remove_file(&test_file).ok();
+    }
+}

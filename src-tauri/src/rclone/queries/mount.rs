@@ -1,35 +1,18 @@
 use log::debug;
-use serde_json::Value;
-use tauri::State;
 
-use crate::rclone::state::engine::ENGINE_STATE;
-use crate::utils::rclone::endpoints::{EndpointHelper, mount};
-use crate::utils::types::all_types::{MountedRemote, RcloneState};
+use crate::rclone::backend::types::Backend;
+use crate::utils::rclone::endpoints::mount;
+use crate::utils::types::core::RcloneState;
+use crate::utils::types::remotes::MountedRemote;
 
-#[tauri::command]
-pub async fn get_mounted_remotes(
-    state: State<'_, RcloneState>,
+pub async fn get_mounted_remotes_internal(
+    client: &reqwest::Client,
+    backend: &Backend,
 ) -> Result<Vec<MountedRemote>, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, mount::LISTMOUNTS);
-
-    let response = state
-        .client
-        .post(&url)
-        .send()
+    let json = backend
+        .post_json(client, mount::LISTMOUNTS, None)
         .await
-        .map_err(|e| format!("❌ Failed to send request: {e}"))?;
-
-    if !response.status().is_success() {
-        return Err(format!(
-            "❌ Failed to fetch mounted remotes: {:?}",
-            response.text().await
-        ));
-    }
-
-    let json: Value = response
-        .json()
-        .await
-        .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
+        .map_err(|e| format!("❌ Failed to fetch mounted remotes: {e}"))?;
 
     let mounts = json["mountPoints"]
         .as_array()
@@ -49,27 +32,24 @@ pub async fn get_mounted_remotes(
 }
 
 #[tauri::command]
-pub async fn get_mount_types(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, mount::TYPES);
+pub async fn get_mounted_remotes(app: tauri::AppHandle) -> Result<Vec<MountedRemote>, String> {
+    use crate::rclone::backend::BackendManager;
+    use tauri::Manager;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    get_mounted_remotes_internal(&app.state::<RcloneState>().client, &backend).await
+}
 
-    let response = state
-        .client
-        .post(&url)
-        .send()
+#[tauri::command]
+pub async fn get_mount_types(app: tauri::AppHandle) -> Result<Vec<String>, String> {
+    use crate::rclone::backend::BackendManager;
+    use tauri::Manager;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let json = backend
+        .post_json(&app.state::<RcloneState>().client, mount::TYPES, None)
         .await
-        .map_err(|e| format!("❌ Failed to send request: {e}"))?;
-
-    if !response.status().is_success() {
-        return Err(format!(
-            "❌ Failed to fetch mount types: {:?}",
-            response.text().await
-        ));
-    }
-
-    let json: Value = response
-        .json()
-        .await
-        .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
+        .map_err(|e| format!("❌ Failed to fetch mount types: {e}"))?;
 
     let mount_types = json["mountTypes"]
         .as_array()

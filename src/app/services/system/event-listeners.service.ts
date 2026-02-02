@@ -6,7 +6,7 @@ import {
   AppEventPayloadType,
   ENGINE_RESTARTED,
   MOUNT_STATE_CHANGED,
-  REMOTE_CACHE_UPDATED,
+  REMOTE_CACHE_CHANGED,
   JOB_CACHE_CHANGED,
   MOUNT_PLUGIN_INSTALLED,
   APP_EVENT,
@@ -21,7 +21,6 @@ import {
   RCLONE_PASSWORD_STORED,
   OPEN_INTERNAL_ROUTE,
 } from '@app/types';
-
 /**
  * Service for handling installations of rclone and plugins
  * Manages the provisioning and setup of required components
@@ -60,7 +59,7 @@ export class EventListenersService extends TauriBaseService {
    * Listen to remote cache updated events
    */
   listenToRemoteCacheUpdated(): Observable<unknown> {
-    return this.listenToEvent<unknown>(REMOTE_CACHE_UPDATED);
+    return this.listenToEvent<unknown>(REMOTE_CACHE_CHANGED);
   }
 
   /**

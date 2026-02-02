@@ -1,8 +1,12 @@
+use log::info;
 use serde_json::Value;
-use tauri::State;
+use tauri::{AppHandle, Emitter};
 use tokio::sync::RwLock;
 
-use crate::utils::types::all_types::{JobCache, JobInfo, JobStatus};
+use crate::utils::types::{
+    events::JOB_CACHE_CHANGED,
+    jobs::{JobCache, JobInfo, JobStatus},
+};
 
 impl JobCache {
     pub fn new() -> Self {
@@ -11,19 +15,45 @@ impl JobCache {
         }
     }
 
-    pub async fn add_job(&self, job: JobInfo) {
-        let mut jobs = self.jobs.write().await;
-        jobs.push(job);
+    /// Get all jobs (for state snapshot)
+    pub async fn get_all_jobs(&self) -> Vec<JobInfo> {
+        self.jobs.read().await.clone()
     }
 
-    pub async fn delete_job(&self, jobid: u64) -> Result<(), String> {
+    /// Set all jobs (for state restore)
+    pub async fn set_all_jobs(&self, jobs: Vec<JobInfo>) {
+        let mut current = self.jobs.write().await;
+        *current = jobs;
+    }
+
+    /// Add a job and emit event
+    pub async fn add_job(&self, job: JobInfo, app: Option<&AppHandle>) {
+        let jobid = job.jobid;
+        let mut jobs = self.jobs.write().await;
+        jobs.push(job);
+        drop(jobs);
+
+        if let Some(app) = app {
+            info!("📡 Job {jobid} added");
+            let _ = app.emit(JOB_CACHE_CHANGED, jobid);
+        }
+    }
+
+    /// Delete a job and emit event if successful
+    pub async fn delete_job(&self, jobid: u64, app: Option<&AppHandle>) -> Result<(), String> {
         let mut jobs = self.jobs.write().await;
         let len_before = jobs.len();
         jobs.retain(|j| j.jobid != jobid);
+
         if jobs.len() < len_before {
+            drop(jobs);
+            if let Some(app) = app {
+                info!("📡 Job {jobid} deleted");
+                let _ = app.emit(JOB_CACHE_CHANGED, jobid);
+            }
             Ok(())
         } else {
-            Err("JobInfo not found".to_string())
+            Err(crate::localized_error!("backendErrors.job.notFound"))
         }
     }
 
@@ -32,40 +62,64 @@ impl JobCache {
         &self,
         jobid: u64,
         update_fn: impl FnOnce(&mut JobInfo),
+        app: Option<&AppHandle>,
     ) -> Result<JobInfo, String> {
         let mut jobs = self.jobs.write().await;
         if let Some(job) = jobs.iter_mut().find(|j| j.jobid == jobid) {
             update_fn(job);
-            Ok(job.clone())
+            let result = job.clone();
+            drop(jobs);
+
+            if let Some(app) = app {
+                info!("📡 Job {jobid} updated");
+                let _ = app.emit(JOB_CACHE_CHANGED, jobid);
+            }
+            Ok(result)
         } else {
-            Err("JobInfo not found".to_string())
+            Err(crate::localized_error!("backendErrors.job.notFound"))
         }
     }
 
     pub async fn update_job_stats(&self, jobid: u64, stats: Value) -> Result<(), String> {
-        self.update_job(jobid, |job| {
+        // Stats updates are frequent, don't emit individually
+        let mut jobs = self.jobs.write().await;
+        if let Some(job) = jobs.iter_mut().find(|j| j.jobid == jobid) {
             job.stats = Some(stats);
-        })
+            Ok(())
+        } else {
+            Err(crate::localized_error!("backendErrors.job.notFound"))
+        }
+    }
+
+    pub async fn complete_job(
+        &self,
+        jobid: u64,
+        success: bool,
+        app: Option<&AppHandle>,
+    ) -> Result<(), String> {
+        self.update_job(
+            jobid,
+            |job| {
+                job.status = if success {
+                    JobStatus::Completed
+                } else {
+                    JobStatus::Failed
+                };
+            },
+            app,
+        )
         .await?;
         Ok(())
     }
 
-    pub async fn complete_job(&self, jobid: u64, success: bool) -> Result<(), String> {
-        self.update_job(jobid, |job| {
-            job.status = if success {
-                JobStatus::Completed
-            } else {
-                JobStatus::Failed
-            };
-        })
-        .await?;
-        Ok(())
-    }
-
-    pub async fn stop_job(&self, jobid: u64) -> Result<(), String> {
-        self.update_job(jobid, |job| {
-            job.status = JobStatus::Stopped;
-        })
+    pub async fn stop_job(&self, jobid: u64, app: Option<&AppHandle>) -> Result<(), String> {
+        self.update_job(
+            jobid,
+            |job| {
+                job.status = JobStatus::Stopped;
+            },
+            app,
+        )
         .await?;
         Ok(())
     }
@@ -75,7 +129,7 @@ impl JobCache {
     }
 
     pub async fn get_active_jobs(&self) -> Vec<JobInfo> {
-        let jobs = self.get_jobs().await;
+        let jobs: Vec<JobInfo> = self.get_jobs().await;
         jobs.into_iter()
             .filter(|job| job.status == JobStatus::Running)
             .collect()
@@ -133,52 +187,174 @@ impl JobCache {
     }
 }
 
-#[tauri::command]
-pub async fn get_jobs(job_cache: State<'_, JobCache>) -> Result<Vec<JobInfo>, String> {
-    Ok(job_cache.get_jobs().await)
-}
-
-#[tauri::command]
-pub async fn delete_job(job_cache: State<'_, JobCache>, jobid: u64) -> Result<(), String> {
-    job_cache.delete_job(jobid).await
-}
-
-#[tauri::command]
-pub async fn get_job_status(
-    job_cache: State<'_, JobCache>,
-    jobid: u64,
-) -> Result<Option<JobInfo>, String> {
-    Ok(job_cache.get_job(jobid).await)
-}
-
-#[tauri::command]
-pub async fn get_active_jobs(job_cache: State<'_, JobCache>) -> Result<Vec<JobInfo>, String> {
-    Ok(job_cache.get_active_jobs().await)
-}
-
-#[tauri::command]
-pub async fn get_jobs_by_source(
-    job_cache: State<'_, JobCache>,
-    source: String,
-) -> Result<Vec<JobInfo>, String> {
-    Ok(job_cache.get_jobs_by_source(&source).await)
-}
-
-/// Rename a profile in all cached running jobs
-#[tauri::command]
-pub async fn rename_profile_in_cache(
-    job_cache: State<'_, JobCache>,
-    remote_name: String,
-    old_name: String,
-    new_name: String,
-) -> Result<usize, String> {
-    Ok(job_cache
-        .rename_profile(&remote_name, &old_name, &new_name)
-        .await)
-}
-
 impl Default for JobCache {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn mock_job(jobid: u64, remote: &str, job_type: &str, profile: Option<&str>) -> JobInfo {
+        JobInfo {
+            jobid,
+            remote_name: remote.to_string(),
+            job_type: job_type.to_string(),
+            source: format!("{}path", remote),
+            destination: "/local/path".to_string(),
+            start_time: chrono::Utc::now(),
+            profile: profile.map(|s| s.to_string()),
+            status: JobStatus::Running,
+            stats: None,
+            group: format!("job/{}", jobid),
+            source_ui: None,
+            backend_name: Some("Local".to_string()),
+            execute_id: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_add_and_get_job() {
+        let cache = JobCache::new();
+        let job = mock_job(1, "gdrive:", "sync", Some("default"));
+
+        cache.add_job(job.clone(), None).await;
+
+        let retrieved = cache.get_job(1).await;
+        assert!(retrieved.is_some());
+        assert_eq!(retrieved.unwrap().remote_name, "gdrive:");
+    }
+
+    #[tokio::test]
+    async fn test_delete_job() {
+        let cache = JobCache::new();
+        cache
+            .add_job(mock_job(1, "gdrive:", "sync", None), None)
+            .await;
+        cache.add_job(mock_job(2, "s3:", "copy", None), None).await;
+
+        assert_eq!(cache.get_jobs().await.len(), 2);
+
+        let result = cache.delete_job(1, None).await;
+        assert!(result.is_ok());
+        assert_eq!(cache.get_jobs().await.len(), 1);
+
+        // Deleting non-existent job should fail
+        let result = cache.delete_job(999, None).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_complete_job() {
+        let cache = JobCache::new();
+        cache
+            .add_job(mock_job(1, "gdrive:", "sync", None), None)
+            .await;
+
+        // Complete successfully
+        cache.complete_job(1, true, None).await.unwrap();
+        let job = cache.get_job(1).await.unwrap();
+        assert_eq!(job.status, JobStatus::Completed);
+
+        // Add another and fail it
+        cache.add_job(mock_job(2, "s3:", "copy", None), None).await;
+        cache.complete_job(2, false, None).await.unwrap();
+        let job = cache.get_job(2).await.unwrap();
+        assert_eq!(job.status, JobStatus::Failed);
+    }
+
+    #[tokio::test]
+    async fn test_stop_job() {
+        let cache = JobCache::new();
+        cache
+            .add_job(mock_job(1, "gdrive:", "sync", None), None)
+            .await;
+
+        cache.stop_job(1, None).await.unwrap();
+
+        let job = cache.get_job(1).await.unwrap();
+        assert_eq!(job.status, JobStatus::Stopped);
+    }
+
+    #[tokio::test]
+    async fn test_get_active_jobs() {
+        let cache = JobCache::new();
+        cache
+            .add_job(mock_job(1, "gdrive:", "sync", None), None)
+            .await;
+        cache.add_job(mock_job(2, "s3:", "copy", None), None).await;
+        cache.add_job(mock_job(3, "b2:", "move", None), None).await;
+
+        // Stop one, complete one
+        cache.stop_job(1, None).await.unwrap();
+        cache.complete_job(2, true, None).await.unwrap();
+
+        let active = cache.get_active_jobs().await;
+        assert_eq!(active.len(), 1);
+        assert_eq!(active[0].jobid, 3);
+    }
+
+    #[tokio::test]
+    async fn test_is_job_running() {
+        let cache = JobCache::new();
+        cache
+            .add_job(mock_job(1, "gdrive:", "sync", Some("default")), None)
+            .await;
+
+        // Should find running job
+        assert!(
+            cache
+                .is_job_running("gdrive:", "sync", Some("default"))
+                .await
+        );
+
+        // Wrong remote
+        assert!(!cache.is_job_running("s3:", "sync", Some("default")).await);
+
+        // Wrong job type
+        assert!(
+            !cache
+                .is_job_running("gdrive:", "copy", Some("default"))
+                .await
+        );
+
+        // Wrong profile
+        assert!(!cache.is_job_running("gdrive:", "sync", Some("other")).await);
+
+        // Stop the job
+        cache.stop_job(1, None).await.unwrap();
+        assert!(
+            !cache
+                .is_job_running("gdrive:", "sync", Some("default"))
+                .await
+        );
+    }
+
+    #[tokio::test]
+    async fn test_rename_profile() {
+        let cache = JobCache::new();
+        cache
+            .add_job(mock_job(1, "gdrive:", "sync", Some("old_profile")), None)
+            .await;
+        cache
+            .add_job(mock_job(2, "gdrive:", "copy", Some("old_profile")), None)
+            .await;
+        cache
+            .add_job(mock_job(3, "s3:", "sync", Some("old_profile")), None)
+            .await; // Different remote
+
+        let updated = cache
+            .rename_profile("gdrive:", "old_profile", "new_profile")
+            .await;
+        assert_eq!(updated, 2); // Only gdrive jobs renamed
+
+        // Verify
+        let job1 = cache.get_job(1).await.unwrap();
+        assert_eq!(job1.profile, Some("new_profile".to_string()));
+
+        let job3 = cache.get_job(3).await.unwrap();
+        assert_eq!(job3.profile, Some("old_profile".to_string())); // Unchanged
     }
 }

@@ -45,6 +45,9 @@ export class NautilusService {
   // Selected remote signal (for initial navigation or direct selection)
   public readonly selectedNautilusRemote = signal<string | null>(null);
 
+  // Target path for opening specific folders (e.g. from debug menu)
+  public readonly targetPath = signal<string | null>(null);
+
   // ========== REMOTE/DRIVE STATE ==========
 
   // Simple writable signals for drives and remotes
@@ -149,6 +152,24 @@ export class NautilusService {
     this.selectedNautilusRemote.set(remoteName);
 
     if (this.browserOverlayRef) {
+      return;
+    }
+
+    // Not open - create the overlay
+    this._isNautilusOverlayOpen.next(true);
+    this.createBrowserOverlay(showAnimation);
+  }
+
+  /**
+   * Opens the file browser and navigates to a specific absolute path.
+   * Use this for opening specific folders (logs, config, etc.)
+   */
+  openPath(path: string, showAnimation = true): void {
+    this.targetPath.set(path);
+
+    if (this.browserOverlayRef) {
+      // If already open, the effect in NautilusComponent should handle the signal change
+      // But we can double check logic there.
       return;
     }
 
@@ -277,7 +298,10 @@ export class NautilusService {
     const config = this.collections[type];
     try {
       const fullKey = `${config.category}.${config.key}`;
-      const rawItems = (await this.appSettingsService.getSettingValue<unknown[]>(fullKey)) ?? [];
+      let rawItems = (await this.appSettingsService.getSettingValue<unknown[]>(fullKey)) ?? [];
+      if (!Array.isArray(rawItems)) {
+        rawItems = [];
+      }
       const items: FileBrowserItem[] = rawItems.map((item: unknown) => {
         const rec = item as Record<string, unknown>;
         if (rec && 'remote' in rec && 'entry' in rec) {

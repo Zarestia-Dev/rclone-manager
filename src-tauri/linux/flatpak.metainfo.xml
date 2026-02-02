@@ -62,31 +62,64 @@
   <url type="vcs-browser">https://github.com/Zarestia-Dev/rclone-manager</url>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.9/assets/desktop-ui.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.0/assets/desktop-ui.png</image>
       <caption>Desktop UI</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.9/assets/general-home.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.0/assets/general-home.png</image>
       <caption>General Home View</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.9/assets/general-remote.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.0/assets/general-remote.png</image>
       <caption>Remote Management Interface</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.9/assets/serve-control.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.0/assets/serve-control.png</image>
       <caption>Serve Management Interface</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.9/assets/job-watcher.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.0/assets/job-watcher.png</image>
       <caption>Job Watcher - Monitor your operations</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.9/assets/mount-control.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.0/assets/mount-control.png</image>
       <caption>Mount Control Panel</caption>
     </screenshot>
     </screenshots>
   <releases>
+    <release version="0.2.0" date="2026-02-01">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>Settings Management Library (rcman): Extracted and refactored the internal settings management system into a standalone, reusable Rust library called rcman. This provides schema-based configuration, backup/restore, secret storage, and a derive macro for automatic schema generation. The app now uses rcman as an external dependency.</li>
+          <li>Nautilus Component: Added dot and other text files preview support. Now you can preview the content of dot and other text files.</li>
+          <li>Nautilus Component: Added markdown preview support. Now you can preview the content of markdown files.</li>
+          <li>Nautilus Component: Added code highlight support. Now you can preview the content of code files with syntax highlighting.</li>
+          <li>Nautilus Component: Added bulk hash calculation support. Now you can calculate the hash of multiple files inside a directory.</li>
+          <li>Multiple backend support added. Now you can connect multiple and remote rclone instances via a single app. Remote config unlock supported (via rc config/unlock). Path change support added to (via rc config/setpath).</li>
+          <li>Multiple profile support added for backends. Every backend has a own remote settings profile. Also supported the export and import.</li>
+          <li>Multiple language support added. Now you can change the language of the app. Needs community help for translations.</li>
+          <li>Log file support added (both app and rclone logs). You can manage the log settings from configuration modal (Log file location cannot be changed on rclone. I think rclone has problem on that. Rclone version 1.72.1 :/).</li>
+          <li>Modals now transforms to bottom sheet on mobile devices. Like how it works on gnome. Basic SCSS trick but looks more native.</li>
+          <li>Window state persistence support added. Now the app remembers the window size on close and restores it on next launch.</li>
+          <li>Added support for additional rclone flags. Users can now configure and pass custom flags to rclone commands through the settings. Some rclone flags are reserved and cannot be used (App prevent these flags to use in the settings).</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>Removed legacy integrated settings manager in favor of the new rcman library</li>
+          <li>Mount plugin detector and installer improved. Dynamic checks for the latest plugin version for installation.</li>
+          <li>Terminal remote support removed. App can handle the all remote operations.</li>
+          <li>UI simplified and modernized.</li>
+          <li>Allow tray icon on headless mode to.</li>
+          <li>Headless mode improvements.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>Broken theme setting fixed. Now it correctly applies the theme.</li>
+          <li>On headless mode cannot open the local files (Access denied error). Now it fixed.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.1.9" date="2025-12-20">
       <description>
         <p>Warning</p>

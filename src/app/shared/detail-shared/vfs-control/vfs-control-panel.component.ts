@@ -1,13 +1,4 @@
-import {
-  Component,
-  inject,
-  OnInit,
-  input,
-  signal,
-  computed,
-  effect,
-  ViewChild,
-} from '@angular/core';
+import { Component, inject, input, signal, computed, effect, ViewChild } from '@angular/core';
 
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatCardModule } from '@angular/material/card';
@@ -16,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { FormsModule } from '@angular/forms';
@@ -35,9 +27,9 @@ import {
   VfsStats,
 } from 'src/app/services/file-operations/vfs.service';
 import { PathSelectionService } from 'src/app/services/remote/path-selection.service';
-import { NotificationService } from '../../services/notification.service';
+import { NotificationService } from '@app/services';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
-import { FileSystemService, MountManagementService } from '@app/services';
+import { FileSystemService, MountManagementService, ServeManagementService } from '@app/services';
 
 interface VfsInstance {
   name: string;
@@ -71,11 +63,12 @@ const DELAY_SLIDER_DEFAULT = 60;
     FormatFileSizePipe,
     MatSliderModule,
     MatProgressSpinnerModule,
+    TranslateModule,
   ],
   templateUrl: './vfs-control-panel.component.html',
   styleUrl: './vfs-control-panel.component.scss',
 })
-export class VfsControlPanelComponent implements OnInit {
+export class VfsControlPanelComponent {
   // Inputs & Services
   remoteName = input.required<string>();
   private readonly vfsService = inject(VfsService);
@@ -83,6 +76,8 @@ export class VfsControlPanelComponent implements OnInit {
   private readonly fileSystemService = inject(FileSystemService);
   private readonly pathSelectionService = inject(PathSelectionService);
   private readonly mountService = inject(MountManagementService);
+  private readonly serveService = inject(ServeManagementService);
+  private readonly translate = inject(TranslateService);
 
   // ViewChild for table rendering
   @ViewChild(MatTable) table?: MatTable<VfsQueueItem>;
@@ -97,6 +92,8 @@ export class VfsControlPanelComponent implements OnInit {
   // Delay slider state
   delaySliderValue = signal(DELAY_SLIDER_DEFAULT);
   showDelaySlider = signal<number | null>(null);
+  showAdvancedConfig = signal(false);
+  configSearchTerm = signal('');
 
   // Computed
   totalQueueSize = computed(
@@ -114,6 +111,37 @@ export class VfsControlPanelComponent implements OnInit {
 
   // Simplified: true when we have a usable (non-indexed) VFS selected
   hasUsableVfs = computed(() => !!this.selectedVfs() && !this.isIndexedVfs());
+
+  // Computed VFS options grouped by category (future-proof)
+  vfsConfigGroups = computed(() => {
+    const opts = this.selectedVfs()?.stats?.opt;
+    if (!opts) return [];
+
+    const searchTerm = this.configSearchTerm().toLowerCase();
+    const filterOption = (name: string, value: unknown) => {
+      if (!searchTerm) return true;
+      return (
+        name.toLowerCase().includes(searchTerm) || String(value).toLowerCase().includes(searchTerm)
+      );
+    };
+
+    const grouped = new Map<string, { key: string; value: string; rawValue: unknown }[]>();
+    const groupOrder = ['Booleans', 'Durations', 'Sizes', 'Permissions', 'Numbers', 'Strings'];
+
+    for (const [key, rawValue] of Object.entries(opts)) {
+      if (!filterOption(key, rawValue)) continue;
+
+      const group = this.getOptionGroup(key, rawValue);
+      const item = { key, value: this.formatOptionValue(key, rawValue), rawValue };
+      const list = grouped.get(group) ?? [];
+      list.push(item);
+      grouped.set(group, list);
+    }
+
+    return groupOrder
+      .filter(name => (grouped.get(name)?.length ?? 0) > 0)
+      .map(name => ({ name, items: grouped.get(name) ?? [] }));
+  });
 
   displayedColumns: string[] = ['name', 'size', 'status'];
   isDetailRow = (_: number, row: VfsQueueItem): boolean => this.showDelaySlider() === row.id;
@@ -149,12 +177,10 @@ export class VfsControlPanelComponent implements OnInit {
 
     // Listen for mount changes
     this.mountService.mountedRemotes$.pipe(takeUntilDestroyed()).subscribe(() => this.loadAll());
-  }
 
-  ngOnInit(): void {
-    this.loadAll();
+    // Listen for serve changes
+    this.serveService.runningServes$.pipe(takeUntilDestroyed()).subscribe(() => this.loadAll());
   }
-
   // ============ Data Loading ============
 
   async loadAll(): Promise<void> {
@@ -257,15 +283,31 @@ export class VfsControlPanelComponent implements OnInit {
   }
 
   async prioritizeUpload(item: VfsQueueItem): Promise<void> {
-    await this.updateExpiry(item, PRIORITY_EXPIRY, `'${item.name}' prioritized`);
+    await this.updateExpiry(
+      item,
+      PRIORITY_EXPIRY,
+      this.translate.instant('shared.vfsControl.actions.messages.prioritized', {
+        name: item.name,
+      })
+    );
   }
 
   async delayUpload(item: VfsQueueItem): Promise<void> {
-    await this.updateExpiry(item, DELAY_EXPIRY, `Delayed '${item.name}'`);
+    await this.updateExpiry(
+      item,
+      DELAY_EXPIRY,
+      this.translate.instant('shared.vfsControl.actions.messages.delayed', { name: item.name })
+    );
   }
 
   async setCustomDelay(item: VfsQueueItem): Promise<void> {
-    await this.updateExpiry(item, this.delaySliderValue(), `Delayed ${this.delaySliderValue()}s`);
+    await this.updateExpiry(
+      item,
+      this.delaySliderValue(),
+      this.translate.instant('shared.vfsControl.actions.messages.delayedSeconds', {
+        seconds: this.delaySliderValue(),
+      })
+    );
     this.showDelaySlider.set(null);
   }
 
@@ -277,21 +319,28 @@ export class VfsControlPanelComponent implements OnInit {
       this.notification.openSnackBar(msg, 'Close', 3000);
       this.refreshStatsAndQueue();
     } catch (e) {
-      this.notification.showError(`Action failed: ${e}`, 'Close');
+      this.notification.showError(
+        this.translate.instant('shared.vfsControl.actions.messages.actionFailed', { error: e }),
+        'Close'
+      );
     }
   }
 
   async forgetFile(path: string): Promise<void> {
     this.performAction(async fs => {
       const res = await this.vfsService.forget(fs, path);
-      return res.forgotten?.length ? `Removed '${path}'` : 'File cannot be removed';
+      return res.forgotten?.length
+        ? this.translate.instant('shared.vfsControl.actions.messages.removed', { path })
+        : this.translate.instant('shared.vfsControl.actions.messages.removeFailed');
     });
   }
 
   async clearMetadataCache(): Promise<void> {
     this.performAction(async fs => {
       const res = await this.vfsService.forget(fs);
-      return `Cleared ${res.forgotten?.length ?? 0} items`;
+      return this.translate.instant('shared.vfsControl.actions.messages.cleared', {
+        count: res.forgotten?.length ?? 0,
+      });
     });
   }
 
@@ -299,7 +348,7 @@ export class VfsControlPanelComponent implements OnInit {
     this.loading.set(true);
     await this.performAction(async fs => {
       await this.vfsService.refresh(fs, '', true);
-      return 'Directory refreshed';
+      return this.translate.instant('shared.vfsControl.actions.messages.directoryRefreshed');
     });
     this.loading.set(false);
   }
@@ -313,7 +362,7 @@ export class VfsControlPanelComponent implements OnInit {
       if (res?.interval?.string) {
         this.selectedVfs.update(v => (v ? { ...v, pollInterval: res.interval.string } : null));
       }
-      return `Interval set to ${val}`;
+      return this.translate.instant('shared.vfsControl.actions.messages.intervalSet', { val });
     });
   }
 
@@ -326,7 +375,10 @@ export class VfsControlPanelComponent implements OnInit {
       this.notification.openSnackBar(msg, 'Close', 3000);
       await this.refreshStatsAndQueue();
     } catch (e) {
-      this.notification.showError(`Error: ${e}`, 'Close');
+      this.notification.showError(
+        this.translate.instant('shared.vfsControl.actions.messages.error', { error: e }),
+        'Close'
+      );
     }
   }
 
@@ -345,10 +397,16 @@ export class VfsControlPanelComponent implements OnInit {
   }
 
   getQueueItemStatus(item: VfsQueueItem): string {
-    if (item.uploading) return 'Uploading now';
+    if (item.uploading) {
+      return this.translate.instant('shared.vfsControl.queue.statusText.uploading');
+    }
     return item.expiry < 0
-      ? `Ready (${Math.abs(item.expiry).toFixed(1)}s overdue)`
-      : `Waiting (${item.expiry.toFixed(1)}s)`;
+      ? this.translate.instant('shared.vfsControl.queue.statusText.ready', {
+          seconds: Math.abs(item.expiry).toFixed(1),
+        })
+      : this.translate.instant('shared.vfsControl.queue.statusText.waiting', {
+          seconds: item.expiry.toFixed(1),
+        });
   }
 
   toggleDelaySlider(item: VfsQueueItem): void {
@@ -368,5 +426,83 @@ export class VfsControlPanelComponent implements OnInit {
   onVfsSelectionChange(vfs: VfsInstance | null): void {
     this.selectedVfs.set(vfs);
     this.refreshStatsAndQueue();
+  }
+
+  // ============ Config Formatting ============
+
+  formatOptionValue(key: string, value: unknown): string {
+    if (value === null || value === undefined) return 'N/A';
+
+    if (typeof value === 'boolean') return value ? '✓ Enabled' : '✗ Disabled';
+
+    if (typeof value === 'number') {
+      if (this.isDurationKey(key)) {
+        if (value === 0) return '0 (disabled)';
+        if (value === -1) return 'Unlimited';
+        return this.formatDuration(value);
+      }
+
+      if (this.isSizeKey(key)) {
+        if (value === -1) return 'Unlimited';
+        return this.formatBytes(value);
+      }
+
+      if (this.isPermissionKey(key)) {
+        return `${value} (${this.toOctal(value)})`;
+      }
+    }
+
+    return String(value);
+  }
+
+  private formatDuration(ns: number): string {
+    const seconds = ns / 1_000_000_000;
+    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 3600) return `${(seconds / 60).toFixed(1)}m`;
+    if (seconds < 86400) return `${(seconds / 3600).toFixed(1)}h`;
+    return `${(seconds / 86400).toFixed(1)}d`;
+  }
+
+  private formatBytes(bytes: number): string {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
+  }
+
+  private toOctal(num: number): string {
+    return '0' + num.toString(8);
+  }
+
+  private isDurationKey(key: string): boolean {
+    return /(Time|Interval|Wait|Back|Age|Ahead)$/i.test(key);
+  }
+
+  private isSizeKey(key: string): boolean {
+    return /(Size|Space)$/i.test(key);
+  }
+
+  private isPermissionKey(key: string): boolean {
+    return /(Perms|UID|GID|Umask)$/i.test(key);
+  }
+
+  private getOptionGroup(key: string, value: unknown): string {
+    if (typeof value === 'boolean') return 'Booleans';
+    if (typeof value === 'number') {
+      if (this.isDurationKey(key)) return 'Durations';
+      if (this.isSizeKey(key)) return 'Sizes';
+      if (this.isPermissionKey(key)) return 'Permissions';
+      return 'Numbers';
+    }
+    return 'Strings';
+  }
+
+  trackByCategory(_: number, category: { name: string }): string {
+    return category.name;
+  }
+
+  trackByConfigKey(_: number, item: { key: string }): string {
+    return item.key;
   }
 }

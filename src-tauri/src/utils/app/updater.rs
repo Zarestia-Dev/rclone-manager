@@ -1,8 +1,8 @@
-#[cfg(feature = "updater")]
+#[cfg(all(desktop, feature = "updater"))]
 pub mod app_updates {
     use crate::{
         core::lifecycle::shutdown::handle_shutdown,
-        utils::{github_client, types::all_types::RcloneState},
+        utils::{github_client, types::core::RcloneState},
     };
     use log::{debug, info, warn};
     use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -29,7 +29,24 @@ pub mod app_updates {
         where
             S: serde::Serializer,
         {
-            serializer.serialize_str(self.to_string().as_str())
+            let error_msg = match self {
+                Error::NoPendingUpdate => {
+                    crate::localized_error!("backendErrors.updater.noPending")
+                }
+                Error::InvalidUrl(e) => {
+                    crate::localized_error!("backendErrors.updater.invalidUrl", "error" => e)
+                }
+                Error::GitHub(e) => {
+                    crate::localized_error!("backendErrors.updater.github", "error" => e)
+                }
+                Error::Mutex(e) => {
+                    crate::localized_error!("backendErrors.updater.mutex", "error" => e)
+                }
+                Error::Updater(e) => {
+                    crate::localized_error!("backendErrors.updater.updateFailed", "error" => e)
+                }
+            };
+            serializer.serialize_str(&error_msg)
         }
     }
 

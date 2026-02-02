@@ -1,5 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -15,6 +16,7 @@ import { FormatFileSizePipe } from '@app/pipes';
     MatIconModule,
     MatProgressSpinnerModule,
     FormatFileSizePipe,
+    TranslateModule,
   ],
   styleUrls: ['./disk-usage-panel.component.scss'],
   template: `
@@ -22,7 +24,7 @@ import { FormatFileSizePipe } from '@app/pipes';
       <mat-card-header>
         <mat-card-title>
           <mat-icon svgIcon="hard-drive"></mat-icon>
-          <span>Disk Usage</span>
+          <span>{{ 'detailShared.diskUsage.title' | translate }}</span>
         </mat-card-title>
       </mat-card-header>
       <mat-card-content>
@@ -30,7 +32,11 @@ import { FormatFileSizePipe } from '@app/pipes';
           <div class="disk-usage-bar" [ngStyle]="getDiskBarStyle()">
             @if (config.notSupported) {
               <div class="usage-status-text">
-                {{ config.notSupported ? 'Not Supported' : 'Unknown' }}
+                {{
+                  config.notSupported
+                    ? ('detailShared.diskUsage.notSupported' | translate)
+                    : ('detailShared.diskUsage.unknown' | translate)
+                }}
               </div>
             } @else {
               <div class="usage-fill" [ngStyle]="getUsageFillStyle()"></div>
@@ -44,26 +50,29 @@ import { FormatFileSizePipe } from '@app/pipes';
                 class="legend-spinner"
                 style="display:flex;align-items:center;justify-content:center;height:40px;"
               >
-                <mat-progress-spinner
-                  diameter="24"
-                  mode="indeterminate"
-                  color="primary"
-                ></mat-progress-spinner>
+                <mat-progress-spinner diameter="24" mode="indeterminate"></mat-progress-spinner>
               </div>
             } @else {
               <div class="legend-item">
                 <div class="legend-color total"></div>
-                <span class="legend-text"
-                  >Total: {{ config.total_space ?? 0 | formatFileSize }}</span
-                >
+                <span class="legend-text">{{
+                  'detailShared.diskUsage.total'
+                    | translate: { value: (config.total_space ?? 0 | formatFileSize) }
+                }}</span>
               </div>
               <div class="legend-item">
                 <div class="legend-color used" [ngStyle]="getUsedLegendStyle()"></div>
-                <span class="legend-text">Used: {{ config.used_space ?? 0 | formatFileSize }}</span>
+                <span class="legend-text">{{
+                  'detailShared.diskUsage.used'
+                    | translate: { value: (config.used_space ?? 0 | formatFileSize) }
+                }}</span>
               </div>
               <div class="legend-item">
                 <div class="legend-color free"></div>
-                <span class="legend-text">Free: {{ config.free_space ?? 0 | formatFileSize }}</span>
+                <span class="legend-text">{{
+                  'detailShared.diskUsage.free'
+                    | translate: { value: (config.free_space ?? 0 | formatFileSize) }
+                }}</span>
               </div>
             }
           </div>
@@ -101,14 +110,14 @@ export class DiskUsagePanelComponent {
   private getUnsupportedStyle(): Record<string, string> {
     return {
       backgroundColor: 'rgba(var(--yellow-rgb), 0.3)',
-      border: '2px solid var(--yellow)',
+      boxShadow: 'inset 0 0 0 2px var(--yellow)',
     };
   }
 
   private getLoadingStyle(): Record<string, string> {
     return {
       backgroundColor: 'rgba(var(--orange-rgb), 0.2)',
-      border: '2px solid var(--orange)',
+      boxShadow: 'inset 0 0 0 2px var(--orange)',
       backgroundImage:
         'linear-gradient(90deg, transparent 0%, rgba(var(--orange-rgb), 0.3) 50%, transparent 100%)',
       backgroundSize: '200% 100%',
@@ -119,8 +128,8 @@ export class DiskUsagePanelComponent {
   private getMountedStyle(): Record<string, string> {
     const colorVar = this.getUsageColorVar();
     return {
-      backgroundColor: 'rgba(var(--app-text-color-rgb), 0.08)',
-      border: `2px solid var(${colorVar})`,
+      backgroundColor: 'rgba(var(--window-fg-color-rgb), 0.08)',
+      boxShadow: `inset 0 0 0 2px var(${colorVar})`,
     };
   }
 

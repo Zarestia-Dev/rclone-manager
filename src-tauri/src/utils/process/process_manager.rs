@@ -1,6 +1,4 @@
 use log::{error, info, warn};
-use std::path::Path;
-use sysinfo::{IS_SUPPORTED_SYSTEM, ProcessesToUpdate, System};
 
 /// Kill a process by PID using platform-specific methods
 /// This is a more robust implementation than the basic shell commands
@@ -149,135 +147,28 @@ fn find_pids_on_port(port: u16) -> Result<Vec<u32>, String> {
     Ok(pids)
 }
 
-/// Check if a filename matches rclone executable (exact match only)
-fn is_rclone_executable(filename: &str) -> bool {
-    let filename_lower = filename.to_ascii_lowercase();
-    filename_lower == "rclone" || filename_lower == "rclone.exe"
-}
-
-/// Kill all rclone rcd processes (emergency cleanup)
-/// WARNING: This kills ALL rclone processes including OAuth. Only use during application shutdown.
-pub fn kill_all_rclone_processes() -> Result<(), String> {
-    use crate::rclone::state::engine::ENGINE_STATE;
-
-    // Get ports from the app state
-    let (_, api_port) = ENGINE_STATE.get_api();
-    let (_, oauth_port) = ENGINE_STATE.get_oauth();
-
+/// Kill all rclone processes on managed ports (emergency cleanup during shutdown)
+/// This is safe because we only target our specific API and OAuth ports.
+pub fn kill_all_rclone_processes(api_port: u16, oauth_port: u16) -> Result<(), String> {
     info!("🧹 Cleaning up rclone processes on managed ports: API={api_port}, OAuth={oauth_port}");
 
-    #[cfg(target_os = "windows")]
-    const TARGET_NAMES: &[&str] = &["rclone.exe"];
-    #[cfg(not(target_os = "windows"))]
-    const TARGET_NAMES: &[&str] = &["rclone"];
-
-    if !IS_SUPPORTED_SYSTEM {
-        warn!("⚠️ sysinfo does not support this platform; falling back to port-only cleanup");
-        // Fallback: just kill by port
-        kill_processes_on_port(api_port)?;
-        kill_processes_on_port(oauth_port)?;
-        return Ok(());
+    // Kill by port is already precise - we only kill processes WE started on our ports
+    if let Err(e) = kill_processes_on_port(api_port) {
+        warn!("⚠️ Failed to cleanup API port {api_port}: {e}");
     }
 
-    // Step 1: Find PIDs listening on our managed ports
-    let api_pids = find_pids_on_port(api_port).unwrap_or_default();
-    let oauth_pids = find_pids_on_port(oauth_port).unwrap_or_default();
-
-    let mut port_pids: Vec<u32> = api_pids.into_iter().chain(oauth_pids).collect();
-    port_pids.sort_unstable();
-    port_pids.dedup();
-
-    if port_pids.is_empty() {
-        info!("✅ No processes found on managed ports");
-        return Ok(());
+    if let Err(e) = kill_processes_on_port(oauth_port) {
+        warn!("⚠️ Failed to cleanup OAuth port {oauth_port}: {e}");
     }
 
-    info!(
-        "🎯 Found {} process(es) using managed ports: {:?}",
-        port_pids.len(),
-        port_pids
-    );
-
-    // Step 2: Verify these are rclone processes before killing
-    let mut system = System::new();
-    system.refresh_processes(ProcessesToUpdate::All, true);
-
-    let mut killed_count = 0;
-    let mut already_gone_count = 0;
-    let mut failed_count = 0;
-
-    for pid in port_pids {
-        // Verify it's an rclone process
-        let is_rclone = if let Some(process) = system.process((pid as usize).into()) {
-            let process_name = process.name().to_string_lossy();
-            let matches_name = TARGET_NAMES
-                .iter()
-                .any(|expected| process_name.eq_ignore_ascii_case(expected));
-
-            let matches_cmd = process.cmd().iter().any(|arg| {
-                let arg = arg.to_string_lossy();
-                if let Some(filename) = Path::new(arg.as_ref()).file_name() {
-                    let filename = filename.to_string_lossy();
-                    is_rclone_executable(&filename)
-                } else {
-                    false
-                }
-            });
-
-            if matches_name || matches_cmd {
-                info!("✅ Verified PID {pid} is rclone: {}", process_name);
-                true
-            } else {
-                warn!(
-                    "⚠️ PID {pid} on managed port is NOT rclone (name: {}), skipping for safety!",
-                    process_name
-                );
-                false
-            }
-        } else {
-            info!("ℹ️ Process {pid} already exited");
-            false
-        };
-
-        // Step 3: Only kill if verified as rclone
-        if is_rclone {
-            match kill_process_by_pid(pid) {
-                Ok(_) => {
-                    killed_count += 1;
-                    info!("✅ Killed rclone process {pid}");
-                }
-                Err(e) => {
-                    if e.contains("already exited") {
-                        already_gone_count += 1;
-                    } else {
-                        warn!("⚠️ Failed to kill rclone process {pid}: {e}");
-                        failed_count += 1;
-                    }
-                }
-            }
-        }
-    }
-
-    info!(
-        "Cleanup complete: {} killed, {} already gone, {} failed",
-        killed_count, already_gone_count, failed_count
-    );
-
-    // Give processes time to fully terminate
-    std::thread::sleep(std::time::Duration::from_millis(500));
-
+    info!("✅ Port cleanup complete");
     Ok(())
 }
-
-// /// Get the PID of a child process
-// // pub fn get_child_pid(child: &tauri_plugin_shell::process::CommandChild) -> Option<u32> {
-// //     Some(child.pid())
-// // }
 
 /// Aggressively clean up WebKitGTK zombie processes on Linux
 /// This finds any "WebKitNetworkProcess" that belongs to THIS application
 /// and kills it.
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", not(feature = "web-server")))]
 pub fn cleanup_webkit_zombies() {
     use log::{debug, info};
     use sysinfo::{ProcessesToUpdate, System};

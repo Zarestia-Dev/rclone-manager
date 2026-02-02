@@ -1,15 +1,12 @@
-@use "../../../styles/_shared_components";
-
 .job-info-panel {
-  background: var(--secondary-background);
+  background: var(--view-bg-color);
   border-radius: var(--panel-radius);
   box-shadow: var(--box-shadow);
-  border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
   overflow: hidden;
   transition: var(--transition-standard);
 
   &:hover {
-    box-shadow: 0 8px 32px rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
+    box-shadow: 0 8px 32px rgba(var(--window-fg-color-rgb), var(--panel-hover-opacity));
   }
 }
 
@@ -23,20 +20,14 @@
   display: flex;
   flex-direction: column;
   padding: var(--item-padding);
-  background: rgba(var(--app-text-color-rgb), var(--background-opacity));
+  background: var(--sidebar-bg-color);
   border-radius: var(--item-radius);
-  border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
   transition: var(--transition-standard);
-
-  &:hover {
-    background: rgba(var(--app-text-color-rgb), var(--hover-opacity));
-    box-shadow: var(--shadow-light);
-  }
 }
 
 .detail-label {
   font-size: var(--font-size-sm);
-  color: var(--secondary-text-color);
+  color: var(--dim-color);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -45,7 +36,7 @@
 
 .detail-value {
   font-size: var(--font-size-base);
-  color: var(--app-text-color);
+  color: var(--window-fg-color);
   font-weight: 400;
   word-break: break-word;
 }

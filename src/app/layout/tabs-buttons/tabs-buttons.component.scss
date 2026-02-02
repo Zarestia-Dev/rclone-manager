@@ -6,11 +6,11 @@
   gap: var(--space-xs);
   padding: var(--space-xs);
   .mat-mdc-icon-button {
-    color: var(--app-text-color);
+    color: var(--window-fg-color);
 
     &.selected {
       outline: none !important;
-      background-color: var(--button-hover) !important;
+      background-color: var(--hover-bg-color) !important;
     }
 
     &:active,

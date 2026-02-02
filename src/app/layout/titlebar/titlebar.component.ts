@@ -1,34 +1,32 @@
-import { Component, OnInit, OnDestroy, inject, Type } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { Subject, Subscription } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
-import { RestorePreviewModalComponent } from '../../features/modals/settings/restore-preview-modal/restore-preview-modal.component';
+import { Subject } from 'rxjs';
 
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatBadgeModule } from '@angular/material/badge';
-import { ExportModalComponent } from '../../features/modals/settings/export-modal/export-modal.component';
-import { PreferencesModalComponent } from '../../features/modals/settings/preferences-modal/preferences-modal.component';
-import { RcloneConfigModalComponent } from '../../features/modals/settings/rclone-config-modal/rclone-config-modal.component';
-import { KeyboardShortcutsModalComponent } from '../../features/modals/settings/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component';
-import { AboutModalComponent } from '../../features/modals/settings/about-modal/about-modal.component';
-import { QuickAddRemoteComponent } from '../../features/modals/remote-management/quick-add-remote/quick-add-remote.component';
-import { RemoteConfigModalComponent } from '../../features/modals/remote-management/remote-config-modal/remote-config-modal.component';
-
-// Services
-import { RemoteManagementService, WindowService } from '@app/services';
-import { BackupRestoreService } from '@app/services';
-import { FileSystemService } from '@app/services';
-import { AppSettingsService } from '@app/services';
-import { UiStateService, NautilusService } from '@app/services';
-import { NotificationService } from 'src/app/shared/services/notification.service';
-import { AppUpdaterService, RcloneUpdateService } from '@app/services';
-import { CheckResult, ConnectionStatus, ModalSize, STANDARD_MODAL_SIZE, Theme } from '@app/types';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { AsyncPipe } from '@angular/common';
 import { CdkMenuModule } from '@angular/cdk/menu';
+import { TranslateService, TranslateModule } from '@ngx-translate/core';
+
+// Services
+import {
+  BackupRestoreUiService,
+  AppSettingsService,
+  UiStateService,
+  NautilusService,
+  NotificationService,
+  AppUpdaterService,
+  RcloneUpdateService,
+  RemoteManagementService,
+  WindowService,
+  ModalService,
+  ConnectionService,
+} from '@app/services';
+import { Theme } from '@app/types';
 
 @Component({
   selector: 'app-titlebar',
@@ -42,14 +40,16 @@ import { CdkMenuModule } from '@angular/cdk/menu';
     MatTooltipModule,
     MatProgressSpinnerModule,
     MatBadgeModule,
+    TranslateModule,
   ],
   templateUrl: './titlebar.component.html',
   styleUrls: ['./titlebar.component.scss'],
 })
 export class TitlebarComponent implements OnInit, OnDestroy {
+  private readonly modalService = inject(ModalService);
   dialog = inject(MatDialog);
-  backupRestoreService = inject(BackupRestoreService);
-  fileSystemService = inject(FileSystemService);
+  backupRestoreUiService = inject(BackupRestoreUiService);
+
   appSettingsService = inject(AppSettingsService);
   uiStateService = inject(UiStateService);
   nautilusService = inject(NautilusService);
@@ -58,17 +58,16 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   notificationService = inject(NotificationService);
   appUpdaterService = inject(AppUpdaterService);
   rcloneUpdateService = inject(RcloneUpdateService);
+  private translateService = inject(TranslateService);
+
+  readonly connectionService = inject(ConnectionService);
 
   windowButtons = true;
-  connectionStatus: ConnectionStatus = 'online';
-  connectionHistory: { timestamp: Date; result: CheckResult }[] = [];
-  result?: CheckResult;
   updateAvailable = false;
   rcloneUpdateAvailable = false;
   restartRequired = false; // New property
 
   private destroy$ = new Subject<void>();
-  private internetCheckSub?: Subscription;
   currentTheme$ = this.windowService.theme$;
 
   constructor() {
@@ -79,7 +78,7 @@ export class TitlebarComponent implements OnInit, OnDestroy {
 
   async ngOnInit(): Promise<void> {
     try {
-      await this.runInternetCheck();
+      await this.connectionService.runInternetCheck();
       await this.appUpdaterService.initialize();
       await this.rcloneUpdateService.initialize();
 
@@ -112,81 +111,19 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     await this.windowService.setTheme(theme);
   }
 
-  // Connection Checking
-  async runInternetCheck(): Promise<void> {
-    if (this.connectionStatus === 'checking') return;
-
-    this.connectionStatus = 'checking';
-    try {
-      const links =
-        (await this.appSettingsService.getSettingValue<string[]>('core.connection_check_urls')) ||
-        [];
-
-      console.log('Loaded connection check URLs:', links);
-
-      if (this.internetCheckSub) {
-        this.internetCheckSub.unsubscribe();
-      }
-
-      try {
-        const result = await this.appSettingsService.checkInternetLinks(
-          links,
-          2, // retries
-          3 // delay in seconds
-        );
-        console.log('Connection check result:', result);
-
-        this.result = result;
-        this.connectionHistory.unshift({
-          timestamp: new Date(),
-          result: result,
-        });
-        if (this.connectionHistory.length > 5) {
-          this.connectionHistory.pop();
-        }
-        this.connectionStatus =
-          Object.keys(this.result?.failed || {}).length > 0 ? 'offline' : 'online';
-      } catch (err) {
-        console.error('Connection check failed:', err);
-        this.result = { successful: [], failed: {}, retries_used: {} };
-        this.connectionStatus = 'offline';
-        console.error('Connection check failed');
-      }
-    } catch (err) {
-      console.error('Connection check error:', err);
-      this.connectionStatus = 'offline';
-      console.error('Failed to load connection check settings');
-    }
-  }
-
   getInternetStatusTooltip(): string {
-    if (this.connectionStatus === 'checking') return 'Checking internet connection...';
-
-    if (this.result && Object.keys(this.result.failed).length > 0) {
-      const services = Object.keys(this.result.failed)
-        .map(url => {
-          if (url.includes('google')) return 'Google Drive';
-          if (url.includes('dropbox')) return 'Dropbox';
-          if (url.includes('onedrive')) return 'OneDrive';
-          return new URL(url).hostname;
-        })
-        .join(', ');
-
-      return `Cannot connect to: ${services}. Some features may not work as expected. Click to retry.`;
-    }
-
-    return 'Your internet connection is working properly.';
+    return this.connectionService.getTooltip();
   }
 
   getUpdateTooltip(): string {
     if (this.updateAvailable && this.rcloneUpdateAvailable) {
-      return 'Application and Rclone updates available';
+      return this.translateService.instant('titlebar.updates.all');
     } else if (this.updateAvailable) {
-      return 'Application update available';
+      return this.translateService.instant('titlebar.updates.app');
     } else if (this.rcloneUpdateAvailable) {
-      return 'Rclone update available';
+      return this.translateService.instant('titlebar.updates.rclone');
     } else if (this.restartRequired) {
-      return 'Restart required to complete update';
+      return this.translateService.instant('titlebar.updates.restart');
     }
     return '';
   }
@@ -220,45 +157,31 @@ export class TitlebarComponent implements OnInit, OnDestroy {
 
   // Modal Methods
   openQuickAddRemoteModal(): void {
-    this.openModal(QuickAddRemoteComponent, STANDARD_MODAL_SIZE);
+    this.modalService.openQuickAddRemote();
   }
 
   openRemoteConfigModal(): void {
-    this.openModal(RemoteConfigModalComponent, STANDARD_MODAL_SIZE);
+    this.modalService.openRemoteConfig();
   }
 
   openPreferencesModal(): void {
-    this.openModal(PreferencesModalComponent, STANDARD_MODAL_SIZE);
+    this.modalService.openPreferences();
   }
 
   openRcloneConfigModal(): void {
-    this.openModal(RcloneConfigModalComponent, STANDARD_MODAL_SIZE);
+    this.modalService.openRcloneConfig();
   }
 
   openKeyboardShortcutsModal(): void {
-    this.openModal(KeyboardShortcutsModalComponent, STANDARD_MODAL_SIZE);
+    this.modalService.openKeyboardShortcuts();
   }
 
   openExportModal(): void {
-    this.openModal(ExportModalComponent, STANDARD_MODAL_SIZE);
+    this.modalService.openExport();
   }
 
   openAboutModal(): void {
-    this.openModal(AboutModalComponent, {
-      width: '362px',
-      maxWidth: '362px',
-      minWidth: '362px',
-      height: '80vh',
-      maxHeight: '600px',
-      minHeight: '240px',
-    });
-  }
-
-  private openModal(component: Type<unknown>, size: ModalSize): void {
-    this.dialog.open(component, {
-      ...size,
-      disableClose: true,
-    });
+    this.modalService.openAbout();
   }
 
   // Other Methods
@@ -266,40 +189,8 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     this.uiStateService.resetSelectedRemote();
   }
 
-  async openRemoteConfigTerminal(): Promise<void> {
-    try {
-      await this.remoteManagementService.openRcloneConfigTerminal();
-    } catch (error) {
-      console.error('Error opening Rclone config terminal:', error);
-      this.notificationService.openSnackBar(
-        `Failed to open Rclone config terminal: ${error}`,
-        'OK'
-      );
-    }
-  }
-
-  async restoreSettings(): Promise<void> {
-    const path = await this.fileSystemService.selectFile();
-    if (!path) return;
-
-    try {
-      const analysis = await this.backupRestoreService.analyzeBackupFile(path);
-      if (!analysis) return;
-
-      // Open the restore preview modal with the analysis data
-      const dialogRef = this.dialog.open(RestorePreviewModalComponent, {
-        ...STANDARD_MODAL_SIZE,
-        disableClose: true,
-        data: {
-          backupPath: path,
-          analysis,
-        },
-      });
-
-      dialogRef.afterClosed().pipe(takeUntil(this.destroy$)).subscribe();
-    } catch (error) {
-      console.error('Failed to analyze backup:', error);
-    }
+  restoreSettings(): void {
+    this.backupRestoreUiService.launchRestoreFlow();
   }
 
   onBrowseClick(): void {
@@ -309,8 +200,5 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   private cleanup(): void {
     this.destroy$.next();
     this.destroy$.complete();
-    if (this.internetCheckSub) {
-      this.internetCheckSub.unsubscribe();
-    }
   }
 }

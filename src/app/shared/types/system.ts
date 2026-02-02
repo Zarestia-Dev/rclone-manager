@@ -84,6 +84,7 @@ export const SENSITIVE_KEYS = [
 export interface AppEventPayload {
   status: string;
   message?: string;
+  language?: string;
 }
 
 export type AppEventPayloadType = AppEventPayload | string;
@@ -147,18 +148,15 @@ export interface SettingTab {
 }
 
 export interface SettingMetadata {
-  display_name: string;
-  value_type: 'bool' | 'int' | 'string' | 'bandwidth' | 'file' | 'folder' | 'string[]';
-  help_text: string;
+  value_type?: 'bool' | 'int' | 'string' | 'select' | 'bandwidth' | 'file' | 'folder' | 'string[]';
   default: any;
   value?: any;
-  min_value?: number;
-  max_value?: number;
+  min?: number;
+  max?: number;
   step?: number;
-  placeholder?: string;
-  options?: string[];
-  required?: boolean;
-  engine_restart?: boolean;
+  options?: any[]; // Backend sends tuples or objects? Schema says options(("val", "Label"))
+  metadata?: any;
+  reserved?: string[];
 }
 
 export interface SearchResult {

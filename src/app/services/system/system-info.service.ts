@@ -44,7 +44,16 @@ export class SystemInfoService extends TauriBaseService {
   }
 
   /**
+   * Quit rclone engine gracefully via API
+   * Use for remote backends to avoid killing wrong local process
+   */
+  async quitRcloneEngine(): Promise<void> {
+    return this.invokeCommand('quit_rclone_engine');
+  }
+
+  /**
    * Kill a process by PID
+   * Safe to use for local backends, DO NOT use for remote backends
    */
   async killProcess(pid: number): Promise<void> {
     return this.invokeCommand('kill_process_by_pid', { pid });
@@ -54,7 +63,7 @@ export class SystemInfoService extends TauriBaseService {
    * Get memory statistics
    */
   async getMemoryStats(): Promise<MemoryStats> {
-    return this.invokeCommand('get_memory_stats');
+    return this.invokeCommand<MemoryStats>('get_memory_stats');
   }
 
   /**
@@ -83,5 +92,26 @@ export class SystemInfoService extends TauriBaseService {
    */
   async isRcloneAvailable(path = ''): Promise<boolean> {
     return this.invokeCommand<boolean>('check_rclone_available', { path });
+  }
+
+  /**
+   * Run garbage collection
+   */
+  async runGarbageCollector(): Promise<void> {
+    return this.invokeCommand('run_garbage_collector');
+  }
+
+  /**
+   * Get the number of entries in the filesystem cache
+   */
+  async getFsCacheEntries(): Promise<number> {
+    return this.invokeCommand<number>('get_fscache_entries');
+  }
+
+  /**
+   * Clear the filesystem cache
+   */
+  async clearFsCache(): Promise<void> {
+    return this.invokeCommand('clear_fscache');
   }
 }

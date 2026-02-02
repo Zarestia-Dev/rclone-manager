@@ -11,6 +11,8 @@ import {
   untracked,
   model,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { TranslateService, TranslateModule } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
@@ -26,7 +28,6 @@ import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
 import {
   ActionState,
   CompletedTransfer,
-  DEFAULT_JOB_STATS,
   GlobalStats,
   JobInfoConfig,
   OperationControlConfig,
@@ -38,7 +39,6 @@ import {
   SENSITIVE_KEYS,
   ServeListItem,
   SettingsPanelConfig,
-  StatItem,
   StatsPanelConfig,
   SyncOperation,
   SyncOperationType,
@@ -53,7 +53,7 @@ import {
   TransferActivityPanelComponent,
 } from '../../../../shared/detail-shared';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
-import { IconService } from '../../../../shared/services/icon.service';
+import { IconService, RcloneStatusService } from '@app/services';
 import { JobManagementService } from '@app/services';
 import { toString as cronstrue } from 'cronstrue';
 import { VfsControlPanelComponent } from '../../../../shared/detail-shared/vfs-control/vfs-control-panel.component';
@@ -80,6 +80,7 @@ import { VfsControlPanelComponent } from '../../../../shared/detail-shared/vfs-c
     TransferActivityPanelComponent,
     VfsControlPanelComponent,
     ServeCardComponent,
+    TranslateModule,
   ],
   templateUrl: './app-detail.component.html',
   styleUrls: ['./app-detail.component.scss'],
@@ -90,9 +91,7 @@ export class AppDetailComponent {
   selectedSyncOperation = model<SyncOperationType>('sync');
   selectedRemote = input.required<Remote>();
   remoteSettings = input<RemoteSettings>({});
-  restrictMode = input<boolean>(false);
   actionInProgress = input<ActionState[] | null | undefined>(null);
-  runningServes = input<ServeListItem[]>([]);
 
   // --- Outputs ---
   @Output() syncOperationChange = new EventEmitter<SyncOperationType>();
@@ -117,12 +116,19 @@ export class AppDetailComponent {
 
   // --- Services ---
   private readonly jobService = inject(JobManagementService);
+  private readonly rcloneStatusService = inject(RcloneStatusService);
   readonly iconService = inject(IconService);
+  private readonly translate = inject(TranslateService);
+  private readonly langChange = toSignal(this.translate.onLangChange);
   private readonly formatFileSize = new FormatFileSizePipe();
   private readonly formatTime = new FormatTimePipe();
 
   // --- State Signals ---
-  jobStats = signal<GlobalStats>({ ...DEFAULT_JOB_STATS });
+  // Job-specific stats (when a specific job is being tracked)
+  private jobSpecificStats = signal<GlobalStats | null>(null);
+  // Use job-specific stats if available, otherwise fall back to global stats from service
+  jobStats = computed(() => this.jobSpecificStats() || this.rcloneStatusService.jobStats());
+
   isLoading = signal(false);
   activeTransfers = signal<TransferFile[]>([]);
   completedTransfers = signal<CompletedTransfer[]>([]);
@@ -133,43 +139,41 @@ export class AppDetailComponent {
 
   // --- Constants ---
   readonly POLL_INTERVAL_MS = 1000;
-  readonly sharedSettingsHeading = 'Shared Settings';
-  readonly sharedSettingsDescription =
-    'Applies to all operations, regardless of sync or mount mode.';
   readonly syncOperations: SyncOperation[] = [
     {
       type: 'sync',
-      label: 'Sync',
+      label: 'dashboard.appDetail.sync',
       icon: 'refresh',
       cssClass: 'primary',
-      description: 'One-way synchronization',
+      description: 'dashboard.appDetail.syncDesc',
     },
     {
       type: 'bisync',
-      label: 'BiSync',
+      label: 'dashboard.appDetail.bisync',
       icon: 'right-left',
       cssClass: 'purple',
-      description: 'Bidirectional sync',
+      description: 'dashboard.appDetail.bisyncDesc',
     },
     {
       type: 'move',
-      label: 'Move',
+      label: 'dashboard.appDetail.move',
       icon: 'move',
       cssClass: 'orange',
-      description: 'Move files (delete source)',
+      description: 'dashboard.appDetail.moveDesc',
     },
     {
       type: 'copy',
-      label: 'Copy',
+      label: 'dashboard.appDetail.copy',
       icon: 'copy',
       cssClass: 'yellow',
-      description: 'Copy files (keep source)',
+      description: 'dashboard.appDetail.copyDesc',
     },
   ];
 
   selectedProfile = signal<string | null>(null);
 
   profiles = computed<{ name: string; label: string }[]>(() => {
+    this.langChange(); // Dependency on language change
     const settings = this.remoteSettings();
     let configKey: string;
 
@@ -181,7 +185,7 @@ export class AppDetailComponent {
     } else if (this.mainOperationType() === 'serve') {
       configKey = 'serveConfigs';
     } else {
-      return [{ name: 'default', label: 'Default' }];
+      return [{ name: 'default', label: this.translate.instant('dashboard.appDetail.default') }];
     }
 
     const configProfiles = settings[configKey as keyof RemoteSettings] as
@@ -194,7 +198,7 @@ export class AppDetailComponent {
     }
 
     // No profiles exist, return default
-    return [{ name: 'default', label: 'Default' }];
+    return [{ name: 'default', label: this.translate.instant('dashboard.appDetail.default') }];
   });
 
   // Enriched profiles with status information
@@ -276,7 +280,7 @@ export class AppDetailComponent {
   /** Get operation state from remote */
   private getOperationState(type: SyncOperationType | 'mount' | 'serve'): any {
     const remote = this.selectedRemote();
-    const stateMap: Record<string, any> = {
+    const stateMap: Record<string, unknown> = {
       sync: remote?.syncState,
       bisync: remote?.bisyncState,
       move: remote?.moveState,
@@ -284,34 +288,40 @@ export class AppDetailComponent {
       mount: remote?.mountState,
       serve: remote?.serveState,
     };
-    return stateMap[type];
+    return stateMap[type] as any;
   }
 
   /** Check if a profile is active for an operation type */
   private isProfileActive(type: string, profileName?: string): boolean {
-    if (type === 'serve') {
-      const remote = this.selectedRemote();
-      const serves = this.runningServes();
-      return profileName
-        ? serves.some(
-            s => s.params.fs.startsWith(remote.remoteSpecs.name + ':') && s.profile === profileName
-          )
-        : serves.some(s => s.params.fs.startsWith(remote.remoteSpecs.name + ':'));
-    }
-
-    const state = this.getOperationState(type as SyncOperationType | 'mount');
+    const state = this.getOperationState(type as SyncOperationType | 'mount' | 'serve');
     if (!state) return false;
 
-    if (type === 'mount') {
-      return profileName ? !!state.activeProfiles?.[profileName] : !!state.mounted;
+    if (type === 'serve') {
+      const serveState = state as Remote['serveState'];
+      const serves = serveState?.serves || [];
+      return profileName ? serves.some(s => s.profile === profileName) : !!serveState?.isOnServe;
     }
 
-    // Sync types
-    const isActiveKey = `isOn${type.charAt(0).toUpperCase() + type.slice(1)}`;
-    return profileName ? !!state.activeProfiles?.[profileName] : !!state[isActiveKey];
+    if (type === 'mount') {
+      const mountState = state as Remote['mountState'];
+      return profileName ? !!mountState?.activeProfiles?.[profileName] : !!mountState?.mounted;
+    }
+
+    if (['sync', 'copy', 'move', 'bisync'].includes(type)) {
+      // These states all share the same structure regarding activeProfiles
+      const syncState = state as Remote['syncState'];
+      if (profileName) {
+        return !!syncState?.activeProfiles?.[profileName];
+      }
+      const isActiveKey = `isOn${type.charAt(0).toUpperCase() + type.slice(1)}`;
+      return !!(state as Record<string, unknown>)[isActiveKey];
+    }
+
+    return false;
   }
 
   /** Get profile configs for an operation type */
+
   private getProfileConfigs(type: string): Record<string, any> | undefined {
     const settings = this.remoteSettings();
     return settings[`${type}Configs` as keyof RemoteSettings] as Record<string, any> | undefined;
@@ -323,8 +333,7 @@ export class AppDetailComponent {
 
   /** Filters running serves to only show those belonging to the selected remote */
   filteredRunningServes = computed(() => {
-    const remoteName = this.remoteName();
-    return this.runningServes().filter(serve => serve.params.fs.startsWith(remoteName + ':'));
+    return (this.selectedRemote().serveState?.serves || []) as ServeListItem[];
   });
 
   isSyncType = computed(() => this.mainOperationType() === 'sync');
@@ -342,10 +351,13 @@ export class AppDetailComponent {
     if (!this.isSyncType()) return undefined;
     const op = this.selectedSyncOperation();
     const profileName = this.selectedProfile() || 'default';
-    return this.getOperationState(op)?.activeProfiles?.[profileName];
+    const state = this.getOperationState(op) as any;
+    // Cast to syncState as we know op is partial SyncOperationType and all sync states have activeProfiles
+    return state?.activeProfiles?.[profileName];
   });
 
   operationSettingsSections = computed<RemoteSettingsSection[]>(() => {
+    this.langChange(); // Dependency
     const sections: RemoteSettingsSection[] = [];
     const settings = this.remoteSettings();
 
@@ -379,11 +391,22 @@ export class AppDetailComponent {
     if (this.isSyncType()) {
       const type = this.selectedSyncOperation();
       const op = this.currentOperation();
-      addProfileSections(type, `${op?.label || 'Sync'} Options`, op?.icon || 'gear');
+      const opLabel = op ? this.translate.instant(op.label) : 'Sync';
+
+      const title = this.translate.instant('dashboard.appDetail.settingsLabel', { op: opLabel });
+      addProfileSections(type, title, op?.icon || 'gear');
     } else if (this.mainOperationType() === 'serve') {
-      addProfileSections('serve', 'Protocol Options', 'satellite-dish');
+      addProfileSections(
+        'serve',
+        this.translate.instant('dashboard.appDetail.serveSettings'),
+        'satellite-dish'
+      );
     } else {
-      addProfileSections('mount', 'Mount Options', 'gear');
+      addProfileSections(
+        'mount',
+        this.translate.instant('dashboard.appDetail.mountSettings'),
+        'gear'
+      );
     }
 
     return sections;
@@ -422,11 +445,11 @@ export class AppDetailComponent {
 
     // VFS is only relevant for mount and serve operations
     if (operationType === 'mount' || operationType === 'serve') {
-      addSections('vfs', 'VFS Options', 'vfs');
+      addSections('vfs', this.translate.instant('dashboard.appDetail.vfsOptions'), 'vfs');
     }
 
-    addSections('filter', 'Filter Options', 'filter');
-    addSections('backend', 'Backend Config', 'server');
+    addSections('filter', this.translate.instant('dashboard.appDetail.filterOptions'), 'filter');
+    addSections('backend', this.translate.instant('dashboard.appDetail.backendConfig'), 'server');
 
     return sections;
   });
@@ -435,23 +458,30 @@ export class AppDetailComponent {
     if (this.isSyncType()) {
       const op = this.currentOperation();
       const count = this.operationSettingsSections().length;
-      return count > 1 ? `${op?.label || 'Sync'} Profiles` : `${op?.label || 'Sync'} Settings`;
+      const opLabel = op ? this.translate.instant(op.label) : 'Sync';
+
+      return count > 1
+        ? this.translate.instant('dashboard.appDetail.profilesLabel', { op: opLabel })
+        : this.translate.instant('dashboard.appDetail.settingsLabel', { op: opLabel });
     } else if (this.mainOperationType() === 'serve') {
       return this.operationSettingsSections().filter(s => s.group === 'operation').length > 1
-        ? 'Serve Profiles'
-        : 'Serve Settings';
+        ? this.translate.instant('dashboard.appDetail.serveProfiles')
+        : this.translate.instant('dashboard.appDetail.serveSettings');
     }
-    return this.operationSettingsSections().length > 2 ? 'Mount Profiles & VFS' : 'Mount Settings';
+    return this.operationSettingsSections().length > 2
+      ? this.translate.instant('dashboard.appDetail.mountProfilesVfs')
+      : this.translate.instant('dashboard.appDetail.mountSettings');
   });
 
   operationSettingsDescription = computed(() => {
     if (this.isSyncType()) {
       const op = this.currentOperation();
-      return `Adjust how the ${op?.label?.toLowerCase() || 'sync'} process behaves. Multi-profile supported.`;
+      const opLabel = op ? this.translate.instant(op.label) : 'Sync';
+      return this.translate.instant('dashboard.appDetail.syncBehave', { op: opLabel });
     } else if (this.mainOperationType() === 'serve') {
-      return 'Configure serving protocols (HTTP, FTP, etc). Multi-profile supported.';
+      return this.translate.instant('dashboard.appDetail.serveBehave');
     }
-    return 'Configure mount behavior and virtual file system tuning.';
+    return this.translate.instant('dashboard.appDetail.mountBehave');
   });
 
   // --- Configuration Generators (Computed) ---
@@ -463,7 +493,7 @@ export class AppDetailComponent {
       : this.mainOperationType();
     const settings = this.remoteSettings();
     const profiles = settings[`${type}Configs` as keyof RemoteSettings] as
-      | Record<string, unknown>
+      | Record<string, any>
       | undefined;
     const profileEntries = profiles ? Object.entries(profiles) : [];
 
@@ -485,8 +515,8 @@ export class AppDetailComponent {
         type,
         op,
         {
-          source: 'Not configured',
-          destination: 'Not configured',
+          source: this.translate.instant('dashboard.appDetail.notConfigured'),
+          destination: this.translate.instant('dashboard.appDetail.notConfigured'),
           showOpenButtons: true,
           isDestinationActive: true,
         },
@@ -501,33 +531,7 @@ export class AppDetailComponent {
     pathConfig: PathDisplayConfig,
     profileName?: string
   ): OperationControlConfig {
-    const remote = this.selectedRemote();
-    let isActive = false;
-
-    if (this.isSyncType()) {
-      const stateMap: any = {
-        sync: remote?.syncState,
-        bisync: remote?.bisyncState,
-        move: remote?.moveState,
-        copy: remote?.copyState,
-      };
-
-      const state = stateMap[type];
-
-      if (profileName && state?.activeProfiles) {
-        isActive = !!state.activeProfiles[profileName];
-      } else {
-        const keyMap: any = {
-          sync: 'isOnSync',
-          bisync: 'isOnBisync',
-          move: 'isOnMove',
-          copy: 'isOnCopy',
-        };
-        isActive = !!state?.[keyMap[type]];
-      }
-    } else {
-      isActive = !!remote?.mountState?.mounted;
-    }
+    const isActive = this.isProfileActive(type, profileName);
 
     const inProgressActions = this.actionInProgress();
     const actionMatch = inProgressActions?.find(
@@ -541,20 +545,33 @@ export class AppDetailComponent {
       isLoading: this.isLoading() || !!actionMatch,
       cssClass: op?.cssClass || 'primary',
       pathConfig: pathConfig,
-      primaryButtonLabel: this.isLoading() ? `Starting ${op?.label}...` : `Start ${op?.label}`,
-      secondaryButtonLabel: this.isLoading() ? `Stopping ${op?.label}...` : `Stop ${op?.label}`,
+      primaryButtonLabel: this.isLoading()
+        ? this.translate.instant('dashboard.appDetail.starting', {
+            op: op ? this.translate.instant(op.label) : '',
+          })
+        : this.translate.instant('dashboard.appDetail.start', {
+            op: op ? this.translate.instant(op.label) : '',
+          }),
+      secondaryButtonLabel: this.isLoading()
+        ? this.translate.instant('dashboard.appDetail.stopping', {
+            op: op ? this.translate.instant(op.label) : '',
+          })
+        : this.translate.instant('dashboard.appDetail.stop', {
+            op: op ? this.translate.instant(op.label) : '',
+          }),
       primaryIcon: op?.icon || 'play_arrow',
       secondaryIcon: 'stop',
       actionInProgress: inProgressType || undefined,
-      operationDescription: op?.description,
+      operationDescription: op?.description ? this.translate.instant(op.description) : undefined,
       profileName: profileName,
     };
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private getPathConfigForProfile(profile: any): PathDisplayConfig {
     return {
-      source: (profile['source'] as string) || 'Not configured',
-      destination: (profile['dest'] as string) || 'Not configured',
+      source: profile.source || this.translate.instant('dashboard.appDetail.notConfigured'),
+      destination: profile.dest || this.translate.instant('dashboard.appDetail.notConfigured'),
       showOpenButtons: true,
       isDestinationActive: true,
     };
@@ -575,16 +592,11 @@ export class AppDetailComponent {
     return [this.createMountControlConfig({}, undefined)];
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private createMountControlConfig(config: any, profileName?: string): OperationControlConfig {
-    const mountState = this.selectedRemote()?.mountState;
     const inProgressActions = this.actionInProgress();
 
-    let isActive = false;
-    if (profileName && mountState?.activeProfiles) {
-      isActive = !!mountState.activeProfiles[profileName];
-    } else {
-      isActive = !!mountState?.mounted;
-    }
+    const isActive = this.isProfileActive('mount', profileName);
 
     // Check specific mount action
     const actionMatch = inProgressActions?.find(
@@ -601,18 +613,24 @@ export class AppDetailComponent {
       isLoading,
       cssClass: 'accent',
       pathConfig: {
-        source: config['source'] || 'Not configured',
-        destination: config['dest'] || 'Not configured',
+        source: config.source || this.translate.instant('dashboard.appDetail.notConfigured'),
+        destination: config.dest || this.translate.instant('dashboard.appDetail.notConfigured'),
         showOpenButtons: true,
         operationColor: 'accent',
         isDestinationActive: isActive,
-        actionInProgress: actionType || undefined,
+        actionInProgress: (actionType as any) || undefined,
       },
-      primaryButtonLabel: actionType === 'mount' ? 'Mounting...' : 'Mount',
+      primaryButtonLabel:
+        actionType === 'mount'
+          ? this.translate.instant('dashboard.appDetail.mounting')
+          : this.translate.instant('dashboard.appDetail.mount'),
       primaryIcon: 'mount',
-      secondaryButtonLabel: actionType === 'unmount' ? 'Unmounting...' : 'Unmount',
+      secondaryButtonLabel:
+        actionType === 'unmount'
+          ? this.translate.instant('dashboard.appDetail.unmounting')
+          : this.translate.instant('dashboard.appDetail.unmount'),
       secondaryIcon: 'eject',
-      actionInProgress: actionType || undefined,
+      actionInProgress: (actionType as any) || undefined,
       profileName: profileName,
     };
   }
@@ -632,20 +650,10 @@ export class AppDetailComponent {
     return [this.createServeControlConfig({}, undefined)];
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private createServeControlConfig(config: any, profileName?: string): OperationControlConfig {
-    const serves = this.runningServes();
     const remote = this.selectedRemote();
-
-    let isActive = false;
-    // Check if ANY serve matches this profile
-    if (profileName) {
-      isActive = serves.some(
-        s => s.params.fs.startsWith(remote.remoteSpecs.name + ':') && s.profile === profileName
-      );
-    } else {
-      // Legacy check: any serve for this remote
-      isActive = serves.some(s => s.params.fs.startsWith(remote.remoteSpecs.name + ':'));
-    }
+    const isActive = this.isProfileActive('serve', profileName);
 
     const inProgressActions = this.actionInProgress();
     const actionMatch = inProgressActions?.find(
@@ -653,11 +661,12 @@ export class AppDetailComponent {
     );
 
     // Extract source from config, fallback to remote name
-    const source = (config?.source as string) || `${remote.remoteSpecs.name}:`;
+    const source = (config.source as string) || `${remote.remoteSpecs.name}:`;
 
     // Extract protocol type and address for destination display
     const serveType = (config?.options?.type as string) || 'http';
-    const serveAddr = (config?.options?.addr as string) || 'Default';
+    const serveAddr =
+      (config?.options?.addr as string) || this.translate.instant('dashboard.appDetail.default');
     const destination = `${serveType.toUpperCase()} at ${serveAddr}`;
 
     return {
@@ -668,17 +677,17 @@ export class AppDetailComponent {
       pathConfig: {
         source: source,
         destination: destination,
-        sourceLabel: 'Serving',
-        destinationLabel: 'Accessible via',
+        sourceLabel: this.translate.instant('dashboard.appDetail.serving'),
+        destinationLabel: this.translate.instant('dashboard.appDetail.accessibleVia'),
         showOpenButtons: false,
         operationColor: 'accent',
         isDestinationActive: isActive,
       },
-      primaryButtonLabel: 'Start Serve',
+      primaryButtonLabel: this.translate.instant('dashboard.appDetail.start', { op: 'Serve' }),
       primaryIcon: 'satellite-dish',
-      secondaryButtonLabel: 'Stop Serve',
+      secondaryButtonLabel: this.translate.instant('dashboard.appDetail.stop', { op: 'Serve' }),
       secondaryIcon: 'stop',
-      actionInProgress: actionMatch?.type || undefined,
+      actionInProgress: (actionMatch?.type as any) || undefined,
       profileName: profileName,
     };
   }
@@ -704,44 +713,44 @@ export class AppDetailComponent {
         ? (statsData.elapsedTime / (statsData.elapsedTime + statsData.eta)) * 100
         : 0;
 
-    const stats: StatItem[] = [
-      {
-        value: this.formatProgress(),
-        label: 'Progress',
-        isPrimary: true,
-        progress,
-      },
-      {
-        value: this.formatSpeed(statsData.speed || 0),
-        label: 'Speed',
-      },
-      {
-        value: this.formatTime.transform(statsData.eta),
-        label: 'ETA',
-        isPrimary: true,
-        progress: etaProgress,
-      },
-      {
-        value: `${statsData.transfers || 0}/${statsData.totalTransfers || 0}`,
-        label: 'Files',
-      },
-      {
-        value: statsData.errors || 0,
-        label: 'Errors',
-        hasError: (statsData.errors || 0) > 0,
-        tooltip: statsData.lastError,
-      },
-      {
-        value: this.formatTime.transform(statsData.elapsedTime),
-        label: 'Duration',
-      },
-    ];
-
     const op = this.currentOperation();
     return {
-      title: `${op?.label || 'Transfer'} Statistics`,
+      title: this.translate.instant('dashboard.appDetail.transferStatistics', {
+        op: op ? this.translate.instant(op.label) : 'Transfer',
+      }),
       icon: op?.icon || 'bar_chart',
-      stats,
+      stats: [
+        {
+          value: this.formatProgress(),
+          label: this.translate.instant('dashboard.appDetail.progress'),
+          isPrimary: true,
+          progress,
+        },
+        {
+          value: this.formatSpeed(statsData.speed || 0),
+          label: this.translate.instant('dashboard.appDetail.speed'),
+        },
+        {
+          value: this.formatTime.transform(statsData.eta),
+          label: this.translate.instant('dashboard.appDetail.eta'),
+          isPrimary: true,
+          progress: etaProgress,
+        },
+        {
+          value: `${statsData.transfers || 0}/${statsData.totalTransfers || 0}`,
+          label: this.translate.instant('dashboard.appDetail.files'),
+        },
+        {
+          value: statsData.errors || 0,
+          label: this.translate.instant('dashboard.appDetail.errors'),
+          hasError: (statsData.errors || 0) > 0,
+          tooltip: statsData.lastError,
+        },
+        {
+          value: this.formatTime.transform(statsData.elapsedTime),
+          label: this.translate.instant('dashboard.appDetail.duration'),
+        },
+      ],
       operationClass: this.operationClass(),
       operationColor: this.operationColor(),
     };
@@ -863,10 +872,12 @@ export class AppDetailComponent {
     }
   }
 
-  onCopyToClipboard(event: { text: string; message: string }): void {
-    navigator.clipboard.writeText(event.text).catch(err => {
+  async onCopyToClipboard(event: { text: string; message: string }): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(event.text);
+    } catch (err) {
       console.error('Failed to copy to clipboard:', err);
-    });
+    }
   }
 
   onEditSettings(event: { section: string; settings: RemoteSettings }): void {
@@ -898,9 +909,8 @@ export class AppDetailComponent {
       section,
       settings: specificSettings,
       hasSettings: Object.keys(specificSettings).length > 0,
-      restrictMode: this.restrictMode(),
       buttonColor: this.operationColor(),
-      buttonLabel: 'Edit Settings',
+      buttonLabel: undefined,
       sensitiveKeys: SENSITIVE_KEYS,
     };
   }
@@ -951,7 +961,8 @@ export class AppDetailComponent {
     const transferring = this.processTransfers(job.stats.transferring);
     this.activeTransfers.set(transferring);
 
-    this.jobStats.set({ ...job.stats, transferring });
+    // Update job-specific stats when tracking a particular job
+    this.jobSpecificStats.set({ ...job.stats, transferring });
   }
 
   // --- Logic Helpers ---
@@ -1029,7 +1040,8 @@ export class AppDetailComponent {
     this.activeTransfers.set([]);
     this.completedTransfers.set([]);
     this.lastTransferCount = 0;
-    this.jobStats.set({ ...DEFAULT_JOB_STATS });
+    // Clear job-specific stats so it falls back to global stats from service
+    this.jobSpecificStats.set(null);
   }
 
   // --- Stats Formatting Helpers ---

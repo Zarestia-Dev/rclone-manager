@@ -27,8 +27,10 @@ import { FilePickerConfig } from '@app/types';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { CronInputComponent } from '@app/shared/components';
-import { NotificationService } from 'src/app/shared/services/notification.service';
+import { NotificationService } from '@app/services';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 type PathType = 'local' | 'currentRemote' | 'otherRemote';
 type PathGroup = 'source' | 'dest';
@@ -51,6 +53,8 @@ type PathGroup = 'source' | 'dest';
     TitleCasePipe,
     CronInputComponent,
     MatProgressSpinner,
+    MatTooltipModule,
+    TranslateModule,
   ],
   templateUrl: './app-operation-config.component.html',
   styleUrls: ['./app-operation-config.component.scss'],
@@ -63,6 +67,7 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
   @Input() existingRemotes: string[] = [];
   @Input() description = '';
   @Input() isNewRemote = true;
+  @Input() searchQuery = '';
 
   // These outputs might be less relevant now that we handle selection internally,
   // but keeping them for compatibility.
@@ -72,6 +77,7 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
   private readonly fileSystemService = inject(FileSystemService);
   private readonly pathSelectionService = inject(PathSelectionService);
   private readonly notificationService = inject(NotificationService);
+  private readonly translate = inject(TranslateService);
   private readonly cdRef = inject(ChangeDetectorRef);
   private readonly destroy$ = new Subject<void>();
 
@@ -85,6 +91,30 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
   // Inline autocomplete state
   sourcePathState$!: Observable<PathSelectionState>;
   destPathState$!: Observable<PathSelectionState>;
+
+  // Search helper method
+  private matchesSearch(keywords: string): boolean {
+    if (!this.searchQuery) return true;
+    const query = this.searchQuery.toLowerCase();
+    const keywordList = keywords.toLowerCase();
+    return keywordList.includes(query) || query.split(' ').some(term => keywordList.includes(term));
+  }
+
+  get showAutoStart(): boolean {
+    return this.matchesSearch('auto start enable automatic');
+  }
+
+  get showCronSection(): boolean {
+    return this.matchesSearch('cron schedule task scheduled timing');
+  }
+
+  get showSourcePath(): boolean {
+    return this.matchesSearch('source path input from origin');
+  }
+
+  get showDestPath(): boolean {
+    return this.matchesSearch('destination dest output target');
+  }
 
   get cronExpression(): string | null {
     return this.opFormGroup.get('cronExpression')?.value || null;
@@ -288,7 +318,12 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   private async selectLocalPath(group: PathGroup): Promise<void> {
-    const requireEmpty = this.isMount && group === 'dest';
+    // Mount dest folder should be empty unless AllowNonEmpty is enabled
+    let requireEmpty = false;
+    if (this.isMount && group === 'dest') {
+      const allowNonEmpty = this.opFormGroup.get('options.mount---allow_non_empty')?.value;
+      requireEmpty = !allowNonEmpty;
+    }
     const currentPath = this.getPathControl(group)?.value || '';
     try {
       const selectedPath = await this.fileSystemService.selectFolder(requireEmpty, currentPath);
@@ -329,7 +364,9 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
 
       // Validate mount destination must be local
       if (this.isMount && group === 'dest' && remoteName !== '') {
-        this.notificationService.showError('Mount destination must be a local folder.');
+        this.notificationService.showError(
+          this.translate.instant('wizards.appOperation.mountDestMustBeLocal')
+        );
         return;
       }
 

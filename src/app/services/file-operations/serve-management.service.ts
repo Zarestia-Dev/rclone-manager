@@ -1,8 +1,9 @@
-import { inject, Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { DestroyRef, inject, Injectable } from '@angular/core';
+import { BehaviorSubject, merge } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { TranslateService } from '@ngx-translate/core';
 import { TauriBaseService } from '../core/tauri-base.service';
-import { NotificationService } from '../../shared/services/notification.service';
-
+import { NotificationService } from '@app/services';
 import { ServeStartResponse, ServeListResponse, ServeListItem } from '@app/types';
 import { EventListenersService } from '../system/event-listeners.service';
 
@@ -16,6 +17,8 @@ import { EventListenersService } from '../system/event-listeners.service';
 export class ServeManagementService extends TauriBaseService {
   private readonly notificationService = inject(NotificationService);
   private readonly eventListeners = inject(EventListenersService);
+  private readonly translate = inject(TranslateService);
+  private readonly destroyRef = inject(DestroyRef);
 
   // Observable for running serves list
   private runningServesSubject = new BehaviorSubject<ServeListItem[]>([]);
@@ -28,12 +31,17 @@ export class ServeManagementService extends TauriBaseService {
       console.error('Failed to initialize running serves:', error);
     });
 
-    // Subscribe to serve state changes emitted from the backend and refresh list
-    this.eventListeners.listenToServeStateChanged().subscribe(() => {
-      this.refreshServes().catch(err => {
-        console.error('Failed to refresh serves after serve_state_changed:', err);
+    // Subscribe to serve state changes and engine ready events
+    merge(
+      this.eventListeners.listenToServeStateChanged(),
+      this.eventListeners.listenToRcloneEngineReady()
+    )
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.refreshServes().catch(err => {
+          console.error('[ServeManagementService] Failed to refresh serves:', err);
+        });
       });
-    });
   }
 
   /**
@@ -58,7 +66,6 @@ export class ServeManagementService extends TauriBaseService {
       const response = await this.invokeCommand<ServeListItem[] | ServeListResponse>(
         'get_cached_serves'
       );
-      console.log('Fetched serves from cache:', response);
 
       let servesToUpdate: ServeListItem[] = [];
       if (Array.isArray(response)) {
@@ -68,12 +75,9 @@ export class ServeManagementService extends TauriBaseService {
       }
 
       this.runningServesSubject.next(servesToUpdate);
-      console.log('Updated running serves from cache:', servesToUpdate);
-      console.log('Refreshed serves from cache successfully');
-      console.log(this.runningServesSubject.value); // <-- This will now log the array
     } catch (error) {
-      console.error('Failed to refresh serves from cache:', error);
-      throw error; // Re-throw to be caught by refreshServes if needed
+      console.error('[ServeManagementService] Failed to refresh serves from cache:', error);
+      throw error;
     }
   }
 
@@ -93,6 +97,7 @@ export class ServeManagementService extends TauriBaseService {
       }
     }
   }
+
   /**
    * Start a serve using a named profile
    * Backend resolves all options (serve, vfs, filter, backend) from cached settings
@@ -106,14 +111,18 @@ export class ServeManagementService extends TauriBaseService {
       });
 
       this.notificationService.showSuccess(
-        `Started serve for ${remoteName} (${profileName}) at ${response.addr}`
+        this.translate.instant('serve.successStart', {
+          remote: remoteName,
+          profile: profileName,
+          addr: response.addr,
+        })
       );
       await this.refreshServes();
 
       return response;
     } catch (error) {
       this.notificationService.showError(
-        `Failed to start serve for ${remoteName} (${profileName}): ${error}`
+        this.translate.instant('serve.failedStart', { remote: remoteName, error: String(error) })
       );
       throw error;
     }
@@ -129,12 +138,16 @@ export class ServeManagementService extends TauriBaseService {
         remoteName,
       });
 
-      this.notificationService.showSuccess(`Successfully stopped serve ${serverId}`);
+      this.notificationService.showSuccess(
+        this.translate.instant('serve.successStop', { id: serverId })
+      );
 
       // Refresh the list of running serves
       await this.refreshServes();
     } catch (error) {
-      this.notificationService.showError(`Failed to stop serve ${serverId}: ${error}`);
+      this.notificationService.showError(
+        this.translate.instant('serve.failedStop', { id: serverId, error: String(error) })
+      );
       throw error;
     }
   }
@@ -148,12 +161,14 @@ export class ServeManagementService extends TauriBaseService {
         context: 'manual',
       });
 
-      this.notificationService.showSuccess('Successfully stopped all serves');
+      this.notificationService.showSuccess(this.translate.instant('serve.successStopAll'));
 
       // Clear the running serves list
       this.runningServesSubject.next([]);
     } catch (error) {
-      this.notificationService.showError(`Failed to stop all serves: ${error}`);
+      this.notificationService.showError(
+        this.translate.instant('serve.failedStopAll', { error: String(error) })
+      );
       throw error;
     }
   }

@@ -23,7 +23,6 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 1rem;
-  margin-bottom: 2rem;
 }
 
 .preset-card {
@@ -31,21 +30,19 @@
   flex-direction: column !important;
   align-items: center;
   padding: 1.25rem 1rem;
-  border: 2px solid var(--border-color);
+  box-shadow: 0 0 0 2px var(--border-color);
   border-radius: 0.75rem;
-  background: var(--surface-color, #fff);
+  background: var(--window-bg-color);
   transition: all 0.2s ease;
   text-align: center;
 
   &:hover:not(:disabled) {
-    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px var(--accent-color);
     background: rgba(var(--accent-color-rgb), 0.04);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
 
   &.selected {
-    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px var(--accent-color);
     background: rgba(var(--accent-color-rgb), 0.1);
   }
 
@@ -93,7 +90,7 @@
   padding: 1.25rem;
   background: rgba(var(--accent-color-rgb), 0.03);
   border-radius: 0.5rem;
-  border: 2px solid rgba(var(--accent-color-rgb), 0.15);
+  box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.15);
 }
 
 .builder-row {
@@ -179,7 +176,7 @@
     font-family: "Consolas", "Monaco", monospace;
     font-size: 0.813rem;
     color: var(--text-secondary);
-    background: rgba(0, 0, 0, 0.08);
+    background: var(--shadow-color);
     padding: 0.25rem 0.5rem;
     border-radius: 0.25rem;
   }
@@ -206,8 +203,6 @@
 }
 
 .advanced-section {
-  margin-bottom: 2rem;
-
   &:last-child {
     margin-bottom: 0;
   }
@@ -246,7 +241,7 @@
 
     code {
       font-family: "Consolas", "Monaco", monospace;
-      background: rgba(0, 0, 0, 0.1);
+      background: var(--active-bg-color);
       padding: 0.125rem 0.375rem;
       border-radius: 0.188rem;
       font-size: 0.813rem;

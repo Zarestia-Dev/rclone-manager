@@ -1,4 +1,14 @@
 .input-modal {
+  .modal-title {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--window-fg-color);
+    text-align: center;
+    margin-bottom: var(--space-md);
+    letter-spacing: -0.3px;
+    line-height: 1.3;
+  }
+
   .modal-content {
     padding: 8px 20px;
     display: flex;
@@ -11,5 +21,43 @@
     justify-content: center;
     gap: 8px;
     padding: 0 20px 20px 20px;
+  }
+}
+
+// Mobile bottom sheet optimizations
+@media (max-width: 450px) {
+  .input-modal {
+    .modal-title {
+      font-size: var(--font-size-lg);
+      margin-bottom: var(--space-sm);
+    }
+    // Modal content
+    .modal-content {
+      padding: var(--space-md);
+      padding-top: var(--space-lg);
+
+      // Ensure form field fills available space nicely
+      mat-form-field {
+        .mat-mdc-text-field-wrapper {
+          padding: 0 var(--space-sm);
+        }
+
+        input {
+          font-size: 16px; // Prevent iOS zoom on focus
+        }
+      }
+    }
+
+    // Touch-friendly actions
+    .modal-actions {
+      flex-direction: column;
+      gap: var(--space-sm);
+      padding-top: var(--space-md);
+      border-top: 1px solid rgba(var(--dim-color-rgb), 0.1);
+
+      button {
+        width: 100%;
+      }
+    }
   }
 }

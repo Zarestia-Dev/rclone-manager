@@ -34,8 +34,9 @@ import {
   JobsPanelComponent,
   SettingsPanelComponent,
 } from '../../../../shared/detail-shared';
-import { IconService } from 'src/app/shared/services/icon.service';
-import { SchedulerService } from '@app/services';
+import { IconService, SchedulerService } from '@app/services';
+
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 interface ActionConfig {
   key: PrimaryActionType;
@@ -48,46 +49,45 @@ interface ActionConfig {
 const ACTION_CONFIGS: ActionConfig[] = [
   {
     key: 'mount',
-    label: 'Mount',
+    label: 'actions.mount',
     icon: 'mount',
-    getTooltip: remote => (remote.mountState?.mounted ? 'Mounted' : 'Toggle Mount as Quick Action'),
+    getTooltip: remote => (remote.mountState?.mounted ? 'mount.mounted' : 'mount.toggleAction'),
     getActiveState: remote => remote.mountState?.mounted || false,
   },
   {
     key: 'sync',
-    label: 'Sync',
+    label: 'actions.sync',
     icon: 'sync',
-    getTooltip: remote => (remote.syncState?.isOnSync ? 'Syncing' : 'Toggle Sync as Quick Action'),
+    getTooltip: remote => (remote.syncState?.isOnSync ? 'sync.syncing' : 'sync.toggleSync'),
     getActiveState: remote => remote.syncState?.isOnSync || false,
   },
   {
     key: 'copy',
-    label: 'Copy',
+    label: 'actions.copy',
     icon: 'copy',
-    getTooltip: remote => (remote.copyState?.isOnCopy ? 'Copying' : 'Toggle Copy as Quick Action'),
+    getTooltip: remote => (remote.copyState?.isOnCopy ? 'sync.copying' : 'sync.toggleCopy'),
     getActiveState: remote => remote.copyState?.isOnCopy || false,
   },
   {
     key: 'move',
-    label: 'Move',
+    label: 'actions.move',
     icon: 'move',
-    getTooltip: remote => (remote.moveState?.isOnMove ? 'Moving' : 'Toggle Move as Quick Action'),
+    getTooltip: remote => (remote.moveState?.isOnMove ? 'sync.moving' : 'sync.toggleMove'),
     getActiveState: remote => remote.moveState?.isOnMove || false,
   },
   {
     key: 'bisync',
-    label: 'Bisync',
+    label: 'actions.bisync',
     icon: 'right-left',
     getTooltip: remote =>
-      remote.bisyncState?.isOnBisync ? 'Bisync Active' : 'Toggle BiSync as Quick Action',
+      remote.bisyncState?.isOnBisync ? 'sync.bisyncActive' : 'sync.toggleBisync',
     getActiveState: remote => remote.bisyncState?.isOnBisync || false,
   },
   {
     key: 'serve',
-    label: 'Serve',
+    label: 'actions.serve',
     icon: 'serve',
-    getTooltip: remote =>
-      remote.serveState?.isOnServe ? 'Serving' : 'Toggle Serve as Quick Action',
+    getTooltip: remote => (remote.serveState?.isOnServe ? 'serve.serving' : 'serve.toggleAction'),
     getActiveState: remote => remote.serveState?.isOnServe || false,
   },
 ];
@@ -109,6 +109,7 @@ const ACTION_CONFIGS: ActionConfig[] = [
     SettingsPanelComponent,
     DiskUsagePanelComponent,
     JobsPanelComponent,
+    TranslateModule,
   ],
   templateUrl: './general-detail.component.html',
   styleUrl: './general-detail.component.scss',
@@ -116,11 +117,11 @@ const ACTION_CONFIGS: ActionConfig[] = [
 export class GeneralDetailComponent {
   readonly iconService = inject(IconService);
   private readonly schedulerService = inject(SchedulerService);
+  private readonly translate = inject(TranslateService);
 
   // Inputs
   selectedRemote = input.required<Remote>();
   jobs = input<JobInfo[]>([]);
-  restrictMode = input.required<boolean>();
 
   // Outputs
   @Output() openRemoteConfigModal = new EventEmitter<{
@@ -221,14 +222,13 @@ export class GeneralDetailComponent {
   remoteConfigurationPanelConfig = computed<SettingsPanelConfig>(() => ({
     section: {
       key: 'remote-config',
-      title: 'Remote Configuration',
+      title: 'dashboard.generalDetail.remoteConfiguration',
       icon: 'wrench',
     },
     settings: this.selectedRemote().remoteSpecs,
     hasSettings: Object.keys(this.selectedRemote().remoteSpecs).length > 0,
-    restrictMode: this.restrictMode(),
     buttonColor: 'primary',
-    buttonLabel: 'Edit Configuration',
+    buttonLabel: 'dashboard.generalDetail.editConfiguration',
   }));
 
   diskUsageConfig = computed<DiskUsage>(() => this.selectedRemote()?.diskUsage);
@@ -251,11 +251,16 @@ export class GeneralDetailComponent {
     const isSelected = this.isActionSelected(actionKey);
     const position = this.getActionPosition(actionKey);
 
+    const label = this.translate.instant(config?.label || '');
+
     if (isSelected && position > 0) {
-      return `${config?.label} selected as quick action ${position}`;
+      return this.translate.instant('dashboard.generalDetail.quickActionSelected', {
+        label,
+        position,
+      });
     }
 
-    return `Toggle ${config?.label} as quick action`;
+    return this.translate.instant('dashboard.generalDetail.toggleQuickAction', { label });
   }
 
   // Track by functions
@@ -273,14 +278,14 @@ export class GeneralDetailComponent {
 
   // Methods for scheduled tasks
   getFormattedNextRun(task: ScheduledTask): string {
-    if (task.status === 'disabled') return 'Task is disabled';
-    if (task.status === 'stopping') return 'Disabling after current run';
-    if (!task.nextRun) return 'Not scheduled';
+    if (task.status === 'disabled') return this.translate.instant('task.nextRun.disabled');
+    if (task.status === 'stopping') return this.translate.instant('task.nextRun.stopping');
+    if (!task.nextRun) return this.translate.instant('task.nextRun.notScheduled');
     return new Date(task.nextRun).toLocaleString();
   }
 
   getFormattedLastRun(task: ScheduledTask): string {
-    if (!task.lastRun) return 'Never';
+    if (!task.lastRun) return this.translate.instant('task.lastRun.never');
     return new Date(task.lastRun).toLocaleString();
   }
 
@@ -305,19 +310,19 @@ export class GeneralDetailComponent {
   }
 
   private readonly TASK_STATUS_TOOLTIPS: Record<string, string> = {
-    enabled: 'Task is enabled and will run on schedule.',
-    disabled: 'Task is disabled and will not run.',
-    running: 'Task is currently running.',
-    failed: 'Task failed on its last run.',
-    stopping: 'Task is stopping and will be disabled after the current run finishes.',
+    enabled: 'task.status.enabled',
+    disabled: 'task.status.disabled',
+    running: 'task.status.running',
+    failed: 'task.status.failed',
+    stopping: 'task.status.stopping',
   };
 
   private readonly TOGGLE_TOOLTIPS: Record<string, string> = {
-    enabled: 'Disable task',
-    running: 'Disable task',
-    disabled: 'Enable task',
-    failed: 'Enable task',
-    stopping: 'Task is stopping...',
+    enabled: 'task.toggle.disable',
+    running: 'task.toggle.disable',
+    disabled: 'task.toggle.enable',
+    failed: 'task.toggle.enable',
+    stopping: 'task.toggle.stopping',
   };
 
   private readonly TOGGLE_ICONS: Record<string, string> = {

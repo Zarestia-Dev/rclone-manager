@@ -1,40 +1,78 @@
+//! Restore management with format detection
+//!
+//! Supports both rcman library format and legacy app format backups.
+
+use crate::core::settings::AppSettingsManager;
 use crate::{
-    core::settings::backup::backup_manager::{INNER_DATA_ARCHIVE_NAME, calculate_file_hash},
-    rclone::{commands::remote::create_remote, queries::get_rclone_config_file},
-    utils::types::{
-        all_types::RcloneState,
-        backup_types::BackupManifest,
-        events::{REMOTE_PRESENCE_CHANGED, SYSTEM_SETTINGS_CHANGED},
-        settings::SettingsState,
-    },
+    rclone::commands::remote::create_remote,
+    utils::types::events::{REMOTE_CACHE_CHANGED, SYSTEM_SETTINGS_CHANGED},
 };
-use log::{debug, error, info, warn};
+use log::{info, warn};
 use serde_json::json;
-use std::{
-    fs::{self, File},
-    io::BufReader,
-    path::{Path, PathBuf},
-};
-use tauri::{AppHandle, Emitter, Manager, State};
+use std::{fs::File, io::BufReader, path::Path};
+use tauri::{AppHandle, Emitter, State};
 use zip::ZipArchive;
 
+// DEPRECATION (2026-2027): Delete this line when removing legacy support
+use super::legacy_restore::restore_legacy_backup;
+
 // -----------------------------------------------------------------------------
-// MAIN RESTORE COMMAND
+// BACKUP FORMAT VERSION DETECTION
+// -----------------------------------------------------------------------------
+
+/// Backup format versions for backward compatibility
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BackupFormatVersion {
+    // DEPRECATION (2026-2027): Delete this variant when removing legacy support
+    /// App's original format (manifest with format.version string, data.7z/data.zip)
+    AppLegacy,
+    /// New rcman library format (manifest with root version int, data.zip)
+    Rcman,
+    /// Unknown format
+    Unknown,
+}
+
+/// Detects the backup format by analyzing the manifest JSON structure
+fn detect_manifest_format(manifest_json: &serde_json::Value) -> BackupFormatVersion {
+    // rcman format has root-level "version" as integer
+    if manifest_json
+        .get("version")
+        .and_then(|v| v.as_u64())
+        .is_some()
+    {
+        return BackupFormatVersion::Rcman;
+    }
+
+    // DEPRECATION (2026-2027): Delete this block when removing legacy support
+    // App legacy format has "format.version" as string
+    if manifest_json
+        .get("format")
+        .and_then(|f| f.get("version"))
+        .and_then(|v| v.as_str())
+        .is_some()
+    {
+        return BackupFormatVersion::AppLegacy;
+    }
+
+    BackupFormatVersion::Unknown
+}
+
+// -----------------------------------------------------------------------------
+// MAIN RESTORE COMMAND (With format routing)
 // -----------------------------------------------------------------------------
 
 #[tauri::command]
 pub async fn restore_settings(
-    backup_path: PathBuf,
+    backup_path: std::path::PathBuf,
     password: Option<String>,
-    state: State<'_, SettingsState<tauri::Wry>>,
+    restore_profile: Option<String>,
+    restore_profile_as: Option<String>,
+    manager: State<'_, AppSettingsManager>,
     app_handle: AppHandle,
 ) -> Result<String, String> {
     info!("Starting restore from: {:?}", backup_path);
 
-    // Create workspace
-    let temp_dir = tempfile::tempdir().map_err(|e| format!("Failed to create temp dir: {e}"))?;
-
-    // Open and validate .rcman
+    // Open and read manifest to detect format
     let file = File::open(&backup_path).map_err(|e| format!("Failed to open backup: {e}"))?;
     let mut archive =
         ZipArchive::new(BufReader::new(file)).map_err(|e| format!("Invalid .rcman file: {e}"))?;
@@ -43,271 +81,177 @@ pub async fn restore_settings(
         .by_name("manifest.json")
         .map_err(|_| "Invalid .rcman: Missing manifest.json")?;
 
-    let manifest: BackupManifest = serde_json::from_reader(manifest_file)
+    let manifest_json: serde_json::Value = serde_json::from_reader(manifest_file)
         .map_err(|e| format!("Failed to parse manifest: {e}"))?;
 
-    info!(
-        "Restoring backup v{}, created {}",
-        manifest.format.version, manifest.backup.created_at
-    );
+    // Route to appropriate handler based on format
+    let format = detect_manifest_format(&manifest_json);
+    info!("Detected backup format: {:?}", format);
 
-    // Validate password
-    let validated_password = validate_restore_password(password, manifest.backup.encrypted)?;
-
-    // Extract inner archive
-    let inner_archive_filename = format!(
-        "{}.{}",
-        INNER_DATA_ARCHIVE_NAME, manifest.backup.compression
-    );
-    let mut inner_archive_file = archive
-        .by_name(&inner_archive_filename)
-        .map_err(|_| format!("Missing data file: {}", inner_archive_filename))?;
-
-    let inner_archive_path = temp_dir.path().join(&inner_archive_filename);
-    let mut extracted_file = File::create(&inner_archive_path)
-        .map_err(|e| format!("Failed to create temp file: {e}"))?;
-    std::io::copy(&mut inner_archive_file, &mut extracted_file)
-        .map_err(|e| format!("Failed to extract data: {e}"))?;
-
-    // Verify integrity
-    info!("Verifying integrity...");
-    let (calculated_hash, _) = calculate_file_hash(&inner_archive_path)?;
-    if calculated_hash != manifest.integrity.sha256 {
-        error!(
-            "Integrity check FAILED! Expected: {}, Got: {}",
-            manifest.integrity.sha256, calculated_hash
-        );
-        return Err("Integrity check failed! Backup may be corrupted.".into());
+    match format {
+        BackupFormatVersion::Rcman => {
+            restore_rcman_backup(
+                &backup_path,
+                password,
+                restore_profile,
+                restore_profile_as,
+                &manager,
+                &app_handle,
+            )
+            .await
+        }
+        // DEPRECATION (2026-2027): Delete this match arm when removing legacy support
+        // IMPORTANT: Legacy backups are always restored to the "default" profile
+        // because they were created before the profile system existed.
+        BackupFormatVersion::AppLegacy => {
+            restore_legacy_backup(&backup_path, password, &manifest_json, &app_handle).await
+        }
+        BackupFormatVersion::Unknown => Err(crate::localized_error!(
+            "backendErrors.backup.unknownFormat"
+        )),
     }
-    info!("Integrity verified.");
-
-    // Extract data contents
-    let extracted_data_dir = temp_dir.path().join("extracted");
-    fs::create_dir_all(&extracted_data_dir)
-        .map_err(|e| format!("Failed to create extraction dir: {e}"))?;
-
-    info!("Extracting backup contents...");
-    match manifest.backup.compression.as_str() {
-        "7z" => extract_7z_archive(
-            &inner_archive_path,
-            &extracted_data_dir,
-            validated_password.as_deref(),
-        )?,
-        "zip" => extract_zip_archive(&inner_archive_path, &extracted_data_dir)?,
-        ext => return Err(format!("Unsupported compression: {}", ext)),
-    }
-
-    // Restore files
-    info!("Restoring files...");
-    restore_files(&extracted_data_dir, state, app_handle).await
 }
 
 // -----------------------------------------------------------------------------
-// HELPER FUNCTIONS
+// RCMAN FORMAT RESTORE
 // -----------------------------------------------------------------------------
 
-/// Validates password for restore operation
-fn validate_restore_password(
+async fn restore_rcman_backup(
+    backup_path: &Path,
     password: Option<String>,
-    is_encrypted: bool,
-) -> Result<Option<String>, String> {
-    let has_password = password.as_ref().is_some_and(|p| !p.trim().is_empty());
-
-    match (is_encrypted, has_password) {
-        (true, false) => Err("This backup is encrypted. Password required.".into()),
-        (false, true) => {
-            warn!("Password provided for unencrypted backup. Ignoring.");
-            Ok(None)
-        }
-        (true, true) => Ok(Some(password.unwrap().trim().to_string())),
-        (false, false) => Ok(None),
-    }
-}
-
-/// Extracts a 7z archive with password
-fn extract_7z_archive(
-    archive_path: &Path,
-    extract_to: &Path,
-    password: Option<&str>,
-) -> Result<(), String> {
-    if let Some(pw) = password {
-        sevenz_rust2::decompress_file_with_password(archive_path, extract_to, pw.into())
-            .map_err(|e| format!("Failed to extract 7z archive: {e}"))
-    } else {
-        sevenz_rust2::decompress_file(archive_path, extract_to)
-            .map_err(|e| format!("Failed to extract 7z archive: {e}"))
-    }
-}
-
-/// Extracts a zip archive
-fn extract_zip_archive(archive_path: &Path, extract_to: &Path) -> Result<(), String> {
-    let file = File::open(archive_path).map_err(|e| format!("Failed to open zip: {e}"))?;
-    let mut archive =
-        ZipArchive::new(BufReader::new(file)).map_err(|e| format!("Invalid zip: {e}"))?;
-
-    for i in 0..archive.len() {
-        let mut file = archive
-            .by_index(i)
-            .map_err(|e| format!("Zip read error: {e}"))?;
-        let out_path = extract_to.join(file.name());
-
-        if let Some(parent) = out_path.parent() {
-            fs::create_dir_all(parent).map_err(|e| format!("Failed to create dir: {e}"))?;
-        }
-
-        if file.is_dir() {
-            fs::create_dir_all(&out_path).map_err(|e| format!("Failed to create dir: {e}"))?;
-        } else {
-            let mut outfile =
-                File::create(&out_path).map_err(|e| format!("Failed to create file: {e}"))?;
-            std::io::copy(&mut file, &mut outfile).map_err(|e| format!("Copy error: {e}"))?;
-        }
-    }
-    Ok(())
-}
-
-/// Restores files from extracted directory
-async fn restore_files(
-    extracted_dir: &Path,
-    state: State<'_, SettingsState<tauri::Wry>>,
-    app_handle: AppHandle,
+    restore_profile: Option<String>,
+    restore_profile_as: Option<String>,
+    manager: &AppSettingsManager,
+    app_handle: &AppHandle,
 ) -> Result<String, String> {
-    info!("Restoring from: {:?}", extracted_dir);
+    info!("Restoring using rcman library...");
 
-    // Restore rclone remotes via RC API
-    let remote_config_dir = extracted_dir.join("remote_config");
-    if remote_config_dir.exists() {
-        info!("Restoring rclone remotes via RC API");
-        for entry in walkdir::WalkDir::new(&remote_config_dir)
-            .into_iter()
-            .filter_map(Result::ok)
-            .filter(|e| e.file_type().is_file())
+    // Build restore options
+    let mut options = rcman::RestoreOptions::from_path(backup_path)
+        .restore_settings(true)
+        .overwrite(true)
+        .verify_checksum(true);
+
+    if let Some(pw) = password {
+        let trimmed = pw.trim();
+        if !trimmed.is_empty() {
+            options = options.password(trimmed);
+        }
+    }
+
+    if let Some(profile) = restore_profile {
+        options = options.restore_profile(profile);
+    }
+
+    if let Some(name) = restore_profile_as {
+        options = options.restore_profile_as(name);
+    }
+
+    // Perform restore
+    let result = manager
+        .backup()
+        .restore(&options)
+        .map_err(|e| format!("Restore failed: {}", e))?;
+
+    // Emit events to notify frontend
+    app_handle.emit(REMOTE_CACHE_CHANGED, ()).ok();
+
+    if result.restored.iter().any(|s| s == "settings.json") {
+        // Reload settings to get new values
+        manager.invalidate_cache();
+        if let Some(app_settings) = manager
+            .get_all()
+            .ok()
+            .and_then(|s| serde_json::to_value(s).ok())
+            .and_then(|v: serde_json::Value| v.get("app_settings").cloned())
         {
-            let path = entry.path();
-            if path.extension().and_then(|s| s.to_str()) == Some("json")
-                && let Err(e) = restore_remote_from_file(path, &app_handle).await
-            {
-                warn!("Failed to restore remote from {:?}: {}", path, e);
+            app_handle.emit(SYSTEM_SETTINGS_CHANGED, app_settings).ok();
+        }
+    }
+
+    // Post-process: Restore external remote configs (they are marked as ReadOnly by rcman)
+    // Look for skipped items like "remote:gdrive" in the external_pending list
+    let mut remote_restore_count = 0;
+    for item in &result.external_pending {
+        if item.starts_with("remote:") {
+            let remote_name = item.trim_start_matches("remote:");
+            info!(
+                "📥 Attempting to restore external remote config: {}",
+                remote_name
+            );
+
+            // The archive filename format is {remote_name}_rclone.json
+            let archive_filename = format!("{}_rclone.json", remote_name);
+
+            // Try to read the remote config from backup
+            if let Ok(config_data) = manager.backup().get_external_config_from_backup(
+                backup_path,
+                &archive_filename,
+                None,
+            ) {
+                match restore_remote_from_json(remote_name, &config_data, app_handle).await {
+                    Ok(()) => {
+                        remote_restore_count += 1;
+                        info!("✅ Restored remote: {}", remote_name);
+                    }
+                    Err(e) => {
+                        warn!("⚠️ Failed to restore remote '{}': {}", remote_name, e);
+                    }
+                }
+            } else {
+                warn!("⚠️ Could not read external config for: {}", item);
             }
         }
     }
 
-    // Restore config files
-    for entry in walkdir::WalkDir::new(extracted_dir)
-        .into_iter()
-        .filter_map(Result::ok)
-        .filter(|e| e.file_type().is_file())
-    {
-        let relative_path = entry.path().strip_prefix(extracted_dir).unwrap();
-        let file_name = relative_path.to_string_lossy();
+    let restored_count = result.restored.len() + remote_restore_count;
+    let skipped_count = result.skipped.len();
 
-        // Skip remote_config (already handled)
-        if file_name.starts_with("remote_config") {
-            continue;
-        }
+    info!(
+        "✅ Restore complete: {} restored, {} skipped",
+        restored_count, skipped_count
+    );
 
-        let dest_path = determine_restore_path(&file_name, &state, &app_handle).await?;
-
-        if let Some(parent) = dest_path.parent() {
-            fs::create_dir_all(parent).map_err(|e| format!("Failed to create dir: {e}"))?;
-        }
-
-        fs::copy(entry.path(), &dest_path)
-            .map_err(|e| format!("Failed to copy {}: {}", file_name, e))?;
-
-        info!("Restored: {:?}", dest_path);
-    }
-
-    // Emit events
-    let settings_path = state.config_dir.join("settings.json");
-    if settings_path.exists() {
-        let settings_content = fs::read_to_string(&settings_path)
-            .map_err(|e| format!("Failed to read settings: {e}"))?;
-        let new_settings: serde_json::Value = serde_json::from_str(&settings_content)
-            .map_err(|e| format!("Failed to parse settings: {e}"))?;
-
-        app_handle.emit(REMOTE_PRESENCE_CHANGED, ()).ok();
-        app_handle
-            .emit(
-                SYSTEM_SETTINGS_CHANGED,
-                serde_json::to_value(new_settings.get("app_settings")).unwrap(),
-            )
-            .ok();
-    }
-
-    Ok("Settings restored successfully".into())
+    Ok(format!(
+        "Settings restored successfully ({} items restored, {} skipped)",
+        restored_count, skipped_count
+    ))
 }
 
-/// Restores a remote from a JSON config file
-async fn restore_remote_from_file(path: &Path, app_handle: &AppHandle) -> Result<(), String> {
-    let content = fs::read_to_string(path).map_err(|e| format!("Failed to read config: {e}"))?;
+/// Restores a remote from JSON config data
+async fn restore_remote_from_json(
+    remote_name: &str,
+    config_data: &[u8],
+    app_handle: &AppHandle,
+) -> Result<(), String> {
+    let content =
+        String::from_utf8(config_data.to_vec()).map_err(|e| format!("Invalid UTF-8: {e}"))?;
 
-    let mut config: serde_json::Value =
+    let parsed: serde_json::Value =
         serde_json::from_str(&content).map_err(|e| format!("Failed to parse config: {e}"))?;
+
+    // The exported format is { "remote_name": { ...config... } }
+    // Extract the config for this remote
+    let mut config = if let Some(remote_config) = parsed.get(remote_name) {
+        remote_config.clone()
+    } else {
+        // Fallback: use the whole parsed value if it's already the config
+        parsed
+    };
 
     // Mark as remote config
     if let Some(obj) = config.as_object_mut() {
         obj.insert("config_is_local".to_string(), json!("false"));
     }
 
-    let remote_name = path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .ok_or("Invalid filename")?
-        .to_string();
+    // Convert to HashMap
+    let config_map: std::collections::HashMap<String, serde_json::Value> =
+        serde_json::from_value(config)
+            .map_err(|e| format!("Failed to convert config to map: {e}"))?;
 
-    create_remote(
-        app_handle.clone(),
-        remote_name.clone(),
-        config,
-        app_handle.state::<RcloneState>(),
-    )
-    .await
-    .map_err(|e| format!("Failed to create remote '{}': {}", remote_name, e))?;
+    create_remote(app_handle.clone(), remote_name.to_string(), config_map)
+        .await
+        .map_err(|e| format!("Failed to create remote: {}", e))?;
 
-    info!("Restored remote: {}", remote_name);
     Ok(())
-}
-
-/// Determines the correct restore path for a file
-async fn determine_restore_path(
-    file_name: &str,
-    state: &SettingsState<tauri::Wry>,
-    app_handle: &AppHandle,
-) -> Result<PathBuf, String> {
-    let path = match file_name {
-        "settings.json" => state.config_dir.join("settings.json"),
-        "backend.json" => state.config_dir.join("backend.json"),
-        "rclone.conf" => {
-            // Get configured rclone path
-            let store = state.store.lock().await;
-            let settings = store.get("app_settings").unwrap_or_else(|| json!({}));
-            let custom_path = settings
-                .get("core")
-                .and_then(|c| c.get("rclone_config_file"))
-                .and_then(|p| p.as_str())
-                .filter(|s| !s.trim().is_empty());
-
-            if let Some(custom) = custom_path {
-                PathBuf::from(custom)
-            } else {
-                get_rclone_config_file(app_handle.clone())
-                    .await
-                    .unwrap_or_else(|_| state.config_dir.join("rclone.conf"))
-            }
-        }
-        name if name.starts_with("remotes/") => {
-            let remote_name = name.trim_start_matches("remotes/");
-            let remotes_dir = state.config_dir.join("remotes");
-            fs::create_dir_all(&remotes_dir)
-                .map_err(|e| format!("Failed to create remotes dir: {e}"))?;
-            remotes_dir.join(remote_name)
-        }
-        _ => {
-            debug!("Skipping unknown file: {}", file_name);
-            return Err(format!("Unknown file: {}", file_name));
-        }
-    };
-
-    Ok(path)
 }

@@ -7,7 +7,7 @@
   .modal-title {
     font-size: var(--font-size-2xl);
     font-weight: 600;
-    color: var(--app-text-color);
+    color: var(--window-fg-color);
     text-align: center;
     margin-bottom: var(--space-md);
     letter-spacing: -0.3px;
@@ -34,20 +34,18 @@
 
       &.destructive {
         background: rgba(var(--warn-color-rgb), 0.15);
-        border: 2px solid rgba(var(--warn-color-rgb), 0.3);
         animation: iconPulseRed 2s ease-in-out infinite;
       }
 
       &.info {
         background: rgba(var(--primary-color-rgb), 0.15);
-        border: 2px solid rgba(var(--primary-color-rgb), 0.3);
         animation: iconPulseGreen 2s ease-in-out infinite;
       }
     }
 
     .modal-message {
       font-weight: 400;
-      color: var(--secondary-text-color);
+      color: var(--dim-color);
       line-height: 1.5;
       max-width: 400px;
     }
@@ -63,21 +61,37 @@
       min-width: 120px;
 
       &.cancel-btn {
-        background: rgba(var(--secondary-text-color-rgb), 0.08);
-        color: var(--app-text-color);
+        background: rgba(var(--dim-color-rgb), 0.08);
+        color: var(--window-fg-color);
 
         &:hover {
-          background: rgba(var(--secondary-text-color-rgb), 0.5);
+          background: rgba(var(--dim-color-rgb), 0.5);
         }
       }
     }
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 450px) {
   .confirm-modal {
+    padding: var(--space-lg) var(--space-md);
+    min-height: 180px;
+
+    .modal-title {
+      font-size: var(--font-size-lg);
+      margin-bottom: var(--space-sm);
+    }
+
     .modal-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+
       .modal-icon {
+        width: 56px;
+        height: 56px;
         margin-bottom: var(--space-md);
 
         mat-icon {
@@ -90,6 +104,8 @@
     .modal-actions {
       flex-direction: column;
       gap: var(--space-sm);
+      padding-top: var(--space-md);
+      border-top: 1px solid rgba(var(--dim-color-rgb), 0.1);
 
       button {
         width: 100%;

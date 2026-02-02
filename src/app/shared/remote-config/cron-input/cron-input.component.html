@@ -1,8 +1,10 @@
 <div class="cron-input-container">
   <mat-tab-group>
-    <mat-tab label="Simple">
+    <mat-tab [label]="'wizards.appOperation.tabSimple' | translate">
       <div class="tab-content">
-        <div class="section-title">Choose a common schedule:</div>
+        <div class="section-title">
+          {{ 'wizards.appOperation.chooseCommonSchedule' | translate }}
+        </div>
         <div class="preset-cards">
           @for (preset of presetOptions; track preset.key) {
             <button
@@ -12,42 +14,70 @@
               (click)="applyPreset(preset.key, preset.cron)"
               [matTooltip]="preset.cron"
             >
-              <div class="preset-title">{{ preset.title }}</div>
-              <div class="preset-description">{{ preset.description }}</div>
+              <div class="preset-title">
+                {{ 'wizards.cronPresets.' + preset.key + '.title' | translate }}
+              </div>
+              <div class="preset-description">
+                {{ 'wizards.cronPresets.' + preset.key + '.description' | translate }}
+              </div>
             </button>
           }
         </div>
 
         <div class="divider">
-          <span>or customize</span>
+          <span>{{ 'wizards.appOperation.orCustomize' | translate }}</span>
         </div>
 
         <div class="custom-builder" [formGroup]="simpleForm">
           <div class="builder-row">
-            <span class="builder-label">Run this task</span>
+            <span class="builder-label">{{ 'wizards.appOperation.runThisTask' | translate }}</span>
             <mat-form-field class="inline-field">
               <mat-select formControlName="frequency">
-                <mat-option value="daily">every day</mat-option>
-                <mat-option value="weekly">every week</mat-option>
-                <mat-option value="monthly">every month</mat-option>
-                <mat-option value="interval">every few hours</mat-option>
+                <mat-option value="daily">{{
+                  'wizards.appOperation.everyDay' | translate
+                }}</mat-option>
+                <mat-option value="weekly">{{
+                  'wizards.appOperation.everyWeek' | translate
+                }}</mat-option>
+                <mat-option value="monthly">{{
+                  'wizards.appOperation.everyMonth' | translate
+                }}</mat-option>
+                <mat-option value="interval">{{
+                  'wizards.appOperation.everyFewHours' | translate
+                }}</mat-option>
               </mat-select>
             </mat-form-field>
           </div>
 
           @if (simpleForm.get('frequency')?.value === 'weekly') {
             <div class="builder-row">
-              <span class="builder-label">on</span>
+              <span class="builder-label">{{ 'wizards.appOperation.on' | translate }}</span>
               <mat-form-field class="inline-field">
                 <mat-select formControlName="dayOfWeek">
-                  <mat-option value="1">Monday</mat-option>
-                  <mat-option value="2">Tuesday</mat-option>
-                  <mat-option value="3">Wednesday</mat-option>
-                  <mat-option value="4">Thursday</mat-option>
-                  <mat-option value="5">Friday</mat-option>
-                  <mat-option value="6">Saturday</mat-option>
-                  <mat-option value="0">Sunday</mat-option>
-                  <mat-option value="1-5">Weekdays (Mon-Fri)</mat-option>
+                  <mat-option value="1">{{
+                    'wizards.appOperation.days.monday' | translate
+                  }}</mat-option>
+                  <mat-option value="2">{{
+                    'wizards.appOperation.days.tuesday' | translate
+                  }}</mat-option>
+                  <mat-option value="3">{{
+                    'wizards.appOperation.days.wednesday' | translate
+                  }}</mat-option>
+                  <mat-option value="4">{{
+                    'wizards.appOperation.days.thursday' | translate
+                  }}</mat-option>
+                  <mat-option value="5">{{
+                    'wizards.appOperation.days.friday' | translate
+                  }}</mat-option>
+                  <mat-option value="6">{{
+                    'wizards.appOperation.days.saturday' | translate
+                  }}</mat-option>
+                  <mat-option value="0">{{
+                    'wizards.appOperation.days.sunday' | translate
+                  }}</mat-option>
+                  <mat-option value="1-5">{{
+                    'wizards.appOperation.days.weekdays' | translate
+                  }}</mat-option>
                 </mat-select>
               </mat-form-field>
             </div>
@@ -55,7 +85,7 @@
 
           @if (simpleForm.get('frequency')?.value === 'monthly') {
             <div class="builder-row">
-              <span class="builder-label">on day</span>
+              <span class="builder-label">{{ 'wizards.appOperation.onDay' | translate }}</span>
               <mat-form-field class="inline-field">
                 <mat-select formControlName="dayOfMonth">
                   @for (day of daysOfMonth; track day) {
@@ -63,20 +93,30 @@
                   }
                 </mat-select>
               </mat-form-field>
-              <span class="builder-label">of the month</span>
+              <span class="builder-label">{{ 'wizards.appOperation.ofTheMonth' | translate }}</span>
             </div>
           }
 
           @if (simpleForm.get('frequency')?.value === 'interval') {
             <div class="builder-row">
-              <span class="builder-label">every</span>
+              <span class="builder-label">{{ 'wizards.appOperation.every' | translate }}</span>
               <mat-form-field class="inline-field">
                 <mat-select formControlName="intervalHours">
-                  <mat-option [value]="2">2 hours</mat-option>
-                  <mat-option [value]="4">4 hours</mat-option>
-                  <mat-option [value]="6">6 hours</mat-option>
-                  <mat-option [value]="8">8 hours</mat-option>
-                  <mat-option [value]="12">12 hours</mat-option>
+                  <mat-option [value]="2">{{
+                    'wizards.appOperation.cronOptions.intervalN' | translate: { count: 2 }
+                  }}</mat-option>
+                  <mat-option [value]="4">{{
+                    'wizards.appOperation.cronOptions.intervalN' | translate: { count: 4 }
+                  }}</mat-option>
+                  <mat-option [value]="6">{{
+                    'wizards.appOperation.cronOptions.intervalN' | translate: { count: 6 }
+                  }}</mat-option>
+                  <mat-option [value]="8">{{
+                    'wizards.appOperation.cronOptions.intervalN' | translate: { count: 8 }
+                  }}</mat-option>
+                  <mat-option [value]="12">{{
+                    'wizards.appOperation.cronOptions.intervalN' | translate: { count: 12 }
+                  }}</mat-option>
                 </mat-select>
               </mat-form-field>
             </div>
@@ -84,7 +124,7 @@
 
           @if (simpleForm.get('frequency')?.value !== 'interval') {
             <div class="builder-row">
-              <span class="builder-label">at</span>
+              <span class="builder-label">{{ 'wizards.appOperation.at' | translate }}</span>
               <mat-form-field class="inline-field">
                 <input
                   matInput
@@ -106,40 +146,61 @@
       </div>
     </mat-tab>
 
-    <mat-tab label="Advanced">
+    <mat-tab [label]="'wizards.appOperation.tabAdvanced' | translate">
       <div class="tab-content">
         <div class="advanced-intro">
           <mat-icon svgIcon="info"></mat-icon>
           <div>
-            <strong>For advanced users:</strong> Configure individual cron fields or enter a
-            complete cron expression manually. Use * for "any value", */n for "every n units", or
-            specific values.
+            <strong>{{ 'wizards.appOperation.advancedUsers' | translate }}</strong>
+            {{ 'wizards.appOperation.advancedHelp' | translate }}
           </div>
         </div>
 
         <div class="advanced-section">
-          <div class="section-title">Field Builder</div>
+          <div class="section-title">{{ 'wizards.appOperation.fieldBuilder' | translate }}</div>
           <div [formGroup]="advancedForm" class="advanced-fields">
             <mat-form-field>
-              <mat-label>Minute (0-59)</mat-label>
+              <mat-label>{{ 'wizards.appOperation.cronParts.minute' | translate }}</mat-label>
               <mat-select formControlName="minute">
-                <mat-option value="*">* (Every minute)</mat-option>
-                <mat-option value="0">0 (On the hour)</mat-option>
-                <mat-option value="*/5">*/5 (Every 5 minutes)</mat-option>
-                <mat-option value="*/10">*/10 (Every 10 minutes)</mat-option>
-                <mat-option value="*/15">*/15 (Every 15 minutes)</mat-option>
-                <mat-option value="*/30">*/30 (Every 30 minutes)</mat-option>
+                <mat-option value="*">{{
+                  'wizards.appOperation.cronOptions.everyMinute' | translate
+                }}</mat-option>
+                <mat-option value="0">{{
+                  'wizards.appOperation.cronOptions.onTheHour' | translate
+                }}</mat-option>
+                <mat-option value="*/5">{{
+                  'wizards.appOperation.cronOptions.every5Minutes' | translate
+                }}</mat-option>
+                <mat-option value="*/10">{{
+                  'wizards.appOperation.cronOptions.every10Minutes' | translate
+                }}</mat-option>
+                <mat-option value="*/15">{{
+                  'wizards.appOperation.cronOptions.every15Minutes' | translate
+                }}</mat-option>
+                <mat-option value="*/30">{{
+                  'wizards.appOperation.cronOptions.every30Minutes' | translate
+                }}</mat-option>
               </mat-select>
             </mat-form-field>
 
             <mat-form-field>
-              <mat-label>Hour (0-23)</mat-label>
+              <mat-label>{{ 'wizards.appOperation.cronParts.hour' | translate }}</mat-label>
               <mat-select formControlName="hour">
-                <mat-option value="*">* (Every hour)</mat-option>
-                <mat-option value="0">0 (Midnight)</mat-option>
-                <mat-option value="*/2">*/2 (Every 2 hours)</mat-option>
-                <mat-option value="*/4">*/4 (Every 4 hours)</mat-option>
-                <mat-option value="*/6">*/6 (Every 6 hours)</mat-option>
+                <mat-option value="*">{{
+                  'wizards.appOperation.cronOptions.everyHour' | translate
+                }}</mat-option>
+                <mat-option value="0">{{
+                  'wizards.appOperation.cronOptions.midnight' | translate
+                }}</mat-option>
+                <mat-option value="*/2">{{
+                  'wizards.appOperation.cronOptions.every2Hours' | translate
+                }}</mat-option>
+                <mat-option value="*/4">{{
+                  'wizards.appOperation.cronOptions.every4Hours' | translate
+                }}</mat-option>
+                <mat-option value="*/6">{{
+                  'wizards.appOperation.cronOptions.every6Hours' | translate
+                }}</mat-option>
                 @for (hour of [6, 9, 12, 15, 18, 21]; track hour) {
                   <mat-option [value]="hour.toString()">{{ hour }}:00</mat-option>
                 }
@@ -147,69 +208,103 @@
             </mat-form-field>
 
             <mat-form-field>
-              <mat-label>Day of Month (1-31)</mat-label>
+              <mat-label>{{ 'wizards.appOperation.cronParts.dayOfMonth' | translate }}</mat-label>
               <mat-select formControlName="dayOfMonth">
-                <mat-option value="*">* (Every day)</mat-option>
-                <mat-option value="1">1 (First day)</mat-option>
-                <mat-option value="15">15 (Middle)</mat-option>
-                <mat-option value="*/2">*/2 (Every 2 days)</mat-option>
+                <mat-option value="*">{{
+                  'wizards.appOperation.cronOptions.everyDay' | translate
+                }}</mat-option>
+                <mat-option value="1">{{
+                  'wizards.appOperation.cronOptions.firstDay' | translate
+                }}</mat-option>
+                <mat-option value="15">{{
+                  'wizards.appOperation.cronOptions.middle' | translate
+                }}</mat-option>
+                <mat-option value="*/2">{{
+                  'wizards.appOperation.cronOptions.every2Days' | translate
+                }}</mat-option>
               </mat-select>
             </mat-form-field>
 
             <mat-form-field>
-              <mat-label>Month (1-12)</mat-label>
+              <mat-label>{{ 'wizards.appOperation.cronParts.month' | translate }}</mat-label>
               <mat-select formControlName="month">
-                <mat-option value="*">* (Every month)</mat-option>
+                <mat-option value="*">{{
+                  'wizards.appOperation.cronOptions.everyMonth' | translate
+                }}</mat-option>
                 @for (
                   month of [
-                    { value: 1, label: 'January' },
-                    { value: 2, label: 'February' },
-                    { value: 3, label: 'March' },
-                    { value: 4, label: 'April' },
-                    { value: 5, label: 'May' },
-                    { value: 6, label: 'June' },
-                    { value: 7, label: 'July' },
-                    { value: 8, label: 'August' },
-                    { value: 9, label: 'September' },
-                    { value: 10, label: 'October' },
-                    { value: 11, label: 'November' },
-                    { value: 12, label: 'December' },
+                    { value: 1, labelKey: 'january' },
+                    { value: 2, labelKey: 'february' },
+                    { value: 3, labelKey: 'march' },
+                    { value: 4, labelKey: 'april' },
+                    { value: 5, labelKey: 'may' },
+                    { value: 6, labelKey: 'june' },
+                    { value: 7, labelKey: 'july' },
+                    { value: 8, labelKey: 'august' },
+                    { value: 9, labelKey: 'september' },
+                    { value: 10, labelKey: 'october' },
+                    { value: 11, labelKey: 'november' },
+                    { value: 12, labelKey: 'december' },
                   ];
                   track month.value
                 ) {
-                  <mat-option [value]="month.value.toString()">{{ month.label }}</mat-option>
+                  <mat-option [value]="month.value.toString()">{{
+                    'wizards.appOperation.months.' + month.labelKey | translate
+                  }}</mat-option>
                 }
               </mat-select>
             </mat-form-field>
 
             <mat-form-field>
-              <mat-label>Day of Week</mat-label>
+              <mat-label>{{ 'wizards.appOperation.cronParts.dayOfWeek' | translate }}</mat-label>
               <mat-select formControlName="dayOfWeek">
-                <mat-option value="*">* (Every day)</mat-option>
-                <mat-option value="1">Monday</mat-option>
-                <mat-option value="2">Tuesday</mat-option>
-                <mat-option value="3">Wednesday</mat-option>
-                <mat-option value="4">Thursday</mat-option>
-                <mat-option value="5">Friday</mat-option>
-                <mat-option value="6">Saturday</mat-option>
-                <mat-option value="0">Sunday</mat-option>
-                <mat-option value="1-5">1-5 (Weekdays)</mat-option>
-                <mat-option value="0,6">0,6 (Weekends)</mat-option>
+                <mat-option value="*">{{
+                  'wizards.appOperation.cronOptions.everyDay' | translate
+                }}</mat-option>
+                <mat-option value="1">{{
+                  'wizards.appOperation.days.monday' | translate
+                }}</mat-option>
+                <mat-option value="2">{{
+                  'wizards.appOperation.days.tuesday' | translate
+                }}</mat-option>
+                <mat-option value="3">{{
+                  'wizards.appOperation.days.wednesday' | translate
+                }}</mat-option>
+                <mat-option value="4">{{
+                  'wizards.appOperation.days.thursday' | translate
+                }}</mat-option>
+                <mat-option value="5">{{
+                  'wizards.appOperation.days.friday' | translate
+                }}</mat-option>
+                <mat-option value="6">{{
+                  'wizards.appOperation.days.saturday' | translate
+                }}</mat-option>
+                <mat-option value="0">{{
+                  'wizards.appOperation.days.sunday' | translate
+                }}</mat-option>
+                <mat-option value="1-5">{{
+                  'wizards.appOperation.days.weekdays' | translate
+                }}</mat-option>
+                <mat-option value="0,6">{{
+                  'wizards.appOperation.days.weekends' | translate
+                }}</mat-option>
               </mat-select>
             </mat-form-field>
           </div>
         </div>
 
         <div class="advanced-section">
-          <div class="section-title">Or enter manually</div>
+          <div class="section-title">{{ 'wizards.appOperation.enterManually' | translate }}</div>
           <mat-form-field class="manual-field">
-            <mat-label>Cron Expression</mat-label>
+            <mat-label>{{ 'wizards.appOperation.cronExpression' | translate }}</mat-label>
             <mat-icon matPrefix svgIcon="terminal"></mat-icon>
             <input
               matInput
               [formControl]="cronControl"
-              placeholder="0 9 * * * (Daily at 9 AM)"
-              [attr.aria-label]="'Cron expression for ' + taskName"
+              [placeholder]="'wizards.appOperation.cronPlaceholder' | translate"
+              [attr.aria-label]="
+                'wizards.appOperation.aria.cronFor' | translate: { name: taskName }
+              "
             />
             @if (cronControl.value) {
               <button
@@ -217,7 +312,7 @@
                 mat-icon-button
                 type="button"
                 (click)="cronControl.reset()"
-                aria-label="Clear"
+                [attr.aria-label]="'wizards.appOperation.aria.clear' | translate"
               >
                 <mat-icon svgIcon="circle-xmark"></mat-icon>
               </button>
@@ -235,7 +330,7 @@
     <div class="schedule-preview">
       <div class="preview-header">
         <mat-icon svgIcon="circle-check" class="success-icon"></mat-icon>
-        <span class="preview-title">Your Schedule</span>
+        <span class="preview-title">{{ 'wizards.appOperation.yourSchedule' | translate }}</span>
       </div>
       <div class="preview-content">
         <div class="preview-description">
@@ -244,7 +339,7 @@
         @if (validationResponse?.nextRun) {
           <div class="preview-next-runs">
             <div class="next-run-item">
-              <strong>Next run:</strong>
+              <strong>{{ 'wizards.appOperation.nextRun' | translate }}</strong>
               {{ formatNextRun(validationResponse?.nextRun ?? null) }}
             </div>
           </div>
@@ -260,8 +355,7 @@
     <div class="timezone-note">
       <mat-icon svgIcon="globe"></mat-icon>
       <span>
-        Times are in your local timezone (UTC{{ userTimezone }}) and automatically converted to UTC
-        for scheduling.
+        {{ 'wizards.appOperation.timezoneNote' | translate: { timezone: userTimezone } }}
       </span>
     </div>
   }

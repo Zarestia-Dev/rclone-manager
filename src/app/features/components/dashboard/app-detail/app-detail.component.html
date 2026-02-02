@@ -10,6 +10,7 @@
             move: selectedSyncOperation() === 'move' && operationActiveState(),
             bisync: selectedSyncOperation() === 'bisync' && operationActiveState(),
             mount: selectedRemote().mountState?.mounted,
+            serve: selectedRemote().serveState?.isOnServe,
           }"
         >
           <mat-icon
@@ -33,21 +34,21 @@
       <div class="sync-operation-wrapper">
         <!-- Operation Mode Selector -->
         <div class="operation-mode-selector">
-          <span class="selector-label">Operation Mode</span>
+          <span class="selector-label">{{ 'dashboard.appDetail.operationMode' | translate }}</span>
           <mat-button-toggle-group
             [value]="selectedSyncOperation()"
             (change)="onSyncOperationChange($event.value)"
             class="operation-toggle-group"
-            aria-label="Select operation mode"
+            [aria-label]="'dashboard.appDetail.selectOperationMode' | translate"
           >
             @for (operation of syncOperations; track operation.type) {
               <mat-button-toggle
                 [value]="operation.type"
-                [matTooltip]="operation.description"
+                [matTooltip]="operation.description | translate"
                 matTooltipPosition="below"
                 [class]="'operation-toggle operation-' + operation.type"
               >
-                <span class="toggle-label">{{ operation.label }}</span>
+                <span class="toggle-label">{{ operation.label | translate }}</span>
               </mat-button-toggle>
             }
           </mat-button-toggle-group>
@@ -58,7 +59,7 @@
             <!-- Monitoring Tab -->
             <mat-tab>
               <ng-template mat-tab-label>
-                <span>Monitoring</span>
+                <span>{{ 'dashboard.appDetail.monitoring' | translate }}</span>
               </ng-template>
 
               <div class="operation-monitor">
@@ -66,10 +67,18 @@
                 @if (showProfileSelector()) {
                   <div class="profile-selector-container" [class.operation-sync]="isSyncType()">
                     <div class="profile-selector-header">
-                      <span class="profile-selector-label">Selected Profile</span>
-                      <span class="profile-count">{{ enrichedProfiles().length }} profiles</span>
+                      <span class="profile-selector-label">{{
+                        'dashboard.appDetail.selectedProfile' | translate
+                      }}</span>
+                      <span class="profile-count">{{
+                        'dashboard.appDetail.profilesCount'
+                          | translate: { count: enrichedProfiles().length }
+                      }}</span>
                     </div>
-                    <mat-chip-set aria-label="Profile selection" class="profile-chips">
+                    <mat-chip-set
+                      [attr.aria-label]="'dashboard.appDetail.aria.profileSelection' | translate"
+                      class="profile-chips"
+                    >
                       @for (profile of enrichedProfiles(); track profile.name) {
                         <mat-chip-option
                           [selected]="selectedProfile() === profile.name"
@@ -153,7 +162,7 @@
             <!-- Configuration Tab -->
             <mat-tab>
               <ng-template mat-tab-label>
-                <span>Configuration</span>
+                <span>{{ 'dashboard.appDetail.configuration' | translate }}</span>
               </ng-template>
 
               <div class="configuration-content">
@@ -163,15 +172,13 @@
                     <mat-card>
                       <mat-card-header>
                         <mat-card-title>
-                          <mat-icon svgIcon="warning" class="warn"></mat-icon>Move Operation Warning
+                          <mat-icon svgIcon="warning" class="warn"></mat-icon
+                          >{{ 'dashboard.appDetail.moveWarningTitle' | translate }}
                         </mat-card-title>
                       </mat-card-header>
                       <mat-card-content>
-                        <p>
-                          Files will be <strong>deleted</strong> from the source after successful
-                          transfer to destination.
-                        </p>
-                        <p>Ensure you have backups before proceeding with move operations.</p>
+                        <p [innerHTML]="'dashboard.appDetail.moveWarningText1' | translate"></p>
+                        <p [innerHTML]="'dashboard.appDetail.moveWarningText2' | translate"></p>
                       </mat-card-content>
                     </mat-card>
                   }
@@ -179,13 +186,14 @@
                     <mat-card>
                       <mat-card-header>
                         <mat-card-title>
-                          <mat-icon svgIcon="info"></mat-icon>BiSync Information
+                          <mat-icon svgIcon="info"></mat-icon
+                          >{{ 'dashboard.appDetail.bisyncInfoTitle' | translate }}
                         </mat-card-title>
                       </mat-card-header>
                       <mat-card-content>
-                        <p>Bidirectional synchronization keeps both locations synchronized.</p>
-                        <p>Changes made to either location will be reflected in the other.</p>
-                        <p>First run may take longer as it establishes the sync baseline.</p>
+                        <p>{{ 'dashboard.appDetail.bisyncInfoText1' | translate }}</p>
+                        <p>{{ 'dashboard.appDetail.bisyncInfoText2' | translate }}</p>
+                        <p>{{ 'dashboard.appDetail.bisyncInfoText3' | translate }}</p>
                       </mat-card-content>
                     </mat-card>
                   }
@@ -209,8 +217,12 @@
 
                   <section class="settings-group shared-settings">
                     <header class="group-header">
-                      <h3 class="group-title">{{ sharedSettingsHeading }}</h3>
-                      <p class="group-description">{{ sharedSettingsDescription }}</p>
+                      <h3 class="group-title">
+                        {{ 'dashboard.appDetail.sharedSettings' | translate }}
+                      </h3>
+                      <p class="group-description">
+                        {{ 'dashboard.appDetail.sharedSettingsDesc' | translate }}
+                      </p>
                     </header>
                     <div class="group-panels">
                       @for (section of sharedSettingsSections(); track section.key) {
@@ -237,7 +249,7 @@
           <!-- Monitoring Tab -->
           <mat-tab>
             <ng-template mat-tab-label>
-              <span>Monitoring</span>
+              <span>{{ 'dashboard.appDetail.monitoring' | translate }}</span>
             </ng-template>
 
             <div class="operation-monitor">
@@ -248,10 +260,18 @@
                 @if (showProfileSelector()) {
                   <div class="profile-selector-container operation-serve">
                     <div class="profile-selector-header">
-                      <span class="profile-selector-label">Selected Profile</span>
-                      <span class="profile-count">{{ enrichedProfiles().length }} profiles</span>
+                      <span class="profile-selector-label">{{
+                        'dashboard.appDetail.selectedProfile' | translate
+                      }}</span>
+                      <span class="profile-count">{{
+                        'dashboard.appDetail.profilesCount'
+                          | translate: { count: enrichedProfiles().length }
+                      }}</span>
                     </div>
-                    <mat-chip-set aria-label="Profile selection" class="profile-chips">
+                    <mat-chip-set
+                      [attr.aria-label]="'dashboard.appDetail.aria.profileSelection' | translate"
+                      class="profile-chips"
+                    >
                       @for (profile of enrichedProfiles(); track profile.name) {
                         <mat-chip-option
                           [selected]="selectedProfile() === profile.name"
@@ -296,7 +316,7 @@
                 <!-- Active Serves List -->
                 @if (filteredRunningServes().length > 0) {
                   <div class="active-serves-list">
-                    <h3>Active Serves</h3>
+                    <h3>{{ 'dashboard.appDetail.activeServes' | translate }}</h3>
                     <div class="serves-grid">
                       @for (serve of filteredRunningServes(); track serve.id) {
                         <app-serve-card
@@ -326,10 +346,18 @@
                 @if (showProfileSelector()) {
                   <div class="profile-selector-container operation-mount">
                     <div class="profile-selector-header">
-                      <span class="profile-selector-label">Selected Profile</span>
-                      <span class="profile-count">{{ enrichedProfiles().length }} profiles</span>
+                      <span class="profile-selector-label">{{
+                        'dashboard.appDetail.selectedProfile' | translate
+                      }}</span>
+                      <span class="profile-count">{{
+                        'dashboard.appDetail.profilesCount'
+                          | translate: { count: enrichedProfiles().length }
+                      }}</span>
                     </div>
-                    <mat-chip-set aria-label="Profile selection" class="profile-chips">
+                    <mat-chip-set
+                      [attr.aria-label]="'dashboard.appDetail.aria.profileSelection' | translate"
+                      class="profile-chips"
+                    >
                       @for (profile of enrichedProfiles(); track profile.name) {
                         <mat-chip-option
                           [selected]="selectedProfile() === profile.name"
@@ -384,7 +412,7 @@
           <!-- Configuration Tab -->
           <mat-tab>
             <ng-template mat-tab-label>
-              <span>Configuration</span>
+              <span>{{ 'dashboard.appDetail.configuration' | translate }}</span>
             </ng-template>
 
             <div class="configuration-content">
@@ -407,8 +435,12 @@
 
                 <section class="settings-group shared-settings">
                   <header class="group-header">
-                    <h3 class="group-title">{{ sharedSettingsHeading }}</h3>
-                    <p class="group-description">{{ sharedSettingsDescription }}</p>
+                    <h3 class="group-title">
+                      {{ 'dashboard.appDetail.sharedSettings' | translate }}
+                    </h3>
+                    <p class="group-description">
+                      {{ 'dashboard.appDetail.sharedSettingsDesc' | translate }}
+                    </p>
                   </header>
                   <div class="group-panels">
                     @for (section of sharedSettingsSections(); track section.key) {

@@ -2,7 +2,7 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "RClone Manager Headless",
   "mainBinaryName": "rclone-manager-headless",
-  "version": "0.1.9",
+  "version": "0.2.0",
   "identifier": "com.rclone.manager.headless",
   "build": {
     "beforeDevCommand": "npm run start",
@@ -12,7 +12,8 @@
   },
   "bundle": {
     "resources": {
-      "../dist/rclone-manager/browser": "browser"
+      "../dist/rclone-manager/browser": "browser",
+      "../src/assets/i18n/**/*": "i18n/"
     },
     "active": true,
     "createUpdaterArtifacts": true,

@@ -1,5 +1,40 @@
 # Changelog
-# All notable changes to this project will be documented in this file.
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [v0.2.0] - 2026-02-2
+
+### Added
+- **Settings Management Library (rcman)**: Extracted and refactored the internal settings management system into a standalone, reusable Rust library called [rcman](https://github.com/Zarestia-Dev/rcman). This provides schema-based configuration, backup/restore, secret storage, and a derive macro for automatic schema generation. The app now uses rcman as an external dependency.
+- Nautilus Component: Added dot and other text files preview support. Now you can preview the content of dot and other text files.
+- Nautilus Component: Added markdown preview support. Now you can preview the content of markdown files.
+- Nautilus Component: Added code highlight support. Now you can preview the content of code files with syntax highlighting.
+- Nautilus Component: Added bulk hash calculation support. Now you can calculate the hash of multiple files inside a directory.
+- Multiple backend support added. Now you can connect multiple and remote rclone instances via a single app. Remote config unlock supported (via rc config/unlock). Path change support added to (via rc config/setpath).
+- Multiple profile support added for backends. Every backend has a own remote settings profile. Also supported the export and import.
+- Multiple language support added. Now you can change the language of the app. Needs community help for translations.
+- Log file support added (both app and rclone logs). You can manage the log settings from configuration modal (Log file location cannot be changed on rclone. I think rclone has problem on that. Rclone version 1.72.1 :/).
+- Modals now transforms to bottom sheet on mobile devices. Like how it works on gnome. Basic SCSS trick but looks more native.
+- Window state persistence support added. Now the app remembers the window size on close and restores it on next launch.
+- Added support for additional rclone flags. Users can now configure and pass custom flags to rclone commands through the settings. Some rclone flags are reserved and cannot be used (App prevent these flags to use in the settings). 
+- Rclone garbage collector added. You can run the garbage collector from the About Modal -> About Rclone -> Memory.
+- Rclone cache cleaner added (Remote backend caches). You can run the cache cleaner from the About Modal -> About Rclone -> Backend Cache. App also automatically cleans the cache when remote updated or deleted.
+ 
+
+
+### Changed
+- Removed legacy integrated settings manager in favor of the new rcman library
+- Mount plugin detector and installer improved. Dynamic checks for the latest plugin version for installation.
+- Terminal remote support removed. App can handle the all remote operations.
+- UI simplified and modernized.
+- Allow tray icon on headless mode to.
+- Headless mode improvements.
+
+### Fixed
+- Broken theme setting fixed. Now it correctly applies the theme.
+- On headless mode cannot open the local files (Access denied error). Now it fixed.
 
 ## [v0.1.9] - 2025-12-20
 
@@ -12,6 +47,7 @@
 - Nautilus Component: Added hash calculation support for files. Now you can calculate the hash of a file and copy it to clipboard on the properties dialog.
 - Nautilus Component: Added public link generation support for files and directories. If remote supports public link generation, it will be available in the properties dialog.
 - Nautilus Component: Enabled download button for remote files. Now you can download remote files to your local machine.
+- Debugging page added on `About Modal`. Click the app logo 5 times in 2 seconds to open the debugging page.
 
 ### Changed
 - On linux remove the rclone to required dependencies when installing via deb or rpm packages. Because app handle the rclone binary installation and update itself correctly.  

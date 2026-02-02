@@ -16,17 +16,12 @@
 use log::{debug, info};
 use serde_json::json;
 use std::path::{Path, PathBuf};
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::core::check_binaries::{build_rclone_command, get_rclone_binary_path, read_rclone_path};
-use crate::core::initialization::get_config_dir;
 use crate::core::settings::operations::core::save_setting;
-use crate::rclone::engine::core::ENGINE;
 use crate::utils::github_client;
-use crate::{
-    rclone::queries::get_rclone_info,
-    utils::types::{all_types::RcloneState, events::RCLONE_ENGINE_UPDATING},
-};
+use crate::{rclone::queries::get_rclone_info, utils::types::events::RCLONE_ENGINE_UPDATING};
 
 // ============================================================================
 // Types and Constants
@@ -54,13 +49,16 @@ struct UpdateCheckResult {
 #[tauri::command]
 pub async fn check_rclone_update(
     app_handle: tauri::AppHandle,
-    state: State<'_, RcloneState>,
     channel: Option<String>,
 ) -> Result<serde_json::Value, String> {
     // Get current version
-    let current_version = match get_rclone_info(state.clone()).await {
+    let current_version = match get_rclone_info(app_handle.clone()).await {
         Ok(info) => info.version,
-        Err(e) => return Err(format!("Failed to get current rclone version: {e}")),
+        Err(e) => {
+            return Err(
+                crate::localized_error!("backendErrors.rclone.versionCheckFailed", "error" => e),
+            );
+        }
     };
 
     // Use rclone selfupdate --check to determine if update is available
@@ -111,21 +109,20 @@ fn clean_version(version: &str) -> String {
 /// 6. Restarts the engine
 #[tauri::command]
 pub async fn update_rclone(
-    state: State<'_, RcloneState>,
     app_handle: tauri::AppHandle,
     channel: Option<String>,
 ) -> Result<serde_json::Value, String> {
     // Step 1: Initialize update process
+    // Step 1: Initialize update process
     {
-        let mut engine = ENGINE
-            .lock()
-            .map_err(|e| format!("Failed to lock engine: {e}"))?;
-        engine.updating = true;
-        debug!("🔍 Starting rclone update process");
+        use crate::utils::types::core::EngineState;
+        let engine_state = app_handle.state::<EngineState>();
+        engine_state.lock().await.set_updating(true);
     }
+    debug!("🔍 Starting rclone update process");
 
     // Step 2: Check if update is available
-    let update_check = check_rclone_update(app_handle.clone(), state, channel.clone()).await?;
+    let update_check = check_rclone_update(app_handle.clone(), channel.clone()).await?;
     let update_available = update_check
         .get("update_available")
         .and_then(|v| v.as_bool())
@@ -133,10 +130,14 @@ pub async fn update_rclone(
 
     if !update_available {
         // Set updating to false before returning
-        let mut engine = ENGINE
-            .lock()
-            .map_err(|e| format!("Failed to lock engine: {e}"))?;
-        engine.updating = false;
+        {
+            use crate::utils::types::core::EngineState;
+            app_handle
+                .state::<EngineState>()
+                .lock()
+                .await
+                .set_updating(false);
+        }
         debug!("🔍 No update available for rclone");
         return Ok(json!({
             "success": false,
@@ -145,13 +146,14 @@ pub async fn update_rclone(
         }));
     }
 
-    // Get current rclone path and resolve the actual binary path
-    let rclone_state = app_handle.state::<RcloneState>();
-    let base_path = rclone_state
-        .rclone_path
-        .read()
-        .map_err(|e| format!("Failed to read rclone path: {e}"))?
-        .clone();
+    // Get current rclone path from settings and resolve the actual binary path
+    let manager = app_handle.state::<crate::core::settings::AppSettingsManager>();
+    let base_path: PathBuf = manager
+        .inner()
+        .get::<String>("core.rclone_path")
+        .ok()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("system"));
     let mut current_path = get_rclone_binary_path(&base_path);
 
     if !current_path.exists() {
@@ -169,17 +171,20 @@ pub async fn update_rclone(
             current_path = system_path;
         } else {
             // Set updating to false before returning
-            let mut engine = ENGINE
-                .lock()
-                .map_err(|e| format!("Failed to lock engine: {e}"))?;
-            engine.updating = false;
+            {
+                use crate::utils::types::core::EngineState;
+                app_handle
+                    .state::<EngineState>()
+                    .lock()
+                    .await
+                    .set_updating(false);
+            }
             debug!(
                 "🔍 Current rclone binary not found at: {}",
                 current_path.display()
             );
-            return Err(format!(
-                "Current rclone binary not found at {}",
-                current_path.display()
+            return Err(crate::localized_error!(
+                "backendErrors.rclone.binaryNotFound"
             ));
         }
     }
@@ -191,10 +196,10 @@ pub async fn update_rclone(
 
     // Actually stop the engine process
     {
-        let mut engine = ENGINE
-            .lock()
-            .map_err(|e| format!("Failed to lock engine: {e}"))?;
-        if let Err(e) = engine.kill_process() {
+        use crate::utils::types::core::EngineState;
+        let engine_state = app_handle.state::<EngineState>();
+        let mut engine = engine_state.lock().await;
+        if let Err(e) = engine.kill_process(&app_handle).await {
             log::error!("Failed to stop engine before update: {e}");
         }
         engine.running = false;
@@ -222,12 +227,15 @@ pub async fn update_rclone(
     // Note: Completion is signaled by ENGINE_RESTARTED event with reason 'rclone_update'
 
     // Set updating to false at the end (regardless of success/failure)
+    // Set updating to false at the end (regardless of success/failure)
+    log::info!("Setting updating to false");
     {
-        let mut engine = ENGINE
+        use crate::utils::types::core::EngineState;
+        app_handle
+            .state::<EngineState>()
             .lock()
-            .map_err(|e| format!("Failed to lock engine: {e}"))?;
-        log::info!("Setting updating to false");
-        engine.updating = false;
+            .await
+            .set_updating(false);
     }
 
     // If update was successful, restart engine with updated binary
@@ -245,7 +253,7 @@ pub async fn update_rclone(
                 .unwrap_or("unknown"),
         )
     {
-        return Err(format!("Failed to restart engine after update: {e}"));
+        return Err(crate::localized_error!("backendErrors.rclone.restartFailed", "error" => e));
     }
 
     update_result
@@ -341,34 +349,29 @@ fn can_update_in_place(rclone_path: &Path) -> bool {
 
 /// Get the local rclone path in the app's data directory
 fn get_local_rclone_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
-    // Prefer any configured rclone_path in application state (if not "system" or empty)
-    let rclone_state = app_handle.state::<RcloneState>();
-    let configured = rclone_state
-        .rclone_path
-        .read()
-        .map_err(|e| format!("Failed to read rclone path: {e}"))?
-        .clone();
+    // Prefer any configured rclone_path in settings (if not "system" or empty)
+    let manager = app_handle.state::<crate::core::settings::AppSettingsManager>();
+    let configured: PathBuf = manager
+        .inner()
+        .get::<String>("core.rclone_path")
+        .ok()
+        .map(PathBuf::from)
+        .unwrap_or_default();
     let configured_str = configured.to_string_lossy();
 
     if !configured_str.is_empty() && configured_str != "system" {
-        log::info!("Using configured rclone install path from state: {configured:?}");
+        log::info!("Using configured rclone install path from settings: {configured:?}");
         return Ok(configured);
     }
 
     // Fallback to the app's config directory (same default as provision_rclone)
-    get_config_dir(app_handle)
+    Ok(crate::core::paths::AppPaths::from_app_handle(app_handle)?.config_dir)
 }
 
 /// Update the rclone path in application settings
 async fn update_rclone_path_in_settings(app_handle: &AppHandle, new_path: &Path) {
-    // Update in-memory state immediately (event listener is async and may not complete before engine restart)
-    let rclone_state = app_handle.state::<RcloneState>();
-    if let Ok(mut path_guard) = rclone_state.rclone_path.write() {
-        *path_guard = new_path.to_path_buf();
-        info!("✅ Updated in-memory rclone_path to: {:?}", new_path);
-    }
-
-    // Also persist to settings store
+    // Note: In-memory caching is no longer used - we read from AppSettingsManager which caches internally
+    // Persist to settings store
     match save_setting(
         "core".to_string(),
         "rclone_path".to_string(),
@@ -400,13 +403,17 @@ async fn check_rclone_selfupdate(
         .arg("--check")
         .output()
         .await
-        .map_err(|e| format!("Failed to run rclone selfupdate --check: {e}"))?;
+        .map_err(
+            |e| crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => e),
+        )?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
 
     if !output.status.success() {
-        return Err(format!("rclone selfupdate --check failed: {}", stderr));
+        return Err(
+            crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => stderr),
+        );
     }
 
     // Parse the output
@@ -445,7 +452,7 @@ async fn check_rclone_selfupdate(
 
     if target_version.is_empty() {
         return Err(
-            "Could not parse version information from rclone selfupdate --check".to_string(),
+            crate::localized_error!("backendErrors.rclone.versionCheckFailed", "error" => "Parse error"),
         );
     }
 
@@ -583,7 +590,9 @@ async fn perform_rclone_selfupdate(
             "stable"
         }
         Some(other) => {
-            return Err(format!("Unsupported update channel: {other}"));
+            return Err(
+                crate::localized_error!("backendErrors.rclone.unsupportedChannel", "channel" => other),
+            );
         }
     };
 
@@ -591,10 +600,9 @@ async fn perform_rclone_selfupdate(
 
     debug!("Executing rclone selfupdate");
 
-    let output = cmd
-        .output()
-        .await
-        .map_err(|e| format!("Failed to run rclone selfupdate: {e}"))?;
+    let output = cmd.output().await.map_err(
+        |e| crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => e),
+    )?;
 
     if output.status.success() {
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -616,6 +624,76 @@ async fn perform_rclone_selfupdate(
         }))
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        Err(format!("Rclone selfupdate failed: {stderr}"))
+        Err(crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => stderr))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // -------------------------------------------------------------------------
+    // Tests for clean_version()
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_clean_version_removes_v_prefix() {
+        assert_eq!(clean_version("v1.71.1"), "1.71.1");
+    }
+
+    #[test]
+    fn test_clean_version_no_prefix() {
+        assert_eq!(clean_version("1.71.1"), "1.71.1");
+    }
+
+    #[test]
+    fn test_clean_version_beta() {
+        assert_eq!(
+            clean_version("v1.72.0-beta.9155.2bc155a96"),
+            "1.72.0-beta.9155.2bc155a96"
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Tests for extract_version_changelog()
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_extract_version_changelog_finds_section() {
+        let changelog = r#"
+## v1.71.1 - 2025-09-24
+
+Bug fixes and improvements.
+
+## v1.71.0 - 2025-08-01
+
+Major release notes here.
+"#;
+        let result = extract_version_changelog(changelog, "v1.71.1");
+        assert!(result.is_some());
+        let section = result.unwrap();
+        assert!(section.contains("v1.71.1"));
+        assert!(section.contains("Bug fixes"));
+        // Should NOT include v1.71.0 section
+        assert!(!section.contains("v1.71.0"));
+    }
+
+    #[test]
+    fn test_extract_version_changelog_not_found() {
+        let changelog = "## v1.70.0 - Old version\n\nOld notes.";
+        let result = extract_version_changelog(changelog, "v1.71.1");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_extract_version_changelog_last_section() {
+        let changelog = r#"
+## v1.71.1 - 2025-09-24
+
+This is the last section with no following header.
+"#;
+        let result = extract_version_changelog(changelog, "v1.71.1");
+        assert!(result.is_some());
+        assert!(result.unwrap().contains("last section"));
     }
 }

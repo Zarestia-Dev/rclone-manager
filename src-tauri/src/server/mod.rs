@@ -47,7 +47,6 @@ pub async fn start_web_server(
     // Auto-forward all events to SSE clients, except desktop-only events
     // This ensures new events are automatically available to headless clients
     let all_events = vec![
-        RCLONE_API_URL_UPDATED,
         ENGINE_RESTARTED,
         RCLONE_ENGINE_READY,
         RCLONE_ENGINE_ERROR,
@@ -55,9 +54,7 @@ pub async fn start_web_server(
         RCLONE_ENGINE_PATH_ERROR,
         RCLONE_ENGINE_UPDATING,
         RCLONE_PASSWORD_STORED,
-        REMOTE_STATE_CHANGED,
-        REMOTE_PRESENCE_CHANGED,
-        REMOTE_CACHE_UPDATED,
+        REMOTE_CACHE_CHANGED,
         SYSTEM_SETTINGS_CHANGED,
         BANDWIDTH_LIMIT_CHANGED,
         RCLONE_CONFIG_UNLOCKED,
@@ -65,11 +62,10 @@ pub async fn start_web_server(
         JOB_CACHE_CHANGED,
         MOUNT_STATE_CHANGED,
         SERVE_STATE_CHANGED,
+        #[cfg(any(target_os = "macos", target_os = "windows"))]
         MOUNT_PLUGIN_INSTALLED,
         NETWORK_STATUS_CHANGED,
-        SCHEDULED_TASK_ERROR,
-        SCHEDULED_TASK_COMPLETED,
-        SCHEDULED_TASK_STOPPED,
+        SCHEDULED_TASKS_CACHE_CHANGED,
         APP_EVENT,
         OPEN_INTERNAL_ROUTE,
     ];

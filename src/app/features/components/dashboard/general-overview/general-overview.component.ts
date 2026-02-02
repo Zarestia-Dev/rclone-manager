@@ -11,6 +11,7 @@ import {
   signal,
   computed,
 } from '@angular/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -22,19 +23,13 @@ import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 
-import { catchError, EMPTY, from, Subject, Subscription, switchMap, takeUntil, timer } from 'rxjs';
+import { Subject, Subscription, takeUntil } from 'rxjs';
 
 import {
-  BandwidthLimitResponse,
-  DEFAULT_JOB_STATS,
-  GlobalStats,
   JobInfo,
-  MemoryStats,
   PrimaryActionType,
-  RcloneStatus,
   Remote,
   RemoteActionProgress,
-  SystemStats,
   ScheduledTask,
   ServeListItem,
 } from '@app/types';
@@ -44,19 +39,20 @@ import { FormatEtaPipe } from '../../../../shared/pipes/format-eta.pipe';
 import { FormatMemoryUsagePipe } from '../../../../shared/pipes/format-memory-usage.pipe';
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
+import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
 
 import {
   EventListenersService,
   SchedulerService,
   UiStateService,
-  SystemInfoService,
+  RcloneStatusService,
   AppSettingsService,
+  BackendService,
 } from '@app/services';
-import { IconService } from 'src/app/shared/services/icon.service';
+import { IconService } from '@app/services';
 import { FormatRateValuePipe } from '../../../../shared/pipes/format-rate-value.pipe';
 import { FormatBytes } from '../../../../shared/pipes/format-bytes.pipe';
 
-const POLLING_INTERVAL = 5000;
 const SCROLL_DELAY = 60;
 
 export type PanelId = 'remotes' | 'bandwidth' | 'system' | 'jobs' | 'tasks' | 'serves';
@@ -73,12 +69,12 @@ export interface DashboardPanel extends PanelConfig {
 
 // The Static Definitions (Source of Truth)
 const ALL_PANELS: PanelConfig[] = [
-  { id: 'remotes', title: 'Quick Remote Access', defaultVisible: true },
-  { id: 'bandwidth', title: 'Bandwidth Limit', defaultVisible: true },
-  { id: 'system', title: 'System Information', defaultVisible: true },
-  { id: 'jobs', title: 'Job Information', defaultVisible: true },
-  { id: 'tasks', title: 'Scheduled Tasks', defaultVisible: true },
-  { id: 'serves', title: 'Running Serves', defaultVisible: true },
+  { id: 'remotes', title: 'generalOverview.panels.remotes', defaultVisible: true },
+  { id: 'bandwidth', title: 'generalOverview.panels.bandwidth', defaultVisible: true },
+  { id: 'system', title: 'generalOverview.panels.system', defaultVisible: true },
+  { id: 'jobs', title: 'generalOverview.panels.jobs', defaultVisible: true },
+  { id: 'tasks', title: 'generalOverview.panels.tasks', defaultVisible: true },
+  { id: 'serves', title: 'generalOverview.panels.serves', defaultVisible: true },
 ];
 
 @Component({
@@ -103,6 +99,9 @@ const ALL_PANELS: PanelConfig[] = [
     ServeCardComponent,
     FormatRateValuePipe,
     FormatBytes,
+
+    OverviewHeaderComponent,
+    TranslateModule,
   ],
   templateUrl: './general-overview.component.html',
   styleUrls: ['./general-overview.component.scss'],
@@ -123,13 +122,9 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     profileName?: string;
   }>();
   @Output() browseRemote = new EventEmitter<string>();
+  @Output() openBackendModal = new EventEmitter<void>();
 
   // State signals
-  rcloneStatus = signal<RcloneStatus>('inactive');
-  systemStats = signal<SystemStats>({ memoryUsage: null, uptime: 0 });
-  jobStats = signal<GlobalStats>({ ...DEFAULT_JOB_STATS });
-  isLoadingStats = signal(false);
-  bandwidthLimit = signal<BandwidthLimitResponse | null>(null);
   isEditingLayout = signal(false);
   panelOpenStates = signal<Record<string, boolean>>({
     remotes: true,
@@ -150,15 +145,27 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   // Services
   private eventListenersService = inject(EventListenersService);
   private snackBar = inject(MatSnackBar);
-  private systemInfoService = inject(SystemInfoService);
   private schedulerService = inject(SchedulerService);
   private uiStateService = inject(UiStateService);
   private appSettingsService = inject(AppSettingsService);
+  public rcloneStatusService = inject(RcloneStatusService);
   public iconService = inject(IconService);
+
+  readonly backendService = inject(BackendService);
+  private translate = inject(TranslateService);
+
+  // Expose status service signals for template
+  readonly rcloneStatus = this.rcloneStatusService.rcloneStatus;
+  readonly jobStats = this.rcloneStatusService.jobStats;
+  readonly bandwidthLimit = this.rcloneStatusService.bandwidthLimit;
+  readonly systemStats = computed(() => ({
+    memoryUsage: this.rcloneStatusService.memoryUsage(),
+    uptime: this.rcloneStatusService.uptime(),
+  }));
+  readonly isLoadingStats = this.rcloneStatusService.isLoading;
 
   // Subscriptions
   private destroy$ = new Subject<void>();
-  private pollingSubscription: Subscription | null = null;
   private scheduledTasksSubscription: Subscription | null = null;
 
   // Track by functions
@@ -199,9 +206,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.setupTauriListeners();
-    this.setupPolling();
-    this.loadInitialData();
     this.setupScheduledTasksListener();
   }
 
@@ -218,7 +222,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   resetLayout(): void {
     this.appSettingsService.saveSetting('runtime', 'dashboard_layout', null);
     this.dashboardPanels.set(ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible })));
-    this.showSnackbar('Layout reset to default');
+    this.showSnackbar(this.translate.instant('generalOverview.layout.resetSuccess'));
   }
 
   drop(event: CdkDragDrop<DashboardPanel[]>): void {
@@ -292,7 +296,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
       await this.schedulerService.toggleScheduledTask(taskId);
     } catch (error) {
       console.error('Failed to toggle scheduled task:', error);
-      this.showSnackbar('Failed to toggle scheduled task');
+      this.showSnackbar(this.translate.instant('generalOverview.layout.toggleTaskFailed'));
     }
   }
 
@@ -319,19 +323,25 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   }
 
   async copyError(error: string): Promise<void> {
-    this.copyToClipboard(error, 'Error copied to clipboard', 'Failed to copy error');
+    this.copyToClipboard(
+      error,
+      this.translate.instant('generalOverview.layout.errorCopied'),
+      this.translate.instant('generalOverview.layout.copyErrorFailed')
+    );
   }
 
   // Task utility methods
   getFormattedNextRun(task: ScheduledTask): string {
-    if (task.status === 'disabled') return 'Task is disabled';
-    if (task.status === 'stopping') return 'Disabling after current run';
-    if (!task.nextRun) return 'Not scheduled';
+    if (task.status === 'disabled') return this.translate.instant('task.nextRun.disabled');
+    if (task.status === 'stopping') return this.translate.instant('task.nextRun.stopping');
+    if (!task.nextRun) return this.translate.instant('task.nextRun.notScheduled');
     return new Date(task.nextRun).toLocaleString();
   }
 
   getFormattedLastRun(task: ScheduledTask): string {
-    return task.lastRun ? new Date(task.lastRun).toLocaleString() : 'Never';
+    return task.lastRun
+      ? new Date(task.lastRun).toLocaleString()
+      : this.translate.instant('task.lastRun.never');
   }
 
   getTaskTypeIcon(taskType: string): string {
@@ -354,22 +364,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     return colorMap[taskType] || '';
   }
 
-  private readonly TASK_STATUS_TOOLTIPS: Record<string, string> = {
-    enabled: 'Task is enabled and will run on schedule.',
-    disabled: 'Task is disabled and will not run.',
-    running: 'Task is currently running.',
-    failed: 'Task failed on its last run.',
-    stopping: 'Task is stopping and will be disabled after the current run finishes.',
-  };
-
-  private readonly TOGGLE_TOOLTIPS: Record<string, string> = {
-    enabled: 'Disable task',
-    running: 'Disable task',
-    disabled: 'Enable task',
-    failed: 'Enable task',
-    stopping: 'Task is stopping...',
-  };
-
   private readonly TOGGLE_ICONS: Record<string, string> = {
     enabled: 'pause',
     running: 'pause',
@@ -379,11 +373,17 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   };
 
   getTaskStatusTooltip(status: string): string {
-    return this.TASK_STATUS_TOOLTIPS[status] || '';
+    return this.translate.instant(`task.status.${status}`);
   }
 
   getToggleTooltip(status: string): string {
-    return this.TOGGLE_TOOLTIPS[status] || '';
+    let key = 'enable'; // Default to enable
+    if (status === 'enabled' || status === 'running') {
+      key = 'disable';
+    } else if (status === 'stopping') {
+      key = 'stopping';
+    }
+    return this.translate.instant(`task.toggle.${key}`);
   }
 
   getToggleIcon(status: string): string {
@@ -419,94 +419,9 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   }
 
   private cleanup(): void {
-    this.stopPolling();
     this.scheduledTasksSubscription?.unsubscribe();
     this.destroy$.next();
     this.destroy$.complete();
-  }
-
-  private setupPolling(): void {
-    this.stopPolling();
-    this.pollingSubscription = timer(0, POLLING_INTERVAL)
-      .pipe(
-        takeUntil(this.destroy$),
-        switchMap(() => from(this.loadSystemStats()).pipe(catchError(() => EMPTY)))
-      )
-      .subscribe();
-  }
-  private stopPolling(): void {
-    this.pollingSubscription?.unsubscribe();
-    this.pollingSubscription = null;
-  }
-
-  private async loadInitialData(): Promise<void> {
-    await Promise.all([this.checkRcloneStatus(), this.loadBandwidthLimit()]);
-  }
-
-  private async checkRcloneStatus(): Promise<void> {
-    try {
-      const rcloneInfo = await this.systemInfoService.getRcloneInfo();
-      this.rcloneStatus.set(rcloneInfo ? 'active' : 'inactive');
-    } catch {
-      this.rcloneStatus.set('error');
-    }
-  }
-
-  private async loadSystemStats(): Promise<void> {
-    const hasData = this.systemStats().uptime > 0 || this.systemStats().memoryUsage !== null;
-
-    if (!hasData) {
-      this.isLoadingStats.set(true);
-    }
-
-    try {
-      const [memoryStats, coreStats] = await Promise.all([
-        this.systemInfoService.getMemoryStats().catch(() => null as MemoryStats | null),
-        this.systemInfoService.getCoreStats().catch(() => null as GlobalStats | null),
-      ]);
-
-      this.updateSystemStats(memoryStats, coreStats);
-      await this.checkRcloneStatus();
-    } catch (error) {
-      console.error('Error loading system stats:', error);
-      if (!hasData) {
-        this.resetStats();
-      }
-    } finally {
-      this.isLoadingStats.set(false);
-    }
-  }
-
-  private updateSystemStats(memoryStats: MemoryStats | null, coreStats: GlobalStats | null): void {
-    if (coreStats) {
-      this.jobStats.update(stats => ({ ...stats, ...coreStats }));
-      this.systemStats.set({
-        memoryUsage: memoryStats,
-        uptime: coreStats.elapsedTime || 0,
-      });
-    } else {
-      this.resetStats();
-      this.systemStats.update(stats => ({ ...stats, memoryUsage: memoryStats }));
-    }
-  }
-
-  private resetStats(): void {
-    this.jobStats.set({ ...DEFAULT_JOB_STATS });
-    this.systemStats.set({ memoryUsage: null, uptime: 0 });
-  }
-
-  private setupTauriListeners(): void {
-    this.eventListenersService
-      .listenToBandwidthLimitChanged()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: async () => {
-          const limit = await this.systemInfoService
-            .getBandwidthLimit()
-            .catch(() => null as BandwidthLimitResponse | null);
-          this.bandwidthLimit.set(limit);
-        },
-      });
   }
 
   private setupScheduledTasksListener(): void {
@@ -529,35 +444,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     }
   }
 
-  async loadBandwidthLimit(): Promise<void> {
-    try {
-      if (!this.bandwidthLimit()) {
-        this.bandwidthLimit.set({
-          bytesPerSecond: 0,
-          bytesPerSecondRx: 0,
-          bytesPerSecondTx: 0,
-          rate: 'Loading...',
-          loading: true,
-        });
-      }
-
-      const response = await this.systemInfoService
-        .getBandwidthLimit()
-        .catch(() => null as BandwidthLimitResponse | null);
-
-      this.bandwidthLimit.set(response);
-    } catch (error) {
-      this.bandwidthLimit.set({
-        bytesPerSecond: -1,
-        bytesPerSecondRx: -1,
-        bytesPerSecondTx: -1,
-        rate: 'off',
-        loading: false,
-        error: `Failed to load bandwidth limit: ${error}`,
-      });
-    }
-  }
-
   // Utility methods
   private scrollToTop(): void {
     const el = document.querySelector('.main-content') as HTMLElement | null;
@@ -570,13 +456,13 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     }
   }
 
-  private copyToClipboard(
+  private async copyToClipboard(
     text: string,
     successMessage: string,
     errorMessage = 'Failed to copy to clipboard'
-  ): void {
+  ): Promise<void> {
     try {
-      navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(text);
       this.showSnackbar(successMessage);
     } catch (error) {
       console.error('Error copying to clipboard:', error);
@@ -584,7 +470,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     }
   }
 
-  private showSnackbar(message: string, action = 'Close', duration = 2000): void {
-    this.snackBar.open(message, action, { duration });
+  private showSnackbar(message: string, action?: string, duration = 2000): void {
+    this.snackBar.open(message, action || this.translate.instant('common.close'), { duration });
   }
 }

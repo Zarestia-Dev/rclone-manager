@@ -31,17 +31,17 @@ export class ApiClientService {
     if (this.isHeadlessMode && (port === '1420' || devApiPort)) {
       const apiPort = devApiPort || '8080';
       this.apiBaseUrl = `${protocol}//${host}:${apiPort}/api`;
-      console.log('🔧 Development mode detected - Angular dev server pointing to API server');
+      console.debug('🔧 Development mode detected - Angular dev server pointing to API server');
     } else {
       this.apiBaseUrl = `${protocol}//${host}${portSuffix}/api`;
     }
 
     if (this.isHeadlessMode) {
-      console.log('🌐 Running in headless web mode - using HTTP API');
-      console.log(`📝 API Base URL: ${this.apiBaseUrl}`);
-      console.log('🔐 Browser will handle Basic Authentication via login dialog');
+      console.debug('🌐 Running in headless web mode - using HTTP API');
+      console.debug(`📝 API Base URL: ${this.apiBaseUrl}`);
+      console.debug('🔐 Browser will handle Basic Authentication via login dialog');
     } else {
-      console.log('🖥️  Running in Tauri desktop mode - using Tauri commands');
+      console.debug('🖥️  Running in Tauri desktop mode - using Tauri commands');
     }
   }
 
@@ -81,18 +81,18 @@ export class ApiClientService {
   private async invokeHttp<T>(command: string, args?: Record<string, unknown>): Promise<T> {
     // Handle commands locally in web mode
     if (command === 'set_theme') {
-      console.log('🎨 Theme setting handled locally in web mode');
+      console.debug('🎨 Theme setting handled locally in web mode');
       return Promise.resolve({} as T);
     }
 
     if (command === 'get_system_theme') {
       const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       const theme = isDark ? 'dark' : 'light';
-      console.log('🌙 System theme detected from browser:', theme);
+      console.debug('🌙 System theme detected from browser:', theme);
       return Promise.resolve(theme as T);
     }
 
-    if (command === 'open_in_files' || command === 'open_terminal_config') {
+    if (command === 'open_in_files') {
       throw new Error('Native file manager integration not available in headless mode.');
     }
 

@@ -21,6 +21,8 @@ pub fn build_api_router(state: WebServerState) -> Router {
         .merge(logs_routes())
         .merge(vfs_routes())
         .merge(backup_routes())
+        .merge(backend_routes())
+        .merge(debug_routes())
         .nest("/jobs", jobs_router)
         .route("/events", get(handlers::sse_handler))
         .with_state(state.clone())
@@ -54,6 +56,10 @@ fn jobs_routes() -> Router<WebServerState> {
             post(handlers::start_bisync_profile_handler),
         )
         .route("/:id/status", get(handlers::get_job_status_handler))
+        .route(
+            "/rename-profile-in-cache",
+            post(handlers::rename_job_profile_handler),
+        )
 }
 
 fn remote_routes() -> Router<WebServerState> {
@@ -168,6 +174,16 @@ fn system_routes() -> Router<WebServerState> {
             get(handlers::are_updates_disabled_handler),
         )
         .route("/get-build-type", get(handlers::get_build_type_handler))
+        .route(
+            "/quit-rclone-engine",
+            post(handlers::quit_rclone_engine_handler),
+        )
+        .route("/gc", post(handlers::run_garbage_collector_handler))
+        .route(
+            "/get-fscache-entries",
+            get(handlers::get_fscache_entries_handler),
+        )
+        .route("/clear-fscache", post(handlers::clear_fscache_handler))
 }
 
 fn file_operations_routes() -> Router<WebServerState> {
@@ -178,15 +194,13 @@ fn file_operations_routes() -> Router<WebServerState> {
         .route("/get-size", get(handlers::get_size_handler))
         .route("/get-stat", get(handlers::get_stat_handler))
         .route("/get-hashsum", get(handlers::get_hashsum_handler))
+        .route("/get-hashsum-file", get(handlers::get_hashsum_file_handler))
         .route("/get-public-link", get(handlers::get_public_link_handler))
         .route("/mkdir", post(handlers::mkdir_handler))
         .route("/cleanup", post(handlers::cleanup_handler))
         .route("/copy-url", post(handlers::copy_url_handler))
         .route("/remote/paths", post(handlers::get_remote_paths_handler))
-        .route(
-            "/convert-asset-src",
-            get(handlers::convert_file_src_handler),
-        )
+        .route("/fs/stream", get(handlers::stream_file_handler))
 }
 
 fn settings_routes() -> Router<WebServerState> {
@@ -241,6 +255,14 @@ fn mount_serve_routes() -> Router<WebServerState> {
         )
         .route("/unmount-remote", post(handlers::unmount_remote_handler))
         .route("/mount-types", get(handlers::get_mount_types_handler))
+        .route(
+            "/rename-mount-profile-in-cache",
+            post(handlers::rename_mount_profile_handler),
+        )
+        .route(
+            "/rename-serve-profile-in-cache",
+            post(handlers::rename_serve_profile_handler),
+        )
 }
 
 fn scheduled_tasks_routes() -> Router<WebServerState> {
@@ -300,20 +322,12 @@ fn flags_routes() -> Router<WebServerState> {
 fn security_routes() -> Router<WebServerState> {
     Router::new()
         .route(
-            "/get-cached-encryption-status",
-            get(handlers::get_cached_encryption_status_handler),
-        )
-        .route(
             "/has-stored-password",
             get(handlers::has_stored_password_handler),
         )
         .route(
-            "/is-config-encrypted-cached",
-            get(handlers::is_config_encrypted_cached_handler),
-        )
-        .route(
-            "/has-config-password-env",
-            get(handlers::has_config_password_env_handler),
+            "/is-config-encrypted",
+            get(handlers::is_config_encrypted_handler),
         )
         .route(
             "/remove-config-password",
@@ -339,14 +353,6 @@ fn security_routes() -> Router<WebServerState> {
         .route(
             "/set-config-password-env",
             post(handlers::set_config_password_env_handler),
-        )
-        .route(
-            "/clear-config-password-env",
-            post(handlers::clear_config_password_env_handler),
-        )
-        .route(
-            "/clear-encryption-cache",
-            post(handlers::clear_encryption_cache_handler),
         )
         .route(
             "/change-config-password",
@@ -391,4 +397,33 @@ fn backup_routes() -> Router<WebServerState> {
             "/restore-settings",
             post(handlers::restore_settings_handler),
         )
+        .route(
+            "/get-export-categories",
+            get(handlers::get_export_categories_handler),
+        )
+}
+
+fn backend_routes() -> Router<WebServerState> {
+    Router::new()
+        .route("/list-backends", get(handlers::list_backends_handler))
+        .route(
+            "/get-active-backend",
+            get(handlers::get_active_backend_handler),
+        )
+        .route("/switch-backend", post(handlers::switch_backend_handler))
+        .route("/add-backend", post(handlers::add_backend_handler))
+        .route("/update-backend", post(handlers::update_backend_handler))
+        .route("/remove-backend", post(handlers::remove_backend_handler))
+        .route(
+            "/test-backend-connection",
+            post(handlers::test_backend_connection_handler),
+        )
+        .route(
+            "/get-backend-profiles",
+            get(handlers::get_backend_profiles_handler),
+        )
+}
+
+fn debug_routes() -> Router<WebServerState> {
+    Router::new().route("/debug/info", get(handlers::get_debug_info_handler))
 }

@@ -4,13 +4,15 @@
     <button
       (click)="toggleSearch()"
       matIconButton
-      [attr.aria-label]="searchVisible ? 'Hide search' : 'Show search'"
+      [attr.aria-label]="
+        searchVisible ? ('shortcuts.hideSearch' | translate) : ('shortcuts.showSearch' | translate)
+      "
       [attr.aria-expanded]="searchVisible"
     >
       <mat-icon svgIcon="search"></mat-icon>
     </button>
-    <p>Keyboard Shortcuts</p>
-    <button matIconButton (click)="close()" aria-label="Close shortcuts dialog">
+    <p>{{ 'shortcuts.title' | translate }}</p>
+    <button matIconButton (click)="close()" [attr.aria-label]="'shortcuts.ariaClose' | translate">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </div>
@@ -20,8 +22,8 @@
     [visible]="searchVisible"
     [searchText]="searchText"
     (searchTextChange)="onSearchTextChange($event)"
-    placeholder="Search shortcuts or descriptions..."
-    ariaLabel="Search keyboard shortcuts"
+    [placeholder]="'shortcuts.searchPlaceholder' | translate"
+    [ariaLabel]="'shortcuts.ariaSearch' | translate"
   >
   </app-search-container>
 
@@ -32,7 +34,7 @@
       [dataSource]="filteredShortcuts"
       class="shortcut-table"
       role="table"
-      aria-label="Keyboard shortcuts list"
+      [attr.aria-label]="'shortcuts.ariaList' | translate"
     >
       <ng-container matColumnDef="keys">
         <td mat-cell *matCellDef="let shortcut" class="shortcut-key" role="gridcell">
@@ -47,7 +49,7 @@
 
       <ng-container matColumnDef="description">
         <td mat-cell *matCellDef="let shortcut" class="shortcut-desc" role="gridcell">
-          {{ shortcut.description }}
+          {{ shortcut.description | translate }}
         </td>
       </ng-container>
 
@@ -58,9 +60,11 @@
     @if (filteredShortcuts.length === 0 && searchText) {
       <div class="empty-state">
         <mat-icon svgIcon="search"></mat-icon>
-        <span>No shortcuts found</span>
-        <p>Try searching for a different term or clear your search.</p>
-        <button matButton="filled" class="accent" (click)="clearSearch()">Clear Search</button>
+        <span>{{ 'shortcuts.noResults.title' | translate }}</span>
+        <p>{{ 'shortcuts.noResults.description' | translate }}</p>
+        <button matButton="filled" class="accent" (click)="clearSearch()">
+          {{ 'shortcuts.noResults.action' | translate }}
+        </button>
       </div>
     }
   </div>

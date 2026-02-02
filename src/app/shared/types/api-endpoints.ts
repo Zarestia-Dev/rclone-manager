@@ -59,7 +59,10 @@ export const EXPLICIT_ENDPOINTS: Record<string, string> = {
   // System - shortened
   get_rclone_info: '/rclone-info',
   get_rclone_pid: '/rclone-pid',
+  run_garbage_collector: '/gc',
   get_disk_usage: '/disk-usage',
+  get_fscache_entries: '/get-fscache-entries',
+  clear_fscache: '/clear-fscache',
 
   // Settings - shortened/nested
   get_settings: '/settings',
@@ -68,7 +71,6 @@ export const EXPLICIT_ENDPOINTS: Record<string, string> = {
   // Filesystem - nested
   get_fs_info: '/fs/info',
   get_remote_paths: '/remote/paths',
-  convert_file_src: '/convert-asset-src',
 
   // Flags - nested under /flags or /options
   get_option_blocks: '/options/blocks',
@@ -82,6 +84,9 @@ export const EXPLICIT_ENDPOINTS: Record<string, string> = {
   get_vfs_flags: '/flags/vfs',
   get_filter_flags: '/flags/filter',
   get_backend_flags: '/flags/backend',
+
+  // Debug - nested under /debug
+  get_debug_info: '/debug/info',
 };
 
 /**
@@ -126,10 +131,9 @@ export const POST_COMMANDS = new Set([
   'stop_serve',
   'stop_all_serves',
   'handle_shutdown',
-  'open_terminal_config',
+  'quit_rclone_engine',
+  'run_garbage_collector',
   'set_config_password_env',
-  'clear_config_password_env',
-  'clear_encryption_cache',
   'change_config_password',
   'restore_settings',
   'install_update',
@@ -143,4 +147,20 @@ export const POST_COMMANDS = new Set([
   'mkdir',
   'cleanup',
   'copy_url',
+  // Backend Commands
+  'add_backend',
+  'update_backend',
+  'remove_backend',
+  'switch_backend',
+  'test_backend_connection',
+  'force_check_serves',
+  'save_rclone_backend_options',
+  'reset_rclone_backend_options',
+  // Rename commands
+  'rename_profile_in_cache',
+  'rename_mount_profile_in_cache',
+  'rename_serve_profile_in_cache',
+  // Debug Commands
+  'open_devtools',
+  'clear_fscache',
 ]);

@@ -1,31 +1,32 @@
 import { Directive, HostListener, inject } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
 import { MatDialog } from '@angular/material/dialog';
-import { KeyboardShortcutsModalComponent } from '../../features/modals/settings/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component';
-import { QuickAddRemoteComponent } from '../../features/modals/remote-management/quick-add-remote/quick-add-remote.component';
-import { RemoteConfigModalComponent } from '../../features/modals/remote-management/remote-config-modal/remote-config-modal.component';
-import { ExportModalComponent } from '../../features/modals/settings/export-modal/export-modal.component';
-import { PreferencesModalComponent } from '../../features/modals/settings/preferences-modal/preferences-modal.component';
-import { RcloneConfigModalComponent } from '../../features/modals/settings/rclone-config-modal/rclone-config-modal.component';
 
 // Services
-import { MountManagementService, NautilusService, WindowService } from '@app/services';
-import { RemoteManagementService } from '@app/services';
-import { OnboardingStateService } from '@app/services';
-import { NotificationService } from '../services/notification.service';
-import { STANDARD_MODAL_SIZE } from '@app/types';
+import {
+  MountManagementService,
+  NautilusService,
+  WindowService,
+  BackupRestoreUiService,
+  OnboardingStateService,
+  NotificationService,
+  ModalService,
+} from '@app/services';
 
 @Directive({
   selector: '[appShortcutHandler]',
   standalone: true,
 })
 export class ShortcutHandlerDirective {
-  private dialog = inject(MatDialog);
-  private notificationService = inject(NotificationService);
-  private windowService = inject(WindowService);
-  private remoteManagementService = inject(RemoteManagementService);
-  private onboardingStateService = inject(OnboardingStateService);
-  private mountManagementService = inject(MountManagementService);
-  private nautilusService = inject(NautilusService);
+  private readonly translate = inject(TranslateService);
+  private readonly dialog = inject(MatDialog);
+  private readonly modalService = inject(ModalService);
+  private readonly notificationService = inject(NotificationService);
+  private readonly windowService = inject(WindowService);
+  private readonly onboardingStateService = inject(OnboardingStateService);
+  private readonly mountManagementService = inject(MountManagementService);
+  private readonly nautilusService = inject(NautilusService);
+  private readonly backupRestoreUiService = inject(BackupRestoreUiService);
 
   @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
@@ -81,11 +82,6 @@ export class ShortcutHandlerDirective {
       return true;
     }
 
-    if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 't') {
-      this.createNewRemoteTerminal();
-      return true;
-    }
-
     if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 'i') {
       this.loadConfiguration();
       return true;
@@ -134,13 +130,19 @@ export class ShortcutHandlerDirective {
 
   /**
    * Check if shortcuts should be blocked
-   * Returns true if any modal is open or onboarding is active
+   * Returns true if any modal is open, file viewer is open, or onboarding is active
    * Critical shortcuts (like Ctrl+Q) bypass this check
    */
   private shouldBlockShortcuts(event: KeyboardEvent): boolean {
     // Always allow critical shortcuts
     if (this.isCriticalShortcut(event)) {
       return false;
+    }
+
+    // Block if file viewer is open
+    if (this.isFileViewerOpen()) {
+      console.debug('Shortcuts blocked: File viewer is open');
+      return true;
     }
 
     // Block if any modal is open
@@ -159,6 +161,13 @@ export class ShortcutHandlerDirective {
   }
 
   /**
+   * Check if file viewer modal is open
+   */
+  private isFileViewerOpen(): boolean {
+    return document.querySelector('app-file-viewer-modal') !== null;
+  }
+
+  /**
    * Check if onboarding is currently active using centralized service
    */
   private isOnboardingActive(): boolean {
@@ -169,7 +178,7 @@ export class ShortcutHandlerDirective {
     try {
       await this.windowService.quitApplication();
     } catch (error) {
-      this.notificationService.showError('Failed to quit application: ' + error);
+      this.notificationService.showError(this.translate.instant('shortcuts.quitError', { error }));
     }
   }
 
@@ -180,42 +189,39 @@ export class ShortcutHandlerDirective {
   private async forceRefreshMountedRemotes(): Promise<void> {
     try {
       await this.mountManagementService.forceCheckMountedRemotes();
-      this.notificationService.showSuccess('Mounted remotes refreshed successfully');
+      this.notificationService.showSuccess(this.translate.instant('shortcuts.refreshSuccess'));
     } catch (error) {
-      this.notificationService.showError('Failed to refresh mounted remotes: ' + error);
+      this.notificationService.showError(
+        this.translate.instant('shortcuts.refreshError', { error })
+      );
     }
   }
 
   private showKeyboardShortcuts(): void {
-    this.dialog.open(KeyboardShortcutsModalComponent, STANDARD_MODAL_SIZE);
+    this.modalService.openKeyboardShortcuts();
   }
 
   private createNewRemoteDetailed(): void {
-    this.dialog.open(RemoteConfigModalComponent, STANDARD_MODAL_SIZE);
-  }
-
-  private createNewRemoteTerminal(): void {
-    this.remoteManagementService.openRcloneConfigTerminal();
+    this.modalService.openRemoteConfig();
   }
 
   private createNewRemoteQuick(): void {
-    this.dialog.open(QuickAddRemoteComponent, STANDARD_MODAL_SIZE);
+    this.modalService.openQuickAddRemote();
   }
 
   private loadConfiguration(): void {
-    console.log('Loading configuration');
-    this.notificationService.showInfo('Configuration loading not yet implemented');
+    this.backupRestoreUiService.launchRestoreFlow();
   }
 
   private exportConfiguration(): void {
-    this.dialog.open(ExportModalComponent, STANDARD_MODAL_SIZE);
+    this.modalService.openExport();
   }
 
   private openPreferences(): void {
-    this.dialog.open(PreferencesModalComponent, STANDARD_MODAL_SIZE);
+    this.modalService.openPreferences();
   }
 
   private openRcloneConfig(): void {
-    this.dialog.open(RcloneConfigModalComponent, STANDARD_MODAL_SIZE);
+    this.modalService.openRcloneConfig();
   }
 }

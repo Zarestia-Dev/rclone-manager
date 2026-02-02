@@ -12,6 +12,7 @@ import {
   AbstractControl,
   ValidationErrors,
 } from '@angular/forms';
+import { TranslateModule } from '@ngx-translate/core';
 
 export interface InputModalData {
   title?: string;
@@ -37,6 +38,7 @@ export interface InputModalData {
     MatInputModule,
     FormsModule,
     ReactiveFormsModule,
+    TranslateModule,
   ],
   templateUrl: './input-modal.component.html',
   styleUrls: ['./input-modal.component.scss', '../../../styles/_shared-modal.scss'],

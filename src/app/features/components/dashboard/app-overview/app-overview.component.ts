@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, input, output, inject } from '@angular/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
@@ -13,7 +14,7 @@ import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remot
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 
 // Services
-import { IconService } from '../../../../shared/services/icon.service';
+import { IconService } from '@app/services';
 
 @Component({
   selector: 'app-app-overview',
@@ -29,12 +30,14 @@ import { IconService } from '../../../../shared/services/icon.service';
     StatusOverviewPanelComponent,
     RemotesPanelComponent,
     ServeCardComponent,
+    TranslateModule,
   ],
   templateUrl: './app-overview.component.html',
   styleUrl: './app-overview.component.scss',
 })
 export class AppOverviewComponent {
   readonly iconService = inject(IconService);
+  private translate = inject(TranslateService);
 
   mode = input<AppTab>('mount');
   remotes = input<Remote[]>([]);
@@ -46,6 +49,7 @@ export class AppOverviewComponent {
   openInFiles = output<string>();
   startJob = output<{ type: PrimaryActionType; remoteName: string }>();
   stopJob = output<{ type: PrimaryActionType; remoteName: string; serveId?: string }>();
+  openBackendModal = output<void>();
 
   private isRemoteActive = (remote: Remote): boolean => {
     const mode = this.mode();
@@ -72,13 +76,13 @@ export class AppOverviewComponent {
   title = computed(() => {
     const mode = this.mode();
     if (mode === 'mount') {
-      return 'Mount Overview';
+      return this.translate.instant('appOverview.titles.mount');
     } else if (mode === 'sync') {
-      return 'Sync Operations Overview';
+      return this.translate.instant('appOverview.titles.sync');
     } else if (mode === 'serve') {
-      return 'Serve Overview';
+      return this.translate.instant('appOverview.titles.serve');
     }
-    return 'Remotes Overview';
+    return this.translate.instant('appOverview.titles.remotes');
   });
 
   // Mode configuration map for labels and icons
@@ -87,37 +91,45 @@ export class AppOverviewComponent {
     { label: string; icon: string; activeTitle: string; inactiveTitle: string }
   > = {
     mount: {
-      label: 'Mount',
+      label: 'appOverview.labels.mount',
       icon: 'mount',
-      activeTitle: 'Mounted Remotes',
-      inactiveTitle: 'Unmounted Remotes',
+      activeTitle: 'appOverview.panelTitles.mountedRemotes',
+      inactiveTitle: 'appOverview.panelTitles.unmountedRemotes',
     },
     sync: {
-      label: 'Start Sync',
+      label: 'appOverview.labels.startSync',
       icon: 'sync',
-      activeTitle: 'Active Sync Operations',
-      inactiveTitle: 'Inactive Remotes',
+      activeTitle: 'appOverview.panelTitles.activeSync',
+      inactiveTitle: 'appOverview.panelTitles.inactiveRemotes',
     },
     serve: {
-      label: 'Start Serve',
+      label: 'appOverview.labels.startServe',
       icon: 'satellite-dish',
-      activeTitle: 'Active Serves',
-      inactiveTitle: 'Available Remotes',
+      activeTitle: 'appOverview.panelTitles.activeServes',
+      inactiveTitle: 'appOverview.panelTitles.availableRemotes',
     },
     general: {
-      label: 'Start',
+      label: 'appOverview.labels.start',
       icon: 'circle-check',
-      activeTitle: 'Active Remotes',
-      inactiveTitle: 'Inactive Remotes',
+      activeTitle: 'appOverview.panelTitles.activeRemotes',
+      inactiveTitle: 'appOverview.panelTitles.inactiveRemotes',
     },
   };
 
-  primaryActionLabel = computed(() => this.MODE_CONFIG[this.mode()]?.label || 'Start');
+  primaryActionLabel = computed(() =>
+    this.translate.instant(this.MODE_CONFIG[this.mode()]?.label || 'appOverview.labels.start')
+  );
   activeIcon = computed(() => this.MODE_CONFIG[this.mode()]?.icon || 'circle-check');
   primaryActionIcon = computed(() => (this.mode() === 'mount' ? 'mount' : 'play'));
-  getActiveTitle = computed(() => this.MODE_CONFIG[this.mode()]?.activeTitle || 'Active Remotes');
-  getInactiveTitle = computed(
-    () => this.MODE_CONFIG[this.mode()]?.inactiveTitle || 'Inactive Remotes'
+  getActiveTitle = computed(() =>
+    this.translate.instant(
+      this.MODE_CONFIG[this.mode()]?.activeTitle || 'appOverview.panelTitles.activeRemotes'
+    )
+  );
+  getInactiveTitle = computed(() =>
+    this.translate.instant(
+      this.MODE_CONFIG[this.mode()]?.inactiveTitle || 'appOverview.panelTitles.inactiveRemotes'
+    )
   );
 
   selectRemote(remote: Remote): void {
@@ -130,9 +142,9 @@ export class AppOverviewComponent {
     }
   }
 
-  handleCopyToClipboard(data: { text: string; message: string }): void {
+  async handleCopyToClipboard(data: { text: string; message: string }): Promise<void> {
     try {
-      navigator.clipboard.writeText(data.text);
+      await navigator.clipboard.writeText(data.text);
     } catch (error) {
       console.error('Error copying to clipboard:', error);
     }

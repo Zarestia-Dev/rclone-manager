@@ -6,15 +6,20 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use crate::{
     core::scheduler::engine::CronScheduler,
     rclone::{
-        commands::system::{ensure_oauth_process, redact_sensitive_values},
-        state::{engine::ENGINE_STATE, scheduled_tasks::ScheduledTasksCache},
+        backend::BackendManager,
+        commands::{
+            common::redact_sensitive_values,
+            system::{ensure_oauth_process, get_fscache_entries},
+        },
+        state::scheduled_tasks::ScheduledTasksCache,
     },
     utils::{
         logging::log::log_operation,
-        rclone::endpoints::{EndpointHelper, config},
+        rclone::endpoints::config,
         types::{
-            all_types::{LogCache, LogLevel, RcloneState},
-            events::REMOTE_PRESENCE_CHANGED,
+            core::RcloneState,
+            events::REMOTE_CACHE_CHANGED,
+            logs::{LogCache, LogLevel},
         },
     },
 };
@@ -26,10 +31,10 @@ pub async fn create_remote_interactive(
     app: AppHandle,
     name: String,
     rclone_type: String,
-    parameters: Option<Value>,
+    parameters: Option<HashMap<String, Value>>,
     opt: Option<Value>,
-    state: State<'_, RcloneState>,
 ) -> Result<Value, String> {
+    let state = app.state::<RcloneState>();
     // Ensure OAuth/RC helper is running (used for providers requiring OAuth)
     ensure_oauth_process(&app)
         .await
@@ -41,7 +46,7 @@ pub async fn create_remote_interactive(
     });
 
     if let Some(params) = parameters {
-        body["parameters"] = params;
+        body["parameters"] = json!(params);
     }
 
     let mut opt_obj = json!({ "nonInteractive": true });
@@ -55,21 +60,25 @@ pub async fn create_remote_interactive(
     }
     body["opt"] = opt_obj;
 
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_oauth().0, config::CREATE);
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
 
-    let response = state
-        .client
-        .post(&url)
+    let url = crate::rclone::commands::common::get_config_url(&backend, config::CREATE)?;
+
+    let response = backend
+        .inject_auth(state.client.post(&url))
         .json(&body)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {e}"))?;
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
     let status = response.status();
     let body_text = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        return Err(format!("HTTP {status}: {body_text}"));
+        return Err(
+            crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body_text),
+        );
     }
 
     // Return the JSON payload as-is so the UI can drive the flow
@@ -86,10 +95,10 @@ pub async fn continue_create_remote_interactive(
     name: String,
     state_token: String,
     result: Value,
-    parameters: Option<Value>,
+    parameters: Option<HashMap<String, Value>>,
     opt: Option<Value>,
-    tauri_state: State<'_, RcloneState>,
 ) -> Result<Value, String> {
+    let tauri_state = app.state::<RcloneState>();
     // Ensure OAuth/RC helper is running
     ensure_oauth_process(&app)
         .await
@@ -100,7 +109,7 @@ pub async fn continue_create_remote_interactive(
     });
 
     if let Some(params) = parameters.clone() {
-        body["parameters"] = params;
+        body["parameters"] = json!(params);
     }
 
     // Build opt object with continue flow
@@ -119,27 +128,31 @@ pub async fn continue_create_remote_interactive(
     }
     body["opt"] = opt_obj;
 
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_oauth().0, config::UPDATE);
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
 
-    let response = tauri_state
-        .client
-        .post(&url)
+    let url = crate::rclone::commands::common::get_config_url(&backend, config::UPDATE)?;
+
+    let response = backend
+        .inject_auth(tauri_state.client.post(&url))
         .json(&body)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {e}"))?;
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
     let status = response.status();
     let body_text = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        return Err(format!("HTTP {status}: {body_text}"));
+        return Err(
+            crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body_text),
+        );
     }
 
     let value: Value =
         serde_json::from_str(&body_text).unwrap_or_else(|_| json!({ "raw": body_text }));
 
-    app.emit(REMOTE_PRESENCE_CHANGED, &name)
+    app.emit(REMOTE_CACHE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     Ok(value)
@@ -150,22 +163,16 @@ pub async fn continue_create_remote_interactive(
 pub async fn create_remote(
     app: AppHandle,
     name: String,
-    parameters: Value,
-    state: State<'_, RcloneState>,
+    parameters: HashMap<String, Value>,
 ) -> Result<(), String> {
+    let state = app.state::<RcloneState>();
     let remote_type = parameters
         .get("type")
         .and_then(|v| v.as_str())
         .ok_or("Missing remote type")?;
 
     // Enhanced logging with parameter values
-    let params_map: HashMap<String, Value> = parameters
-        .as_object()
-        .ok_or("Parameters must be an object")?
-        .clone()
-        .into_iter()
-        .collect();
-    let params_obj = redact_sensitive_values(&params_map, &state.restrict_mode);
+    let params_obj = redact_sensitive_values(&parameters, &app);
 
     log_operation(
         LogLevel::Info,
@@ -186,29 +193,31 @@ pub async fn create_remote(
     let body = json!({
         "name": name,
         "type": remote_type,
-        "parameters": parameters
+        "parameters": json!(parameters)
     });
 
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_oauth().0, config::CREATE);
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
 
-    let response = state
-        .client
-        .post(&url)
+    let url = crate::rclone::commands::common::get_config_url(&backend, config::CREATE)?;
+
+    let response = backend
+        .inject_auth(state.client.post(&url))
         .json(&body)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {e}"))?;
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
     let status = response.status();
-    let body = response.text().await.unwrap_or_default();
+    let body_text = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        let error = if body.contains("failed to get oauth token") {
+        let error = if body_text.contains("failed to get oauth token") {
             "OAuth authentication failed or was not completed".to_string()
-        } else if body.contains("bind: address already in use") {
-            format!("Port {} already in use", ENGINE_STATE.get_oauth().1)
+        } else if body_text.contains("bind: address already in use") {
+            "Port already in use".to_string()
         } else {
-            format!("HTTP {status}: {body}")
+            crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body_text)
         };
 
         log_operation(
@@ -216,9 +225,8 @@ pub async fn create_remote(
             Some(name.clone()),
             Some("New remote creation".to_string()),
             "Failed to create remote".to_string(),
-            Some(json!({"response": body})),
+            Some(json!({"response": body_text})),
         );
-
         return Err(error);
     }
 
@@ -230,7 +238,7 @@ pub async fn create_remote(
         None,
     );
 
-    app.emit(REMOTE_PRESENCE_CHANGED, &name)
+    app.emit(REMOTE_CACHE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     Ok(())
@@ -242,15 +250,15 @@ pub async fn update_remote(
     app: AppHandle,
     name: String,
     parameters: HashMap<String, Value>,
-    state: State<'_, RcloneState>,
 ) -> Result<(), String> {
+    let state = app.state::<RcloneState>();
     let remote_type = parameters
         .get("type")
         .and_then(|v| v.as_str())
         .ok_or("Missing remote type")?;
 
     // Enhanced logging with parameter values
-    let params_obj = redact_sensitive_values(&parameters, &state.restrict_mode);
+    let params_obj = redact_sensitive_values(&parameters, &app);
 
     log_operation(
         LogLevel::Info,
@@ -267,31 +275,30 @@ pub async fn update_remote(
         .await
         .map_err(|e| e.to_string())?;
 
-    let url = EndpointHelper::build_url(
-        &format!("http://127.0.0.1:{}", ENGINE_STATE.get_oauth().1),
-        config::UPDATE,
-    );
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+
+    let url = crate::rclone::commands::common::get_config_url(&backend, config::UPDATE)?;
     let body = json!({ "name": name, "parameters": parameters });
 
-    let response = state
-        .client
-        .post(&url)
+    let response = backend
+        .inject_auth(state.client.post(&url))
         .json(&body)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {e}"))?;
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
     let status = response.status();
-    let body = response.text().await.unwrap_or_default();
+    let body_text = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        let error = format!("HTTP {status}: {body}");
+        let error = crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body_text);
         log_operation(
             LogLevel::Error,
             Some(name.clone()),
             Some("Remote update".to_string()),
             "Failed to update remote".to_string(),
-            Some(json!({"response": body})),
+            Some(json!({"response": body_text})),
         );
         return Err(error);
     }
@@ -304,8 +311,10 @@ pub async fn update_remote(
         None,
     );
 
-    app.emit(REMOTE_PRESENCE_CHANGED, &name)
+    app.emit(REMOTE_CACHE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
+
+    let _ = get_fscache_entries(app).await;
 
     Ok(())
 }
@@ -314,31 +323,27 @@ pub async fn update_remote(
 pub async fn delete_remote(
     app: AppHandle,
     name: String,
-    state: State<'_, RcloneState>,
     cache: State<'_, ScheduledTasksCache>,
     scheduler: State<'_, CronScheduler>,
 ) -> Result<(), String> {
+    let state = app.state::<RcloneState>();
     info!("🗑️ Deleting remote: {name}");
 
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::DELETE);
-
-    let response = state
-        .client
-        .post(&url)
-        .query(&[("name", &name)])
-        .send()
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let _ = backend
+        .post_json(&state.client, config::DELETE, Some(&json!({"name": name})))
         .await
-        .map_err(|e| format!("Request failed: {e}"))?;
+        .map_err(|e| {
+            let error = format!("Failed to delete remote: {e}");
+            error!("❌ Failed to delete remote: {error}");
+            error
+        })?;
 
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-    if !status.is_success() {
-        let error = format!("HTTP {status}: {body}");
-        error!("❌ Failed to delete remote: {error}");
-        return Err(error);
-    }
-
-    match cache.remove_tasks_for_remote(&name, scheduler).await {
+    match cache
+        .remove_tasks_for_remote(&backend.name, &name, scheduler, Some(&app))
+        .await
+    {
         Ok(removed_ids) => {
             if !removed_ids.is_empty() {
                 info!(
@@ -357,11 +362,14 @@ pub async fn delete_remote(
     }
 
     // 1. The standard presence changed event
-    app.emit(REMOTE_PRESENCE_CHANGED, &name)
+    app.emit(REMOTE_CACHE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     let log_cache = app.state::<LogCache>();
     log_cache.clear_for_remote(&name).await;
+
+    // Clear filesystem cache to ensure new settings take effect immediately
+    let _ = get_fscache_entries(app).await;
 
     info!("✅ Remote {name} deleted successfully");
     Ok(())

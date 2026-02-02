@@ -1,4 +1,5 @@
 import { Component, Input, Output, EventEmitter, HostListener, OnInit } from '@angular/core';
+import { TranslateModule } from '@ngx-translate/core';
 
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,7 +10,13 @@ import { PathDisplayConfig } from '../../types';
 @Component({
   selector: 'app-path-display',
   standalone: true,
-  imports: [MatIconModule, MatButtonModule, MatProgressSpinnerModule, MatTooltipModule],
+  imports: [
+    MatIconModule,
+    MatButtonModule,
+    MatProgressSpinnerModule,
+    MatTooltipModule,
+    TranslateModule,
+  ],
   styleUrls: ['./path-display.component.scss'],
   template: `
     <div class="path-section">
@@ -20,7 +27,7 @@ import { PathDisplayConfig } from '../../types';
               matIconButton
               class="folder-button"
               (click)="onOpenPath(config.source)"
-              matTooltip="Open in file explorer"
+              [matTooltip]="'detailShared.pathDisplay.openInExplorer' | translate"
             >
               <mat-icon svgIcon="folder"></mat-icon>
             </button>
@@ -29,7 +36,9 @@ import { PathDisplayConfig } from '../../types';
           }
         </div>
         <div class="path-info" [matTooltip]="config.source">
-          <div class="path-label">{{ config.sourceLabel || 'Source' }}</div>
+          <div class="path-label">
+            {{ config.sourceLabel || ('detailShared.pathDisplay.source' | translate) }}
+          </div>
           <div class="path-value">{{ config.source }}</div>
         </div>
       </div>
@@ -47,10 +56,10 @@ import { PathDisplayConfig } from '../../types';
               [class.inactive]="!config.isDestinationActive"
               [disabled]="config.actionInProgress === 'open' || !config.isDestinationActive"
               (click)="onOpenPath(config.destination)"
-              matTooltip="Open in file explorer"
+              [matTooltip]="'detailShared.pathDisplay.openInExplorer' | translate"
             >
               @if (config.actionInProgress === 'open') {
-                <mat-spinner diameter="20"></mat-spinner>
+                <mat-spinner diameter="24"></mat-spinner>
               } @else {
                 <mat-icon svgIcon="folder"></mat-icon>
               }
@@ -60,7 +69,9 @@ import { PathDisplayConfig } from '../../types';
           }
         </div>
         <div class="path-info" [matTooltip]="config.destination">
-          <div class="path-label">{{ config.destinationLabel || 'Destination' }}</div>
+          <div class="path-label">
+            {{ config.destinationLabel || ('detailShared.pathDisplay.destination' | translate) }}
+          </div>
           <div class="path-value">{{ config.destination }}</div>
         </div>
       </div>

@@ -2,7 +2,7 @@ use crate::core::scheduler::engine::{CronScheduler, get_next_run, validate_cron_
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 use crate::utils::types::scheduled_task::{CronValidationResponse, ScheduledTask, TaskStatus};
 use log::{error, info, warn};
-use tauri::State;
+use tauri::{AppHandle, State};
 
 /// Toggle task enabled/disabled
 #[tauri::command]
@@ -10,10 +10,11 @@ pub async fn toggle_scheduled_task(
     cache: State<'_, ScheduledTasksCache>,
     scheduler: State<'_, CronScheduler>,
     task_id: String,
+    app: AppHandle,
 ) -> Result<ScheduledTask, String> {
     info!("🔄 Toggling scheduled task: {}", task_id);
 
-    let task = cache.toggle_task_status(&task_id).await?;
+    let task = cache.toggle_task_status(&task_id, Some(&app)).await?;
 
     if let Err(e) = scheduler.reschedule_task(&task, cache).await {
         error!("⚠️  Failed to reload tasks after toggle: {}", e);
@@ -75,6 +76,7 @@ pub async fn reload_scheduled_tasks(
 pub async fn clear_all_scheduled_tasks(
     cache: State<'_, ScheduledTasksCache>,
     scheduler: State<'_, CronScheduler>,
+    app: AppHandle,
 ) -> Result<(), String> {
     info!("⚠️  Clearing all scheduled tasks");
 
@@ -89,7 +91,7 @@ pub async fn clear_all_scheduled_tasks(
         }
     }
 
-    cache.clear_all_tasks().await?;
+    cache.clear_all_tasks(Some(&app)).await?;
 
     info!("✅ All scheduled tasks cleared");
     Ok(())

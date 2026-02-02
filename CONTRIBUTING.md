@@ -12,6 +12,7 @@ Thank you for your interest in contributing to RClone Manager! We appreciate con
   - [Suggesting Features](#suggesting-features)
   - [Contributing Code](#contributing-code)
   - [Improving Documentation](#improving-documentation)
+  - [Adding Translations](#adding-translations)
 - [Development Setup](#development-setup)
   - [Prerequisites](#prerequisites)
   - [Setting Up the Project](#setting-up-the-project)
@@ -72,6 +73,130 @@ Documentation improvements are always welcome! This includes:
 - Adding examples or tutorials
 - Updating the [Wiki](https://github.com/Zarestia-Dev/rclone-manager/wiki)
 - Improving code comments
+
+### Adding Translations
+
+We use BCP-47 language tags (e.g., `en-US`, `tr-TR`, `de-DE`) for internationalization.
+
+> [!IMPORTANT]
+> **We currently do not use any automated translation provider** (like Crowdin, Transifex, etc.).
+> All translations must be submitted manually via **Pull Requests**.
+
+#### Steps to Add a New Language
+
+1. **Create the translation directory**:
+
+   ```bash
+   mkdir -p src/assets/i18n/YOUR-LANG
+   ```
+
+2. **Copy base translation files**:
+
+   ```bash
+   cp -r src/assets/i18n/en-US/* src/assets/i18n/YOUR-LANG/
+   ```
+
+3. **Update the backend schema** (`src-tauri/src/core/settings/schema.rs`):
+
+   Add your language to `SUPPORTED_LANGUAGES` and the language options:
+
+   ```rust
+   // Add your BCP-47 code here
+   const SUPPORTED_LANGUAGES: &[&str] = &["en-US", "tr-TR", "de-DE"];
+
+   // Add your language option (use native language name)
+   options(
+       ("en-US", "English (US)"),
+       ("tr-TR", "Türkçe (Türkiye)"),
+       ("de-DE", "Deutsch (Deutschland)")  // ← New language
+   )
+   ```
+
+4. **Translate the JSON files**:
+
+   Translate all string values in the files under `src/assets/i18n/YOUR-LANG/`.
+   - `main.json`: General UI strings.
+   - `rclone.json`: Rclone flag names and help texts.
+
+   Keep the JSON keys unchanged.
+
+5. **Test your translation**:
+   ```bash
+   npm run tauri dev
+   ```
+   Then change the language in Settings → General → Language.
+
+#### Translation Guidelines
+
+- **Use native language names** for the language selector (e.g., "Deutsch" not "German")
+- **Keep placeholders intact** — Don't translate `{{variable}}` placeholders
+- **Maintain JSON structure** — Only translate string values, not keys
+- **Test special characters** — Ensure UTF-8 encoding works correctly
+- **Use formal/informal consistently** — Choose one register and stick to it
+
+#### README Translation (Optional but Appreciated!)
+
+If you'd like to go the extra mile, you can also translate the README:
+
+1. Copy `README.md` to `README.YOUR-LANG.md` (e.g., `README.de-DE.md`)
+2. Translate the content (keep badges and links working)
+3. Add your language to the language selector at the top of all README files:
+   ```html
+   <p align="center">
+     <a href="README.md">English</a> • <a href="README.tr-TR.md">Türkçe</a> •
+     <a href="README.de-DE.md">Deutsch</a>
+     <!-- New -->
+   </p>
+   ```
+
+#### BCP-47 Language Codes
+
+Common language codes:
+| Code | Language |
+|------|----------|
+| `en-US` | English (US) |
+| `tr-TR` | Turkish (Turkey) |
+| `de-DE` | German (Germany) |
+| `fr-FR` | French (France) |
+| `zh-CN` | Chinese (Simplified) |
+
+---
+
+### Managing Rclone Flags
+
+The Rclone flags (options) are stored in `src/assets/i18n/{lang}/rclone.json`. These are used to provide translated titles and help text for Rclone's various options.
+
+#### Updating Flag Definitions
+
+To update the flag definitions from a running Rclone instance:
+
+1. **Start the app in dev mode**:
+
+   ```bash
+   npm run tauri dev
+   ```
+
+2. **Find the RC port**:
+   Check the console logs or `ps aux | grep rclone` for the `--rc-addr` port (e.g., `51900`).
+
+3. **Fetch new definitions**:
+
+   ```bash
+   curl -X POST http://127.0.0.1:PORT/options/info -d "{}" -o flags.json
+   ```
+
+4. **Process and Update**:
+   Extract the `Name` and `Help` fields and update the `rclone.json` files. Maintain the flat structure:
+   ```json
+   {
+     "options": {
+       "flag_name": {
+         "title": "Title",
+         "help": "Description"
+       }
+     }
+   }
+   ```
 
 ---
 

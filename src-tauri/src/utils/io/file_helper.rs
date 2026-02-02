@@ -1,9 +1,14 @@
+#[cfg(not(feature = "web-server"))]
 use log::{debug, error};
+#[cfg(not(feature = "web-server"))]
 use tauri::{AppHandle, Window, command};
+#[cfg(all(desktop, not(feature = "web-server")))]
 use tauri_plugin_dialog::DialogExt;
+#[cfg(not(feature = "web-server"))]
 use tauri_plugin_opener::OpenerExt;
 
 #[command]
+#[cfg(all(desktop, not(feature = "web-server")))]
 pub async fn get_folder_location(
     app: AppHandle,
     require_empty: bool,
@@ -39,7 +44,7 @@ pub async fn get_folder_location(
             && path.parent().is_none()
         {
             debug!("Selected path is a drive root, which is not allowed for mounting");
-            return Err("Cannot select a drive root (e.g., D:\\) as a mount point. Please select or create a subfolder.".into());
+            return Err(crate::localized_error!("backendErrors.file.driveRoot"));
         }
     }
 
@@ -50,7 +55,9 @@ pub async fn get_folder_location(
         // Check if folder exists and is empty
         match tokio::fs::read_dir(path).await {
             Ok(mut entries) => match entries.next_entry().await {
-                Ok(Some(_)) => return Err("Selected folder is not empty".into()),
+                Ok(Some(_)) => {
+                    return Err(crate::localized_error!("backendErrors.file.folderNotEmpty"));
+                }
                 Ok(_) => (), // Folder is empty
                 Err(e) => {
                     error!("Error reading directory: {e}");
@@ -78,13 +85,26 @@ pub async fn get_folder_location(
     Ok(Some(folder))
 }
 
+/// Folder picker is not available on mobile
+#[command]
+#[cfg(not(desktop))]
+pub async fn get_folder_location(
+    _app: AppHandle,
+    _require_empty: bool,
+) -> Result<Option<String>, String> {
+    Err(crate::localized_error!(
+        "backendErrors.file.pickerUnavailable"
+    ))
+}
+
+#[cfg(not(feature = "web-server"))]
 #[command]
 pub async fn open_in_files(
     app: tauri::AppHandle,
     path: std::path::PathBuf,
 ) -> Result<String, String> {
     if path.as_os_str().is_empty() {
-        return Err("Invalid path: Path cannot be empty.".to_string());
+        return Err(crate::localized_error!("backendErrors.file.invalidPath"));
     }
 
     if !path.exists() {
@@ -102,7 +122,9 @@ pub async fn open_in_files(
 }
 
 #[command]
+#[cfg(all(desktop, not(feature = "web-server")))]
 pub async fn get_file_location(window: Window) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
     debug!("Opening file picker dialog...");
 
     let file_location = window
@@ -114,4 +136,12 @@ pub async fn get_file_location(window: Window) -> Result<Option<String>, String>
     debug!("File location: {file_location:?}");
 
     Ok(file_location)
+}
+
+#[command]
+#[cfg(not(desktop))]
+pub async fn get_file_location(_window: Window) -> Result<Option<String>, String> {
+    Err(crate::localized_error!(
+        "backendErrors.file.filePickerUnavailable"
+    ))
 }

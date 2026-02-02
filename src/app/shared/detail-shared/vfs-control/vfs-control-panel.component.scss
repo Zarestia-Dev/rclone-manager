@@ -1,5 +1,3 @@
-@use "../../../styles/_shared_components";
-
 .loading-state {
   padding: 32px 16px;
   text-align: center;
@@ -17,8 +15,7 @@
   justify-content: center;
   padding: 32px;
   gap: 16px;
-  background: var(--app-background);
-  border: 1px solid var(--border-color);
+  background: var(--window-bg-color);
   border-radius: 8px;
   margin-bottom: 20px;
   color: rgba(0, 0, 0, 0.54);
@@ -46,7 +43,7 @@ mat-form-field {
   gap: var(--space-md);
   padding: var(--space-md);
   background: rgba(var(--orange-rgb), 0.1);
-  border: 1px solid rgba(var(--orange-rgb), 0.3);
+  box-shadow: 0 0 0 1px var(--card-shade-color);
   border-radius: var(--card-border-radius);
   margin-bottom: var(--space-md);
 
@@ -67,11 +64,11 @@ mat-form-field {
     p {
       margin: 0 0 var(--space-sm) 0;
       font-size: var(--font-size-md);
-      color: var(--app-text-color);
+      color: var(--window-fg-color);
       opacity: 0.9;
 
       code {
-        background: rgba(var(--app-text-color-rgb), 0.1);
+        background: rgba(var(--window-fg-color-rgb), 0.1);
         padding: 2px 6px;
         border-radius: 4px;
         font-family: monospace;
@@ -95,9 +92,9 @@ mat-form-field {
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 12px;
   padding: 16px;
-  background: var(--app-background);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  background: var(--window-bg-color);
+  box-shadow: var(--box-shadow);
+  border-radius: var(--card-border-radius);
   margin-bottom: 20px;
 
   .stat-item {
@@ -127,17 +124,31 @@ mat-form-field {
 }
 
 .queue-section,
-.cache-info-section {
-  border: 1px solid var(--border-color);
+.cache-info-section,
+.advanced-config-section {
   border-radius: 8px;
   overflow: hidden;
   margin-bottom: 20px;
-  background: var(--app-background);
+  background: var(--window-bg-color);
 
   .section-header {
-    background: rgba(0, 0, 0, 0.03);
+    background: var(--hover-bg-color);
     padding: 8px 16px;
     border-bottom: 1px solid var(--border-color);
+
+    &.clickable {
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.2s;
+
+      &:hover {
+        background: var(--card-shade-color);
+      }
+
+      mat-icon:first-child {
+        transition: transform 0.3s ease;
+      }
+    }
 
     h3 {
       margin: 0;
@@ -168,7 +179,7 @@ mat-form-field {
 
       td.mat-cell {
         padding: 0 8px;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        border-bottom: 1px solid var(--hover-bg-color);
         font-size: 0.85rem;
       }
 
@@ -185,7 +196,7 @@ mat-form-field {
         min-width: 120px;
         .size-badge {
           font-family: monospace;
-          background: rgba(0, 0, 0, 0.05);
+          background: var(--hover-bg-color);
           padding: 2px 6px;
           border-radius: 4px;
           font-size: 0.75rem;
@@ -194,7 +205,7 @@ mat-form-field {
 
       td.mat-cell .size-badge {
         font-family: monospace;
-        background: rgba(0, 0, 0, 0.05);
+        background: var(--hover-bg-color);
         padding: 2px 6px;
         border-radius: 4px;
         font-size: 0.8rem;
@@ -234,7 +245,7 @@ mat-form-field {
   .queue-item {
     .size-badge {
       font-family: monospace;
-      background: rgba(0, 0, 0, 0.05);
+      background: var(--hover-bg-color);
       padding: 2px 6px;
       border-radius: 4px;
       margin-right: 8px;
@@ -268,7 +279,7 @@ mat-form-field {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          background: rgba(0, 0, 0, 0.05);
+          background: var(--hover-bg-color);
           padding: 4px 8px;
           border-radius: 4px;
           font-size: var(--font-size-md);
@@ -277,7 +288,7 @@ mat-form-field {
         }
 
         .info-note {
-          color: var(--secondary-text-color);
+          color: var(--dim-color);
         }
       }
     }
@@ -345,5 +356,87 @@ mat-card-actions {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
+  }
+}
+
+// Advanced Configuration Section
+.advanced-config-section {
+  .advanced-config-content {
+    padding: 16px;
+    overflow: hidden;
+  }
+
+  .config-search {
+    margin-bottom: 16px;
+
+    mat-form-field {
+      width: 100%;
+    }
+  }
+
+  .config-group {
+    margin-bottom: 24px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    .group-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 12px 0;
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      opacity: 0.8;
+      color: var(--primary-color);
+
+      mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+    }
+
+    .config-table {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      background: var(--border-color);
+      border-radius: 6px;
+      overflow: hidden;
+
+      .config-row {
+        display: grid;
+        grid-template-columns: 1fr 1.5fr;
+        gap: 12px;
+        padding: 10px 12px;
+        transition: background-color 0.2s;
+        background: var(--view-bg-color);
+
+        &:hover {
+          background: var(--hover-bg-color);
+        }
+
+        .config-key {
+          font-weight: 500;
+          font-size: 0.875rem;
+          color: var(--window-fg-color);
+          word-break: break-word;
+          opacity: 0.9;
+        }
+
+        .config-value {
+          font-family: "Consolas", "Monaco", "Courier New", monospace;
+          font-size: 0.8125rem;
+          color: var(--accent-color);
+          word-break: break-word;
+          display: flex;
+          align-items: center;
+        }
+      }
+    }
   }
 }

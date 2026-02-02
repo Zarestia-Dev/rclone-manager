@@ -41,12 +41,9 @@ export class OnboardingStateService {
       const completed =
         (await this.appSettingsService.getSettingValue<boolean>('core.completed_onboarding')) ||
         false;
-      console.log('Loaded onboarding completion status from settings:', completed);
 
       this._isCompleted$.next(completed);
       this._isInitialized$.next(true);
-
-      console.log('OnboardingStateService initialized, completed:', completed);
     } catch (error) {
       console.error('Error initializing onboarding state:', error);
       this._isCompleted$.next(false);
@@ -92,7 +89,6 @@ export class OnboardingStateService {
     try {
       await this.appSettingsService.saveSetting('core', 'completed_onboarding', true);
       this._isCompleted$.next(true);
-      console.log('Onboarding marked as completed');
     } catch (error) {
       console.error('Failed to complete onboarding:', error);
       throw error;
@@ -107,7 +103,6 @@ export class OnboardingStateService {
     try {
       await this.appSettingsService.saveSetting('core', 'completed_onboarding', false);
       this._isCompleted$.next(false);
-      console.log('Onboarding reset');
     } catch (error) {
       console.error('Failed to reset onboarding:', error);
       throw error;

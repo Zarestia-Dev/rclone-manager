@@ -5,6 +5,7 @@ import {
   ChangeDetectionStrategy,
   computed,
   HostListener,
+  OnInit,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
@@ -13,35 +14,39 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { CommonModule } from '@angular/common';
-
-// Services
-import {
-  BackupRestoreService,
-  BackupAnalysis,
-} from '../../../../services/settings/backup-restore.service';
+import { MatRadioModule } from '@angular/material/radio';
+import { MatSelectModule } from '@angular/material/select';
+import { DatePipe, UpperCasePipe } from '@angular/common';
+import { BackupAnalysis, BackupRestoreService, ModalService } from '@app/services';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-restore-preview-modal',
   standalone: true,
   imports: [
-    CommonModule,
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
+    MatRadioModule,
+    MatSelectModule,
     FormsModule,
+    DatePipe,
+    UpperCasePipe,
+    TranslateModule,
   ],
   templateUrl: './restore-preview-modal.component.html',
   styleUrls: ['./restore-preview-modal.component.scss', '../../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class RestorePreviewModalComponent {
+export class RestorePreviewModalComponent implements OnInit {
   // Injected Services
   private readonly dialogRef = inject(MatDialogRef<RestorePreviewModalComponent>);
   private readonly backupRestoreService = inject(BackupRestoreService);
+  private readonly translate = inject(TranslateService);
+  private readonly modalService = inject(ModalService);
   public readonly data = inject<{ backupPath: string; analysis: BackupAnalysis }>(MAT_DIALOG_DATA);
 
   // Signals
@@ -49,28 +54,66 @@ export class RestorePreviewModalComponent {
   readonly isVerifying = signal(false);
   readonly passwordError = signal<string | null>(null);
   readonly showPassword = signal(false);
+  readonly selectedProfile = signal<string | null>(null);
+  readonly restoreScope = signal<'all' | 'profile'>('all');
 
   // Data from injection
   readonly analysis: BackupAnalysis = this.data.analysis;
   readonly backupPath: string = this.data.backupPath;
 
+  ngOnInit(): void {
+    console.log('Restore Analysis:', this.analysis);
+  }
+
   // Computed Signals
   readonly isEncrypted = computed(() => this.analysis.isEncrypted);
   readonly hasContents = computed(() => !!this.analysis.contents);
-  readonly hasMetadata = computed(() => !!this.analysis.metadata);
+  readonly hasUserNote = computed(() => !!this.analysis.userNote);
+  readonly profiles = computed(() => this.analysis.contents?.profiles || []);
+  readonly isLegacy = computed(() => this.analysis.isLegacy === true);
+
+  /**
+   * Check if we should show remote details (only for multiple remotes)
+   */
+  readonly shouldShowRemoteDetails = computed(() => {
+    const count = this.analysis.contents?.remoteCount || 0;
+    return count > 1;
+  });
+
+  /**
+   * Check if we should show count badge
+   */
+  readonly shouldShowRemoteCount = computed(() => {
+    const count = this.analysis.contents?.remoteCount || 0;
+    return count > 1;
+  });
+
+  /**
+   * Toggles restore scope
+   */
+  toggleRestoreScope(scope: 'all' | 'profile'): void {
+    this.restoreScope.set(scope);
+    if (scope === 'all') {
+      this.selectedProfile.set(null);
+    } else if (this.profiles().length > 0 && !this.selectedProfile()) {
+      this.selectedProfile.set(this.profiles()[0]);
+    }
+  }
 
   /**
    * Gets the total count of items in the backup
    */
   getItemCount(): number {
     let count = 0;
+    // console.log(this.analysis);
+
     if (!this.analysis.contents) return count;
 
     const contents = this.analysis.contents;
     if (contents.settings) count++;
     if (contents.backendConfig) count++;
     if (contents.rcloneConfig) count++;
-    if (contents.remoteConfigs) count += contents.remoteConfigs.count;
+    if (contents.remoteCount) count += contents.remoteCount;
 
     return count;
   }
@@ -98,19 +141,19 @@ export class RestorePreviewModalComponent {
     if (this.isEncrypted()) {
       const rawPassword = this.password();
       if (!rawPassword) {
-        this.passwordError.set('Password is required');
+        this.passwordError.set(this.translate.instant('backup.restore.errors.passwordRequired'));
         return;
       }
 
       const trimmedPassword = rawPassword.trim();
       if (!trimmedPassword) {
-        this.passwordError.set('Password cannot be empty or whitespace');
+        this.passwordError.set(this.translate.instant('backup.restore.errors.passwordEmpty'));
         return;
       }
 
       // Check minimum password length (should match backend validation)
       if (trimmedPassword.length < 4) {
-        this.passwordError.set('Password must be at least 4 characters');
+        this.passwordError.set(this.translate.instant('backup.restore.errors.passwordLength'));
         return;
       }
     }
@@ -119,11 +162,13 @@ export class RestorePreviewModalComponent {
     this.passwordError.set(null);
 
     const password = this.isEncrypted() ? this.password().trim() : null;
+    const restoreProfile =
+      this.restoreScope() === 'profile' ? (this.selectedProfile() ?? undefined) : undefined;
 
     try {
-      await this.backupRestoreService.restoreSettings(this.backupPath, password);
+      await this.backupRestoreService.restoreSettings(this.backupPath, password, restoreProfile);
       // Close modal with success
-      this.dialogRef.close(true);
+      this.modalService.animatedClose(this.dialogRef, true);
     } catch (error: any) {
       this.handleRestoreError(error);
     } finally {
@@ -139,18 +184,20 @@ export class RestorePreviewModalComponent {
 
     // Check for specific error types
     if (errorMsg.includes('wrong password')) {
-      this.passwordError.set('Incorrect password. Please try again.');
+      this.passwordError.set(this.translate.instant('backup.restore.errors.wrongPassword'));
     } else if (errorMsg.includes('integrity check failed')) {
-      this.passwordError.set('Backup file is corrupted or has been tampered with.');
+      this.passwordError.set(this.translate.instant('backup.restore.errors.integrityFailed'));
     } else if (errorMsg.includes('checksum') || errorMsg.includes('hash')) {
-      this.passwordError.set('File verification failed. The backup may be corrupted.');
+      this.passwordError.set(this.translate.instant('backup.restore.errors.verificationFailed'));
     } else if (errorMsg.includes('password') && errorMsg.includes('required')) {
-      this.passwordError.set('This backup requires a password to decrypt.');
+      this.passwordError.set(this.translate.instant('backup.restore.errors.requiresPassword'));
     } else if (errorMsg.includes('decrypt') || errorMsg.includes('encryption')) {
-      this.passwordError.set('Failed to decrypt backup. Check your password.');
+      this.passwordError.set(this.translate.instant('backup.restore.errors.decryptFailed'));
     } else {
       // Generic error
-      this.passwordError.set('An error occurred during restore: ' + String(error));
+      this.passwordError.set(
+        this.translate.instant('backup.restore.errors.generic', { error: String(error) })
+      );
     }
   }
 
@@ -160,7 +207,7 @@ export class RestorePreviewModalComponent {
   @HostListener('document:keydown.escape')
   close(): void {
     if (!this.isVerifying()) {
-      this.dialogRef.close(false);
+      this.modalService.animatedClose(this.dialogRef, false);
     }
   }
 }

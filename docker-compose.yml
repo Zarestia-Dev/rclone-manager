@@ -27,6 +27,7 @@ services:
     restart: unless-stopped
     ports:
       - "8080:8080"
+      - "53682:53682" # Rclone OAuth Redirect. When you use authentication, you need to open this port.
     volumes:
       # Rclone configuration directory
       - rclone-config:/home/rclone-manager/.config/rclone
@@ -68,6 +69,7 @@ services:
     restart: unless-stopped
     ports:
       - "8080:8080"
+      - "53682:53682" # Rclone OAuth Redirect. When you use authentication, you need to open this port.
     volumes:
       - rclone-config:/home/rclone-manager/.config/rclone
       - rclone-manager-config:/home/rclone-manager/.local/share/com.rclone.manager.headless
@@ -106,6 +108,7 @@ services:
     restart: unless-stopped
     ports:
       - "8443:8443"
+      - "53682:53682" # Rclone OAuth Redirect. When you use authentication, you need to open this port.
     volumes:
       - rclone-config:/home/rclone-manager/.config/rclone
       - rclone-manager-config:/home/rclone-manager/.local/share/com.rclone.manager.headless

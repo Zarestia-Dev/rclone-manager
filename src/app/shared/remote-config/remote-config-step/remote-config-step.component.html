@@ -1,86 +1,128 @@
 <form [formGroup]="form()" class="remote-form">
-  <cdk-virtual-scroll-viewport
-    [itemSize]="20"
-    [style.height.px]="700"
-    class="virtual-scroll-viewport"
-  >
+  <cdk-virtual-scroll-viewport [itemSize]="20" class="virtual-scroll-viewport">
     <div class="form-container">
       <ng-container *cdkVirtualFor="let field of formFields(); trackBy: trackByField">
         @if (field.type === 'basic-info') {
-          <mat-form-field appearance="fill">
-            <mat-label>Remote Name</mat-label>
-            <input
-              matInput
-              formControlName="name"
-              id="remoteName"
-              placeholder="e.g., my-cloud-storage"
-            />
-            @if (form().get('name')?.hasError('required')) {
-              <mat-error> Remote name is required </mat-error>
-            }
-            @if (form().get('name')?.hasError('invalidChars')) {
-              <mat-error> Name contains invalid characters </mat-error>
-            }
-            @if (form().get('name')?.hasError('invalidStart')) {
-              <mat-error> Name cannot start with a dash or space </mat-error>
-            }
-            @if (form().get('name')?.hasError('invalidEnd')) {
-              <mat-error> Name cannot end with a space </mat-error>
-            }
-            @if (form().get('name')?.hasError('nameTaken')) {
-              <mat-error> A remote with this name already exists </mat-error>
-            }
-          </mat-form-field>
+          <div class="section-group">
+            <mat-form-field appearance="fill" class="remote-type-field">
+              <mat-label>{{ 'wizards.remoteConfig.remoteType' | translate }}</mat-label>
+              <mat-icon
+                matPrefix
+                [svgIcon]="iconService.getIconName(form().get('type')?.value)"
+                class="field-icon"
+              ></mat-icon>
+              <input
+                type="text"
+                matInput
+                [formControl]="remoteSearchCtrl"
+                [matAutocomplete]="auto"
+                [placeholder]="'wizards.remoteConfig.remoteTypePlaceholder' | translate"
+              />
+              <mat-autocomplete
+                #auto="matAutocomplete"
+                [displayWith]="displayRemote"
+                (optionSelected)="onTypeSelected($event.option.value)"
+                class="remote-type-autocomplete"
+              >
+                @for (remote of filteredRemotes(); track remote.value) {
+                  <mat-option [value]="remote.value" class="remote-option">
+                    <mat-icon [svgIcon]="iconService.getIconName(remote.value)"></mat-icon>
+                    <div class="option-content">
+                      <span class="option-label">{{ remote.label }}</span>
+                      <small class="option-description">{{ remote.value }}</small>
+                    </div>
+                  </mat-option>
+                }
+                @if (filteredRemotes().length === 0) {
+                  <mat-option disabled>{{
+                    'wizards.remoteConfig.noMatchingTypes' | translate
+                  }}</mat-option>
+                }
+              </mat-autocomplete>
+            </mat-form-field>
+          </div>
 
-          <mat-form-field appearance="fill">
-            <mat-label>Remote Type</mat-label>
-            <input
-              type="text"
-              matInput
-              [formControl]="remoteSearchCtrl"
-              [matAutocomplete]="auto"
-              placeholder="e.g., Google Drive"
-            />
-            <mat-autocomplete
-              #auto="matAutocomplete"
-              [displayWith]="displayRemote.bind(this)"
-              (optionSelected)="onTypeSelected($event.option.value)"
-            >
-              @for (remote of filteredRemotes(); track remote.value) {
-                <mat-option [value]="remote.value">
-                  <div class="option-content">
-                    <span class="option-label">{{ remote.label }}</span>
-                    <small class="option-description">{{ remote.value }}</small>
-                  </div>
-                </mat-option>
-              }
-              @if (filteredRemotes().length === 0) {
-                <mat-option disabled>No matching remote types</mat-option>
-              }
-            </mat-autocomplete>
-          </mat-form-field>
+          <div class="section-group config-section">
+            <div class="form-row">
+              <mat-form-field appearance="fill">
+                <mat-label>{{ 'wizards.remoteConfig.remoteName' | translate }}</mat-label>
+                <mat-icon matPrefix svgIcon="cloud" class="field-icon"></mat-icon>
+                <input
+                  matInput
+                  formControlName="name"
+                  id="remoteName"
+                  [placeholder]="'wizards.remoteConfig.remoteNamePlaceholder' | translate"
+                />
+                @if (form().get('name')?.hasError('required')) {
+                  <mat-error>
+                    {{ 'wizards.remoteConfig.remoteNameRequired' | translate }}
+                  </mat-error>
+                }
+                @if (form().get('name')?.hasError('invalidChars')) {
+                  <mat-error> {{ 'wizards.remoteConfig.invalidChars' | translate }} </mat-error>
+                }
+                @if (form().get('name')?.hasError('invalidStart')) {
+                  <mat-error> {{ 'wizards.remoteConfig.invalidStart' | translate }} </mat-error>
+                }
+                @if (form().get('name')?.hasError('invalidEnd')) {
+                  <mat-error> {{ 'wizards.remoteConfig.invalidEnd' | translate }} </mat-error>
+                }
+                @if (form().get('name')?.hasError('nameTaken')) {
+                  <mat-error> {{ 'wizards.remoteConfig.nameTaken' | translate }} </mat-error>
+                }
+              </mat-form-field>
+            </div>
+
+            @if (showAdvancedToggle()) {
+              <div class="interactive-option">
+                <div class="option-info">
+                  <span class="option-title">{{
+                    'wizards.remoteConfig.showAdvanced' | translate
+                  }}</span>
+                  <p class="option-desc">
+                    {{ 'wizards.remoteConfig.showAdvancedDesc' | translate }}
+                  </p>
+                </div>
+                <mat-slide-toggle
+                  (change)="toggleAdvancedOptions()"
+                  [checked]="showAdvancedOptions()"
+                >
+                </mat-slide-toggle>
+              </div>
+            }
+
+            <div class="interactive-option">
+              <div class="option-info">
+                <span class="option-title">{{
+                  'wizards.remoteConfig.useInteractive' | translate
+                }}</span>
+                <p class="option-desc">
+                  {{ 'wizards.remoteConfig.useInteractiveDesc' | translate }}
+                </p>
+              </div>
+              <mat-slide-toggle (change)="toggleInteractiveMode()" [checked]="useInteractiveMode()">
+              </mat-slide-toggle>
+            </div>
+          </div>
         }
 
         @if (field.type === 'basic-info' && isLoading()) {
           <div class="loading-container">
             <mat-spinner diameter="30"></mat-spinner>
-            <span>Loading configuration options...</span>
+            <span>{{ 'wizards.remoteConfig.loadingOptions' | translate }}</span>
           </div>
-        }
-
-        @if (field.type === 'config-toggles') {
-          <mat-slide-toggle (change)="toggleAdvancedOptions()" [checked]="showAdvancedOptions()">
-            Show Advanced Options
-          </mat-slide-toggle>
-
-          <mat-slide-toggle (change)="toggleInteractiveMode()" [checked]="useInteractiveMode()">
-            Use Interactive Configuration
-          </mat-slide-toggle>
         }
 
         @if (field.type === 'provider-field' && providerField(); as pField) {
           <mat-form-field appearance="fill">
-            <mat-label>{{ pField.Help || 'Authentication Method' }}</mat-label>
+            <mat-label>{{
+              pField.Help || ('wizards.remoteConfig.authenticationMethod' | translate)
+            }}</mat-label>
+            <mat-icon
+              matPrefix
+              [svgIcon]="iconService.getIconName(form().get(pField.Name)?.value || 'hard-drive')"
+              class="field-icon"
+            ></mat-icon>
             <input
               type="text"
               matInput
@@ -90,11 +132,12 @@
             />
             <mat-autocomplete
               #providerAuto="matAutocomplete"
-              [displayWith]="displayProvider.bind(this)"
+              [displayWith]="displayProvider"
               (optionSelected)="onProviderSelected($event.option.value)"
             >
               @for (option of filteredProviders(); track option.Value) {
                 <mat-option [value]="option.Value">
+                  <mat-icon [svgIcon]="iconService.getIconName(option.Value)"></mat-icon>
                   <div class="option-content">
                     <span class="option-label">{{ option.Help }}</span>
                     <small class="option-description">{{ option.Value }}</small>
@@ -103,7 +146,7 @@
               }
             </mat-autocomplete>
             @if (form().get(pField.Name)?.hasError('required')) {
-              <mat-error>Provider is required</mat-error>
+              <mat-error>{{ 'wizards.remoteConfig.providerRequired' | translate }}</mat-error>
             }
           </mat-form-field>
         }
@@ -113,6 +156,7 @@
             <app-setting-control
               [option]="item"
               [formControlName]="item.Name"
+              [provider]="form().get('type')?.value"
               (valueChanged)="onFieldChanged(item.Name, $event)"
             ></app-setting-control>
           }
@@ -121,7 +165,7 @@
         @if (field.type === 'advanced-section') {
           <div class="advanced-section">
             <h3 class="section-heading">
-              Advanced Options
+              {{ 'wizards.remoteConfig.advancedOptions' | translate }}
               <span>{{ advancedFields().length }}</span>
             </h3>
 
@@ -129,6 +173,7 @@
               <app-setting-control
                 [option]="item"
                 [formControlName]="item.Name"
+                [provider]="form().get('type')?.value"
                 (valueChanged)="onFieldChanged(item.Name, $event)"
               ></app-setting-control>
             }

@@ -11,9 +11,10 @@ use std::{collections::HashMap, convert::Infallible};
 use tauri::Manager;
 use tokio::sync::broadcast;
 
+use crate::LogCache;
 use crate::core::lifecycle::shutdown::handle_shutdown;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
-use crate::utils::types::all_types::{LogCache, RcloneState, RemoteCache};
+use crate::utils::types::core::BandwidthLimitResponse;
 
 #[cfg(feature = "updater")]
 use crate::utils::app::updater::app_updates::{
@@ -24,8 +25,7 @@ pub async fn get_stats_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::queries::get_core_stats;
-    let rclone_state = state.app_handle.state::<RcloneState>();
-    let stats = get_core_stats(rclone_state)
+    let stats = get_core_stats(state.app_handle.clone())
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(stats)))
@@ -36,10 +36,9 @@ pub async fn get_core_stats_filtered_handler(
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::queries::stats::get_core_stats_filtered;
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
     let jobid = params.get("jobid").and_then(|s| s.parse::<u64>().ok());
     let group = params.get("group").cloned();
-    let value = get_core_stats_filtered(rclone_state, jobid, group)
+    let value = get_core_stats_filtered(state.app_handle.clone(), jobid, group)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(value)))
@@ -50,9 +49,8 @@ pub async fn get_completed_transfers_handler(
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::queries::stats::get_completed_transfers;
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
     let group = params.get("group").cloned();
-    let value = get_completed_transfers(rclone_state, group)
+    let value = get_completed_transfers(state.app_handle.clone(), group)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(value)))
@@ -62,8 +60,7 @@ pub async fn get_memory_stats_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::queries::get_memory_stats;
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let stats = get_memory_stats(rclone_state)
+    let stats = get_memory_stats(state.app_handle.clone())
         .await
         .map_err(anyhow::Error::msg)?;
     let json_stats = serde_json::to_value(stats)?;
@@ -72,10 +69,9 @@ pub async fn get_memory_stats_handler(
 
 pub async fn get_bandwidth_limit_handler(
     State(state): State<WebServerState>,
-) -> Result<Json<ApiResponse<crate::utils::types::all_types::BandwidthLimitResponse>>, AppError> {
+) -> Result<Json<ApiResponse<BandwidthLimitResponse>>, AppError> {
     use crate::rclone::queries::get_bandwidth_limit;
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let limit = get_bandwidth_limit(rclone_state)
+    let limit = get_bandwidth_limit(state.app_handle.clone())
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(limit)))
@@ -85,8 +81,7 @@ pub async fn get_rclone_info_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::queries::get_rclone_info;
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let info = get_rclone_info(rclone_state)
+    let info = get_rclone_info(state.app_handle.clone())
         .await
         .map_err(anyhow::Error::msg)?;
     let json_info = serde_json::to_value(info)?;
@@ -97,8 +92,7 @@ pub async fn get_rclone_pid_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::queries::get_rclone_pid;
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let pid = get_rclone_pid(rclone_state)
+    let pid = get_rclone_pid(state.app_handle.clone())
         .await
         .map_err(anyhow::Error::msg)?;
     let json_pid = serde_json::to_value(pid)?;
@@ -106,10 +100,12 @@ pub async fn get_rclone_pid_handler(
 }
 
 pub async fn get_rclone_rc_url_handler(
-    State(_state): State<WebServerState>,
+    State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
-    use crate::rclone::state::engine::get_rclone_rc_url;
-    let url = get_rclone_rc_url();
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = state.app_handle.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let url = backend.api_url();
     Ok(Json(ApiResponse::success(url)))
 }
 
@@ -124,9 +120,9 @@ pub async fn kill_process_by_pid_handler(
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::utils::process::process_manager::kill_process_by_pid;
     kill_process_by_pid(query.pid).map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(format!(
-        "Process {} killed successfully",
-        query.pid
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.system.processKilled",
+        "pid" => query.pid
     ))))
 }
 
@@ -190,8 +186,7 @@ pub async fn check_rclone_update_handler(
     Query(query): Query<CheckRcloneUpdateQuery>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::utils::rclone::updater::check_rclone_update;
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let result = check_rclone_update(state.app_handle.clone(), rclone_state, query.channel)
+    let result = check_rclone_update(state.app_handle.clone(), query.channel)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(result)))
@@ -207,8 +202,7 @@ pub async fn update_rclone_handler(
     Query(query): Query<UpdateRcloneQuery>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::utils::rclone::updater::update_rclone;
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
-    let result = update_rclone(rclone_state, state.app_handle.clone(), query.channel)
+    let result = update_rclone(state.app_handle.clone(), query.channel)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(result)))
@@ -218,8 +212,9 @@ pub async fn get_configs_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::state::cache::get_configs;
-    let cache = state.app_handle.state::<RemoteCache>();
-    let configs = get_configs(cache).await.map_err(anyhow::Error::msg)?;
+    let configs = get_configs(state.app_handle.clone())
+        .await
+        .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(configs)))
 }
 
@@ -230,7 +225,9 @@ pub async fn handle_shutdown_handler(
     tokio::spawn(async move {
         handle_shutdown(app_handle).await;
     });
-    Ok(Json(ApiResponse::success("Shutdown initiated".to_string())))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.system.shutdownInitiated"
+    ))))
 }
 
 pub async fn force_check_serves_handler(
@@ -240,9 +237,9 @@ pub async fn force_check_serves_handler(
     force_check_serves(state.app_handle.clone())
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Serves checked successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.system.servesChecked"
+    ))))
 }
 
 // Logs
@@ -274,9 +271,9 @@ pub async fn clear_remote_logs_handler(
     clear_remote_logs(log_cache, query.remote_name)
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Remote logs cleared successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.system.logsCleared"
+    ))))
 }
 
 // SSE
@@ -367,9 +364,9 @@ pub async fn install_update_handler(
     install_update(state.app_handle.clone(), pending_update, download_state)
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(
-        "Update installed successfully".to_string(),
-    )))
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.system.updateInstalled"
+    ))))
 }
 
 #[cfg(not(feature = "updater"))]
@@ -403,4 +400,50 @@ pub async fn get_build_type_handler(
     use crate::utils::app::platform::get_build_type;
     let build_type = get_build_type().map(|s| s.to_string());
     Ok(Json(ApiResponse::success(build_type)))
+}
+
+pub async fn quit_rclone_engine_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::rclone::commands::system::quit_rclone_engine;
+    quit_rclone_engine(state.app_handle.clone())
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.system.engineQuit"
+    ))))
+}
+
+pub async fn run_garbage_collector_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::rclone::commands::system::run_garbage_collector;
+    run_garbage_collector(state.app_handle.clone())
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.system.garbageCollectorRun"
+    ))))
+}
+
+pub async fn get_fscache_entries_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<usize>>, AppError> {
+    use crate::rclone::commands::system::get_fscache_entries;
+    let entries = get_fscache_entries(state.app_handle.clone())
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(entries)))
+}
+
+pub async fn clear_fscache_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::rclone::commands::system::clear_fscache;
+    clear_fscache(state.app_handle.clone())
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.system.fscacheCleared"
+    ))))
 }

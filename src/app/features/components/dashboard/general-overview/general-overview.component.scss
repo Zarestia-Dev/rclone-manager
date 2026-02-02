@@ -6,7 +6,7 @@
 
 @mixin status-container($bg-color, $border-color) {
   background-color: $bg-color;
-  border: 1px solid $border-color;
+  box-shadow: 0 0 0 1px $border-color;
 }
 
 // =============================================
@@ -14,36 +14,11 @@
 // =============================================
 
 .general-overview {
-  position: relative;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: var(--section-gap);
-  margin: 0 auto;
   padding: var(--panel-padding);
-
-  .overview-header {
-    text-align: center;
-    margin-bottom: var(--panel-padding);
-
-    .title-section {
-      @include flex-center;
-      gap: 16px;
-      margin-bottom: 16px;
-
-      .app-icon {
-        width: var(--icon-size-xl);
-        height: var(--icon-size-xl);
-      }
-
-      h2 {
-        font-size: clamp(20px, 4vw, 32px);
-        font-weight: 300;
-        margin: 0;
-        color: var(--app-text-color);
-        letter-spacing: -0.5px;
-      }
-    }
-  }
 
   .overview-content {
     gap: var(--panel-padding);
@@ -142,10 +117,9 @@
     margin-top: 16px;
 
     .job-progress-section {
-      background-color: rgba(var(--secondary-background), 0.02);
+      background-color: rgba(var(--view-bg-color), 0.02);
       border-radius: 8px;
       padding: 16px;
-      border: 1px solid rgba(var(--app-text-color), 0.05);
 
       .progress-header {
         display: flex;
@@ -206,7 +180,6 @@
       @include flex-center;
       gap: 12px;
       padding: 16px;
-      background-color: var(--surface-overlay);
       border-radius: 8px;
     }
   }
@@ -221,13 +194,13 @@
     @include flex-center;
     gap: 12px;
     padding: 24px;
-    color: var(--secondary-text-color);
+    color: var(--dim-color);
     text-align: center;
   }
 
   .tasks-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 16px;
   }
 
@@ -235,23 +208,16 @@
     position: relative;
     transition: var(--transition-standard);
     border-radius: var(--card-border-radius);
-    background: var(--app-background);
-    box-shadow: var(--shadow-light);
-    border: 1px solid var(--theme-border);
+    background: var(--window-bg-color);
+    box-shadow: var(--box-shadow);
     animation: fadeIn 0.6s ease-out;
-    will-change: transform, box-shadow;
 
     &:hover {
-      transform: translateY(-4px);
-      box-shadow: var(--shadow-elevated);
+      background: var(--hover-bg-color);
     }
 
     &.disabled {
-      opacity: 0.6;
-
-      &:hover {
-        transform: none;
-      }
+      filter: grayscale(1);
     }
 
     &.stopping {
@@ -308,7 +274,7 @@
           .task-name {
             font-weight: 600;
             font-size: 15px;
-            color: var(--app-text-color);
+            color: var(--window-fg-color);
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -316,7 +282,7 @@
 
           .task-remote-name {
             font-size: 12px;
-            color: var(--secondary-text-color);
+            color: var(--dim-color);
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -327,10 +293,9 @@
             border-radius: 10px;
             font-size: 10px;
             font-weight: 700;
-            text-transform: uppercase;
             letter-spacing: 0.5px;
 
-            @each $status, $color in ("enabled", primary-color), ("disabled", secondary-text-color),
+            @each $status, $color in ("enabled", primary-color), ("disabled", --dim-color),
               ("running", accent-color), ("failed", warn-color), ("stopping", orange)
             {
               &.#{$status} {
@@ -363,7 +328,7 @@
         align-items: center;
         justify-content: space-evenly;
         padding: var(--space-xs);
-        background: rgba(var(--secondary-text-color-rgb), 0.5);
+        background: rgba(var(--dim-color-rgb), 0.5);
         border-radius: 8px;
 
         .stat-item {
@@ -387,7 +352,7 @@
           .stat-value {
             font-size: 13px;
             font-weight: 600;
-            color: var(--app-text-color);
+            color: var(--window-fg-color);
           }
         }
       }
@@ -403,12 +368,12 @@
           font-size: 12px;
 
           .schedule-label {
-            color: var(--secondary-text-color);
+            color: var(--dim-color);
             font-weight: 500;
           }
 
           .schedule-value {
-            color: var(--app-text-color);
+            color: var(--window-fg-color);
             text-align: right;
           }
         }
@@ -419,9 +384,8 @@
         align-items: center;
         gap: 8px;
         padding: 8px 12px;
-        background: rgba(var(--secondary-text-color-rgb), 0.5);
+        background: rgba(var(--dim-color-rgb), 0.5);
         border-radius: 6px;
-        border: 1px solid var(--border-color);
 
         .cron-icon {
           width: 14px;
@@ -431,7 +395,7 @@
         .cron-expression {
           font-family: monospace;
           font-size: 11px;
-          color: var(--app-text-color);
+          color: var(--window-fg-color);
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -502,7 +466,7 @@
     @include flex-center;
     gap: 12px;
     padding: 24px;
-    color: var(--secondary-text-color);
+    color: var(--dim-color);
     text-align: center;
   }
 
@@ -521,11 +485,7 @@
   border-radius: var(--card-border-radius);
   border: 2px dashed transparent;
   padding: 0;
-  transition:
-    border-color 0.3s ease,
-    background-color 0.3s ease,
-    padding 0.3s ease,
-    margin 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 
   &.editing {
     border-color: rgba(var(--primary-color-rgb), 0.4);
@@ -540,10 +500,7 @@
   }
 
   .panel-content-wrapper {
-    transition:
-      opacity 0.3s ease,
-      filter 0.3s ease,
-      transform 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 
     &.panel-hidden-visual {
       opacity: 0.4;
@@ -558,18 +515,17 @@
   align-items: center;
   gap: 12px;
   padding: 10px 16px;
-  background: var(--secondary-background);
-  border: 1px solid var(--theme-border);
-  border-radius: 8px;
   margin-bottom: 12px;
-  box-shadow: var(--shadow-light);
+  background: var(--view-bg-color);
+  border-radius: 8px;
+  box-shadow: var(--shadow-gnome);
   overflow: hidden;
 
   .panel-label {
     font-weight: 600;
     font-size: 14px;
     flex: 1;
-    color: var(--app-text-color);
+    color: var(--window-fg-color);
   }
 
   .visibility-toggle {
@@ -594,8 +550,8 @@
 .cdk-drag-preview {
   box-sizing: border-box;
   border-radius: 16px;
-  box-shadow: var(--shadow-elevated);
-  background-color: var(--app-background);
+  box-shadow: var(--shadow-gnome);
+  background-color: var(--window-bg-color);
   padding: 0;
 
   .panel-edit-controls {
@@ -603,7 +559,7 @@
     margin: 0;
     border: none;
     box-shadow: none;
-    border-bottom: 1px solid var(--theme-border);
+    border-bottom: 1px solid var(--border-color);
   }
 
   .panel-content-wrapper {
@@ -613,7 +569,7 @@
   .draggable-panel-wrapper {
     padding: 0 !important;
     border: 2px solid var(--primary-color) !important;
-    background: var(--secondary-background);
+    background: var(--view-bg-color);
   }
 }
 
@@ -638,16 +594,17 @@
 
 .info-item,
 .detail-item {
-  display: flex;
-  flex-direction: column;
   gap: 4px;
-  background-color: var(--surface-overlay);
   padding: 12px;
+  display: flex;
   border-radius: 8px;
+  flex-direction: column;
+  box-shadow: var(--box-shadow);
+  background: var(--window-bg-color);
 
   .label {
     font-size: clamp(10px, 2vw, 12px);
-    color: var(--app-text-color);
+    color: var(--window-fg-color);
     opacity: 0.7;
   }
 
@@ -668,7 +625,7 @@
     }
 
     &.inactive {
-      color: var(--secondary-text-color);
+      color: var(--dim-color);
     }
   }
 }
@@ -678,7 +635,7 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background-color: var(--secondary-text-color);
+  background-color: var(--dim-color);
 
   &.active {
     background-color: var(--primary-color);
@@ -689,7 +646,7 @@
   }
 
   &.inactive {
-    background-color: var(--secondary-text-color);
+    background-color: var(--dim-color);
   }
 }
 
@@ -704,7 +661,6 @@
   gap: 12px;
   padding: 16px;
   border-radius: 8px;
-  background-color: var(--surface-overlay);
 }
 
 .error-text {
@@ -717,18 +673,12 @@
 .active-serves-indicator {
   display: flex;
   align-items: center;
-  border: 1px solid rgba(var(--primary-color-rgb), 0.25);
+  box-shadow: 0 0 0 1px var(--primary-color);
   color: var(--primary-color);
-  padding: 4px 12px;
+  padding: 3px 12px;
   border-radius: 16px;
   font-size: clamp(10px, 2vw, 12px);
   font-weight: 600;
-  box-shadow: 0 2px 4px rgba(var(--primary-color-rgb), 0.2);
-}
-
-.active-serves-indicator {
-  border-color: rgba(var(--primary-color-rgb), 0.35);
-  box-shadow: 0 2px 4px rgba(var(--primary-color-rgb), 0.25);
 }
 
 .layout-actions {
@@ -748,23 +698,6 @@
   .general-overview {
     padding: var(--panel-padding-mobile, 16px);
     gap: var(--section-gap-mobile, 12px);
-
-    .overview-header {
-      margin-bottom: var(--panel-padding-mobile, 16px);
-
-      .title-section {
-        gap: 12px;
-
-        mat-icon {
-          width: 28px;
-          height: 28px;
-        }
-
-        h2 {
-          font-size: clamp(18px, 5vw, 24px);
-        }
-      }
-    }
   }
 
   .scheduled-tasks-panel .tasks-grid,
@@ -776,14 +709,5 @@
 @media (max-width: 480px) {
   .general-overview {
     padding: 12px;
-
-    .overview-header .title-section {
-      flex-direction: column;
-      gap: 8px;
-
-      h2 {
-        font-size: clamp(16px, 6vw, 20px);
-      }
-    }
   }
 }

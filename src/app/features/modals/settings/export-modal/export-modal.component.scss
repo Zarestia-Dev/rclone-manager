@@ -1,4 +1,4 @@
-// ===== MODAL CONTAINER =====
+// Modal Container
 .export-modal {
   display: flex;
   flex-direction: column;
@@ -6,7 +6,7 @@
   flex: 1;
 }
 
-// ===== CONTENT AREA =====
+// Content Area
 .modal-content {
   flex: 1;
   padding: var(--space-md);
@@ -16,59 +16,56 @@
   gap: var(--space-xl);
 }
 
-// ===== SECTIONS =====
+// Sections
 .section-group {
   display: flex;
   flex-direction: column;
 
   .section-label {
-    font-size: 0.9rem;
+    font-size: var(--font-size-md);
     font-weight: 600;
-    color: var(--app-text-color);
+    color: var(--window-fg-color);
     margin-bottom: var(--space-sm);
-    opacity: 0.9;
   }
 }
 
-// ===== OPTION GRID (Radio Cards) =====
+// Option Grid (Radio Cards)
 .options-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: var(--space-sm);
 
-  // Ensure mat-radio-button behaves like a container
   ::ng-deep .mat-mdc-radio-button {
     display: flex;
     margin: 0;
 
     .mdc-form-field {
-      width: 100%; // Fill the grid cell
+      width: 100%;
 
       label {
-        width: 100%; // Fill the form field
-        padding: 0; // Remove default label padding
+        width: 100%;
+        padding: 0;
       }
     }
 
-    // Hide the actual radio circle
     .mdc-radio {
       display: none;
     }
   }
 }
 
-// The visual card for each option
+// Option Card
 .option-card-radio {
   .option-card-content {
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    background: var(--secondary-background);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    transition: all 0.2s ease;
+    gap: var(--space-md);
+    padding: var(--space-md) var(--space-lg);
+    background: var(--view-bg-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--box-shadow);
+    transition: var(--transition-fast);
     height: 100%;
 
     .icon-wrapper {
@@ -77,32 +74,32 @@
       justify-content: center;
       width: 36px;
       height: 36px;
-      border-radius: 8px;
-      background: rgba(var(--app-text-color-rgb), 0.05);
-      color: var(--secondary-text-color);
-      transition: all 0.2s ease;
+      border-radius: var(--radius-sm);
+      background: rgba(var(--window-fg-color-rgb), 0.05);
+      color: var(--dim-color);
+      transition: var(--transition-fast);
 
       mat-icon {
-        width: 20px;
-        height: 20px;
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
       }
     }
 
     .text-wrapper {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: var(--space-xxs);
       overflow: hidden;
 
       .option-label {
         font-weight: 600;
-        font-size: 0.9rem;
-        color: var(--app-text-color);
+        font-size: var(--font-size-md);
+        color: var(--window-fg-color);
       }
 
       .option-desc {
-        font-size: 0.75rem;
-        color: var(--secondary-text-color);
+        font-size: var(--font-size-sm);
+        color: var(--dim-color);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -112,47 +109,102 @@
 
   // Hover State
   &:hover:not(.selected) .option-card-content {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-light);
+    background: var(--hover-bg-color);
   }
 
   // Selected State
   &.selected .option-card-content {
     background: rgba(var(--primary-color-rgb), 0.08);
-    border-color: var(--primary-color);
-    box-shadow: 0 2px 8px rgba(var(--primary-color-rgb), 0.15);
+    box-shadow: 0 0 0 1px var(--primary-color);
 
     .icon-wrapper {
       background: var(--primary-color);
       color: white;
     }
 
-    .text-wrapper {
-      .option-label {
-        color: var(--primary-color);
-      }
+    .text-wrapper .option-label {
+      color: var(--primary-color);
     }
   }
 }
 
-// ===== FORM FIELDS =====
+// Form Fields
 .config-section {
-  background: var(--secondary-background);
-  padding: 16px;
-  border-radius: 12px;
-  border: 1px solid var(--border-color);
+  background: var(--view-bg-color);
+  padding: var(--space-lg);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-gnome);
 
   .field-icon {
-    margin-right: 8px;
-    color: var(--secondary-text-color);
+    margin-right: var(--space-sm);
+    color: var(--dim-color);
+  }
+
+  // Profile Selection Special Styling
+  .profile-section {
+    margin-bottom: var(--space-xl);
+    border-bottom: 1px solid var(--border-color);
+
+    .subsection-label {
+      font-size: var(--font-size-md);
+      font-weight: 600;
+      color: var(--window-fg-color);
+      margin-top: 0;
+      margin-bottom: var(--space-md);
+      display: block;
+    }
+
+    .profiles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: var(--space-sm);
+      margin-bottom: var(--space-sm);
+
+      mat-checkbox {
+        display: flex;
+        align-items: center;
+        padding: var(--space-sm) var(--space-md);
+        background: rgba(var(--window-fg-color-rgb), 0.03);
+        border: 1px solid transparent;
+        border-radius: var(--radius-sm);
+        transition: var(--transition-fast);
+
+        &:hover {
+          background: rgba(var(--window-fg-color-rgb), 0.06);
+        }
+
+        &.mat-mdc-checkbox-checked {
+          background: rgba(var(--primary-color-rgb), 0.08);
+          border-color: var(--primary-color);
+        }
+
+        // Fix click area to cover entire card
+        position: relative;
+        ::ng-deep label {
+          &::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            cursor: pointer;
+          }
+        }
+      }
+    }
+
+    .section-hint {
+      font-size: var(--font-size-sm);
+      color: var(--dim-color);
+      margin-top: var(--space-xs);
+    }
   }
 }
 
-// ===== SECURITY SECTION =====
+// Security Section
 .security-section {
-  padding: 16px;
-  border-radius: 12px;
-  border: 2px solid rgba(var(--yellow-rgb), 0.8);
+  padding: var(--space-lg);
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 1px rgba(var(--yellow-rgb), 0.8);
   background: rgba(var(--yellow-rgb), 0.05);
 
   .security-header {
@@ -164,75 +216,76 @@
   .security-warning {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 0.75rem;
+    gap: var(--space-xs);
+    font-size: var(--font-size-sm);
     color: var(--warn-color);
     font-weight: 500;
 
     mat-icon {
-      width: 16px;
-      height: 16px;
+      width: var(--icon-size-xs);
+      height: var(--icon-size-xs);
     }
   }
 
   .password-field-wrapper {
-    margin-top: 12px;
+    margin-top: var(--space-md);
 
     .security-hint {
       display: flex;
       align-items: center;
-      font-size: 0.75rem;
-      color: var(--secondary-text-color);
+      gap: var(--space-xxs);
+      font-size: var(--font-size-sm);
+      color: var(--dim-color);
 
       mat-icon {
-        width: 14px;
-        height: 14px;
+        width: var(--icon-size-xs);
+        height: var(--icon-size-xs);
       }
     }
   }
 }
 
-// ===== FOOTER =====
+// Footer
 .modal-actions {
-  padding: 16px 24px;
-  border-top: 1px solid var(--border-color);
+  padding: var(--space-lg) var(--space-xl);
+  border-top: 1px solid var(--card-shade-color);
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  background: var(--secondary-background);
+  gap: var(--space-md);
+  background: var(--view-bg-color);
 
   button {
     min-width: 100px;
   }
 
   .button-spinner {
-    margin-right: 8px;
+    margin-right: var(--space-sm);
   }
 }
 
-// ===== LOADING =====
+// Loading
 .loading-container {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  color: var(--secondary-text-color);
+  gap: var(--space-lg);
+  color: var(--dim-color);
 
   p {
-    font-size: 0.9rem;
+    font-size: var(--font-size-md);
     font-weight: 500;
   }
 }
 
 // Responsive
-@media (max-width: 600px) {
+@media (max-width: 640px) {
   .options-grid {
-    grid-template-columns: 1fr; // Stack cards on mobile
+    grid-template-columns: 1fr;
   }
 
   .modal-content {
-    padding: 16px;
+    padding: var(--space-md);
   }
 }

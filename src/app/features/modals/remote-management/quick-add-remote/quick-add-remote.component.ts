@@ -10,30 +10,21 @@ import {
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
   FormBuilder,
+  FormControl,
   FormGroup,
   ReactiveFormsModule,
   Validators,
-  FormControl,
 } from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
-import { MatInputModule } from '@angular/material/input';
-import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
-import { MatExpansionModule } from '@angular/material/expansion';
 import { takeUntil, Subject } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import {
-  MatAutocompleteModule,
-  MatAutocompleteSelectedEvent,
-} from '@angular/material/autocomplete';
+import { TranslateModule } from '@ngx-translate/core';
 
 // Services
-import { AuthStateService } from '../../../../shared/services/auth-state.service';
+import { AuthStateService } from '@app/services';
 import {
   RemoteManagementService,
   JobManagementService,
@@ -41,18 +32,20 @@ import {
   AppSettingsService,
   FileSystemService,
   NautilusService,
+  ModalService,
 } from '@app/services';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import {
   RemoteType,
   RemoteConfigSections,
   InteractiveFlowState,
   INTERACTIVE_REMOTES,
+  DEFAULT_PROFILE_NAME,
 } from '@app/types';
 import { OperationConfigComponent } from '../../../../shared/remote-config/app-operation-config/app-operation-config.component';
-import { ValidatorRegistryService } from 'src/app/shared/services/validator-registry.service';
+import { ValidatorRegistryService } from '@app/services';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
-import { IconService } from 'src/app/shared/services/icon.service';
+import { RemoteConfigStepComponent } from 'src/app/shared/remote-config/remote-config-step/remote-config-step.component';
+import { IconService } from '@app/services';
 import {
   buildPathString,
   getDefaultAnswerFromQuestion,
@@ -69,20 +62,14 @@ type WizardStep = 'setup' | 'operations' | 'interactive';
   standalone: true,
   imports: [
     ReactiveFormsModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatDividerModule,
     MatProgressSpinnerModule,
     MatIconModule,
     MatButtonModule,
-    MatExpansionModule,
-    MatSlideToggleModule,
     MatTabsModule,
     InteractiveConfigStepComponent,
-    MatTooltipModule,
+    RemoteConfigStepComponent,
     OperationConfigComponent,
-    MatAutocompleteModule,
+    TranslateModule,
   ],
   templateUrl: './quick-add-remote.component.html',
   styleUrls: ['./quick-add-remote.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -99,6 +86,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   private readonly validatorRegistry = inject(ValidatorRegistryService);
   readonly iconService = inject(IconService);
   private readonly nautilusService = inject(NautilusService);
+  private readonly modalService = inject(ModalService);
 
   readonly quickAddForm: FormGroup;
   remoteTypes: RemoteType[] = [];
@@ -118,7 +106,9 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
 
   // Computed signals
   readonly submitButtonText = computed(() =>
-    this.isAuthInProgress() && !this.isAuthCancelled() ? 'Adding Remote...' : 'Create Remote'
+    this.isAuthInProgress() && !this.isAuthCancelled()
+      ? 'modals.quickAdd.buttons.creating'
+      : 'modals.quickAdd.buttons.create'
   );
 
   readonly isInteractiveContinueDisabled = computed(() =>
@@ -127,26 +117,32 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
 
   // Operation tabs configuration for DRY template
   readonly operationTabs = [
-    { type: 'mount', label: 'Mount', description: 'Automatically mount this remote as a drive.' },
-    { type: 'sync', label: 'Sync', description: 'Sync this remote to a local folder.' },
-    { type: 'copy', label: 'Copy', description: 'Copy contents to a local folder.' },
-    { type: 'bisync', label: 'Bisync', description: 'Bidirectional sync with a local folder.' },
-    { type: 'move', label: 'Move', description: 'Move contents to a local folder.' },
+    {
+      type: 'mount',
+      label: 'modals.quickAdd.operations.mount.label',
+      description: 'modals.quickAdd.operations.mount.description',
+    },
+    {
+      type: 'sync',
+      label: 'modals.quickAdd.operations.sync.label',
+      description: 'modals.quickAdd.operations.sync.description',
+    },
+    {
+      type: 'copy',
+      label: 'modals.quickAdd.operations.copy.label',
+      description: 'modals.quickAdd.operations.copy.description',
+    },
+    {
+      type: 'bisync',
+      label: 'modals.quickAdd.operations.bisync.label',
+      description: 'modals.quickAdd.operations.bisync.description',
+    },
+    {
+      type: 'move',
+      label: 'modals.quickAdd.operations.move.label',
+      description: 'modals.quickAdd.operations.move.description',
+    },
   ] as const;
-
-  // Autocomplete for remote type
-  readonly remoteTypeSearchControl = new FormControl('');
-  private readonly remoteTypesSignal = signal<RemoteType[]>([]);
-  private readonly searchTermSignal = signal('');
-
-  readonly filteredRemoteTypes = computed(() => {
-    const term = this.searchTermSignal().toLowerCase();
-    const types = this.remoteTypesSignal();
-    if (!term) return types;
-    return types.filter(
-      r => r.label.toLowerCase().includes(term) || r.value.toLowerCase().includes(term)
-    );
-  });
 
   private readonly destroy$ = new Subject<void>();
   private pendingConfig: {
@@ -165,14 +161,6 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   constructor() {
     this.quickAddForm = this.createQuickAddForm();
     this.setupFormListeners();
-    this.setupRemoteTypeSearch();
-  }
-
-  private setupRemoteTypeSearch(): void {
-    this.remoteTypeSearchControl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(value => {
-      // Update search term for filtering
-      this.searchTermSignal.set(typeof value === 'string' ? value : '');
-    });
   }
 
   ngOnInit(): void {
@@ -192,11 +180,10 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
         value: remote.name,
         label: remote.description,
       }));
-      this.remoteTypesSignal.set(this.remoteTypes);
       this.existingRemotes = await this.remoteManagementService.getRemotes();
 
       // Update the remote name validator with the loaded remotes
-      const remoteNameControl = this.quickAddForm.get('setup.remoteName');
+      const remoteNameControl = this.quickAddForm.get('setup.name');
       if (remoteNameControl) {
         remoteNameControl.setValidators([
           Validators.required,
@@ -209,16 +196,8 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Autocomplete helper methods
-  displayRemoteType(value: string): string {
-    const remote = this.remoteTypes.find(r => r.value === value);
-    return remote ? remote.label : value || '';
-  }
-
-  onRemoteTypeSelected(event: MatAutocompleteSelectedEvent): void {
-    const value = event.option.value;
-    this.quickAddForm.get('setup.remoteType')?.setValue(value);
-    this.onRemoteTypeChange(value);
+  onInteractiveModeToggled(value: boolean): void {
+    this.quickAddForm.get('setup.useInteractiveMode')?.setValue(value);
   }
 
   private createOperationPathGroup(
@@ -251,14 +230,14 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   private createQuickAddForm(): FormGroup {
     return this.fb.group({
       setup: this.fb.group({
-        remoteName: [
+        name: [
           '',
           [
             Validators.required,
             this.validatorRegistry.createRemoteNameValidator(this.existingRemotes),
           ],
         ],
-        remoteType: ['', Validators.required],
+        type: ['', Validators.required],
         useInteractiveMode: [false],
       }),
       operations: this.fb.group({
@@ -274,7 +253,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   private setupFormListeners(): void {
     // Remote type change listener
     this.quickAddForm
-      .get('setup.remoteType')
+      .get('setup.type')
       ?.valueChanges.pipe(takeUntil(this.destroy$))
       .subscribe(remoteType => {
         if (remoteType) {
@@ -404,14 +383,14 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
       return;
     }
 
-    await this.authStateService.startAuth(setup.remoteName, false);
+    await this.authStateService.startAuth(setup.name, false);
 
     try {
       if (setup.useInteractiveMode) {
         await this.handleInteractiveCreation(setup, operations);
       } else {
         await this.handleStandardCreation(setup, operations);
-        if (!this.isAuthCancelled()) this.dialogRef.close(true);
+        if (!this.isAuthCancelled()) this.modalService.animatedClose(this.dialogRef, true);
       }
     } catch (error) {
       console.error('Error in onSubmit:', error);
@@ -423,19 +402,19 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   }
 
   private async handleStandardCreation(setup: any, operations: any): Promise<void> {
-    const finalConfig = this.buildFinalConfig(setup.remoteName, operations);
-    await this.remoteManagementService.createRemote(setup.remoteName, {
-      name: setup.remoteName,
-      type: setup.remoteType,
+    const finalConfig = this.buildFinalConfig(setup.name, operations);
+    await this.remoteManagementService.createRemote(setup.name, {
+      name: setup.name,
+      type: setup.type,
     });
-    await this.appSettingsService.saveRemoteSettings(setup.remoteName, finalConfig);
-    await this.triggerAutoStartOperations(setup.remoteName, finalConfig);
+    await this.appSettingsService.saveRemoteSettings(setup.name, finalConfig);
+    await this.triggerAutoStartOperations(setup.name, finalConfig);
   }
 
   private async handleInteractiveCreation(setup: any, operations: any): Promise<void> {
-    const finalConfig = this.buildFinalConfig(setup.remoteName, operations);
+    const finalConfig = this.buildFinalConfig(setup.name, operations);
     this.pendingConfig = {
-      remoteData: { name: setup.remoteName, type: setup.remoteType },
+      remoteData: { name: setup.name, type: setup.type },
       finalConfig,
     };
     await this.startInteractiveRemoteConfig();
@@ -450,22 +429,41 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
       autoStart: boolean;
       cronEnabled?: boolean;
       cronExpression?: string | null;
+      filterProfile: string;
+      backendProfile: string;
     } => ({
       source: buildPathString(op.source, remoteName),
       dest: buildPathString(op.dest, remoteName),
       autoStart: op.autoStart || false,
       cronEnabled: op.cronEnabled || false,
       cronExpression: op.cronExpression || null,
+      filterProfile: DEFAULT_PROFILE_NAME,
+      backendProfile: DEFAULT_PROFILE_NAME,
     });
 
     return {
-      mountConfigs: { default: { ...createConfig(operations.mount), type: 'mount' } },
+      mountConfigs: {
+        default: {
+          ...createConfig(operations.mount),
+          type: 'mount',
+          vfsProfile: DEFAULT_PROFILE_NAME,
+        },
+      },
       copyConfigs: { default: createConfig(operations.copy) },
       syncConfigs: { default: createConfig(operations.sync) },
       bisyncConfigs: { default: createConfig(operations.bisync) },
       moveConfigs: { default: createConfig(operations.move) },
       filterConfigs: { default: {} },
-      vfsConfigs: { default: { options: { CacheMode: 'full', ChunkSize: '32M' } } },
+      vfsConfigs: {
+        default: {
+          options: {
+            CacheMode: 'writes',
+            ChunkSize: '128M',
+            DirCacheTime: '5m',
+            VfsCacheMaxAge: '1h',
+          },
+        },
+      },
       backendConfigs: { default: {} },
       showOnTray: true,
     };
@@ -560,7 +558,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     await this.appSettingsService.saveRemoteSettings(remoteData.name, finalConfig);
     await this.triggerAutoStartOperations(remoteData.name, finalConfig);
     this.authStateService.resetAuthState();
-    this.dialogRef.close(true);
+    this.modalService.animatedClose(this.dialogRef, true);
   }
 
   private async triggerAutoStartOperations(
@@ -580,23 +578,23 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     // This is simpler and ensures consistency with tray actions
 
     if (mountConfig?.autoStart && mountConfig?.dest) {
-      await this.mountManagementService.mountRemoteProfile(remoteName, 'default');
+      void this.mountManagementService.mountRemoteProfile(remoteName, 'default');
     }
 
     if (copyConfig?.autoStart && copyConfig?.source && copyConfig?.dest) {
-      await this.jobManagementService.startCopyProfile(remoteName, 'default');
+      void this.jobManagementService.startCopyProfile(remoteName, 'default');
     }
 
     if (syncConfig?.autoStart && syncConfig?.source && syncConfig?.dest) {
-      await this.jobManagementService.startSyncProfile(remoteName, 'default');
+      void this.jobManagementService.startSyncProfile(remoteName, 'default');
     }
 
     if (bisyncConfig?.autoStart && bisyncConfig?.source && bisyncConfig?.dest) {
-      await this.jobManagementService.startBisyncProfile(remoteName, 'default');
+      void this.jobManagementService.startBisyncProfile(remoteName, 'default');
     }
 
     if (moveConfig?.autoStart && moveConfig?.source && moveConfig?.dest) {
-      await this.jobManagementService.startMoveProfile(remoteName, 'default');
+      void this.jobManagementService.startMoveProfile(remoteName, 'default');
     }
   }
 
@@ -606,16 +604,8 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     this.interactiveFlowState.set(createInitialInteractiveFlowState());
   }
 
-  private setFormState(disabled: boolean): void {
-    if (disabled) {
-      this.quickAddForm.disable();
-    } else {
-      this.quickAddForm.enable();
-    }
-  }
-
   get selectedRemoteLabel(): string {
-    const remoteType = this.quickAddForm.get('setup.remoteType')?.value;
+    const remoteType = this.quickAddForm.get('setup.type')?.value;
     const remote = this.remoteTypes.find(r => r.value === remoteType);
     return remote ? remote.label : 'Select Remote Type';
   }
@@ -625,6 +615,6 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     if (this.nautilusService.isNautilusOverlayOpen) {
       return;
     }
-    this.dialogRef.close();
+    this.modalService.animatedClose(this.dialogRef);
   }
 }

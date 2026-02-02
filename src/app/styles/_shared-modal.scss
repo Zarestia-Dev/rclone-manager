@@ -10,10 +10,9 @@
   justify-content: space-between;
   align-items: center;
   position: relative;
-  transition: var(--transition-standard);
 
   &.scrolled {
-    box-shadow: var(--shadow-light);
+    box-shadow: var(--shadow-gnome);
   }
 
   &.scrolled p {
@@ -22,28 +21,18 @@
 
   p {
     font-size: var(--font-size-md);
-    transition: opacity var(--transition-standard);
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: var(--space-xs);
     font-weight: 600;
   }
 
   // Responsive adjustments
   @media (max-width: 768px) {
     font-size: var(--font-size-base);
-
-    p {
-      gap: 8px;
-    }
   }
 
   @media (max-width: 480px) {
     font-size: var(--font-size-sm);
-
-    p {
-      gap: 6px;
-    }
   }
 }
