@@ -7,6 +7,9 @@ use crate::utils::rclone::endpoints::vfs;
 use crate::utils::types::core::RcloneState;
 use tauri::{AppHandle, Manager};
 
+#[cfg(target_os = "windows")]
+use crate::utils::json_helpers::normalize_windows_path;
+
 /// List active VFSes.
 #[command]
 pub async fn vfs_list(app: AppHandle) -> Result<Value, String> {
@@ -91,10 +94,27 @@ pub async fn vfs_stats(app: AppHandle, fs: Option<String>) -> Result<Value, Stri
     }
 
     let state = app.state::<RcloneState>();
-    let json = backend
+    let mut json = backend
         .post_json(&state.client, vfs::STATS, Some(&payload))
         .await
         .map_err(|e| format!("Failed to fetch VFS stats: {e}"))?;
+
+    // Normalize Windows paths in diskCache on Windows only
+    #[cfg(target_os = "windows")]
+    if let Some(disk_cache) = json.get_mut("diskCache").and_then(|v| v.as_object_mut()) {
+        if let Some(path) = disk_cache.get("path").and_then(|v| v.as_str()) {
+            disk_cache.insert(
+                "path".to_string(),
+                Value::String(normalize_windows_path(path)),
+            );
+        }
+        if let Some(path_meta) = disk_cache.get("pathMeta").and_then(|v| v.as_str()) {
+            disk_cache.insert(
+                "pathMeta".to_string(),
+                Value::String(normalize_windows_path(path_meta)),
+            );
+        }
+    }
 
     Ok(json)
 }

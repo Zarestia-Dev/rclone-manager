@@ -92,6 +92,8 @@ export class VfsControlPanelComponent {
   // Delay slider state
   delaySliderValue = signal(DELAY_SLIDER_DEFAULT);
   showDelaySlider = signal<number | null>(null);
+  showAdvancedConfig = signal(false);
+  configSearchTerm = signal('');
 
   // Computed
   totalQueueSize = computed(
@@ -109,6 +111,37 @@ export class VfsControlPanelComponent {
 
   // Simplified: true when we have a usable (non-indexed) VFS selected
   hasUsableVfs = computed(() => !!this.selectedVfs() && !this.isIndexedVfs());
+
+  // Computed VFS options grouped by category (future-proof)
+  vfsConfigGroups = computed(() => {
+    const opts = this.selectedVfs()?.stats?.opt;
+    if (!opts) return [];
+
+    const searchTerm = this.configSearchTerm().toLowerCase();
+    const filterOption = (name: string, value: unknown) => {
+      if (!searchTerm) return true;
+      return (
+        name.toLowerCase().includes(searchTerm) || String(value).toLowerCase().includes(searchTerm)
+      );
+    };
+
+    const grouped = new Map<string, { key: string; value: string; rawValue: unknown }[]>();
+    const groupOrder = ['Booleans', 'Durations', 'Sizes', 'Permissions', 'Numbers', 'Strings'];
+
+    for (const [key, rawValue] of Object.entries(opts)) {
+      if (!filterOption(key, rawValue)) continue;
+
+      const group = this.getOptionGroup(key, rawValue);
+      const item = { key, value: this.formatOptionValue(key, rawValue), rawValue };
+      const list = grouped.get(group) ?? [];
+      list.push(item);
+      grouped.set(group, list);
+    }
+
+    return groupOrder
+      .filter(name => (grouped.get(name)?.length ?? 0) > 0)
+      .map(name => ({ name, items: grouped.get(name) ?? [] }));
+  });
 
   displayedColumns: string[] = ['name', 'size', 'status'];
   isDetailRow = (_: number, row: VfsQueueItem): boolean => this.showDelaySlider() === row.id;
@@ -393,5 +426,83 @@ export class VfsControlPanelComponent {
   onVfsSelectionChange(vfs: VfsInstance | null): void {
     this.selectedVfs.set(vfs);
     this.refreshStatsAndQueue();
+  }
+
+  // ============ Config Formatting ============
+
+  formatOptionValue(key: string, value: unknown): string {
+    if (value === null || value === undefined) return 'N/A';
+
+    if (typeof value === 'boolean') return value ? '✓ Enabled' : '✗ Disabled';
+
+    if (typeof value === 'number') {
+      if (this.isDurationKey(key)) {
+        if (value === 0) return '0 (disabled)';
+        if (value === -1) return 'Unlimited';
+        return this.formatDuration(value);
+      }
+
+      if (this.isSizeKey(key)) {
+        if (value === -1) return 'Unlimited';
+        return this.formatBytes(value);
+      }
+
+      if (this.isPermissionKey(key)) {
+        return `${value} (${this.toOctal(value)})`;
+      }
+    }
+
+    return String(value);
+  }
+
+  private formatDuration(ns: number): string {
+    const seconds = ns / 1_000_000_000;
+    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 3600) return `${(seconds / 60).toFixed(1)}m`;
+    if (seconds < 86400) return `${(seconds / 3600).toFixed(1)}h`;
+    return `${(seconds / 86400).toFixed(1)}d`;
+  }
+
+  private formatBytes(bytes: number): string {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
+  }
+
+  private toOctal(num: number): string {
+    return '0' + num.toString(8);
+  }
+
+  private isDurationKey(key: string): boolean {
+    return /(Time|Interval|Wait|Back|Age|Ahead)$/i.test(key);
+  }
+
+  private isSizeKey(key: string): boolean {
+    return /(Size|Space)$/i.test(key);
+  }
+
+  private isPermissionKey(key: string): boolean {
+    return /(Perms|UID|GID|Umask)$/i.test(key);
+  }
+
+  private getOptionGroup(key: string, value: unknown): string {
+    if (typeof value === 'boolean') return 'Booleans';
+    if (typeof value === 'number') {
+      if (this.isDurationKey(key)) return 'Durations';
+      if (this.isSizeKey(key)) return 'Sizes';
+      if (this.isPermissionKey(key)) return 'Permissions';
+      return 'Numbers';
+    }
+    return 'Strings';
+  }
+
+  trackByCategory(_: number, category: { name: string }): string {
+    return category.name;
+  }
+
+  trackByConfigKey(_: number, item: { key: string }): string {
+    return item.key;
   }
 }

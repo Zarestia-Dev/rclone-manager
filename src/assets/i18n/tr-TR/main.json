@@ -756,6 +756,21 @@
         "note": "Not:",
         "noteText": "\"Meta Veriyi Temizle\" sadece dizin listeleme önbelleğini kaldırır. Önbelleğe alınan dosyalar, rclone bunları otomatik olarak temizleyene kadar önbellek dizininde kalır."
       },
+      "advancedConfig": {
+        "title": "Gelişmiş Yapılandırma",
+        "search": "Seçenekleri ara",
+        "searchPlaceholder": "Seçenek adı veya değerine göre filtrele...",
+        "clearSearch": "Aramayı temizle",
+        "noResults": "Aramanızla eşleşen seçenek yok",
+        "categories": {
+          "Booleans": "Mantıksal Seçenekler",
+          "Durations": "Süreler",
+          "Sizes": "Boyutlar",
+          "Permissions": "İzinler",
+          "Numbers": "Sayılar",
+          "Strings": "Metinler"
+        }
+      },
       "actions": {
         "pollInterval": "Yoklama Aralığı",
         "updateInterval": "Yoklama Aralığını Güncelle",

@@ -755,6 +755,21 @@
         "note": "Note:",
         "noteText": "\"Clear Metadata\" only removes directory listings cache. Cached files remain in the cache directory until rclone purges them automatically."
       },
+      "advancedConfig": {
+        "title": "Advanced Configuration",
+        "search": "Search options",
+        "searchPlaceholder": "Filter by option name or value...",
+        "clearSearch": "Clear search",
+        "noResults": "No options match your search",
+        "categories": {
+          "Booleans": "Boolean Options",
+          "Durations": "Durations",
+          "Sizes": "Sizes",
+          "Permissions": "Permissions",
+          "Numbers": "Numbers",
+          "Strings": "Strings"
+        }
+      },
       "actions": {
         "pollInterval": "Poll Interval",
         "updateInterval": "Update Poll Interval",

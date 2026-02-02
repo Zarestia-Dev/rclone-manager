@@ -361,6 +361,85 @@
               </div>
             </div>
           }
+
+          <!-- Advanced Configuration Section -->
+          @if (vfs.stats?.opt) {
+            <div class="advanced-config-section">
+              <div
+                class="section-header clickable"
+                tabindex="0"
+                (click)="showAdvancedConfig.set(!showAdvancedConfig())"
+                (keydown.enter)="showAdvancedConfig.set(!showAdvancedConfig())"
+              >
+                <h3>
+                  <mat-icon
+                    [svgIcon]="showAdvancedConfig() ? 'chevron-down' : 'chevron-right'"
+                  ></mat-icon>
+                  <mat-icon svgIcon="settings"></mat-icon>
+                  {{ 'shared.vfsControl.advancedConfig.title' | translate }}
+                </h3>
+              </div>
+
+              @if (showAdvancedConfig()) {
+                <div class="advanced-config-content">
+                  <div class="config-search">
+                    <mat-form-field>
+                      <mat-label>{{
+                        'shared.vfsControl.advancedConfig.search' | translate
+                      }}</mat-label>
+                      <input
+                        matInput
+                        [ngModel]="configSearchTerm()"
+                        (ngModelChange)="configSearchTerm.set($event)"
+                        [placeholder]="
+                          'shared.vfsControl.advancedConfig.searchPlaceholder' | translate
+                        "
+                      />
+                      <mat-icon matPrefix svgIcon="search"></mat-icon>
+                      @if (configSearchTerm()) {
+                        <button
+                          mat-icon-button
+                          matSuffix
+                          (click)="configSearchTerm.set('')"
+                          [matTooltip]="'shared.vfsControl.advancedConfig.clearSearch' | translate"
+                        >
+                          <mat-icon svgIcon="close"></mat-icon>
+                        </button>
+                      }
+                    </mat-form-field>
+                  </div>
+
+                  @if (vfsConfigGroups().length === 0) {
+                    <div class="empty-state">
+                      <mat-icon svgIcon="search"></mat-icon>
+                      <span>{{ 'shared.vfsControl.advancedConfig.noResults' | translate }}</span>
+                    </div>
+                  } @else {
+                    @for (group of vfsConfigGroups(); track trackByCategory($index, group)) {
+                      <div class="config-group">
+                        <h4 class="group-title">
+                          <mat-icon svgIcon="folder"></mat-icon>
+                          {{
+                            'shared.vfsControl.advancedConfig.categories.' + group.name | translate
+                          }}
+                        </h4>
+                        <div class="config-table">
+                          @for (item of group.items; track trackByConfigKey($index, item)) {
+                            <div class="config-row">
+                              <div class="config-key" [matTooltip]="item.key">{{ item.key }}</div>
+                              <div class="config-value" [matTooltip]="'Raw: ' + item.rawValue">
+                                {{ item.value }}
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      </div>
+                    }
+                  }
+                </div>
+              }
+            </div>
+          }
         }
       }
     }
