@@ -158,7 +158,7 @@ jobs:
         with:
           tag_name: v${{ steps.get_version.outputs.VERSION }}
           name: "RClone Manager v${{ steps.get_version.outputs.VERSION }}"
-          draft: false
+          draft: true
           prerelease: false
           files: |
             *.zip

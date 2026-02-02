@@ -276,7 +276,8 @@ fn setup_app(
     #[cfg(feature = "web-server")] cli_args: crate::core::cli::CliArgs,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let app_handle = app.handle();
-    let config_dir = AppPaths::setup(app_handle)?;
+    let app_paths = AppPaths::setup(app_handle)?;
+    let config_dir = app_paths.config_dir;
 
     // -------------------------------------------------------------------------
     // Initialize rcman Settings Manager
@@ -358,13 +359,11 @@ fn setup_app(
     // -------------------------------------------------------------------------
     // Initialize Backend i18n (before managing rcman_manager)
     // -------------------------------------------------------------------------
-    if let Ok(resource_dir) = app_handle.path().resource_dir() {
-        crate::utils::i18n::init(resource_dir);
+    crate::utils::i18n::init(app_paths.resource_dir);
 
-        // Set initial language from settings
-        if let Ok(lang) = rcman_manager.get::<String>("general.language") {
-            crate::utils::i18n::set_language(&lang);
-        }
+    // Set initial language from settings
+    if let Ok(lang) = rcman_manager.get::<String>("general.language") {
+        crate::utils::i18n::set_language(&lang);
     }
 
     // -------------------------------------------------------------------------

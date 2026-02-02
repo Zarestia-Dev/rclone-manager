@@ -8,7 +8,7 @@
 use log::info;
 use serde::Serialize;
 use std::path::PathBuf;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
 // ============================================================================
 // Portable Mode Helpers
@@ -38,6 +38,8 @@ pub struct AppPaths {
     pub cache_dir: PathBuf,
     /// Logs directory (application logs)
     pub logs_dir: PathBuf,
+    /// Resource directory (i18n, assets)
+    pub resource_dir: PathBuf,
 }
 
 impl AppPaths {
@@ -60,6 +62,7 @@ impl AppPaths {
             config_dir,
             cache_dir,
             logs_dir,
+            resource_dir: exe_dir,
         })
     }
 
@@ -68,6 +71,7 @@ impl AppPaths {
     /// Uses system directories via Tauri's path resolver.
     #[cfg(not(feature = "portable"))]
     pub fn from_app_handle(app: &AppHandle) -> Result<Self, String> {
+        use tauri::Manager;
         // Get cache directory
         let cache_dir = app
             .path()
@@ -83,10 +87,16 @@ impl AppPaths {
         // Logs are stored in cache/logs
         let logs_dir = config_dir.join("logs");
 
+        // Resource directory
+        let resource_dir = tauri::Manager::path(app)
+            .resource_dir()
+            .map_err(|e| format!("Failed to get resource directory: {}", e))?;
+
         Ok(Self {
             config_dir,
             cache_dir,
             logs_dir,
+            resource_dir,
         })
     }
 
@@ -94,10 +104,14 @@ impl AppPaths {
     ///
     /// This is the main entry point for initializing paths during app startup.
     /// Returns the config directory path for backwards compatibility.
-    pub fn setup(app: &AppHandle) -> Result<PathBuf, String> {
+    /// Setup application paths and ensure directories exist
+    ///
+    /// This is the main entry point for initializing paths during app startup.
+    /// Returns the complete AppPaths struct.
+    pub fn setup(app: &AppHandle) -> Result<Self, String> {
         let paths = Self::from_app_handle(app)?;
         paths.ensure_dirs()?;
-        Ok(paths.config_dir)
+        Ok(paths)
     }
 
     /// Ensure all directories exist
