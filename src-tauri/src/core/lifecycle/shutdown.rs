@@ -4,7 +4,6 @@ use tauri::{AppHandle, Emitter, Manager, async_runtime::spawn_blocking};
 
 use crate::{
     rclone::{
-        backend::BackendManager,
         commands::{job::stop_job, mount::unmount_all_remotes, serve::stop_all_serves},
         state::watcher::{stop_mounted_remote_watcher, stop_serve_watcher},
     },
@@ -36,25 +35,6 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         });
 
     let scheduler_state = app_handle.state::<CronScheduler>();
-
-    // Count active jobs/serves (for logging) from shared caches
-    // Count active jobs/serves (for logging) from shared caches
-    let backend_manager = app_handle.state::<BackendManager>();
-    let job_cache = &backend_manager.job_cache;
-    let remote_cache = &backend_manager.remote_cache;
-
-    let job_count = job_cache.get_active_jobs().await.len();
-    let serve_count = remote_cache.get_serves().await.len();
-
-    if job_count > 0 {
-        info!("⚠️ Stopping {job_count} active jobs during shutdown");
-    }
-    if serve_count > 0 {
-        info!("⚠️ Stopping {serve_count} active serves during shutdown");
-    }
-
-    // Stop everything
-    // We launch tasks in parallel
 
     // Unmount all remotes (using global helper which currently only handles active)
     let unmount_task = tokio::time::timeout(

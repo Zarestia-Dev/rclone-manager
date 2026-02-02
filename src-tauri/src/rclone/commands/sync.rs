@@ -1,5 +1,4 @@
 use log::debug;
-use serde::Deserialize;
 use serde_json::{Map, Value, json};
 use std::collections::HashMap;
 use tauri::{AppHandle, Manager};
@@ -14,7 +13,7 @@ use crate::{
     },
 };
 
-use super::common::{FromConfig, parse_common_config};
+use super::common::parse_common_config;
 use super::job::{JobMetadata, submit_job};
 
 // ============================================================================
@@ -147,148 +146,6 @@ impl GenericTransferParams {
 }
 
 // ============================================================================
-// SPECIFIC PARAMS (KEPT FOR FRONTEND COMPATIBILITY)
-// ============================================================================
-
-#[derive(Debug, Deserialize, serde::Serialize, Clone)]
-pub struct SyncParams {
-    pub remote_name: String,
-    pub source: String,
-    pub dest: String,
-    pub sync_options: Option<HashMap<String, Value>>,
-    pub filter_options: Option<HashMap<String, Value>>,
-    pub backend_options: Option<HashMap<String, Value>>,
-    pub profile: Option<String>,
-}
-
-#[derive(Debug, Deserialize, serde::Serialize, Clone)]
-pub struct CopyParams {
-    pub remote_name: String,
-    pub source: String,
-    pub dest: String,
-    pub copy_options: Option<HashMap<String, Value>>,
-    pub filter_options: Option<HashMap<String, Value>>,
-    pub backend_options: Option<HashMap<String, Value>>,
-    pub profile: Option<String>,
-}
-
-#[derive(Debug, Deserialize, serde::Serialize, Clone)]
-pub struct MoveParams {
-    pub remote_name: String,
-    pub source: String,
-    pub dest: String,
-    pub move_options: Option<HashMap<String, Value>>,
-    pub filter_options: Option<HashMap<String, Value>>,
-    pub backend_options: Option<HashMap<String, Value>>,
-    pub profile: Option<String>,
-}
-
-#[derive(Debug, Deserialize, serde::Serialize, Clone)]
-pub struct BisyncParams {
-    pub remote_name: String,
-    pub source: String,
-    pub dest: String,
-    pub bisync_options: Option<HashMap<String, Value>>,
-    pub filter_options: Option<HashMap<String, Value>>,
-    pub backend_options: Option<HashMap<String, Value>>,
-    pub profile: Option<String>,
-}
-
-// ============================================================================
-// CONVERSIONS
-// ============================================================================
-
-impl From<SyncParams> for GenericTransferParams {
-    fn from(p: SyncParams) -> Self {
-        Self {
-            remote_name: p.remote_name,
-            source: p.source,
-            dest: p.dest,
-            options: p.sync_options,
-            filter_options: p.filter_options,
-            backend_options: p.backend_options,
-            profile: p.profile,
-            transfer_type: TransferType::Sync,
-        }
-    }
-}
-
-impl From<CopyParams> for GenericTransferParams {
-    fn from(p: CopyParams) -> Self {
-        Self {
-            remote_name: p.remote_name,
-            source: p.source,
-            dest: p.dest,
-            options: p.copy_options,
-            filter_options: p.filter_options,
-            backend_options: p.backend_options,
-            profile: p.profile,
-            transfer_type: TransferType::Copy,
-        }
-    }
-}
-
-impl From<MoveParams> for GenericTransferParams {
-    fn from(p: MoveParams) -> Self {
-        Self {
-            remote_name: p.remote_name,
-            source: p.source,
-            dest: p.dest,
-            options: p.move_options,
-            filter_options: p.filter_options,
-            backend_options: p.backend_options,
-            profile: p.profile,
-            transfer_type: TransferType::Move,
-        }
-    }
-}
-
-impl From<BisyncParams> for GenericTransferParams {
-    fn from(p: BisyncParams) -> Self {
-        Self {
-            remote_name: p.remote_name,
-            source: p.source,
-            dest: p.dest,
-            options: p.bisync_options,
-            filter_options: p.filter_options,
-            backend_options: p.backend_options,
-            profile: p.profile,
-            transfer_type: TransferType::Bisync,
-        }
-    }
-}
-
-// ============================================================================
-// CONFIG PARSING HELPER
-// ============================================================================
-
-// Macro to avoid repeating from_config logic
-macro_rules! impl_from_config {
-    ($type:ty, $opt_field:ident) => {
-        impl FromConfig for $type {
-            fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self> {
-                let common = parse_common_config(config, settings)?;
-
-                Some(Self {
-                    remote_name,
-                    source: common.source,
-                    dest: common.dest,
-                    $opt_field: common.options,
-                    filter_options: common.filter_options,
-                    backend_options: common.backend_options,
-                    profile: common.profile,
-                })
-            }
-        }
-    };
-}
-
-impl_from_config!(SyncParams, sync_options);
-impl_from_config!(CopyParams, copy_options);
-impl_from_config!(MoveParams, move_options);
-impl_from_config!(BisyncParams, bisync_options);
-
-// ============================================================================
 // CORE LOGIC
 // ============================================================================
 
@@ -345,13 +202,13 @@ async fn perform_transfer(app: AppHandle, params: GenericTransferParams) -> Resu
     // 2. Build Request Body
     let body = params.to_rclone_body();
 
-    // 6. Get API URL
+    // 3. Get API URL
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
     let url = backend.url_for(params.transfer_type.endpoint());
 
-    // 7. Submit Job
-    let (jobid, _) = submit_job(
+    // 4. Submit Job
+    let (jobid, _, _) = submit_job(
         app,
         client.clone(),
         backend.inject_auth(client.clone().post(&url)),
@@ -375,20 +232,13 @@ async fn perform_transfer(app: AppHandle, params: GenericTransferParams) -> Resu
 // PROFILE COMMANDS
 // ============================================================================
 
-/// Helper to load profile logic generic over T which implements FromConfig.
-/// Using a macro for the profile commands because they need async/await and
-/// generic bounds that are slightly verbose to write as a single generic function
-/// referencing T::from_config which is not async but needs async context for settings.
-/// Actually, duplicates are clearer here than a complex generic async function.
-/// But we can simplify the body significantly.
-async fn load_profile_and_run<T>(
+/// Generic helper to load profile and run transfer
+async fn load_profile_and_run(
     app: AppHandle,
     params: ProfileParams,
     config_key: &str,
-) -> Result<u64, String>
-where
-    T: FromConfig + Into<GenericTransferParams>,
-{
+    transfer_type: TransferType,
+) -> Result<u64, String> {
     let (config, settings) = crate::rclone::commands::common::resolve_profile_settings(
         &app,
         &params.remote_name,
@@ -397,35 +247,96 @@ where
     )
     .await?;
 
-    let specific_params = T::from_config(params.remote_name.clone(), &config, &settings)
-        .ok_or_else(|| {
-            crate::localized_error!(
-                "backendErrors.sync.configIncomplete",
-                "profile" => &params.profile_name
-            )
-        })?;
+    let common = parse_common_config(&config, &settings).ok_or_else(|| {
+        crate::localized_error!(
+            "backendErrors.sync.configIncomplete",
+            "profile" => &params.profile_name
+        )
+    })?;
 
-    // specific_params.profile is set in from_config, but we ensure consistency here if needed
-    // The From implementation handles conversion to GenericTransferParams
-    perform_transfer(app, specific_params.into()).await
+    let transfer_params = GenericTransferParams {
+        remote_name: params.remote_name.clone(),
+        source: common.source,
+        dest: common.dest,
+        options: common.options,
+        filter_options: common.filter_options,
+        backend_options: common.backend_options,
+        profile: Some(params.profile_name.clone()),
+        transfer_type,
+    };
+
+    perform_transfer(app, transfer_params).await
 }
 
 #[tauri::command]
 pub async fn start_sync_profile(app: AppHandle, params: ProfileParams) -> Result<u64, String> {
-    load_profile_and_run::<SyncParams>(app, params, "syncConfigs").await
+    load_profile_and_run(app, params, "syncConfigs", TransferType::Sync).await
 }
 
 #[tauri::command]
 pub async fn start_copy_profile(app: AppHandle, params: ProfileParams) -> Result<u64, String> {
-    load_profile_and_run::<CopyParams>(app, params, "copyConfigs").await
+    load_profile_and_run(app, params, "copyConfigs", TransferType::Copy).await
 }
 
 #[tauri::command]
 pub async fn start_move_profile(app: AppHandle, params: ProfileParams) -> Result<u64, String> {
-    load_profile_and_run::<MoveParams>(app, params, "moveConfigs").await
+    load_profile_and_run(app, params, "moveConfigs", TransferType::Move).await
 }
 
 #[tauri::command]
 pub async fn start_bisync_profile(app: AppHandle, params: ProfileParams) -> Result<u64, String> {
-    load_profile_and_run::<BisyncParams>(app, params, "bisyncConfigs").await
+    load_profile_and_run(app, params, "bisyncConfigs", TransferType::Bisync).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sync_body_generation() {
+        let params = GenericTransferParams {
+            remote_name: "test".to_string(),
+            source: "src:".to_string(),
+            dest: "dst:".to_string(),
+            options: Some(HashMap::from([
+                ("dryRun".to_string(), Value::Bool(true)),
+                ("transfers".to_string(), Value::Number(4.into())),
+            ])),
+            filter_options: None,
+            backend_options: None,
+            profile: Some("prof".to_string()),
+            transfer_type: TransferType::Sync,
+        };
+
+        let body = params.to_rclone_body();
+        let obj = body.as_object().unwrap();
+
+        assert_eq!(obj.get("srcFs").unwrap(), "src:");
+        assert_eq!(obj.get("dstFs").unwrap(), "dst:");
+        assert_eq!(obj.get("dryRun").unwrap(), true);
+
+        let config = obj.get("_config").unwrap().as_object().unwrap();
+        assert_eq!(config.get("transfers").unwrap(), 4);
+    }
+
+    #[test]
+    fn test_bisync_body_generation() {
+        let params = GenericTransferParams {
+            remote_name: "test".to_string(),
+            source: "path1".to_string(),
+            dest: "path2".to_string(),
+            options: Some(HashMap::from([("resync".to_string(), Value::Bool(true))])),
+            filter_options: None,
+            backend_options: None,
+            profile: Some("prof".to_string()),
+            transfer_type: TransferType::Bisync,
+        };
+
+        let body = params.to_rclone_body();
+        let obj = body.as_object().unwrap();
+
+        assert_eq!(obj.get("path1").unwrap(), "path1");
+        assert_eq!(obj.get("path2").unwrap(), "path2");
+        assert_eq!(obj.get("resync").unwrap(), true);
+    }
 }

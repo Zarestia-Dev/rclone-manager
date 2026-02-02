@@ -75,10 +75,20 @@ pub async fn list_serves_internal(
 
 #[cfg(not(feature = "web-server"))]
 #[tauri::command]
-pub async fn list_serves(app: tauri::AppHandle) -> Result<Value, String> {
+pub async fn list_serves(app: tauri::AppHandle) -> Result<Vec<ServeInstance>, String> {
     use crate::rclone::backend::BackendManager;
     use tauri::Manager;
+
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-    list_serves_internal(&app.state::<RcloneState>().client, &backend).await
+    let client = &app.state::<RcloneState>().client;
+
+    // Refresh serves cache (fetches from API, updates ID->Profile mapping)
+    backend_manager
+        .remote_cache
+        .refresh_serves(client, &backend)
+        .await?;
+
+    // Return the cached data which includes the profile
+    Ok(backend_manager.remote_cache.get_serves().await)
 }

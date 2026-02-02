@@ -55,9 +55,22 @@ pub async fn resolve_profile_settings(
 // SHARED TRAITS & HELPERS
 // ============================================================================
 
+use crate::rclone::backend::types::Backend;
 use crate::utils::json_helpers::{get_string, json_to_hashmap, resolve_profile_options};
 use serde_json::json;
 use std::collections::HashMap;
+
+/// Helper to determine the correct URL for configuration operations
+/// Handles the difference between Local (uses OAuth port) and Remote (uses API port) backends
+pub fn get_config_url(backend: &Backend, operation: &str) -> Result<String, String> {
+    if backend.is_local {
+        backend
+            .oauth_url_for(operation)
+            .ok_or_else(|| crate::localized_error!("backendErrors.system.oauthNotConfigured"))
+    } else {
+        Ok(backend.url_for(operation))
+    }
+}
 
 /// Trait for creating parameter structs from configuration values
 pub trait FromConfig: Sized {

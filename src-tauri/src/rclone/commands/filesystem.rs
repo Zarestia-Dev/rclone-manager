@@ -77,7 +77,7 @@ pub async fn copy_url(
         "_async": true,
     });
 
-    let (jobid, _) = submit_job(
+    let (jobid, _, _) = submit_job(
         app.clone(),
         state.client.clone(),
         backend.inject_auth(state.client.clone().post(&url)),

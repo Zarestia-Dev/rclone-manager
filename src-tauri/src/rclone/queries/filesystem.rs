@@ -38,6 +38,17 @@ async fn run_fs_command(
     poll_job(job.jobid, client, backend).await
 }
 
+/// Helper to create standard filesystem parameters
+fn create_fs_params(
+    remote: String,
+    path: Option<String>,
+) -> serde_json::Map<String, serde_json::Value> {
+    let mut params = serde_json::Map::new();
+    params.insert("fs".to_string(), json!(remote));
+    params.insert("remote".to_string(), json!(path));
+    params
+}
+
 #[derive(Serialize, Clone)]
 pub struct LocalDrive {
     name: String,
@@ -53,10 +64,7 @@ pub async fn get_fs_info(
 ) -> Result<serde_json::Value, String> {
     debug!("ℹ️ Getting fs info for remote: {remote}, path: {path:?}");
 
-    let mut params = serde_json::Map::new();
-    params.insert("fs".to_string(), json!(remote));
-    params.insert("remote".to_string(), json!(path));
-
+    let params = create_fs_params(remote, path);
     let backend_manager = app.state::<BackendManager>();
     let result = run_fs_command(
         &backend_manager,
@@ -94,17 +102,15 @@ pub async fn get_remote_paths(
     options: Option<ListOptions>,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let mut params = serde_json::Map::new();
-    params.insert("fs".to_string(), json!(remote));
-    params.insert("remote".to_string(), json!(path));
+    let mut params = create_fs_params(remote, path);
 
-    let mut opt = serde_json::Map::new();
     if let Some(list_options) = options {
+        let mut opt = serde_json::Map::new();
         for (key, value) in list_options.extra {
             opt.insert(key, value);
         }
+        params.insert("opt".to_string(), json!(opt));
     }
-    params.insert("opt".to_string(), json!(opt));
 
     let backend_manager = app.state::<BackendManager>();
     run_fs_command(
@@ -242,10 +248,7 @@ pub async fn get_about_remote(
 ) -> Result<serde_json::Value, String> {
     debug!("ℹ️ Getting about info for remote: {remote}, path: {path:?}");
 
-    let mut params = serde_json::Map::new();
-    params.insert("fs".to_string(), json!(remote));
-    params.insert("remote".to_string(), json!(path));
-
+    let params = create_fs_params(remote, path);
     let backend_manager = app.state::<BackendManager>();
     run_fs_command(
         &backend_manager,
@@ -265,10 +268,7 @@ pub async fn get_size(
 ) -> Result<serde_json::Value, String> {
     debug!("📏 Getting size for remote: {remote}, path: {path:?}");
 
-    let mut params = serde_json::Map::new();
-    params.insert("fs".to_string(), json!(remote));
-    params.insert("remote".to_string(), json!(path));
-
+    let params = create_fs_params(remote, path);
     let backend_manager = app.state::<BackendManager>();
     run_fs_command(
         &backend_manager,
@@ -288,10 +288,8 @@ pub async fn get_stat(
 ) -> Result<serde_json::Value, String> {
     debug!("📊 Getting stats for remote: {remote}, path: {path}");
 
-    let mut params = serde_json::Map::new();
-    params.insert("fs".to_string(), json!(remote));
-    params.insert("remote".to_string(), json!(path));
-
+    // Convert (String, String) to (String, Option<String>) for helper
+    let params = create_fs_params(remote, Some(path));
     let backend_manager = app.state::<BackendManager>();
     run_fs_command(
         &backend_manager,
@@ -348,9 +346,7 @@ pub async fn get_hashsum_file(
 ) -> Result<serde_json::Value, String> {
     debug!("🔐 Getting hashsum file for remote: {remote}, path: {path}, hash_type: {hash_type}");
 
-    let mut params = serde_json::Map::new();
-    params.insert("fs".to_string(), json!(remote));
-    params.insert("remote".to_string(), json!(path));
+    let mut params = create_fs_params(remote, Some(path));
     params.insert("hashType".to_string(), json!(hash_type));
 
     // Default to true for download and base64 for consistency/safety if hash not supported?
@@ -384,9 +380,7 @@ pub async fn get_public_link(
         "🔗 Getting public link for remote: {remote}, path: {path}, expire: {expire:?}, unlink: {unlink:?}"
     );
 
-    let mut params = serde_json::Map::new();
-    params.insert("fs".to_string(), json!(remote));
-    params.insert("remote".to_string(), json!(path));
+    let mut params = create_fs_params(remote, Some(path));
 
     if let Some(should_unlink) = unlink {
         params.insert("unlink".to_string(), json!(should_unlink));

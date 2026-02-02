@@ -176,9 +176,10 @@ fn create_mount_submenu<R: Runtime>(
             let mount_point = config.get("dest").and_then(|v| v.as_str()).unwrap_or("");
 
             // Check if this specific mount profile is mounted
-            let is_mounted = mounted_remotes
-                .iter()
-                .any(|mounted| mounted.mount_point == mount_point);
+            let is_mounted = mounted_remotes.iter().any(|mounted| {
+                mounted.mount_point == mount_point
+                    && mounted.profile.as_deref() == Some(profile_name)
+            });
 
             let (action_id, label) = if is_mounted {
                 (
@@ -238,11 +239,7 @@ fn create_serve_submenu<R: Runtime>(
             // Match by profile name in the serve's metadata
             let active_serve = all_serves.iter().find(|serve| {
                 let fs = serve.params["fs"].as_str().unwrap_or("");
-                let serve_profile = serve
-                    .params
-                    .get("profile")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
+                let serve_profile = serve.profile.as_deref().unwrap_or("");
 
                 (fs.starts_with(&remote_fs_prefix) || fs == remote) && serve_profile == profile_name
             });

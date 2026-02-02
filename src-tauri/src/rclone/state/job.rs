@@ -211,6 +211,7 @@ mod tests {
             group: format!("job/{}", jobid),
             source_ui: None,
             backend_name: Some("Local".to_string()),
+            execute_id: None,
         }
     }
 

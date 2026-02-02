@@ -16,16 +16,13 @@ pub async fn check_connectivity(
         .await
         .ok_or_else(|| format!("Backend '{}' not found", name))?;
 
-    // Use fetch_runtime_info to fetch all runtime info
     let timeout = std::time::Duration::from_secs(5);
     let runtime_info =
         crate::rclone::backend::runtime::fetch_runtime_info(&backend, client, timeout).await;
 
-    // Extract version and os for return value (for backward compatibility)
     let version = runtime_info.version().unwrap_or_default();
     let os = runtime_info.os().unwrap_or_default();
 
-    // Check if fetch was successful
     if !runtime_info.is_connected() {
         if let Some(error) = runtime_info.error_message() {
             return Err(error);
@@ -33,7 +30,6 @@ pub async fn check_connectivity(
         return Err("Connection failed".to_string());
     }
 
-    // Update runtime cache
     manager.set_runtime_info(name, runtime_info).await;
 
     Ok((version, os))
@@ -98,13 +94,12 @@ pub async fn ensure_connectivity_or_fallback(
     let active_name = manager.get_active_name().await;
 
     if active_name == "Local" {
-        // Case 1: Active is Local - Just check with retries
         info!(
             "🔍 Checking Local backend for version/OS info (timeout: {}s)",
             timeout.as_secs()
         );
 
-        match check_local_connectivity_retrying(manager, client, timeout).await {
+        return match check_local_connectivity_retrying(manager, client, timeout).await {
             Ok(_) => {
                 info!("✅ Local backend is reachable and runtime info loaded");
                 Ok(())
@@ -118,46 +113,42 @@ pub async fn ensure_connectivity_or_fallback(
                 manager.set_runtime_status("Local", "connected").await;
                 Ok(())
             }
+        };
+    }
+
+    info!(
+        "🔍 Checking connectivity for active backend: {} (timeout: {}s)",
+        active_name,
+        timeout.as_secs()
+    );
+
+    match check_connectivity_with_timeout(manager, &active_name, client, timeout).await {
+        Ok(_) => {
+            info!("✅ Active backend '{}' is reachable", active_name);
+            Ok(())
         }
-    } else {
-        // Case 2: Active is Remote - Check with timeout and fallback
-        info!(
-            "🔍 Checking connectivity for active backend: {} (timeout: {}s)",
-            active_name,
-            timeout.as_secs()
-        );
+        Err(e) => {
+            log::warn!(
+                "⚠️ Active backend '{}' connectivity failed: {}. Falling back to Local.",
+                active_name,
+                e
+            );
 
-        match check_connectivity_with_timeout(manager, &active_name, client, timeout).await {
-            Ok(_) => {
-                info!("✅ Active backend '{}' is reachable", active_name);
-                Ok(())
-            }
-            Err(e) => {
-                log::warn!(
-                    "⚠️ Active backend '{}' connectivity failed: {}. Falling back to Local.",
-                    active_name,
-                    e
+            manager
+                .set_runtime_status(&active_name, &format!("error:{}", e))
+                .await;
+
+            if let Err(fallback_err) = switch_to_local_fallback(manager, app, client).await {
+                let msg = format!(
+                    "Critical: Failed to fallback to Local backend: {}",
+                    fallback_err
                 );
-
-                // Set error status
-                manager
-                    .set_runtime_status(&active_name, &format!("error:{}", e))
-                    .await;
-
-                // Fallback switch
-                if let Err(fallback_err) = switch_to_local_fallback(manager, app, client).await {
-                    let msg = format!(
-                        "Critical: Failed to fallback to Local backend: {}",
-                        fallback_err
-                    );
-                    log::error!("{}", msg);
-                    Err(msg)
-                } else {
-                    info!("✅ Fallback to Local backend successful");
-                    // Mark Local as connected
-                    manager.set_runtime_status("Local", "connected").await;
-                    Ok(())
-                }
+                log::error!("{}", msg);
+                Err(msg)
+            } else {
+                info!("✅ Fallback to Local backend successful");
+                manager.set_runtime_status("Local", "connected").await;
+                Ok(())
             }
         }
     }
@@ -194,13 +185,16 @@ pub async fn switch_to_local_fallback(
 ) -> Result<(), String> {
     use crate::utils::types::core::EngineState;
 
-    // Switch active index to Local
+    // 1. Reset profiles to default (Local)
+    reset_profiles_to_default(app).await;
+
+    // 2. Switch active index to Local
     manager.switch_to_local_index().await?;
 
     crate::rclone::engine::core::set_active_is_local(true);
     info!("🔄 Fallback switched to internal Local backend state");
 
-    // Start Local engine if not running (lazy init on fallback)
+    // 3. Start Local engine if not running (lazy init on fallback)
     let engine_state = app.state::<EngineState>();
     let mut engine = engine_state.lock().await;
 
@@ -210,6 +204,23 @@ pub async fn switch_to_local_fallback(
     }
 
     Ok(())
+}
+
+/// Helper to reset settings profiles to default (used during fallback)
+async fn reset_profiles_to_default(app: &tauri::AppHandle) {
+    use crate::core::settings::AppSettingsManager;
+    let settings_manager = app.state::<AppSettingsManager>();
+
+    // Helper to switch a sub-setting profile safely
+    async fn switch_profile(manager: &AppSettingsManager, sub: &str) {
+        if let Ok(s) = manager.sub_settings(sub) {
+            let _ = s.switch_profile("default");
+        }
+    }
+
+    switch_profile(settings_manager.inner(), "remotes").await;
+    switch_profile(settings_manager.inner(), "backend").await;
+    info!("👤 Fallback switched profiles to default");
 }
 
 /// Check non-active backends in background

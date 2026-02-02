@@ -14,6 +14,8 @@ pub struct JobInfo {
     pub stats: Option<Value>,
     pub group: String, // Add this field to track the job group
     pub profile: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub execute_id: Option<String>, // Rclone async execute ID
     /// Source UI that started this job (e.g., "nautilus", "dashboard", "scheduled")
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source_ui: Option<String>,
@@ -38,4 +40,6 @@ pub struct JobCache {
 #[derive(serde::Deserialize)]
 pub struct JobResponse {
     pub jobid: u64,
+    #[serde(alias = "executeId")]
+    pub execute_id: Option<String>,
 }

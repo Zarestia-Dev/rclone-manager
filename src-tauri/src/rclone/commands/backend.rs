@@ -56,137 +56,36 @@ pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> 
 
     let backend_manager = app.state::<BackendManager>();
     let state = app.state::<RcloneState>();
+    let settings_manager = app.state::<AppSettingsManager>();
+
     // Get backend info before switching
     let backend = backend_manager
         .get(&name)
         .await
         .ok_or_else(|| format!("Backend '{}' not found", name))?;
 
-    // For remote backends: test connection BEFORE switching
-    if !backend.is_local {
-        debug!("📡 Testing remote backend connection...");
+    // 1. Test connection (Remote only)
+    test_remote_connection(&backend, &backend_manager, &state.client).await?;
 
-        let result = backend
-            .make_request(
-                &state.client,
-                reqwest::Method::POST,
-                core::VERSION,
-                None,
-                Some(std::time::Duration::from_secs(5)),
-            )
-            .await;
-
-        match result {
-            Ok(_) => {
-                info!("✅ Remote backend '{}' is reachable", name);
-                backend_manager.set_runtime_status(&name, "connected").await;
-            }
-
-            Err(e) => {
-                let err = format!("error:{}", e);
-                backend_manager.set_runtime_status(&name, &err).await;
-                return Err(format!("Cannot connect to '{}': {}", name, e));
-            }
-        }
-    }
-
-    // Switch (only if connection test passed for remote backends)
-    let settings_manager = app.state::<AppSettingsManager>();
+    // 2. Perform Switch
     backend_manager
         .switch_to(settings_manager.inner(), &name, None, None)
         .await?;
 
-    // Set config path if configured (Remote only)
-    if !backend.is_local
-        && let Some(config_path) = &backend.config_path
-    {
-        info!(
-            "📝 Setting config path for remote backend '{}' to: {}",
-            name, config_path
-        );
-        // Parameters: path
-        let params = serde_json::json!({
-            "path": config_path
-        });
+    // 3. Configure (Set path, Auth)
+    configure_remote_backend(&app, &backend, &state.client).await;
 
-        match backend
-            .post_json(&state.client, config::SETPATH, Some(&params))
-            .await
-        {
-            Ok(_) => {
-                info!("✅ Config path set successfully");
-            }
-            Err(e) => {
-                warn!("⚠️ Failed to set config path: {}", e);
-            }
-        }
-    }
+    // 4. Refresh Cache & Verify Stability
+    refresh_and_verify_cache(
+        &app,
+        &backend_manager,
+        &settings_manager,
+        &state.client,
+        &name,
+    )
+    .await?;
 
-    // Auto-unlock if config_password is set (Remote only)
-    if !backend.is_local
-        && backend.config_password.is_some()
-        && let Err(e) = crate::rclone::commands::system::try_auto_unlock_config(&app).await
-    {
-        warn!("⚠️ Auto-unlock failed: {}", e);
-    }
-
-    // Always Refresh cache (for both Local and Remote)
-    // Local backend also needs remotes refreshed from rclone
-    // Use unified refresh logic
-    let refresh_future = backend_manager.refresh_active_backend(&state.client);
-
-    match tokio::time::timeout(std::time::Duration::from_secs(15), refresh_future).await {
-        Ok(Ok(_)) => {
-            info!("✅ Cache refreshed for backend '{}'", name);
-            // Notify frontend that cache is updated
-            use crate::utils::types::events::{BACKEND_SWITCHED, REMOTE_CACHE_CHANGED};
-            use tauri::Emitter;
-            let _ = app.emit(REMOTE_CACHE_CHANGED, ());
-            let _ = app.emit(BACKEND_SWITCHED, &name);
-        }
-        Ok(Err(e)) => {
-            warn!("⚠️ Cache refresh failed for backend '{}': {}", name, e);
-            // Revert to previous backend if this wasn't Local (Local is always safe)
-            if name != "Local" {
-                info!("↩️ Reverting to previous backend due to cache failure");
-                // We're essentially failing the switch, but manager state was already updated
-                // best effort to switch back to Local for safety
-                if let Err(revert_err) = backend_manager
-                    .switch_to(settings_manager.inner(), "Local", None, None)
-                    .await
-                {
-                    warn!("Failed to revert to Local backend: {}", revert_err);
-                }
-                return Err(format!(
-                    "Backend connected but failed to list items: {}. Reverted to Local.",
-                    e
-                ));
-            }
-        }
-        Err(_) => {
-            warn!("⏱️ Cache refresh timed out for backend '{}'", name);
-            // Revert to previous backend
-            if name != "Local" {
-                info!("↩️ Reverting to previous backend due to timeout");
-                if let Err(revert_err) = backend_manager
-                    .switch_to(settings_manager.inner(), "Local", None, None)
-                    .await
-                {
-                    warn!("Failed to revert to Local backend: {}", revert_err);
-                }
-                backend_manager
-                    .set_runtime_status(&name, "error:Connection too slow")
-                    .await;
-                return Err(
-                    "Backend connection accepted but too slow to list items. Reverted to Local."
-                        .to_string(),
-                );
-            }
-        }
-    }
-
-    // Persist active backend selection
-    // let settings_manager = app.state::<AppSettingsManager>(); // Already retrieved above
+    // 5. Persist active backend selection
     if let Err(e) = crate::rclone::backend::BackendManager::save_active_to_settings(
         settings_manager.inner(),
         &name,
@@ -537,6 +436,132 @@ fn delete_backend_from_settings(manager: &AppSettingsManager, name: &str) -> Res
 
     connections.delete(name).map_err(|e| e.to_string())?;
     Ok(())
+}
+
+async fn test_remote_connection(
+    backend: &Backend,
+    backend_manager: &BackendManager,
+    client: &reqwest::Client,
+) -> Result<(), String> {
+    if backend.is_local {
+        return Ok(());
+    }
+
+    debug!("📡 Testing remote backend connection...");
+    match backend
+        .make_request(
+            client,
+            reqwest::Method::POST,
+            core::VERSION,
+            None,
+            Some(std::time::Duration::from_secs(5)),
+        )
+        .await
+    {
+        Ok(_) => {
+            info!("✅ Remote backend '{}' is reachable", backend.name);
+            backend_manager
+                .set_runtime_status(&backend.name, "connected")
+                .await;
+            Ok(())
+        }
+        Err(e) => {
+            let err = format!("error:{}", e);
+            backend_manager
+                .set_runtime_status(&backend.name, &err)
+                .await;
+            Err(format!("Cannot connect to '{}': {}", backend.name, e))
+        }
+    }
+}
+
+async fn configure_remote_backend(app: &AppHandle, backend: &Backend, client: &reqwest::Client) {
+    if backend.is_local {
+        return;
+    }
+
+    // Set config path
+    if let Some(config_path) = &backend.config_path {
+        info!(
+            "📝 Setting config path for remote backend '{}' to: {}",
+            backend.name, config_path
+        );
+        let params = serde_json::json!({ "path": config_path });
+        if let Err(e) = backend
+            .post_json(client, config::SETPATH, Some(&params))
+            .await
+        {
+            warn!("⚠️ Failed to set config path: {}", e);
+        } else {
+            info!("✅ Config path set successfully");
+        }
+    }
+
+    // Auto-unlock
+    if backend.config_password.is_some()
+        && let Err(e) = crate::rclone::commands::system::try_auto_unlock_config(app).await
+    {
+        warn!("⚠️ Auto-unlock failed: {}", e);
+    }
+}
+
+async fn refresh_and_verify_cache(
+    app: &AppHandle,
+    backend_manager: &BackendManager,
+    settings_manager: &AppSettingsManager,
+    client: &reqwest::Client,
+    name: &str,
+) -> Result<(), String> {
+    let refresh_future = backend_manager.refresh_active_backend(client);
+
+    match tokio::time::timeout(std::time::Duration::from_secs(15), refresh_future).await {
+        Ok(Ok(_)) => {
+            info!("✅ Cache refreshed for backend '{}'", name);
+            // Notify frontend
+            use crate::utils::types::events::{BACKEND_SWITCHED, REMOTE_CACHE_CHANGED};
+            use tauri::Emitter;
+            let _ = app.emit(REMOTE_CACHE_CHANGED, ());
+            let _ = app.emit(BACKEND_SWITCHED, name);
+            Ok(())
+        }
+        Ok(Err(e)) => {
+            warn!("⚠️ Cache refresh failed for backend '{}': {}", name, e);
+            revert_to_local(backend_manager, settings_manager, name).await;
+            Err(format!(
+                "Backend connected but failed to list items: {}. Reverted to Local.",
+                e
+            ))
+        }
+        Err(_) => {
+            warn!("⏱️ Cache refresh timed out for backend '{}'", name);
+            if name != "Local" {
+                backend_manager
+                    .set_runtime_status(name, "error:Connection too slow")
+                    .await;
+            }
+            revert_to_local(backend_manager, settings_manager, name).await;
+            Err(
+                "Backend connection accepted but too slow to list items. Reverted to Local."
+                    .to_string(),
+            )
+        }
+    }
+}
+
+async fn revert_to_local(
+    backend_manager: &BackendManager,
+    settings_manager: &AppSettingsManager,
+    current_name: &str,
+) {
+    if current_name != "Local" {
+        info!("↩️ Reverting to previous backend due to failure");
+        if let Err(revert_err) = backend_manager
+            .switch_to(settings_manager, "Local", None, None)
+            .await
+        {
+            warn!("Failed to revert to Local backend: {}", revert_err);
+        }
+    }
 }
 
 #[cfg(test)]

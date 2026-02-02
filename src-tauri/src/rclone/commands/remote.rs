@@ -60,15 +60,7 @@ pub async fn create_remote_interactive(
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
-    // For Local backend: use OAuth port (separate rclone instance)
-    // For Remote backend: use main API directly (no separate OAuth process)
-    let url = if backend.is_local {
-        backend
-            .oauth_url_for(config::CREATE)
-            .ok_or_else(|| crate::localized_error!("backendErrors.system.oauthNotConfigured"))?
-    } else {
-        backend.url_for(config::CREATE)
-    };
+    let url = crate::rclone::commands::common::get_config_url(&backend, config::CREATE)?;
 
     let response = backend
         .inject_auth(state.client.post(&url))
@@ -136,15 +128,7 @@ pub async fn continue_create_remote_interactive(
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
-    // For Local backend: use OAuth port (separate rclone instance)
-    // For Remote backend: use main API directly (no separate OAuth process)
-    let url = if backend.is_local {
-        backend
-            .oauth_url_for(config::UPDATE)
-            .ok_or_else(|| crate::localized_error!("backendErrors.system.oauthNotConfigured"))?
-    } else {
-        backend.url_for(config::UPDATE)
-    };
+    let url = crate::rclone::commands::common::get_config_url(&backend, config::UPDATE)?;
 
     let response = backend
         .inject_auth(tauri_state.client.post(&url))
@@ -212,15 +196,7 @@ pub async fn create_remote(
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
-    // For Local backend: use OAuth port (separate rclone instance)
-    // For Remote backend: use main API directly (no separate OAuth process)
-    let url = if backend.is_local {
-        backend
-            .oauth_url_for(config::CREATE)
-            .ok_or_else(|| crate::localized_error!("backendErrors.system.oauthNotConfigured"))?
-    } else {
-        backend.url_for(config::CREATE)
-    };
+    let url = crate::rclone::commands::common::get_config_url(&backend, config::CREATE)?;
 
     let response = backend
         .inject_auth(state.client.post(&url))
@@ -299,15 +275,7 @@ pub async fn update_remote(
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
-    // For Local backend: use OAuth port (separate rclone instance)
-    // For Remote backend: use main API directly (no separate OAuth process)
-    let url = if backend.is_local {
-        backend
-            .oauth_url_for(config::UPDATE)
-            .ok_or_else(|| crate::localized_error!("backendErrors.system.oauthNotConfigured"))?
-    } else {
-        backend.url_for(config::UPDATE)
-    };
+    let url = crate::rclone::commands::common::get_config_url(&backend, config::UPDATE)?;
     let body = json!({ "name": name, "parameters": parameters });
 
     let response = backend

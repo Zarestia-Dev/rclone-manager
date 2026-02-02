@@ -103,9 +103,6 @@ impl BackendManager {
         Ok(backend.config_path.clone())
     }
 
-    /// Add a new backend and create its profiles
-    ///
-    /// Optionally copy from existing backend profiles
     pub async fn add(
         &self,
         manager: &AppSettingsManager,
@@ -115,14 +112,12 @@ impl BackendManager {
     ) -> Result<(), String> {
         let mut backends = self.backends.write().await;
 
-        // Check for duplicate name
         if backends.iter().any(|b| b.name == backend.name) {
             return Err(format!("Backend '{}' already exists", backend.name));
         }
 
         info!("➕ Adding backend: {}", backend.name);
 
-        // Helper closure to create or duplicate a profile
         let setup_profile = |sub_name: &str, source: Option<&str>| {
             if let Ok(sub) = manager.sub_settings(sub_name)
                 && let Ok(pm) = sub.profiles()
@@ -239,7 +234,6 @@ impl BackendManager {
         scheduler: Option<&crate::core::scheduler::engine::CronScheduler>,
         task_cache: Option<&crate::rclone::state::scheduled_tasks::ScheduledTasksCache>,
     ) -> Result<(), String> {
-        // Get the new backend info
         let backends = self.backends.read().await;
         let (new_index, is_local) = backends
             .iter()
@@ -249,12 +243,9 @@ impl BackendManager {
             .ok_or_else(|| format!("Backend '{}' not found", name))?;
         drop(backends);
 
-        // Get current backend name before switching
         let current_name = self.get_active_name().await;
 
-        // Skip state swap if switching to same backend, BUT ensure proper profile activation
         if current_name != name {
-            // Unschedule old backend's tasks
             if let (Some(sched), Some(cache)) = (scheduler, task_cache) {
                 let old_tasks = cache.get_tasks_for_backend(&current_name).await;
                 for task in &old_tasks {
@@ -273,13 +264,11 @@ impl BackendManager {
 
             super::state::save_backend_state(self, &current_name, task_cache).await;
 
-            // Clear cache to prevent stale data leaking
             self.remote_cache.clear_all().await;
 
             super::state::restore_backend_state(self, name, task_cache).await;
 
             // LAZY LOADING: Load secrets on-demand if not already loaded
-            // This handles backends that were skipped during startup
             let mut backends = self.backends.write().await;
             if let Some(backend) = backends.iter_mut().find(|b| b.name == name)
                 && backend.password.is_none()
@@ -291,8 +280,6 @@ impl BackendManager {
             drop(backends);
         }
 
-        // Switch profiles for both settings types
-        // "Local" backend maps to "default" profile
         let profile_name = if name == "Local" { "default" } else { name };
         info!("👤 Switching profiles to: {}", profile_name);
 
@@ -301,11 +288,8 @@ impl BackendManager {
         self.switch_sub_settings_profile(manager, "backend", profile_name)
             .await?;
 
-        // Update active index
-        let mut active = self.active_index.write().await;
-        *active = new_index;
+        *self.active_index.write().await = new_index;
 
-        // Update cached is_local flag for engine
         crate::rclone::engine::core::set_active_is_local(is_local);
 
         // Tasks restored for new backend (caller must trigger scheduler reload)
@@ -410,18 +394,16 @@ impl BackendManager {
         cache.insert(name.to_string(), info);
     }
 
-    /// Switch active index to Local (used by connectivity fallback)
     pub(super) async fn switch_to_local_index(&self) -> Result<(), String> {
-        let backends = self.backends.read().await;
-        let (index, _) = backends
+        let index = self
+            .backends
+            .read()
+            .await
             .iter()
-            .enumerate()
-            .find(|(_, b)| b.name == "Local")
+            .position(|b| b.name == "Local")
             .ok_or_else(|| "Local backend not found".to_string())?;
-        drop(backends);
 
-        let mut active = self.active_index.write().await;
-        *active = index;
+        *self.active_index.write().await = index;
         Ok(())
     }
 
@@ -484,25 +466,15 @@ impl BackendManager {
             if let Ok(value) = connections.get_value(&key)
                 && let Ok(mut backend) = serde_json::from_value::<Backend>(value)
             {
-                // Set name from key
                 backend.name = key.clone();
 
-                // LAZY LOADING: Only load secrets for active backend + Local on startup
-                // Others will be loaded on-demand when switched to
-                let should_load_secrets = backend.name == "Local"
-                    || active_name
-                        .as_ref()
-                        .map(|n| n == &backend.name)
-                        .unwrap_or(false);
-
-                if should_load_secrets {
+                // Load secrets if this is Local or the active backend
+                let is_active_target = active_name.as_ref() == Some(&backend.name);
+                if backend.name == "Local" || is_active_target {
                     load_backend_secrets(manager, &mut backend);
                     log::debug!("🔐 Loaded secrets for backend: {}", backend.name);
-                } else {
-                    log::debug!("⏭️ Deferred secret loading for backend: {}", backend.name);
                 }
 
-                // Update Local or add new
                 if backend.name == "Local" {
                     let _ = self.update(manager, "Local", backend).await;
                 } else {
@@ -511,13 +483,28 @@ impl BackendManager {
             }
         }
 
-        // Set active backend if found
-        if let Some(name) = active_name {
-            if let Err(e) = self.switch_to(manager, &name, None, None).await {
-                log::warn!("Failed to restore active backend '{}': {}", name, e);
-            } else {
-                log::info!("✅ Restored active backend: {}", name);
+        // Determine target backend (Default to Local if none saved)
+        let target_backend = active_name.unwrap_or_else(|| {
+            log::info!("ℹ️ No active backend saved, defaulting to Local");
+            "Local".to_string()
+        });
+
+        // Restore active backend or fallback to Local
+        if let Err(e) = self.switch_to(manager, &target_backend, None, None).await {
+            log::warn!(
+                "Failed to restore active backend '{}': {}. Reverting to Local.",
+                target_backend,
+                e
+            );
+
+            // Critical Fallback: If target wasn't Local, try Local now
+            if target_backend != "Local"
+                && let Err(revert_e) = self.switch_to(manager, "Local", None, None).await
+            {
+                log::error!("Critical: Failed to revert to Local backend: {}", revert_e);
             }
+        } else {
+            log::info!("✅ Restored active backend: {}", target_backend);
         }
 
         Ok(())
