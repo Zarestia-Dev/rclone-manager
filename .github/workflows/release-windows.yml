@@ -15,12 +15,12 @@ jobs:
             args: "--target x86_64-pc-windows-msvc"
             arch: "arm64"
             type: "x86_64"
-            assetPattern: "[name]_[arch][ext]"
+            assetPattern: "[name]_[ver]_[arch][ext]"
           - platform: "windows-11-arm"
             args: "--target aarch64-pc-windows-msvc"
             arch: "arm64"
             type: "aarch64"
-            assetPattern: "[name]_[arch][ext]"
+            assetPattern: "[name]_[ver]_[arch][ext]"
 
     runs-on: ${{ matrix.platform }}
     steps:

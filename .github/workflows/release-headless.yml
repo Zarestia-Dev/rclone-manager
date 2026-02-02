@@ -13,10 +13,10 @@ jobs:
         include:
           - platform: "ubuntu-22.04"
             arch: "x86_64"
-            assetPattern: "[name]_[arch][ext]"
+            assetPattern: "[name]_[ver]_[arch][ext]"
           - platform: "ubuntu-22.04-arm"
             arch: "aarch64"
-            assetPattern: "[name]_[arch][ext]"
+            assetPattern: "[name]_[ver]_[arch][ext]"
 
     runs-on: ${{ matrix.platform }}
     steps:
