@@ -1,4 +1,4 @@
-use crate::core::settings::AppSettingsManager;
+use crate::{core::settings::AppSettingsManager, utils::types::events::MOUNT_STATE_CHANGED};
 use log::{debug, error, info};
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Listener, Manager};
@@ -382,6 +382,19 @@ fn handle_serve_state_changed(app: &AppHandle) {
     });
 }
 
+fn handle_mount_state_changed(app: &AppHandle) {
+    let app_clone = app.clone();
+    app.listen(MOUNT_STATE_CHANGED, move |event| {
+        let app = app_clone.clone();
+        tauri::async_runtime::spawn(async move {
+            debug!("🔄 Mount state changed! Raw payload: {:?}", event.payload());
+            if let Err(e) = update_tray_menu(app.clone()).await {
+                error!("Failed to update tray menu after mount change: {e}");
+            }
+        });
+    });
+}
+
 fn handle_backend_switched(app: &AppHandle) {
     let app_clone = app.clone();
     use crate::utils::types::events::BACKEND_SWITCHED;
@@ -417,6 +430,7 @@ pub fn setup_event_listener(app: &AppHandle) {
 
     handle_rclone_password_stored(app);
     handle_serve_state_changed(app);
+    handle_mount_state_changed(app);
     handle_remote_presence_changed(app);
     handle_settings_changed(app);
     handle_remote_settings_changed(app);

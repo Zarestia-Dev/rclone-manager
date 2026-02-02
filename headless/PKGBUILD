@@ -13,8 +13,8 @@ optdepends=('rclone')
 options=('!strip' '!debug')
 source_x86_64=("${url}/releases/download/headless-v${releasetag}/${appname}_${pkgver}_amd64.deb")
 source_aarch64=("${url}/releases/download/headless-v${releasetag}/${appname}_${pkgver}_arm64.deb")
-sha256sums_x86_64=('SKIP')
-sha256sums_aarch64=('SKIP')
+sha256sums_x86_64=('777f8b5187917a86d92535a66a48b42ea7342e327e3969d1d641a2cf57de73dd')
+sha256sums_aarch64=('066f61b08397d21710740131333dfae997a80698b280cd057b549483d113a26e')
 
 prepare() {
   cd "${srcdir}"
