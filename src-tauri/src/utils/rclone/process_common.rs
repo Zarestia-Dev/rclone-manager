@@ -11,9 +11,9 @@ use rcman::SettingsSchema;
 /// Password is retrieved from SafeEnvironmentManager (single source of truth)
 pub async fn setup_rclone_environment(
     app: &AppHandle,
-    mut command: tauri_plugin_shell::process::Command,
+    mut command: crate::utils::process::command::Command,
     process_type: &str,
-) -> Result<tauri_plugin_shell::process::Command, crate::rclone::engine::error::EngineError> {
+) -> Result<crate::utils::process::command::Command, crate::rclone::engine::error::EngineError> {
     let mut password_found = false;
 
     // Get password from SafeEnvironmentManager (synced from backend at startup)
@@ -55,7 +55,7 @@ pub async fn setup_rclone_environment(
 pub async fn create_rclone_command(
     app: &AppHandle,
     process_type: &str,
-) -> Result<tauri_plugin_shell::process::Command, crate::rclone::engine::error::EngineError> {
+) -> Result<crate::utils::process::command::Command, crate::rclone::engine::error::EngineError> {
     // Get paths for logging (directories already created during app startup)
     let paths = crate::core::paths::AppPaths::from_app_handle(app)
         .map_err(crate::rclone::engine::error::EngineError::SpawnFailed)?;

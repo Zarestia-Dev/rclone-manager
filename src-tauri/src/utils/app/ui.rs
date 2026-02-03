@@ -76,9 +76,12 @@ fn detect_macos_theme() -> Theme {
 
 #[cfg(target_os = "windows")]
 fn detect_windows_theme() -> Theme {
+    use std::os::windows::process::CommandExt;
     use std::process::Command;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
     match Command::new("reg")
+        .creation_flags(CREATE_NO_WINDOW)
         .args([
             "query",
             r"HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
@@ -98,7 +101,10 @@ fn detect_windows_theme() -> Theme {
             }
         }
         Ok(_) | Err(_) => {
-            if let Err(e) = Command::new("reg").output() {
+            if let Err(e) = Command::new("reg")
+                .creation_flags(CREATE_NO_WINDOW)
+                .output()
+            {
                 eprintln!("Failed to detect Windows theme: {}", e);
             }
             Theme::Light

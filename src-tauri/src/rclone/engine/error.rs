@@ -73,36 +73,39 @@ mod tests {
     fn test_engine_error_display() {
         assert_eq!(
             EngineError::SpawnFailed("test error".to_string()).to_string(),
-            "Spawn failed: test error"
+            "backendErrors.rclone.spawnFailed"
         );
-        assert_eq!(EngineError::InvalidPath.to_string(), "Invalid rclone path");
+        assert_eq!(
+            EngineError::InvalidPath.to_string(),
+            "backendErrors.rclone.invalidPath"
+        );
         assert_eq!(
             EngineError::KillFailed("process gone".to_string()).to_string(),
-            "Kill failed: process gone"
+            "backendErrors.rclone.killFailed"
         );
         assert_eq!(
             EngineError::PortCleanupFailed("busy".to_string()).to_string(),
-            "Port cleanup failed: busy"
+            "backendErrors.rclone.portCleanupFailed"
         );
         assert_eq!(
             EngineError::ConfigValidationFailed("bad config".to_string()).to_string(),
-            "Config validation failed: bad config"
+            "backendErrors.rclone.configValidationFailed"
         );
         assert_eq!(
             EngineError::LockFailed("timeout".to_string()).to_string(),
-            "Lock acquisition failed: timeout"
+            "backendErrors.rclone.lockFailed"
         );
         assert_eq!(
             EngineError::RestartFailed("hung".to_string()).to_string(),
-            "Restart failed: hung"
+            "backendErrors.rclone.restartFailed"
         );
         assert_eq!(
             EngineError::CacheRefreshFailed("network".to_string()).to_string(),
-            "Cache refresh failed: network"
+            "backendErrors.rclone.cacheRefreshFailed"
         );
         assert_eq!(
             EngineError::PasswordRequired.to_string(),
-            "Configuration password required"
+            "backendErrors.rclone.configEncrypted"
         );
     }
 
@@ -110,7 +113,7 @@ mod tests {
     fn test_engine_error_to_string_conversion() {
         let error = EngineError::SpawnFailed("conversion test".to_string());
         let string: String = error.into();
-        assert_eq!(string, "Spawn failed: conversion test");
+        assert_eq!(string, "backendErrors.rclone.spawnFailed");
     }
 
     #[test]

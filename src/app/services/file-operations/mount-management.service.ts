@@ -5,7 +5,8 @@ import { TranslateService } from '@ngx-translate/core';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { NotificationService } from '@app/services';
 import { BackendTranslationService } from '../i18n/backend-translation.service';
-import { MountedRemote, MOUNT_STATE_CHANGED, RCLONE_ENGINE_READY } from '@app/types';
+import { MountedRemote } from '@app/types';
+import { EventListenersService } from '../system/event-listeners.service';
 
 /**
  * Service for managing rclone mounts
@@ -22,6 +23,7 @@ export class MountManagementService extends TauriBaseService {
   private notificationService = inject(NotificationService);
   private translate = inject(TranslateService);
   private backendTranslation = inject(BackendTranslationService);
+  private eventListeners = inject(EventListenersService);
   private destroyRef = inject(DestroyRef);
 
   constructor() {
@@ -35,8 +37,8 @@ export class MountManagementService extends TauriBaseService {
    */
   private initializeEventListeners(): void {
     merge(
-      this.listenToEvent<unknown>(MOUNT_STATE_CHANGED),
-      this.listenToEvent<unknown>(RCLONE_ENGINE_READY)
+      this.eventListeners.listenToMountCacheUpdated(),
+      this.eventListeners.listenToRcloneEngineReady()
     )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {

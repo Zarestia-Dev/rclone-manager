@@ -4,8 +4,9 @@ import { NotificationService } from '@app/services';
 import { BehaviorSubject, firstValueFrom, Observable } from 'rxjs';
 import { map, distinctUntilChanged, filter, first } from 'rxjs/operators';
 import { TranslateService } from '@ngx-translate/core';
-import { CheckResult, SettingMetadata, SYSTEM_SETTINGS_CHANGED } from '@app/types';
+import { CheckResult, SettingMetadata } from '@app/types';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { EventListenersService } from '../system/event-listeners.service';
 
 @Injectable({
   providedIn: 'root',
@@ -13,6 +14,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 export class AppSettingsService extends TauriBaseService {
   private notificationService = inject(NotificationService);
   private translate = inject(TranslateService);
+  private eventListeners = inject(EventListenersService);
 
   private optionsState$ = new BehaviorSubject<Record<string, SettingMetadata> | null>(null);
   public options$ = this.optionsState$.asObservable();
@@ -20,7 +22,8 @@ export class AppSettingsService extends TauriBaseService {
   constructor() {
     super();
 
-    this.listenToEvent<Record<string, Record<string, unknown>>>(SYSTEM_SETTINGS_CHANGED)
+    this.eventListeners
+      .listenToSystemSettingsChanged()
       .pipe(takeUntilDestroyed())
       .subscribe(payload => {
         this.updateStateFromEvent(payload as Record<string, Record<string, SettingMetadata>>);

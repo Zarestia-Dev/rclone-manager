@@ -26,12 +26,10 @@ export class ServeManagementService extends TauriBaseService {
 
   constructor() {
     super();
-    // Initialize by loading running serves
     this.refreshServes().catch(error => {
       console.error('Failed to initialize running serves:', error);
     });
 
-    // Subscribe to serve state changes and engine ready events
     merge(
       this.eventListeners.listenToServeStateChanged(),
       this.eventListeners.listenToRcloneEngineReady()

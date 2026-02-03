@@ -1,7 +1,6 @@
 use log::{debug, error, info};
 use std::time::Duration;
 use tauri::{AppHandle, Manager};
-use tauri_plugin_shell::process::CommandChild;
 
 use crate::utils::types::core::RcApiEngine;
 use crate::utils::{
@@ -17,7 +16,7 @@ const MAX_GRACEFUL_SHUTDOWN_ITERATIONS: usize = 20;
 const GRACEFUL_SHUTDOWN_CHECK_INTERVAL: Duration = Duration::from_millis(100);
 
 impl RcApiEngine {
-    pub async fn spawn_process(&mut self, app: &AppHandle) -> EngineResult<CommandChild> {
+    pub async fn spawn_process(&mut self, app: &AppHandle) -> EngineResult<tokio::process::Child> {
         use crate::rclone::backend::BackendManager;
         let backend_manager = app.state::<BackendManager>();
         let backend = backend_manager.get_active().await;
@@ -40,7 +39,7 @@ impl RcApiEngine {
         };
 
         match engine_app.spawn() {
-            Ok((_rx, child)) => {
+            Ok(child) => {
                 info!("✅ Rclone process spawned successfully");
                 self.set_path_error(false);
                 Ok(child)
@@ -49,7 +48,7 @@ impl RcApiEngine {
                 error!("❌ Failed to spawn Rclone process: {e}");
                 let err_text = e.to_string();
 
-                // Check OS-level errors (these come from tauri-plugin-shell, not our code)
+                // Check OS-level errors
                 // These errors are in English and come from Rust std library
                 let is_path_error = err_text.contains("No such file or directory")
                     || err_text.contains("os error 2");
@@ -66,46 +65,50 @@ impl RcApiEngine {
     }
 
     pub async fn kill_process(&mut self, app: &AppHandle) -> EngineResult<()> {
-        if let Some(child) = self.process.take() {
-            let pid = child.pid();
+        if let Some(mut child) = self.process.take() {
+            let pid = child.id();
 
             // 1. Attempt graceful shutdown
             if self.running {
-                info!("🔄 Attempting graceful shutdown...");
+                if let Some(pid_val) = pid {
+                    info!("🔄 Attempting graceful shutdown for PID {}...", pid_val);
 
-                // Use backend's api_url() as single source of truth
-                use crate::rclone::backend::BackendManager;
-                let backend_manager = app.state::<BackendManager>();
-                let backend = backend_manager.get_active().await;
-                let quit_url = backend.url_for(core::QUIT);
+                    // Use backend's api_url() as single source of truth
+                    use crate::rclone::backend::BackendManager;
+                    let backend_manager = app.state::<BackendManager>();
+                    let backend = backend_manager.get_active().await;
+                    let quit_url = backend.url_for(core::QUIT);
 
-                let _ = reqwest::Client::new()
-                    .post(&quit_url)
-                    .timeout(GRACEFUL_SHUTDOWN_TIMEOUT)
-                    .send()
-                    .await;
+                    let _ = reqwest::Client::new()
+                        .post(&quit_url)
+                        .timeout(GRACEFUL_SHUTDOWN_TIMEOUT)
+                        .send()
+                        .await;
 
-                // Poll for process exit (up to 2 seconds, checking every 100ms)
-                for _ in 0..MAX_GRACEFUL_SHUTDOWN_ITERATIONS {
-                    // Use kill -0 for Flatpak compatibility
-                    if let Ok(output) = tokio::process::Command::new("kill")
-                        .args(["-0", &pid.to_string()])
-                        .output()
-                        .await
-                        && !output.status.success()
-                    {
-                        info!("✅ Process terminated gracefully");
-                        self.running = false;
-                        return Ok(());
+                    // Poll for process exit (up to 2 seconds, checking every 100ms)
+                    for _ in 0..MAX_GRACEFUL_SHUTDOWN_ITERATIONS {
+                        // Use kill -0 for Flatpak compatibility
+                        if let Ok(output) = tokio::process::Command::new("kill")
+                            .args(["-0", &pid_val.to_string()])
+                            .output()
+                            .await
+                            && !output.status.success()
+                        {
+                            info!("✅ Process termianted gracefully");
+                            self.running = false;
+                            return Ok(());
+                        }
+                        tokio::time::sleep(GRACEFUL_SHUTDOWN_CHECK_INTERVAL).await;
                     }
-                    tokio::time::sleep(GRACEFUL_SHUTDOWN_CHECK_INTERVAL).await;
+                    debug!("⚠️ Graceful shutdown timed out, force killing...");
+                } else {
+                    debug!("⚠️ Process ID not found, skipping graceful shutdown");
                 }
-                debug!("⚠️ Graceful shutdown timed out, force killing...");
             }
 
             // 2. Force kill the process
             info!("🛑 Force killing process...");
-            if let Err(e) = child.kill() {
+            if let Err(e) = child.kill().await {
                 let error_msg = format!("Failed to kill process: {e}");
                 error!("❌ {}", error_msg);
                 return Err(EngineError::KillFailed(error_msg));

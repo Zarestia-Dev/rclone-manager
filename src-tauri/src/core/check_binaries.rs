@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use log::{debug, error, info};
 use tauri::{AppHandle, Manager};
-use tauri_plugin_shell::ShellExt;
 
 /// Resolve rclone binary path with optional override
 ///
@@ -31,9 +30,7 @@ pub async fn check_rclone_available(app: AppHandle, path: &str) -> Result<bool, 
 
     // Check if the path exists and can execute --version
     if rclone_path.exists() {
-        match app
-            .shell()
-            .command(rclone_path.to_string_lossy().to_string())
+        match crate::utils::process::command::Command::new(rclone_path)
             .arg("--version")
             .output()
             .await
@@ -63,13 +60,11 @@ pub fn build_rclone_command(
     bin_override: Option<&str>,
     config_override: Option<&str>,
     args: Option<&[&str]>,
-) -> tauri_plugin_shell::process::Command {
+) -> crate::utils::process::command::Command {
     // Determine binary path using helper
     let binary_path = resolve_rclone_binary(app, bin_override);
 
-    let mut cmd = app
-        .shell()
-        .command(binary_path.to_string_lossy().to_string());
+    let mut cmd = crate::utils::process::command::Command::new(binary_path);
 
     // Determine config file: explicit override takes precedence,
     if let Some(cfg) = config_override

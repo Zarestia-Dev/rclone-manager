@@ -249,10 +249,9 @@ mod tests {
             "remote" => remote
         );
 
-        let parsed: serde_json::Value = serde_json::from_str(&error).unwrap();
-        assert_eq!(parsed["key"], "backendErrors.mount.alreadyInUse");
-        assert_eq!(parsed["params"]["mountPoint"], "/mnt/drive");
-        assert_eq!(parsed["params"]["remote"], "gdrive");
+        // Since translation files are not loaded in tests, it falls back to the key
+        // Params are ignored in fallback if the key doesn't contain placeholders (which it doesn't here)
+        assert_eq!(error, "backendErrors.mount.alreadyInUse");
     }
 
     #[test]

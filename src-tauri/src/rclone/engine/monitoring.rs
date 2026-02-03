@@ -28,49 +28,15 @@ impl RcApiEngine {
     /// Check if the process is still alive using native PID checking
     pub fn is_process_alive(&mut self) -> bool {
         if let Some(child) = &self.process {
-            let pid = child.pid();
-
-            #[cfg(unix)]
-            {
-                // Use kill -0 which works in Flatpak sandbox (inherits permissions)
-                use std::process::Command;
-                match Command::new("kill").args(["-0", &pid.to_string()]).output() {
-                    Ok(output) => {
-                        let alive = output.status.success();
-                        if !alive {
-                            debug!("🔍 Process {} is no longer running", pid);
-                        }
-                        alive
-                    }
-                    Err(_) => {
-                        // If we can't check, assume alive and let API check verify
-                        true
-                    }
+            if let Some(pid) = child.id() {
+                let alive = crate::utils::process::process_manager::is_process_alive(pid);
+                if !alive {
+                    debug!("🔍 Process {} is no longer running", pid);
                 }
-            }
-
-            #[cfg(windows)]
-            {
-                // On Windows, try to open the process with minimal access
-                use std::process::Command;
-                let output = Command::new("tasklist")
-                    .args(["/FI", &format!("PID eq {}", pid), "/NH"])
-                    .output();
-
-                match output {
-                    Ok(out) => {
-                        let stdout = String::from_utf8_lossy(&out.stdout);
-                        let alive = stdout.contains(&pid.to_string());
-                        if !alive {
-                            debug!("🔍 Process {} is no longer running", pid);
-                        }
-                        alive
-                    }
-                    Err(_) => {
-                        // If we can't check, assume alive and let API check verify
-                        true
-                    }
-                }
+                alive
+            } else {
+                debug!("🔍 Process has no PID");
+                false
             }
         } else {
             debug!("🔍 No process found");

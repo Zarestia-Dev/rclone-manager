@@ -20,6 +20,9 @@ import {
   RCLONE_ENGINE_UPDATING,
   RCLONE_PASSWORD_STORED,
   OPEN_INTERNAL_ROUTE,
+  SYSTEM_SETTINGS_CHANGED,
+  SCHEDULED_TASKS_CACHE_CHANGED,
+  REMOTE_SETTINGS_CHANGED,
 } from '@app/types';
 /**
  * Service for handling installations of rclone and plugins
@@ -150,5 +153,26 @@ export class EventListenersService extends TauriBaseService {
    */
   listenToOpenInternalRoute(): Observable<string> {
     return this.listenToEvent<string>(OPEN_INTERNAL_ROUTE);
+  }
+
+  /**
+   * Listen to system settings changed events
+   */
+  listenToSystemSettingsChanged(): Observable<Record<string, Record<string, unknown>>> {
+    return this.listenToEvent<Record<string, Record<string, unknown>>>(SYSTEM_SETTINGS_CHANGED);
+  }
+
+  /**
+   * Listen to scheduled tasks cache changed events
+   */
+  listenToScheduledTasksCacheChanged(): Observable<unknown> {
+    return this.listenToEvent<unknown>(SCHEDULED_TASKS_CACHE_CHANGED);
+  }
+
+  /**
+   * Listen to remote settings changed events
+   */
+  listenToRemoteSettingsChanged(): Observable<unknown> {
+    return this.listenToEvent<unknown>(REMOTE_SETTINGS_CHANGED);
   }
 }

@@ -2,7 +2,8 @@ import { DestroyRef, inject, Injectable } from '@angular/core';
 import { BehaviorSubject, map, merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../core/tauri-base.service';
-import { JobInfo, JOB_CACHE_CHANGED, RCLONE_ENGINE_READY } from '@app/types';
+import { JobInfo } from '@app/types';
+import { EventListenersService } from '../system/event-listeners.service';
 
 /**
  * Service for managing rclone jobs (sync, copy, etc.)
@@ -34,6 +35,7 @@ export class JobManagementService extends TauriBaseService {
   public nautilusJobs$ = this.nautilusJobsSubject.asObservable();
 
   private destroyRef = inject(DestroyRef);
+  private eventListeners = inject(EventListenersService);
 
   constructor() {
     super();
@@ -46,8 +48,8 @@ export class JobManagementService extends TauriBaseService {
    */
   private initializeEventListeners(): void {
     merge(
-      this.listenToEvent<unknown>(JOB_CACHE_CHANGED),
-      this.listenToEvent<unknown>(RCLONE_ENGINE_READY)
+      this.eventListeners.listenToJobCacheChanged(),
+      this.eventListeners.listenToRcloneEngineReady()
     )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {

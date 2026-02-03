@@ -16,13 +16,11 @@ import {
   RemoteSettings,
   SyncOperationType,
   PrimaryActionType,
-  REMOTE_CACHE_CHANGED,
-  RCLONE_ENGINE_READY,
-  REMOTE_SETTINGS_CHANGED,
-  DiskUsage,
   ActionState,
   RemoteAction,
+  DiskUsage,
 } from '@app/types';
+import { EventListenersService } from '../system/event-listeners.service';
 
 @Injectable({
   providedIn: 'root',
@@ -33,6 +31,7 @@ export class RemoteFacadeService extends TauriBaseService {
   private serveService = inject(ServeManagementService);
   private remoteService = inject(RemoteManagementService);
   private appSettingsService = inject(AppSettingsService);
+  private eventListeners = inject(EventListenersService);
 
   // Reactive data sources from underlying services
   // Expose these as readonly signals for consumers who need raw lists (e.g. HomeComponent)
@@ -163,9 +162,9 @@ export class RemoteFacadeService extends TauriBaseService {
     // Auto-refresh all data when remote cache changes (e.g., backend switch)
     // or when settings change, or when engine becomes ready after restart
     merge(
-      this.listenToEvent<unknown>(REMOTE_CACHE_CHANGED),
-      this.listenToEvent<unknown>(REMOTE_SETTINGS_CHANGED),
-      this.listenToEvent<unknown>(RCLONE_ENGINE_READY)
+      this.eventListeners.listenToRemoteCacheUpdated(),
+      this.eventListeners.listenToRemoteSettingsChanged(),
+      this.eventListeners.listenToRcloneEngineReady()
     )
       .pipe(takeUntilDestroyed())
       .subscribe(() => {

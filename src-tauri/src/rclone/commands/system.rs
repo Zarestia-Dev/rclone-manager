@@ -155,7 +155,7 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
         }
     };
 
-    let (_rx, process) = oauth_cmd.spawn().map_err(|e| {
+    let process = oauth_cmd.spawn().map_err(|e| {
         let error_msg = format!(
             "Failed to start Rclone OAuth process: {e}. Ensure Rclone is installed and in PATH."
         );
@@ -264,8 +264,8 @@ pub async fn quit_rclone_oauth(app: AppHandle) -> Result<(), String> {
         warn!("⚠️ Failed to send quit request: {e}");
     }
 
-    if let Some(process) = guard.take() {
-        if let Err(e) = process.kill() {
+    if let Some(mut process) = guard.take() {
+        if let Err(e) = process.kill().await {
             error!("❌ Failed to kill process: {e}");
             return Err(crate::localized_error!("backendErrors.system.killFailed", "error" => e));
         } else {

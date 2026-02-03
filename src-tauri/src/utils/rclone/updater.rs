@@ -227,7 +227,6 @@ pub async fn update_rclone(
     // Note: Completion is signaled by ENGINE_RESTARTED event with reason 'rclone_update'
 
     // Set updating to false at the end (regardless of success/failure)
-    // Set updating to false at the end (regardless of success/failure)
     log::info!("Setting updating to false");
     {
         use crate::utils::types::core::EngineState;
@@ -404,7 +403,7 @@ async fn check_rclone_selfupdate(
         .output()
         .await
         .map_err(
-            |e| crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => e),
+            |e: std::io::Error| crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => e),
         )?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -601,7 +600,7 @@ async fn perform_rclone_selfupdate(
     debug!("Executing rclone selfupdate");
 
     let output = cmd.output().await.map_err(
-        |e| crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => e),
+        |e: std::io::Error| crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => e),
     )?;
 
     if output.status.success() {

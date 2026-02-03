@@ -3,28 +3,7 @@
 //! This module handles:
 //! - Detecting mount plugins (WinFsp, FUSE-T, MacFUSE) on each platform
 //! - Installing mount plugins with dynamic version fetching from GitHub
-//! - Using tauri_plugin_shell for hidden terminal execution
-
-#[cfg(any(target_os = "macos", target_os = "windows"))]
-use log::debug;
-
-#[cfg(any(target_os = "macos", target_os = "windows"))]
-use std::path::{Path, PathBuf};
-
-#[cfg(any(target_os = "macos", target_os = "windows"))]
-use log::info;
-
-#[cfg(any(target_os = "macos", target_os = "windows"))]
-use std::fs;
-
-#[cfg(any(target_os = "macos", target_os = "windows"))]
-use std::io::Write;
-
-#[cfg(any(target_os = "macos", target_os = "windows"))]
-use tauri::{AppHandle, Emitter, Manager, State};
-
-#[cfg(any(target_os = "macos", target_os = "windows"))]
-use tauri_plugin_shell::ShellExt;
+//! - Installing mount plugins with dynamic version fetching from GitHub
 
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 use crate::utils::{
@@ -290,7 +269,7 @@ pub async fn install_mount_plugin() -> Result<String, String> {
     ))
 }
 
-/// Install the plugin with admin elevation using tauri_plugin_shell
+/// Install the plugin with admin elevation using local Command wrapper
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 async fn install_with_elevation(app_handle: &AppHandle, file_path: &Path) -> Result<(), String> {
     let file_path_str = file_path.to_str().ok_or("Invalid UTF-8 in file path")?;
@@ -303,9 +282,7 @@ async fn install_with_elevation(app_handle: &AppHandle, file_path: &Path) -> Res
             file_path_str.replace("'", "'\\''")
         );
 
-        let output = app_handle
-            .shell()
-            .command("osascript")
+        let output = crate::utils::process::Command::new("osascript")
             .args(["-e", &script])
             .output()
             .await
@@ -328,9 +305,7 @@ async fn install_with_elevation(app_handle: &AppHandle, file_path: &Path) -> Res
             file_path_str.replace("'", "''")
         );
 
-        let output = app_handle
-            .shell()
-            .command("powershell")
+        let output = crate::utils::process::Command::new("powershell")
             .args(["-WindowStyle", "Hidden", "-Command", &ps_command])
             .output()
             .await

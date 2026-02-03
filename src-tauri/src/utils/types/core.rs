@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::atomic::AtomicBool;
-use tauri_plugin_shell::process::CommandChild;
+use tokio::process::Child;
 
 /// Core application state for Rclone operations.
 pub struct RcloneState {
@@ -14,7 +14,7 @@ pub struct RcloneState {
     /// Flag indicating an update is in progress
     pub is_update_in_progress: AtomicBool,
     /// OAuth process state for interactive remote creation
-    pub oauth_process: tokio::sync::Mutex<Option<CommandChild>>,
+    pub oauth_process: tokio::sync::Mutex<Option<Child>>,
 }
 
 impl RcloneState {
@@ -32,7 +32,7 @@ impl RcloneState {
 }
 
 pub struct RcApiEngine {
-    pub process: Option<CommandChild>,
+    pub process: Option<Child>,
     pub should_exit: bool,
     pub running: bool,
     pub updating: bool,

@@ -1,12 +1,8 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
-import {
-  ScheduledTask,
-  CronValidationResponse,
-  ScheduledTaskStats,
-  SCHEDULED_TASKS_CACHE_CHANGED,
-} from '@app/types';
+import { ScheduledTask, CronValidationResponse, ScheduledTaskStats } from '@app/types';
+import { EventListenersService } from './event-listeners.service';
 
 /**
  * Service for managing scheduled tasks with cron expressions
@@ -22,6 +18,8 @@ export class SchedulerService extends TauriBaseService {
   private statsCache = new BehaviorSubject<ScheduledTaskStats | null>(null);
   public stats$ = this.statsCache.asObservable();
 
+  private eventListeners = inject(EventListenersService);
+
   constructor() {
     super();
     this.initializeEventListeners();
@@ -32,7 +30,7 @@ export class SchedulerService extends TauriBaseService {
    */
   private initializeEventListeners(): void {
     // Listen for cache changes
-    this.listenToEvent<unknown>(SCHEDULED_TASKS_CACHE_CHANGED).subscribe(_ => {
+    this.eventListeners.listenToScheduledTasksCacheChanged().subscribe(_ => {
       this.refreshScheduledTasks();
     });
   }
