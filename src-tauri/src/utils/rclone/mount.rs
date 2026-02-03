@@ -23,6 +23,8 @@ use crate::utils::types::core::RcloneState;
 #[cfg(target_os = "macos")]
 /// Checks for the presence of any compatible FUSE implementation on macOS.
 fn check_fuse_installed() -> bool {
+    use log::debug;
+    use std::path::PathBuf;
     // Check for FUSE-T (the preferred implementation)
     let fuse_t_app_support = PathBuf::from("/Library/Application Support/fuse-t").exists();
     let fuse_t_framework = PathBuf::from("/Library/Frameworks/FuseT.framework").exists();
@@ -173,8 +175,8 @@ async fn get_latest_fuse_t_url() -> Result<MountPluginInfo, String> {
 #[cfg(target_os = "macos")]
 #[tauri::command]
 pub async fn install_mount_plugin(
-    app_handle: AppHandle,
-    state: State<'_, RcloneState>,
+    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, RcloneState>,
 ) -> Result<String, String> {
     let download_path = std::env::temp_dir().join("rclone_temp");
     std::fs::create_dir_all(&download_path)
@@ -190,7 +192,7 @@ pub async fn install_mount_plugin(
     fetch_and_save(&state, &plugin_info.download_url, &local_file).await?;
     log::info!("Downloaded to: {:?}", local_file);
 
-    let result = install_with_elevation(&app_handle, &local_file).await;
+    let result = install_with_elevation(&local_file).await;
     let _ = std::fs::remove_file(&local_file);
 
     match result {
@@ -282,7 +284,7 @@ async fn install_with_elevation(file_path: &std::path::Path) -> Result<(), Strin
             file_path_str.replace("'", "'\\''")
         );
 
-        let output = crate::utils::process::Command::new("osascript")
+        let output = crate::utils::process::command::Command::new("osascript")
             .args(["-e", &script])
             .output()
             .await
