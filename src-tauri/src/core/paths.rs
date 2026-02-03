@@ -92,6 +92,14 @@ impl AppPaths {
             .resource_dir()
             .map_err(|e| format!("Failed to get resource directory: {}", e))?;
 
+        #[cfg(feature = "web-server")]
+        {
+            use log::info;
+            info!("📁 Config directory: {}", config_dir.display());
+            info!("📁 Cache directory: {}", cache_dir.display());
+            info!("📁 Resource directory: {}", resource_dir.display());
+        }
+
         Ok(Self {
             config_dir,
             cache_dir,

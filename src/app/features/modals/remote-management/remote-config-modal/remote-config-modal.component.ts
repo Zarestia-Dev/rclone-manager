@@ -763,7 +763,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       if (type === 'mount') {
         patchData.dest = config.dest;
       } else {
-        patchData.dest = this.parsePathString(config.dest, 'local', '');
+        patchData.dest = this.parsePathString(config.dest, 'local', this.getRemoteName());
       }
     }
 
@@ -806,16 +806,17 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   ): { pathType: string; path: string; otherRemoteName?: string } {
     if (!fullPath) return { pathType: defaultType, path: '' };
 
-    const parts = fullPath.split(':');
-    if (parts.length > 1 && parts[0].length > 0) {
-      const remote = parts[0];
-      const path = parts.slice(1).join(':');
+    const colonIdx = fullPath.indexOf(':');
+    const isLocal = colonIdx === -1 || colonIdx === 1 || fullPath.startsWith('/');
 
-      if (remote === currentRemoteName) {
-        return { pathType: 'currentRemote', path };
-      } else if (this.existingRemotes.includes(remote)) {
-        return { pathType: 'otherRemote', path, otherRemoteName: remote };
-      }
+    if (isLocal) return { pathType: 'local', path: fullPath };
+
+    const remote = fullPath.substring(0, colonIdx);
+    const path = fullPath.substring(colonIdx + 1);
+
+    if (remote === currentRemoteName) return { pathType: 'currentRemote', path };
+    if (this.existingRemotes.includes(remote)) {
+      return { pathType: `otherRemote:${remote}`, path, otherRemoteName: remote };
     }
 
     return { pathType: defaultType, path: fullPath };

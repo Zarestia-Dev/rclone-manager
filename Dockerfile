@@ -50,8 +50,11 @@ WORKDIR /app
 
 # Copy built binary from builder stage
 COPY --from=builder /app/src-tauri/target/release/rclone-manager-headless /usr/local/bin/
+
 # Copy built browser files
-COPY --from=builder /app/src-tauri/target/release/browser /usr/lib/rclone-manager-headless/browser/
+# Note: Path must match productName in tauri.conf.json ("RClone Manager Headless")
+COPY --from=builder ["/app/src-tauri/target/release/browser", "/usr/lib/RClone Manager Headless/browser/"]
+COPY --from=builder ["/app/src-tauri/target/release/i18n", "/usr/lib/RClone Manager Headless/i18n/"]
 
 # Create directory for optional TLS certificates (mount your own certs here)
 RUN mkdir -p /app/certs && \
@@ -112,6 +115,9 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f https://localhost:8080/api/health || exit 1
 
 ENV DISPLAY=:99 \
+    HOME=/home/rclone-manager \
+    XDG_DATA_HOME=/home/rclone-manager/.local/share \
+    XDG_CONFIG_HOME=/home/rclone-manager/.config \
     RCLONE_CONFIG=/home/rclone-manager/.config/rclone/rclone.conf
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

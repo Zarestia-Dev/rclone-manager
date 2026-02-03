@@ -1,97 +1,89 @@
-<form [formGroup]="configGroup" class="flag-form">
-  <!-- Virtual Scroll Viewport -->
-  <cdk-virtual-scroll-viewport [itemSize]="20" class="virtual-scroll-viewport">
-    <div class="form-container">
-      <!-- Virtual scrolling content -->
-      <div *cdkVirtualFor="let field of formFields; trackBy: trackByField">
-        <!-- Operation Config (shown for all except vfs/filter/backend) -->
-        @if (field.type === 'operation-config') {
-          <app-operation-config
-            [opFormGroup]="configGroup"
-            [operationType]="flagType"
-            [currentRemoteName]="currentRemoteName"
-            [existingRemotes]="isType('serve') ? [] : existingRemotes"
-            [isNewRemote]="isType('serve') ? false : isNewRemote"
-            [searchQuery]="searchQuery"
-            [description]="
-              isType('serve')
-                ? ('wizards.remoteConfig.serveDescription' | translate)
-                : ('wizards.remoteConfig.operationDescription' | translate)
-            "
-            (sourceFolderSelected)="onSourceFolderSelect()"
-            (destFolderSelected)="onDestFolderSelect()"
-          >
-          </app-operation-config>
-        }
+<form [formGroup]="configGroup()" class="flag-form">
+  <div class="form-container">
+    <!-- Operation Config (shown for all except vfs/filter/backend) -->
+    @if (!isType(['vfs', 'filter', 'backend'])) {
+      <app-operation-config
+        [opFormGroup]="configGroup()"
+        [operationType]="flagType()"
+        [currentRemoteName]="currentRemoteName()"
+        [existingRemotes]="isType('serve') ? [] : existingRemotes()"
+        [isNewRemote]="isType('serve') ? false : isNewRemote()"
+        [searchQuery]="searchQuery()"
+        [description]="
+          isType('serve')
+            ? ('wizards.remoteConfig.serveDescription' | translate)
+            : ('wizards.remoteConfig.operationDescription' | translate)
+        "
+      >
+      </app-operation-config>
+    }
 
-        <!-- Mount Type Selector -->
-        @if (field.type === 'mount-type') {
-          <mat-form-field appearance="fill">
-            <mat-label>{{ 'wizards.remoteConfig.mountType' | translate }}</mat-label>
-            <mat-select
-              formControlName="type"
-              [placeholder]="'wizards.remoteConfig.selectMountType' | translate"
-            >
-              @for (mountType of mountTypes; track mountType) {
-                <mat-option [value]="mountType">
-                  {{ mountType | titlecase }}
-                </mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-        }
+    <!-- Mount Type Selector -->
+    @if (isType('mount')) {
+      <mat-form-field appearance="fill">
+        <mat-label>{{ 'wizards.remoteConfig.mountType' | translate }}</mat-label>
+        <mat-select
+          formControlName="type"
+          [placeholder]="'wizards.remoteConfig.selectMountType' | translate"
+        >
+          @for (mountType of mountTypes(); track mountType) {
+            <mat-option [value]="mountType">
+              {{ mountType | titlecase }}
+            </mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    }
 
-        <!-- Serve Type Selector -->
-        @if (field.type === 'serve-type') {
-          <mat-form-field appearance="fill">
-            <mat-label>{{ 'wizards.remoteConfig.serveType' | translate }}</mat-label>
-            <mat-select formControlName="type" (selectionChange)="onServeTypeChange($event.value)">
-              @for (type of availableServeTypes; track type) {
-                <mat-option [value]="type">
-                  <div class="type-option">
-                    <mat-icon [svgIcon]="iconService.getIconName(type)"></mat-icon>
-                    <div class="type-info">
-                      <span class="type-name">{{ type.toUpperCase() }}</span>
-                      <span class="type-desc">{{ 'wizards.serveTypes.' + type | translate }}</span>
-                    </div>
-                  </div>
-                </mat-option>
-              }
-              <mat-select-trigger>
-                <div class="type-option">
-                  <mat-icon [svgIcon]="iconService.getIconName(selectedServeType)"></mat-icon>
-                  <span class="type-name">{{ selectedServeType.toUpperCase() }}</span>
+    <!-- Serve Type Selector -->
+    @if (isType('serve')) {
+      <mat-form-field appearance="fill">
+        <mat-label>{{ 'wizards.remoteConfig.serveType' | translate }}</mat-label>
+        <mat-select formControlName="type" (selectionChange)="onServeTypeChange($event.value)">
+          @for (type of availableServeTypes(); track type) {
+            <mat-option [value]="type">
+              <div class="type-option">
+                <mat-icon [svgIcon]="iconService.getIconName(type)"></mat-icon>
+                <div class="type-info">
+                  <span class="type-name">{{ type.toUpperCase() }}</span>
+                  <span class="type-desc">{{ 'wizards.serveTypes.' + type | translate }}</span>
                 </div>
-              </mat-select-trigger>
-            </mat-select>
-          </mat-form-field>
-        }
-
-        <!-- Loading state for serve fields -->
-        @if (field.type === 'loading') {
-          <div class="loading-container">
-            <mat-spinner diameter="30"></mat-spinner>
-            <span>{{
-              'wizards.remoteConfig.loadingServeOptions' | translate: { type: selectedServeType }
-            }}</span>
-          </div>
-        }
-
-        <!-- Dynamic Flag Fields -->
-        @if (field.type === 'dynamic-fields') {
-          <ng-container formGroupName="options">
-            <div class="dynamic-fields">
-              @for (field of filteredDynamicFlagFields; track field.Name) {
-                <app-setting-control
-                  [option]="field"
-                  [formControlName]="getControlKey(flagType, field)"
-                >
-                </app-setting-control>
-              }
+              </div>
+            </mat-option>
+          }
+          <mat-select-trigger>
+            <div class="type-option">
+              <mat-icon [svgIcon]="iconService.getIconName(selectedServeType())"></mat-icon>
+              <span class="type-name">{{ selectedServeType().toUpperCase() }}</span>
             </div>
-          </ng-container>
-        }
+          </mat-select-trigger>
+        </mat-select>
+      </mat-form-field>
+    }
+
+    <!-- Loading state for serve fields -->
+    @if (isType('serve') && isLoadingServeFields()) {
+      <div class="loading-container">
+        <mat-spinner diameter="30"></mat-spinner>
+        <span>{{
+          'wizards.remoteConfig.loadingServeOptions' | translate: { type: selectedServeType() }
+        }}</span>
       </div>
-    </div>
-  </cdk-virtual-scroll-viewport>
+    }
+
+    <!-- Dynamic Flag Fields -->
+    @if (filteredDynamicFlagFields().length > 0 && !(isType('serve') && isLoadingServeFields())) {
+      <ng-container formGroupName="options">
+        <div class="dynamic-fields">
+          @for (field of filteredDynamicFlagFields(); track field.Name) {
+            <app-setting-control
+              [option]="field"
+              [formControlName]="getControlKey()(flagType(), field)"
+            >
+            </app-setting-control>
+          }
+        </div>
+      </ng-container>
+    }
+  </div>
 </form>

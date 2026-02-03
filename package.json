@@ -46,7 +46,7 @@
     "@angular/platform-browser-dynamic": "^21.1.1",
     "@ngx-translate/core": "^17.0.0",
     "@ngx-translate/http-loader": "^17.0.0",
-    "@tauri-apps/api": "^2.9.1",
+    "@tauri-apps/api": "~2.9.1",
     "@tauri-apps/plugin-os": "^2.3.2",
     "@types/highlight.js": "^9.12.4",
     "cronstrue": "^3.9.0",

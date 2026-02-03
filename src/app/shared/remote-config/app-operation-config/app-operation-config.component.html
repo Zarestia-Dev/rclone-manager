@@ -1,20 +1,20 @@
-<div class="operation-config" [formGroup]="opFormGroup">
-  @if (showAutoStart) {
+<div class="operation-config" [formGroup]="opFormGroup()">
+  @if (showAutoStart()) {
     <div class="header-section">
       <mat-slide-toggle formControlName="autoStart" class="operation-enable">
         {{
-          'wizards.appOperation.enableAutoStart' | translate: { type: operationType | titlecase }
+          'wizards.appOperation.enableAutoStart' | translate: { type: operationType() | titlecase }
         }}
       </mat-slide-toggle>
-      <p class="section-description">{{ description }}</p>
+      <p class="section-description">{{ description() }}</p>
     </div>
   }
 
-  @if (!isMount && !isServe && showCronSection) {
+  @if (!isMount() && !isServe() && showCronSection()) {
     <div class="header-section">
       <mat-slide-toggle formControlName="cronEnabled" class="cron-enable">
         {{
-          'wizards.appOperation.enableScheduled' | translate: { type: operationType | titlecase }
+          'wizards.appOperation.enableScheduled' | translate: { type: operationType() | titlecase }
         }}
       </mat-slide-toggle>
       <p
@@ -24,15 +24,15 @@
     </div>
   }
 
-  @if (!isMount && !isServe && isCronEnabled && showCronSection) {
+  @if (!isMount() && !isServe() && isCronEnabled() && showCronSection()) {
     <mat-expansion-panel style="margin-bottom: var(--space-md)">
       <mat-expansion-panel-header>
         <mat-panel-title> {{ 'wizards.appOperation.cronSchedule' | translate }} </mat-panel-title>
         <mat-panel-description>
-          <span [class.no-schedule]="!cronExpression">
-            {{ cronExpression || ('wizards.appOperation.notConfigured' | translate) }}
+          <span [class.no-schedule]="!cronExpression()">
+            {{ cronExpression() || ('wizards.appOperation.notConfigured' | translate) }}
           </span>
-          @if (cronExpression) {
+          @if (cronExpression()) {
             <button
               mat-icon-button
               class="clear-schedule-btn"
@@ -49,8 +49,8 @@
 
       <div class="cron-content">
         <app-cron-input
-          [initialValue]="cronExpression"
-          [taskName]="operationType"
+          [initialValue]="cronExpression()"
+          [taskName]="operationType()"
           (cronChange)="onCronChange($event)"
           (validationChange)="onCronValidationChange($event)"
         ></app-cron-input>
@@ -59,32 +59,32 @@
   }
 
   <!-- Source Path Section -->
-  @if (showSourcePath) {
+  @if (showSourcePath()) {
     <div class="paths-container">
       <div class="path-section" formGroupName="source">
-        @if (isMount || isServe) {
+        @if (isMount() || isServe()) {
           <!-- Mount/Serve Source is Fixed to Current Remote -->
           <div class="path-input-wrapper">
             <mat-form-field appearance="fill">
               <mat-label>{{
-                isServe
+                isServe()
                   ? ('wizards.appOperation.remotePathServe' | translate)
                   : ('wizards.appOperation.sourcePath' | translate)
               }}</mat-label>
               <span matPrefix class="path-prefix mount-remote locked">
                 <mat-icon svgIcon="hard-drive"></mat-icon>
-                <span>{{ currentRemoteName }}:</span>
+                <span>{{ currentRemoteName() }}:</span>
               </span>
               <input
                 matInput
                 formControlName="path"
                 [placeholder]="
-                  isServe
+                  isServe()
                     ? ('wizards.appOperation.rootFolderSpecific' | translate)
                     : ('wizards.appOperation.rootFolderOptional' | translate)
                 "
                 [attr.aria-label]="
-                  isServe
+                  isServe()
                     ? ('wizards.appOperation.remotePathServe' | translate)
                     : ('wizards.appOperation.sourcePath' | translate)
                 "
@@ -111,25 +111,25 @@
                 matPrefix
                 formControlName="pathType"
                 class="path-prefix"
-                [class.local]="sourcePathType === 'local'"
-                [class.remote]="sourcePathType === 'currentRemote'"
-                [class.other]="sourcePathType === 'otherRemote'"
+                [class.local]="sourcePathType() === 'local'"
+                [class.remote]="sourcePathType() === 'currentRemote'"
+                [class.other]="sourcePathType() === 'otherRemote'"
                 [attr.aria-label]="'wizards.appOperation.changeSourceType' | translate"
                 (selectionChange)="clearPathOnTypeChange('source')"
               >
                 <mat-select-trigger>
-                  @switch (sourcePathType) {
+                  @switch (sourcePathType()) {
                     @case ('local') {
                       <mat-icon svgIcon="folder" class="purple"></mat-icon>
                       <span>{{ 'wizards.appOperation.localPath' | translate }}</span>
                     }
                     @case ('currentRemote') {
                       <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-                      <span>{{ currentRemoteName }}:</span>
+                      <span>{{ currentRemoteName() }}:</span>
                     }
                     @case ('otherRemote') {
                       <mat-icon svgIcon="cloud" class="accent"></mat-icon>
-                      <span>{{ opFormGroup.get('source.otherRemoteName')?.value }}:</span>
+                      <span>{{ opFormGroup().get('source.otherRemoteName')?.value }}:</span>
                     }
                   }
                 </mat-select-trigger>
@@ -140,12 +140,12 @@
                 </mat-option>
                 <mat-option value="currentRemote">
                   <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-                  {{ currentRemoteName }}:
+                  {{ currentRemoteName() }}:
                 </mat-option>
 
-                @if (otherRemotes.length) {
+                @if (otherRemotes().length) {
                   <mat-optgroup [label]="'wizards.appOperation.otherRemotes' | translate">
-                    @for (remote of otherRemotes; track remote) {
+                    @for (remote of otherRemotes(); track remote) {
                       <mat-option [value]="'otherRemote:' + remote">
                         <mat-icon class="accent" svgIcon="cloud"></mat-icon>
                         {{ remote }}:
@@ -175,8 +175,8 @@
               >
                 <mat-icon
                   svgIcon="folder"
-                  [class.purple]="sourcePathType === 'local'"
-                  [class.accent]="sourcePathType !== 'local'"
+                  [class.purple]="sourcePathType() === 'local'"
+                  [class.accent]="sourcePathType() !== 'local'"
                 ></mat-icon>
               </button>
             </mat-form-field>
@@ -185,7 +185,7 @@
       </div>
 
       <!-- Destination Path Section -->
-      @if (isMount && !isServe && showDestPath) {
+      @if (isMount() && !isServe() && showDestPath()) {
         <div class="path-section">
           <div class="path-input-wrapper">
             <mat-form-field appearance="fill">
@@ -212,13 +212,13 @@
               >
                 <mat-icon svgIcon="folder" class="purple"></mat-icon>
               </button>
-              @if (opFormGroup.get('dest')?.hasError('required')) {
+              @if (opFormGroup().get('dest')?.hasError('required')) {
                 <mat-error>{{ 'wizards.appOperation.destRequired' | translate }}</mat-error>
               }
             </mat-form-field>
           </div>
         </div>
-      } @else if (!isMount && !isServe && showDestPath) {
+      } @else if (!isMount() && !isServe() && showDestPath()) {
         <div class="path-section" formGroupName="dest">
           <div class="path-input-wrapper">
             <mat-form-field appearance="fill">
@@ -227,25 +227,25 @@
                 matPrefix
                 formControlName="pathType"
                 class="path-prefix"
-                [class.local]="destPathType === 'local'"
-                [class.remote]="destPathType === 'currentRemote'"
-                [class.other]="destPathType === 'otherRemote'"
+                [class.local]="destPathType() === 'local'"
+                [class.remote]="destPathType() === 'currentRemote'"
+                [class.other]="destPathType() === 'otherRemote'"
                 [attr.aria-label]="'wizards.appOperation.changeDestPathType' | translate"
                 (selectionChange)="clearPathOnTypeChange('dest')"
               >
                 <mat-select-trigger>
-                  @switch (destPathType) {
+                  @switch (destPathType()) {
                     @case ('local') {
                       <mat-icon svgIcon="folder" class="purple"></mat-icon>
                       <span>{{ 'wizards.appOperation.localPath' | translate }}</span>
                     }
                     @case ('currentRemote') {
                       <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-                      <span>{{ currentRemoteName }}:</span>
+                      <span>{{ currentRemoteName() }}:</span>
                     }
                     @case ('otherRemote') {
                       <mat-icon svgIcon="cloud" class="accent"></mat-icon>
-                      <span>{{ opFormGroup.get('dest.otherRemoteName')?.value }}:</span>
+                      <span>{{ opFormGroup().get('dest.otherRemoteName')?.value }}:</span>
                     }
                   }
                 </mat-select-trigger>
@@ -256,12 +256,12 @@
                 </mat-option>
                 <mat-option value="currentRemote">
                   <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-                  {{ currentRemoteName }}:
+                  {{ currentRemoteName() }}:
                 </mat-option>
 
-                @if (otherRemotes.length) {
+                @if (otherRemotes().length) {
                   <mat-optgroup [label]="'wizards.appOperation.otherRemotes' | translate">
-                    @for (remote of otherRemotes; track remote) {
+                    @for (remote of otherRemotes(); track remote) {
                       <mat-option [value]="'otherRemote:' + remote">
                         <mat-icon class="accent" svgIcon="cloud"></mat-icon>
                         {{ remote }}:
@@ -291,12 +291,12 @@
               >
                 <mat-icon
                   svgIcon="folder"
-                  [class.purple]="destPathType === 'local'"
-                  [class.accent]="destPathType !== 'local'"
+                  [class.purple]="destPathType() === 'local'"
+                  [class.accent]="destPathType() !== 'local'"
                 ></mat-icon>
               </button>
 
-              @if (opFormGroup.get('dest.path')?.hasError('required')) {
+              @if (opFormGroup().get('dest.path')?.hasError('required')) {
                 <mat-error>{{ 'wizards.appOperation.destRequired' | translate }}</mat-error>
               }
             </mat-form-field>
@@ -304,7 +304,7 @@
         </div>
       }
 
-      @if (isNewRemote) {
+      @if (isNewRemote()) {
         <div class="message warning" role="alert">
           <mat-icon svgIcon="info" class="orange"></mat-icon>
           <span>{{ 'wizards.appOperation.completionNote' | translate }}</span>

@@ -303,7 +303,7 @@
               [formControl]="cronControl"
               [placeholder]="'wizards.appOperation.cronPlaceholder' | translate"
               [attr.aria-label]="
-                'wizards.appOperation.aria.cronFor' | translate: { name: taskName }
+                'wizards.appOperation.aria.cronFor' | translate: { name: taskName() }
               "
             />
             @if (cronControl.value) {

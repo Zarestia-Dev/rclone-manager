@@ -21,6 +21,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::core::check_binaries::{build_rclone_command, get_rclone_binary_path, read_rclone_path};
 use crate::core::settings::operations::core::save_setting;
 use crate::utils::github_client;
+use crate::utils::types::core::EngineState;
 use crate::{rclone::queries::get_rclone_info, utils::types::events::RCLONE_ENGINE_UPDATING};
 
 // ============================================================================
@@ -113,12 +114,7 @@ pub async fn update_rclone(
     channel: Option<String>,
 ) -> Result<serde_json::Value, String> {
     // Step 1: Initialize update process
-    // Step 1: Initialize update process
-    {
-        use crate::utils::types::core::EngineState;
-        let engine_state = app_handle.state::<EngineState>();
-        engine_state.lock().await.set_updating(true);
-    }
+    set_engine_updating(&app_handle, true).await;
     debug!("🔍 Starting rclone update process");
 
     // Step 2: Check if update is available
@@ -129,15 +125,7 @@ pub async fn update_rclone(
         .unwrap_or(false);
 
     if !update_available {
-        // Set updating to false before returning
-        {
-            use crate::utils::types::core::EngineState;
-            app_handle
-                .state::<EngineState>()
-                .lock()
-                .await
-                .set_updating(false);
-        }
+        set_engine_updating(&app_handle, false).await;
         debug!("🔍 No update available for rclone");
         return Ok(json!({
             "success": false,
@@ -170,15 +158,7 @@ pub async fn update_rclone(
             );
             current_path = system_path;
         } else {
-            // Set updating to false before returning
-            {
-                use crate::utils::types::core::EngineState;
-                app_handle
-                    .state::<EngineState>()
-                    .lock()
-                    .await
-                    .set_updating(false);
-            }
+            set_engine_updating(&app_handle, false).await;
             debug!(
                 "🔍 Current rclone binary not found at: {}",
                 current_path.display()
@@ -196,7 +176,6 @@ pub async fn update_rclone(
 
     // Actually stop the engine process
     {
-        use crate::utils::types::core::EngineState;
         let engine_state = app_handle.state::<EngineState>();
         let mut engine = engine_state.lock().await;
         if let Err(e) = engine.kill_process(&app_handle).await {
@@ -228,14 +207,7 @@ pub async fn update_rclone(
 
     // Set updating to false at the end (regardless of success/failure)
     log::info!("Setting updating to false");
-    {
-        use crate::utils::types::core::EngineState;
-        app_handle
-            .state::<EngineState>()
-            .lock()
-            .await
-            .set_updating(false);
-    }
+    set_engine_updating(&app_handle, false).await;
 
     // If update was successful, restart engine with updated binary
     if success
@@ -267,8 +239,8 @@ async fn determine_update_strategy(
     current_path: &Path,
     app_handle: &AppHandle,
 ) -> Result<UpdateStrategy, String> {
-    // Try to check if we can write to the current rclone location
-    if can_update_in_place(current_path) {
+    // Check if we can write to the current rclone location
+    if current_path.parent().is_some_and(is_writable_dir) {
         log::info!("Can update rclone in place at: {current_path:?}");
         return Ok(UpdateStrategy::InPlace);
     }
@@ -325,24 +297,23 @@ async fn execute_update_strategy(
 // Helper Functions
 // ============================================================================
 
-/// Check if we can update rclone in its current location
-fn can_update_in_place(rclone_path: &Path) -> bool {
-    // Get the directory containing the rclone binary
-    let parent_dir = match rclone_path.parent() {
-        Some(dir) => dir,
-        #[allow(non_snake_case)]
-        None => return false,
-    };
+/// Helper to set engine updating state
+async fn set_engine_updating(app_handle: &AppHandle, updating: bool) {
+    app_handle
+        .state::<EngineState>()
+        .lock()
+        .await
+        .set_updating(updating);
+}
 
-    // Check if we can write to the directory
-    let test_file = parent_dir.join(".rclone_manager_write_test");
-    match std::fs::write(&test_file, "test") {
-        Ok(_) => {
-            // Clean up test file
-            let _ = std::fs::remove_file(&test_file);
-            true
-        }
-        Err(_) => false,
+/// Check if a directory is writable by attempting to create a test file
+fn is_writable_dir(path: &Path) -> bool {
+    let test_file = path.join(".rclone_manager_write_test");
+    if std::fs::write(&test_file, "test").is_ok() {
+        let _ = std::fs::remove_file(&test_file);
+        true
+    } else {
+        false
     }
 }
 
@@ -358,9 +329,12 @@ fn get_local_rclone_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
         .unwrap_or_default();
     let configured_str = configured.to_string_lossy();
 
-    if !configured_str.is_empty() && configured_str != "system" {
-        log::info!("Using configured rclone install path from settings: {configured:?}");
-        return Ok(configured);
+    if !matches!(configured_str.as_ref(), "" | "system") {
+        if is_writable_dir(&configured) {
+            log::info!("Using configured rclone install path from settings: {configured:?}");
+            return Ok(configured);
+        }
+        log::warn!("Configured path {configured:?} is not writable, falling back to app data dir");
     }
 
     // Fallback to the app's config directory (same default as provision_rclone)
@@ -694,5 +668,13 @@ This is the last section with no following header.
         let result = extract_version_changelog(changelog, "v1.71.1");
         assert!(result.is_some());
         assert!(result.unwrap().contains("last section"));
+    }
+
+    #[test]
+    fn test_is_writable_dir() {
+        let temp_dir = std::env::temp_dir().join("rclone_manager_test_writable");
+        std::fs::create_dir_all(&temp_dir).unwrap();
+        assert!(is_writable_dir(&temp_dir));
+        std::fs::remove_dir_all(&temp_dir).ok();
     }
 }

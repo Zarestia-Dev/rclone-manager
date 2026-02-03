@@ -187,11 +187,13 @@ pub fn t_with_params(key: &str, params: &[(&str, &str)]) -> String {
 ///
 /// Simple translation:
 /// ```
+/// use rclone_manager_lib::t;
 /// let label = t!("tray.showApp");
 /// ```
 ///
 /// With parameters:
 /// ```
+/// use rclone_manager_lib::t;
 /// let label = t!("tray.mountCount", "active" => "2", "total" => "5");
 /// ```
 #[macro_export]

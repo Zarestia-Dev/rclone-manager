@@ -1,15 +1,4 @@
-import {
-  Component,
-  Input,
-  Output,
-  EventEmitter,
-  OnInit,
-  OnDestroy,
-  OnChanges,
-  SimpleChanges,
-  inject,
-} from '@angular/core';
-
+import { Component, Output, EventEmitter, OnDestroy, inject, input, effect } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -51,49 +40,41 @@ type PresetKey =
   templateUrl: './cron-input.component.html',
   styleUrls: ['./cron-input.component.scss'],
 })
-export class CronInputComponent implements OnInit, OnDestroy, OnChanges {
-  @Input() initialValue?: string | null;
-  @Input() taskName: string | null = null;
+export class CronInputComponent implements OnDestroy {
+  initialValue = input<string | null>();
+  taskName = input<string | null>(null);
   @Output() cronChange = new EventEmitter<string | null>();
   @Output() validationChange = new EventEmitter<CronValidationResponse>();
 
   private readonly schedulerService = inject(SchedulerService);
   private readonly translate = inject(TranslateService);
   private readonly destroy$ = new Subject<void>();
-  private isInternalUpdate = false;
 
+  private isUpdatingForms = false;
   cronControl = new FormControl<string>('', [Validators.required]);
   validationResponse: CronValidationResponse | null = null;
   validationError = '';
-  userTimezone = this.getUserTimezoneOffset();
   selectedPreset: PresetKey | null = null;
+  userTimezone = this.getUserTimezoneOffset();
+  readonly daysOfMonth = Array.from({ length: 31 }, (_, i) => i + 1);
 
-  // Simple form for user-friendly building
   simpleForm = new FormGroup({
-    frequency: new FormControl<string>('daily', { nonNullable: true }),
-    time: new FormControl<string>('09:00', { nonNullable: true }),
-    dayOfWeek: new FormControl<string>('1', { nonNullable: true }),
+    frequency: new FormControl('daily', { nonNullable: true }),
+    time: new FormControl('09:00', { nonNullable: true }),
+    dayOfWeek: new FormControl('1', { nonNullable: true }),
     dayOfMonth: new FormControl<number>(1, { nonNullable: true }),
     intervalHours: new FormControl<number>(6, { nonNullable: true }),
   });
 
-  // Advanced form for power users
   advancedForm = new FormGroup({
-    minute: new FormControl<string>('0', { nonNullable: true }),
-    hour: new FormControl<string>('0', { nonNullable: true }),
-    dayOfMonth: new FormControl<string>('*', { nonNullable: true }),
-    month: new FormControl<string>('*', { nonNullable: true }),
-    dayOfWeek: new FormControl<string>('*', { nonNullable: true }),
+    minute: new FormControl('0', { nonNullable: true }),
+    hour: new FormControl('0', { nonNullable: true }),
+    dayOfMonth: new FormControl('*', { nonNullable: true }),
+    month: new FormControl('*', { nonNullable: true }),
+    dayOfWeek: new FormControl('*', { nonNullable: true }),
   });
 
-  readonly daysOfMonth = Array.from({ length: 31 }, (_, i) => i + 1);
-
-  readonly presetOptions: {
-    key: PresetKey;
-    title: string;
-    description: string;
-    cron: string;
-  }[] = [
+  readonly presetOptions: { key: PresetKey; title: string; description: string; cron: string }[] = [
     {
       key: 'daily-9am',
       title: 'Daily at 9 AM',
@@ -132,45 +113,30 @@ export class CronInputComponent implements OnInit, OnDestroy, OnChanges {
     },
   ];
 
-  private getUserTimezoneOffset(): string {
-    const offset = -new Date().getTimezoneOffset();
-    const hours = Math.floor(Math.abs(offset) / 60);
-    const minutes = Math.abs(offset) % 60;
-    const sign = offset >= 0 ? '+' : '-';
-    return `${sign}${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-  }
-
-  ngOnChanges(changes: SimpleChanges): void {
-    if (
-      changes['initialValue'] &&
-      changes['initialValue'].currentValue !== this.cronControl.value
-    ) {
-      const value = changes['initialValue'].currentValue;
-
-      if (value) {
-        try {
-          this.cronControl.setValue(value, { emitEvent: false });
-          this.syncFormsFromCron(value);
-          this.validateCron(value);
-        } catch (error) {
-          console.error('Failed to initialize cron value:', error);
-          this.cronControl.setValue(value, { emitEvent: false });
-        }
-      } else {
-        this.cronControl.setValue('', { emitEvent: false });
-        this.validationResponse = { isValid: true };
+  constructor() {
+    // 1. Initialize from Input Signal
+    effect(() => {
+      const val = this.initialValue() || '';
+      if (val !== this.cronControl.value) {
+        this.updateCronSourceOfTruth(val, false);
       }
-    }
-  }
+    });
 
-  ngOnInit(): void {
-    if (this.initialValue) {
-      this.cronControl.setValue(this.initialValue);
-    }
+    // 2. Listen to Cron Control Changes (Source of Truth)
+    this.cronControl.valueChanges
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe(value => this.handleCronChange(value));
 
-    this.setupCronControlSubscription();
-    this.setupAdvancedFormSubscription();
-    this.setupSimpleFormSubscription();
+    // 3. Listen to Sub-Forms
+    this.simpleForm.valueChanges.pipe(debounceTime(100), takeUntil(this.destroy$)).subscribe(() => {
+      if (!this.isUpdatingForms) this.updateFromSimpleForm();
+    });
+
+    this.advancedForm.valueChanges
+      .pipe(debounceTime(100), takeUntil(this.destroy$))
+      .subscribe(() => {
+        if (!this.isUpdatingForms) this.updateFromAdvancedForm();
+      });
   }
 
   ngOnDestroy(): void {
@@ -178,32 +144,47 @@ export class CronInputComponent implements OnInit, OnDestroy, OnChanges {
     this.destroy$.complete();
   }
 
-  private setupCronControlSubscription(): void {
-    this.cronControl.valueChanges
-      .pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$))
-      .subscribe(async value => {
-        const trimmedValue = value?.trim();
-        if (trimmedValue) {
-          if (!this.isInternalUpdate) {
-            this.syncFormsFromCron(trimmedValue);
-          }
-          await this.validateCron(trimmedValue);
-        } else {
-          this.resetValidation();
-        }
-      });
+  // ===================================
+  // Core Logic
+  // ===================================
+
+  private updateCronSourceOfTruth(newValue: string | null, emitEvent: boolean): void {
+    const validValue = newValue || '';
+
+    // Update control
+    if (this.cronControl.value !== validValue) {
+      this.cronControl.setValue(validValue, { emitEvent });
+    }
+
+    // Sync downstream views
+    if (!this.isUpdatingForms) {
+      this.syncViewsFromCron(validValue);
+    }
   }
 
-  private syncFormsFromCron(cron: string): void {
-    // 1. Check for a matching preset
-    const matchingPreset = this.presetOptions.find(p => p.cron === cron);
-    this.selectedPreset = matchingPreset ? matchingPreset.key : null;
+  private async handleCronChange(value: string | null): Promise<void> {
+    const trimmed = value?.trim() || '';
 
-    // 2. Sync the advanced form
-    const parts = cron.split(' ');
-    if (parts.length === 5) {
-      this.isInternalUpdate = true; // Prevent feedback loop
-      try {
+    if (trimmed) {
+      if (!this.isUpdatingForms) {
+        this.syncViewsFromCron(trimmed);
+      }
+      await this.validateCron(trimmed);
+    } else {
+      this.resetValidation();
+    }
+  }
+
+  private syncViewsFromCron(cron: string): void {
+    this.isUpdatingForms = true;
+    try {
+      // 1. Match Preset
+      const preset = this.presetOptions.find(p => p.cron === cron);
+      this.selectedPreset = preset ? preset.key : null;
+
+      // 2. Parse into Advanced Form (Standard 5-part cron)
+      const parts = cron.split(' ');
+      if (parts.length === 5) {
         this.advancedForm.setValue(
           {
             minute: parts[0],
@@ -215,117 +196,148 @@ export class CronInputComponent implements OnInit, OnDestroy, OnChanges {
           { emitEvent: false }
         );
 
-        // 3. Sync the simple form
-        this.syncSimpleForm(parts);
-      } catch (e) {
-        console.error('Error syncing forms from cron:', e);
-      } finally {
-        setTimeout(() => (this.isInternalUpdate = false), 0);
-      }
-    }
-  }
-
-  /**
-   * Tries to parse a 5-part cron array into the simple form.
-   */
-  private syncSimpleForm(parts: string[]): void {
-    const [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
-    const isNumeric = (val: string): boolean => /^\d+$/.test(val);
-
-    try {
-      // Pattern 1: Interval (e.g., 0 */6 * * *)
-      if (
-        minute === '0' &&
-        hour.startsWith('*/') &&
-        dayOfMonth === '*' &&
-        month === '*' &&
-        dayOfWeek === '*'
-      ) {
-        const interval = parseInt(hour.split('/')[1], 10);
-        this.simpleForm.patchValue(
-          {
-            frequency: 'interval',
-            intervalHours: interval,
-          },
-          { emitEvent: false }
-        );
-      }
-      // Pattern 2: Monthly (e.g., 0 9 1 * *)
-      else if (
-        isNumeric(minute) &&
-        isNumeric(hour) &&
-        isNumeric(dayOfMonth) &&
-        month === '*' &&
-        dayOfWeek === '*'
-      ) {
-        const time = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
-        this.simpleForm.patchValue(
-          {
-            frequency: 'monthly',
-            time: time,
-            dayOfMonth: parseInt(dayOfMonth, 10),
-          },
-          { emitEvent: false }
-        );
-      }
-      // Pattern 3: Weekly (e.g., 0 9 * * 1)
-      else if (
-        isNumeric(minute) &&
-        isNumeric(hour) &&
-        dayOfMonth === '*' &&
-        month === '*' &&
-        (isNumeric(dayOfWeek) || dayOfWeek === '1-5')
-      ) {
-        const time = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
-        this.simpleForm.patchValue(
-          {
-            frequency: 'weekly',
-            time: time,
-            dayOfWeek: dayOfWeek, // '1' or '1-5' etc.
-          },
-          { emitEvent: false }
-        );
-      }
-      // Pattern 4: Daily (e.g., 0 9 * * *)
-      else if (
-        isNumeric(minute) &&
-        isNumeric(hour) &&
-        dayOfMonth === '*' &&
-        month === '*' &&
-        dayOfWeek === '*'
-      ) {
-        const time = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
-        this.simpleForm.patchValue(
-          {
-            frequency: 'daily',
-            time: time,
-          },
-          { emitEvent: false }
-        );
+        // 3. Try to map to Simple Form
+        this.mapCronToSimpleForm(parts);
       }
     } catch (e) {
-      console.error('Failed to sync simple form:', e);
+      console.warn('Error syncing views from cron:', e);
+    } finally {
+      this.isUpdatingForms = false;
     }
   }
 
-  private setupAdvancedFormSubscription(): void {
-    this.advancedForm.valueChanges
-      .pipe(debounceTime(100), takeUntil(this.destroy$))
-      .subscribe(() => {
-        if (!this.isInternalUpdate) {
-          this.selectedPreset = null;
-          this.generateCronFromAdvancedForm();
-        }
-      });
+  // ===================================
+  // Form Generation Logic
+  // ===================================
+
+  private updateFromSimpleForm(): void {
+    this.selectedPreset = null;
+    const { frequency, time, dayOfWeek, dayOfMonth, intervalHours } = this.simpleForm.getRawValue();
+    const { hours, minutes } = this.parseTime(time);
+
+    let cron = '';
+    switch (frequency) {
+      case 'daily':
+        cron = `${minutes} ${hours} * * *`;
+        break;
+      case 'weekly':
+        cron = `${minutes} ${hours} * * ${dayOfWeek}`;
+        break;
+      case 'monthly':
+        cron = `${minutes} ${hours} ${dayOfMonth} * *`;
+        break;
+      case 'interval':
+        cron = `0 */${intervalHours} * * *`;
+        break;
+    }
+
+    if (cron) this.cronControl.setValue(cron);
   }
 
-  private setupSimpleFormSubscription(): void {
-    this.simpleForm.valueChanges.pipe(debounceTime(100), takeUntil(this.destroy$)).subscribe(() => {
-      if (!this.isInternalUpdate) {
-        this.selectedPreset = null;
-        this.generateCronFromSimpleForm();
-      }
-    });
+  private updateFromAdvancedForm(): void {
+    this.selectedPreset = null;
+    const v = this.advancedForm.getRawValue();
+    const cron = `${v.minute} ${v.hour} ${v.dayOfMonth} ${v.month} ${v.dayOfWeek}`;
+    this.cronControl.setValue(cron);
+  }
+
+  applyPreset(key: PresetKey, cron: string): void {
+    this.selectedPreset = key;
+    this.cronControl.setValue(cron);
+  }
+
+  // ===================================
+  // Component Logic: Parsing & Mapping
+  // ===================================
+
+  onSimpleFormChange(): void {
+    // Triggered by timepicker
+    this.updateFromSimpleForm();
+  }
+
+  private mapCronToSimpleForm(parts: string[]): void {
+    if (parts.length < 5) return;
+    const [min, hour, dom, mon, dow] = parts;
+    const isNum = (s: string) => /^\d+$/.test(s);
+
+    // Helper to set simple form without triggering events
+    const setSimple = (vals: Partial<typeof this.simpleForm.value>) =>
+      this.simpleForm.patchValue(vals, { emitEvent: false });
+
+    // 1. Interval (0 */n * * *)
+    if (min === '0' && hour.startsWith('*/') && dom === '*' && mon === '*' && dow === '*') {
+      setSimple({ frequency: 'interval', intervalHours: parseInt(hour.split('/')[1], 10) });
+      return;
+    }
+
+    // 2. Monthly (m h d * *)
+    if (isNum(min) && isNum(hour) && isNum(dom) && mon === '*' && dow === '*') {
+      setSimple({
+        frequency: 'monthly',
+        time: this.formatTime(hour, min),
+        dayOfMonth: parseInt(dom, 10),
+      });
+      return;
+    }
+
+    // 3. Weekly (m h * * dow)
+    if (
+      isNum(min) &&
+      isNum(hour) &&
+      dom === '*' &&
+      mon === '*' &&
+      (isNum(dow) || dow.includes('-'))
+    ) {
+      setSimple({ frequency: 'weekly', time: this.formatTime(hour, min), dayOfWeek: dow });
+      return;
+    }
+
+    // 4. Daily (m h * * *)
+    if (isNum(min) && isNum(hour) && dom === '*' && mon === '*' && dow === '*') {
+      setSimple({ frequency: 'daily', time: this.formatTime(hour, min) });
+      return;
+    }
+  }
+
+  private parseTime(timeStr: string): { hours: number; minutes: number } {
+    const [hStr, mStr] = timeStr.split(':');
+    let h = parseInt(hStr, 10) || 0;
+    const m = parseInt(mStr?.split(' ')[0], 10) || 0;
+
+    if (timeStr.toLowerCase().includes('pm') && h < 12) h += 12;
+    if (timeStr.toLowerCase().includes('am') && h === 12) h = 0;
+
+    return { hours: Math.max(0, Math.min(23, h)), minutes: Math.max(0, Math.min(59, m)) };
+  }
+
+  private formatTime(hour: string, minute: string): string {
+    return `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
+  }
+
+  private getUserTimezoneOffset(): string {
+    const offset = -new Date().getTimezoneOffset();
+    const sign = offset >= 0 ? '+' : '-';
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${sign}${pad(Math.floor(Math.abs(offset) / 60))}:${pad(Math.abs(offset) % 60)}`;
+  }
+
+  // ===================================
+  // Validation & Helpers
+  // ===================================
+
+  private async validateCron(expression: string): Promise<void> {
+    try {
+      const result = await this.schedulerService.validateCron(expression);
+      this.validationResponse = result;
+      this.validationError = result.isValid ? '' : result.errorMessage || 'Invalid cron expression';
+      this.cronControl.setErrors(result.isValid ? null : { invalidCron: true });
+
+      this.cronChange.emit(expression);
+      this.validationChange.emit(result);
+    } catch (e) {
+      console.error('Validation failed', e);
+      this.cronControl.setErrors({ invalidCron: true });
+    }
   }
 
   private resetValidation(): void {
@@ -335,125 +347,12 @@ export class CronInputComponent implements OnInit, OnDestroy, OnChanges {
     this.validationChange.emit({ isValid: true });
   }
 
-  applyPreset(key: PresetKey, cron: string): void {
-    this.selectedPreset = key;
-    this.isInternalUpdate = true;
-    this.cronControl.setValue(cron);
-    this.syncFormsFromCron(cron);
-  }
-
-  onSimpleFormChange(): void {
-    if (!this.isInternalUpdate) {
-      this.selectedPreset = null;
-      this.generateCronFromSimpleForm();
-    }
-  }
-
-  private generateCronFromSimpleForm(): void {
-    const formValue = this.simpleForm.getRawValue();
-    const { hours, minutes } = this.parseTime(formValue.time);
-
-    let cronExpression = '';
-    switch (formValue.frequency) {
-      case 'daily':
-        cronExpression = `${minutes} ${hours} * * *`;
-        break;
-      case 'weekly':
-        cronExpression = `${minutes} ${hours} * * ${formValue.dayOfWeek}`;
-        break;
-      case 'monthly':
-        cronExpression = `${minutes} ${hours} ${formValue.dayOfMonth} * *`;
-        break;
-      case 'interval':
-        cronExpression = `0 */${formValue.intervalHours} * * *`;
-        break;
-      default:
-        return;
-    }
-
-    this.cronControl.setValue(cronExpression, { emitEvent: true });
-  }
-
-  private generateCronFromAdvancedForm(): void {
-    const formValue = this.advancedForm.getRawValue();
-    const cronExpression = [
-      formValue.minute,
-      formValue.hour,
-      formValue.dayOfMonth,
-      formValue.month,
-      formValue.dayOfWeek,
-    ].join(' ');
-
-    this.cronControl.setValue(cronExpression, { emitEvent: true });
-  }
-
-  private parseTime(timeString: string): { hours: number; minutes: number } {
-    const timeParts = timeString.split(':');
-    let hours = parseInt(timeParts[0], 10) || 0;
-    let minutes = 0;
-
-    if (timeParts.length >= 2) {
-      const minutePart = timeParts[1].split(' ')[0];
-      minutes = parseInt(minutePart, 10) || 0;
-
-      // Handle 12-hour format
-      const isPM = timeString.toLowerCase().includes('pm');
-      const isAM = timeString.toLowerCase().includes('am');
-
-      if (isPM && hours < 12) {
-        hours += 12;
-      } else if (isAM && hours === 12) {
-        hours = 0;
-      }
-    }
-
-    // Ensure valid ranges
-    hours = Math.max(0, Math.min(23, hours));
-    minutes = Math.max(0, Math.min(59, minutes));
-
-    return { hours, minutes };
-  }
-
-  private async validateCron(expression: string): Promise<void> {
-    try {
-      const response = await this.schedulerService.validateCron(expression);
-      this.validationResponse = response;
-
-      if (response.isValid) {
-        this.cronControl.setErrors(null);
-      } else {
-        this.validationError = response.errorMessage || 'Invalid cron expression';
-        this.cronControl.setErrors({ invalidCron: true });
-      }
-
-      this.cronChange.emit(expression);
-      this.validationChange.emit(response);
-    } catch (error) {
-      console.error('Failed to validate cron:', error);
-      this.handleValidationError(expression);
-    }
-  }
-
-  private handleValidationError(expression: string): void {
-    this.validationError = 'Failed to validate cron expression';
-    this.cronControl.setErrors({ invalidCron: true });
-    this.cronChange.emit(expression);
-    this.validationChange.emit({
-      isValid: false,
-      errorMessage: 'Failed to validate cron expression',
-    });
-  }
-
   getHumanReadableSchedule(): string {
     const cron = this.cronControl.value?.trim();
-    if (!cron) {
-      return '';
-    }
-
+    if (!cron) return '';
     try {
       return cronstrue(cron);
-    } catch (e) {
-      console.error('Error parsing cron string with cronstrue:', e);
+    } catch {
       return cron;
     }
   }
@@ -462,25 +361,17 @@ export class CronInputComponent implements OnInit, OnDestroy, OnChanges {
     if (!dateString) return '';
     try {
       const date = new Date(dateString);
+      if (isNaN(date.getTime())) return dateString;
 
-      // Validate date
-      if (isNaN(date.getTime())) {
-        return dateString;
-      }
-
-      const now = new Date();
-      const deltaSeconds = (date.getTime() - now.getTime()) / 1000;
-
-      if (deltaSeconds < 0) {
+      const delta = (date.getTime() - new Date().getTime()) / 1000;
+      if (delta < 0)
         return this.translate.instant('wizards.appOperation.relativeTime.inPast', {
           date: date.toLocaleString(),
         });
-      }
 
-      const relativeTime = this.formatRelativeTime(deltaSeconds);
       return (
         this.translate.instant('wizards.appOperation.relativeTime.in', {
-          time: relativeTime,
+          time: this.formatRelativeTime(delta),
         }) + ` (${date.toLocaleString()})`
       );
     } catch {
@@ -489,64 +380,61 @@ export class CronInputComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   private formatRelativeTime(seconds: number): string {
-    if (seconds < 60) {
+    if (seconds < 60)
       return this.translate.instant('wizards.appOperation.relativeTime.lessThanMinute');
-    }
 
-    const days = Math.floor(seconds / 86400);
-    const hours = Math.floor((seconds % 86400) / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
+    const d = Math.floor(seconds / 86400);
+    const h = Math.floor((seconds % 86400) / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const t = (key: string, count: number) => this.translate.instant(key, { count });
 
     const parts: string[] = [];
-    if (days > 0) {
+    if (d > 0) {
       parts.push(
-        this.translate.instant(
-          days === 1
+        t(
+          d === 1
             ? 'wizards.appOperation.relativeTime.days.one'
             : 'wizards.appOperation.relativeTime.days.other',
-          { count: days }
+          d
         )
       );
-      if (hours > 0) {
+      if (h > 0)
         parts.push(
-          this.translate.instant(
-            hours === 1
+          t(
+            h === 1
               ? 'wizards.appOperation.relativeTime.hours.one'
               : 'wizards.appOperation.relativeTime.hours.other',
-            { count: hours }
+            h
           )
         );
-      }
-    } else if (hours > 0) {
+    } else if (h > 0) {
       parts.push(
-        this.translate.instant(
-          hours === 1
+        t(
+          h === 1
             ? 'wizards.appOperation.relativeTime.hours.one'
             : 'wizards.appOperation.relativeTime.hours.other',
-          { count: hours }
+          h
         )
       );
-      if (minutes > 0) {
+      if (m > 0)
         parts.push(
-          this.translate.instant(
-            minutes === 1
+          t(
+            m === 1
               ? 'wizards.appOperation.relativeTime.minutes.one'
               : 'wizards.appOperation.relativeTime.minutes.other',
-            { count: minutes }
+            m
           )
         );
-      }
     } else {
       parts.push(
-        this.translate.instant(
-          minutes === 1
+        t(
+          m === 1
             ? 'wizards.appOperation.relativeTime.minutes.one'
             : 'wizards.appOperation.relativeTime.minutes.other',
-          { count: minutes }
+          m
         )
       );
     }
-
     return parts.join(', ');
   }
 }

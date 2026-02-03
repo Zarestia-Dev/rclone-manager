@@ -20,7 +20,7 @@ use tauri::WindowEvent;
 // =============================================================================
 mod core;
 mod rclone;
-mod utils;
+pub mod utils;
 
 #[cfg(feature = "web-server")]
 mod server;
@@ -81,7 +81,15 @@ pub fn run() {
     // Parse CLI args (web-server mode only)
     // -------------------------------------------------------------------------
     #[cfg(feature = "web-server")]
-    let cli_args = crate::core::cli::CliArgs::parse();
+    let cli_args = {
+        let args = crate::core::cli::CliArgs::parse();
+        // Validate CLI args early - fail fast with clear error
+        if let Err(e) = args.validate() {
+            eprintln!("❌ Invalid CLI arguments: {}", e);
+            std::process::exit(1);
+        }
+        args
+    };
 
     // -------------------------------------------------------------------------
     // Initialize Tauri Builder
@@ -476,11 +484,11 @@ fn setup_app(
         tauri::async_runtime::spawn(async move {
             if let Err(e) = start_web_server(
                 web_handle,
-                args.host,
+                args.host.clone(),
                 args.port,
-                args.user.zip(args.pass),
-                args.tls_cert,
-                args.tls_key,
+                args.auth_credentials(),
+                args.tls_cert.clone(),
+                args.tls_key.clone(),
             )
             .await
             {

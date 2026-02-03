@@ -74,13 +74,19 @@ fn translate_text(text: &str) -> String {
 /// - JSON from localized_success!/localized_error! macros
 ///
 /// # Example
-/// ```rust
-/// use crate::{localized_success, utils::app::notification::send_notification};
+/// ```no_run
+/// use rclone_manager_lib::{localized_success, utils::app::notification::send_notification};
 ///
-/// send_notification(&app,
-///     &localized_success!("notification.title.mountSuccess"),
-///     &localized_success!("notification.body.mounted", "remote" => &remote, "profile" => &profile)
-/// );
+/// // AppHandle requires full Tauri mock, so we just show usage syntax here
+/// fn example(app: &tauri::AppHandle) {
+///     let remote = "drive";
+///     let profile = "default";
+///     
+///     send_notification(app,
+///         &localized_success!("notification.title.mountSuccess"),
+///         &localized_success!("notification.body.mounted", "remote" => &remote, "profile" => &profile)
+///     );
+/// }
 /// ```
 pub fn send_notification(app: &tauri::AppHandle, title: &str, body: &str) {
     let enabled: bool = app
