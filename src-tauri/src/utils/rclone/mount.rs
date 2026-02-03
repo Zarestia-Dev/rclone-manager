@@ -66,8 +66,8 @@ fn check_winfsp_installed() -> bool {
     ];
 
     for path in &possible_paths {
-        if PathBuf::from(path).exists() {
-            debug!("Windows: WinFsp found at: {}", path);
+        if std::path::PathBuf::from(path).exists() {
+            log::debug!("Windows: WinFsp found at: {}", path);
             return true;
         }
     }
@@ -80,12 +80,12 @@ fn check_winfsp_installed() -> bool {
     {
         let output_str = String::from_utf8_lossy(&output.stdout);
         if output_str.contains("WinFsp.Launcher") {
-            debug!("Windows: WinFsp service found via sc query");
+            log::debug!("Windows: WinFsp service found via sc query");
             return true;
         }
     }
 
-    debug!("Windows: WinFsp not installed");
+    log::debug!("Windows: WinFsp not installed");
     false
 }
 
@@ -135,7 +135,7 @@ async fn get_latest_winfsp_url() -> Result<MountPluginInfo, String> {
         .find(|a| a.name.ends_with(".msi"))
         .ok_or("No .msi asset found in WinFsp release")?;
 
-    info!("Found WinFsp version: {}", release.tag_name);
+    log::info!("Found WinFsp version: {}", release.tag_name);
 
     Ok(MountPluginInfo {
         download_url: msi_asset.browser_download_url.clone(),
@@ -157,7 +157,7 @@ async fn get_latest_fuse_t_url() -> Result<MountPluginInfo, String> {
         .find(|a| a.name.ends_with(".pkg"))
         .ok_or("No .pkg asset found in FUSE-T release")?;
 
-    info!("Found FUSE-T version: {}", release.tag_name);
+    log::info!("Found FUSE-T version: {}", release.tag_name);
 
     Ok(MountPluginInfo {
         download_url: pkg_asset.browser_download_url.clone(),
@@ -183,12 +183,12 @@ pub async fn install_mount_plugin(
     let plugin_info = get_latest_fuse_t_url().await?;
     let local_file = download_path.join(&plugin_info.filename);
 
-    info!(
+    log::info!(
         "Downloading mount plugin from: {}",
         plugin_info.download_url
     );
     fetch_and_save(&state, &plugin_info.download_url, &local_file).await?;
-    info!("Downloaded to: {:?}", local_file);
+    log::info!("Downloaded to: {:?}", local_file);
 
     let result = install_with_elevation(&app_handle, &local_file).await;
     let _ = std::fs::remove_file(&local_file);
@@ -196,8 +196,8 @@ pub async fn install_mount_plugin(
     match result {
         Ok(_) => {
             if check_mount_plugin_installed() {
-                if let Some(window) = app_handle.get_webview_window("main") {
-                    let _ = window.emit(MOUNT_PLUGIN_INSTALLED, ());
+                if let Some(window) = tauri::Manager::get_webview_window(&app_handle, "main") {
+                    let _ = tauri::Emitter::emit(&window, MOUNT_PLUGIN_INSTALLED, ());
                 }
                 Ok("Mount plugin installed successfully".to_string())
             } else {
@@ -215,8 +215,8 @@ pub async fn install_mount_plugin(
 #[cfg(target_os = "windows")]
 #[tauri::command]
 pub async fn install_mount_plugin(
-    app_handle: AppHandle,
-    state: State<'_, RcloneState>,
+    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, RcloneState>,
 ) -> Result<String, String> {
     let download_path = std::env::temp_dir().join("rclone_temp");
     std::fs::create_dir_all(&download_path)
@@ -225,21 +225,21 @@ pub async fn install_mount_plugin(
     let plugin_info = get_latest_winfsp_url().await?;
     let local_file = download_path.join(&plugin_info.filename);
 
-    info!(
+    log::info!(
         "Downloading mount plugin from: {}",
         plugin_info.download_url
     );
     fetch_and_save(&state, &plugin_info.download_url, &local_file).await?;
-    info!("Downloaded to: {:?}", local_file);
+    log::info!("Downloaded to: {:?}", local_file);
 
-    let result = install_with_elevation(&app_handle, &local_file).await;
+    let result = install_with_elevation(&local_file).await;
     let _ = std::fs::remove_file(&local_file);
 
     match result {
         Ok(_) => {
             if check_mount_plugin_installed() {
-                if let Some(window) = app_handle.get_webview_window("main") {
-                    let _ = window.emit(MOUNT_PLUGIN_INSTALLED, ());
+                if let Some(window) = tauri::Manager::get_webview_window(&app_handle, "main") {
+                    let _ = tauri::Emitter::emit(&window, MOUNT_PLUGIN_INSTALLED, ());
                 }
                 Ok("Mount plugin installed successfully".to_string())
             } else {
@@ -271,7 +271,7 @@ pub async fn install_mount_plugin() -> Result<String, String> {
 
 /// Install the plugin with admin elevation using local Command wrapper
 #[cfg(any(target_os = "macos", target_os = "windows"))]
-async fn install_with_elevation(app_handle: &AppHandle, file_path: &Path) -> Result<(), String> {
+async fn install_with_elevation(file_path: &std::path::Path) -> Result<(), String> {
     let file_path_str = file_path.to_str().ok_or("Invalid UTF-8 in file path")?;
 
     #[cfg(target_os = "macos")]
@@ -305,7 +305,7 @@ async fn install_with_elevation(app_handle: &AppHandle, file_path: &Path) -> Res
             file_path_str.replace("'", "''")
         );
 
-        let output = crate::utils::process::Command::new("powershell")
+        let output = crate::utils::process::command::Command::new("powershell")
             .args(["-WindowStyle", "Hidden", "-Command", &ps_command])
             .output()
             .await
@@ -323,9 +323,9 @@ async fn install_with_elevation(app_handle: &AppHandle, file_path: &Path) -> Res
 /// Download a file and save it to disk
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 async fn fetch_and_save(
-    state: &State<'_, RcloneState>,
+    state: &tauri::State<'_, RcloneState>,
     url: &str,
-    file_path: &PathBuf,
+    file_path: &std::path::PathBuf,
 ) -> Result<(), String> {
     let response = state
         .client
@@ -346,12 +346,13 @@ async fn fetch_and_save(
         .await
         .map_err(|e| format!("Failed to read bytes: {e}"))?;
 
-    let mut file = fs::File::create(file_path).map_err(|e| format!("File creation error: {e}"))?;
+    let mut file =
+        std::fs::File::create(file_path).map_err(|e| format!("File creation error: {e}"))?;
 
-    file.write_all(&bytes)
+    std::io::Write::write_all(&mut file, &bytes)
         .map_err(|e| format!("Failed to write file: {e}"))?;
 
-    debug!("Downloaded and saved at {:?}", file_path);
+    log::debug!("Downloaded and saved at {:?}", file_path);
     Ok(())
 }
 

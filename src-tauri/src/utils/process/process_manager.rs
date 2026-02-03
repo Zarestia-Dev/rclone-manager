@@ -4,7 +4,7 @@ use log::{info, warn};
 use nix::libc::{EPERM, ESRCH, SIGKILL, kill};
 #[cfg(windows)]
 use windows_sys::Win32::{
-    Foundation::{CloseHandle, ERROR_ACCESS_DENIED, ERROR_INVALID_PARAMETER, HANDLE},
+    Foundation::{CloseHandle, ERROR_ACCESS_DENIED, ERROR_INVALID_PARAMETER},
     System::Threading::{
         OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_TERMINATE, TerminateProcess,
     },
@@ -31,7 +31,7 @@ pub fn kill_process_by_pid(pid: u32) -> Result<(), String> {
     #[cfg(windows)]
     unsafe {
         let handle = OpenProcess(PROCESS_TERMINATE, 0, pid);
-        if handle == 0 {
+        if handle.is_null() {
             let err = std::io::Error::last_os_error();
             // If process doesn't exist (INVALID_PARAMETER) or we can't access it (ACCESS_DENIED),
             // check if it's already gone or unreachable.
@@ -71,7 +71,7 @@ pub fn is_process_alive(pid: u32) -> bool {
     #[cfg(windows)]
     unsafe {
         let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
-        if handle == 0 {
+        if handle.is_null() {
             let errno = std::io::Error::last_os_error().raw_os_error();
             // ACCESS_DENIED means it exists but we can't open it
             errno == Some(ERROR_ACCESS_DENIED as i32)
