@@ -34,7 +34,7 @@
         (remoteSelected)="selectRemote($event)"
         (openInFiles)="triggerOpenInFiles($event)"
         (startJob)="startJob.emit({ type: $event.type, remoteName: $event.remoteName })"
-        (stopJob)="stopJob.emit({ type: $event.type, remoteName: $event.remoteName })"
+        (stopJob)="stopJob.emit($event)"
       >
       </app-remotes-panel>
     }
@@ -86,7 +86,7 @@
         (remoteSelected)="selectRemote($event)"
         (openInFiles)="triggerOpenInFiles($event)"
         (startJob)="startJob.emit({ type: $event.type, remoteName: $event.remoteName })"
-        (stopJob)="stopJob.emit({ type: $event.type, remoteName: $event.remoteName })"
+        (stopJob)="stopJob.emit($event)"
       >
       </app-remotes-panel>
     }

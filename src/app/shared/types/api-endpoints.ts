@@ -16,8 +16,7 @@ export const EXPLICIT_ENDPOINTS: Record<string, string> = {
   get_configs: '/get-configs',
 
   // Stats - shortened/nested routes
-  get_core_stats: '/stats',
-  get_core_stats_filtered: '/stats/filtered',
+  get_stats: '/stats',
   get_completed_transfers: '/transfers/completed',
   get_memory_stats: '/memory-stats',
   get_bandwidth_limit: '/bandwidth/limit',
@@ -30,6 +29,7 @@ export const EXPLICIT_ENDPOINTS: Record<string, string> = {
   get_jobs_by_source: '/jobs/by-source',
   stop_job: '/jobs/stop',
   delete_job: '/jobs/delete',
+  stop_jobs_by_group: '/jobs/stop-by-group',
   start_sync_profile: '/jobs/start-sync-profile',
   start_copy_profile: '/jobs/start-copy-profile',
   start_move_profile: '/jobs/start-move-profile',
@@ -87,6 +87,11 @@ export const EXPLICIT_ENDPOINTS: Record<string, string> = {
 
   // Debug - nested under /debug
   get_debug_info: '/debug/info',
+
+  // Group Management
+  get_stats_groups: '/stats-groups',
+  reset_group_stats: '/reset-group-stats',
+  delete_stats_group: '/delete-stats-group',
 };
 
 /**
@@ -163,4 +168,8 @@ export const POST_COMMANDS = new Set([
   // Debug Commands
   'open_devtools',
   'clear_fscache',
+  // Group Management
+  'stop_jobs_by_group',
+  'reset_group_stats',
+  'delete_stats_group',
 ]);

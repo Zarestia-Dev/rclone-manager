@@ -246,18 +246,6 @@ export class JobManagementService extends TauriBaseService {
   }
 
   /**
-   * Get remote-specific core stats (filtered by group)
-   */
-  async getCoreStatsForRemote(remoteName: string, jobid?: number): Promise<unknown | null> {
-    const params: Record<string, unknown> = { remote_name: remoteName };
-    if (jobid) {
-      params['jobid'] = jobid;
-      params['group'] = `job/${jobid}`;
-    }
-    return this.invokeCommand('get_core_stats_filtered', params);
-  }
-
-  /**
    * Rename a profile in all cached running jobs
    * Returns the number of jobs updated
    */
@@ -271,5 +259,41 @@ export class JobManagementService extends TauriBaseService {
       oldName,
       newName,
     });
+  }
+
+  // ============================================================================
+  // GROUP MANAGEMENT
+  // ============================================================================
+
+  /**
+   * Get all active stats groups
+   * Groups are formatted as 'type/remote' (e.g., 'sync/gdrive', 'mount/onedrive')
+   */
+  async getStatsGroups(): Promise<string[]> {
+    return this.invokeCommand<string[]>('get_stats_groups');
+  }
+
+  /**
+   * Reset stats for a specific group or all groups
+   * @param group The group name to reset, or undefined to reset all groups
+   */
+  async resetGroupStats(group?: string): Promise<void> {
+    await this.invokeCommand('reset_group_stats', { group });
+  }
+
+  /**
+   * Delete a stats group
+   * @param group The group name to delete
+   */
+  async deleteStatsGroup(group: string): Promise<void> {
+    await this.invokeCommand('delete_stats_group', { group });
+  }
+
+  /**
+   * Stop all jobs in a specific group
+   * @param group The group name (e.g., 'sync/gdrive')
+   */
+  async stopJobsByGroup(group: string): Promise<void> {
+    await this.invokeCommand('stop_jobs_by_group', { group });
   }
 }

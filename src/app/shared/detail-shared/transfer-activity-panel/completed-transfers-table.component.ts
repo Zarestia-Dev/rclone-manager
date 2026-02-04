@@ -1,4 +1,4 @@
-import { Component, input, inject } from '@angular/core';
+import { Component, input, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
@@ -12,6 +12,7 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
 
 @Component({
   selector: 'app-completed-transfers-table',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     MatTableModule,
@@ -158,23 +159,6 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
               </td>
             </ng-container>
 
-            <!-- Job ID Column -->
-            <ng-container matColumnDef="jobid">
-              <th mat-header-cell *matHeaderCellDef>
-                {{ 'shared.transferActivity.table.job' | translate }}
-              </th>
-              <td mat-cell *matCellDef="let transfer" class="jobid-cell">
-                <mat-chip
-                  class="job-chip"
-                  [matTooltip]="
-                    'shared.transferActivity.table.jobId' | translate: { id: transfer.jobid }
-                  "
-                >
-                  #{{ transfer.jobid }}
-                </mat-chip>
-              </td>
-            </ng-container>
-
             <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
             <tr
               mat-row
@@ -213,7 +197,7 @@ export class CompletedTransfersTableComponent {
     return transfer.name + transfer.completedAt;
   }
 
-  displayedColumns: string[] = ['name', 'status', 'size', 'path', 'time', 'jobid'];
+  displayedColumns: string[] = ['name', 'status', 'size', 'path', 'time'];
 
   getFileName(path: string): string {
     return path.split('/').pop() || path;

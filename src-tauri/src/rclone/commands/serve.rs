@@ -120,6 +120,26 @@ pub async fn start_serve(
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
+    // Check for duplicates
+    let serves = backend_manager.remote_cache.get_serves().await;
+    if serves.iter().any(|s| {
+        let fs_match = s.params.get("fs").and_then(|v| v.as_str()) == Some(&params.remote_name);
+        let profile_match = s.profile == params.profile;
+        fs_match && profile_match
+    }) {
+        let profile_msg = params
+            .profile
+            .clone()
+            .map(|p| format!(" (Profile: '{}')", p))
+            .unwrap_or_default();
+        let msg = format!(
+            "Serve is already running for '{}'{}",
+            params.remote_name, profile_msg
+        );
+        warn!("🚫 {}", msg);
+        return Err(msg);
+    }
+
     let serve_type = params
         .serve_options
         .as_ref()

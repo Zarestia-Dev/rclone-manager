@@ -29,6 +29,7 @@ import {
   ActionState,
   CompletedTransfer,
   GlobalStats,
+  DEFAULT_JOB_STATS,
   JobInfoConfig,
   OperationControlConfig,
   PathDisplayConfig,
@@ -53,7 +54,7 @@ import {
   TransferActivityPanelComponent,
 } from '../../../../shared/detail-shared';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
-import { IconService, RcloneStatusService } from '@app/services';
+import { IconService, SystemInfoService } from '@app/services';
 import { JobManagementService } from '@app/services';
 import { toString as cronstrue } from 'cronstrue';
 import { VfsControlPanelComponent } from '../../../../shared/detail-shared/vfs-control/vfs-control-panel.component';
@@ -116,18 +117,19 @@ export class AppDetailComponent {
 
   // --- Services ---
   private readonly jobService = inject(JobManagementService);
-  private readonly rcloneStatusService = inject(RcloneStatusService);
   readonly iconService = inject(IconService);
   private readonly translate = inject(TranslateService);
   private readonly langChange = toSignal(this.translate.onLangChange);
   private readonly formatFileSize = new FormatFileSizePipe();
   private readonly formatTime = new FormatTimePipe();
 
+  private readonly systemInfoService = inject(SystemInfoService);
+
   // --- State Signals ---
-  // Job-specific stats (when a specific job is being tracked)
-  private jobSpecificStats = signal<GlobalStats | null>(null);
-  // Use job-specific stats if available, otherwise fall back to global stats from service
-  jobStats = computed(() => this.jobSpecificStats() || this.rcloneStatusService.jobStats());
+  // Group-based stats (e.g., 'sync/gdrive' for all sync jobs on gdrive remote)
+  private groupStats = signal<GlobalStats | null>(null);
+  // Use group stats if available, otherwise show empty stats (no global fallback)
+  jobStats = computed(() => this.groupStats() ?? DEFAULT_JOB_STATS);
 
   isLoading = signal(false);
   activeTransfers = signal<TransferFile[]>([]);
@@ -135,7 +137,24 @@ export class AppDetailComponent {
 
   // --- Internal State ---
   private lastTransferCount = 0;
-  private lastJobId?: number;
+  private lastGroupName?: string;
+
+  /**
+   * Reset stats for the current group
+   * This clears the "Completed Transfers" list and resets aggregated stats
+   */
+  async onResetStats(): Promise<void> {
+    const groupName = this.currentGroupName();
+    if (groupName) {
+      try {
+        await this.jobService.resetGroupStats(groupName);
+        this.resetTransfers();
+        this.fetchGroupData(groupName);
+      } catch (error) {
+        console.error('Failed to reset group stats:', error);
+      }
+    }
+  }
 
   // --- Constants ---
   readonly POLL_INTERVAL_MS = 1000;
@@ -228,15 +247,14 @@ export class AppDetailComponent {
   showProfileSelector = computed(() => this.profiles().length > 1);
 
   constructor() {
-    // 1. Polling Effect
+    // 1. Polling Effect - Uses group-based stats
     effect(onCleanup => {
       const isActive = this.operationActiveState();
-      const jobId = this.jobId();
-      const remoteName = this.remoteName();
+      const groupName = this.currentGroupName();
 
-      if (isActive && jobId && remoteName) {
+      if (isActive && groupName) {
         const timer = setInterval(() => {
-          this.fetchJobData(jobId, remoteName);
+          this.fetchGroupData(groupName);
         }, this.POLL_INTERVAL_MS);
 
         onCleanup(() => {
@@ -251,12 +269,12 @@ export class AppDetailComponent {
       }
     });
 
-    // 2. Job ID Change Reset Effect
+    // 2. Group Name Change Reset Effect
     effect(() => {
-      const id = this.jobId();
+      const groupName = this.currentGroupName();
       untracked(() => {
-        if (id !== this.lastJobId) {
-          this.lastJobId = id;
+        if (groupName !== this.lastGroupName) {
+          this.lastGroupName = groupName;
           this.resetTransfers();
         }
       });
@@ -354,6 +372,17 @@ export class AppDetailComponent {
     const state = this.getOperationState(op) as any;
     // Cast to syncState as we know op is partial SyncOperationType and all sync states have activeProfiles
     return state?.activeProfiles?.[profileName];
+  });
+
+  /** Generate the group name for the current operation (e.g., 'sync/gdrive') */
+  currentGroupName = computed(() => {
+    const opType = this.isSyncType() ? this.selectedSyncOperation() : this.mainOperationType();
+    const profile = this.selectedProfile();
+
+    if (profile) {
+      return `${opType}/${this.remoteName()}/${profile}`;
+    }
+    return `${opType}/${this.remoteName()}`;
   });
 
   operationSettingsSections = computed<RemoteSettingsSection[]>(() => {
@@ -919,26 +948,22 @@ export class AppDetailComponent {
 
   // --- Data Fetching Logic (Polling) ---
 
-  private async fetchJobData(jobId: number, remoteName: string): Promise<void> {
+  private async fetchGroupData(groupName: string): Promise<void> {
     try {
-      const group = `job/${jobId}`;
-
-      const [job, remoteStats, completedTransfers] = await Promise.all([
-        this.jobService.getJobStatus(jobId),
-        this.jobService.getCoreStatsForRemote(remoteName, jobId),
-        this.loadCompletedTransfers(group),
+      const [groupStats, completedTransfers] = await Promise.all([
+        this.systemInfoService.getStats(groupName) as Promise<GlobalStats | null>,
+        this.loadCompletedTransfers(groupName),
       ]);
 
-      if (job) {
-        const fullStats = remoteStats ? { ...job, stats: remoteStats } : job;
-        this.updateStatsSignals(fullStats);
+      if (groupStats) {
+        this.updateStatsSignals(groupStats);
       }
 
       if (completedTransfers) {
-        this.completedTransfers.set(completedTransfers.slice(0, 50));
+        this.completedTransfers.set(completedTransfers);
       }
     } catch (error) {
-      console.error('Error fetching job status:', error);
+      console.error('Error fetching group stats:', error);
     }
   }
 
@@ -953,16 +978,14 @@ export class AppDetailComponent {
     }
   }
 
-  private updateStatsSignals(job: any): void {
-    if (!job.stats) return;
+  private updateStatsSignals(stats: GlobalStats): void {
+    this.trackCompletedFiles(stats);
 
-    this.trackCompletedFiles(job);
-
-    const transferring = this.processTransfers(job.stats.transferring);
+    const transferring = this.processTransfers(stats.transferring);
     this.activeTransfers.set(transferring);
 
-    // Update job-specific stats when tracking a particular job
-    this.jobSpecificStats.set({ ...job.stats, transferring });
+    // Update group stats
+    this.groupStats.set({ ...stats, transferring });
   }
 
   // --- Logic Helpers ---
@@ -976,11 +999,11 @@ export class AppDetailComponent {
     }));
   }
 
-  private trackCompletedFiles(job: any): void {
-    const currentCount = job.stats.transfers || 0;
+  private trackCompletedFiles(stats: GlobalStats): void {
+    const currentCount = stats.transfers || 0;
 
     if (currentCount > this.lastTransferCount) {
-      const activeNames = new Set(job.stats.transferring?.map((f: any) => f.name) || []);
+      const activeNames = new Set(stats.transferring?.map((f: TransferFile) => f.name) || []);
       const currentActive = this.activeTransfers();
 
       const newCompletions: CompletedTransfer[] = [];
@@ -1040,8 +1063,8 @@ export class AppDetailComponent {
     this.activeTransfers.set([]);
     this.completedTransfers.set([]);
     this.lastTransferCount = 0;
-    // Clear job-specific stats so it falls back to global stats from service
-    this.jobSpecificStats.set(null);
+    // Clear group stats so it falls back to global stats from service
+    this.groupStats.set(null);
   }
 
   // --- Stats Formatting Helpers ---

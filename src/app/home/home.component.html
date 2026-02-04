@@ -77,7 +77,9 @@
               [jobs]="jobs()"
               [actionInProgress]="actionInProgress()"
               (startJob)="startJob($event.type, $event.remoteName)"
-              (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId)"
+              (stopJob)="
+                stopJob($event.type, $event.remoteName, $event.serveId, $event.profileName)
+              "
               (browseRemote)="openRemoteInFiles($event, 'mount')"
               (selectRemote)="selectRemote($event)"
               (openBackendModal)="openBackendModal()"
@@ -93,7 +95,9 @@
               (remoteSelected)="selectRemote($event)"
               (openInFiles)="openRemoteInFiles($event, currentTab())"
               (startJob)="startJob($event.type, $event.remoteName)"
-              (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId)"
+              (stopJob)="
+                stopJob($event.type, $event.remoteName, $event.serveId, $event.profileName)
+              "
               (openBackendModal)="openBackendModal()"
             >
             </app-app-overview>
@@ -108,7 +112,7 @@
             <app-general-detail
               [jobs]="getJobsForRemote(remote.remoteSpecs.name)"
               [selectedRemote]="remote"
-              (stopJob)="stopJob($event.type, $event.remoteName)"
+              (stopJob)="stopJob($event.type, $event.remoteName, undefined, $event.profileName)"
               (openRemoteConfigModal)="
                 openRemoteConfigModal($event.editTarget, $event.existingConfig)
               "

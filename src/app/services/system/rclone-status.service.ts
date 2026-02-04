@@ -171,7 +171,7 @@ export class RcloneStatusService {
     try {
       const [memoryStats, coreStats] = await Promise.all([
         this.systemInfoService.getMemoryStats().catch(() => null),
-        this.systemInfoService.getCoreStats().catch(() => null),
+        this.systemInfoService.getStats().catch(() => null),
       ]);
 
       // Update stats

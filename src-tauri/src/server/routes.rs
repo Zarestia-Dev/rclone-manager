@@ -60,6 +60,7 @@ fn jobs_routes() -> Router<WebServerState> {
             "/rename-profile-in-cache",
             post(handlers::rename_job_profile_handler),
         )
+        .route("/stop-by-group", post(handlers::stop_jobs_by_group_handler))
 }
 
 fn remote_routes() -> Router<WebServerState> {
@@ -119,10 +120,6 @@ fn remote_routes() -> Router<WebServerState> {
 fn system_routes() -> Router<WebServerState> {
     Router::new()
         .route("/stats", get(handlers::get_stats_handler))
-        .route(
-            "/stats/filtered",
-            get(handlers::get_core_stats_filtered_handler),
-        )
         .route(
             "/transfers/completed",
             get(handlers::get_completed_transfers_handler),
@@ -184,6 +181,20 @@ fn system_routes() -> Router<WebServerState> {
             get(handlers::get_fscache_entries_handler),
         )
         .route("/clear-fscache", post(handlers::clear_fscache_handler))
+        // Stats Group Management
+        .route("/stats-groups", get(handlers::get_stats_groups_handler))
+        .route(
+            "/reset-group-stats",
+            post(handlers::reset_group_stats_handler),
+        )
+        .route(
+            "/delete-stats-group",
+            post(handlers::delete_stats_group_handler),
+        )
+        .route(
+            "/get-local-disk-usage",
+            get(handlers::get_local_disk_usage_handler),
+        )
 }
 
 fn file_operations_routes() -> Router<WebServerState> {

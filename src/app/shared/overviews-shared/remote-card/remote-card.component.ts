@@ -375,7 +375,8 @@ export class RemoteCardComponent {
     const type = action.id as PrimaryActionType;
     if (OPERATION_CONFIG[type]) {
       if (this.isOperationActive(type)) {
-        this.stopJob.emit({ type, remoteName });
+        const profileName = this.getActiveProfileName(type);
+        this.stopJob.emit({ type, remoteName, profileName });
       } else {
         this.startJob.emit({ type, remoteName });
       }
@@ -431,12 +432,11 @@ export class RemoteCardComponent {
   }
 
   /**
-   * Get Selected Profiles map for an operation type (excludes 'serve' which uses array)
+   * Get Selected Profiles map for an operation type
    */
   private getOperationActiveProfiles(
     operationType: PrimaryActionType
   ): Record<string, unknown> | undefined {
-    if (operationType === 'serve') return undefined;
     const config = OPERATION_CONFIG[operationType];
     const state = this.remote()[config.stateKey] as
       | { activeProfiles?: Record<string, unknown> }
@@ -448,10 +448,6 @@ export class RemoteCardComponent {
    * Get the first Selected Profile name for a given operation type
    */
   getActiveProfileName(operationType: PrimaryActionType): string {
-    if (operationType === 'serve') {
-      const serves = this.remote().serveState?.serves;
-      return serves?.length ? serves[0].profile || 'default' : 'default';
-    }
     const profiles = this.getOperationActiveProfiles(operationType);
     return profiles ? Object.keys(profiles)[0] || 'default' : 'default';
   }
@@ -460,9 +456,6 @@ export class RemoteCardComponent {
    * Get the count of Selected Profiles for a given operation type
    */
   getActiveProfileCount(operationType: PrimaryActionType): number {
-    if (operationType === 'serve') {
-      return this.remote().serveState?.serves?.length || 0;
-    }
     return Object.keys(this.getOperationActiveProfiles(operationType) || {}).length;
   }
 
@@ -475,10 +468,7 @@ export class RemoteCardComponent {
     if (count === 1) return `${operationType} (${this.getActiveProfileName(operationType)})`;
 
     // Multiple profiles - list them all
-    const profiles =
-      operationType === 'serve'
-        ? (this.remote().serveState?.serves || []).map(s => s.profile || 'default')
-        : Object.keys(this.getOperationActiveProfiles(operationType) || {});
+    const profiles = Object.keys(this.getOperationActiveProfiles(operationType) || {});
 
     return `${operationType} (${profiles.join(', ')})`;
   }
@@ -488,8 +478,7 @@ export class RemoteCardComponent {
       this.isOperationActive('sync') ||
       this.isOperationActive('copy') ||
       this.isOperationActive('move') ||
-      this.isOperationActive('bisync') ||
-      this.isOperationActive('serve')
+      this.isOperationActive('bisync')
     );
   }
 

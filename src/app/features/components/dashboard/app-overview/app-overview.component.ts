@@ -48,7 +48,12 @@ export class AppOverviewComponent {
   remoteSelected = output<Remote>();
   openInFiles = output<string>();
   startJob = output<{ type: PrimaryActionType; remoteName: string }>();
-  stopJob = output<{ type: PrimaryActionType; remoteName: string; serveId?: string }>();
+  stopJob = output<{
+    type: PrimaryActionType;
+    remoteName: string;
+    serveId?: string;
+    profileName?: string;
+  }>();
   openBackendModal = output<void>();
 
   private isRemoteActive = (remote: Remote): boolean => {

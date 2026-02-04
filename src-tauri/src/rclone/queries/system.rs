@@ -111,3 +111,58 @@ pub async fn get_rclone_rc_url(app: AppHandle) -> Result<String, String> {
     let backend = backend_manager.get_active().await;
     Ok(backend.api_url())
 }
+
+#[derive(serde::Deserialize)]
+struct RcloneDiskInfo {
+    #[serde(rename = "Free")]
+    free: u64,
+    #[serde(rename = "Total")]
+    total: u64,
+}
+
+#[derive(serde::Deserialize)]
+struct RcloneDiskUsageResponse {
+    dir: String,
+    info: RcloneDiskInfo,
+}
+
+#[derive(serde::Serialize)]
+pub struct LocalDiskUsageResponse {
+    free: u64,
+    total: u64,
+    used: u64,
+    dir: String,
+}
+
+/// Get local disk usage for a directory using rclone's core/du endpoint
+/// This returns disk space info (Available, Free, Total) for a LOCAL directory,
+/// useful for checking space on mount points.
+#[tauri::command]
+pub async fn get_local_disk_usage(
+    app: AppHandle,
+    dir: Option<String>,
+) -> Result<LocalDiskUsageResponse, String> {
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let mut payload = json!({});
+    if let Some(ref d) = dir {
+        payload["dir"] = json!(d);
+    }
+
+    // Use direct request instead of submit_job_and_wait to avoid creating tracked jobs for polling
+    let response_json = backend
+        .post_json(&app.state::<RcloneState>().client, core::DU, Some(&payload))
+        .await
+        .map_err(|e| format!("Failed to get local disk usage: {e}"))?;
+
+    // Deserializing into a struct is much cleaner and safer than pointer lookups
+    let response: RcloneDiskUsageResponse = serde_json::from_value(response_json)
+        .map_err(|e| format!("Failed to parse rclone response: {e}"))?;
+
+    Ok(LocalDiskUsageResponse {
+        free: response.info.free,
+        total: response.info.total,
+        used: response.info.total.saturating_sub(response.info.free),
+        dir: response.dir,
+    })
+}

@@ -578,26 +578,15 @@ export class RemoteFacadeService extends TauriBaseService {
           await this.mountService.unmountRemote(mountPoint, remoteName);
         } else {
           // Sync/Copy/Move/Bisync
-          const remote = this.activeRemotes().find(r => r.remoteSpecs.name === remoteName);
-          const state = this.getOperationState(remote, type as SyncOperationType);
+          const groupName = profileName
+            ? `${type}/${remoteName}/${profileName}`
+            : `${type}/${remoteName}`;
 
-          let idToStop: number | undefined;
-          if (profileName && state?.activeProfiles) {
-            idToStop = (state.activeProfiles as Record<string, number>)[profileName];
-          } else if (state?.activeProfiles) {
-            const values = Object.values(state.activeProfiles) as number[];
-            if (values.length > 0) idToStop = values[0];
-          }
+          // Stop all jobs in this group
+          await this.jobService.stopJobsByGroup(groupName);
 
-          // FallbackLegacy ID
-          if (idToStop === undefined && state) {
-            const key = `${type}JobID` as keyof typeof state;
-            idToStop = state[key] as number | undefined;
-          }
-
-          if (idToStop === undefined)
-            throw new Error(`No active ${type} job found for ${remoteName}`);
-          await this.jobService.stopJob(idToStop, remoteName);
+          // Clear stats/history for this group immediately
+          await this.jobService.deleteStatsGroup(groupName);
         }
       },
       profileName

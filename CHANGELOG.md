@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- **Job Group Management**: Jobs are now automatically organized by remote name and profile name (e.g., all sync operations for "gdrive" with "default" profile are grouped together named "sync/Google Drive/default"). This makes it easier to:
+  - View stats per remote instead of all mixed together  
+  - Stop all running jobs for a specific remote at once
+  - Track and manage operations on a per-remote basis
+- rclone rc core/du added. When remote mounted its gonna show inside the `Mount Control` accordion. Its calculate the disk usage from local mount point.
+
+### Fixed
+- When update the rclone , app now checking the preconfigured path is writable or not. If not, app will use the default config path.
+- Fixed the containerized version for path handling.
+- Other small fixes and improvements.
+
 ## [v0.2.0] - 2026-02-2
 
 ### Added

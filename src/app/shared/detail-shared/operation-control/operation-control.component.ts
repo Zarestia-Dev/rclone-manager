@@ -1,4 +1,4 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, input, output, inject, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -6,9 +6,17 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { StatusBadgeComponent } from '../status-badge/status-badge.component';
 import { PathDisplayComponent } from '../path-display/path-display.component';
-import { OperationControlConfig, PrimaryActionType, StatusBadgeConfig } from '@app/types';
+import {
+  OperationControlConfig,
+  PrimaryActionType,
+  StatusBadgeConfig,
+  LocalDiskUsage,
+} from '@app/types';
+import { FormatFileSizePipe } from '@app/pipes';
+import { SystemInfoService } from '@app/services';
 import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
@@ -22,9 +30,11 @@ import { TranslateModule } from '@ngx-translate/core';
     MatProgressSpinnerModule,
     MatTooltipModule,
     MatExpansionModule,
+    MatProgressBarModule,
     StatusBadgeComponent,
     PathDisplayComponent,
     TranslateModule,
+    FormatFileSizePipe,
   ],
   template: `
     <mat-expansion-panel
@@ -68,6 +78,26 @@ import { TranslateModule } from '@ngx-translate/core';
           [config]="config().pathConfig"
           (openPath)="openPath.emit($event)"
         ></app-path-display>
+
+        @if (diskUsage(); as usage) {
+          <div class="disk-usage-info">
+            <div class="usage-stats">
+              <span class="stat-label">{{ 'detailShared.diskUsage.title' | translate }}</span>
+              <span class="stat-value">
+                {{ usage.used | formatFileSize }} / {{ usage.total | formatFileSize }}
+              </span>
+            </div>
+            <mat-progress-bar
+              mode="determinate"
+              [value]="(usage.used / usage.total) * 100"
+              class="usage-bar"
+              [color]="getUsageColor(usage.used / usage.total)"
+            ></mat-progress-bar>
+            <span class="usage-free">{{
+              'detailShared.diskUsage.free' | translate: { value: (usage.free | formatFileSize) }
+            }}</span>
+          </div>
+        }
 
         <div class="panel-actions">
           <button
@@ -128,6 +158,34 @@ import { TranslateModule } from '@ngx-translate/core';
         align-items: center;
         gap: var(--space-sm);
       }
+
+      .disk-usage-info {
+        margin-top: var(--space-md);
+        padding: var(--space-sm);
+        background: var(--surface-variant);
+        border-radius: var(--radius-sm);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        .usage-stats {
+          display: flex;
+          justify-content: space-between;
+          font-size: var(--body-sm);
+          color: var(--text-secondary);
+        }
+
+        .usage-bar {
+          height: 6px;
+          border-radius: 3px;
+        }
+
+        .usage-free {
+          font-size: var(--body-xs);
+          color: var(--text-tertiary);
+          text-align: right;
+        }
+      }
     `,
   ],
 })
@@ -137,8 +195,58 @@ export class OperationControlComponent {
   stopJob = output<PrimaryActionType>();
   openPath = output<string>();
 
+  private readonly systemInfo = inject(SystemInfoService);
+
   // Track expansion state for animation
   isExpanded = false;
+
+  diskUsage = signal<LocalDiskUsage | null>(null);
+
+  constructor() {
+    effect(async () => {
+      const config = this.config();
+      // Only fetch for active mount operations with a valid destination
+      if (
+        config.operationType === 'mount' &&
+        config.isActive &&
+        config.pathConfig.destination &&
+        !config.pathConfig.destination.includes('Not configured')
+      ) {
+        try {
+          // Poll every 5 seconds while active
+          const usage = await this.systemInfo.getLocalDiskUsage(config.pathConfig.destination);
+          this.diskUsage.set(usage);
+        } catch (error) {
+          console.error('Failed to fetch disk usage:', error);
+          this.diskUsage.set(null);
+        }
+      } else {
+        this.diskUsage.set(null);
+      }
+    });
+
+    // Setup polling interval
+    effect(onCleanup => {
+      const config = this.config();
+      if (
+        config.operationType === 'mount' &&
+        config.isActive &&
+        config.pathConfig.destination &&
+        !config.pathConfig.destination.includes('Not configured')
+      ) {
+        const interval = setInterval(async () => {
+          try {
+            const usage = await this.systemInfo.getLocalDiskUsage(config.pathConfig.destination);
+            this.diskUsage.set(usage);
+          } catch {
+            // Silently fail on poll
+          }
+        }, 5000);
+
+        onCleanup(() => clearInterval(interval));
+      }
+    });
+  }
 
   handleQuickAction(event: Event): void {
     event.preventDefault();
@@ -149,6 +257,12 @@ export class OperationControlComponent {
     } else {
       this.startJob.emit(this.config().operationType);
     }
+  }
+
+  getUsageColor(ratio: number): string {
+    if (ratio > 0.9) return 'warn';
+    if (ratio > 0.7) return 'accent';
+    return 'primary';
   }
 
   // Operation icon configuration

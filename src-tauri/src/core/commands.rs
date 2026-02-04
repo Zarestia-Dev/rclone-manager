@@ -43,8 +43,7 @@ macro_rules! generate_invoke_handler {
             // RCLONE QUERIES
             // =================================================================
             $crate::rclone::queries::get_all_remote_configs,
-            $crate::rclone::queries::get_core_stats,
-            $crate::rclone::queries::get_core_stats_filtered,
+            $crate::rclone::queries::get_stats,
             $crate::rclone::queries::get_completed_transfers,
             $crate::rclone::queries::get_fs_info,
             $crate::rclone::queries::get_disk_usage,
@@ -55,6 +54,7 @@ macro_rules! generate_invoke_handler {
             $crate::rclone::queries::get_hashsum_file,
             $crate::rclone::queries::get_public_link,
             $crate::rclone::queries::get_memory_stats,
+            $crate::rclone::queries::get_local_disk_usage,
             $crate::rclone::queries::get_remotes,
             $crate::rclone::queries::get_remote_config,
             $crate::rclone::queries::get_remote_types,
@@ -200,6 +200,13 @@ macro_rules! generate_invoke_handler {
             $crate::rclone::commands::job::stop_job,
             $crate::rclone::commands::job::delete_job,
             $crate::rclone::commands::job::rename_profile_in_cache,
+            $crate::rclone::commands::job::stop_jobs_by_group,
+            // =================================================================
+            // STATS GROUP MANAGEMENT
+            // =================================================================
+            $crate::rclone::commands::system::get_stats_groups,
+            $crate::rclone::commands::system::reset_group_stats,
+            $crate::rclone::commands::system::delete_stats_group,
             // =================================================================
             // BACKEND MANAGEMENT
             // =================================================================

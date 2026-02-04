@@ -33,6 +33,8 @@ services:
       - rclone-config:/home/rclone-manager/.config/rclone
       # RClone Manager configuration and data
       - rclone-manager-config:/home/rclone-manager/.local/share/com.rclone.manager.headless
+      # RClone Manager config path for Tauri
+      - rclone-manager-config-other:/home/rclone-manager/.config/com.rclone.manager.headless
       # Optional: Mount your own TLS certificates (for HTTPS)
       # - ./certs:/app/certs:ro
     environment:
@@ -73,6 +75,7 @@ services:
     volumes:
       - rclone-config:/home/rclone-manager/.config/rclone
       - rclone-manager-config:/home/rclone-manager/.local/share/com.rclone.manager.headless
+      - rclone-manager-config-other:/home/rclone-manager/.config/com.rclone.manager.headless
     environment:
       - RUST_LOG=info
       - RCLONE_MANAGER_HOST=0.0.0.0
@@ -112,6 +115,7 @@ services:
     volumes:
       - rclone-config:/home/rclone-manager/.config/rclone
       - rclone-manager-config:/home/rclone-manager/.local/share/com.rclone.manager.headless
+      - rclone-manager-config-other:/home/rclone-manager/.config/com.rclone.manager.headless
       # Mount your TLS certificates here
       - ./certs:/app/certs:ro
     environment:

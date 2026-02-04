@@ -584,6 +584,7 @@
       "title": "Transfer Activity",
       "active": "Active:",
       "recent": "Recent:",
+      "resetStats": "Reset Stats",
       "tabs": {
         "active": "Active ({{count}})",
         "recent": "Recent ({{count}})"

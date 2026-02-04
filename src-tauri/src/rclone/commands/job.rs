@@ -32,6 +32,20 @@ pub struct JobMetadata {
     pub profile: Option<String>,
     /// Source UI that started this job (e.g., "nautilus", "dashboard", "scheduled")
     pub source_ui: Option<String>,
+    /// Stats group name for this job (format: "type/remote", e.g., "sync/gdrive")
+    /// If not provided, will be auto-generated from job_type and remote_name
+    pub group: Option<String>,
+}
+
+impl JobMetadata {
+    /// Generate group name in OS-like format: type/remote or type/remote_profile
+    /// Examples: "sync/gdrive", "sync/gdrive_daily", "mount/onedrive_work"
+    pub fn group_name(&self) -> String {
+        self.group.clone().unwrap_or_else(|| match &self.profile {
+            Some(profile) => format!("{}/{}/{}", self.job_type, self.remote_name, profile),
+            None => format!("{}/{}", self.job_type, self.remote_name),
+        })
+    }
 }
 
 /// Submit a LONG-RUNNING job (sync, copy, move, bisync)
@@ -124,11 +138,20 @@ async fn initialize_and_register_job(
 }
 
 /// Internal: Send job request and parse response
+/// Automatically injects _group parameter for stats grouping
 async fn send_job_request(
     client_builder: reqwest::RequestBuilder,
     payload: Value,
     metadata: &JobMetadata,
 ) -> Result<(u64, Value, Option<String>), String> {
+    // Inject _group parameter for stats grouping
+    let mut payload = payload;
+    if let Some(obj) = payload.as_object_mut()
+        && !obj.contains_key("_group")
+    {
+        obj.insert("_group".to_string(), json!(metadata.group_name()));
+    }
+
     let response = client_builder
         .json(&payload)
         .send()
@@ -208,7 +231,7 @@ async fn add_job_to_cache(
                 start_time: Utc::now(),
                 status: JobStatus::Running,
                 stats: None,
-                group: format!("{}/{}", metadata.job_type, jobid),
+                group: metadata.group_name(),
                 profile: metadata.profile.clone(),
                 source_ui: metadata.source_ui.clone(),
                 backend_name: Some(backend_name.to_string()),
@@ -346,7 +369,7 @@ pub async fn monitor_job(
     jobid: u64,
     app: AppHandle,
     client: reqwest::Client,
-) -> Result<(), RcloneError> {
+) -> Result<Value, RcloneError> {
     let scheduled_tasks_cache = app.state::<ScheduledTasksCache>();
     let backend_manager = app.state::<BackendManager>();
 
@@ -368,8 +391,8 @@ pub async fn monitor_job(
     loop {
         // Stop if removed or explicitly stopped in cache
         match job_cache.get_job(jobid).await {
-            Some(job) if job.status == JobStatus::Stopped => return Ok(()),
-            None => return Ok(()),
+            Some(job) if job.status == JobStatus::Stopped => return Ok(json!({})),
+            None => return Ok(json!({})),
             _ => {}
         }
 
@@ -440,7 +463,7 @@ pub async fn handle_job_completion(
     app: &AppHandle,
     job_cache: &JobCache,
     scheduled_tasks_cache: State<'_, ScheduledTasksCache>,
-) -> Result<(), RcloneError> {
+) -> Result<Value, RcloneError> {
     let success = job_status
         .get("success")
         .and_then(|v| v.as_bool())
@@ -515,7 +538,7 @@ pub async fn handle_job_completion(
             format!("{operation} Job {jobid} completed successfully"),
             Some(json!({"jobid": jobid, "status": job_status})),
         );
-        Ok(())
+        Ok(job_status.get("output").cloned().unwrap_or(json!({})))
     } else {
         log_operation(
             LogLevel::Warn,
@@ -610,4 +633,148 @@ pub async fn stop_job(
     }
 
     Ok(())
+}
+
+/// Stop all running jobs in a group
+/// Group name format: "type/remote/mount" (e.g., "sync/gdrive/default", "mount/onedrive/my-mount")
+#[tauri::command]
+pub async fn stop_jobs_by_group(app: AppHandle, group: String) -> Result<(), String> {
+    use crate::utils::rclone::endpoints::job;
+
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let job_cache = &backend_manager.job_cache;
+    let url = backend.url_for(job::STOPGROUP);
+    let payload = json!({ "group": group });
+
+    info!("🛑 Stopping all jobs in group: {}", group);
+
+    let response = backend
+        .inject_auth(app.state::<RcloneState>().client.post(&url))
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
+
+    let status = response.status();
+    let body = response.text().await.unwrap_or_default();
+
+    if !status.is_success() && !body.contains("no jobs in group") {
+        let error =
+            crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body);
+        error!("❌ Failed to stop jobs in group {}: {}", group, error);
+        return Err(error);
+    }
+
+    // Also update our local job cache - stop all jobs matching this group
+    let jobs = job_cache.get_jobs().await;
+    for job in jobs {
+        if job.group == group && job.status == JobStatus::Running {
+            let _ = job_cache.stop_job(job.jobid, Some(&app)).await;
+        }
+    }
+
+    log_operation(
+        LogLevel::Info,
+        None,
+        Some("Stop job group".to_string()),
+        format!("All jobs in group '{}' stopped", group),
+        None,
+    );
+
+    info!("✅ All jobs in group '{}' stopped", group);
+    Ok(())
+}
+
+// ============================================================================
+// TESTS
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Test that group_name generates correct format from job_type and remote_name
+    #[test]
+    fn test_group_name_generation() {
+        let meta = JobMetadata {
+            remote_name: "gdrive:".to_string(),
+            job_type: "sync".to_string(),
+            operation_name: "Sync".to_string(),
+            source: "src".to_string(),
+            destination: "dst".to_string(),
+            profile: None,
+            source_ui: None,
+            group: None,
+        };
+
+        assert_eq!(meta.group_name(), "sync/gdrive");
+    }
+
+    /// Test that group_name includes profile if present
+    #[test]
+    fn test_group_name_with_profile() {
+        let meta = JobMetadata {
+            remote_name: "gdrive:".to_string(),
+            job_type: "sync".to_string(),
+            operation_name: "Sync".to_string(),
+            source: "src".to_string(),
+            destination: "dst".to_string(),
+            profile: Some("daily".to_string()),
+            source_ui: None,
+            group: None,
+        };
+
+        assert_eq!(meta.group_name(), "sync/gdrive/daily");
+    }
+
+    /// Test custom group name takes precedence over auto-generation
+    #[test]
+    fn test_custom_group_name() {
+        let meta = JobMetadata {
+            remote_name: "gdrive:".to_string(),
+            job_type: "sync".to_string(),
+            operation_name: "Sync".to_string(),
+            source: "src".to_string(),
+            destination: "dst".to_string(),
+            profile: None,
+            source_ui: None,
+            group: Some("custom/group".to_string()),
+        };
+
+        assert_eq!(meta.group_name(), "custom/group");
+    }
+
+    /// Test different job types produce correct group names
+    #[test]
+    fn test_group_name_different_job_types() {
+        let test_cases = vec![
+            ("sync", "gdrive:", "sync/gdrive"),
+            ("copy", "onedrive:", "copy/onedrive"),
+            ("move", "dropbox:", "move/dropbox"),
+            ("bisync", "box:", "bisync/box"),
+            ("mount", "s3:", "mount/s3"),
+            ("serve", "local:", "serve/local"),
+            ("copy_url", "remote:", "copy_url/remote"),
+        ];
+
+        for (job_type, remote_name, expected) in test_cases {
+            let meta = JobMetadata {
+                remote_name: remote_name.to_string(),
+                job_type: job_type.to_string(),
+                operation_name: "Test".to_string(),
+                source: "src".to_string(),
+                destination: "dst".to_string(),
+                profile: None,
+                source_ui: None,
+                group: None,
+            };
+            assert_eq!(
+                meta.group_name(),
+                expected,
+                "Failed for job_type: {}",
+                job_type
+            );
+        }
+    }
 }

@@ -73,7 +73,7 @@ pub mod core {
     // ///
     // /// - result - result from the backend command.
     // ///     - Only set when using returnType "COMBINED_OUTPUT".
-    // /// - error	 - set if rclone exits with an error code.
+    // /// - error     - set if rclone exits with an error code.
     // /// - returnType - one of ("COMBINED_OUTPUT", "STREAM", "STREAM_ONLY_STDOUT", "STREAM_ONLY_STDERR").
     // ///
     // /// Example:
@@ -85,41 +85,41 @@ pub mod core {
     // ///
     // /// ```
     // /// {
-    // /// 	"error": false,
-    // /// 	"result": "<Raw command line output>"
+    // ///     "error": false,
+    // ///     "result": "<Raw command line output>"
     // /// }
     // ///
     // /// OR
     // /// {
-    // /// 	"error": true,
-    // /// 	"result": "<Raw command line output>"
+    // ///     "error": true,
+    // ///     "result": "<Raw command line output>"
     // /// }
     // ///
     // /// ```
     // pub const COMMAND: &str = "core/command";
 
-    // /// Returns disk usage of a locally attached disk.
-    // ///
-    // /// This returns the disk usage for the local directory passed in as dir.
-    // ///
-    // /// If the directory is not passed in, it defaults to the directory
-    // /// pointed to by --cache-dir.
-    // ///
-    // /// - dir - string (optional)
-    // ///
-    // /// Returns:
-    // ///
-    // /// ```
-    // /// {
-    // /// 	"dir": "/",
-    // /// 	"info": {
-    // /// 		"Available": 361769115648,
-    // /// 		"Free": 361785892864,
-    // /// 		"Total": 982141468672
-    // /// 	}
-    // /// }
-    // /// ```
-    // pub const DU: &str = "core/du";
+    /// Returns disk usage of a locally attached disk.
+    ///
+    /// This returns the disk usage for the local directory passed in as dir.
+    ///
+    /// If the directory is not passed in, it defaults to the directory
+    /// pointed to by --cache-dir.
+    ///
+    /// - dir - string (optional)
+    ///
+    /// Returns:
+    ///
+    /// ```text
+    /// {
+    ///     "dir": "/",
+    ///     "info": {
+    ///         "Available": 361769115648,
+    ///         "Free": 361785892864,
+    ///         "Total": 982141468672
+    ///     }
+    /// }
+    /// ```
+    pub const DU: &str = "core/du";
 
     /// Runs a garbage collection.
     ///
@@ -128,22 +128,22 @@ pub mod core {
     /// memory problems.
     pub const GC: &str = "core/gc";
 
-    // /// Returns list of stats.
-    // ///
-    // /// This returns list of stats groups currently in memory.
-    // ///
-    // /// Returns the following values:
-    // /// ```
-    // /// {
-    // /// 	"groups":  an array of group names:
-    // /// 		[
-    // /// 			"group1",
-    // /// 			"group2",
-    // /// 			...
-    // /// 		]
-    // /// }
-    // /// ```
-    // pub const GROUP_LIST: &str = "core/group-list";
+    /// Returns list of stats.
+    ///
+    /// This returns list of stats groups currently in memory.
+    ///
+    /// Returns the following values:
+    /// ```
+    /// {
+    ///     "groups":  an array of group names:
+    ///         [
+    ///             "group1",
+    ///             "group2",
+    ///             ...
+    ///         ]
+    /// }
+    /// ```
+    pub const GROUP_LIST: &str = "core/group-list";
 
     /// Returns the memory statistics.
     ///
@@ -238,24 +238,24 @@ pub mod core {
     /// The value for "eta" is null if an eta cannot be determined.
     pub const STATS: &str = "core/stats";
 
-    // /// Delete stats group.
-    // ///
-    // /// This deletes entire stats group.
-    // ///
-    // /// Parameters
-    // ///
-    // /// - group - name of the stats group (string)
-    // pub const STATS_DELETE: &str = "core/stats-delete";
+    /// Delete stats group.
+    ///
+    /// This deletes entire stats group.
+    ///
+    /// Parameters
+    ///
+    /// - group - name of the stats group (string)
+    pub const STATS_DELETE: &str = "core/stats-delete";
 
-    // /// Reset stats.
-    // ///
-    // /// This clears counters, errors and finished transfers for all stats or specific
-    // /// stats group if group is provided.
-    // ///
-    // /// Parameters
-    // ///
-    // /// - group - name of the stats group (string)
-    // pub const STATS_RESET: &str = "core/stats-reset";
+    /// Reset stats.
+    ///
+    /// This clears counters, errors and finished transfers for all stats or specific
+    /// stats group if group is provided.
+    ///
+    /// Parameters
+    ///
+    /// - group - name of the stats group (string)
+    pub const STATS_RESET: &str = "core/stats-reset";
 
     /// Returns stats about completed transfers.
     ///
@@ -514,12 +514,12 @@ pub mod job {
     /// - jobid - id of the job (integer).
     pub const STOP: &str = "job/stop";
 
-    // /// Stop all running jobs in a group.
-    // ///
-    // /// Parameters:
-    // ///
-    // /// - group - name of the group (string).
-    // pub const STOPGROUP: &str = "job/stopgroup";
+    /// Stop all running jobs in a group.
+    ///
+    /// Parameters:
+    ///
+    /// - group - name of the group (string).
+    pub const STOPGROUP: &str = "job/stopgroup";
 }
 
 /// Mount operations endpoints
@@ -1355,17 +1355,17 @@ pub mod vfs {
 //     ///
 //     /// ```
 //     /// {
-//     /// 	"result": {
-//     /// 		"arg": [
-//     /// 			"path1",
-//     /// 			"path2"
-//     /// 		],
-//     /// 		"name": "noop",
-//     /// 		"opt": {
-//     /// 			"blue": "",
-//     /// 			"echo": "yes"
-//     /// 		}
-//     /// 	}
+//     ///     "result": {
+//     ///         "arg": [
+//     ///             "path1",
+//     ///             "path2"
+//     ///         ],
+//     ///         "name": "noop",
+//     ///         "opt": {
+//     ///             "blue": "",
+//     ///             "echo": "yes"
+//     ///         }
+//     ///     }
 //     /// }
 //     /// ```
 //     ///

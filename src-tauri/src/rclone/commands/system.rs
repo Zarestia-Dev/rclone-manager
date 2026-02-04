@@ -393,3 +393,82 @@ pub async fn clear_fscache(app: AppHandle) -> Result<(), String> {
     info!("✅ Filesystem cache cleared successfully");
     Ok(())
 }
+
+// ============================================================================
+// STATS GROUP MANAGEMENT
+// ============================================================================
+
+/// Get all active stats groups
+/// Returns a list of group names like ["sync/gdrive", "mount/onedrive"]
+#[tauri::command]
+pub async fn get_stats_groups(app: AppHandle) -> Result<Vec<String>, String> {
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+
+    let json = backend
+        .post_json(&app.state::<RcloneState>().client, core::GROUP_LIST, None)
+        .await
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
+
+    // Parse groups array, return empty vec if null
+    let groups = json
+        .get("groups")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    Ok(groups)
+}
+
+/// Reset stats for a specific group or all groups
+/// If group is None, resets all stats
+#[tauri::command]
+pub async fn reset_group_stats(app: AppHandle, group: Option<String>) -> Result<(), String> {
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+
+    let payload = group.as_ref().map(|g| json!({ "group": g }));
+
+    let _ = backend
+        .post_json(
+            &app.state::<RcloneState>().client,
+            core::STATS_RESET,
+            payload.as_ref(),
+        )
+        .await
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
+
+    info!(
+        "✅ Stats reset for group: {:?}",
+        group.as_deref().unwrap_or("all")
+    );
+    Ok(())
+}
+
+/// Delete a stats group entirely
+#[tauri::command]
+pub async fn delete_stats_group(app: AppHandle, group: String) -> Result<(), String> {
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+
+    let payload = json!({ "group": group });
+
+    let _ = backend
+        .post_json(
+            &app.state::<RcloneState>().client,
+            core::STATS_DELETE,
+            Some(&payload),
+        )
+        .await
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
+
+    info!("✅ Stats group '{}' deleted", group);
+    Ok(())
+}

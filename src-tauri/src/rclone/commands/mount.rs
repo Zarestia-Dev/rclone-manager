@@ -165,6 +165,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
             destination: params.mount_point.clone(),
             profile: params.profile.clone(),
             source_ui: None,
+            group: None, // Auto-generate from job_type/remote_name
         },
     )
     .await?;

@@ -1,6 +1,12 @@
 import { Injectable } from '@angular/core';
 import { TauriBaseService } from '../core/tauri-base.service';
-import { RcloneInfo, MemoryStats, GlobalStats, BandwidthLimitResponse } from '@app/types';
+import {
+  RcloneInfo,
+  MemoryStats,
+  GlobalStats,
+  BandwidthLimitResponse,
+  LocalDiskUsage,
+} from '@app/types';
 
 /**
  * Service for system information and rclone engine management
@@ -69,8 +75,8 @@ export class SystemInfoService extends TauriBaseService {
   /**
    * Get core statistics
    */
-  async getCoreStats(): Promise<GlobalStats> {
-    return this.invokeCommand('get_core_stats');
+  async getStats(groupName?: string): Promise<GlobalStats> {
+    return this.invokeCommand('get_stats', { groupName });
   }
 
   /**
@@ -113,5 +119,14 @@ export class SystemInfoService extends TauriBaseService {
    */
   async clearFsCache(): Promise<void> {
     return this.invokeCommand('clear_fscache');
+  }
+
+  /**
+   * Get local disk usage for a directory using rclone's core/du endpoint
+   * Returns Available, Free, and Total bytes for a local directory
+   * Useful for checking space on mount points
+   */
+  async getLocalDiskUsage(dir?: string): Promise<LocalDiskUsage> {
+    return this.invokeCommand<LocalDiskUsage>('get_local_disk_usage', { dir });
   }
 }

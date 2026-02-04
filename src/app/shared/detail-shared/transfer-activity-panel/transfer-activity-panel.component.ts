@@ -8,6 +8,8 @@ import { ActiveTransfersTableComponent } from './active-transfers-table.componen
 import { CompletedTransfersTableComponent } from './completed-transfers-table.component';
 import { TranslateModule } from '@ngx-translate/core';
 import { CompletedTransfer, TransferActivityPanelConfig, TransferFile } from '../../types';
+import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-transfer-activity-panel',
@@ -20,6 +22,8 @@ import { CompletedTransfer, TransferActivityPanelConfig, TransferFile } from '..
     MatChipsModule,
     ActiveTransfersTableComponent,
     CompletedTransfersTableComponent,
+    MatButtonModule,
+    MatTooltipModule,
     TranslateModule,
   ],
   template: `
@@ -40,6 +44,16 @@ import { CompletedTransfer, TransferActivityPanelConfig, TransferFile } from '..
               </mat-chip>
             }
           </div>
+          @if (config().showHistory) {
+            <button
+              mat-icon-button
+              class="warn"
+              (click)="resetStats.emit()"
+              [matTooltip]="'shared.transferActivity.resetStats' | translate"
+            >
+              <mat-icon svgIcon="broom"></mat-icon>
+            </button>
+          }
         </mat-card-title>
       </mat-card-header>
 
@@ -98,6 +112,7 @@ import { CompletedTransfer, TransferActivityPanelConfig, TransferFile } from '..
 export class TransferActivityPanelComponent {
   config = input.required<TransferActivityPanelConfig>();
   @Output() refreshTransfers = new EventEmitter<void>();
+  @Output() resetStats = new EventEmitter<void>();
 
   trackByActiveTransfer(index: number, transfer: TransferFile): string {
     return transfer.name;

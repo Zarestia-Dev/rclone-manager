@@ -585,6 +585,7 @@
       "title": "Transfer Etkinliği",
       "active": "Aktif:",
       "recent": "Son:",
+      "resetStats": "Etkinlikleri Sıfırla",
       "tabs": {
         "active": "Aktif ({{count}})",
         "recent": "Son ({{count}})"

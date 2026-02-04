@@ -356,47 +356,11 @@
   }
 }
 
-// Performance graphs
-.performance-graphs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-
-  .graph-card {
-    border-radius: 8px;
-    padding: 16px;
-    box-shadow: 0 2px 4px var(--active-bg-color);
-    transition:
-      box-shadow 0.2s,
-      transform 0.2s;
-
-    &:hover {
-      box-shadow: 0 4px 12px var(--shadow-color);
-      transform: translateY(-2px) scale(1.01);
-    }
-
-    h4 {
-      margin: 0 0 12px 0;
-      font-size: 14px;
-      color: var(--window-fg-color);
-    }
-
-    canvas {
-      width: 100% !important;
-      height: 200px !important;
-    }
-  }
-}
-
 // Responsive design
 @media (max-width: 768px) {
   .remote-info-section {
     flex-direction: column !important;
     gap: var(--space-xs) !important;
-  }
-
-  .performance-graphs {
-    grid-template-columns: 1fr;
   }
 
   .settings-group {

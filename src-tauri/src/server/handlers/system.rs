@@ -23,25 +23,14 @@ use crate::utils::app::updater::app_updates::{
 
 pub async fn get_stats_handler(
     State(state): State<WebServerState>,
+    Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::rclone::queries::get_core_stats;
-    let stats = get_core_stats(state.app_handle.clone())
+    use crate::rclone::queries::stats::get_stats;
+    let group = params.get("group").cloned();
+    let stats = get_stats(state.app_handle.clone(), group)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(stats)))
-}
-
-pub async fn get_core_stats_filtered_handler(
-    State(state): State<WebServerState>,
-    Query(params): Query<HashMap<String, String>>,
-) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::rclone::queries::stats::get_core_stats_filtered;
-    let jobid = params.get("jobid").and_then(|s| s.parse::<u64>().ok());
-    let group = params.get("group").cloned();
-    let value = get_core_stats_filtered(state.app_handle.clone(), jobid, group)
-        .await
-        .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(value)))
 }
 
 pub async fn get_completed_transfers_handler(
@@ -446,4 +435,70 @@ pub async fn clear_fscache_handler(
     Ok(Json(ApiResponse::success(crate::localized_success!(
         "backendSuccess.system.fscacheCleared"
     ))))
+}
+
+// =============================================================================
+// STATS GROUP MANAGEMENT
+// =============================================================================
+
+pub async fn get_stats_groups_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<Vec<String>>>, AppError> {
+    use crate::rclone::commands::system::get_stats_groups;
+    let groups = get_stats_groups(state.app_handle.clone())
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(groups)))
+}
+
+#[derive(Deserialize)]
+pub struct GroupStatsQuery {
+    pub group: Option<String>,
+}
+
+pub async fn reset_group_stats_handler(
+    State(state): State<WebServerState>,
+    Query(query): Query<GroupStatsQuery>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::rclone::commands::system::reset_group_stats;
+    reset_group_stats(state.app_handle.clone(), query.group)
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.system.statsReset"
+    ))))
+}
+
+#[derive(Deserialize)]
+pub struct DeleteGroupQuery {
+    pub group: String,
+}
+
+pub async fn delete_stats_group_handler(
+    State(state): State<WebServerState>,
+    Query(query): Query<DeleteGroupQuery>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::rclone::commands::system::delete_stats_group;
+    delete_stats_group(state.app_handle.clone(), query.group)
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.system.groupDeleted"
+    ))))
+}
+
+#[derive(Deserialize)]
+pub struct LocalDiskUsageQuery {
+    pub dir: Option<String>,
+}
+
+pub async fn get_local_disk_usage_handler(
+    State(state): State<WebServerState>,
+    Query(query): Query<LocalDiskUsageQuery>,
+) -> Result<Json<ApiResponse<crate::rclone::queries::system::LocalDiskUsageResponse>>, AppError> {
+    use crate::rclone::queries::system::get_local_disk_usage;
+    let result = get_local_disk_usage(state.app_handle.clone(), query.dir)
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(result)))
 }

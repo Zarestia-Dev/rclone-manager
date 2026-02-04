@@ -207,3 +207,21 @@ pub async fn rename_job_profile_handler(
         .await;
     Ok(Json(ApiResponse::success(count)))
 }
+
+#[derive(Deserialize)]
+pub struct StopJobsGroupBody {
+    pub group: String,
+}
+
+pub async fn stop_jobs_by_group_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<StopJobsGroupBody>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::rclone::commands::job::stop_jobs_by_group;
+    stop_jobs_by_group(state.app_handle.clone(), body.group)
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(crate::localized_success!(
+        "backendSuccess.job.groupStopped"
+    ))))
+}

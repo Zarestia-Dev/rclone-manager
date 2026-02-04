@@ -1,4 +1,4 @@
-use log::{debug, error};
+use log::error;
 use serde_json::json;
 
 use crate::rclone::backend::BackendManager;
@@ -8,35 +8,12 @@ use tauri::{AppHandle, Manager};
 
 /// Get RClone core statistics  
 #[tauri::command]
-pub async fn get_core_stats(app: AppHandle) -> Result<serde_json::Value, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    backend
-        .post_json(&app.state::<RcloneState>().client, core::STATS, None)
-        .await
-        .map_err(|e| format!("Failed to get core stats: {e}"))
-}
-
-/// Get RClone core statistics filtered by group/job
-#[tauri::command]
-pub async fn get_core_stats_filtered(
-    app: AppHandle,
-    jobid: Option<u64>,
-    group: Option<String>,
-) -> Result<serde_json::Value, String> {
+pub async fn get_stats(app: AppHandle, group: Option<String>) -> Result<serde_json::Value, String> {
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
     let mut payload = json!({});
-
     if let Some(group) = group {
         payload["group"] = json!(group);
-        debug!("📊 Getting core stats for group: {group}");
-    } else if let Some(jobid) = jobid {
-        let group_name = format!("job/{jobid}");
-        payload["group"] = json!(group_name);
-        debug!("📊 Getting core stats for job: {jobid}");
-    } else {
-        debug!("📊 Getting global core stats");
     }
 
     backend
@@ -46,10 +23,7 @@ pub async fn get_core_stats_filtered(
             Some(&payload),
         )
         .await
-        .map_err(|e| {
-            error!("❌ Failed to get filtered core stats: {e}");
-            format!("Failed to get filtered core stats: {e}")
-        })
+        .map_err(|e| format!("Failed to get core stats: {e}"))
 }
 
 /// Get completed transfers using core/transferred API
@@ -63,9 +37,6 @@ pub async fn get_completed_transfers(
     let mut payload = json!({});
     if let Some(group) = group {
         payload["group"] = json!(group);
-        debug!("📋 Getting completed transfers for group: {group}");
-    } else {
-        debug!("📋 Getting all completed transfers");
     }
 
     #[cfg_attr(not(target_os = "windows"), allow(unused_mut))]

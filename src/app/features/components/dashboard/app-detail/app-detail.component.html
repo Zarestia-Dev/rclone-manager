@@ -154,6 +154,7 @@
                 <!-- Transfer Activity Panel -->
                 <app-transfer-activity-panel
                   [config]="transferActivityConfig()"
+                  (resetStats)="onResetStats()"
                   class="activity-panel"
                 ></app-transfer-activity-panel>
               </div>

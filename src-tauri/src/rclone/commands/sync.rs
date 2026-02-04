@@ -202,12 +202,37 @@ async fn perform_transfer(app: AppHandle, params: GenericTransferParams) -> Resu
     // 2. Build Request Body
     let body = params.to_rclone_body();
 
-    // 3. Get API URL
+    // 4. Check for duplicates (Concurrency Control)
     let backend_manager = app.state::<BackendManager>();
+    if backend_manager
+        .job_cache
+        .is_job_running(
+            &params.remote_name,
+            params.transfer_type.as_str(),
+            params.profile.as_deref(),
+        )
+        .await
+    {
+        let profile_msg = params
+            .profile
+            .clone()
+            .map(|p| format!(" (Profile: '{}')", p))
+            .unwrap_or_default();
+
+        let msg = format!(
+            "Job '{}' is already running for '{}'{}",
+            params.transfer_type.as_str(),
+            params.remote_name,
+            profile_msg
+        );
+        log::warn!("🚫 {}", msg);
+        return Err(msg);
+    }
+
+    // 5. Submit Job
     let backend = backend_manager.get_active().await;
     let url = backend.url_for(params.transfer_type.endpoint());
 
-    // 4. Submit Job
     let (jobid, _, _) = submit_job(
         app,
         client.clone(),
@@ -221,6 +246,7 @@ async fn perform_transfer(app: AppHandle, params: GenericTransferParams) -> Resu
             destination: params.dest,
             profile: params.profile,
             source_ui: None,
+            group: None, // Auto-generate from job_type/remote_name
         },
     )
     .await?;

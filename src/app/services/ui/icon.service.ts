@@ -93,6 +93,7 @@ export class IconService {
       eye: 'assets/icons/actions/eye.svg',
       'eye-slash': 'assets/icons/actions/eye-slash.svg',
       'power-off': 'assets/icons/actions/power-off.svg',
+      broom: 'assets/icons/actions/broom.svg',
 
       // ------------------- Device Icons -------------------
       'hard-drive': 'assets/icons/devices/hard-drive.svg',

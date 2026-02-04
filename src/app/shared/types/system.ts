@@ -169,3 +169,10 @@ export enum RepairSheetType {
   RCLONE_PASSWORD = 'rclone_password',
   RCLONE_PATH = 'rclone_path',
 }
+
+export interface LocalDiskUsage {
+  free: number;
+  total: number;
+  used: number;
+  dir?: string;
+}

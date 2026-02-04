@@ -90,6 +90,7 @@ pub async fn copy_url(
             destination: path,
             profile: None,
             source_ui: Some("nautilus".to_string()),
+            group: None, // Auto-generate from job_type/remote_name
         },
     )
     .await?;
