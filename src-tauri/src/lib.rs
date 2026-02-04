@@ -184,7 +184,17 @@ pub fn run() {
                         info!("Another instance attempted to run.");
 
                         #[cfg(not(feature = "web-server"))]
-                        core::tray::actions::show_main_window(_app.clone());
+                        {
+                            // Only show window if it exists, don't try to create
+                            // Creating from single instance callback can cause crashes
+                            if let Some(window) = _app.get_webview_window("main") {
+                                info!("📢 Second instance detected, showing existing window");
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            } else {
+                                info!("📢 Second instance detected, but window was destroyed. Use tray to reopen.");
+                            }
+                        }
                     })),
             );
         }
@@ -196,7 +206,17 @@ pub fn run() {
                 info!("Another instance attempted to run.");
 
                 #[cfg(not(feature = "web-server"))]
-                core::tray::actions::show_main_window(_app.clone());
+                {
+                    // Only show window if it exists, don't try to create
+                    // Creating from single instance callback can cause crashes
+                    if let Some(window) = _app.get_webview_window("main") {
+                        info!("📢 Second instance detected, showing existing window");
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    } else {
+                        info!("📢 Second instance detected, but window was destroyed. Use tray to reopen.");
+                    }
+                }
             }));
         }
     }
