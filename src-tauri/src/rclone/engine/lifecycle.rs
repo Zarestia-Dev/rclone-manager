@@ -18,11 +18,14 @@ pub fn mark_startup_complete() {
 const API_READY_TIMEOUT_SECS: u64 = 10;
 const MONITORING_INTERVAL_SECS: u64 = if cfg!(test) { 1 } else { 5 };
 
-use crate::utils::types::{
-    core::{RcApiEngine, RcloneState},
-    events::{
-        ENGINE_RESTARTED, RCLONE_ENGINE_ERROR, RCLONE_ENGINE_PASSWORD_ERROR,
-        RCLONE_ENGINE_PATH_ERROR, RCLONE_ENGINE_READY,
+use crate::utils::{
+    app::notification::send_notification,
+    types::{
+        core::{RcApiEngine, RcloneState},
+        events::{
+            ENGINE_RESTARTED, RCLONE_ENGINE_ERROR, RCLONE_ENGINE_PASSWORD_ERROR,
+            RCLONE_ENGINE_PATH_ERROR, RCLONE_ENGINE_READY,
+        },
     },
 };
 
@@ -230,11 +233,21 @@ fn handle_start_failure(engine: &mut RcApiEngine, app: &AppHandle, e: String) {
         if let Err(err) = app.emit(RCLONE_ENGINE_PATH_ERROR, ()) {
             error!("Failed to emit path_error event: {err}");
         }
+        send_notification(
+            app,
+            "notification.title.engineError",
+            "notification.body.enginePathError",
+        );
     } else if engine.password_error {
         debug!("🔑 Emitting RCLONE_ENGINE_PASSWORD_ERROR");
         if let Err(err) = app.emit(RCLONE_ENGINE_PASSWORD_ERROR, ()) {
             error!("Failed to emit password_error event: {err}");
         }
+        send_notification(
+            app,
+            "notification.title.engineError",
+            "notification.body.enginePasswordError",
+        );
     } else {
         debug!("⚠️ Emitting generic RCLONE_ENGINE_ERROR (this should be rare!)");
         if let Err(err) = app.emit(RCLONE_ENGINE_ERROR, ()) {
@@ -320,6 +333,18 @@ pub fn restart_for_config_change(
                 ) {
                     error!("Failed to emit engine restart success event: {e}");
                 }
+
+                send_notification(
+                    &app_handle,
+                    "notification.title.engineRestarted",
+                    &serde_json::json!({
+                        "key": "notification.body.engineRestartedSuccess",
+                        "params": {
+                            "reason": change_type
+                        }
+                    })
+                    .to_string(),
+                );
             }
             Err(e) => {
                 error!("❌ Failed to restart engine for {change_type} change: {e}");
@@ -328,6 +353,18 @@ pub fn restart_for_config_change(
                 if let Err(emit_err) = app_handle.emit(RCLONE_ENGINE_ERROR, ()) {
                     error!("Failed to emit engine restart failure event: {emit_err}");
                 }
+
+                send_notification(
+                    &app_handle,
+                    "notification.title.engineError",
+                    &serde_json::json!({
+                        "key": "notification.body.engineRestartedFailed",
+                        "params": {
+                            "reason": change_type
+                        }
+                    })
+                    .to_string(),
+                );
             }
         }
     });

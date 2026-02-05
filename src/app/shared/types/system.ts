@@ -85,9 +85,10 @@ export interface AppEventPayload {
   status: string;
   message?: string;
   language?: string;
+  data?: any;
 }
 
-export type AppEventPayloadType = AppEventPayload | string;
+export type AppEventPayloadType = AppEventPayload;
 
 // === Update Info ===
 export interface RcloneUpdateInfo {

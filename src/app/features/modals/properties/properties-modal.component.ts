@@ -261,14 +261,21 @@ export class PropertiesModalComponent implements OnInit {
    */
   private buildHashPath(): string {
     const { remoteName, path, isLocal } = this.data;
-    if (isLocal && this.item && !this.item.IsDir) {
-      // For local files, remoteName is the directory path, and we need the full path
-      const dir = remoteName.endsWith('/') ? remoteName : `${remoteName}/`;
-      return `${dir}${this.item.Name}`;
+    if (isLocal) {
+      const candidatePath = path || this.item?.Path || this.item?.Name || '';
+
+      if (candidatePath.startsWith('/')) {
+        return candidatePath;
+      }
+
+      if (!remoteName || remoteName === '/') {
+        return candidatePath ? `/${candidatePath}` : '/';
+      }
+
+      const base = remoteName.endsWith('/') ? remoteName.slice(0, -1) : remoteName;
+      return candidatePath ? `${base}/${candidatePath}` : base;
     }
-    // For local directories, path is likely empty string in this.data.path logic,
-    // but let's check. In the component, path is usually relative or empty for local root.
-    // If it's a directory, we simply pass the path.
+
     return path;
   }
 
@@ -462,9 +469,8 @@ export class PropertiesModalComponent implements OnInit {
   }
 
   getIcon(item?: Entry | null): string {
-    if (!item) return 'folder';
-    if (item.IsDir) return 'folder';
-    return this.iconService.getIconForFileType(item.Name);
+    if (!item) return 'adwaita-folder';
+    return this.iconService.getIconForEntry(item);
   }
 
   /** Get hash entries as array for template iteration */

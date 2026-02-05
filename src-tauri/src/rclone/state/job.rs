@@ -96,7 +96,7 @@ impl JobCache {
         jobid: u64,
         success: bool,
         app: Option<&AppHandle>,
-    ) -> Result<(), String> {
+    ) -> Result<JobInfo, String> {
         self.update_job(
             jobid,
             |job| {
@@ -108,8 +108,7 @@ impl JobCache {
             },
             app,
         )
-        .await?;
-        Ok(())
+        .await
     }
 
     pub async fn stop_job(&self, jobid: u64, app: Option<&AppHandle>) -> Result<(), String> {

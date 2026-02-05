@@ -20,9 +20,11 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::core::check_binaries::{build_rclone_command, get_rclone_binary_path, read_rclone_path};
 use crate::core::settings::operations::core::save_setting;
+use crate::rclone::queries::get_rclone_info;
+use crate::utils::app::notification::send_notification;
 use crate::utils::github_client;
 use crate::utils::types::core::EngineState;
-use crate::{rclone::queries::get_rclone_info, utils::types::events::RCLONE_ENGINE_UPDATING};
+use crate::utils::types::events::RCLONE_ENGINE_UPDATING;
 
 // ============================================================================
 // Types and Constants
@@ -62,32 +64,51 @@ pub async fn check_rclone_update(
         }
     };
 
-    // Use rclone selfupdate --check to determine if update is available
+    // Use rclone selfupdate --check
     let channel = channel.unwrap_or_else(|| "stable".to_string());
-    let update_check_result = check_rclone_selfupdate(&app_handle, &channel)
+    let result = check_rclone_selfupdate(&app_handle, &channel)
         .await
         .map_err(|e| e.to_string())?;
 
-    // Fetch release notes from GitHub if update is available
-    let (release_notes, release_date, release_url) = if update_check_result.update_available {
-        fetch_rclone_release_info(&update_check_result.latest_version, &channel)
+    // Fetch release notes if available
+    let (release_notes, release_date, release_url) = if result.update_available {
+        fetch_rclone_release_info(&result.latest_version, &channel)
             .await
-            .map_err(|e| e.to_string())?
+            .unwrap_or_default()
     } else {
-        (None, None, None)
+        Default::default()
     };
 
-    Ok(json!({
+    // Construct the result
+    let result_json = json!({
         "current_version": current_version,
-        "latest_version": update_check_result.latest_version,
-        "update_available": update_check_result.update_available,
+        "latest_version": result.latest_version,
+        "update_available": result.update_available,
         "current_version_clean": clean_version(&current_version),
-        "latest_version_clean": clean_version(&update_check_result.latest_version),
+        "latest_version_clean": clean_version(&result.latest_version),
         "channel": channel,
         "release_notes": release_notes,
         "release_date": release_date,
         "release_url": release_url
-    }))
+    });
+
+    if result.update_available {
+        // Emit event to frontend
+        if let Err(e) = app_handle.emit(
+            crate::utils::types::events::APP_EVENT,
+            serde_json::json!({ "status": "rclone_update_found", "data": result_json }),
+        ) {
+            log::warn!("Failed to emit rclone update event: {}", e);
+        }
+
+        send_notification(
+            &app_handle,
+            "notification.title.rcloneUpdateFound",
+            &json!({ "key": "notification.body.rcloneUpdateFound", "params": { "version": result.latest_version } }).to_string(),
+        );
+    }
+
+    Ok(result_json)
 }
 
 // ============================================================================
@@ -113,11 +134,10 @@ pub async fn update_rclone(
     app_handle: tauri::AppHandle,
     channel: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    // Step 1: Initialize update process
     set_engine_updating(&app_handle, true).await;
     debug!("🔍 Starting rclone update process");
 
-    // Step 2: Check if update is available
+    // Check availability
     let update_check = check_rclone_update(app_handle.clone(), channel.clone()).await?;
     let update_available = update_check
         .get("update_available")
@@ -126,7 +146,6 @@ pub async fn update_rclone(
 
     if !update_available {
         set_engine_updating(&app_handle, false).await;
-        debug!("🔍 No update available for rclone");
         return Ok(json!({
             "success": false,
             "message": "No update available",
@@ -134,7 +153,24 @@ pub async fn update_rclone(
         }));
     }
 
-    // Get current rclone path from settings and resolve the actual binary path
+    let latest_version = update_check
+        .get("latest_version")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
+
+    // Notify update found
+    let _ = app_handle.emit(
+        crate::utils::types::events::APP_EVENT,
+        serde_json::json!({ "status": "rclone_update_found", "data": update_check }),
+    );
+
+    send_notification(
+        &app_handle,
+        "notification.title.rcloneUpdateFound",
+        &json!({ "key": "notification.body.rcloneUpdateFound", "params": { "version": latest_version } }).to_string(),
+    );
+
+    // Resolve binary path
     let manager = app_handle.state::<crate::core::settings::AppSettingsManager>();
     let base_path: PathBuf = manager
         .inner()
@@ -145,86 +181,86 @@ pub async fn update_rclone(
     let mut current_path = get_rclone_binary_path(&base_path);
 
     if !current_path.exists() {
-        debug!(
-            "🔍 Configured rclone binary not found at: {}. Trying system-installed rclone",
-            current_path.display()
-        );
-        // Try to find a system rclone (this will return a binary path if found)
+        // Fallback to system rclone
         let system_path = read_rclone_path(&app_handle);
         if system_path.exists() {
-            log::info!(
-                "Falling back to system rclone at: {}",
-                system_path.display()
-            );
             current_path = system_path;
         } else {
             set_engine_updating(&app_handle, false).await;
-            debug!(
-                "🔍 Current rclone binary not found at: {}",
-                current_path.display()
-            );
             return Err(crate::localized_error!(
                 "backendErrors.rclone.binaryNotFound"
             ));
         }
     }
 
-    // Stop the engine before updating (to release the binary)
+    // Stop engine
     app_handle
         .emit(RCLONE_ENGINE_UPDATING, ())
         .map_err(|e| format!("Failed to emit update event: {e}"))?;
 
-    // Actually stop the engine process
     {
         let engine_state = app_handle.state::<EngineState>();
         let mut engine = engine_state.lock().await;
-        if let Err(e) = engine.kill_process(&app_handle).await {
-            log::error!("Failed to stop engine before update: {e}");
-        }
+        let _ = engine.kill_process(&app_handle).await;
         engine.running = false;
         engine.process = None;
     }
 
-    // Determine the best update strategy based on current path and permissions
+    send_notification(
+        &app_handle,
+        "notification.title.rcloneUpdateStarted",
+        &json!({ "key": "notification.body.rcloneUpdateStarted", "params": { "version": latest_version } }).to_string(),
+    );
+
+    // Execute update
     let update_result = match determine_update_strategy(&current_path, &app_handle).await {
-        Ok(strategy) => {
-            log::info!("Using update strategy: {strategy:?}");
-            execute_update_strategy(strategy, &app_handle, channel.clone()).await
-        }
-        Err(e) => {
-            log::error!("Failed to determine update strategy: {e}");
-            Err(e)
-        }
+        Ok(strategy) => execute_update_strategy(strategy, &app_handle, channel.clone()).await,
+        Err(e) => Err(e),
     };
 
-    // Emit completion event regardless of success/failure
-    let success = update_result
-        .as_ref()
-        .map(|r| r["success"].as_bool().unwrap_or(false))
-        .unwrap_or(false);
-
-    // Note: Completion is signaled by ENGINE_RESTARTED event with reason 'rclone_update'
-
-    // Set updating to false at the end (regardless of success/failure)
-    log::info!("Setting updating to false");
     set_engine_updating(&app_handle, false).await;
 
-    // If update was successful, restart engine with updated binary
-    if success
-        && let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
-            &app_handle,
-            "rclone_update",
-            update_check
-                .get("current_version")
-                .and_then(|v| v.as_str())
-                .unwrap_or("unknown"),
-            update_check
-                .get("latest_version")
-                .and_then(|v| v.as_str())
-                .unwrap_or("unknown"),
-        )
-    {
-        return Err(crate::localized_error!("backendErrors.rclone.restartFailed", "error" => e));
+    // Handle result
+    match &update_result {
+        Ok(res) if res["success"].as_bool().unwrap_or(false) => {
+            send_notification(
+                &app_handle,
+                "notification.title.rcloneUpdateComplete",
+                &json!({ "key": "notification.body.rcloneUpdateComplete", "params": { "version": latest_version } }).to_string(),
+            );
+
+            // Restart engine
+            if let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
+                &app_handle,
+                "rclone_update",
+                update_check
+                    .get("current_version")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown"),
+                latest_version,
+            ) {
+                return Err(
+                    crate::localized_error!("backendErrors.rclone.restartFailed", "error" => e),
+                );
+            }
+        }
+        _ => {
+            // Extract error message
+            let error_msg = if let Ok(res) = &update_result {
+                res["message"]
+                    .as_str()
+                    .unwrap_or("Unknown error")
+                    .to_string()
+            } else {
+                update_result.as_ref().unwrap_err().clone()
+            };
+
+            send_notification(
+                &app_handle,
+                "notification.title.rcloneUpdateFailed",
+                &json!({ "key": "notification.body.rcloneUpdateFailed", "params": { "error": error_msg } }).to_string(),
+            );
+        }
     }
 
     update_result

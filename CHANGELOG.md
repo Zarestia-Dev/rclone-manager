@@ -12,6 +12,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Stop all running jobs for a specific remote at once
   - Track and manage operations on a per-remote basis
 - rclone rc core/du added. When remote mounted its gonna show inside the `Mount Control` accordion. Its calculate the disk usage from local mount point.
+- Added more notifications.
+- Added new nautilus icons from Morewaita icon theme. Repo: https://github.com/somepaulo/MoreWaita
+
+### Changed
+- When memory optimization is enabled, app only reopen fron tray icon. Not from the desktop entry or shortcuts (Including command line).
 
 ### Fixed
 - When update the rclone , app now checking the preconfigured path is writable or not. If not, app will use the default config path.

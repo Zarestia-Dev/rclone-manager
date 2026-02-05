@@ -9,6 +9,7 @@ use crate::{
         state::watcher::force_check_mounted_remotes,
     },
     utils::{
+        app::notification::send_notification,
         json_helpers::unwrap_nested_options,
         logging::log::log_operation,
         rclone::endpoints::mount,
@@ -147,7 +148,6 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         Some(log_context),
     );
 
-    // Submit Job
     let state = app.state::<RcloneState>();
     let url = backend.url_for(mount::MOUNT);
     let payload = params.to_rclone_body();
@@ -209,10 +209,31 @@ pub async fn unmount_remote(
         None,
     );
 
+    // Get profile from cache before unmounting for notification
+    let profile = backend_manager
+        .remote_cache
+        .get_mount_profile(&mount_point)
+        .await
+        .unwrap_or_default();
+
     let _ = backend
         .post_json(&state.client, mount::UNMOUNT, Some(&payload))
         .await
-        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
+        .map_err(|e| {
+            let error_msg = crate::localized_error!("backendErrors.request.failed", "error" => &e);
+            send_notification(
+                &app,
+                "notification.title.unmountFailed",
+                &serde_json::json!({
+                    "key": "notification.body.unmountFailed",
+                    "params": {
+                        "error": e.to_string()
+                    }
+                })
+                .to_string(),
+            );
+            error_msg
+        })?;
 
     log_operation(
         LogLevel::Info,
@@ -220,6 +241,19 @@ pub async fn unmount_remote(
         Some("Unmount remote".to_string()),
         format!("Successfully unmounted {mount_point}"),
         None,
+    );
+
+    send_notification(
+        &app,
+        "notification.title.unmountSuccess",
+        &serde_json::json!({
+            "key": "notification.body.unmounted",
+            "params": {
+                "remote": remote_name,
+                "profile": profile
+            }
+        })
+        .to_string(),
     );
 
     refresh_mounted_remotes_safely(&app).await;
@@ -249,6 +283,12 @@ pub async fn unmount_all_remotes(app: AppHandle, context: String) -> Result<Stri
     }
 
     info!("✅ All remotes unmounted successfully");
+
+    send_notification(
+        &app,
+        "notification.title.unmountSuccess",
+        "notification.body.allRemotesUnmounted",
+    );
 
     Ok(crate::localized_success!(
         "backendSuccess.mount.allUnmounted"

@@ -175,7 +175,7 @@
             <div class="unsupported-container" role="status">
               <div class="icon-wrapper">
                 <mat-icon
-                  [svgIcon]="iconService.getIconForFileType(data.fileType)"
+                  [svgIcon]="iconService.getIconForEntry(data.items[data.currentIndex])"
                   aria-hidden="true"
                 ></mat-icon>
               </div>

@@ -1,19 +1,13 @@
-import { Injectable, inject } from '@angular/core';
-import {
-  BehaviorSubject,
-  Observable,
-  combineLatest,
-  interval,
-  Subscription,
-  firstValueFrom,
-} from 'rxjs';
-import { map, takeWhile } from 'rxjs/operators';
+import { Injectable, OnDestroy, inject } from '@angular/core';
+import { BehaviorSubject, interval, Subscription, firstValueFrom, Subject } from 'rxjs';
+import { map, takeWhile, filter, takeUntil } from 'rxjs/operators';
 import { TranslateService } from '@ngx-translate/core';
 import { NotificationService } from '@app/services';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { UpdateMetadata } from '@app/types';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { UiStateService } from '../ui/ui-state.service';
+import { EventListenersService } from './event-listeners.service';
 import { MatDialog } from '@angular/material/dialog';
 import { ConfirmModalComponent } from '../../shared/modals/confirm-modal/confirm-modal.component';
 
@@ -36,12 +30,15 @@ export interface UpdateState {
 @Injectable({
   providedIn: 'root',
 })
-export class AppUpdaterService extends TauriBaseService {
+export class AppUpdaterService extends TauriBaseService implements OnDestroy {
   private notificationService = inject(NotificationService);
   private appSettingsService = inject(AppSettingsService);
   private uiStateService = inject(UiStateService);
   private dialog = inject(MatDialog);
   private translate = inject(TranslateService);
+  private eventListenersService = inject(EventListenersService);
+
+  private destroy$ = new Subject<void>();
 
   // Update state subjects (previously in UpdateStateService)
   private buildTypeSubject = new BehaviorSubject<string | null>(null);
@@ -75,23 +72,6 @@ export class AppUpdaterService extends TauriBaseService {
   public updateChannel$ = this.updateChannelSubject.asObservable();
   public restartRequired$ = this.restartRequiredSubject.asObservable();
 
-  /**
-   * Combined state observable that provides all update-related information
-   */
-  public updateState$: Observable<UpdateState> = combineLatest([
-    this.buildType$,
-    this.updatesDisabled$,
-    this.hasUpdates$,
-    this.updateInProgress$,
-  ]).pipe(
-    map(([buildType, updatesDisabled, hasUpdates, updateInProgress]) => ({
-      isSupported: !updatesDisabled,
-      buildType,
-      hasUpdates: hasUpdates && !updatesDisabled,
-      isUpdateInProgress: updateInProgress && !updatesDisabled,
-    }))
-  );
-
   async checkForUpdates(): Promise<UpdateMetadata | null> {
     try {
       await this.ensureInitialized();
@@ -112,18 +92,14 @@ export class AppUpdaterService extends TauriBaseService {
       });
 
       if (result) {
-        console.debug('Update available:', result.version, 'Release tag:', result.releaseTag);
+        console.debug('Update available:', result.version);
 
-        // If restart is required, set flag and return
         if (result.restartRequired) {
-          console.debug('Restart is required');
           this.restartRequiredSubject.next(true);
           return null;
         }
 
-        // If update is already in progress, restore the UI state
         if (result.updateInProgress) {
-          console.debug('Update is already in progress, restoring UI state');
           this.updateAvailableSubject.next(result);
           this.updateInProgressSubject.next(true);
           this.hasUpdatesSubject.next(true);
@@ -131,23 +107,18 @@ export class AppUpdaterService extends TauriBaseService {
           return result;
         }
 
-        // Check if version is skipped before setting as available
         if (this.isVersionSkipped(result.version)) {
-          console.debug(`Update ${result.version} was skipped by user`);
           return null;
         }
 
         this.updateAvailableSubject.next(result);
         this.hasUpdatesSubject.next(true);
         this.notificationService.showInfo(
-          this.translate.instant('updates.availableNotification', {
-            version: result.version,
-          }),
+          this.translate.instant('updates.availableNotification', { version: result.version }),
           this.translate.instant('common.ok'),
           10000
         );
       } else {
-        console.debug('No update available for channel:', this.updateChannelSubject.value);
         this.updateAvailableSubject.next(null);
       }
 
@@ -188,14 +159,8 @@ export class AppUpdaterService extends TauriBaseService {
       this.updateInProgressSubject.next(true);
       this.resetDownloadStatus();
 
-      // Start polling for download status
       this.startStatusPolling();
-
-      // Start the download/install process
       await this.invokeCommand('install_update');
-
-      // The polling will automatically detect when the download is complete
-      // and handle the UI updates
     } catch (error) {
       console.error('Failed to install update:', error);
       this.notificationService.showError(this.translate.instant('updates.installFailed'));
@@ -407,12 +372,6 @@ export class AppUpdaterService extends TauriBaseService {
       this.updatesDisabledSubject.next(updatesDisabled);
 
       this.initialized = true;
-
-      const autoCheck = await this.getAutoCheckEnabled();
-      if (autoCheck && !updatesDisabled) {
-        console.debug('Auto-check enabled, checking for app updates...');
-        this.checkForUpdates();
-      }
     } catch (error) {
       console.error('Failed to initialize updater service:', error);
       // Set defaults on error
@@ -436,7 +395,55 @@ export class AppUpdaterService extends TauriBaseService {
     return this.updatesDisabledSubject.value;
   }
 
+  constructor() {
+    super();
+    this.setupEventListeners();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+    this.stopStatusPolling();
+  }
+
+  private setupEventListeners(): void {
+    this.eventListenersService
+      .listenToAppEvents()
+      .pipe(
+        takeUntil(this.destroy$),
+        filter(event => event.status === 'update_found' && !!event.data),
+        map(event => event.data as UpdateMetadata)
+      )
+      .subscribe(metadata => {
+        console.debug('Received update found event:', metadata);
+        // Only trigger if we haven't already processed this update
+        const current = this.updateAvailableSubject.value;
+        if (!current || current.version !== metadata.version) {
+          // Check if skipped
+          if (this.isVersionSkipped(metadata.version)) {
+            console.debug(`Skipping update ${metadata.version} as requested by user.`);
+            return;
+          }
+
+          this.updateAvailableSubject.next(metadata);
+          this.hasUpdatesSubject.next(true);
+
+          // Show notification if not already shown
+          this.notificationService.showInfo(
+            this.translate.instant('updates.availableNotification', {
+              version: metadata.version,
+            }),
+            this.translate.instant('common.ok'),
+            10000
+          );
+        }
+      });
+  }
+
   public async getBuildType(): Promise<string> {
+    if (this.buildTypeSubject.value) {
+      return this.buildTypeSubject.value;
+    }
     return this.invokeCommand<string>('get_build_type');
   }
 }

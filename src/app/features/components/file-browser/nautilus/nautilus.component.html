@@ -289,13 +289,7 @@
                     [class.accent]="item.entry.IsDir"
                     [style.width.px]="iconSize()"
                     [style.height.px]="iconSize()"
-                    [svgIcon]="
-                      item.entry.IsDir
-                        ? 'folder'
-                        : iconService.getIconForFileType(
-                            fileViewerService.getFileTypeSync(item.entry)
-                          )
-                    "
+                    [svgIcon]="iconService.getIconForEntry(item.entry)"
                   ></mat-icon>
                   <p class="folder-title">{{ item.entry.Name }}</p>
                 </mat-card-content>
@@ -354,11 +348,7 @@
             <ng-template #nameCellContent let-item="item" let-rowTitle="rowTitle">
               <mat-icon
                 [class.accent]="item.entry.IsDir"
-                [svgIcon]="
-                  item.entry.IsDir
-                    ? 'folder'
-                    : iconService.getIconForFileType(fileViewerService.getFileTypeSync(item.entry))
-                "
+                [svgIcon]="iconService.getIconForEntry(item.entry)"
               ></mat-icon>
               <span [class.row-title]="rowTitle">{{ item.entry.Name }}</span>
             </ng-template>

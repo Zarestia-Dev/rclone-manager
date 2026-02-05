@@ -186,11 +186,7 @@ export class AboutModalComponent implements OnInit {
 
   async ngOnInit(): Promise<void> {
     // Initial data loading that isn't purely reactive yet
-    await Promise.all([
-      this.loadPlatformInfo(),
-      this.appUpdaterService.initialize(),
-      this.rcloneUpdateService.initialize(),
-    ]);
+    await this.loadPlatformInfo();
 
     // Load manual setting for app auto-check
     this.loadAppAutoCheckSetting();

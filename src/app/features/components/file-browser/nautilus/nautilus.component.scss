@@ -652,6 +652,7 @@ mat-nav-list {
   bottom: var(--space-md);
   right: var(--space-md);
   z-index: 10;
+  background: var(--view-bg-color);
   box-shadow: var(--shadow-gnome);
   border-radius: var(--radius-sm);
   padding: var(--space-xxs) var(--space-sm);

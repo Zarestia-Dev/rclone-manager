@@ -326,6 +326,16 @@ impl RemoteCache {
         self.configs.read().await.clone()
     }
 
+    /// Get usage profile for a mount point
+    pub async fn get_mount_profile(&self, mount_point: &str) -> Option<String> {
+        self.mount_profiles.read().await.get(mount_point).cloned()
+    }
+
+    /// Get usage profile for a serve ID
+    pub async fn get_serve_profile(&self, serve_id: &str) -> Option<String> {
+        self.serve_profiles.read().await.get(serve_id).cloned()
+    }
+
     // === Profile Management for Mounts ===
     /// Rename a profile in all mounted remotes for a given remote
     pub async fn rename_profile_in_mounts(

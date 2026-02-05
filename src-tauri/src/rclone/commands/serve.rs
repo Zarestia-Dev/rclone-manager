@@ -6,6 +6,7 @@ use tauri::{AppHandle, Manager};
 use crate::{
     rclone::{backend::BackendManager, state::watcher::force_check_serves},
     utils::{
+        app::notification::send_notification,
         json_helpers::{
             get_string, json_to_hashmap, resolve_profile_options, unwrap_nested_options,
         },
@@ -177,6 +178,19 @@ pub async fn start_serve(
                 error.clone(),
                 None,
             );
+            send_notification(
+                &app,
+                "notification.title.serveFailed",
+                &serde_json::json!({
+                    "key": "notification.body.serveFailed",
+                    "params": {
+                        "remote": &params.remote_name,
+                        "profile": params.profile.as_deref().unwrap_or(""),
+                        "error": e.to_string()
+                    }
+                })
+                .to_string(),
+            );
             error
         })?;
 
@@ -221,6 +235,20 @@ pub async fn start_serve(
         params.remote_name, serve_response.id, serve_response.addr
     );
 
+    send_notification(
+        &app,
+        "notification.title.serveStarted",
+        &serde_json::json!({
+            "key": "notification.body.serveStarted",
+            "params": {
+                "remote": &params.remote_name,
+                "profile": params.profile.as_deref().unwrap_or(""),
+                "addr": &serve_response.addr
+            }
+        })
+        .to_string(),
+    );
+
     Ok(serve_response)
 }
 
@@ -243,6 +271,13 @@ pub async fn stop_serve(
     let backend = backend_manager.get_active().await;
     let payload = json!({ "id": server_id });
 
+    // Get profile from cache before stopping
+    let profile = backend_manager
+        .remote_cache
+        .get_serve_profile(&server_id)
+        .await
+        .unwrap_or_default();
+
     let _ = backend
         .post_json(
             &app.state::<RcloneState>().client,
@@ -259,6 +294,18 @@ pub async fn stop_serve(
                 error.clone(),
                 None,
             );
+            send_notification(
+                &app,
+                "notification.title.stopServeFailed",
+                &serde_json::json!({
+                    "key": "notification.body.stopServeFailed",
+                    "params": {
+                        "remote": &remote_name,
+                        "error": e.to_string()
+                    }
+                })
+                .to_string(),
+            );
             error
         })?;
 
@@ -273,6 +320,19 @@ pub async fn stop_serve(
     refresh_serves_safely(&app).await;
 
     info!("✅ Serve {server_id} stopped successfully");
+
+    send_notification(
+        &app,
+        "notification.title.serveStopped",
+        &serde_json::json!({
+            "key": "notification.body.serveStopped",
+            "params": {
+                "remote": &remote_name,
+                "profile": profile
+            }
+        })
+        .to_string(),
+    );
 
     Ok(crate::localized_success!("backendErrors.serve.stopSuccess", "serverId" => &server_id))
 }
@@ -290,7 +350,19 @@ pub async fn stop_all_serves(app: AppHandle, context: String) -> Result<String, 
         .await
         .map_err(|e| {
             let error = format!("Failed to stop all serves: {e}");
-             crate::localized_error!("backendErrors.serve.failed", "operation" => "stop all", "error" => &error)
+             let localized = crate::localized_error!("backendErrors.serve.failed", "operation" => "stop all", "error" => &error);
+             send_notification(
+                &app,
+                "notification.title.stopAllServesFailed",
+                &serde_json::json!({
+                    "key": "notification.body.stopAllServesFailed",
+                    "params": {
+                        "error": e.to_string()
+                    }
+                })
+                .to_string(),
+            );
+            localized
         })?;
 
     if context != "shutdown" {
@@ -298,6 +370,12 @@ pub async fn stop_all_serves(app: AppHandle, context: String) -> Result<String, 
     }
 
     info!("✅ All serves stopped successfully");
+
+    send_notification(
+        &app,
+        "notification.title.allServesStopped",
+        "notification.body.allServesStopped",
+    );
 
     Ok(crate::localized_success!("backendSuccess.serve.stopped"))
 }

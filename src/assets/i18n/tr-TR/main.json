@@ -2525,7 +2525,22 @@
       "operationFailed": "{{operation}} Başarısız",
       "operationComplete": "{{operation}} Tamamlandı",
       "operationStarted": "{{operation}} Başlatıldı",
-      "operationStopped": "{{operation}} Durduruldu"
+      "operationStopped": "{{operation}} Durduruldu",
+      "updateFound": "Yeni Sürüm Bulundu",
+      "updateStarted": "Güncelleme Başlatıldı",
+      "updateComplete": "Güncelleme Tamamlandı",
+      "updateFailed": "Güncelleme Başarısız",
+      "engineError": "Motor Hatası",
+      "engineRestarted": "Motor Yeniden Başlatıldı",
+      "enginePathError": "Motor Yol Hatası",
+      "enginePasswordError": "Motor Şifre Hatası",
+      "engineRestartedSuccess": "Motor Başarıyla Yeniden Başlatıldı",
+      "engineRestartedFailed": "Motor Yeniden Başlatılamadı",
+      "alreadyRunning": "Uygulama Zaten Çalışıyor",
+      "rcloneUpdateFound": "Rclone Güncellemesi Bulundu",
+      "rcloneUpdateStarted": "Rclone Güncellemesi Başlatıldı",
+      "rcloneUpdateComplete": "Rclone Güncellemesi Tamamlandı",
+      "rcloneUpdateFailed": "Rclone Güncellemesi Başarısız"
     },
     "body": {
       "mounted": "{{remote}} profili '{{profile}}' bağlandı",
@@ -2533,6 +2548,8 @@
       "unmounted": "{{remote}} profili '{{profile}}' ayrıldı",
       "unmountFailed": "Başarısız: {{error}}",
       "profileNotFound": "'{{profile}}' profili bulunamadı",
+      "alreadyRunning": "Uygulamanın başka bir örneği algılandı. Bellek optimizasyonu aktif olduğu için pencere kapatılmıştı. Lütfen tepsiyi kullanarak pencereyi açın.",
+      "allRemotesUnmounted": "Tüm uzak bağlantılar başarıyla ayrıldı",
       "started": "{{remote}} profili '{{profile}}' için {{operation}} başlatıldı",
       "startFailed": "Başarısız: {{error}}",
       "stopped": "{{remote}} profili '{{profile}}' için {{operation}} durduruldu",
@@ -2546,7 +2563,19 @@
       "allServesStopped": "Tüm sunucular durduruldu",
       "stopAllServesFailed": "Sunucular durdurulamadı: {{error}}",
       "complete": "{{remote}} üzerinde {{operation}} başarıyla tamamlandı",
-      "failed": "{{remote}} üzerinde {{operation}} başarısız: {{error}}"
+      "failed": "{{remote}} üzerinde {{operation}} başarısız: {{error}}",
+      "updateStarted": "Sürüm {{version}} indiriliyor ve kuruluyor",
+      "updateComplete": "Güncelleme başarıyla kuruldu. Yeniden başlatma gerekli.",
+      "updateFailed": "Güncelleme başarısız: {{error}}",
+      "updateFound": "Rclone Manager'ın yeni bir {{version}} sürümü mevcut.",
+      "rcloneUpdateFound": "Yeni Rclone sürümü {{version}} mevcut",
+      "rcloneUpdateStarted": "Rclone {{version}} sürümüne güncelleniyor...",
+      "rcloneUpdateComplete": "Rclone {{version}} sürümüne güncellendi",
+      "rcloneUpdateFailed": "Rclone güncellemesi başarısız: {{error}}",
+      "enginePathError": "rclone ikili dosyası bulunamadı",
+      "enginePasswordError": "rclone yapılandırması şifre korumalı",
+      "engineRestartedSuccess": "Motor {{reason}} değişikliği nedeniyle başarıyla yeniden başlatıldı",
+      "engineRestartedFailed": "Motor {{reason}} değişikliği nedeniyle yeniden başlatılamadı"
     }
   },
   "repairSheet": {

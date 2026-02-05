@@ -100,6 +100,10 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
     info!("📡 Starting serve watcher...");
     start_serve_watcher(app_handle.clone());
 
+    // Step 5: Start Auto Updater
+    #[cfg(all(desktop, feature = "updater"))]
+    crate::core::lifecycle::auto_updater::init_auto_updater(app_handle.clone());
+
     info!("🎉 Initialization complete");
 
     // Enable engine health monitoring now that startup is complete

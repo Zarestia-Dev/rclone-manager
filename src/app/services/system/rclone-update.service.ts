@@ -3,7 +3,7 @@ import { TauriBaseService } from '../core/tauri-base.service';
 import { EventListenersService } from './event-listeners.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { NotificationService } from '@app/services';
-import { BehaviorSubject, Subject, takeUntil } from 'rxjs';
+import { BehaviorSubject, Subject, takeUntil, filter, map } from 'rxjs';
 import { TranslateService } from '@ngx-translate/core';
 
 import { RcloneUpdateInfo, UpdateStatus, UpdateResult } from '@app/types';
@@ -61,12 +61,6 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
 
       this.initialized = true;
       console.debug('Rclone update service initialized');
-
-      // Auto-check if enabled
-      if (autoCheck) {
-        console.debug('Auto-check enabled, checking for rclone updates...');
-        this.checkForUpdates();
-      }
     } catch (error) {
       console.error('Failed to initialize rclone update service:', error);
     }
@@ -100,6 +94,19 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
         this.checkForUpdates();
       }
     });
+
+    // Listen to auto-updater results
+    this.eventListenersService
+      .listenToAppEvents()
+      .pipe(
+        takeUntil(this.destroy$),
+        filter(event => event.status === 'rclone_update_found' && !!event.data),
+        map(event => event.data as unknown as object)
+      )
+      .subscribe(data => {
+        console.debug('Received rclone update found event:', data);
+        this.processUpdateResult(data as RcloneUpdateInfo);
+      });
   }
 
   async checkForUpdates(): Promise<RcloneUpdateInfo | null> {
@@ -114,26 +121,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
         channel,
       });
 
-      // Check if this version is skipped
-      const isSkipped =
-        updateInfo.update_available &&
-        this.isVersionSkipped(updateInfo.latest_version_clean || updateInfo.latest_version);
-
-      // If version is skipped, modify the updateInfo to reflect that
-      const finalUpdateInfo = isSkipped ? { ...updateInfo, update_available: false } : updateInfo;
-
-      this.updateStatus({
-        checking: false,
-        available: updateInfo.update_available && !isSkipped,
-        lastCheck: new Date(),
-        updateInfo: finalUpdateInfo,
-      });
-
-      if (updateInfo.update_available && !isSkipped) {
-        console.debug(`Rclone update available: ${updateInfo.latest_version} (${channel} channel)`);
-      } else if (isSkipped) {
-        console.debug(`Rclone update ${updateInfo.latest_version} is skipped`);
-      }
+      this.processUpdateResult(updateInfo);
 
       return updateInfo;
     } catch (error) {
@@ -309,7 +297,6 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
       await this.appSettingsService.saveSetting('runtime', 'rclone_skipped_updates', newSkipped);
       this.skippedVersionsSubject.next(newSkipped);
 
-      // Immediately check for updates to refresh the UI
       this.checkForUpdates();
 
       this.notificationService.openSnackBar(
@@ -359,6 +346,28 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
         this.translate.instant('rcloneUpdate.settingsSaveFailed'),
         'Close'
       );
+    }
+  }
+
+  private processUpdateResult(updateInfo: RcloneUpdateInfo): void {
+    const channel = this.updateChannelSubject.value;
+    // Check if this version is skipped
+    const isSkipped =
+      updateInfo.update_available &&
+      this.isVersionSkipped(updateInfo.latest_version_clean || updateInfo.latest_version);
+
+    // If version is skipped, modify the updateInfo to reflect that
+    const finalUpdateInfo = isSkipped ? { ...updateInfo, update_available: false } : updateInfo;
+
+    this.updateStatus({
+      checking: false,
+      available: updateInfo.update_available && !isSkipped,
+      lastCheck: new Date(),
+      updateInfo: finalUpdateInfo,
+    });
+
+    if (updateInfo.update_available && !isSkipped) {
+      console.debug(`Rclone update available: ${updateInfo.latest_version} (${channel} channel)`);
     }
   }
 }

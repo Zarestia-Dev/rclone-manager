@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   height="128px"
+   viewBox="0 0 128 128"
+   width="128px"
+   version="1.1"
+   id="svg35"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs39">
+    <mask
+       id="holes">
+      <rect
+         x="-60"
+         y="-60"
+         width="120"
+         height="120"
+         fill="#ffffff"
+         id="rect1240" />
+      <circle
+         id="hole"
+         cy="-40"
+         r="3"
+         cx="0" />
+      <use
+         xlink:href="#hole"
+         transform="rotate(72)"
+         id="use1243" />
+      <use
+         xlink:href="#hole"
+         transform="rotate(144)"
+         id="use1245" />
+      <use
+         xlink:href="#hole"
+         transform="rotate(-144)"
+         id="use1247" />
+      <use
+         xlink:href="#hole"
+         transform="rotate(-72)"
+         id="use1249" />
+    </mask>
+    <mask
+       id="holes-3">
+      <rect
+         x="-60"
+         y="-60"
+         width="120"
+         height="120"
+         fill="#ffffff"
+         id="rect4455" />
+      <circle
+         id="hole-6"
+         cy="-40"
+         r="3"
+         cx="0" />
+      <use
+         xlink:href="#hole-6"
+         transform="rotate(72)"
+         id="use4458" />
+      <use
+         xlink:href="#hole-6"
+         transform="rotate(144)"
+         id="use4460" />
+      <use
+         xlink:href="#hole-6"
+         transform="rotate(-144)"
+         id="use4462" />
+      <use
+         xlink:href="#hole-6"
+         transform="rotate(-72)"
+         id="use4464" />
+    </mask>
+    <mask
+       id="holes-36">
+      <rect
+         x="-60"
+         y="-60"
+         width="120"
+         height="120"
+         fill="#ffffff"
+         id="rect946" />
+      <circle
+         id="hole-7"
+         cy="-40"
+         r="3"
+         cx="0" />
+      <use
+         xlink:href="#hole-7"
+         transform="rotate(72)"
+         id="use949" />
+      <use
+         xlink:href="#hole-7"
+         transform="rotate(144)"
+         id="use951" />
+      <use
+         xlink:href="#hole-7"
+         transform="rotate(-144)"
+         id="use953" />
+      <use
+         xlink:href="#hole-7"
+         transform="rotate(-72)"
+         id="use955" />
+    </mask>
+    <mask
+       id="holes-9">
+      <rect
+         x="-60"
+         y="-60"
+         width="120"
+         height="120"
+         fill="#ffffff"
+         id="rect4023" />
+      <circle
+         id="hole-3"
+         cy="-40"
+         r="3"
+         cx="0" />
+      <use
+         xlink:href="#hole-3"
+         transform="rotate(72)"
+         id="use4026" />
+      <use
+         xlink:href="#hole-3"
+         transform="rotate(144)"
+         id="use4028" />
+      <use
+         xlink:href="#hole-3"
+         transform="rotate(-144)"
+         id="use4030" />
+      <use
+         xlink:href="#hole-3"
+         transform="rotate(-72)"
+         id="use4032" />
+    </mask>
+    <mask
+       id="holes-1">
+      <rect
+         x="-60"
+         y="-60"
+         width="120"
+         height="120"
+         fill="#ffffff"
+         id="rect5879" />
+      <circle
+         id="hole-8"
+         cy="-40"
+         r="3"
+         cx="0" />
+      <use
+         xlink:href="#hole-8"
+         transform="rotate(72)"
+         id="use5882" />
+      <use
+         xlink:href="#hole-8"
+         transform="rotate(144)"
+         id="use5884" />
+      <use
+         xlink:href="#hole-8"
+         transform="rotate(-144)"
+         id="use5886" />
+      <use
+         xlink:href="#hole-8"
+         transform="rotate(-72)"
+         id="use5888" />
+    </mask>
+  </defs>
+  <linearGradient
+     id="a"
+     gradientUnits="userSpaceOnUse"
+     x1="36"
+     x2="60"
+     y1="68"
+     y2="68">
+    <stop
+       offset="0"
+       stop-color="#ed336c"
+       id="stop2" />
+    <stop
+       offset="1"
+       stop-color="#ffa348"
+       id="stop4" />
+  </linearGradient>
+  <linearGradient
+     id="b"
+     gradientTransform="matrix(0 1 -1 0 144 -32)"
+     gradientUnits="userSpaceOnUse"
+     x1="72"
+     x2="96"
+     y1="68"
+     y2="68">
+    <stop
+       offset="0"
+       stop-color="#404ce6"
+       id="stop7" />
+    <stop
+       offset="1"
+       stop-color="#c061cb"
+       id="stop9" />
+  </linearGradient>
+  <linearGradient
+     id="c"
+     gradientUnits="userSpaceOnUse"
+     x1="68.84919"
+     x2="95.257637"
+     y1="84"
+     y2="84">
+    <stop
+       offset="0"
+       stop-color="#33d1c6"
+       id="stop12" />
+    <stop
+       offset="1"
+       stop-color="#1c25d8"
+       id="stop14" />
+  </linearGradient>
+  <path
+     style="display:inline;fill:#726397;fill-opacity:1;stroke:none;stroke-width:0.125;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;enable-background:new"
+     clip-path="none"
+     d="m 27.978072,8.0000006 h 50.000002 l 30.042896,29.9178934 10e-4,74.060006 c 8e-5,4.432 -3.6122,8.0221 -8.044196,8.0221 H 27.978011 c -4.431999,0 -7.999999,-3.568 -7.999999,-8.00001 V 16 c 0,-4.431999 3.568,-7.9999994 7.999999,-7.9999994 z"
+     id="path4411" />
+  <path
+     style="display:inline;vector-effect:none;fill:#ffffff;fill-opacity:0.30000001;stroke:none;stroke-width:0.125;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;enable-background:new"
+     d="M 77.978074,8.0000006 V 30.000002 c 0,4.432 3.610527,7.923448 8.042527,7.923448 l 22.000369,-0.0055 z"
+     id="path4413" />
+  <path
+     d="M 57.459127,103.99633 56.170891,49.348736 q -5.625875,2.108822 -8.788225,6.599994 -3.127056,4.492932 -3.127056,11.172338 0,1.522948 0.15705,2.500585 0.194117,0.937061 0.389998,1.522948 0.195883,0.54705 0.352941,0.859412 0.194119,0.312349 0.194119,0.547048 -2.069999,0 -3.670586,-0.389998 -1.602351,-0.430588 -2.696468,-1.328824 -1.055291,-0.896462 -1.641174,-2.382347 -0.547058,-1.482349 -0.547058,-3.670585 0,-2.655871 1.131175,-5.234107 1.171764,-2.576472 3.164113,-4.882944 2.031175,-2.302935 4.727643,-4.256459 2.735292,-1.953535 5.819994,-3.359997 3.123526,-1.445297 6.483523,-2.225297 3.398821,-0.822349 6.758818,-0.822349 0.898233,0 1.641174,0.03887 0.779999,0.03887 1.559997,0.116494 L 68.784988,93.371105 85.620264,44.386454 H 91.20555 L 68.980869,103.99815 H 57.457353 Z"
+     fill="#ffffff"
+     id="path2018"
+     style="stroke-width:1.7647" />
+</svg>

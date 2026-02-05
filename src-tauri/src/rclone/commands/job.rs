@@ -9,6 +9,7 @@ use crate::{
     core::scheduler::engine::get_next_run,
     rclone::{backend::BackendManager, state::scheduled_tasks::ScheduledTasksCache},
     utils::{
+        app::notification::send_notification,
         logging::log::log_operation,
         rclone::endpoints::{core, job},
         types::{
@@ -25,8 +26,8 @@ use super::system::RcloneError;
 #[derive(Debug, Clone)]
 pub struct JobMetadata {
     pub remote_name: String,
-    pub job_type: String,       // e.g., "sync", "mount", "serve"
-    pub operation_name: String, // e.g., "Sync operation", "Start serve"
+    pub job_type: String,
+    pub operation_name: String,
     pub source: String,
     pub destination: String,
     pub profile: Option<String>,
@@ -48,8 +49,6 @@ impl JobMetadata {
     }
 }
 
-/// Submit a LONG-RUNNING job (sync, copy, move, bisync)
-/// Returns jobid immediately, monitors in background
 pub async fn submit_job(
     app: AppHandle,
     client: reqwest::Client,
@@ -60,7 +59,6 @@ pub async fn submit_job(
     let (jobid, backend_name, response_json, execute_id) =
         initialize_and_register_job(&app, request, payload, &metadata).await?;
 
-    // Monitor in background - don't wait
     let app_clone = app.clone();
     let meta_clone = metadata.clone();
     let client_clone = client.clone();
@@ -80,8 +78,6 @@ pub async fn submit_job(
     Ok((jobid, response_json, execute_id))
 }
 
-/// Submit a SHORT-LIVED job (mount, serve)
-/// Waits for completion and returns result
 pub async fn submit_job_and_wait(
     app: AppHandle,
     client: reqwest::Client,
@@ -92,8 +88,7 @@ pub async fn submit_job_and_wait(
     let (jobid, backend_name, response_json, execute_id) =
         initialize_and_register_job(&app, request, payload, &metadata).await?;
 
-    // Monitor and WAIT for completion
-    let result = monitor_job(
+    monitor_job(
         backend_name,
         metadata.remote_name.clone(),
         &metadata.operation_name,
@@ -101,15 +96,12 @@ pub async fn submit_job_and_wait(
         app.clone(),
         client,
     )
-    .await;
-
-    // Return error if job failed
-    result.map_err(|e| e.to_string())?;
+    .await
+    .map_err(|e| e.to_string())?;
 
     Ok((jobid, response_json, execute_id))
 }
 
-/// Helper: Sends request, gets active backend, and registers job in cache
 async fn initialize_and_register_job(
     app: &AppHandle,
     request: reqwest::RequestBuilder,
@@ -118,12 +110,10 @@ async fn initialize_and_register_job(
 ) -> Result<(u64, String, Value, Option<String>), String> {
     let (jobid, response_json, execute_id) = send_job_request(request, payload, metadata).await?;
 
-    // Determine active backend
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
     let backend_name = backend.name.clone();
 
-    // Add to cache
     add_job_to_cache(
         &backend_manager.job_cache,
         jobid,
@@ -133,6 +123,19 @@ async fn initialize_and_register_job(
         Some(app),
     )
     .await;
+
+    send_notification(
+        app,
+        &json!({ "key": "notification.title.operationStarted", "params": { "operation": &metadata.operation_name } }).to_string(),
+        &json!({
+            "key": "notification.body.started",
+            "params": {
+                "operation": &metadata.operation_name,
+                "remote": &metadata.remote_name,
+                "profile": metadata.profile.as_deref().unwrap_or("")
+            }
+        }).to_string(),
+    );
 
     Ok((jobid, backend_name, response_json, execute_id))
 }
@@ -390,10 +393,12 @@ pub async fn monitor_job(
 
     loop {
         // Stop if removed or explicitly stopped in cache
-        match job_cache.get_job(jobid).await {
-            Some(job) if job.status == JobStatus::Stopped => return Ok(json!({})),
-            None => return Ok(json!({})),
-            _ => {}
+        if let Some(job) = job_cache.get_job(jobid).await {
+            if job.status == JobStatus::Stopped {
+                return Ok(json!({}));
+            }
+        } else {
+            return Ok(json!({}));
         }
 
         // Parallel fetch of status and stats
@@ -483,10 +488,12 @@ pub async fn handle_job_completion(
         None
     };
 
-    job_cache
+    let job_info = job_cache
         .complete_job(jobid, success, Some(app))
         .await
         .map_err(RcloneError::JobError)?;
+
+    let profile = job_info.profile.clone().unwrap_or_default();
 
     if let Some(task) = task {
         info!(
@@ -529,6 +536,28 @@ pub async fn handle_job_completion(
             format!("{operation} Job {jobid} failed: {error_msg}"),
             Some(json!({"jobid": jobid, "status": job_status})),
         );
+
+        send_notification(
+            app,
+            &serde_json::json!({
+                "key": "notification.title.operationFailed",
+                "params": {
+                    "operation": operation,
+                }
+            })
+            .to_string(),
+            &serde_json::json!({
+                "key": "notification.body.failed",
+                "params": {
+                    "operation": operation,
+                    "remote": remote_name,
+                    "profile": profile,
+                    "error": error_msg
+                }
+            })
+            .to_string(),
+        );
+
         Err(RcloneError::JobError(error_msg))
     } else if success {
         log_operation(
@@ -538,6 +567,27 @@ pub async fn handle_job_completion(
             format!("{operation} Job {jobid} completed successfully"),
             Some(json!({"jobid": jobid, "status": job_status})),
         );
+
+        send_notification(
+            app,
+            &serde_json::json!({
+                "key": "notification.title.operationComplete",
+                "params": {
+                    "operation": operation,
+                }
+            })
+            .to_string(),
+            &serde_json::json!({
+                "key": "notification.body.complete",
+                "params": {
+                    "operation": operation,
+                    "remote": remote_name,
+                    "profile": profile
+                }
+            })
+            .to_string(),
+        );
+
         Ok(job_status.get("output").cloned().unwrap_or(json!({})))
     } else {
         log_operation(
@@ -627,6 +677,26 @@ pub async fn stop_job(
             Some("Stop job".to_string()),
             format!("Job {jobid} stopped successfully"),
             None,
+        );
+
+        send_notification(
+            &app,
+            &serde_json::json!({
+                "key": "notification.title.operationStopped",
+                "params": {
+                    "operation": "Job",
+                }
+            })
+            .to_string(),
+            &serde_json::json!({
+                "key": "notification.body.stopped",
+                "params": {
+                    "operation": "Job",
+                    "remote": remote_name,
+                    "profile": job_cache.get_job(jobid).await.and_then(|j| j.profile).unwrap_or_default()
+                }
+            })
+            .to_string(),
         );
 
         info!("✅ Stopped job {jobid}");

@@ -60,6 +60,10 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     info!("🔍 Stopping serve watcher...");
     stop_serve_watcher();
 
+    info!("🛑 Stopping auto updater...");
+    #[cfg(all(desktop, feature = "updater"))]
+    crate::core::lifecycle::auto_updater::stop_auto_updater();
+
     info!("⏰ Stopping cron scheduler...");
     match scheduler_state.stop().await {
         Ok(()) => info!("✅ Cron scheduler stopped successfully"),

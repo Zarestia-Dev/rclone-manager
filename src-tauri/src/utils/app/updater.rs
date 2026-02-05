@@ -2,11 +2,11 @@
 pub mod app_updates {
     use crate::{
         core::lifecycle::shutdown::handle_shutdown,
-        utils::{github_client, types::core::RcloneState},
+        utils::{app::notification::send_notification, github_client, types::core::RcloneState},
     };
     use log::{debug, info, warn};
     use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-    use tauri::{AppHandle, Manager, State};
+    use tauri::{AppHandle, Emitter, Manager, State};
     use tauri_plugin_updater::{Update, UpdaterExt};
 
     #[derive(Debug, thiserror::Error)]
@@ -182,6 +182,7 @@ pub mod app_updates {
 
         info!("Using update JSON URL: {}", json_url);
 
+        let app_exit = app.clone();
         // Check for update using the specific release's JSON file
         let update = app
             .updater_builder()
@@ -189,7 +190,7 @@ pub mod app_updates {
             .version_comparator(|current, update| update.version != current)
             .on_before_exit({
                 move || {
-                    let app = app.clone();
+                    let app = app_exit.clone();
                     warn!("App is about to exit for update installation");
                     tauri::async_runtime::spawn(async move {
                         app.state::<RcloneState>().set_shutting_down();
@@ -238,6 +239,31 @@ pub mod app_updates {
             update_in_progress: false,
             restart_required: false,
         });
+
+        if let Some(ref metadata) = update_metadata {
+            // Emit APP_EVENT to notify frontend
+            if let Err(e) = app.emit(
+                crate::utils::types::events::APP_EVENT,
+                serde_json::json!({
+                    "status": "update_found",
+                    "data": metadata
+                }),
+            ) {
+                log::warn!("Failed to emit app update event: {}", e);
+            }
+
+            send_notification(
+                &app,
+                "notification.title.updateFound",
+                &serde_json::json!({
+                    "key": "notification.body.updateFound",
+                    "params": {
+                        "version": &metadata.version
+                    }
+                })
+                .to_string(),
+            );
+        }
 
         *pending_update
             .0
@@ -321,6 +347,18 @@ pub mod app_updates {
         info!("Preparing to download update from: {}", update.download_url);
         debug!("Update signature: {}", update.signature);
 
+        send_notification(
+            &app,
+            "notification.title.updateStarted",
+            &serde_json::json!({
+                "key": "notification.body.updateStarted",
+                "params": {
+                    "version": &update.version
+                }
+            })
+            .to_string(),
+        );
+
         // Set update in progress flag
         app.state::<RcloneState>()
             .is_update_in_progress
@@ -371,6 +409,12 @@ pub mod app_updates {
                 state.is_update_in_progress.store(false, Ordering::Relaxed);
                 state.is_restart_required.store(true, Ordering::Relaxed);
 
+                send_notification(
+                    &app,
+                    "notification.title.updateComplete",
+                    "notification.body.updateComplete",
+                );
+
                 *download_state
                     .failure_message
                     .lock()
@@ -392,6 +436,19 @@ pub mod app_updates {
                     .lock()
                     .map_err(|e| Error::Mutex(format!("Failed to lock failure message: {e}")))? =
                     Some(e.to_string());
+
+                send_notification(
+                    &app,
+                    "notification.title.updateFailed",
+                    &serde_json::json!({
+                        "key": "notification.body.updateFailed",
+                        "params": {
+                            "error": e.to_string()
+                        }
+                    })
+                    .to_string(),
+                );
+
                 Err(Error::Updater(e))
             }
         }

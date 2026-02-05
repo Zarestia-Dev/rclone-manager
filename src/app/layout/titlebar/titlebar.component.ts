@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { Subject } from 'rxjs';
+import { Subject, takeUntil } from 'rxjs';
 
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -79,18 +79,16 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   async ngOnInit(): Promise<void> {
     try {
       await this.connectionService.runInternetCheck();
-      await this.appUpdaterService.initialize();
-      await this.rcloneUpdateService.initialize();
 
-      this.appUpdaterService.updateAvailable$.subscribe(update => {
+      this.appUpdaterService.updateAvailable$.pipe(takeUntil(this.destroy$)).subscribe(update => {
         this.updateAvailable = !!update;
       });
 
-      this.rcloneUpdateService.updateStatus$.subscribe(status => {
+      this.rcloneUpdateService.updateStatus$.pipe(takeUntil(this.destroy$)).subscribe(status => {
         this.rcloneUpdateAvailable = status.available;
       });
 
-      this.appUpdaterService.restartRequired$.subscribe(required => {
+      this.appUpdaterService.restartRequired$.pipe(takeUntil(this.destroy$)).subscribe(required => {
         this.restartRequired = required;
       });
     } catch (error) {

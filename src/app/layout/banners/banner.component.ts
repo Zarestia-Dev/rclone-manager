@@ -108,17 +108,16 @@ export class BannerComponent {
   }
 
   private async checkBuildTypeAndShowWarning(): Promise<void> {
-    try {
-      const buildType = await this.appUpdaterService.getBuildType();
+    // Use reactive state from service instead of manual fetch
+    this.appUpdaterService.buildType$.pipe(takeUntilDestroyed()).subscribe(async buildType => {
+      if (!buildType) return;
       const warningShown =
         await this.appSettingsService.getSettingValue<boolean>('runtime.flatpak_warn');
 
       if (buildType === 'flatpak' && warningShown) {
         this.showFlatpakWarning.set(true);
       }
-    } catch (error) {
-      console.error('Failed to check build type:', error);
-    }
+    });
   }
 
   async dismissFlatpakWarning(): Promise<void> {
@@ -130,7 +129,6 @@ export class BannerComponent {
     try {
       const isMetered = await this.systemInfoService.isNetworkMetered();
       this.isMeteredConnection.set(!!isMetered);
-      console.log('Metered connection status:', this.isMeteredConnection());
     } catch (e) {
       console.error('Failed to check metered connection:', e);
       this.isMeteredConnection.set(false);
