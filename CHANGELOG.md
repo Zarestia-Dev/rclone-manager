@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [v0.2.1] - 2026-02-05
 
 ### Added
 - **Job Group Management**: Jobs are now automatically organized by remote name and profile name (e.g., all sync operations for "gdrive" with "default" profile are grouped together named "sync/Google Drive/default"). This makes it easier to:
@@ -23,7 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Fixed the containerized version for path handling.
 - Other small fixes and improvements.
 
-## [v0.2.0] - 2026-02-2
+## [v0.2.0] - 2026-02-02
 
 ### Added
 - **Settings Management Library (rcman)**: Extracted and refactored the internal settings management system into a standalone, reusable Rust library called [rcman](https://github.com/Zarestia-Dev/rcman). This provides schema-based configuration, backup/restore, secret storage, and a derive macro for automatic schema generation. The app now uses rcman as an external dependency.

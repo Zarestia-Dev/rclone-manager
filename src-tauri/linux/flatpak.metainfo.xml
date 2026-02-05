@@ -87,6 +87,27 @@
     </screenshot>
     </screenshots>
   <releases>
+    <release version="0.2.1" date="2026-02-05">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>Job Group Management: Jobs are now automatically organized by remote name and profile name (e.g., all sync operations for "gdrive" with "default" profile are grouped together named "sync/Google Drive/default"). This makes it easier to view stats per remote and manage operations.</li>
+          <li>rclone rc core/du added: When a remote is mounted, it shows disk usage inside the Mount Control accordion.</li>
+          <li>New nautilus icons from Morewaita icon theme.</li>
+          <li>Added more notifications for various app events.</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>When memory optimization is enabled, the app only reopens from the tray icon.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>Rclone update writable path check: The app now checks if the preconfigured rclone path is writable. If not, it uses the default config path.</li>
+          <li>Fixed containerized version for path handling.</li>
+          <li>Other small fixes and improvements.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.0" date="2026-02-01">
       <description>
         <p>Added</p>
