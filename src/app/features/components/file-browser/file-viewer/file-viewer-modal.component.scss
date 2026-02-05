@@ -3,7 +3,7 @@
   width: 100vw;
   display: flex;
   flex-direction: column;
-  backdrop-filter: blur(20px);
+  background: rgba(var(--window-bg-color-rgb), 0.85);
 
   /* ==========================================================================
      Header

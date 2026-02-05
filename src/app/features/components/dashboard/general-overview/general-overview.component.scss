@@ -217,7 +217,7 @@
     }
 
     &.disabled {
-      filter: grayscale(1);
+      opacity: 0.5;
     }
 
     &.stopping {
@@ -504,7 +504,6 @@
 
     &.panel-hidden-visual {
       opacity: 0.4;
-      filter: grayscale(100%);
       transform: scale(0.98);
     }
   }

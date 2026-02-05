@@ -47,7 +47,6 @@ use crate::{
 // =============================================================================
 // CONDITIONAL IMPORTS: Updater
 // =============================================================================
-use crate::utils::app::notification::send_notification;
 #[cfg(all(desktop, feature = "updater"))]
 use crate::utils::app::updater::app_updates::{DownloadState, PendingUpdate};
 
@@ -194,7 +193,7 @@ pub fn run() {
                                 let _ = window.set_focus();
                             } else {
                                 info!("📢 Second instance detected, but window was destroyed. Use tray to reopen.");
-                                send_notification(
+                                utils::app::notification::send_notification(
                                     _app,
                                     "notification.title.alreadyRunning",
                                     "notification.body.alreadyRunning",

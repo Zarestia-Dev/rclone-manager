@@ -175,7 +175,7 @@ mat-nav-list {
 
   &:disabled {
     background: transparent !important;
-    filter: grayscale(100%) opacity(0.5);
+    opacity: 0.5;
   }
 
   &.active {
@@ -453,7 +453,6 @@ mat-nav-list {
   &.hidden-item {
     mat-icon {
       opacity: 0.6;
-      filter: grayscale(40%);
     }
   }
 }
@@ -574,7 +573,6 @@ mat-nav-list {
   .hidden-item {
     mat-icon {
       opacity: 0.6;
-      filter: grayscale(40%);
     }
   }
 }

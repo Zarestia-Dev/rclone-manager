@@ -7,8 +7,6 @@
   position: absolute;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(4px);
-  border-radius: var(--app-border-radius);
   background: var(--onboarding-background);
 
   .loading-content {

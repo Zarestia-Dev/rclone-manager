@@ -37,11 +37,11 @@ pub async fn get_completed_transfers_handler(
     State(state): State<WebServerState>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::rclone::queries::stats::get_completed_transfers;
     let group = params.get("group").cloned();
-    let value = get_completed_transfers(state.app_handle.clone(), group)
-        .await
-        .map_err(anyhow::Error::msg)?;
+    let value =
+        crate::rclone::queries::stats::get_completed_transfers(state.app_handle.clone(), group)
+            .await
+            .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(value)))
 }
 

@@ -12,6 +12,8 @@ pub use filesystem::*;
 pub use mount::*;
 pub use remote::*;
 pub use serve::*;
-pub use stats::*;
 pub use system::*;
 pub use vfs::*;
+
+#[cfg(not(feature = "web-server"))]
+pub use stats::*;
