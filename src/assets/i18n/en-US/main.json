@@ -1699,7 +1699,6 @@
       "switchFirst": "Switch to another backend first",
       "nameExists": "Name exists",
       "hostExists": "This host:port is already in use",
-
       "remoteSecurity": {
         "title": "Config Security",
         "description": "Manage the encryption password for this remote rclone instance.",
