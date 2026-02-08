@@ -72,7 +72,6 @@ docker run -d \
 | Feature            | Desktop App   | Headless Server          |
 | :----------------- | :------------ | :----------------------- |
 | **Interface**      | Native Window | Web Browser              |
-| **System Tray**    | ✅ Yes        | ❌ No                    |
 | **Remote Control** | Local Only    | ✅ Network Accessible    |
 | **Authentication** | System User   | ✅ Built-in (Basic Auth) |
 | **Auto-Updates**   | ✅ Yes        | ✅ Yes (via Docker Pull) |

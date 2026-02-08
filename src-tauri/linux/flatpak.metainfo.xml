@@ -2,7 +2,7 @@
 <component type="desktop-application">
   <id>io.github.zarestia_dev.rclone-manager</id>
   <name>RClone Manager</name>
-  <summary>Manage cloud storage remotes easily</summary>
+  <summary>Simplified cloud storage access</summary>
   <metadata_license>MIT</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <developer id="io.github.zarestia_dev.rclone-manager">
@@ -18,24 +18,24 @@
   </requires>
   <description>
     <p>
-      RClone Manager is a cross-platform application that provides a modern, intuitive interface for managing your cloud storage remotes. It combines a minimalist design with powerful features to help you organize your files.
+      Provide a modern, intuitive interface for managing multiple cloud storage services. This tool combines a minimalist design with powerful features to help organize files across various platforms.
     </p>
     <p>
-      Key Features:
+      Features
     </p>
     <ul>
-      <li>User-Friendly UI: Clean interface designed for ease of use, making remote management accessible for everyone.</li>
-      <li>Remote Management: Add, edit, and delete remotes easily with support for Google Drive, Dropbox, OneDrive, S3, and many more.</li>
-      <li>OAuth Support: Authenticate with popular providers effortlessly.</li>
-      <li>Scheduled Tasks: Automate syncs with a built-in scheduler. Create, edit, and monitor scheduled jobs.</li>
-      <li>Encrypted Configuration: Keep your remotes safe with optional encryption.</li>
-      <li>Advanced VFS Options: Tune caching, read sizes, and other performance options.</li>
-      <li>Tray Icon Support: Quick access to your remotes from the system tray.</li>
-      <li>Light and Dark Modes: Themes with a modern, responsive layout.</li>
-      <li>File Browser: Browse and manage files across your remotes.</li>
-      <li>Sync, Copy, Mount: Full support for operations including mounting remotes.</li>
-      <li>Serve Remotes: Expose remotes over HTTP, WebDAV, FTP, SFTP, and more.</li>
-      <li>Job Management: Track and manage your active operations.</li>
+      <li>Simple interface: Clean design for easy navigation and remote management.</li>
+      <li>Wide provider support: Connect to Google Drive, Dropbox, OneDrive, S3, and many more.</li>
+      <li>Secure authentication: Integration with popular providers for effortless access.</li>
+      <li>Automated tasks: Schedule file synchronizations to keep data up to date.</li>
+      <li>Security options: Protected configuration with optional encryption.</li>
+      <li>Customizable performance: Fine-tune caching and read sizes for optimal speed.</li>
+      <li>System integration: Quick access from the system tray.</li>
+      <li>Themes: Support for both light and dark display modes.</li>
+      <li>Integrated file manager: Browse and manage files across all services.</li>
+      <li>Drive mounting: Access cloud folders as if they were local drives.</li>
+      <li>Service sharing: Share storage over HTTP, WebDAV, FTP, and SFTP.</li>
+      <li>Operation tracking: Monitor active file transfers and jobs in real-time.</li>
     </ul>
   </description>
   <categories>
@@ -63,19 +63,19 @@
   <screenshots>
     <screenshot type="default">
       <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.0/assets/desktop-ui.png</image>
-      <caption>Desktop UI</caption>
+      <caption>Modern desktop interface for cloud management</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.0/assets/general-home.png</image>
-      <caption>General Home View</caption>
+      <caption>Overview of connected cloud services</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.0/assets/general-remote.png</image>
-      <caption>Remote Management Interface</caption>
+      <caption>Add and configure cloud storage providers</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.0/assets/serve-control.png</image>
-      <caption>Serve Management Interface</caption>
+      <caption>Expose storage over network protocols</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.0/assets/job-watcher.png</image>
@@ -83,7 +83,7 @@
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.0/assets/mount-control.png</image>
-      <caption>Mount Control Panel</caption>
+      <caption>Mount cloud drives as local storage</caption>
     </screenshot>
     </screenshots>
   <releases>

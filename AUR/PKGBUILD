@@ -14,8 +14,8 @@ options=('!strip' '!debug')
 # install=${pkgname}.install
 source_x86_64=("${url}/releases/download/v${releasetag}/${appname}_${pkgver}_amd64.deb")
 source_aarch64=("${url}/releases/download/v${releasetag}/${appname}_${pkgver}_arm64.deb")
-sha256sums_x86_64=('SKIP')
-sha256sums_aarch64=('SKIP')
+sha256sums_x86_64=('b5f1591c360ec45edabbda0e3b3ea8a61d2d61e04ebacfafb5d713bf96ef762d')
+sha256sums_aarch64=('b72c608f4342a6c2b242368543e4ba64848042e03dd11042c521b80430f29bab')
 package() {
   tar -xvf data.tar.gz -C "${pkgdir}"
 }

@@ -16,7 +16,7 @@ services:
   # Basic setup - HTTP without authentication
   rclone-manager:
     # Use pre-built image from GitHub Container Registry
-    image: ghcr.io/zarestia-dev/rclone-manager:latest
+    image: ghcr.io/zarestia-dev/rclone-manager:sha-280f36c
 
     # To build locally, uncomment these lines and comment out the 'image' line above:
     # build:
@@ -30,11 +30,9 @@ services:
       - "53682:53682" # Rclone OAuth Redirect. When you use authentication, you need to open this port.
     volumes:
       # Rclone configuration directory
-      - rclone-config:/home/rclone-manager/.config/rclone
+      - /home/hakan/.config/rclone:/home/rclone-manager/.config/rclone
       # RClone Manager configuration and data
-      - rclone-manager-config:/home/rclone-manager/.local/share/com.rclone.manager.headless
-      # RClone Manager config path for Tauri
-      - rclone-manager-config-other:/home/rclone-manager/.config/com.rclone.manager.headless
+      - /home/hakan/.local/share/com.rclone.manager:/home/rclone-manager/.local/share/com.rclone.manager.headless
       # Optional: Mount your own TLS certificates (for HTTPS)
       # - ./certs:/app/certs:ro
     environment:
@@ -66,7 +64,7 @@ services:
   # Profile: With Authentication
   # Usage: docker-compose --profile auth up -d
   rclone-manager-auth:
-    image: ghcr.io/zarestia-dev/rclone-manager:latest
+    image: ghcr.io/zarestia-dev/rclone-manager:sha-280f36c
     container_name: rclone-manager-headless-auth
     restart: unless-stopped
     ports:
@@ -106,7 +104,7 @@ services:
   # Usage: docker-compose --profile tls up -d
   # Note: You need to provide your own certificates in ./certs/
   rclone-manager-tls:
-    image: ghcr.io/zarestia-dev/rclone-manager:latest
+    image: ghcr.io/zarestia-dev/rclone-manager:sha-280f36c
     container_name: rclone-manager-headless-tls
     restart: unless-stopped
     ports:

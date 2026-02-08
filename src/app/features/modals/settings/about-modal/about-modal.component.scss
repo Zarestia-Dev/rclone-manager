@@ -1,13 +1,40 @@
+// ----------------------------------------------------------------------------
+// Variables & Host Context
+// ----------------------------------------------------------------------------
 :host {
   --icon-size: 120px;
 }
 
+// ----------------------------------------------------------------------------
+// Mixins & Shared Styles
+// ----------------------------------------------------------------------------
+@mixin status-box($bg-color, $text-color) {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  margin: var(--space-md) 0;
+  background: rgba($bg-color, 0.1); // Default opacity
+  color: $text-color;
+
+  // Specific overrides if needed
+  &.error {
+    background: rgba($bg-color, 0.08);
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Main Modal Layout
+// ----------------------------------------------------------------------------
 .about-modal {
+  position: relative;
   height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 
+  // Navigation List & Items
   .about-list {
     margin-top: var(--space-md);
     display: flex;
@@ -50,183 +77,183 @@
       box-shadow: none;
     }
   }
+}
 
-  .modal-content {
-    flex: 1;
-    padding: var(--space-sm);
-    overflow: auto;
+// ----------------------------------------------------------------------------
+// Shared Content & App Info
+// ----------------------------------------------------------------------------
+.modal-content {
+  flex: 1;
+  padding: var(--space-sm);
+  overflow: auto;
+  display: flex;
+  gap: var(--space-xs);
+  flex-direction: column;
+
+  // App Header Info
+  .app-icon {
+    width: var(--icon-size);
+    height: var(--icon-size);
+    align-self: center;
+  }
+
+  .app-name {
+    font-size: var(--font-size-2xl);
+    font-weight: 700;
+    margin: 0;
+    text-align: center;
+  }
+
+  .app-team {
     display: flex;
-    gap: var(--space-xs);
-    flex-direction: column;
+    align-items: center;
+    gap: var(--space-xxs);
+    justify-content: center;
+    color: var(--dim-color);
+    margin: 0;
+  }
 
-    .app-icon {
-      width: var(--icon-size);
-      height: var(--icon-size);
-      align-self: center;
+  .version-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 0;
+    font-size: var(--font-size-base);
+    font-weight: bold;
+  }
+
+  // Badges
+  .platform-badge,
+  .version-badge {
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    background: rgba(var(--accent-color-rgb), 0.15);
+    color: var(--accent-color);
+
+    &:hover {
+      background: rgba(var(--accent-color-rgb), 0.25);
     }
+  }
 
-    .app-name {
-      font-size: var(--font-size-2xl);
-      font-weight: 700;
-      margin: 0;
-      text-align: center;
-    }
-
-    .app-team {
-      display: flex;
-      align-items: center;
-      gap: var(--space-xxs);
-      justify-content: center;
-      color: var(--dim-color);
-      margin: 0;
-    }
-
-    .version-info {
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-      flex-wrap: wrap;
-      justify-content: center;
-      margin: 0;
+  .platform-badge {
+    mat-icon {
       font-size: var(--font-size-base);
-      font-weight: bold;
+      width: var(--font-size-base);
+      height: var(--font-size-base);
     }
 
-    .platform-badge,
-    .version-badge {
-      padding: var(--space-xs) var(--space-sm);
-      border-radius: var(--radius-md);
-      font-weight: 600;
-      background: rgba(var(--accent-color-rgb), 0.15);
-      color: var(--accent-color);
-
+    &.deb {
+      background: rgba(var(--warn-color-rgb), 0.15);
+      color: var(--warn-color);
       &:hover {
-        background: rgba(var(--accent-color-rgb), 0.25);
+        background: rgba(var(--warn-color-rgb), 0.25);
       }
     }
 
-    .platform-badge {
-      mat-icon {
-        font-size: var(--font-size-base);
-        width: var(--font-size-base);
-        height: var(--font-size-base);
+    &.rpm {
+      background: rgba(var(--orange-rgb), 0.15);
+      color: var(--orange);
+      &:hover {
+        background: rgba(var(--orange-rgb), 0.25);
       }
-
-      &.deb {
-        background: rgba(var(--warn-color-rgb), 0.15);
-        color: var(--warn-color);
-
-        &:hover {
-          background: rgba(var(--warn-color-rgb), 0.25);
-        }
-      }
-
-      &.rpm {
-        background: rgba(var(--orange-rgb), 0.15);
-        color: var(--orange);
-
-        &:hover {
-          background: rgba(var(--orange-rgb), 0.25);
-        }
-      }
-    }
-
-    h4 {
-      font-size: var(--font-size-lg);
-      font-weight: 600;
-      margin-bottom: var(--space-xs);
     }
   }
 
-  // Overlay Pages (shared base for .overlay and .whats-new-overlay)
-  .overlay,
-  .whats-new-overlay {
-    position: absolute;
-    inset: 0;
-    background: var(--window-bg-color);
+  h4 {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    margin-bottom: var(--space-xs);
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Overlay Shell
+// ----------------------------------------------------------------------------
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--window-bg-color);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; // Prevent overlay itself from scrolling
+
+  // Ensure content inside overlay scrolls independently
+  // Excludes the header to prevent it from scrolling away
+  > *:not(.modal-header) {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: var(--space-sm);
+  }
+}
+
+// ----------------------------------------------------------------------------
+// View: Rclone Info
+// ----------------------------------------------------------------------------
+.rclone-info {
+  .rclone-header {
     display: flex;
-    flex-direction: column;
-  }
+    justify-content: space-between;
+    align-items: center;
 
-  .overlay {
-    z-index: 10;
-  }
-
-  .whats-new-overlay {
-    z-index: 20;
-  }
-
-  // Rclone Info Section
-  .rclone-info {
-    .rclone-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-
-      h3 {
-        font-size: var(--font-size-xl);
-        font-weight: 600;
-      }
+    // Fixed mismatch: HTML uses h4, not h3
+    h4 {
+      font-size: var(--font-size-xl);
+      font-weight: 600;
+      margin: 0;
     }
+  }
 
-    .loading,
-    .error {
+  .loading {
+    @include status-box(var(--primary-color-rgb), var(--primary-color));
+  }
+
+  .error {
+    @include status-box(var(--warn-color-rgb), var(--warn-color));
+  }
+
+  .rclone-details {
+    background: var(--sidebar-bg-color);
+    box-shadow: var(--box-shadow);
+    border-radius: var(--panel-radius);
+    padding: var(--space-lg);
+
+    .detail-row {
       display: flex;
       align-items: center;
       gap: var(--space-sm);
-      padding: var(--space-md);
-      border-radius: var(--radius-md);
-      margin: var(--space-md) 0;
-    }
+      margin: var(--space-sm) 0;
 
-    .loading {
-      background: rgba(var(--primary-color-rgb), 0.1);
-      color: var(--primary-color);
-    }
+      &.warning {
+        color: var(--warn-color);
+        background: rgba(var(--warn-color-rgb), 0.1);
+        padding: var(--space-sm);
+        border-radius: var(--radius-md);
+      }
 
-    .error {
-      background: rgba(var(--warn-color-rgb), 0.08);
-      color: var(--warn-color);
-    }
+      .detail-label {
+        font-weight: 600;
+        min-width: 120px;
+        margin-right: var(--space-md);
+      }
 
-    .rclone-details {
-      background: var(--sidebar-bg-color);
-      box-shadow: var(--box-shadow);
-      border-radius: var(--panel-radius);
-      padding: var(--space-lg);
-
-      .detail-row {
-        display: flex;
-        align-items: center;
-        gap: var(--space-sm);
-        margin: var(--space-sm) 0;
-
-        &.warning {
-          color: var(--warn-color);
-          background: rgba(var(--warn-color-rgb), 0.1);
-          padding: var(--space-sm);
-          border-radius: var(--radius-md);
-        }
-
-        .detail-label {
-          font-weight: 600;
-          min-width: 120px;
-          margin-right: var(--space-md);
-        }
-
-        .detail-value {
-          color: var(--dim-color);
-          background: rgba(var(--window-fg-color-rgb), 0.05);
-          padding: var(--space-xs);
-          border-radius: var(--radius-xs);
-          font-size: var(--font-size-md);
-        }
+      .detail-value {
+        color: var(--dim-color);
+        background: rgba(var(--window-fg-color-rgb), 0.05);
+        padding: var(--space-xs);
+        border-radius: var(--radius-xs);
+        font-size: var(--font-size-md);
       }
     }
   }
 }
 
-// Updates Page Styles (scoped to .updates-page class on modal-content)
+// ----------------------------------------------------------------------------
+// View: Updates
+// ----------------------------------------------------------------------------
 .updates-page {
   .current-version-card {
     padding-inline: var(--space-md);
@@ -486,7 +513,9 @@
   }
 }
 
-// What's New Button
+// ----------------------------------------------------------------------------
+// View: What's New
+// ----------------------------------------------------------------------------
 .whats-new-button {
   width: 100%;
   color: var(--accent-color);
@@ -503,7 +532,6 @@
   }
 }
 
-// What's New Content
 .whats-new-content {
   padding: var(--space-md) var(--space-xl);
 
@@ -541,10 +569,10 @@
   }
 }
 
-// Debug Overlay Styles
+// ----------------------------------------------------------------------------
+// View: Debug & Memory
+// ----------------------------------------------------------------------------
 .debug-overlay {
-  z-index: 25;
-
   .debug-content {
     padding: var(--space-md) var(--space-lg);
 
@@ -600,6 +628,14 @@
       display: flex;
       flex-wrap: wrap;
       gap: var(--space-sm);
+
+      button {
+        .content-wrapper {
+          display: flex;
+          align-items: center;
+          gap: var(--space-sm);
+        }
+      }
     }
 
     .loading {

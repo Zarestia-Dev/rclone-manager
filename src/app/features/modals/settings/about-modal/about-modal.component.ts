@@ -1,4 +1,12 @@
-import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  HostListener,
+  OnInit,
+  computed,
+  inject,
+  signal,
+  DestroyRef,
+} from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,7 +23,7 @@ import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { marked, Renderer } from 'marked';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { NgTemplateOutlet } from '@angular/common';
+import { NgTemplateOutlet, CommonModule } from '@angular/common';
 
 // Services
 import {
@@ -29,7 +37,7 @@ import {
   BackendService,
   ModalService,
 } from '@app/services';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 // Configure renderer once
 const renderer = new Renderer();
@@ -37,6 +45,21 @@ renderer.link = ({ href, title, text }): string => {
   const titleAttr = title ? ` title="${title}"` : '';
   return `<a href="${href}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
 };
+
+export type ViewId =
+  | 'details'
+  | 'updates'
+  | 'about-rclone'
+  | 'credits'
+  | 'legal'
+  | 'whats-new-app'
+  | 'whats-new-rclone'
+  | 'debug'
+  | 'memory';
+
+export interface OverlayView {
+  id: ViewId;
+}
 
 @Component({
   selector: 'app-about-modal',
@@ -54,6 +77,7 @@ renderer.link = ({ href, title, text }): string => {
     FormatFileSizePipe,
     TranslateModule,
     NgTemplateOutlet,
+    CommonModule,
   ],
   templateUrl: './about-modal.component.html',
   styleUrls: ['./about-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -64,6 +88,7 @@ export class AboutModalComponent implements OnInit {
   private dialogRef = inject(MatDialogRef<AboutModalComponent>);
   private systemInfoService = inject(SystemInfoService);
   private notificationService = inject(NotificationService);
+  private destroyRef = inject(DestroyRef);
   protected appUpdaterService = inject(AppUpdaterService);
   protected rcloneUpdateService = inject(RcloneUpdateService);
   private debugService = inject(DebugService);
@@ -75,12 +100,15 @@ export class AboutModalComponent implements OnInit {
   readonly modalService = inject(ModalService);
 
   // Local State Signals
-  readonly currentPage = signal<string>('main');
+  readonly overlayStack = signal<OverlayView[]>([]);
   readonly scrolled = signal<boolean>(false);
-  readonly showingWhatsNew = signal<boolean>(false);
-  readonly whatsNewType = signal<'app' | 'rclone' | null>(null);
-  readonly showingDebugOverlay = signal<boolean>(false);
-  readonly debugInfo = signal<DebugInfo | null>(null);
+
+  // Computed State
+  readonly isOverlayOpen = computed(() => this.overlayStack().length > 0);
+  readonly currentView = computed(() => {
+    const stack = this.overlayStack();
+    return stack.length > 0 ? stack[stack.length - 1] : { id: 'main' as const };
+  });
 
   // App Updater Signals
   readonly appAutoCheckUpdates = signal<boolean>(true); // Initial default, updated in init
@@ -133,7 +161,7 @@ export class AboutModalComponent implements OnInit {
   readonly rcloneSkippedVersions = toSignal(this.rcloneUpdateService.skippedVersions$, {
     initialValue: [],
   });
-  readonly rcloneAutoCheck = toSignal(this.rcloneUpdateService.autoCheck$, { initialValue: true });
+  readonly rcloneAutoCheck = signal<boolean>(true);
 
   // Rclone Computed
   readonly rcloneInfo = computed(() => {
@@ -155,7 +183,6 @@ export class AboutModalComponent implements OnInit {
 
   readonly memoryStats = this.rcloneStatusService.memoryUsage;
   readonly runningGc = signal(false);
-  readonly showingMemoryOverlay = signal(false);
 
   // Platform Info Signals
   readonly buildType = signal<string | null>(null);
@@ -179,6 +206,23 @@ export class AboutModalComponent implements OnInit {
     },
   ];
 
+  // Navigation Items
+  readonly navItems = [
+    { label: 'modals.about.details', page: 'Details', icon: 'chevron-right' },
+    // Updates is conditional, handled separately or via computed
+    {
+      label: 'modals.about.aboutRclone',
+      page: 'About Rclone',
+      icon: 'chevron-right',
+      badgeSignal: this.rcloneUpdateStatus,
+    },
+  ];
+
+  readonly bottomNavItems = [
+    { label: 'modals.about.credits', page: 'Credits', icon: 'chevron-right' },
+    { label: 'modals.about.legal', page: 'Legal', icon: 'chevron-right' },
+  ];
+
   // Logic
   protected logoClickCount = 0;
   private logoClickTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -188,53 +232,85 @@ export class AboutModalComponent implements OnInit {
     // Initial data loading that isn't purely reactive yet
     await this.loadPlatformInfo();
 
-    // Load manual setting for app auto-check
     this.loadAppAutoCheckSetting();
     this.loadFsCacheEntries();
+
+    this.rcloneUpdateService.autoCheck$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(enabled => this.rcloneAutoCheck.set(enabled));
   }
+
+  readonly debugInfo = signal<DebugInfo | null>(null);
 
   // --- Actions ---
 
   showWhatsNew(type: 'app' | 'rclone'): void {
-    this.whatsNewType.set(type);
-    this.showingWhatsNew.set(true);
-  }
-
-  closeWhatsNew(): void {
-    this.showingWhatsNew.set(false);
-    this.whatsNewType.set(null);
+    const id = type === 'app' ? 'whats-new-app' : 'whats-new-rclone';
+    this.overlayStack.update(stack => [...stack, { id }]);
   }
 
   @HostListener('document:keydown.escape')
   close(): void {
-    if (this.showingWhatsNew()) {
-      this.closeWhatsNew();
-    } else if (this.currentPage() !== 'main') {
-      this.navigateTo('main');
+    const stack = this.overlayStack();
+    if (stack.length > 0) {
+      this.goBack();
     } else {
       this.modalService.animatedClose(this.dialogRef);
     }
   }
 
   navigateTo(page: string): void {
-    this.currentPage.set(page);
-  }
-
-  getPageTitle(): string {
-    const page = this.currentPage();
+    // Map existing string pages to ViewId
+    let viewId: ViewId;
     switch (page) {
       case 'Details':
-        return this.translate.instant('modals.about.details');
+        viewId = 'details';
+        break;
       case 'Updates':
-        return this.translate.instant('modals.about.updates');
+        viewId = 'updates';
+        break;
       case 'About Rclone':
-        return this.translate.instant('modals.about.aboutRclone');
+        viewId = 'about-rclone';
+        break;
       case 'Credits':
-        return this.translate.instant('modals.about.credits');
+        viewId = 'credits';
+        break;
       case 'Legal':
-        return this.translate.instant('modals.about.legal');
+        viewId = 'legal';
+        break;
       default:
-        return page;
+        console.warn('Unknown page navigation:', page);
+        return;
+    }
+    this.overlayStack.update(stack => [...stack, { id: viewId }]);
+  }
+
+  goBack(): void {
+    this.overlayStack.update(stack => stack.slice(0, -1));
+  }
+
+  getPageTitle(viewId?: ViewId): string {
+    const id = viewId || this.currentView().id;
+    switch (id) {
+      case 'details':
+        return this.translate.instant('modals.about.details');
+      case 'updates':
+        return this.translate.instant('modals.about.updates');
+      case 'about-rclone':
+        return this.translate.instant('modals.about.aboutRclone');
+      case 'credits':
+        return this.translate.instant('modals.about.credits');
+      case 'legal':
+        return this.translate.instant('modals.about.legal');
+      case 'whats-new-app':
+      case 'whats-new-rclone':
+        return this.translate.instant('modals.about.whatsNew');
+      case 'debug':
+        return this.translate.instant('modals.about.debugTools');
+      case 'memory':
+        return this.translate.instant('modals.about.memoryStats');
+      default:
+        return '';
     }
   }
 
@@ -337,7 +413,17 @@ export class AboutModalComponent implements OnInit {
   }
 
   async toggleRcloneAutoCheck(): Promise<void> {
-    await this.rcloneUpdateService.setAutoCheckEnabled(!this.rcloneAutoCheck());
+    const current = this.rcloneAutoCheck();
+    try {
+      this.rcloneAutoCheck.set(!current); // Optimistic UI update
+      await this.rcloneUpdateService.setAutoCheckEnabled(!current);
+    } catch (error) {
+      console.error('Failed to toggle rclone auto-check:', error);
+      this.notificationService.showError(
+        this.translate.instant('modals.about.updateSettingFailed')
+      );
+      this.rcloneAutoCheck.set(current); // Revert on failure
+    }
   }
 
   async changeRcloneChannel(channel: string): Promise<void> {
@@ -450,7 +536,7 @@ export class AboutModalComponent implements OnInit {
   }
 
   async showDebugOverlay(): Promise<void> {
-    this.showingDebugOverlay.set(true);
+    this.overlayStack.update(stack => [...stack, { id: 'debug' }]);
     try {
       const info = await this.debugService.getDebugInfo();
       this.debugInfo.set(info);
@@ -459,16 +545,8 @@ export class AboutModalComponent implements OnInit {
     }
   }
 
-  closeDebugOverlay(): void {
-    this.showingDebugOverlay.set(false);
-  }
-
   showMemoryOverlay(): void {
-    this.showingMemoryOverlay.set(true);
-  }
-
-  closeMemoryOverlay(): void {
-    this.showingMemoryOverlay.set(false);
+    this.overlayStack.update(stack => [...stack, { id: 'memory' }]);
   }
 
   async openFolder(folderType: 'logs' | 'config' | 'cache'): Promise<void> {

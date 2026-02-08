@@ -1,4 +1,4 @@
-import { Component, inject, signal, isDevMode, computed } from '@angular/core';
+import { Component, inject, signal, isDevMode, computed, DestroyRef } from '@angular/core';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
@@ -46,6 +46,7 @@ export class BannerComponent {
   private readonly systemInfoService = inject(SystemInfoService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly appUpdaterService = inject(AppUpdaterService);
+  private readonly destroyRef = inject(DestroyRef); // Injected DestroyRef
 
   constructor() {
     this.initializeComponent();
@@ -55,11 +56,14 @@ export class BannerComponent {
   private async initializeComponent(): Promise<void> {
     await this.checkMeteredConnection();
     await this.checkBuildTypeAndShowWarning();
-    this.eventListenersService.listenToNetworkStatusChanged().subscribe({
-      next: payload => {
-        this.isMeteredConnection.set(!!payload?.isMetered);
-      },
-    });
+    this.eventListenersService
+      .listenToNetworkStatusChanged()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: payload => {
+          this.isMeteredConnection.set(!!payload?.isMetered);
+        },
+      });
   }
 
   /**
@@ -69,7 +73,7 @@ export class BannerComponent {
     // Password error - highest priority
     this.eventListenersService
       .listenToRcloneEnginePasswordError()
-      .pipe(takeUntilDestroyed())
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
         this.passwordError.set(true);
         this.pathError.set(false);
@@ -79,7 +83,7 @@ export class BannerComponent {
     // Path error - medium priority
     this.eventListenersService
       .listenToRcloneEnginePathError()
-      .pipe(takeUntilDestroyed())
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
         this.passwordError.set(false);
         this.pathError.set(true);
@@ -89,7 +93,7 @@ export class BannerComponent {
     // Generic error - lowest priority
     this.eventListenersService
       .listenToRcloneEngineError()
-      .pipe(takeUntilDestroyed())
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
         this.passwordError.set(false);
         this.pathError.set(false);
@@ -99,7 +103,7 @@ export class BannerComponent {
     // Engine ready - clear all errors
     this.eventListenersService
       .listenToRcloneEngineReady()
-      .pipe(takeUntilDestroyed())
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
         this.passwordError.set(false);
         this.pathError.set(false);
@@ -109,15 +113,17 @@ export class BannerComponent {
 
   private async checkBuildTypeAndShowWarning(): Promise<void> {
     // Use reactive state from service instead of manual fetch
-    this.appUpdaterService.buildType$.pipe(takeUntilDestroyed()).subscribe(async buildType => {
-      if (!buildType) return;
-      const warningShown =
-        await this.appSettingsService.getSettingValue<boolean>('runtime.flatpak_warn');
+    this.appUpdaterService.buildType$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(async buildType => {
+        if (!buildType) return;
+        const warningShown =
+          await this.appSettingsService.getSettingValue<boolean>('runtime.flatpak_warn');
 
-      if (buildType === 'flatpak' && warningShown) {
-        this.showFlatpakWarning.set(true);
-      }
-    });
+        if (buildType === 'flatpak' && warningShown) {
+          this.showFlatpakWarning.set(true);
+        }
+      });
   }
 
   async dismissFlatpakWarning(): Promise<void> {
