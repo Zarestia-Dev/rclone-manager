@@ -218,7 +218,6 @@
     "settingsSaveFailed": "Rclone güncelleme ayarları kaydedilemedi"
   },
   "settings": {
-    "edit": "Ayarları Düzenle",
     "resetToDefault": "Varsayılana sıfırla",
     "resetAll": {
       "title": "Ayarları Sıfırla",
@@ -1562,8 +1561,8 @@
       "gcFailed": "Çöp toplayıcı çalıştırılamadı",
       "backendCache": "Arka Uç Önbelleği",
       "entries": "Aktif Girdi",
-      "clearing": "Temizleniyor...",
       "clear": "Temizle",
+      "clearing": "Temizleniyor...",
       "cacheCleared": "Önbellek başarıyla temizlendi",
       "cacheClearFailed": "Önbellek temizlenemedi"
     },
@@ -1700,7 +1699,6 @@
       "switchFirst": "Önce başka bir arka uca geçin",
       "nameExists": "Bu isim zaten kullanımda",
       "hostExists": "Bu sunucu:port zaten kullanımda",
-
       "remoteSecurity": {
         "title": "Yapılandırma Güvenliği",
         "description": "Bu uzak rclone örneği için şifreleme parolasını yönetin.",
@@ -2526,10 +2524,10 @@
       "operationComplete": "{{operation}} Tamamlandı",
       "operationStarted": "{{operation}} Başlatıldı",
       "operationStopped": "{{operation}} Durduruldu",
-      "updateFound": "Yeni Sürüm Bulundu",
-      "updateStarted": "Güncelleme Başlatıldı",
       "updateComplete": "Güncelleme Tamamlandı",
       "updateFailed": "Güncelleme Başarısız",
+      "updateFound": "Yeni Sürüm Bulundu",
+      "updateStarted": "Güncelleme Başlatıldı",
       "engineError": "Motor Hatası",
       "engineRestarted": "Motor Yeniden Başlatıldı",
       "enginePathError": "Motor Yol Hatası",
@@ -2564,7 +2562,6 @@
       "stopAllServesFailed": "Sunucular durdurulamadı: {{error}}",
       "complete": "{{remote}} üzerinde {{operation}} başarıyla tamamlandı",
       "failed": "{{remote}} üzerinde {{operation}} başarısız: {{error}}",
-      "updateStarted": "Sürüm {{version}} indiriliyor ve kuruluyor",
       "updateComplete": "Güncelleme başarıyla kuruldu. Yeniden başlatma gerekli.",
       "updateFailed": "Güncelleme başarısız: {{error}}",
       "updateFound": "Rclone Manager'ın yeni bir {{version}} sürümü mevcut.",
@@ -2682,5 +2679,25 @@
     "repairingAria": "Onarım devam ediyor",
     "startRepairAria": "Onarımı başlat",
     "validatingPassword": "Doğrulanıyor..."
+  },
+  "rclone": {
+    "options": {
+      "host": {
+        "title": "Host",
+        "help": "FTP host to connect to"
+      },
+      "user": {
+        "title": "Username",
+        "help": "FTP username"
+      },
+      "pass": {
+        "title": "Password",
+        "help": "FTP password"
+      },
+      "port": {
+        "title": "Port",
+        "help": "FTP port number"
+      }
+    }
   }
 }
