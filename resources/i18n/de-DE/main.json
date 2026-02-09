@@ -1,0 +1,2689 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "ok": "OK",
+    "close": "Close",
+    "nextStep": "Next Step",
+    "back": "Back",
+    "continue": "Continue",
+    "yes": "Yes",
+    "no": "No",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "refresh": "Refresh",
+    "browse": "Browse",
+    "delete": "Delete",
+    "edit": "Edit",
+    "copy": "Copy",
+    "move": "Move",
+    "retry": "Retry",
+    "default": "Default"
+  },
+  "validators": {
+    "integer": "Must be a valid integer",
+    "float": "Must be a valid decimal number",
+    "duration": "Invalid duration format. Use: 1h30m45s, 5m, 1h",
+    "sizeSuffix": "Invalid size format. Use: 100Ki, 16Mi, 1Gi, or \"off\"",
+    "tristate": "Value must be true, false, or unset",
+    "time": "Invalid datetime format. Use ISO 8601: YYYY-MM-DDTHH:mm:ssZ",
+    "spaceSepList": "List cannot contain only whitespace",
+    "bwTimetable": "Invalid bandwidth format",
+    "fileMode": "Must be octal format (3-4 digits, each 0-7). Example: 755",
+    "enum": "Must be one of: {{values}}",
+    "invalidPath": "Path must be absolute",
+    "urlArray": "All URLs must be valid and start with http:// or https://",
+    "bandwidth": "Invalid bandwidth format. Use: 10M, 1G, 100K or combinations",
+    "passwordMismatch": "Passwords do not match",
+    "remoteName": {
+      "invalidChars": "Remote name contains invalid characters",
+      "invalidStart": "Remote name cannot start with dash or space",
+      "invalidEnd": "Remote name cannot end with space",
+      "nameTaken": "This remote name is already in use"
+    },
+    "password": {
+      "minLength": "Password must be at least 3 characters",
+      "invalidChars": "Password cannot contain quotes"
+    }
+  },
+  "mount": {
+    "notMounted": "Not Mounted",
+    "mounted": "Mounted",
+    "mountedWithProfile": "Mounted: {{profile}}",
+    "mountedMultiple": "Mounted ({{count}}): {{profiles}}",
+    "mountedSummary": "Mounted ({{count}})",
+    "toggleAction": "Toggle Mount as Quick Action",
+    "successMount": "Successfully mounted {{remote}} ({{profile}})",
+    "failedMount": "Failed to mount {{remote}}: {{error}}",
+    "successUnmount": "Successfully unmounted {{remote}}",
+    "failedUnmount": "Failed to unmount {{remote}}: {{error}}"
+  },
+  "sync": {
+    "available": "Sync Operations Available",
+    "syncing": "Syncing",
+    "copying": "Copying",
+    "moving": "Moving",
+    "bisyncActive": "Bisync Active",
+    "syncSummary": "Syncing ({{count}})",
+    "syncWithProfile": "Sync: {{profiles}}",
+    "copyWithProfile": "Copy: {{profiles}}",
+    "moveWithProfile": "Move: {{profiles}}",
+    "bisyncWithProfile": "BiSync: {{profiles}}",
+    "toggleSync": "Toggle Sync as Quick Action",
+    "toggleCopy": "Toggle Copy as Quick Action",
+    "toggleMove": "Toggle Move as Quick Action",
+    "toggleBisync": "Toggle BiSync as Quick Action"
+  },
+  "serve": {
+    "noActive": "No active serves",
+    "serving": "Serving",
+    "servingWithProfile": "Serving ({{profile}}): {{type}} on {{addr}}",
+    "servingMultiple": "Serves ({{count}}): {{profiles}}",
+    "serveSummary": "Serving ({{count}})",
+    "profileInfo": "{{profile}} ({{type}})",
+    "toggleAction": "Toggle Serve as Quick Action",
+    "successStart": "Successfully started serve for {{remote}} ({{profile}}) on {{addr}}",
+    "failedStart": "Failed to start serve for {{remote}}: {{error}}",
+    "successStop": "Successfully stopped serve {{id}}",
+    "failedStop": "Failed to stop serve {{id}}: {{error}}",
+    "successStopAll": "Successfully stopped all serves",
+    "failedStopAll": "Failed to stop all serves: {{error}}"
+  },
+  "task": {
+    "status": {
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "running": "Running",
+      "failed": "Failed",
+      "stopping": "Stopping"
+    },
+    "toggle": {
+      "enable": "Enable task",
+      "disable": "Disable task",
+      "stopping": "Task is stopping..."
+    },
+    "nextRun": {
+      "disabled": "Task is disabled",
+      "stopping": "Disabling after current run",
+      "notScheduled": "Not scheduled"
+    },
+    "lastRun": {
+      "never": "Never"
+    }
+  },
+  "actions": {
+    "mount": "Mount",
+    "sync": "Sync",
+    "copy": "Copy",
+    "move": "Move",
+    "bisync": "Bisync",
+    "serve": "Serve",
+    "start": "Start",
+    "stop": "Stop"
+  },
+  "sidebar": {
+    "toggleSearch": "Toggle search bar",
+    "remotes": "Remotes",
+    "searchPlaceholder": "Search remotes...",
+    "searchAriaLabel": "Search remotes",
+    "noRemotesFound": "No remotes found matching \"{{term}}\"",
+    "noRemotesConfigured": "No remotes configured",
+    "aria": {
+      "mountStatus": "Mount status",
+      "syncStatus": "Sync operations status",
+      "serveStatus": "Serve status"
+    }
+  },
+  "detailShared": {
+    "jobInfo": {
+      "title": "Job Information",
+      "type": "Job Type",
+      "id": "Job ID",
+      "started": "Started",
+      "lastOperation": "Last Operation",
+      "emptyTitle": "No active job",
+      "emptyMessage": "Job details will appear here when an operation starts"
+    },
+    "diskUsage": {
+      "title": "Disk Usage",
+      "notSupported": "Not Supported",
+      "unknown": "Unknown",
+      "total": "Total: {{value}}",
+      "used": "Used: {{value}}",
+      "free": "Free: {{value}}"
+    },
+    "status": {
+      "mounted": "Mounted",
+      "notMounted": "Not Mounted",
+      "syncing": "Syncing",
+      "bisyncing": "BiSyncing",
+      "moving": "Moving",
+      "copying": "Copying",
+      "serving": "Serving",
+      "stopped": "Stopped"
+    },
+    "stats": {
+      "emptyTitle": "No statistics available",
+      "emptyMessage": "Statistics will be shown when an operation is running"
+    },
+    "pathDisplay": {
+      "source": "Source",
+      "destination": "Destination",
+      "openInExplorer": "Open in file explorer"
+    },
+    "jobs": {
+      "activeJobs": "Active Jobs",
+      "columns": {
+        "type": "Type",
+        "profile": "Profile",
+        "status": "Status",
+        "progress": "Progress",
+        "started": "Started",
+        "actions": "Actions"
+      },
+      "status": {
+        "running": "Running",
+        "completed": "Completed",
+        "failed": "Failed",
+        "stopped": "Stopped",
+        "unknown": "Unknown"
+      },
+      "actions": {
+        "stop": "Stop Job",
+        "delete": "Delete Job"
+      },
+      "empty": "No active jobs"
+    },
+    "settings": {
+      "metrics": "{{count}} settings",
+      "notConfigured": "Not configured",
+      "noData": "No configuration data available",
+      "edit": "Edit Settings",
+      "restricted": "RESTRICTED",
+      "invalidJson": "[Invalid JSON]"
+    }
+  },
+  "rcloneUpdate": {
+    "success": "Rclone updated successfully ({{channel}} channel)",
+    "failed": "Update failed",
+    "channelChanged": "Rclone update channel changed to {{channel}}",
+    "channelSaveFailed": "Failed to save rclone update channel",
+    "skipped": "Rclone version {{version}} skipped",
+    "skipFailed": "Failed to skip rclone update",
+    "restored": "Rclone version {{version}} restored",
+    "restoreFailed": "Failed to restore rclone update",
+    "autoCheckEnabled": "Rclone auto-check updates enabled",
+    "autoCheckDisabled": "Rclone auto-check updates disabled",
+    "settingsSaveFailed": "Failed to save rclone update settings"
+  },
+  "settings": {
+    "resetToDefault": "Reset to default",
+    "resetAll": {
+      "title": "Reset Settings",
+      "message": "Are you sure you want to reset all app settings? This cannot be undone."
+    },
+    "resetSuccess": "Settings reset successfully",
+    "resetFailed": "Failed to reset {{key}} to default.",
+    "loadFailed": "Could not load application settings.",
+    "remoteResetSuccess": "Settings for {{remote}} reset successfully",
+    "general": {
+      "tray_enabled": {
+        "label": "Enable Tray Icon",
+        "description": "Show an icon in the system tray. Also enables the background service."
+      },
+      "language": {
+        "label": "Language",
+        "description": "Language to use for the user interface."
+      },
+      "start_on_startup": {
+        "label": "Start on Startup",
+        "description": "Automatically start the app when the system starts."
+      },
+      "notifications": {
+        "label": "Enable Notifications",
+        "description": "Show notifications for mount events."
+      },
+      "restrict": {
+        "label": "Restrict Values",
+        "description": "Restrict some specific values for security purposes (e.g., Token, Client ID, etc.)"
+      }
+    },
+    "core": {
+      "max_tray_items": {
+        "label": "Max Tray Items",
+        "description": "Maximum number of items to show in the tray (1-40)."
+      },
+      "connection_check_urls": {
+        "label": "Connectivity Check URLs",
+        "description": "List of URLs used to verify internet connectivity. The app checks these URLs periodically."
+      },
+      "rclone_path": {
+        "label": "Rclone Binary Path",
+        "description": "Path to rclone binary or directory. Leave empty for auto-detection."
+      },
+      "rclone_flags": {
+        "label": "Additional Rclone Flags",
+        "description": "Add extra flags to the rclone process (e.g., --cache-dir=/path/to/cache). Some flags are reserved."
+      },
+      "bandwidth_limit": {
+        "label": "Bandwidth Limit",
+        "description": "Limit the bandwidth used by Rclone transfers. Format: 'upload:download'",
+        "placeholder": "e.g., 10M:5M or 1G"
+      },
+      "completed_onboarding": {
+        "label": "Completed Onboarding",
+        "description": "Indicates if the onboarding process is completed."
+      }
+    },
+    "developer": {
+      "log_level": {
+        "label": "Log Level",
+        "description": "Controls which log messages are recorded. Higher levels include more detail.",
+        "options": {
+          "error": "Error Only",
+          "warn": "Warnings & Errors",
+          "info": "Info (Recommended)",
+          "debug": "Debug (Verbose)",
+          "trace": "Trace (All, includes library logs)"
+        }
+      },
+      "destroy_window_on_close": {
+        "label": "Memory Optimization",
+        "description": "Destroys the window UI when closed to free RAM. Experimental feature."
+      }
+    },
+    "runtime": {
+      "theme": {
+        "label": "Application Theme",
+        "options": {
+          "system": "System",
+          "light": "Light",
+          "dark": "Dark"
+        }
+      },
+      "app_auto_check_updates": {
+        "label": "Auto Check App Updates",
+        "description": "Automatically check for application updates."
+      },
+      "app_skipped_updates": {
+        "label": "Skipped App Updates",
+        "description": "List of application versions that have been skipped."
+      },
+      "app_update_channel": {
+        "label": "App Update Channel",
+        "options": {
+          "stable": "Stable",
+          "beta": "Beta"
+        }
+      },
+      "rclone_auto_check_updates": {
+        "label": "Auto Check Rclone Updates",
+        "description": "Automatically check for rclone updates."
+      },
+      "rclone_skipped_updates": {
+        "label": "Skipped Rclone Updates",
+        "description": "List of rclone versions that have been skipped."
+      },
+      "rclone_update_channel": {
+        "label": "Rclone Update Channel",
+        "options": {
+          "stable": "Stable",
+          "beta": "Beta"
+        }
+      },
+      "flatpak_warn": {
+        "label": "Flatpak Warning Shown"
+      },
+      "dashboard_layout": {
+        "label": "Dashboard Layout",
+        "description": "Custom layout configuration for the dashboard."
+      }
+    },
+    "nautilus": {
+      "default_layout": {
+        "label": "Default Layout",
+        "description": "Default view layout for the file browser.",
+        "options": {
+          "grid": "Grid",
+          "list": "List"
+        }
+      },
+      "grid_icon_size": {
+        "label": "Grid Icon Size",
+        "description": "Preferred grid icon size in pixels."
+      },
+      "list_icon_size": {
+        "label": "List Icon Size",
+        "description": "Preferred list icon size in pixels."
+      },
+      "show_hidden_items": {
+        "label": "Show Hidden Files",
+        "description": "Show files starting with a dot by default in the file browser."
+      },
+      "sort_key": {
+        "label": "Default Sort Order",
+        "options": {
+          "name-asc": "Name (A-Z)",
+          "name-desc": "Name (Z-A)",
+          "size-asc": "Size (Small-Large)",
+          "size-desc": "Size (Large-Small)",
+          "date-asc": "Date (Old-New)",
+          "date-desc": "Date (New-Old)"
+        }
+      },
+      "starred": {
+        "label": "Starred Items",
+        "description": "List of starred files and folders in the file browser."
+      },
+      "bookmarks": {
+        "label": "Bookmarks",
+        "description": "List of bookmarked locations for quick access."
+      }
+    }
+  },
+  "banners": {
+    "development": {
+      "title": "Development Build",
+      "subtitle": "Features may be unstable • Data loss possible • Not for production use"
+    },
+    "flatpak": {
+      "title": "Flatpak Note",
+      "subtitle": "Some features may require manual permission adjustments.",
+      "learnMore": "Learn more",
+      "dismissTooltip": "Don't show again"
+    },
+    "metered": {
+      "message": "You are on a metered connection. Some features may use extra data."
+    },
+    "engine": {
+      "password": {
+        "title": "Rclone Configuration Password Required",
+        "subtitle": "Please unlock your configuration to start the engine"
+      },
+      "path": {
+        "title": "Rclone Binary Not Found",
+        "subtitle": "Please check your rclone installation path in settings"
+      },
+      "generic": {
+        "title": "Engine Failed to Start",
+        "subtitle": "Please check logs for more details"
+      }
+    }
+  },
+  "tabs": {
+    "general": "General",
+    "mount": "Mount",
+    "sync": "Sync",
+    "serve": "Serve"
+  },
+  "titlebar": {
+    "addRemoteMenu": "Add remote menu",
+    "home": "Home",
+    "internetStatus": "Internet connection status",
+    "appMenu": "Application menu",
+    "minimize": "Minimize window",
+    "maximize": "Maximize window",
+    "close": "Close window",
+    "connection": {
+      "checking": "Checking internet connection...",
+      "online": "Your internet connection is working properly.",
+      "offline": "Cannot connect to: {{services}}. Some features may not work as expected. Click to retry."
+    },
+    "updates": {
+      "all": "Application and Rclone updates available",
+      "app": "Application update available",
+      "rclone": "Rclone update available",
+      "restart": "Restart required to complete update"
+    },
+    "menu": {
+      "theme": "Theme selection",
+      "system": "System theme",
+      "light": "Light theme",
+      "dark": "Dark theme",
+      "import": "Import",
+      "export": "Export",
+      "preferences": "Preferences",
+      "configuration": "Configuration",
+      "fileBrowser": "File Browser",
+      "shortcuts": "Keyboard Shortcuts",
+      "about": "About RClone Manager",
+      "quickRemote": "Quick Remote",
+      "detailedRemote": "Detailed Remote"
+    }
+  },
+  "onboarding": {
+    "loadingTitle": "Initializing RClone Manager",
+    "loadingMessage": "Checking system configuration...",
+    "cards": {
+      "welcome": {
+        "title": "Welcome to RClone Manager",
+        "content": "Your modern cloud storage management solution. RClone Manager provides an intuitive interface to sync, mount, and manage all your cloud remotes effortlessly."
+      },
+      "features": {
+        "title": "Powerful Features",
+        "content": "Seamlessly sync files, mount cloud storage as local drives, manage multiple remotes, and monitor transfer operations - all from one beautiful interface."
+      },
+      "installRclone": {
+        "title": "Install RClone",
+        "content": "RClone is required for cloud storage operations. Choose your preferred installation location or binary location and we'll handle the setup automatically."
+      },
+      "installPlugin": {
+        "title": "Install Mount Plugin",
+        "content": "The mount plugin enables you to mount cloud storage as local drives. This optional component enhances your RClone experience."
+      },
+      "selectConfig": {
+        "title": "Select RClone Config",
+        "content": "Choose the RClone configuration file to use: the default location or a custom configuration file."
+      },
+      "passwordRequired": {
+        "title": "Configuration Password Required",
+        "content": "Your rclone configuration is encrypted. Please enter the password to unlock it for this session."
+      },
+      "ready": {
+        "title": "Ready to Go!",
+        "content": "Everything is set up and ready to use. RClone Manager will help you manage your cloud storage with ease. Click 'Get Started' to begin your journey."
+      }
+    },
+    "installButton": {
+      "configuring": "Configuring...",
+      "installing": "Installing...",
+      "selectPath": "Select Path First",
+      "selectBinary": "Select Binary First",
+      "invalidBinary": "Invalid Binary",
+      "testingBinary": "Testing Binary...",
+      "useBinary": "Use This Binary",
+      "testBinary": "Test Binary First",
+      "install": "Install RClone"
+    },
+    "options": {
+      "recommended": "Recommended",
+      "custom": "Custom",
+      "existing": "Existing",
+      "default": "Default"
+    },
+    "actions": {
+      "back": "Back",
+      "next": "Next",
+      "installPlugin": "Install Plugin",
+      "installingPlugin": "Installing...",
+      "unlock": "Unlock",
+      "getStarted": "Get Started"
+    },
+    "validation": {
+      "completeInstallation": "Please complete the installation options above",
+      "selectConfig": "Please select or provide a valid config option first",
+      "wrongPassword": "Wrong password. Please try again."
+    }
+  },
+  "shared": {
+    "search": {
+      "toggle": "Toggle Search",
+      "placeholder": "Search...",
+      "ariaLabel": "Search",
+      "title": "No results found",
+      "description": "No options match your search",
+      "action": "Clear Search",
+      "hideSearch": "Hide search",
+      "showSearch": "Show search"
+    },
+    "installationOptions": {
+      "tabs": {
+        "quickFix": "Recommended",
+        "custom": "Custom",
+        "existing": "Existing"
+      },
+      "browse": "Browse",
+      "testingAction": "Testing...",
+      "test": "Test",
+      "existingBinaryPlaceholder": "/path/to/rclone",
+      "status": {
+        "untested": "Not tested",
+        "testing": "Testing...",
+        "valid": "Valid binary",
+        "invalid": "Invalid binary"
+      },
+      "errors": {
+        "invalidPath": "Please enter a valid absolute path",
+        "required": "This field is required"
+      },
+      "modes": {
+        "install": {
+          "default": {
+            "description": "Use the standard installation location.",
+            "recommendation": "Recommended for most users."
+          },
+          "custom": {
+            "description": "Choose a custom installation path.",
+            "label": "Install Path",
+            "placeholder": "/path/to/install"
+          },
+          "existing": {
+            "description": "Use an existing rclone binary.",
+            "label": "Binary Path"
+          }
+        },
+        "config": {
+          "default": {
+            "description": "Use the default rclone config file location.",
+            "recommendation": "Select this if you don't have a custom config."
+          },
+          "custom": {
+            "description": "Select a custom rclone config file.",
+            "label": "Config File",
+            "placeholder": "/path/to/rclone.conf"
+          },
+          "existing": {
+            "description": "Use an existing rclone binary (optional).",
+            "label": "Binary Path"
+          }
+        }
+      }
+    },
+    "transferActivity": {
+      "title": "Transfer Activity",
+      "active": "Active:",
+      "recent": "Recent:",
+      "resetStats": "Reset Stats",
+      "tabs": {
+        "active": "Active ({{count}})",
+        "recent": "Recent ({{count}})"
+      },
+      "table": {
+        "file": "File",
+        "progress": "Progress",
+        "speed": "Speed",
+        "eta": "ETA",
+        "status": "Status",
+        "size": "Size",
+        "path": "Path",
+        "completed": "Completed",
+        "job": "Job",
+        "transferred": "transferred",
+        "alreadyExisted": "already existed",
+        "source": "Source: {{path}}",
+        "destination": "Destination: {{path}}",
+        "jobId": "Job ID: {{id}}"
+      },
+      "status": {
+        "failed": "Failed",
+        "checked": "Checked",
+        "partial": "Partial",
+        "completed": "Completed",
+        "transferError": "Transfer error",
+        "transferCompleted": "Transfer completed"
+      },
+      "empty": {
+        "noActive": "No active transfers",
+        "activeHint": "Transfers will appear here when an operation starts",
+        "noRecent": "No recently completed transfers",
+        "recentHint": "Completed transfers will appear here when jobs finish"
+      },
+      "time": {
+        "daysAgo": "{{count}} days ago",
+        "hoursAgo": "{{count}}h ago",
+        "minutesAgo": "{{count}}m ago",
+        "justNow": "Just now",
+        "duration": {
+          "hours": "{{hours}}h {{minutes}}m",
+          "minutes": "{{minutes}}m {{seconds}}s",
+          "seconds": "{{seconds}}s",
+          "lessThanSecond": "<1s"
+        }
+      }
+    },
+    "inputModal": {
+      "enterValue": "Enter Value",
+      "name": "Name",
+      "nameRequired": "Name is required",
+      "required": "{{field}} is required",
+      "alreadyExists": "{{name}} already exists",
+      "forbiddenChars": "{{name}} contains forbidden characters ('/' or ':' )",
+      "create": "Create"
+    },
+    "overviewHeader": {
+      "manageBackends": "Manage Backends",
+      "backendSwitchAria": "Current mode: {{title}} - Click to switch backend"
+    },
+    "settingControl": {
+      "default": "Default: {{value}}",
+      "resetToDefault": "Reset to default",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "addItem": "Add Item",
+      "removeItem": "Remove item",
+      "increase": "Increase",
+      "decrease": "Decrease",
+      "autoUnset": "Auto (unset)",
+      "true": "True",
+      "false": "False",
+      "none": "none",
+      "date": "Date",
+      "time": "Time",
+      "typeNotImplemented": "Type: {{type}} (not implemented)",
+      "aria": {
+        "item": "{{name}} item {{index}}",
+        "removeItem": "Remove {{name}} item",
+        "date": "{{name}} date",
+        "time": "{{name}} time"
+      },
+      "errors": {
+        "invalidValue": "Invalid value"
+      }
+    },
+    "serveCard": {
+      "types": {
+        "http": "Serve files via HTTP",
+        "webdav": "WebDAV for file access",
+        "ftp": "FTP file transfer",
+        "sftp": "Secure FTP over SSH",
+        "nfs": "Network File System",
+        "dlna": "DLNA media server",
+        "restic": "Restic REST server",
+        "s3": "Amazon S3 compatible server",
+        "default": "Serve"
+      },
+      "tooltips": {
+        "copyUrl": "Click to copy URL",
+        "stop": "Stop this serve",
+        "copyId": "Click to copy ID"
+      },
+      "messages": {
+        "urlCopied": "URL Copied!",
+        "idCopied": "ID Copied!",
+        "noOptions": "No additional options"
+      },
+      "labels": {
+        "id": "ID:",
+        "options": "Options:",
+        "active": "active"
+      }
+    },
+    "vfsControl": {
+      "title": "VFS Control",
+      "noVfsFound": "No VFS Found",
+      "noVfsRunning": "No VFS instances are running for this remote.",
+      "loading": "Loading VFS data...",
+      "loadingStats": "Loading VFS statistics...",
+      "fetchingQueue": "Fetching upload queue...",
+      "vfsInstance": "VFS Instance",
+      "queued": "queued",
+      "controlsUnavailable": "VFS Controls Unavailable",
+      "indexedWarning": "This VFS instance has an index suffix (e.g., {{suffix}}) which is not supported by rclone's VFS API. This is a known limitation when multiple mounts exist for the same remote.",
+      "stats": {
+        "metadata": "Metadata",
+        "items": "items",
+        "diskCache": "Disk Cache",
+        "cachedFiles": "Cached Files",
+        "pendingUploads": "Pending Uploads",
+        "inProgress": "In Progress",
+        "errors": "Errors",
+        "inUse": "In Use",
+        "disabled": "Disabled"
+      },
+      "queue": {
+        "title": "Upload Queue",
+        "uploadingCount": "{{uploading}} uploading, {{total}} total",
+        "empty": "No files queued for upload",
+        "emptyHint": "Files are uploaded automatically based on VFS cache mode",
+        "name": "Name",
+        "size": "Size",
+        "status": "Status",
+        "tries": "try",
+        "statusText": {
+          "uploading": "Uploading now",
+          "ready": "Ready ({{seconds}}s overdue)",
+          "waiting": "Waiting ({{seconds}}s)"
+        },
+        "tooltips": {
+          "uploadNext": "Upload this file next",
+          "delayLong": "Delay upload by 11.5 days",
+          "hideSlider": "Hide delay slider",
+          "setDelay": "Set custom delay"
+        },
+        "slider": {
+          "title": "Set custom delay time",
+          "cancel": "Cancel",
+          "apply": "Apply Delay"
+        }
+      },
+      "cacheInfo": {
+        "title": "Cache Information",
+        "location": "Cache Location:",
+        "metaLocation": "Metadata Location:",
+        "openFolder": "Open cache folder",
+        "openMetaFolder": "Open metadata folder",
+        "note": "Note:",
+        "noteText": "\"Clear Metadata\" only removes directory listings cache. Cached files remain in the cache directory until rclone purges them automatically."
+      },
+      "advancedConfig": {
+        "title": "Advanced Configuration",
+        "search": "Search options",
+        "searchPlaceholder": "Filter by option name or value...",
+        "clearSearch": "Clear search",
+        "noResults": "No options match your search",
+        "categories": {
+          "Booleans": "Boolean Options",
+          "Durations": "Durations",
+          "Sizes": "Sizes",
+          "Permissions": "Permissions",
+          "Numbers": "Numbers",
+          "Strings": "Strings"
+        }
+      },
+      "actions": {
+        "pollInterval": "Poll Interval",
+        "updateInterval": "Update Poll Interval",
+        "refreshMetadata": "Refresh Metadata",
+        "clearCache": "Clear Metadata Cache",
+        "refreshAll": "Refresh All Data",
+        "messages": {
+          "prioritized": "'{{name}}' prioritized",
+          "delayed": "Delayed '{{name}}'",
+          "delayedSeconds": "Delayed {{seconds}}s",
+          "actionFailed": "Action failed: {{error}}",
+          "removed": "Removed '{{path}}'",
+          "removeFailed": "File cannot be removed",
+          "cleared": "Cleared {{count}} items",
+          "directoryRefreshed": "Directory refreshed",
+          "intervalSet": "Interval set to {{val}}",
+          "error": "Error: {{error}}"
+        }
+      },
+      "installationOptions": {
+        "tabs": {
+          "quickFix": "Quick Fix",
+          "custom": "Custom",
+          "existing": "Existing"
+        },
+        "status": {
+          "untested": "Not tested",
+          "testing": "Testing...",
+          "valid": "Valid rclone binary",
+          "invalid": "Invalid or not rclone"
+        },
+        "errors": {
+          "invalidPath": "Invalid path format",
+          "required": "Required"
+        },
+        "existingBinaryPlaceholder": "/path/to/rclone",
+        "modes": {
+          "config": {
+            "default": {
+              "description": "Use the default rclone config located in the standard path.",
+              "recommendation": "Choose the default config unless you have a custom configuration file."
+            },
+            "custom": {
+              "description": "Select a custom rclone configuration file.",
+              "label": "Configuration File",
+              "placeholder": "/path/to/rclone.conf"
+            },
+            "existing": {
+              "description": "If you have a custom rclone binary, select it here.",
+              "label": "Binary (optional)"
+            }
+          },
+          "install": {
+            "default": {
+              "description": "Install rclone to the system location automatically.",
+              "recommendation": "This is the recommended option for most users."
+            },
+            "custom": {
+              "description": "Choose a custom location to install rclone.",
+              "label": "Installation Path",
+              "placeholder": "/path/to/install"
+            },
+            "existing": {
+              "description": "Select an existing rclone binary path on your system.",
+              "label": "Binary Path"
+            }
+          }
+        },
+        "browse": "Browse",
+        "test": "Test",
+        "testingAction": "Testing..."
+      },
+      "loadingOverlay": {
+        "defaultTitle": "Loading",
+        "defaultMessage": "Please wait..."
+      },
+      "passwordManager": {
+        "placeholder": "Enter your rclone config password",
+        "label": "Configuration Password",
+        "verifying": "Verifying...",
+        "required": "Password required",
+        "remember": "Remember password",
+        "keychain": "Stored in system keychain"
+      }
+    },
+    "passwordManager": {
+      "placeholder": "Enter your rclone config password",
+      "label": "Configuration Password",
+      "verifying": "Verifying...",
+      "required": "Password required",
+      "remember": "Remember password",
+      "keychain": "Stored in system keychain"
+    }
+  },
+  "wizards": {
+    "remoteConfig": {
+      "remoteName": "Remote Name",
+      "remoteNameRequired": "Remote name is required",
+      "remoteNamePlaceholder": "e.g., my-cloud-storage",
+      "remoteTypePlaceholder": "e.g., Google Drive",
+      "invalidChars": "Name contains invalid characters",
+      "invalidStart": "Name cannot start with a dash or space",
+      "invalidEnd": "Name cannot end with a space",
+      "nameTaken": "A remote with this name already exists",
+      "remoteType": "Remote Type",
+      "noMatchingTypes": "No matching remote types",
+      "loadingOptions": "Loading configuration options...",
+      "showAdvanced": "Show Advanced Options",
+      "showAdvancedDesc": "Display additional configuration options for power users",
+      "useInteractive": "Use Interactive Configuration",
+      "useInteractiveDesc": "Step-by-step configuration wizard with guided setup",
+      "authenticationMethod": "Authentication Method",
+      "providerRequired": "Provider is required",
+      "advancedOptions": "Advanced Options",
+      "additionalConfig": "Additional Configuration",
+      "setupSubtitle": "Complete the setup for this remote",
+      "configRequired": "Configuration Required",
+      "requiredBadge": "Required",
+      "nextQuestionHelp": "Answer the next question to continue.",
+      "defaultValue": "Default value:",
+      "yes": "Yes",
+      "no": "No",
+      "chooseOption": "Choose an option",
+      "selectOption": "Select option",
+      "enterValue": "Enter value",
+      "inputField": "Input field",
+      "fieldRequired": "This field is required",
+      "readyToContinue": "Ready to continue",
+      "provideValue": "Please provide a value",
+      "mountType": "Mount Type",
+      "selectMountType": "Select mount type",
+      "serveType": "Type",
+      "loadingServeOptions": "Loading {{type}} options...",
+      "serveDescription": "Select the remote path you want to serve. You can serve the entire remote or a specific folder.",
+      "operationDescription": "Configure source, destination, and auto-start options for this operation."
+    },
+    "serveTypes": {
+      "http": "Serve files via HTTP",
+      "webdav": "WebDAV for file access",
+      "ftp": "FTP file transfer",
+      "sftp": "Secure FTP over SSH",
+      "nfs": "Network File System",
+      "dlna": "DLNA media server",
+      "docker": "Docker volume plugin",
+      "restic": "Restic REST server",
+      "s3": "Amazon S3 compatible server"
+    },
+    "appOperation": {
+      "enableAutoStart": "Enable Auto-{{type}} on Startup",
+      "enableScheduled": "Enable Scheduled {{type}}",
+      "scheduleDescription": "When enabled, this operation will run <strong>recurring</strong> based on the cron schedule below.",
+      "cronSchedule": "Cron Schedule",
+      "notConfigured": "Not configured",
+      "clearSchedule": "Clear schedule",
+      "sourcePath": "Source Path",
+      "destPath": "Destination Path",
+      "localPath": "Local Path",
+      "remotePathServe": "Remote Path to Serve",
+      "rootFolderOptional": "Root folder (optional)",
+      "rootFolderSpecific": "Root folder or specific path",
+      "selectRemoteSource": "Select remote source folder",
+      "changeSourceType": "Change source path type",
+      "enterSourcePath": "Enter source path...",
+      "otherRemotes": "Other Remotes",
+      "selectDestFolder": "Select destination folder",
+      "enterDestPath": "Enter destination path...",
+      "destRequired": "Destination is required",
+      "mountDestMustBeLocal": "Mount destination must be a local folder",
+      "changeDestPathType": "Change destination path type",
+      "completionNote": "Note: Remote path completion available after creation of the remote.",
+      "loading": "Loading...",
+      "upFolder": "Up Folder",
+      "noItemsFound": "No items found in this directory.",
+      "chooseCommonSchedule": "Choose a common schedule:",
+      "orCustomize": "or customize",
+      "runThisTask": "Run this task",
+      "everyDay": "every day",
+      "everyWeek": "every week",
+      "everyMonth": "every month",
+      "everyFewHours": "every few hours",
+      "on": "on",
+      "onDay": "on day",
+      "ofTheMonth": "of the month",
+      "every": "every",
+      "hours": "hours",
+      "at": "at",
+      "advancedUsers": "For advanced users:",
+      "advancedHelp": "Configure individual cron fields or enter a complete cron expression manually.",
+      "fieldBuilder": "Field Builder",
+      "enterManually": "Or enter manually",
+      "cronExpression": "Cron Expression",
+      "yourSchedule": "Your Schedule",
+      "nextRun": "Next run:",
+      "timezoneNote": "Times are in your local timezone (UTC{{timezone}}) and automatically converted to UTC for scheduling.",
+      "tabSimple": "Simple",
+      "tabAdvanced": "Advanced",
+      "days": {
+        "monday": "Monday",
+        "tuesday": "Tuesday",
+        "wednesday": "Wednesday",
+        "thursday": "Thursday",
+        "friday": "Friday",
+        "saturday": "Saturday",
+        "sunday": "Sunday",
+        "weekdays": "Weekdays (Mon-Fri)",
+        "weekends": "Weekends (Sat-Sun)"
+      },
+      "months": {
+        "january": "January",
+        "february": "February",
+        "march": "March",
+        "april": "April",
+        "may": "May",
+        "june": "June",
+        "july": "July",
+        "august": "August",
+        "september": "September",
+        "october": "October",
+        "november": "November",
+        "december": "December"
+      },
+      "cronParts": {
+        "minute": "Minute (0-59)",
+        "hour": "Hour (0-23)",
+        "dayOfMonth": "Day of Month (1-31)",
+        "month": "Month (1-12)",
+        "dayOfWeek": "Day of Week"
+      },
+      "cronOptions": {
+        "everyMinute": "* (Every minute)",
+        "onTheHour": "0 (On the hour)",
+        "every5Minutes": "*/5 (Every 5 minutes)",
+        "every10Minutes": "*/10 (Every 10 minutes)",
+        "every15Minutes": "*/15 (Every 15 minutes)",
+        "every30Minutes": "*/30 (Every 30 minutes)",
+        "everyHour": "* (Every hour)",
+        "midnight": "0 (Midnight)",
+        "every2Hours": "*/2 (Every 2 hours)",
+        "every4Hours": "*/4 (Every 4 hours)",
+        "every6Hours": "*/6 (Every 6 hours)",
+        "everyDay": "* (Every day)",
+        "firstDay": "1 (First day)",
+        "middle": "15 (Middle)",
+        "every2Days": "*/2 (Every 2 days)",
+        "everyMonth": "* (Every month)",
+        "intervalN": "{{count}} hours"
+      },
+      "aria": {
+        "clear": "Clear",
+        "cronFor": "Cron expression for {{name}}",
+        "taskSchedule": "Task schedule"
+      },
+      "relativeTime": {
+        "inPast": "in the past ({{date}})",
+        "lessThanMinute": "in less than a minute",
+        "in": "in {{time}}",
+        "days": {
+          "one": "1 day",
+          "other": "{{count}} days"
+        },
+        "hours": {
+          "one": "1 hour",
+          "other": "{{count}} hours"
+        },
+        "minutes": {
+          "one": "1 minute",
+          "other": "{{count}} minutes"
+        }
+      }
+    },
+    "cronPresets": {
+      "daily-9am": {
+        "title": "Daily at 9 AM",
+        "description": "Every day at 9:00 AM"
+      },
+      "daily-6pm": {
+        "title": "Daily at 6 PM",
+        "description": "Every day at 6:00 PM"
+      },
+      "weekday-9am": {
+        "title": "Weekdays at 9 AM",
+        "description": "Monday-Friday at 9:00 AM"
+      },
+      "weekly-monday": {
+        "title": "Weekly on Monday",
+        "description": "Every Monday at 9:00 AM"
+      },
+      "every-6-hours": {
+        "title": "Every 6 hours",
+        "description": "4 times per day"
+      },
+      "monthly-1st": {
+        "title": "First of month",
+        "description": "1st day at midnight"
+      }
+    }
+  },
+  "backup": {
+    "analyzeFailed": "Failed to analyze backup file",
+    "restore": {
+      "title": "Restore Backup",
+      "ariaClose": "Close restore preview",
+      "info": "Backup Information",
+      "created": "Created",
+      "unknown": "Unknown",
+      "type": "Type",
+      "format": "Format",
+      "security": "Security",
+      "encrypted": "Encrypted",
+      "notEncrypted": "Not Encrypted",
+      "contents": "Backup Contents",
+      "itemCount": "{{count}} items",
+      "settings": {
+        "title": "Application Settings",
+        "description": "Your app preferences and configuration"
+      },
+      "backendConfig": {
+        "title": "Backend Configuration",
+        "description": "RClone backend options and settings"
+      },
+      "rcloneConfig": {
+        "title": "RClone Configuration",
+        "description": "Complete rclone.conf file"
+      },
+      "remoteConfigs": {
+        "title": "Remote Configurations"
+      },
+      "profiles": {
+        "title": "Profiles"
+      },
+      "legacy": {
+        "title": "Legacy Backup Detected",
+        "description": "This backup was created before the profile system was introduced. It will be restored to the 'default' profile.",
+        "defaultProfile": "All settings will be added to the default profile automatically"
+      },
+      "options": "Restore Options",
+      "scope": {
+        "all": "Restore Everything",
+        "profile": "Restore Specific Profile"
+      },
+      "selectProfile": "Select Profile",
+      "note": "Backup Note",
+      "passwordRequired": "Password Required",
+      "encryptedWarning": "This backup is encrypted. Enter the correct password to decrypt and restore.",
+      "passwordPlaceholder": "Enter your backup password",
+      "hidePassword": "Hide password",
+      "showPassword": "Show password",
+      "cancel": "Cancel",
+      "verifying": "Verifying...",
+      "decryptAndRestore": "Decrypt & Restore",
+      "restoreAction": "Restore Backup",
+      "errors": {
+        "passwordRequired": "Password is required",
+        "passwordEmpty": "Password cannot be empty or whitespace",
+        "passwordLength": "Password must be at least 4 characters",
+        "wrongPassword": "Incorrect password. Please try again.",
+        "integrityFailed": "Backup file is corrupted or has been tampered with.",
+        "verificationFailed": "File verification failed. The backup may be corrupted.",
+        "requiresPassword": "This backup requires a password to decrypt.",
+        "decryptFailed": "Failed to decrypt backup. Check your password.",
+        "generic": "An error occurred during restore: {{error}}"
+      }
+    },
+    "launchRestoreFailed": "Failed to launch restore flow",
+    "backupSuccess": "Backup created successfully",
+    "restoreSuccess": "Settings restored successfully"
+  },
+  "updates": {
+    "installSuccess": "Update installed. Please restart the app.",
+    "checkFailed": "Failed to check for updates",
+    "installFailed": "Failed to install update",
+    "restartFailed": "Failed to restart application",
+    "skipFailed": "Failed to skip update",
+    "unskipFailed": "Failed to unskip update",
+    "saveSettingsFailed": "Failed to save update settings",
+    "saveChannelFailed": "Failed to save update channel",
+    "availableNotification": "Update available: {{version}}. Open About to install.",
+    "noUpdateAvailable": "No update available",
+    "skipVersion": "Update {{version}} will be skipped",
+    "confirmInstall": {
+      "title": "Install Update",
+      "message": "Installing this update will restart the application automatically. Do you want to continue?",
+      "confirm": "Install",
+      "cancel": "Cancel"
+    },
+    "restored": "Update {{version}} restored",
+    "restoreFailed": "Failed to restore update",
+    "channelChanged": "Update channel changed to {{channel}}. Check for updates to apply.",
+    "channelChangeFailed": "Failed to change update channel"
+  },
+  "fileBrowser": {
+    "folderCreateFailed": "Failed to create folder",
+    "trashEmptied": "Trash emptied",
+    "trashEmptyFailed": "Failed to empty trash: {{error}}",
+    "loadDirectoryFailed": "Failed to load directory",
+    "remoteNotFound": "Remote '{{remote}}' not found.",
+    "bookmarkRemoteNotFound": "Remote '{{remote}}' for bookmark not found",
+    "resolveRemoteFailed": "Could not resolve remote for this item",
+    "openFileFailed": "Unable to open file: missing remote context",
+    "loadFileFailed": "Failed to load {{name}}",
+    "loadContentFailed": "Failed to load file content",
+    "folderSizeFailed": "Failed to calculate folder size",
+    "unexpectedError": "An unexpected error occurred",
+    "remoteAbout": {
+      "loading": "Loading remote information...",
+      "totalSpace": "Total Space",
+      "usedSpace": "Used Space",
+      "freeSpace": "Free Space",
+      "objectCount": "Object Count",
+      "type": "Type",
+      "rootPath": "Root Path",
+      "timePrecision": "Time Precision",
+      "supportedHashes": "Supported Hashes",
+      "noneSupported": "None supported",
+      "noFeatureInfo": "No feature information available.",
+      "example": "Example",
+      "readOnly": "Read Only",
+      "yes": "Yes",
+      "no": "No",
+      "noMetadata": "No metadata specifications available.",
+      "close": "Close dialog",
+      "unknown": "Unknown",
+      "error": "Failed to load remote information.",
+      "tabs": {
+        "overview": "Overview",
+        "features": "Features",
+        "metadata": "Metadata Specs"
+      },
+      "precision": {
+        "s": "s",
+        "ms": "ms",
+        "us": "µs",
+        "ns": "ns"
+      },
+      "metadata": {
+        "system": "System Metadata",
+        "standard": "Standard Metadata"
+      }
+    },
+    "properties": {
+      "title": "Properties",
+      "loading": "Loading basic info...",
+      "location": "Location",
+      "modified": "Modified",
+      "size": "Size",
+      "contentStats": "Content Stats",
+      "calculating": "Calculating folder size...",
+      "containedFiles": "Contained Files",
+      "totalSize": "Total Size",
+      "storage": "Storage",
+      "checking": "Checking disk usage...",
+      "used": "Used",
+      "free": "Free",
+      "totalCapacity": "Total Capacity",
+      "checksums": "Checksums",
+      "loadingHashes": "Loading hash types...",
+      "calculateMore": "Calculate more:",
+      "noHashTypes": "No hash types supported for this remote",
+      "publicLink": "Public Link",
+      "expires": "Expires",
+      "expiry": {
+        "never": "Never",
+        "1h": "1 Hour",
+        "1d": "1 Day",
+        "7d": "7 Days",
+        "30d": "30 Days"
+      },
+      "close": "Close",
+      "directory": "Directory",
+      "file": "File",
+      "copied": "Copied!",
+      "copyToClipboard": "Copy to clipboard",
+      "getLink": "Get Link",
+      "removeLink": "Remove Link",
+      "creatingLink": "Creating link...",
+      "removingLink": "Removing link...",
+      "failLoadHashes": "Failed to load checksums",
+      "failGetLink": "Failed to get public link",
+      "failCopyLink": "Failed to copy - check console",
+      "star": "Star",
+      "unstar": "Unstar",
+      "generatedChecksums": "Generated Checksums",
+      "calculateAnother": "Calculate Another",
+      "bulkHashInstruction": "Select a hash type to calculate checksums for all files in this directory.",
+      "noHashesFound": "No hashes returned"
+    },
+    "operations": {
+      "title": "Operations",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled",
+      "cancelJob": "Cancel",
+      "removeJob": "Remove"
+    },
+    "fileViewer": {
+      "closeViewer": "Close viewer",
+      "download": "Download {{name}}",
+      "previousFile": "Previous file",
+      "nextFile": "Next file",
+      "loadingContent": "Loading content",
+      "videoLabel": "Video: {{name}}",
+      "audioLabel": "Audio: {{name}}",
+      "pdfTitle": "PDF: {{name}}",
+      "calculatingFolderSize": "Calculating folder size...",
+      "containsFiles": "Contains {{count}} files",
+      "totalSize": "Total size: {{size}}",
+      "binaryFile": "Binary file",
+      "previewNotAvailable": "Preview not available for this file type",
+      "errorCalculateSize": "Failed to calculate folder size",
+      "errorLoadContent": "Failed to load file content",
+      "errorUnexpected": "An unexpected error occurred",
+      "errorLoadFile": "Failed to load {{name}}",
+      "downloading": "Downloading {{name}}"
+    }
+  },
+  "dashboard": {
+    "appDetail": {
+      "aria": {
+        "profileSelection": "Profile selection"
+      },
+      "operationMode": "Operation Mode",
+      "monitoring": "Monitoring",
+      "configuration": "Configuration",
+      "selectedProfile": "Selected Profile",
+      "profilesCount": "{{count}} profiles",
+      "moveWarningTitle": "Move Operation Warning",
+      "moveWarningText1": "Files will be <strong>deleted</strong> from the source after successful transfer to destination.",
+      "moveWarningText2": "Ensure you have backups before proceeding with move operations.",
+      "bisyncInfoTitle": "BiSync Information",
+      "bisyncInfoText1": "Bidirectional synchronization keeps both locations synchronized.",
+      "bisyncInfoText2": "Changes made to either location will be reflected in the other.",
+      "bisyncInfoText3": "First run may take longer as it establishes the sync baseline.",
+      "activeServes": "Active Serves",
+      "sharedSettings": "Shared Settings",
+      "sharedSettingsDesc": "Applies to all operations, regardless of sync or mount mode.",
+      "vfsOptions": "VFS Options",
+      "filterOptions": "Filter Options",
+      "backendConfig": "Backend Config",
+      "profilesLabel": "{{op}} Profiles",
+      "settingsLabel": "{{op}} Settings",
+      "mountProfilesVfs": "Mount Profiles & VFS",
+      "serveProfiles": "Serve Profiles",
+      "syncBehave": "Adjust how the {{op}} process behaves. Multi-profile supported.",
+      "serveSettings": "Serve Settings",
+      "mountSettings": "Mount Settings",
+      "syncSettings": "Sync Settings",
+      "sync": "Sync",
+      "syncDesc": "One-way synchronization",
+      "bisync": "BiSync",
+      "bisyncDesc": "Bidirectional sync",
+      "move": "Move",
+      "moveDesc": "Move files (delete source)",
+      "copy": "Copy",
+      "copyDesc": "Copy files (keep source)",
+      "default": "Default",
+      "serveBehave": "Configure serving protocols (HTTP, FTP, etc). Multi-profile supported.",
+      "mountBehave": "Configure mount behavior and virtual file system tuning.",
+      "starting": "Starting {{op}}...",
+      "start": "Start {{op}}",
+      "stopping": "Stopping {{op}}...",
+      "stop": "Stop {{op}}",
+      "notConfigured": "Not configured",
+      "serving": "Serving",
+      "accessibleVia": "Accessible via",
+      "mounting": "Mounting...",
+      "mount": "Mount",
+      "unmounting": "Unmounting...",
+      "unmount": "Unmount",
+      "progress": "Progress",
+      "speed": "Speed",
+      "eta": "ETA",
+      "files": "Files",
+      "errors": "Errors",
+      "duration": "Duration",
+      "transferStatistics": "{{op}} Statistics"
+    },
+    "generalDetail": {
+      "scheduledTasks": "Scheduled Tasks",
+      "goToTask": "Go to task {{index}}",
+      "operation": "Operation",
+      "schedule": "Schedule",
+      "cronExpression": "Cron Expression:",
+      "nextRunLabel": "Next Run:",
+      "lastRunLabel": "Last Run:",
+      "createdLabel": "Created:",
+      "statistics": "Statistics",
+      "successful": "Successful",
+      "failedCount": "Failed",
+      "totalRuns": "Total Runs",
+      "paths": "Paths",
+      "sourceLabel": "Source:",
+      "destinationLabel": "Destination:",
+      "lastError": "Last Error",
+      "currentlyRunning": "Currently Running",
+      "jobIdLabel": "Job ID:",
+      "previousTaskTooltip": "Previous task",
+      "nextTaskTooltip": "Next task",
+      "remoteConfiguration": "Remote Configuration",
+      "editConfiguration": "Edit Configuration",
+      "toggleQuickAction": "Toggle {{label}} as quick action",
+      "quickActionSelected": "{{label}} selected as quick action {{position}}",
+      "remoteActionQuickSelection": "Remote action quick selection"
+    }
+  },
+  "rcloneConfig": {
+    "loadFailed": "Failed to load RClone configuration",
+    "saveSuccess": "Saved: {{field}}",
+    "resetSuccess": "Reset to default: {{field}}",
+    "saveFailed": "Failed to save {{option}}: {{error}}"
+  },
+  "shortcuts": {
+    "quitFailed": "Failed to quit application: {{error}}",
+    "mountRefreshSuccess": "Mounted remotes refreshed successfully",
+    "mountRefreshFailed": "Failed to refresh mounted remotes: {{error}}",
+    "title": "Keyboard Shortcuts",
+    "searchPlaceholder": "Search shortcuts or descriptions...",
+    "ariaSearch": "Search keyboard shortcuts",
+    "ariaClose": "Close shortcuts dialog",
+    "ariaList": "Keyboard shortcuts list",
+    "actions": {
+      "quit": "Quit Application",
+      "showShortcuts": "Show Keyboard Shortcuts",
+      "openPreferences": "Open Preferences",
+      "openConfig": "Open RClone Configuration",
+      "forceCheck": "Force Check Mounted Remotes",
+      "newRemoteDetailed": "Create New Remote (Detailed)",
+      "newRemoteQuick": "Create New Remote (Quick)",
+      "loadConfig": "Load Configuration",
+      "exportConfig": "Export Configuration",
+      "toggleBrowser": "Toggle File Browser",
+      "closeDialog": "Close Dialog/Cancel Action"
+    },
+    "categories": {
+      "global": "Global",
+      "application": "Application",
+      "remoteManagement": "Remote Management",
+      "fileOperations": "File Operations",
+      "fileBrowser": "File Browser",
+      "navigation": "Navigation"
+    }
+  },
+  "repair": {
+    "rclonePath": {
+      "title": "Rclone Path Problem",
+      "message": "The Rclone binary could not be found or started. You can reinstall it now."
+    },
+    "rclonePassword": {
+      "title": "Rclone Configuration Password Required",
+      "message": "Your rclone configuration requires a password to access encrypted remotes."
+    },
+    "mountPlugin": {
+      "title": "Mount Plugin Problem",
+      "message": "The mount plugin could not be found or started. You can reinstall or repair it now."
+    }
+  },
+  "app": {
+    "shutdown": {
+      "title": "Shutting Down",
+      "message": "Please wait while the application shuts down safely..."
+    }
+  },
+  "vfs": {
+    "actionFailed": "Action failed: {{error}}",
+    "error": "Error: {{error}}",
+    "uploadNext": "Upload this file next",
+    "delayUpload": "Delay upload by 11.5 days",
+    "openCacheFolder": "Open cache folder",
+    "openMetadataFolder": "Open metadata folder",
+    "updatePollInterval": "Update Poll Interval",
+    "refreshMetadata": "Refresh Metadata",
+    "clearMetadataCache": "Clear Metadata Cache",
+    "refreshAllData": "Refresh All Data"
+  },
+  "jobs": {
+    "stop": "Stop Job",
+    "delete": "Delete Job"
+  },
+  "modals": {
+    "about": {
+      "title": "About",
+      "keepClicking": "Keep clicking...",
+      "details": "Details",
+      "updates": "Updates",
+      "aboutRclone": "About Rclone",
+      "credits": "Credits",
+      "legal": "Legal",
+      "website": "Website",
+      "reportIssues": "Report Issues",
+      "rcloneWebsite": "Rclone Website",
+      "currentVersion": "Current Version",
+      "restartRequired": "Restart Required",
+      "restartDescription": "An update has been installed. Please restart the application to apply the changes.",
+      "restartNow": "Restart Now",
+      "updateAvailable": "Update Available",
+      "version": "Version",
+      "whatsNew": "What's New",
+      "downloading": "Downloading...",
+      "installing": "Installing...",
+      "installUpdate": "Install Update",
+      "skipVersion": "Skip Version",
+      "upToDate": "Up to Date",
+      "latestVersionMsg": "You're running the latest version",
+      "checkUpdates": "Check for Updates",
+      "checking": "Checking...",
+      "updateSettings": "Update Settings",
+      "autoCheck": "Auto-Check Updates",
+      "releaseChannel": "Release Channel",
+      "skippedUpdates": "Skipped Updates",
+      "rcloneInfo": "Rclone Information",
+      "loadingRclone": "Loading Rclone information...",
+      "os": "OS",
+      "pid": "Process ID",
+      "killProcess": "Kill Process",
+      "quitRclone": "Quit Rclone",
+      "goVersion": "Go Version",
+      "betaVersion": "Beta version",
+      "devBuild": "Development build",
+      "rcloneUpdateAvailable": "Rclone Update Available",
+      "whatsNewRclone": "What's New in Rclone",
+      "updating": "Updating...",
+      "updateRclone": "Update Rclone",
+      "rcloneUpToDate": "Rclone Up to Date",
+      "checkRcloneUpdates": "Check for Rclone Updates",
+      "rcloneUpdateSettings": "Rclone Update Settings",
+      "skippedRcloneUpdates": "Skipped Rclone Updates",
+      "devTeam": "Development Team",
+      "leadDeveloper": "Lead Developer",
+      "acknowledgments": "Acknowledgments",
+      "ackText": "This application is built with modern web technologies and relies on the excellent Rclone project for cloud storage management.",
+      "noReleaseNotes": "No release notes available.",
+      "killSuccess": "Rclone process killed successfully",
+      "killFailed": "Failed to kill rclone process",
+      "noProcessToKill": "No rclone process to kill",
+      "copied": "Copied to clipboard",
+      "copyFailed": "Failed to copy to clipboard",
+      "autoCheckEnabled": "Auto-check updates enabled",
+      "autoCheckDisabled": "Auto-check updates disabled",
+      "updateSettingFailed": "Failed to update setting",
+      "channelStable": "Stable",
+      "channelBeta": "Beta",
+      "channelStableDesc": "Recommended for most users",
+      "channelBetaDesc": "Latest features",
+      "loadInfoFailed": "Failed to load rclone info.",
+      "license": "License",
+      "licenseText1": "This application is free and open source software distributed under the",
+      "orLater": "or later.",
+      "licenseText2": "This program comes with no warranty. You are free to use, modify, and distribute this software according to the GPL v3 license terms.",
+      "thirdParty": "Third-Party Software",
+      "thirdPartyText": "This application includes various third-party libraries and components, each with their own licensing terms. See the project repository for a complete list.",
+      "viewOnGithub": "View on GitHub",
+      "restoreUpdate": "Restore update",
+      "debugTools": "Debug Tools",
+      "systemInfo": "System Information",
+      "mode": "Mode",
+      "platform": "Platform",
+      "folders": "Folders",
+      "logsFolder": "Logs Folder",
+      "configFolder": "Config Folder",
+      "cacheFolder": "Cache Folder",
+      "developerTools": "Developer Tools",
+      "openDevTools": "Open DevTools",
+      "restartApp": "Restart App",
+      "remoteBackend": "Remote Backend",
+      "remoteUpdateInfo": "This instance is controlled by a remote server. Updates cannot be managed from here. For more information, please visit rclone issue",
+      "memory": "Memory",
+      "viewMemoryStats": "View Memory Statistics",
+      "memoryStats": "Memory Statistics",
+      "generalMemory": "General Memory",
+      "memAlloc": "Allocated",
+      "memTotalAlloc": "Total Allocated",
+      "memSys": "System",
+      "memMallocs": "Mallocs",
+      "memFrees": "Frees",
+      "heapMemory": "Heap Memory",
+      "memHeapAlloc": "Heap Alloc",
+      "memHeapSys": "Heap Sys",
+      "memHeapIdle": "Heap Idle",
+      "memHeapInuse": "Heap In Use",
+      "memHeapReleased": "Heap Released",
+      "memHeapObjects": "Heap Objects",
+      "stackMemory": "Stack Memory",
+      "memStackInuse": "Stack In Use",
+      "memStackSys": "Stack Sys",
+      "gc": "Garbage Collector",
+      "runningGc": "Running GC...",
+      "runGc": "Run GC",
+      "gcSuccess": "Garbage collection completed successfully",
+      "gcFailed": "Failed to run garbage collector",
+      "backendCache": "Backend Cache",
+      "entries": "Active Entries",
+      "clear": "Clear",
+      "clearing": "Clearing...",
+      "cacheCleared": "Cache cleared successfully",
+      "cacheClearFailed": "Failed to clear cache"
+    },
+    "logs": {
+      "clearAll": "Clear All Logs",
+      "scrollTop": "Scroll Top",
+      "scrollBottom": "Scroll Bottom",
+      "fetching": "Fetching logs...",
+      "aria": {
+        "terminalLogs": "Terminal logs"
+      },
+      "remoteLogs": "Remote Logs: {{ name }}",
+      "noLogsFound": "No logs found",
+      "adjustFilters": "Try adjusting your filters",
+      "terminalOutput": "Terminal Output",
+      "logContext": "Log Context",
+      "copiedToClipboard": "Log copied to clipboard",
+      "logLevel": "Log Level",
+      "allLevels": "All Levels",
+      "searchPlaceholder": "Search logs..."
+    },
+    "preferences": {
+      "title": "Preferences",
+      "searchResults": "Search Results",
+      "searchPlaceholder": "Search settings...",
+      "resetAll": "Reset All Settings",
+      "noSettingsFound": "No settings found matching",
+      "trySearching": "Try searching for:",
+      "restartRequiredHeader": "Settings Requiring Restart",
+      "restartRequiredDesc": "The following changes require an engine restart to take effect:",
+      "discarding": "Discarding...",
+      "discardChanges": "Discard Changes",
+      "saveAndRestart": "Save & Restart Engine",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "items": "items",
+      "resetToDefault": "Reset to default",
+      "item": "Item",
+      "addItem": "Add Item",
+      "removeItem": "Remove item",
+      "browseFile": "Browse for file",
+      "browseFolder": "Browse for folder",
+      "validation": {
+        "required": "This field is required.",
+        "integer": "Must be a valid whole number.",
+        "min": "Value must be at least {{val}}.",
+        "max": "Value must be no more than {{val}}.",
+        "invalidPath": "Please enter a valid absolute file path.",
+        "bandwidth": "Invalid format (e.g., 10M or 5M:2M).",
+        "urlArray": "All items must be valid URLs (e.g., https://...).",
+        "reserved": "Reserved value: {{value}}",
+        "invalid": "Invalid value."
+      },
+      "tabs": {
+        "general": "General",
+        "core": "Core",
+        "developer": "Developer"
+      },
+      "aria": {
+        "resetAll": "Reset all settings to default values",
+        "searchFor": "Search for {{suggestion}}",
+        "discardChanges": "Discard pending changes",
+        "saveAndRestart": "Save changes and restart engine",
+        "settingsCategories": "Settings categories",
+        "itemIndex": "Item {{index}}",
+        "removeItemIndex": "Remove item {{index}}",
+        "addNewItem": "Add new {{name}} item",
+        "filePathFor": "File path for {{name}}",
+        "browseFor": "Browse for {{name}}",
+        "folderPathFor": "Folder path for {{name}}",
+        "scrollToPending": "Scroll to pending changes section"
+      },
+      "pendingChangesTooltip": "You have {{count}} unsaved changes that require engine restart. Click to scroll to them.",
+      "searchSuggestions": {
+        "apiPort": "API Port",
+        "startup": "Start on Startup",
+        "debug": "Debug",
+        "bandwidth": "Bandwidth"
+      }
+    },
+    "export": {
+      "title": "Export Settings",
+      "preparing": "Preparing export options...",
+      "selectType": "Select Export Type",
+      "selectRemote": "Select Remote to Export",
+      "chooseRemote": "Choose a remote...",
+      "destination": "Destination Folder",
+      "selectDestination": "Select destination...",
+      "browseFolder": "Browse Folder",
+      "noteLabel": "Backup Note (Optional)",
+      "notePlaceholder": "Add a description...",
+      "encrypt": "Encrypt Export",
+      "passwordLabel": "Encryption Password",
+      "passwordPlaceholder": "Enter password",
+      "passwordHint": "This password will be required to restore the backup.",
+      "exportNow": "Export Now",
+      "exporting": "Exporting...",
+      "fullBackup": "Full Backup",
+      "allConfigs": "All Configs",
+      "singleRemote": "Single Remote",
+      "singleRemoteDesc": "Export one specific remote config",
+      "appPreferences": "Application preferences",
+      "configFiles": "Configuration files",
+      "externalConfig": "External configuration file",
+      "profiles": "Include Profiles",
+      "profilesHint": "Select specific profiles to include in the backup."
+    },
+    "backend": {
+      "title": "Backend Management",
+      "addBackend": "Add Backend",
+      "editBackend": "Edit Backend",
+      "active": "Active",
+      "local": "Local",
+      "host": "Host",
+      "port": "Port",
+      "name": "Name",
+      "enableAuth": "Enable Authentication",
+      "username": "Username",
+      "password": "Password",
+      "oauthSettings": "OAuth Settings",
+      "oauthHost": "OAuth Host",
+      "oauthPort": "OAuth Port",
+      "configPassword": "Config Password (Optional)",
+      "configPath": "Config Path",
+      "configPathPlaceholder": "e.g. /home/user/.config/rclone/custom.conf",
+      "selectConfigFile": "Select Config File",
+      "activeConfigPath": "Active Config Path",
+      "connectionTab": "Connection",
+      "securityTab": "Security",
+      "save": "Save",
+      "testConnection": "Test Connection",
+      "switchTitle": "Switch to {{name}}",
+      "removeTooltip": "Remove",
+      "switchFirst": "Switch to another backend first",
+      "nameExists": "Name exists",
+      "hostExists": "This host:port is already in use",
+      "remoteSecurity": {
+        "title": "Config Security",
+        "description": "Manage the encryption password for this remote rclone instance.",
+        "passwordStored": "Password Stored",
+        "noPasswordStored": "No Password Stored",
+        "limitation": "Note: Rclone does not support changing or verifying remote config passwords via API. You can only unlock the remote config via this password.",
+        "removePassword": "Remove Stored Password"
+      },
+      "copyOptions": {
+        "title": "Copy Settings",
+        "description": "Copy already existing settings",
+        "backendConfig": "Copy Backend Settings",
+        "remotesConfig": "Copy Remote Settings",
+        "fromZero": "Start from Zero",
+        "backendHint": "Copy backend-specific settings",
+        "remotesHint": "Copy configured remote settings"
+      },
+      "status": {
+        "notTested": "Connection not tested",
+        "connected": "Connected",
+        "error": "Error: {{message}}",
+        "unknown": "Unknown"
+      },
+      "notifications": {
+        "switched": "Switched to '{{name}}'",
+        "switchFailed": "Failed to switch: {{message}}",
+        "connectionSuccess": "Connection successful",
+        "connectionFailed": "Connection failed: {{message}}",
+        "testFailed": "Test failed unexpectedly",
+        "fileSelectFailed": "Failed to select file",
+        "updated": "Backend updated successfully",
+        "added": "Backend added successfully",
+        "saveFailed": "Failed to save backend: {{message}}",
+        "onlyActiveBackend": "Please switch to this backend to change its configuration file."
+      },
+      "delete": {
+        "title": "Delete Backend",
+        "message": "Are you sure you want to remove the backend \"{{name}}\"?",
+        "confirm": "Delete"
+      },
+      "security": {
+        "encrypted": "Encrypted",
+        "notEncrypted": "Not Encrypted",
+        "credentialsProtected": "Your credentials are protected",
+        "credentialsPlainText": "Credentials stored in plain text",
+        "systemKeychain": "System Keychain",
+        "autoUnlock": "Auto-unlock on startup",
+        "configPassword": "Config Password",
+        "saveToKeychain": "Save to Keychain",
+        "changePassword": "Change Password",
+        "updatePasswordDesc": "Update your encryption password",
+        "currentPassword": "Current Password",
+        "password": "Password",
+        "newPassword": "New Password",
+        "confirmNewPassword": "Confirm New Password",
+        "confirmPassword": "Confirm Password",
+        "updatePassword": "Update Password",
+        "removeEncryption": "Remove Encryption",
+        "storePlainText": "Store credentials in plain text",
+        "decryptWarning": "This will decrypt your rclone configuration. Your credentials will be visible to anyone with access to your files.",
+        "enableEncryption": "Enable Encryption",
+        "protectCredentials": "Protect your credentials with a password",
+        "encryptionFailed": "Encryption failed: {{message}}",
+        "decryptionFailed": "Failed to remove encryption: {{message}}",
+        "passwordChanged": "Password changed",
+        "passwordChangeFailed": "Failed to change password: {{message}}",
+        "passwordStored": "Password stored in keychain",
+        "passwordStoredInKeyring": "Password stored in system keyring",
+        "passwordRemoved": "Password removed from keychain",
+        "passwordsMismatch": "Passwords do not match"
+      }
+    },
+    "quickAdd": {
+      "title": "Quick Add Remote",
+      "searchLabel": "Search and select remote type",
+      "selectType": "Select Remote Type",
+      "searchPlaceholder": "Type to search...",
+      "remoteName": "Remote Name",
+      "remoteNamePlaceholder": "Enter a unique name...",
+      "interactive": {
+        "title": "Interactive Configuration",
+        "description": "Required for providers like iCloud, OneDrive that need configuration after authentication.",
+        "followSteps": "Please follow the steps to configure your remote.",
+        "cancelling": "Cancelling operation...",
+        "browserOpen": "A browser window may open for authentication."
+      },
+      "operations": {
+        "title": "Operation Options (Optional)",
+        "description": "Configure operations to run automatically after the remote is created.",
+        "mount": {
+          "label": "Mount",
+          "description": "Automatically mount this remote as a drive."
+        },
+        "sync": {
+          "label": "Sync",
+          "description": "Sync this remote to a local folder."
+        },
+        "copy": {
+          "label": "Copy",
+          "description": "Copy contents to a local folder."
+        },
+        "bisync": {
+          "label": "Bisync",
+          "description": "Bidirectional sync with a local folder."
+        },
+        "move": {
+          "label": "Move",
+          "description": "Move contents to a local folder."
+        }
+      },
+      "buttons": {
+        "create": "Create Remote",
+        "creating": "Adding Remote...",
+        "processing": "Processing...",
+        "continue": "Continue"
+      },
+      "errors": {
+        "remoteTypeRequired": "Please select a remote type",
+        "remoteNameRequired": "Remote name is required",
+        "nameTaken": "That name is already taken"
+      }
+    },
+    "remoteConfig": {
+      "aria": {
+        "stepIndicator": "Configuration Steps"
+      },
+      "title": {
+        "add": "Add New Remote",
+        "edit": "Edit {{target}} Settings"
+      },
+      "steps": {
+        "remoteConfig": "Remote Config",
+        "mount": "Mount",
+        "serve": "Serve",
+        "sync": "Sync",
+        "bisync": "Bisync",
+        "move": "Move",
+        "copy": "Copy",
+        "filter": "Filter",
+        "vfs": "VFS",
+        "backend": "Backend"
+      },
+      "advancedProfiles": {
+        "title": "Advanced Profiles",
+        "linked": "{{count}} linked",
+        "vfs": "VFS Profile",
+        "filter": "Filter Profile",
+        "backend": "Backend Profile"
+      },
+      "profile": {
+        "label": "Profile",
+        "add": "Add Profile",
+        "rename": "Rename Profile",
+        "delete": "Delete Profile",
+        "new": "New Profile Name",
+        "save": "Save",
+        "cancel": "Cancel",
+        "inUseWarning": "Cannot delete profile \"{{name}}\" - it is in use by {{count}} active {{type}}(s)"
+      },
+      "buttons": {
+        "back": "Back",
+        "cancel": "Cancel",
+        "save": "Save",
+        "saveConfig": "Save configuration and create remote",
+        "saveChanges": "Save changes",
+        "next": "Next",
+        "cleanup": "Cleaning up",
+        "processing": "Processing...",
+        "continue": "Continue",
+        "saving": "Saving..."
+      }
+    },
+    "rcloneConfig": {
+      "title": "RClone Configuration",
+      "search": {
+        "toggle": "Toggle Search",
+        "label": "Search RClone settings",
+        "placeholderHome": "Search all services and settings...",
+        "placeholderPage": "Search in {{page}}...",
+        "emptyResult": "No Rclone settings found",
+        "emptySettings": "No settings found",
+        "adjustTerms": "Try adjusting your search terms",
+        "showing": "Showing {{count}} of {{total}} settings"
+      },
+      "pageTitle": {
+        "home": "RClone Configuration",
+        "category": "{{page}} - {{category}}",
+        "backend": "Backend Settings"
+      },
+      "notifications": {
+        "resetSuccess": "Reset to default: {{field}}",
+        "saveSuccess": "Saved: {{field}}",
+        "saveError": "Failed to save {{field}}: {{error}}",
+        "loadError": "Failed to load RClone configuration",
+        "resetAllSuccess": "All RClone backend options reset to defaults",
+        "resetAllError": "Failed to reset RClone backend options"
+      },
+      "reset": {
+        "button": "Reset All to Default",
+        "aria": "Reset all RClone backend options to default values",
+        "title": "Reset Backend Options",
+        "message": "This will reset all RClone backend options to their default values and restart the rclone engine. Any custom settings will be lost. Continue?",
+        "confirm": "Reset & Restart"
+      },
+      "mainCategories": {
+        "generalSettings": {
+          "title": "General Settings",
+          "description": "Core RClone options and logging configuration"
+        },
+        "fileSystemAndStorage": {
+          "title": "File System & Storage",
+          "description": "Virtual file system, mounting, filtering, and storage options"
+        },
+        "networkAndServers": {
+          "title": "Network & Servers",
+          "description": "HTTP, FTP, SFTP, WebDAV, S3, and other network service settings"
+        }
+      },
+      "services": {
+        "vfs": "Virtual File System caching and performance settings",
+        "mount": "Mount-specific options and FUSE configuration",
+        "filter": "File filtering rules and patterns",
+        "main": "General RClone operation and transfer settings",
+        "log": "Logging configuration and output settings",
+        "http": "HTTP server settings",
+        "rc": "Remote control server configuration",
+        "dlna": "DLNA server settings",
+        "ftp": "FTP server configuration",
+        "nfs": "NFS server settings",
+        "proxy": "Proxy authentication settings",
+        "restic": "Restic server configuration",
+        "s3": "S3 server settings",
+        "sftp": "SFTP server configuration",
+        "webdav": "WebDAV server settings"
+      },
+      "categories": {
+        "General": "General configuration options",
+        "Auth": "Authentication and credentials",
+        "HTTP": "HTTP-specific settings",
+        "Template": "Template settings",
+        "MetaRules": "Meta rule configurations",
+        "RulesOpt": "Rule options",
+        "MetricsAuth": "Metrics authentication",
+        "MetricsHTTP": "Metrics HTTP settings"
+      }
+    }
+  },
+  "nautilus": {
+    "titles": {
+      "selectFolder": "Select Folder",
+      "selectFile": "Select File",
+      "selectItems": "Select Items",
+      "files": "Files",
+      "starred": "Starred",
+      "searchPlaceholder": "Search files...",
+      "local": "Local"
+    },
+    "sort": {
+      "az": "A-Z",
+      "za": "Z-A",
+      "lastModified": "Last Modified",
+      "firstModified": "First Modified",
+      "sizeLargest": "Size (Largest First)",
+      "sizeSmallest": "Size (Smallest First)",
+      "label": "Sort"
+    },
+    "columns": {
+      "name": "Name",
+      "size": "Size",
+      "modified": "Modified"
+    },
+    "empty": {
+      "noStarred": "No Starred Files",
+      "folderEmpty": "Folder is Empty"
+    },
+    "selection": {
+      "selected": "selected",
+      "folder": "folder",
+      "folders": "folders",
+      "item": "item",
+      "items": "items",
+      "otherItems": "other items"
+    },
+    "modals": {
+      "newFolder": {
+        "title": "New Folder",
+        "label": "Folder name",
+        "placeholder": "Enter folder name"
+      },
+      "emptyTrash": {
+        "title": "Empty Trash",
+        "message": "Remove trashed files from {{remote}}?"
+      }
+    },
+    "errors": {
+      "connectionFailed": "Connection Failed",
+      "remoteNotFound": "Remote '{{remote}}' not found",
+      "bookmarkRemoteNotFound": "Remote '{{remote}}' for bookmark not found",
+      "loadFailed": "Failed to load directory",
+      "createFolderFailed": "Failed to create folder",
+      "emptyTrashFailed": "Failed to empty trash: {{error}}",
+      "openFileFailed": "Unable to open file: missing remote context",
+      "minSelection": "Please select at least {{min}} item{{s}}."
+    },
+    "contextMenu": {
+      "open": "Open",
+      "openNewTab": "Open in New Tab",
+      "toggleSelect": "Toggle Select",
+      "copyPath": "Copy Path",
+      "newFolder": "New Folder",
+      "refresh": "Refresh",
+      "properties": "Properties",
+      "reload": "Reload",
+      "copyLocation": "Copy Location",
+      "selectAll": "Select All",
+      "removeBookmark": "Remove Bookmark",
+      "about": "About",
+      "emptyTrash": "Empty Trash"
+    },
+    "sidebar": {
+      "newBookmark": "New Bookmark"
+    },
+    "view": {
+      "iconSize": "Icon Size",
+      "showHidden": "Show Hidden Files"
+    },
+    "notifications": {
+      "addedToStarred": "'{{item}}' added to Starred",
+      "undo": "Undo",
+      "trashEmptied": "Trash emptied",
+      "locationCopied": "Location copied to clipboard"
+    }
+  },
+  "overview": {
+    "manageBackends": "Manage Backends",
+    "resetLayout": "Reset Layout",
+    "copyError": "Click to copy error"
+  },
+  "config": {
+    "clearSchedule": "Clear schedule",
+    "mountDestinationError": "Mount destination must be a local folder."
+  },
+  "home": {
+    "emptyState": {
+      "title": "RClone Manager",
+      "description": "Easily manage your RClone remotes. If you're new to RClone, use \"Add Quick Remote\" for a fast and simple setup.",
+      "addQuickRemote": "Add Quick Remote",
+      "addDetailedRemote": "Add Detailed Remote"
+    },
+    "options": {
+      "showInTray": "Show in Tray Menu",
+      "viewLogs": "View Logs",
+      "cloneRemote": "Clone Remote",
+      "exportConfig": "Export Configuration",
+      "resetSettings": "Reset Settings",
+      "deleteRemote": "Delete Remote"
+    },
+    "deleteRemote": {
+      "title": "Delete Confirmation",
+      "message": "Are you sure you want to delete '{{name}}'? This action cannot be undone."
+    },
+    "resetRemote": {
+      "title": "Reset Remote Settings",
+      "message": "Are you sure you want to reset ALL settings for {{name}}?"
+    },
+    "notifications": {
+      "jobDeleted": "Job {{id}} deleted successfully.",
+      "settingsReset": "Settings for {{name}} have been reset.",
+      "deleteRemoteSuccess": "Remote {{name}} deleted successfully."
+    },
+    "errors": {
+      "configFailed": "Failed to configure component",
+      "initFailed": "Failed to initialize component",
+      "initialLoadFailed": "Initial data load failed",
+      "loadRemotesFailed": "Failed to load remotes",
+      "updateActionsFailed": "Failed to update quick actions",
+      "unmountFailed": "Failed to unmount {{name}}",
+      "openFailed": "Failed to open {{name}}",
+      "deleteRemoteFailed": "Failed to delete remote {{name}}",
+      "startJobFailed": "Failed to start {{type}} for {{name}}",
+      "stopJobFailed": "Failed to stop {{type}} for {{name}}",
+      "deleteJobFailed": "Failed to delete job {{id}}",
+      "resetSettingsFailed": "Failed to reset remote settings"
+    }
+  },
+  "banner": {
+    "dontShowAgain": "Don't show again"
+  },
+  "serveCard": {
+    "copyUrl": "Click to copy URL",
+    "stopServe": "Stop this serve"
+  },
+  "pathDisplay": {
+    "openExplorer": "Open in file explorer"
+  },
+  "transfer": {
+    "error": "Transfer error",
+    "completed": "Transfer completed"
+  },
+  "generalOverview": {
+    "panels": {
+      "remotes": "Quick Remote Access",
+      "bandwidth": "Bandwidth Limit",
+      "system": "System Information",
+      "jobs": "Job Information",
+      "tasks": "Scheduled Tasks",
+      "serves": "Running Serves"
+    },
+    "layout": {
+      "visible": "Visible",
+      "hidden": "Hidden",
+      "edit": "Edit Layout",
+      "save": "Save Layout",
+      "reset": "Reset Layout",
+      "resetSuccess": "Layout reset to default",
+      "toggleTaskFailed": "Failed to toggle scheduled task",
+      "copyErrorFailed": "Failed to copy error",
+      "errorCopied": "Error copied to clipboard"
+    },
+    "bandwidth": {
+      "aria": {
+        "loading": "Loading bandwidth information"
+      },
+      "loading": "Loading bandwidth information...",
+      "error": "Error loading bandwidth info",
+      "retry": "Retry loading bandwidth",
+      "upload": "Upload:",
+      "download": "Download:",
+      "total": "Total:"
+    },
+    "system": {
+      "aria": {
+        "loading": "Loading system information"
+      },
+      "loading": "Loading system information...",
+      "status": "RClone Status:",
+      "totalRemotes": "Total Remotes:",
+      "activeJobs": "Active Jobs:",
+      "memoryUsage": "Memory Usage:",
+      "uptime": "Uptime:",
+      "active": "Active",
+      "inactive": "Inactive",
+      "error": "Error"
+    },
+    "jobs": {
+      "activeCount": "{{count}} active job{{s}}",
+      "noActive": "No active jobs",
+      "loading": "Loading job information...",
+      "aria": {
+        "loading": "Loading job information"
+      },
+      "progress": "Progress:",
+      "of": "of",
+      "eta": "ETA:",
+      "speed": "Transfer Speed:",
+      "transfers": "Transfers:",
+      "checks": "Checks:",
+      "errors": "Errors:",
+      "deletes": "Deletes:",
+      "renames": "Renames:",
+      "serverCopies": "Server Copies:",
+      "serverMoves": "Server Moves:",
+      "lastError": "Last Error:",
+      "copyError": "Click to copy error",
+      "noRunning": "No active jobs are currently running."
+    },
+    "tasks": {
+      "activeCount": "{{active}} active / {{total}} total",
+      "noScheduled": "No scheduled tasks",
+      "loading": "Loading scheduled tasks...",
+      "aria": {
+        "loading": "Loading scheduled tasks"
+      },
+      "noConfigured": "No scheduled tasks configured. Configure auto-start operations with cron expressions to create scheduled tasks.",
+      "ariaLabel": "Scheduled {{type}} task for {{remote}}. Status: {{status}}",
+      "nextRun": "Next Run:",
+      "lastRun": "Last Run:",
+      "stats": {
+        "success": "Success count",
+        "failure": "Failure count",
+        "total": "Total runs"
+      }
+    },
+    "serves": {
+      "activeCount": "{{count}} active serve{{s}}",
+      "noActive": "No active serves",
+      "loading": "Loading running serves...",
+      "aria": {
+        "loading": "Loading running serves"
+      },
+      "noRunning": "No active serves running. Start serving a remote to make it accessible via network protocols like HTTP, WebDAV, FTP, or SFTP."
+    }
+  },
+  "appOverview": {
+    "titles": {
+      "mount": "Mount Overview",
+      "sync": "Sync Operations Overview",
+      "serve": "Serve Overview",
+      "remotes": "Remotes Overview"
+    },
+    "labels": {
+      "mount": "Mount",
+      "startSync": "Start Sync",
+      "startServe": "Start Serve",
+      "start": "Start"
+    },
+    "panelTitles": {
+      "mountedRemotes": "Mounted Remotes",
+      "activeSync": "Active Sync Operations",
+      "activeServes": "Active Serves",
+      "activeRemotes": "Active Remotes",
+      "unmountedRemotes": "Unmounted Remotes",
+      "inactiveRemotes": "Inactive Remotes",
+      "availableRemotes": "Available Remotes"
+    }
+  },
+  "backendErrors": {
+    "mount": {
+      "pointEmpty": "Mount point cannot be empty",
+      "alreadyMounted": "{{remote}} is already mounted at {{mountPoint}}",
+      "alreadyInUse": "Mount point {{mountPoint}} is already in use by remote {{remote}}",
+      "configIncomplete": "Mount configuration incomplete for profile '{{profile}}'",
+      "failed": "Failed to mount {{remote}}: {{error}}"
+    },
+    "sync": {
+      "configIncomplete": "Configuration incomplete for profile '{{profile}}'",
+      "sourceEmpty": "Source path cannot be empty",
+      "destEmpty": "Destination path cannot be empty",
+      "failed": "Sync failed: {{error}}"
+    },
+    "serve": {
+      "failed": "Failed to {{operation}}: {{error}}",
+      "parseFailed": "Failed to parse response: {{error}}",
+      "stopSuccess": "Successfully stopped serve {{serverId}}",
+      "remoteEmpty": "Remote name cannot be empty",
+      "typeRequired": "Serve type must be specified",
+      "portInUse": "Port {{port}} is already in use"
+    },
+    "unmount": {
+      "failed": "Failed to unmount {{mountPoint}}"
+    },
+    "request": {
+      "failed": "Request failed: {{error}}"
+    },
+    "http": {
+      "error": "HTTP {{status}}: {{body}}"
+    },
+    "file": {
+      "driveRoot": "Cannot select a drive root (e.g., D:\\) as a mount point. Please select or create a subfolder.",
+      "folderNotEmpty": "Selected folder is not empty",
+      "pickerUnavailable": "Folder picker is not available on this platform",
+      "invalidPath": "Invalid path: Path cannot be empty.",
+      "filePickerUnavailable": "File picker is not available on this platform"
+    },
+    "rclone": {
+      "unsupportedPlatform": "Unsupported platform",
+      "downloadError": "Unknown error downloading Rclone",
+      "configEncrypted": "Configuration is encrypted and no password provided",
+      "unsupportedOS": "Unsupported OS.",
+      "binaryNotFound": "Rclone binary not found.",
+      "unknownProcessType": "Unknown process type: {{type}}",
+      "versionCheckFailed": "Failed to get current rclone version: {{error}}",
+      "restartFailed": "Failed to restart engine after update: {{error}}",
+      "selfupdateFailed": "rclone selfupdate --check failed: {{error}}",
+      "unsupportedChannel": "Unsupported update channel: {{channel}}",
+      "downloadFailed": "Download failed after 3 tries: {{error}}",
+      "mountHelperError": "Mount helper error: {{error}}",
+      "configEncryptedLong": "Rclone config is encrypted. Please unlock it first.",
+      "executionFailed": "Failed to execute rclone: {{error}}",
+      "notFound": "Rclone binary not found at {{path}}"
+    },
+    "security": {
+      "passwordEmpty": "Password cannot be empty",
+      "credentialStorageUnavailable": "Credential storage is not available on this platform",
+      "noPasswordStored": "No password stored",
+      "encryptionUnavailable": "Encryption is not available on this platform",
+      "decryptionUnavailable": "Decryption is not available on this platform",
+      "passwordChangeUnavailable": "Password change is not available on this platform",
+      "incorrectPassword": "Incorrect password for rclone configuration",
+      "storeFailed": "Failed to store password: {{error}}",
+      "encryptFailed": "Failed to encrypt configuration: {{error}}",
+      "decryptFailed": "Failed to unencrypt configuration: {{error}}",
+      "changeFailed": "Failed to change password: {{error}}",
+      "rcloneError": "Rclone error: {{error}}"
+    },
+    "backup": {
+      "unknownFormat": "Unknown backup format",
+      "integrityFailed": "Integrity check failed! Backup may be corrupted.",
+      "encryptedPasswordRequired": "This backup is encrypted. Password required.",
+      "unsupportedArchive": "Unsupported archive type. Must be a .rcman file",
+      "unsupportedCompression": "Unsupported compression: {{ext}}",
+      "unknownFile": "Unknown file: {{fileName}}"
+    },
+    "backend": {
+      "nameEmpty": "Backend name cannot be empty",
+      "cannotAddLocal": "Cannot add a backend named 'Local'",
+      "cannotRemoveLocal": "Cannot remove the Local backend",
+      "cannotRemoveActive": "Cannot remove the active backend",
+      "connectionFailed": "Cannot connect to '{{name}}': {{error}}"
+    },
+    "job": {
+      "notFound": "JobInfo not found",
+      "monitoringFailed": "Too many errors monitoring job: {{error}}",
+      "executionFailed": "Job execution failed: {{error}}"
+    },
+    "cache": {
+      "fetchRemotesFailed": "Failed to fetch remotes",
+      "fetchConfigFailed": "Failed to fetch remotes config",
+      "refreshMountsFailed": "Failed to refresh mounted remotes",
+      "refreshServesFailed": "Failed to refresh serves"
+    },
+    "scheduler": {
+      "taskNotEnabled": "Task is not enabled",
+      "taskCannotRun": "Task cannot run (status: {{status}})",
+      "executionFailed": "Task execution failed: {{error}}",
+      "initFailed": "Failed to initialize scheduler: {{error}}",
+      "startFailed": "Failed to start scheduler: {{error}}",
+      "stopFailed": "Failed to stop scheduler: {{error}}",
+      "invalidCron": "Invalid cron expression: {{error}}",
+      "taskNotFound": "Task not found",
+      "invalidTaskArgs": "Task is invalid: {{error}}"
+    },
+    "system": {
+      "settingsUnavailable": "Settings manager not available",
+      "oauthNotConfigured": "OAuth not configured",
+      "unlockFailed": "Unlock failed: {{error}}",
+      "killFailed": "Failed to kill process: {{error}}",
+      "quitFailed": "Failed to quit rclone engine: {{error}}"
+    },
+    "remote": {
+      "httpError": "HTTP {{status}}: {{body}}",
+      "configFailed": "Failed to configure remote: {{error}}",
+      "deleteFailed": "Failed to delete remote: {{error}}"
+    },
+    "filesystem": {
+      "httpError": "HTTP {{status}}: {{body}}",
+      "notFound": "File not found"
+    },
+    "updater": {
+      "noPending": "There is no pending update",
+      "invalidUrl": "Invalid URL: {{error}}",
+      "github": "GitHub API error: {{error}}",
+      "mutex": "Internal error: {{error}}",
+      "updateFailed": "Update failed: {{error}}"
+    },
+    "settings": {
+      "loadFailed": "Failed to load settings: {{error}}",
+      "saveFailed": "Failed to save setting: {{error}}",
+      "resetFailed": "Failed to reset setting: {{error}}",
+      "resetAllFailed": "Failed to reset all settings: {{error}}",
+      "eventEmitFailed": "Failed to emit settings event: {{error}}",
+      "subSettingsFailed": "Failed to get sub-settings: {{error}}",
+      "notFound": "Settings for '{{name}}' not found",
+      "deleteFailed": "Failed to delete remote settings: {{error}}"
+    }
+  },
+  "backendSuccess": {
+    "mount": {
+      "completed": "Successfully mounted {{remote}}",
+      "unmounted": "Successfully unmounted {{mountPoint}}",
+      "allUnmounted": "All remotes unmounted successfully"
+    },
+    "serve": {
+      "started": "Serve started on port {{port}}",
+      "stopped": "Serve stopped"
+    },
+    "sync": {
+      "completed": "Sync completed successfully",
+      "stopped": "Sync stopped"
+    },
+    "remote": {
+      "created": "Remote {{name}} created successfully",
+      "updated": "Remote {{name}} updated successfully",
+      "deleted": "Remote {{name}} deleted successfully"
+    },
+    "backend": {
+      "added": "Backend {{name}} added successfully",
+      "removed": "Backend {{name}} removed successfully",
+      "updated": "Backend {{name}} updated successfully",
+      "switched": "Switched to backend {{name}}"
+    },
+    "backup": {
+      "created": "Backup created successfully",
+      "restored": "Backup restored successfully"
+    },
+    "rclone": {
+      "updated": "Rclone updated successfully ({{channel}} channel)",
+      "channelChanged": "Rclone update channel changed to {{channel}}",
+      "versionSkipped": "Rclone version {{version}} skipped",
+      "versionRestored": "Rclone version {{version}} restored"
+    },
+    "job": {
+      "stopped": "Job stopped successfully",
+      "deleted": "Job deleted successfully"
+    },
+    "system": {
+      "processKilled": "Process {{pid}} killed successfully",
+      "shutdownInitiated": "Shutdown initiated",
+      "servesChecked": "Serves checked successfully",
+      "logsCleared": "Remote logs cleared successfully",
+      "updateInstalled": "App update installed successfully",
+      "oauthQuit": "Rclone OAuth process quit successfully"
+    },
+    "settings": {
+      "saved": "Setting saved successfully",
+      "reset": "Settings reset successfully",
+      "remoteSaved": "Remote settings saved successfully",
+      "remoteDeleted": "Remote settings deleted successfully",
+      "optionsSaved": "RClone backend options saved successfully",
+      "optionsReset": "RClone backend options reset successfully"
+    },
+    "scheduler": {
+      "reloaded": "Scheduled tasks reloaded successfully",
+      "cleared": "All scheduled tasks cleared successfully"
+    },
+    "security": {
+      "passwordRemoved": "Password removed successfully",
+      "passwordValidated": "Password validation successful",
+      "passwordStored": "Password stored successfully",
+      "unencrypted": "Configuration unencrypted successfully",
+      "encrypted": "Configuration encrypted successfully",
+      "envSet": "Config password environment variable set successfully",
+      "passwordChanged": "Config password changed successfully"
+    }
+  },
+  "overviews": {
+    "headers": {
+      "mount": "Mount Overview",
+      "sync": "Sync Overview",
+      "serve": "Serve Overview",
+      "general": "RClone Manager",
+      "default": "Remotes Overview"
+    },
+    "status": {
+      "titles": {
+        "mount": "Mount Status",
+        "sync": "Sync Status",
+        "serve": "Serve Status",
+        "general": "System Status"
+      },
+      "labels": {
+        "unmounted": "Unmounted",
+        "mounted": "Mounted",
+        "syncing": "Syncing",
+        "offSync": "Not Syncing",
+        "active": "Active",
+        "inactive": "Inactive"
+      }
+    },
+    "remoteCard": {
+      "actions": {
+        "mount": "Mount",
+        "unmount": "Unmount",
+        "startSync": "Start Sync",
+        "stopSync": "Stop Sync",
+        "startCopy": "Start Copy",
+        "stopCopy": "Stop Copy",
+        "startMove": "Start Move",
+        "stopMove": "Stop Move",
+        "startBisync": "Start Bi-Sync",
+        "stopBisync": "Stop Bi-Sync",
+        "startServe": "Start Serve",
+        "stopServe": "Stop Serve"
+      },
+      "browse": "Browse Files",
+      "browseDest": "Browse Destination"
+    }
+  },
+  "tray": {
+    "openWebUI": "Open Web UI",
+    "showApp": "Show App",
+    "unmountAll": "Unmount All",
+    "stopAllJobs": "Stop All Jobs",
+    "stopAllServes": "Stop All Serves",
+    "quit": "Quit",
+    "mount": "Mount",
+    "unmount": "Unmount",
+    "start": "Start",
+    "stop": "Stop",
+    "browse": "Browse",
+    "browseInApp": "Browse (In App)",
+    "jobs": "Jobs",
+    "jobsCount": "Jobs [{{active}}/{{total}}]",
+    "jobsNone": "Jobs [—]",
+    "mountCount": "Mount [{{active}}/{{total}}]",
+    "syncCount": "Sync [{{active}}/{{total}}]",
+    "copyCount": "Copy [{{active}}/{{total}}]",
+    "moveCount": "Move [{{active}}/{{total}}]",
+    "bisyncCount": "BiSync [{{active}}/{{total}}]",
+    "serveCount": "Serve [{{active}}/{{total}}]",
+    "defaultProfile": "default"
+  },
+  "notification": {
+    "title": {
+      "mountSuccess": "Mount Successful",
+      "mountFailed": "Mount Failed",
+      "unmountSuccess": "Unmount Successful",
+      "unmountFailed": "Unmount Failed",
+      "syncStarted": "Sync Started",
+      "syncComplete": "Sync Complete",
+      "syncFailed": "Sync Failed",
+      "syncStopped": "Sync Stopped",
+      "copyStarted": "Copy Started",
+      "copyComplete": "Copy Complete",
+      "copyFailed": "Copy Failed",
+      "copyStopped": "Copy Stopped",
+      "moveStarted": "Move Started",
+      "moveComplete": "Move Complete",
+      "moveFailed": "Move Failed",
+      "moveStopped": "Move Stopped",
+      "bisyncStarted": "BiSync Started",
+      "bisyncComplete": "BiSync Complete",
+      "bisyncFailed": "BiSync Failed",
+      "bisyncStopped": "BiSync Stopped",
+      "serveStarted": "Serve Started",
+      "serveFailed": "Serve Failed",
+      "serveStopped": "Serve Stopped",
+      "stopServeFailed": "Stop Serve Failed",
+      "allJobsStopped": "All Jobs Stopped",
+      "allServesStopped": "All Serves Stopped",
+      "stopAllServesFailed": "Stop All Serves Failed",
+      "operationFailed": "{{operation}} Failed",
+      "operationComplete": "{{operation}} Complete",
+      "operationStarted": "{{operation}} Started",
+      "operationStopped": "{{operation}} Stopped",
+      "updateComplete": "Update Complete",
+      "updateFailed": "Update Failed",
+      "updateFound": "Update Found",
+      "updateStarted": "Update Started",
+      "engineError": "Engine Error",
+      "engineRestarted": "Engine Restarted",
+      "enginePathError": "Engine Path Error",
+      "enginePasswordError": "Engine Password Error",
+      "engineRestartedSuccess": "Engine Restarted Successfully",
+      "engineRestartedFailed": "Engine Restarted Failed",
+      "alreadyRunning": "App Already Running",
+      "rcloneUpdateFound": "Rclone Update Found",
+      "rcloneUpdateStarted": "Rclone Update Started",
+      "rcloneUpdateComplete": "Rclone Update Complete",
+      "rcloneUpdateFailed": "Rclone Update Failed"
+    },
+    "body": {
+      "mounted": "Mounted {{remote}} profile '{{profile}}'",
+      "mountFailed": "Failed: {{error}}",
+      "unmounted": "Unmounted {{remote}} profile '{{profile}}'",
+      "unmountFailed": "Failed: {{error}}",
+      "profileNotFound": "Profile '{{profile}}' not found",
+      "alreadyRunning": "Another instance of the app was detected. The window was closed for memory optimization. Use the tray icon to reopen the window.",
+      "allRemotesUnmounted": "All remotes successfully unmounted",
+      "started": "Started {{operation}} for {{remote}} profile '{{profile}}'",
+      "startFailed": "Failed: {{error}}",
+      "stopped": "Stopped {{operation}} for {{remote}} profile '{{profile}}'",
+      "stopFailed": "Failed to stop {{operation}} for {{remote}} profile '{{profile}}': {{error}}",
+      "noActiveJob": "No active {{operation}} job found for {{remote}} profile '{{profile}}'",
+      "serveStarted": "Started serve for {{remote}} profile '{{profile}}' at {{addr}}",
+      "serveFailed": "Failed to start serve for {{remote}} profile '{{profile}}': {{error}}",
+      "serveStopped": "Stopped serve for {{remote}} ({{profile}})",
+      "stopServeFailed": "Failed to stop serve for {{remote}} ({{profile}}): {{error}}",
+      "allJobsStopped": "Stopped {{count}} active jobs",
+      "allServesStopped": "All serves stopped",
+      "stopAllServesFailed": "Failed to stop serves: {{error}}",
+      "complete": "{{operation}} on {{remote}} completed successfully ({{profile}})",
+      "failed": "{{operation}} on {{remote}} failed ({{profile}}): {{error}}",
+      "updateComplete": "Update installed successfully. Restart required.",
+      "updateFailed": "Update failed: {{error}}",
+      "updateFound": "A new version {{version}} represents the future of file management. Update now!",
+      "rcloneUpdateFound": "New Rclone version {{version}} is available",
+      "rcloneUpdateStarted": "Updating Rclone to version {{version}}...",
+      "rcloneUpdateComplete": "Rclone has been updated to {{version}}",
+      "rcloneUpdateFailed": "Rclone update failed: {{error}}",
+      "enginePathError": "rclone binary not found",
+      "enginePasswordError": "rclone configuration is password-protected",
+      "engineRestartedSuccess": "Engine restarted successfully due to {{reason}} change",
+      "engineRestartedFailed": "Engine failed to restart due to {{reason}} change"
+    }
+  },
+  "repairSheet": {
+    "defaultTitle": "Repair Required",
+    "defaultMessage": "A system component requires repair.",
+    "buttons": {
+      "enterPassword": "Enter Password",
+      "selectConfigFirst": "Select Config First",
+      "useThisConfig": "Use This Config",
+      "selectPathFirst": "Select Path First",
+      "selectBinaryFirst": "Select Binary First",
+      "invalidBinary": "Invalid Binary",
+      "testingBinary": "Testing Binary...",
+      "useThisBinary": "Use This Binary",
+      "testBinaryFirst": "Test Binary First"
+    },
+    "titles": {
+      "missingRclone": "RClone Missing",
+      "missingMountPlugin": "Mount Plugin Missing",
+      "corruptConfig": "Configuration Corrupt",
+      "backendError": "Backend Error",
+      "passwordRequired": "Password Required",
+      "systemIssue": "System Issue"
+    },
+    "messages": {
+      "missingRclone": "The rclone binary could not be found. Please install it to continue.",
+      "missingMountPlugin": "The mount plugin is required for mounting remotes. Install it to enable this feature.",
+      "corruptConfig": "The rclone configuration file appears to be corrupt. Restore from backup?",
+      "backendError": "The rclone backend is unreachable. Restarting the engine may fix this.",
+      "passwordRequired": "Your rclone configuration is encrypted. Please enter your password.",
+      "defaultParams": "A system component is not functioning correctly.",
+      "mountPluginStatusChecked": "Status checked at {{time}}",
+      "mountPluginStatusError": "Failed to check status"
+    },
+    "progress": {
+      "installingRclone": "Installing RClone...",
+      "installingPlugin": "Installing Plugin...",
+      "restoringBackup": "Restoring Config...",
+      "restartingEngine": "Restarting Engine...",
+      "applyingPassword": "Unlocking...",
+      "repairing": "Repairing...",
+      "configuring": "Configuring..."
+    },
+    "actions": {
+      "installRclone": "Install RClone",
+      "installPlugin": "Install Plugin",
+      "restoreBackup": "Restore Backup",
+      "restartEngine": "Restart Engine",
+      "submitPassword": "Unlock",
+      "repair": "Repair"
+    },
+    "details": {
+      "issueLabel": "Issue",
+      "actionLabel": "Action",
+      "rclonePath": {
+        "issue": "Binary not found",
+        "action": "Download & Install"
+      },
+      "mountPlugin": {
+        "issue": "Plugin missing",
+        "action": "Install Plugin"
+      },
+      "configCorrupt": {
+        "issue": "Config invalid",
+        "action": "Restore Backup"
+      },
+      "backendUnreachable": {
+        "issue": "API unreachable",
+        "action": "Restart Engine"
+      },
+      "rclonePassword": {
+        "issue": "Encrypted config",
+        "action": "Unlock"
+      }
+    },
+    "tooltips": {
+      "selectConfigFirst": "Please select a configuration file first",
+      "fixValidationErrors": "Please fix validation errors",
+      "enterPasswordFirst": "Please enter a password",
+      "accountLocked": "Account is locked",
+      "selectInstallPathFirst": "Please select an installation path",
+      "selectBinaryFirst": "Please select a binary",
+      "invalidBinary": "The selected binary is invalid",
+      "testBinaryFirst": "Please test the binary first"
+    },
+    "passwordErrors": {
+      "validateFailed": "Validation failed",
+      "invalid": "Invalid password",
+      "locked": "Account locked due to too many attempts",
+      "generic": "Error: {{error}}"
+    },
+    "errors": {
+      "passwordRequired": "Password is required",
+      "mountPluginInstallFailed": "Plugin installation failed: {{error}}"
+    },
+    "configTabs": {
+      "default": "Default",
+      "custom": "Custom"
+    },
+    "hideConfigOptions": "Hide Options",
+    "useDifferentConfig": "Use Different Config",
+    "hideAdvanced": "Hide Advanced",
+    "showAdvanced": "Show Advanced",
+    "repairingAria": "Repair in progress",
+    "startRepairAria": "Start repair",
+    "validatingPassword": "Validating..."
+  },
+  "developerTools": {
+    "refreshUi": "Refresh UI",
+    "clearCache": "Clear Cache",
+    "clearing": "Clearing Data...",
+    "cleared": "Data Cleared"
+  }
+}
