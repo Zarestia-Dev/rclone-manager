@@ -1,5 +1,5 @@
-import { Injectable, inject } from '@angular/core';
-import { ApiClientService } from '../core/api-client.service';
+import { Injectable } from '@angular/core';
+import { TauriBaseService } from '../core/tauri-base.service';
 
 export interface VfsStats {
   diskCache?: {
@@ -49,78 +49,36 @@ export interface VfsForgetResponse {
 }
 
 @Injectable({ providedIn: 'root' })
-export class VfsService {
-  private apiClient = inject(ApiClientService);
-
+export class VfsService extends TauriBaseService {
   async listVfs(): Promise<VfsList> {
-    try {
-      return this.apiClient.invoke<VfsList>('vfs_list');
-    } catch (error) {
-      console.error('Error invoking vfs_list:', error);
-      throw error;
-    }
+    return this.invokeCommand<VfsList>('vfs_list');
   }
 
   async forget(fs: string, file?: string): Promise<VfsForgetResponse> {
-    try {
-      return this.apiClient.invoke<VfsForgetResponse>('vfs_forget', { fs, file });
-    } catch (error) {
-      console.error('Error invoking vfs_forget:', error);
-      throw error;
-    }
+    return this.invokeCommand<VfsForgetResponse>('vfs_forget', { fs, file });
   }
 
   async refresh(fs: string, dir?: string, recursive = false): Promise<void> {
-    try {
-      return this.apiClient.invoke('vfs_refresh', { fs, dir, recursive });
-    } catch (error) {
-      console.error('Error invoking vfs_refresh:', error);
-      throw error;
-    }
+    return this.invokeCommand('vfs_refresh', { fs, dir, recursive });
   }
 
   async getStats(fs: string): Promise<VfsStats> {
-    try {
-      return this.apiClient.invoke<VfsStats>('vfs_stats', { fs });
-    } catch (error) {
-      console.error('Error invoking vfs_stats:', error);
-      throw error;
-    }
+    return this.invokeCommand<VfsStats>('vfs_stats', { fs });
   }
 
   async getQueue(fs: string): Promise<VfsQueueResponse> {
-    try {
-      return this.apiClient.invoke<VfsQueueResponse>('vfs_queue', { fs });
-    } catch (error) {
-      console.error('Error invoking vfs_queue:', error);
-      throw error;
-    }
+    return this.invokeCommand<VfsQueueResponse>('vfs_queue', { fs });
   }
 
   async setPollInterval(fs: string, interval: string): Promise<VfsPollIntervalResponse> {
-    try {
-      return this.apiClient.invoke<VfsPollIntervalResponse>('vfs_poll_interval', { fs, interval });
-    } catch (error) {
-      console.error('Error invoking vfs_poll_interval:', error);
-      throw error;
-    }
+    return this.invokeCommand<VfsPollIntervalResponse>('vfs_poll_interval', { fs, interval });
   }
 
   async getPollInterval(fs: string): Promise<VfsPollIntervalResponse> {
-    try {
-      return this.apiClient.invoke<VfsPollIntervalResponse>('vfs_poll_interval', { fs });
-    } catch (error) {
-      console.error('Error invoking vfs_poll_interval:', error);
-      throw error;
-    }
+    return this.invokeCommand<VfsPollIntervalResponse>('vfs_poll_interval', { fs });
   }
 
   async setQueueExpiry(fs: string, id: number, expiry: number, relative: boolean): Promise<void> {
-    try {
-      return this.apiClient.invoke('vfs_queue_set_expiry', { fs, id, expiry, relative });
-    } catch (error) {
-      console.error('Error invoking vfs_queue_set_expiry:', error);
-      throw error;
-    }
+    return this.invokeCommand('vfs_queue_set_expiry', { fs, id, expiry, relative });
   }
 }

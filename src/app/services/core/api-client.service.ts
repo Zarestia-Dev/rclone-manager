@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { invoke } from '@tauri-apps/api/core';
 import { firstValueFrom } from 'rxjs';
 import { EXPLICIT_ENDPOINTS, POST_COMMANDS } from 'src/app/shared/types/api-endpoints';
@@ -59,16 +59,16 @@ export class ApiClientService {
   /**
    * Converts an arguments object to a string-based record for HttpParams.
    */
-  private toHttpParams(args: Record<string, unknown>): Record<string, string> {
-    const params: Record<string, string> = {};
+  private toHttpParams(args: Record<string, unknown>): HttpParams {
+    let params = new HttpParams();
     Object.entries(args).forEach(([key, value]) => {
       if (value !== null && value !== undefined) {
         if (Array.isArray(value)) {
           value.forEach(item => {
-            params[key] = String(item);
+            params = params.append(key, String(item));
           });
         } else {
-          params[key] = String(value);
+          params = params.set(key, String(value));
         }
       }
     });
@@ -100,7 +100,7 @@ export class ApiClientService {
     const isPostCommand = POST_COMMANDS.has(command);
 
     try {
-      const httpOptions: { params?: Record<string, string>; headers?: Record<string, string> } = {};
+      const httpOptions: { params?: HttpParams; headers?: Record<string, string> } = {};
 
       if (!isPostCommand && args) {
         httpOptions.params = this.toHttpParams(args);

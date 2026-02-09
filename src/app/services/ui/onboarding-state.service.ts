@@ -1,6 +1,11 @@
-import { Injectable, inject } from '@angular/core';
+import { DestroyRef, Injectable, inject } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { distinctUntilChanged, filter } from 'rxjs/operators';
 import { AppSettingsService } from '../settings/app-settings.service';
+import { AppUpdaterService } from '../system/app-updater.service';
+import { RcloneUpdateService } from '../system/rclone-update.service';
+import { SystemHealthService } from '../system/system-health.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 /**
  * Centralized service for managing onboarding state across the application
@@ -17,6 +22,10 @@ import { AppSettingsService } from '../settings/app-settings.service';
 })
 export class OnboardingStateService {
   private appSettingsService = inject(AppSettingsService);
+  private systemHealthService = inject(SystemHealthService);
+  private appUpdaterService = inject(AppUpdaterService);
+  private rcloneUpdateService = inject(RcloneUpdateService);
+  private destroyRef = inject(DestroyRef);
 
   // State tracking
   private _isCompleted$ = new BehaviorSubject<boolean>(false);
@@ -30,6 +39,8 @@ export class OnboardingStateService {
     this.initializeOnboardingState().catch(error => {
       console.error('Failed to initialize onboarding state:', error);
     });
+
+    this.setupPostOnboardingTasks();
   }
 
   /**
@@ -43,10 +54,12 @@ export class OnboardingStateService {
         false;
 
       this._isCompleted$.next(completed);
+      this.systemHealthService.setOnboardingCompleted(completed);
       this._isInitialized$.next(true);
     } catch (error) {
       console.error('Error initializing onboarding state:', error);
       this._isCompleted$.next(false);
+      this.systemHealthService.setOnboardingCompleted(false);
       this._isInitialized$.next(true);
     }
   }
@@ -89,6 +102,7 @@ export class OnboardingStateService {
     try {
       await this.appSettingsService.saveSetting('core', 'completed_onboarding', true);
       this._isCompleted$.next(true);
+      this.systemHealthService.setOnboardingCompleted(true);
     } catch (error) {
       console.error('Failed to complete onboarding:', error);
       throw error;
@@ -103,6 +117,7 @@ export class OnboardingStateService {
     try {
       await this.appSettingsService.saveSetting('core', 'completed_onboarding', false);
       this._isCompleted$.next(false);
+      this.systemHealthService.setOnboardingCompleted(false);
     } catch (error) {
       console.error('Failed to reset onboarding:', error);
       throw error;
@@ -115,5 +130,26 @@ export class OnboardingStateService {
    */
   setOnboardingState(completed: boolean): void {
     this._isCompleted$.next(completed);
+    this.systemHealthService.setOnboardingCompleted(completed);
+  }
+
+  private setupPostOnboardingTasks(): void {
+    this.onboardingCompleted$
+      .pipe(
+        filter(completed => completed),
+        distinctUntilChanged(),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(() => {
+        this.runPostOnboardingSetup().catch(error => {
+          console.error('Failed to run post-onboarding setup:', error);
+        });
+      });
+  }
+
+  private async runPostOnboardingSetup(): Promise<void> {
+    await this.systemHealthService.checkMountPluginAndPromptRepair();
+    await this.appUpdaterService.initialize();
+    await this.rcloneUpdateService.initialize();
   }
 }

@@ -2,8 +2,6 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
 
-// PasswordLockoutStatus moved to shared types
-
 @Injectable({
   providedIn: 'root',
 })

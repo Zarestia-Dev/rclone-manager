@@ -1,4 +1,4 @@
-import { Injectable, signal, computed, inject } from '@angular/core';
+import { DestroyRef, Injectable, signal, computed, inject } from '@angular/core';
 import { MatBottomSheet, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { firstValueFrom } from 'rxjs';
 import { RepairSheetComponent } from '../../features/components/repair-sheet/repair-sheet.component';
@@ -7,6 +7,7 @@ import { SystemInfoService } from './system-info.service';
 import { InstallationService } from '../settings/installation.service';
 import { RclonePasswordService } from '../security/rclone-password.service';
 import { EventListenersService } from './event-listeners.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 /** Types of system problems that can be detected */
 export type SystemProblem = 'rclone-missing' | 'mount-plugin-missing' | 'password-required';
@@ -24,8 +25,11 @@ export class SystemHealthService {
   private readonly rclonePasswordService = inject(RclonePasswordService);
   private readonly eventListenersService = inject(EventListenersService);
   private readonly bottomSheet = inject(MatBottomSheet);
+  private readonly destroyRef = inject(DestroyRef);
 
   private readonly activeSheets = new Set<MatBottomSheetRef<RepairSheetComponent>>();
+  private hasReportedRclonePathError = false;
+  private onboardingCompleted = false;
 
   // ─── Core State Signals ─────────────────────────────────────────────────────
   // null = not checked yet, true/false = checked
@@ -98,6 +102,33 @@ export class SystemHealthService {
   }
 
   /**
+   * Update onboarding completion state to gate certain prompts
+   */
+  setOnboardingCompleted(completed: boolean): void {
+    this.onboardingCompleted = completed;
+  }
+
+  /**
+   * Check mount plugin status and show repair flow if needed
+   */
+  async checkMountPluginAndPromptRepair(): Promise<void> {
+    try {
+      const mountPluginOk = await this.checkMountPlugin();
+      console.debug('Mount plugin status: ', mountPluginOk);
+
+      if (mountPluginOk === false) {
+        await this.showRepairSheet({
+          type: RepairSheetType.MOUNT_PLUGIN,
+        });
+
+        this.setupMountPluginListener();
+      }
+    } catch (error) {
+      console.error('Error checking mount plugin status:', error);
+    }
+  }
+
+  /**
    * Check if rclone is installed and accessible
    */
   async checkRclone(): Promise<boolean> {
@@ -149,7 +180,7 @@ export class SystemHealthService {
             await this.rclonePasswordService.validatePassword(storedPassword);
             await this.rclonePasswordService.setConfigPasswordEnv(storedPassword);
             this.passwordUnlocked.set(true);
-            console.log('Config auto-unlocked with stored password');
+            console.debug('Config auto-unlocked with stored password');
           } catch {
             console.debug('Stored password validation failed, manual entry required');
             this.passwordUnlocked.set(false);
@@ -292,6 +323,46 @@ export class SystemHealthService {
     }
   }
 
+  private setupRcloneEngineListeners(): void {
+    this.eventListenersService
+      .listenToRcloneEngineReady()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.hasReportedRclonePathError = false;
+          this.closeSheetsByTypes([RepairSheetType.RCLONE_PATH, RepairSheetType.RCLONE_PASSWORD]);
+        },
+        error: error => console.error('Rclone engine ready subscription error:', error),
+      });
+
+    this.eventListenersService
+      .listenToRcloneEnginePathError()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          if (this.onboardingCompleted) {
+            this.handleRclonePathError(this.hasReportedRclonePathError);
+            this.hasReportedRclonePathError = true;
+          }
+        },
+        error: error => console.error('Rclone engine path error subscription error:', error),
+      });
+
+    this.eventListenersService
+      .listenToRcloneEnginePasswordError()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: async () => {
+          if (this.onboardingCompleted) {
+            if (!this.passwordUnlocked()) {
+              await this.handlePasswordRequired(false);
+            }
+          }
+        },
+        error: error => console.error('Rclone engine password error subscription error:', error),
+      });
+  }
+
   async promptForPassword(): Promise<PasswordPromptResult | null> {
     const repairData: RepairData = {
       type: RepairSheetType.RCLONE_PASSWORD,
@@ -370,5 +441,9 @@ export class SystemHealthService {
       // Still close the sheet as the installation event was likely user-initiated
       this.closeSheetsByType(RepairSheetType.MOUNT_PLUGIN);
     }
+  }
+
+  constructor() {
+    this.setupRcloneEngineListeners();
   }
 }

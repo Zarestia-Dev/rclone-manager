@@ -7,7 +7,7 @@ import argparse
 # Configuration
 DEFAULT_RCLONE_URL = "http://127.0.0.1:51900"
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-I18N_DIR = os.path.join(PROJECT_ROOT, "src", "assets", "i18n")
+I18N_DIR = os.path.join(PROJECT_ROOT, "resources", "i18n")
 
 
 def get_providers(url):

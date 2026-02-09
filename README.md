@@ -9,12 +9,19 @@
 <p align="center">
   <a href="README.md">🇺🇸 English</a> •
   <a href="README.tr-TR.md">🇹🇷 Türkçe</a> •
-  <a href="CONTRIBUTING.md#adding-translations">Help to translate</a>
+  <a href="CONTRIBUTING.md#adding-translations">Help to translate</a> •
+  <a href="https://crowdin.com/project/rclone-manger">Crowdin</a>
 </p>
 
 <p align="center">
   <b>A powerful, cross-platform GUI for managing Rclone remotes with style and ease.</b><br>
   <i>Built with Angular 20 + Tauri · Linux • Windows • macOS • ARM Support</i>
+</p>
+
+<p align="center">
+  <a href="https://crowdin.com/project/rclone-manger">
+    <img src="https://badges.crowdin.net/rclone-manger/localized.svg?style=for-the-badge" alt="Crowdin">
+  </a>
 </p>
 
 <p align="center">

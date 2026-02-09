@@ -54,6 +54,20 @@ export class BackendService extends TauriBaseService {
   }
 
   /**
+   * Load backends and perform startup connectivity checks in the background
+   */
+  runStartupChecks(): void {
+    this.loadBackends()
+      .then(async () => {
+        await this.checkStartupConnectivity();
+        await this.checkAllBackends();
+      })
+      .catch(error => {
+        console.error('[BackendService] Failed to run startup checks:', error);
+      });
+  }
+
+  /**
    * Get the currently active backend name
    */
   async getActiveBackend(): Promise<string> {
@@ -250,5 +264,30 @@ export class BackendService extends TauriBaseService {
     if (!status) return 'disconnected';
     if (status === 'connected') return 'connected';
     return 'disconnected';
+  }
+
+  /**
+   * Update the currently active backend status without reloading
+   */
+  updateActiveBackendStatus(
+    status: 'connected' | 'error',
+    info?: { version?: string; os?: string; configPath?: string }
+  ): void {
+    const activeBackend = this.activeBackend();
+    if (!activeBackend || activeBackend === 'Local') return;
+
+    this.backends.update(backends =>
+      backends.map(b =>
+        b.name === activeBackend
+          ? {
+              ...b,
+              status,
+              version: info?.version ?? b.version,
+              os: info?.os ?? b.os,
+              runtime_config_path: info?.configPath ?? b.runtime_config_path,
+            }
+          : b
+      )
+    );
   }
 }

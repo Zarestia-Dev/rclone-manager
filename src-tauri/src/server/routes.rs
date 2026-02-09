@@ -119,6 +119,7 @@ fn remote_routes() -> Router<WebServerState> {
 
 fn system_routes() -> Router<WebServerState> {
     Router::new()
+        .route("/i18n", get(handlers::get_i18n_handler))
         .route("/stats", get(handlers::get_stats_handler))
         .route(
             "/transfers/completed",

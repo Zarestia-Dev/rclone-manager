@@ -8,21 +8,6 @@
   background-color: var(--window-bg-color);
   border-radius: var(--app-border-radius);
 
-  .onboarding {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 3;
-    border-radius: var(--app-border-radius);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    width: 100vw;
-    overflow: hidden;
-  }
-
   .home-content {
     flex: 1;
     display: flex;

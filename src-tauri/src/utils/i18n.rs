@@ -181,6 +181,17 @@ pub fn t_with_params(key: &str, params: &[(&str, &str)]) -> String {
     TRANSLATIONS.resolve_with_params(key, params)
 }
 
+/// Get the full translation map for a language (merged from all JSON files)
+pub fn get_language_map(lang: &str) -> Option<Value> {
+    TRANSLATIONS.get_dict(lang)
+}
+
+/// Return the merged translations for a language (desktop invoke)
+#[tauri::command]
+pub fn get_i18n(lang: String) -> Result<Value, String> {
+    get_language_map(&lang).ok_or_else(|| format!("Translations not found for: {lang}"))
+}
+
 /// Macro for ergonomic translations
 ///
 /// # Usage

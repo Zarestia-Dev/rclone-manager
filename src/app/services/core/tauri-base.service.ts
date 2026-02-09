@@ -1,7 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-// import { emit } from '@tauri-apps/api/event';
 import { getCurrentWindow, Window } from '@tauri-apps/api/window';
 import { Observable } from 'rxjs';
 import { ApiClientService } from './api-client.service';
@@ -23,13 +22,6 @@ export class TauriBaseService {
   private readonly sseClient = inject(SseClientService);
   protected readonly isTauriEnvironment = isTauriRuntime();
 
-  constructor() {
-    // Auto-connect SSE in headless mode
-    if (!this.isTauriEnvironment) {
-      this.sseClient.connect();
-    }
-  }
-
   /**
    * Get the current Tauri window instance
    */
@@ -38,23 +30,6 @@ export class TauriBaseService {
       return getCurrentWindow();
     }
   }
-
-  // /**
-  //  * Emit a Tauri event (NOT USE THAT IF POSSIBLE, PREFER invokeCommand INSTEAD)
-  //  */
-  // protected async emitEvent<T>(eventName: string, payload?: T): Promise<void> {
-  //   try {
-  //     if (!this.isTauriEnvironment) {
-  //       console.debug(`[Headless] emitEvent skipped for ${eventName}`, payload);
-  //       return;
-  //     }
-
-  //     await emit(eventName, payload);
-  //   } catch (error) {
-  //     console.error(`Error emitting event ${eventName}:`, error);
-  //     throw error;
-  //   }
-  // }
 
   /**
    * Invoke a Tauri command with error handling

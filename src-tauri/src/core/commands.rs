@@ -23,6 +23,7 @@ macro_rules! generate_invoke_handler {
             // =================================================================
             $crate::utils::app::ui::set_theme,
             $crate::utils::app::ui::get_system_theme,
+            $crate::utils::i18n::get_i18n,
             $crate::rclone::queries::get_rclone_rc_url,
             // =================================================================
             // PLATFORM

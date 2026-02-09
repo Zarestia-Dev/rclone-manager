@@ -1,7 +1,8 @@
 import { ApplicationConfig } from '@angular/core';
-import { provideHttpClient, withFetch, HttpClient } from '@angular/common/http';
+import { provideHttpClient, withFetch } from '@angular/common/http';
 import { provideTranslateService, TranslateLoader } from '@ngx-translate/core';
 import { MultiFileLoader } from './core/i18n/multi-file-loader';
+import { ApiClientService } from './services/core/api-client.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -10,7 +11,7 @@ export const appConfig: ApplicationConfig = {
       loader: {
         provide: TranslateLoader,
         useClass: MultiFileLoader,
-        deps: [HttpClient],
+        deps: [ApiClientService],
       },
       fallbackLang: 'en-US',
       lang: 'en-US',

@@ -1,14 +1,21 @@
 <div class="app-wrapper" appShortcutHandler>
-  @if (!completedOnboarding()) {
-    <app-onboarding class="onboarding" (completed)="finishOnboarding()"></app-onboarding>
+  @if (!initializing()) {
+    @if (!completedOnboarding()) {
+      @defer {
+        <app-onboarding class="onboarding" (completed)="finishOnboarding()"></app-onboarding>
+      }
+    } @else {
+      @defer {
+        <app-titlebar class="title-bar"> </app-titlebar>
+        <app-banner class="banner"></app-banner>
+        <app-home class="home-content"></app-home>
+        <app-tabs-buttons
+          data-tauri-drag-region
+          class="tabs"
+          [currentTab]="currentTab()"
+          (tabSelected)="setTab($event)"
+        ></app-tabs-buttons>
+      }
+    }
   }
-  <app-titlebar class="title-bar"> </app-titlebar>
-  <app-banner class="banner"></app-banner>
-  <app-home class="home-content"></app-home>
-  <app-tabs-buttons
-    data-tauri-drag-region
-    class="tabs"
-    [currentTab]="currentTab()"
-    (tabSelected)="setTab($event)"
-  ></app-tabs-buttons>
 </div>

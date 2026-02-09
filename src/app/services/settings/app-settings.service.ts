@@ -28,6 +28,8 @@ export class AppSettingsService extends TauriBaseService {
       .subscribe(payload => {
         this.updateStateFromEvent(payload as Record<string, Record<string, SettingMetadata>>);
       });
+
+    this.setupLanguageChangeListener();
   }
 
   async loadSettings(): Promise<void> {
@@ -38,13 +40,26 @@ export class AppSettingsService extends TauriBaseService {
       const response = await this.invokeCommand<{ options: Record<string, SettingMetadata> }>(
         'load_settings'
       );
-      console.log(response);
+      console.debug(response);
 
       this.optionsState$.next(response.options);
     } catch (error) {
       console.error('Failed to load settings:', error);
       this.notificationService.showError(this.translate.instant('settings.loadFailed'));
     }
+  }
+
+  /**
+   * Apply the saved UI language to the translation service
+   */
+  async applySavedLanguage(defaultLang = 'en-US'): Promise<string> {
+    const savedLang = (await this.getSettingValue<string>('general.language')) || defaultLang;
+
+    if (!this.translate.getCurrentLang() || savedLang !== this.translate.getCurrentLang()) {
+      this.translate.use(savedLang);
+    }
+
+    return savedLang;
   }
 
   selectSetting(key: string): Observable<SettingMetadata | undefined> {
@@ -167,8 +182,24 @@ export class AppSettingsService extends TauriBaseService {
     if (hasChanges) {
       this.optionsState$.next(newState);
     } else {
-      console.log('No actual changes detected, skipping state update');
+      console.debug('No actual changes detected, skipping state update');
     }
+  }
+
+  private setupLanguageChangeListener(): void {
+    this.eventListeners
+      .listenToAppEvents()
+      .pipe(takeUntilDestroyed())
+      .subscribe(event => {
+        if (typeof event !== 'object' || event?.status !== 'language_changed') {
+          return;
+        }
+
+        const lang = event.language as string | undefined;
+        if (lang && lang !== this.translate.getCurrentLang()) {
+          this.translate.use(lang);
+        }
+      });
   }
 
   /**

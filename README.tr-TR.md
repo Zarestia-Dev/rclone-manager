@@ -9,12 +9,19 @@
 <p align="center">
   <a href="README.md">🇺🇸 English</a> •
   <a href="README.tr-TR.md">🇹🇷 Türkçe</a> •
-  <a href="CONTRIBUTING.md#adding-translations">Çeviriye Yardım Edin</a>
+  <a href="CONTRIBUTING.md#adding-translations">Çeviriye Yardım Edin</a> •
+  <a href="https://crowdin.com/project/rclone-manger">Crowdin</a>
 </p>
 
 <p align="center">
   <b>Rclone uzak bağlantılarını stil ve kolaylıkla yönetmek için güçlü, çapraz platform bir GUI.</b><br>
   <i>Angular 20 + Tauri ile yapıldı · Linux • Windows • macOS • ARM Desteği</i>
+</p>
+
+<p align="center">
+  <a href="https://crowdin.com/project/rclone-manger">
+    <img src="https://badges.crowdin.net/rclone-manger/localized.svg?style=for-the-badge" alt="Crowdin">
+  </a>
 </p>
 
 <p align="center">
@@ -53,6 +60,15 @@ NAS, VPS ve uzak sistemler için mükemmel. Herhangi bir tarayıcıdan erişin. 
 </div>
 
 Yeni özellikler ve iyileştirmelerle düzenli güncellemeler. Sırada ne olduğunu görmek için [yol haritamıza](https://github.com/users/Zarestia-Dev/projects/2) göz atın!
+
+---
+
+## 🌍 Çeviri Durumu
+
+| Dil          | Durum                                                                                                                                                                             |
+| :----------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| English (US) | <a href="https://crowdin.com/project/rclone-manger"><img src="https://badges.crowdin.net/rclone-manger/localized.svg?style=for-the-badge&language=en-US" alt="English (US)"/></a> |
+| Türkçe (TR)  | <a href="https://crowdin.com/project/rclone-manger"><img src="https://badges.crowdin.net/rclone-manger/localized.svg?style=for-the-badge&language=tr-TR" alt="Turkish (TR)"/></a> |
 
 ---
 

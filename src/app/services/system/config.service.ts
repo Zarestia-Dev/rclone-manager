@@ -5,10 +5,6 @@ import { TauriBaseService } from '../core/tauri-base.service';
   providedIn: 'root',
 })
 export class ConfigService extends TauriBaseService {
-  constructor() {
-    super();
-  }
-
   async loadRcloneServeUrl(): Promise<string> {
     try {
       const url = await this.invokeCommand<string>('get_rclone_rc_url');

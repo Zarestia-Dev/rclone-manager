@@ -48,10 +48,6 @@ export class BackupRestoreService extends TauriBaseService {
   private fileSystemService = inject(FileSystemService);
   private translate = inject(TranslateService);
 
-  constructor() {
-    super();
-  }
-
   /**
    * Backup settings to a specified location
    */

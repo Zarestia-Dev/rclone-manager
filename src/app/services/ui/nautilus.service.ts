@@ -1,10 +1,19 @@
-import { ComponentRef, inject, Injectable, signal, computed, WritableSignal } from '@angular/core';
+import {
+  ComponentRef,
+  DestroyRef,
+  inject,
+  Injectable,
+  signal,
+  computed,
+  WritableSignal,
+} from '@angular/core';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { Overlay, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { take } from 'rxjs/operators';
 import { NautilusComponent } from 'src/app/features/components/file-browser/nautilus/nautilus.component';
-import { AppSettingsService, RemoteManagementService } from '@app/services';
+import { AppSettingsService, EventListenersService, RemoteManagementService } from '@app/services';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   FileBrowserItem,
   CollectionType,
@@ -20,6 +29,8 @@ export class NautilusService {
   private overlay = inject(Overlay);
   private appSettingsService = inject(AppSettingsService);
   private remoteManagement = inject(RemoteManagementService);
+  private eventListenersService = inject(EventListenersService);
+  private destroyRef = inject(DestroyRef);
 
   // Nautilus / Browser overlay
   private _isNautilusOverlayOpen = new BehaviorSubject<boolean>(false);
@@ -132,6 +143,8 @@ export class NautilusService {
     (Object.keys(this.collections) as CollectionType[]).forEach(type => {
       this.loadCollection(type);
     });
+
+    this.setupBrowseListener();
   }
 
   toggleNautilusOverlay(): void {
@@ -141,6 +154,24 @@ export class NautilusService {
       this._isNautilusOverlayOpen.next(true);
       this.createBrowserOverlay();
     }
+  }
+
+  /**
+   * Check for ?browse=remoteName URL parameter and open in-app browser
+   * This is triggered from the tray menu when "Browse (In App)" is clicked
+   */
+  openFromBrowseQueryParam(): void {
+    const urlParams = new URLSearchParams(window.location.search);
+    const browseRemote = urlParams.get('browse');
+
+    if (!browseRemote) {
+      return;
+    }
+
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState({}, '', cleanUrl);
+    // Skip entrance animation when opening via deep link
+    this.openForRemote(browseRemote, false);
   }
 
   /**
@@ -185,8 +216,10 @@ export class NautilusService {
   openFilePicker(options: FilePickerConfig): void {
     // Already has a picker open
     if (this.pickerOverlayRef) return;
+    const requestId = options.requestId ?? this.createRequestId();
+    const optionsWithId: FilePickerConfig = { ...options, requestId };
 
-    this._filePickerState.next({ isOpen: true, options });
+    this._filePickerState.next({ isOpen: true, options: optionsWithId });
     this.createPickerOverlay();
   }
 
@@ -194,9 +227,11 @@ export class NautilusService {
    * Closes the file picker and returns the result.
    */
   closeFilePicker(result: string[] | null): void {
+    const requestId = this._filePickerState.getValue().options?.requestId;
     const config: FilePickerResult = {
       cancelled: result === null,
       paths: result ?? [],
+      requestId,
     };
     this._filePickerResult.next(config);
     this._filePickerState.next({ isOpen: false });
@@ -229,6 +264,27 @@ export class NautilusService {
         this.browserComponentRef = null;
       }, 200);
     }
+  }
+
+  private setupBrowseListener(): void {
+    this.eventListenersService
+      .listenToOpenInternalRoute()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (remoteName: string) => {
+          console.debug(`📂 Browse event received for remote: ${remoteName}`);
+          this.openForRemote(remoteName);
+        },
+        error: error => console.error('Browse in app event error:', error),
+      });
+  }
+
+  private createRequestId(): string {
+    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+      return crypto.randomUUID();
+    }
+    const suffix = Math.random().toString(36).slice(2, 10);
+    return `picker_${Date.now()}_${suffix}`;
   }
 
   // --- Generic Public Methods ---

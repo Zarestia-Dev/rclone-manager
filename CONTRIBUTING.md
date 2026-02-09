@@ -79,21 +79,22 @@ Documentation improvements are always welcome! This includes:
 We use BCP-47 language tags (e.g., `en-US`, `tr-TR`, `de-DE`) for internationalization.
 
 > [!IMPORTANT]
-> **We currently do not use any automated translation provider** (like Crowdin, Transifex, etc.).
-> All translations must be submitted manually via **Pull Requests**.
+> **We use Crowdin for translations.**
+> Please contribute translations here: https://crowdin.com/project/rclone-manger
+> You can still submit fixes via **Pull Requests** if you prefer.
 
 #### Steps to Add a New Language
 
 1. **Create the translation directory**:
 
    ```bash
-   mkdir -p src/assets/i18n/YOUR-LANG
+   mkdir -p resources/i18n/YOUR-LANG
    ```
 
 2. **Copy base translation files**:
 
    ```bash
-   cp -r src/assets/i18n/en-US/* src/assets/i18n/YOUR-LANG/
+   cp -r resources/i18n/en-US/* resources/i18n/YOUR-LANG/
    ```
 
 3. **Update the backend schema** (`src-tauri/src/core/settings/schema.rs`):
@@ -114,7 +115,7 @@ We use BCP-47 language tags (e.g., `en-US`, `tr-TR`, `de-DE`) for internationali
 
 4. **Translate the JSON files**:
 
-   Translate all string values in the files under `src/assets/i18n/YOUR-LANG/`.
+   Translate all string values in the files under `resources/i18n/YOUR-LANG/`.
    - `main.json`: General UI strings.
    - `rclone.json`: Rclone flag names and help texts.
 
@@ -164,7 +165,7 @@ Common language codes:
 
 ### Managing Rclone Flags
 
-The Rclone flags (options) are stored in `src/assets/i18n/{lang}/rclone.json`. These are used to provide translated titles and help text for Rclone's various options.
+The Rclone flags (options) are stored in `resources/i18n/{lang}/rclone.json`. These are used to provide translated titles and help text for Rclone's various options.
 
 #### Updating Flag Definitions
 

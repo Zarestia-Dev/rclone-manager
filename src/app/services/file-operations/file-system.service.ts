@@ -4,7 +4,7 @@ import { NotificationService } from '@app/services';
 import { NautilusService } from '../ui/nautilus.service';
 import { FilePickerConfig, FilePickerResult } from '@app/types';
 import { TranslateService } from '@ngx-translate/core';
-import { firstValueFrom } from 'rxjs';
+import { filter, firstValueFrom } from 'rxjs';
 
 /**
  * Service for file system operations
@@ -17,10 +17,6 @@ export class FileSystemService extends TauriBaseService {
   private notificationService = inject(NotificationService);
   private nautilusService = inject(NautilusService);
   private translate = inject(TranslateService);
-
-  constructor() {
-    super();
-  }
 
   /**
    * Select a folder with optional empty requirement
@@ -66,12 +62,17 @@ export class FileSystemService extends TauriBaseService {
   /**
    * Select a path using the integrated Nautilus file browser
    */
-  /**
-   * Select a path using the V2 config and result shape
-   */
   async selectPathWithNautilus(config: FilePickerConfig): Promise<FilePickerResult> {
-    this.nautilusService.openFilePicker(config);
-    return firstValueFrom(this.nautilusService.filePickerResult$);
+    const requestId =
+      config.requestId ??
+      (typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `picker_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`);
+
+    this.nautilusService.openFilePicker({ ...config, requestId });
+    return firstValueFrom(
+      this.nautilusService.filePickerResult$.pipe(filter(result => result.requestId === requestId))
+    );
   }
 
   /**

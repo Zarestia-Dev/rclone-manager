@@ -2,7 +2,6 @@ import { Injectable, inject, signal } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { CheckResult, ConnectionStatus } from '@app/types';
-import { Subscription } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -15,8 +14,6 @@ export class ConnectionService {
   readonly history = signal<{ timestamp: Date; result: CheckResult }[]>([]);
   readonly result = signal<CheckResult | undefined>(undefined);
 
-  private internetCheckSub?: Subscription;
-
   async runInternetCheck(): Promise<void> {
     if (this.status() === 'checking') return;
 
@@ -26,11 +23,7 @@ export class ConnectionService {
         (await this.appSettingsService.getSettingValue<string[]>('core.connection_check_urls')) ||
         [];
 
-      console.log('Loaded connection check URLs:', links);
-
-      if (this.internetCheckSub) {
-        this.internetCheckSub.unsubscribe();
-      }
+      console.debug('Loaded connection check URLs:', links);
 
       try {
         const result = await this.appSettingsService.checkInternetLinks(
@@ -38,7 +31,7 @@ export class ConnectionService {
           2, // retries
           3 // delay in seconds
         );
-        console.log('Connection check result:', result);
+        console.debug('Connection check result:', result);
 
         this.result.set(result);
         this.updateHistory(result);

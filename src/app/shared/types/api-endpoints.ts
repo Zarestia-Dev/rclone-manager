@@ -68,6 +68,9 @@ export const EXPLICIT_ENDPOINTS: Record<string, string> = {
   get_settings: '/settings',
   load_settings: '/settings/load',
 
+  // i18n
+  get_i18n: '/i18n',
+
   // Filesystem - nested
   get_fs_info: '/fs/info',
   get_remote_paths: '/remote/paths',

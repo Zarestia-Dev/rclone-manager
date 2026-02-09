@@ -108,10 +108,14 @@ export interface FilePickerConfig {
   preselect?: string[];
   /** Minimum selection to enable Confirm (default 0) */
   minSelection?: number;
+  /** Optional request id to correlate picker result */
+  requestId?: string;
 }
 
 export interface FilePickerResult {
   /** Full normalized paths like '/home/user/...' or 'remote:path' */
   paths: string[];
   cancelled: boolean;
+  /** Optional request id that matches the open request */
+  requestId?: string;
 }

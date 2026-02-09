@@ -123,21 +123,10 @@ export class RcloneStatusService {
       this.previousRcloneStatus = newStatus;
 
       // Update active backend status based on rclone connectivity
-      const activeBackend = this.backendService.activeBackend();
-      if (activeBackend && activeBackend !== 'Local') {
-        this.backendService.backends.update(backends =>
-          backends.map(b =>
-            b.name === activeBackend
-              ? {
-                  ...b,
-                  status: isActive ? 'connected' : 'error',
-                  version: rcloneInfo?.version,
-                  os: rcloneInfo?.os,
-                }
-              : b
-          )
-        );
-      }
+      this.backendService.updateActiveBackendStatus(isActive ? 'connected' : 'error', {
+        version: rcloneInfo?.version,
+        os: rcloneInfo?.os,
+      });
     } catch (error) {
       console.error('[RcloneStatusService] Failed to check rclone status:', error);
       this.rcloneStatus.set('error');
@@ -149,12 +138,7 @@ export class RcloneStatusService {
       void this.loadBandwidthLimit();
 
       // Update active backend to error state
-      const activeBackend = this.backendService.activeBackend();
-      if (activeBackend && activeBackend !== 'Local') {
-        this.backendService.backends.update(backends =>
-          backends.map(b => (b.name === activeBackend ? { ...b, status: 'error' } : b))
-        );
-      }
+      this.backendService.updateActiveBackendStatus('error');
     }
   }
 

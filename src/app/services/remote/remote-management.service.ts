@@ -18,10 +18,6 @@ import {
   providedIn: 'root',
 })
 export class RemoteManagementService extends TauriBaseService {
-  constructor() {
-    super();
-  }
-
   /**
    * Get all available remote types
    */
