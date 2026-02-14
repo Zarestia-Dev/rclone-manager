@@ -358,10 +358,21 @@ fn tray_menu_updated(app: &AppHandle) {
 fn handle_job_cache_changed(app: &AppHandle) {
     let app_clone = app.clone();
     app.listen(JOB_CACHE_CHANGED, move |event| {
-        debug!("🔄 Job cache changed! Raw payload: {:?}", event.payload());
-
         let app = app_clone.clone();
+        let payload = event.payload().to_string();
+
         tauri::async_runtime::spawn(async move {
+            // Payload is the jobid (format: "123" or 123)
+            let raw_id = payload.trim_matches('"');
+            if let Ok(jobid) = raw_id.parse::<u64>() {
+                use crate::rclone::backend::BackendManager;
+                let backend_manager = app.state::<BackendManager>();
+                if let Some(job) = backend_manager.job_cache.get_job(jobid).await
+                    && job.is_meta()
+                {
+                    return;
+                }
+            }
             if let Err(e) = update_tray_menu(app).await {
                 error!("Failed to update tray menu: {e}");
             }

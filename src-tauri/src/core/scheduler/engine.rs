@@ -304,11 +304,11 @@ async fn execute_scheduled_task(
             );
         }
     };
-    let job_type = task.task_type.as_str();
+    let job_type = task.task_type.as_job_type();
     let profile = task.args.get("profile_name").and_then(|v| v.as_str());
 
     if job_cache
-        .is_job_running(&remote_name, job_type, profile)
+        .is_job_running(&remote_name, job_type.clone(), profile)
         .await
     {
         warn!(

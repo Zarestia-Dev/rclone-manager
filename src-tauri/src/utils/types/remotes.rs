@@ -42,4 +42,6 @@ pub struct ListOptions {
 pub struct ProfileParams {
     pub remote_name: String,
     pub profile_name: String,
+    pub source: Option<String>,
+    pub no_cache: Option<bool>,
 }

@@ -1,4 +1,4 @@
-import { Injectable, inject, DOCUMENT } from '@angular/core';
+import { Injectable, inject, DOCUMENT, isDevMode } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { ApiClientService } from '../core/api-client.service';
 import { NotificationService } from '../ui/notification.service';
@@ -32,9 +32,9 @@ export class DebugService {
 
   private contextMenu: HTMLElement | null = null;
 
-  constructor() {
-    this.setupContextMenu();
-  }
+  // constructor() {
+  //   this.setupContextMenu();
+  // }
 
   /**
    * Get debug information (paths, versions, build info)
@@ -106,23 +106,23 @@ export class DebugService {
     }
   }
 
-  private setupContextMenu(): void {
-    // Handle right-click
-    this.document.addEventListener('contextmenu', (event: MouseEvent) => {
-      event.preventDefault();
-      this.createContextMenu(event.clientX, event.clientY);
-    });
+  // private setupContextMenu(): void {
+  //   // Handle right-click
+  //   this.document.addEventListener('contextmenu', (event: MouseEvent) => {
+  //     event.preventDefault();
+  //     this.createContextMenu(event.clientX, event.clientY);
+  //   });
 
-    // Close menu on click outside
-    this.document.addEventListener('click', () => this.closeMenu());
+  //   // Close menu on click outside
+  //   this.document.addEventListener('click', () => this.closeMenu());
 
-    // Close menu on escape
-    this.document.addEventListener('keydown', (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        this.closeMenu();
-      }
-    });
-  }
+  //   // Close menu on escape
+  //   this.document.addEventListener('keydown', (event: KeyboardEvent) => {
+  //     if (event.key === 'Escape') {
+  //       this.closeMenu();
+  //     }
+  //   });
+  // }
 
   private createContextMenu(x: number, y: number): void {
     this.closeMenu();
@@ -147,6 +147,16 @@ export class DebugService {
         label: this.translateService.instant('developerTools.clearCache'),
         action: (): void => this.clearCache(),
       },
+      ...(isDevMode()
+        ? [
+            {
+              label: this.translateService.instant('developerTools.openDevTools'),
+              action: (): void => {
+                void this.openDevTools();
+              },
+            },
+          ]
+        : []),
     ];
 
     menuItems.forEach(item => {

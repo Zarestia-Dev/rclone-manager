@@ -248,6 +248,99 @@ pub async fn copy_url_handler(
 }
 
 #[derive(Deserialize)]
+pub struct DeleteFileBody {
+    pub remote: String,
+    pub path: String,
+}
+
+pub async fn delete_file_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<DeleteFileBody>,
+) -> Result<Json<ApiResponse<u64>>, AppError> {
+    use crate::rclone::commands::filesystem::delete_file;
+    let jobid = delete_file(state.app_handle.clone(), body.remote, body.path)
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(jobid)))
+}
+
+#[derive(Deserialize)]
+pub struct PurgeDirectoryBody {
+    pub remote: String,
+    pub path: String,
+}
+
+pub async fn purge_directory_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<PurgeDirectoryBody>,
+) -> Result<Json<ApiResponse<u64>>, AppError> {
+    use crate::rclone::commands::filesystem::purge_directory;
+    let jobid = purge_directory(state.app_handle.clone(), body.remote, body.path)
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(jobid)))
+}
+
+#[derive(Deserialize)]
+pub struct RemoveEmptyDirsBody {
+    pub remote: String,
+    pub path: String,
+}
+
+pub async fn remove_empty_dirs_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<RemoveEmptyDirsBody>,
+) -> Result<Json<ApiResponse<u64>>, AppError> {
+    use crate::rclone::commands::filesystem::remove_empty_dirs;
+    let jobid = remove_empty_dirs(state.app_handle.clone(), body.remote, body.path)
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(jobid)))
+}
+
+#[derive(Deserialize)]
+pub struct CopyFileBody {
+    pub src_remote: String,
+    pub src_path: String,
+    pub dst_remote: String,
+    pub dst_path: String,
+}
+
+pub async fn copy_file_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<CopyFileBody>,
+) -> Result<Json<ApiResponse<u64>>, AppError> {
+    use crate::rclone::commands::filesystem::copy_file;
+    let jobid = copy_file(
+        state.app_handle.clone(),
+        body.src_remote,
+        body.src_path,
+        body.dst_remote,
+        body.dst_path,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(jobid)))
+}
+
+pub async fn move_file_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<CopyFileBody>,
+) -> Result<Json<ApiResponse<u64>>, AppError> {
+    use crate::rclone::commands::filesystem::move_file;
+    let jobid = move_file(
+        state.app_handle.clone(),
+        body.src_remote,
+        body.src_path,
+        body.dst_remote,
+        body.dst_path,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(jobid)))
+}
+
+#[derive(Deserialize)]
 pub struct RemotePathsBody {
     pub remote: String,
     pub path: Option<String>,

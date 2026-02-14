@@ -578,23 +578,23 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     // This is simpler and ensures consistency with tray actions
 
     if (mountConfig?.autoStart && mountConfig?.dest) {
-      void this.mountManagementService.mountRemoteProfile(remoteName, 'default');
+      void this.mountManagementService.mountRemoteProfile(remoteName, 'default', 'quick-add');
     }
 
     if (copyConfig?.autoStart && copyConfig?.source && copyConfig?.dest) {
-      void this.jobManagementService.startCopyProfile(remoteName, 'default');
+      void this.jobManagementService.startCopyProfile(remoteName, 'default', 'quick-add');
     }
 
     if (syncConfig?.autoStart && syncConfig?.source && syncConfig?.dest) {
-      void this.jobManagementService.startSyncProfile(remoteName, 'default');
+      void this.jobManagementService.startSyncProfile(remoteName, 'default', 'quick-add');
     }
 
     if (bisyncConfig?.autoStart && bisyncConfig?.source && bisyncConfig?.dest) {
-      void this.jobManagementService.startBisyncProfile(remoteName, 'default');
+      void this.jobManagementService.startBisyncProfile(remoteName, 'default', 'quick-add');
     }
 
     if (moveConfig?.autoStart && moveConfig?.source && moveConfig?.dest) {
-      void this.jobManagementService.startMoveProfile(remoteName, 'default');
+      void this.jobManagementService.startMoveProfile(remoteName, 'default', 'quick-add');
     }
   }
 

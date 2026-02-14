@@ -57,16 +57,6 @@ mat-nav-list {
   overflow: visible;
 }
 
-.starred-item {
-  &.cdk-drop-list-dragging {
-    background: var(--selected-bg-color) !important;
-    .grid-item,
-    tr {
-      display: none !important;
-    }
-  }
-}
-
 .bookmarks-section {
   .new-bookmark-placeholder {
     display: none;
@@ -90,6 +80,14 @@ mat-nav-list {
   padding-inline: var(--space-xs);
   margin-block: var(--space-xxs);
   transition: var(--transition-fast);
+
+  &.cdk-drop-list-dragging {
+    background: var(--selected-bg-color) !important;
+    .grid-item,
+    tr {
+      display: none !important;
+    }
+  }
 
   &.selected {
     background: var(--hover-bg-color);
@@ -123,6 +121,7 @@ mat-nav-list {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        margin: 0 !important;
         max-width: calc(var(--sidenav-width) - 58px);
       }
     }
@@ -271,7 +270,46 @@ mat-nav-list {
         }
       }
     }
+
+    /* Dragging Visuals */
+    &.cdk-drag-placeholder {
+      opacity: 0;
+    }
   }
+
+  /* List dragging animations */
+  &.cdk-drop-list-dragging .tab:not(.cdk-drag-placeholder) {
+    transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+  }
+}
+
+/* Global Drag Preview Styling (CDK appends to body) */
+.tab.cdk-drag-preview {
+  background: var(--selected-bg-color);
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xs);
+  padding: var(--space-xs) var(--space-sm);
+  padding-right: 44px;
+  box-sizing: border-box;
+
+  .tab-title {
+    color: var(--window-fg-color);
+    font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .close-tab {
+    display: none !important;
+  }
+}
+
+.cdk-drag-animating {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
 }
 
 .path-container {
@@ -370,9 +408,12 @@ mat-nav-list {
 
 /* 3.2 Main File Display Area */
 .nautilus-content {
-  overflow-y: auto;
-  flex-grow: 1;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 3.2.1 Grid View */
@@ -384,19 +425,13 @@ mat-nav-list {
   .grid {
     display: grid;
     gap: var(--space-md);
+    justify-content: space-around;
     align-items: start;
     grid-auto-rows: auto;
     margin: var(--space-sm) var(--space-xl);
   }
 
   .grid-item {
-    display: block;
-    width: 100%;
-    box-sizing: border-box;
-    z-index: 0;
-    outline: none;
-
-    /* SELECTION STATE: Applies to the real item */
     &.selected .folder-card {
       background: var(--selected-bg-color);
     }
@@ -421,7 +456,7 @@ mat-nav-list {
 /* THE SHARED CARD COMPONENT */
 .folder-card {
   box-sizing: border-box;
-  padding: var(--space-md) var(--space-sm);
+  padding: var(--space-md);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -430,9 +465,15 @@ mat-nav-list {
   transition: var(--transition-fast);
   background: none;
   box-shadow: none;
+  padding: 0;
+
+  &:hover {
+    background: var(--hover-bg-color);
+  }
 
   /* Typography */
   .folder-title {
+    margin: 0;
     font-size: var(--font-size-md);
     color: var(--window-fg-color);
     text-align: center;
@@ -464,33 +505,50 @@ mat-nav-list {
   gap: var(--space-xs);
   padding: var(--space-sm) var(--space-md);
 
+  background: var(--view-bg-color);
   border-radius: var(--border-radius);
-  box-shadow: 0 0 0 1px var(--primary-color);
-  opacity: 0.8;
+  box-shadow: var(--box-shadow);
+  border: 1px solid var(--card-shade-color);
+  opacity: 1 !important;
+  z-index: 10000;
 
   mat-icon {
-    color: var(--primary-color);
+    color: var(--accent-color);
+    width: var(--icon-size-md);
+    height: var(--icon-size-md);
   }
 
   span {
     font-weight: 500;
-    max-width: 200px;
+    max-width: 240px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: var(--window-fg-color);
+  }
+
+  .count-badge {
+    background: var(--accent-color);
+    color: white;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: var(--space-xxs);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   }
 }
 
-/* 3.2.2 List View (MatTable) */
-.nautilus-list-container {
-  height: 100%;
-  overflow: auto;
+/* Drop indicator for items that are also drop lists (folders) */
+.item-drop-target.cdk-drop-list-receiving {
+  background: rgba(var(--accent-color-rgb), 0.15) !important;
+  box-shadow: inset 0 0 0 2px var(--accent-color) !important;
+  border-radius: var(--border-radius);
 }
 
 .nautilus-table {
-  width: 100%;
-  background: transparent;
-  table-layout: fixed;
+  border-spacing: 0 var(--space-xs);
+  border-inline: var(--space-md) solid transparent;
 
   // 1. The Name column takes all remaining space
   .mat-column-name {
@@ -514,12 +572,21 @@ mat-nav-list {
 
   tr.mat-mdc-row {
     transition: none;
+    border-radius: var(--border-radius);
 
     &:hover {
       background-color: var(--hover-bg-color);
     }
     &.selected {
       background-color: var(--selected-bg-color);
+    }
+
+    // Make row corners rounded
+    td:first-child {
+      border-radius: var(--border-radius) 0 0 var(--border-radius);
+    }
+    td:last-child {
+      border-radius: 0 var(--border-radius) var(--border-radius) 0;
     }
   }
 
@@ -555,8 +622,6 @@ mat-nav-list {
       overflow: hidden;
 
       mat-icon {
-        width: var(--icon-size-md);
-        height: var(--icon-size-md);
         flex-shrink: 0;
       }
 
@@ -618,6 +683,16 @@ mat-nav-list {
   display: flex;
   flex-direction: column;
 
+  .menu-item-wrapper {
+    padding: var(--space-xxs) var(--space-xs);
+    display: flex;
+    align-items: center;
+
+    mat-checkbox {
+      width: 100%;
+    }
+  }
+
   .sort-options {
     display: flex;
     align-items: center;
@@ -665,12 +740,16 @@ mat-nav-list {
   color: var(--window-fg-color);
 }
 
-.picker-actions + .selection-info-container {
+.nautilus-bottom-bar ~ .selection-info-container {
+  bottom: 64px;
+}
+
+.picker-actions ~ .selection-info-container {
   bottom: 72px;
 }
 
-.picker-actions.mobile-picker + .selection-info-container {
-  bottom: 84px;
+.picker-actions.mobile-picker ~ .selection-info-container {
+  bottom: 120px;
 }
 
 .empty-folder-container {
@@ -727,6 +806,20 @@ mat-nav-list {
   }
 }
 
+/* Scissors icon replacing file/folder icon on cut items */
+.cut-icon {
+  color: var(--dim-color);
+  border: 4px dashed var(--dim-color);
+  border-radius: var(--border-radius);
+  box-sizing: border-box;
+  opacity: 0.7;
+
+  &.list-view {
+    border-width: 2px;
+    padding: 2px;
+  }
+}
+
 /* 3. Main Content Area Update */
 .nautilus-main-content {
   height: 100%;
@@ -748,5 +841,78 @@ mat-nav-list {
   .view-controls {
     display: flex;
     gap: var(--space-xs);
+  }
+}
+
+// --- Split View Styles ---
+.split-container {
+  display: grid;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.pane-wrapper {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: var(--window-bg-color);
+  transition: var(--transition-fast);
+
+  .nautilus-grid,
+  .nautilus-list-container {
+    flex: 1;
+    min-height: 0;
+  }
+
+  // Focus indicator and dimming only in split view
+  .split-view & {
+    &.focused {
+      z-index: 10;
+      &::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        box-shadow: 0 1px 4px var(--accent-color);
+        z-index: 100;
+      }
+    }
+
+    &:not(.focused) {
+      opacity: 0.9;
+    }
+  }
+}
+
+.split-divider {
+  width: 0.5rem;
+  background: var(--sidebar-bg-color);
+  cursor: col-resize;
+  position: relative;
+  transition: var(--transition-fast);
+  z-index: 20;
+
+  &:hover,
+  &:active {
+    background: var(--accent-color);
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 3px;
+    right: 3px;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 40px;
+    border-left: 1px solid var(--dim-color);
+    border-right: 1px solid var(--dim-color);
+    opacity: 0.5;
   }
 }

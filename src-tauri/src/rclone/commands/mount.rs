@@ -13,7 +13,7 @@ use crate::{
         json_helpers::unwrap_nested_options,
         logging::log::log_operation,
         rclone::endpoints::mount,
-        types::{core::RcloneState, logs::LogLevel, remotes::ProfileParams},
+        types::{core::RcloneState, jobs::JobType, logs::LogLevel, remotes::ProfileParams},
     },
 };
 
@@ -32,6 +32,8 @@ pub struct MountParams {
     pub filter_options: Option<HashMap<String, Value>>,
     pub backend_options: Option<HashMap<String, Value>>,
     pub profile: Option<String>,
+    pub origin: Option<String>,
+    pub no_cache: Option<bool>,
 }
 
 /// Internal struct for Rclone API serialization
@@ -72,6 +74,8 @@ impl FromConfig for MountParams {
             filter_options: common.filter_options,
             backend_options: common.backend_options,
             profile: common.profile,
+            origin: None,
+            no_cache: None,
         })
     }
 }
@@ -159,13 +163,14 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         payload,
         JobMetadata {
             remote_name: params.remote_name.clone(),
-            job_type: "mount".to_string(),
+            job_type: JobType::Mount,
             operation_name: "Mount remote".to_string(),
             source: params.source.clone(),
             destination: params.mount_point.clone(),
             profile: params.profile.clone(),
-            source_ui: None,
+            origin: params.origin,
             group: None, // Auto-generate from job_type/remote_name
+            no_cache: params.no_cache.unwrap_or(false),
         },
     )
     .await?;
@@ -317,6 +322,8 @@ pub async fn mount_remote_profile(app: AppHandle, params: ProfileParams) -> Resu
 
     // Ensure profile is set from the function parameter, not the config object
     mount_params.profile = Some(params.profile_name.clone());
+    mount_params.origin = params.source;
+    mount_params.no_cache = params.no_cache;
 
     mount_remote(app, mount_params).await
 }

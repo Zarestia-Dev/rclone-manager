@@ -149,6 +149,8 @@ async fn auto_start_mount(app: &AppHandle, remote_name: &str, profile_name: &str
     let params = ProfileParams {
         remote_name: remote_name.to_string(),
         profile_name: profile_name.to_string(),
+        source: Some("startup".to_string()),
+        no_cache: None,
     };
 
     match mount_remote_profile(app.clone(), params).await {
@@ -171,6 +173,8 @@ async fn auto_start_serve(app: &AppHandle, remote_name: &str, profile_name: &str
     let params = ProfileParams {
         remote_name: remote_name.to_string(),
         profile_name: profile_name.to_string(),
+        source: Some("startup".to_string()),
+        no_cache: None,
     };
 
     match start_serve_profile(app.clone(), params).await {
@@ -193,6 +197,8 @@ async fn auto_start_sync(app: &AppHandle, remote_name: &str, profile_name: &str,
     let params = ProfileParams {
         remote_name: remote_name.to_string(),
         profile_name: profile_name.to_string(),
+        source: Some("startup".to_string()),
+        no_cache: None,
     };
 
     let result = match op_type {

@@ -203,7 +203,12 @@ pub async fn rename_job_profile_handler(
     let backend_manager = state.app_handle.state::<BackendManager>();
     let count = backend_manager
         .job_cache
-        .rename_profile(&body.remote_name, &body.old_name, &body.new_name)
+        .rename_profile(
+            &body.remote_name,
+            &body.old_name,
+            &body.new_name,
+            Some(&state.app_handle),
+        )
         .await;
     Ok(Json(ApiResponse::success(count)))
 }

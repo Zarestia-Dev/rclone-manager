@@ -56,6 +56,7 @@ export class JobManagementService extends TauriBaseService {
         this.refreshJobs().catch(err =>
           console.error('[JobManagementService] Failed to refresh jobs:', err)
         );
+        this.refreshNautilusJobs();
       });
   }
 
@@ -137,8 +138,18 @@ export class JobManagementService extends TauriBaseService {
    * Start a sync job using a named profile
    * Backend resolves all options from cached settings
    */
-  async startSyncProfile(remoteName: string, profileName: string): Promise<number> {
-    const params = { remote_name: remoteName, profile_name: profileName };
+  async startSyncProfile(
+    remoteName: string,
+    profileName: string,
+    source?: string,
+    noCache?: boolean
+  ): Promise<number> {
+    const params = {
+      remote_name: remoteName,
+      profile_name: profileName,
+      source: source,
+      no_cache: noCache,
+    };
     console.debug('Invoking start_sync_profile with params', params);
     return this.invokeCommand<number>('start_sync_profile', { params });
   }
@@ -146,8 +157,18 @@ export class JobManagementService extends TauriBaseService {
   /**
    * Start a copy job using a named profile
    */
-  async startCopyProfile(remoteName: string, profileName: string): Promise<number> {
-    const params = { remote_name: remoteName, profile_name: profileName };
+  async startCopyProfile(
+    remoteName: string,
+    profileName: string,
+    source?: string,
+    noCache?: boolean
+  ): Promise<number> {
+    const params = {
+      remote_name: remoteName,
+      profile_name: profileName,
+      source: source,
+      no_cache: noCache,
+    };
     console.debug('Invoking start_copy_profile with params', params);
     return this.invokeCommand<number>('start_copy_profile', { params });
   }
@@ -155,8 +176,18 @@ export class JobManagementService extends TauriBaseService {
   /**
    * Start a bisync job using a named profile
    */
-  async startBisyncProfile(remoteName: string, profileName: string): Promise<number> {
-    const params = { remote_name: remoteName, profile_name: profileName };
+  async startBisyncProfile(
+    remoteName: string,
+    profileName: string,
+    source?: string,
+    noCache?: boolean
+  ): Promise<number> {
+    const params = {
+      remote_name: remoteName,
+      profile_name: profileName,
+      source: source,
+      no_cache: noCache,
+    };
     console.debug('Invoking start_bisync_profile with params', params);
     return this.invokeCommand<number>('start_bisync_profile', { params });
   }
@@ -164,8 +195,18 @@ export class JobManagementService extends TauriBaseService {
   /**
    * Start a move job using a named profile
    */
-  async startMoveProfile(remoteName: string, profileName: string): Promise<number> {
-    const params = { remote_name: remoteName, profile_name: profileName };
+  async startMoveProfile(
+    remoteName: string,
+    profileName: string,
+    source?: string,
+    noCache?: boolean
+  ): Promise<number> {
+    const params = {
+      remote_name: remoteName,
+      profile_name: profileName,
+      source: source,
+      no_cache: noCache,
+    };
     console.debug('Invoking start_move_profile with params', params);
     return this.invokeCommand<number>('start_move_profile', { params });
   }
@@ -173,8 +214,22 @@ export class JobManagementService extends TauriBaseService {
   /**
    * Copy a file from a URL to the remote
    */
-  async copyUrl(remote: string, path: string, url: string, autoFilename: boolean): Promise<void> {
-    await this.invokeCommand('copy_url', { remote, path, urlToCopy: url, autoFilename });
+  async copyUrl(
+    remote: string,
+    path: string,
+    url: string,
+    autoFilename: boolean,
+    source?: string,
+    noCache?: boolean
+  ): Promise<void> {
+    await this.invokeCommand('copy_url', {
+      remote,
+      path,
+      urlToCopy: url,
+      autoFilename,
+      source,
+      noCache,
+    });
     this.refreshNautilusJobs();
   }
 

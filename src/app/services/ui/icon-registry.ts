@@ -122,6 +122,7 @@ export const BASE_ICONS: Record<string, string> = {
   mount: 'assets/icons/general/mount.svg',
   user: 'assets/icons/general/user.svg',
   code: 'assets/icons/general/code.svg',
+  scissors: 'assets/icons/general/scissors.svg',
 
   // ------------------- Titlebar Icons -------------------
   'check-box': 'assets/icons/titlebar/check-box.svg',

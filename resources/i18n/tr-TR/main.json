@@ -505,6 +505,12 @@
     "actions": {
       "back": "Geri",
       "next": "İleri",
+      "goBack": "Geri Git",
+      "goForward": "İleri Git",
+      "search": "Ara",
+      "nextTab": "Sonraki Sekme",
+      "previousTab": "Önceki Sekme",
+      "switchTab": "Sekmeye Geç",
       "installPlugin": "Eklentiyi Kur",
       "installingPlugin": "Kuruluyor...",
       "unlock": "Kilidi Aç",
@@ -1263,7 +1269,15 @@
       "failed": "Başarısız",
       "cancelled": "İptal Edildi",
       "cancelJob": "İptal Et",
-      "removeJob": "Kaldır"
+      "removeJob": "Kaldır",
+      "details": {
+        "source": "Kaynak",
+        "destination": "Hedef",
+        "startTime": "Başlangıç Zamanı",
+        "speed": "Hız",
+        "eta": "Tahmini Süre",
+        "transfers": "Transferler"
+      }
     },
     "fileViewer": {
       "closeViewer": "Görüntüleyiciyi kapat",
@@ -1408,8 +1422,9 @@
       "application": "Uygulama",
       "remoteManagement": "Uzak Sunucu Yönetimi",
       "fileOperations": "Dosya İşlemleri",
-      "fileBrowser": "Dosya Tarayıcısı",
-      "navigation": "Navigasyon"
+      "fileBrowser": "Dosya Gezgini",
+      "fileBrowserNautilus": "Dosya Gezgini (Nautilus)",
+      "navigation": "Gezinti"
     }
   },
   "repair": {
@@ -1947,6 +1962,9 @@
     }
   },
   "nautilus": {
+    "shortcuts": {
+      "title": "Nautilus Klavye Kısayolları"
+    },
     "titles": {
       "selectFolder": "Klasör Seç",
       "selectFile": "Dosya Seç",
@@ -1983,6 +2001,11 @@
       "otherItems": "diğer öge"
     },
     "modals": {
+      "delete": {
+        "title": "Öğeleri Sil",
+        "messageSingle": "\"{{name}}\" öğesini silmek istediğinizden emin misiniz?",
+        "messageMultiple": "{{count}} öğeyi silmek istediğinizden emin misiniz?"
+      },
       "newFolder": {
         "title": "Yeni Klasör",
         "label": "Klasör adı",
@@ -1991,6 +2014,11 @@
       "emptyTrash": {
         "title": "Çöpü Boşalt",
         "message": "{{remote}} içindeki çöpe atılmış dosyalar kaldırılsın mı?"
+      },
+      "rmdirs": {
+        "title": "Boş Klasörleri Kaldır",
+        "message": "\"{{name}}\" içindeki tüm boş klasörleri kaldırmak istediğinizden emin misiniz?",
+        "confirm": "Kaldır"
       }
     },
     "errors": {
@@ -2001,13 +2029,20 @@
       "createFolderFailed": "Klasör oluşturulamadı",
       "emptyTrashFailed": "Çöp boşaltılamadı: {{error}}",
       "openFileFailed": "Dosya açılamıyor: uzak sunucu bağlamı eksik",
-      "minSelection": "Lütfen en az {{min}} öge seçin."
+      "minSelection": "Lütfen en az {{min}} öge seçin.",
+      "deleteFailed": "{{count}} öge silinemedi",
+      "copyFailed": "{{count}} öge kopyalanamadı",
+      "moveFailed": "{{count}} öge taşınamadı",
+      "rmdirsFailed": "\"{{name}}\" içinde boş klasörler kaldırılamadı: {{error}}"
     },
     "contextMenu": {
       "open": "Aç",
       "openNewTab": "Yeni Sekmede Aç",
-      "toggleSelect": "Seçimi Değiştir",
       "copyPath": "Yolu Kopyala",
+      "delete": "Sil",
+      "copy": "Kopyala",
+      "cut": "Kes",
+      "paste": "Yapıştır",
       "newFolder": "Yeni Klasör",
       "refresh": "Yenile",
       "properties": "Özellikler",
@@ -2015,8 +2050,14 @@
       "copyLocation": "Konumu Kopyala",
       "selectAll": "Tümünü Seç",
       "removeBookmark": "Yer İmini Kaldır",
+      "duplicateTab": "Sekmeyi Çoğalt",
+      "closeOtherTabs": "Diğer Sekmeleri Kapat",
+      "closeTabsToRight": "Sağdaki Sekmeleri Kapat",
       "about": "Hakkında",
-      "emptyTrash": "Çöpü Boşalt"
+      "emptyTrash": "Çöpü Boşalt",
+      "removeEmptyDirs": "Boş klasörleri kaldır",
+      "toggleSplit": "Bölünmüş Görünümü Değiştir",
+      "switchPane": "Panele Geç"
     },
     "sidebar": {
       "newBookmark": "Yeni Yer İmi"
@@ -2026,10 +2067,12 @@
       "showHidden": "Gizli Dosyaları Göster"
     },
     "notifications": {
-      "addedToStarred": "'{{item}}' Yıldızlılara eklendi",
       "undo": "Geri Al",
-      "trashEmptied": "Çöp boşaltıldı",
-      "locationCopied": "Konum panoya kopyalandı"
+      "trashEmptied": "Temizlik işlemi başlatıldı",
+      "locationCopied": "Konum panoya kopyalandı",
+      "rmdirsStarted": "Boş klasörler kaldırılıyor: \"{{name}}\"...",
+      "deleteStarted": "{{count}} öge siliniyor...",
+      "pasteComplete": "Yapıştırma işlemi tamamlandı"
     }
   },
   "overview": {
@@ -2683,6 +2726,7 @@
   "developerTools": {
     "refreshUi": "Arayüzü Yenile",
     "clearCache": "Önbelleği Temizle",
+    "openDevTools": "Geliştirici Araçlarını Aç",
     "clearing": "Veriler Temizleniyor...",
     "cleared": "Veriler Temizlendi"
   }

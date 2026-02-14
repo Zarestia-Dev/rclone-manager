@@ -92,7 +92,8 @@ export class RemoteFacadeService extends TauriBaseService {
    */
   async getCachedOrFetchDiskUsage(
     remoteName: string,
-    normalizedName?: string
+    normalizedName?: string,
+    source = 'dashboard'
   ): Promise<DiskUsage | null> {
     // Check cache first
     const cachedRemote = this.activeRemotes().find(r => r.remoteSpecs.name === remoteName);
@@ -121,7 +122,7 @@ export class RemoteFacadeService extends TauriBaseService {
       this.updateDiskUsage(remoteName, { loading: true, error: false });
 
       // First check if About feature is supported
-      const fsInfo = await this.remoteService.getFsInfo(fsName);
+      const fsInfo = await this.remoteService.getFsInfo(fsName, source);
       if (fsInfo.Features?.['About'] === false) {
         const notSupportedUsage: DiskUsage = {
           notSupported: true,
@@ -132,7 +133,7 @@ export class RemoteFacadeService extends TauriBaseService {
         return null;
       }
 
-      const usage = await this.remoteService.getDiskUsage(fsName);
+      const usage = await this.remoteService.getDiskUsage(fsName, undefined, source);
       const diskUsage: DiskUsage = {
         total_space: usage.total || -1,
         used_space: usage.used || -1,
@@ -479,7 +480,9 @@ export class RemoteFacadeService extends TauriBaseService {
   async startJob(
     remoteName: string,
     operationType: SyncOperationType | 'mount' | 'serve',
-    profileName?: string
+    profileName?: string,
+    source = 'dashboard',
+    noCache?: boolean
   ): Promise<void> {
     const settings = this.getRemoteSettings(remoteName);
     const configKey = `${operationType}Configs` as keyof RemoteSettings;
@@ -502,22 +505,31 @@ export class RemoteFacadeService extends TauriBaseService {
         switch (operationType) {
           case 'mount':
             if (targetProfile)
-              await this.mountService.mountRemoteProfile(remoteName, targetProfile);
+              await this.mountService.mountRemoteProfile(
+                remoteName,
+                targetProfile,
+                source,
+                noCache
+              );
             break;
           case 'serve':
             if (targetProfile) await this.serveService.startServeProfile(remoteName, targetProfile);
             break;
           case 'sync':
-            if (targetProfile) await this.jobService.startSyncProfile(remoteName, targetProfile);
+            if (targetProfile)
+              await this.jobService.startSyncProfile(remoteName, targetProfile, source, noCache);
             break;
           case 'copy':
-            if (targetProfile) await this.jobService.startCopyProfile(remoteName, targetProfile);
+            if (targetProfile)
+              await this.jobService.startCopyProfile(remoteName, targetProfile, source, noCache);
             break;
           case 'bisync':
-            if (targetProfile) await this.jobService.startBisyncProfile(remoteName, targetProfile);
+            if (targetProfile)
+              await this.jobService.startBisyncProfile(remoteName, targetProfile, source, noCache);
             break;
           case 'move':
-            if (targetProfile) await this.jobService.startMoveProfile(remoteName, targetProfile);
+            if (targetProfile)
+              await this.jobService.startMoveProfile(remoteName, targetProfile, source, noCache);
             break;
           default:
             throw new Error(`Unsupported operation type: ${operationType}`);

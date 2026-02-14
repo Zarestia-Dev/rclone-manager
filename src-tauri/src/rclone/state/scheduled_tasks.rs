@@ -61,7 +61,7 @@ impl ScheduledTasksCache {
             "{}:{}-{}-{}",
             backend_name,
             remote_name,
-            task_type.as_str(),
+            task_type.as_job_type(),
             profile_name
         )
     }
@@ -230,6 +230,8 @@ impl ScheduledTasksCache {
         let params = ProfileParams {
             remote_name: remote_name.to_string(),
             profile_name: profile_name.to_string(),
+            source: Some("scheduler".to_string()),
+            no_cache: None,
         };
 
         let mut args = serde_json::to_value(params).ok()?;
@@ -248,7 +250,7 @@ impl ScheduledTasksCache {
                 "{} - {} - {} ({})",
                 backend_name,
                 remote_name,
-                task_type.as_str(),
+                task_type.as_job_type(),
                 profile_name
             ),
             task_type: task_type.clone(),

@@ -2,7 +2,6 @@
 // ///
 // /// This module provides organized access to all rclone RC API endpoints.
 // /// The endpoints are categorized for easier management and discovery.
-// use std::collections::HashMap;
 
 /// Core system endpoints
 pub mod core {
@@ -133,14 +132,13 @@ pub mod core {
     /// This returns list of stats groups currently in memory.
     ///
     /// Returns the following values:
-    /// ```
+    /// ```text
     /// {
-    ///     "groups":  an array of group names:
-    ///         [
-    ///             "group1",
-    ///             "group2",
-    ///             ...
-    ///         ]
+    ///     "groups": [
+    ///         "group1",
+    ///         "group2",
+    ///         ...
+    ///     ]
     /// }
     /// ```
     pub const GROUP_LIST: &str = "core/group-list";
@@ -693,15 +691,15 @@ pub mod operations {
     /// See the [cleanup](/commands/rclone_cleanup/) command for more information on the above.
     pub const CLEANUP: &str = "operations/cleanup";
 
-    // /// Copy a file from source remote to destination remote.
-    // ///
-    // /// This takes the following parameters:
-    // ///
-    // /// - srcFs - a remote name string e.g. "drive:" for the source, "/" for local filesystem
-    // /// - srcRemote - a path within that remote e.g. "file.txt" for the source
-    // /// - dstFs - a remote name string e.g. "drive2:" for the destination, "/" for local filesystem
-    // /// - dstRemote - a path within that remote e.g. "file2.txt" for the destination
-    // pub const COPYFILE: &str = "operations/copyfile";
+    /// Copy a file from source remote to destination remote.
+    ///
+    /// This takes the following parameters:
+    ///
+    /// - srcFs - a remote name string e.g. "drive:" for the source, "/" for local filesystem
+    /// - srcRemote - a path within that remote e.g. "file.txt" for the source
+    /// - dstFs - a remote name string e.g. "drive2:" for the destination, "/" for local filesystem
+    /// - dstRemote - a path within that remote e.g. "file2.txt" for the destination
+    pub const COPYFILE: &str = "operations/copyfile";
 
     /// Copy the URL to the object.
     ///
@@ -714,25 +712,6 @@ pub mod operations {
     ///
     /// See the [copyurl](/commands/rclone_copyurl/) command for more information on the above.
     pub const COPYURL: &str = "operations/copyurl";
-
-    // /// Remove files in the path.
-    // ///
-    // /// This takes the following parameters:
-    // ///
-    // /// - fs - a remote name string e.g. "drive:"
-    // ///
-    // /// See the [delete](/commands/rclone_delete/) command for more information on the above.
-    // pub const DELETE: &str = "operations/delete";
-
-    // /// Remove the single file pointed to.
-    // ///
-    // /// This takes the following parameters:
-    // ///
-    // /// - fs - a remote name string e.g. "drive:"
-    // /// - remote - a path within that remote e.g. "dir"
-    // ///
-    // /// See the [deletefile](/commands/rclone_deletefile/) command for more information on the above.
-    // pub const DELETEFILE: &str = "operations/deletefile";
 
     /// Return information about the remote.
     ///
@@ -939,15 +918,15 @@ pub mod operations {
     /// See the [mkdir](/commands/rclone_mkdir/) command for more information on the above.
     pub const MKDIR: &str = "operations/mkdir";
 
-    // /// Move a file from source remote to destination remote.
-    // ///
-    // /// This takes the following parameters:
-    // ///
-    // /// - srcFs - a remote name string e.g. "drive:" for the source, "/" for local filesystem
-    // /// - srcRemote - a path within that remote e.g. "file.txt" for the source
-    // /// - dstFs - a remote name string e.g. "drive2:" for the destination, "/" for local filesystem
-    // /// - dstRemote - a path within that remote e.g. "file2.txt" for the destination
-    // pub const MOVEFILE: &str = "operations/movefile";
+    /// Move a file from source remote to destination remote.
+    ///
+    /// This takes the following parameters:
+    ///
+    /// - srcFs - a remote name string e.g. "drive:" for the source, "/" for local filesystem
+    /// - srcRemote - a path within that remote e.g. "file.txt" for the source
+    /// - dstFs - a remote name string e.g. "drive2:" for the destination, "/" for local filesystem
+    /// - dstRemote - a path within that remote e.g. "file2.txt" for the destination
+    pub const MOVEFILE: &str = "operations/movefile";
 
     /// Create or retrieve a public link to the given file or folder.
     ///
@@ -965,16 +944,6 @@ pub mod operations {
     /// See the [link](/commands/rclone_link/) command for more information on the above.
     pub const PUBLICLINK: &str = "operations/publiclink";
 
-    // /// Remove a directory or container and all of its contents.
-    // ///
-    // /// This takes the following parameters:
-    // ///
-    // /// - fs - a remote name string e.g. "drive:"
-    // /// - remote - a path within that remote e.g. "dir"
-    // ///
-    // /// See the [purge](/commands/rclone_purge/) command for more information on the above.
-    // pub const PURGE: &str = "operations/purge";
-
     // /// Remove an empty directory or container.
     // ///
     // /// This takes the following parameters:
@@ -985,16 +954,45 @@ pub mod operations {
     // /// See the [rmdir](/commands/rclone_rmdir/) command for more information on the above.
     // pub const RMDIR: &str = "operations/rmdir";
 
-    // /// Remove all the empty directories in the path.
+    // /// Remove files in the path.
     // ///
     // /// This takes the following parameters:
     // ///
     // /// - fs - a remote name string e.g. "drive:"
-    // /// - remote - a path within that remote e.g. "dir"
-    // /// - leaveRoot - boolean, set to true not to delete the root
     // ///
-    // /// See the [rmdirs](/commands/rclone_rmdirs/) command for more information on the above.
-    // pub const RMDIRS: &str = "operations/rmdirs";
+    // /// See the [delete](/commands/rclone_delete/) command for more information on the above.
+    // pub const DELETE: &str = "operations/delete";
+
+    /// Remove the single file pointed to.
+    ///
+    /// This takes the following parameters:
+    ///
+    /// - fs - a remote name string e.g. "drive:"
+    /// - remote - a path within that remote e.g. "dir"
+    ///
+    /// See the [deletefile](/commands/rclone_deletefile/) command for more information on the above.
+    pub const DELETEFILE: &str = "operations/deletefile";
+
+    /// Remove a directory or container and all of its contents.
+    ///
+    /// This takes the following parameters:
+    ///
+    /// - fs - a remote name string e.g. "drive:"
+    /// - remote - a path within that remote e.g. "dir"
+    ///
+    /// See the [purge](/commands/rclone_purge/) command for more information on the above.
+    pub const PURGE: &str = "operations/purge";
+
+    /// Remove all the empty directories in the path.
+    ///
+    /// This takes the following parameters:
+    ///
+    /// - fs - a remote name string e.g. "drive:"
+    /// - remote - a path within that remote e.g. "dir"
+    /// - leaveRoot - boolean, set to true not to delete the root
+    ///
+    /// See the [rmdirs](/commands/rclone_rmdirs/) command for more information on the above.
+    pub const RMDIRS: &str = "operations/rmdirs";
 
     // /// Changes storage tier or class on all files in the path.
     // ///

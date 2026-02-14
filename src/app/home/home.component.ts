@@ -312,7 +312,12 @@ export class HomeComponent implements OnInit, OnDestroy {
     profileName?: string
   ): Promise<void> {
     try {
-      await this.remoteFacadeService.startJob(remoteName, operationType, profileName);
+      await this.remoteFacadeService.startJob(
+        remoteName,
+        operationType as any,
+        profileName,
+        'dashboard'
+      );
     } catch (error) {
       this.handleError(
         this.translate.instant('home.errors.startJobFailed', {

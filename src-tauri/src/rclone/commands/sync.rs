@@ -9,7 +9,7 @@ use crate::{
         json_helpers::unwrap_nested_options,
         logging::log::log_operation,
         rclone::endpoints::sync,
-        types::{core::RcloneState, logs::LogLevel, remotes::ProfileParams},
+        types::{core::RcloneState, jobs::JobType, logs::LogLevel, remotes::ProfileParams},
     },
 };
 
@@ -55,6 +55,15 @@ impl TransferType {
             TransferType::Bisync => sync::BISYNC,
         }
     }
+
+    pub fn as_job_type(&self) -> JobType {
+        match self {
+            TransferType::Sync => JobType::Sync,
+            TransferType::Copy => JobType::Copy,
+            TransferType::Move => JobType::Move,
+            TransferType::Bisync => JobType::Bisync,
+        }
+    }
 }
 
 /// Unified parameter structure for all transfer operations
@@ -68,6 +77,8 @@ pub struct GenericTransferParams {
     pub backend_options: Option<HashMap<String, Value>>,
     pub profile: Option<String>,
     pub transfer_type: TransferType,
+    pub origin: Option<String>,
+    pub no_cache: Option<bool>,
 }
 
 impl GenericTransferParams {
@@ -208,7 +219,7 @@ async fn perform_transfer(app: AppHandle, params: GenericTransferParams) -> Resu
         .job_cache
         .is_job_running(
             &params.remote_name,
-            params.transfer_type.as_str(),
+            params.transfer_type.as_job_type(),
             params.profile.as_deref(),
         )
         .await
@@ -233,20 +244,23 @@ async fn perform_transfer(app: AppHandle, params: GenericTransferParams) -> Resu
     let backend = backend_manager.get_active().await;
     let url = backend.url_for(params.transfer_type.endpoint());
 
+    let request = backend.inject_auth(client.post(&url));
+
     let (jobid, _, _) = submit_job(
         app,
         client.clone(),
-        backend.inject_auth(client.clone().post(&url)),
+        request,
         body,
         JobMetadata {
             remote_name: params.remote_name,
-            job_type: params.transfer_type.as_str().to_string(),
+            job_type: params.transfer_type.as_job_type(),
             operation_name: op_name.to_string(),
             source: params.source,
             destination: params.dest,
             profile: params.profile,
-            source_ui: None,
+            origin: params.origin,
             group: None, // Auto-generate from job_type/remote_name
+            no_cache: params.no_cache.unwrap_or(false),
         },
     )
     .await?;
@@ -289,6 +303,8 @@ async fn load_profile_and_run(
         backend_options: common.backend_options,
         profile: Some(params.profile_name.clone()),
         transfer_type,
+        origin: params.source,
+        no_cache: params.no_cache,
     };
 
     perform_transfer(app, transfer_params).await
@@ -332,6 +348,8 @@ mod tests {
             backend_options: None,
             profile: Some("prof".to_string()),
             transfer_type: TransferType::Sync,
+            origin: None,
+            no_cache: None,
         };
 
         let body = params.to_rclone_body();
@@ -356,6 +374,8 @@ mod tests {
             backend_options: None,
             profile: Some("prof".to_string()),
             transfer_type: TransferType::Bisync,
+            origin: None,
+            no_cache: None,
         };
 
         let body = params.to_rclone_body();

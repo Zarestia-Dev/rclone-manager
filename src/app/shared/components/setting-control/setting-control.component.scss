@@ -9,7 +9,7 @@
     h3 {
       font-size: var(--font-size-xl);
       font-weight: 600;
-      color: var(--app-text-color);
+      color: var(--window-fg-color);
     }
 
     .settings-description {
@@ -78,7 +78,7 @@
       font-weight: 600;
       font-size: var(--font-size-base);
       margin-bottom: var(--space-xs);
-      color: var(--app-text-color);
+      color: var(--window-fg-color);
     }
 
     p {
@@ -234,7 +234,7 @@
     font-weight: 600;
     font-size: var(--font-size-base);
     margin-bottom: var(--space-xs);
-    color: var(--app-text-color);
+    color: var(--window-fg-color);
   }
 
   .help-text {
@@ -248,7 +248,7 @@
     // Markdown formatting
     strong {
       font-weight: 600;
-      color: var(--app-text-color);
+      color: var(--window-fg-color);
       display: inline;
       margin: 0;
       font-size: inherit;

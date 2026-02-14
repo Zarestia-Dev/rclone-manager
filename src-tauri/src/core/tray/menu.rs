@@ -11,7 +11,7 @@ use crate::{
     },
     t,
     utils::types::{
-        jobs::JobInfo,
+        jobs::{JobInfo, JobType},
         remotes::{MountedRemote, ServeInstance},
     },
 };
@@ -37,12 +37,12 @@ impl JobOperationType {
         }
     }
 
-    fn job_type(&self) -> &'static str {
+    fn job_type(&self) -> JobType {
         match self {
-            Self::Sync => "sync",
-            Self::Copy => "copy",
-            Self::Move => "move",
-            Self::Bisync => "bisync",
+            Self::Sync => JobType::Sync,
+            Self::Copy => JobType::Copy,
+            Self::Move => JobType::Move,
+            Self::Bisync => JobType::Bisync,
         }
     }
 
@@ -404,11 +404,23 @@ pub async fn create_tray_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<M
                 })
                 .count();
 
-            // Filter active jobs for this remote (exclude mount and serve)
+            // Filter active jobs for this remote (exclude meta jobs, mount, and serve)
             let active_jobs_for_remote: Vec<_> = active_jobs
                 .iter()
                 .filter(|job| {
-                    job.remote_name == remote && job.job_type != "serve" && job.job_type != "mount"
+                    let is_meta = matches!(
+                        job.job_type,
+                        JobType::List
+                            | JobType::Info
+                            | JobType::About
+                            | JobType::Size
+                            | JobType::Stat
+                            | JobType::Hash
+                    );
+                    job.remote_name == remote
+                        && !is_meta
+                        && job.job_type != JobType::Serve
+                        && job.job_type != JobType::Mount
                 })
                 .collect();
 

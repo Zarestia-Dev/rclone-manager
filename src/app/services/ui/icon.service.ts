@@ -68,7 +68,8 @@ export class IconService {
     return this.normalizedLookup[normalized] || null;
   }
 
-  getIconForEntry(entry: Entry): string {
+  getIconForEntry(entry?: Entry | null): string {
+    if (!entry) return 'folder-adw';
     if (entry.IsDir) {
       const lowerName = entry.Name.toLowerCase();
 

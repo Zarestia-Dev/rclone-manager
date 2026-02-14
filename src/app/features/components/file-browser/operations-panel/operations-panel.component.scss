@@ -85,6 +85,14 @@
         text-overflow: ellipsis;
       }
 
+      .job-type-icon {
+        width: 14px;
+        height: 14px;
+        font-size: 14px;
+        flex-shrink: 0;
+        color: var(--dim-color);
+      }
+
       .action-btn {
         width: 16px;
         height: 16px;
@@ -118,5 +126,81 @@
         }
       }
     }
+  }
+}
+
+::ng-deep .job-details-menu {
+  max-width: 400px;
+  background: rgba(var(--window-bg-color-rgb), 0.7) !important;
+  backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(var(--window-fg-color-rgb), 0.08) !important;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.12),
+    var(--shadow-lg) !important;
+  border-radius: var(--radius-lg) !important;
+  overflow: hidden;
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  outline: none;
+
+  .detail-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding-bottom: var(--space-xs);
+
+    mat-icon {
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
+      color: var(--primary-color);
+    }
+
+    .detail-title {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--window-fg-color);
+      letter-spacing: -0.2px;
+      text-transform: capitalize;
+    }
+  }
+
+  mat-divider {
+    opacity: 0.1;
+  }
+
+  .detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    .detail-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--dim-color);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .path-text,
+    .value {
+      font-size: 13px;
+      color: var(--window-fg-color);
+      word-break: break-all;
+      font-weight: 500;
+      line-height: 1.4;
+    }
+  }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-md);
+    padding: var(--space-sm);
+    background: rgba(var(--window-fg-color-rgb), 0.03);
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(var(--window-fg-color-rgb), 0.05);
   }
 }

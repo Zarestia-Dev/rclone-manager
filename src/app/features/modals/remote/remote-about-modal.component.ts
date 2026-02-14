@@ -79,7 +79,7 @@ export class RemoteAboutModalComponent implements OnInit {
     this.loadingAbout.set(true);
     this.loadingUsage.set(true);
     this.remoteManagementService
-      .getFsInfo(this.remoteName())
+      .getFsInfo(this.remoteName(), 'about')
       .then(info => {
         const typedInfo = info as Record<string, unknown>;
         this.aboutInfo.set(typedInfo);
@@ -105,7 +105,7 @@ export class RemoteAboutModalComponent implements OnInit {
     // 3. Load Size/Count (Slowest, can take time for large remotes)
     this.loadingSize.set(true);
     this.remoteManagementService
-      .getSize(this.remoteName())
+      .getSize(this.remoteName(), undefined, 'about')
       .then(size => {
         this.sizeInfo.set(size);
         this.loadingSize.set(false);

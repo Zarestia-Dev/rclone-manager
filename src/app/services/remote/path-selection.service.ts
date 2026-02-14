@@ -131,7 +131,8 @@ export class PathSelectionService {
       const response = await this.remoteManagementService.getRemotePaths(
         normalizedRemote,
         path || '',
-        {}
+        {},
+        'path-picker'
       );
       const entries = response && Array.isArray(response.list) ? response.list : [];
       // Update state with new entries

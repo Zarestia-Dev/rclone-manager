@@ -18,7 +18,10 @@ use crate::{
     },
     utils::{
         app::notification::send_notification,
-        types::{jobs::JobStatus, remotes::ProfileParams},
+        types::{
+            jobs::{JobStatus, JobType},
+            remotes::ProfileParams,
+        },
     },
 };
 
@@ -50,6 +53,8 @@ async fn handle_start_job_profile(
     let params = ProfileParams {
         remote_name: remote_name.clone(),
         profile_name: profile_name.clone(),
+        source: Some("tray".to_string()),
+        no_cache: None,
     };
 
     let result = match op_type {
@@ -85,6 +90,8 @@ pub fn handle_mount_profile(app: AppHandle, remote_name: &str, profile_name: &st
         let params = ProfileParams {
             remote_name: remote.clone(),
             profile_name: profile.clone(),
+            source: Some("tray".to_string()),
+            no_cache: None,
         };
 
         match mount_remote_profile(app_clone.clone(), params).await {
@@ -192,7 +199,7 @@ async fn handle_stop_job_profile(
     app: AppHandle,
     remote_name: String,
     profile_name: String,
-    job_type: &str,
+    job_type: JobType,
     action_name: &str,
 ) {
     let backend_manager = app.state::<BackendManager>();
@@ -211,17 +218,27 @@ async fn handle_stop_job_profile(
             Ok(_) => {
                 info!(
                     "🛑 Stopped {} job {} for {} profile '{}'",
-                    job_type, job.jobid, remote_name, profile_name
+                    job_type.as_str(),
+                    job.jobid,
+                    remote_name,
+                    profile_name
                 );
             }
             Err(e) => {
-                error!("🚨 Failed to stop {} job {}: {}", job_type, job.jobid, e);
+                error!(
+                    "🚨 Failed to stop {} job {}: {}",
+                    job_type.as_str(),
+                    job.jobid,
+                    e
+                );
             }
         }
     } else {
         error!(
             "🚨 No active {} job found for {} profile '{}'",
-            job_type, remote_name, profile_name
+            job_type.as_str(),
+            remote_name,
+            profile_name
         );
         send_notification(
             &app,
@@ -244,7 +261,7 @@ pub fn handle_stop_sync_profile(app: AppHandle, remote_name: &str, profile_name:
         app,
         remote_name.to_string(),
         profile_name.to_string(),
-        "sync",
+        JobType::Sync,
         "Sync",
     ));
 }
@@ -254,7 +271,7 @@ pub fn handle_stop_copy_profile(app: AppHandle, remote_name: &str, profile_name:
         app,
         remote_name.to_string(),
         profile_name.to_string(),
-        "copy",
+        JobType::Copy,
         "Copy",
     ));
 }
@@ -264,7 +281,7 @@ pub fn handle_stop_move_profile(app: AppHandle, remote_name: &str, profile_name:
         app,
         remote_name.to_string(),
         profile_name.to_string(),
-        "move",
+        JobType::Move,
         "Move",
     ));
 }
@@ -274,7 +291,7 @@ pub fn handle_stop_bisync_profile(app: AppHandle, remote_name: &str, profile_nam
         app,
         remote_name.to_string(),
         profile_name.to_string(),
-        "bisync",
+        JobType::Bisync,
         "BiSync",
     ));
 }
@@ -288,6 +305,8 @@ pub fn handle_serve_profile(app: AppHandle, remote_name: &str, profile_name: &st
         let params = ProfileParams {
             remote_name: remote.clone(),
             profile_name: profile.clone(),
+            source: Some("tray".to_string()),
+            no_cache: None,
         };
 
         match start_serve_profile(app_clone.clone(), params).await {

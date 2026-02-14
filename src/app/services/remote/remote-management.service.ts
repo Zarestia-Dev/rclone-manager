@@ -128,9 +128,9 @@ export class RemoteManagementService extends TauriBaseService {
   /**
    * Get filesystem info for a remote
    */
-  async getFsInfo(remote: string): Promise<FsInfo> {
+  async getFsInfo(remote: string, source?: string): Promise<FsInfo> {
     try {
-      return this.invokeCommand<FsInfo>('get_fs_info', { remote });
+      return this.invokeCommand<FsInfo>('get_fs_info', { remote, origin: source });
     } catch (error) {
       console.error('Error getting filesystem info:', error);
       throw error;
@@ -142,13 +142,14 @@ export class RemoteManagementService extends TauriBaseService {
    */
   async getDiskUsage(
     remote: string,
-    path?: string
+    path?: string,
+    source?: string
   ): Promise<{
     total: number;
     used: number;
     free: number;
   }> {
-    return this.invokeCommand('get_disk_usage', { remote, path });
+    return this.invokeCommand('get_disk_usage', { remote, path, origin: source });
   }
 
   /**
@@ -156,16 +157,17 @@ export class RemoteManagementService extends TauriBaseService {
    */
   async getSize(
     remote: string,
-    path?: string
+    path?: string,
+    source?: string
   ): Promise<{
     count: number;
     bytes: number;
   }> {
-    return this.invokeCommand('get_size', { remote, path });
+    return this.invokeCommand('get_size', { remote, path, origin: source });
   }
 
-  async getStat(remote: string, path: string): Promise<{ item: Entry }> {
-    return this.invokeCommand('get_stat', { remote, path });
+  async getStat(remote: string, path: string, source?: string): Promise<{ item: Entry }> {
+    return this.invokeCommand('get_stat', { remote, path, origin: source });
   }
 
   /**
@@ -178,9 +180,10 @@ export class RemoteManagementService extends TauriBaseService {
   async getHashsum(
     remote: string,
     path: string,
-    hashType: string
+    hashType: string,
+    source?: string
   ): Promise<{ hashsum: string[]; hashType: string }> {
-    return this.invokeCommand('get_hashsum', { remote, path, hashType });
+    return this.invokeCommand('get_hashsum', { remote, path, hashType, origin: source });
   }
 
   /**
@@ -193,9 +196,10 @@ export class RemoteManagementService extends TauriBaseService {
   async getHashsumFile(
     remote: string,
     path: string,
-    hashType: string
+    hashType: string,
+    source?: string
   ): Promise<{ hash: string; hashType: string }> {
-    return this.invokeCommand('get_hashsum_file', { remote, path, hashType });
+    return this.invokeCommand('get_hashsum_file', { remote, path, hashType, origin: source });
   }
 
   /**
@@ -209,9 +213,10 @@ export class RemoteManagementService extends TauriBaseService {
     remote: string,
     path: string,
     unlink?: boolean,
-    expire?: string
+    expire?: string,
+    source?: string
   ): Promise<{ url: string }> {
-    return this.invokeCommand('get_public_link', { remote, path, unlink, expire });
+    return this.invokeCommand('get_public_link', { remote, path, unlink, expire, origin: source });
   }
 
   /**
@@ -220,9 +225,15 @@ export class RemoteManagementService extends TauriBaseService {
   async getRemotePaths(
     remote: string,
     path: string,
-    options: Record<string, unknown>
+    options: Record<string, unknown>,
+    source?: string
   ): Promise<{ list: Entry[] }> {
-    return this.invokeCommand<{ list: Entry[] }>('get_remote_paths', { remote, path, options });
+    return this.invokeCommand<{ list: Entry[] }>('get_remote_paths', {
+      remote,
+      path,
+      options,
+      origin: source,
+    });
   }
 
   async getLocalDrives(): Promise<LocalDrive[]> {
@@ -230,17 +241,169 @@ export class RemoteManagementService extends TauriBaseService {
   }
 
   /**
+   * Delete a single file
+   */
+  async deleteFile(
+    remote: string,
+    path: string,
+    source?: string,
+    noCache?: boolean
+  ): Promise<number> {
+    return this.invokeCommand<number>('delete_file', {
+      remote,
+      path,
+      source,
+      noCache,
+    });
+  }
+
+  /**
+   * Purge a directory (recursive delete)
+   */
+  async purgeDirectory(
+    remote: string,
+    path: string,
+    source?: string,
+    noCache?: boolean
+  ): Promise<number> {
+    return this.invokeCommand<number>('purge_directory', {
+      remote,
+      path,
+      source,
+      noCache,
+    });
+  }
+
+  /**
+   * Remove all empty directories within a path
+   */
+  async removeEmptyDirs(
+    remote: string,
+    path: string,
+    source?: string,
+    noCache?: boolean
+  ): Promise<number> {
+    return this.invokeCommand<number>('remove_empty_dirs', {
+      remote,
+      path,
+      source,
+      noCache,
+    });
+  }
+
+  /**
+   * Copy a single file
+   */
+  async copyFile(
+    srcRemote: string,
+    srcPath: string,
+    dstRemote: string,
+    dstPath: string,
+    source?: string,
+    noCache?: boolean
+  ): Promise<number> {
+    return this.invokeCommand<number>('copy_file', {
+      srcRemote,
+      srcPath,
+      dstRemote,
+      dstPath,
+      source,
+      noCache,
+    });
+  }
+
+  /**
+   * Move a single file
+   */
+  async moveFile(
+    srcRemote: string,
+    srcPath: string,
+    dstRemote: string,
+    dstPath: string,
+    source?: string,
+    noCache?: boolean
+  ): Promise<number> {
+    return this.invokeCommand<number>('move_file', {
+      srcRemote,
+      srcPath,
+      dstRemote,
+      dstPath,
+      source,
+      noCache,
+    });
+  }
+
+  /**
+   * Copy a directory
+   */
+  async copyDirectory(
+    srcRemote: string,
+    srcPath: string,
+    dstRemote: string,
+    dstPath: string,
+    source?: string,
+    noCache?: boolean
+  ): Promise<number> {
+    console.log('copyDirectory', srcRemote, srcPath, dstRemote, dstPath);
+
+    return this.invokeCommand<number>('copy_dir', {
+      srcRemote,
+      srcPath,
+      dstRemote,
+      dstPath,
+      source,
+      noCache,
+    });
+  }
+
+  /**
+   * Move a directory
+   */
+  async moveDirectory(
+    srcRemote: string,
+    srcPath: string,
+    dstRemote: string,
+    dstPath: string,
+    source?: string,
+    noCache?: boolean
+  ): Promise<number> {
+    return this.invokeCommand<number>('move_dir', {
+      srcRemote,
+      srcPath,
+      dstRemote,
+      dstPath,
+      source,
+      noCache,
+    });
+  }
+
+  /**
    * Create a directory on the remote via backend `mkdir` command
    */
-  async makeDirectory(remote: string, path: string): Promise<void> {
-    return this.invokeCommand('mkdir', { remote, path });
+  async makeDirectory(
+    remote: string,
+    path: string,
+    source?: string,
+    noCache?: boolean
+  ): Promise<number> {
+    return this.invokeCommand<number>('mkdir', {
+      remote,
+      path,
+      source,
+      noCache,
+    });
   }
 
   /**
    * Cleanup trashed files on the remote (optional path)
    */
-  async cleanup(remote: string, path?: string): Promise<void> {
-    return this.invokeCommand('cleanup', { remote, path });
+  async cleanup(
+    remote: string,
+    path?: string,
+    source?: string,
+    noCache?: boolean
+  ): Promise<number> {
+    return this.invokeCommand<number>('cleanup', { remote, path, source, noCache });
   }
 
   /**

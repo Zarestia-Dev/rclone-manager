@@ -128,7 +128,7 @@ export class PropertiesModalComponent implements OnInit {
     // 1. Get Size/Count (if directory)
     if (targetIsDir) {
       this.remoteManagementService
-        .getSize(remoteName, path)
+        .getSize(remoteName, path, 'properties')
         .then(size => {
           this.size = size;
           this.loadingSize = false;
@@ -170,7 +170,8 @@ export class PropertiesModalComponent implements OnInit {
       if (!isLocal && (!path || path === '/')) {
         const diskUsage = await this.remoteFacadeService.getCachedOrFetchDiskUsage(
           remoteName,
-          remoteName.endsWith(':') ? remoteName : `${remoteName}:`
+          remoteName.endsWith(':') ? remoteName : `${remoteName}:`,
+          'properties'
         );
 
         if (diskUsage) {
@@ -200,7 +201,8 @@ export class PropertiesModalComponent implements OnInit {
 
       const diskUsage = await this.remoteManagementService.getDiskUsage(
         diskUsageRemote,
-        diskUsagePath
+        diskUsagePath,
+        'properties'
       );
       this.diskUsage = diskUsage;
     } catch (err) {
@@ -222,7 +224,7 @@ export class PropertiesModalComponent implements OnInit {
       let fsInfo = this.data.fsInfo;
       if (!fsInfo) {
         const fsRemote = this.buildFsRemote();
-        fsInfo = (await this.remoteManagementService.getFsInfo(fsRemote)) as FsInfo;
+        fsInfo = (await this.remoteManagementService.getFsInfo(fsRemote, 'properties')) as FsInfo;
       }
 
       this.supportedHashes = fsInfo?.Hashes ?? [];
@@ -296,7 +298,8 @@ export class PropertiesModalComponent implements OnInit {
       const result = await this.remoteManagementService.getHashsumFile(
         fsRemote,
         hashPath,
-        hashType
+        hashType,
+        'properties'
       );
 
       if (result.hash) {
@@ -373,7 +376,8 @@ export class PropertiesModalComponent implements OnInit {
         fsRemote,
         path,
         false,
-        this.selectedExpiry
+        this.selectedExpiry,
+        'properties'
       );
 
       if (result.url) {
@@ -403,7 +407,13 @@ export class PropertiesModalComponent implements OnInit {
       const fsRemote = this.buildFsRemote();
       const path = this.data.path;
 
-      await this.remoteManagementService.getPublicLink(fsRemote, path, true); // unlink = true
+      await this.remoteManagementService.getPublicLink(
+        fsRemote,
+        path,
+        true,
+        undefined,
+        'properties'
+      ); // unlink = true
       this.publicLinkUrl = null;
     } catch (err) {
       console.error('Failed to remove public link:', err);
@@ -469,7 +479,6 @@ export class PropertiesModalComponent implements OnInit {
   }
 
   getIcon(item?: Entry | null): string {
-    if (!item) return 'adwaita-folder';
     return this.iconService.getIconForEntry(item);
   }
 
@@ -529,7 +538,12 @@ export class PropertiesModalComponent implements OnInit {
       }
 
       // For directories, we use getHashsum (bulk)
-      const result = await this.remoteManagementService.getHashsum(fsRemote, hashPath, hashType);
+      const result = await this.remoteManagementService.getHashsum(
+        fsRemote,
+        hashPath,
+        hashType,
+        'properties'
+      );
 
       if (result.hashsum && Array.isArray(result.hashsum)) {
         this.bulkHashResult = result.hashsum.join('\n');
