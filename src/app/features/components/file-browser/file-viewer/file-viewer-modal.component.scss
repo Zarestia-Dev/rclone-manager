@@ -82,7 +82,7 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      padding: 12px;
+      padding: var(--space-md);
 
       &.loading {
         opacity: 0.3;

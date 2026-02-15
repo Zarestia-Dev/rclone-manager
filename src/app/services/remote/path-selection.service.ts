@@ -132,7 +132,7 @@ export class PathSelectionService {
         normalizedRemote,
         path || '',
         {},
-        'path-picker'
+        'ui'
       );
       const entries = response && Array.isArray(response.list) ? response.list : [];
       // Update state with new entries

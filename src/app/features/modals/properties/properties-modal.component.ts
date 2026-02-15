@@ -128,7 +128,7 @@ export class PropertiesModalComponent implements OnInit {
     // 1. Get Size/Count (if directory)
     if (targetIsDir) {
       this.remoteManagementService
-        .getSize(remoteName, path, 'properties')
+        .getSize(remoteName, path, 'ui')
         .then(size => {
           this.size = size;
           this.loadingSize = false;
@@ -171,7 +171,7 @@ export class PropertiesModalComponent implements OnInit {
         const diskUsage = await this.remoteFacadeService.getCachedOrFetchDiskUsage(
           remoteName,
           remoteName.endsWith(':') ? remoteName : `${remoteName}:`,
-          'properties'
+          'ui'
         );
 
         if (diskUsage) {
@@ -202,7 +202,7 @@ export class PropertiesModalComponent implements OnInit {
       const diskUsage = await this.remoteManagementService.getDiskUsage(
         diskUsageRemote,
         diskUsagePath,
-        'properties'
+        'ui'
       );
       this.diskUsage = diskUsage;
     } catch (err) {
@@ -224,7 +224,7 @@ export class PropertiesModalComponent implements OnInit {
       let fsInfo = this.data.fsInfo;
       if (!fsInfo) {
         const fsRemote = this.buildFsRemote();
-        fsInfo = (await this.remoteManagementService.getFsInfo(fsRemote, 'properties')) as FsInfo;
+        fsInfo = (await this.remoteManagementService.getFsInfo(fsRemote, 'ui')) as FsInfo;
       }
 
       this.supportedHashes = fsInfo?.Hashes ?? [];
@@ -299,7 +299,7 @@ export class PropertiesModalComponent implements OnInit {
         fsRemote,
         hashPath,
         hashType,
-        'properties'
+        'ui'
       );
 
       if (result.hash) {
@@ -377,7 +377,7 @@ export class PropertiesModalComponent implements OnInit {
         path,
         false,
         this.selectedExpiry,
-        'properties'
+        'ui'
       );
 
       if (result.url) {
@@ -407,13 +407,7 @@ export class PropertiesModalComponent implements OnInit {
       const fsRemote = this.buildFsRemote();
       const path = this.data.path;
 
-      await this.remoteManagementService.getPublicLink(
-        fsRemote,
-        path,
-        true,
-        undefined,
-        'properties'
-      ); // unlink = true
+      await this.remoteManagementService.getPublicLink(fsRemote, path, true, undefined, 'ui'); // unlink = true
       this.publicLinkUrl = null;
     } catch (err) {
       console.error('Failed to remove public link:', err);
@@ -542,7 +536,7 @@ export class PropertiesModalComponent implements OnInit {
         fsRemote,
         hashPath,
         hashType,
-        'properties'
+        'ui'
       );
 
       if (result.hashsum && Array.isArray(result.hashsum)) {

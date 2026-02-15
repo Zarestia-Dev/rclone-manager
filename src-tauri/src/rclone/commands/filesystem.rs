@@ -41,7 +41,9 @@ pub async fn mkdir(
             source: build_full_path(&remote, &path),
             destination: String::new(),
             profile: None,
-            origin: source,
+            origin: source
+                .as_deref()
+                .map(crate::utils::types::origin::Origin::parse),
             group: None,
             no_cache: no_cache.unwrap_or(false),
         },
@@ -90,7 +92,9 @@ pub async fn cleanup(
             source: build_full_path(&remote, path_val),
             destination: String::new(),
             profile: None,
-            origin: source,
+            origin: source
+                .as_deref()
+                .map(crate::utils::types::origin::Origin::parse),
             group: None,
             no_cache: no_cache.unwrap_or(false),
         },
@@ -141,7 +145,9 @@ pub async fn copy_url(
             source: url_to_copy,
             destination: build_full_path(&remote, &path),
             profile: None,
-            origin: source,
+            origin: source
+                .as_deref()
+                .map(crate::utils::types::origin::Origin::parse),
             group: None,
             no_cache: no_cache.unwrap_or(false),
         },
@@ -184,7 +190,9 @@ pub async fn delete_file(
             source: build_full_path(&remote, &path),
             destination: String::new(), // Deletion has no destination
             profile: None,
-            origin: source,
+            origin: source
+                .as_deref()
+                .map(crate::utils::types::origin::Origin::parse),
             group: None,
             no_cache: no_cache.unwrap_or(false),
         },
@@ -227,7 +235,9 @@ pub async fn purge_directory(
             source: build_full_path(&remote, &path),
             destination: String::new(),
             profile: None,
-            origin: source,
+            origin: source
+                .as_deref()
+                .map(crate::utils::types::origin::Origin::parse),
             group: None,
             no_cache: no_cache.unwrap_or(false),
         },
@@ -274,7 +284,9 @@ pub async fn remove_empty_dirs(
             source: build_full_path(&remote, &path),
             destination: String::new(),
             profile: None,
-            origin: source,
+            origin: source
+                .as_deref()
+                .map(crate::utils::types::origin::Origin::parse),
             group: None,
             no_cache: no_cache.unwrap_or(false),
         },
@@ -327,7 +339,9 @@ pub async fn copy_file(
             source: src_full,
             destination: dst_full,
             profile: None,
-            origin: source,
+            origin: source
+                .as_deref()
+                .map(crate::utils::types::origin::Origin::parse),
             group: None,
             no_cache: no_cache.unwrap_or(false),
         },
@@ -380,7 +394,9 @@ pub async fn move_file(
             source: src_full,
             destination: dst_full,
             profile: None,
-            origin: source,
+            origin: source
+                .as_deref()
+                .map(crate::utils::types::origin::Origin::parse),
             group: None,
             no_cache: no_cache.unwrap_or(false),
         },
@@ -432,7 +448,9 @@ pub async fn copy_dir(
             source: src_fs.clone(),
             destination: dst_fs.clone(),
             profile: None,
-            origin: source,
+            origin: source
+                .as_deref()
+                .map(crate::utils::types::origin::Origin::parse),
             group: None,
             no_cache: no_cache.unwrap_or(false),
         },
@@ -485,7 +503,9 @@ pub async fn move_dir(
             source: src_fs.clone(),
             destination: dst_fs.clone(),
             profile: None,
-            origin: source,
+            origin: source
+                .as_deref()
+                .map(crate::utils::types::origin::Origin::parse),
             group: None,
             no_cache: no_cache.unwrap_or(false),
         },

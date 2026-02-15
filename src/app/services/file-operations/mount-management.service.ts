@@ -5,7 +5,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { NotificationService } from '@app/services';
 import { BackendTranslationService } from '../i18n/backend-translation.service';
-import { MountedRemote } from '@app/types';
+import { MountedRemote, Origin } from '@app/types';
 import { EventListenersService } from '../system/event-listeners.service';
 
 /**
@@ -71,7 +71,7 @@ export class MountManagementService extends TauriBaseService {
   async mountRemoteProfile(
     remoteName: string,
     profileName: string,
-    source?: string,
+    source?: Origin,
     noCache?: boolean
   ): Promise<void> {
     try {

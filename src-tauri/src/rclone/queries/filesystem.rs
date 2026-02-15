@@ -7,7 +7,6 @@ use crate::utils::{
     rclone::endpoints::operations,
     types::{
         core::{DiskUsage, RcloneState},
-        jobs::JobType,
         remotes::ListOptions,
     },
 };
@@ -20,26 +19,15 @@ async fn run_fs_command(
     app: AppHandle,
     client: reqwest::Client,
     endpoint: &str,
-    mut params: serde_json::Map<String, serde_json::Value>,
-    metadata: crate::rclone::commands::job::JobMetadata,
+    params: serde_json::Map<String, serde_json::Value>,
 ) -> Result<serde_json::Value, String> {
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-    let url = backend.url_for(endpoint);
-
-    params.insert("_async".to_string(), json!(true));
-
-    let request = backend.inject_auth(client.post(&url));
-    let (_, response_json, _) = crate::rclone::commands::job::submit_job_and_wait(
-        app,
-        client,
-        request,
-        json!(params),
-        metadata,
-    )
-    .await?;
-
-    Ok(response_json)
+    let payload = json!(params);
+    backend
+        .post_json(&client, endpoint, Some(&payload))
+        .await
+        .map_err(|e| format!("❌ Failed to call {endpoint}: {e}"))
 }
 
 /// Helper to create standard filesystem parameters
@@ -64,32 +52,13 @@ pub async fn get_fs_info(
     app: AppHandle,
     remote: String,
     path: Option<String>,
-    origin: Option<String>,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
     debug!("ℹ️ Getting fs info for remote: {remote}, path: {path:?}");
 
     let params = create_fs_params(remote.clone(), path.clone());
-    let metadata = crate::rclone::commands::job::JobMetadata {
-        remote_name: remote,
-        job_type: JobType::Info,
-        operation_name: "FsInfo".to_string(),
-        source: path.unwrap_or_default(),
-        destination: String::new(),
-        profile: None,
-        origin,
-        group: None,
-        no_cache: true,
-    };
 
-    let result = run_fs_command(
-        app,
-        state.client.clone(),
-        operations::FSINFO,
-        params,
-        metadata,
-    )
-    .await;
+    let result = run_fs_command(app, state.client.clone(), operations::FSINFO, params).await;
 
     match result {
         Ok(data) => {
@@ -116,10 +85,10 @@ pub async fn get_remote_paths(
     app: AppHandle,
     remote: String,
     path: Option<String>,
-    origin: Option<String>,
     options: Option<ListOptions>,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
+    debug!("📂 Listing remote paths for remote: {remote}, path: {path:?}");
     let mut params = create_fs_params(remote.clone(), path.clone());
 
     if let Some(list_options) = options {
@@ -130,26 +99,7 @@ pub async fn get_remote_paths(
         params.insert("opt".to_string(), json!(opt));
     }
 
-    let metadata = crate::rclone::commands::job::JobMetadata {
-        remote_name: remote,
-        job_type: JobType::List,
-        operation_name: "List".to_string(),
-        source: path.unwrap_or_default(),
-        destination: String::new(),
-        profile: None,
-        origin,
-        group: None,
-        no_cache: true,
-    };
-
-    run_fs_command(
-        app,
-        state.client.clone(),
-        operations::LIST,
-        params,
-        metadata,
-    )
-    .await
+    run_fs_command(app, state.client.clone(), operations::LIST, params).await
 }
 
 #[cfg(windows)]
@@ -243,11 +193,10 @@ pub async fn get_disk_usage(
     app: AppHandle,
     remote: String,
     path: Option<String>,
-    origin: Option<String>,
     state: State<'_, RcloneState>,
 ) -> Result<DiskUsage, String> {
     // Delegate to get_about_remote (which is now async)
-    let json = get_about_remote(app, remote.clone(), path.clone(), origin, state).await?;
+    let json = get_about_remote(app, remote.clone(), path.clone(), state).await?;
 
     // Extract usage information
     let total = json["total"].as_i64().unwrap_or(0);
@@ -275,32 +224,13 @@ pub async fn get_about_remote(
     app: AppHandle,
     remote: String,
     path: Option<String>,
-    origin: Option<String>,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
     debug!("ℹ️ Getting about info for remote: {remote}, path: {path:?}");
 
     let params = create_fs_params(remote.clone(), path.clone());
-    let metadata = crate::rclone::commands::job::JobMetadata {
-        remote_name: remote,
-        job_type: JobType::About,
-        operation_name: "About".to_string(),
-        source: path.unwrap_or_default(),
-        destination: String::new(),
-        profile: None,
-        origin,
-        group: None,
-        no_cache: true,
-    };
 
-    run_fs_command(
-        app,
-        state.client.clone(),
-        operations::ABOUT,
-        params,
-        metadata,
-    )
-    .await
+    run_fs_command(app, state.client.clone(), operations::ABOUT, params).await
 }
 
 #[tauri::command]
@@ -308,32 +238,13 @@ pub async fn get_size(
     app: AppHandle,
     remote: String,
     path: Option<String>,
-    origin: Option<String>,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
     debug!("📏 Getting size for remote: {remote}, path: {path:?}");
 
     let params = create_fs_params(remote.clone(), path.clone());
-    let metadata = crate::rclone::commands::job::JobMetadata {
-        remote_name: remote,
-        job_type: JobType::Size,
-        operation_name: "Size".to_string(),
-        source: path.unwrap_or_default(),
-        destination: String::new(),
-        profile: None,
-        origin,
-        group: None,
-        no_cache: true,
-    };
 
-    run_fs_command(
-        app,
-        state.client.clone(),
-        operations::SIZE,
-        params,
-        metadata,
-    )
-    .await
+    run_fs_command(app, state.client.clone(), operations::SIZE, params).await
 }
 
 #[tauri::command]
@@ -341,33 +252,14 @@ pub async fn get_stat(
     app: AppHandle,
     remote: String,
     path: String,
-    origin: Option<String>,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
     debug!("📊 Getting stats for remote: {remote}, path: {path}");
 
     // Convert (String, String) to (String, Option<String>) for helper
     let params = create_fs_params(remote.clone(), Some(path.clone()));
-    let metadata = crate::rclone::commands::job::JobMetadata {
-        remote_name: remote,
-        job_type: JobType::Stat,
-        operation_name: "Stat".to_string(),
-        source: path,
-        destination: String::new(),
-        profile: None,
-        origin,
-        group: None,
-        no_cache: true,
-    };
 
-    run_fs_command(
-        app,
-        state.client.clone(),
-        operations::STAT,
-        params,
-        metadata,
-    )
-    .await
+    run_fs_command(app, state.client.clone(), operations::STAT, params).await
 }
 
 /// Get hashsum for a path (file or directory)
@@ -378,7 +270,6 @@ pub async fn get_hashsum(
     remote: String,
     path: String,
     hash_type: String,
-    origin: Option<String>,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
     debug!("🔐 Getting hashsum for remote: {remote}, path: {path}, hash_type: {hash_type}");
@@ -395,26 +286,7 @@ pub async fn get_hashsum(
     params.insert("fs".to_string(), json!(fs_with_path));
     params.insert("hashType".to_string(), json!(hash_type));
 
-    let metadata = crate::rclone::commands::job::JobMetadata {
-        remote_name: remote,
-        job_type: JobType::Hash,
-        operation_name: "Hash".to_string(),
-        source: path,
-        destination: String::new(),
-        profile: None,
-        origin,
-        group: None,
-        no_cache: true,
-    };
-
-    run_fs_command(
-        app,
-        state.client.clone(),
-        operations::HASHSUM,
-        params,
-        metadata,
-    )
-    .await
+    run_fs_command(app, state.client.clone(), operations::HASHSUM, params).await
 }
 
 /// Get hashsum for a single file
@@ -425,7 +297,6 @@ pub async fn get_hashsum_file(
     remote: String,
     path: String,
     hash_type: String,
-    origin: Option<String>,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
     debug!("🔐 Getting hashsum file for remote: {remote}, path: {path}, hash_type: {hash_type}");
@@ -433,30 +304,7 @@ pub async fn get_hashsum_file(
     let mut params = create_fs_params(remote.clone(), Some(path.clone()));
     params.insert("hashType".to_string(), json!(hash_type));
 
-    // Default to true for download and base64 for consistency/safety if hash not supported?
-    // The user didn't specify defaults, but 'download' is useful fallback.
-    // However, sticking to bare minimum inputs is safer unless requested.
-
-    let metadata = crate::rclone::commands::job::JobMetadata {
-        remote_name: remote,
-        job_type: JobType::Hash,
-        operation_name: "HashsumFile".to_string(),
-        source: path,
-        destination: String::new(),
-        profile: None,
-        origin,
-        group: None,
-        no_cache: true,
-    };
-
-    run_fs_command(
-        app,
-        state.client.clone(),
-        operations::HASHSUMFILE,
-        params,
-        metadata,
-    )
-    .await
+    run_fs_command(app, state.client.clone(), operations::HASHSUMFILE, params).await
 }
 
 /// Get or create a public link for a file or folder

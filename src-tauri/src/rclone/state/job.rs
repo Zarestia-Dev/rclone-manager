@@ -159,7 +159,7 @@ impl JobCache {
             .read()
             .await
             .values()
-            .filter(|job| job.origin.as_deref() == Some(source))
+            .filter(|job| job.origin.as_ref().map(|o| o.as_str()) == Some(source))
             .cloned()
             .collect()
     }

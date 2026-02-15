@@ -3,6 +3,7 @@ use log::{error, info};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_opener::OpenerExt;
 
+use crate::utils::types::origin::Origin;
 use crate::{
     rclone::{
         backend::BackendManager,
@@ -17,9 +18,10 @@ use crate::{
         state::scheduled_tasks::ScheduledTasksCache,
     },
     utils::{
-        app::notification::send_notification,
+        app::notification::{Notification, send_notification_typed},
         types::{
             jobs::{JobStatus, JobType},
+            logs::LogLevel,
             remotes::ProfileParams,
         },
     },
@@ -141,16 +143,16 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
 
         if mount_point.is_empty() {
             error!("❌ Mount point not found for profile '{}'", profile);
-            send_notification(
+            send_notification_typed(
                 &app_clone,
-                "notification.title.unmountFailed",
-                &serde_json::json!({
-                    "key": "notification.body.profileNotFound",
-                    "params": {
-                        "profile": profile
-                    }
-                })
-                .to_string(),
+                Notification::localized(
+                    "notification.title.unmountFailed",
+                    "notification.body.profileNotFound",
+                    Some(vec![("profile", profile.as_str())]),
+                    None,
+                    Some(LogLevel::Error),
+                ),
+                Some(Origin::Tray),
             );
             return;
         }
@@ -240,18 +242,20 @@ async fn handle_stop_job_profile(
             remote_name,
             profile_name
         );
-        send_notification(
+        send_notification_typed(
             &app,
-            "notification.title.operationFailed",
-            &serde_json::json!({
-                "key": "notification.body.noActiveJob",
-                "params": {
-                    "operation": action_name,
-                    "remote": remote_name,
-                    "profile": profile_name
-                }
-            })
-            .to_string(),
+            Notification::localized(
+                "notification.title.operationFailed",
+                "notification.body.noActiveJob",
+                Some(vec![
+                    ("operation", action_name),
+                    ("remote", remote_name.as_str()),
+                    ("profile", profile_name.as_str()),
+                ]),
+                None,
+                Some(LogLevel::Warn),
+            ),
+            Some(Origin::Tray),
         );
     }
 }
@@ -362,35 +366,79 @@ pub fn handle_stop_serve_profile(app: AppHandle, _remote_name: &str, serve_id: &
 
 // ========== GLOBAL ACTIONS ==========
 
+fn should_emit_stop_all_jobs_notification(active_count: usize) -> bool {
+    active_count > 0
+}
+
 pub fn handle_stop_all_jobs(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
-        // Stop all jobs across ALL backends
-        // Stop all jobs across ALL backends -> Now just active job cache
-        // Simplify to just job_cache
+        // Stop all jobs across ALL backends (uses the active job cache)
         let backend_manager = app.state::<BackendManager>();
         let job_cache = &backend_manager.job_cache;
         let active_jobs = job_cache.get_active_jobs().await;
-        if !active_jobs.is_empty() {
-            for job in active_jobs {
-                let scheduled_cache = app.state::<ScheduledTasksCache>();
-                match stop_job(
-                    app.clone(),
-                    scheduled_cache,
-                    job.jobid,
-                    job.remote_name.clone(),
-                )
-                .await
-                {
-                    Ok(_) => {
-                        info!("🛑 Stopped job {}", job.jobid);
-                    }
-                    Err(e) => {
-                        error!("🚨 Failed to stop job {}: {}", job.jobid, e);
-                    }
+
+        // Nothing to do -> inform the user (tray-origin)
+        if !should_emit_stop_all_jobs_notification(active_jobs.len()) {
+            send_notification_typed(
+                &app,
+                Notification::localized(
+                    "notification.title.nothingToDo",
+                    "notification.body.nothingToDoJobs",
+                    None,
+                    None,
+                    Some(LogLevel::Info),
+                ),
+                Some(Origin::Tray),
+            );
+            return;
+        }
+
+        let mut stopped_count = 0usize;
+        for job in active_jobs {
+            let scheduled_cache = app.state::<ScheduledTasksCache>();
+            match stop_job(
+                app.clone(),
+                scheduled_cache,
+                job.jobid,
+                job.remote_name.clone(),
+            )
+            .await
+            {
+                Ok(_) => {
+                    stopped_count += 1;
+                    info!("🛑 Stopped job {}", job.jobid);
+                }
+                Err(e) => {
+                    error!("🚨 Failed to stop job {}: {}", job.jobid, e);
                 }
             }
         }
+
+        if stopped_count > 0 {
+            send_notification_typed(
+                &app,
+                Notification::localized(
+                    "notification.title.allJobsStopped",
+                    "notification.body.allJobsStopped",
+                    Some(vec![("count", &stopped_count.to_string())]),
+                    None,
+                    Some(LogLevel::Info),
+                ),
+                Some(Origin::Tray),
+            );
+        }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::should_emit_stop_all_jobs_notification;
+
+    #[test]
+    fn test_should_emit_stop_all_jobs_notification() {
+        assert!(!should_emit_stop_all_jobs_notification(0));
+        assert!(should_emit_stop_all_jobs_notification(1));
+    }
 }
 
 pub fn handle_browse_remote(app: &AppHandle, remote_name: &str) {

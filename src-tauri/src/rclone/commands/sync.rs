@@ -3,6 +3,7 @@ use serde_json::{Map, Value, json};
 use std::collections::HashMap;
 use tauri::{AppHandle, Manager};
 
+use crate::utils::types::origin::Origin;
 use crate::{
     rclone::backend::BackendManager,
     utils::{
@@ -77,7 +78,7 @@ pub struct GenericTransferParams {
     pub backend_options: Option<HashMap<String, Value>>,
     pub profile: Option<String>,
     pub transfer_type: TransferType,
-    pub origin: Option<String>,
+    pub origin: Option<crate::utils::types::origin::Origin>,
     pub no_cache: Option<bool>,
 }
 
@@ -303,7 +304,7 @@ async fn load_profile_and_run(
         backend_options: common.backend_options,
         profile: Some(params.profile_name.clone()),
         transfer_type,
-        origin: params.source,
+        origin: params.source.as_deref().map(Origin::parse),
         no_cache: params.no_cache,
     };
 

@@ -4,6 +4,8 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::fmt;
 
+use crate::utils::types::origin::Origin;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum JobType {
@@ -144,7 +146,7 @@ pub struct JobInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub execute_id: Option<String>, // Rclone async execute ID
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub origin: Option<String>,
+    pub origin: Option<Origin>,
     /// The backend instance this job belongs to (e.g., "Local", "NAS")
     #[serde(skip_serializing_if = "Option::is_none")]
     pub backend_name: Option<String>,

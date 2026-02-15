@@ -9,7 +9,7 @@ use crate::{
     core::scheduler::engine::get_next_run,
     rclone::{backend::BackendManager, state::scheduled_tasks::ScheduledTasksCache},
     utils::{
-        app::notification::send_notification,
+        app::notification::{Notification, send_notification_typed},
         logging::log::log_operation,
         rclone::endpoints::{core, job},
         types::{
@@ -27,7 +27,9 @@ use super::system::RcloneError;
 const JOB_POLL_INTERVAL_MS: u64 = 200;
 
 /// Metadata required to start and track a job
+use crate::utils::types::origin::Origin;
 #[derive(Debug, Clone)]
+
 pub struct JobMetadata {
     pub remote_name: String,
     pub job_type: JobType,
@@ -36,7 +38,7 @@ pub struct JobMetadata {
     pub destination: String,
     pub profile: Option<String>,
     /// Source UI that started this job (e.g., "nautilus", "dashboard", "scheduled")
-    pub origin: Option<String>,
+    pub origin: Option<Origin>,
     /// Stats group name for this job (format: "type/remote", e.g., "sync/gdrive")
     /// If not provided, will be auto-generated from job_type and remote_name
     pub group: Option<String>,
@@ -60,6 +62,52 @@ impl JobMetadata {
             None => format!("{}/{}", self.job_type.as_str(), remote),
         })
     }
+}
+
+// -----------------------------------------------------------------------------
+// Notification builders for job lifecycle (kept small & pure for easy testing)
+// -----------------------------------------------------------------------------
+fn job_started_notification(metadata: &JobMetadata) -> Notification {
+    Notification::localized(
+        "notification.title.operationStarted",
+        "notification.body.started",
+        Some(vec![
+            ("operation", metadata.operation_name.as_str()),
+            ("remote", metadata.remote_name.as_str()),
+            ("profile", metadata.profile.as_deref().unwrap_or("")),
+        ]),
+        None,
+        Some(LogLevel::Info),
+    )
+}
+
+fn job_completed_notification(metadata: &JobMetadata) -> Notification {
+    Notification::localized(
+        "notification.title.operationComplete",
+        "notification.body.complete",
+        Some(vec![
+            ("operation", metadata.operation_name.as_str()),
+            ("remote", metadata.remote_name.as_str()),
+            ("profile", metadata.profile.as_deref().unwrap_or("")),
+        ]),
+        None,
+        Some(LogLevel::Info),
+    )
+}
+
+fn job_failed_notification(metadata: &JobMetadata, error_msg: &str) -> Notification {
+    Notification::localized(
+        "notification.title.operationFailed",
+        "notification.body.failed",
+        Some(vec![
+            ("operation", metadata.operation_name.as_str()),
+            ("remote", metadata.remote_name.as_str()),
+            ("profile", metadata.profile.as_deref().unwrap_or("")),
+            ("error", error_msg),
+        ]),
+        None,
+        Some(LogLevel::Error),
+    )
 }
 
 pub async fn submit_job(
@@ -88,23 +136,6 @@ pub async fn submit_job(
     Ok((jobid, response_json, execute_id))
 }
 
-pub async fn submit_job_and_wait(
-    app: AppHandle,
-    client: reqwest::Client,
-    request: reqwest::RequestBuilder,
-    payload: Value,
-    metadata: JobMetadata,
-) -> Result<(u64, Value, Option<String>), String> {
-    let (jobid, backend_name, _initial_response, execute_id) =
-        initialize_and_register_job(&app, request, payload, &metadata).await?;
-
-    let final_output = monitor_job(backend_name, metadata.clone(), jobid, app.clone(), client)
-        .await
-        .map_err(|e| e.to_string())?;
-
-    Ok((jobid, final_output, execute_id))
-}
-
 async fn initialize_and_register_job(
     app: &AppHandle,
     request: reqwest::RequestBuilder,
@@ -129,17 +160,10 @@ async fn initialize_and_register_job(
         .await;
     }
 
-    send_notification(
+    send_notification_typed(
         app,
-        &json!({ "key": "notification.title.operationStarted", "params": { "operation": &metadata.operation_name } }).to_string(),
-        &json!({
-            "key": "notification.body.started",
-            "params": {
-                "operation": &metadata.operation_name,
-                "remote": &metadata.remote_name,
-                "profile": metadata.profile.as_deref().unwrap_or("")
-            }
-        }).to_string(),
+        job_started_notification(metadata),
+        metadata.origin.clone(),
     );
 
     Ok((jobid, backend_name, response_json, execute_id))
@@ -459,7 +483,7 @@ pub async fn handle_job_completion(
         None
     };
 
-    let profile = metadata.profile.clone().unwrap_or_default();
+    let _profile = metadata.profile.clone().unwrap_or_default();
     let remote_name = &metadata.remote_name;
     let operation = &metadata.operation_name;
 
@@ -505,25 +529,10 @@ pub async fn handle_job_completion(
             Some(json!({"jobid": jobid, "status": job_status})),
         );
 
-        send_notification(
+        send_notification_typed(
             app,
-            &serde_json::json!({
-                "key": "notification.title.operationFailed",
-                "params": {
-                    "operation": operation,
-                }
-            })
-            .to_string(),
-            &serde_json::json!({
-                "key": "notification.body.failed",
-                "params": {
-                    "operation": operation,
-                    "remote": remote_name,
-                    "profile": profile,
-                    "error": error_msg
-                }
-            })
-            .to_string(),
+            job_failed_notification(metadata, &error_msg),
+            metadata.origin.clone(),
         );
 
         Err(RcloneError::JobError(error_msg))
@@ -536,24 +545,10 @@ pub async fn handle_job_completion(
             Some(json!({"jobid": jobid, "status": job_status})),
         );
 
-        send_notification(
+        send_notification_typed(
             app,
-            &serde_json::json!({
-                "key": "notification.title.operationComplete",
-                "params": {
-                    "operation": operation,
-                }
-            })
-            .to_string(),
-            &serde_json::json!({
-                "key": "notification.body.complete",
-                "params": {
-                    "operation": operation,
-                    "remote": remote_name,
-                    "profile": profile
-                }
-            })
-            .to_string(),
+            job_completed_notification(metadata),
+            metadata.origin.clone(),
         );
 
         Ok(job_status.get("output").cloned().unwrap_or(json!({})))
@@ -647,24 +642,25 @@ pub async fn stop_job(
             None,
         );
 
-        send_notification(
+        let stopped_profile = job_cache
+            .get_job(jobid)
+            .await
+            .and_then(|j| j.profile)
+            .unwrap_or_default();
+        send_notification_typed(
             &app,
-            &serde_json::json!({
-                "key": "notification.title.operationStopped",
-                "params": {
-                    "operation": "Job",
-                }
-            })
-            .to_string(),
-            &serde_json::json!({
-                "key": "notification.body.stopped",
-                "params": {
-                    "operation": "Job",
-                    "remote": remote_name,
-                    "profile": job_cache.get_job(jobid).await.and_then(|j| j.profile).unwrap_or_default()
-                }
-            })
-            .to_string(),
+            Notification::localized(
+                "notification.title.operationStopped",
+                "notification.body.stopped",
+                Some(vec![
+                    ("operation", "Job"),
+                    ("remote", remote_name.as_str()),
+                    ("profile", stopped_profile.as_str()),
+                ]),
+                None,
+                Some(LogLevel::Info),
+            ),
+            None,
         );
 
         info!("✅ Stopped job {jobid}");
@@ -850,5 +846,157 @@ mod tests {
     fn test_parse_job_response_missing_jobid() {
         let v = json!({});
         assert!(parse_job_response(&v).is_err());
+    }
+
+    // -------------------------
+    // Notification builder tests
+    // -------------------------
+
+    #[test]
+    fn test_job_started_notification_builder() {
+        use crate::utils::types::origin::Origin;
+
+        let meta = JobMetadata {
+            remote_name: "gdrive:".to_string(),
+            job_type: JobType::Sync,
+            operation_name: "Sync".to_string(),
+            source: "src".to_string(),
+            destination: "dst".to_string(),
+            profile: Some("daily".to_string()),
+            origin: Some(Origin::Nautilus),
+            group: None,
+            no_cache: false,
+        };
+
+        let n = job_started_notification(&meta);
+
+        match n.title {
+            crate::utils::app::notification::Text::Localized { key, params } => {
+                assert_eq!(key, "notification.title.operationStarted");
+                let map = params.expect("params present");
+                assert_eq!(map.get("operation").map(|s| s.as_str()), Some("Sync"));
+                assert_eq!(map.get("remote").map(|s| s.as_str()), Some("gdrive:"));
+                assert_eq!(map.get("profile").map(|s| s.as_str()), Some("daily"));
+            }
+            _ => panic!("expected localized title"),
+        }
+
+        match n.body {
+            crate::utils::app::notification::Text::Localized { key, params } => {
+                assert_eq!(key, "notification.body.started");
+                let map = params.expect("params present");
+                assert_eq!(map.get("operation").map(|s| s.as_str()), Some("Sync"));
+                assert_eq!(map.get("remote").map(|s| s.as_str()), Some("gdrive:"));
+                assert_eq!(map.get("profile").map(|s| s.as_str()), Some("daily"));
+            }
+            _ => panic!("expected localized body"),
+        }
+
+        assert_eq!(n.level, Some(crate::utils::types::logs::LogLevel::Info));
+    }
+
+    #[test]
+    fn test_job_completed_notification_builder() {
+        let meta = JobMetadata {
+            remote_name: "onedrive:".to_string(),
+            job_type: JobType::Copy,
+            operation_name: "Copy".to_string(),
+            source: "a".to_string(),
+            destination: "b".to_string(),
+            profile: None,
+            origin: None,
+            group: None,
+            no_cache: false,
+        };
+
+        let n = job_completed_notification(&meta);
+
+        match n.title {
+            crate::utils::app::notification::Text::Localized { key, params } => {
+                assert_eq!(key, "notification.title.operationComplete");
+                let map = params.expect("params present");
+                assert_eq!(map.get("operation").map(|s| s.as_str()), Some("Copy"));
+                assert_eq!(map.get("remote").map(|s| s.as_str()), Some("onedrive:"));
+                // profile should be empty string when None
+                assert_eq!(map.get("profile").map(|s| s.as_str()), Some(""));
+            }
+            _ => panic!("expected localized title"),
+        }
+
+        match n.body {
+            crate::utils::app::notification::Text::Localized { key, params } => {
+                assert_eq!(key, "notification.body.complete");
+                let map = params.expect("params present");
+                assert_eq!(map.get("operation").map(|s| s.as_str()), Some("Copy"));
+                assert_eq!(map.get("remote").map(|s| s.as_str()), Some("onedrive:"));
+            }
+            _ => panic!("expected localized body"),
+        }
+
+        assert_eq!(n.level, Some(crate::utils::types::logs::LogLevel::Info));
+    }
+
+    #[test]
+    fn test_job_failed_notification_builder_includes_error() {
+        let meta = JobMetadata {
+            remote_name: "dropbox:".to_string(),
+            job_type: JobType::Move,
+            operation_name: "Move".to_string(),
+            source: "x".to_string(),
+            destination: "y".to_string(),
+            profile: Some("p".to_string()),
+            origin: None,
+            group: None,
+            no_cache: false,
+        };
+
+        let n = job_failed_notification(&meta, "disk full");
+
+        match n.body {
+            crate::utils::app::notification::Text::Localized { key, params } => {
+                assert_eq!(key, "notification.body.failed");
+                let map = params.expect("params present");
+                assert_eq!(map.get("error").map(|s| s.as_str()), Some("disk full"));
+                assert_eq!(map.get("operation").map(|s| s.as_str()), Some("Move"));
+                assert_eq!(map.get("remote").map(|s| s.as_str()), Some("dropbox:"));
+            }
+            _ => panic!("expected localized body"),
+        }
+
+        assert_eq!(n.level, Some(crate::utils::types::logs::LogLevel::Error));
+    }
+
+    #[test]
+    fn test_job_notification_suppression_for_dashboard_origin() {
+        use crate::utils::types::origin::Origin;
+
+        let meta_dashboard = JobMetadata {
+            remote_name: "gdrive:".to_string(),
+            job_type: JobType::Sync,
+            operation_name: "Sync".to_string(),
+            source: "src".to_string(),
+            destination: "dst".to_string(),
+            profile: None,
+            origin: Some(Origin::Dashboard),
+            group: None,
+            no_cache: false,
+        };
+
+        // Dashboard-origin job notifications should be suppressed when the app is focused
+        assert!(crate::utils::app::notification::should_suppress(
+            true,
+            meta_dashboard.origin.as_ref()
+        ));
+
+        let meta_scheduled = JobMetadata {
+            origin: Some(Origin::Scheduled),
+            ..meta_dashboard.clone()
+        };
+
+        // Scheduled-origin job notifications should NOT be suppressed
+        assert!(!crate::utils::app::notification::should_suppress(
+            true,
+            meta_scheduled.origin.as_ref()
+        ));
     }
 }

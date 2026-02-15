@@ -1,24 +1,20 @@
-use log::{info, warn};
+use log::{debug, info, warn};
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use tauri::{AppHandle, Manager};
 
 use crate::{
-    rclone::{
-        backend::BackendManager, commands::job::submit_job_and_wait,
-        state::watcher::force_check_mounted_remotes,
-    },
+    rclone::{backend::BackendManager, state::watcher::force_check_mounted_remotes},
     utils::{
-        app::notification::send_notification,
+        app::notification::{Notification, send_notification_typed},
         json_helpers::unwrap_nested_options,
         logging::log::log_operation,
         rclone::endpoints::mount,
-        types::{core::RcloneState, jobs::JobType, logs::LogLevel, remotes::ProfileParams},
+        types::{core::RcloneState, logs::LogLevel, remotes::ProfileParams},
     },
 };
 
 use super::common::{FromConfig, parse_common_config, redact_sensitive_values};
-use super::job::JobMetadata;
 
 /// Parameters for mounting a remote filesystem
 #[derive(Debug, serde::Deserialize, Clone)]
@@ -32,7 +28,7 @@ pub struct MountParams {
     pub filter_options: Option<HashMap<String, Value>>,
     pub backend_options: Option<HashMap<String, Value>>,
     pub profile: Option<String>,
-    pub origin: Option<String>,
+    pub origin: Option<crate::utils::types::origin::Origin>,
     pub no_cache: Option<bool>,
 }
 
@@ -52,8 +48,6 @@ struct RcloneMountBody {
     pub config: Option<HashMap<String, Value>>,
     #[serde(rename = "_filter", skip_serializing_if = "Option::is_none")]
     pub filter: Option<HashMap<String, Value>>,
-    #[serde(rename = "_async")]
-    pub async_mode: bool,
 }
 
 impl FromConfig for MountParams {
@@ -105,7 +99,6 @@ impl MountParams {
             vfs_options: self.vfs_options.clone().map(unwrap_nested_options),
             config: final_backend_opts,
             filter: self.filter_options.clone().map(unwrap_nested_options),
-            async_mode: true,
         };
 
         serde_json::to_value(body).unwrap_or(json!({}))
@@ -155,25 +148,73 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     let state = app.state::<RcloneState>();
     let url = backend.url_for(mount::MOUNT);
     let payload = params.to_rclone_body();
+    let origin = params.origin.clone();
 
-    let (_, _, _) = submit_job_and_wait(
-        app.clone(),
-        state.client.clone(),
-        backend.inject_auth(state.client.post(&url)),
-        payload,
-        JobMetadata {
-            remote_name: params.remote_name.clone(),
-            job_type: JobType::Mount,
-            operation_name: "Mount remote".to_string(),
-            source: params.source.clone(),
-            destination: params.mount_point.clone(),
-            profile: params.profile.clone(),
-            origin: params.origin,
-            group: None, // Auto-generate from job_type/remote_name
-            no_cache: params.no_cache.unwrap_or(false),
-        },
-    )
-    .await?;
+    send_notification_typed(
+        &app,
+        Notification::localized(
+            "notification.title.operationStarted",
+            "notification.body.started",
+            Some(vec![
+                ("operation", "Mount remote"),
+                ("remote", &params.remote_name),
+                ("profile", params.profile.as_deref().unwrap_or("")),
+            ]),
+            None,
+            Some(LogLevel::Info),
+        ),
+        origin.clone(),
+    );
+
+    let _ = backend
+        .inject_auth(state.client.post(&url))
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| {
+            send_notification_typed(
+                &app,
+                Notification::localized(
+                    "notification.title.operationFailed",
+                    "notification.body.failed",
+                    Some(vec![
+                        ("operation", "Mount remote"),
+                        ("remote", &params.remote_name),
+                        ("profile", params.profile.as_deref().unwrap_or("")),
+                        ("error", &e.to_string()),
+                    ]),
+                    None,
+                    Some(LogLevel::Error),
+                ),
+                origin.clone(),
+            );
+
+            crate::localized_error!("backendErrors.request.failed", "error" => e)
+        })?;
+
+    log_operation(
+        LogLevel::Info,
+        Some(params.remote_name.clone()),
+        Some("Mount remote".to_string()),
+        format!("Mounted successfully at {}", params.mount_point),
+        None,
+    );
+
+    send_notification_typed(
+        &app,
+        Notification::localized(
+            "notification.title.operationComplete",
+            "notification.body.complete",
+            Some(vec![
+                ("operation", "Mount remote"),
+                ("remote", &params.remote_name),
+                ("profile", params.profile.as_deref().unwrap_or("")),
+            ]),
+            None,
+            Some(LogLevel::Info),
+        ),
+        origin,
+    );
 
     // Store state and refresh
     cache
@@ -187,6 +228,26 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
 async fn refresh_mounted_remotes_safely(app: &AppHandle) {
     if let Err(e) = force_check_mounted_remotes(app.clone()).await {
         warn!("Failed to refresh mounted remotes: {e}");
+    }
+}
+
+// Small helper used to centralize the no-op policy for bulk unmount operations.
+fn should_emit_unmount_all_notification(mounted_count: usize, context: &str) -> bool {
+    mounted_count > 0 && context != "shutdown"
+}
+
+#[cfg(test)]
+mod tests {
+    use super::should_emit_unmount_all_notification;
+
+    #[test]
+    fn test_should_emit_unmount_all_notification() {
+        // Nothing mounted => no notification
+        assert!(!should_emit_unmount_all_notification(0, "menu"));
+        // Mounted items => notify
+        assert!(should_emit_unmount_all_notification(1, "menu"));
+        // Shutdown context => never notify
+        assert!(!should_emit_unmount_all_notification(5, "shutdown"));
     }
 }
 
@@ -226,16 +287,16 @@ pub async fn unmount_remote(
         .await
         .map_err(|e| {
             let error_msg = crate::localized_error!("backendErrors.request.failed", "error" => &e);
-            send_notification(
+            send_notification_typed(
                 &app,
-                "notification.title.unmountFailed",
-                &serde_json::json!({
-                    "key": "notification.body.unmountFailed",
-                    "params": {
-                        "error": e.to_string()
-                    }
-                })
-                .to_string(),
+                Notification::localized(
+                    "notification.title.unmountFailed",
+                    "notification.body.unmountFailed",
+                    Some(vec![("error", &e.to_string())]),
+                    None,
+                    Some(LogLevel::Error),
+                ),
+                Some(crate::utils::types::origin::Origin::Internal),
             );
             error_msg
         })?;
@@ -248,17 +309,16 @@ pub async fn unmount_remote(
         None,
     );
 
-    send_notification(
+    send_notification_typed(
         &app,
-        "notification.title.unmountSuccess",
-        &serde_json::json!({
-            "key": "notification.body.unmounted",
-            "params": {
-                "remote": remote_name,
-                "profile": profile
-            }
-        })
-        .to_string(),
+        Notification::localized(
+            "notification.title.unmountSuccess",
+            "notification.body.unmounted",
+            Some(vec![("remote", &remote_name), ("profile", &profile)]),
+            None,
+            Some(LogLevel::Info),
+        ),
+        Some(crate::utils::types::origin::Origin::Internal),
     );
 
     refresh_mounted_remotes_safely(&app).await;
@@ -278,6 +338,32 @@ pub async fn unmount_all_remotes(app: AppHandle, context: String) -> Result<Stri
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
+    // Check current mounted remotes first — use helper for the no-op policy
+    let mounted = backend_manager.remote_cache.get_mounted_remotes().await;
+    if !should_emit_unmount_all_notification(mounted.len(), &context) {
+        debug!("No mounted remotes to unmount — skipping API call");
+        // Refresh cache for UI consistency (unless during shutdown)
+        if context != "shutdown" {
+            refresh_mounted_remotes_safely(&app).await;
+            // Inform the user that there's nothing to do
+            send_notification_typed(
+                &app,
+                Notification::localized(
+                    "notification.title.nothingToDo",
+                    "notification.body.nothingToDoMounts",
+                    None,
+                    None,
+                    Some(LogLevel::Info),
+                ),
+                Some(crate::utils::types::origin::Origin::Internal),
+            );
+        }
+        // Silent no-op during shutdown
+        return Ok(crate::localized_success!(
+            "backendSuccess.mount.allUnmounted"
+        ));
+    }
+
     let _ = backend
         .post_json(&state.client, mount::UNMOUNTALL, None)
         .await
@@ -289,10 +375,16 @@ pub async fn unmount_all_remotes(app: AppHandle, context: String) -> Result<Stri
 
     info!("✅ All remotes unmounted successfully");
 
-    send_notification(
+    send_notification_typed(
         &app,
-        "notification.title.unmountSuccess",
-        "notification.body.allRemotesUnmounted",
+        Notification::localized(
+            "notification.title.unmountSuccess",
+            "notification.body.allRemotesUnmounted",
+            None,
+            None,
+            Some(LogLevel::Info),
+        ),
+        Some(crate::utils::types::origin::Origin::Internal),
     );
 
     Ok(crate::localized_success!(
@@ -322,7 +414,10 @@ pub async fn mount_remote_profile(app: AppHandle, params: ProfileParams) -> Resu
 
     // Ensure profile is set from the function parameter, not the config object
     mount_params.profile = Some(params.profile_name.clone());
-    mount_params.origin = params.source;
+    mount_params.origin = params
+        .source
+        .as_deref()
+        .map(crate::utils::types::origin::Origin::parse);
     mount_params.no_cache = params.no_cache;
 
     mount_remote(app, mount_params).await

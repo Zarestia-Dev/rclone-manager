@@ -90,7 +90,7 @@ mat-nav-list {
   }
 
   &.selected {
-    background: var(--hover-bg-color);
+    background: var(--selected-bg-color);
   }
 
   span {
@@ -118,6 +118,7 @@ mat-nav-list {
       }
 
       p {
+        font-weight: 480;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;

@@ -193,10 +193,16 @@ pub fn run() {
                                 let _ = window.set_focus();
                             } else {
                                 info!("📢 Second instance detected, but window was destroyed. Use tray to reopen.");
-                                utils::app::notification::send_notification(
+                                crate::utils::app::notification::send_notification_typed(
                                     _app,
-                                    "notification.title.alreadyRunning",
-                                    "notification.body.alreadyRunning",
+                                    crate::utils::app::notification::Notification::localized(
+                                        "notification.title.alreadyRunning",
+                                        "notification.body.alreadyRunning",
+                                        None,
+                                        None,
+                                        Some(crate::utils::types::logs::LogLevel::Info),
+                                    ),
+                                    Some(crate::utils::types::origin::Origin::Internal),
                                 );
                             }
                         }
@@ -220,10 +226,16 @@ pub fn run() {
                         let _ = window.set_focus();
                     } else {
                         info!("📢 Second instance detected, but window was destroyed. Use tray to reopen.");
-                        utils::app::notification::send_notification(
+                        crate::utils::app::notification::send_notification_typed(
                             _app,
-                            "notification.title.alreadyRunning",
-                            "notification.body.alreadyRunning",
+                            crate::utils::app::notification::Notification::localized(
+                                "notification.title.alreadyRunning",
+                                "notification.body.alreadyRunning",
+                                None,
+                                None,
+                                Some(crate::utils::types::logs::LogLevel::Info),
+                            ),
+                            Some(crate::utils::types::origin::Origin::Internal),
                         );
                     }
                 }

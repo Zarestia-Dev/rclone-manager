@@ -19,6 +19,7 @@ import {
   ActionState,
   RemoteAction,
   DiskUsage,
+  Origin,
 } from '@app/types';
 import { EventListenersService } from '../system/event-listeners.service';
 
@@ -93,7 +94,7 @@ export class RemoteFacadeService extends TauriBaseService {
   async getCachedOrFetchDiskUsage(
     remoteName: string,
     normalizedName?: string,
-    source = 'dashboard'
+    source: Origin = 'dashboard'
   ): Promise<DiskUsage | null> {
     // Check cache first
     const cachedRemote = this.activeRemotes().find(r => r.remoteSpecs.name === remoteName);
@@ -481,7 +482,7 @@ export class RemoteFacadeService extends TauriBaseService {
     remoteName: string,
     operationType: SyncOperationType | 'mount' | 'serve',
     profileName?: string,
-    source = 'dashboard',
+    source: Origin = 'dashboard',
     noCache?: boolean
   ): Promise<void> {
     const settings = this.getRemoteSettings(remoteName);

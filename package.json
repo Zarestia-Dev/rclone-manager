@@ -7,7 +7,6 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "tauri": "tauri",
-    "prebuild": "node scripts/generate-i18n-resources.js",
     "dev:portable": "npm run tauri dev -- --features portable",
     "dev:flatpak": "npm run tauri dev -- --features flatpak",
     "dev:headless": "npm run tauri dev -- --config src-tauri/tauri.conf.headless.json --features web-server,updater",

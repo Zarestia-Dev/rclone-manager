@@ -7,6 +7,7 @@ import {
   Entry,
   LocalDrive,
   FsInfo,
+  Origin,
 } from '@app/types';
 
 /**
@@ -128,7 +129,7 @@ export class RemoteManagementService extends TauriBaseService {
   /**
    * Get filesystem info for a remote
    */
-  async getFsInfo(remote: string, source?: string): Promise<FsInfo> {
+  async getFsInfo(remote: string, source?: Origin): Promise<FsInfo> {
     try {
       return this.invokeCommand<FsInfo>('get_fs_info', { remote, origin: source });
     } catch (error) {
@@ -143,7 +144,7 @@ export class RemoteManagementService extends TauriBaseService {
   async getDiskUsage(
     remote: string,
     path?: string,
-    source?: string
+    source?: Origin
   ): Promise<{
     total: number;
     used: number;
@@ -158,7 +159,7 @@ export class RemoteManagementService extends TauriBaseService {
   async getSize(
     remote: string,
     path?: string,
-    source?: string
+    source?: Origin
   ): Promise<{
     count: number;
     bytes: number;
@@ -166,7 +167,7 @@ export class RemoteManagementService extends TauriBaseService {
     return this.invokeCommand('get_size', { remote, path, origin: source });
   }
 
-  async getStat(remote: string, path: string, source?: string): Promise<{ item: Entry }> {
+  async getStat(remote: string, path: string, source?: Origin): Promise<{ item: Entry }> {
     return this.invokeCommand('get_stat', { remote, path, origin: source });
   }
 
@@ -181,7 +182,7 @@ export class RemoteManagementService extends TauriBaseService {
     remote: string,
     path: string,
     hashType: string,
-    source?: string
+    source?: Origin
   ): Promise<{ hashsum: string[]; hashType: string }> {
     return this.invokeCommand('get_hashsum', { remote, path, hashType, origin: source });
   }
@@ -197,7 +198,7 @@ export class RemoteManagementService extends TauriBaseService {
     remote: string,
     path: string,
     hashType: string,
-    source?: string
+    source?: Origin
   ): Promise<{ hash: string; hashType: string }> {
     return this.invokeCommand('get_hashsum_file', { remote, path, hashType, origin: source });
   }
@@ -214,7 +215,7 @@ export class RemoteManagementService extends TauriBaseService {
     path: string,
     unlink?: boolean,
     expire?: string,
-    source?: string
+    source?: Origin
   ): Promise<{ url: string }> {
     return this.invokeCommand('get_public_link', { remote, path, unlink, expire, origin: source });
   }
@@ -226,7 +227,7 @@ export class RemoteManagementService extends TauriBaseService {
     remote: string,
     path: string,
     options: Record<string, unknown>,
-    source?: string
+    source?: Origin
   ): Promise<{ list: Entry[] }> {
     return this.invokeCommand<{ list: Entry[] }>('get_remote_paths', {
       remote,
@@ -246,7 +247,7 @@ export class RemoteManagementService extends TauriBaseService {
   async deleteFile(
     remote: string,
     path: string,
-    source?: string,
+    source?: Origin,
     noCache?: boolean
   ): Promise<number> {
     return this.invokeCommand<number>('delete_file', {
@@ -263,7 +264,7 @@ export class RemoteManagementService extends TauriBaseService {
   async purgeDirectory(
     remote: string,
     path: string,
-    source?: string,
+    source?: Origin,
     noCache?: boolean
   ): Promise<number> {
     return this.invokeCommand<number>('purge_directory', {
@@ -280,7 +281,7 @@ export class RemoteManagementService extends TauriBaseService {
   async removeEmptyDirs(
     remote: string,
     path: string,
-    source?: string,
+    source?: Origin,
     noCache?: boolean
   ): Promise<number> {
     return this.invokeCommand<number>('remove_empty_dirs', {
@@ -299,7 +300,7 @@ export class RemoteManagementService extends TauriBaseService {
     srcPath: string,
     dstRemote: string,
     dstPath: string,
-    source?: string,
+    source?: Origin,
     noCache?: boolean
   ): Promise<number> {
     return this.invokeCommand<number>('copy_file', {
@@ -320,7 +321,7 @@ export class RemoteManagementService extends TauriBaseService {
     srcPath: string,
     dstRemote: string,
     dstPath: string,
-    source?: string,
+    source?: Origin,
     noCache?: boolean
   ): Promise<number> {
     return this.invokeCommand<number>('move_file', {
@@ -341,7 +342,7 @@ export class RemoteManagementService extends TauriBaseService {
     srcPath: string,
     dstRemote: string,
     dstPath: string,
-    source?: string,
+    source?: Origin,
     noCache?: boolean
   ): Promise<number> {
     console.log('copyDirectory', srcRemote, srcPath, dstRemote, dstPath);
@@ -364,7 +365,7 @@ export class RemoteManagementService extends TauriBaseService {
     srcPath: string,
     dstRemote: string,
     dstPath: string,
-    source?: string,
+    source?: Origin,
     noCache?: boolean
   ): Promise<number> {
     return this.invokeCommand<number>('move_dir', {
@@ -383,7 +384,7 @@ export class RemoteManagementService extends TauriBaseService {
   async makeDirectory(
     remote: string,
     path: string,
-    source?: string,
+    source?: Origin,
     noCache?: boolean
   ): Promise<number> {
     return this.invokeCommand<number>('mkdir', {
@@ -400,7 +401,7 @@ export class RemoteManagementService extends TauriBaseService {
   async cleanup(
     remote: string,
     path?: string,
-    source?: string,
+    source?: Origin,
     noCache?: boolean
   ): Promise<number> {
     return this.invokeCommand<number>('cleanup', { remote, path, source, noCache });

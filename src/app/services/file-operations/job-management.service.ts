@@ -2,7 +2,7 @@ import { DestroyRef, inject, Injectable } from '@angular/core';
 import { BehaviorSubject, map, merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../core/tauri-base.service';
-import { JobInfo } from '@app/types';
+import { JobInfo, Origin } from '@app/types';
 import { EventListenersService } from '../system/event-listeners.service';
 
 /**
@@ -141,7 +141,7 @@ export class JobManagementService extends TauriBaseService {
   async startSyncProfile(
     remoteName: string,
     profileName: string,
-    source?: string,
+    source?: Origin,
     noCache?: boolean
   ): Promise<number> {
     const params = {
@@ -160,7 +160,7 @@ export class JobManagementService extends TauriBaseService {
   async startCopyProfile(
     remoteName: string,
     profileName: string,
-    source?: string,
+    source?: Origin,
     noCache?: boolean
   ): Promise<number> {
     const params = {
@@ -179,7 +179,7 @@ export class JobManagementService extends TauriBaseService {
   async startBisyncProfile(
     remoteName: string,
     profileName: string,
-    source?: string,
+    source?: Origin,
     noCache?: boolean
   ): Promise<number> {
     const params = {
@@ -198,7 +198,7 @@ export class JobManagementService extends TauriBaseService {
   async startMoveProfile(
     remoteName: string,
     profileName: string,
-    source?: string,
+    source?: Origin,
     noCache?: boolean
   ): Promise<number> {
     const params = {
@@ -219,7 +219,7 @@ export class JobManagementService extends TauriBaseService {
     path: string,
     url: string,
     autoFilename: boolean,
-    source?: string,
+    source?: Origin,
     noCache?: boolean
   ): Promise<void> {
     await this.invokeCommand('copy_url', {
@@ -266,7 +266,7 @@ export class JobManagementService extends TauriBaseService {
    * Get jobs filtered by source UI
    * @param source The source UI identifier (e.g., 'nautilus', 'dashboard', 'scheduled')
    */
-  async getJobsBySource(source: string): Promise<JobInfo[]> {
+  async getJobsBySource(source: Origin): Promise<JobInfo[]> {
     return this.invokeCommand<JobInfo[]>('get_jobs_by_source', { source });
   }
 

@@ -68,6 +68,8 @@ export const DEFAULT_JOB_STATS: GlobalStats = {
   transferring: [],
 };
 
+import { Origin } from './origin';
+
 export interface JobInfo {
   jobid: number;
   job_type: JobActionType;
@@ -80,7 +82,7 @@ export interface JobInfo {
   group?: string;
   profile?: string;
   /** Source UI that started this job (e.g., "nautilus", "dashboard", "scheduled") */
-  origin?: string;
+  origin?: Origin;
   /** The backend instance this job belongs to (e.g., "Local", "NAS") */
   backend_name?: string;
 }
