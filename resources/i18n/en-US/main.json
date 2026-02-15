@@ -1263,7 +1263,15 @@
       "failed": "Failed",
       "cancelled": "Cancelled",
       "cancelJob": "Cancel",
-      "removeJob": "Remove"
+      "removeJob": "Remove",
+      "details": {
+        "source": "Source",
+        "destination": "Destination",
+        "startTime": "Start Time",
+        "speed": "Speed",
+        "eta": "ETA",
+        "transfers": "Transfers"
+      }
     },
     "fileViewer": {
       "closeViewer": "Close viewer",
@@ -1409,6 +1417,7 @@
       "remoteManagement": "Remote Management",
       "fileOperations": "File Operations",
       "fileBrowser": "File Browser",
+      "fileBrowserNautilus": "File Browser (Nautilus)",
       "navigation": "Navigation"
     }
   },
@@ -1947,6 +1956,9 @@
     }
   },
   "nautilus": {
+    "shortcuts": {
+      "title": "Nautilus Keyboard Shortcuts"
+    },
     "titles": {
       "selectFolder": "Select Folder",
       "selectFile": "Select File",
@@ -1983,6 +1995,11 @@
       "otherItems": "other items"
     },
     "modals": {
+      "delete": {
+        "title": "Delete Items",
+        "messageSingle": "Are you sure you want to delete \"{{name}}\"?",
+        "messageMultiple": "Are you sure you want to delete {{count}} items?"
+      },
       "newFolder": {
         "title": "New Folder",
         "label": "Folder name",
@@ -1990,7 +2007,12 @@
       },
       "emptyTrash": {
         "title": "Empty Trash",
-        "message": "Remove trashed files from {{remote}}?"
+        "message": "Are you sure you want to remove trashed items in {{remote}}?"
+      },
+      "rmdirs": {
+        "title": "Remove Empty Folders",
+        "message": "Are you sure you want to remove all empty folders in \"{{name}}\"?",
+        "confirm": "Remove"
       }
     },
     "errors": {
@@ -1998,15 +2020,16 @@
       "remoteNotFound": "Remote '{{remote}}' not found",
       "bookmarkRemoteNotFound": "Remote '{{remote}}' for bookmark not found",
       "loadFailed": "Failed to load directory",
-      "createFolderFailed": "Failed to create folder",
-      "emptyTrashFailed": "Failed to empty trash: {{error}}",
-      "openFileFailed": "Unable to open file: missing remote context",
-      "minSelection": "Please select at least {{min}} item{{s}}."
+      "deleteFailed": "Failed to delete {{count}} items",
+      "copyFailed": "Failed to copy {{count}} items",
+      "moveFailed": "Failed to move {{count}} items",
+      "rmdirsFailed": "Failed to remove empty folders in \"{{name}}\": {{error}}",
+      "openFileFailed": "Dosya açılamıyor: uzak sunucu bağlamı eksik",
+      "minSelection": "Lütfen en az {{min}} öge seçin."
     },
     "contextMenu": {
       "open": "Open",
       "openNewTab": "Open in New Tab",
-      "toggleSelect": "Toggle Select",
       "copyPath": "Copy Path",
       "newFolder": "New Folder",
       "refresh": "Refresh",
@@ -2015,8 +2038,28 @@
       "copyLocation": "Copy Location",
       "selectAll": "Select All",
       "removeBookmark": "Remove Bookmark",
+      "duplicateTab": "Duplicate Tab",
+      "closeOtherTabs": "Close Other Tabs",
+      "closeTabsToRight": "Close Tabs to the Right",
       "about": "About",
-      "emptyTrash": "Empty Trash"
+      "emptyTrash": "Empty Trash",
+      "removeEmptyDirs": "Remove empty folders",
+      "delete": "Delete",
+      "copy": "Copy",
+      "cut": "Cut",
+      "paste": "Paste",
+      "focusPath": "Focus Path",
+      "newTab": "New Tab",
+      "closeTab": "Close Tab",
+      "goUp": "Go Up",
+      "goBack": "Go Back",
+      "goForward": "Go Forward",
+      "search": "Search",
+      "nextTab": "Next Tab",
+      "previousTab": "Previous Tab",
+      "switchTab": "Switch to Tab",
+      "toggleSplit": "Toggle Split View",
+      "switchPane": "Switch Pane"
     },
     "sidebar": {
       "newBookmark": "New Bookmark"
@@ -2026,10 +2069,12 @@
       "showHidden": "Show Hidden Files"
     },
     "notifications": {
-      "addedToStarred": "'{{item}}' added to Starred",
       "undo": "Undo",
-      "trashEmptied": "Trash emptied",
-      "locationCopied": "Location copied to clipboard"
+      "trashEmptied": "Cleanup operation started",
+      "locationCopied": "Location copied to clipboard",
+      "rmdirsStarted": "Removing empty folders in \"{{name}}\"...",
+      "deleteStarted": "Deleting {{count}} items...",
+      "pasteComplete": "Paste operation completed"
     }
   },
   "overview": {
@@ -2683,6 +2728,7 @@
   "developerTools": {
     "refreshUi": "Refresh UI",
     "clearCache": "Clear Cache",
+    "openDevTools": "Open Developer Tools",
     "clearing": "Clearing Data...",
     "cleared": "Data Cleared"
   }
