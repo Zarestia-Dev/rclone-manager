@@ -1,16 +1,6 @@
-import { CommonModule } from '@angular/common';
-import {
-  Component,
-  OnInit,
-  OnDestroy,
-  Output,
-  EventEmitter,
-  TrackByFunction,
-  inject,
-  input,
-  signal,
-  computed,
-} from '@angular/core';
+import { NgClass, DecimalPipe, TitleCasePipe } from '@angular/common';
+import { Component, OnInit, inject, input, signal, computed, output } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -22,8 +12,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
-
-import { Subject, Subscription, takeUntil } from 'rxjs';
 
 import {
   JobInfo,
@@ -42,7 +30,6 @@ import { ServeCardComponent } from '../../../../shared/components/serve-card/ser
 import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
 
 import {
-  EventListenersService,
   SchedulerService,
   UiStateService,
   RcloneStatusService,
@@ -81,7 +68,9 @@ const ALL_PANELS: PanelConfig[] = [
   selector: 'app-general-overview',
   standalone: true,
   imports: [
-    CommonModule,
+    NgClass,
+    DecimalPipe,
+    TitleCasePipe,
     MatCardModule,
     MatIconModule,
     MatButtonModule,
@@ -99,30 +88,40 @@ const ALL_PANELS: PanelConfig[] = [
     ServeCardComponent,
     FormatRateValuePipe,
     FormatBytes,
-
     OverviewHeaderComponent,
     TranslateModule,
   ],
   templateUrl: './general-overview.component.html',
   styleUrls: ['./general-overview.component.scss'],
 })
-export class GeneralOverviewComponent implements OnInit, OnDestroy {
+export class GeneralOverviewComponent implements OnInit {
+  // Services
+  private snackBar = inject(MatSnackBar);
+  private schedulerService = inject(SchedulerService);
+  private uiStateService = inject(UiStateService);
+  private appSettingsService = inject(AppSettingsService);
+  public rcloneStatusService = inject(RcloneStatusService);
+  public iconService = inject(IconService);
+
+  readonly backendService = inject(BackendService);
+  private translate = inject(TranslateService);
+
   // Inputs
   remotes = input<Remote[]>([]);
   jobs = input<JobInfo[]>([]);
   actionInProgress = input<RemoteActionProgress>({});
 
   // Outputs
-  @Output() selectRemote = new EventEmitter<Remote>();
-  @Output() startJob = new EventEmitter<{ type: PrimaryActionType; remoteName: string }>();
-  @Output() stopJob = new EventEmitter<{
+  selectRemote = output<Remote>();
+  startJob = output<{ type: PrimaryActionType; remoteName: string }>();
+  stopJob = output<{
     type: PrimaryActionType;
     remoteName: string;
     serveId?: string;
     profileName?: string;
   }>();
-  @Output() browseRemote = new EventEmitter<string>();
-  @Output() openBackendModal = new EventEmitter<void>();
+  browseRemote = output<string>();
+  openBackendModal = output<void>();
 
   // State signals
   isEditingLayout = signal(false);
@@ -134,25 +133,13 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     tasks: false,
     serves: false,
   });
-  scheduledTasks = signal<ScheduledTask[]>([]);
+  scheduledTasks = toSignal(this.schedulerService.scheduledTasks$, { initialValue: [] });
   isLoadingScheduledTasks = signal(false);
   isLoadingServes = signal(false);
 
   dashboardPanels = signal<DashboardPanel[]>(
     ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible }))
   );
-
-  // Services
-  private eventListenersService = inject(EventListenersService);
-  private snackBar = inject(MatSnackBar);
-  private schedulerService = inject(SchedulerService);
-  private uiStateService = inject(UiStateService);
-  private appSettingsService = inject(AppSettingsService);
-  public rcloneStatusService = inject(RcloneStatusService);
-  public iconService = inject(IconService);
-
-  readonly backendService = inject(BackendService);
-  private translate = inject(TranslateService);
 
   // Expose status service signals for template
   readonly rcloneStatus = this.rcloneStatusService.rcloneStatus;
@@ -164,14 +151,10 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   }));
   readonly isLoadingStats = this.rcloneStatusService.isLoading;
 
-  // Subscriptions
-  private destroy$ = new Subject<void>();
-  private scheduledTasksSubscription: Subscription | null = null;
+  // No manual subscriptions needed anymore
 
   // Track by functions
-  readonly trackByPanelId: TrackByFunction<DashboardPanel> = (_, item) => item.id;
-  readonly trackByRemoteName: TrackByFunction<Remote> = (_, remote) => remote.remoteSpecs.name;
-  readonly trackByIndex: TrackByFunction<unknown> = index => index;
+  readonly trackByIndex: (index: number) => number = index => index;
 
   // Computed values
   totalRemotes = computed(() => this.remotes()?.length || 0);
@@ -206,11 +189,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.setupScheduledTasksListener();
-  }
-
-  ngOnDestroy(): void {
-    this.cleanup();
+    this.loadScheduledTasks();
   }
 
   // Layout management
@@ -416,21 +395,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     } catch {
       console.debug('Failed to load layout settings, using defaults');
     }
-  }
-
-  private cleanup(): void {
-    this.scheduledTasksSubscription?.unsubscribe();
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
-
-  private setupScheduledTasksListener(): void {
-    this.loadScheduledTasks();
-    this.scheduledTasksSubscription = this.schedulerService.scheduledTasks$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (tasks: ScheduledTask[]) => this.scheduledTasks.set(tasks),
-      });
   }
 
   private async loadScheduledTasks(): Promise<void> {

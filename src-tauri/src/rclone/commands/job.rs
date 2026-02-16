@@ -110,6 +110,11 @@ fn job_failed_notification(metadata: &JobMetadata, error_msg: &str) -> Notificat
     )
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+pub struct SubmitJobOptions {
+    pub wait_for_completion: bool,
+}
+
 pub async fn submit_job(
     app: AppHandle,
     client: reqwest::Client,
@@ -117,21 +122,46 @@ pub async fn submit_job(
     payload: Value,
     metadata: JobMetadata,
 ) -> Result<(u64, Value, Option<String>), String> {
+    submit_job_with_options(
+        app,
+        client,
+        request,
+        payload,
+        metadata,
+        SubmitJobOptions::default(),
+    )
+    .await
+}
+
+pub async fn submit_job_with_options(
+    app: AppHandle,
+    client: reqwest::Client,
+    request: reqwest::RequestBuilder,
+    payload: Value,
+    metadata: JobMetadata,
+    options: SubmitJobOptions,
+) -> Result<(u64, Value, Option<String>), String> {
     let (jobid, backend_name, response_json, execute_id) =
         initialize_and_register_job(&app, request, payload, &metadata).await?;
 
-    let app_clone = app.clone();
-    let client_clone = client.clone();
-    tauri::async_runtime::spawn(async move {
-        let _ = monitor_job(
-            backend_name,
-            metadata.clone(), // Pass full metadata
-            jobid,
-            app_clone,
-            client_clone,
-        )
-        .await;
-    });
+    if options.wait_for_completion {
+        monitor_job(backend_name, metadata, jobid, app.clone(), client.clone())
+            .await
+            .map_err(|e| e.to_string())?;
+    } else {
+        let app_clone = app.clone();
+        let client_clone = client.clone();
+        tauri::async_runtime::spawn(async move {
+            let _ = monitor_job(
+                backend_name,
+                metadata.clone(), // Pass full metadata
+                jobid,
+                app_clone,
+                client_clone,
+            )
+            .await;
+        });
+    }
 
     Ok((jobid, response_json, execute_id))
 }

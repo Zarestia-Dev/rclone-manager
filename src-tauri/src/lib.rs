@@ -378,7 +378,71 @@ fn setup_app(
                         value
                     }),
             )
-            .with_sub_settings(rcman::SubSettingsConfig::singlefile("connections"))
+            .with_sub_settings(
+                rcman::SubSettingsConfig::singlefile("connections")
+                    .with_schema::<crate::rclone::backend::types::BackendConnectionSchema>()
+                    .with_migrator(|value: serde_json::Value| {
+                        // Secret Migration: Move keys from `backend:{name}:password` to `sub.connections.{name}.password`
+                        #[cfg(desktop)]
+                        {
+                            use rcman::CredentialManager;
+                            // Use same service name as main app (env!("CARGO_PKG_NAME"))
+                            let service_name = env!("CARGO_PKG_NAME");
+
+                            // We need a temporary CredentialManager to check legacy keys
+                            // Since we don't have the instance from outside, we create a new handle to the same service
+                            let creds = CredentialManager::new(service_name);
+
+                            if let Some(connections) = value.as_object() {
+                                for (name, _) in connections {
+                                    // 1. Password field
+                                    let legacy_pass_key = format!("backend:{}:password", name);
+                                    let new_pass_key = format!("sub.connections.{}.password", name);
+
+                                    // Only migrate if legacy exists AND new one doesn't (don't overwrite new data)
+                                    if creds.exists(&legacy_pass_key) {
+                                        if !creds.exists(&new_pass_key) {
+                                            if let Ok(Some(secret)) = creds.get(&legacy_pass_key) {
+                                                log::info!("🔐 Migrating legacy password for '{}'", name);
+                                                if let Err(e) = creds.store(&new_pass_key, &secret) {
+                                                    log::error!("Failed to migrate password for '{}': {}", name, e);
+                                                } else {
+                                                    // Only delete legacy if migration succeeded
+                                                    let _ = creds.remove(&legacy_pass_key);
+                                                }
+                                            }
+                                        } else {
+                                            // New key exists, just clean up legacy
+                                            log::debug!("Cleaning up legacy password for '{}' (already migrated)", name);
+                                            let _ = creds.remove(&legacy_pass_key);
+                                        }
+                                    }
+
+                                    // 2. Config Password field
+                                    let legacy_conf_key = format!("backend:{}:config_password", name);
+                                    let new_conf_key = format!("sub.connections.{}.config_password", name);
+
+                                    if creds.exists(&legacy_conf_key) {
+                                        if !creds.exists(&new_conf_key) {
+                                            if let Ok(Some(secret)) = creds.get(&legacy_conf_key) {
+                                                log::info!("🔐 Migrating legacy config_password for '{}'", name);
+                                                if let Err(e) = creds.store(&new_conf_key, &secret) {
+                                                    log::error!("Failed to migrate config_password for '{}': {}", name, e);
+                                                } else {
+                                                    let _ = creds.remove(&legacy_conf_key);
+                                                }
+                                            }
+                                        } else {
+                                            log::debug!("Cleaning up legacy config_password for '{}' (already migrated)", name);
+                                            let _ = creds.remove(&legacy_conf_key);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        value
+                    }),
+            )
             .build()
             .map_err(|e| format!("Failed to create rcman settings manager: {e}"))?;
 

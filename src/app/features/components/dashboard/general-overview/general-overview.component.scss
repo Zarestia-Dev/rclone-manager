@@ -117,7 +117,7 @@
     margin-top: 16px;
 
     .job-progress-section {
-      background-color: rgba(var(--view-bg-color), 0.02);
+      background-color: rgba(var(--view-bg-color-rgb, var(--view-bg-color)), 0.02);
       border-radius: 8px;
       padding: 16px;
 
@@ -629,12 +629,13 @@
   }
 }
 
-.status-dot,
 .status-indicator-small {
   width: 10px;
   height: 10px;
   border-radius: 50%;
   background-color: var(--dim-color);
+  display: inline-block;
+  will-change: transform, opacity;
 
   &.active {
     background-color: var(--primary-color);
@@ -647,12 +648,6 @@
   &.inactive {
     background-color: var(--dim-color);
   }
-}
-
-.status-indicator-small {
-  display: inline-block;
-  animation: breathing 3s ease-in-out infinite;
-  will-change: transform, opacity;
 }
 
 .loading {

@@ -1,5 +1,5 @@
-import { Component, Input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, input, computed } from '@angular/core';
+import { NgStyle } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,7 +11,7 @@ import { FormatFileSizePipe } from '@app/pipes';
   selector: 'app-disk-usage-panel',
   standalone: true,
   imports: [
-    CommonModule,
+    NgStyle,
     MatCardModule,
     MatIconModule,
     MatProgressSpinnerModule,
@@ -29,23 +29,23 @@ import { FormatFileSizePipe } from '@app/pipes';
       </mat-card-header>
       <mat-card-content>
         <div class="usage-bar-container">
-          <div class="disk-usage-bar" [ngStyle]="getDiskBarStyle()">
-            @if (config.notSupported) {
+          <div class="disk-usage-bar" [ngStyle]="diskBarStyle()">
+            @if (config().notSupported) {
               <div class="usage-status-text">
                 {{
-                  config.notSupported
+                  config().notSupported
                     ? ('detailShared.diskUsage.notSupported' | translate)
                     : ('detailShared.diskUsage.unknown' | translate)
                 }}
               </div>
             } @else {
-              <div class="usage-fill" [ngStyle]="getUsageFillStyle()"></div>
+              <div class="usage-fill" [ngStyle]="usageFillStyle()"></div>
             }
           </div>
         </div>
-        @if (config && !config.notSupported) {
+        @if (config() && !config().notSupported) {
           <div class="usage-legend">
-            @if (config.loading) {
+            @if (config().loading) {
               <div
                 class="legend-spinner"
                 style="display:flex;align-items:center;justify-content:center;height:40px;"
@@ -57,21 +57,21 @@ import { FormatFileSizePipe } from '@app/pipes';
                 <div class="legend-color total"></div>
                 <span class="legend-text">{{
                   'detailShared.diskUsage.total'
-                    | translate: { value: (config.total_space ?? 0 | formatFileSize) }
+                    | translate: { value: (config().total_space ?? 0 | formatFileSize) }
                 }}</span>
               </div>
               <div class="legend-item">
-                <div class="legend-color used" [ngStyle]="getUsedLegendStyle()"></div>
+                <div class="legend-color used" [ngStyle]="usedLegendStyle()"></div>
                 <span class="legend-text">{{
                   'detailShared.diskUsage.used'
-                    | translate: { value: (config.used_space ?? 0 | formatFileSize) }
+                    | translate: { value: (config().used_space ?? 0 | formatFileSize) }
                 }}</span>
               </div>
               <div class="legend-item">
                 <div class="legend-color free"></div>
                 <span class="legend-text">{{
                   'detailShared.diskUsage.free'
-                    | translate: { value: (config.free_space ?? 0 | formatFileSize) }
+                    | translate: { value: (config().free_space ?? 0 | formatFileSize) }
                 }}</span>
               </div>
             }
@@ -82,80 +82,60 @@ import { FormatFileSizePipe } from '@app/pipes';
   `,
 })
 export class DiskUsagePanelComponent {
-  @Input() config!: DiskUsage;
+  config = input.required<DiskUsage>();
 
-  getDiskBarStyle(): Record<string, string> {
-    if (this.config.notSupported) {
-      return this.getUnsupportedStyle();
-    }
+  readonly usagePercentage = computed(() => {
+    const conf = this.config();
+    if (!conf || conf.notSupported) return 0;
 
-    if (this.config.loading) {
-      return this.getLoadingStyle();
-    }
-
-    return this.getMountedStyle();
-  }
-
-  getUsagePercentage(): number {
-    if (!this.config || this.config.notSupported) {
-      return 0;
-    }
-
-    const used = this.config.used_space || 0;
-    const total = this.config.total_space || 1;
+    const used = conf.used_space || 0;
+    const total = conf.total_space || 1;
 
     return total > 0 ? (used / total) * 100 : 0;
-  }
+  });
 
-  private getUnsupportedStyle(): Record<string, string> {
-    return {
-      backgroundColor: 'rgba(var(--yellow-rgb), 0.3)',
-      boxShadow: 'inset 0 0 0 2px var(--yellow)',
-    };
-  }
+  readonly usageColorVar = computed(() => {
+    const percentage = this.usagePercentage();
 
-  private getLoadingStyle(): Record<string, string> {
-    return {
-      backgroundColor: 'rgba(var(--orange-rgb), 0.2)',
-      boxShadow: 'inset 0 0 0 2px var(--orange)',
-      backgroundImage:
-        'linear-gradient(90deg, transparent 0%, rgba(var(--orange-rgb), 0.3) 50%, transparent 100%)',
-      backgroundSize: '200% 100%',
-      animation: 'diskLoadingShimmer 1.5s ease-in-out infinite',
-    };
-  }
+    if (percentage >= 90) return '--warn-color'; // Red - Critical
+    if (percentage >= 80) return '--orange'; // Orange - High
+    if (percentage >= 60) return '--yellow'; // Yellow - Warning
+    return '--primary-color'; // Green - Healthy
+  });
 
-  private getMountedStyle(): Record<string, string> {
-    const colorVar = this.getUsageColorVar();
+  readonly diskBarStyle = computed(() => {
+    const conf = this.config();
+    if (conf.notSupported) {
+      return {
+        backgroundColor: 'rgba(var(--yellow-rgb), 0.3)',
+        boxShadow: 'inset 0 0 0 2px var(--yellow)',
+      };
+    }
+
+    if (conf.loading) {
+      return {
+        backgroundColor: 'rgba(var(--orange-rgb), 0.2)',
+        boxShadow: 'inset 0 0 0 2px var(--orange)',
+        backgroundImage:
+          'linear-gradient(90deg, transparent 0%, rgba(var(--orange-rgb), 0.3) 50%, transparent 100%)',
+        backgroundSize: '200% 100%',
+        animation: 'diskLoadingShimmer 1.5s ease-in-out infinite',
+      };
+    }
+
+    const colorVar = this.usageColorVar();
     return {
       backgroundColor: 'rgba(var(--window-fg-color-rgb), 0.08)',
       boxShadow: `inset 0 0 0 2px var(${colorVar})`,
     };
-  }
+  });
 
-  getUsageFillStyle(): Record<string, string> {
-    return {
-      width: `${this.getUsagePercentage()}%`,
-      background: `var(${this.getUsageColorVar()})`,
-    };
-  }
+  readonly usageFillStyle = computed(() => ({
+    width: `${this.usagePercentage()}%`,
+    background: `var(${this.usageColorVar()})`,
+  }));
 
-  getUsedLegendStyle(): Record<string, string> {
-    return {
-      background: `var(${this.getUsageColorVar()})`,
-    };
-  }
-
-  private getUsageColorVar(): string {
-    const percentage = this.getUsagePercentage();
-
-    if (percentage >= 90) {
-      return '--warn-color'; // Red - Critical
-    } else if (percentage >= 80) {
-      return '--orange'; // Orange - High
-    } else if (percentage >= 60) {
-      return '--yellow'; // Yellow - Warning
-    }
-    return '--primary-color'; // Green - Healthy
-  }
+  readonly usedLegendStyle = computed(() => ({
+    background: `var(${this.usageColorVar()})`,
+  }));
 }

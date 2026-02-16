@@ -127,10 +127,9 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 48px;
-      height: 48px;
+      width: var(--icon-size-xl);
+      height: var(--icon-size-xl);
       border-radius: var(--card-border-radius);
-      background: var(--hover-bg-color);
       transition: var(--transition-standard);
     }
 
@@ -247,32 +246,35 @@
 
 // 7.1 Tablet Styles (max-width: 768px)
 @media (max-width: 768px) {
-  .remotes-panel {
-    .remotes-header {
-      padding: var(--panel-padding) var(--panel-padding) 12px var(--panel-padding);
+  .remote-card {
+    .remote-header {
+      padding: var(--space-md);
     }
 
-    .remotes-content {
-      padding: var(--panel-padding-mobile) var(--panel-padding) var(--panel-padding)
-        var(--panel-padding);
-    }
-
-    .remotes-grid {
-      grid-template-columns: 1fr;
-      gap: var(--panel-padding-mobile);
+    .remote-content {
+      padding: var(--space-xs) var(--space-md) var(--space-md) var(--space-md);
     }
   }
 }
 
 // 7.2 Mobile Styles (max-width: 480px)
 @media (max-width: 480px) {
-  .remotes-panel {
-    .remotes-header {
-      padding: 20px 20px 12px 20px;
-    }
+  @media (max-width: 480px) {
+    .remote-card {
+      .remote-header {
+        padding: var(--space-sm);
+      }
 
-    .remotes-content {
-      padding: 12px 20px 20px 20px;
+      .remote-content {
+        padding: var(--space-xxs) var(--space-sm) var(--space-sm) var(--space-sm);
+      }
+
+      .remote-info {
+        .icon-container {
+          width: var(--icon-size-lg);
+          height: var(--icon-size-lg);
+        }
+      }
     }
   }
 }

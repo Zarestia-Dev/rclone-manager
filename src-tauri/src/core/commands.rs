@@ -218,6 +218,7 @@ macro_rules! generate_invoke_handler {
             // =================================================================
             // BACKEND MANAGEMENT
             // =================================================================
+            $crate::rclone::commands::backend::get_backend_schema,
             $crate::rclone::commands::backend::list_backends,
             $crate::rclone::commands::backend::get_active_backend,
             $crate::rclone::commands::backend::get_backend_profiles,

@@ -1,4 +1,4 @@
-import { Component, input, output, inject } from '@angular/core';
+import { Component, input, output, inject, computed } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
 import { map } from 'rxjs';
@@ -33,7 +33,7 @@ import { SENSITIVE_KEYS, SettingsPanelConfig } from '@app/types';
         <mat-panel-description>
           @if (hasMeaningfulSettings()) {
             <span class="settings-count">{{
-              'detailShared.settings.metrics' | translate: { count: getSettingsCount() }
+              'detailShared.settings.metrics' | translate: { count: settingsCount() }
             }}</span>
           } @else {
             <span class="no-settings-hint">{{
@@ -46,32 +46,13 @@ import { SENSITIVE_KEYS, SettingsPanelConfig } from '@app/types';
       <div class="panel-body">
         @if (hasMeaningfulSettings()) {
           <div class="settings-grid">
-            @for (setting of getSettingsEntries(); track setting.key) {
-              @if (isObjectButNotArray(setting.value)) {
-                @for (subSetting of getObjectEntries(setting.value); track subSetting.key) {
-                  <div class="setting-item">
-                    <div class="setting-key">{{ subSetting.key }}</div>
-                    <div
-                      class="setting-value"
-                      [matTooltip]="getTooltip(subSetting.key, subSetting.value)"
-                      [matTooltipShowDelay]="500"
-                    >
-                      {{ getDisplayValue(subSetting.key, subSetting.value) }}
-                    </div>
-                  </div>
-                }
-              } @else {
-                <div class="setting-item">
-                  <div class="setting-key">{{ setting.key }}</div>
-                  <div
-                    class="setting-value"
-                    [matTooltip]="getTooltip(setting.key, setting.value)"
-                    [matTooltipShowDelay]="500"
-                  >
-                    {{ getDisplayValue(setting.key, setting.value) }}
-                  </div>
+            @for (entry of settingsEntries(); track entry.key) {
+              <div class="setting-item">
+                <div class="setting-key">{{ entry.key }}</div>
+                <div class="setting-value" [matTooltip]="entry.tooltip" [matTooltipShowDelay]="500">
+                  {{ entry.display }}
                 </div>
-              }
+              </div>
             }
           </div>
         } @else {
@@ -96,86 +77,86 @@ import { SENSITIVE_KEYS, SettingsPanelConfig } from '@app/types';
   `,
 })
 export class SettingsPanelComponent {
-  private translate = inject(TranslateService);
-  private appSettingsService = inject(AppSettingsService);
+  private readonly translate = inject(TranslateService);
+  private readonly appSettingsService = inject(AppSettingsService);
+
+  // Inputs
+  config = input.required<SettingsPanelConfig>();
+
+  // Outputs
+  editSettings = output<{ section: string; settings: Record<string, unknown> }>();
 
   // Reactive restriction mode from settings
-  restrictMode = toSignal(
+  readonly restrictMode = toSignal(
     this.appSettingsService
       .selectSetting('general.restrict')
       .pipe(map(setting => (setting?.value as boolean) ?? true)),
     { initialValue: true }
   );
 
-  config = input.required<SettingsPanelConfig>();
-  editSettings = output<{ section: string; settings: Record<string, unknown> }>();
+  // Derived State
+  readonly settingsEntries = computed(() => {
+    const rawSettings = this.config().settings || {};
+    const entries: { key: string; value: unknown; display: string; tooltip: string }[] = [];
 
-  hasMeaningfulSettings(): boolean {
-    const settings = this.config().settings;
-    if (!settings || Object.keys(settings).length === 0) {
-      return false;
-    }
-
-    // Check if all values are empty objects or null/undefined
-    return Object.values(settings).some(value => {
-      if (value === null || value === undefined) {
-        return false;
+    Object.entries(rawSettings).forEach(([key, value]) => {
+      if (this.isObjectButNotArray(value)) {
+        Object.entries(value as Record<string, unknown>).forEach(([subKey, subValue]) => {
+          entries.push(this.formatEntry(subKey, subValue));
+        });
+      } else {
+        entries.push(this.formatEntry(key, value));
       }
+    });
+
+    return entries;
+  });
+
+  readonly hasMeaningfulSettings = computed(() => {
+    const settings = this.config().settings;
+    if (!settings || Object.keys(settings).length === 0) return false;
+
+    return Object.values(settings).some(value => {
+      if (value === null || value === undefined) return false;
       if (typeof value === 'object' && !Array.isArray(value)) {
         return Object.keys(value as Record<string, unknown>).length > 0;
       }
       return true;
     });
-  }
+  });
 
-  getSettingsCount(): number {
-    const entries = this.getSettingsEntries();
-    let count = 0;
-    for (const entry of entries) {
-      if (this.isObjectButNotArray(entry.value)) {
-        count += Object.keys(entry.value as Record<string, unknown>).length;
-      } else {
-        count++;
-      }
-    }
-    return count;
-  }
+  readonly settingsCount = computed(() => this.settingsEntries().length);
 
-  getSettingsEntries(): { key: string; value: unknown }[] {
-    return Object.entries(this.config().settings || {}).map(([key, value]) => ({
+  private formatEntry(
+    key: string,
+    value: unknown
+  ): {
+    key: string;
+    value: unknown;
+    display: string;
+    tooltip: string;
+  } {
+    const isSensitive = this.isSensitiveKey(key);
+    const restrictedLabel = this.translate.instant('detailShared.settings.restricted');
+
+    return {
       key,
       value,
-    }));
+      display: isSensitive ? restrictedLabel : this.truncateValue(value, 15),
+      tooltip: isSensitive ? `[${restrictedLabel}]` : this.generateTooltip(value),
+    };
   }
 
-  getObjectEntries(obj: unknown): { key: string; value: unknown }[] {
-    return Object.entries((obj as Record<string, unknown>) || {}).map(([key, value]) => ({
-      key,
-      value,
-    }));
-  }
-
-  isObjectButNotArray(value: unknown): boolean {
+  private isObjectButNotArray(value: unknown): boolean {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
   }
 
-  isSensitiveKey(key: string): boolean {
+  private isSensitiveKey(key: string): boolean {
     if (!this.restrictMode()) return false;
-    const sensitiveKeys = SENSITIVE_KEYS;
-    return sensitiveKeys.some(sensitive => key.toLowerCase().includes(sensitive));
+    return SENSITIVE_KEYS.some(sensitive => key.toLowerCase().includes(sensitive));
   }
 
-  getDisplayValue(key: string, value: unknown): string {
-    if (this.isSensitiveKey(key)) {
-      return this.translate.instant('detailShared.settings.restricted');
-    }
-    return this.truncateValue(value, 15);
-  }
-
-  getTooltip(key: string, value: unknown): string {
-    if (this.isSensitiveKey(key)) {
-      return '[' + this.translate.instant('detailShared.settings.restricted') + ']';
-    }
+  private generateTooltip(value: unknown): string {
     try {
       return typeof value === 'object' ? JSON.stringify(value) : String(value);
     } catch {

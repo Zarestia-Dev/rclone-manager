@@ -3,6 +3,80 @@
 // Simplified flat structure - no nested types.
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+use rcman::{SettingMetadata, SettingsSchema, settings};
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct BackendConnectionSchema;
+
+impl SettingsSchema for BackendConnectionSchema {
+    fn get_metadata() -> HashMap<String, SettingMetadata> {
+        settings! {
+            "is_local" => SettingMetadata::toggle(true)
+                .meta_str("label", "Local Backend")
+                .meta_str("description", "Whether this backend is managed locally by the application")
+                .meta_str("input_type", "checkbox")
+                .meta_str("group", "system")
+                .meta_bool("readonly", true),
+
+            "host" => SettingMetadata::text("127.0.0.1")
+                .meta_str("label", "Host")
+                .meta_str("description", "Hostname or IP address of the rclone instance")
+                .meta_str("placeholder", "e.g. 127.0.0.1 or my-nas.local")
+                .meta_str("input_type", "text")
+                .meta_str("group", "connection")
+                .meta_num("order", 10.0),
+
+            "port" => SettingMetadata::number(51900.0)
+                .min(1.0).max(65535.0)
+                .meta_str("label", "Port")
+                .meta_str("placeholder", "51900")
+                .meta_str("input_type", "number")
+                .meta_str("group", "connection")
+                .meta_num("order", 20.0),
+
+            "username" => SettingMetadata::text("")
+                .meta_str("label", "Username")
+                .meta_str("placeholder", "Leave empty for no auth")
+                .meta_str("input_type", "text")
+                .meta_str("group", "authentication")
+                .meta_num("order", 30.0),
+
+            "password" => SettingMetadata::text("")
+                .secret()
+                .meta_str("label", "Password")
+                .meta_str("placeholder", "Leave empty for no auth")
+                .meta_str("input_type", "password")
+                .meta_str("group", "authentication")
+                .meta_num("order", 40.0),
+
+            "oauth_port" => SettingMetadata::number(51901.0)
+                .min(1.0).max(65535.0)
+                .meta_str("label", "OAuth Port")
+                .meta_str("description", "Port used for OAuth callbacks (Local backend only)")
+                .meta_str("input_type", "number")
+                .meta_str("group", "oauth")
+                .meta_num("order", 50.0),
+
+            "config_password" => SettingMetadata::text("")
+                .secret()
+                .meta_str("label", "Config Password")
+                .meta_str("description", "Password for encrypted configuration file")
+                .meta_str("input_type", "password")
+                .meta_str("group", "security")
+                .meta_num("order", 60.0),
+
+            "config_path" => SettingMetadata::text("")
+                .meta_str("label", "Config Path")
+                .meta_str("description", "Specific path to rclone.conf (optional)")
+                .meta_str("placeholder", "Leave empty to use default")
+                .meta_str("input_type", "file_path")
+                .meta_str("group", "advanced")
+                .meta_num("order", 70.0),
+        }
+    }
+}
 
 /// Single flat backend configuration
 ///
@@ -30,7 +104,7 @@ pub struct Backend {
     pub username: Option<String>,
 
     /// RC API password (for --rc-pass) - stored in keychain, not JSON
-    #[serde(skip)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub password: Option<String>,
 
     /// OAuth port for local backends (same host, different port)
@@ -38,11 +112,11 @@ pub struct Backend {
     pub oauth_port: Option<u16>,
 
     /// Config password for encrypted remote configs - stored in keychain
-    #[serde(skip)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub config_password: Option<String>,
 
     /// Config file path (for remote backends mostly) - optional
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub config_path: Option<String>,
 
     /// Rclone version (runtime only - fetched from core/version)
@@ -192,6 +266,63 @@ impl Backend {
     /// 3. Request sending
     /// 4. Error status checking (extracting error message)
     /// 5. JSON response parsing
+    pub async fn fetch_runtime_info(
+        &self,
+        client: &reqwest::Client,
+        timeout: std::time::Duration,
+    ) -> crate::rclone::backend::runtime::RuntimeInfo {
+        use crate::rclone::backend::runtime::RuntimeInfo;
+        use crate::rclone::queries::system::{fetch_config_path, fetch_version_info};
+
+        let mut info = RuntimeInfo::new();
+
+        // Fetch core/version with timeout
+        let version_future = fetch_version_info(self, client);
+        match tokio::time::timeout(timeout, version_future).await {
+            Ok(Ok(version_data)) => {
+                log::debug!("Fetched version info for backend: {}", self.name);
+                info.version = Some(version_data.version);
+                info.os = Some(version_data.os);
+                info.arch = Some(version_data.arch);
+                info.go_version = Some(version_data.go_version);
+            }
+            Ok(Err(e)) => {
+                log::warn!("Failed to fetch version for backend {}: {}", self.name, e);
+                return RuntimeInfo::with_error(e);
+            }
+            Err(_) => {
+                log::warn!("Timeout fetching version for backend {}", self.name);
+                return RuntimeInfo::with_error("Connection timed out");
+            }
+        }
+
+        // Fetch config/paths (optional)
+        let paths_future = fetch_config_path(self, client);
+        match tokio::time::timeout(timeout, paths_future).await {
+            Ok(Ok(path)) => {
+                log::debug!("Fetched config path for backend: {}", self.name);
+                info.config_path = Some(path);
+            }
+            Ok(Err(e)) => {
+                log::debug!(
+                    "Could not fetch paths for backend {} (non-critical): {}",
+                    self.name,
+                    e
+                );
+            }
+            Err(_) => {
+                log::debug!(
+                    "Timeout fetching paths for backend {} (non-critical)",
+                    self.name
+                );
+            }
+        }
+
+        info.set_status("connected");
+        info
+    }
+
+    /// Helper for POST requests expecting JSON response
     pub async fn post_json(
         &self,
         client: &reqwest::Client,
@@ -211,6 +342,7 @@ impl Backend {
 
 /// Frontend-friendly backend info (for list display)
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BackendInfo {
     pub name: String,
     pub is_local: bool,
@@ -254,11 +386,11 @@ impl BackendInfo {
             config_path: backend.config_path.clone(),
             oauth_port: backend.oauth_port,
             username: backend.username.clone(),
-            password: backend.password.clone(), // Include password for edit form
-            version: None,                      // Set from runtime cache
-            os: None,                           // Set from runtime cache
-            status: None,                       // Set from runtime cache
-            runtime_config_path: None,          // Set from runtime cache
+            password: backend.password.clone(),
+            version: None,             // Set from runtime cache
+            os: None,                  // Set from runtime cache
+            status: None,              // Set from runtime cache
+            runtime_config_path: None, // Set from runtime cache
         }
     }
 

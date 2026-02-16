@@ -202,8 +202,6 @@ form {
   }
 }
 
-// Backend Actions - Show on hover
-// Backend Actions - Always visible
 .backend-actions {
   display: flex;
   align-items: center;
@@ -230,13 +228,31 @@ form {
 .form-row {
   display: flex;
   gap: var(--space-md);
+  flex-wrap: wrap;
 
-  .host-field {
-    flex: 2;
-  }
-
-  .port-field {
+  // Field Wrapper
+  .field-wrapper {
     flex: 1;
+    display: flex;
+    display: flex;
+
+    flex-direction: column;
+
+    mat-form-field {
+      width: 100%;
+    }
+
+    &.host-field {
+      flex: 2;
+    }
+
+    &.port-field {
+      flex: 1;
+    }
+
+    &.full-width {
+      flex-basis: 100%;
+    }
   }
 }
 

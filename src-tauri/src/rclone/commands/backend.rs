@@ -9,13 +9,21 @@ use tauri::{AppHandle, Manager, State};
 use crate::{
     core::scheduler::engine::CronScheduler,
     rclone::backend::BackendManager,
-    rclone::backend::types::{Backend, BackendInfo},
+    rclone::backend::types::{Backend, BackendConnectionSchema, BackendInfo},
     rclone::state::scheduled_tasks::ScheduledTasksCache,
     utils::{
         rclone::endpoints::{config, core},
         types::core::RcloneState,
     },
 };
+use rcman::{SettingMetadata, SettingsSchema};
+use std::collections::HashMap;
+
+/// Get the backend settings schema for UI generation
+#[tauri::command]
+pub async fn get_backend_schema() -> Result<HashMap<String, SettingMetadata>, String> {
+    Ok(BackendConnectionSchema::get_metadata())
+}
 
 /// List all backends with their status
 #[tauri::command]
@@ -220,11 +228,8 @@ pub async fn update_backend(
             backend.password = Some(p.to_string());
         }
         (Some(_), _) | (_, Some(_)) => {
-            // Clear auth from keychain (desktop only)
-            #[cfg(desktop)]
-            if let Some(creds) = settings_manager.credentials() {
-                let _ = creds.remove(&format!("backend:{}:password", name));
-            }
+            // Clear from rcman sub-settings secret storage
+            backend.password = Some(String::new());
         }
         _ => {}
     }
@@ -235,11 +240,8 @@ pub async fn update_backend(
             backend.config_password = Some(cp.to_string());
         }
         Some(_) => {
-            // Clear from keychain (desktop only)
-            #[cfg(desktop)]
-            if let Some(creds) = settings_manager.credentials() {
-                let _ = creds.remove(&format!("backend:{}:config_password", name));
-            }
+            // Clear from rcman sub-settings secret storage
+            backend.config_password = Some(String::new());
         }
         None => {}
     }
@@ -384,31 +386,8 @@ pub struct TestConnectionResult {
 // =============================================================================
 
 fn save_backend_to_settings(manager: &AppSettingsManager, backend: &Backend) -> Result<(), String> {
-    // Store secrets in keychain (desktop only)
-    #[cfg(desktop)]
-    if let Some(creds) = manager.credentials() {
-        // Password
-        if let Some(ref password) = backend.password
-            && !password.is_empty()
-        {
-            creds
-                .store(&format!("backend:{}:password", backend.name), password)
-                .map_err(|e| e.to_string())?;
-        }
-        // Config password
-        if let Some(ref config_password) = backend.config_password
-            && !config_password.is_empty()
-        {
-            creds
-                .store(
-                    &format!("backend:{}:config_password", backend.name),
-                    config_password,
-                )
-                .map_err(|e| e.to_string())?;
-        }
-    }
-
-    // Save backend to JSON (secrets are skipped via serde)
+    // Save backend to rcman sub-settings.
+    // Secret fields are handled by rcman schema + credential manager.
     let connections = manager
         .sub_settings("connections")
         .map_err(|e| e.to_string())?;
@@ -422,14 +401,8 @@ fn save_backend_to_settings(manager: &AppSettingsManager, backend: &Backend) -> 
 }
 
 fn delete_backend_from_settings(manager: &AppSettingsManager, name: &str) -> Result<(), String> {
-    // Remove secrets (desktop only)
-    #[cfg(desktop)]
-    if let Some(creds) = manager.credentials() {
-        let _ = creds.remove(&format!("backend:{}:password", name));
-        let _ = creds.remove(&format!("backend:{}:config_password", name));
-    }
-
-    // Remove from JSON
+    // Remove entry from rcman sub-settings.
+    // rcman also clears schema-marked secret fields for this entry.
     let connections = manager
         .sub_settings("connections")
         .map_err(|e| e.to_string())?;

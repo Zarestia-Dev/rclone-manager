@@ -1,5 +1,3 @@
-const LOCAL_BACKEND_KEY: &str = "backend:Local:config_password";
-
 use crate::core::settings::AppSettingsManager;
 use log::{debug, info};
 use std::collections::HashMap;
@@ -21,30 +19,30 @@ impl SafeEnvironmentManager {
     /// Initialize with stored credentials from rcman
     #[cfg(desktop)]
     pub fn init_with_stored_credentials(&self, manager: &AppSettingsManager) -> Result<(), String> {
-        // Only try to load if credentials are supported
-        if let Some(creds) = manager.credentials() {
-            // Strict Unified Key Check
-            match creds.get(LOCAL_BACKEND_KEY) {
-                Ok(Some(password)) => {
-                    self.set_config_password(password);
-                    info!(
-                        "✅ Initialized SafeEnvironmentManager with stored credentials from rcman"
-                    );
-                    Ok(())
-                }
-                Ok(None) => {
-                    debug!("No stored credentials found during initialization");
+        match manager.sub_settings("connections") {
+            Ok(connections) => match connections.get_value("Local") {
+                Ok(local) => {
+                    if let Some(password) = local.get("config_password").and_then(|v| v.as_str())
+                        && !password.is_empty()
+                    {
+                        self.set_config_password(password.to_string());
+                        info!(
+                            "✅ Initialized SafeEnvironmentManager with stored credentials from rcman"
+                        );
+                    } else {
+                        debug!("No stored credentials found during initialization");
+                    }
                     Ok(())
                 }
                 Err(e) => {
-                    // Just log warning, don't fail startup
-                    debug!("Failed to check stored credentials: {}", e);
+                    debug!("Failed to load Local connection settings: {}", e);
                     Ok(())
                 }
+            },
+            Err(e) => {
+                debug!("Failed to access connections sub-settings: {}", e);
+                Ok(())
             }
-        } else {
-            debug!("Credential storage not available in rcman");
-            Ok(())
         }
     }
 

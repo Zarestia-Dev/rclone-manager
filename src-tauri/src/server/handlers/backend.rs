@@ -5,9 +5,10 @@ use serde::Deserialize;
 use tauri::Manager;
 
 use crate::core::scheduler::engine::CronScheduler;
-use crate::rclone::backend::types::BackendInfo;
+use crate::rclone::backend::types::{BackendConnectionSchema, BackendInfo};
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
+use rcman::SettingsSchema;
 
 pub async fn list_backends_handler(
     State(state): State<WebServerState>,
@@ -17,6 +18,12 @@ pub async fn list_backends_handler(
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(backends)))
+}
+
+pub async fn get_backend_schema_handler()
+-> Result<Json<ApiResponse<std::collections::HashMap<String, rcman::SettingMetadata>>>, AppError> {
+    let schema = BackendConnectionSchema::get_metadata();
+    Ok(Json(ApiResponse::success(schema)))
 }
 
 pub async fn get_active_backend_handler(

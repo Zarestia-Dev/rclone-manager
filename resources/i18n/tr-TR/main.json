@@ -234,7 +234,7 @@
       },
       "language": {
         "label": "Dil",
-        "description": "Kullanıcı arayüzü için kullanılacak dil."
+        "description": "Kullanıcı arayüzü için kullanılacak dil. Sistem dili otomatik olarak algılanır."
       },
       "start_on_startup": {
         "label": "Başlangıçta Çalıştır",

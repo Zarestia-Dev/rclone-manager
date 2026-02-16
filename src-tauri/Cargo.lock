@@ -4135,8 +4135,6 @@ dependencies = [
 [[package]]
 name = "rcman"
 version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "569275236376477f244b6da515d2c655fc50ec8e440e6156d7ec4466f20cd707"
 dependencies = [
  "dirs 6.0.0",
  "keyring",
@@ -4158,8 +4156,6 @@ dependencies = [
 [[package]]
 name = "rcman-derive"
 version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec03a22ac67851c8f78872f29b695ff0e3c0c37dd3059ed14c88703f17f8260f"
 dependencies = [
  "proc-macro2",
  "quote",

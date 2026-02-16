@@ -2,9 +2,9 @@
 .remote-details {
   display: flex;
   flex-direction: column;
-  gap: var(--container-gap);
+  gap: var(--space-lg);
   margin: 0 auto;
-  padding: var(--container-padding);
+  padding: var(--space-md);
 }
 
 .header-content {
@@ -80,7 +80,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-xs);
-  padding: 8px 12px;
+  padding: var(--space-xs) var(--space-sm);
   border-radius: 20px;
   background: var(--view-bg-color);
   transition: var(--transition-standard);
@@ -198,8 +198,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: rgba(var(--window-fg-color-rgb), 0.06);
   transition: var(--transition-fast);

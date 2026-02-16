@@ -19,7 +19,7 @@
       role="group"
       [attr.aria-label]="'dashboard.generalDetail.remoteActionQuickSelection' | translate"
     >
-      @for (actionConfig of actionConfigs; track trackByActionKey($index, actionConfig)) {
+      @for (actionConfig of actionConfigs; track actionConfig.key) {
         <div
           class="status-chip"
           [class]="actionConfig.key"
@@ -89,20 +89,16 @@
         <mat-card-content>
           @if (remoteScheduledTasks().length > 1) {
             <div class="carousel-indicators">
-              @for (
-                task of remoteScheduledTasks();
-                track trackByTaskId($index, task);
-                let i = $index
-              ) {
+              @for (task of remoteScheduledTasks(); track task.id) {
                 <div
                   class="indicator"
-                  [class.active]="i === currentTaskCardIndex()"
-                  (click)="goToTaskCard(i)"
+                  [class.active]="$index === currentTaskCardIndex()"
+                  (click)="goToTaskCard($index)"
                   [matTooltip]="task.name"
                   role="button"
                   tabindex="0"
                   [attr.aria-label]="
-                    'dashboard.generalDetail.goToTask' | translate: { index: i + 1 }
+                    'dashboard.generalDetail.goToTask' | translate: { index: $index + 1 }
                   "
                 ></div>
               }

@@ -442,6 +442,10 @@ fn backend_routes() -> Router<WebServerState> {
             "/get-backend-profiles",
             get(handlers::get_backend_profiles_handler),
         )
+        .route(
+            "/get-backend-schema",
+            get(handlers::get_backend_schema_handler),
+        )
 }
 
 fn debug_routes() -> Router<WebServerState> {

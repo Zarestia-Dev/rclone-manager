@@ -1,4 +1,4 @@
-import { Component, Input, ChangeDetectionStrategy, inject, output } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, output, input, computed } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -18,7 +18,7 @@ export class OverviewHeaderComponent {
   private readonly backendService = inject(BackendService);
   private readonly rcloneStatusService = inject(RcloneStatusService);
 
-  @Input() mode: AppTab = 'general';
+  mode = input<AppTab>('general');
 
   /** Emits when backend indicator is clicked */
   readonly openBackendModal = output<void>();
@@ -29,23 +29,19 @@ export class OverviewHeaderComponent {
   /** All backends for status */
   readonly backends = this.backendService.backends;
 
+  title = computed(() => this.TITLE_MAP[this.mode()] || 'overviews.headers.default');
+
+  backendStatusClass = computed(() => {
+    const status = this.rcloneStatusService.rcloneStatus();
+    return status === 'active' ? 'connected' : 'disconnected';
+  });
+
   private readonly TITLE_MAP: Record<string, string> = {
     mount: 'overviews.headers.mount',
     sync: 'overviews.headers.sync',
     serve: 'overviews.headers.serve',
     general: 'overviews.headers.general',
   };
-
-  get title(): string {
-    return this.TITLE_MAP[this.mode] || 'overviews.headers.default';
-  }
-
-  /** Get status class for the active backend */
-  get backendStatusClass(): string {
-    const status = this.rcloneStatusService.rcloneStatus();
-    if (status === 'active') return 'connected';
-    return 'disconnected';
-  }
 
   onBackendClick(): void {
     this.openBackendModal.emit();

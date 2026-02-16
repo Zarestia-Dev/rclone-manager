@@ -1,6 +1,6 @@
 .quick-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-xs);
   flex-wrap: wrap;
   justify-content: center;
 
@@ -11,9 +11,9 @@
     will-change: transform;
 
     .mat-icon {
-      font-size: 18px;
-      width: 18px;
-      height: 18px;
+      font-size: var(--icon-size-sm);
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
     }
 
     &:hover {

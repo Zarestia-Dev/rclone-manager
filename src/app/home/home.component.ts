@@ -1,14 +1,14 @@
 import {
   Component,
-  HostListener,
-  OnDestroy,
   OnInit,
   effect,
   inject,
   signal,
   computed,
+  DestroyRef,
+  OnDestroy,
 } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDrawerMode, MatSidenavModule } from '@angular/material/sidenav';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
@@ -20,7 +20,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { catchError, EMPTY, Observable, Subject, takeUntil } from 'rxjs';
+import { catchError, EMPTY, Observable } from 'rxjs';
 
 // App Types
 import {
@@ -94,16 +94,16 @@ export class HomeComponent implements OnInit, OnDestroy {
   readonly systemInfoService = inject(SystemInfoService);
   readonly iconService = inject(IconService);
   private readonly translate = inject(TranslateService);
+  private readonly destroyRef = inject(DestroyRef);
 
   /** Current active backend name */
   readonly activeBackend = this.backendService.activeBackend;
 
   /** Get status class for the active backend */
-  get backendStatusClass(): string {
+  readonly backendStatusClass = computed(() => {
     const status = this.rcloneStatusService.rcloneStatus();
-    if (status === 'active') return 'connected';
-    return 'disconnected';
-  }
+    return status === 'active' ? 'connected' : 'disconnected';
+  });
 
   // ============================================================================
   // PROPERTIES - DATA & UI STATE
@@ -151,7 +151,6 @@ export class HomeComponent implements OnInit, OnDestroy {
   // ============================================================================
   // PROPERTIES - LIFECYCLE
   // ============================================================================
-  private destroy$ = new Subject<void>();
   private resizeObserver?: ResizeObserver;
 
   constructor() {
@@ -192,11 +191,6 @@ export class HomeComponent implements OnInit, OnDestroy {
   // ============================================================================
   // HELPER METHODS
   // ============================================================================
-
-  @HostListener('window:resize')
-  onResize(): void {
-    this.updateSidebarMode();
-  }
 
   private setupResponsiveLayout(): void {
     this.updateSidebarMode();
@@ -257,7 +251,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   ): void {
     eventFn()
       .pipe(
-        takeUntil(this.destroy$),
+        takeUntilDestroyed(this.destroyRef),
         catchError(error => (console.error(`Event listener error (${context}):`, error), EMPTY))
       )
       .subscribe({
@@ -536,8 +530,6 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   private cleanup(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
     this.resizeObserver?.disconnect();
     this.uiStateService.resetSelectedRemote();
   }

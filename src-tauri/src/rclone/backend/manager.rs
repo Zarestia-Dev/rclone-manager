@@ -103,6 +103,13 @@ impl BackendManager {
         Ok(backend.config_path.clone())
     }
 
+    /// Add a new backend and initialize its settings profiles
+    ///
+    /// # Arguments
+    /// * `manager` - App settings manager to create profiles
+    /// * `backend` - Backend connection details
+    /// * `copy_backend_from` - Optional source backend to copy 'backend' settings from
+    /// * `copy_remotes_from` - Optional source backend to copy 'remotes' settings from
     pub async fn add(
         &self,
         manager: &AppSettingsManager,
@@ -113,7 +120,10 @@ impl BackendManager {
         let mut backends = self.backends.write().await;
 
         if backends.iter().any(|b| b.name == backend.name) {
-            return Err(format!("Backend '{}' already exists", backend.name));
+            return Err(crate::localized_error!(
+                "backendErrors.backend.alreadyExists",
+                "name" => &backend.name
+            ));
         }
 
         info!("➕ Adding backend: {}", backend.name);
@@ -151,7 +161,7 @@ impl BackendManager {
         Ok(())
     }
 
-    /// Update an existing backend
+    /// Update an existing backend's connection details
     pub async fn update(
         &self,
         _manager: &AppSettingsManager,
@@ -160,17 +170,20 @@ impl BackendManager {
     ) -> Result<(), String> {
         let mut backends = self.backends.write().await;
 
-        let index = backends
-            .iter()
-            .position(|b| b.name == name)
-            .ok_or_else(|| format!("Backend '{}' not found", name))?;
+        let index = backends.iter().position(|b| b.name == name).ok_or_else(
+            || crate::localized_error!("backendErrors.backend.notFound", "name" => name),
+        )?;
 
         info!("🔄 Updating backend: {}", name);
         backends[index] = backend;
         Ok(())
     }
 
-    /// Remove a backend by name and delete its profiles
+    /// Remove a backend by name and delete its associated profiles
+    ///
+    /// # Arguments
+    /// * `manager` - App settings manager to delete profiles
+    /// * `name` - Name of the backend to remove
     pub async fn remove(&self, manager: &AppSettingsManager, name: &str) -> Result<(), String> {
         if name == "Local" {
             return Err(crate::localized_error!(
@@ -181,10 +194,9 @@ impl BackendManager {
         let mut backends = self.backends.write().await;
         let active_index = *self.active_index.read().await;
 
-        let index = backends
-            .iter()
-            .position(|b| b.name == name)
-            .ok_or_else(|| format!("Backend '{}' not found", name))?;
+        let index = backends.iter().position(|b| b.name == name).ok_or_else(
+            || crate::localized_error!("backendErrors.backend.notFound", "name" => name),
+        )?;
 
         // Can't remove active backend
         if index == active_index {
@@ -226,7 +238,13 @@ impl BackendManager {
         Ok(())
     }
 
-    /// Switch to a different backend
+    /// Switch to a different backend and manage its state and profiles
+    ///
+    /// This handles:
+    /// 1. Unscheduling tasks for the old backend
+    /// 2. Saving current state (jobs, cache)
+    /// 3. Restoring state for the new backend
+    /// 4. Switching settings profiles
     pub async fn switch_to(
         &self,
         manager: &AppSettingsManager,
@@ -240,7 +258,9 @@ impl BackendManager {
             .enumerate()
             .find(|(_, b)| b.name == name)
             .map(|(i, b)| (i, b.is_local))
-            .ok_or_else(|| format!("Backend '{}' not found", name))?;
+            .ok_or_else(
+                || crate::localized_error!("backendErrors.backend.notFound", "name" => name),
+            )?;
         drop(backends);
 
         let current_name = self.get_active_name().await;
@@ -267,17 +287,6 @@ impl BackendManager {
             self.remote_cache.clear_all().await;
 
             super::state::restore_backend_state(self, name, task_cache).await;
-
-            // LAZY LOADING: Load secrets on-demand if not already loaded
-            let mut backends = self.backends.write().await;
-            if let Some(backend) = backends.iter_mut().find(|b| b.name == name)
-                && backend.password.is_none()
-                && backend.config_password.is_none()
-            {
-                load_backend_secrets(manager, backend);
-                log::debug!("🔐 Lazy-loaded secrets for backend on switch: {}", name);
-            }
-            drop(backends);
         }
 
         let profile_name = if name == "Local" { "default" } else { name };
@@ -468,13 +477,6 @@ impl BackendManager {
             {
                 backend.name = key.clone();
 
-                // Load secrets if this is Local or the active backend
-                let is_active_target = active_name.as_ref() == Some(&backend.name);
-                if backend.name == "Local" || is_active_target {
-                    load_backend_secrets(manager, &mut backend);
-                    log::debug!("🔐 Loaded secrets for backend: {}", backend.name);
-                }
-
                 if backend.name == "Local" {
                     let _ = self.update(manager, "Local", backend).await;
                 } else {
@@ -534,33 +536,6 @@ impl Default for BackendManager {
     fn default() -> Self {
         Self::new()
     }
-}
-
-/// Load backend secrets from keychain
-#[cfg(desktop)]
-fn load_backend_secrets(manager: &AppSettingsManager, backend: &mut Backend) {
-    if let Some(creds) = manager.credentials() {
-        // Load RC API password
-        if let Ok(Some(password)) = creds.get(&format!("backend:{}:password", backend.name)) {
-            // Only set if username exists
-            if backend.username.is_some() {
-                backend.password = Some(password);
-            }
-        }
-
-        // Load config password (for remote encrypted configs)
-        if let Ok(Some(config_password)) =
-            creds.get(&format!("backend:{}:config_password", backend.name))
-        {
-            backend.config_password = Some(config_password);
-        }
-    }
-}
-
-/// Load backend secrets (mobile no-op)
-#[cfg(not(desktop))]
-fn load_backend_secrets(_manager: &AppSettingsManager, _backend: &mut Backend) {
-    // Keychain not available on mobile
 }
 
 #[cfg(test)]

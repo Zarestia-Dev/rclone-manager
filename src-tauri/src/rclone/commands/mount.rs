@@ -10,11 +10,12 @@ use crate::{
         json_helpers::unwrap_nested_options,
         logging::log::log_operation,
         rclone::endpoints::mount,
-        types::{core::RcloneState, logs::LogLevel, remotes::ProfileParams},
+        types::{core::RcloneState, jobs::JobType, logs::LogLevel, remotes::ProfileParams},
     },
 };
 
 use super::common::{FromConfig, parse_common_config, redact_sensitive_values};
+use super::job::{JobMetadata, SubmitJobOptions, submit_job_with_options};
 
 /// Parameters for mounting a remote filesystem
 #[derive(Debug, serde::Deserialize, Clone)]
@@ -44,6 +45,8 @@ struct RcloneMountBody {
     pub mount_options: Option<HashMap<String, Value>>,
     #[serde(rename = "vfsOpt", skip_serializing_if = "Option::is_none")]
     pub vfs_options: Option<HashMap<String, Value>>,
+    #[serde(rename = "_async", skip_serializing_if = "Option::is_none")]
+    pub async_flag: Option<bool>,
     #[serde(rename = "_config", skip_serializing_if = "Option::is_none")]
     pub config: Option<HashMap<String, Value>>,
     #[serde(rename = "_filter", skip_serializing_if = "Option::is_none")]
@@ -97,6 +100,8 @@ impl MountParams {
             },
             mount_options: self.mount_options.clone(),
             vfs_options: self.vfs_options.clone().map(unwrap_nested_options),
+            // Request async job so rclone returns a job id we can track
+            async_flag: Some(true),
             config: final_backend_opts,
             filter: self.filter_options.clone().map(unwrap_nested_options),
         };
@@ -148,75 +153,38 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     let state = app.state::<RcloneState>();
     let url = backend.url_for(mount::MOUNT);
     let payload = params.to_rclone_body();
-    let origin = params.origin.clone();
+    let client = state.client.clone();
 
-    send_notification_typed(
-        &app,
-        Notification::localized(
-            "notification.title.operationStarted",
-            "notification.body.started",
-            Some(vec![
-                ("operation", "Mount remote"),
-                ("remote", &params.remote_name),
-                ("profile", params.profile.as_deref().unwrap_or("")),
-            ]),
-            None,
-            Some(LogLevel::Info),
-        ),
-        origin.clone(),
-    );
+    // Build request like sync does
+    let request = backend.inject_auth(client.post(&url));
 
-    let _ = backend
-        .inject_auth(state.client.post(&url))
-        .json(&payload)
-        .send()
-        .await
-        .map_err(|e| {
-            send_notification_typed(
-                &app,
-                Notification::localized(
-                    "notification.title.operationFailed",
-                    "notification.body.failed",
-                    Some(vec![
-                        ("operation", "Mount remote"),
-                        ("remote", &params.remote_name),
-                        ("profile", params.profile.as_deref().unwrap_or("")),
-                        ("error", &e.to_string()),
-                    ]),
-                    None,
-                    Some(LogLevel::Error),
-                ),
-                origin.clone(),
-            );
+    // Create job metadata
+    let metadata = JobMetadata {
+        remote_name: params.remote_name.clone(),
+        job_type: JobType::Mount,
+        operation_name: "Mount remote".to_string(),
+        source: params.source.clone(),
+        destination: params.mount_point.clone(),
+        profile: params.profile.clone(),
+        origin: params.origin.clone(),
+        group: None,
+        no_cache: params.no_cache.unwrap_or(false),
+    };
 
-            crate::localized_error!("backendErrors.request.failed", "error" => e)
-        })?;
+    // Submit as a job and wait for completion for mount operations.
+    let _ = submit_job_with_options(
+        app.clone(),
+        client,
+        request,
+        payload,
+        metadata,
+        SubmitJobOptions {
+            wait_for_completion: true,
+        },
+    )
+    .await?;
 
-    log_operation(
-        LogLevel::Info,
-        Some(params.remote_name.clone()),
-        Some("Mount remote".to_string()),
-        format!("Mounted successfully at {}", params.mount_point),
-        None,
-    );
-
-    send_notification_typed(
-        &app,
-        Notification::localized(
-            "notification.title.operationComplete",
-            "notification.body.complete",
-            Some(vec![
-                ("operation", "Mount remote"),
-                ("remote", &params.remote_name),
-                ("profile", params.profile.as_deref().unwrap_or("")),
-            ]),
-            None,
-            Some(LogLevel::Info),
-        ),
-        origin,
-    );
-
-    // Store state and refresh
+    // Store state and refresh only after successful completion
     cache
         .store_mount_profile(&params.mount_point, params.profile.clone())
         .await;
