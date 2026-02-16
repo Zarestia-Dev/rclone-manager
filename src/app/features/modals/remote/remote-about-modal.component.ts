@@ -1,5 +1,12 @@
-import { CommonModule } from '@angular/common';
-import { Component, HostListener, inject, OnInit, signal } from '@angular/core';
+import { TitleCasePipe } from '@angular/common';
+import {
+  Component,
+  HostListener,
+  inject,
+  OnInit,
+  signal,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
@@ -23,7 +30,7 @@ interface RemoteAboutData {
   selector: 'app-remote-about-modal',
   standalone: true,
   imports: [
-    CommonModule,
+    TitleCasePipe,
     MatDialogModule,
     MatDividerModule,
     MatIconModule,
@@ -39,6 +46,7 @@ interface RemoteAboutData {
   ],
   templateUrl: './remote-about-modal.component.html',
   styleUrls: ['./remote-about-modal.component.scss', '../../../styles/_shared-modal.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RemoteAboutModalComponent implements OnInit {
   private dialogRef = inject(MatDialogRef<RemoteAboutModalComponent>);

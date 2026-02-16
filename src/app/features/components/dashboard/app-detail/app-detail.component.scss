@@ -55,7 +55,7 @@
   justify-content: center;
   width: var(--icon-container-size);
   height: var(--icon-container-size);
-  border-radius: var(--icon-radius, 12px);
+  border-radius: var(--icon-radius, var(--radius-sm));
   background: var(--sidebar-bg-color);
   transition: var(--transition-standard);
 
@@ -328,7 +328,7 @@
   gap: var(--space-sm);
   padding: var(--space-sm);
   background: var(--sidebar-bg-color);
-  border-radius: var(--icon-radius, 12px);
+  border-radius: var(--icon-radius, var(--radius-sm));
 
   .group-header {
     display: flex;

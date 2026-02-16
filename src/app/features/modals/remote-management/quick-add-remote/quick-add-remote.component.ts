@@ -6,6 +6,7 @@ import {
   inject,
   computed,
   signal,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
@@ -73,6 +74,7 @@ type WizardStep = 'setup' | 'operations' | 'interactive';
   ],
   templateUrl: './quick-add-remote.component.html',
   styleUrls: ['./quick-add-remote.component.scss', '../../../../styles/_shared-modal.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);

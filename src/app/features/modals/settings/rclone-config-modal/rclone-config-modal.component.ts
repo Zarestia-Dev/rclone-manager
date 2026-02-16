@@ -4,11 +4,11 @@ import {
   HostListener,
   OnInit,
   inject,
-  OnDestroy,
-  ViewChild,
   signal,
   computed,
   effect,
+  ChangeDetectionStrategy,
+  viewChild,
 } from '@angular/core';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatDialogRef, MatDialog } from '@angular/material/dialog';
@@ -31,7 +31,8 @@ import {
 import { ScrollingModule, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { MatSelectModule } from '@angular/material/select';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { distinctUntilChanged, Subject, takeUntil, debounceTime, firstValueFrom } from 'rxjs';
+import { distinctUntilChanged, Subject, debounceTime, firstValueFrom } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { FlagConfigService, RcloneBackendOptionsService } from '@app/services';
 import { NotificationService } from '@app/services';
@@ -198,54 +199,55 @@ const MAIN_CATEGORY_CONFIG: Record<
   ],
   templateUrl: './rclone-config-modal.component.html',
   styleUrls: ['./rclone-config-modal.component.scss', '../../../../styles/_shared-modal.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class RcloneConfigModalComponent implements OnInit, OnDestroy {
-  private dialogRef = inject(MatDialogRef<RcloneConfigModalComponent>);
-  private notificationService = inject(NotificationService);
-  private flagConfigService = inject(FlagConfigService);
-  private rcloneBackendOptionsService = inject(RcloneBackendOptionsService);
-  private dialog = inject(MatDialog);
-  private fb = inject(FormBuilder);
-  private translate = inject(TranslateService);
-  private modalService = inject(ModalService);
+export class RcloneConfigModalComponent implements OnInit {
+  private readonly dialogRef = inject(MatDialogRef<RcloneConfigModalComponent>);
+  private readonly notificationService = inject(NotificationService);
+  private readonly flagConfigService = inject(FlagConfigService);
+  private readonly rcloneBackendOptionsService = inject(RcloneBackendOptionsService);
+  private readonly dialog = inject(MatDialog);
+  private readonly fb = inject(FormBuilder);
+  private readonly translate = inject(TranslateService);
+  private readonly modalService = inject(ModalService);
 
-  @ViewChild(CdkVirtualScrollViewport) virtualScrollViewport?: CdkVirtualScrollViewport;
+  readonly virtualScrollViewport = viewChild(CdkVirtualScrollViewport);
 
   // Signals
-  currentPage = signal<PageType>('home');
-  currentCategory = signal<string | null>(null);
-  isLoading = signal(true);
-  searchQuery = signal('');
-  isSearchVisible = signal(false);
-  savingOptions = signal(new Set<string>());
-  isResetting = signal(false);
-  services = signal<RCloneService[]>([]);
-  filteredServices = signal<RCloneService[]>([]);
-  globalSearchResults = signal<SearchResult[]>([]);
-  searchMatchCounts = signal(new Map<string, number>());
-  virtualScrollData = signal<RcConfigOption[]>([]);
-  private optionIsDefaultMap = signal(new Map<string, boolean>());
+  readonly currentPage = signal<PageType>('home');
+  readonly currentCategory = signal<string | null>(null);
+  readonly isLoading = signal(true);
+  readonly searchQuery = signal('');
+  readonly isSearchVisible = signal(false);
+  readonly savingOptions = signal(new Set<string>());
+  readonly isResetting = signal(false);
+  readonly services = signal<RCloneService[]>([]);
+  readonly filteredServices = signal<RCloneService[]>([]);
+  readonly globalSearchResults = signal<SearchResult[]>([]);
+  readonly searchMatchCounts = signal(new Map<string, number>());
+  readonly virtualScrollData = signal<RcConfigOption[]>([]);
+  private readonly optionIsDefaultMap = signal(new Map<string, boolean>());
 
   // Form
   rcloneOptionsForm: FormGroup;
 
   // Computed
-  hasSearchQuery = computed(() => this.searchQuery().trim().length > 0);
+  readonly hasSearchQuery = computed(() => this.searchQuery().trim().length > 0);
 
-  filteredOptionsCount = computed(() => {
+  readonly filteredOptionsCount = computed(() => {
     const page = this.currentPage();
     if (page === 'home' || !this.currentCategory()) return 0;
     return this.virtualScrollData().length;
   });
 
-  totalOptionsCount = computed(() => {
+  readonly totalOptionsCount = computed(() => {
     const page = this.currentPage();
     const category = this.currentCategory();
     if (page === 'home' || !category) return 0;
     return (this.groupedRcloneOptions[page]?.[category] || []).length;
   });
 
-  servicesByMainCategory = computed(() => {
+  readonly servicesByMainCategory = computed(() => {
     const grouped: Record<string, RCloneService[]> = {
       'General Settings': [],
       'File System & Storage': [],
@@ -261,7 +263,6 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   });
 
   // Private
-  private readonly componentDestroyed$ = new Subject<void>();
   private readonly search$ = new Subject<string>();
   private groupedRcloneOptions: GroupedRCloneOptions = {};
   private optionToFocus: string | null = null;
@@ -276,7 +277,7 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
 
   private setupSearchSubscription(): void {
     this.search$
-      .pipe(distinctUntilChanged(), debounceTime(200), takeUntil(this.componentDestroyed$))
+      .pipe(distinctUntilChanged(), debounceTime(200), takeUntilDestroyed())
       .subscribe(searchText => {
         const query = searchText.toLowerCase().trim();
         this.searchQuery.set(query);
@@ -297,15 +298,11 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
 
   private setupVirtualScrollEffect(): void {
     effect(() => {
-      if (this.virtualScrollData().length > 0) {
-        setTimeout(() => this.virtualScrollViewport?.scrollToIndex(0), 0);
+      const data = this.virtualScrollData();
+      if (data.length > 0) {
+        setTimeout(() => this.virtualScrollViewport()?.scrollToIndex(0), 0);
       }
     });
-  }
-
-  ngOnDestroy(): void {
-    this.componentDestroyed$.next();
-    this.componentDestroyed$.complete();
   }
 
   async ngOnInit(): Promise<void> {
@@ -454,10 +451,11 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   }
 
   private scrollToOption(optionName: string): void {
-    if (this.virtualScrollViewport && this.virtualScrollData().length > 0) {
+    const viewport = this.virtualScrollViewport();
+    if (viewport && this.virtualScrollData().length > 0) {
       const index = this.virtualScrollData().findIndex(opt => opt.Name === optionName);
       if (index !== -1) {
-        this.virtualScrollViewport.scrollToIndex(index, 'smooth');
+        viewport.scrollToIndex(index, 'smooth');
       }
     }
     this.optionToFocus = null;

@@ -44,42 +44,29 @@
     <button
       matIconButton
       [cdkMenuTriggerFor]="menu"
-      [cdkMenuTriggerFor]="menu"
       [attr.aria-label]="'titlebar.appMenu' | translate"
       class="menu-button"
-      [matBadge]="restartRequired || updateAvailable || rcloneUpdateAvailable ? '!' : null"
-      [matBadgeColor]="restartRequired ? 'warn' : 'primary'"
+      [matBadge]="restartRequired() || updateAvailable() || rcloneUpdateAvailable() ? '!' : null"
+      [matBadgeColor]="restartRequired() ? 'warn' : 'primary'"
       matBadgePosition="below before"
       matBadgeSize="small"
-      [matTooltip]="getUpdateTooltip()"
+      [matTooltip]="updateTooltip()"
     >
       <mat-icon svgIcon="menu-bar" aria-hidden="true"></mat-icon>
     </button>
 
     <!-- Window Controls -->
     @if (windowButtons) {
-      <button
-        matIconButton
-        (click)="minimizeWindow()"
-        [attr.aria-label]="'titlebar.minimize' | translate"
-      >
-        <mat-icon svgIcon="remove" aria-hidden="true"></mat-icon>
-      </button>
-      <button
-        matIconButton
-        (click)="maximizeWindow()"
-        [attr.aria-label]="'titlebar.maximize' | translate"
-      >
-        <mat-icon svgIcon="check-box" aria-hidden="true"></mat-icon>
-      </button>
-      <button
-        matIconButton
-        (click)="closeWindow()"
-        [attr.aria-label]="'titlebar.close' | translate"
-        class="close-button"
-      >
-        <mat-icon svgIcon="close" aria-hidden="true"></mat-icon>
-      </button>
+      @for (control of windowControls; track control.label) {
+        <button
+          matIconButton
+          (click)="control.action()"
+          [attr.aria-label]="control.label | translate"
+          [class]="control.class || ''"
+        >
+          <mat-icon [svgIcon]="control.icon" aria-hidden="true"></mat-icon>
+        </button>
+      }
     }
   </div>
 </div>
@@ -89,121 +76,55 @@
   <div cdkMenu class="material-context-menu">
     <!-- Theme Selector -->
     <div class="theme-selector" [attr.aria-label]="'titlebar.menu.theme' | translate">
-      <button
-        class="theme-button system"
-        [class.selected]="(currentTheme$ | async) === 'system'"
-        (click)="setTheme('system', $event)"
-        [attr.aria-label]="'titlebar.menu.system' | translate"
-      >
-        @if ((currentTheme$ | async) === 'system') {
-          <mat-icon svgIcon="circle-check" class="checkmark accent" aria-hidden="true"></mat-icon>
-        }
-      </button>
-
-      <button
-        class="theme-button light"
-        [class.selected]="(currentTheme$ | async) === 'light'"
-        (click)="setTheme('light', $event)"
-        [attr.aria-label]="'titlebar.menu.light' | translate"
-      >
-        @if ((currentTheme$ | async) === 'light') {
-          <mat-icon svgIcon="circle-check" class="checkmark" aria-hidden="true"></mat-icon>
-        }
-      </button>
-
-      <button
-        class="theme-button dark"
-        [class.selected]="(currentTheme$ | async) === 'dark'"
-        (click)="setTheme('dark', $event)"
-        [attr.aria-label]="'titlebar.menu.dark' | translate"
-      >
-        @if ((currentTheme$ | async) === 'dark') {
-          <mat-icon svgIcon="circle-check" class="checkmark" aria-hidden="true"></mat-icon>
-        }
-      </button>
+      @for (theme of themes; track theme.id) {
+        <button
+          class="theme-button"
+          [class]="theme.class"
+          [class.selected]="(currentTheme$ | async) === theme.id"
+          (click)="setTheme(theme.id, $event)"
+          [attr.aria-label]="theme.label | translate"
+        >
+          @if ((currentTheme$ | async) === theme.id) {
+            <mat-icon
+              [svgIcon]="theme.icon"
+              class="checkmark"
+              [class.accent]="theme.id === 'system'"
+              aria-hidden="true"
+            ></mat-icon>
+          }
+        </button>
+      }
     </div>
-
-    <mat-divider></mat-divider>
-
     <!-- Settings Actions -->
-    <button
-      cdkMenuItem
-      class="menu-item"
-      (click)="restoreSettings()"
-      [attr.aria-label]="'titlebar.menu.import' | translate"
-    >
-      <span>{{ 'titlebar.menu.import' | translate }}</span>
-      <span class="shortcut" aria-hidden="true">Ctrl + I</span>
-    </button>
+    @for (item of menuItems; track item.label) {
+      @if (item.divider) {
+        <mat-divider></mat-divider>
+      }
+      <button
+        cdkMenuItem
+        class="menu-item"
+        (click)="item.action()"
+        [attr.aria-label]="item.label | translate"
+      >
+        <span>{{ item.label | translate }}</span>
+        <span class="shortcut" aria-hidden="true">{{ item.shortcut }}</span>
+      </button>
+      @if (item.dividerAfter) {
+        <mat-divider></mat-divider>
+      }
+    }
 
     <button
       cdkMenuItem
       class="menu-item"
-      (click)="openExportModal()"
-      [attr.aria-label]="'titlebar.menu.export' | translate"
-    >
-      <span>{{ 'titlebar.menu.export' | translate }}</span>
-      <span class="shortcut" aria-hidden="true">Ctrl + E</span>
-    </button>
-
-    <mat-divider></mat-divider>
-
-    <!-- Preferences -->
-    <button
-      cdkMenuItem
-      class="menu-item"
-      (click)="openPreferencesModal()"
-      [attr.aria-label]="'titlebar.menu.preferences' | translate"
-    >
-      <span>{{ 'titlebar.menu.preferences' | translate }}</span>
-      <span class="shortcut" aria-hidden="true">Ctrl + ,</span>
-    </button>
-
-    <button
-      cdkMenuItem
-      class="menu-item"
-      (click)="openRcloneConfigModal()"
-      [attr.aria-label]="'titlebar.menu.configuration' | translate"
-    >
-      <span>{{ 'titlebar.menu.configuration' | translate }}</span>
-      <span class="shortcut" aria-hidden="true">Ctrl + .</span>
-    </button>
-
-    <mat-divider></mat-divider>
-    <button
-      cdkMenuItem
-      class="menu-item"
-      (click)="onBrowseClick()"
-      [attr.aria-label]="'titlebar.menu.fileBrowser' | translate"
-    >
-      <span>{{ 'titlebar.menu.fileBrowser' | translate }}</span>
-      <span class="shortcut" aria-hidden="true">Ctrl + B</span>
-    </button>
-    <mat-divider></mat-divider>
-
-    <button
-      cdkMenuItem
-      class="menu-item"
-      (click)="openKeyboardShortcutsModal()"
-      [attr.aria-label]="'titlebar.menu.shortcuts' | translate"
-    >
-      <span>{{ 'titlebar.menu.shortcuts' | translate }}</span>
-      <span class="shortcut" aria-hidden="true">Ctrl + ?</span>
-    </button>
-
-    <mat-divider></mat-divider>
-
-    <button
-      cdkMenuItem
-      class="menu-item"
-      [matTooltip]="getAboutMenuTooltip()"
+      [matTooltip]="updateTooltip()"
       (click)="openAboutModal()"
       [attr.aria-label]="'titlebar.menu.about' | translate"
     >
       <span>{{ 'titlebar.menu.about' | translate }}</span>
-      @if (restartRequired || updateAvailable || rcloneUpdateAvailable) {
+      @if (restartRequired() || updateAvailable() || rcloneUpdateAvailable()) {
         <span
-          [matBadge]="getAboutMenuBadge()"
+          [matBadge]="aboutMenuBadge()"
           matBadgePosition="below before"
           matBadgeSize="small"
         ></span>
@@ -215,23 +136,16 @@
 <!-- Add Remote Menu -->
 <ng-template #addRemoteMenu>
   <div cdkMenu class="material-context-menu" xPosition="before">
-    <button
-      cdkMenuItem
-      class="menu-item"
-      (click)="openQuickAddRemoteModal()"
-      [attr.aria-label]="'titlebar.menu.quickRemote' | translate"
-    >
-      <span>{{ 'titlebar.menu.quickRemote' | translate }}</span>
-      <span class="shortcut" aria-hidden="true">Ctrl + R</span>
-    </button>
-    <button
-      cdkMenuItem
-      class="menu-item"
-      (click)="openRemoteConfigModal()"
-      [attr.aria-label]="'titlebar.menu.detailedRemote' | translate"
-    >
-      <span>{{ 'titlebar.menu.detailedRemote' | translate }}</span>
-      <span class="shortcut" aria-hidden="true">Ctrl + N</span>
-    </button>
+    @for (item of addRemoteMenuItems; track item.label) {
+      <button
+        cdkMenuItem
+        class="menu-item"
+        (click)="item.action()"
+        [attr.aria-label]="item.label | translate"
+      >
+        <span>{{ item.label | translate }}</span>
+        <span class="shortcut" aria-hidden="true">{{ item.shortcut }}</span>
+      </button>
+    }
   </div>
 </ng-template>

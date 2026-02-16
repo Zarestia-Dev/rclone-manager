@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { Component, computed, input, output, inject } from '@angular/core';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatButtonModule } from '@angular/material/button';
@@ -21,7 +21,7 @@ import { IconService } from '@app/services';
   imports: [
     MatCardModule,
     MatDividerModule,
-    CommonModule,
+    NgClass,
     MatIconModule,
     MatTooltipModule,
     MatProgressSpinnerModule,

@@ -23,7 +23,7 @@
   </div>
 
   <div class="modal-content custom-scrollbar">
-    @if (loadingStat) {
+    @if (loadingStat()) {
       <div class="loading-container main-loader">
         <mat-spinner diameter="40"></mat-spinner>
         <p>{{ 'fileBrowser.properties.loading' | translate }}</p>
@@ -31,16 +31,16 @@
     } @else {
       <div class="item-overview">
         <div class="item-icon">
-          <mat-icon [svgIcon]="getIcon(item)"></mat-icon>
+          <mat-icon [svgIcon]="getIcon(item())"></mat-icon>
         </div>
         <div class="item-details">
-          <h3 class="item-name" [title]="item ? item.Name : displayLocation">
-            {{ item ? item.Name : displayLocation }}
+          <h3 class="item-name" [title]="item() ? item()!.Name : displayLocation()">
+            {{ item() ? item()!.Name : displayLocation() }}
           </h3>
           <span class="item-type">
             {{
-              item?.MimeType ||
-                ((item?.IsDir ?? true)
+              item()?.MimeType ||
+                ((item()?.IsDir ?? true)
                   ? ('fileBrowser.properties.directory' | translate)
                   : ('fileBrowser.properties.file' | translate))
             }}
@@ -53,40 +53,40 @@
       <div class="properties-group">
         <div class="prop-row">
           <span class="label">{{ 'fileBrowser.properties.location' | translate }}</span>
-          <span class="value path" [title]="displayLocation">{{ displayLocation }}</span>
+          <span class="value path" [title]="displayLocation()">{{ displayLocation() }}</span>
         </div>
-        @if (item?.ModTime) {
+        @if (item()?.ModTime) {
           <div class="prop-row">
             <span class="label">{{ 'fileBrowser.properties.modified' | translate }}</span>
-            <span class="value">{{ item?.ModTime | date: 'medium' }}</span>
+            <span class="value">{{ item()!.ModTime | date: 'medium' }}</span>
           </div>
         }
-        @if (item && !item.IsDir) {
+        @if (item() && !item()!.IsDir) {
           <div class="prop-row">
             <span class="label">{{ 'fileBrowser.properties.size' | translate }}</span>
-            <span class="value">{{ item.Size | formatFileSize }}</span>
+            <span class="value">{{ item()!.Size | formatFileSize }}</span>
           </div>
         }
       </div>
 
-      @if (item?.IsDir ?? true) {
+      @if (item()?.IsDir ?? true) {
         <mat-divider></mat-divider>
         <div class="properties-group">
           <h4 class="group-title">{{ 'fileBrowser.properties.contentStats' | translate }}</h4>
 
-          @if (loadingSize) {
+          @if (loadingSize()) {
             <div class="section-loader">
               <mat-spinner diameter="24"></mat-spinner>
               <span>{{ 'fileBrowser.properties.calculating' | translate }}</span>
             </div>
-          } @else if (size) {
+          } @else if (size()) {
             <div class="prop-row">
               <span class="label">{{ 'fileBrowser.properties.containedFiles' | translate }}</span>
-              <span class="value">{{ size.count | number }}</span>
+              <span class="value">{{ size()!.count | number }}</span>
             </div>
             <div class="prop-row">
               <span class="label">{{ 'fileBrowser.properties.totalSize' | translate }}</span>
-              <span class="value">{{ size.bytes | formatFileSize }}</span>
+              <span class="value">{{ size()!.bytes | formatFileSize }}</span>
             </div>
           }
         </div>
@@ -96,24 +96,24 @@
       <div class="properties-group">
         <h4 class="group-title">{{ 'fileBrowser.properties.storage' | translate }}</h4>
 
-        @if (loadingDiskUsage) {
+        @if (loadingDiskUsage()) {
           <div class="section-loader">
             <mat-spinner diameter="24"></mat-spinner>
             <span>{{ 'fileBrowser.properties.checking' | translate }}</span>
           </div>
-        } @else if (diskUsage) {
+        } @else if (diskUsage()) {
           <div class="usage-bars">
             <div class="prop-row">
               <span class="label">{{ 'fileBrowser.properties.used' | translate }}</span>
-              <span class="value">{{ diskUsage.used ?? 0 | formatFileSize }}</span>
+              <span class="value">{{ diskUsage()!.used ?? 0 | formatFileSize }}</span>
             </div>
             <div class="prop-row">
               <span class="label">{{ 'fileBrowser.properties.free' | translate }}</span>
-              <span class="value">{{ diskUsage.free ?? 0 | formatFileSize }}</span>
+              <span class="value">{{ diskUsage()!.free ?? 0 | formatFileSize }}</span>
             </div>
             <div class="prop-row">
               <span class="label">{{ 'fileBrowser.properties.totalCapacity' | translate }}</span>
-              <span class="value">{{ diskUsage.total ?? 0 | formatFileSize }}</span>
+              <span class="value">{{ diskUsage()!.total ?? 0 | formatFileSize }}</span>
             </div>
           </div>
         }
@@ -124,33 +124,33 @@
       <div class="properties-group checksums-group">
         <h4 class="group-title">{{ 'fileBrowser.properties.checksums' | translate }}</h4>
 
-        @if (loadingHashes) {
+        @if (loadingHashes()) {
           <div class="section-loader">
             <mat-spinner diameter="24"></mat-spinner>
             <span>{{ 'fileBrowser.properties.loadingHashes' | translate }}</span>
           </div>
-        } @else if (hashError) {
+        } @else if (hashError()) {
           <div class="hash-error">
-            <span class="error-text">{{ hashError }}</span>
+            <span class="error-text">{{ hashError() }}</span>
           </div>
-        } @else if (supportedHashes.length > 0) {
+        } @else if (supportedHashes().length > 0) {
           <!-- FILE MODE: Show calculated list -->
-          @if (isFile) {
+          @if (isFile()) {
             <div class="hash-content custom-scrollbar">
               <!-- Calculated hashes -->
-              @for (hash of hashEntries; track hash.type) {
+              @for (hash of hashEntries(); track hash.type) {
                 <div class="hash-item">
                   <div class="hash-header">
                     <span class="hash-type">{{ hash.type | uppercase }}</span>
                     <mat-icon
                       (click)="copyHash(hash.type)"
                       [matTooltip]="
-                        (copiedHash === hash.type
+                        (copiedHash() === hash.type
                           ? 'fileBrowser.properties.copied'
                           : 'fileBrowser.properties.copyToClipboard'
                         ) | translate
                       "
-                      [svgIcon]="copiedHash === hash.type ? 'circle-check' : 'copy'"
+                      [svgIcon]="copiedHash() === hash.type ? 'circle-check' : 'copy'"
                     ></mat-icon>
                   </div>
                   <span class="hash-value" [title]="hash.value">{{ hash.value }}</span>
@@ -158,13 +158,13 @@
               }
 
               <!-- Uncalculated hash types as buttons -->
-              @if (uncalculatedHashes.length > 0) {
+              @if (uncalculatedHashes().length > 0) {
                 <div class="hash-options">
                   <span class="hash-options-label">{{
                     'fileBrowser.properties.calculateMore' | translate
                   }}</span>
                   <div class="hash-chips">
-                    @for (hashType of uncalculatedHashes; track hashType) {
+                    @for (hashType of uncalculatedHashes(); track hashType) {
                       <button
                         class="hash-chip"
                         [class.loading]="isHashLoading(hashType)"
@@ -185,12 +185,12 @@
             <!-- DIRECTORY MODE: Bulk Actions -->
             <div class="bulk-hash-container">
               <!-- Result State -->
-              @if (bulkHashResult) {
+              @if (bulkHashResult()) {
                 <div class="bulk-result-area">
                   <div class="bulk-header">
                     <span class="bulk-label">
                       {{ 'fileBrowser.properties.generatedChecksums' | translate }} ({{
-                        bulkHashType | uppercase
+                        bulkHashType() | uppercase
                       }})
                     </span>
                     <div class="bulk-actions">
@@ -200,17 +200,21 @@
                         [matTooltip]="'fileBrowser.properties.copyToClipboard' | translate"
                       >
                         <mat-icon
-                          [svgIcon]="copiedHash === 'bulk' ? 'circle-check' : 'copy'"
+                          [svgIcon]="copiedHash() === 'bulk' ? 'circle-check' : 'copy'"
                         ></mat-icon>
                       </button>
                     </div>
                   </div>
                   <!-- Use a read-only textarea for code-block feel -->
                   <textarea class="bulk-textarea custom-scrollbar" readonly>{{
-                    bulkHashResult
+                    bulkHashResult()
                   }}</textarea>
 
-                  <button mat-stroked-button class="reset-bulk-btn" (click)="bulkHashResult = null">
+                  <button
+                    mat-stroked-button
+                    class="reset-bulk-btn"
+                    (click)="bulkHashResult.set(null)"
+                  >
                     {{ 'fileBrowser.properties.calculateAnother' | translate }}
                   </button>
                 </div>
@@ -220,21 +224,21 @@
                   {{ 'fileBrowser.properties.bulkHashInstruction' | translate }}
                 </p>
 
-                @if (bulkHashError) {
+                @if (bulkHashError()) {
                   <div class="hash-error">
-                    <span class="error-text">{{ bulkHashError }}</span>
+                    <span class="error-text">{{ bulkHashError() }}</span>
                   </div>
                 }
 
                 <div class="hash-chips bulk-chips">
-                  @for (hashType of supportedHashes; track hashType) {
+                  @for (hashType of supportedHashes(); track hashType) {
                     <button
                       class="hash-chip"
-                      [class.loading]="calculatingBulkHash && bulkHashType === hashType"
-                      [disabled]="calculatingBulkHash"
+                      [class.loading]="calculatingBulkHash() && bulkHashType() === hashType"
+                      [disabled]="calculatingBulkHash()"
                       (click)="calculateBulkHash(hashType)"
                     >
-                      @if (calculatingBulkHash && bulkHashType === hashType) {
+                      @if (calculatingBulkHash() && bulkHashType() === hashType) {
                         <mat-spinner diameter="14"></mat-spinner>
                       }
                       {{ hashType | uppercase }}
@@ -252,34 +256,34 @@
       </div>
 
       <!-- Public Link section - only for remotes that support it -->
-      @if (supportsPublicLink) {
+      @if (supportsPublicLink()) {
         <mat-divider></mat-divider>
         <div class="properties-group public-link-group">
           <h4 class="group-title">{{ 'fileBrowser.properties.publicLink' | translate }}</h4>
 
-          @if (loadingPublicLink) {
+          @if (loadingPublicLink()) {
             <div class="section-loader">
               <mat-spinner diameter="24"></mat-spinner>
               <span>{{
-                publicLinkUrl
+                publicLinkUrl()
                   ? ('fileBrowser.properties.removingLink' | translate)
                   : ('fileBrowser.properties.creatingLink' | translate)
               }}</span>
             </div>
-          } @else if (publicLinkUrl) {
+          } @else if (publicLinkUrl()) {
             <!-- Link exists - show URL with copy and remove options -->
             <div class="link-display">
               <div class="link-url-container">
-                <span class="link-url" [title]="publicLinkUrl">{{ publicLinkUrl }}</span>
+                <span class="link-url" [title]="publicLinkUrl()">{{ publicLinkUrl() }}</span>
                 <mat-icon
                   (click)="copyPublicLink()"
                   [matTooltip]="
-                    (copiedLink
+                    (copiedLink()
                       ? 'fileBrowser.properties.copied'
                       : 'fileBrowser.properties.copyToClipboard'
                     ) | translate
                   "
-                  [svgIcon]="copiedLink ? 'circle-check' : 'copy'"
+                  [svgIcon]="copiedLink() ? 'circle-check' : 'copy'"
                 ></mat-icon>
               </div>
               <button mat-stroked-button class="remove-link-btn" (click)="removePublicLink()">
@@ -291,7 +295,10 @@
             <div class="link-create">
               <mat-form-field class="expiry-select">
                 <mat-label>{{ 'fileBrowser.properties.expires' | translate }}</mat-label>
-                <mat-select [(ngModel)]="selectedExpiry">
+                <mat-select
+                  [ngModel]="selectedExpiry()"
+                  (ngModelChange)="selectedExpiry.set($event)"
+                >
                   @for (option of expiryOptions; track option.value) {
                     <mat-option [value]="option.value">{{ option.label | translate }}</mat-option>
                   }
@@ -304,9 +311,9 @@
             </div>
           }
 
-          @if (publicLinkError) {
+          @if (publicLinkError()) {
             <div class="link-error">
-              <span class="error-text">{{ publicLinkError }}</span>
+              <span class="error-text">{{ publicLinkError() }}</span>
             </div>
           }
         </div>

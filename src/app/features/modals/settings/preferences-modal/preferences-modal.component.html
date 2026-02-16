@@ -4,26 +4,26 @@
       matIconButton
       (click)="toggleSearch()"
       [attr.aria-label]="
-        searchVisible
+        searchVisible()
           ? ('modals.preferences.hideSearch' | translate)
           : ('modals.preferences.showSearch' | translate)
       "
-      [class.active]="searchVisible"
+      [class.active]="searchVisible()"
     >
       <mat-icon svgIcon="search"></mat-icon>
     </button>
 
-    @if (bottomTabs) {
+    @if (bottomTabs()) {
       <p class="modal-title">{{ 'modals.preferences.title' | translate }}</p>
     } @else {
-      @if (!hasSearchResults) {
+      @if (!hasSearchResults()) {
         <div class="tabs desktop-tabs" data-tauri-drag-region role="tablist">
-          @for (tab of filteredTabs; track tab.key; let i = $index) {
+          @for (tab of filteredTabs(); track tab.key; let i = $index) {
             <button
               (click)="selectTab(i)"
-              [class.selected]="selectedTabIndex === i"
-              [attr.aria-selected]="selectedTabIndex === i"
-              [attr.tabindex]="selectedTabIndex === i ? 0 : -1"
+              [class.selected]="selectedTabIndex() === i"
+              [attr.aria-selected]="selectedTabIndex() === i"
+              [attr.tabindex]="selectedTabIndex() === i ? 0 : -1"
               role="tab"
             >
               <mat-icon [svgIcon]="tab.icon"></mat-icon>
@@ -44,25 +44,25 @@
   </div>
 
   <app-search-container
-    [visible]="searchVisible"
-    [searchText]="searchQuery"
+    [visible]="searchVisible()"
+    [searchText]="searchQuery()"
     (searchTextChange)="onSearchTextChange($event)"
     [placeholder]="'modals.preferences.searchPlaceholder' | translate"
     [ariaLabel]="'modals.preferences.searchPlaceholder' | translate"
   ></app-search-container>
 
-  @if (isLoading) {
+  @if (isLoading()) {
     <div class="loading-overlay">
       <mat-spinner diameter="50"></mat-spinner>
     </div>
   }
 
-  @if (!isLoading) {
+  @if (!isLoading()) {
     <main class="modal-content">
       <div class="tab-content">
         <div class="settings-list" role="list">
-          @if (hasSearchResults) {
-            @for (result of searchResults; track result.category + '.' + result.key) {
+          @if (hasSearchResults()) {
+            @for (result of searchResults(); track result.category + '.' + result.key) {
               <div
                 class="setting-item"
                 role="listitem"
@@ -85,9 +85,9 @@
             }
           }
 
-          @if (!searchQuery) {
+          @if (!searchQuery()) {
             @for (category of getObjectKeys(settingsForm.controls); track category) {
-              @if (selectedTabKey === category) {
+              @if (selectedTabKey() === category) {
                 <div class="tab-content" role="tabpanel">
                   <div class="settings-list" role="list">
                     @for (key of getObjectKeys(settingsForm.get(category)?.value); track key) {
@@ -109,7 +109,7 @@
                         ></ng-container>
                       </div>
                     }
-                    @if (isGeneralTab) {
+                    @if (isGeneralTab()) {
                       <div class="actions">
                         <button
                           mat-raised-button
@@ -128,17 +128,17 @@
             }
           }
 
-          @if (hasEmptySearchResults) {
+          @if (hasEmptySearchResults()) {
             <div class="empty-state" role="status" aria-live="polite">
               <mat-icon svgIcon="search"></mat-icon>
               <p>
                 {{ 'modals.preferences.noSettingsFound' | translate }}
-                <strong>"{{ searchQuery }}"</strong>
+                <strong>"{{ searchQuery() }}"</strong>
               </p>
               <div class="search-suggestions">
                 <small>{{ 'modals.preferences.trySearching' | translate }}</small>
                 <div class="suggestion-chips">
-                  @for (suggestion of searchSuggestions; track suggestion) {
+                  @for (suggestion of searchSuggestions(); track suggestion) {
                     <button
                       class="chip"
                       (click)="onSearchTextChange(suggestion)"
@@ -156,7 +156,7 @@
         </div>
       </div>
 
-      @if (hasPendingRestartChanges) {
+      @if (hasPendingRestartChanges()) {
         <div class="pending-changes-section">
           <div class="pending-changes-header">
             <div class="header-info">
@@ -199,17 +199,17 @@
             <button
               matButton
               (click)="discardPendingChanges()"
-              [disabled]="isDiscardingChanges"
+              [disabled]="isDiscardingChanges()"
               [attr.aria-label]="'modals.preferences.aria.discardChanges' | translate"
             >
-              @if (isDiscardingChanges) {
+              @if (isDiscardingChanges()) {
                 <mat-spinner diameter="16" class="inline-spinner"></mat-spinner>
               }
-              @if (!isDiscardingChanges) {
+              @if (!isDiscardingChanges()) {
                 <mat-icon svgIcon="close"></mat-icon>
               }
               {{
-                isDiscardingChanges
+                isDiscardingChanges()
                   ? ('modals.preferences.discarding' | translate)
                   : ('modals.preferences.discardChanges' | translate)
               }}
@@ -229,18 +229,18 @@
     </main>
   }
 
-  @if (bottomTabs && !hasSearchResults) {
+  @if (bottomTabs() && !hasSearchResults()) {
     <div
       class="tabs bottom-tabs"
       role="tablist"
       [attr.aria-label]="'modals.preferences.aria.settingsCategories' | translate"
     >
-      @for (tab of filteredTabs; track tab.key; let i = $index) {
+      @for (tab of filteredTabs(); track tab.key; let i = $index) {
         <button
           (click)="selectTab(i)"
-          [class.selected]="selectedTabIndex === i"
-          [attr.aria-selected]="selectedTabIndex === i"
-          [attr.tabindex]="selectedTabIndex === i ? 0 : -1"
+          [class.selected]="selectedTabIndex() === i"
+          [attr.aria-selected]="selectedTabIndex() === i"
+          [attr.tabindex]="selectedTabIndex() === i ? 0 : -1"
           role="tab"
           [attr.aria-controls]="'tab-panel-' + tab.key"
         >
@@ -519,20 +519,19 @@
     }
   </ng-template>
 
-  @if (hasPendingRestartChanges) {
+  @if (hasPendingRestartChanges()) {
     <button
       class="floating-pending-indicator"
       (click)="scrollToPendingChanges()"
       [matTooltip]="
-        'modals.preferences.pendingChangesTooltip'
-          | translate: { count: pendingRestartChanges.size }
+        'modals.preferences.pendingChangesTooltip' | translate: { count: pendingChangesCount() }
       "
       matTooltipPosition="left"
       matTooltipClass="pending-changes-tooltip"
       [attr.aria-label]="'modals.preferences.aria.scrollToPending' | translate"
     >
       <mat-icon svgIcon="circle-exclamation" class="warning-icon"></mat-icon>
-      <span class="pending-count">{{ pendingRestartChanges.size }}</span>
+      <span class="pending-count">{{ pendingChangesCount() }}</span>
     </button>
   }
 </div>

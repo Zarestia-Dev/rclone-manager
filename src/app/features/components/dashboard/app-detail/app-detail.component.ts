@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+import { NgClass, TitleCasePipe } from '@angular/common';
 import {
   Component,
   EventEmitter,
@@ -63,7 +63,8 @@ import { VfsControlPanelComponent } from '../../../../shared/detail-shared/vfs-c
   selector: 'app-app-detail',
   standalone: true,
   imports: [
-    CommonModule,
+    NgClass,
+    TitleCasePipe,
     MatIconModule,
     MatTooltipModule,
     MatDividerModule,

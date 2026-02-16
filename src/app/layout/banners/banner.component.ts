@@ -1,6 +1,8 @@
-import { Component, inject, signal, isDevMode, computed, DestroyRef } from '@angular/core';
+import { Component, inject, signal, isDevMode, ChangeDetectionStrategy } from '@angular/core';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { toSignal, toObservable } from '@angular/core/rxjs-interop';
+import { merge, from, of, combineLatest } from 'rxjs';
+import { map, catchError, switchMap } from 'rxjs/operators';
 
 // Services
 import {
@@ -16,128 +18,64 @@ import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-banner',
-  templateUrl: './banner.component.html',
   standalone: true,
+  templateUrl: './banner.component.html',
   imports: [MatToolbarModule, MatButtonModule, MatIconModule, MatTooltipModule, TranslateModule],
   styleUrls: ['./banner.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BannerComponent {
-  // --- STATE SIGNALS ---
-  readonly isMeteredConnection = signal(false);
-  readonly showDevelopmentBanner = signal(isDevMode());
-  readonly showFlatpakWarning = signal(false);
-
-  // Engine error management - private signals for internal state
-  private readonly passwordError = signal(false);
-  private readonly pathError = signal(false);
-  private readonly genericError = signal(false);
-
-  // Public computed signal - returns current error type or null
-  // Priority: password > path > generic
-  readonly engineError = computed(() => {
-    if (this.passwordError()) return 'password';
-    if (this.pathError()) return 'path';
-    if (this.genericError()) return 'generic';
-    return null;
-  });
-
   // --- INJECTED DEPENDENCIES ---
   private readonly eventListenersService = inject(EventListenersService);
   private readonly systemInfoService = inject(SystemInfoService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly appUpdaterService = inject(AppUpdaterService);
-  private readonly destroyRef = inject(DestroyRef); // Injected DestroyRef
 
-  constructor() {
-    this.initializeComponent();
-    this.initializeEngineErrorListeners();
-  }
+  // --- STATE SIGNALS ---
+  readonly showDevelopmentBanner = signal(isDevMode());
 
-  private async initializeComponent(): Promise<void> {
-    await this.checkMeteredConnection();
-    await this.checkBuildTypeAndShowWarning();
-    this.eventListenersService
-      .listenToNetworkStatusChanged()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: payload => {
-          this.isMeteredConnection.set(!!payload?.isMetered);
-        },
-      });
-  }
+  // Metered connection signal: combines initial check and real-time updates
+  readonly isMeteredConnection = toSignal(
+    merge(
+      from(this.systemInfoService.isNetworkMetered()).pipe(
+        catchError(() => of(false)),
+        map(v => !!v)
+      ),
+      this.eventListenersService.listenToNetworkStatusChanged().pipe(map(p => !!p?.isMetered))
+    ),
+    { initialValue: false }
+  );
 
-  /**
-   * Listen to engine error events and update the computed signal state
-   */
-  private initializeEngineErrorListeners(): void {
-    // Password error - highest priority
-    this.eventListenersService
-      .listenToRcloneEnginePasswordError()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        this.passwordError.set(true);
-        this.pathError.set(false);
-        this.genericError.set(false);
-      });
+  // Engine error signal: reflects the latest engine state/error event
+  readonly engineError = toSignal(
+    merge(
+      this.eventListenersService
+        .listenToRcloneEnginePasswordError()
+        .pipe(map(() => 'password' as const)),
+      this.eventListenersService.listenToRcloneEnginePathError().pipe(map(() => 'path' as const)),
+      this.eventListenersService.listenToRcloneEngineError().pipe(map(() => 'generic' as const)),
+      this.eventListenersService.listenToRcloneEngineReady().pipe(map(() => null))
+    ),
+    { initialValue: null }
+  );
 
-    // Path error - medium priority
-    this.eventListenersService
-      .listenToRcloneEnginePathError()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        this.passwordError.set(false);
-        this.pathError.set(true);
-        this.genericError.set(false);
-      });
-
-    // Generic error - lowest priority
-    this.eventListenersService
-      .listenToRcloneEngineError()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        this.passwordError.set(false);
-        this.pathError.set(false);
-        this.genericError.set(true);
-      });
-
-    // Engine ready - clear all errors
-    this.eventListenersService
-      .listenToRcloneEngineReady()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        this.passwordError.set(false);
-        this.pathError.set(false);
-        this.genericError.set(false);
-      });
-  }
-
-  private async checkBuildTypeAndShowWarning(): Promise<void> {
-    // Use reactive state from service instead of manual fetch
-    this.appUpdaterService.buildType$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(async buildType => {
-        if (!buildType) return;
-        const warningShown =
-          await this.appSettingsService.getSettingValue<boolean>('runtime.flatpak_warn');
-
-        if (buildType === 'flatpak' && warningShown) {
-          this.showFlatpakWarning.set(true);
-        }
-      });
-  }
+  // Flatpak warning logic
+  private readonly flatpakDismissed = signal(false);
+  readonly showFlatpakWarning = toSignal(
+    combineLatest([this.appUpdaterService.buildType$, toObservable(this.flatpakDismissed)]).pipe(
+      switchMap(([buildType, dismissed]) => {
+        if (buildType !== 'flatpak' || dismissed) return of(false);
+        return from(this.appSettingsService.getSettingValue<boolean>('runtime.flatpak_warn')).pipe(
+          map(warn => !!warn),
+          catchError(() => of(false))
+        );
+      })
+    ),
+    { initialValue: false }
+  );
 
   async dismissFlatpakWarning(): Promise<void> {
-    this.showFlatpakWarning.set(false);
+    this.flatpakDismissed.set(true);
     await this.appSettingsService.saveSetting('runtime', 'flatpak_warn', false);
-  }
-
-  private async checkMeteredConnection(): Promise<void> {
-    try {
-      const isMetered = await this.systemInfoService.isNetworkMetered();
-      this.isMeteredConnection.set(!!isMetered);
-    } catch (e) {
-      console.error('Failed to check metered connection:', e);
-      this.isMeteredConnection.set(false);
-    }
   }
 }

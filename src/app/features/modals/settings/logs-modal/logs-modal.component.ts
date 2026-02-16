@@ -1,12 +1,13 @@
 import {
+  ChangeDetectionStrategy,
   Component,
   ElementRef,
-  OnInit,
-  ViewChild,
   HostListener,
+  OnInit,
+  computed,
   inject,
   signal,
-  computed,
+  viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -44,28 +45,29 @@ import { TranslateModule } from '@ngx-translate/core';
   ],
   templateUrl: './logs-modal.component.html',
   styleUrls: ['./logs-modal.component.scss', '../../../../styles/_shared-modal.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LogsModalComponent implements OnInit {
   // --- Dependencies ---
-  private dialogRef = inject(MatDialogRef<LogsModalComponent>);
-  public data = inject(MAT_DIALOG_DATA) as { remoteName: string };
-  private snackBar = inject(MatSnackBar);
-  private loggingService = inject(LoggingService);
-  private backendTranslation = inject(BackendTranslationService);
-  private modalService = inject(ModalService);
+  private readonly dialogRef = inject(MatDialogRef<LogsModalComponent>);
+  public readonly data = inject(MAT_DIALOG_DATA) as { remoteName: string };
+  private readonly snackBar = inject(MatSnackBar);
+  private readonly loggingService = inject(LoggingService);
+  private readonly backendTranslation = inject(BackendTranslationService);
+  private readonly modalService = inject(ModalService);
 
   // Expose log levels to the template
   public readonly logLevels = LOG_LEVELS;
 
   // --- State Signals ---
-  logs = signal<RemoteLogEntry[]>([]);
-  loading = signal(false);
-  selectedLevel = signal<LogLevel | ''>('');
-  searchText = signal<string>('');
-  expandedLogs = signal<Set<string>>(new Set());
+  readonly logs = signal<RemoteLogEntry[]>([]);
+  readonly loading = signal(false);
+  readonly selectedLevel = signal<LogLevel | ''>('');
+  readonly searchText = signal<string>('');
+  readonly expandedLogs = signal<Set<string>>(new Set());
 
   // --- Computed Logic ---
-  filteredLogs = computed(() => {
+  readonly filteredLogs = computed(() => {
     const allLogs = this.logs();
     const level = this.selectedLevel();
     const search = this.searchText().toLowerCase();
@@ -80,7 +82,7 @@ export class LogsModalComponent implements OnInit {
     });
   });
 
-  @ViewChild('terminalLogArea') terminalLogArea?: ElementRef<HTMLDivElement>;
+  readonly terminalLogArea = viewChild<ElementRef<HTMLDivElement>>('terminalLogArea');
 
   ngOnInit(): void {
     this.loadLogs();
@@ -212,15 +214,15 @@ export class LogsModalComponent implements OnInit {
   }
 
   scrollToBottom(): void {
-    if (this.terminalLogArea) {
-      const el = this.terminalLogArea.nativeElement;
+    const el = this.terminalLogArea()?.nativeElement;
+    if (el) {
       el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
     }
   }
 
   scrollToTop(): void {
-    if (this.terminalLogArea) {
-      const el = this.terminalLogArea.nativeElement;
+    const el = this.terminalLogArea()?.nativeElement;
+    if (el) {
       el.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }

@@ -1,14 +1,22 @@
-import { Component, HostListener, ViewChild, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  HostListener,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatTableModule } from '@angular/material/table';
+import { ModalService } from '@app/services';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
-import { ModalService } from '@app/services';
 
 @Component({
   selector: 'app-keyboard-shortcuts-modal',
@@ -24,17 +32,24 @@ import { ModalService } from '@app/services';
   ],
   templateUrl: './keyboard-shortcuts-modal.component.html',
   styleUrls: ['./keyboard-shortcuts-modal.component.scss', '../../../../styles/_shared-modal.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class KeyboardShortcutsModalComponent {
-  searchText = '';
-  searchVisible = false; // Controls the visibility of search field
+  private readonly translate = inject(TranslateService);
+  private readonly dialogRef = inject(MatDialogRef<KeyboardShortcutsModalComponent>);
+  private readonly modalService = inject(ModalService);
+  private readonly data = inject(MAT_DIALOG_DATA, { optional: true }) as {
+    nautilus?: boolean;
+  } | null;
 
-  @ViewChild(SearchContainerComponent) searchContainer!: SearchContainerComponent;
+  readonly searchContainer = viewChild(SearchContainerComponent);
 
-  private translate = inject(TranslateService);
+  // Signals
+  readonly searchText = signal('');
+  readonly searchVisible = signal(false);
 
   // Schema using translation keys
-  private defaultShortcuts = [
+  private readonly defaultShortcuts = [
     {
       keys: 'Ctrl + Q',
       description: 'shortcuts.actions.quit',
@@ -92,7 +107,7 @@ export class KeyboardShortcutsModalComponent {
     },
   ];
 
-  private nautilusShortcuts = [
+  private readonly nautilusShortcuts = [
     {
       keys: 'Ctrl + C',
       description: 'nautilus.contextMenu.copy',
@@ -210,28 +225,32 @@ export class KeyboardShortcutsModalComponent {
     },
   ];
 
-  shortcuts: { keys: string; description: string; category: string }[] = [];
-  title = 'shortcuts.title';
+  readonly shortcuts: { keys: string; description: string; category: string }[];
+  readonly title: string;
 
-  private data = inject(MAT_DIALOG_DATA, { optional: true }) as { nautilus?: boolean } | null;
+  readonly filteredShortcuts = computed(() => {
+    const term = this.searchText().toLowerCase().trim();
+    if (!term) return this.shortcuts;
+
+    return this.shortcuts.filter(shortcut => {
+      const description = this.translate.instant(shortcut.description).toLowerCase();
+      return (
+        description.includes(term) ||
+        shortcut.keys.toLowerCase().includes(term) ||
+        shortcut.keys.split('+').some(key => key.trim().toLowerCase().includes(term))
+      );
+    });
+  });
 
   constructor() {
     if (this.data?.nautilus) {
-      // Nautilus context: show only nautilus shortcuts
       this.shortcuts = [...this.nautilusShortcuts];
       this.title = 'nautilus.shortcuts.title';
     } else {
-      // App-level: show only default shortcuts
       this.shortcuts = [...this.defaultShortcuts];
       this.title = 'shortcuts.title';
     }
-    this.filteredShortcuts = [...this.shortcuts];
   }
-
-  filteredShortcuts: { keys: string; description: string; category: string }[] = [];
-
-  private dialogRef = inject(MatDialogRef<KeyboardShortcutsModalComponent>);
-  private modalService = inject(ModalService);
 
   @HostListener('document:keydown.escape')
   close(): void {
@@ -241,49 +260,24 @@ export class KeyboardShortcutsModalComponent {
   @HostListener('document:keydown.control.f')
   onF3(): void {
     this.toggleSearch();
-    if (this.searchVisible && this.searchContainer) {
-      this.searchContainer.focus();
+    if (this.searchVisible()) {
+      this.searchContainer()?.focus();
     }
   }
 
   toggleSearch(): void {
-    this.searchVisible = !this.searchVisible;
-    if (!this.searchVisible) {
+    this.searchVisible.update(v => !v);
+    if (!this.searchVisible()) {
       this.clearSearch();
     }
   }
 
-  onSearchTextChange(searchText: string): void {
-    this.searchText = searchText;
-    this.filterShortcuts();
-  }
-
-  filterShortcuts(): void {
-    const searchTerm = this.searchText.toLowerCase().trim();
-
-    if (!searchTerm) {
-      this.filteredShortcuts = [...this.shortcuts];
-      return;
-    }
-
-    this.filteredShortcuts = this.shortcuts.filter(shortcut => {
-      const description = this.translate.instant(shortcut.description).toLowerCase();
-      // const category = this.translate.instant(shortcut.category).toLowerCase(); // If we were searching categories
-
-      return (
-        description.includes(searchTerm) ||
-        shortcut.keys.toLowerCase().includes(searchTerm) ||
-        // Also search individual key parts
-        shortcut.keys.split('+').some(key => key.trim().toLowerCase().includes(searchTerm))
-      );
-    });
+  onSearchTextChange(text: string): void {
+    this.searchText.set(text);
   }
 
   clearSearch(): void {
-    this.searchText = '';
-    this.filteredShortcuts = [...this.shortcuts];
-    if (this.searchContainer) {
-      this.searchContainer.clear();
-    }
+    this.searchText.set('');
+    this.searchContainer()?.clear();
   }
 }
