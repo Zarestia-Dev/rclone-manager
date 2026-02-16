@@ -234,7 +234,7 @@
       },
       "language": {
         "label": "Language",
-        "description": "Language to use for the user interface."
+        "description": "Language to use for the user interface. System language is used by default."
       },
       "start_on_startup": {
         "label": "Start on Startup",
