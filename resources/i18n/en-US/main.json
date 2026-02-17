@@ -151,7 +151,8 @@
       "unknown": "Unknown",
       "total": "Total: {{value}}",
       "used": "Used: {{value}}",
-      "free": "Free: {{value}}"
+      "free": "Free: {{value}}",
+      "errorLoading": "Problem loading disk usage"
     },
     "status": {
       "mounted": "Mounted",
@@ -773,6 +774,7 @@
       },
       "actions": {
         "pollInterval": "Poll Interval",
+        "pollIntervalNotSupported": "ChangeNotify not supported",
         "updateInterval": "Update Poll Interval",
         "refreshMetadata": "Refresh Metadata",
         "clearCache": "Clear Metadata Cache",
@@ -1176,6 +1178,8 @@
     "unexpectedError": "An unexpected error occurred",
     "remoteAbout": {
       "loading": "Loading remote information...",
+      "diskUsage": "Disk Usage",
+      "reloadUsage": "Reload Usage",
       "totalSpace": "Total Space",
       "usedSpace": "Used Space",
       "freeSpace": "Free Space",
