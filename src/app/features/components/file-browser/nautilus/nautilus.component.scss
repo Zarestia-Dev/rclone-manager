@@ -104,8 +104,8 @@ mat-nav-list {
       width: 100%;
 
       mat-icon {
-        height: var(--icon-size-sm);
-        width: var(--icon-size-sm);
+        height: var(--icon-size-md);
+        width: var(--icon-size-md);
 
         &.unmount-button {
           padding: var(--space-xxs);
@@ -184,8 +184,8 @@ mat-nav-list {
   }
 
   mat-icon {
-    width: var(--icon-size-sm);
-    height: var(--icon-size-sm);
+    width: var(--icon-size-md);
+    height: var(--icon-size-md);
   }
 }
 
@@ -391,8 +391,8 @@ mat-nav-list {
   }
 
   mat-icon {
-    width: var(--icon-size-sm);
-    height: var(--icon-size-sm);
+    width: var(--icon-size-md);
+    height: var(--icon-size-md);
   }
 }
 

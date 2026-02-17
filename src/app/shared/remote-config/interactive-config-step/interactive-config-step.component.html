@@ -81,14 +81,18 @@
                     q.Option?.Name || ('wizards.remoteConfig.chooseOption' | translate)
                   }}</mat-label>
                   <mat-select
-                    [(ngModel)]="answer"
+                    [ngModel]="selectedIndex()"
+                    (ngModelChange)="onSelectionChange($event)"
                     [disabled]="canceling()"
                     [attr.aria-label]="
                       q.Option?.Name || ('wizards.remoteConfig.selectOption' | translate)
                     "
                   >
+                    <mat-select-trigger>
+                      {{ getDisplayValue(selectedIndex(), q.Option?.Examples) }}
+                    </mat-select-trigger>
                     @for (ex of q.Option?.Examples; track index; let index = $index) {
-                      <mat-option [value]="ex.Value">
+                      <mat-option [value]="index">
                         <div class="option-content">
                           <span class="option-label">{{ ex.Help || ex.Value }} </span>
                           @if (ex.Help && ex.Help !== ex.Value) {

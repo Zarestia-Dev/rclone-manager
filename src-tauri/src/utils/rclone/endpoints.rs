@@ -1044,14 +1044,14 @@ pub mod operations {
     /// See the [lsjson](/commands/rclone_lsjson/) command for more information on the above and examples.
     pub const STAT: &str = "operations/stat";
 
-    // /// Upload file using multiform/form-data.
-    // ///
-    // /// This takes the following parameters:
-    // ///
-    // /// - fs - a remote name string e.g. "drive:"
-    // /// - remote - a path within that remote e.g. "dir"
-    // /// - each part in body represents a file to be uploaded
-    // pub const UPLOADFILE: &str = "operations/uploadfile";
+    /// Upload file using multiform/form-data.
+    ///
+    /// This takes the following parameters:
+    ///
+    /// - fs - a remote name string e.g. "drive:"
+    /// - remote - a path within that remote e.g. "dir"
+    /// - each part in body represents a file to be uploaded
+    pub const UPLOADFILE: &str = "operations/uploadfile";
 }
 
 /// Synchronization endpoints

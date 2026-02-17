@@ -335,6 +335,25 @@ export class RemoteManagementService extends TauriBaseService {
   }
 
   /**
+   * Upload a file content string to a remote file
+   */
+  async uploadFile(
+    remote: string,
+    path: string,
+    filename: string,
+    content: string,
+    source?: Origin
+  ): Promise<string> {
+    return this.invokeCommand<string>('upload_file', {
+      remote,
+      path,
+      filename,
+      content,
+      source,
+    });
+  }
+
+  /**
    * Copy a directory
    */
   async copyDirectory(

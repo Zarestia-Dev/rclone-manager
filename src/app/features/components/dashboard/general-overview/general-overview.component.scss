@@ -519,6 +519,11 @@
   border-radius: 8px;
   box-shadow: var(--shadow-gnome);
   overflow: hidden;
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
 
   .panel-label {
     font-weight: 600;

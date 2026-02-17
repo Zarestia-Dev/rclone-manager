@@ -397,3 +397,28 @@ pub async fn stream_file_handler(
         .body(body)
         .map_err(|e| AppError::InternalServerError(anyhow::Error::msg(e.to_string())))
 }
+
+#[derive(Deserialize)]
+pub struct UploadFileBody {
+    pub remote: String,
+    pub path: String,
+    pub filename: String,
+    pub content: String,
+}
+
+pub async fn upload_file_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<UploadFileBody>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::rclone::commands::filesystem::upload_file;
+    let result = upload_file(
+        state.app_handle.clone(),
+        body.remote,
+        body.path,
+        body.filename,
+        body.content,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(result)))
+}

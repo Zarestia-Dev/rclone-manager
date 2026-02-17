@@ -28,7 +28,7 @@ tokio = { version = "1.45.1", features = ["full", "process"] }
 tauri-plugin-http = { version = "2", default-features = false, features = ["rustls-tls"] }
 tauri-plugin-os = "2"
 zip = "4.0.0"
-reqwest = { version = "0.12.19", default-features = false, features = ["json", "blocking", "rustls-tls"] }
+reqwest = { version = "0.12.19", default-features = false, features = ["json", "blocking", "rustls-tls", "multipart"] }
 tauri-plugin-store = "2"
 tauri-plugin-notification = "2"
 once_cell = "1.21.3"

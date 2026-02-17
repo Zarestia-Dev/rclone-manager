@@ -1301,7 +1301,12 @@
       "errorLoadContent": "Dosya içeriği yüklenemedi",
       "errorUnexpected": "Beklenmeyen bir hata oluştu",
       "errorLoadFile": "{{name}} yüklenemedi",
-      "downloading": "{{name}} indiriliyor"
+      "downloading": "{{name}} indiriliyor",
+      "save": "Kaydet",
+      "edit": "Düzenle",
+      "cancel": "İptal",
+      "saveSuccess": "Dosya başarıyla kaydedildi",
+      "saveError": "Dosya kaydedilemedi"
     }
   },
   "dashboard": {

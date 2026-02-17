@@ -101,8 +101,10 @@
             [isTypeLocked]="!!editTarget() || cloneTarget()"
             [useInteractiveMode]="useInteractiveMode()"
             [searchQuery]="searchQuery()"
+            [showAdvancedOptions]="showAdvancedOptions()"
             (remoteTypeChanged)="onRemoteTypeChange()"
             (interactiveModeToggled)="onInteractiveModeToggled($event)"
+            (advancedOptionsToggled)="onAdvancedOptionsToggled($event)"
             (fieldChanged)="onRemoteFieldChanged($event.fieldName, $event.isChanged)"
           />
         </section>

@@ -195,6 +195,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   cloneTarget = signal(false);
   private initialSection: string | null = null;
   useInteractiveMode = signal(false);
+  showAdvancedOptions = signal(false);
 
   isRemoteConfigLoading = signal(false);
   isAuthInProgress = signal(false);
@@ -900,7 +901,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
     this.saveCurrentStepProfile();
     this.currentStep.set(step);
-    this.useInteractiveMode.set(false);
     this.scrollToTop();
   }
 
@@ -1024,6 +1024,10 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
   onInteractiveModeToggled(useInteractiveMode: boolean): void {
     this.useInteractiveMode.set(useInteractiveMode);
+  }
+
+  onAdvancedOptionsToggled(show: boolean): void {
+    this.showAdvancedOptions.set(show);
   }
 
   selectLocalFolder(formPath: string, requireEmpty: boolean): void {

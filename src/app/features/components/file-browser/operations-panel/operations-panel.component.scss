@@ -21,9 +21,9 @@
       font-size: 11px;
 
       mat-icon {
-        width: 14px;
-        height: 14px;
-        font-size: 14px;
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
       }
 
       .job-count {

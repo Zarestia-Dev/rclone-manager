@@ -221,6 +221,7 @@ fn file_operations_routes() -> Router<WebServerState> {
         .route("/copy-url", post(handlers::copy_url_handler))
         .route("/remote/paths", post(handlers::get_remote_paths_handler))
         .route("/fs/stream", get(handlers::stream_file_handler))
+        .route("/upload-file", post(handlers::upload_file_handler))
 }
 
 fn settings_routes() -> Router<WebServerState> {

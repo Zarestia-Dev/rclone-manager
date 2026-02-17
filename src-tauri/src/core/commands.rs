@@ -121,6 +121,7 @@ macro_rules! generate_invoke_handler {
             $crate::rclone::commands::filesystem::move_dir,
             $crate::rclone::commands::filesystem::copy_url,
             $crate::rclone::commands::filesystem::delete_file,
+            $crate::rclone::commands::filesystem::upload_file,
             $crate::rclone::commands::filesystem::purge_directory,
             $crate::rclone::commands::filesystem::remove_empty_dirs,
             $crate::rclone::queries::get_local_drives,

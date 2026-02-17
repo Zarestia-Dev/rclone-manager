@@ -32,13 +32,22 @@
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  outline: 2px solid var(--border-color);
   color: var(--window-fg-color);
   display: flex;
   align-items: end;
   position: relative;
   justify-content: left;
-  transition: all 200ms ease-in-out;
+  background: transparent;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px var(--border-color);
+    transition: all 200ms ease-in-out;
+    z-index: 0;
+  }
 
   .checkmark {
     width: 20px;
@@ -51,20 +60,22 @@
     align-items: center;
     margin: -8px;
     color: var(--gnome-blue-3);
+    position: relative;
+    z-index: 1;
   }
 }
-.light {
+.light::before {
   background: var(--gnome-light-1);
 }
 
-.dark {
+.dark::before {
   background: var(--gnome-dark-5);
 }
 
-.system {
-  background: linear-gradient(45deg, var(--gnome-dark-5) 50%, var(--gnome-light-1) 50%);
+.system::before {
+  background: linear-gradient(315deg, var(--gnome-dark-5) 49.5%, var(--gnome-light-1) 50.5%);
 }
 
-.selected {
-  border-color: var(--accent-color) !important;
+.selected::before {
+  box-shadow: 0 0 0 2px var(--accent-color);
 }

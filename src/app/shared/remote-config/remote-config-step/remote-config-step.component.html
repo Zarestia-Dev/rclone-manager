@@ -22,11 +22,13 @@
                 #auto="matAutocomplete"
                 [displayWith]="displayRemote"
                 (optionSelected)="onTypeSelected($event.option.value)"
-                class="remote-type-autocomplete"
               >
                 @for (remote of filteredRemotes(); track remote.value) {
-                  <mat-option [value]="remote.value" class="remote-option">
-                    <mat-icon [svgIcon]="iconService.getIconName(remote.value)"></mat-icon>
+                  <mat-option [value]="remote.value">
+                    <mat-icon
+                      class="field-icon"
+                      [svgIcon]="iconService.getIconName(remote.value)"
+                    ></mat-icon>
                     <div class="option-content">
                       <span class="option-label">{{ remote.label }}</span>
                       <small class="option-description">{{ remote.value }}</small>

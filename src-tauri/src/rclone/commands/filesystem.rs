@@ -514,3 +514,53 @@ pub async fn move_dir(
 
     Ok(jobid)
 }
+
+#[tauri::command]
+pub async fn upload_file(
+    app: AppHandle,
+    remote: String,
+    path: String,
+    filename: String,
+    content: String,
+) -> Result<String, String> {
+    use crate::utils::rclone::endpoints::operations;
+    use reqwest::multipart;
+
+    let state = app.state::<RcloneState>();
+    debug!(
+        "⬆️ Uploading file: remote={} path={} filename={}",
+        remote, path, filename
+    );
+
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let url = backend.url_for(operations::UPLOADFILE);
+
+    let part = multipart::Part::text(content)
+        .file_name(filename.clone())
+        .mime_str("text/plain")
+        .map_err(|e| e.to_string())?;
+
+    let form = multipart::Form::new().part("file", part);
+
+    let response = backend
+        .inject_auth(
+            state
+                .client
+                .post(&url)
+                .query(&[("fs", &remote), ("remote", &path)]),
+        )
+        .multipart(form)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to send upload request: {}", e))?;
+
+    let status = response.status();
+    let body = response.text().await.unwrap_or_default();
+
+    if !status.is_success() {
+        return Err(format!("Upload failed ({}): {}", status, body));
+    }
+
+    Ok("Upload successful".to_string())
+}

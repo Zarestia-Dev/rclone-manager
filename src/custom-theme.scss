@@ -13,7 +13,6 @@
 @use "@angular/material" as mat;
 @use "sass:map";
 @use "sass:color";
-@use "app/styles/syntax-highlighting" as syntax;
 @use "animations";
 
 // ============================================================================
@@ -348,7 +347,6 @@ $dark-theme: (
 // Apply Material themes with Libadwaita surface overrides
 :root,
 .light {
-  @include syntax.syntax-highlighting-light;
   @include mat.theme($light-theme);
 
   // ===== MATERIAL M3 SURFACE OVERRIDES =====
@@ -410,7 +408,6 @@ $dark-theme: (
 }
 
 .dark {
-  @include syntax.syntax-highlighting-dark;
   @include mat.theme($dark-theme);
 
   // ===== MATERIAL M3 SURFACE OVERRIDES =====
@@ -1028,8 +1025,6 @@ mat-accordion {
 .option-content {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xxs);
-  padding: var(--space-xs) 0;
 
   .option-label {
     color: var(--window-fg-color);

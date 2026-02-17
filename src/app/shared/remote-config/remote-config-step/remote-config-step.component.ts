@@ -59,6 +59,7 @@ export class RemoteConfigStepComponent {
   // --- Signal Outputs ---
   remoteTypeChanged = output<void>();
   interactiveModeToggled = output<boolean>();
+  advancedOptionsToggled = output<boolean>();
   fieldChanged = output<{ fieldName: string; isChanged: boolean }>();
 
   // --- Local Form Controls ---
@@ -66,7 +67,7 @@ export class RemoteConfigStepComponent {
   providerSearchCtrl = new FormControl('');
 
   // --- Local Signals ---
-  showAdvancedOptions = signal(false);
+  showAdvancedOptions = input(false);
   selectedProvider = signal<string | undefined>(undefined);
 
   // Convert FormControls to Signals for use in computed
@@ -379,7 +380,8 @@ export class RemoteConfigStepComponent {
   };
 
   toggleAdvancedOptions(): void {
-    this.showAdvancedOptions.update(v => !v);
+    const newValue = !this.showAdvancedOptions();
+    this.advancedOptionsToggled.emit(newValue);
   }
 
   toggleInteractiveMode(): void {

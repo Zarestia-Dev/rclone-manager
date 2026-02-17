@@ -14,6 +14,7 @@
       @if (isMarkdownFile() && (data.fileType === 'text' || data.fileType === 'previewable')) {
         <button
           mat-icon-button
+          matTooltip="{{ showMarkdownPreview() ? 'Show Raw Text' : 'Show Preview' }}"
           class="header-button"
           (click)="toggleMarkdownPreview(); $event.stopPropagation()"
           [attr.aria-label]="showMarkdownPreview() ? 'Show Raw Text' : 'Show Preview'"
@@ -21,9 +22,51 @@
           <mat-icon [svgIcon]="showMarkdownPreview() ? 'code' : 'eye'"></mat-icon>
         </button>
       }
+
+      <!-- Edit Actions -->
+      @if (data.fileType === 'text' || data.fileType === 'previewable') {
+        @if (isEditing()) {
+          <button
+            mat-icon-button
+            matTooltip="{{ 'fileBrowser.fileViewer.save' | translate }}"
+            class="header-button save-button"
+            (click)="saveChanges(); $event.stopPropagation()"
+            [disabled]="isSaving()"
+            [attr.aria-label]="'fileBrowser.fileViewer.save' | translate"
+          >
+            @if (isSaving()) {
+              <mat-spinner diameter="24"></mat-spinner>
+            } @else {
+              <mat-icon svgIcon="floppy-disk"></mat-icon>
+            }
+          </button>
+          <button
+            mat-icon-button
+            matTooltip="{{ 'fileBrowser.fileViewer.cancel' | translate }}"
+            class="header-button"
+            (click)="cancelEditing(); $event.stopPropagation()"
+            [disabled]="isSaving()"
+            [attr.aria-label]="'fileBrowser.fileViewer.cancel' | translate"
+          >
+            <mat-icon svgIcon="close"></mat-icon>
+          </button>
+        } @else {
+          <button
+            mat-icon-button
+            matTooltip="{{ 'fileBrowser.fileViewer.edit' | translate }}"
+            class="header-button"
+            (click)="startEditing(); $event.stopPropagation()"
+            [attr.aria-label]="'fileBrowser.fileViewer.edit' | translate"
+          >
+            <mat-icon svgIcon="pen"></mat-icon>
+          </button>
+        }
+      }
+
       @if (!this.data.isLocal) {
         <button
           mat-icon-button
+          matTooltip="{{ 'fileBrowser.fileViewer.download' | translate: { name: data.name } }}"
           class="header-button"
           [disabled]="isDownloading()"
           (click)="download(); $event.stopPropagation()"
@@ -38,6 +81,7 @@
       }
       <button
         mat-icon-button
+        matTooltip="{{ 'fileBrowser.fileViewer.closeViewer' | translate }}"
         class="header-button close-button"
         (click)="closeViewer.emit(); $event.stopPropagation()"
         [attr.aria-label]="'fileBrowser.fileViewer.closeViewer' | translate"
@@ -122,8 +166,8 @@
             @if (isMarkdownFile() && showMarkdownPreview()) {
               <div class="markdown-preview markdown-body" [innerHTML]="renderedMarkdown()"></div>
             } @else {
-              <div class="text-container" role="document">
-                <pre><code class="hljs" [innerHTML]="highlightedContent()"></code></pre>
+              <div class="editor-container">
+                <div #editorContainer class="code-mirror-container"></div>
               </div>
             }
           }
@@ -131,8 +175,8 @@
             @if (isMarkdownFile() && showMarkdownPreview()) {
               <div class="markdown-preview markdown-body" [innerHTML]="renderedMarkdown()"></div>
             } @else {
-              <div class="text-container" role="document">
-                <pre><code class="hljs" [innerHTML]="highlightedContent()"></code></pre>
+              <div class="editor-container">
+                <div #editorContainer class="code-mirror-container"></div>
               </div>
             }
           }

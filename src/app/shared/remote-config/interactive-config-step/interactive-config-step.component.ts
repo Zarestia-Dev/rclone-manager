@@ -15,7 +15,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { LineBreaksPipe } from '@app/pipes';
-import { RcConfigQuestionResponse } from '@app/types';
+import { RcConfigExample, RcConfigQuestionResponse } from '@app/types';
 import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
@@ -48,6 +48,9 @@ export class InteractiveConfigStepComponent {
   // Answer state as signal
   private _answer = signal<string | boolean | number | null>(null);
 
+  /** Selected index for dropdown to handle duplicate values */
+  selectedIndex = signal<number | null>(null);
+
   /** Getter for template usage */
   get answer(): string | boolean | number | null {
     return this._answer();
@@ -58,6 +61,24 @@ export class InteractiveConfigStepComponent {
     if (this._answer() !== val) {
       this._answer.set(val);
       this.answerChange.emit(val);
+
+      // Sync selectedIndex when answer changes externally or via other inputs
+      const ex = this.question()?.Option?.Examples;
+      if (ex && val !== null) {
+        // Find first matching value if index not already set or invalid
+        const currentIdx = this.selectedIndex();
+        if (
+          currentIdx === null ||
+          currentIdx < 0 ||
+          currentIdx >= ex.length ||
+          ex[currentIdx].Value !== val
+        ) {
+          const idx = ex.findIndex(e => e.Value === val);
+          this.selectedIndex.set(idx >= 0 ? idx : null);
+        }
+      } else {
+        this.selectedIndex.set(null);
+      }
     }
   }
 
@@ -115,5 +136,18 @@ export class InteractiveConfigStepComponent {
     if (opt.Default !== undefined && opt.Default !== null) return String(opt.Default);
     if (opt.Examples && opt.Examples.length > 0) return opt.Examples[0].Value;
     return '';
+  }
+  getDisplayValue(index: number | null, examples: RcConfigExample[] | undefined): string {
+    if (!examples || index === null || index < 0 || index >= examples.length) return '';
+    const selected = examples[index];
+    return selected ? selected.Help || selected.Value : '';
+  }
+
+  onSelectionChange(index: number): void {
+    this.selectedIndex.set(index);
+    const ex = this.question()?.Option?.Examples;
+    if (ex && index >= 0 && index < ex.length) {
+      this.answer = ex[index].Value;
+    }
   }
 }
