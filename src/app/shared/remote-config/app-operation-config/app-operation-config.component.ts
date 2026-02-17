@@ -3,12 +3,13 @@ import {
   Component,
   ChangeDetectionStrategy,
   inject,
-  OnDestroy,
   input,
   computed,
   signal,
   effect,
+  DestroyRef,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormGroup, ReactiveFormsModule, AbstractControl } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
@@ -17,7 +18,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatDividerModule } from '@angular/material/divider';
-import { Observable, Subject, takeUntil } from 'rxjs';
+import { Observable } from 'rxjs';
 import { CronValidationResponse, EditTarget, Entry } from '@app/types';
 import { FileSystemService, PathSelectionService, PathSelectionState } from '@app/services';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -56,7 +57,7 @@ type PathGroup = 'source' | 'dest';
   styleUrls: ['./app-operation-config.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class OperationConfigComponent implements OnDestroy {
+export class OperationConfigComponent {
   // Signal Inputs
   opFormGroup = input.required<FormGroup>();
   operationType = input.required<EditTarget>();
@@ -70,7 +71,7 @@ export class OperationConfigComponent implements OnDestroy {
   private readonly pathSelectionService = inject(PathSelectionService);
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
-  private readonly destroy$ = new Subject<void>();
+  private readonly destroyRef = inject(DestroyRef);
 
   // Computed State
   isMount = computed(() => this.operationType() === 'mount');
@@ -130,13 +131,12 @@ export class OperationConfigComponent implements OnDestroy {
         this.watchPathType('dest');
       }
     });
-  }
 
-  ngOnDestroy(): void {
-    this.pathSelectionService.unregisterField('source');
-    this.pathSelectionService.unregisterField('dest');
-    this.destroy$.next();
-    this.destroy$.complete();
+    // Cleanup
+    this.destroyRef.onDestroy(() => {
+      this.pathSelectionService.unregisterField('source');
+      this.pathSelectionService.unregisterField('dest');
+    });
   }
 
   private syncControlToSignal<T>(
@@ -149,7 +149,7 @@ export class OperationConfigComponent implements OnDestroy {
     signalToUpdate.set(control.value);
 
     // Subscribe to changes
-    control.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(val => {
+    control.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(val => {
       signalToUpdate.set(val);
     });
   }
@@ -194,7 +194,7 @@ export class OperationConfigComponent implements OnDestroy {
 
     // Watch for changes
     control.valueChanges
-      .pipe(takeUntil(this.destroy$))
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(value => this.handlePathTypeChange(group, value));
   }
 

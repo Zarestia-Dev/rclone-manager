@@ -451,17 +451,26 @@
         <mat-label>{{ 'shared.vfsControl.actions.pollInterval' | translate }}</mat-label>
         <input
           matInput
-          [ngModel]="pollIntervalInput()"
+          [ngModel]="
+            vfs.pollIntervalSupported === false
+              ? ('shared.vfsControl.actions.pollIntervalNotSupported' | translate)
+              : pollIntervalInput()
+          "
           (ngModelChange)="pollIntervalInput.set($event)"
           [placeholder]="'shared.vfsControl.pollIntervalPlaceholder' | translate"
-          [disabled]="!hasUsableVfs() || loading()"
+          [disabled]="!hasUsableVfs() || loading() || vfs.pollIntervalSupported === false"
         />
         <button
           mat-icon-button
           matSuffix
           (click)="updatePollInterval()"
           [matTooltip]="'shared.vfsControl.actions.updateInterval' | translate"
-          [disabled]="!hasUsableVfs() || !pollIntervalInput().trim() || loading()"
+          [disabled]="
+            !hasUsableVfs() ||
+            !pollIntervalInput().trim() ||
+            loading() ||
+            vfs.pollIntervalSupported === false
+          "
         >
           <mat-icon svgIcon="bolt"></mat-icon>
         </button>

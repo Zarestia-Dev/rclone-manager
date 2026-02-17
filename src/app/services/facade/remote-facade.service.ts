@@ -94,33 +94,43 @@ export class RemoteFacadeService extends TauriBaseService {
   async getCachedOrFetchDiskUsage(
     remoteName: string,
     normalizedName?: string,
-    source: Origin = 'dashboard'
+    source: Origin = 'dashboard',
+    forceRefresh = false
   ): Promise<DiskUsage | null> {
     // Check cache first
-    const cachedRemote = this.activeRemotes().find(r => r.remoteSpecs.name === remoteName);
+    if (!forceRefresh) {
+      const cachedRemote = this.activeRemotes().find(r => r.remoteSpecs.name === remoteName);
 
-    const cachedUsage = cachedRemote?.diskUsage;
-    if (
-      cachedUsage &&
-      cachedUsage.total_space !== undefined &&
-      !cachedUsage.notSupported &&
-      !cachedUsage.loading &&
-      !cachedUsage.error
-    ) {
-      return cachedUsage;
-    }
+      const cachedUsage = cachedRemote?.diskUsage;
+      if (
+        cachedUsage &&
+        cachedUsage.total_space !== undefined &&
+        !cachedUsage.notSupported &&
+        !cachedUsage.loading &&
+        !cachedUsage.error
+      ) {
+        return cachedUsage;
+      }
 
-    // If marked as not supported, return null
-    if (cachedUsage?.notSupported) {
-      return null;
+      // If marked as not supported, return null
+      if (cachedUsage?.notSupported) {
+        return null;
+      }
     }
 
     // Fetch from backend
     try {
       const fsName = normalizedName || `${remoteName}:`;
 
-      // Set loading state before fetching
-      this.updateDiskUsage(remoteName, { loading: true, error: false });
+      // Set loading state before fetching - Reset usage data to clear UI
+      this.updateDiskUsage(remoteName, {
+        loading: true,
+        error: false,
+        errorMessage: undefined,
+        total_space: undefined,
+        used_space: undefined,
+        free_space: undefined,
+      });
 
       // First check if About feature is supported
       const fsInfo = await this.remoteService.getFsInfo(fsName, source);
@@ -150,9 +160,11 @@ export class RemoteFacadeService extends TauriBaseService {
       return diskUsage;
     } catch (error) {
       console.error(`Failed to fetch disk usage for ${remoteName}:`, error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       const errorUsage: DiskUsage = {
         loading: false,
         error: true,
+        errorMessage,
       };
       this.updateDiskUsage(remoteName, errorUsage);
       return null;

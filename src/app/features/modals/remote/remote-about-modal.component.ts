@@ -124,12 +124,15 @@ export class RemoteAboutModalComponent implements OnInit {
       });
   }
 
-  private async fetchDiskUsage(): Promise<void> {
+  async fetchDiskUsage(forceRefresh = false): Promise<void> {
+    this.loadingUsage.set(true);
     try {
       // Use centralized method that handles caching and fetching
       const diskUsage = await this.remoteFacadeService.getCachedOrFetchDiskUsage(
         this.data.remote.displayName,
-        this.remoteName()
+        this.remoteName(),
+        'ui',
+        forceRefresh
       );
 
       if (diskUsage) {

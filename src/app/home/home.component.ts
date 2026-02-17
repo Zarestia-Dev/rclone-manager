@@ -497,6 +497,15 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   }
 
+  async handleRetryDiskUsage(remoteName: string): Promise<void> {
+    await this.remoteFacadeService.getCachedOrFetchDiskUsage(
+      remoteName,
+      undefined,
+      'dashboard',
+      true
+    );
+  }
+
   // ============================================================================
   // UTILITY & HELPER METHODS
   // ============================================================================

@@ -151,7 +151,8 @@
       "unknown": "Bilinmiyor",
       "total": "Toplam: {{value}}",
       "used": "Kullanılan: {{value}}",
-      "free": "Boş: {{value}}"
+      "free": "Boş: {{value}}",
+      "errorLoading": "Disk kullanımı yüklenirken sorun oluştu"
     },
     "status": {
       "mounted": "Bağlı",
@@ -779,6 +780,7 @@
       },
       "actions": {
         "pollInterval": "Yoklama Aralığı",
+        "pollIntervalNotSupported": "ChangeNotify desteklenmiyor",
         "updateInterval": "Yoklama Aralığını Güncelle",
         "refreshMetadata": "Meta Veriyi Yenile",
         "clearCache": "Meta Veri Önbelleğini Temizle",
@@ -1182,6 +1184,8 @@
     "unexpectedError": "Beklenmeyen bir hata oluştu",
     "remoteAbout": {
       "loading": "Uzak bağlantı bilgileri yükleniyor...",
+      "diskUsage": "Disk Kullanımı",
+      "reloadUsage": "Kullanımı Yenile",
       "totalSpace": "Toplam Alan",
       "usedSpace": "Kullanılan Alan",
       "freeSpace": "Boş Alan",

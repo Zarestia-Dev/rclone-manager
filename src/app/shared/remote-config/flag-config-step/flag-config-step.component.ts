@@ -1,12 +1,4 @@
-import {
-  Component,
-  EventEmitter,
-  Output,
-  ChangeDetectionStrategy,
-  inject,
-  input,
-  computed,
-} from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, input, computed, output } from '@angular/core';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
@@ -64,7 +56,7 @@ export class FlagConfigStepComponent {
   selectedServeType = input('http');
   isLoadingServeFields = input(false);
 
-  @Output() serveTypeChange = new EventEmitter<string>();
+  serveTypeChange = output<string>();
 
   onServeTypeChange(type: string): void {
     this.serveTypeChange.emit(type);

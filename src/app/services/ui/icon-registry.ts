@@ -43,16 +43,11 @@ export const BASE_ICONS: Record<string, string> = {
   folder: 'assets/icons/files/folder.svg',
   'file-zipper': 'assets/icons/files/file-zipper.svg',
   'file-lines': 'assets/icons/files/file-lines.svg',
-  'file-audio': 'assets/icons/files/file-audio.svg',
-  'file-video': 'assets/icons/files/video.svg',
-  'file-image': 'assets/icons/files/image.svg',
-  'file-pdf': 'assets/icons/files/file-pdf.svg',
   'file-arrow-up': 'assets/icons/files/file-arrow-up.svg',
   database: 'assets/icons/files/database.svg',
   package: 'assets/icons/files/package.svg',
   'box-archive': 'assets/icons/files/box-archive.svg',
   'note-sticky': 'assets/icons/files/note-sticky.svg',
-  music: 'assets/icons/files/music.svg',
 
   // ------------------- Action Icons -------------------
   plus: 'assets/icons/titlebar/add.svg',
@@ -71,6 +66,7 @@ export const BASE_ICONS: Record<string, string> = {
   search: 'assets/icons/titlebar/search.svg',
   refresh: 'assets/icons/actions/rotate.svg',
   'rotate-left': 'assets/icons/actions/rotate-left.svg',
+  'rotate-right': 'assets/icons/actions/rotate-right.svg',
   'rotate-group': 'assets/icons/actions/rotate-group.svg',
   sync: 'assets/icons/files/folder-sync.svg',
   play: 'assets/icons/actions/play.svg',
@@ -125,7 +121,8 @@ export const BASE_ICONS: Record<string, string> = {
   scissors: 'assets/icons/general/scissors.svg',
 
   // ------------------- Titlebar Icons -------------------
-  'check-box': 'assets/icons/titlebar/check-box.svg',
+  expand: 'assets/icons/titlebar/expand.svg',
+  compress: 'assets/icons/titlebar/compress.svg',
   'ellipsis-vertical': 'assets/icons/titlebar/ellipsis-vertical.svg',
   'menu-bar': 'assets/icons/titlebar/menu-bar.svg',
 

@@ -1,8 +1,9 @@
-import { Component, input, computed } from '@angular/core';
+import { Component, input, output, computed } from '@angular/core';
 import { NgStyle } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { DiskUsage } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
@@ -14,6 +15,7 @@ import { FormatFileSizePipe } from '@app/pipes';
     NgStyle,
     MatCardModule,
     MatIconModule,
+    MatButtonModule,
     MatProgressSpinnerModule,
     FormatFileSizePipe,
     TranslateModule,
@@ -26,6 +28,16 @@ import { FormatFileSizePipe } from '@app/pipes';
           <mat-icon svgIcon="hard-drive"></mat-icon>
           <span>{{ 'detailShared.diskUsage.title' | translate }}</span>
         </mat-card-title>
+        <div class="header-actions">
+          <button
+            mat-icon-button
+            class="primary"
+            (click)="retry.emit()"
+            [disabled]="config().loading"
+          >
+            <mat-icon svgIcon="rotate-right" [class.animate-spin]="config().loading"></mat-icon>
+          </button>
+        </div>
       </mat-card-header>
       <mat-card-content>
         <div class="usage-bar-container">
@@ -38,12 +50,17 @@ import { FormatFileSizePipe } from '@app/pipes';
                     : ('detailShared.diskUsage.unknown' | translate)
                 }}
               </div>
+            } @else if (config().error) {
+              <div class="usage-status-error" [title]="config().errorMessage">
+                <mat-icon svgIcon="circle-exclamation" class="warn-color"></mat-icon>
+                <span>{{ 'detailShared.diskUsage.errorLoading' | translate }}</span>
+              </div>
             } @else {
               <div class="usage-fill" [ngStyle]="usageFillStyle()"></div>
             }
           </div>
         </div>
-        @if (config() && !config().notSupported) {
+        @if (config() && !config().notSupported && !config().error) {
           <div class="usage-legend">
             @if (config().loading) {
               <div
@@ -83,6 +100,7 @@ import { FormatFileSizePipe } from '@app/pipes';
 })
 export class DiskUsagePanelComponent {
   config = input.required<DiskUsage>();
+  retry = output<void>();
 
   readonly usagePercentage = computed(() => {
     const conf = this.config();
@@ -109,6 +127,14 @@ export class DiskUsagePanelComponent {
       return {
         backgroundColor: 'rgba(var(--yellow-rgb), 0.3)',
         boxShadow: 'inset 0 0 0 2px var(--yellow)',
+      };
+    }
+
+    if (conf.error) {
+      return {
+        backgroundColor: 'rgba(var(--warn-color-rgb), 0.15)',
+        boxShadow: 'inset 0 0 0 2px var(--warn-color)',
+        cursor: 'help',
       };
     }
 

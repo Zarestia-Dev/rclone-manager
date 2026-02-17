@@ -57,7 +57,7 @@
 
     <!-- Window Controls -->
     @if (windowButtons) {
-      @for (control of windowControls; track control.label) {
+      @for (control of windowControls(); track control.label) {
         <button
           matIconButton
           (click)="control.action()"

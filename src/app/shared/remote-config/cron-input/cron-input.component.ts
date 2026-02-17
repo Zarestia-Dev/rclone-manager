@@ -1,4 +1,12 @@
-import { Component, Output, EventEmitter, OnDestroy, inject, input, effect } from '@angular/core';
+import {
+  Component,
+  ChangeDetectionStrategy,
+  inject,
+  input,
+  effect,
+  output,
+  DestroyRef,
+} from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -8,7 +16,8 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { NgxMatTimepickerModule } from 'ngx-mat-timepicker';
-import { Subject, distinctUntilChanged, takeUntil, debounceTime } from 'rxjs';
+import { distinctUntilChanged } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SchedulerService } from '@app/services';
 import { CronValidationResponse } from '@app/types';
 import { toString as cronstrue } from 'cronstrue';
@@ -39,16 +48,17 @@ type PresetKey =
   ],
   templateUrl: './cron-input.component.html',
   styleUrls: ['./cron-input.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CronInputComponent implements OnDestroy {
+export class CronInputComponent {
   initialValue = input<string | null>();
   taskName = input<string | null>(null);
-  @Output() cronChange = new EventEmitter<string | null>();
-  @Output() validationChange = new EventEmitter<CronValidationResponse>();
+  cronChange = output<string | null>();
+  validationChange = output<CronValidationResponse>();
 
   private readonly schedulerService = inject(SchedulerService);
   private readonly translate = inject(TranslateService);
-  private readonly destroy$ = new Subject<void>();
+  private readonly destroyRef = inject(DestroyRef);
 
   private isUpdatingForms = false;
   cronControl = new FormControl<string>('', [Validators.required]);
@@ -124,24 +134,17 @@ export class CronInputComponent implements OnDestroy {
 
     // 2. Listen to Cron Control Changes (Source of Truth)
     this.cronControl.valueChanges
-      .pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$))
+      .pipe(distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
       .subscribe(value => this.handleCronChange(value));
 
     // 3. Listen to Sub-Forms
-    this.simpleForm.valueChanges.pipe(debounceTime(100), takeUntil(this.destroy$)).subscribe(() => {
+    this.simpleForm.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       if (!this.isUpdatingForms) this.updateFromSimpleForm();
     });
 
-    this.advancedForm.valueChanges
-      .pipe(debounceTime(100), takeUntil(this.destroy$))
-      .subscribe(() => {
-        if (!this.isUpdatingForms) this.updateFromAdvancedForm();
-      });
-  }
-
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
+    this.advancedForm.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      if (!this.isUpdatingForms) this.updateFromAdvancedForm();
+    });
   }
 
   // ===================================

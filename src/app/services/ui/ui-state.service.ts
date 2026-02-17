@@ -1,7 +1,6 @@
-import { inject, Injectable, NgZone } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { WindowService } from './window.service';
 import { BehaviorSubject } from 'rxjs';
-import { EventListenersService } from '../system/event-listeners.service';
 import { platform } from '@tauri-apps/plugin-os';
 import { AppTab, Remote } from '@app/types';
 import { ApiClientService } from '../core/api-client.service';
@@ -13,6 +12,14 @@ import { ApiClientService } from '../core/api-client.service';
   providedIn: 'root',
 })
 export class UiStateService {
+  // Window and platform
+  public platform: string;
+  private windowService = inject(WindowService);
+  private apiClient = inject(ApiClientService);
+
+  // Viewport state
+  public isMaximized$ = this.windowService.isMaximized$;
+
   // Tab management
   private currentTab = new BehaviorSubject<AppTab>('general' as AppTab);
   public currentTab$ = this.currentTab.asObservable();
@@ -20,15 +27,6 @@ export class UiStateService {
   // Selected remote state
   private selectedRemoteSource = new BehaviorSubject<Remote | null>(null);
   public selectedRemote$ = this.selectedRemoteSource.asObservable();
-
-  // Viewport state
-  private _isMaximized = new BehaviorSubject<boolean>(false);
-  public isMaximized$ = this._isMaximized.asObservable();
-
-  // Window and platform
-  public platform: string;
-  private windowService = inject(WindowService);
-  private apiClient = inject(ApiClientService);
 
   // Viewport settings configuration
   private viewportSettings = {
@@ -44,10 +42,6 @@ export class UiStateService {
     },
   };
 
-  private ngZone = inject(NgZone);
-
-  private eventListenersService = inject(EventListenersService);
-
   constructor() {
     // Initialize platform safely for headless mode
     if (this.apiClient.isHeadless()) {
@@ -59,7 +53,10 @@ export class UiStateService {
         this.platform = 'linux'; // Fallback
       }
     }
-    this.initializeMaximizeListener();
+
+    this.windowService.isMaximized$.subscribe(isMaximized => {
+      this.applyViewportSettings(isMaximized);
+    });
   }
 
   // === Tab Management ===
@@ -104,32 +101,12 @@ export class UiStateService {
   }
 
   // === Viewport Management ===
-  private async initializeMaximizeListener(): Promise<void> {
-    try {
-      // Initial state
-      await this.windowService.updateMaximizedState(
-        this._isMaximized,
-        this.applyViewportSettings.bind(this),
-        this.platform
-      );
-
-      // Listen for maximize/unmaximize events
-      this.eventListenersService.listenToWindowResize().subscribe(() => {
-        this.ngZone.run(async () => {
-          await this.windowService.updateMaximizedState(
-            this._isMaximized,
-            this.applyViewportSettings.bind(this),
-            this.platform
-          );
-        });
-      });
-    } catch (error) {
-      console.warn('Tauri window events not available:', error);
-    }
-  }
 
   private applyViewportSettings(isMaximized: boolean): void {
-    const settings = isMaximized ? this.viewportSettings.maximized : this.viewportSettings.default;
+    const shouldBeMaximized = this.platform === 'macos' || this.platform === 'web' || isMaximized;
+    const settings = shouldBeMaximized
+      ? this.viewportSettings.maximized
+      : this.viewportSettings.default;
 
     document.documentElement.style.setProperty('--app-border-radius', settings.radii.app);
   }

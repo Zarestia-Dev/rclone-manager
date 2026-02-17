@@ -99,14 +99,16 @@ export class TitlebarComponent implements OnInit {
     { id: 'dark', icon: 'circle-check', label: 'titlebar.menu.dark', class: 'dark' },
   ];
 
-  readonly windowControls = [
+  readonly isMaximized = toSignal(this.windowService.isMaximized$, { initialValue: false });
+
+  readonly windowControls = computed(() => [
     {
       icon: 'remove',
       label: 'titlebar.minimize',
       action: (): Promise<void> => this.minimizeWindow(),
     },
     {
-      icon: 'check-box',
+      icon: this.isMaximized() ? 'compress' : 'expand',
       label: 'titlebar.maximize',
       action: (): Promise<void> => this.maximizeWindow(),
     },
@@ -116,7 +118,7 @@ export class TitlebarComponent implements OnInit {
       action: (): Promise<void> => this.closeWindow(),
       class: 'close-button',
     },
-  ];
+  ]);
 
   readonly addRemoteMenuItems = [
     {

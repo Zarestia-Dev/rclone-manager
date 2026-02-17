@@ -128,6 +128,7 @@ export class GeneralDetailComponent {
   }>();
   readonly deleteJob = output<number>();
   readonly togglePrimaryAction = output<PrimaryActionType>();
+  readonly retryDiskUsage = output<void>();
 
   // Component State
   private readonly allScheduledTasks = toSignal(this.schedulerService.scheduledTasks$, {

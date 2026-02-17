@@ -653,6 +653,9 @@ $dark-theme: (
   -webkit-font-smoothing: antialiased;
 
   mat-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     padding: var(--panel-header-padding);
 
     mat-card-title {

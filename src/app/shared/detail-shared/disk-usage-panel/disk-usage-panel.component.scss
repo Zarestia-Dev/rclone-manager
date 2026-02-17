@@ -16,10 +16,31 @@
     justify-content: center;
     transition: var(--transition-slow);
 
-    .usage-status-text {
+    .usage-status-text,
+    .usage-status-error {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-xs);
+      padding: 0 var(--space-md);
       color: var(--dim-color);
       font-weight: 500;
       font-size: var(--font-size-sm);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+      height: 100%;
+
+      mat-icon {
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+
+        &.warn-color {
+          color: var(--warn-color);
+        }
+      }
     }
 
     .usage-fill {

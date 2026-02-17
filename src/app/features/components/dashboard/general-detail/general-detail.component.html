@@ -58,7 +58,10 @@
   </div>
 
   <div class="detail-content">
-    <app-disk-usage-panel [config]="diskUsageConfig()"></app-disk-usage-panel>
+    <app-disk-usage-panel
+      [config]="diskUsageConfig()"
+      (retry)="retryDiskUsage.emit()"
+    ></app-disk-usage-panel>
 
     <app-jobs-panel
       [config]="jobsPanelConfig()"

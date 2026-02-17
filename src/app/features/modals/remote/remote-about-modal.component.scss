@@ -50,21 +50,15 @@
 
 /* --- Usage Card --- */
 .usage-card {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-evenly;
+  align-items: center;
   background: var(--bg-elevated);
   border-radius: var(--radius-md);
   padding: 20px;
   margin-bottom: 24px;
   box-shadow: var(--shadow-gnome);
-}
-
-.usage-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-md);
-
-  @media (max-width: 600px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 
 .usage-item {

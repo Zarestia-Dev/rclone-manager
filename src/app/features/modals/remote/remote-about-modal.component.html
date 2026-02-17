@@ -40,58 +40,60 @@
             <div class="content-wrapper fade-in">
               <!-- Usage Card -->
               <mat-card class="usage-card">
-                <div class="usage-grid">
-                  <div class="usage-item">
-                    <span class="label">{{
-                      'fileBrowser.remoteAbout.totalSpace' | translate
-                    }}</span>
-                    <span class="value">
-                      @if (loadingUsage()) {
-                        <mat-spinner diameter="16"></mat-spinner>
-                      } @else if (diskUsageInfo()) {
-                        {{ diskUsageInfo()?.total ?? 0 | formatFileSize }}
-                      } @else {
-                        -
-                      }
-                    </span>
-                  </div>
-                  <div class="usage-item">
-                    <span class="label">{{ 'fileBrowser.remoteAbout.usedSpace' | translate }}</span>
-                    <span class="value">
-                      @if (loadingUsage()) {
-                        <mat-spinner diameter="16"></mat-spinner>
-                      } @else if (diskUsageInfo()) {
-                        {{ diskUsageInfo()?.used ?? 0 | formatFileSize }}
-                      } @else {
-                        -
-                      }
-                    </span>
-                  </div>
-                  <div class="usage-item">
-                    <span class="label">{{ 'fileBrowser.remoteAbout.freeSpace' | translate }}</span>
-                    <span class="value">
-                      @if (loadingUsage()) {
-                        <mat-spinner diameter="16"></mat-spinner>
-                      } @else if (diskUsageInfo()) {
-                        {{ diskUsageInfo()?.free ?? 0 | formatFileSize }}
-                      } @else {
-                        -
-                      }
-                    </span>
-                  </div>
-                  <div class="usage-item">
-                    <span class="label">{{
-                      'fileBrowser.remoteAbout.objectCount' | translate
-                    }}</span>
-                    <span class="value">
-                      @if (loadingSize()) {
-                        <mat-spinner diameter="16"></mat-spinner>
-                      } @else {
-                        {{ sizeInfo()?.count || 0 }}
-                      }
-                    </span>
-                  </div>
+                <div class="usage-item">
+                  <span class="label">{{ 'fileBrowser.remoteAbout.totalSpace' | translate }}</span>
+                  <span class="value">
+                    @if (loadingUsage()) {
+                      <mat-spinner diameter="16"></mat-spinner>
+                    } @else if (diskUsageInfo()) {
+                      {{ diskUsageInfo()?.total ?? 0 | formatFileSize }}
+                    } @else {
+                      -
+                    }
+                  </span>
                 </div>
+                <div class="usage-item">
+                  <span class="label">{{ 'fileBrowser.remoteAbout.usedSpace' | translate }}</span>
+                  <span class="value">
+                    @if (loadingUsage()) {
+                      <mat-spinner diameter="16"></mat-spinner>
+                    } @else if (diskUsageInfo()) {
+                      {{ diskUsageInfo()?.used ?? 0 | formatFileSize }}
+                    } @else {
+                      -
+                    }
+                  </span>
+                </div>
+                <div class="usage-item">
+                  <span class="label">{{ 'fileBrowser.remoteAbout.freeSpace' | translate }}</span>
+                  <span class="value">
+                    @if (loadingUsage()) {
+                      <mat-spinner diameter="16"></mat-spinner>
+                    } @else if (diskUsageInfo()) {
+                      {{ diskUsageInfo()?.free ?? 0 | formatFileSize }}
+                    } @else {
+                      -
+                    }
+                  </span>
+                </div>
+                <div class="usage-item">
+                  <span class="label">{{ 'fileBrowser.remoteAbout.objectCount' | translate }}</span>
+                  <span class="value">
+                    @if (loadingSize()) {
+                      <mat-spinner diameter="16"></mat-spinner>
+                    } @else {
+                      {{ sizeInfo()?.count || 0 }}
+                    }
+                  </span>
+                </div>
+                <button
+                  mat-icon-button
+                  (click)="fetchDiskUsage(true)"
+                  [disabled]="loadingUsage()"
+                  [matTooltip]="'fileBrowser.remoteAbout.reloadUsage' | translate"
+                >
+                  <mat-icon svgIcon="rotate-right" [class.animate-spin]="loadingUsage()"></mat-icon>
+                </button>
               </mat-card>
 
               <!-- Basic Info List -->
