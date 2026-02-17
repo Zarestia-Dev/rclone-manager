@@ -1295,7 +1295,12 @@
       "errorLoadContent": "Failed to load file content",
       "errorUnexpected": "An unexpected error occurred",
       "errorLoadFile": "Failed to load {{name}}",
-      "downloading": "Downloading {{name}}"
+      "downloading": "Downloading {{name}}",
+      "save": "Save",
+      "edit": "Edit",
+      "cancel": "Cancel",
+      "saveSuccess": "File saved successfully",
+      "saveError": "Failed to save file"
     }
   },
   "dashboard": {
