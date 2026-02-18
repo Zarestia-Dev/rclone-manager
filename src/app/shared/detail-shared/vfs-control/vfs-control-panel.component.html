@@ -125,7 +125,7 @@
             </div>
           } @else {
             <div class="loading-shade">
-              <mat-spinner diameter="40" mode="indeterminate"></mat-spinner>
+              <mat-spinner diameter="48" mode="indeterminate"></mat-spinner>
               <p>{{ 'shared.vfsControl.loadingStats' | translate }}</p>
             </div>
           }
@@ -154,7 +154,7 @@
               @if (vfs.queue.length === 0) {
                 @if (!vfs.stats) {
                   <div class="empty-state">
-                    <mat-spinner diameter="32"></mat-spinner>
+                    <mat-spinner diameter="36"></mat-spinner>
                     <span>{{ 'shared.vfsControl.fetchingQueue' | translate }}</span>
                   </div>
                 } @else {

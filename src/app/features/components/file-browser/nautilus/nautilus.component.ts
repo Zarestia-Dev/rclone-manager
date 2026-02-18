@@ -248,7 +248,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     return new Set(
       this.clipboardItems()
         .filter(item => item.remote === remote.name)
-        .map(item => item.path)
+        .map(item => `${item.remote}:${item.path}`)
     );
   });
 
@@ -1288,20 +1288,21 @@ export class NautilusComponent implements OnInit, OnDestroy {
     const sel = new Set(pIdx === 0 ? this.selectedItems() : this.selectedItemsRight());
     const multi = !this.isPickerMode() || !!this.pickerOptions().multi;
     const e = event as MouseEvent | KeyboardEvent;
+    const itemKey = this.getItemKey(item);
 
     if (e.shiftKey && this.lastSelectedIndex !== null && multi) {
       sel.clear();
       const start = Math.min(this.lastSelectedIndex, index);
       const end = Math.max(this.lastSelectedIndex, index);
       const files = pIdx === 0 ? this.files() : this.filesRight();
-      for (let i = start; i <= end; i++) sel.add(files[i].entry.Path);
+      for (let i = start; i <= end; i++) sel.add(this.getItemKey(files[i]));
     } else if (e.ctrlKey && multi) {
-      if (sel.has(item.entry.Path)) sel.delete(item.entry.Path);
-      else sel.add(item.entry.Path);
+      if (sel.has(itemKey)) sel.delete(itemKey);
+      else sel.add(itemKey);
       this.lastSelectedIndex = index;
     } else {
       sel.clear();
-      sel.add(item.entry.Path);
+      sel.add(itemKey);
       this.lastSelectedIndex = index;
     }
 
@@ -1316,11 +1317,11 @@ export class NautilusComponent implements OnInit, OnDestroy {
       const currentSelection = pIdx === 0 ? this.selectedItems() : this.selectedItemsRight();
 
       // If the item is not already selected, select only this item on right click
-      if (!currentSelection.has(item.entry.Path)) {
-        const newSelection = new Set<string>([item.entry.Path]);
+      if (!currentSelection.has(this.getItemKey(item))) {
+        const newSelection = new Set<string>([this.getItemKey(item)]);
         this.syncSelection(newSelection);
         this.lastSelectedIndex = (pIdx === 0 ? this.files() : this.filesRight()).findIndex(
-          f => f.entry.Path === item.entry.Path
+          f => this.getItemKey(f) === this.getItemKey(item)
         );
       }
     }
@@ -1376,9 +1377,9 @@ export class NautilusComponent implements OnInit, OnDestroy {
   openContextMenuSelectToggle(): void {
     if (this.contextMenuItem) {
       const sel = new Set(this.selectedItems());
-      const path = this.contextMenuItem.entry.Path;
-      if (sel.has(path)) sel.delete(path);
-      else sel.add(path);
+      const key = this.getItemKey(this.contextMenuItem);
+      if (sel.has(key)) sel.delete(key);
+      else sel.add(key);
       this.syncSelection(sel);
     }
   }
@@ -1512,13 +1513,13 @@ export class NautilusComponent implements OnInit, OnDestroy {
     const selection = this.selectedItems();
 
     if (this.contextMenuItem) {
-      if (!selection.has(this.contextMenuItem.entry.Path)) {
+      if (!selection.has(this.getItemKey(this.contextMenuItem))) {
         itemsToDelete = [this.contextMenuItem];
       } else {
-        itemsToDelete = this.files().filter(f => selection.has(f.entry.Path));
+        itemsToDelete = this.files().filter(f => selection.has(this.getItemKey(f)));
       }
-    } else if (selection.size > 0) {
-      itemsToDelete = this.files().filter(f => selection.has(f.entry.Path));
+    } else {
+      itemsToDelete = this.files().filter(f => selection.has(this.getItemKey(f)));
     }
 
     if (itemsToDelete.length === 0) return;
@@ -1743,8 +1744,13 @@ export class NautilusComponent implements OnInit, OnDestroy {
   }
 
   private getSelectedItemsList(): FileBrowserItem[] {
-    const selectedPaths = this.selectedItems();
-    return this.files().filter(item => selectedPaths.has(item.entry.Path));
+    const selectedKeys = this.selectedItems();
+    return this.files().filter(item => selectedKeys.has(this.getItemKey(item)));
+  }
+
+  private hasFolderInSelection(): boolean {
+    const selectedKeys = this.selectedItems();
+    return this.files().some(f => selectedKeys.has(this.getItemKey(f)) && f.entry.IsDir);
   }
 
   async removeEmptyDirs(): Promise<void> {
@@ -1754,7 +1760,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     // Use context menu item or selected folder
     const item =
       this.contextMenuItem ||
-      this.files().find(f => this.selectedItems().has(f.entry.Path) && f.entry.IsDir);
+      this.files().find(f => this.selectedItems().has(this.getItemKey(f)) && f.entry.IsDir);
     if (!item || !item.entry.IsDir) return;
 
     const confirmed = await this.notificationService.confirmModal(
@@ -1805,6 +1811,11 @@ export class NautilusComponent implements OnInit, OnDestroy {
     });
   }
 
+  public getItemKey(item: FileBrowserItem | null): string {
+    if (!item) return '';
+    return `${item.meta.remote}:${item.entry.Path}`;
+  }
+
   async openFilePreview(item: FileBrowserItem): Promise<void> {
     const currentRemote = this.nautilusRemote();
     const actualRemoteName = item.meta.remote || currentRemote?.name;
@@ -1817,7 +1828,8 @@ export class NautilusComponent implements OnInit, OnDestroy {
     // Get isLocal from fsInfoCache (rclone's fsinfo.Features.IsLocal) with fallback
     const baseName = actualRemoteName.replace(/:$/, '');
     const cachedFsInfo = this.fsInfoCache()[baseName];
-    const isLocal = cachedFsInfo?.Features?.IsLocal ?? currentRemote?.isLocal ?? false;
+    const isLocal =
+      cachedFsInfo?.Features?.IsLocal ?? item.meta.isLocal ?? currentRemote?.isLocal ?? false;
 
     // Pass Entry[] to the viewer
     const entries = this.files().map(f => f.entry);
@@ -1826,7 +1838,8 @@ export class NautilusComponent implements OnInit, OnDestroy {
   }
 
   confirmSelection(): void {
-    let paths = Array.from(this.selectedItems());
+    const items = this.getSelectedItemsList();
+    let paths = items.map(item => item.entry.Path);
     const remote = this.nautilusRemote();
     if (paths.length === 0 && this.pickerOptions().selection === 'folders') {
       paths = [this.currentPath()];
@@ -1880,7 +1893,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     }
 
     const allFiles = this.files();
-    const selectedItems = allFiles.filter(item => selectedPaths.has(item.entry.Path));
+    const selectedItems = allFiles.filter(item => selectedPaths.has(this.getItemKey(item)));
 
     if (count === 1) {
       const item = selectedItems[0];
@@ -2123,8 +2136,8 @@ export class NautilusComponent implements OnInit, OnDestroy {
   }
 
   selectAll(): void {
-    const allPaths = new Set(this.files().map(f => f.entry.Path));
-    this.syncSelection(allPaths);
+    const allKeys = new Set(this.files().map(f => this.getItemKey(f)));
+    this.syncSelection(allKeys);
   }
 
   copyCurrentLocation(): void {
@@ -2141,6 +2154,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
   toggleSearchMode(): void {
     const newMode = !this.isSearchMode();
     this.isSearchMode.set(newMode);
+    this.searchFilter.set('');
   }
 
   async runBackgroundFsInfoChecks(remotes: ExplorerRoot[]): Promise<void> {

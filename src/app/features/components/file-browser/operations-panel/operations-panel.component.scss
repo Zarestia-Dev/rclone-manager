@@ -86,17 +86,17 @@
       }
 
       .job-type-icon {
-        width: 14px;
-        height: 14px;
-        font-size: 14px;
+        width: var(--icon-size-xs);
+        height: var(--icon-size-xs);
+        font-size: var(--icon-size-xs);
         flex-shrink: 0;
         color: var(--dim-color);
       }
 
       .action-btn {
-        width: 16px;
-        height: 16px;
-        font-size: 16px;
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
         flex-shrink: 0;
         opacity: 0.4;
         transition: opacity 0.15s ease;

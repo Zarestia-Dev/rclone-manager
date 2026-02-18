@@ -29,14 +29,16 @@ import { FormatFileSizePipe } from '@app/pipes';
           <span>{{ 'detailShared.diskUsage.title' | translate }}</span>
         </mat-card-title>
         <div class="header-actions">
-          <button
-            mat-icon-button
-            class="primary"
-            (click)="retry.emit()"
-            [disabled]="config().loading"
-          >
-            <mat-icon svgIcon="rotate-right" [class.animate-spin]="config().loading"></mat-icon>
-          </button>
+          @if (!config().notSupported) {
+            <button
+              mat-icon-button
+              class="primary"
+              (click)="retry.emit()"
+              [disabled]="config().loading"
+            >
+              <mat-icon svgIcon="rotate-right" [class.animate-spin]="config().loading"></mat-icon>
+            </button>
+          }
         </div>
       </mat-card-header>
       <mat-card-content>

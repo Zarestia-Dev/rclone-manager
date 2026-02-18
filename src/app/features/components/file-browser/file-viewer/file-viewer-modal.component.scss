@@ -144,9 +144,9 @@
       }
 
       mat-icon {
-        font-size: 56px;
-        width: 56px;
-        height: 56px;
+        width: var(--icon-size-xl);
+        height: var(--icon-size-xl);
+        font-size: var(--icon-size-xl);
         color: var(--accent-color);
       }
 
@@ -378,8 +378,8 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 100px;
-        height: 100px;
+        width: var(--icon-size-3xl);
+        height: var(--icon-size-3xl);
         border-radius: 50%;
         background: rgba(var(--window-fg-color-rgb), 0.05);
         margin-bottom: var(--space-sm);
@@ -437,10 +437,6 @@
 
       &:disabled {
         opacity: 0.3;
-      }
-
-      mat-icon {
-        font-size: var(--icon-size-md);
       }
     }
   }

@@ -5,8 +5,8 @@
       (click)="toggleSearch()"
       [attr.aria-label]="
         searchVisible()
-          ? ('modals.preferences.hideSearch' | translate)
-          : ('modals.preferences.showSearch' | translate)
+          ? ('shared.search.hideSearch' | translate)
+          : ('shared.search.showSearch' | translate)
       "
       [class.active]="searchVisible()"
     >
@@ -117,7 +117,7 @@
                           (click)="resetSettings()"
                           [attr.aria-label]="'modals.preferences.aria.resetAll' | translate"
                         >
-                          <mat-icon svgIcon="rotate-left"></mat-icon>
+                          <mat-icon svgIcon="rotate-right"></mat-icon>
                           {{ 'modals.preferences.resetAll' | translate }}
                         </button>
                       </div>
@@ -220,7 +220,7 @@
               (click)="savePendingChanges()"
               [attr.aria-label]="'modals.preferences.aria.saveAndRestart' | translate"
             >
-              <mat-icon svgIcon="rotate-left"></mat-icon>
+              <mat-icon svgIcon="rotate-right"></mat-icon>
               {{ 'modals.preferences.saveAndRestart' | translate }}
             </button>
           </div>
@@ -277,7 +277,7 @@
             [matTooltip]="'modals.preferences.resetToDefault' | translate"
             matTooltipPosition="above"
           >
-            <mat-icon svgIcon="rotate-left"></mat-icon>
+            <mat-icon svgIcon="rotate-right"></mat-icon>
           </button>
         }
       </div>

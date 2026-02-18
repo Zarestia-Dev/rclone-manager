@@ -48,7 +48,6 @@ mat-form-field {
   margin-bottom: var(--space-md);
 
   mat-icon {
-    flex-shrink: 0;
     color: var(--orange);
   }
 
@@ -160,9 +159,9 @@ mat-form-field {
       opacity: 0.9;
 
       mat-icon {
-        font-size: 18px;
-        width: 18px;
-        height: 18px;
+        font-size: var(--icon-size-sm);
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
       }
     }
   }
@@ -330,8 +329,9 @@ mat-card-actions {
     font-weight: 500;
 
     mat-icon {
-      width: 18px;
-      height: 18px;
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
+      font-size: var(--icon-size-sm);
       opacity: 0.7;
     }
   }
@@ -394,9 +394,9 @@ mat-card-actions {
       color: var(--primary-color);
 
       mat-icon {
-        font-size: 16px;
-        width: 16px;
-        height: 16px;
+        font-size: var(--icon-size-sm);
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
       }
     }
 

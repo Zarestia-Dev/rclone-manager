@@ -57,8 +57,8 @@
       transition: var(--transition-standard);
 
       .status-indicator {
-        width: 12px;
-        height: 12px;
+        width: var(--icon-size-xs);
+        height: var(--icon-size-xs);
         border-radius: 50%;
         animation: breathing 3s ease-in-out infinite;
         will-change: transform, opacity;
@@ -246,15 +246,10 @@
             &.#{$type}-color {
               background: rgba(var(--#{$color}-rgb), 0.1);
 
-              .task-type-icon {
+              mat-icon {
                 color: var(--#{$color});
               }
             }
-          }
-
-          .task-type-icon {
-            width: 20px;
-            height: 20px;
           }
         }
 
@@ -337,8 +332,8 @@
           gap: 6px;
 
           .stat-icon {
-            width: 16px;
-            height: 16px;
+            width: var(--icon-size-sm);
+            height: var(--icon-size-sm);
 
             &.success {
               color: var(--primary-color);
@@ -388,8 +383,8 @@
         border-radius: 6px;
 
         .cron-icon {
-          width: 14px;
-          height: 14px;
+          width: var(--icon-size-sm);
+          height: var(--icon-size-sm);
         }
 
         .cron-expression {
@@ -413,8 +408,8 @@
     border-radius: 6px;
 
     .error-icon {
-      width: 16px;
-      height: 16px;
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
       color: var(--warn-color);
       margin-top: 2px;
     }
@@ -447,8 +442,8 @@
     color: var(--accent-color);
 
     .running-icon {
-      width: 12px;
-      height: 12px;
+      width: var(--icon-size-xs);
+      height: var(--icon-size-xs);
     }
   }
 }

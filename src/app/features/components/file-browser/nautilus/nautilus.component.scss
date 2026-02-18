@@ -104,9 +104,6 @@ mat-nav-list {
       width: 100%;
 
       mat-icon {
-        height: var(--icon-size-md);
-        width: var(--icon-size-md);
-
         &.unmount-button {
           padding: var(--space-xxs);
           border-radius: var(--radius-xs);
@@ -181,11 +178,6 @@ mat-nav-list {
   &.active {
     background: var(--selected-bg-color);
     color: var(--accent-color);
-  }
-
-  mat-icon {
-    width: var(--icon-size-md);
-    height: var(--icon-size-md);
   }
 }
 
@@ -262,6 +254,7 @@ mat-nav-list {
       mat-icon {
         width: var(--icon-size-sm);
         height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
         padding: var(--space-xxs);
         border-radius: var(--border-radius);
 
@@ -389,11 +382,6 @@ mat-nav-list {
     color: var(--window-fg-color);
     font-weight: 500;
   }
-
-  mat-icon {
-    width: var(--icon-size-md);
-    height: var(--icon-size-md);
-  }
 }
 
 .path-input {
@@ -515,8 +503,6 @@ mat-nav-list {
 
   mat-icon {
     color: var(--accent-color);
-    width: var(--icon-size-md);
-    height: var(--icon-size-md);
   }
 
   span {
@@ -605,6 +591,7 @@ mat-nav-list {
       mat-icon {
         width: var(--icon-size-sm);
         height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
       }
     }
   }
@@ -621,10 +608,6 @@ mat-nav-list {
       gap: var(--space-sm);
       width: 100%;
       overflow: hidden;
-
-      mat-icon {
-        flex-shrink: 0;
-      }
 
       span {
         flex: 1;
@@ -669,6 +652,7 @@ mat-nav-list {
       mat-icon {
         width: var(--icon-size-sm);
         height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
         border-radius: var(--radius-xxs);
         background: var(--window-bg-color) !important;
       }

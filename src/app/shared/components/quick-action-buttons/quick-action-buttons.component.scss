@@ -10,7 +10,7 @@
     transition: var(--transition-fast);
     will-change: transform;
 
-    .mat-icon {
+    mat-icon {
       font-size: var(--icon-size-sm);
       width: var(--icon-size-sm);
       height: var(--icon-size-sm);

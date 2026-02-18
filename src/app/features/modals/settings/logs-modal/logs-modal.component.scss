@@ -119,7 +119,7 @@
       transition: var(--transition-fast);
 
       mat-icon {
-        font-size: var(--font-size-base);
+        font-size: var(--icon-size-xs);
         width: var(--icon-size-xs);
         height: var(--icon-size-xs);
 
@@ -131,7 +131,7 @@
       .expand-icon {
         width: var(--icon-size-xs);
         height: var(--icon-size-xs);
-        font-size: var(--font-size-base);
+        font-size: var(--icon-size-xs);
         margin-left: var(--space-xxs);
         transition: var(--transition-fast);
       }

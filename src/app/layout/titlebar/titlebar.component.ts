@@ -103,12 +103,12 @@ export class TitlebarComponent implements OnInit {
 
   readonly windowControls = computed(() => [
     {
-      icon: 'remove',
+      icon: 'minimize',
       label: 'titlebar.minimize',
       action: (): Promise<void> => this.minimizeWindow(),
     },
     {
-      icon: this.isMaximized() ? 'compress' : 'expand',
+      icon: this.isMaximized() ? 'collapse' : 'expand',
       label: 'titlebar.maximize',
       action: (): Promise<void> => this.maximizeWindow(),
     },

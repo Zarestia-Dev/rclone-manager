@@ -69,7 +69,7 @@
     "@tauri-apps/api": "~2.9.1",
     "@tauri-apps/plugin-os": "^2.3.2",
     "codemirror": "^6.0.2",
-    "cronstrue": "^3.9.0",
+    "cronstrue": "^3.12.0",
     "marked": "^17.0.0",
     "ngx-mat-timepicker": "^21.0.0",
     "rxjs": "~7.8.2",
@@ -86,8 +86,8 @@
     "@types/marked": "^5.0.2",
     "angular-eslint": "21.1.0",
     "eslint": "^9.39.2",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-config-prettier": "^6.15.0",
+    "eslint-plugin-prettier": "^2.7.0",
     "husky": "^9.1.7",
     "jasmine-core": "~5.1.0",
     "karma": "~6.4.0",
@@ -98,6 +98,6 @@
     "lint-staged": "^16.1.2",
     "prettier": "^3.7.4",
     "typescript": "~5.9.3",
-    "typescript-eslint": "8.50.0"
+    "typescript-eslint": "^8.14.0"
   }
 }

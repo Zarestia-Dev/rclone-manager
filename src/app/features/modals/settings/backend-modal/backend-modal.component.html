@@ -302,9 +302,7 @@
                     [class.unencrypted]="!hasConfigPassword()"
                   >
                     <div class="status-icon">
-                      <mat-icon
-                        [svgIcon]="hasConfigPassword() ? 'shield-halved' : 'shield'"
-                      ></mat-icon>
+                      <mat-icon [svgIcon]="hasConfigPassword() ? 'security' : 'shield'"></mat-icon>
                     </div>
                     <div class="status-text">
                       <strong>{{

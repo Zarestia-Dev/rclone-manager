@@ -158,7 +158,7 @@
             @if (appRestartRequired()) {
               <div class="update-card restart-required">
                 <div class="update-header">
-                  <mat-icon svgIcon="rotate-group"></mat-icon>
+                  <mat-icon svgIcon="reset-wrench"></mat-icon>
                   <div class="update-title">
                     <h4>{{ 'modals.about.restartRequired' | translate }}</h4>
                     <p class="restart-description">
@@ -681,7 +681,7 @@
                     {{ 'modals.about.openDevTools' | translate }}
                   </button>
                   <button matButton="outlined" class="warn" (click)="relaunchApp()">
-                    <mat-icon svgIcon="rotate-group"></mat-icon>
+                    <mat-icon svgIcon="reset-wrench"></mat-icon>
                     {{ 'modals.about.restartApp' | translate }}
                   </button>
                 </div>
@@ -881,7 +881,7 @@
           [matTooltip]="'modals.about.restoreUpdate' | translate"
           class="restore-button"
         >
-          <mat-icon svgIcon="rotate-left"></mat-icon>
+          <mat-icon svgIcon="rotate-right"></mat-icon>
         </button>
       </div>
     }

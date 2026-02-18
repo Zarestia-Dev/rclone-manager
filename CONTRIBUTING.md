@@ -161,6 +161,16 @@ Common language codes:
 | `fr-FR` | French (France) |
 | `zh-CN` | Chinese (Simplified) |
 
+### Cron Expressions
+
+The application uses `cronstrue` to display human-readable cron schedules. To support a new language:
+
+1.  **Register the Locale**: Import the locale in `src/app/core/i18n/cron-locale.mapper.ts`.
+    ```typescript
+    import 'cronstrue/locales/fr'; // Example for French
+    ```
+2.  **Verify Mapping**: Ensure `getCronstrueLocale` correctly maps your app locale (e.g., `fr-FR`) to the `cronstrue` locale (e.g., `fr`).
+
 ---
 
 ### Managing Rclone Flags

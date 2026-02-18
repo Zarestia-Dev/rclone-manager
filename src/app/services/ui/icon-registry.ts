@@ -31,7 +31,7 @@ export const BASE_ICONS: Record<string, string> = {
   lock: 'assets/icons/status/lock.svg',
   'lock-open': 'assets/icons/status/lock-open.svg',
   shield: 'assets/icons/status/shield.svg',
-  'shield-halved': 'assets/icons/status/shield-halved.svg',
+  security: 'assets/icons/status/security.svg',
   key: 'assets/icons/status/key.svg',
   fingerprint: 'assets/icons/status/fingerprint.svg',
   star: 'assets/icons/status/star.svg',
@@ -52,7 +52,7 @@ export const BASE_ICONS: Record<string, string> = {
   // ------------------- Action Icons -------------------
   plus: 'assets/icons/titlebar/add.svg',
   new: 'assets/icons/titlebar/add.svg',
-  remove: 'assets/icons/titlebar/remove.svg',
+  remove: 'assets/icons/actions/remove.svg',
   close: 'assets/icons/titlebar/close.svg',
   copy: 'assets/icons/actions/copy.svg',
   move: 'assets/icons/actions/move.svg',
@@ -65,9 +65,8 @@ export const BASE_ICONS: Record<string, string> = {
   filter: 'assets/icons/actions/filter.svg',
   search: 'assets/icons/titlebar/search.svg',
   refresh: 'assets/icons/actions/rotate.svg',
-  'rotate-left': 'assets/icons/actions/rotate-left.svg',
   'rotate-right': 'assets/icons/actions/rotate-right.svg',
-  'rotate-group': 'assets/icons/actions/rotate-group.svg',
+  'reset-wrench': 'assets/icons/actions/reset-wrench.svg',
   sync: 'assets/icons/files/folder-sync.svg',
   play: 'assets/icons/actions/play.svg',
   pause: 'assets/icons/actions/pause.svg',
@@ -114,7 +113,7 @@ export const BASE_ICONS: Record<string, string> = {
   bookmark: 'assets/icons/general/bookmark.svg',
   calendar: 'assets/icons/general/calendar.svg',
   clock: 'assets/icons/general/clock.svg',
-  'clock-rotate-left': 'assets/icons/general/clock-rotate-left.svg',
+  'clock-rotate-right': 'assets/icons/general/clock-rotate-right.svg',
   vfs: 'assets/icons/general/vfs.svg',
   mount: 'assets/icons/general/mount.svg',
   user: 'assets/icons/general/user.svg',
@@ -123,7 +122,8 @@ export const BASE_ICONS: Record<string, string> = {
 
   // ------------------- Titlebar Icons -------------------
   expand: 'assets/icons/titlebar/expand.svg',
-  compress: 'assets/icons/titlebar/compress.svg',
+  collapse: 'assets/icons/titlebar/collapse.svg',
+  minimize: 'assets/icons/titlebar/minimize.svg',
   'ellipsis-vertical': 'assets/icons/titlebar/ellipsis-vertical.svg',
   'menu-bar': 'assets/icons/titlebar/menu-bar.svg',
 

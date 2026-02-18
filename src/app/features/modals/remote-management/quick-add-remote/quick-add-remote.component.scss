@@ -82,11 +82,6 @@
     border-radius: var(--radius-md);
     font-size: var(--font-size-sm);
 
-    mat-icon {
-      width: var(--icon-size-md);
-      height: var(--icon-size-md);
-    }
-
     &.info {
       color: var(--accent-color);
       background: rgba(var(--accent-color-rgb), 0.1);

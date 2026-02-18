@@ -478,7 +478,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         undefined,
         undefined,
         {
-          icon: 'rotate-left',
+          icon: 'rotate-right',
           iconColor: 'warn',
           iconClass: 'destructive',
           confirmButtonColor: 'warn',

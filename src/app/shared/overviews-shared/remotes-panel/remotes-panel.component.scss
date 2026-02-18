@@ -50,8 +50,6 @@
 
       .active-icon,
       .inactive-icon {
-        width: var(--icon-size-md);
-        height: var(--icon-size-md);
         transition: var(--transition-standard);
         will-change: color;
       }

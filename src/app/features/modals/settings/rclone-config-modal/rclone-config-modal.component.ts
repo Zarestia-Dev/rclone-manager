@@ -116,7 +116,7 @@ const SERVICE_CONFIG: Record<string, ServiceConfig> = {
     mainCategory: 'Network & Servers',
   },
   proxy: {
-    icon: 'shield-halved',
+    icon: 'security',
     description: 'modals.rcloneConfig.services.proxy',
     mainCategory: 'General Settings',
   },

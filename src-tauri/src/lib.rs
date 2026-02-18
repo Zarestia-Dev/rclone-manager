@@ -94,80 +94,7 @@ pub fn run() {
     // -------------------------------------------------------------------------
     // Initialize Tauri Builder
     // -------------------------------------------------------------------------
-    let mut builder = tauri::Builder::default().plugin(tauri_plugin_shell::init());
-
-    // -------------------------------------------------------------------------
-    // Updater Plugin (Desktop + Updater feature)
-    // -------------------------------------------------------------------------
-    #[cfg(all(desktop, feature = "updater"))]
-    {
-        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
-    }
-
-    // -------------------------------------------------------------------------
-    // Window Events (Desktop only, not web-server)
-    // -------------------------------------------------------------------------
-    #[cfg(not(feature = "web-server"))]
-    {
-        builder = builder.on_window_event(|window, event| match event {
-            WindowEvent::CloseRequested { api, .. } => {
-                let app_handle = window.app_handle();
-
-                // Read settings from AppSettingsManager which caches internally
-                let (tray_enabled, destroy_on_close) = app_handle
-                    .try_state::<core::settings::AppSettingsManager>()
-                    .and_then(|manager| {
-                        manager
-                            .get_all()
-                            .ok()
-                            .map(|s| (s.general.tray_enabled, s.developer.destroy_window_on_close))
-                    })
-                    .unwrap_or((false, false));
-
-                if tray_enabled {
-                    if destroy_on_close {
-                        debug!("♻️ Optimization Enabled: Destroying window to free RAM");
-                    } else {
-                        #[cfg(desktop)]
-                        if let Err(e) = window.hide() {
-                            error!("Failed to hide window: {e}");
-                        }
-                        api.prevent_close();
-                    }
-                } else {
-                    api.prevent_close();
-                    let window_ = window.clone();
-                    tauri::async_runtime::spawn(async move {
-                        window_
-                            .app_handle()
-                            .state::<RcloneState>()
-                            .set_shutting_down();
-                        handle_shutdown(window_.app_handle().clone()).await;
-                    });
-                }
-            }
-            #[cfg(desktop)]
-            WindowEvent::Focused(true) => {
-                if let Some(win) = window.app_handle().get_webview_window("main")
-                    && let Err(e) = win.show()
-                {
-                    error!("Failed to show window: {e}");
-                }
-            }
-            _ => {}
-        });
-    }
-
-    // -------------------------------------------------------------------------
-    // Autostart Plugin (Desktop, non-Flatpak)
-    // -------------------------------------------------------------------------
-    #[cfg(all(desktop, not(feature = "flatpak")))]
-    {
-        builder = builder.plugin(tauri_plugin_autostart::init(
-            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            Some(vec!["--tray"]),
-        ));
-    }
+    let mut builder = tauri::Builder::default();
 
     // -------------------------------------------------------------------------
     // Single Instance Plugin (Desktop)
@@ -241,6 +168,84 @@ pub fn run() {
                 }
             }));
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // Core Plugins
+    // -------------------------------------------------------------------------
+    builder = builder.plugin(tauri_plugin_shell::init());
+
+    // -------------------------------------------------------------------------
+    // Updater Plugin (Desktop + Updater feature)
+    // -------------------------------------------------------------------------
+    #[cfg(all(desktop, feature = "updater"))]
+    {
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    }
+
+    // -------------------------------------------------------------------------
+    // Window Events (Desktop only, not web-server)
+    // -------------------------------------------------------------------------
+    #[cfg(not(feature = "web-server"))]
+    {
+        builder = builder.on_window_event(|window, event| match event {
+            WindowEvent::CloseRequested { api, .. } => {
+                let app_handle = window.app_handle();
+
+                // Read settings from AppSettingsManager which caches internally
+                let (tray_enabled, destroy_on_close) = app_handle
+                    .try_state::<core::settings::AppSettingsManager>()
+                    .and_then(|manager| {
+                        manager
+                            .get_all()
+                            .ok()
+                            .map(|s| (s.general.tray_enabled, s.developer.destroy_window_on_close))
+                    })
+                    .unwrap_or((false, false));
+
+                if tray_enabled {
+                    if destroy_on_close {
+                        debug!("♻️ Optimization Enabled: Destroying window to free RAM");
+                    } else {
+                        #[cfg(desktop)]
+                        if let Err(e) = window.hide() {
+                            error!("Failed to hide window: {e}");
+                        }
+                        api.prevent_close();
+                    }
+                } else {
+                    api.prevent_close();
+                    let window_ = window.clone();
+                    tauri::async_runtime::spawn(async move {
+                        window_
+                            .app_handle()
+                            .state::<RcloneState>()
+                            .set_shutting_down();
+                        handle_shutdown(window_.app_handle().clone()).await;
+                    });
+                }
+            }
+            #[cfg(desktop)]
+            WindowEvent::Focused(true) => {
+                if let Some(win) = window.app_handle().get_webview_window("main")
+                    && let Err(e) = win.show()
+                {
+                    error!("Failed to show window: {e}");
+                }
+            }
+            _ => {}
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    // Autostart Plugin (Desktop, non-Flatpak)
+    // -------------------------------------------------------------------------
+    #[cfg(all(desktop, not(feature = "flatpak")))]
+    {
+        builder = builder.plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec!["--tray"]),
+        ));
     }
 
     // -------------------------------------------------------------------------

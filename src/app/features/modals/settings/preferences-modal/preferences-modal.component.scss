@@ -83,11 +83,6 @@
     font-weight: 500;
     transition: var(--transition-standard);
 
-    mat-icon {
-      width: 20px;
-      height: 20px;
-    }
-
     &:hover {
       background: var(--hover-bg-color);
     }
@@ -105,11 +100,6 @@
 
   button {
     gap: var(--space-xs);
-
-    mat-icon {
-      width: 18px;
-      height: 18px;
-    }
   }
 }
 

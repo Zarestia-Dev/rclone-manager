@@ -375,9 +375,9 @@
                   [cdkContextMenuTriggerData]="{ $implicit: item }"
                   (cdkContextMenuOpened)="setContextItem(item)"
                   tabindex="0"
-                  [class.selected]="selection.has(item.entry.Path)"
+                  [class.selected]="selection.has(getItemKey(item))"
                   [class.unselectable]="!isItemSelectable(item.entry)"
-                  [class.cut-item]="cutItemPaths().has(item.entry.Path)"
+                  [class.cut-item]="cutItemPaths().has(getItemKey(item))"
                   cdkDropList
                   [cdkDropListData]="item"
                   [cdkDropListEnterPredicate]="canDropOnFolder"
@@ -394,7 +394,7 @@
                   <div class="drag-preview" *cdkDragPreview>
                     <mat-icon [svgIcon]="iconService.getIconForEntry(item.entry)"></mat-icon>
                     <span>{{ item.entry.Name }}</span>
-                    @if (selectedItems().size > 1 && selectedItems().has(item.entry.Path)) {
+                    @if (selectedItems().size > 1 && selectedItems().has(getItemKey(item))) {
                       <span class="count-badge">{{ selectedItems().size }}</span>
                     }
                   </div>
@@ -524,9 +524,9 @@
                 [cdkContextMenuTriggerFor]="fileMenu"
                 [cdkContextMenuTriggerData]="{ $implicit: item }"
                 (cdkContextMenuOpened)="setContextItem(item)"
-                [class.selected]="selection.has(item.entry.Path)"
+                [class.selected]="selection.has(getItemKey(item))"
                 [class.hidden-item]="item.entry.Name.startsWith('.')"
-                [class.cut-item]="cutItemPaths().has(item.entry.Path)"
+                [class.cut-item]="cutItemPaths().has(getItemKey(item))"
                 cdkDropList
                 [cdkDropListData]="item"
                 [cdkDropListEnterPredicate]="canDropOnFolder"
@@ -536,7 +536,7 @@
                 <div class="drag-preview" *cdkDragPreview>
                   <mat-icon [svgIcon]="iconService.getIconForEntry(item.entry)"></mat-icon>
                   <span>{{ item.entry.Name }}</span>
-                  @if (selectedItems().size > 1 && selectedItems().has(item.entry.Path)) {
+                  @if (selectedItems().size > 1 && selectedItems().has(getItemKey(item))) {
                     <span class="count-badge">{{ selectedItems().size }}</span>
                   }
                 </div>

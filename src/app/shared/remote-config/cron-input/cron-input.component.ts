@@ -22,6 +22,7 @@ import { SchedulerService } from '@app/services';
 import { CronValidationResponse } from '@app/types';
 import { toString as cronstrue } from 'cronstrue';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { getCronstrueLocale } from 'src/app/core/i18n/cron-locale.mapper';
 
 type PresetKey =
   | 'daily-9am'
@@ -354,7 +355,8 @@ export class CronInputComponent {
     const cron = this.cronControl.value?.trim();
     if (!cron) return '';
     try {
-      return cronstrue(cron);
+      const locale = getCronstrueLocale(this.translate.getCurrentLang());
+      return cronstrue(cron, { locale });
     } catch {
       return cron;
     }

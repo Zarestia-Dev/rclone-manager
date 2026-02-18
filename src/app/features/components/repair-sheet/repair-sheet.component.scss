@@ -13,7 +13,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-md);
-    padding: var(--container-padding);
+    padding: var(--space-md);
     padding-bottom: var(--space-sm);
     overflow-y: auto;
 
@@ -35,6 +35,7 @@
         mat-icon {
           width: var(--icon-size-lg);
           height: var(--icon-size-lg);
+          font-size: var(--icon-size-lg);
           color: var(--warn-color);
         }
       }
@@ -80,6 +81,7 @@
         mat-icon {
           width: var(--icon-size-sm);
           height: var(--icon-size-sm);
+          font-size: var(--icon-size-sm);
           color: var(--warn-color);
         }
 
@@ -98,7 +100,7 @@
     display: flex;
     justify-content: flex-end;
     gap: var(--space-sm);
-    padding: var(--container-padding);
+    padding: var(--space-md);
     border-top: 1px solid var(--border-color);
   }
 
@@ -120,11 +122,6 @@
       padding-bottom: var(--space-sm);
 
       .repair-header-top {
-        .repair-icon mat-icon {
-          width: var(--icon-size-md);
-          height: var(--icon-size-md);
-        }
-
         .repair-content {
           h3 {
             font-size: var(--font-size-base);

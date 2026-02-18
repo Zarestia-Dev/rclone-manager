@@ -25,11 +25,6 @@ mat-toolbar {
 
   &.flatpak-warning-banner {
     background-color: var(--banner-bg-color);
-
-    mat-icon {
-      height: 20px;
-      width: 20px;
-    }
   }
 
   &.metered-banner {

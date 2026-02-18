@@ -92,11 +92,6 @@
   flex-shrink: 0;
   position: relative;
 
-  mat-icon {
-    width: 24px;
-    height: 24px;
-  }
-
   // Status-based styling
   &.connected {
     color: var(--window-fg-color);
@@ -329,11 +324,6 @@ form {
     justify-content: center;
     background: var(--dim-color);
     border-radius: 50%;
-
-    mat-icon {
-      width: 24px;
-      height: 24px;
-    }
   }
 
   .status-text {
@@ -363,7 +353,6 @@ form {
 
   mat-icon {
     color: var(--primary-color);
-    flex-shrink: 0;
   }
 
   p {

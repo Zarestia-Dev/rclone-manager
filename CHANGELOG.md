@@ -12,10 +12,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Nautilus Component: Added vertical split mode support.
 
 ### Changed
-- Font Awesome icons updated to 7.2.0. Some icon changed Google Material Icons.
 - Removed Syntax Highlighting, added CodeMirror.
 - Nautilus Component: A lot of improvements and bug fixes.
 - Notification behavior improved.
+
+### Fixed
+- Blury icons fixed. Icon provider change to Google Material Icons.
+- Reorder tauri plugins (Cause of startup crash).
 
 ## [v0.2.1] - 2026-02-05
 
