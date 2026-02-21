@@ -2032,6 +2032,8 @@
       "deleteFailed": "Failed to delete {{count}} items",
       "copyFailed": "Failed to copy {{count}} items",
       "moveFailed": "Failed to move {{count}} items",
+      "undoFailed": "Undo failed for {{count}} items",
+      "redoFailed": "Redo failed for {{count}} items",
       "rmdirsFailed": "Failed to remove empty folders in \"{{name}}\": {{error}}",
       "openFileFailed": "Dosya açılamıyor: uzak sunucu bağlamı eksik",
       "minSelection": "Lütfen en az {{min}} öge seçin."
@@ -2083,7 +2085,9 @@
       "locationCopied": "Location copied to clipboard",
       "rmdirsStarted": "Removing empty folders in \"{{name}}\"...",
       "deleteStarted": "Deleting {{count}} items...",
-      "pasteComplete": "Paste operation completed"
+      "pasteComplete": "Paste operation completed",
+      "undoComplete": "Undo successful",
+      "redoComplete": "Redo successful"
     }
   },
   "overview": {
