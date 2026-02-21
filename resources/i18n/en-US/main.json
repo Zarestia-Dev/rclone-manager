@@ -19,7 +19,9 @@
     "copy": "Copy",
     "move": "Move",
     "retry": "Retry",
-    "default": "Default"
+    "default": "Default",
+    "copyErrorFailed": "Failed to copy error",
+    "errorCopied": "Error copied to clipboard"
   },
   "validators": {
     "integer": "Must be a valid integer",
@@ -1975,7 +1977,9 @@
       "files": "Files",
       "starred": "Starred",
       "searchPlaceholder": "Search files...",
-      "local": "Local"
+      "local": "Local",
+      "cloud": "Cloud",
+      "bookmarks": "Bookmarks"
     },
     "sort": {
       "az": "A-Z",
@@ -2172,9 +2176,7 @@
       "save": "Save Layout",
       "reset": "Reset Layout",
       "resetSuccess": "Layout reset to default",
-      "toggleTaskFailed": "Failed to toggle scheduled task",
-      "copyErrorFailed": "Failed to copy error",
-      "errorCopied": "Error copied to clipboard"
+      "toggleTaskFailed": "Failed to toggle scheduled task"
     },
     "bandwidth": {
       "aria": {
