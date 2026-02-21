@@ -192,6 +192,49 @@
       font-weight: 500;
       line-height: 1.4;
     }
+
+    &.error-item {
+      grid-column: 1 / -1;
+      margin-top: 8px;
+      position: relative;
+
+      .error-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 8px;
+
+        .error-text {
+          display: flex;
+          flex-direction: column;
+
+          .detail-label {
+            color: var(--error-color);
+          }
+
+          .value {
+            color: var(--error-color);
+            word-break: break-all;
+            margin-top: 4px;
+          }
+        }
+
+        .copy-error-btn {
+          transform: scale(0.85);
+          margin: -8px -8px 0 0;
+          color: var(--text-color-secondary);
+          opacity: 0.6;
+          transition:
+            opacity 0.2s ease,
+            color 0.2s ease;
+
+          &:hover {
+            opacity: 1;
+            color: var(--text-color);
+          }
+        }
+      }
+    }
   }
 
   .detail-grid {

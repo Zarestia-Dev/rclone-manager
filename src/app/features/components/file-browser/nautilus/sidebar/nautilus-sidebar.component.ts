@@ -1,13 +1,4 @@
-import {
-  Component,
-  EventEmitter,
-  inject,
-  Input,
-  Output,
-  signal,
-  ViewChild,
-  ElementRef,
-} from '@angular/core';
+import { Component, inject, input, output, signal, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { MatListModule } from '@angular/material/list';
@@ -18,8 +9,8 @@ import { MatDividerModule } from '@angular/material/divider';
 import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { CdkMenuModule } from '@angular/cdk/menu';
 
-import { NautilusService, IconService } from '@app/services';
-import { ExplorerRoot, FileBrowserItem, FilePickerConfig } from '@app/types';
+import { IconService } from '@app/services';
+import { ExplorerRoot, FileBrowserItem } from '@app/types';
 import { OperationsPanelComponent } from '../../operations-panel/operations-panel.component';
 
 @Component({
@@ -42,47 +33,48 @@ import { OperationsPanelComponent } from '../../operations-panel/operations-pane
 })
 export class NautilusSidebarComponent {
   public readonly iconService = inject(IconService);
-  private readonly nautilusService = inject(NautilusService);
 
   // --- Inputs ---
-  @Input({ required: true }) isMobile = false;
-  @Input({ required: true }) nautilusRemote: ExplorerRoot | null = null;
-  @Input({ required: true }) starredMode = false;
-  @Input({ required: true }) localDrives: ExplorerRoot[] = [];
-  @Input({ required: true }) cloudRemotes: ExplorerRoot[] = [];
-  @Input({ required: true }) bookmarks: FileBrowserItem[] = [];
-  @Input({ required: true }) title = '';
+  public readonly isMobile = input.required<boolean>();
+  public readonly nautilusRemote = input.required<ExplorerRoot | null>();
+  public readonly starredMode = input.required<boolean>();
+  public readonly localDrives = input.required<ExplorerRoot[]>();
+  public readonly cloudRemotes = input.required<ExplorerRoot[]>();
+  public readonly bookmarks = input.required<FileBrowserItem[]>();
+  public readonly title = input.required<string>();
+  public readonly currentPath = input<string>('');
 
   // Data caches for operations
-  @Input({ required: true }) cleanupSupportCache: Record<string, boolean> = {};
+  public readonly cleanupSupportCache = input.required<Record<string, boolean>>();
 
   // Drag Drop Predicates
-  @Input() canDropOnStarred!: (item: any) => boolean;
-  @Input() canDropOnBookmarks!: (item: any) => boolean;
-  @Input() canDropOnBookmark!: (item: any) => boolean;
-  @Input() canAcceptFile!: (item: any) => boolean;
+  public readonly canDropOnStarred = input.required<(item: any) => boolean>();
+  public readonly canDropOnBookmarks = input.required<(item: any) => boolean>();
+  public readonly canDropOnBookmark = input.required<(item: any) => boolean>();
+  public readonly canAcceptFile = input.required<(item: any) => boolean>();
 
   // --- Outputs ---
-  @Output() remoteSelected = new EventEmitter<ExplorerRoot>();
-  @Output() bookmarkOpened = new EventEmitter<FileBrowserItem>();
-  @Output() starredSelected = new EventEmitter<void>();
-  @Output() toggleSearch = new EventEmitter<void>();
-  @Output() sidenavAction = new EventEmitter<'close' | 'toggle'>();
+  public readonly remoteSelected = output<ExplorerRoot>();
+  public readonly bookmarkOpened = output<FileBrowserItem>();
+  public readonly starredSelected = output<void>();
+  public readonly toggleSearch = output<void>();
+  public readonly requestShortcuts = output<void>();
+  public readonly sidenavAction = output<'close' | 'toggle'>();
 
   // Modal Requests
-  @Output() requestAbout = new EventEmitter<ExplorerRoot>();
-  @Output() requestCleanup = new EventEmitter<ExplorerRoot>();
-  @Output() requestBookmarkRemoval = new EventEmitter<FileBrowserItem>();
-  @Output() requestProperties = new EventEmitter<FileBrowserItem>();
+  public readonly requestAbout = output<ExplorerRoot>();
+  public readonly requestCleanup = output<ExplorerRoot>();
+  public readonly requestBookmarkRemoval = output<FileBrowserItem>();
+  public readonly requestProperties = output<FileBrowserItem>();
 
   // Drag Drop Events
-  @Output() droppedToStarred = new EventEmitter<CdkDragDrop<any>>();
-  @Output() droppedToLocal = new EventEmitter<CdkDragDrop<any>>();
-  @Output() droppedToBookmark = new EventEmitter<{
+  public readonly droppedToStarred = output<CdkDragDrop<any>>();
+  public readonly droppedToLocal = output<CdkDragDrop<any>>();
+  public readonly droppedToBookmark = output<{
     event: CdkDragDrop<any>;
     target: FileBrowserItem;
   }>();
-  @Output() droppedToRemote = new EventEmitter<{ event: CdkDragDrop<any>; target: ExplorerRoot }>();
+  public readonly droppedToRemote = output<{ event: CdkDragDrop<any>; target: ExplorerRoot }>();
 
   // --- UI State ---
   public readonly isSearchMode = signal(false);
@@ -90,7 +82,6 @@ export class NautilusSidebarComponent {
   public bookmarkContextItem: FileBrowserItem | null = null;
 
   // Current path for bookmark selection highlighting
-  @Input() currentPath: string = '';
 
   @ViewChild('searchInput') searchInput?: ElementRef<HTMLInputElement>;
 
@@ -107,14 +98,14 @@ export class NautilusSidebarComponent {
 
   onSelectRemote(remote: ExplorerRoot): void {
     this.remoteSelected.emit(remote);
-    if (this.isMobile) {
+    if (this.isMobile()) {
       this.sidenavAction.emit('close');
     }
   }
 
   onOpenBookmark(bm: FileBrowserItem): void {
     this.bookmarkOpened.emit(bm);
-    if (this.isMobile) {
+    if (this.isMobile()) {
       this.sidenavAction.emit('close');
     }
   }
@@ -129,19 +120,19 @@ export class NautilusSidebarComponent {
 
   /** Returns true when the user is currently browsing this bookmark's exact path. */
   isBookmarkSelected(bm: FileBrowserItem): boolean {
-    if (this.starredMode || !this.nautilusRemote) return false;
+    if (this.starredMode() || !this.nautilusRemote()) return false;
     const bmRemote = (bm.meta.remote ?? '').replace(/:$/, '');
-    return this.nautilusRemote.name === bmRemote && this.currentPath === bm.entry.Path;
+    return this.nautilusRemote()!.name === bmRemote && this.currentPath() === bm.entry.Path;
   }
 
   /** Returns true when any bookmark matches the current location (so remotes should not show selected). */
   isAnyBookmarkSelected(): boolean {
-    return this.bookmarks.some(bm => this.isBookmarkSelected(bm));
+    return this.bookmarks().some(bm => this.isBookmarkSelected(bm));
   }
 
   // Helper for cleanup support
   supportsCleanup(remote: ExplorerRoot | null): boolean {
     if (!remote) return false;
-    return this.cleanupSupportCache[remote.name] ?? false;
+    return this.cleanupSupportCache()[remote.name] ?? false;
   }
 }

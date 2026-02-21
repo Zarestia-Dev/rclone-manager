@@ -19,7 +19,9 @@
     "copy": "Kopyala",
     "move": "Taşı",
     "retry": "Yeniden Dene",
-    "default": "Varsayılan"
+    "default": "Varsayılan",
+    "copyErrorFailed": "Hata kopyalanamadı",
+    "errorCopied": "Hata panoya kopyalandı"
   },
   "validators": {
     "integer": "Geçerli bir tam sayı olmalıdır",
@@ -1981,7 +1983,9 @@
       "files": "Dosyalar",
       "starred": "Yıldızlı",
       "searchPlaceholder": "Dosyaları ara...",
-      "local": "Yerel"
+      "local": "Yerel",
+      "cloud": "Bulut",
+      "bookmarks": "Yer İmleri"
     },
     "sort": {
       "az": "A-Z",
@@ -2170,9 +2174,7 @@
       "save": "Düzeni Kaydet",
       "reset": "Düzeni Sıfırla",
       "resetSuccess": "Düzen varsayılana sıfırlandı",
-      "toggleTaskFailed": "Zamanlanmış görev değiştirilemedi",
-      "copyErrorFailed": "Hata kopyalanamadı",
-      "errorCopied": "Hata panoya kopyalandı"
+      "toggleTaskFailed": "Zamanlanmış görev değiştirilemedi"
     },
     "bandwidth": {
       "aria": {

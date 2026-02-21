@@ -304,8 +304,8 @@ export class GeneralOverviewComponent implements OnInit {
   async copyError(error: string): Promise<void> {
     this.copyToClipboard(
       error,
-      this.translate.instant('generalOverview.layout.errorCopied'),
-      this.translate.instant('generalOverview.layout.copyErrorFailed')
+      this.translate.instant('common.errorCopied'),
+      this.translate.instant('common.copyErrorFailed')
     );
   }
 

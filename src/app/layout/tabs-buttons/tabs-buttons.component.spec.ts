@@ -27,9 +27,9 @@ describe('TabsButtonsComponent', () => {
 
     it('should accept currentTab input', () => {
       const testTab: AppTab = 'mount';
-      component.currentTab = testTab;
+      fixture.componentRef.setInput('currentTab', testTab);
 
-      expect(component.currentTab).toBe(testTab);
+      expect(component.currentTab()).toBe(testTab);
     });
 
     it('should have tabSelected event emitter', () => {

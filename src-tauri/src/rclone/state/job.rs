@@ -94,16 +94,19 @@ impl JobCache {
         &self,
         jobid: u64,
         success: bool,
+        error: Option<String>,
         app: Option<&AppHandle>,
     ) -> Result<JobInfo, String> {
         self.update_job(
             jobid,
             |job| {
-                job.status = if success {
-                    JobStatus::Completed
+                if success {
+                    job.status = JobStatus::Completed;
+                    job.error = None;
                 } else {
-                    JobStatus::Failed
-                };
+                    job.status = JobStatus::Failed;
+                    job.error = error;
+                }
             },
             app,
         )
@@ -214,6 +217,7 @@ mod tests {
             start_time: chrono::Utc::now(),
             profile: profile.map(|s| s.to_string()),
             status: JobStatus::Running,
+            error: None,
             stats: None,
             group: format!("job/{}", jobid),
             origin: None,
@@ -263,7 +267,7 @@ mod tests {
             .await;
 
         // Complete successfully
-        cache.complete_job(1, true, None).await.unwrap();
+        cache.complete_job(1, true, None, None).await.unwrap();
         let job = cache.get_job(1).await.unwrap();
         assert_eq!(job.status, JobStatus::Completed);
 
@@ -271,9 +275,10 @@ mod tests {
         cache
             .add_job(mock_job(2, "s3:", JobType::Copy, None), None)
             .await;
-        cache.complete_job(2, false, None).await.unwrap();
+        cache.complete_job(2, false, Some("failed".to_string()), None).await.unwrap();
         let job = cache.get_job(2).await.unwrap();
         assert_eq!(job.status, JobStatus::Failed);
+        assert_eq!(job.error, Some("failed".to_string()));
     }
 
     #[tokio::test]
@@ -304,7 +309,7 @@ mod tests {
 
         // Stop one, complete one
         cache.stop_job(1, None).await.unwrap();
-        cache.complete_job(2, true, None).await.unwrap();
+        cache.complete_job(2, true, None, None).await.unwrap();
 
         let active = cache.get_active_jobs().await;
         assert_eq!(active.len(), 1);

@@ -157,6 +157,27 @@
                       >
                     </div>
                   }
+
+                  @if (job.status === 'Failed' && job.error) {
+                    <div class="detail-item error-item">
+                      <div class="error-container">
+                        <div class="error-text">
+                          <span class="detail-label">{{
+                            'fileBrowser.operations.failed' | translate
+                          }}</span>
+                          <span class="value">{{ job.error }}</span>
+                        </div>
+                        <button
+                          mat-icon-button
+                          class="copy-error-btn"
+                          (click)="copyError(job.error)"
+                          [matTooltip]="'common.copy' | translate"
+                        >
+                          <mat-icon svgIcon="copy"></mat-icon>
+                        </button>
+                      </div>
+                    </div>
+                  }
                 </div>
               </div>
             </ng-template>

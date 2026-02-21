@@ -2,6 +2,10 @@
   display: block;
   height: 100%;
   overflow: hidden;
+
+  ::ng-deep .cdk-drag-placeholder {
+    display: none !important;
+  }
 }
 
 .nautilus-layout {
@@ -44,15 +48,25 @@ mat-nav-list {
   overflow: visible;
 }
 
-.bookmarks-section {
-  .new-bookmark-placeholder {
-    display: none;
-  }
+.sidebar-section-header {
+  display: flex;
+  align-items: center;
+  padding: var(--space-xs) var(--space-sm);
+  margin-top: var(--space-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--dim-color);
+  user-select: none;
+  border-radius: var(--radius-xs);
+  transition: var(--transition-fast);
+
+  &.cdk-drop-list-receiving,
   &.cdk-drop-list-dragging {
-    .new-bookmark-placeholder {
-      display: flex !important;
-      animation: slideDownIn 0.2s ease forwards;
-    }
+    background: rgba(var(--accent-color-rgb), 0.1) !important;
+    box-shadow: 0 0 0 2px var(--accent-color);
+    color: var(--accent-color);
   }
 }
 
@@ -87,27 +101,10 @@ mat-nav-list {
         text-overflow: ellipsis;
         white-space: nowrap;
         margin: 0 !important;
-        max-width: calc(var(--sidenav-width, 240px) - 58px);
+        max-width: calc(var(--sidebar-width, 250px) - 58px);
       }
     }
   }
-}
-
-.new-bookmark-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-xs);
-  width: 100%;
-  height: 36px;
-  color: var(--accent-color);
-  font-weight: 600;
-  font-size: var(--font-size-md);
-  margin-block: var(--space-xxs);
-  background: rgba(var(--accent-color-rgb), 0.08);
-  border: 2px dashed var(--accent-color);
-  border-radius: var(--border-radius);
-  box-sizing: border-box;
 }
 
 .nav-button {
@@ -135,18 +132,6 @@ mat-nav-list {
   }
 }
 
-/* Animations */
-@keyframes slideDownIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 /* Menu Styles (shared with parent if needed, but defined here for independence) */
 .nautilus-menu {
   background-color: var(--popover-bg-color);
@@ -154,7 +139,7 @@ mat-nav-list {
   border-radius: var(--radius-md);
   padding: var(--space-xxs);
   min-width: 180px;
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-popover);
 
   .menu-item {
     display: flex;
@@ -181,9 +166,9 @@ mat-nav-list {
     }
 
     mat-icon {
-      font-size: 18px;
-      width: 18px;
-      height: 18px;
+      font-size: var(--icon-size-sm);
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
     }
   }
 }

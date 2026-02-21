@@ -306,6 +306,7 @@ async fn add_job_to_cache(
                 destination: metadata.destination.clone(),
                 start_time: Utc::now(),
                 status: JobStatus::Running,
+                error: None,
                 stats: None,
                 group: metadata.group_name(),
                 profile: metadata.profile.clone(),
@@ -462,7 +463,7 @@ pub async fn monitor_job(
 
                 if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
                     if !metadata.no_cache {
-                        let _ = job_cache.complete_job(jobid, false, Some(&app)).await;
+                        let _ = job_cache.complete_job(jobid, false, Some(format!("Monitoring failed after {MAX_CONSECUTIVE_ERRORS} attempts")), Some(&app)).await;
                     }
                     return Err(RcloneError::JobError(
                         crate::localized_error!("backendErrors.job.monitoringFailed", "error" => e),
@@ -505,7 +506,7 @@ pub async fn handle_job_completion(
     if !metadata.no_cache {
         Some(
             job_cache
-                .complete_job(jobid, success, Some(app))
+                .complete_job(jobid, success, if !error_msg.is_empty() { Some(error_msg.clone()) } else { None }, Some(app))
                 .await
                 .map_err(RcloneError::JobError)?,
         )

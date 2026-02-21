@@ -140,6 +140,8 @@ pub struct JobInfo {
     pub destination: String,
     pub start_time: DateTime<Utc>,
     pub status: JobStatus, // "running", "completed", "failed", "stopped"
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
     pub stats: Option<Value>,
     pub group: String, // Add this field to track the job group
     pub profile: Option<String>,

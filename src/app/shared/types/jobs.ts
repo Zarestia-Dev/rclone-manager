@@ -77,6 +77,7 @@ export interface JobInfo {
   destination: string;
   start_time: string;
   status: JobStatus;
+  error?: string;
   remote_name: string;
   stats: GlobalStats;
   group?: string;

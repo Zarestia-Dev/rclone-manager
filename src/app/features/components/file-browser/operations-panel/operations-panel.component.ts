@@ -7,13 +7,13 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { MatDividerModule } from '@angular/material/divider';
-import { JobManagementService, UiStateService } from '@app/services';
+import { JobManagementService, UiStateService, NotificationService } from '@app/services';
 import { JobInfo } from '@app/types';
 import { FormatFileSizePipe, FormatEtaPipe, FormatRateValuePipe } from '@app/pipes';
 import { Subject, interval } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-operations-panel',
@@ -39,6 +39,8 @@ import { TranslateModule } from '@ngx-translate/core';
 export class OperationsPanelComponent implements OnInit, OnDestroy {
   private jobManagementService = inject(JobManagementService);
   private uiStateService = inject(UiStateService);
+  private notificationService = inject(NotificationService);
+  private translate = inject(TranslateService);
   private destroy$ = new Subject<void>();
 
   // Subscribe to reactive job stream
@@ -159,6 +161,17 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
       await this.jobManagementService.refreshNautilusJobs();
     } catch (err) {
       console.error('Failed to delete job:', err);
+    }
+  }
+
+  async copyError(error: string): Promise<void> {
+    if (!error) return;
+    try {
+      await navigator.clipboard.writeText(error);
+      this.notificationService.showSuccess(this.translate.instant('common.errorCopied'));
+    } catch (err) {
+      console.error('Failed to copy error:', err);
+      this.notificationService.showError(this.translate.instant('common.error'));
     }
   }
 }
