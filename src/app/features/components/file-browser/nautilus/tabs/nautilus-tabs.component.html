@@ -1,0 +1,56 @@
+<div
+  class="tabs-scroll-container hide-scrollbar"
+  #tabsScrollContainer
+  (wheel)="onWheelScroll($event)"
+>
+  <div
+    class="tabs-bar"
+    cdkDropList
+    cdkDropListOrientation="horizontal"
+    (cdkDropListDropped)="onDrop($event)"
+  >
+    @for (t of tabs(); track t.id) {
+      <div
+        class="tab"
+        cdkDrag
+        [class.active]="activeTabIndex() === $index"
+        role="button"
+        tabindex="0"
+        (click)="onTabClick($index)"
+        (mousedown)="onTabMiddleClick($event, $index)"
+        [cdkContextMenuTriggerFor]="tabContextMenu"
+        [cdkContextMenuTriggerData]="{ $implicit: $index }"
+        (cdkContextMenuOpened)="contextTabIndex = $index"
+        [matTooltip]="(t.remote ? t.remote.label + ':' : '') + t.path"
+        matTooltipShowDelay="800"
+      >
+        <span class="tab-title">{{ t.title }}</span>
+        <button
+          class="close-tab"
+          (click)="onCloseTab($event, $index)"
+          [attr.aria-label]="'common.close' | translate"
+        >
+          <mat-icon svgIcon="close"></mat-icon>
+        </button>
+      </div>
+    }
+  </div>
+</div>
+
+<ng-template #tabContextMenu let-tabIdx>
+  <div class="material-context-menu" cdkMenu>
+    <button class="menu-item" cdkMenuItem (click)="duplicateTab.emit(tabIdx)">
+      <span>{{ 'nautilus.contextMenu.duplicateTab' | translate }}</span>
+    </button>
+    <mat-divider></mat-divider>
+    <button class="menu-item" cdkMenuItem (click)="closeTab.emit(tabIdx)">
+      <span>{{ 'nautilus.contextMenu.closeTab' | translate }}</span>
+    </button>
+    <button class="menu-item" cdkMenuItem (click)="closeOtherTabs.emit(tabIdx)">
+      <span>{{ 'nautilus.contextMenu.closeOtherTabs' | translate }}</span>
+    </button>
+    <button class="menu-item" cdkMenuItem (click)="closeTabsToRight.emit(tabIdx)">
+      <span>{{ 'nautilus.contextMenu.closeTabsToRight' | translate }}</span>
+    </button>
+  </div>
+</ng-template>

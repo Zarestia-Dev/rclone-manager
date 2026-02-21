@@ -1,0 +1,46 @@
+.nautilus-bottom-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-xs) var(--space-sm);
+  background-color: var(--view-bg-color);
+  box-shadow: inset 0 1px 0 var(--card-shade-color);
+  z-index: 10;
+
+  .nav-controls,
+  .view-controls {
+    display: flex;
+    gap: var(--space-xs);
+  }
+
+  /* Assuming these buttons use a shared nav-button style */
+  .nav-button {
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: var(--space-xs);
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--window-fg-color);
+    transition: var(--transition-fast);
+
+    mat-icon {
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
+      font-size: var(--icon-size-sm);
+    }
+
+    &:hover:not([disabled]) {
+      background: var(--hover-bg-color);
+    }
+
+    &[disabled] {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}

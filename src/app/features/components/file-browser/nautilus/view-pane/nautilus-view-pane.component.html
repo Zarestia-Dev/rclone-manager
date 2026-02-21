@@ -1,0 +1,291 @@
+<div
+  class="pane-wrapper"
+  [class.focused]="activePaneIndex() === paneIndex()"
+  [class.split-enabled]="isSplitEnabled()"
+  (mousedown)="switchPane.emit(paneIndex())"
+>
+  @if (layout() === 'grid') {
+    <cdk-virtual-scroll-viewport
+      class="nautilus-grid"
+      itemSize="48"
+      (click)="clearSelection.emit()"
+      (keydown.enter)="clearSelection.emit()"
+      (keydown.space)="clearSelection.emit()"
+      tabindex="0"
+      [cdkContextMenuTriggerFor]="fileMenu"
+      [cdkContextMenuTriggerData]="{ $implicit: null }"
+      (cdkContextMenuOpened)="setContextItem.emit(null)"
+      cdkDropList
+      [cdkDropListEnterPredicate]="canAcceptFile()"
+      [cdkDropListHasAnchor]="true"
+      [cdkDropListSortingDisabled]="true"
+      (cdkDropListDropped)="
+        onDropToCurrentDirectory.emit({ event: $event, paneIndex: paneIndex() })
+      "
+    >
+      <div
+        class="grid"
+        [style.gridTemplateColumns]="'repeat(auto-fill, ' + (iconSize() + 40) + 'px)'"
+      >
+        @for (item of files(); track trackByFile()($index, item)) {
+          <div
+            class="grid-item"
+            cdkDrag
+            [cdkDragData]="item"
+            (cdkDragStarted)="onDragStarted.emit($event)"
+            (cdkDragEnded)="onDragEnded.emit()"
+            (click)="onItemClick.emit({ item, event: $event, index: $index })"
+            (keydown.enter)="onItemClick.emit({ item, event: $event, index: $index })"
+            (keydown.space)="onItemClick.emit({ item, event: $event, index: $index })"
+            (dblclick)="navigateTo.emit(item)"
+            [cdkContextMenuTriggerFor]="fileMenu()"
+            [cdkContextMenuTriggerData]="{ $implicit: item }"
+            (cdkContextMenuOpened)="setContextItem.emit(item)"
+            tabindex="0"
+            [class.selected]="selection().has(getItemKey()(item))"
+            [class.unselectable]="!isItemSelectable()(item.entry)"
+            [class.cut-item]="cutItemPaths().has(getItemKey()(item))"
+            [attr.data-folder-path]="item.entry.IsDir ? item.entry.Path : null"
+            [class.item-drop-target]="item.entry.IsDir"
+            [class.folder-drag-over]="
+              isDragging() && (hoveredFolder()?.entry?.Path ?? null) === item.entry.Path
+            "
+          >
+            @if (starredMode()) {
+              <mat-icon
+                class="star-button"
+                (click)="toggleStar.emit(item); $event.stopPropagation()"
+                [svgIcon]="isStarred(item) ? 'star' : 'star-outline'"
+              ></mat-icon>
+            }
+            <div class="drag-preview" *cdkDragPreview>
+              <mat-icon [svgIcon]="iconService.getIconForEntry(item.entry)"></mat-icon>
+              <span>{{ item.entry.Name }}</span>
+              @if (selection().size > 1 && selection().has(getItemKey()(item))) {
+                <span class="count-badge">{{ selection().size }}</span>
+              }
+            </div>
+            <ng-container
+              [ngTemplateOutlet]="itemCard"
+              [ngTemplateOutletContext]="{
+                item: item,
+                isPlaceholder: false,
+                isCut: cutItemPaths().has(getItemKey()(item)),
+              }"
+            >
+            </ng-container>
+          </div>
+        }
+      </div>
+    </cdk-virtual-scroll-viewport>
+  } @else if (layout() === 'list') {
+    <cdk-virtual-scroll-viewport
+      [itemSize]="listRowHeight()"
+      class="nautilus-list-container"
+      (click)="clearSelection.emit()"
+      (keydown.enter)="clearSelection.emit()"
+      tabindex="0"
+      [cdkContextMenuTriggerFor]="fileMenu"
+      (cdkContextMenuOpened)="setContextItem.emit(null)"
+      cdkDropList
+      [cdkDropListEnterPredicate]="canAcceptFile()"
+      [cdkDropListHasAnchor]="true"
+      [cdkDropListSortingDisabled]="true"
+      (cdkDropListDropped)="
+        onDropToCurrentDirectory.emit({ event: $event, paneIndex: paneIndex() })
+      "
+    >
+      <table mat-table [dataSource]="files()" class="nautilus-table">
+        <ng-container matColumnDef="name">
+          <th
+            mat-header-cell
+            *matHeaderCellDef
+            (click)="toggleSort.emit('name')"
+            class="sortable-header"
+          >
+            <div class="header-content">
+              {{ 'nautilus.columns.name' | translate }}
+              @if (sortKey().startsWith('name')) {
+                <mat-icon
+                  [svgIcon]="sortDirection() === 'asc' ? 'chevron-up' : 'chevron-down'"
+                ></mat-icon>
+              }
+            </div>
+          </th>
+          <td mat-cell *matCellDef="let item">
+            <div class="cell-content name-cell">
+              <ng-container
+                [ngTemplateOutlet]="nameCellContent"
+                [ngTemplateOutletContext]="{
+                  item: item,
+                  rowTitle: false,
+                  isCut: cutItemPaths().has(getItemKey()(item)),
+                }"
+              ></ng-container>
+            </div>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="size">
+          <th
+            mat-header-cell
+            *matHeaderCellDef
+            class="sortable-header"
+            (click)="toggleSort.emit('size')"
+          >
+            <div class="header-content right-aligned">
+              @if (sortKey().startsWith('size')) {
+                <mat-icon
+                  [svgIcon]="sortDirection() === 'asc' ? 'chevron-up' : 'chevron-down'"
+                ></mat-icon>
+              }
+              {{ 'nautilus.columns.size' | translate }}
+            </div>
+          </th>
+          <td mat-cell *matCellDef="let item">
+            {{ item.entry.IsDir ? '--' : (item.entry.Size | formatFileSize) }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="modified">
+          <th
+            mat-header-cell
+            *matHeaderCellDef
+            class="sortable-header"
+            (click)="toggleSort.emit('modified')"
+          >
+            <div class="header-content right-aligned">
+              @if (sortKey().startsWith('modified')) {
+                <mat-icon
+                  [svgIcon]="sortDirection() === 'asc' ? 'chevron-up' : 'chevron-down'"
+                ></mat-icon>
+              }
+              {{ 'nautilus.columns.modified' | translate }}
+            </div>
+          </th>
+          <td mat-cell *matCellDef="let item">
+            {{ formatRelativeDate()(item.entry.ModTime) }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="star">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let item">
+            <button
+              mat-icon-button
+              class="star-button"
+              (click)="toggleStar.emit(item); $event.stopPropagation()"
+            >
+              <mat-icon [svgIcon]="isStarred(item) ? 'star' : 'star-outline'"></mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns(); sticky: true"></tr>
+
+        <tr
+          mat-row
+          *matRowDef="let item; columns: displayedColumns(); let i = index"
+          cdkDrag
+          [cdkDragData]="item"
+          (cdkDragStarted)="onDragStarted.emit($event)"
+          (cdkDragEnded)="onDragEnded.emit()"
+          (click)="onItemClick.emit({ item, event: $event, index: i })"
+          (keydown.enter)="onItemClick.emit({ item, event: $event, index: i })"
+          (dblclick)="navigateTo.emit(item)"
+          [cdkContextMenuTriggerFor]="fileMenu"
+          [cdkContextMenuTriggerData]="{ $implicit: item }"
+          (cdkContextMenuOpened)="setContextItem.emit(item)"
+          [class.selected]="selection().has(getItemKey()(item))"
+          [class.hidden-item]="item.entry.Name.startsWith('.')"
+          [class.cut-item]="cutItemPaths().has(getItemKey()(item))"
+          [attr.data-folder-path]="item.entry.IsDir ? item.entry.Path : null"
+          [class.item-drop-target]="item.entry.IsDir"
+          [class.folder-drag-over]="
+            isDragging() && (hoveredFolder()?.entry?.Path ?? null) === item.entry.Path
+          "
+        >
+          <div class="drag-preview" *cdkDragPreview>
+            <mat-icon [svgIcon]="iconService.getIconForEntry(item.entry)"></mat-icon>
+            <span>{{ item.entry.Name }}</span>
+            @if (selection().size > 1 && selection().has(getItemKey()(item))) {
+              <span class="count-badge">{{ selection().size }}</span>
+            }
+          </div>
+        </tr>
+      </table>
+    </cdk-virtual-scroll-viewport>
+  }
+
+  @if (error()) {
+    <div class="empty-folder-container">
+      <mat-icon svgIcon="circle-exclamation"></mat-icon>
+      <h2>{{ 'nautilus.errors.connectionFailed' | translate }}</h2>
+      <p>{{ error() }}</p>
+      <button mat-stroked-button (click)="refresh.emit()">{{ 'common.retry' | translate }}</button>
+    </div>
+  } @else if (files().length === 0 && !loading()) {
+    <div class="empty-folder-container">
+      @if (starredMode()) {
+        <mat-icon svgIcon="star"></mat-icon>
+        <h2>{{ 'nautilus.empty.noStarred' | translate }}</h2>
+      } @else {
+        <mat-icon svgIcon="folder"></mat-icon>
+        <h2>{{ 'nautilus.empty.folderEmpty' | translate }}</h2>
+      }
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="loading-overlay">
+      <mat-spinner diameter="24"></mat-spinner>
+      <span>{{ 'common.loading' | translate }}</span>
+      <button class="nav-button" (click)="cancelLoad.emit(paneIndex())">
+        <mat-icon svgIcon="close"></mat-icon>
+      </button>
+    </div>
+  }
+</div>
+
+<ng-template #itemCard let-item="item" let-isPlaceholder="isPlaceholder" let-isCut="isCut">
+  <mat-card
+    class="folder-card"
+    [class.file-card]="!item.entry.IsDir"
+    [class.hidden-item]="!isPlaceholder && item.entry.Name.startsWith('.')"
+  >
+    <mat-card-content>
+      @if (isCut) {
+        <mat-icon
+          class="cut-icon"
+          [style.width.px]="iconSize()"
+          [style.height.px]="iconSize()"
+          svgIcon="scissors"
+        ></mat-icon>
+      } @else {
+        <mat-icon
+          [class.accent]="item.entry.IsDir"
+          [style.width.px]="iconSize()"
+          [style.height.px]="iconSize()"
+          [svgIcon]="iconService.getIconForEntry(item.entry)"
+        ></mat-icon>
+      }
+      <p class="folder-title">{{ item.entry.Name }}</p>
+    </mat-card-content>
+  </mat-card>
+</ng-template>
+
+<ng-template #nameCellContent let-item="item" let-rowTitle="rowTitle" let-isCut="isCut">
+  @if (isCut) {
+    <mat-icon class="cut-icon list-view" svgIcon="scissors"></mat-icon>
+  } @else {
+    <mat-icon
+      [class.accent]="item.entry.IsDir"
+      [style.width.px]="iconSize()"
+      [style.height.px]="iconSize()"
+      [svgIcon]="iconService.getIconForEntry(item.entry)"
+    ></mat-icon>
+  }
+  <span [class.row-title]="rowTitle">{{ item.entry.Name }}</span>
+</ng-template>
+
+<!-- Note: fileMenu is defined in NautilusComponent, but referenced here via [cdkContextMenuTriggerFor]="fileMenu"-->

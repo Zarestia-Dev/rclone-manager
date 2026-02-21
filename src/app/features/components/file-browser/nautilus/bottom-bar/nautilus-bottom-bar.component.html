@@ -1,0 +1,31 @@
+<div class="nautilus-bottom-bar" data-tauri-drag-region>
+  <div class="nav-controls">
+    <button class="nav-button" (click)="goBack.emit()" [disabled]="!canGoBack()">
+      <mat-icon svgIcon="chevron-left"></mat-icon>
+    </button>
+    <button class="nav-button" (click)="goForward.emit()" [disabled]="!canGoForward()">
+      <mat-icon svgIcon="chevron-right"></mat-icon>
+    </button>
+  </div>
+
+  <div class="view-controls">
+    <button class="nav-button" (click)="toggleLayout()">
+      <mat-icon [svgIcon]="layout() === 'grid' ? 'list' : 'grid'"></mat-icon>
+    </button>
+    <button
+      class="nav-button"
+      [cdkMenuTriggerFor]="viewMenu()"
+      [cdkMenuPosition]="[
+        {
+          originX: 'end',
+          originY: 'top',
+          overlayX: 'start',
+          overlayY: 'bottom',
+          offsetY: -8,
+        },
+      ]"
+    >
+      <mat-icon svgIcon="chevron-down"></mat-icon>
+    </button>
+  </div>
+</div>

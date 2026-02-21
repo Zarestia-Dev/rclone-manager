@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 - Blury icons fixed. Icon provider change to Google Material Icons.
 - Reorder tauri plugins (Cause of startup crash).
+- Remove the global shortcut handler from tauri.
 
 ## [v0.2.1] - 2026-02-05
 

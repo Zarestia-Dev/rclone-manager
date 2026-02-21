@@ -70,21 +70,6 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         Err(e) => error!("❌ Failed to stop cron scheduler: {e}"),
     }
 
-    #[cfg(all(desktop, not(feature = "web-server")))]
-    {
-        if app_handle
-            .try_state::<tauri_plugin_global_shortcut::GlobalShortcut<tauri::Wry>>()
-            .is_some()
-        {
-            use crate::utils::shortcuts::unregister_global_shortcuts;
-            info!("⌨️ Unregistering global shortcuts...");
-            if let Err(e) = unregister_global_shortcuts(&app_handle) {
-                error!("Failed to unregister global shortcuts: {e}");
-            }
-        } else {
-            debug!("Global shortcut plugin not available, skipping unregister");
-        }
-    }
     match unmount_result {
         Ok(Ok(info)) => info!("Unmounted remotes: {info:?}"),
         Ok(Err(e)) => {

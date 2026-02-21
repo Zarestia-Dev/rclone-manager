@@ -1,6 +1,6 @@
 [package]
 name = "rclone-manager"
-version = "0.2.1"
+version = "0.2.2"
 description = "RClone Manager is a user-friendly GUI for Rclone, designed to simplify the process of managing and transferring files across various cloud storage services. With its intuitive interface, users can easily configure and execute Rclone commands without needing extensive technical knowledge."
 authors = ["Hakan İSMAİL"]
 edition = "2024"
@@ -88,10 +88,7 @@ keyring = { version = "3", features = ["apple-native"] }
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-autostart = "2"
 tauri-plugin-global-shortcut = "2"
-# Single instance plugin
-# TODO: Remove this when the plugin is merged into tauri
-# https://github.com/tauri-apps/plugins-workspace/pull/3194
-tauri-plugin-single-instance = { git = "https://github.com/mrquantumoff/plugins-workspace", branch = "single-instance" }
+tauri-plugin-single-instance = "2"
 tauri-plugin-updater = { version = "2", default-features = false, features = ["rustls-tls"], optional = true }
 url = { version = "2.5", optional = true }
 rcman = { path = "../../rcman", version = "0.1.4", features = ["keychain", "profiles"] }

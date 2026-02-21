@@ -2042,6 +2042,8 @@
       "deleteFailed": "{{count}} öge silinemedi",
       "copyFailed": "{{count}} öge kopyalanamadı",
       "moveFailed": "{{count}} öge taşınamadı",
+      "undoFailed": "{{count}} öge için geri alma başarısız",
+      "redoFailed": "{{count}} öge için yineleme başarısız",
       "rmdirsFailed": "\"{{name}}\" içinde boş klasörler kaldırılamadı: {{error}}"
     },
     "contextMenu": {
@@ -2081,7 +2083,9 @@
       "locationCopied": "Konum panoya kopyalandı",
       "rmdirsStarted": "Boş klasörler kaldırılıyor: \"{{name}}\"...",
       "deleteStarted": "{{count}} öge siliniyor...",
-      "pasteComplete": "Yapıştırma işlemi tamamlandı"
+      "pasteComplete": "Yapıştırma işlemi tamamlandı",
+      "undoComplete": "Geri alma başarılı",
+      "redoComplete": "Yineleme başarılı"
     }
   },
   "overview": {

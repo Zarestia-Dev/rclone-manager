@@ -105,8 +105,8 @@ pub fn run() {
         {
             builder = builder.plugin(
                 tauri_plugin_single_instance::Builder::new()
-                    .dbus_id("io.github.zarestia_dev.rclone-manager".to_string())
-                    .build(Box::new(|_app: &tauri::AppHandle, _, _| {
+                    .dbus_id("io.github.zarestia_dev.rclone-manager")
+                    .callback(|_app: &tauri::AppHandle, _, _| {
                         #[cfg(feature = "web-server")]
                         info!("Another instance attempted to run.");
 
@@ -133,40 +133,45 @@ pub fn run() {
                                 );
                             }
                         }
-                    })),
+                    })
+                    .build(),
             );
         }
 
         #[cfg(not(target_os = "linux"))]
         {
-            builder = builder.plugin(tauri_plugin_single_instance::init(|_app, _, _| {
-                #[cfg(feature = "web-server")]
-                info!("Another instance attempted to run.");
+            builder = builder.plugin(
+                tauri_plugin_single_instance::Builder::new()
+                    .callback(|_app: &tauri::AppHandle, _, _| {
+                        #[cfg(feature = "web-server")]
+                        info!("Another instance attempted to run.");
 
-                #[cfg(not(feature = "web-server"))]
-                {
-                    // Only show window if it exists, don't try to create
-                    // Creating from single instance callback can cause crashes
-                    if let Some(window) = _app.get_webview_window("main") {
-                        info!("📢 Second instance detected, showing existing window");
-                        let _ = window.show();
-                        let _ = window.set_focus();
-                    } else {
-                        info!("📢 Second instance detected, but window was destroyed. Use tray to reopen.");
-                        crate::utils::app::notification::send_notification_typed(
-                            _app,
-                            crate::utils::app::notification::Notification::localized(
-                                "notification.title.alreadyRunning",
-                                "notification.body.alreadyRunning",
-                                None,
-                                None,
-                                Some(crate::utils::types::logs::LogLevel::Info),
-                            ),
-                            Some(crate::utils::types::origin::Origin::Internal),
-                        );
-                    }
-                }
-            }));
+                        #[cfg(not(feature = "web-server"))]
+                        {
+                            // Only show window if it exists, don't try to create
+                            // Creating from single instance callback can cause crashes
+                            if let Some(window) = _app.get_webview_window("main") {
+                                info!("📢 Second instance detected, showing existing window");
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            } else {
+                                info!("📢 Second instance detected, but window was destroyed. Use tray to reopen.");
+                                crate::utils::app::notification::send_notification_typed(
+                                    _app,
+                                    crate::utils::app::notification::Notification::localized(
+                                        "notification.title.alreadyRunning",
+                                        "notification.body.alreadyRunning",
+                                        None,
+                                        None,
+                                        Some(crate::utils::types::logs::LogLevel::Info),
+                                    ),
+                                    Some(crate::utils::types::origin::Origin::Internal),
+                                );
+                            }
+                        }
+                    })
+                    .build(),
+            );
         }
     }
 
@@ -510,36 +515,6 @@ fn setup_app(
     app.manage(PendingUpdate(std::sync::Mutex::new(None)));
     #[cfg(all(desktop, feature = "updater"))]
     app.manage(DownloadState::default());
-
-    // -------------------------------------------------------------------------
-    // Global Shortcuts (Desktop, non-web-server)
-    // -------------------------------------------------------------------------
-    #[cfg(all(desktop, not(feature = "web-server")))]
-    {
-        use crate::utils::shortcuts::handle_global_shortcut_event;
-        use tauri_plugin_global_shortcut::{
-            Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState,
-        };
-
-        let ctrl_q_shortcut = Shortcut::new(Some(Modifiers::CONTROL), Code::KeyQ);
-
-        app_handle.plugin(
-            tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(move |app, shortcut, event| {
-                    if let ShortcutState::Pressed = event.state() {
-                        handle_global_shortcut_event(app, *shortcut);
-                    }
-                })
-                .build(),
-        )?;
-
-        match app_handle.global_shortcut().register(ctrl_q_shortcut) {
-            Ok(_) => info!("Successfully registered Ctrl+Q shortcut"),
-            Err(e) => error!("Failed to register Ctrl+Q shortcut: {e}"),
-        }
-
-        info!("🔗 Global shortcuts registered successfully");
-    }
 
     // -------------------------------------------------------------------------
     // Initialize Logging

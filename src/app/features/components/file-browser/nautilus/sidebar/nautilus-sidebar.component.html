@@ -1,0 +1,194 @@
+<div class="nautilus-layout">
+  <div class="nautilus-header">
+    <mat-toolbar data-tauri-drag-region>
+      <button class="nav-button" (click)="toggleSearchMode()" [class.active]="isSearchMode()">
+        <mat-icon svgIcon="search"></mat-icon>
+      </button>
+      <span>{{ title | translate }}</span>
+      <button
+        class="nav-button"
+        [cdkMenuTriggerFor]="sidebarMainMenu"
+        [cdkMenuPosition]="[
+          { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
+        ]"
+      >
+        <mat-icon svgIcon="menu-bar"></mat-icon>
+      </button>
+    </mat-toolbar>
+  </div>
+
+  <div class="nautilus-scroll-content">
+    <mat-nav-list>
+      <mat-list-item
+        class="remote-list-item starred-item"
+        (click)="starredSelected.emit()"
+        [class.selected]="starredMode"
+        cdkDropList
+        id="sidebar-starred"
+        [cdkDropListEnterPredicate]="canDropOnStarred"
+        (cdkDropListDropped)="droppedToStarred.emit($event)"
+        [cdkDropListAutoScrollDisabled]="true"
+        [cdkContextMenuTriggerFor]="sidebarStarredMenu"
+      >
+        <span class="remote-info">
+          <span class="remote-icon">
+            <mat-icon svgIcon="star"></mat-icon>
+            <p matLine>{{ 'nautilus.titles.starred' | translate }}</p>
+          </span>
+        </span>
+      </mat-list-item>
+
+      <mat-divider></mat-divider>
+
+      <div class="bookmarks-section">
+        <div
+          class="new-bookmark-placeholder"
+          cdkDropList
+          [cdkDropListData]="bookmarks"
+          [cdkDropListEnterPredicate]="canDropOnBookmarks"
+          (cdkDropListDropped)="droppedToLocal.emit($event)"
+        >
+          <mat-icon svgIcon="bookmark"></mat-icon>
+          <span>{{ 'nautilus.sidebar.newBookmark' | translate }}</span>
+        </div>
+
+        @for (bm of bookmarks; track trackByBookmark($index, bm)) {
+          <div
+            cdkDropList
+            [cdkDropListData]="bm"
+            [cdkDropListEnterPredicate]="canDropOnBookmark"
+            (cdkDropListDropped)="droppedToBookmark.emit({ event: $event, target: bm })"
+          >
+            <mat-list-item
+              class="remote-list-item bookmark-item"
+              [class.selected]="isBookmarkSelected(bm)"
+              (click)="onOpenBookmark(bm)"
+              [cdkContextMenuTriggerFor]="sidebarBookmarkMenu"
+              [cdkContextMenuTriggerData]="{ $implicit: bm }"
+              (cdkContextMenuOpened)="bookmarkContextItem = bm"
+            >
+              <span class="remote-info">
+                <span class="remote-icon">
+                  <mat-icon
+                    [svgIcon]="
+                      bm.meta.remoteType ? iconService.getIconName(bm.meta.remoteType) : 'folder'
+                    "
+                  ></mat-icon>
+                  <p matLine>{{ bm.entry.Name }}</p>
+                </span>
+              </span>
+            </mat-list-item>
+          </div>
+        }
+      </div>
+
+      @for (drive of localDrives; track trackByRemote($index, drive)) {
+        <mat-list-item
+          class="remote-list-item"
+          (click)="onSelectRemote(drive)"
+          [class.selected]="
+            nautilusRemote?.name === drive.name && !starredMode && !isAnyBookmarkSelected()
+          "
+          [cdkContextMenuTriggerFor]="sidebarRemoteMenu"
+          [cdkContextMenuTriggerData]="{ $implicit: drive }"
+          (cdkContextMenuOpened)="sideContextRemote.set(drive)"
+          cdkDropList
+          [cdkDropListData]="drive"
+          [cdkDropListEnterPredicate]="canAcceptFile"
+          (cdkDropListDropped)="droppedToRemote.emit({ event: $event, target: drive })"
+        >
+          <span class="remote-info">
+            <span class="remote-icon">
+              <mat-icon matListIcon svgIcon="hard-drive"></mat-icon>
+              <p matLine>{{ drive.label }}</p>
+            </span>
+          </span>
+        </mat-list-item>
+      }
+
+      <mat-divider></mat-divider>
+
+      @for (remote of cloudRemotes; track trackByRemote($index, remote)) {
+        <mat-list-item
+          (click)="onSelectRemote(remote)"
+          [cdkContextMenuTriggerFor]="sidebarRemoteMenu"
+          [cdkContextMenuTriggerData]="{ $implicit: remote }"
+          (cdkContextMenuOpened)="sideContextRemote.set(remote)"
+          [class.selected]="
+            nautilusRemote?.name === remote.name && !starredMode && !isAnyBookmarkSelected()
+          "
+          class="remote-list-item"
+          cdkDropList
+          [cdkDropListData]="remote"
+          [cdkDropListEnterPredicate]="canAcceptFile"
+          (cdkDropListDropped)="droppedToRemote.emit({ event: $event, target: remote })"
+        >
+          <span class="remote-info">
+            <span class="remote-icon">
+              <mat-icon matListIcon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
+              <p matLine>{{ remote.label }}</p>
+            </span>
+          </span>
+        </mat-list-item>
+      }
+    </mat-nav-list>
+  </div>
+
+  <app-operations-panel></app-operations-panel>
+</div>
+
+<!-- Sidebar Menus -->
+<ng-template #sidebarStarredMenu>
+  <div class="nautilus-menu" cdkMenu>
+    <button class="menu-item" cdkMenuItem (click)="starredSelected.emit()">
+      <mat-icon svgIcon="star"></mat-icon>
+      <span>{{ 'nautilus.menu.openStarred' | translate }}</span>
+    </button>
+  </div>
+</ng-template>
+
+<ng-template #sidebarMainMenu>
+  <div class="nautilus-menu" cdkMenu>
+    <button class="menu-item" cdkMenuItem (click)="toggleSearchMode()">
+      <mat-icon svgIcon="search"></mat-icon>
+      <span>{{ 'nautilus.menu.search' | translate }}</span>
+    </button>
+  </div>
+</ng-template>
+
+<ng-template #sidebarRemoteMenu let-remote>
+  <div class="nautilus-menu" cdkMenu>
+    <button class="menu-item" cdkMenuItem (click)="onSelectRemote(remote)">
+      <mat-icon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
+      <span>{{ 'nautilus.menu.openRemote' | translate }}</span>
+    </button>
+    <button class="menu-item" cdkMenuItem (click)="requestAbout.emit(remote)">
+      <mat-icon svgIcon="info"></mat-icon>
+      <span>{{ 'nautilus.menu.about' | translate }}</span>
+    </button>
+    @if (supportsCleanup(remote)) {
+      <button class="menu-item danger" cdkMenuItem (click)="requestCleanup.emit(remote)">
+        <mat-icon svgIcon="trash"></mat-icon>
+        <span>{{ 'nautilus.menu.emptyTrash' | translate }}</span>
+      </button>
+    }
+  </div>
+</ng-template>
+
+<ng-template #sidebarBookmarkMenu let-bookmark>
+  <div class="nautilus-menu" cdkMenu>
+    <button class="menu-item" cdkMenuItem (click)="onOpenBookmark(bookmark)">
+      <mat-icon svgIcon="folder-open"></mat-icon>
+      <span>{{ 'nautilus.menu.openBookmark' | translate }}</span>
+    </button>
+    <button class="menu-item" cdkMenuItem (click)="requestProperties.emit(bookmark)">
+      <mat-icon svgIcon="info"></mat-icon>
+      <span>{{ 'nautilus.menu.properties' | translate }}</span>
+    </button>
+    <mat-divider></mat-divider>
+    <button class="menu-item danger" cdkMenuItem (click)="requestBookmarkRemoval.emit(bookmark)">
+      <mat-icon svgIcon="trash"></mat-icon>
+      <span>{{ 'nautilus.menu.removeBookmark' | translate }}</span>
+    </button>
+  </div>
+</ng-template>

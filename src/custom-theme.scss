@@ -836,6 +836,13 @@ button {
   align-items: center;
   justify-content: center;
 
+  span {
+    display: flex;
+    flex-direction: row !important;
+    gap: var(--space-xs);
+    white-space: nowrap;
+  }
+
   &.primary {
     color: white !important;
     background: var(--primary-color) !important;

@@ -1,0 +1,334 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+}
+
+.pane-wrapper {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--window-bg-color);
+  transition: var(--transition-fast);
+
+  &.split-enabled.focused {
+    z-index: 10;
+    &::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--accent-color);
+      z-index: 100;
+      box-shadow: 0 1px 4px var(--accent-color);
+    }
+  }
+
+  &.split-enabled:not(.focused) {
+    opacity: 0.9;
+  }
+}
+
+/* 3.2.1 Grid View */
+.nautilus-grid {
+  padding: var(--space-md) var(--space-xs);
+  flex: 1;
+  min-height: 0;
+  box-sizing: border-box;
+
+  .grid {
+    display: grid;
+    gap: var(--space-md);
+    justify-content: space-around;
+    align-items: start;
+    grid-auto-rows: auto;
+    margin: var(--space-sm) var(--space-xl);
+  }
+
+  .grid-item {
+    &.selected .folder-card {
+      background: var(--selected-bg-color);
+    }
+  }
+
+  .star-button {
+    position: absolute;
+    border-radius: 50%;
+    padding: var(--space-xxs);
+    transition: var(--transition-fast);
+    width: var(--icon-size-sm);
+    color: var(--dim-color);
+    height: var(--icon-size-sm);
+    z-index: 1;
+
+    &:hover {
+      background: var(--selected-bg-color);
+    }
+  }
+}
+
+/* THE SHARED CARD COMPONENT */
+.folder-card {
+  box-sizing: border-box;
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  border-radius: var(--card-border-radius);
+  transition: var(--transition-fast);
+  background: none;
+  box-shadow: none;
+  padding: 0;
+
+  &:hover {
+    background: var(--hover-bg-color);
+  }
+
+  /* Typography */
+  .folder-title {
+    margin: 0;
+    font-size: var(--font-size-md);
+    color: var(--window-fg-color);
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: break-all;
+    display: -webkit-box;
+    line-clamp: 3;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  &:hover {
+    background: var(--bg-elevated);
+  }
+
+  &.hidden-item {
+    mat-icon {
+      opacity: 0.6;
+    }
+  }
+}
+
+/* Dragging styles */
+.drag-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+
+  background: var(--view-bg-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  border: 1px solid var(--card-shade-color);
+  opacity: 1 !important;
+  z-index: 10000;
+
+  mat-icon {
+    color: var(--accent-color);
+  }
+
+  span {
+    font-weight: 500;
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--window-fg-color);
+  }
+
+  .count-badge {
+    background: var(--accent-color);
+    color: white;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: var(--space-xxs);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* Drop indicator for folder items during drag hover */
+.grid-item.folder-drag-over {
+  .folder-card {
+    background: rgba(var(--accent-color-rgb), 0.15) !important;
+    box-shadow: inset 0 0 0 2px var(--accent-color) !important;
+    border-radius: var(--border-radius);
+  }
+}
+
+tr.folder-drag-over {
+  background: rgba(var(--accent-color-rgb), 0.15) !important;
+  outline: 2px solid var(--accent-color);
+  outline-offset: -2px;
+}
+
+.nautilus-table {
+  border-spacing: 0 var(--space-xs);
+  border-inline: var(--space-md) solid transparent;
+  width: 100%;
+
+  // 1. The Name column takes all remaining space
+  .mat-column-name {
+    width: auto;
+    overflow: hidden;
+  }
+
+  // 2. Set fixed widths for other columns so they don't get squished
+  .mat-column-size {
+    width: 80px;
+  }
+
+  .mat-column-modified {
+    width: 130px;
+  }
+
+  .mat-column-star {
+    width: 48px;
+    padding: 0 !important;
+  }
+
+  tr.mat-mdc-row {
+    transition: none;
+    border-radius: var(--border-radius);
+
+    &:hover {
+      background-color: var(--hover-bg-color);
+    }
+    &.selected {
+      background-color: var(--selected-bg-color);
+    }
+
+    // Make row corners rounded
+    td:first-child {
+      border-radius: var(--border-radius) 0 0 var(--border-radius);
+    }
+    td:last-child {
+      border-radius: 0 var(--border-radius) var(--border-radius) 0;
+    }
+  }
+
+  /* HEADER STYLING */
+  th.mat-mdc-header-cell {
+    font-weight: 600;
+    color: var(--dim-color);
+    border-bottom: none;
+
+    .header-content {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xxs);
+
+      mat-icon {
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
+      }
+    }
+  }
+
+  td.mat-mdc-cell {
+    border-bottom: 1px solid transparent;
+    font-size: var(--font-size-md);
+    color: var(--window-fg-color);
+    padding: 0 var(--space-xs);
+
+    .name-cell {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      width: 100%;
+      overflow: hidden;
+
+      span {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+  }
+
+  .hidden-item {
+    mat-icon {
+      opacity: 0.6;
+    }
+  }
+}
+
+.loading-overlay {
+  position: absolute;
+  bottom: var(--space-md);
+  right: var(--space-md);
+  background: var(--view-bg-color);
+  padding: var(--space-xxs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-gnome);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-size-base);
+}
+
+.empty-folder-container {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+
+  mat-icon {
+    width: 128px;
+    height: 128px;
+    font-size: 128px;
+    color: var(--border-color);
+  }
+
+  h2 {
+    font-weight: 700;
+    color: var(--window-fg-color);
+    opacity: 0.7;
+    margin: 0;
+  }
+
+  p {
+    color: var(--dim-color);
+    max-width: 300px;
+    text-align: center;
+    margin: 0;
+  }
+}
+
+/* Scissors icon replacing file/folder icon on cut items */
+.cut-icon {
+  color: var(--dim-color);
+  border: 4px dashed var(--dim-color);
+  border-radius: var(--border-radius);
+  box-sizing: border-box;
+  opacity: 0.7;
+
+  &.list-view {
+    border-width: 2px;
+    padding: 2px;
+  }
+}
+
+.nautilus-list-container {
+  flex: 1;
+  min-height: 0;
+}
