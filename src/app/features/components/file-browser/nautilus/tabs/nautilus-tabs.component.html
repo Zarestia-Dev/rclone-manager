@@ -7,13 +7,16 @@
     class="tabs-bar"
     cdkDropList
     cdkDropListOrientation="horizontal"
+    [cdkDropListEnterPredicate]="rejectFileDrags"
     (cdkDropListDropped)="onDrop($event)"
   >
     @for (t of tabs(); track t.id) {
       <div
         class="tab"
         cdkDrag
+        [attr.data-tab-index]="$index"
         [class.active]="activeTabIndex() === $index"
+        [class.file-drag-over]="isDragging() && hoveredTabIndex() === $index"
         role="button"
         tabindex="0"
         (click)="onTabClick($index)"

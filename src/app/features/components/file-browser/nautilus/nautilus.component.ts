@@ -6,7 +6,6 @@ import {
   OnInit,
   OnDestroy,
   ViewChild,
-  ElementRef,
   signal,
   computed,
   HostListener,
@@ -18,37 +17,27 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { toSignal, toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, firstValueFrom, from, of } from 'rxjs';
 import { catchError, finalize, map, switchMap } from 'rxjs/operators';
-import { NgTemplateOutlet } from '@angular/common';
 
-// Material Modules
-import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
-import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
 import { MatButtonModule } from '@angular/material/button';
-import { MatGridListModule } from '@angular/material/grid-list';
-import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatDialog } from '@angular/material/dialog';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 // CDK
 import {
   CdkDrag,
   CdkDragDrop,
+  CdkDragEnd,
   CdkDragStart,
   CdkDropList,
   DragDropModule,
   moveItemInArray,
 } from '@angular/cdk/drag-drop';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { ScrollingModule } from '@angular/cdk/scrolling';
 
 // Services & Types
 import {
@@ -102,14 +91,14 @@ interface Tab {
 
 interface UndoEntry {
   mode: 'copy' | 'move';
-  items: Array<{
+  items: {
     srcRemote: string;
     srcPath: string;
     dstRemote: string;
     dstFullPath: string;
     isDir: boolean;
     name: string;
-  }>;
+  }[];
 }
 
 @Component({
@@ -117,24 +106,14 @@ interface UndoEntry {
   standalone: true,
   imports: [
     DragDropModule,
-    DragDropModule,
     CdkMenuModule,
-    ScrollingModule,
-    MatListModule,
     MatIconModule,
-    MatToolbarModule,
     MatSidenavModule,
     MatButtonModule,
-    MatGridListModule,
-    MatCardModule,
-    MatFormFieldModule,
-    MatInputModule,
     MatDividerModule,
     MatTooltipModule,
-    MatProgressSpinnerModule,
     MatRadioModule,
     MatCheckboxModule,
-    MatTableModule,
     NautilusSidebarComponent,
     NautilusToolbarComponent,
     NautilusTabsComponent,
@@ -249,6 +228,8 @@ export class NautilusComponent implements OnInit, OnDestroy {
   public readonly hoveredFolder = signal<FileBrowserItem | null>(null);
   /** Path-segment index (-1 = root) currently under the drag cursor. null = none. */
   public readonly hoveredSegmentIndex = signal<number | null>(null);
+  /** Tab index currently under the drag cursor (file drag hovering over a tab). null = none. */
+  public readonly hoveredTabIndex = signal<number | null>(null);
   private _dragMoveUnsub: (() => void) | null = null;
   private _lastDragHitKey = '';
 
@@ -277,8 +258,13 @@ export class NautilusComponent implements OnInit, OnDestroy {
   public readonly canRedo = computed(() => this._redoStack().length > 0);
 
   public readonly pathSegments = computed(() => {
-    const path = this.currentPath();
-    return path ? path.split('/').filter(p => p) : [];
+    const parts = this.currentPath()
+      .split('/')
+      .filter(p => p.length > 0);
+    return parts.map((name, i) => ({
+      name,
+      path: parts.slice(0, i + 1).join('/'),
+    }));
   });
 
   public readonly isEditingPath = signal(false);
@@ -348,7 +334,9 @@ export class NautilusComponent implements OnInit, OnDestroy {
         if (cfg.mode === 'local' && !b.meta.isLocal) return false;
         if (cfg.mode === 'remote' && b.meta.isLocal) return false;
         if (cfg.allowedRemotes && !b.meta.isLocal) {
-          return cfg.allowedRemotes.includes((b.meta.remote || '').replace(/:$/, ''));
+          return cfg.allowedRemotes.includes(
+            this.pathSelectionService.normalizeRemoteName(b.meta.remote ?? '')
+          );
         }
         return true;
       });
@@ -452,7 +440,9 @@ export class NautilusComponent implements OnInit, OnDestroy {
           if (cfg.mode === 'local' && !i.meta.isLocal) return false;
           if (cfg.mode === 'remote' && i.meta.isLocal) return false;
           if (cfg.allowedRemotes && !i.meta.isLocal) {
-            return cfg.allowedRemotes.includes((i.meta.remote || '').replace(/:$/, ''));
+            return cfg.allowedRemotes.includes(
+              this.pathSelectionService.normalizeRemoteName(i.meta.remote ?? '')
+            );
           }
           return true;
         });
@@ -883,13 +873,30 @@ export class NautilusComponent implements OnInit, OnDestroy {
     this._dragMoveUnsub = () => sub.unsubscribe();
   }
 
-  onDragEnded(): void {
+  onDragEnded(event?: CdkDragEnd<FileBrowserItem>): void {
+    // If the drag was released over a tab (outside any accepting drop list),
+    // cdkDropListDropped never fires — handle the operation here instead.
+    // Re-hit-test at drop point for the same reliability reason as onDropToCurrentDirectory.
+    const freshHit = event?.dropPoint ? this._resolveDropHit(event.dropPoint) : null;
+    const tabIdx = freshHit?.tabIndex ?? this.hoveredTabIndex();
+    if (tabIdx !== null && event) {
+      const items = this.getItemsToProcess(event.source.data);
+      const tab = this.tabs()[tabIdx];
+      if (items.length && tab?.remote) {
+        const sourceRemoteName = items[0].meta.remote ?? '';
+        const isSameRemote =
+          this.pathSelectionService.normalizeRemoteName(sourceRemoteName) ===
+          this.pathSelectionService.normalizeRemoteName(tab.remote.name);
+        this.performFileOperations(items, tab.remote, tab.path, isSameRemote ? 'move' : 'copy');
+      }
+    }
     this.isDragging.set(false);
     this._dragMoveUnsub?.();
     this._dragMoveUnsub = null;
     this._lastDragHitKey = '';
     this.hoveredFolder.set(null);
     this.hoveredSegmentIndex.set(null);
+    this.hoveredTabIndex.set(null);
   }
 
   onDropToStarred(event: CdkDragDrop<any>): void {
@@ -918,12 +925,21 @@ export class NautilusComponent implements OnInit, OnDestroy {
     const items = this.getItemsToProcess(event.item.data as FileBrowserItem);
     if (!items.length) return;
 
-    const targetRemoteName = bookmark.meta.remote.replace(/:$/, '');
-    const targetRemote = this.allRemotesLookup().find(r => r.name === targetRemoteName);
+    const targetRemoteName = this.pathSelectionService.normalizeRemoteName(bookmark.meta.remote);
+    const targetRemote = this.allRemotesLookup().find(
+      r => this.pathSelectionService.normalizeRemoteName(r.name) === targetRemoteName
+    );
     if (!targetRemote) return;
 
-    // We use 'copy' by default for drops onto bookmarks to be safe
-    await this.performFileOperations(items, targetRemote, bookmark.entry.Path, 'copy');
+    const isSameRemote =
+      this.pathSelectionService.normalizeRemoteName(items[0].meta.remote ?? '') ===
+      targetRemoteName;
+    await this.performFileOperations(
+      items,
+      targetRemote,
+      bookmark.entry.Path,
+      isSameRemote ? 'move' : 'copy'
+    );
   }
 
   async onDropToRemote(event: CdkDragDrop<any>, targetRemote: ExplorerRoot): Promise<void> {
@@ -932,8 +948,10 @@ export class NautilusComponent implements OnInit, OnDestroy {
     const items = this.getItemsToProcess(event.item.data as FileBrowserItem);
     if (!items.length) return;
 
-    // Use current path of the target remote (usually empty/root for sidebar drops)
-    await this.performFileOperations(items, targetRemote, '', 'copy');
+    const isSameRemote =
+      this.pathSelectionService.normalizeRemoteName(items[0].meta.remote ?? '') ===
+      this.pathSelectionService.normalizeRemoteName(targetRemote.name);
+    await this.performFileOperations(items, targetRemote, '', isSameRemote ? 'move' : 'copy');
   }
 
   async onDropToFolder(event: CdkDragDrop<any>, targetFolder: FileBrowserItem): Promise<void> {
@@ -944,41 +962,68 @@ export class NautilusComponent implements OnInit, OnDestroy {
     if (!targetRemote) return;
 
     // Default to 'move' if same remote, 'copy' if different
-    const sourceRemoteName = items[0].meta.remote || targetRemote.name;
-    const isSameRemote = sourceRemoteName === targetRemote.name;
+    const isSameRemote =
+      this.pathSelectionService.normalizeRemoteName(items[0].meta.remote) ===
+      this.pathSelectionService.normalizeRemoteName(targetRemote.name);
     const mode = isSameRemote ? 'move' : 'copy';
 
     await this.performFileOperations(items, targetRemote, targetFolder.entry.Path, mode);
   }
 
   // --- Drag hover hit-testing (cdkDragMoved) ---
-  private _onDragMove(pos: { x: number; y: number }): void {
+
+  /**
+   * Hit-tests a screen position and returns which folder/segment/tab the pointer is over.
+   * Used both during drag-move (for hover highlights) and at drop-time (to get the final target).
+   */
+  private _resolveDropHit(pos: { x: number; y: number }): {
+    folder: FileBrowserItem | null;
+    segmentIndex: number | null;
+    tabIndex: number | null;
+  } {
     const elements = document.elementsFromPoint(pos.x, pos.y) as HTMLElement[];
     const hit = elements.find(
       el =>
         !el.classList.contains('cdk-drag-dragging') &&
         !el.classList.contains('cdk-drag-preview') &&
-        (el.hasAttribute('data-folder-path') || el.hasAttribute('data-segment-index'))
+        (el.hasAttribute('data-folder-path') ||
+          el.hasAttribute('data-segment-index') ||
+          el.hasAttribute('data-tab-index'))
     ) as HTMLElement | undefined;
 
     const folderPath = hit?.getAttribute('data-folder-path') ?? null;
     const segmentAttr = hit?.getAttribute('data-segment-index') ?? null;
-    const hitKey = folderPath ?? (segmentAttr !== null ? `seg:${segmentAttr}` : '');
+    const tabAttr = hit?.getAttribute('data-tab-index') ?? null;
+
+    if (folderPath) {
+      const allFiles = [...this.files(), ...this.filesRight()];
+      return {
+        folder: allFiles.find(f => f.entry.Path === folderPath) ?? null,
+        segmentIndex: null,
+        tabIndex: null,
+      };
+    }
+    if (segmentAttr !== null) {
+      return { folder: null, segmentIndex: Number(segmentAttr), tabIndex: null };
+    }
+    if (tabAttr !== null) {
+      return { folder: null, segmentIndex: null, tabIndex: Number(tabAttr) };
+    }
+    return { folder: null, segmentIndex: null, tabIndex: null };
+  }
+
+  private _onDragMove(pos: { x: number; y: number }): void {
+    const { folder, segmentIndex, tabIndex } = this._resolveDropHit(pos);
+    const hitKey =
+      folder?.entry.Path ??
+      (segmentIndex !== null ? `seg:${segmentIndex}` : tabIndex !== null ? `tab:${tabIndex}` : '');
 
     if (hitKey === this._lastDragHitKey) return;
     this._lastDragHitKey = hitKey;
 
-    if (folderPath) {
-      const allFiles = [...this.files(), ...this.filesRight()];
-      this.hoveredFolder.set(allFiles.find(f => f.entry.Path === folderPath) ?? null);
-      this.hoveredSegmentIndex.set(null);
-    } else if (segmentAttr !== null) {
-      this.hoveredFolder.set(null);
-      this.hoveredSegmentIndex.set(Number(segmentAttr));
-    } else {
-      this.hoveredFolder.set(null);
-      this.hoveredSegmentIndex.set(null);
-    }
+    this.hoveredFolder.set(folder);
+    this.hoveredSegmentIndex.set(segmentIndex);
+    this.hoveredTabIndex.set(tabIndex);
   }
 
   /** Drop handler for the main file-area viewports. */
@@ -989,8 +1034,11 @@ export class NautilusComponent implements OnInit, OnDestroy {
     const targetRemote = paneIndex === 0 ? this.nautilusRemote() : this.nautilusRemoteRight();
     if (!targetRemote) return;
 
-    const folder = this.hoveredFolder();
-    const segIdx = this.hoveredSegmentIndex();
+    // Re-hit-test at exact drop point — more reliable than the signal which only
+    // updates while the mouse is moving (hoveredFolder may be stale/null if user slowed to a stop).
+    const resolvedFolder = this._resolveDropHit(event.dropPoint);
+    const folder = resolvedFolder.folder ?? this.hoveredFolder();
+    const segIdx = resolvedFolder.segmentIndex ?? this.hoveredSegmentIndex();
 
     let targetPath: string;
     if (folder) {
@@ -998,22 +1046,47 @@ export class NautilusComponent implements OnInit, OnDestroy {
       targetPath = folder.entry.Path;
     } else if (segIdx !== null) {
       // Dropped onto a path breadcrumb (segIdx -1 = root, 0+ = segment)
-      targetPath =
-        segIdx < 0
-          ? ''
-          : this.pathSegments()
-              .slice(0, segIdx + 1)
-              .join('/');
+      targetPath = segIdx < 0 ? '' : (this.pathSegments()[segIdx]?.path ?? '');
     } else {
       // Dropped onto empty space — move into current directory (cross-pane/cross-source only)
       if (event.previousContainer === event.container) return;
       targetPath = paneIndex === 0 ? this.currentPath() : this.currentPathRight();
     }
 
-    const sourceRemoteName = (items[0].meta.remote ?? '').replace(/:$/, '');
-    const isSameRemote = sourceRemoteName === targetRemote.name;
+    const sourceRemoteName = items[0].meta.remote ?? '';
+    const isSameRemote =
+      this.pathSelectionService.normalizeRemoteName(sourceRemoteName) ===
+      this.pathSelectionService.normalizeRemoteName(targetRemote.name);
     const mode = isSameRemote ? 'move' : 'copy';
     await this.performFileOperations(items, targetRemote, targetPath, mode);
+  }
+
+  /** Drop on a path breadcrumb segment in the toolbar. */
+  async onDropToSegment(event: CdkDragDrop<any>): Promise<void> {
+    const paneIndex = this.activePaneIndex();
+    const items = this.getItemsToProcess(event.item.data as FileBrowserItem);
+    if (!items.length) return;
+
+    const targetRemote = paneIndex === 0 ? this.nautilusRemote() : this.nautilusRemoteRight();
+    if (!targetRemote) return;
+
+    // CDK drops onto the exact button — read segment index directly from it
+    const segIdx = Number(event.container.element.nativeElement.getAttribute('data-segment-index'));
+    const targetPath = segIdx < 0 ? '' : (this.pathSegments()[segIdx]?.path ?? '');
+
+    const currentPath = paneIndex === 0 ? this.currentPath() : this.currentPathRight();
+    if (targetPath === currentPath) return;
+
+    const sourceRemoteName = items[0].meta.remote ?? '';
+    const isSameRemote =
+      this.pathSelectionService.normalizeRemoteName(sourceRemoteName) ===
+      this.pathSelectionService.normalizeRemoteName(targetRemote.name);
+    await this.performFileOperations(
+      items,
+      targetRemote,
+      targetPath,
+      isSameRemote ? 'move' : 'copy'
+    );
   }
 
   // --- Bookmarks ---
@@ -1026,7 +1099,11 @@ export class NautilusComponent implements OnInit, OnDestroy {
   }
 
   openBookmark(bookmark: FileBrowserItem): void {
-    const remoteDetails = this.allRemotesLookup().find(r => r.name === bookmark.meta.remote);
+    const remoteDetails = this.allRemotesLookup().find(
+      r =>
+        this.pathSelectionService.normalizeRemoteName(r.name) ===
+        this.pathSelectionService.normalizeRemoteName(bookmark.meta.remote)
+    );
     if (!remoteDetails) {
       this.notificationService.showError(
         this.translate.instant('nautilus.errors.bookmarkRemoteNotFound', {
@@ -1052,9 +1129,8 @@ export class NautilusComponent implements OnInit, OnDestroy {
   }
 
   navigateToSegment(index: number): void {
-    const segments = this.pathSegments();
-    const newPath = segments.slice(0, index + 1).join('/');
-    this.updatePath(newPath);
+    const seg = this.pathSegments()[index];
+    this.updatePath(seg?.path ?? '');
   }
 
   navigateToPath(rawInput: string): void {
@@ -1079,8 +1155,10 @@ export class NautilusComponent implements OnInit, OnDestroy {
     if (item.entry.IsDir) {
       if (this.starredMode()) {
         // Resolve the remote from the item metadata when clicking from Starred list
-        const remoteName = item.meta.remote.replace(/:$/, '');
-        const remote = this.allRemotesLookup().find(r => r.name === remoteName);
+        const remoteName = this.pathSelectionService.normalizeRemoteName(item.meta.remote);
+        const remote = this.allRemotesLookup().find(
+          r => this.pathSelectionService.normalizeRemoteName(r.name) === remoteName
+        );
         if (remote) {
           this.starredMode.set(false);
           this._navigate(remote, item.entry.Path, true);
@@ -1449,12 +1527,10 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
     // 2. If in starred view (no active remote), infer from item meta
     if (!root && item.meta.remote) {
-      const remoteName = item.meta.remote.replace(/:$/, '');
+      const remoteName = this.pathSelectionService.normalizeRemoteName(item.meta.remote);
       root =
         this.allRemotesLookup().find(
-          r =>
-            r.name === remoteName ||
-            this.pathSelectionService.normalizeRemoteName(r.name) === remoteName
+          r => this.pathSelectionService.normalizeRemoteName(r.name) === remoteName
         ) || null;
     }
 
@@ -1513,7 +1589,9 @@ export class NautilusComponent implements OnInit, OnDestroy {
     }
 
     // Get cached fsInfo for this remote
-    const baseName = (item?.meta.remote || currentRemote?.name || '').replace(/:$/, '');
+    const baseName = this.pathSelectionService.normalizeRemoteName(
+      item?.meta.remote || currentRemote?.name || ''
+    );
     const cachedFsInfo = this.fsInfoCache()[baseName] || null;
 
     this.dialog.open(PropertiesModalComponent, {
@@ -2075,7 +2153,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     }
 
     // Get isLocal from fsInfoCache (rclone's fsinfo.Features.IsLocal) with fallback
-    const baseName = actualRemoteName.replace(/:$/, '');
+    const baseName = this.pathSelectionService.normalizeRemoteName(actualRemoteName);
     const cachedFsInfo = this.fsInfoCache()[baseName];
     const isLocal =
       cachedFsInfo?.Features?.IsLocal ?? item.meta.isLocal ?? currentRemote?.isLocal ?? false;
@@ -2338,46 +2416,8 @@ export class NautilusComponent implements OnInit, OnDestroy {
     this.stopActiveListingJob(paneIndex);
   }
 
-  /**
-   * Identifies and stops the active rclone listing job for the given pane.
-   * Leverages the 'source: nautilus' and 'job_type: list' metadata.
-   */
   private stopActiveListingJob(paneIndex: number): void {
-    const root = paneIndex === 0 ? this.nautilusRemote() : this.nautilusRemoteRight();
-    const path = paneIndex === 0 ? this.currentPath() : this.currentPathRight();
-
-    if (!root) return;
-
-    // Normalize for robust comparison (e.g., handles "gdrive:" vs "gdrive")
-    const normalizedRemote = root.name.replace(/:$/, '');
-    const normalizedPath = path.replace(/^\//, '').replace(/\/$/, '');
-
-    // Search active jobs for a listing job matching this remote and path
-    const activeJobs = this.jobManagement.getActiveJobsSnapshot();
-    const listingJob = activeJobs.find(job => {
-      const jobRemote = (job.remote_name || '').replace(/:$/, '');
-      const jobPath = (job.source || '').replace(/^\//, '').replace(/\/$/, '');
-
-      return (
-        job.job_type === 'list' &&
-        job.origin === 'nautilus' &&
-        jobRemote === normalizedRemote &&
-        jobPath === normalizedPath
-      );
-    });
-
-    if (listingJob) {
-      console.debug('[Nautilus] Stopping listing job:', listingJob.jobid);
-      this.jobManagement.stopJob(listingJob.jobid, root.name).catch(err => {
-        console.error('[Nautilus] Failed to stop listing job:', err);
-      });
-    } else {
-      console.debug('[Nautilus] No matching listing job found to cancel.', {
-        normalizedRemote,
-        normalizedPath,
-        activeJobsCount: activeJobs.length,
-      });
-    }
+    console.log('Needs cancel listing job for pane', paneIndex);
   }
 
   selectAll(): void {

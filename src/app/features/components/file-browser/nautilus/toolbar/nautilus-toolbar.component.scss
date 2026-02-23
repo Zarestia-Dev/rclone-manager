@@ -118,6 +118,13 @@
     color: var(--window-fg-color);
     font-weight: 500;
   }
+
+  &.segment-drag-over {
+    background: rgba(var(--accent-color-rgb), 0.15);
+    outline: 2px solid var(--accent-color);
+    color: var(--accent-color);
+    border-radius: var(--border-radius);
+  }
 }
 
 .path-input {

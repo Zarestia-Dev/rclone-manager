@@ -29,7 +29,7 @@
         [value]="searchFilter()"
         (input)="searchFilterChange.emit(searchInput.value)"
         (keydown.escape)="onSearchEscape(searchInput)"
-        (blur)="isSearchModeChange.emit(false)"
+        (blur)="onSearchBlur()"
       />
     } @else if (!isEditingPath()) {
       @if (starredMode()) {
@@ -45,6 +45,10 @@
             class="path-segment"
             [class.segment-drag-over]="isDragging() && hoveredSegmentIndex() === -1"
             data-segment-index="-1"
+            cdkDropList
+            cdkDropListSortingDisabled
+            [cdkDropListEnterPredicate]="canAcceptFile() || _acceptAll"
+            (cdkDropListDropped)="droppedOnSegment.emit($event)"
             (click)="$event.stopPropagation(); updatePath.emit('')"
           >
             <mat-icon
@@ -57,16 +61,20 @@
             {{ activeRemote()?.label || ('nautilus.titles.local' | translate) }}
           </button>
 
-          @for (segment of pathSegments(); track $index) {
+          @for (segment of pathSegments(); track segment.path) {
             <span class="path-separator">/</span>
             <button
               class="path-segment"
               [class.active]="$index === pathSegments().length - 1"
               [class.segment-drag-over]="isDragging() && hoveredSegmentIndex() === $index"
               [attr.data-segment-index]="$index"
+              cdkDropList
+              cdkDropListSortingDisabled
+              [cdkDropListEnterPredicate]="canAcceptFile() || _acceptAll"
+              (cdkDropListDropped)="droppedOnSegment.emit($event)"
               (click)="$event.stopPropagation(); navigateToSegment.emit($index)"
             >
-              {{ segment }}
+              {{ segment.name }}
             </button>
           }
         </div>

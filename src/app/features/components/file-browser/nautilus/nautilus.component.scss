@@ -5,6 +5,10 @@
   height: 100vh;
   border-radius: var(--app-border-radius) !important;
   --sidenav-width: clamp(180px, 20vw, 240px);
+
+  ::ng-deep .cdk-drag-placeholder {
+    display: none !important;
+  }
 }
 
 .nautilus-sidenav {
@@ -49,107 +53,6 @@
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
-}
-
-/* Reset the list so it acts as a simple container */
-mat-nav-list {
-  padding: var(--space-xs) !important;
-  overflow: visible;
-}
-
-.bookmarks-section {
-  .new-bookmark-placeholder {
-    display: none;
-  }
-  &.cdk-drop-list-dragging {
-    .new-bookmark-placeholder {
-      display: flex !important;
-      animation: slideDownIn 0.2s ease forwards;
-    }
-
-    .grid-item,
-    tr {
-      display: none !important;
-    }
-  }
-}
-
-.remote-list-item {
-  border-radius: var(--border-radius) !important;
-  height: 36px !important;
-  padding-inline: var(--space-xs);
-  margin-block: var(--space-xxs);
-  transition: var(--transition-fast);
-
-  &.cdk-drop-list-dragging {
-    background: var(--selected-bg-color) !important;
-    .grid-item,
-    tr {
-      display: none !important;
-    }
-  }
-
-  &.selected {
-    background: var(--selected-bg-color);
-  }
-
-  span {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    color: var(--window-fg-color);
-
-    &.remote-info {
-      justify-content: space-between !important;
-      width: 100%;
-
-      mat-icon {
-        &.unmount-button {
-          padding: var(--space-xxs);
-          border-radius: var(--radius-xs);
-          &:hover {
-            background: var(--hover-bg-color);
-            color: var(--window-fg-color);
-          }
-        }
-      }
-
-      p {
-        font-weight: 480;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        margin: 0 !important;
-        max-width: calc(var(--sidenav-width) - 58px);
-      }
-    }
-  }
-}
-
-/* This style will apply when the placeholder is rendered inside the Sidebar list */
-.new-bookmark-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-xs);
-  width: 100%;
-  height: 36px;
-  color: var(--accent-color);
-  font-weight: 600;
-  font-size: var(--font-size-md);
-  margin-block: var(--space-xxs);
-  background: rgba(var(--accent-color-rgb), 0.08);
-  border: 2px dashed var(--accent-color);
-  border-radius: var(--border-radius);
-  box-sizing: border-box;
-}
-
-/* The Reordering Placeholder */
-.bookmark-placeholder {
-  background: rgba(var(--primary-color-rgb), 0.1);
-  box-shadow: 0 0 0 1px var(--primary-color);
-  min-height: 36px;
-  border-radius: var(--border-radius);
 }
 
 /*

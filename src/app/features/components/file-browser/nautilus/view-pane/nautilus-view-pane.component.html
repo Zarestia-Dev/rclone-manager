@@ -12,16 +12,14 @@
       (keydown.enter)="clearSelection.emit()"
       (keydown.space)="clearSelection.emit()"
       tabindex="0"
-      [cdkContextMenuTriggerFor]="fileMenu"
+      [cdkContextMenuTriggerFor]="fileMenu()"
       [cdkContextMenuTriggerData]="{ $implicit: null }"
       (cdkContextMenuOpened)="setContextItem.emit(null)"
       cdkDropList
       [cdkDropListEnterPredicate]="canAcceptFile()"
       [cdkDropListHasAnchor]="true"
       [cdkDropListSortingDisabled]="true"
-      (cdkDropListDropped)="
-        onDropToCurrentDirectory.emit({ event: $event, paneIndex: paneIndex() })
-      "
+      (cdkDropListDropped)="dropToCurrentDirectory.emit({ event: $event, paneIndex: paneIndex() })"
     >
       <div
         class="grid"
@@ -32,11 +30,11 @@
             class="grid-item"
             cdkDrag
             [cdkDragData]="item"
-            (cdkDragStarted)="onDragStarted.emit($event)"
-            (cdkDragEnded)="onDragEnded.emit()"
-            (click)="onItemClick.emit({ item, event: $event, index: $index })"
-            (keydown.enter)="onItemClick.emit({ item, event: $event, index: $index })"
-            (keydown.space)="onItemClick.emit({ item, event: $event, index: $index })"
+            (cdkDragStarted)="dragStarted.emit($event)"
+            (cdkDragEnded)="dragEnded.emit($event)"
+            (click)="itemClick.emit({ item, event: $event, index: $index })"
+            (keydown.enter)="itemClick.emit({ item, event: $event, index: $index })"
+            (keydown.space)="itemClick.emit({ item, event: $event, index: $index })"
             (dblclick)="navigateTo.emit(item)"
             [cdkContextMenuTriggerFor]="fileMenu()"
             [cdkContextMenuTriggerData]="{ $implicit: item }"
@@ -85,15 +83,13 @@
       (click)="clearSelection.emit()"
       (keydown.enter)="clearSelection.emit()"
       tabindex="0"
-      [cdkContextMenuTriggerFor]="fileMenu"
+      [cdkContextMenuTriggerFor]="fileMenu()"
       (cdkContextMenuOpened)="setContextItem.emit(null)"
       cdkDropList
       [cdkDropListEnterPredicate]="canAcceptFile()"
       [cdkDropListHasAnchor]="true"
       [cdkDropListSortingDisabled]="true"
-      (cdkDropListDropped)="
-        onDropToCurrentDirectory.emit({ event: $event, paneIndex: paneIndex() })
-      "
+      (cdkDropListDropped)="dropToCurrentDirectory.emit({ event: $event, paneIndex: paneIndex() })"
     >
       <table mat-table [dataSource]="files()" class="nautilus-table">
         <ng-container matColumnDef="name">
@@ -188,12 +184,12 @@
           *matRowDef="let item; columns: displayedColumns(); let i = index"
           cdkDrag
           [cdkDragData]="item"
-          (cdkDragStarted)="onDragStarted.emit($event)"
-          (cdkDragEnded)="onDragEnded.emit()"
-          (click)="onItemClick.emit({ item, event: $event, index: i })"
-          (keydown.enter)="onItemClick.emit({ item, event: $event, index: i })"
+          (cdkDragStarted)="dragStarted.emit($event)"
+          (cdkDragEnded)="dragEnded.emit($event)"
+          (click)="itemClick.emit({ item, event: $event, index: i })"
+          (keydown.enter)="itemClick.emit({ item, event: $event, index: i })"
           (dblclick)="navigateTo.emit(item)"
-          [cdkContextMenuTriggerFor]="fileMenu"
+          [cdkContextMenuTriggerFor]="fileMenu()"
           [cdkContextMenuTriggerData]="{ $implicit: item }"
           (cdkContextMenuOpened)="setContextItem.emit(item)"
           [class.selected]="selection().has(getItemKey()(item))"

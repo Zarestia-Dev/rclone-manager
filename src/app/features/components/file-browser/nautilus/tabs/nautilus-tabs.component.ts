@@ -35,6 +35,8 @@ export class NautilusTabsComponent {
   // --- Inputs ---
   public readonly tabs = input.required<any[]>(); // Using any[] to avoid strict import tying for now, but typing it as Tab[] from parent.
   public readonly activeTabIndex = input.required<number>();
+  public readonly isDragging = input<boolean>(false);
+  public readonly hoveredTabIndex = input<number | null>(null);
 
   // --- Outputs ---
   public readonly switchTab = output<number>();
@@ -77,6 +79,11 @@ export class NautilusTabsComponent {
       currentIndex: event.currentIndex,
     });
   }
+
+  /** Reject FileBrowserItem drags — only allow tab reorder drags into the tab bar. */
+  readonly rejectFileDrags = (item: import('@angular/cdk/drag-drop').CdkDrag): boolean => {
+    return !(item.data?.entry?.Path !== undefined);
+  };
 
   onWheelScroll(event: WheelEvent) {
     if (this.tabsScrollContainer?.nativeElement) {

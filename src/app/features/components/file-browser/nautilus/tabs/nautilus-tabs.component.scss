@@ -84,6 +84,13 @@
       font-weight: 600;
     }
 
+    &.file-drag-over {
+      background: rgba(var(--accent-color-rgb), 0.15);
+      outline: 2px solid var(--accent-color);
+      color: var(--accent-color);
+      border-radius: var(--radius-xs);
+    }
+
     &:hover:not(.active) {
       background: var(--hover-bg-color);
     }
@@ -108,8 +115,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      height: 28px;
-      width: 28px;
+      width: var(--icon-size-lg);
+      height: var(--icon-size-lg);
       background: none;
       border: none;
       color: var(--window-fg-color);
@@ -127,11 +134,6 @@
           color: var(--window-fg-color);
         }
       }
-    }
-
-    /* Dragging Visuals */
-    &.cdk-drag-placeholder {
-      opacity: 0;
     }
   }
 

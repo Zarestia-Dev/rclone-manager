@@ -5,7 +5,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { DragDropModule, CdkDragDrop, CdkDragStart } from '@angular/cdk/drag-drop';
+import { DragDropModule, CdkDragDrop, CdkDragEnd, CdkDragStart } from '@angular/cdk/drag-drop';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { MatTableModule } from '@angular/material/table';
 import { TranslateModule } from '@ngx-translate/core';
@@ -69,13 +69,13 @@ export class NautilusViewPaneComponent {
   public readonly switchPane = output<0 | 1>();
   public readonly clearSelection = output<void>();
   public readonly setContextItem = output<any | null>();
-  public readonly onDropToCurrentDirectory = output<{
+  public readonly dropToCurrentDirectory = output<{
     event: CdkDragDrop<any>;
     paneIndex: 0 | 1;
   }>();
-  public readonly onDragStarted = output<CdkDragStart>();
-  public readonly onDragEnded = output<void>();
-  public readonly onItemClick = output<{
+  public readonly dragStarted = output<CdkDragStart>();
+  public readonly dragEnded = output<CdkDragEnd<any>>();
+  public readonly itemClick = output<{
     item: any;
     event: Event;
     index: number;
