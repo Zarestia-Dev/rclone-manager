@@ -9,7 +9,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { CdkMenuModule } from '@angular/cdk/menu';
 
-import { IconService } from '@app/services';
+import { IconService, PathSelectionService } from '@app/services';
 import { ExplorerRoot, FileBrowserItem } from '@app/types';
 import { OperationsPanelComponent } from '../../operations-panel/operations-panel.component';
 
@@ -33,6 +33,7 @@ import { OperationsPanelComponent } from '../../operations-panel/operations-pane
 })
 export class NautilusSidebarComponent {
   public readonly iconService = inject(IconService);
+  private readonly pathSelectionService = inject(PathSelectionService);
 
   // --- Inputs ---
   public readonly isMobile = input.required<boolean>();
@@ -121,7 +122,10 @@ export class NautilusSidebarComponent {
   /** Returns true when the user is currently browsing this bookmark's exact path. */
   isBookmarkSelected(bm: FileBrowserItem): boolean {
     if (this.starredMode() || !this.nautilusRemote()) return false;
-    const bmRemote = (bm.meta.remote ?? '').replace(/:$/, '');
+    const bmRemote = this.pathSelectionService.normalizeRemoteName(
+      bm.meta.remote ?? '',
+      bm.meta.isLocal
+    );
     return this.nautilusRemote()!.name === bmRemote && this.currentPath() === bm.entry.Path;
   }
 

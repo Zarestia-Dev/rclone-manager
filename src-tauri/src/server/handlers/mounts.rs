@@ -63,6 +63,8 @@ pub async fn mount_remote_profile_handler(
     let params = ProfileParams {
         remote_name: body.params.remote_name,
         profile_name: body.params.profile_name,
+        source: body.params.source,
+        no_cache: body.params.no_cache,
     };
     mount_remote_profile(state.app_handle.clone(), params)
         .await
@@ -99,6 +101,8 @@ pub async fn start_serve_profile_handler(
     let params = ProfileParams {
         remote_name: body.params.remote_name,
         profile_name: body.params.profile_name,
+        source: body.params.source,
+        no_cache: body.params.no_cache,
     };
     let resp = start_serve_profile(state.app_handle.clone(), params)
         .await

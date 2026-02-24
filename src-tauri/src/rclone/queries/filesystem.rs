@@ -45,6 +45,7 @@ fn create_fs_params(
 pub struct LocalDrive {
     name: String,
     label: String,
+    show_name: bool,
 }
 
 #[tauri::command]
@@ -102,87 +103,93 @@ pub async fn get_remote_paths(
     run_fs_command(app, state.client.clone(), operations::LIST, params).await
 }
 
-#[cfg(windows)]
 #[tauri::command]
-pub async fn get_local_drives() -> Result<Vec<LocalDrive>, String> {
-    use std::ffi::OsStr;
-    use std::os::windows::ffi::OsStrExt;
-    use windows_sys::Win32::Storage::FileSystem::GetVolumeInformationW;
+pub async fn get_local_drives(
+    app: AppHandle,
+    state: State<'_, RcloneState>,
+) -> Result<Vec<LocalDrive>, String> {
+    use crate::utils::rclone::endpoints::{core, operations};
+    use futures::future::join_all;
+
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+
+    // 1. Get remote OS
+    let version_res = backend.post_json(&state.client, core::VERSION, None).await;
+
+    let os = match version_res {
+        Ok(v) => v
+            .get("os")
+            .and_then(|o| o.as_str())
+            .unwrap_or("unknown")
+            .to_string(),
+        Err(_) => std::env::consts::OS.to_string(), // Fallback
+    };
 
     let mut drives = Vec::new();
 
-    for i in b'A'..=b'Z' {
-        let drive_name = format!("{}:\\", i as char);
-        if std::path::Path::new(&drive_name).exists() {
-            let wide_drive_name: Vec<u16> = OsStr::new(&drive_name)
-                .encode_wide()
-                .chain(Some(0))
-                .collect();
+    if os == "windows" {
+        let mut futures = Vec::new();
+        // Probe A: through Z:
+        for i in b'A'..=b'Z' {
+            let drive_name = format!("{}:", i as char);
+            let drive_path = format!("{}:\\", i as char);
 
-            let mut volume_name = [0u16; 256];
-            let mut fs_name_buf = [0u16; 256];
-            let result = unsafe {
-                GetVolumeInformationW(
-                    wide_drive_name.as_ptr(),
-                    volume_name.as_mut_ptr(),
-                    volume_name.len() as u32,
-                    std::ptr::null_mut(),
-                    std::ptr::null_mut(),
-                    std::ptr::null_mut(),
-                    fs_name_buf.as_mut_ptr(),
-                    fs_name_buf.len() as u32,
-                )
-            };
+            let app_clone = app.clone();
+            let state_client = state.client.clone();
+            let drive_name_clone = drive_name.clone();
 
-            if result != 0 {
-                let fs_len = fs_name_buf
-                    .iter()
-                    .position(|&c| c == 0)
-                    .unwrap_or(fs_name_buf.len());
-                let fs_name = String::from_utf16_lossy(&fs_name_buf[..fs_len]);
-                if fs_name.contains("FUSE") {
-                    continue;
+            futures.push(async move {
+                let params = create_fs_params(drive_path, None);
+                let res = run_fs_command(app_clone, state_client, operations::ABOUT, params).await;
+                if res.is_ok() {
+                    Some(LocalDrive {
+                        name: drive_name_clone,
+                        label: "nautilus.titles.localDisk".to_string(),
+                        show_name: true,
+                    })
+                } else {
+                    None
                 }
+            });
+        }
 
-                let len = volume_name
-                    .iter()
-                    .position(|&c| c == 0)
-                    .unwrap_or(volume_name.len());
-                let label = String::from_utf16_lossy(&volume_name[..len]);
+        let results = join_all(futures).await;
+        for res in results.into_iter().flatten() {
+            drives.push(res);
+        }
 
-                drives.push(LocalDrive {
-                    name: format!("{}:", i as char),
-                    label: if label.is_empty() {
-                        "Local Disk".to_string()
-                    } else {
-                        label
-                    },
-                });
-            }
+        // Fallback if somehow none are detected
+        if drives.is_empty() {
+            drives.push(LocalDrive {
+                name: "C:".to_string(),
+                label: "nautilus.titles.localDisk".to_string(),
+                show_name: true,
+            });
+        }
+    } else {
+        // Unix-like systems
+        drives.push(LocalDrive {
+            name: "/".to_string(),
+            label: "nautilus.titles.fileSystem".to_string(),
+            show_name: false,
+        });
+
+        // Attempt to get home dir. If it's local, we can use the environment.
+        let home_path = if backend.is_local {
+            std::env::var("HOME").ok()
+        } else {
+            None
+        };
+
+        if let Some(path) = home_path {
+            drives.push(LocalDrive {
+                name: path,
+                label: "titlebar.home".to_string(),
+                show_name: false,
+            });
         }
     }
-    Ok(drives)
-}
-
-#[cfg(not(windows))]
-#[tauri::command]
-pub async fn get_local_drives() -> Result<Vec<LocalDrive>, String> {
-    use std::env;
-    let mut drives = Vec::new();
-
-    // Add Home directory if available
-    if let Ok(home) = env::var("HOME") {
-        drives.push(LocalDrive {
-            name: home,
-            label: "Home".to_string(),
-        });
-    }
-
-    // Add root filesystem
-    drives.push(LocalDrive {
-        name: "/".to_string(),
-        label: "File System".to_string(),
-    });
 
     Ok(drives)
 }

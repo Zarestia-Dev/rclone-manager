@@ -7,6 +7,7 @@ import {
   EventEmitter,
   Output,
   signal,
+  computed,
   ViewChild,
   ElementRef,
 } from '@angular/core';
@@ -115,8 +116,6 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     items: Entry[];
     currentIndex: number;
     url: string;
-    fileType: string;
-    name: string;
     isLocal: boolean;
     remoteName: string;
   };
@@ -135,9 +134,15 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
   sanitizedUrl!: SafeResourceUrl;
 
+  currentIndex = signal(0);
+  currentItem = computed(() => this.data.items[this.currentIndex()]);
+  fileCategory = computed(() => this.iconService.getFileTypeCategory(this.currentItem()));
+  currentFileType = signal<string>('text');
+  fileName = computed(() => this.currentItem().Name);
+  fileSize = computed(() => this.currentItem().Size ?? null);
+
   textContent = signal('');
   folderSize = signal<{ count: number; bytes: number } | null>(null);
-  fileSize = signal<number | null>(null);
 
   isLoading = signal(true);
   isDownloading = signal(false);
@@ -160,11 +165,9 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
   @Output() closeViewer = new EventEmitter<void>();
 
-  async ngOnInit(): Promise<void> {
-    // Initialize file size for the first item
-    const item = this.data.items[this.data.currentIndex];
-    this.fileSize.set(item.Size ?? null);
-    await this.updateContent();
+  ngOnInit(): void {
+    this.currentIndex.set(this.data.currentIndex);
+    this.updateData();
   }
 
   ngOnDestroy(): void {
@@ -226,7 +229,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     }
 
     // Detect language based on extension
-    const ext = this.data.name.split('.').pop()?.toLowerCase() || '';
+    const ext = this.fileName().split('.').pop()?.toLowerCase() || '';
     switch (ext) {
       case 'js':
         extensions.push(cmJavascript());
@@ -297,7 +300,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     if (this.isSaving()) return;
 
     this.isSaving.set(true);
-    const item = this.data.items[this.data.currentIndex];
+    const item = this.currentItem();
 
     try {
       const fsName = this.data.isLocal
@@ -318,7 +321,9 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
       this.textContent.set(this.editContent());
       this.isEditing.set(false);
-      this.fileSize.set(new Blob([this.editContent()]).size);
+      // Update the size in the underlying item to reflect changes in computed signal
+      item.Size = new Blob([this.editContent()]).size;
+
       this.notificationService.showSuccess(
         this.translate.instant('fileBrowser.fileViewer.saveSuccess')
       );
@@ -336,7 +341,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
    * Check if file is markdown
    */
   isMarkdownFile(): boolean {
-    const name = this.data.name.toLowerCase();
+    const name = this.fileName().toLowerCase();
     return name.endsWith('.md') || name.endsWith('.markdown');
   }
 
@@ -345,14 +350,14 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
    */
   async toggleMarkdownPreview(): Promise<void> {
     if (!this.showMarkdownPreview() && this.textContent()) {
-      const item = this.data.items[this.data.currentIndex];
+      const item = this.currentItem();
       let content = this.textContent();
 
       // Helper to handle async replacements
       const replaceAsync = async (
         str: string,
         regex: RegExp,
-        asyncFn: (match: string, ...args: any[]) => Promise<string>
+        asyncFn: (match: string, ...args: string[]) => Promise<string>
       ): Promise<string> => {
         const promises: Promise<string>[] = [];
         str.replace(regex, (match, ...args) => {
@@ -466,8 +471,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.isEditing.set(false);
     this.editContent.set('');
     try {
-      if (this.data.fileType === 'directory') {
-        const item = this.data.items[this.data.currentIndex];
+      if (this.currentFileType() === 'directory') {
+        const item = this.currentItem();
         // Logic is now robust for any path structure.
         let fsName = this.data.remoteName;
 
@@ -495,7 +500,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
         return;
       }
 
-      if (this.data.fileType === 'binary') {
+      if (this.fileCategory() === 'binary') {
         // Show "Cannot preview" immediately - no download needed
         this.isLoading.set(false);
         return;
@@ -504,8 +509,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       this.sanitizedUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.data.url);
 
       // Text-based files: try to load as text, browser will handle what it can
-      const textTypes = ['text', 'previewable'];
-      if (textTypes.includes(this.data.fileType)) {
+      if (this.fileCategory() === 'text') {
         this.http
           .get(this.data.url, {
             responseType: 'text',
@@ -517,14 +521,14 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
             catchError(err => {
               // Failed to load - probably binary
               console.warn('Browser cannot render file:', err);
-              this.data.fileType = 'binary';
+              this.currentFileType.set('binary'); // Update signal
               return of(null);
             })
           )
           .subscribe(res => {
             if (res?.body) {
               if (this.looksLikeBinary(res.body)) {
-                this.data.fileType = 'binary';
+                this.currentFileType.set('binary'); // Update signal
               } else {
                 this.textContent.set(res.body);
                 // Initialize CodeMirror in read-only mode
@@ -538,7 +542,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
       // For media types (image, video, audio, pdf), loading handled by element events
       const mediaTypes = ['image', 'video', 'audio', 'pdf'];
-      if (!mediaTypes.includes(this.data.fileType)) {
+      if (!mediaTypes.includes(this.currentFileType())) {
         this.isLoading.set(false);
       }
     } catch (error) {
@@ -581,34 +585,31 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   onLoadError(): void {
     this.isLoading.set(false);
     this.notificationService.showError(
-      this.translate.instant('fileBrowser.fileViewer.errorLoadFile', { name: this.data.name })
+      this.translate.instant('fileBrowser.fileViewer.errorLoadFile', { name: this.fileName() })
     );
-    console.error('Failed to load file:', this.data.name);
+    console.error('Failed to load file:', this.fileName());
   }
 
-  async next(): Promise<void> {
-    if (this.data.currentIndex < this.data.items.length - 1) {
-      this.data.currentIndex++;
+  async back(): Promise<void> {
+    if (this.currentIndex() > 0) {
+      this.currentIndex.update(i => i - 1);
       await this.updateData();
     }
   }
 
-  async back(): Promise<void> {
-    if (this.data.currentIndex > 0) {
-      this.data.currentIndex--;
+  async next(): Promise<void> {
+    if (this.currentIndex() < this.data.items.length - 1) {
+      this.currentIndex.update(i => i + 1);
       await this.updateData();
     }
   }
 
   async updateData(): Promise<void> {
-    const item = this.data.items[this.data.currentIndex];
-    this.data.name = item.Name;
-    this.data.fileType = await this.fileViewerService.getFileType(
-      item,
-      this.data.remoteName,
-      this.data.isLocal
+    const item = this.currentItem();
+
+    this.currentFileType.set(
+      await this.fileViewerService.getFileType(item, this.data.remoteName, this.data.isLocal)
     );
-    this.fileSize.set(item.Size ?? null);
 
     this.data.url = await this.fileViewerService.generateUrl(
       item,
@@ -632,13 +633,13 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       const selectedPath = await this.fileSystemService.selectFolder();
 
       // Build destination path with filename using OS-aware separator
-      const fullDestPath = this.uiStateService.joinPath(selectedPath, this.data.name);
+      const fullDestPath = this.uiStateService.joinPath(selectedPath, this.fileName());
 
       // Start the copy job
       await this.jobManagementService.copyUrl(selectedPath, fullDestPath, this.data.url, true);
 
       this.notificationService.openSnackBar(
-        this.translate.instant('fileBrowser.fileViewer.downloading', { name: this.data.name }),
+        this.translate.instant('fileBrowser.fileViewer.downloading', { name: this.fileName() }),
         'OK'
       );
     } catch (err) {

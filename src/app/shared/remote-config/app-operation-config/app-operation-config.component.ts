@@ -19,7 +19,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatDividerModule } from '@angular/material/divider';
 import { Observable } from 'rxjs';
-import { CronValidationResponse, EditTarget, Entry } from '@app/types';
+import { CronValidationResponse, EditTarget, Entry, FileBrowserItem } from '@app/types';
 import { FileSystemService, PathSelectionService, PathSelectionState } from '@app/services';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { CdkMenuModule } from '@angular/cdk/menu';
@@ -325,15 +325,17 @@ export class OperationConfigComponent {
       initialLocation,
     });
 
-    if (!result.cancelled && result.paths.length > 0) {
-      this.handleFilePickerResult(group, result.paths[0]);
+    if (!result.cancelled && result.items.length > 0) {
+      this.handleFilePickerResult(group, result.items[0]);
     }
   }
 
-  private handleFilePickerResult(group: PathGroup, fullPath: string): void {
-    const { remoteName, path } = this.parsePickerResultPath(fullPath);
+  private handleFilePickerResult(group: PathGroup, item: FileBrowserItem): void {
+    const remoteName = this.pathSelectionService.normalizeRemoteName(item.meta.remote || '');
+    const isLocal = item.meta.isLocal;
+    const path = item.entry.Path;
 
-    if (this.isMount() && group === 'dest' && remoteName !== '') {
+    if (this.isMount() && group === 'dest' && !isLocal) {
       this.notificationService.showError(
         this.translate.instant('wizards.appOperation.mountDestMustBeLocal')
       );
@@ -341,7 +343,11 @@ export class OperationConfigComponent {
     }
 
     let pathTypeValue = 'local';
-    if (remoteName === this.currentRemoteName()) {
+    if (isLocal) {
+      pathTypeValue = 'local';
+    } else if (
+      remoteName === this.pathSelectionService.normalizeRemoteName(this.currentRemoteName())
+    ) {
       pathTypeValue = 'currentRemote';
     } else if (remoteName !== '') {
       pathTypeValue = `otherRemote:${remoteName}`;
@@ -369,22 +375,6 @@ export class OperationConfigComponent {
 
     if (!prefix) return undefined;
     return path ? `${prefix}${path}` : prefix;
-  }
-
-  private parsePickerResultPath(fullPath: string): { remoteName: string; path: string } {
-    const colonIdx = fullPath.indexOf(':');
-    // Local path checks
-    if (colonIdx === -1 || fullPath.substring(0, colonIdx).length === 1) {
-      return { remoteName: '', path: fullPath };
-    }
-
-    const potentialRemote = fullPath.substring(0, colonIdx);
-    const isKnown =
-      potentialRemote === this.currentRemoteName() || this.otherRemotes().includes(potentialRemote);
-
-    return isKnown
-      ? { remoteName: potentialRemote, path: fullPath.substring(colonIdx + 1) }
-      : { remoteName: '', path: fullPath };
   }
 
   private updatePathForm(group: PathGroup, path: string, pathTypeValue: string): void {

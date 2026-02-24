@@ -408,7 +408,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
                 ({
                   entry: f,
                   meta: {
-                    remote: fsName,
+                    remote: this.pathSelectionService.normalizeRemoteName(fsName),
                     isLocal: remote.isLocal,
                     remoteType: remote.type,
                   },
@@ -522,7 +522,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
                 ({
                   entry: f,
                   meta: {
-                    remote: fsName,
+                    remote: this.pathSelectionService.normalizeRemoteName(fsName),
                     isLocal: remote.isLocal,
                     remoteType: remote.type,
                   },
@@ -2165,26 +2165,36 @@ export class NautilusComponent implements OnInit, OnDestroy {
   }
 
   confirmSelection(): void {
-    const items = this.getSelectedItemsList();
-    let paths = items.map(item => item.entry.Path);
+    let items = this.getSelectedItemsList();
     const remote = this.nautilusRemote();
-    if (paths.length === 0 && this.pickerOptions().selection === 'folders') {
-      paths = [this.currentPath()];
+    const currentPath = this.currentPath();
+
+    // If no items are selected and we are in folder selection mode,
+    // we use the current directory as the selection.
+    if (items.length === 0 && this.pickerOptions().selection === 'folders' && remote) {
+      const name = currentPath.split('/').pop() || remote.name;
+      items = [
+        {
+          entry: {
+            Name: name,
+            Path: currentPath,
+            IsDir: true,
+            Size: -1,
+            ModTime: new Date().toISOString(),
+            ID: '',
+            MimeType: 'inode/directory',
+          },
+          meta: {
+            remote: remote.name,
+            isLocal: remote.isLocal,
+            remoteType: remote.type,
+          },
+        },
+      ];
     }
+
     const minSel = this.pickerOptions().minSelection ?? 0;
-    const prefix = !remote?.isLocal
-      ? this.pathSelectionService.normalizeRemoteForRclone(remote?.name ?? '')
-      : remote?.name;
-
-    const fullPaths = paths.map(p => {
-      if (remote?.isLocal) {
-        const sep = prefix?.endsWith('/') ? '' : '/';
-        return `${prefix}${sep}${p}`;
-      }
-      return `${prefix}${p}`;
-    });
-
-    if (this.isPickerMode() && fullPaths.length < minSel) {
+    if (this.isPickerMode() && items.length < minSel) {
       this.notificationService.showError(
         this.translate.instant('nautilus.errors.minSelection', {
           min: minSel,
@@ -2193,7 +2203,8 @@ export class NautilusComponent implements OnInit, OnDestroy {
       );
       return;
     }
-    this.nautilusService.closeFilePicker(fullPaths);
+
+    this.nautilusService.closeFilePicker(items);
   }
 
   onClose(): void {

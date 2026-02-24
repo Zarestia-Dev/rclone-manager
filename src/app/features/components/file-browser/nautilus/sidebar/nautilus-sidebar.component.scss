@@ -66,6 +66,16 @@ mat-nav-list {
   }
 }
 
+.empty-bookmarks-hint {
+  gap: var(--space-xs);
+  padding: var(--space-xs);
+  border: 1.5px dashed var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--dim-color);
+  text-align: center;
+  font-size: var(--font-size-xs);
+}
+
 .remote-list-item {
   border-radius: var(--border-radius) !important;
   height: 36px !important;

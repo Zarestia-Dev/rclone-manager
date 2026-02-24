@@ -77,6 +77,10 @@
               </span>
             </span>
           </mat-list-item>
+        } @empty {
+          <div class="empty-bookmarks-hint">
+            <span>{{ 'nautilus.bookmarks.emptyHint' | translate }}</span>
+          </div>
         }
       </div>
 
@@ -102,7 +106,12 @@
           <span class="remote-info">
             <span class="remote-icon">
               <mat-icon matListIcon svgIcon="hard-drive"></mat-icon>
-              <p matLine>{{ drive.label }}</p>
+              <p matLine>
+                {{ drive.label | translate }}
+                @if (drive.showName) {
+                  ({{ drive.name }})
+                }
+              </p>
             </span>
           </span>
         </mat-list-item>

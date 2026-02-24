@@ -210,6 +210,7 @@ export interface Entry {
 export interface LocalDrive {
   name: string; // "C:" or "/" or "/home/user"
   label: string; // "Local Disk" or "File System"
+  show_name: boolean;
 }
 
 export interface ExplorerRoot {
@@ -217,4 +218,5 @@ export interface ExplorerRoot {
   label: string;
   type: string; // Icon name
   isLocal: boolean;
+  showName?: boolean;
 }
