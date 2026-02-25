@@ -275,7 +275,10 @@ mod tests {
         cache
             .add_job(mock_job(2, "s3:", JobType::Copy, None), None)
             .await;
-        cache.complete_job(2, false, Some("failed".to_string()), None).await.unwrap();
+        cache
+            .complete_job(2, false, Some("failed".to_string()), None)
+            .await
+            .unwrap();
         let job = cache.get_job(2).await.unwrap();
         assert_eq!(job.status, JobStatus::Failed);
         assert_eq!(job.error, Some("failed".to_string()));
