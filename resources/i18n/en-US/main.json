@@ -2039,8 +2039,10 @@
       "undoFailed": "Undo failed for {{count}} items",
       "redoFailed": "Redo failed for {{count}} items",
       "rmdirsFailed": "Failed to remove empty folders in \"{{name}}\": {{error}}",
-      "openFileFailed": "Dosya açılamıyor: uzak sunucu bağlamı eksik",
-      "minSelection": "Lütfen en az {{min}} öge seçin."
+      "createFolderFailed": "Failed to create folder \"{{name}}\": {{error}}",
+      "emptyTrashFailed": "Failed to empty trash in {{remote}}: {{error}}",
+      "openFileFailed": "Cannot open file: missing remote server context",
+      "minSelection": "Please select at least {{min}} item{{s}}."
     },
     "contextMenu": {
       "open": "Open",
@@ -2085,7 +2087,7 @@
     },
     "notifications": {
       "undo": "Undo",
-      "trashEmptied": "Cleanup operation started",
+      "trashEmptied": "Cleanup operation completed",
       "locationCopied": "Location copied to clipboard",
       "rmdirsStarted": "Removing empty folders in \"{{name}}\"...",
       "deleteStarted": "Deleting {{count}} items...",
