@@ -770,12 +770,7 @@
               <div class="debug-section">
                 <h4>{{ 'modals.about.gc' | translate }}</h4>
                 <div class="action-row" style="margin-top: var(--space-md)">
-                  <button
-                    mat-flat-button
-                    color="primary"
-                    (click)="runGarbageCollector()"
-                    [disabled]="runningGc()"
-                  >
+                  <button mat-flat-button (click)="runGarbageCollector()" [disabled]="runningGc()">
                     @if (runningGc()) {
                       <mat-spinner diameter="16"></mat-spinner>
                       {{ 'modals.about.runningGc' | translate }}

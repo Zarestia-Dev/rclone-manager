@@ -6,10 +6,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Zarestia-Dev/rclone-manager/wiki/Installation-Headless">
+  <a href="https://hakanismail.info/zarestia/rclone-manager/docs/installation-headless">
     <img src="https://img.shields.io/badge/📚_Read_Installation_Guide-blue?style=for-the-badge" alt="Read Installation Guide">
   </a>
-  <a href="https://github.com/Zarestia-Dev/rclone-manager/wiki/Configuration-Headless">
+  <a href="https://hakanismail.info/zarestia/rclone-manager/docs/configuration-headless">
     <img src="https://img.shields.io/badge/⚙️_Configuration_&_Auth-gray?style=for-the-badge" alt="Configuration Guide">
   </a>
 </p>
@@ -53,7 +53,7 @@ docker run -d \
 - **OAuth Redirect:** Port `53682` (Required for Google Drive/OneDrive auth).
 
 > 🔐 **Need Authentication or HTTPS?**
-> Check the **[Configuration Guide](https://github.com/Zarestia-Dev/rclone-manager/wiki/Configuration-Headless)** for enabling password protection and TLS.
+> Check the **[Configuration Guide](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-headless)** for enabling password protection and TLS.
 
 ---
 
@@ -80,7 +80,7 @@ docker run -d \
 
 ## 🔗 Resources
 
-- 📚 **[Documentation Wiki](https://github.com/Zarestia-Dev/rclone-manager/wiki)**
+- 📚 **[Documentation Wiki](https://hakanismail.info/zarestia/rclone-manager/docs)**
 - 🐛 **[Report a Bug](https://github.com/Zarestia-Dev/rclone-manager/issues)**
 - 💬 **[Discussions](https://github.com/Zarestia-Dev/rclone-manager/discussions)**
 

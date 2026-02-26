@@ -71,7 +71,7 @@ Documentation improvements are always welcome! This includes:
 
 - Fixing typos or clarifying existing docs
 - Adding examples or tutorials
-- Updating the [Wiki](https://github.com/Zarestia-Dev/rclone-manager/wiki)
+- Updating the [Wiki](https://hakanismail.info/zarestia/rclone-manager/docs)
 - Improving code comments
 
 ### Adding Translations
@@ -229,7 +229,7 @@ Before you begin, ensure you have the following installed:
 - **macOS**: Xcode Command Line Tools
 - **Windows**: Visual Studio Build Tools or MSVC
 
-For detailed platform-specific prerequisites, see the [Building Wiki](https://github.com/Zarestia-Dev/rclone-manager/wiki/Building).
+For detailed platform-specific prerequisites, see the [Building Wiki](https://hakanismail.info/zarestia/rclone-manager/docs/building).
 
 ### Setting Up the Project
 
@@ -448,7 +448,7 @@ Currently, the project uses manual testing. We welcome contributions to add auto
 
 ### Documentation
 
-- **[Wiki](https://github.com/Zarestia-Dev/rclone-manager/wiki)** — Building instructions, installation guides, and more
+- **[Wiki](https://hakanismail.info/zarestia/rclone-manager/docs)** — Building instructions, installation guides, and more
 - **[LINTING.md](LINTING.md)** — Detailed linting and formatting guide
 - **[ISSUES.md](ISSUES.md)** — Known issues and workarounds
 - **[CHANGELOG.md](CHANGELOG.md)** — Version history and changes

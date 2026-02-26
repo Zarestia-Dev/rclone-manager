@@ -25,7 +25,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Zarestia-Dev/rclone-manager/wiki">
+  <a href="https://hakanismail.info/zarestia/rclone-manager/docs">
     <img src="https://img.shields.io/badge/📚_Documentation_Wiki-blue?style=for-the-badge" alt="Documentation">
   </a>
   <a href="https://github.com/Zarestia-Dev/rclone-manager/releases">
@@ -96,7 +96,7 @@ Install RClone Manager from your favorite package manager or download directly.
 | **Flathub**         | [![Flathub](https://img.shields.io/flathub/v/io.github.zarestia_dev.rclone-manager?style=flat&label=&color=2ec27e)](https://flathub.org/en/apps/io.github.zarestia_dev.rclone-manager)  | `flatpak install io.github.zarestia_dev.rclone-manager`                                                                                                                     |
 | **Direct Download** | [![Latest Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | <a href="https://github.com/Zarestia-Dev/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/Download-3584e4?style=flat&logo=github" alt="Download"></a> |
 
-> 📚 **Detailed Guide:** [Wiki: Installation - Linux](https://github.com/Zarestia-Dev/rclone-manager/wiki/Installation-Linux)  
+> 📚 **Detailed Guide:** [Wiki: Installation - Linux](https://hakanismail.info/zarestia/rclone-manager/docs/installation-linux)  
 > _Covers Flatpak troubleshooting._
 
 ### macOS
@@ -106,7 +106,7 @@ Install RClone Manager from your favorite package manager or download directly.
 | **Homebrew**        | ![Pending](https://img.shields.io/badge/Pending-gray?style=flat)                                                                                                                        | _Coming Soon_                                                                                                                                                               |
 | **Direct Download** | [![Latest Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | <a href="https://github.com/Zarestia-Dev/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/Download-3584e4?style=flat&logo=github" alt="Download"></a> |
 
-> 📚 **Detailed Guide:** [Wiki: Installation - macOS](https://github.com/Zarestia-Dev/rclone-manager/wiki/Installation-macOS)  
+> 📚 **Detailed Guide:** [Wiki: Installation - macOS](https://hakanismail.info/zarestia/rclone-manager/docs/installation-macos)  
 > _Important: Read this for the "App is Damaged" fix and macFUSE setup._
 
 ### Windows
@@ -118,7 +118,7 @@ Install RClone Manager from your favorite package manager or download directly.
 | **Winget**          | ![Winget](https://img.shields.io/winget/v/RClone-Manager.rclone-manager?style=flat&label=&color=2ec27e)                                                                                 | `winget install RClone-Manager.rclone-manager`                                                                                                                              |
 | **Direct Download** | [![Latest Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | <a href="https://github.com/Zarestia-Dev/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/Download-3584e4?style=flat&logo=github" alt="Download"></a> |
 
-> 📚 **Detailed Guide:** [Wiki: Installation - Windows](https://github.com/Zarestia-Dev/rclone-manager/wiki/Installation-Windows)  
+> 📚 **Detailed Guide:** [Wiki: Installation - Windows](https://hakanismail.info/zarestia/rclone-manager/docs/installation-windows)  
 > _Includes instructions for WinFsp (required for mounting) and SmartScreen._
 
 ---
@@ -129,13 +129,13 @@ RClone Manager handles most dependencies automatically.
 
 - **Rclone:** The app will download it for you if missing.
 - **Mounting (Optional):** Requires **WinFsp** (Windows), **macFUSE** (macOS), or **FUSE3** (Linux).
-- **Details:** See **[Wiki: System Requirements](https://github.com/Zarestia-Dev/rclone-manager/wiki/Installation#%EF%B8%8F-dependencies)** for full compatibility notes.
+- **Details:** See **[Wiki: System Requirements](https://hakanismail.info/zarestia/rclone-manager/docs/Installation#%EF%B8%8F-dependencies)** for full compatibility notes.
 
 ---
 
 ## 🛠️ Development
 
-For building from source (Desktop, Headless, Docker, or Flatpak), please refer to the **[Building Guide](https://github.com/Zarestia-Dev/rclone-manager/wiki/Building)**.
+For building from source (Desktop, Headless, Docker, or Flatpak), please refer to the **[Building Guide](https://hakanismail.info/zarestia/rclone-manager/docs/building)**.
 
 ### Linting & Formatting
 
@@ -147,7 +147,7 @@ For building from source (Desktop, Headless, Docker, or Flatpak), please refer t
 
 Encountering an issue?
 
-1.  Check the **[Troubleshooting Wiki](https://github.com/Zarestia-Dev/rclone-manager/wiki/Troubleshooting)** for common fixes (Mount errors, Permissions, App Launch issues).
+1.  Check the **[Troubleshooting Wiki](https://hakanismail.info/zarestia/rclone-manager/docs/troubleshooting)** for common fixes (Mount errors, Permissions, App Launch issues).
 2.  Check [**ISSUES.md**](ISSUES.md) for platform-specific known limitations.
 3.  Visit the [**GitHub Project Board**](https://github.com/users/Zarestia-Dev/projects/2) to see what we are working on.
 
@@ -160,7 +160,7 @@ We welcome contributions! Here's how you can help:
 - 🌍 **Help Translate** – Check the [Add Translations Guide](CONTRIBUTING.md#adding-translations)
 - 🐛 **Report Bugs** – [Open a bug report](https://github.com/Zarestia-Dev/rclone-manager/issues/new?template=bug_report.md)
 - 💡 **Suggest Features** – [Share your ideas](https://github.com/Zarestia-Dev/rclone-manager/issues/new?template=feature_request.md)
-- 📖 **Improve Docs** – Help make our [documentation](https://github.com/Zarestia-Dev/rclone-manager/wiki) clearer
+- 📖 **Improve Docs** – Help make our [documentation](https://hakanismail.info/zarestia/rclone-manager/docs) clearer
 - 🔧 **Submit PRs** – Check the [CONTRIBUTING.md](CONTRIBUTING.md)
 - 💬 **Discuss** – Join [GitHub Discussions](https://github.com/Zarestia-Dev/rclone-manager/discussions)
 
