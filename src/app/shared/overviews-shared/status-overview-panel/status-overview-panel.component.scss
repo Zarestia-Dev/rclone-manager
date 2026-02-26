@@ -28,8 +28,6 @@
 
       .status-icon {
         color: var(--mode-primary-color, var(--primary-color));
-        width: var(--icon-size-md);
-        height: var(--icon-size-md);
         transition: var(--transition-standard);
         will-change: color;
       }
@@ -106,8 +104,8 @@
           color: var(--window-fg-color);
 
           .color-box {
-            width: 16px;
-            height: 16px;
+            width: var(--icon-size-sm);
+            height: var(--icon-size-sm);
             border-radius: var(--radius-xs);
             margin-right: 8px;
 

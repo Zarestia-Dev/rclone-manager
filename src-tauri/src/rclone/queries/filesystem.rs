@@ -7,35 +7,27 @@ use crate::utils::{
     rclone::endpoints::operations,
     types::{
         core::{DiskUsage, RcloneState},
-        jobs::JobResponse,
         remotes::ListOptions,
     },
 };
 
 use crate::rclone::backend::BackendManager;
-use crate::rclone::commands::job::poll_job;
 use tauri::{AppHandle, Manager};
 
 /// Helper to execute a filesystem command (gets backend, builds URL, runs op)
 async fn run_fs_command(
-    backend_manager: &BackendManager,
+    app: AppHandle,
     client: reqwest::Client,
     endpoint: &str,
-    mut params: serde_json::Map<String, serde_json::Value>,
+    params: serde_json::Map<String, serde_json::Value>,
 ) -> Result<serde_json::Value, String> {
+    let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-
-    params.insert("_async".to_string(), json!(true));
-
-    let json = backend
-        .post_json(&client, endpoint, Some(&json!(params)))
+    let payload = json!(params);
+    backend
+        .post_json(&client, endpoint, Some(&payload))
         .await
-        .map_err(|e| format!("Request failed: {e}"))?;
-
-    let job: JobResponse =
-        serde_json::from_value(json).map_err(|e| format!("Failed to parse job response: {e}"))?;
-
-    poll_job(job.jobid, client, backend).await
+        .map_err(|e| format!("❌ Failed to call {endpoint}: {e}"))
 }
 
 /// Helper to create standard filesystem parameters
@@ -53,6 +45,7 @@ fn create_fs_params(
 pub struct LocalDrive {
     name: String,
     label: String,
+    show_name: bool,
 }
 
 #[tauri::command]
@@ -64,15 +57,9 @@ pub async fn get_fs_info(
 ) -> Result<serde_json::Value, String> {
     debug!("ℹ️ Getting fs info for remote: {remote}, path: {path:?}");
 
-    let params = create_fs_params(remote, path);
-    let backend_manager = app.state::<BackendManager>();
-    let result = run_fs_command(
-        &backend_manager,
-        state.client.clone(),
-        operations::FSINFO,
-        params,
-    )
-    .await;
+    let params = create_fs_params(remote.clone(), path.clone());
+
+    let result = run_fs_command(app, state.client.clone(), operations::FSINFO, params).await;
 
     match result {
         Ok(data) => {
@@ -102,7 +89,8 @@ pub async fn get_remote_paths(
     options: Option<ListOptions>,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let mut params = create_fs_params(remote, path);
+    debug!("📂 Listing remote paths for remote: {remote}, path: {path:?}");
+    let mut params = create_fs_params(remote.clone(), path.clone());
 
     if let Some(list_options) = options {
         let mut opt = serde_json::Map::new();
@@ -112,97 +100,96 @@ pub async fn get_remote_paths(
         params.insert("opt".to_string(), json!(opt));
     }
 
-    let backend_manager = app.state::<BackendManager>();
-    run_fs_command(
-        &backend_manager,
-        state.client.clone(),
-        operations::LIST,
-        params,
-    )
-    .await
+    run_fs_command(app, state.client.clone(), operations::LIST, params).await
 }
 
-#[cfg(windows)]
 #[tauri::command]
-pub async fn get_local_drives() -> Result<Vec<LocalDrive>, String> {
-    use std::ffi::OsStr;
-    use std::os::windows::ffi::OsStrExt;
-    use windows_sys::Win32::Storage::FileSystem::GetVolumeInformationW;
+pub async fn get_local_drives(
+    app: AppHandle,
+    state: State<'_, RcloneState>,
+) -> Result<Vec<LocalDrive>, String> {
+    use crate::utils::rclone::endpoints::{core, operations};
+    use futures::future::join_all;
+
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+
+    // 1. Get remote OS
+    let version_res = backend.post_json(&state.client, core::VERSION, None).await;
+
+    let os = match version_res {
+        Ok(v) => v
+            .get("os")
+            .and_then(|o| o.as_str())
+            .unwrap_or("unknown")
+            .to_string(),
+        Err(_) => std::env::consts::OS.to_string(), // Fallback
+    };
 
     let mut drives = Vec::new();
 
-    for i in b'A'..=b'Z' {
-        let drive_name = format!("{}:\\", i as char);
-        if std::path::Path::new(&drive_name).exists() {
-            let wide_drive_name: Vec<u16> = OsStr::new(&drive_name)
-                .encode_wide()
-                .chain(Some(0))
-                .collect();
+    if os == "windows" {
+        let mut futures = Vec::new();
+        // Probe A: through Z:
+        for i in b'A'..=b'Z' {
+            let drive_name = format!("{}:", i as char);
+            let drive_path = format!("{}:\\", i as char);
 
-            let mut volume_name = [0u16; 256];
-            let mut fs_name_buf = [0u16; 256];
-            let result = unsafe {
-                GetVolumeInformationW(
-                    wide_drive_name.as_ptr(),
-                    volume_name.as_mut_ptr(),
-                    volume_name.len() as u32,
-                    std::ptr::null_mut(),
-                    std::ptr::null_mut(),
-                    std::ptr::null_mut(),
-                    fs_name_buf.as_mut_ptr(),
-                    fs_name_buf.len() as u32,
-                )
-            };
+            let app_clone = app.clone();
+            let state_client = state.client.clone();
+            let drive_name_clone = drive_name.clone();
 
-            if result != 0 {
-                let fs_len = fs_name_buf
-                    .iter()
-                    .position(|&c| c == 0)
-                    .unwrap_or(fs_name_buf.len());
-                let fs_name = String::from_utf16_lossy(&fs_name_buf[..fs_len]);
-                if fs_name.contains("FUSE") {
-                    continue;
+            futures.push(async move {
+                let params = create_fs_params(drive_path, None);
+                let res = run_fs_command(app_clone, state_client, operations::ABOUT, params).await;
+                if res.is_ok() {
+                    Some(LocalDrive {
+                        name: drive_name_clone,
+                        label: "nautilus.titles.localDisk".to_string(),
+                        show_name: true,
+                    })
+                } else {
+                    None
                 }
+            });
+        }
 
-                let len = volume_name
-                    .iter()
-                    .position(|&c| c == 0)
-                    .unwrap_or(volume_name.len());
-                let label = String::from_utf16_lossy(&volume_name[..len]);
+        let results = join_all(futures).await;
+        for res in results.into_iter().flatten() {
+            drives.push(res);
+        }
 
-                drives.push(LocalDrive {
-                    name: format!("{}:", i as char),
-                    label: if label.is_empty() {
-                        "Local Disk".to_string()
-                    } else {
-                        label
-                    },
-                });
-            }
+        // Fallback if somehow none are detected
+        if drives.is_empty() {
+            drives.push(LocalDrive {
+                name: "C:".to_string(),
+                label: "nautilus.titles.localDisk".to_string(),
+                show_name: true,
+            });
+        }
+    } else {
+        // Unix-like systems
+        drives.push(LocalDrive {
+            name: "/".to_string(),
+            label: "nautilus.titles.fileSystem".to_string(),
+            show_name: false,
+        });
+
+        // Attempt to get home dir. If it's local, we can use the environment.
+        let home_path = if backend.is_local {
+            std::env::var("HOME").ok()
+        } else {
+            None
+        };
+
+        if let Some(path) = home_path {
+            drives.push(LocalDrive {
+                name: path,
+                label: "titlebar.home".to_string(),
+                show_name: false,
+            });
         }
     }
-    Ok(drives)
-}
-
-#[cfg(not(windows))]
-#[tauri::command]
-pub async fn get_local_drives() -> Result<Vec<LocalDrive>, String> {
-    use std::env;
-    let mut drives = Vec::new();
-
-    // Add Home directory if available
-    if let Ok(home) = env::var("HOME") {
-        drives.push(LocalDrive {
-            name: home,
-            label: "Home".to_string(),
-        });
-    }
-
-    // Add root filesystem
-    drives.push(LocalDrive {
-        name: "/".to_string(),
-        label: "File System".to_string(),
-    });
 
     Ok(drives)
 }
@@ -248,15 +235,9 @@ pub async fn get_about_remote(
 ) -> Result<serde_json::Value, String> {
     debug!("ℹ️ Getting about info for remote: {remote}, path: {path:?}");
 
-    let params = create_fs_params(remote, path);
-    let backend_manager = app.state::<BackendManager>();
-    run_fs_command(
-        &backend_manager,
-        state.client.clone(),
-        operations::ABOUT,
-        params,
-    )
-    .await
+    let params = create_fs_params(remote.clone(), path.clone());
+
+    run_fs_command(app, state.client.clone(), operations::ABOUT, params).await
 }
 
 #[tauri::command]
@@ -268,15 +249,9 @@ pub async fn get_size(
 ) -> Result<serde_json::Value, String> {
     debug!("📏 Getting size for remote: {remote}, path: {path:?}");
 
-    let params = create_fs_params(remote, path);
-    let backend_manager = app.state::<BackendManager>();
-    run_fs_command(
-        &backend_manager,
-        state.client.clone(),
-        operations::SIZE,
-        params,
-    )
-    .await
+    let params = create_fs_params(remote.clone(), path.clone());
+
+    run_fs_command(app, state.client.clone(), operations::SIZE, params).await
 }
 
 #[tauri::command]
@@ -289,15 +264,9 @@ pub async fn get_stat(
     debug!("📊 Getting stats for remote: {remote}, path: {path}");
 
     // Convert (String, String) to (String, Option<String>) for helper
-    let params = create_fs_params(remote, Some(path));
-    let backend_manager = app.state::<BackendManager>();
-    run_fs_command(
-        &backend_manager,
-        state.client.clone(),
-        operations::STAT,
-        params,
-    )
-    .await
+    let params = create_fs_params(remote.clone(), Some(path.clone()));
+
+    run_fs_command(app, state.client.clone(), operations::STAT, params).await
 }
 
 /// Get hashsum for a path (file or directory)
@@ -324,14 +293,7 @@ pub async fn get_hashsum(
     params.insert("fs".to_string(), json!(fs_with_path));
     params.insert("hashType".to_string(), json!(hash_type));
 
-    let backend_manager = app.state::<BackendManager>();
-    run_fs_command(
-        &backend_manager,
-        state.client.clone(),
-        operations::HASHSUM,
-        params,
-    )
-    .await
+    run_fs_command(app, state.client.clone(), operations::HASHSUM, params).await
 }
 
 /// Get hashsum for a single file
@@ -346,21 +308,10 @@ pub async fn get_hashsum_file(
 ) -> Result<serde_json::Value, String> {
     debug!("🔐 Getting hashsum file for remote: {remote}, path: {path}, hash_type: {hash_type}");
 
-    let mut params = create_fs_params(remote, Some(path));
+    let mut params = create_fs_params(remote.clone(), Some(path.clone()));
     params.insert("hashType".to_string(), json!(hash_type));
 
-    // Default to true for download and base64 for consistency/safety if hash not supported?
-    // The user didn't specify defaults, but 'download' is useful fallback.
-    // However, sticking to bare minimum inputs is safer unless requested.
-
-    let backend_manager = app.state::<BackendManager>();
-    run_fs_command(
-        &backend_manager,
-        state.client.clone(),
-        operations::HASHSUMFILE,
-        params,
-    )
-    .await
+    run_fs_command(app, state.client.clone(), operations::HASHSUMFILE, params).await
 }
 
 /// Get or create a public link for a file or folder

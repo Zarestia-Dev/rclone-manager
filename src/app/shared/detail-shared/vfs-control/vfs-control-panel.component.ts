@@ -29,13 +29,19 @@ import {
 import { PathSelectionService } from 'src/app/services/remote/path-selection.service';
 import { NotificationService } from '@app/services';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
-import { FileSystemService, MountManagementService, ServeManagementService } from '@app/services';
+import {
+  FileSystemService,
+  MountManagementService,
+  ServeManagementService,
+  RemoteManagementService,
+} from '@app/services';
 
 interface VfsInstance {
   name: string;
   stats: VfsStats | null;
   queue: VfsQueueItem[];
   pollInterval: string;
+  pollIntervalSupported?: boolean;
 }
 
 // Constants
@@ -78,6 +84,7 @@ export class VfsControlPanelComponent {
   private readonly mountService = inject(MountManagementService);
   private readonly serveService = inject(ServeManagementService);
   private readonly translate = inject(TranslateService);
+  private readonly remoteService = inject(RemoteManagementService);
 
   // ViewChild for table rendering
   @ViewChild(MatTable) table?: MatTable<VfsQueueItem>;
@@ -199,7 +206,14 @@ export class VfsControlPanelComponent {
       // Merge new names with existing instances to prevent UI flicker
       const currentMap = new Map(this.vfsInstances().map(i => [i.name, i]));
       const newInstances: VfsInstance[] = filteredNames.map(
-        name => currentMap.get(name) || { name, stats: null, queue: [], pollInterval: '' }
+        name =>
+          currentMap.get(name) || {
+            name,
+            stats: null,
+            queue: [],
+            pollInterval: '',
+            pollIntervalSupported: true, // Assume supported until checked
+          }
       );
 
       this.vfsInstances.set(newInstances);
@@ -261,11 +275,23 @@ export class VfsControlPanelComponent {
     // Helper to check if a VFS name is indexed
     const isIndexed = (name: string): boolean => /:\[\d+\]$/.test(name);
 
+    // Use request info to check features
+    const fsInfo = await this.remoteService.getFsInfo(this.remoteName());
+    const supportsPollInterval = fsInfo.Features?.['ChangeNotify'];
+
     // Run side-effect to fetch intervals, then update signal once
     await Promise.all(
       instances.map(async inst => {
         // Skip indexed VFS entries - they're not supported by rclone's API
         if (isIndexed(inst.name)) return;
+
+        // Skip if remote doesn't support ChangeNotify (which implies poll-interval support)
+        if (!supportsPollInterval) {
+          inst.pollIntervalSupported = false;
+          return;
+        }
+
+        inst.pollIntervalSupported = true;
 
         try {
           const res = await this.vfsService.getPollInterval(inst.name);
@@ -276,6 +302,15 @@ export class VfsControlPanelComponent {
       })
     );
     this.vfsInstances.set([...instances]);
+
+    // Force update selectedVfs to trigger UI refresh
+    const selected = this.selectedVfs();
+    if (selected) {
+      const updated = instances.find(i => i.name === selected.name);
+      if (updated) {
+        this.selectedVfs.set({ ...updated });
+      }
+    }
   }
 
   compareVfs(o1: VfsInstance, o2: VfsInstance): boolean {

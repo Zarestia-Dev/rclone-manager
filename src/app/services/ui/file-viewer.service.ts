@@ -6,6 +6,7 @@ import { FileViewerModalComponent } from '../../features/components/file-browser
 import { ConfigService } from '../system/config.service';
 import { Entry } from '@app/types';
 import { ApiClientService } from '../core/api-client.service';
+import { IconService } from './icon.service';
 
 @Injectable({
   providedIn: 'root',
@@ -14,6 +15,7 @@ export class FileViewerService {
   private overlay = inject(Overlay);
   private configService = inject(ConfigService);
   private apiClient = inject(ApiClientService);
+  private iconService = inject(IconService);
 
   // Use Angular signal for viewer open state
   private readonly _isViewerOpen: WritableSignal<boolean> = signal(false);
@@ -26,8 +28,6 @@ export class FileViewerService {
     isLocal: boolean
   ): Promise<void> {
     const item = items[currentIndex];
-    const fileType = await this.getFileType(item, remoteName, isLocal);
-
     const fileUrl = await this.generateUrl(item, remoteName, isLocal);
 
     const overlayRef = this.overlay.create({
@@ -43,8 +43,6 @@ export class FileViewerService {
       items,
       currentIndex,
       url: fileUrl,
-      fileType,
-      name: item.Name,
       isLocal,
       remoteName,
     };
@@ -60,95 +58,8 @@ export class FileViewerService {
     });
   }
 
-  /**
-   * Simplified file type detection - returns category for rendering strategy.
-   * No pre-detection downloads. Let browser try to render, handle failures gracefully.
-   */
   async getFileType(item: Entry, _remoteName: string, _isLocal: boolean): Promise<string> {
-    return this.getFileTypeSync(item);
-  }
-
-  /**
-   * Categorize files by rendering strategy needed.
-   * Returns: 'image', 'video', 'audio', 'pdf', 'directory', 'binary', or 'previewable'
-   */
-  getFileTypeSync(item: Entry): string {
-    if (item.IsDir) {
-      return 'directory';
-    }
-
-    // Check MIME type and extension
-    const mimeType = item.MimeType;
-    const extension = item.Name.split('.').pop()?.toLowerCase() || '';
-
-    // Media types that need special HTML elements
-    if (mimeType?.startsWith('image/')) return 'image';
-    if (mimeType?.startsWith('video/')) return 'video';
-    if (mimeType?.startsWith('audio/')) return 'audio';
-    if (mimeType === 'application/pdf') return 'pdf';
-    if (mimeType?.startsWith('text/')) return 'previewable';
-
-    // Extension-based detection for media (when MIME is missing)
-    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg', 'ico'].includes(extension))
-      return 'image';
-    if (['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv'].includes(extension)) return 'video';
-    if (['mp3', 'wav', 'flac', 'aac', 'm4a'].includes(extension)) return 'audio';
-    if (extension === 'pdf') return 'pdf';
-
-    // Known binary extensions that definitely cannot be previewed
-    const knownBinary = [
-      // Executables
-      'exe',
-      'dll',
-      'so',
-      'dylib',
-      'bin',
-      'app',
-      // Archives
-      'zip',
-      'rar',
-      '7z',
-      'tar',
-      'gz',
-      'bz2',
-      'xz',
-      'tgz',
-      // Documents (non-previewable)
-      'doc',
-      'docx',
-      'xls',
-      'xlsx',
-      'ppt',
-      'pptx',
-      'odt',
-      'ods',
-      // Databases
-      'db',
-      'sqlite',
-      'mdb',
-      // Images (not handled by browser)
-      'psd',
-      'ai',
-      'indd',
-      'raw',
-      'cr2',
-      'nef',
-      // Compiled/Binary
-      'o',
-      'a',
-      'lib',
-      'class',
-      'pyc',
-      'jar',
-    ];
-
-    if (knownBinary.includes(extension)) {
-      return 'binary';
-    }
-
-    // Everything else: let browser try to render as text
-    // This includes: code files, JSON, XML, config files, dotfiles, etc.
-    return 'previewable';
+    return this.iconService.getFileTypeCategory(item);
   }
 
   async generateUrl(item: Entry, remoteName: string, isLocal: boolean): Promise<string> {

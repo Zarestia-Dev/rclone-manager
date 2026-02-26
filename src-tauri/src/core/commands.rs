@@ -115,7 +115,15 @@ macro_rules! generate_invoke_handler {
             // =================================================================
             $crate::rclone::commands::filesystem::mkdir,
             $crate::rclone::commands::filesystem::cleanup,
+            $crate::rclone::commands::filesystem::copy_file,
+            $crate::rclone::commands::filesystem::move_file,
+            $crate::rclone::commands::filesystem::copy_dir,
+            $crate::rclone::commands::filesystem::move_dir,
             $crate::rclone::commands::filesystem::copy_url,
+            $crate::rclone::commands::filesystem::delete_file,
+            $crate::rclone::commands::filesystem::upload_file,
+            $crate::rclone::commands::filesystem::purge_directory,
+            $crate::rclone::commands::filesystem::remove_empty_dirs,
             $crate::rclone::queries::get_local_drives,
             $crate::rclone::queries::get_bandwidth_limit,
             // =================================================================
@@ -211,6 +219,7 @@ macro_rules! generate_invoke_handler {
             // =================================================================
             // BACKEND MANAGEMENT
             // =================================================================
+            $crate::rclone::commands::backend::get_backend_schema,
             $crate::rclone::commands::backend::list_backends,
             $crate::rclone::commands::backend::get_active_backend,
             $crate::rclone::commands::backend::get_backend_profiles,

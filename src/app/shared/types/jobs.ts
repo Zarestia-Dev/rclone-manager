@@ -1,4 +1,4 @@
-import { PrimaryActionType } from './operations';
+import { JobActionType } from './operations';
 
 export type JobStatus = 'Running' | 'Completed' | 'Failed' | 'Stopped';
 
@@ -68,19 +68,22 @@ export const DEFAULT_JOB_STATS: GlobalStats = {
   transferring: [],
 };
 
+import { Origin } from './origin';
+
 export interface JobInfo {
   jobid: number;
-  job_type: PrimaryActionType;
+  job_type: JobActionType;
   source: string;
   destination: string;
   start_time: string;
   status: JobStatus;
+  error?: string;
   remote_name: string;
   stats: GlobalStats;
   group?: string;
   profile?: string;
   /** Source UI that started this job (e.g., "nautilus", "dashboard", "scheduled") */
-  source_ui?: string;
+  origin?: Origin;
   /** The backend instance this job belongs to (e.g., "Local", "NAS") */
   backend_name?: string;
 }

@@ -12,6 +12,24 @@ pub fn get_arch() -> String {
         _ => "unknown".into(),
     }
 }
+
+/// Helper to build a proper rclone path from remote and relative path.
+/// Handles both rclone remotes (e.g., "remote:") and local paths.
+pub fn build_full_path(remote: &str, path: &str) -> String {
+    if path.is_empty() {
+        remote.to_string()
+    } else if remote.ends_with(':') {
+        format!("{}/{}", remote, path.trim_start_matches('/'))
+    } else {
+        // Local path - ensure we join with a slash
+        format!(
+            "{}/{}",
+            remote.trim_end_matches('/'),
+            path.trim_start_matches('/')
+        )
+    }
+}
+
 pub fn safe_copy_rclone(from: &Path, to: &Path, binary_name: &str) -> Result<(), String> {
     // Create directory if it doesn't exist
     fs::create_dir_all(to).map_err(|e| format!("Failed to create directory: {e}"))?;

@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { MAT_BOTTOM_SHEET_DATA, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { MatListModule } from '@angular/material/list';
 import { MatButtonModule } from '@angular/material/button';
@@ -44,6 +44,7 @@ type RepairMode = 'standard' | 'install' | 'config';
   ],
   templateUrl: './repair-sheet.component.html',
   styleUrl: './repair-sheet.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RepairSheetComponent {
   // --- STATE SIGNALS ---

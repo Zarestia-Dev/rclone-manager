@@ -1,13 +1,4 @@
-import {
-  Component,
-  EventEmitter,
-  Output,
-  inject,
-  input,
-  signal,
-  computed,
-  effect,
-} from '@angular/core';
+import { Component, inject, input, signal, computed, output, effect } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
@@ -15,7 +6,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
-import { CommonModule } from '@angular/common';
+import { NgClass, TitleCasePipe, DatePipe } from '@angular/common';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatSortModule } from '@angular/material/sort';
@@ -96,7 +87,9 @@ const ACTION_CONFIGS: ActionConfig[] = [
   selector: 'app-general-detail',
   standalone: true,
   imports: [
-    CommonModule,
+    NgClass,
+    TitleCasePipe,
+    DatePipe,
     MatCardModule,
     MatIconModule,
     MatProgressBarModule,
@@ -124,22 +117,38 @@ export class GeneralDetailComponent {
   jobs = input<JobInfo[]>([]);
 
   // Outputs
-  @Output() openRemoteConfigModal = new EventEmitter<{
+  readonly openRemoteConfigModal = output<{
     editTarget?: string;
     existingConfig?: RemoteSettings;
   }>();
-  @Output() stopJob = new EventEmitter<{
+  readonly stopJob = output<{
     type: PrimaryActionType;
     remoteName: string;
     profileName?: string;
   }>();
-  @Output() deleteJob = new EventEmitter<number>();
-  @Output() togglePrimaryAction = new EventEmitter<PrimaryActionType>();
+  readonly deleteJob = output<number>();
+  readonly togglePrimaryAction = output<PrimaryActionType>();
+  readonly retryDiskUsage = output<void>();
 
   // Component State
-  private allScheduledTasks = toSignal(this.schedulerService.scheduledTasks$, { initialValue: [] });
-  remoteScheduledTasks = signal<ScheduledTask[]>([]);
+  private readonly allScheduledTasks = toSignal(this.schedulerService.scheduledTasks$, {
+    initialValue: [],
+  });
+
   currentTaskCardIndex = signal(0);
+
+  // Derivations
+  readonly remoteScheduledTasks = computed(() => {
+    const allTasks = this.allScheduledTasks();
+    const remote = this.selectedRemote();
+    if (!remote) return [];
+    return allTasks.filter(task => task.args['remote_name'] === remote.remoteSpecs.name);
+  });
+
+  readonly hasScheduledTasks = computed(() => this.remoteScheduledTasks().length > 0);
+  readonly currentTask = computed(
+    () => this.remoteScheduledTasks()[this.currentTaskCardIndex()] || null
+  );
 
   readonly displayedColumns: string[] = [
     'type',
@@ -164,28 +173,14 @@ export class GeneralDetailComponent {
   }
 
   constructor() {
-    // Initial load of all tasks
     this.schedulerService.getScheduledTasks().catch(err => {
       console.error('Error loading scheduled tasks:', err);
     });
 
-    // Effect to filter tasks when the selected remote or all tasks change
+    // Reset carousel index when remote changes
     effect(() => {
-      const allTasks = this.allScheduledTasks();
-      const remote = this.selectedRemote();
-      if (!remote) {
-        this.remoteScheduledTasks.set([]);
-        this.currentTaskCardIndex.set(0);
-        return;
-      }
-      const filteredTasks = allTasks.filter(
-        task => task.args['remote_name'] === remote.remoteSpecs.name
-      );
-      this.remoteScheduledTasks.set(filteredTasks);
-
-      if (this.currentTaskCardIndex() >= filteredTasks.length) {
-        this.currentTaskCardIndex.set(0);
-      }
+      this.selectedRemote();
+      this.currentTaskCardIndex.set(0);
     });
   }
 
@@ -241,7 +236,7 @@ export class GeneralDetailComponent {
   onEditRemoteConfiguration(): void {
     this.openRemoteConfigModal.emit({
       editTarget: 'remote',
-      existingConfig: this.selectedRemote().remoteSpecs as unknown as RemoteSettings, //TODO: Fix this
+      existingConfig: this.selectedRemote().remoteSpecs as unknown as RemoteSettings,
     });
   }
 
@@ -262,19 +257,6 @@ export class GeneralDetailComponent {
 
     return this.translate.instant('dashboard.generalDetail.toggleQuickAction', { label });
   }
-
-  // Track by functions
-  trackByActionKey(index: number, config: ActionConfig): PrimaryActionType {
-    return config.key;
-  }
-
-  trackByTaskId(index: number, task: ScheduledTask): string {
-    return task.id;
-  }
-
-  // Computed properties for scheduled tasks
-  hasScheduledTasks = computed(() => this.remoteScheduledTasks().length > 0);
-  currentTask = computed(() => this.remoteScheduledTasks()[this.currentTaskCardIndex()] || null);
 
   // Methods for scheduled tasks
   getFormattedNextRun(task: ScheduledTask): string {

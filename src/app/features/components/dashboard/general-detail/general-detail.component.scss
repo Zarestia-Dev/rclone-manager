@@ -2,9 +2,9 @@
 .remote-details {
   display: flex;
   flex-direction: column;
-  gap: var(--container-gap);
+  gap: var(--space-lg);
   margin: 0 auto;
-  padding: var(--container-padding);
+  padding: var(--space-md);
 }
 
 .header-content {
@@ -80,7 +80,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-xs);
-  padding: 8px 12px;
+  padding: var(--space-xs) var(--space-sm);
   border-radius: 20px;
   background: var(--view-bg-color);
   transition: var(--transition-standard);
@@ -94,8 +94,8 @@
     position: absolute;
     top: -6px;
     right: -4px;
-    width: 18px;
-    height: 18px;
+    width: var(--icon-size-sm);
+    height: var(--icon-size-sm);
     border-radius: 6px;
     background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
     color: white;
@@ -198,16 +198,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
   border-radius: 50%;
   background: rgba(var(--window-fg-color-rgb), 0.06);
   transition: var(--transition-fast);
 
   mat-icon {
-    width: 12px;
-    height: 12px;
-    font-size: 12px;
+    width: var(--icon-size-xs);
+    height: var(--icon-size-xs);
+    font-size: var(--icon-size-xs);
     color: var(--dim-color);
   }
 }
@@ -382,10 +382,7 @@
           }
         }
 
-        .task-type-icon {
-          width: 24px;
-          height: 24px;
-
+        mat-icon {
           &.sync-color {
             color: var(--primary-color);
           }
@@ -457,8 +454,9 @@
           letter-spacing: 0.5px;
 
           mat-icon {
-            width: 18px;
-            height: 18px;
+            width: var(--icon-size-sm);
+            height: var(--icon-size-sm);
+            font-size: var(--icon-size-sm);
             color: var(--primary-color);
           }
           .error-icon {

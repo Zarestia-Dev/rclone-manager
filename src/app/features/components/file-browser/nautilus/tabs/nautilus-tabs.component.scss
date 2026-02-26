@@ -1,0 +1,173 @@
+.tabs-scroll-container {
+  display: flex;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  border-bottom: 1px solid var(--mdc-outlined-button-outline-color);
+
+  // Gnome-style fade at ends for scrollability indication
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    black 24px,
+    black calc(100% - 24px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    black 24px,
+    black calc(100% - 24px),
+    transparent 100%
+  );
+
+  &::-webkit-scrollbar {
+    display: none; // Hide scrollbar for a cleaner look
+  }
+}
+
+.tabs-bar {
+  display: flex;
+  align-items: center;
+  padding: var(--space-xxs);
+  min-width: 100%; // Fill container to allow tabs to grow
+  box-sizing: border-box;
+
+  .tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-xs);
+    flex: 1 1 100px; // Grow to fill space, shrink up to 100px
+    min-width: 100px;
+    margin: 0 2px;
+    position: relative;
+    padding-right: 44px;
+    background: transparent;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+
+    // Separators (Gnome Style)
+    &::before {
+      content: "";
+      position: absolute;
+      left: -2px;
+      top: 25%;
+      bottom: 25%;
+      width: 1px;
+      background-color: var(--dim-color);
+      opacity: 0.3;
+      transition: opacity 0.15s ease;
+    }
+
+    &:first-child::before,
+    &.cdk-drag-placeholder::before {
+      display: none;
+    }
+
+    &.active::before,
+    &:hover::before,
+    &.cdk-drag-placeholder + .tab::before {
+      opacity: 0 !important;
+    }
+
+    &.active + .tab::before,
+    &:hover + .tab::before {
+      opacity: 0 !important;
+    }
+
+    &.active {
+      background: var(--selected-bg-color);
+      font-weight: 600;
+    }
+
+    &.file-drag-over {
+      background: rgba(var(--accent-color-rgb), 0.15);
+      outline: 2px solid var(--accent-color);
+      color: var(--accent-color);
+      border-radius: var(--radius-xs);
+    }
+
+    &:hover:not(.active) {
+      background: var(--hover-bg-color);
+    }
+
+    .tab-title {
+      display: block;
+      max-width: calc(100% - 44px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: var(--font-size-md);
+      text-align: center;
+      margin: 0 auto;
+      color: var(--window-fg-color);
+    }
+
+    .close-tab {
+      position: absolute;
+      right: var(--space-xs);
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: var(--icon-size-lg);
+      height: var(--icon-size-lg);
+      background: none;
+      border: none;
+      color: var(--window-fg-color);
+      cursor: pointer;
+
+      mat-icon {
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
+        padding: var(--space-xxs);
+        border-radius: var(--border-radius);
+
+        &:hover {
+          background: var(--selected-bg-color);
+          color: var(--window-fg-color);
+        }
+      }
+    }
+  }
+
+  /* List dragging animations */
+  &.cdk-drop-list-dragging .tab:not(.cdk-drag-placeholder) {
+    transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+  }
+}
+
+/* Global Drag Preview Styling */
+.cdk-drag-preview {
+  background: var(--selected-bg-color);
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xs);
+  padding: var(--space-xs) var(--space-sm);
+  padding-right: 44px;
+  box-sizing: border-box;
+
+  .tab-title {
+    color: var(--window-fg-color);
+    font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .close-tab {
+    display: none !important;
+  }
+}
+
+.cdk-drag-animating {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}

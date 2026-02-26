@@ -1,8 +1,14 @@
 #[cfg(all(desktop, feature = "updater"))]
 pub mod app_updates {
+    use crate::utils::types::logs::LogLevel;
+    use crate::utils::types::origin::Origin;
     use crate::{
         core::lifecycle::shutdown::handle_shutdown,
-        utils::{app::notification::send_notification, github_client, types::core::RcloneState},
+        utils::{
+            app::notification::{Notification, send_notification_typed},
+            github_client,
+            types::core::RcloneState,
+        },
     };
     use log::{debug, info, warn};
     use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -252,16 +258,16 @@ pub mod app_updates {
                 log::warn!("Failed to emit app update event: {}", e);
             }
 
-            send_notification(
+            send_notification_typed(
                 &app,
-                "notification.title.updateFound",
-                &serde_json::json!({
-                    "key": "notification.body.updateFound",
-                    "params": {
-                        "version": &metadata.version
-                    }
-                })
-                .to_string(),
+                Notification::localized(
+                    "notification.title.updateFound",
+                    "notification.body.updateFound",
+                    Some(vec![("version", &metadata.version)]),
+                    None,
+                    Some(LogLevel::Info),
+                ),
+                Some(Origin::Internal),
             );
         }
 
@@ -347,16 +353,16 @@ pub mod app_updates {
         info!("Preparing to download update from: {}", update.download_url);
         debug!("Update signature: {}", update.signature);
 
-        send_notification(
+        send_notification_typed(
             &app,
-            "notification.title.updateStarted",
-            &serde_json::json!({
-                "key": "notification.body.updateStarted",
-                "params": {
-                    "version": &update.version
-                }
-            })
-            .to_string(),
+            Notification::localized(
+                "notification.title.updateStarted",
+                "notification.body.updateStarted",
+                Some(vec![("version", &update.version)]),
+                None,
+                Some(LogLevel::Info),
+            ),
+            Some(Origin::Internal),
         );
 
         // Set update in progress flag
@@ -409,10 +415,16 @@ pub mod app_updates {
                 state.is_update_in_progress.store(false, Ordering::Relaxed);
                 state.is_restart_required.store(true, Ordering::Relaxed);
 
-                send_notification(
+                send_notification_typed(
                     &app,
-                    "notification.title.updateComplete",
-                    "notification.body.updateComplete",
+                    Notification::localized(
+                        "notification.title.updateComplete",
+                        "notification.body.updateComplete",
+                        None,
+                        None,
+                        Some(LogLevel::Info),
+                    ),
+                    Some(Origin::Internal),
                 );
 
                 *download_state
@@ -437,16 +449,16 @@ pub mod app_updates {
                     .map_err(|e| Error::Mutex(format!("Failed to lock failure message: {e}")))? =
                     Some(e.to_string());
 
-                send_notification(
+                send_notification_typed(
                     &app,
-                    "notification.title.updateFailed",
-                    &serde_json::json!({
-                        "key": "notification.body.updateFailed",
-                        "params": {
-                            "error": e.to_string()
-                        }
-                    })
-                    .to_string(),
+                    Notification::localized(
+                        "notification.title.updateFailed",
+                        "notification.body.updateFailed",
+                        Some(vec![("error", &e.to_string())]),
+                        None,
+                        Some(LogLevel::Error),
+                    ),
+                    Some(Origin::Internal),
                 );
 
                 Err(Error::Updater(e))

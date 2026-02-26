@@ -5,6 +5,10 @@
   height: 100vh;
   border-radius: var(--app-border-radius) !important;
   --sidenav-width: clamp(180px, 20vw, 240px);
+
+  ::ng-deep .cdk-drag-placeholder {
+    display: none !important;
+  }
 }
 
 .nautilus-sidenav {
@@ -51,530 +55,20 @@
   min-height: 0;
 }
 
-/* Reset the list so it acts as a simple container */
-mat-nav-list {
-  padding: var(--space-xs) !important;
-  overflow: visible;
-}
-
-.starred-item {
-  &.cdk-drop-list-dragging {
-    background: var(--selected-bg-color) !important;
-    .grid-item,
-    tr {
-      display: none !important;
-    }
-  }
-}
-
-.bookmarks-section {
-  .new-bookmark-placeholder {
-    display: none;
-  }
-  &.cdk-drop-list-dragging {
-    .new-bookmark-placeholder {
-      display: flex !important;
-      animation: slideDownIn 0.2s ease forwards;
-    }
-
-    .grid-item,
-    tr {
-      display: none !important;
-    }
-  }
-}
-
-.remote-list-item {
-  border-radius: var(--border-radius) !important;
-  height: 36px !important;
-  padding-inline: var(--space-xs);
-  margin-block: var(--space-xxs);
-  transition: var(--transition-fast);
-
-  &.selected {
-    background: var(--hover-bg-color);
-  }
-
-  span {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    color: var(--window-fg-color);
-
-    &.remote-info {
-      justify-content: space-between !important;
-      width: 100%;
-
-      mat-icon {
-        height: var(--icon-size-sm);
-        width: var(--icon-size-sm);
-
-        &.unmount-button {
-          padding: var(--space-xxs);
-          border-radius: var(--radius-xs);
-          &:hover {
-            background: var(--hover-bg-color);
-            color: var(--window-fg-color);
-          }
-        }
-      }
-
-      p {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        max-width: calc(var(--sidenav-width) - 58px);
-      }
-    }
-  }
-}
-
-/* This style will apply when the placeholder is rendered inside the Sidebar list */
-.new-bookmark-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-xs);
-  width: 100%;
-  height: 36px;
-  color: var(--accent-color);
-  font-weight: 600;
-  font-size: var(--font-size-md);
-  margin-block: var(--space-xxs);
-  background: rgba(var(--accent-color-rgb), 0.08);
-  border: 2px dashed var(--accent-color);
-  border-radius: var(--border-radius);
-  box-sizing: border-box;
-}
-
-/* The Reordering Placeholder */
-.bookmark-placeholder {
-  background: rgba(var(--primary-color-rgb), 0.1);
-  box-shadow: 0 0 0 1px var(--primary-color);
-  min-height: 36px;
-  border-radius: var(--border-radius);
-}
-
 /*
  * 3. Main Content Area
  * -------------------------------------------------------------------------- */
 
-.nav-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--border-radius);
-  color: var(--window-fg-color);
-  transition: var(--transition-fast);
-
-  &:hover {
-    background: var(--hover-bg-color);
-  }
-
-  &:disabled {
-    background: transparent !important;
-    opacity: 0.5;
-  }
-
-  &.active {
-    background: var(--selected-bg-color);
-    color: var(--accent-color);
-  }
-
-  mat-icon {
-    width: var(--icon-size-sm);
-    height: var(--icon-size-sm);
-  }
-}
-
 /* 3.1 Toolbar & Path Navigation */
-.nautilus-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: calc(var(--titlebar-height) + 8px);
-  color: var(--window-fg-color);
-  padding: var(--space-xxs) var(--title-bar-padding);
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  gap: var(--space-xs);
-
-  .left-section,
-  .right-section {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-  }
-}
-
-/* Tabs bar */
-.tabs-bar {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-xxs);
-
-  .tab {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-xs);
-    padding: var(--space-xs) var(--space-sm);
-    border-radius: var(--radius-xs);
-    flex: 1 1 0;
-    position: relative;
-    padding-right: 44px;
-
-    &.active {
-      background: var(--selected-bg-color);
-      font-weight: 600;
-    }
-
-    &:hover:not(.active) {
-      background: var(--hover-bg-color);
-    }
-
-    .tab-title {
-      display: block;
-      max-width: calc(100% - 44px);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font-size: var(--font-size-md);
-      text-align: center;
-      margin: 0 auto;
-    }
-
-    .close-tab {
-      position: absolute;
-      right: var(--space-xs);
-      top: 50%;
-      transform: translateY(-50%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 28px;
-      width: 28px;
-
-      mat-icon {
-        width: var(--icon-size-sm);
-        height: var(--icon-size-sm);
-        padding: var(--space-xxs);
-        border-radius: var(--border-radius);
-
-        &:hover {
-          background: var(--selected-bg-color);
-          color: var(--window-fg-color);
-        }
-      }
-    }
-  }
-}
-
-.path-container {
-  display: flex;
-  align-items: center;
-  background: var(--sidebar-bg-color);
-  box-shadow: 0 0 0 1px var(--card-shade-color);
-  border-radius: var(--border-radius);
-  width: 100%;
-  max-width: 800px;
-  margin: 0 auto;
-  overflow: hidden;
-  min-width: 0;
-  height: 36px;
-}
-
-/* Path segments scroll area */
-.path-scroll-view {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  height: 100%;
-  overflow-x: auto;
-  white-space: nowrap;
-  scroll-behavior: smooth;
-
-  background-image:
-    linear-gradient(to right, var(--sidebar-bg-color), var(--sidebar-bg-color)),
-    linear-gradient(to right, var(--sidebar-bg-color), var(--sidebar-bg-color)),
-    linear-gradient(to right, var(--mat-sys-shadow), rgba(0, 0, 0, 0)),
-    linear-gradient(to left, var(--mat-sys-shadow), rgba(0, 0, 0, 0));
-
-  background-position:
-    0 0,
-    100% 0,
-    0 0,
-    100% 0;
-  background-size:
-    26px 100%,
-    26px 100%,
-    26px 100%,
-    26px 100%;
-  background-attachment: local, local, scroll, scroll;
-  background-repeat: no-repeat;
-}
-
-.path-separator {
-  color: var(--dim-color);
-  opacity: 0.6;
-  margin: 0 2px;
-  flex-shrink: 0;
-  font-size: var(--font-size-base);
-}
-
-.path-segment {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xxs);
-  flex-shrink: 0;
-  min-width: 0;
-  min-height: 0;
-  height: unset;
-  margin: var(--space-xxs);
-  padding: var(--space-xxs) var(--space-xs);
-  border-radius: var(--border-radius);
-  font-weight: 700;
-  font-size: var(--font-size-base);
-  color: var(--dim-color);
-
-  &:hover:not(.active) {
-    background: var(--selected-bg-color);
-    color: var(--window-fg-color);
-  }
-
-  &.active {
-    color: var(--window-fg-color);
-    font-weight: 500;
-  }
-
-  mat-icon {
-    width: var(--icon-size-sm);
-    height: var(--icon-size-sm);
-  }
-}
-
-.path-input {
-  width: 100%;
-  padding: var(--space-xs) var(--space-sm);
-  border-radius: var(--border-radius);
-  border: none;
-  outline: none;
-  background: transparent;
-  color: var(--window-fg-color);
-  font-size: var(--font-size-base);
-}
 
 /* 3.2 Main File Display Area */
 .nautilus-content {
-  overflow-y: auto;
-  flex-grow: 1;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
   position: relative;
-}
-
-/* 3.2.1 Grid View */
-.nautilus-grid {
-  padding: var(--space-md) var(--space-xs);
-  height: 100%;
-  box-sizing: border-box;
-
-  .grid {
-    display: grid;
-    gap: var(--space-md);
-    align-items: start;
-    grid-auto-rows: auto;
-    margin: var(--space-sm) var(--space-xl);
-  }
-
-  .grid-item {
-    display: block;
-    width: 100%;
-    box-sizing: border-box;
-    z-index: 0;
-    outline: none;
-
-    /* SELECTION STATE: Applies to the real item */
-    &.selected .folder-card {
-      background: var(--selected-bg-color);
-    }
-  }
-
-  .star-button {
-    position: absolute;
-    border-radius: 50%;
-    padding: var(--space-xxs);
-    transition: var(--transition-fast);
-    width: var(--icon-size-sm);
-    color: var(--dim-color);
-    height: var(--icon-size-sm);
-    z-index: 1;
-
-    &:hover {
-      background: var(--selected-bg-color);
-    }
-  }
-}
-
-/* THE SHARED CARD COMPONENT */
-.folder-card {
-  box-sizing: border-box;
-  padding: var(--space-md) var(--space-sm);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  border-radius: var(--card-border-radius);
-  transition: var(--transition-fast);
-  background: none;
-  box-shadow: none;
-
-  /* Typography */
-  .folder-title {
-    font-size: var(--font-size-md);
-    color: var(--window-fg-color);
-    text-align: center;
-    white-space: normal;
-    overflow-wrap: break-word;
-    word-break: break-all;
-    display: -webkit-box;
-    line-clamp: 3;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  &:hover {
-    background: var(--bg-elevated);
-  }
-
-  &.hidden-item {
-    mat-icon {
-      opacity: 0.6;
-    }
-  }
-}
-
-/* Dragging styles */
-.drag-preview {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-sm) var(--space-md);
-
-  border-radius: var(--border-radius);
-  box-shadow: 0 0 0 1px var(--primary-color);
-  opacity: 0.8;
-
-  mat-icon {
-    color: var(--primary-color);
-  }
-
-  span {
-    font-weight: 500;
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-}
-
-/* 3.2.2 List View (MatTable) */
-.nautilus-list-container {
-  height: 100%;
-  overflow: auto;
-}
-
-.nautilus-table {
-  width: 100%;
-  background: transparent;
-  table-layout: fixed;
-
-  // 1. The Name column takes all remaining space
-  .mat-column-name {
-    width: auto;
-    overflow: hidden;
-  }
-
-  // 2. Set fixed widths for other columns so they don't get squished
-  .mat-column-size {
-    width: 80px;
-  }
-
-  .mat-column-modified {
-    width: 130px;
-  }
-
-  .mat-column-star {
-    width: 48px;
-    padding: 0 !important;
-  }
-
-  tr.mat-mdc-row {
-    transition: none;
-
-    &:hover {
-      background-color: var(--hover-bg-color);
-    }
-    &.selected {
-      background-color: var(--selected-bg-color);
-    }
-  }
-
-  /* HEADER STYLING */
-  th.mat-mdc-header-cell {
-    font-weight: 600;
-    color: var(--dim-color);
-    border-bottom: none;
-
-    .header-content {
-      display: flex;
-      align-items: center;
-      gap: var(--space-xxs);
-
-      mat-icon {
-        width: var(--icon-size-sm);
-        height: var(--icon-size-sm);
-      }
-    }
-  }
-
-  td.mat-mdc-cell {
-    border-bottom: 1px solid transparent;
-    font-size: var(--font-size-md);
-    color: var(--window-fg-color);
-    padding: 0 var(--space-xs);
-
-    .name-cell {
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-      width: 100%;
-      overflow: hidden;
-
-      mat-icon {
-        width: var(--icon-size-md);
-        height: var(--icon-size-md);
-        flex-shrink: 0;
-      }
-
-      span {
-        flex: 1;
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-    }
-  }
-
-  .hidden-item {
-    mat-icon {
-      opacity: 0.6;
-    }
-  }
 }
 
 /*
@@ -603,6 +97,7 @@ mat-nav-list {
       mat-icon {
         width: var(--icon-size-sm);
         height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
         border-radius: var(--radius-xxs);
         background: var(--window-bg-color) !important;
       }
@@ -618,6 +113,16 @@ mat-nav-list {
   display: flex;
   flex-direction: column;
 
+  .menu-item-wrapper {
+    padding: var(--space-xxs) var(--space-xs);
+    display: flex;
+    align-items: center;
+
+    mat-checkbox {
+      width: 100%;
+    }
+  }
+
   .sort-options {
     display: flex;
     align-items: center;
@@ -629,20 +134,6 @@ mat-nav-list {
       color: var(--dim-color);
     }
   }
-}
-
-.loading-overlay {
-  position: absolute;
-  bottom: var(--space-md);
-  right: var(--space-md);
-  background: var(--view-bg-color);
-  padding: var(--space-xxs) var(--space-sm);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-gnome);
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  font-size: var(--font-size-base);
 }
 
 .selection-info-container {
@@ -665,42 +156,16 @@ mat-nav-list {
   color: var(--window-fg-color);
 }
 
-.picker-actions + .selection-info-container {
+.nautilus-bottom-bar ~ .selection-info-container {
+  bottom: 64px;
+}
+
+.picker-actions ~ .selection-info-container {
   bottom: 72px;
 }
 
-.picker-actions.mobile-picker + .selection-info-container {
-  bottom: 84px;
-}
-
-.empty-folder-container {
-  position: absolute;
-  top: 45%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-md);
-
-  mat-icon {
-    width: 128px;
-    height: 128px;
-    font-size: 128px;
-    color: var(--border-color);
-  }
-
-  h2 {
-    font-weight: 700;
-    color: var(--window-fg-color);
-    opacity: 0.7;
-  }
-
-  p {
-    color: var(--dim-color);
-    max-width: 300px;
-    text-align: center;
-  }
+.picker-actions.mobile-picker ~ .selection-info-container {
+  bottom: 120px;
 }
 
 /*
@@ -735,18 +200,37 @@ mat-nav-list {
   position: relative;
 }
 
-.nautilus-bottom-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-xs) var(--space-sm);
-  background-color: var(--view-bg-color);
-  box-shadow: inset 0 1px 0 var(--card-shade-color);
-  z-index: 10;
+// --- Split View Styles ---
+.split-container {
+  display: grid;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
 
-  .nav-controls,
-  .view-controls {
-    display: flex;
-    gap: var(--space-xs);
+.split-divider {
+  width: 0.5rem;
+  background: var(--sidebar-bg-color);
+  cursor: col-resize;
+  position: relative;
+  transition: var(--transition-fast);
+  z-index: 20;
+
+  &:hover,
+  &:active {
+    background: var(--accent-color);
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 3px;
+    right: 3px;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 40px;
+    border-left: 1px solid var(--dim-color);
+    border-right: 1px solid var(--dim-color);
+    opacity: 0.5;
   }
 }

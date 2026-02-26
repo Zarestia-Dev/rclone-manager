@@ -13,7 +13,6 @@
 @use "@angular/material" as mat;
 @use "sass:map";
 @use "sass:color";
-@use "app/styles/syntax-highlighting" as syntax;
 @use "animations";
 
 // ============================================================================
@@ -348,7 +347,6 @@ $dark-theme: (
 // Apply Material themes with Libadwaita surface overrides
 :root,
 .light {
-  @include syntax.syntax-highlighting-light;
   @include mat.theme($light-theme);
 
   // ===== MATERIAL M3 SURFACE OVERRIDES =====
@@ -410,7 +408,6 @@ $dark-theme: (
 }
 
 .dark {
-  @include syntax.syntax-highlighting-dark;
   @include mat.theme($dark-theme);
 
   // ===== MATERIAL M3 SURFACE OVERRIDES =====
@@ -582,13 +579,16 @@ $dark-theme: (
   --bg-hover: var(--hover-bg-color);
   --bg-selected: var(--selected-bg-color);
 
-  // Icon Size Scale
-  --icon-size-xs: 14px;
-  --icon-size-sm: 18px;
-  --icon-size-md: 24px;
-  --icon-size-lg: 32px;
-  --icon-size-xl: 48px;
-  --icon-container-size: 64px;
+  // Icon Size Scale (Grid-Perfect multiples of 24px)
+  --icon-size-xxs: 8px; // 1/3x
+  --icon-size-xs: 12px; // 1/2x
+  --icon-size-sm: 18px; // 3/4x
+  --icon-size-md: 24px; // 1x (Standard. Not use for mat-icon)
+  --icon-size-lg: 32px; // ~1.33x (Standard Material Large)
+  --icon-size-xl: 48px; // 2x
+  --icon-size-2xl: 72px; // 3x
+  --icon-size-3xl: 96px; // 4x
+  --icon-container-size: 68px;
 
   // Typography Scale
   --font-size-3xl: 2rem;
@@ -653,6 +653,9 @@ $dark-theme: (
   -webkit-font-smoothing: antialiased;
 
   mat-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     padding: var(--panel-header-padding);
 
     mat-card-title {
@@ -664,8 +667,6 @@ $dark-theme: (
       font-size: var(--font-size-md);
 
       mat-icon {
-        width: var(--icon-size-md);
-        height: var(--icon-size-md);
         color: var(--primary-color);
       }
 
@@ -797,11 +798,10 @@ textarea,
   }
 }
 
-// Fix for mat-icon overflow issues in Windows
+// Global mat-icon defaults
 mat-icon {
   overflow: visible !important;
   min-height: unset !important;
-  flex-shrink: 0;
 
   &.warn {
     color: var(--warn-color) !important;
@@ -958,12 +958,6 @@ button {
 
   mat-panel-title {
     gap: var(--space-sm);
-
-    mat-icon:first-child {
-      font-size: 20px;
-      width: 20px;
-      height: 20px;
-    }
   }
 }
 
@@ -1025,8 +1019,6 @@ mat-accordion {
 .option-content {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xxs);
-  padding: var(--space-xs) 0;
 
   .option-label {
     color: var(--window-fg-color);
@@ -1047,7 +1039,6 @@ mat-accordion {
   gap: var(--space-xxs);
   min-width: 200px;
   max-width: 300px;
-  max-height: 400px;
   overflow-y: auto;
 
   background: var(--popover-bg-color);
@@ -1107,8 +1098,9 @@ mat-accordion {
   color: var(--dim-color);
 
   mat-icon {
-    width: 48px;
-    height: 48px;
+    width: var(--icon-size-xl);
+    height: var(--icon-size-xl);
+    font-size: var(--font-size-xl);
     opacity: 0.4;
   }
 

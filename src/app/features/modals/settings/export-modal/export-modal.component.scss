@@ -82,6 +82,7 @@
       mat-icon {
         width: var(--icon-size-sm);
         height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
       }
     }
 
@@ -224,6 +225,7 @@
     mat-icon {
       width: var(--icon-size-xs);
       height: var(--icon-size-xs);
+      font-size: var(--icon-size-xs);
     }
   }
 
@@ -240,6 +242,7 @@
       mat-icon {
         width: var(--icon-size-xs);
         height: var(--icon-size-xs);
+        font-size: var(--icon-size-xs);
       }
     }
   }

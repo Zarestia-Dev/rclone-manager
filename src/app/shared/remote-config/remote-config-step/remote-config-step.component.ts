@@ -7,6 +7,7 @@ import {
   computed,
   untracked,
   inject,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
@@ -41,6 +42,7 @@ import { IconService } from '@app/services';
   ],
   templateUrl: './remote-config-step.component.html',
   styleUrl: './remote-config-step.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RemoteConfigStepComponent {
   // --- Signal Inputs ---
@@ -57,6 +59,7 @@ export class RemoteConfigStepComponent {
   // --- Signal Outputs ---
   remoteTypeChanged = output<void>();
   interactiveModeToggled = output<boolean>();
+  advancedOptionsToggled = output<boolean>();
   fieldChanged = output<{ fieldName: string; isChanged: boolean }>();
 
   // --- Local Form Controls ---
@@ -64,97 +67,76 @@ export class RemoteConfigStepComponent {
   providerSearchCtrl = new FormControl('');
 
   // --- Local Signals ---
-  showAdvancedOptions = signal(false);
+  showAdvancedOptions = input(false);
   selectedProvider = signal<string | undefined>(undefined);
 
   // Convert FormControls to Signals for use in computed
-  private remoteSearchTerm = toSignal(this.remoteSearchCtrl.valueChanges.pipe(startWith('')), {
-    initialValue: '',
-  });
-  private providerSearchTerm = toSignal(this.providerSearchCtrl.valueChanges.pipe(startWith('')), {
-    initialValue: '',
-  });
+  private remoteSearchTerm = toSignal(
+    this.remoteSearchCtrl.valueChanges.pipe(startWith(this.remoteSearchCtrl.value)),
+    {
+      initialValue: this.remoteSearchCtrl.value || '',
+    }
+  );
+  private providerSearchTerm = toSignal(
+    this.providerSearchCtrl.valueChanges.pipe(startWith(this.providerSearchCtrl.value)),
+    {
+      initialValue: this.providerSearchCtrl.value || '',
+    }
+  );
 
   readonly iconService = inject(IconService);
 
   constructor() {
-    // Effect 1: Detect Provider Field and sync with form
+    // Sync Provider control value -> Signal mapping
     effect(onCleanup => {
       const fieldDef = this.providerField();
-      const formGroup = this.form();
+      if (!fieldDef) return;
 
-      if (fieldDef) {
-        const control = formGroup.get(fieldDef.Name);
-        if (control) {
-          // Sync initial value without triggering cycles
+      const control = this.form().get(fieldDef.Name);
+      if (!control) return;
+
+      // Manually subscribe since the control instance can change
+      const sub = control.valueChanges.pipe(startWith(control.value)).subscribe(val => {
+        const oldVal = untracked(this.selectedProvider);
+        if (val !== oldVal) {
           untracked(() => {
-            const currentVal = control.value || fieldDef?.DefaultStr || fieldDef?.Default;
-            this.selectedProvider.set(currentVal);
-
-            // Ensure our local search control matches the form's value
-            if (currentVal && currentVal !== this.providerSearchCtrl.value) {
-              this.providerSearchCtrl.setValue(currentVal, { emitEvent: false });
+            this.selectedProvider.set(val);
+            if (oldVal) {
+              this.clearProviderDependentFields(this.remoteFields(), this.form(), val);
             }
-
-            // If the main form control is empty but we have a default, set it
-            if (!control.value && currentVal) {
-              control.setValue(currentVal, { emitEvent: true });
-            }
-          });
-
-          // Subscribe to future changes
-          const sub = control.valueChanges.subscribe(newProviderValue => {
-            const oldProviderValue = this.selectedProvider();
-            this.selectedProvider.set(newProviderValue);
-
-            if (oldProviderValue && newProviderValue !== oldProviderValue) {
-              this.clearProviderDependentFields(this.remoteFields(), formGroup, newProviderValue);
-            }
-
             // Sync search control
-            if (newProviderValue && newProviderValue !== this.providerSearchCtrl.value) {
-              this.providerSearchCtrl.setValue(newProviderValue, { emitEvent: false });
+            if (val !== this.providerSearchCtrl.value) {
+              this.providerSearchCtrl.setValue(val, { emitEvent: false });
             }
-          });
-
-          onCleanup(() => {
-            sub.unsubscribe();
           });
         }
-      }
+      });
+
+      onCleanup(() => sub.unsubscribe());
     });
 
-    // Effect 2: Sync Type Control state with Search Control
+    // Sync Type control value -> local search control
     effect(onCleanup => {
-      const formGroup = this.form();
-      const typeControl = formGroup.get('type');
+      const typeControl = this.form().get('type');
+      if (!typeControl) return;
+
+      const sub = typeControl.valueChanges.pipe(startWith(typeControl.value)).subscribe(val => {
+        this.remoteSearchCtrl.setValue(this.displayRemote(val), {
+          emitEvent: false,
+        });
+      });
+
+      onCleanup(() => sub.unsubscribe());
+
+      // Sync disabled state
       const isLocked = this.isTypeLocked();
-      this.remoteTypes();
-
-      if (typeControl) {
-        untracked(() => {
-          const val = typeControl.value;
-          if (val) {
-            this.remoteSearchCtrl.setValue(this.displayRemote(val), { emitEvent: false });
-          }
-
-          if (typeControl.disabled || isLocked) {
-            this.remoteSearchCtrl.disable({ emitEvent: false });
-          } else {
-            this.remoteSearchCtrl.enable({ emitEvent: false });
-          }
-        });
-
-        const sub = typeControl.valueChanges.subscribe(val => {
-          if (val) {
-            this.remoteSearchCtrl.setValue(this.displayRemote(val), { emitEvent: false });
-          }
-        });
-
-        onCleanup(() => {
-          sub.unsubscribe();
-        });
-      }
+      untracked(() => {
+        if (isLocked) {
+          this.remoteSearchCtrl.disable({ emitEvent: false });
+        } else {
+          this.remoteSearchCtrl.enable({ emitEvent: false });
+        }
+      });
     });
   }
 
@@ -200,7 +182,6 @@ export class RemoteConfigStepComponent {
     );
   });
 
-  /** Basic config fields, filtered by selected provider and search query */
   basicFields = computed(() => {
     const fields = this.remoteFields();
     const providerName = this.providerField()?.Name;
@@ -223,7 +204,7 @@ export class RemoteConfigStepComponent {
       });
     }
 
-    return filtered;
+    return filtered as RcConfigOption[];
   });
 
   /** Advanced config fields, filtered by selected provider and search query */
@@ -249,7 +230,7 @@ export class RemoteConfigStepComponent {
       });
     }
 
-    return filtered;
+    return filtered as RcConfigOption[];
   });
 
   /** Virtual Scroll Data Source */
@@ -399,7 +380,8 @@ export class RemoteConfigStepComponent {
   };
 
   toggleAdvancedOptions(): void {
-    this.showAdvancedOptions.update(v => !v);
+    const newValue = !this.showAdvancedOptions();
+    this.advancedOptionsToggled.emit(newValue);
   }
 
   toggleInteractiveMode(): void {

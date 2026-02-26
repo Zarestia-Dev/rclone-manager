@@ -6,15 +6,15 @@
       (click)="toggleSearchVisibility()"
       [matTooltip]="'shared.search.toggle' | translate"
       [attr.aria-label]="'shared.search.toggle' | translate"
-      [disabled]="interactiveFlowState.isActive"
+      [disabled]="interactiveFlowState().isActive"
       type="button"
     >
       <mat-icon svgIcon="search"></mat-icon>
     </button>
     <p data-tauri-drag-region>
       {{
-        editTarget
-          ? ('modals.remoteConfig.title.edit' | translate: { target: editTarget | titlecase })
+        editTarget()
+          ? ('modals.remoteConfig.title.edit' | translate: { target: editTarget() | titlecase })
           : ('modals.remoteConfig.title.add' | translate)
       }}
     </p>
@@ -30,15 +30,15 @@
 
   <!-- Search Container -->
   <app-search-container
-    [visible]="isSearchVisible"
-    [searchText]="searchQuery"
+    [visible]="isSearchVisible()"
+    [searchText]="searchQuery()"
     (searchTextChange)="onSearchInput($event)"
     [placeholder]="'shared.search.placeholder'"
     [ariaLabel]="'shared.search.ariaLabel'"
   ></app-search-container>
 
   <!-- Step Progress Indicator (Only shown during multi-step create flow) -->
-  @if (!interactiveFlowState.isActive && !editTarget) {
+  @if (!interactiveFlowState().isActive && !editTarget()) {
     <div class="step-indicator-container">
       <div
         class="step-indicator hide-scrollbar"
@@ -49,18 +49,18 @@
           <button
             class="step"
             [ngClass]="getStepState(i + 1)"
-            [class.clickable]="editTarget"
+            [class.clickable]="editTarget()"
             (click)="goToStep(i + 1)"
-            [attr.tabindex]="editTarget ? '0' : '-1'"
+            [attr.tabindex]="editTarget() ? '0' : '-1'"
             role="tab"
-            [disabled]="isAuthInProgress || !remoteForm.valid"
-            [attr.aria-selected]="currentStep === i + 1"
+            [disabled]="isAuthInProgress() || !remoteForm.valid"
+            [attr.aria-selected]="currentStep() === i + 1"
           >
             <div class="step-number">
               @if (getStepState(i + 1) === 'completed') {
                 <mat-icon svgIcon="circle-check"></mat-icon>
               } @else {
-                <mat-icon [svgIcon]="stepIcons[i]"></mat-icon>
+                <mat-icon [svgIcon]="stepIcons()[i]"></mat-icon>
               }
             </div>
             @if (getStepState(i + 1) === 'current') {
@@ -75,34 +75,36 @@
   <!-- Modal Content -->
   <main class="modal-content">
     <!-- Interactive Configuration Flow -->
-    @if (interactiveFlowState.isActive && interactiveFlowState.question) {
+    @if (interactiveFlowState().isActive && interactiveFlowState().question) {
       <section class="step-container interactive" aria-live="polite" aria-busy="true">
         <app-interactive-config-step
-          [question]="interactiveFlowState.question"
-          [canceling]="isAuthCancelled"
-          [processing]="interactiveFlowState.isProcessing"
+          [question]="interactiveFlowState().question"
+          [canceling]="isAuthCancelled()"
+          [processing]="interactiveFlowState().isProcessing"
           (answerChange)="handleInteractiveAnswerUpdate($event)"
         />
       </section>
     }
 
     <!-- Non-Interactive Configuration Flow -->
-    @if (!interactiveFlowState.isActive) {
+    @if (!interactiveFlowState().isActive) {
       <!-- Step 1: Remote Configuration -->
-      @if (currentStep === 1) {
+      @if (currentStep() === 1) {
         <section class="step-container">
           <app-remote-config-step
             class="step"
             [form]="remoteForm"
             [remoteFields]="dynamicRemoteFields"
-            [remoteTypes]="remoteTypes"
-            [isLoading]="isRemoteConfigLoading"
-            [existingRemotes]="existingRemotes"
-            [isTypeLocked]="!!editTarget || cloneTarget"
-            [useInteractiveMode]="useInteractiveMode"
-            [searchQuery]="searchQuery"
+            [remoteTypes]="remoteTypes()"
+            [isLoading]="isRemoteConfigLoading()"
+            [existingRemotes]="existingRemotes()"
+            [isTypeLocked]="!!editTarget() || cloneTarget()"
+            [useInteractiveMode]="useInteractiveMode()"
+            [searchQuery]="searchQuery()"
+            [showAdvancedOptions]="showAdvancedOptions()"
             (remoteTypeChanged)="onRemoteTypeChange()"
             (interactiveModeToggled)="onInteractiveModeToggled($event)"
+            (advancedOptionsToggled)="onAdvancedOptionsToggled($event)"
             (fieldChanged)="onRemoteFieldChanged($event.fieldName, $event.isChanged)"
           />
         </section>
@@ -164,7 +166,8 @@
               }}</mat-label>
               <input
                 matInput
-                [(ngModel)]="getProfileState(flagType).tempName"
+                [ngModel]="getProfileState(flagType).tempName"
+                (ngModelChange)="setProfileTempName(flagType, $event)"
                 [ngModelOptions]="{ standalone: true }"
                 (keyup.enter)="saveProfile($any(flagType))"
                 (keyup.escape)="cancelProfileEdit($any(flagType))"
@@ -254,7 +257,7 @@
       <!-- Flags and Serve Steps -->
       <!-- Step mapping: index + 2 (Remote is step 1, then FLAG_TYPES start at step 2) -->
       @for (flagType of FLAG_TYPES; track flagType; let i = $index) {
-        @if (currentStep === i + 2) {
+        @if (currentStep() === i + 2) {
           <section class="step-container">
             <!-- Profile Management Header -->
             <ng-container
@@ -278,18 +281,18 @@
               class="step"
               [form]="remoteConfigForm"
               [flagType]="flagType"
-              [existingRemotes]="existingRemotes"
+              [existingRemotes]="existingRemotes()"
               [dynamicFlagFields]="
                 flagType === 'serve' ? dynamicServeFields : dynamicFlagFields[flagType]
               "
-              [mountTypes]="mountTypes"
+              [mountTypes]="mountTypes()"
               [currentRemoteName]="getRemoteName()"
-              [isNewRemote]="!editTarget"
+              [isNewRemote]="!editTarget()"
               [getControlKey]="getUniqueControlKey.bind(this)"
-              [availableServeTypes]="availableServeTypes"
-              [selectedServeType]="selectedServeType"
-              [isLoadingServeFields]="isLoadingServeFields"
-              [searchQuery]="searchQuery"
+              [availableServeTypes]="availableServeTypes()"
+              [selectedServeType]="selectedServeType()"
+              [isLoadingServeFields]="isLoadingServeFields()"
+              [searchQuery]="searchQuery()"
               (sourceFolderSelected)="handleSourceFolderSelect(flagType)"
               (destFolderSelected)="handleDestFolderSelect(flagType)"
               (serveTypeChange)="onServeTypeChange($event)"
@@ -304,11 +307,11 @@
   <footer class="button-container">
     <!-- Left Side: Back Button -->
     <div class="button-container-inner">
-      @if (currentStep > 1 && !editTarget && !interactiveFlowState.isActive) {
+      @if (currentStep() > 1 && !editTarget() && !interactiveFlowState().isActive) {
         <button
           matButton="filled"
           class="accent"
-          [disabled]="isAuthInProgress"
+          [disabled]="isAuthInProgress()"
           (click)="prevStep()"
           animate.enter="fade-in-out-enter"
           animate.leave="fade-in-out-leave"
@@ -324,14 +327,16 @@
     <!-- Center/Right Side: Action Buttons -->
     <div class="button-container-inner">
       <!-- Cancel Button (During Auth or Interactive Flow) -->
-      @if ((isAuthInProgress && !isAuthCancelled) || interactiveFlowState.isActive) {
+      @if ((isAuthInProgress() && !isAuthCancelled()) || interactiveFlowState().isActive) {
         <button
           matButton="filled"
           class="warn"
           animate.enter="fade-in-out-enter"
           animate.leave="fade-in-out-leave"
           (click)="cancelAuth()"
-          [disabled]="(!isAuthInProgress && !interactiveFlowState.isActive) || isAuthCancelled"
+          [disabled]="
+            (!isAuthInProgress() && !interactiveFlowState().isActive) || isAuthCancelled()
+          "
           [attr.title]="'modals.remoteConfig.buttons.cancel' | translate"
           [attr.aria-label]="'modals.remoteConfig.buttons.cancel' | translate"
         >
@@ -340,7 +345,7 @@
       }
 
       <!-- Cleanup Status (Shows when auth is cancelled) -->
-      @if (isAuthCancelled) {
+      @if (isAuthCancelled()) {
         <span class="cleanup-status" aria-live="polite">
           {{ 'modals.remoteConfig.buttons.cleanup' | translate }}
           <mat-spinner diameter="16" aria-hidden="true"></mat-spinner>
@@ -348,67 +353,69 @@
       }
 
       <!-- Save Button (Shown on step > 1 in create mode, or in edit mode) -->
-      @if (((currentStep > 1 && !editTarget) || editTarget) && !interactiveFlowState.isActive) {
+      @if (
+        ((currentStep() > 1 && !editTarget()) || editTarget()) && !interactiveFlowState().isActive
+      ) {
         <button
           matButton="filled"
           (click)="onSubmit()"
-          [disabled]="isSaveDisabled"
+          [disabled]="isSaveDisabled()"
           animate.enter="fade-in-out-enter"
           animate.leave="fade-in-out-leave"
           aria-live="polite"
           [attr.aria-label]="
-            editTarget
+            editTarget()
               ? ('modals.remoteConfig.buttons.saveChanges' | translate)
               : ('modals.remoteConfig.buttons.saveConfig' | translate)
           "
           [attr.title]="
-            editTarget
+            editTarget()
               ? ('modals.remoteConfig.buttons.saveChanges' | translate)
               : ('modals.remoteConfig.buttons.saveConfig' | translate)
           "
         >
           <!-- Loading State -->
-          @if (isAuthInProgress && !isAuthCancelled) {
+          @if (isAuthInProgress() && !isAuthCancelled()) {
             <div class="saving-overlay" aria-hidden="true">
               <mat-spinner diameter="16"></mat-spinner>
             </div>
           }
 
           <!-- Button Label -->
-          <span>{{ saveButtonLabel | translate }}</span>
+          <span>{{ saveButtonLabel() | translate }}</span>
         </button>
       }
 
-      @if (interactiveFlowState.isActive) {
+      @if (interactiveFlowState().isActive) {
         <button
           matButton="filled"
-          (click)="onInteractiveContinue(interactiveFlowState.answer)"
+          (click)="onInteractiveContinue(interactiveFlowState().answer)"
           [disabled]="isInteractiveContinueDisabled()"
           class="continue-button"
-          [class.loading]="interactiveFlowState.isProcessing || isAuthCancelled"
+          [class.loading]="interactiveFlowState().isProcessing || isAuthCancelled()"
           animate.enter="fade-in-out-enter"
           animate.leave="fade-in-out-leave"
           aria-live="polite"
           [attr.aria-label]="
-            (interactiveFlowState.isProcessing
+            (interactiveFlowState().isProcessing
               ? 'modals.remoteConfig.buttons.processing'
               : 'modals.remoteConfig.buttons.continue'
             ) | translate
           "
           [attr.title]="
-            (interactiveFlowState.isProcessing
+            (interactiveFlowState().isProcessing
               ? 'modals.remoteConfig.buttons.processing'
               : 'modals.remoteConfig.buttons.continue'
             ) | translate
           "
         >
-          @if (interactiveFlowState.isProcessing && !isAuthCancelled) {
+          @if (interactiveFlowState().isProcessing && !isAuthCancelled()) {
             <div class="saving-overlay" aria-hidden="true">
               <mat-spinner diameter="16"></mat-spinner>
             </div>
           }
           <span>{{
-            (interactiveFlowState.isProcessing
+            (interactiveFlowState().isProcessing
               ? 'modals.remoteConfig.buttons.processing'
               : 'modals.remoteConfig.buttons.continue'
             ) | translate
@@ -417,12 +424,14 @@
       }
 
       <!-- Next Button (Shown in create mode when not on last step) -->
-      @if (currentStep < currentTotalSteps && !editTarget && !interactiveFlowState.isActive) {
+      @if (
+        currentStep() < currentTotalSteps() && !editTarget() && !interactiveFlowState().isActive
+      ) {
         <button
           matButton="filled"
           class="accent"
           (click)="nextStep()"
-          [disabled]="!remoteForm.valid || isAuthInProgress"
+          [disabled]="!remoteForm.valid || isAuthInProgress()"
           animate.enter="fade-in-out-enter"
           animate.leave="fade-in-out-leave"
           [attr.title]="'modals.remoteConfig.buttons.next' | translate"

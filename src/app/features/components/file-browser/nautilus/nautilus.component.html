@@ -6,519 +6,220 @@
     (openedChange)="isSidenavOpen.set($event)"
     class="nautilus-sidenav"
   >
-    <div class="nautilus-layout">
-      <div class="nautilus-header">
-        <mat-toolbar data-tauri-drag-region>
-          <button class="nav-button" (click)="toggleSearchMode()" [class.active]="isSearchMode()">
-            <mat-icon svgIcon="search"></mat-icon>
-          </button>
-          <span>{{ title() | translate }}</span>
-          <button class="nav-button" disabled>
-            <mat-icon svgIcon="menu-bar"></mat-icon>
-          </button>
-        </mat-toolbar>
-      </div>
-
-      <div class="nautilus-scroll-content">
-        <mat-nav-list>
-          <mat-list-item
-            class="remote-list-item starred-item"
-            (click)="selectStarred()"
-            [class.selected]="starredMode()"
-            cdkDropList
-            [cdkDropListEnterPredicate]="canDropOnStarred"
-            (cdkDropListDropped)="onDropToStarred($event)"
-            [cdkDropListAutoScrollDisabled]="true"
-            [cdkContextMenuTriggerFor]="sidebarStarredMenu"
-          >
-            <span class="remote-info">
-              <span class="remote-icon">
-                <mat-icon svgIcon="star"></mat-icon>
-                <p matLine>{{ 'nautilus.titles.starred' | translate }}</p>
-              </span>
-            </span>
-          </mat-list-item>
-
-          <mat-divider></mat-divider>
-
-          <div
-            class="bookmarks-section"
-            cdkDropList
-            [cdkDropListData]="filteredBookmarks()"
-            [cdkDropListEnterPredicate]="canDropOnBookmarks"
-            (cdkDropListDropped)="onDropToLocal($event)"
-          >
-            <div class="new-bookmark-placeholder">
-              <mat-icon svgIcon="bookmark"></mat-icon>
-              <span>{{ 'nautilus.sidebar.newBookmark' | translate }}</span>
-            </div>
-
-            @for (drive of localDrives(); track trackByRemote($index, drive)) {
-              <mat-list-item
-                class="remote-list-item"
-                (click)="selectRemote(drive); isMobile() ? sidenav.close() : null"
-                [class.selected]="nautilusRemote()?.name === drive.name && !starredMode()"
-                [cdkContextMenuTriggerFor]="sidebarRemoteMenu"
-                [cdkContextMenuTriggerData]="{ $implicit: drive }"
-                (cdkContextMenuOpened)="sideContextRemote.set(drive)"
-              >
-                <span class="remote-info">
-                  <span class="remote-icon">
-                    <mat-icon matListIcon svgIcon="hard-drive"></mat-icon>
-                    <p matLine>{{ drive.label }}</p>
-                  </span>
-                </span>
-              </mat-list-item>
-            }
-
-            @for (bm of filteredBookmarks(); track trackByBookmark($index, bm)) {
-              <mat-list-item
-                class="remote-list-item bookmark-item"
-                (click)="openBookmark(bm)"
-                [cdkContextMenuTriggerFor]="sidebarBookmarkMenu"
-                [cdkContextMenuTriggerData]="{ $implicit: bm }"
-                (cdkContextMenuOpened)="bookmarkContextItem = bm"
-              >
-                <span class="remote-info">
-                  <span class="remote-icon">
-                    <mat-icon
-                      [svgIcon]="
-                        bm.meta.remoteType ? iconService.getIconName(bm.meta.remoteType) : 'folder'
-                      "
-                    ></mat-icon>
-                    <p matLine>{{ bm.entry.Name }}</p>
-                  </span>
-                </span>
-              </mat-list-item>
-            }
-          </div>
-
-          <mat-divider></mat-divider>
-
-          @for (remote of cloudRemotes(); track trackByRemote($index, remote)) {
-            <mat-list-item
-              (click)="selectRemote(remote); isMobile() ? sidenav.close() : null"
-              [cdkContextMenuTriggerFor]="sidebarRemoteMenu"
-              [cdkContextMenuTriggerData]="{ $implicit: remote }"
-              (cdkContextMenuOpened)="sideContextRemote.set(remote)"
-              [class.selected]="nautilusRemote()?.name === remote.name && !starredMode()"
-              class="remote-list-item"
-            >
-              <span class="remote-info">
-                <span class="remote-icon">
-                  <mat-icon matListIcon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
-                  <p matLine>{{ remote.label }}</p>
-                </span>
-              </span>
-            </mat-list-item>
-          }
-        </mat-nav-list>
-      </div>
-
-      <!-- Operations Panel at bottom of sidebar -->
-      <app-operations-panel></app-operations-panel>
-    </div>
+    <app-nautilus-sidebar
+      #sidebar
+      [isMobile]="isMobile()"
+      [nautilusRemote]="nautilusRemote()"
+      [currentPath]="currentPath()"
+      [starredMode]="starredMode()"
+      [localDrives]="localDrives()"
+      [cloudRemotes]="cloudRemotes()"
+      [bookmarks]="filteredBookmarks()"
+      [title]="title()"
+      [cleanupSupportCache]="cleanupSupportCache()"
+      [canDropOnStarred]="canDropOnStarred"
+      [canDropOnBookmarks]="canDropOnBookmarks"
+      [canAcceptFile]="canAcceptFile"
+      (remoteSelected)="selectRemote($event)"
+      (bookmarkOpened)="openBookmark($event)"
+      (starredSelected)="selectStarred()"
+      (toggleSearch)="toggleSearchMode()"
+      (requestShortcuts)="openShortcutsModal()"
+      (sidenavAction)="onSidebarSidenavAction($event)"
+      (requestAbout)="onSidebarRequestAbout($event)"
+      (requestCleanup)="onSidebarRequestCleanup($event)"
+      (requestBookmarkRemoval)="removeBookmark($event)"
+      (requestProperties)="onSidebarRequestProperties($event)"
+      [canDropOnBookmark]="canDropOnBookmark"
+      (droppedToBookmark)="onDropToBookmark($event.event, $event.target)"
+      (droppedToStarred)="onDropToStarred($event)"
+      (droppedToLocal)="onDropToLocal($event)"
+      (droppedToRemote)="onDropToRemote($event.event, $event.target)"
+    ></app-nautilus-sidebar>
   </mat-sidenav>
 
   <mat-sidenav-content class="nautilus-main-content">
-    <mat-toolbar class="nautilus-toolbar" data-tauri-drag-region>
-      <div class="left-section">
-        @if (isMobile()) {
-          <button mat-icon-button (click)="sidenav.toggle()">
-            <mat-icon svgIcon="menu-bar"></mat-icon>
-          </button>
-        }
-
-        @if (!isMobile()) {
-          <button (click)="goBack()" [disabled]="!canGoBack()" class="nav-button">
-            <mat-icon svgIcon="chevron-left"></mat-icon>
-          </button>
-          <button (click)="goForward()" [disabled]="!canGoForward()" class="nav-button">
-            <mat-icon svgIcon="chevron-right"></mat-icon>
-          </button>
-        }
-      </div>
-      <div
-        class="path-container"
-        (click)="!isSearchMode() ? isEditingPath.set(true) : null"
-        (keydown.escape)="isEditingPath.set(false); isSearchMode.set(false)"
-        tabindex="0"
-      >
-        @if (isSearchMode()) {
-          <input
-            #searchInput
-            class="path-input"
-            [placeholder]="'nautilus.titles.searchPlaceholder' | translate"
-            [value]="searchFilter()"
-            (input)="searchFilter.set(searchInput.value)"
-            (keydown.escape)="toggleSearchMode(); searchInput.blur()"
-            (blur)="toggleSearchMode()"
-          />
-        } @else if (!isEditingPath()) {
-          @if (starredMode()) {
-            <div class="path-scroll-view hide-scrollbar">
-              <button class="path-segment">
-                <mat-icon svgIcon="star"></mat-icon>
-                {{ 'nautilus.titles.starred' | translate }}
-              </button>
-            </div>
-          } @else {
-            <div
-              class="path-scroll-view hide-scrollbar"
-              #pathScrollView
-              (wheel)="onPathScroll($event)"
-            >
-              <button class="path-segment" (click)="$event.stopPropagation(); updatePath('')">
-                <mat-icon
-                  [svgIcon]="
-                    nautilusRemote()?.isLocal
-                      ? 'hard-drive'
-                      : this.iconService.getIconName(nautilusRemote()?.type || '')
-                  "
-                ></mat-icon>
-                {{ nautilusRemote()?.label || ('nautilus.titles.local' | translate) }}
-              </button>
-
-              @for (segment of pathSegments(); track $index) {
-                <span class="path-separator">/</span>
-                <button
-                  class="path-segment"
-                  [class.active]="$index === pathSegments().length - 1"
-                  (click)="$event.stopPropagation(); navigateToSegment($index)"
-                >
-                  {{ segment }}
-                </button>
-              }
-            </div>
-          }
-          <button
-            class="nav-button"
-            style="border-radius: 0"
-            (click)="$event.stopPropagation()"
-            [cdkMenuTriggerFor]="pathOptionsMenu"
-          >
-            <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
-          </button>
-        } @else {
-          <input
-            #pathInput
-            class="path-input"
-            [value]="fullPathInput()"
-            (keydown.enter)="navigateToPath(pathInput.value); pathInput.blur()"
-            (blur)="isEditingPath.set(false)"
-          />
-        }
-      </div>
-
-      <div class="right-section">
-        @if (!isMobile()) {
-          <button class="nav-button" (click)="setLayout(layout() === 'grid' ? 'list' : 'grid')">
-            <mat-icon [svgIcon]="layout() === 'grid' ? 'list' : 'grid'"></mat-icon>
-          </button>
-
-          <button
-            class="nav-button"
-            [cdkMenuTriggerFor]="viewMenu"
-            [cdkMenuPosition]="[
-              { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
-            ]"
-          >
-            <mat-icon svgIcon="chevron-down"></mat-icon>
-          </button>
-        }
-
-        <button class="nav-button" (click)="closeOverlay.emit()">
-          <mat-icon svgIcon="circle-xmark"></mat-icon>
-        </button>
-      </div>
-    </mat-toolbar>
+    <app-nautilus-toolbar
+      [isMobile]="isMobile()"
+      [canGoBack]="canGoBack()"
+      [canGoForward]="canGoForward()"
+      [isSearchMode]="isSearchMode()"
+      [searchFilter]="searchFilter()"
+      [isEditingPath]="isEditingPath()"
+      [starredMode]="starredMode()"
+      [activeRemote]="activeRemote()"
+      [pathSegments]="pathSegments()"
+      [isDragging]="isDragging()"
+      [hoveredSegmentIndex]="hoveredSegmentIndex()"
+      [fullPathInput]="fullPathInput()"
+      [layout]="layout()"
+      [pathOptionsMenu]="pathOptionsMenu"
+      [viewMenu]="viewMenu"
+      [canAcceptFile]="canAcceptFile"
+      (goBack)="goBack()"
+      (goForward)="goForward()"
+      (toggleSidebar)="sidenav.toggle()"
+      (navigateToSegment)="navigateToSegment($event)"
+      (updatePath)="updatePath($event)"
+      (navigateToPath)="navigateToPath($event)"
+      (layoutChange)="setLayout($event)"
+      (closeOverlay)="closeOverlay.emit()"
+      (searchFilterChange)="searchFilter.set($event)"
+      (isSearchModeChange)="isSearchMode.set($event)"
+      (isEditingPathChange)="isEditingPath.set($event)"
+      (droppedOnSegment)="onDropToSegment($event)"
+    ></app-nautilus-toolbar>
 
     @if (tabs().length > 1) {
-      <div class="tabs-bar">
-        @for (t of tabs(); track $index) {
-          <div
-            class="tab"
-            [class.active]="activeTabIndex() === $index"
-            role="button"
-            tabindex="0"
-            (click)="switchTab($index)"
-          >
-            <span class="tab-title">{{ t.title }}</span>
-            <button
-              class="close-tab"
-              (click)="$event.stopPropagation(); closeTab($index)"
-              [attr.aria-label]="'common.close' | translate"
-            >
-              <mat-icon svgIcon="close"></mat-icon>
-            </button>
-          </div>
-        }
-      </div>
+      <app-nautilus-tabs
+        [tabs]="tabs()"
+        [activeTabIndex]="activeTabIndex()"
+        [isDragging]="isDragging()"
+        [hoveredTabIndex]="hoveredTabIndex()"
+        (switchTab)="switchTab($event)"
+        (closeTab)="closeTab($event)"
+        (moveTab)="moveTab($event.previousIndex, $event.currentIndex)"
+        (duplicateTab)="duplicateTab($event)"
+        (closeOtherTabs)="closeOtherTabs($event)"
+        (closeTabsToRight)="closeTabsToRight($event)"
+      ></app-nautilus-tabs>
     }
 
-    <div class="nautilus-content">
-      @if (layout() === 'grid') {
-        <cdk-virtual-scroll-viewport
-          class="nautilus-grid"
-          itemSize="48"
-          (click)="clearSelection()"
-          (keydown.enter)="clearSelection()"
-          (keydown.space)="clearSelection()"
-          tabindex="0"
-          [cdkContextMenuTriggerFor]="fileMenu"
-          [cdkContextMenuTriggerData]="{ $implicit: null }"
-          (cdkContextMenuOpened)="setContextItem(null)"
-          cdkDropList
-          [cdkDropListHasAnchor]="true"
-          [cdkDropListSortingDisabled]="true"
+    <div class="nautilus-content" [class.split-view]="isSplitEnabled()">
+      @if (isSplitEnabled()) {
+        <div
+          class="split-container"
+          [style.gridTemplateColumns]="splitDividerPos() + '% 0.5rem 1fr'"
         >
-          <div
-            class="grid"
-            [style.gridTemplateColumns]="
-              'repeat(auto-fill, minmax(' + (iconSize() + 40) + 'px, 1fr))'
-            "
-          >
-            <ng-template #itemCard let-item="item" let-isPlaceholder="isPlaceholder">
-              <mat-card
-                class="folder-card"
-                [class.file-card]="!item.entry.IsDir"
-                [class.hidden-item]="!isPlaceholder && item.entry.Name.startsWith('.')"
-              >
-                <mat-card-content>
-                  <mat-icon
-                    [class.accent]="item.entry.IsDir"
-                    [style.width.px]="iconSize()"
-                    [style.height.px]="iconSize()"
-                    [svgIcon]="iconService.getIconForEntry(item.entry)"
-                  ></mat-icon>
-                  <p class="folder-title">{{ item.entry.Name }}</p>
-                </mat-card-content>
-              </mat-card>
-            </ng-template>
-            @for (item of files(); track trackByFile($index, item)) {
-              <div
-                class="grid-item"
-                cdkDrag
-                [cdkDragData]="item"
-                (click)="onItemClick(item, $event, $index)"
-                (keydown.enter)="onItemClick(item, $event, $index)"
-                (keydown.space)="onItemClick(item, $event, $index)"
-                (dblclick)="navigateTo(item)"
-                [cdkContextMenuTriggerFor]="fileMenu"
-                [cdkContextMenuTriggerData]="{ $implicit: item }"
-                (cdkContextMenuOpened)="setContextItem(item)"
-                tabindex="0"
-                [class.selected]="selectedItems().has(item.entry.Path)"
-                [class.unselectable]="!isItemSelectable(item.entry)"
-              >
-                @if (starredMode()) {
-                  <mat-icon
-                    class="star-button"
-                    (click)="toggleStar(item); $event.stopPropagation()"
-                    [svgIcon]="isStarred(item) ? 'star' : 'star-outline'"
-                  ></mat-icon>
-                }
-                <div class="drag-preview" *cdkDragPreview>
-                  <mat-icon [svgIcon]="item.entry.IsDir ? 'folder' : 'file'"></mat-icon>
-                  <span>{{ item.entry.Name }}</span>
-                </div>
-                <ng-container
-                  [ngTemplateOutlet]="itemCard"
-                  [ngTemplateOutletContext]="{ item: item, isPlaceholder: false }"
-                >
-                </ng-container>
-              </div>
-            }
-          </div>
-        </cdk-virtual-scroll-viewport>
-      } @else if (layout() === 'list') {
-        <cdk-virtual-scroll-viewport
-          itemSize="48"
-          class="nautilus-list-container"
-          (click)="clearSelection()"
-          (keydown.enter)="clearSelection()"
-          tabindex="0"
-          [cdkContextMenuTriggerFor]="fileMenu"
-          (cdkContextMenuOpened)="setContextItem(null)"
-          cdkDropList
-          [cdkDropListHasAnchor]="true"
-          [cdkDropListSortingDisabled]="true"
-        >
-          <table mat-table [dataSource]="files()" class="nautilus-table">
-            <ng-template #nameCellContent let-item="item" let-rowTitle="rowTitle">
-              <mat-icon
-                [class.accent]="item.entry.IsDir"
-                [svgIcon]="iconService.getIconForEntry(item.entry)"
-              ></mat-icon>
-              <span [class.row-title]="rowTitle">{{ item.entry.Name }}</span>
-            </ng-template>
-            <ng-container matColumnDef="name">
-              <th
-                mat-header-cell
-                *matHeaderCellDef
-                (click)="toggleSort('name')"
-                class="sortable-header"
-              >
-                <div class="header-content">
-                  {{ 'nautilus.columns.name' | translate }}
-                  @if (sortKey().startsWith('name')) {
-                    <mat-icon
-                      [svgIcon]="sortDirection() === 'asc' ? 'chevron-up' : 'chevron-down'"
-                    ></mat-icon>
-                  }
-                </div>
-              </th>
-              <td mat-cell *matCellDef="let item">
-                <div class="cell-content name-cell">
-                  <ng-container
-                    [ngTemplateOutlet]="nameCellContent"
-                    [ngTemplateOutletContext]="{ item: item, rowTitle: false }"
-                  ></ng-container>
-                </div>
-              </td>
-            </ng-container>
+          <app-nautilus-view-pane
+            [files]="files()"
+            [selection]="selectedItems()"
+            [paneIndex]="0"
+            [isSplitEnabled]="isSplitEnabled()"
+            [loading]="isLoading()"
+            [error]="errorState()"
+            [layout]="layout()"
+            [iconSize]="iconSize()"
+            [listRowHeight]="listRowHeight()"
+            [isDragging]="isDragging()"
+            [hoveredFolder]="hoveredFolder()"
+            [cutItemPaths]="cutItemPaths()"
+            [starredMode]="starredMode()"
+            [sortKey]="sortKey()"
+            [sortDirection]="sortDirection()"
+            [activePaneIndex]="activePaneIndex()"
+            [getItemKey]="boundGetItemKey"
+            [isItemSelectable]="boundIsItemSelectable"
+            [trackByFile]="boundTrackByFile"
+            [trackBySortOption]="boundTrackBySortOption"
+            [formatRelativeDate]="boundFormatRelativeDate"
+            [canAcceptFile]="canAcceptFile"
+            [fileMenu]="fileMenu"
+            (switchPane)="switchPane($event)"
+            (clearSelection)="clearSelection()"
+            (setContextItem)="setContextItem($event)"
+            (dropToCurrentDirectory)="onDropToCurrentDirectory($event.event, $event.paneIndex)"
+            (dragStarted)="onDragStarted($event)"
+            (dragEnded)="onDragEnded($event)"
+            (itemClick)="onItemClick($event.item, $event.event, $event.index)"
+            (navigateTo)="navigateTo($event)"
+            (toggleStar)="toggleStar($event)"
+            (toggleSort)="toggleSort($event)"
+            (refresh)="refresh()"
+            (cancelLoad)="cancelLoad($event)"
+          ></app-nautilus-view-pane>
 
-            <ng-container matColumnDef="size">
-              <th
-                mat-header-cell
-                *matHeaderCellDef
-                class="sortable-header"
-                (click)="toggleSort('size')"
-              >
-                <div class="header-content right-aligned">
-                  @if (sortKey().startsWith('size')) {
-                    <mat-icon
-                      [svgIcon]="sortDirection() === 'asc' ? 'chevron-up' : 'chevron-down'"
-                    ></mat-icon>
-                  }
-                  {{ 'nautilus.columns.size' | translate }}
-                </div>
-              </th>
-              <td mat-cell *matCellDef="let item">
-                {{ item.entry.IsDir ? '--' : (item.entry.Size | formatFileSize) }}
-              </td>
-            </ng-container>
+          <div class="split-divider" (mousedown)="onSplitDividerDrag($event)"></div>
 
-            <ng-container matColumnDef="modified">
-              <th
-                mat-header-cell
-                *matHeaderCellDef
-                class="sortable-header"
-                (click)="toggleSort('modified')"
-              >
-                <div class="header-content right-aligned">
-                  @if (sortKey().startsWith('modified')) {
-                    <mat-icon
-                      [svgIcon]="sortDirection() === 'asc' ? 'chevron-up' : 'chevron-down'"
-                    ></mat-icon>
-                  }
-                  {{ 'nautilus.columns.modified' | translate }}
-                </div>
-              </th>
-              <td mat-cell *matCellDef="let item">
-                {{ formatRelativeDate(item.entry.ModTime) }}
-              </td>
-            </ng-container>
-
-            <ng-container matColumnDef="star">
-              <th mat-header-cell *matHeaderCellDef></th>
-              <td mat-cell *matCellDef="let item">
-                <button
-                  mat-icon-button
-                  class="star-button"
-                  (click)="toggleStar(item); $event.stopPropagation()"
-                >
-                  <mat-icon [svgIcon]="isStarred(item) ? 'star' : 'star-outline'"></mat-icon>
-                </button>
-              </td>
-            </ng-container>
-
-            <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
-
-            <tr
-              mat-row
-              *matRowDef="let item; columns: displayedColumns; let i = index"
-              cdkDrag
-              [cdkDragData]="item"
-              (click)="onItemClick(item, $event, i)"
-              (keydown.enter)="onItemClick(item, $event, i)"
-              (dblclick)="navigateTo(item)"
-              [cdkContextMenuTriggerFor]="fileMenu"
-              [cdkContextMenuTriggerData]="{ $implicit: item }"
-              (cdkContextMenuOpened)="setContextItem(item)"
-              [class.selected]="selectedItems().has(item.entry.Path)"
-              [class.hidden-item]="item.entry.Name.startsWith('.')"
-            >
-              <div class="drag-preview" *cdkDragPreview>
-                <mat-icon [svgIcon]="item.entry.IsDir ? 'folder' : 'file'"></mat-icon>
-                <span>{{ item.entry.Name }}</span>
-              </div>
-            </tr>
-          </table>
-        </cdk-virtual-scroll-viewport>
-      }
-
-      @if (errorState()) {
-        <div class="empty-folder-container">
-          <mat-icon svgIcon="circle-exclamation"></mat-icon>
-          <h2>{{ 'nautilus.errors.connectionFailed' | translate }}</h2>
-          <p>{{ errorState() }}</p>
-          <button mat-stroked-button (click)="refresh()">{{ 'common.retry' | translate }}</button>
+          <app-nautilus-view-pane
+            [files]="filesRight()"
+            [selection]="selectedItemsRight()"
+            [paneIndex]="1"
+            [isSplitEnabled]="isSplitEnabled()"
+            [loading]="isLoadingRight()"
+            [error]="errorStateRight()"
+            [layout]="layout()"
+            [iconSize]="iconSize()"
+            [listRowHeight]="listRowHeight()"
+            [isDragging]="isDragging()"
+            [hoveredFolder]="hoveredFolder()"
+            [cutItemPaths]="cutItemPaths()"
+            [starredMode]="starredMode()"
+            [sortKey]="sortKey()"
+            [sortDirection]="sortDirection()"
+            [activePaneIndex]="activePaneIndex()"
+            [getItemKey]="boundGetItemKey"
+            [isItemSelectable]="boundIsItemSelectable"
+            [trackByFile]="boundTrackByFile"
+            [trackBySortOption]="boundTrackBySortOption"
+            [formatRelativeDate]="boundFormatRelativeDate"
+            [canAcceptFile]="canAcceptFile"
+            [fileMenu]="fileMenu"
+            (switchPane)="switchPane($event)"
+            (clearSelection)="clearSelection()"
+            (setContextItem)="setContextItem($event)"
+            (dropToCurrentDirectory)="onDropToCurrentDirectory($event.event, $event.paneIndex)"
+            (dragStarted)="onDragStarted($event)"
+            (dragEnded)="onDragEnded($event)"
+            (itemClick)="onItemClick($event.item, $event.event, $event.index)"
+            (navigateTo)="navigateTo($event)"
+            (toggleStar)="toggleStar($event)"
+            (toggleSort)="toggleSort($event)"
+            (refresh)="refresh()"
+            (cancelLoad)="cancelLoad($event)"
+          ></app-nautilus-view-pane>
         </div>
-      } @else if (files().length === 0 && !isLoading()) {
-        <div class="empty-folder-container">
-          @if (starredMode()) {
-            <mat-icon svgIcon="star"></mat-icon>
-            <h2>{{ 'nautilus.empty.noStarred' | translate }}</h2>
-          } @else {
-            <mat-icon svgIcon="folder"></mat-icon>
-            <h2>{{ 'nautilus.empty.folderEmpty' | translate }}</h2>
-          }
-        </div>
-      }
-
-      @if (isLoading()) {
-        <div class="loading-overlay">
-          <mat-spinner diameter="24"></mat-spinner>
-          <span>{{ 'common.loading' | translate }}</span>
-          <button class="nav-button" (click)="cancelLoad()">
-            <mat-icon svgIcon="close"></mat-icon>
-          </button>
-        </div>
+      } @else {
+        <app-nautilus-view-pane
+          [files]="files()"
+          [selection]="selectedItems()"
+          [paneIndex]="0"
+          [isSplitEnabled]="isSplitEnabled()"
+          [loading]="isLoading()"
+          [error]="errorState()"
+          [layout]="layout()"
+          [iconSize]="iconSize()"
+          [listRowHeight]="listRowHeight()"
+          [isDragging]="isDragging()"
+          [hoveredFolder]="hoveredFolder()"
+          [cutItemPaths]="cutItemPaths()"
+          [starredMode]="starredMode()"
+          [sortKey]="sortKey()"
+          [sortDirection]="sortDirection()"
+          [activePaneIndex]="activePaneIndex()"
+          [getItemKey]="boundGetItemKey"
+          [isItemSelectable]="boundIsItemSelectable"
+          [trackByFile]="boundTrackByFile"
+          [trackBySortOption]="boundTrackBySortOption"
+          [formatRelativeDate]="boundFormatRelativeDate"
+          [canAcceptFile]="canAcceptFile"
+          [fileMenu]="fileMenu"
+          (switchPane)="switchPane($event)"
+          (clearSelection)="clearSelection()"
+          (setContextItem)="setContextItem($event)"
+          (dropToCurrentDirectory)="onDropToCurrentDirectory($event.event, $event.paneIndex)"
+          (dragStarted)="onDragStarted($event)"
+          (dragEnded)="onDragEnded($event)"
+          (itemClick)="onItemClick($event.item, $event.event, $event.index)"
+          (navigateTo)="navigateTo($event)"
+          (toggleStar)="toggleStar($event)"
+          (toggleSort)="toggleSort($event)"
+          (refresh)="refresh()"
+          (cancelLoad)="cancelLoad($event)"
+        ></app-nautilus-view-pane>
       }
     </div>
 
     @if (isMobile()) {
-      <div class="nautilus-bottom-bar" data-tauri-drag-region>
-        <div class="nav-controls">
-          <button class="nav-button" (click)="goBack()" [disabled]="!canGoBack()">
-            <mat-icon svgIcon="chevron-left"></mat-icon>
-          </button>
-          <button class="nav-button" (click)="goForward()" [disabled]="!canGoForward()">
-            <mat-icon svgIcon="chevron-right"></mat-icon>
-          </button>
-        </div>
-        <div class="view-controls">
-          <button class="nav-button" (click)="setLayout(layout() === 'grid' ? 'list' : 'grid')">
-            <mat-icon [svgIcon]="layout() === 'grid' ? 'list' : 'grid'"></mat-icon>
-          </button>
-          <button
-            class="nav-button"
-            [cdkMenuTriggerFor]="viewMenu"
-            [cdkMenuPosition]="[
-              {
-                originX: 'end',
-                originY: 'top',
-                overlayX: 'start',
-                overlayY: 'bottom',
-                offsetY: -8,
-              },
-            ]"
-          >
-            <mat-icon svgIcon="chevron-down"></mat-icon>
-          </button>
-        </div>
-      </div>
+      <app-nautilus-bottom-bar
+        [canGoBack]="canGoBack()"
+        [canGoForward]="canGoForward()"
+        [layout]="layout()"
+        [viewMenu]="viewMenu"
+        (goBack)="goBack()"
+        (goForward)="goForward()"
+        (setLayout)="setLayout($event)"
+      ></app-nautilus-bottom-bar>
     }
 
     <ng-template #fileMenu let-item>
@@ -532,29 +233,39 @@
               <button class="menu-item" cdkMenuItem (click)="openContextMenuOpenInNewTab()">
                 <span>{{ 'nautilus.contextMenu.openNewTab' | translate }}</span>
               </button>
+              <button class="menu-item" cdkMenuItem (click)="removeEmptyDirs()">
+                <span>{{ 'nautilus.contextMenu.removeEmptyDirs' | translate }}</span>
+              </button>
             }
-            <button
-              class="menu-item"
-              cdkMenuItem
-              (click)="openContextMenuSelectToggle()"
-              [disabled]="isPickerMode() && !pickerOptions().multi"
-            >
-              <span>{{ 'nautilus.contextMenu.toggleSelect' | translate }}</span>
-            </button>
             <button class="menu-item" cdkMenuItem (click)="openContextMenuCopyPath()">
               <span>{{ 'nautilus.contextMenu.copyPath' | translate }}</span>
+            </button>
+            <button class="menu-item" cdkMenuItem (click)="copyItems()">
+              <span>{{ 'nautilus.contextMenu.copy' | translate }}</span>
+            </button>
+            <button class="menu-item" cdkMenuItem (click)="cutItems()">
+              <span>{{ 'nautilus.contextMenu.cut' | translate }}</span>
+            </button>
+            <mat-divider></mat-divider>
+            <button class="menu-item" cdkMenuItem (click)="deleteSelectedItems()">
+              <span>{{ 'nautilus.contextMenu.delete' | translate }}</span>
             </button>
           }
           @if (!item && !starredMode()) {
             <button class="menu-item" cdkMenuItem (click)="openContextMenuNewFolder()">
               <span>{{ 'nautilus.contextMenu.newFolder' | translate }}</span>
             </button>
+            @if (hasClipboard()) {
+              <button class="menu-item" cdkMenuItem (click)="pasteItems()">
+                <span>{{ 'nautilus.contextMenu.paste' | translate }}</span>
+              </button>
+            }
             <mat-divider></mat-divider>
+            <button class="menu-item" cdkMenuItem (click)="refresh()">
+              <span>{{ 'nautilus.contextMenu.refresh' | translate }}</span>
+            </button>
           }
         }
-        <button class="menu-item" cdkMenuItem (click)="refresh()">
-          <span>{{ 'nautilus.contextMenu.refresh' | translate }}</span>
-        </button>
         @if (!errorState() && (item || !starredMode())) {
           <button class="menu-item" cdkMenuItem (click)="openPropertiesDialog('contextMenu')">
             <span>{{ 'nautilus.contextMenu.properties' | translate }}</span>
@@ -571,6 +282,14 @@
               <span>{{ 'nautilus.contextMenu.newFolder' | translate }}...</span>
             </button>
             <mat-divider></mat-divider>
+            <button
+              class="menu-item"
+              cdkMenuItem
+              (click)="pasteItems()"
+              [disabled]="!hasClipboard()"
+            >
+              <span>{{ 'nautilus.contextMenu.paste' | translate }}</span>
+            </button>
           }
         }
 
@@ -631,53 +350,6 @@
   </mat-sidenav-content>
 </mat-sidenav-container>
 
-<ng-template #sidebarStarredMenu>
-  <div class="material-context-menu" cdkMenu>
-    <button class="menu-item" cdkMenuItem (click)="selectStarred()">
-      <span>{{ 'nautilus.contextMenu.open' | translate }}</span>
-    </button>
-    <button class="menu-item" cdkMenuItem (click)="openStarredInNewTab()">
-      <span>{{ 'nautilus.contextMenu.openNewTab' | translate }}</span>
-    </button>
-  </div>
-</ng-template>
-
-<ng-template #sidebarRemoteMenu let-remote>
-  <div class="material-context-menu" cdkMenu>
-    <button class="menu-item" cdkMenuItem (click)="selectRemote(remote)">
-      <span>{{ 'nautilus.contextMenu.open' | translate }}</span>
-    </button>
-    <button class="menu-item" cdkMenuItem (click)="createTab(remote, '')">
-      <span>{{ 'nautilus.contextMenu.openNewTab' | translate }}</span>
-    </button>
-    <button class="menu-item" cdkMenuItem (click)="openRemoteAboutFromSidebar()">
-      <span>{{ 'nautilus.contextMenu.about' | translate }}</span>
-    </button>
-    <button
-      class="menu-item"
-      cdkMenuItem
-      (click)="openSidebarCleanup()"
-      [disabled]="!sideRemoteSupportsCleanup()"
-    >
-      <span>{{ 'nautilus.contextMenu.emptyTrash' | translate }}</span>
-    </button>
-  </div>
-</ng-template>
-
-<ng-template #sidebarBookmarkMenu let-bookmark>
-  <div class="material-context-menu" cdkMenu>
-    <button class="menu-item" cdkMenuItem (click)="openBookmark(bookmark)">
-      <span>{{ 'nautilus.contextMenu.open' | translate }}</span>
-    </button>
-    <button class="menu-item" cdkMenuItem (click)="openPropertiesDialog('bookmark')">
-      <span>{{ 'nautilus.contextMenu.properties' | translate }}</span>
-    </button>
-    <button class="menu-item" cdkMenuItem (click)="deleteContextBookmark()">
-      <span>{{ 'nautilus.contextMenu.removeBookmark' | translate }}</span>
-    </button>
-  </div>
-</ng-template>
-
 <ng-template #viewMenu>
   <div class="material-context-menu" cdkMenu>
     <div class="icon-size-control">
@@ -709,8 +381,18 @@
 
     <mat-divider></mat-divider>
 
-    <mat-checkbox [checked]="showHidden()" (change)="toggleShowHidden($event.checked)">
-      <span>{{ 'nautilus.view.showHidden' | translate }}</span>
-    </mat-checkbox>
+    <div class="menu-item-wrapper">
+      <mat-checkbox [checked]="isSplitEnabled()" (change)="toggleSplit()">
+        <span>{{ 'nautilus.contextMenu.toggleSplit' | translate }}</span>
+      </mat-checkbox>
+    </div>
+
+    <mat-divider></mat-divider>
+
+    <div class="menu-item-wrapper">
+      <mat-checkbox [checked]="showHidden()" (change)="toggleShowHidden($event.checked)">
+        <span>{{ 'nautilus.view.showHidden' | translate }}</span>
+      </mat-checkbox>
+    </div>
   </div>
 </ng-template>

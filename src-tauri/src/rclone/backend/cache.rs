@@ -19,9 +19,16 @@ pub async fn refresh_active_backend(
 
 #[cfg(test)]
 mod tests {
-    // TODO: Add cache refresh tests
-    // - Test successful refresh
-    // - Test refresh failure handling
-    // - Test remote list caching
-    // - Test job cache updates
+    use super::*;
+
+    #[tokio::test]
+    async fn test_refresh_active_backend_basics() {
+        let manager = BackendManager::new();
+        let client = reqwest::Client::new();
+
+        // Should return Ok(()) even if background calls fail (best-effort)
+        let result = refresh_active_backend(&manager, &client).await;
+
+        assert!(result.is_ok());
+    }
 }

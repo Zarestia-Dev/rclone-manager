@@ -147,24 +147,21 @@
   }
 }
 
-@media (max-width: 500px) {
-  .mat-toolbar {
-    max-height: 52px;
-    font-size: 14px;
-  }
+@media (max-width: 500px), (max-height: 500px) {
+  .home-wrapper {
+    .home-container {
+      mat-sidenav-content {
+        .no-remotes {
+          align-items: flex-start !important;
 
-  .no-remotes {
-    align-items: flex-start !important;
-
-    .no-remotes-actions {
-      flex-direction: column;
-      gap: 12px;
+          .no-remotes-content {
+            .no-remotes-actions {
+              flex-direction: column;
+              gap: 12px;
+            }
+          }
+        }
+      }
     }
-  }
-}
-
-@media (max-height: 500px) {
-  .no-remotes {
-    align-items: flex-start !important;
   }
 }

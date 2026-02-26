@@ -5,11 +5,11 @@ import {
   OnInit,
   HostListener,
   inject,
-  OnDestroy,
   signal,
   computed,
+  ChangeDetectionStrategy,
 } from '@angular/core';
-import { Subscription } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -71,8 +71,9 @@ type OnboardingAction =
   ],
   templateUrl: './onboarding.component.html',
   styleUrls: ['./onboarding.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class OnboardingComponent implements OnInit, OnDestroy {
+export class OnboardingComponent implements OnInit {
   @Output() completed = new EventEmitter<void>();
 
   // ─── Services ───────────────────────────────────────────────────────────────
@@ -111,8 +112,6 @@ export class OnboardingComponent implements OnInit, OnDestroy {
   readonly configPassword = signal('');
   readonly passwordValidationError = signal<string | null>(null);
   readonly isSubmittingPassword = signal(false);
-
-  private rcloneEngineSub: Subscription | null = null;
 
   // ─── Computed Values ────────────────────────────────────────────────────────
 
@@ -252,6 +251,10 @@ export class OnboardingComponent implements OnInit, OnDestroy {
     { key: 'existing', label: 'onboarding.options.existing', icon: 'file' },
   ];
 
+  constructor() {
+    this.setupRcloneEngineListener();
+  }
+
   // ─── Lifecycle ──────────────────────────────────────────────────────────────
 
   async ngOnInit(): Promise<void> {
@@ -260,13 +263,6 @@ export class OnboardingComponent implements OnInit, OnDestroy {
 
     try {
       await this.systemHealth.runAllChecks();
-
-      // Subscribe to engine events for password handling
-      this.rcloneEngineSub = this.eventListenersService
-        .listenToRcloneEngineReady()
-        .subscribe(() => {
-          this.passwordValidationError.set(null);
-        });
     } catch (error) {
       console.error('OnboardingComponent: System checks failed', error);
     }
@@ -275,8 +271,13 @@ export class OnboardingComponent implements OnInit, OnDestroy {
     setTimeout(() => this.animationState.set('visible'), 300);
   }
 
-  ngOnDestroy(): void {
-    this.rcloneEngineSub?.unsubscribe();
+  private setupRcloneEngineListener(): void {
+    this.eventListenersService
+      .listenToRcloneEngineReady()
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => {
+        this.passwordValidationError.set(null);
+      });
   }
 
   // ─── Navigation ─────────────────────────────────────────────────────────────

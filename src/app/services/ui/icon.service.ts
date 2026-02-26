@@ -7,6 +7,8 @@ import { MIME_EXTENSION_MAP } from './mime-extension-map';
 import { getIconForMimeType, getGenericIconForMimeType } from './mime-icon-map';
 import { Entry } from '@app/types';
 
+export type FileCategory = 'image' | 'video' | 'audio' | 'pdf' | 'directory' | 'binary' | 'text';
+
 @Injectable({
   providedIn: 'root',
 })
@@ -68,7 +70,8 @@ export class IconService {
     return this.normalizedLookup[normalized] || null;
   }
 
-  getIconForEntry(entry: Entry): string {
+  getIconForEntry(entry?: Entry | null): string {
+    if (!entry) return 'folder-adw';
     if (entry.IsDir) {
       const lowerName = entry.Name.toLowerCase();
 
@@ -121,14 +124,85 @@ export class IconService {
     return 'text-x-generic';
   }
 
-  public getFileTypeCategory(item: Entry): string {
-    if (item.IsDir) return 'directory';
+  public getFileTypeCategory(item: Entry): FileCategory {
+    if (item.IsDir) {
+      return 'directory';
+    }
+
+    // Check MIME type and extension
     const mimeType = item.MimeType;
+    const extension = item.Name.split('.').pop()?.toLowerCase() || '';
+
+    // Media types that need special HTML elements
     if (mimeType?.startsWith('image/')) return 'image';
     if (mimeType?.startsWith('video/')) return 'video';
     if (mimeType?.startsWith('audio/')) return 'audio';
     if (mimeType === 'application/pdf') return 'pdf';
-    return 'file';
+    if (mimeType?.startsWith('text/')) return 'text';
+
+    // Extension-based detection for media (when MIME is missing)
+    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg', 'ico'].includes(extension))
+      return 'image';
+    if (['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv'].includes(extension)) return 'video';
+    if (['mp3', 'wav', 'flac', 'aac', 'm4a'].includes(extension)) return 'audio';
+    if (extension === 'pdf') return 'pdf';
+
+    // Known binary extensions that definitely cannot be previewed
+    const knownBinary = [
+      'exe',
+      'dll',
+      'so',
+      'dylib',
+      'bin',
+      'app',
+      'zip',
+      'rar',
+      '7z',
+      'tar',
+      'gz',
+      'bz2',
+      'xz',
+      'tgz',
+      'doc',
+      'docx',
+      'xls',
+      'xlsx',
+      'ppt',
+      'pptx',
+      'odt',
+      'ods',
+      'db',
+      'sqlite',
+      'mdb',
+      'psd',
+      'ai',
+      'indd',
+      'raw',
+      'cr2',
+      'nef',
+      'o',
+      'a',
+      'lib',
+      'class',
+      'pyc',
+      'jar',
+      'img',
+      'iso',
+      'dmg',
+      'qcow',
+      'qcow2',
+      'vdi',
+      'vmdk',
+      'vpc',
+      'vhdx',
+      'vdi',
+    ];
+
+    if (knownBinary.includes(extension)) {
+      return 'binary';
+    }
+
+    return 'text';
   }
 
   getIconName(name: string | undefined | null): string {
@@ -144,6 +218,7 @@ export class IconService {
       pdf: 'application-pdf',
       text: 'text-x-generic',
       binary: 'package-x-generic',
+      directory: 'folder-adw',
     };
     return mapping[fileType] || 'text-x-generic';
   }

@@ -92,24 +92,11 @@ pub struct CommonConfigParams {
 /// Helper to parse common configuration fields
 pub fn parse_common_config(config: &Value, settings: &Value) -> Option<CommonConfigParams> {
     let source = get_string(config, &["source"]);
-    // Mount dest is usually empty/different logic, but sync uses it.
-    // Mount uses "dest" field for mountpoint? Let's check mount.rs.
-    // Yes, mount.rs uses get_string(config, &["dest"]) for mount_point.
-    // So "dest" key is consistent.
     let dest = get_string(config, &["dest"]);
 
-    // If source is missing, we might fail early?
-    // sync.rs: if source.is_empty() || dest.is_empty() { return None; }
-    // mount.rs: if source.is_empty() || dest.is_empty() { return None; }
-    // So "source" and "dest" are mandatory for these.
     if source.is_empty() {
         return None;
     }
-    // dest can be empty for serve? serve.rs checks source and fs option.
-    // For now let's make dest optional in this helper?
-    // Or just require it and let serve handle itself (serve doesn't use FromConfig the same way entirely).
-
-    // Let's stick to what Sync/Mount use. They both check both source and dest.
     if dest.is_empty() {
         return None;
     }

@@ -34,7 +34,7 @@
   flex-direction: column;
 
   .section-label {
-    font-size: 0.9rem;
+    font-size: var(--font-size-md);
     font-weight: 600;
     color: var(--window-fg-color);
     margin-bottom: 0;
@@ -42,7 +42,7 @@
   }
 
   .section-description {
-    font-size: 0.85rem;
+    font-size: var(--font-size-sm);
     color: var(--dim-color);
   }
 }
@@ -79,13 +79,8 @@
     align-items: center;
     gap: 12px;
     padding: 12px 16px;
-    border-radius: 8px;
-    font-size: 0.85rem;
-
-    mat-icon {
-      width: 20px;
-      height: 20px;
-    }
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
 
     &.info {
       color: var(--accent-color);
@@ -94,8 +89,8 @@
     }
 
     &.warning {
-      color: var(--orange);
-      background: rgba(var(--orange-rgb), 0.1);
+      color: var(--warn-color);
+      background: rgba(var(--warn-color-rgb), 0.1);
       box-shadow: 0 0 0 1px var(--card-shade-color);
     }
   }

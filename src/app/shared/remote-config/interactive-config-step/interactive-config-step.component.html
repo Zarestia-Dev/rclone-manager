@@ -6,8 +6,8 @@
         <mat-icon class="step-icon" svgIcon="gear"></mat-icon>
       </div>
       <div class="header-text">
-        <h3 class="step-title">Additional Configuration</h3>
-        <p class="step-subtitle">Complete the setup for this remote</p>
+        <h3 class="step-title">{{ 'wizards.remoteConfig.additionalConfig' | translate }}</h3>
+        <p class="step-subtitle">{{ 'wizards.remoteConfig.setupSubtitle' | translate }}</p>
       </div>
     </div>
   </div>
@@ -27,9 +27,6 @@
               }}</span>
             }
           </h4>
-          @if (question()?.Option?.Required) {
-            <span class="required-badge">Required</span>
-          }
         </div>
       </div>
       <div class="question-text">
@@ -84,14 +81,18 @@
                     q.Option?.Name || ('wizards.remoteConfig.chooseOption' | translate)
                   }}</mat-label>
                   <mat-select
-                    [(ngModel)]="answer"
+                    [ngModel]="selectedIndex()"
+                    (ngModelChange)="onSelectionChange($event)"
                     [disabled]="canceling()"
                     [attr.aria-label]="
                       q.Option?.Name || ('wizards.remoteConfig.selectOption' | translate)
                     "
                   >
-                    @for (ex of q.Option?.Examples; track trackByIndex($index)) {
-                      <mat-option [value]="ex.Value">
+                    <mat-select-trigger>
+                      {{ getDisplayValue(selectedIndex(), q.Option?.Examples) }}
+                    </mat-select-trigger>
+                    @for (ex of q.Option?.Examples; track index; let index = $index) {
+                      <mat-option [value]="index">
                         <div class="option-content">
                           <span class="option-label">{{ ex.Help || ex.Value }} </span>
                           @if (ex.Help && ex.Help !== ex.Value) {
@@ -113,7 +114,7 @@
                     matInput
                     [(ngModel)]="answer"
                     [disabled]="canceling()"
-                    [placeholder]="getInputPlaceholder(q)"
+                    [placeholder]="inputPlaceholder()"
                     [attr.aria-label]="
                       q.Option?.Name || ('wizards.remoteConfig.inputField' | translate)
                     "
@@ -129,7 +130,7 @@
       </div>
     }
 
-    @if (question()?.Option?.Required) {
+    @if (isFieldRequired()) {
       <div class="validation-status">
         <mat-icon
           class="validation-icon"

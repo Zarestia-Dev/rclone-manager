@@ -125,6 +125,8 @@ pub struct ProfileParamsBody {
 pub struct ProfileParamsInner {
     pub remote_name: String,
     pub profile_name: String,
+    pub source: Option<String>,
+    pub no_cache: Option<bool>,
 }
 
 pub async fn start_sync_profile_handler(
@@ -135,6 +137,8 @@ pub async fn start_sync_profile_handler(
     let params = ProfileParams {
         remote_name: body.params.remote_name,
         profile_name: body.params.profile_name,
+        source: body.params.source,
+        no_cache: body.params.no_cache,
     };
     let jobid = start_sync_profile(state.app_handle.clone(), params)
         .await
@@ -150,6 +154,8 @@ pub async fn start_copy_profile_handler(
     let params = ProfileParams {
         remote_name: body.params.remote_name,
         profile_name: body.params.profile_name,
+        source: body.params.source,
+        no_cache: body.params.no_cache,
     };
     let jobid = start_copy_profile(state.app_handle.clone(), params)
         .await
@@ -165,6 +171,8 @@ pub async fn start_move_profile_handler(
     let params = ProfileParams {
         remote_name: body.params.remote_name,
         profile_name: body.params.profile_name,
+        source: body.params.source,
+        no_cache: body.params.no_cache,
     };
     let jobid = start_move_profile(state.app_handle.clone(), params)
         .await
@@ -180,6 +188,8 @@ pub async fn start_bisync_profile_handler(
     let params = ProfileParams {
         remote_name: body.params.remote_name,
         profile_name: body.params.profile_name,
+        source: body.params.source,
+        no_cache: body.params.no_cache,
     };
     let jobid = start_bisync_profile(state.app_handle.clone(), params)
         .await
@@ -203,7 +213,12 @@ pub async fn rename_job_profile_handler(
     let backend_manager = state.app_handle.state::<BackendManager>();
     let count = backend_manager
         .job_cache
-        .rename_profile(&body.remote_name, &body.old_name, &body.new_name)
+        .rename_profile(
+            &body.remote_name,
+            &body.old_name,
+            &body.new_name,
+            Some(&state.app_handle),
+        )
         .await;
     Ok(Json(ApiResponse::success(count)))
 }

@@ -1,5 +1,5 @@
-import { CommonModule } from '@angular/common';
-import { Component, computed, EventEmitter, input, Output, inject } from '@angular/core';
+import { NgClass, TitleCasePipe } from '@angular/common';
+import { Component, computed, input, inject, output } from '@angular/core';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -93,13 +93,13 @@ const OPERATION_CONFIG: Record<PrimaryActionType, OperationConfig> = {
   selector: 'app-remote-card',
   standalone: true,
   imports: [
-    CommonModule,
+    NgClass,
+    TitleCasePipe,
     MatCardModule,
     MatIconModule,
     MatButtonModule,
     MatDividerModule,
     MatProgressSpinnerModule,
-    MatTooltipModule,
     MatTooltipModule,
     QuickActionButtonsComponent,
     TranslateModule,
@@ -119,10 +119,10 @@ export class RemoteCardComponent {
   maxSyncButtons = input(4);
   maxMountButtons = input(1);
 
-  @Output() remoteClick = new EventEmitter<Remote>();
-  @Output() openInFiles = new EventEmitter<string>();
-  @Output() startJob = new EventEmitter<{ type: PrimaryActionType; remoteName: string }>();
-  @Output() stopJob = new EventEmitter<{
+  remoteClick = output<Remote>();
+  openInFiles = output<string>();
+  startJob = output<{ type: PrimaryActionType; remoteName: string }>();
+  stopJob = output<{
     type: PrimaryActionType;
     remoteName: string;
     profileName?: string;
@@ -486,7 +486,11 @@ export class RemoteCardComponent {
     const mode = this.mode();
 
     if (mode === 'general') {
-      if (this.isOperationActive('mount') || this.isAnySyncActive()) {
+      if (
+        this.isOperationActive('mount') ||
+        this.isAnySyncActive() ||
+        this.isOperationActive('serve')
+      ) {
         return 'active';
       }
     }

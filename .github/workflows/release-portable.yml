@@ -99,7 +99,7 @@ jobs:
 
           # 2. Copy Binary and Resources
           Copy-Item "src-tauri/target/${{ matrix.rust_target }}/release/rclone-manager.exe" "$dirName/RCloneManager.exe"
-          Copy-Item -Path "src/assets/i18n" -Destination "$dirName/i18n" -Recurse
+          Copy-Item -Path "resources/i18n" -Destination "$dirName/i18n" -Recurse
 
           # 3. Create README with Dependencies
           $readme = @"
@@ -143,7 +143,7 @@ jobs:
 
           # 2. Copy Binary, Resources & Make Executable
           cp src-tauri/target/${{ matrix.rust_target }}/release/rclone-manager "$DIR_NAME/RCloneManager"
-          cp -r src/assets/i18n "$DIR_NAME/i18n"
+          cp -r resources/i18n "$DIR_NAME/i18n"
           chmod +x "$DIR_NAME/RCloneManager"
 
           # 3. Create README with Dependencies

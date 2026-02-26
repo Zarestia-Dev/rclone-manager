@@ -7,7 +7,18 @@ use crate::{
 use log::{debug, error, info, warn};
 use tauri::{AppHandle, Emitter, Manager, State};
 
-const LOCAL_BACKEND_KEY: &str = "backend:Local:config_password";
+fn update_local_config_password(
+    manager: &AppSettingsManager,
+    password: Option<&str>,
+) -> Result<(), String> {
+    let connections = manager
+        .sub_settings("connections")
+        .map_err(|e| format!("Failed to access connections settings: {e}"))?;
+
+    connections
+        .set_field("Local", "config_password", &password.unwrap_or_default())
+        .map_err(|e| format!("Failed to update Local config password: {e}"))
+}
 
 // -----------------------------------------------------------------------------
 // PASSWORD MANAGEMENT (USING RCMAN CREDENTIALS)
@@ -25,41 +36,27 @@ pub async fn store_config_password(
 ) -> Result<(), String> {
     info!("🔑 Storing rclone config password via rcman (Unified Storage)");
 
-    // Access credential manager (requires keychain feature)
-    let credentials = manager.inner().credentials().ok_or_else(|| {
-        crate::localized_error!("backendErrors.security.credentialStorageUnavailable")
-    })?;
+    update_local_config_password(manager.inner(), Some(&password))
+        .map_err(|e| crate::localized_error!("backendErrors.security.storeFailed", "error" => e))?;
 
-    // Store using the standardized Local backend key
-    match credentials.store(LOCAL_BACKEND_KEY, &password) {
-        Ok(()) => {
-            // Set environment variable for current session using safe manager
-            env_manager.set_config_password(password.clone());
+    env_manager.set_config_password(password.clone());
 
-            // Emit event so OAuth can restart if needed
-            if let Err(e) = app.emit(RCLONE_PASSWORD_STORED, ()) {
-                error!("Failed to emit password_stored event: {e}");
-            }
-
-            // Update BackendManager's Local instance in memory
-            use crate::rclone::backend::BackendManager;
-            let backend_manager = app.state::<BackendManager>();
-            if let Some(mut backend) = backend_manager.get("Local").await {
-                backend.config_password = Some(password.clone());
-                let _ = backend_manager
-                    .update(manager.inner(), "Local", backend)
-                    .await;
-                debug!("📝 Updated in-memory Local backend config password");
-            }
-
-            info!("✅ Password stored successfully");
-            Ok(())
-        }
-        Err(e) => {
-            error!("❌ Failed to store password: {}", e);
-            Err(crate::localized_error!("backendErrors.security.storeFailed", "error" => e))
-        }
+    if let Err(e) = app.emit(RCLONE_PASSWORD_STORED, ()) {
+        error!("Failed to emit password_stored event: {e}");
     }
+
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app.state::<BackendManager>();
+    if let Some(mut backend) = backend_manager.get("Local").await {
+        backend.config_password = Some(password.clone());
+        let _ = backend_manager
+            .update(manager.inner(), "Local", backend)
+            .await;
+        debug!("📝 Updated in-memory Local backend config password");
+    }
+
+    info!("✅ Password stored successfully");
+    Ok(())
 }
 
 /// Store config password (mobile fallback - not supported)
@@ -82,14 +79,17 @@ pub async fn store_config_password(
 pub async fn get_config_password(manager: State<'_, AppSettingsManager>) -> Result<String, String> {
     debug!("🔍 Retrieving stored config password via rcman");
 
-    let credentials = manager.inner().credentials().ok_or_else(|| {
-        crate::localized_error!("backendErrors.security.credentialStorageUnavailable")
-    })?;
+    let connections = manager
+        .inner()
+        .sub_settings("connections")
+        .map_err(|e| format!("Failed to access connections settings: {e}"))?;
 
-    // Try Unified Key first (Standard)
-    if let Ok(Some(password)) = credentials.get(LOCAL_BACKEND_KEY) {
+    if let Ok(local) = connections.get_value("Local")
+        && let Some(password) = local.get("config_password").and_then(|v| v.as_str())
+        && !password.is_empty()
+    {
         debug!("✅ Password retrieved successfully");
-        return Ok(password);
+        return Ok(password.to_string());
     }
 
     debug!("ℹ️ No password stored");
@@ -114,11 +114,20 @@ pub async fn get_config_password(
 pub async fn has_stored_password(manager: State<'_, AppSettingsManager>) -> Result<bool, String> {
     debug!("🔍 Checking if password is stored via rcman");
 
-    if let Some(credentials) = manager.inner().credentials() {
-        Ok(credentials.exists(LOCAL_BACKEND_KEY))
-    } else {
-        Ok(false)
+    let connections = manager
+        .inner()
+        .sub_settings("connections")
+        .map_err(|e| format!("Failed to access connections settings: {e}"))?;
+
+    if let Ok(local) = connections.get_value("Local") {
+        let has_password = local
+            .get("config_password")
+            .and_then(|v| v.as_str())
+            .is_some_and(|v| !v.is_empty());
+        return Ok(has_password);
     }
+
+    Ok(false)
 }
 
 #[tauri::command]
@@ -137,27 +146,23 @@ pub async fn remove_config_password(
 ) -> Result<(), String> {
     info!("🗑️ Removing stored config password via rcman");
 
-    if let Some(credentials) = manager.inner().credentials() {
-        let _ = credentials.remove(LOCAL_BACKEND_KEY);
+    update_local_config_password(manager.inner(), None)
+        .map_err(|e| format!("Failed to clear config password: {e}"))?;
 
-        use crate::rclone::backend::BackendManager;
-        let backend_manager = app.state::<BackendManager>();
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = app.state::<BackendManager>();
 
-        if let Some(mut backend) = backend_manager.get("Local").await {
-            backend.config_password = None;
-            let _ = backend_manager
-                .update(manager.inner(), "Local", backend)
-                .await;
-            debug!("📝 Cleared in-memory Local backend config password");
-        }
-
-        env_manager.clear_config_password();
-        info!("✅ Password removed successfully");
-        Ok(())
-    } else {
-        env_manager.clear_config_password();
-        Ok(())
+    if let Some(mut backend) = backend_manager.get("Local").await {
+        backend.config_password = None;
+        let _ = backend_manager
+            .update(manager.inner(), "Local", backend)
+            .await;
+        debug!("📝 Cleared in-memory Local backend config password");
     }
+
+    env_manager.clear_config_password();
+    info!("✅ Password removed successfully");
+    Ok(())
 }
 
 #[tauri::command]
@@ -333,10 +338,8 @@ pub async fn encrypt_config(
         || stdout.contains("Password set")
         || stdout.contains("Your configuration is encrypted")
     {
-        // Store the password securely after successful encryption using rcman
-        if let Some(credentials) = manager.inner().credentials()
-            && let Err(e) = credentials.store(LOCAL_BACKEND_KEY, &password)
-        {
+        // Store password in Local connection secret field via rcman sub-settings
+        if let Err(e) = update_local_config_password(manager.inner(), Some(&password)) {
             warn!(
                 "⚠️ Failed to store password after encryption via rcman: {}",
                 e
@@ -431,16 +434,19 @@ pub async fn unencrypt_config(
         || stderr.contains("config file is NOT encrypted")
     {
         // Remove stored password since config is no longer encrypted
-        if let Some(credentials) = manager.inner().credentials() {
-            let _ = credentials.remove(LOCAL_BACKEND_KEY);
+        if let Err(e) = update_local_config_password(manager.inner(), None) {
+            warn!(
+                "⚠️ Failed to remove stored config password via rcman: {}",
+                e
+            );
+        }
 
-            // Update BackendManager in memory
-            if let Some(mut backend) = backend_manager.get("Local").await {
-                backend.config_password = None;
-                let _ = backend_manager
-                    .update(manager.inner(), "Local", backend)
-                    .await;
-            }
+        // Update BackendManager in memory
+        if let Some(mut backend) = backend_manager.get("Local").await {
+            backend.config_password = None;
+            let _ = backend_manager
+                .update(manager.inner(), "Local", backend)
+                .await;
         }
 
         env_manager.clear_config_password();

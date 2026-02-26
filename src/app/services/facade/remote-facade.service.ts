@@ -19,6 +19,7 @@ import {
   ActionState,
   RemoteAction,
   DiskUsage,
+  Origin,
 } from '@app/types';
 import { EventListenersService } from '../system/event-listeners.service';
 
@@ -92,36 +93,47 @@ export class RemoteFacadeService extends TauriBaseService {
    */
   async getCachedOrFetchDiskUsage(
     remoteName: string,
-    normalizedName?: string
+    normalizedName?: string,
+    source: Origin = 'dashboard',
+    forceRefresh = false
   ): Promise<DiskUsage | null> {
     // Check cache first
-    const cachedRemote = this.activeRemotes().find(r => r.remoteSpecs.name === remoteName);
+    if (!forceRefresh) {
+      const cachedRemote = this.activeRemotes().find(r => r.remoteSpecs.name === remoteName);
 
-    const cachedUsage = cachedRemote?.diskUsage;
-    if (
-      cachedUsage &&
-      cachedUsage.total_space !== undefined &&
-      !cachedUsage.notSupported &&
-      !cachedUsage.loading &&
-      !cachedUsage.error
-    ) {
-      return cachedUsage;
-    }
+      const cachedUsage = cachedRemote?.diskUsage;
+      if (
+        cachedUsage &&
+        cachedUsage.total_space !== undefined &&
+        !cachedUsage.notSupported &&
+        !cachedUsage.loading &&
+        !cachedUsage.error
+      ) {
+        return cachedUsage;
+      }
 
-    // If marked as not supported, return null
-    if (cachedUsage?.notSupported) {
-      return null;
+      // If marked as not supported, return null
+      if (cachedUsage?.notSupported) {
+        return null;
+      }
     }
 
     // Fetch from backend
     try {
       const fsName = normalizedName || `${remoteName}:`;
 
-      // Set loading state before fetching
-      this.updateDiskUsage(remoteName, { loading: true, error: false });
+      // Set loading state before fetching - Reset usage data to clear UI
+      this.updateDiskUsage(remoteName, {
+        loading: true,
+        error: false,
+        errorMessage: undefined,
+        total_space: undefined,
+        used_space: undefined,
+        free_space: undefined,
+      });
 
       // First check if About feature is supported
-      const fsInfo = await this.remoteService.getFsInfo(fsName);
+      const fsInfo = await this.remoteService.getFsInfo(fsName, source);
       if (fsInfo.Features?.['About'] === false) {
         const notSupportedUsage: DiskUsage = {
           notSupported: true,
@@ -132,7 +144,7 @@ export class RemoteFacadeService extends TauriBaseService {
         return null;
       }
 
-      const usage = await this.remoteService.getDiskUsage(fsName);
+      const usage = await this.remoteService.getDiskUsage(fsName, undefined, source);
       const diskUsage: DiskUsage = {
         total_space: usage.total || -1,
         used_space: usage.used || -1,
@@ -148,9 +160,11 @@ export class RemoteFacadeService extends TauriBaseService {
       return diskUsage;
     } catch (error) {
       console.error(`Failed to fetch disk usage for ${remoteName}:`, error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       const errorUsage: DiskUsage = {
         loading: false,
         error: true,
+        errorMessage,
       };
       this.updateDiskUsage(remoteName, errorUsage);
       return null;
@@ -479,7 +493,9 @@ export class RemoteFacadeService extends TauriBaseService {
   async startJob(
     remoteName: string,
     operationType: SyncOperationType | 'mount' | 'serve',
-    profileName?: string
+    profileName?: string,
+    source: Origin = 'dashboard',
+    noCache?: boolean
   ): Promise<void> {
     const settings = this.getRemoteSettings(remoteName);
     const configKey = `${operationType}Configs` as keyof RemoteSettings;
@@ -502,22 +518,31 @@ export class RemoteFacadeService extends TauriBaseService {
         switch (operationType) {
           case 'mount':
             if (targetProfile)
-              await this.mountService.mountRemoteProfile(remoteName, targetProfile);
+              await this.mountService.mountRemoteProfile(
+                remoteName,
+                targetProfile,
+                source,
+                noCache
+              );
             break;
           case 'serve':
             if (targetProfile) await this.serveService.startServeProfile(remoteName, targetProfile);
             break;
           case 'sync':
-            if (targetProfile) await this.jobService.startSyncProfile(remoteName, targetProfile);
+            if (targetProfile)
+              await this.jobService.startSyncProfile(remoteName, targetProfile, source, noCache);
             break;
           case 'copy':
-            if (targetProfile) await this.jobService.startCopyProfile(remoteName, targetProfile);
+            if (targetProfile)
+              await this.jobService.startCopyProfile(remoteName, targetProfile, source, noCache);
             break;
           case 'bisync':
-            if (targetProfile) await this.jobService.startBisyncProfile(remoteName, targetProfile);
+            if (targetProfile)
+              await this.jobService.startBisyncProfile(remoteName, targetProfile, source, noCache);
             break;
           case 'move':
-            if (targetProfile) await this.jobService.startMoveProfile(remoteName, targetProfile);
+            if (targetProfile)
+              await this.jobService.startMoveProfile(remoteName, targetProfile, source, noCache);
             break;
           default:
             throw new Error(`Unsupported operation type: ${operationType}`);

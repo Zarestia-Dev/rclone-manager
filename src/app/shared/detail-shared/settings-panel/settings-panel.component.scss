@@ -1,15 +1,15 @@
 // Expansion Panel styles
 .settings-expansion-panel {
   .settings-count {
-    font-size: 12px;
+    font-size: var(--font-size-xs);
     color: var(--dim-color);
     background: rgba(var(--primary-color-rgb), 0.1);
-    padding: 2px 8px;
-    border-radius: 10px;
+    padding: var(--space-xxs) var(--space-xs);
+    border-radius: var(--radius-md);
   }
 
   .no-settings-hint {
-    font-size: 12px;
+    font-size: var(--font-size-xs);
     color: var(--dim-color);
     font-style: italic;
   }
@@ -37,7 +37,7 @@
   flex-direction: column;
   padding: var(--space-md);
   background: var(--window-bg-color);
-  border-radius: var(--item-radius);
+  border-radius: var(--radius-md);
   transition: var(--transition-standard);
   box-shadow: var(--box-shadow);
 

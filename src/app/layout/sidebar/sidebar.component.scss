@@ -121,7 +121,7 @@
       .remote-type {
         display: flex;
         align-items: center;
-        gap: var(--space-xs);
+        gap: var(--space-xxs);
         color: var(--dim-color);
         font-size: 0.9rem;
         font-weight: 500;
@@ -132,17 +132,17 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 24px;
-        height: 24px;
+        width: var(--icon-size-md);
+        height: var(--icon-size-md);
         border-radius: 50%;
         transition: var(--transition-fast);
         background: rgba(var(--window-fg-color-rgb), 0.06);
         position: relative;
 
         mat-icon {
-          width: 12px;
-          height: 12px;
-          font-size: 12px;
+          width: var(--icon-size-xs);
+          height: var(--icon-size-xs);
+          font-size: var(--icon-size-xs);
           color: var(--dim-color);
           transition: color var(--transition-fast);
         }
@@ -257,9 +257,9 @@
     min-height: 200px;
 
     mat-icon {
-      width: 48px;
-      height: 48px;
-      font-size: 48px;
+      width: var(--icon-size-xl);
+      height: var(--icon-size-xl);
+      font-size: var(--icon-size-xl);
       margin-bottom: 16px;
       opacity: 0.5;
     }

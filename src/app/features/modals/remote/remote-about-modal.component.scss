@@ -28,7 +28,7 @@
   align-items: center;
   justify-content: center;
   padding: 48px 0;
-  gap: 16px;
+  gap: var(--space-md);
   color: var(--dim-color);
 }
 
@@ -39,32 +39,27 @@
   padding: 24px;
   color: var(--warn-color);
   background: rgba(var(--warn-color-rgb), 0.05);
-  border-radius: 8px;
-  margin-bottom: 16px;
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-md);
 
   mat-icon {
     width: 32px;
     height: 32px;
+    font-size: 32px;
   }
 }
 
 /* --- Usage Card --- */
 .usage-card {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-evenly;
+  align-items: center;
   background: var(--bg-elevated);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 20px;
   margin-bottom: 24px;
   box-shadow: var(--shadow-gnome);
-}
-
-.usage-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-
-  @media (max-width: 600px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 
 .usage-item {
@@ -75,7 +70,7 @@
   gap: 6px;
 
   .label {
-    font-size: 11px;
+    font-size: var(--font-size-xs);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--dim-color);
@@ -83,7 +78,7 @@
   }
 
   .value {
-    font-size: 15px;
+    font-size: var(--font-size-lg);
     font-weight: 600;
     color: var(--window-fg-color);
     min-height: 20px; /* Prevent layout shift */
@@ -96,7 +91,7 @@
 /* --- Info List --- */
 .info-list {
   background: var(--view-bg-color);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 8px 0;
   margin-bottom: 24px;
 }
@@ -128,20 +123,20 @@
 
   &.code-font {
     font-family: monospace;
-    font-size: 13px;
+    font-size: var(--font-size-md);
     background: rgba(var(--window-fg-color-rgb), 0.05);
     padding: 2px 6px;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
   }
 }
 
 /* --- Section Headers --- */
 .section-header {
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   font-weight: 700;
   color: var(--dim-color);
   text-transform: uppercase;
-  margin-bottom: 12px;
+  margin-bottom: var(--space-sm);
   letter-spacing: 0.5px;
 }
 
@@ -149,25 +144,25 @@
 .chip-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-sm);
 }
 
 .hash-chip {
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   font-family: monospace;
 }
 
 .empty-text {
   color: var(--dim-color);
   font-style: italic;
-  font-size: 13px;
+  font-size: var(--font-size-md);
 }
 
 /* --- Features Grid --- */
 .features-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
+  gap: var(--space-sm);
 }
 
 .feature-item {
@@ -175,18 +170,18 @@
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--view-bg-color);
   transition: all 0.2s ease;
 
   .feature-icon {
-    font-size: 18px;
-    width: 18px;
-    height: 18px;
+    font-size: var(--icon-size-sm);
+    width: var(--icon-size-sm);
+    height: var(--icon-size-sm);
   }
 
   .feature-name {
-    font-size: 13px;
+    font-size: var(--font-size-md);
     font-weight: 500;
   }
 
@@ -215,7 +210,7 @@
 
 /* --- Metadata Accordion --- */
 .group-header {
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   font-weight: 700;
   color: var(--primary-color);
   text-transform: uppercase;
@@ -225,11 +220,11 @@
 .meta-details {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-sm);
 }
 
 .meta-help {
-  font-size: 14px;
+  font-size: var(--font-size-md);
   line-height: 1.5;
   color: var(--dim-color);
 }
@@ -238,7 +233,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
-  font-size: 13px;
+  font-size: var(--font-size-md);
 
   .prop-row {
     display: flex;
@@ -250,7 +245,7 @@
 .code-bg {
   background: var(--hover-bg-color);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-family: monospace;
-  font-size: 12px;
+  font-size: var(--font-size-sm);
 }

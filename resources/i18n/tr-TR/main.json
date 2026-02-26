@@ -19,7 +19,9 @@
     "copy": "Kopyala",
     "move": "Taşı",
     "retry": "Yeniden Dene",
-    "default": "Varsayılan"
+    "default": "Varsayılan",
+    "copyErrorFailed": "Hata kopyalanamadı",
+    "errorCopied": "Hata panoya kopyalandı"
   },
   "validators": {
     "integer": "Geçerli bir tam sayı olmalıdır",
@@ -151,7 +153,8 @@
       "unknown": "Bilinmiyor",
       "total": "Toplam: {{value}}",
       "used": "Kullanılan: {{value}}",
-      "free": "Boş: {{value}}"
+      "free": "Boş: {{value}}",
+      "errorLoading": "Disk kullanımı yüklenirken sorun oluştu"
     },
     "status": {
       "mounted": "Bağlı",
@@ -234,7 +237,7 @@
       },
       "language": {
         "label": "Dil",
-        "description": "Kullanıcı arayüzü için kullanılacak dil."
+        "description": "Kullanıcı arayüzü için kullanılacak dil. Sistem dili otomatik olarak algılanır."
       },
       "start_on_startup": {
         "label": "Başlangıçta Çalıştır",
@@ -505,6 +508,12 @@
     "actions": {
       "back": "Geri",
       "next": "İleri",
+      "goBack": "Geri Git",
+      "goForward": "İleri Git",
+      "search": "Ara",
+      "nextTab": "Sonraki Sekme",
+      "previousTab": "Önceki Sekme",
+      "switchTab": "Sekmeye Geç",
       "installPlugin": "Eklentiyi Kur",
       "installingPlugin": "Kuruluyor...",
       "unlock": "Kilidi Aç",
@@ -773,6 +782,7 @@
       },
       "actions": {
         "pollInterval": "Yoklama Aralığı",
+        "pollIntervalNotSupported": "ChangeNotify desteklenmiyor",
         "updateInterval": "Yoklama Aralığını Güncelle",
         "refreshMetadata": "Meta Veriyi Yenile",
         "clearCache": "Meta Veri Önbelleğini Temizle",
@@ -1176,6 +1186,8 @@
     "unexpectedError": "Beklenmeyen bir hata oluştu",
     "remoteAbout": {
       "loading": "Uzak bağlantı bilgileri yükleniyor...",
+      "diskUsage": "Disk Kullanımı",
+      "reloadUsage": "Kullanımı Yenile",
       "totalSpace": "Toplam Alan",
       "usedSpace": "Kullanılan Alan",
       "freeSpace": "Boş Alan",
@@ -1263,7 +1275,15 @@
       "failed": "Başarısız",
       "cancelled": "İptal Edildi",
       "cancelJob": "İptal Et",
-      "removeJob": "Kaldır"
+      "removeJob": "Kaldır",
+      "details": {
+        "source": "Kaynak",
+        "destination": "Hedef",
+        "startTime": "Başlangıç Zamanı",
+        "speed": "Hız",
+        "eta": "Tahmini Süre",
+        "transfers": "Transferler"
+      }
     },
     "fileViewer": {
       "closeViewer": "Görüntüleyiciyi kapat",
@@ -1283,7 +1303,12 @@
       "errorLoadContent": "Dosya içeriği yüklenemedi",
       "errorUnexpected": "Beklenmeyen bir hata oluştu",
       "errorLoadFile": "{{name}} yüklenemedi",
-      "downloading": "{{name}} indiriliyor"
+      "downloading": "{{name}} indiriliyor",
+      "save": "Kaydet",
+      "edit": "Düzenle",
+      "cancel": "İptal",
+      "saveSuccess": "Dosya başarıyla kaydedildi",
+      "saveError": "Dosya kaydedilemedi"
     }
   },
   "dashboard": {
@@ -1408,8 +1433,9 @@
       "application": "Uygulama",
       "remoteManagement": "Uzak Sunucu Yönetimi",
       "fileOperations": "Dosya İşlemleri",
-      "fileBrowser": "Dosya Tarayıcısı",
-      "navigation": "Navigasyon"
+      "fileBrowser": "Dosya Gezgini",
+      "fileBrowserNautilus": "Dosya Gezgini (Nautilus)",
+      "navigation": "Gezinti"
     }
   },
   "repair": {
@@ -1947,6 +1973,9 @@
     }
   },
   "nautilus": {
+    "shortcuts": {
+      "title": "Nautilus Klavye Kısayolları"
+    },
     "titles": {
       "selectFolder": "Klasör Seç",
       "selectFile": "Dosya Seç",
@@ -1954,7 +1983,9 @@
       "files": "Dosyalar",
       "starred": "Yıldızlı",
       "searchPlaceholder": "Dosyaları ara...",
-      "local": "Yerel"
+      "local": "Yerel",
+      "cloud": "Bulut",
+      "bookmarks": "Yer İmleri"
     },
     "sort": {
       "az": "A-Z",
@@ -1983,6 +2014,11 @@
       "otherItems": "diğer öge"
     },
     "modals": {
+      "delete": {
+        "title": "Öğeleri Sil",
+        "messageSingle": "\"{{name}}\" öğesini silmek istediğinizden emin misiniz?",
+        "messageMultiple": "{{count}} öğeyi silmek istediğinizden emin misiniz?"
+      },
       "newFolder": {
         "title": "Yeni Klasör",
         "label": "Klasör adı",
@@ -1991,6 +2027,11 @@
       "emptyTrash": {
         "title": "Çöpü Boşalt",
         "message": "{{remote}} içindeki çöpe atılmış dosyalar kaldırılsın mı?"
+      },
+      "rmdirs": {
+        "title": "Boş Klasörleri Kaldır",
+        "message": "\"{{name}}\" içindeki tüm boş klasörleri kaldırmak istediğinizden emin misiniz?",
+        "confirm": "Kaldır"
       }
     },
     "errors": {
@@ -2001,13 +2042,22 @@
       "createFolderFailed": "Klasör oluşturulamadı",
       "emptyTrashFailed": "Çöp boşaltılamadı: {{error}}",
       "openFileFailed": "Dosya açılamıyor: uzak sunucu bağlamı eksik",
-      "minSelection": "Lütfen en az {{min}} öge seçin."
+      "minSelection": "Lütfen en az {{min}} öge seçin.",
+      "deleteFailed": "{{count}} öge silinemedi",
+      "copyFailed": "{{count}} öge kopyalanamadı",
+      "moveFailed": "{{count}} öge taşınamadı",
+      "undoFailed": "{{count}} öge için geri alma başarısız",
+      "redoFailed": "{{count}} öge için yineleme başarısız",
+      "rmdirsFailed": "\"{{name}}\" içinde boş klasörler kaldırılamadı: {{error}}"
     },
     "contextMenu": {
       "open": "Aç",
       "openNewTab": "Yeni Sekmede Aç",
-      "toggleSelect": "Seçimi Değiştir",
       "copyPath": "Yolu Kopyala",
+      "delete": "Sil",
+      "copy": "Kopyala",
+      "cut": "Kes",
+      "paste": "Yapıştır",
       "newFolder": "Yeni Klasör",
       "refresh": "Yenile",
       "properties": "Özellikler",
@@ -2015,8 +2065,14 @@
       "copyLocation": "Konumu Kopyala",
       "selectAll": "Tümünü Seç",
       "removeBookmark": "Yer İmini Kaldır",
+      "duplicateTab": "Sekmeyi Çoğalt",
+      "closeOtherTabs": "Diğer Sekmeleri Kapat",
+      "closeTabsToRight": "Sağdaki Sekmeleri Kapat",
       "about": "Hakkında",
-      "emptyTrash": "Çöpü Boşalt"
+      "emptyTrash": "Çöpü Boşalt",
+      "removeEmptyDirs": "Boş klasörleri kaldır",
+      "toggleSplit": "Bölünmüş Görünüm",
+      "switchPane": "Panele Geç"
     },
     "sidebar": {
       "newBookmark": "Yeni Yer İmi"
@@ -2026,10 +2082,14 @@
       "showHidden": "Gizli Dosyaları Göster"
     },
     "notifications": {
-      "addedToStarred": "'{{item}}' Yıldızlılara eklendi",
       "undo": "Geri Al",
-      "trashEmptied": "Çöp boşaltıldı",
-      "locationCopied": "Konum panoya kopyalandı"
+      "trashEmptied": "Temizlik işlemi başlatıldı",
+      "locationCopied": "Konum panoya kopyalandı",
+      "rmdirsStarted": "Boş klasörler kaldırılıyor: \"{{name}}\"...",
+      "deleteStarted": "{{count}} öge siliniyor...",
+      "pasteComplete": "Yapıştırma işlemi tamamlandı",
+      "undoComplete": "Geri alma başarılı",
+      "redoComplete": "Yineleme başarılı"
     }
   },
   "overview": {
@@ -2114,9 +2174,7 @@
       "save": "Düzeni Kaydet",
       "reset": "Düzeni Sıfırla",
       "resetSuccess": "Düzen varsayılana sıfırlandı",
-      "toggleTaskFailed": "Zamanlanmış görev değiştirilemedi",
-      "copyErrorFailed": "Hata kopyalanamadı",
-      "errorCopied": "Hata panoya kopyalandı"
+      "toggleTaskFailed": "Zamanlanmış görev değiştirilemedi"
     },
     "bandwidth": {
       "aria": {
@@ -2518,6 +2576,7 @@
       "serveStopped": "Sunucu Durduruldu",
       "stopServeFailed": "Sunucu Durdurulamadı",
       "allJobsStopped": "Tüm İşler Durduruldu",
+      "nothingToDo": "Yapılacak bir şey yok",
       "allServesStopped": "Tüm Sunucular Durduruldu",
       "stopAllServesFailed": "Sunucular Durdurulamadı",
       "operationFailed": "{{operation}} Başarısız",
@@ -2548,6 +2607,9 @@
       "profileNotFound": "'{{profile}}' profili bulunamadı",
       "alreadyRunning": "Uygulamanın başka bir örneği algılandı. Bellek optimizasyonu aktif olduğu için pencere kapatılmıştı. Lütfen tepsiyi kullanarak pencereyi açın.",
       "allRemotesUnmounted": "Tüm uzak bağlantılar başarıyla ayrıldı",
+      "nothingToDoJobs": "Aktif iş bulunamadı - durdurulacak bir şey yok.",
+      "nothingToDoServes": "Aktif sunum bulunamadı - durdurulacak bir şey yok.",
+      "nothingToDoMounts": "Bağlı uzak bağlantı bulunamadı - ayrılacak bir şey yok.",
       "started": "{{remote}} profili '{{profile}}' için {{operation}} başlatıldı",
       "startFailed": "Başarısız: {{error}}",
       "stopped": "{{remote}} profili '{{profile}}' için {{operation}} durduruldu",
@@ -2683,6 +2745,7 @@
   "developerTools": {
     "refreshUi": "Arayüzü Yenile",
     "clearCache": "Önbelleği Temizle",
+    "openDevTools": "Geliştirici Araçlarını Aç",
     "clearing": "Veriler Temizleniyor...",
     "cleared": "Veriler Temizlendi"
   }

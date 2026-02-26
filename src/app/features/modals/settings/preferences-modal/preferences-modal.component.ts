@@ -1,5 +1,15 @@
-import { Component, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import {
+  Component,
+  HostListener,
+  OnInit,
+  inject,
+  ChangeDetectionStrategy,
+  signal,
+  computed,
+  effect,
+  OnDestroy,
+} from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   FormArray,
@@ -10,6 +20,7 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
+import { NgTemplateOutlet } from '@angular/common';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatInputModule } from '@angular/material/input';
@@ -21,19 +32,23 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
-import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
 
 // Services and Types
 import { ValidatorRegistryService, ModalService } from '@app/services';
 import { AppSettingsService, FileSystemService } from '@app/services';
 import { SearchResult, SettingMetadata, SettingTab } from '@app/types';
 
+interface PendingChange {
+  category: string;
+  key: string;
+  value: unknown;
+  metadata: SettingMetadata;
+}
+
 @Component({
   selector: 'app-preferences-modal',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatSlideToggleModule,
     MatFormFieldModule,
@@ -45,29 +60,42 @@ import { SearchResult, SettingMetadata, SettingTab } from '@app/types';
     MatProgressSpinnerModule,
     SearchContainerComponent,
     TranslateModule,
+    NgTemplateOutlet,
   ],
   templateUrl: './preferences-modal.component.html',
   styleUrls: ['./preferences-modal.component.scss', '../../../../styles/_shared-modal.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PreferencesModalComponent implements OnInit, OnDestroy {
+  private readonly fb = inject(FormBuilder);
+  private readonly appSettingsService = inject(AppSettingsService);
+  private readonly fileSystemService = inject(FileSystemService);
+  private readonly validatorRegistry = inject(ValidatorRegistryService);
+  private readonly translate = inject(TranslateService);
+  private readonly modalService = inject(ModalService);
+  private readonly dialogRef = inject(MatDialogRef<PreferencesModalComponent>);
+
   settingsForm: FormGroup;
-  optionsMap: Record<string, SettingMetadata> = {};
-  isLoading = true;
 
-  selectedTabIndex = 0;
-  bottomTabs = false;
-  searchQuery = '';
-  searchVisible = false;
-  filteredTabs: SettingTab[] = [];
-  searchResults: SearchResult[] = [];
-  isDiscardingChanges = false;
+  // Signals
+  readonly isLoading = signal(true);
+  readonly selectedTabIndex = signal(0);
+  readonly bottomTabs = signal(false);
+  readonly searchQuery = signal('');
+  readonly searchVisible = signal(false);
+  readonly isDiscardingChanges = signal(false);
 
-  pendingRestartChanges = new Map<
-    string,
-    { category: string; key: string; value: unknown; metadata: SettingMetadata }
-  >();
+  // Pending restart changes as a signal of Map
+  readonly pendingRestartChanges = signal<Map<string, PendingChange>>(new Map());
 
-  private destroyed$ = new Subject<void>();
+  readonly options = toSignal(this.appSettingsService.options$);
+
+  // Computed Signals
+  readonly enrichedOptions = computed(() => {
+    const rawOptions = this.options();
+    if (!rawOptions) return {};
+    return this.enrichMetadata(rawOptions);
+  });
 
   readonly tabs: SettingTab[] = [
     { label: 'modals.preferences.tabs.general', icon: 'wrench', key: 'general' },
@@ -75,93 +103,90 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     { label: 'modals.preferences.tabs.developer', icon: 'flask', key: 'developer' },
   ];
 
-  searchSuggestions: string[] = [];
+  readonly filteredTabs = computed(() => {
+    // Tabs are static in this case, but good to have prepared for future dynamic tabs
+    return this.tabs;
+  });
 
-  private dialogRef = inject(MatDialogRef<PreferencesModalComponent>);
-  private fb = inject(FormBuilder);
-  private appSettingsService = inject(AppSettingsService);
-  private fileSystemService = inject(FileSystemService);
-  private validatorRegistry = inject(ValidatorRegistryService);
-  private translate = inject(TranslateService);
-  private modalService = inject(ModalService);
+  readonly searchSuggestions = signal<string[]>([]);
+
+  readonly searchResults = computed(() => {
+    const query = this.searchQuery().toLowerCase();
+    const options = this.enrichedOptions();
+
+    if (!query) return [];
+
+    const results: SearchResult[] = [];
+    for (const [fullKey, meta] of Object.entries(options)) {
+      const displayName = meta.metadata.display_name || meta.metadata.label || '';
+      const helpText = meta.metadata.help_text || meta.metadata.description || '';
+
+      if (displayName.toLowerCase().includes(query) || helpText.toLowerCase().includes(query)) {
+        const { category, key } = this.splitKey(fullKey);
+        // Only include if category exists in our tabs
+        if (this.tabs.some(t => t.key === category)) {
+          results.push({ category, key });
+        }
+      }
+    }
+    return results;
+  });
+
+  readonly selectedTabKey = computed(() => {
+    return this.filteredTabs()[this.selectedTabIndex()]?.key || this.filteredTabs()[0].key;
+  });
+
+  readonly isGeneralTab = computed(() => this.selectedTabKey() === 'general');
+  readonly hasSearchResults = computed(() => this.searchQuery().length > 0);
+  readonly hasEmptySearchResults = computed(
+    () => this.hasSearchResults() && this.searchResults().length === 0
+  );
+  readonly hasPendingRestartChanges = computed(() => this.pendingRestartChanges().size > 0);
+  readonly pendingChangesCount = computed(() => this.pendingRestartChanges().size);
 
   private readonly HOLD_DELAY = 300;
   private readonly HOLD_INTERVAL = 75;
   private holdTimeout: ReturnType<typeof setTimeout> | null = null;
   private holdInterval: ReturnType<typeof setInterval> | null = null;
 
-  get hasSearchResults(): boolean {
-    return this.searchQuery.length > 0;
-  }
-  get hasEmptySearchResults(): boolean {
-    return this.searchQuery.length > 0 && this.searchResults.length === 0;
-  }
-  get hasPendingRestartChanges(): boolean {
-    return this.pendingRestartChanges.size > 0;
-  }
-  get selectedTabKey(): string {
-    return this.filteredTabs[this.selectedTabIndex]?.key || this.filteredTabs[0].key;
-  }
-  get isGeneralTab(): boolean {
-    return this.selectedTabKey === 'general';
-  }
-
   constructor() {
     this.settingsForm = this.fb.group({});
-    this.filteredTabs = [...this.tabs];
-  }
 
-  private normalizeValue(val: unknown): string {
-    return val === null || val === undefined || val === '' ? '' : String(val);
-  }
+    // Effect to build form when options change
+    effect(() => {
+      const options = this.enrichedOptions();
+      if (Object.keys(options).length > 0) {
+        this.buildForm(options);
+        this.isLoading.set(false);
+      } else {
+        this.isLoading.set(true);
+      }
+    });
 
-  private valuesEqual(a: unknown, b: unknown): boolean {
-    if (Array.isArray(a) && Array.isArray(b)) {
-      return a.length === b.length && a.every((val, idx) => val === b[idx]);
-    }
-    return this.normalizeValue(a) === this.normalizeValue(b);
+    this.populateSearchSuggestions();
   }
 
   ngOnInit(): void {
     this.onResize();
-    this.subscribeToOptions();
-    this.populateSearchSuggestions();
+  }
+
+  ngOnDestroy(): void {
+    this.stopHold(false);
   }
 
   private populateSearchSuggestions(): void {
     const suggestionKeys = ['apiPort', 'startup', 'debug', 'bandwidth'];
     this.translate
       .get(suggestionKeys.map(k => `modals.preferences.searchSuggestions.${k}`))
-      .pipe(takeUntil(this.destroyed$))
+      .pipe(takeUntilDestroyed())
       .subscribe(translations => {
-        this.searchSuggestions = Object.values(translations);
+        this.searchSuggestions.set(Object.values(translations));
       });
-  }
-
-  ngOnDestroy(): void {
-    this.destroyed$.next();
-    this.destroyed$.complete();
-    // Ensure hold timers are cleaned up
-    this.stopHold(false);
   }
 
   @HostListener('window:resize')
   onResize(): void {
-    this.bottomTabs = window.innerWidth < 540;
-  }
-
-  private subscribeToOptions(): void {
-    this.appSettingsService.options$.pipe(takeUntil(this.destroyed$)).subscribe(options => {
-      if (options) {
-        // Enchant metadata with inferred types and labels if missing
-        const enriched = this.enrichMetadata(options);
-        this.optionsMap = enriched;
-        this.buildForm(enriched);
-        this.isLoading = false;
-      } else {
-        this.isLoading = true;
-      }
-    });
+    this.bottomTabs.set(window.innerWidth < 540);
   }
 
   private enrichMetadata(
@@ -200,49 +225,61 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
   }
 
   private buildForm(options: Record<string, SettingMetadata>): void {
-    const formGroups: Record<string, FormGroup> = {};
-
     for (const fullKey in options) {
       const meta = options[fullKey];
       const { category, key } = this.splitKey(fullKey);
 
-      if (!formGroups[category]) {
-        if (this.tabs.some(t => t.key === category)) {
-          formGroups[category] = this.fb.group({});
-        } else {
-          continue;
-        }
+      // Only build for known tabs
+      if (!this.tabs.some(t => t.key === category)) continue;
+
+      let categoryGroup = this.settingsForm.get(category) as FormGroup;
+      if (!categoryGroup) {
+        categoryGroup = this.fb.group({});
+        this.settingsForm.addControl(category, categoryGroup);
       }
 
+      const existingControl = categoryGroup.get(key);
       const validators = this.getValidators(meta, fullKey);
 
-      let control: FormControl | FormArray;
-
-      if (meta.value_type === 'string[]') {
-        const itemValidators = this.getItemValidators(meta);
-        control = this.fb.array(
-          ((meta.value || []) as string[]).map(val => this.fb.control(val, itemValidators)),
-          validators
-        );
+      if (existingControl) {
+        if (!existingControl.dirty && !this.valuesEqual(existingControl.value, meta.value)) {
+          if (existingControl instanceof FormArray && meta.value_type === 'string[]') {
+            this.resetControlValue(existingControl, meta.value, meta);
+          } else {
+            existingControl.setValue(meta.value, { emitEvent: false });
+          }
+        }
       } else {
-        control = this.fb.control(meta.value, validators);
+        let control: FormControl | FormArray;
+        if (meta.value_type === 'string[]') {
+          const itemValidators = this.getItemValidators(meta);
+          control = this.fb.array(
+            ((meta.value || []) as string[]).map(val => this.fb.control(val, itemValidators)),
+            validators
+          );
+        } else {
+          control = this.fb.control(meta.value, validators);
+        }
+        categoryGroup.addControl(key, control);
       }
-
-      formGroups[category].addControl(key, control);
     }
-    this.settingsForm = this.fb.group(formGroups);
   }
 
-  /**
-   * Called on blur for text inputs - saves the current value
-   */
+  private normalizeValue(val: unknown): string {
+    return val === null || val === undefined || val === '' ? '' : String(val);
+  }
+
+  private valuesEqual(a: unknown, b: unknown): boolean {
+    if (Array.isArray(a) && Array.isArray(b)) {
+      return a.length === b.length && a.every((val, idx) => val === b[idx]);
+    }
+    return this.normalizeValue(a) === this.normalizeValue(b);
+  }
+
   onBlur(category: string, key: string): void {
     this.commitSetting(category, key);
   }
 
-  /**
-   * Called on selection change for dropdowns and toggles - saves immediately
-   */
   onValueChange(category: string, key: string): void {
     this.commitSetting(category, key);
   }
@@ -266,17 +303,9 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     return (control: AbstractControl): Record<string, any> | null => {
       const value = control.value;
       if (!value) return null;
-
-      // Check for exact match or starts with (for flags)
-      // Reserved: ["--rc-serve"]
-      // Input: "--rc-serve" -> Invalid
-      // Input: "--rc-serve=123" -> Invalid
-      // Input: "--log-file" -> Invalid
-
       const isReserved = reserved.some(
         r => value === r || value.startsWith(r + '=') || value.startsWith(r + ' ')
       );
-
       return isReserved ? { reserved: { value, reservedValues: reserved } } : null;
     };
   }
@@ -331,13 +360,21 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
 
     if (meta.metadata.engine_restart) {
       if (this.valuesEqual(meta.value, finalValue)) {
-        this.pendingRestartChanges.delete(`${category}.${key}`);
+        this.pendingRestartChanges.update(map => {
+          const newMap = new Map(map);
+          newMap.delete(`${category}.${key}`);
+          return newMap;
+        });
       } else {
-        this.pendingRestartChanges.set(`${category}.${key}`, {
-          category,
-          key,
-          value: finalValue,
-          metadata: meta,
+        this.pendingRestartChanges.update(map => {
+          const newMap = new Map(map);
+          newMap.set(`${category}.${key}`, {
+            category,
+            key,
+            value: finalValue,
+            metadata: meta,
+          });
+          return newMap;
         });
       }
     } else {
@@ -360,7 +397,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
   }
 
   getMetadata(category: string, key: string): SettingMetadata {
-    return this.optionsMap[`${category}.${key}`];
+    return this.enrichedOptions()[`${category}.${key}`];
   }
 
   isControlInvalid(category: string, key: string, index?: number): boolean {
@@ -467,7 +504,6 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
 
   getValidationMessage(category: string, key: string, index?: number): string {
     let ctrl: AbstractControl | null;
-
     if (index !== undefined) {
       ctrl = this.getArrayItemControl(category, key, index);
     } else {
@@ -499,26 +535,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
   }
 
   onSearchTextChange(searchText: string): void {
-    this.searchQuery = searchText.toLowerCase();
-    this.searchResults = [];
-    if (!this.searchQuery) {
-      this.filteredTabs = [...this.tabs];
-      return;
-    }
-    for (const [fullKey, meta] of Object.entries(this.optionsMap)) {
-      const displayName = meta.metadata.display_name || meta.metadata.label || '';
-      const helpText = meta.metadata.help_text || meta.metadata.description || '';
-
-      if (
-        displayName.toLowerCase().includes(this.searchQuery) ||
-        helpText.toLowerCase().includes(this.searchQuery)
-      ) {
-        const { category, key } = this.splitKey(fullKey);
-        if (this.tabs.some(t => t.key === category) && this.getFormControl(category, key)) {
-          this.searchResults.push({ category, key });
-        }
-      }
-    }
+    this.searchQuery.set(searchText.toLowerCase());
   }
 
   getCategoryDisplayName(category: string): string {
@@ -528,21 +545,18 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
   }
 
   getSettingLabel(_category: string, _key: string, meta: SettingMetadata): string {
-    // Backend now sends translation keys directly, just translate them
     const labelKey = meta.metadata.label || meta.metadata.display_name;
     if (!labelKey) return _key;
     return this.translate.instant(labelKey);
   }
 
   getSettingDescription(_category: string, _key: string, meta: SettingMetadata): string {
-    // Backend now sends translation keys directly, just translate them
     const descKey = meta.metadata.description || meta.metadata.help_text;
     if (!descKey) return '';
     return this.translate.instant(descKey);
   }
 
   getOptionLabel(_category: string, _key: string, option: unknown): string {
-    // Backend now sends translation keys directly for option labels
     const opt = option as { value: unknown; label: unknown };
     const labelKey = opt?.label ?? option;
     return this.translate.instant(String(labelKey));
@@ -564,14 +578,14 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
   }
 
   toggleSearch(): void {
-    this.searchVisible = !this.searchVisible;
-    if (!this.searchVisible) {
+    this.searchVisible.update(v => !v);
+    if (!this.searchVisible()) {
       this.onSearchTextChange('');
     }
   }
 
   selectTab(index: number): void {
-    this.selectedTabIndex = index;
+    this.selectedTabIndex.set(index);
   }
 
   onPathInput(category: string, key: string): void {
@@ -583,20 +597,21 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const defaultValue = (meta as any).default;
 
-    // Update the form control to the default value
     const control = this.getFormControl(category, key);
     if (control) this.resetControlValue(control, defaultValue, meta);
 
-    // If this setting requires restart, add to pending changes
     if (meta.metadata.engine_restart) {
-      this.pendingRestartChanges.set(`${category}.${key}`, {
-        category,
-        key,
-        value: defaultValue,
-        metadata: meta,
+      this.pendingRestartChanges.update(map => {
+        const newMap = new Map(map);
+        newMap.set(`${category}.${key}`, {
+          category,
+          key,
+          value: defaultValue,
+          metadata: meta,
+        });
+        return newMap;
       });
     } else {
-      // Otherwise reset immediately
       try {
         await this.appSettingsService.resetSetting(category, key);
       } catch (error) {
@@ -623,27 +638,35 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
   }
 
   async savePendingChanges(): Promise<void> {
-    if (this.pendingRestartChanges.size === 0) return;
+    if (this.pendingRestartChanges().size === 0) return;
     try {
-      const savePromises = Array.from(this.pendingRestartChanges.values()).map(change =>
+      const savePromises = Array.from(this.pendingRestartChanges().values()).map(change =>
         this.appSettingsService.saveSetting(change.category, change.key, change.value)
       );
       await Promise.all(savePromises);
-      this.pendingRestartChanges.clear();
+      this.pendingRestartChanges.update(map => {
+        const newMap = new Map(map);
+        newMap.clear();
+        return newMap;
+      });
     } catch (error) {
       console.error('Error saving pending changes:', error);
     }
   }
 
   async discardPendingChanges(): Promise<void> {
-    this.isDiscardingChanges = true;
-    for (const change of this.pendingRestartChanges.values()) {
+    this.isDiscardingChanges.set(true);
+    for (const change of this.pendingRestartChanges().values()) {
       const originalValue = this.getMetadata(change.category, change.key).value;
       const control = this.getFormControl(change.category, change.key);
       if (control) this.resetControlValue(control, originalValue, change.metadata);
     }
-    this.pendingRestartChanges.clear();
-    this.isDiscardingChanges = false;
+    this.pendingRestartChanges.update(map => {
+      const newMap = new Map(map);
+      newMap.clear();
+      return newMap;
+    });
+    this.isDiscardingChanges.set(false);
   }
 
   private resetControlValue(
@@ -668,7 +691,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     key: string;
     value: unknown;
   }[] {
-    return Array.from(this.pendingRestartChanges.values()).map(change => ({
+    return Array.from(this.pendingRestartChanges().values()).map(change => ({
       displayName:
         change.metadata.metadata.display_name || change.metadata.metadata.label || change.key,
       category: change.category,

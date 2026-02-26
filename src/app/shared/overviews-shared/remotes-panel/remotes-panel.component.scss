@@ -50,8 +50,6 @@
 
       .active-icon,
       .inactive-icon {
-        width: var(--icon-size-md);
-        height: var(--icon-size-md);
         transition: var(--transition-standard);
         will-change: color;
       }
@@ -84,7 +82,7 @@
 @media (max-width: 768px) {
   .remotes-panel {
     .remotes-header {
-      padding: var(--panel-padding) var(--panel-padding) 12px var(--panel-padding);
+      padding: var(--panel-padding) var(--panel-padding) var(--space-sm) var(--panel-padding);
     }
 
     .remotes-content {
@@ -103,11 +101,11 @@
 @media (max-width: 480px) {
   .overview-content .remotes-panel {
     .remotes-header {
-      padding: 20px 20px 12px 20px;
+      padding: var(--space-lg) var(--space-lg) var(--space-sm) var(--space-lg);
     }
 
     .remotes-content {
-      padding: 12px 20px 20px 20px;
+      padding: var(--space-sm) var(--space-lg) var(--space-lg) var(--space-lg);
     }
   }
 }

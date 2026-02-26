@@ -1,5 +1,5 @@
-import { CommonModule } from '@angular/common';
-import { Component, computed, HostListener, input, signal, ViewChild, inject } from '@angular/core';
+import { TitleCasePipe } from '@angular/common';
+import { Component, computed, HostListener, input, signal, viewChild, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -18,7 +18,7 @@ import { RemoteStatusService } from '../../shared/utils/remote-status.service';
   selector: 'app-sidebar',
   standalone: true,
   imports: [
-    CommonModule,
+    TitleCasePipe,
     MatSidenavModule,
     MatCardModule,
     MatIconModule,
@@ -41,8 +41,7 @@ export class SidebarComponent {
 
   searchTerm = signal('');
   searchVisible = signal(false);
-  @ViewChild(SearchContainerComponent)
-  searchContainer!: SearchContainerComponent;
+  searchContainer = viewChild(SearchContainerComponent);
 
   onSearchTextChange(searchText: string): void {
     this.searchTerm.set(searchText.trim().toLowerCase());
@@ -67,8 +66,8 @@ export class SidebarComponent {
     const keyboardEvent = event as KeyboardEvent;
     keyboardEvent.preventDefault();
     this.toggleSearch();
-    if (this.searchVisible() && this.searchContainer) {
-      this.searchContainer.focus();
+    if (this.searchVisible()) {
+      this.searchContainer()?.focus();
     }
   }
 
@@ -81,8 +80,6 @@ export class SidebarComponent {
 
   clearSearch(): void {
     this.searchTerm.set('');
-    if (this.searchContainer) {
-      this.searchContainer.clear();
-    }
+    this.searchContainer()?.clear();
   }
 }

@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+### Added
+- Nautilus Component: Allow the edit text based files. Using rclone rc operations/uploadfile to save.
+- Nautilus Component: Added delete, move and copy operations support.
+- Nautilus Component: Added vertical split mode support.
+
+### Changed
+- Removed Syntax Highlighting, added CodeMirror.
+- Nautilus Component: A lot of improvements and bug fixes.
+- Notification behavior improved.
+
+### Fixed
+- Blury icons fixed. Icon provider change to Google Material Icons.
+- Reorder tauri plugins (Cause of startup crash).
+- Remove the global shortcut handler from tauri.
+
 ## [v0.2.1] - 2026-02-05
 
 ### Added

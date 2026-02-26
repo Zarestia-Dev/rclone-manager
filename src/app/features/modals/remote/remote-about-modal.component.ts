@@ -1,5 +1,12 @@
-import { CommonModule } from '@angular/common';
-import { Component, HostListener, inject, OnInit, signal } from '@angular/core';
+import { TitleCasePipe } from '@angular/common';
+import {
+  Component,
+  HostListener,
+  inject,
+  OnInit,
+  signal,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
@@ -23,7 +30,7 @@ interface RemoteAboutData {
   selector: 'app-remote-about-modal',
   standalone: true,
   imports: [
-    CommonModule,
+    TitleCasePipe,
     MatDialogModule,
     MatDividerModule,
     MatIconModule,
@@ -39,6 +46,7 @@ interface RemoteAboutData {
   ],
   templateUrl: './remote-about-modal.component.html',
   styleUrls: ['./remote-about-modal.component.scss', '../../../styles/_shared-modal.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RemoteAboutModalComponent implements OnInit {
   private dialogRef = inject(MatDialogRef<RemoteAboutModalComponent>);
@@ -79,7 +87,7 @@ export class RemoteAboutModalComponent implements OnInit {
     this.loadingAbout.set(true);
     this.loadingUsage.set(true);
     this.remoteManagementService
-      .getFsInfo(this.remoteName())
+      .getFsInfo(this.remoteName(), 'ui')
       .then(info => {
         const typedInfo = info as Record<string, unknown>;
         this.aboutInfo.set(typedInfo);
@@ -105,7 +113,7 @@ export class RemoteAboutModalComponent implements OnInit {
     // 3. Load Size/Count (Slowest, can take time for large remotes)
     this.loadingSize.set(true);
     this.remoteManagementService
-      .getSize(this.remoteName())
+      .getSize(this.remoteName(), undefined, 'ui')
       .then(size => {
         this.sizeInfo.set(size);
         this.loadingSize.set(false);
@@ -116,12 +124,15 @@ export class RemoteAboutModalComponent implements OnInit {
       });
   }
 
-  private async fetchDiskUsage(): Promise<void> {
+  async fetchDiskUsage(forceRefresh = false): Promise<void> {
+    this.loadingUsage.set(true);
     try {
       // Use centralized method that handles caching and fetching
       const diskUsage = await this.remoteFacadeService.getCachedOrFetchDiskUsage(
         this.data.remote.displayName,
-        this.remoteName()
+        this.remoteName(),
+        'ui',
+        forceRefresh
       );
 
       if (diskUsage) {

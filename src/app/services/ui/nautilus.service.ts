@@ -12,7 +12,12 @@ import { Overlay, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { take } from 'rxjs/operators';
 import { NautilusComponent } from 'src/app/features/components/file-browser/nautilus/nautilus.component';
-import { AppSettingsService, EventListenersService, RemoteManagementService } from '@app/services';
+import {
+  AppSettingsService,
+  EventListenersService,
+  PathSelectionService,
+  RemoteManagementService,
+} from '@app/services';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   FileBrowserItem,
@@ -29,6 +34,7 @@ export class NautilusService {
   private overlay = inject(Overlay);
   private appSettingsService = inject(AppSettingsService);
   private remoteManagement = inject(RemoteManagementService);
+  private pathSelectionService = inject(PathSelectionService);
   private eventListenersService = inject(EventListenersService);
   private destroyRef = inject(DestroyRef);
 
@@ -86,6 +92,7 @@ export class NautilusService {
         label: drive.label || drive.name,
         type: 'hard-drive',
         isLocal: true,
+        showName: drive.show_name,
       }))
     );
 
@@ -226,11 +233,23 @@ export class NautilusService {
   /**
    * Closes the file picker and returns the result.
    */
-  closeFilePicker(result: string[] | null): void {
+  closeFilePicker(result: FileBrowserItem[] | null): void {
     const requestId = this._filePickerState.getValue().options?.requestId;
+    const items = result ?? [];
+
     const config: FilePickerResult = {
       cancelled: result === null,
-      paths: result ?? [],
+      items: items,
+      paths: items.map(i => {
+        const prefix = !i.meta.isLocal
+          ? this.pathSelectionService.normalizeRemoteForRclone(i.meta.remote ?? '')
+          : i.meta.remote;
+        if (i.meta.isLocal) {
+          const sep = prefix?.endsWith('/') ? '' : '/';
+          return `${prefix}${sep}${i.entry.Path}`;
+        }
+        return `${prefix}${i.entry.Path}`;
+      }),
       requestId,
     };
     this._filePickerResult.next(config);
@@ -292,12 +311,14 @@ export class NautilusService {
   /**
    * Checks if an item exists in a specific collection.
    */
-  public isSaved(type: CollectionType, remote: string, path: string): boolean {
+  public isSaved(type: CollectionType, remote: string, path: string, isLocal = false): boolean {
     const list = this.collections[type].signal();
-    // Normalize remote string just in case
-    const cleanRemote = remote.replace(/:$/, '');
+    // Normalize remote string using centralized service
+    const cleanRemote = this.pathSelectionService.normalizeRemoteName(remote, isLocal);
     return list.some(
-      i => i.meta?.remote.replace(/:$/, '') === cleanRemote && i.entry.Path === path
+      i =>
+        this.pathSelectionService.normalizeRemoteName(i.meta?.remote, i.meta?.isLocal) ===
+          cleanRemote && i.entry.Path === path
     );
   }
 
@@ -315,30 +336,41 @@ export class NautilusService {
     }
 
     // 2. FUTURE-PROOFING: Normalize the remote name here (single source of truth)
-    // Ensure the incoming item's meta.remote never contains a trailing colon.
+    // Ensure the incoming item's meta.remote is normalized correctly.
     if (item?.meta?.remote && typeof item.meta.remote === 'string') {
-      item.meta.remote = item.meta.remote.replace(/:$/, '');
+      item.meta.remote = this.pathSelectionService.normalizeRemoteName(
+        item.meta.remote,
+        item.meta.isLocal
+      );
     }
 
     const list = config.signal();
-    const isPresent = this.isSaved(type, item.meta.remote, item.entry.Path);
+    const isPresent = this.isSaved(type, item.meta.remote, item.entry.Path, item.meta.isLocal);
     let newList: FileBrowserItem[];
 
     if (isPresent) {
-      // Remove matching items. Compare normalized remote names to account for
-      // any previously-saved entries that may contain a trailing colon.
+      // Remove matching items. Compare normalized remote names using centralized logic.
       newList = list.filter(
         i =>
           !(
-            (i.meta?.remote || '').replace(/:$/, '') ===
-              (item.meta?.remote || '').replace(/:$/, '') && i.entry.Path === item.entry.Path
+            this.pathSelectionService.normalizeRemoteName(i.meta?.remote, i.meta?.isLocal) ===
+              this.pathSelectionService.normalizeRemoteName(
+                item.meta?.remote,
+                item.meta?.isLocal
+              ) && i.entry.Path === item.entry.Path
           )
       );
     } else {
       // Add: store a normalized copy to guarantee consistency in persisted data.
       const itemToSave: FileBrowserItem = {
         ...item,
-        meta: { ...(item.meta || {}), remote: (item.meta?.remote || '').replace(/:$/, '') },
+        meta: {
+          ...(item.meta || {}),
+          remote: this.pathSelectionService.normalizeRemoteName(
+            item.meta?.remote || '',
+            item.meta?.isLocal
+          ),
+        },
       };
       newList = [...list, itemToSave];
     }

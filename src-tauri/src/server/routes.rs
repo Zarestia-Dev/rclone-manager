@@ -210,9 +210,18 @@ fn file_operations_routes() -> Router<WebServerState> {
         .route("/get-public-link", get(handlers::get_public_link_handler))
         .route("/mkdir", post(handlers::mkdir_handler))
         .route("/cleanup", post(handlers::cleanup_handler))
+        .route("/delete-file", post(handlers::delete_file_handler))
+        .route("/purge-directory", post(handlers::purge_directory_handler))
+        .route("/copy-file", post(handlers::copy_file_handler))
+        .route("/move-file", post(handlers::move_file_handler))
+        .route(
+            "/remove-empty-dirs",
+            post(handlers::remove_empty_dirs_handler),
+        )
         .route("/copy-url", post(handlers::copy_url_handler))
         .route("/remote/paths", post(handlers::get_remote_paths_handler))
         .route("/fs/stream", get(handlers::stream_file_handler))
+        .route("/upload-file", post(handlers::upload_file_handler))
 }
 
 fn settings_routes() -> Router<WebServerState> {
@@ -433,6 +442,10 @@ fn backend_routes() -> Router<WebServerState> {
         .route(
             "/get-backend-profiles",
             get(handlers::get_backend_profiles_handler),
+        )
+        .route(
+            "/get-backend-schema",
+            get(handlers::get_backend_schema_handler),
         )
 }
 

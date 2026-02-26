@@ -62,7 +62,7 @@ export class RepairService extends TauriBaseService {
       messageKey: 'repairSheet.messages.corruptConfig',
       progressKey: 'repairSheet.progress.restoringBackup',
       buttonTextKey: 'repairSheet.actions.restoreBackup',
-      icon: 'rotate-left',
+      icon: 'rotate-right',
       details: [
         {
           icon: 'circle-info',
@@ -70,7 +70,7 @@ export class RepairService extends TauriBaseService {
           valueKey: 'repairSheet.details.configCorrupt.issue',
         },
         {
-          icon: 'rotate-left',
+          icon: 'rotate-right',
           labelKey: 'repairSheet.details.actionLabel',
           valueKey: 'repairSheet.details.configCorrupt.action',
         },

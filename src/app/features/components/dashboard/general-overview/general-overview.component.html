@@ -9,7 +9,7 @@
   <div class="overview-content" role="main">
     <div class="layout-grid">
       <mat-accordion multi cdkDropList (cdkDropListDropped)="drop($event)">
-        @for (panel of dashboardPanels(); track trackByPanelId($index, panel)) {
+        @for (panel of dashboardPanels(); track panel.id) {
           @if (panel.visible || isEditingLayout()) {
             <div
               cdkDrag
@@ -174,7 +174,7 @@
                                     value: (bandwidthLimit()?.bytesPerSecond | formatRateValue),
                                   },
                                 ];
-                                track trackByIndex($index, detail)
+                                track $index
                               ) {
                                 <div class="detail-item">
                                   <span class="label">{{ detail.label }}</span>
@@ -249,7 +249,7 @@
                                 value: (systemStats().uptime | formatTime),
                               },
                             ];
-                            track trackByIndex($index, item)
+                            track $index
                           ) {
                             <div class="info-item" role="row">
                               <span class="label" role="gridcell">{{ item.label }}</span>
@@ -371,7 +371,7 @@
                                   value: jobStats().serverSideMoves,
                                 },
                               ];
-                              track trackByIndex($index, item)
+                              track $index
                             ) {
                               <div class="info-item" role="row">
                                 <span class="label" role="gridcell">{{ item.label }}</span>
@@ -493,7 +493,6 @@
                                       >
                                         <mat-icon
                                           [svgIcon]="getTaskTypeIcon(task.taskType)"
-                                          class="task-type-icon"
                                         ></mat-icon>
                                       </div>
                                       <div class="task-title-section">
@@ -708,7 +707,7 @@
           animate.enter="fade-in-out-enter"
           animate.leave="fade-in-out-leave"
         >
-          <mat-icon class="warn" svgIcon="rotate-left"></mat-icon>
+          <mat-icon class="warn" svgIcon="rotate-right"></mat-icon>
         </button>
       }
     </div>

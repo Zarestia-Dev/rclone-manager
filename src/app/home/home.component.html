@@ -46,7 +46,7 @@
               matTooltipPosition="above"
             >
               <img src="assets/rclone.svg" alt="Rclone Logo" class="no-remotes-icon" />
-              <span class="status-dot" [class]="backendStatusClass"></span>
+              <span class="status-dot" [class]="backendStatusClass()"></span>
             </button>
             <span class="backend-name">{{ activeBackend() }}</span>
 
@@ -118,6 +118,7 @@
               "
               (deleteJob)="deleteJob($event)"
               (togglePrimaryAction)="togglePrimaryAction($event)"
+              (retryDiskUsage)="handleRetryDiskUsage(remote.remoteSpecs.name)"
             >
             </app-general-detail>
           }

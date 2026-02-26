@@ -26,11 +26,6 @@
     background: var(--warn-color);
     color: white;
     flex-shrink: 0;
-
-    mat-icon {
-      width: 20px;
-      height: 20px;
-    }
   }
 
   .status-text {
@@ -153,5 +148,6 @@
   mat-icon {
     width: 18px;
     height: 18px;
+    font-size: 18px;
   }
 }

@@ -113,7 +113,9 @@ export interface FilePickerConfig {
 }
 
 export interface FilePickerResult {
-  /** Full normalized paths like '/home/user/...' or 'remote:path' */
+  /** The selected items with full context. Each item knows its remote, isLocal, path, and full entry. */
+  items: FileBrowserItem[];
+  /** Full normalized paths like '/home/user/...' or 'remote:path'. Kept for backward compatibility. */
   paths: string[];
   cancelled: boolean;
   /** Optional request id that matches the open request */

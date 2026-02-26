@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+import { NgClass, TitleCasePipe } from '@angular/common';
 import {
   Component,
   EventEmitter,
@@ -58,12 +58,14 @@ import { IconService, SystemInfoService } from '@app/services';
 import { JobManagementService } from '@app/services';
 import { toString as cronstrue } from 'cronstrue';
 import { VfsControlPanelComponent } from '../../../../shared/detail-shared/vfs-control/vfs-control-panel.component';
+import { getCronstrueLocale } from 'src/app/core/i18n/cron-locale.mapper';
 
 @Component({
   selector: 'app-app-detail',
   standalone: true,
   imports: [
-    CommonModule,
+    NgClass,
+    TitleCasePipe,
     MatIconModule,
     MatTooltipModule,
     MatDividerModule,
@@ -830,7 +832,8 @@ export class AppDetailComponent {
       if (config?.cronEnabled && config?.cronExpression) {
         let humanReadable = 'Invalid schedule';
         try {
-          humanReadable = cronstrue(config.cronExpression);
+          const locale = getCronstrueLocale(this.translate.getCurrentLang());
+          humanReadable = cronstrue(config.cronExpression, { locale });
         } catch {
           // Keep default value
         }

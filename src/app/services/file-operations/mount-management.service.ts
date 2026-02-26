@@ -5,7 +5,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { NotificationService } from '@app/services';
 import { BackendTranslationService } from '../i18n/backend-translation.service';
-import { MountedRemote } from '@app/types';
+import { MountedRemote, Origin } from '@app/types';
 import { EventListenersService } from '../system/event-listeners.service';
 
 /**
@@ -68,9 +68,19 @@ export class MountManagementService extends TauriBaseService {
    * Mount a remote using a named profile
    * Backend resolves all options (mount, vfs, filter, backend) from cached settings
    */
-  async mountRemoteProfile(remoteName: string, profileName: string): Promise<void> {
+  async mountRemoteProfile(
+    remoteName: string,
+    profileName: string,
+    source?: Origin,
+    noCache?: boolean
+  ): Promise<void> {
     try {
-      const params = { remote_name: remoteName, profile_name: profileName };
+      const params = {
+        remote_name: remoteName,
+        profile_name: profileName,
+        source: source,
+        no_cache: noCache,
+      };
       await this.invokeCommand('mount_remote_profile', { params });
       this.notificationService.showSuccess(
         this.translate.instant('mount.successMount', { remote: remoteName, profile: profileName })

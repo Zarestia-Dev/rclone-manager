@@ -13,6 +13,9 @@ export class WindowService extends TauriBaseService {
   appSettingsService = inject(AppSettingsService);
   private readonly systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
+  private readonly _isMaximized$ = new BehaviorSubject<boolean>(false);
+  public readonly isMaximized$ = this._isMaximized$.asObservable();
+
   constructor() {
     super();
     // Reactively listen to settings changes
@@ -28,6 +31,28 @@ export class WindowService extends TauriBaseService {
         this.applyTheme('system');
       }
     });
+
+    this.initWindowListeners();
+  }
+
+  private async initWindowListeners(): Promise<void> {
+    if (this.isTauriEnvironment) {
+      this.checkMaximizedState();
+      this.listenToEvent('tauri://resize').subscribe(() => {
+        this.checkMaximizedState();
+      });
+    }
+  }
+
+  private async checkMaximizedState(): Promise<void> {
+    try {
+      const isMaximized = await this.isWindowMaximized();
+      if (this._isMaximized$.value !== isMaximized) {
+        this._isMaximized$.next(isMaximized);
+      }
+    } catch (error) {
+      console.error('Failed to check maximized state:', error);
+    }
   }
 
   async quitApplication(): Promise<void> {
@@ -37,32 +62,7 @@ export class WindowService extends TauriBaseService {
       console.error('Failed to quit application:', error);
     }
   }
-  /**
-   * Updates maximized state and applies viewport settings.
-   * @param maximizedSubject BehaviorSubject<boolean> to update
-   * @param applyViewportSettings Callback to apply viewport settings
-   * @param platform Platform string
-   */
-  async updateMaximizedState(
-    maximizedSubject: { next: (val: boolean) => void },
-    applyViewportSettings: (isMax: boolean) => void,
-    platform: string
-  ): Promise<void> {
-    if (platform === 'macos' || platform === 'web') {
-      maximizedSubject.next(true);
-      applyViewportSettings(true);
-      return;
-    }
-    try {
-      const isMaximized = await this.isWindowMaximized();
-      maximizedSubject.next(isMaximized);
-      applyViewportSettings(isMaximized);
-    } catch (error) {
-      console.error('Failed to get window maximized state:', error);
-      maximizedSubject.next(false);
-      applyViewportSettings(false);
-    }
-  }
+
   async isWindowMaximized(): Promise<boolean> {
     try {
       if (!this.appWindow) return false;

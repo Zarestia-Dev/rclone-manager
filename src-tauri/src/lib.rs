@@ -94,7 +94,91 @@ pub fn run() {
     // -------------------------------------------------------------------------
     // Initialize Tauri Builder
     // -------------------------------------------------------------------------
-    let mut builder = tauri::Builder::default().plugin(tauri_plugin_shell::init());
+    let mut builder = tauri::Builder::default();
+
+    // -------------------------------------------------------------------------
+    // Single Instance Plugin (Desktop)
+    // -------------------------------------------------------------------------
+    #[cfg(desktop)]
+    {
+        #[cfg(target_os = "linux")]
+        {
+            builder = builder.plugin(
+                tauri_plugin_single_instance::Builder::new()
+                    .dbus_id("io.github.zarestia_dev.rclone-manager")
+                    .callback(|_app: &tauri::AppHandle, _, _| {
+                        #[cfg(feature = "web-server")]
+                        info!("Another instance attempted to run.");
+
+                        #[cfg(not(feature = "web-server"))]
+                        {
+                            // Only show window if it exists, don't try to create
+                            // Creating from single instance callback can cause crashes
+                            if let Some(window) = _app.get_webview_window("main") {
+                                info!("📢 Second instance detected, showing existing window");
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            } else {
+                                info!("📢 Second instance detected, but window was destroyed. Use tray to reopen.");
+                                crate::utils::app::notification::send_notification_typed(
+                                    _app,
+                                    crate::utils::app::notification::Notification::localized(
+                                        "notification.title.alreadyRunning",
+                                        "notification.body.alreadyRunning",
+                                        None,
+                                        None,
+                                        Some(crate::utils::types::logs::LogLevel::Info),
+                                    ),
+                                    Some(crate::utils::types::origin::Origin::Internal),
+                                );
+                            }
+                        }
+                    })
+                    .build(),
+            );
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        {
+            builder = builder.plugin(
+                tauri_plugin_single_instance::Builder::new()
+                    .callback(|_app: &tauri::AppHandle, _, _| {
+                        #[cfg(feature = "web-server")]
+                        info!("Another instance attempted to run.");
+
+                        #[cfg(not(feature = "web-server"))]
+                        {
+                            // Only show window if it exists, don't try to create
+                            // Creating from single instance callback can cause crashes
+                            if let Some(window) = _app.get_webview_window("main") {
+                                info!("📢 Second instance detected, showing existing window");
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            } else {
+                                info!("📢 Second instance detected, but window was destroyed. Use tray to reopen.");
+                                crate::utils::app::notification::send_notification_typed(
+                                    _app,
+                                    crate::utils::app::notification::Notification::localized(
+                                        "notification.title.alreadyRunning",
+                                        "notification.body.alreadyRunning",
+                                        None,
+                                        None,
+                                        Some(crate::utils::types::logs::LogLevel::Info),
+                                    ),
+                                    Some(crate::utils::types::origin::Origin::Internal),
+                                );
+                            }
+                        }
+                    })
+                    .build(),
+            );
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Core Plugins
+    // -------------------------------------------------------------------------
+    builder = builder.plugin(tauri_plugin_shell::init());
 
     // -------------------------------------------------------------------------
     // Updater Plugin (Desktop + Updater feature)
@@ -167,68 +251,6 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--tray"]),
         ));
-    }
-
-    // -------------------------------------------------------------------------
-    // Single Instance Plugin (Desktop)
-    // -------------------------------------------------------------------------
-    #[cfg(desktop)]
-    {
-        #[cfg(target_os = "linux")]
-        {
-            builder = builder.plugin(
-                tauri_plugin_single_instance::Builder::new()
-                    .dbus_id("io.github.zarestia_dev.rclone-manager".to_string())
-                    .build(Box::new(|_app: &tauri::AppHandle, _, _| {
-                        #[cfg(feature = "web-server")]
-                        info!("Another instance attempted to run.");
-
-                        #[cfg(not(feature = "web-server"))]
-                        {
-                            // Only show window if it exists, don't try to create
-                            // Creating from single instance callback can cause crashes
-                            if let Some(window) = _app.get_webview_window("main") {
-                                info!("📢 Second instance detected, showing existing window");
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            } else {
-                                info!("📢 Second instance detected, but window was destroyed. Use tray to reopen.");
-                                utils::app::notification::send_notification(
-                                    _app,
-                                    "notification.title.alreadyRunning",
-                                    "notification.body.alreadyRunning",
-                                );
-                            }
-                        }
-                    })),
-            );
-        }
-
-        #[cfg(not(target_os = "linux"))]
-        {
-            builder = builder.plugin(tauri_plugin_single_instance::init(|_app, _, _| {
-                #[cfg(feature = "web-server")]
-                info!("Another instance attempted to run.");
-
-                #[cfg(not(feature = "web-server"))]
-                {
-                    // Only show window if it exists, don't try to create
-                    // Creating from single instance callback can cause crashes
-                    if let Some(window) = _app.get_webview_window("main") {
-                        info!("📢 Second instance detected, showing existing window");
-                        let _ = window.show();
-                        let _ = window.set_focus();
-                    } else {
-                        info!("📢 Second instance detected, but window was destroyed. Use tray to reopen.");
-                        utils::app::notification::send_notification(
-                            _app,
-                            "notification.title.alreadyRunning",
-                            "notification.body.alreadyRunning",
-                        );
-                    }
-                }
-            }));
-        }
     }
 
     // -------------------------------------------------------------------------
@@ -366,7 +388,71 @@ fn setup_app(
                         value
                     }),
             )
-            .with_sub_settings(rcman::SubSettingsConfig::singlefile("connections"))
+            .with_sub_settings(
+                rcman::SubSettingsConfig::singlefile("connections")
+                    .with_schema::<crate::rclone::backend::types::BackendConnectionSchema>()
+                    .with_migrator(|value: serde_json::Value| {
+                        // Secret Migration: Move keys from `backend:{name}:password` to `sub.connections.{name}.password`
+                        #[cfg(desktop)]
+                        {
+                            use rcman::CredentialManager;
+                            // Use same service name as main app (env!("CARGO_PKG_NAME"))
+                            let service_name = env!("CARGO_PKG_NAME");
+
+                            // We need a temporary CredentialManager to check legacy keys
+                            // Since we don't have the instance from outside, we create a new handle to the same service
+                            let creds = CredentialManager::new(service_name);
+
+                            if let Some(connections) = value.as_object() {
+                                for (name, _) in connections {
+                                    // 1. Password field
+                                    let legacy_pass_key = format!("backend:{}:password", name);
+                                    let new_pass_key = format!("sub.connections.{}.password", name);
+
+                                    // Only migrate if legacy exists AND new one doesn't (don't overwrite new data)
+                                    if creds.exists(&legacy_pass_key) {
+                                        if !creds.exists(&new_pass_key) {
+                                            if let Ok(Some(secret)) = creds.get(&legacy_pass_key) {
+                                                log::info!("🔐 Migrating legacy password for '{}'", name);
+                                                if let Err(e) = creds.store(&new_pass_key, &secret) {
+                                                    log::error!("Failed to migrate password for '{}': {}", name, e);
+                                                } else {
+                                                    // Only delete legacy if migration succeeded
+                                                    let _ = creds.remove(&legacy_pass_key);
+                                                }
+                                            }
+                                        } else {
+                                            // New key exists, just clean up legacy
+                                            log::debug!("Cleaning up legacy password for '{}' (already migrated)", name);
+                                            let _ = creds.remove(&legacy_pass_key);
+                                        }
+                                    }
+
+                                    // 2. Config Password field
+                                    let legacy_conf_key = format!("backend:{}:config_password", name);
+                                    let new_conf_key = format!("sub.connections.{}.config_password", name);
+
+                                    if creds.exists(&legacy_conf_key) {
+                                        if !creds.exists(&new_conf_key) {
+                                            if let Ok(Some(secret)) = creds.get(&legacy_conf_key) {
+                                                log::info!("🔐 Migrating legacy config_password for '{}'", name);
+                                                if let Err(e) = creds.store(&new_conf_key, &secret) {
+                                                    log::error!("Failed to migrate config_password for '{}': {}", name, e);
+                                                } else {
+                                                    let _ = creds.remove(&legacy_conf_key);
+                                                }
+                                            }
+                                        } else {
+                                            log::debug!("Cleaning up legacy config_password for '{}' (already migrated)", name);
+                                            let _ = creds.remove(&legacy_conf_key);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        value
+                    }),
+            )
             .build()
             .map_err(|e| format!("Failed to create rcman settings manager: {e}"))?;
 
@@ -429,36 +515,6 @@ fn setup_app(
     app.manage(PendingUpdate(std::sync::Mutex::new(None)));
     #[cfg(all(desktop, feature = "updater"))]
     app.manage(DownloadState::default());
-
-    // -------------------------------------------------------------------------
-    // Global Shortcuts (Desktop, non-web-server)
-    // -------------------------------------------------------------------------
-    #[cfg(all(desktop, not(feature = "web-server")))]
-    {
-        use crate::utils::shortcuts::handle_global_shortcut_event;
-        use tauri_plugin_global_shortcut::{
-            Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState,
-        };
-
-        let ctrl_q_shortcut = Shortcut::new(Some(Modifiers::CONTROL), Code::KeyQ);
-
-        app_handle.plugin(
-            tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(move |app, shortcut, event| {
-                    if let ShortcutState::Pressed = event.state() {
-                        handle_global_shortcut_event(app, *shortcut);
-                    }
-                })
-                .build(),
-        )?;
-
-        match app_handle.global_shortcut().register(ctrl_q_shortcut) {
-            Ok(_) => info!("Successfully registered Ctrl+Q shortcut"),
-            Err(e) => error!("Failed to register Ctrl+Q shortcut: {e}"),
-        }
-
-        info!("🔗 Global shortcuts registered successfully");
-    }
 
     // -------------------------------------------------------------------------
     // Initialize Logging

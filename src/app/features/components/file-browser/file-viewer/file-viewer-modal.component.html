@@ -1,19 +1,20 @@
 <div class="file-viewer-wrapper">
   <div class="file-viewer-header" data-tauri-drag-region>
     <div class="header-left">
-      <span class="file-name">{{ data.name }}</span>
+      <span class="file-name">{{ fileName() }}</span>
       <div class="file-info">
-        <span class="file-counter">{{ data.currentIndex + 1 }} / {{ data.items.length }}</span>
+        <span class="file-counter">{{ currentIndex() + 1 }} / {{ data.items.length }}</span>
         @if (fileSize()) {
           <span class="separator"></span>
-          <span class="file-size">{{ fileSize() ?? 0 | formatFileSize }}</span>
+          <span class="file-size">{{ fileSize() | formatFileSize }}</span>
         }
       </div>
     </div>
     <div class="header-actions">
-      @if (isMarkdownFile() && (data.fileType === 'text' || data.fileType === 'previewable')) {
+      @if (isMarkdownFile() && currentFileType() === 'text') {
         <button
           mat-icon-button
+          matTooltip="{{ showMarkdownPreview() ? 'Show Raw Text' : 'Show Preview' }}"
           class="header-button"
           (click)="toggleMarkdownPreview(); $event.stopPropagation()"
           [attr.aria-label]="showMarkdownPreview() ? 'Show Raw Text' : 'Show Preview'"
@@ -21,13 +22,55 @@
           <mat-icon [svgIcon]="showMarkdownPreview() ? 'code' : 'eye'"></mat-icon>
         </button>
       }
+
+      <!-- Edit Actions -->
+      @if (currentFileType() === 'text') {
+        @if (isEditing()) {
+          <button
+            mat-icon-button
+            matTooltip="{{ 'fileBrowser.fileViewer.save' | translate }}"
+            class="header-button save-button"
+            (click)="saveChanges(); $event.stopPropagation()"
+            [disabled]="isSaving()"
+            [attr.aria-label]="'fileBrowser.fileViewer.save' | translate"
+          >
+            @if (isSaving()) {
+              <mat-spinner diameter="24"></mat-spinner>
+            } @else {
+              <mat-icon svgIcon="floppy-disk"></mat-icon>
+            }
+          </button>
+          <button
+            mat-icon-button
+            matTooltip="{{ 'fileBrowser.fileViewer.cancel' | translate }}"
+            class="header-button"
+            (click)="cancelEditing(); $event.stopPropagation()"
+            [disabled]="isSaving()"
+            [attr.aria-label]="'fileBrowser.fileViewer.cancel' | translate"
+          >
+            <mat-icon svgIcon="close"></mat-icon>
+          </button>
+        } @else {
+          <button
+            mat-icon-button
+            matTooltip="{{ 'fileBrowser.fileViewer.edit' | translate }}"
+            class="header-button"
+            (click)="startEditing(); $event.stopPropagation()"
+            [attr.aria-label]="'fileBrowser.fileViewer.edit' | translate"
+          >
+            <mat-icon svgIcon="pen"></mat-icon>
+          </button>
+        }
+      }
+
       @if (!this.data.isLocal) {
         <button
           mat-icon-button
+          matTooltip="{{ 'fileBrowser.fileViewer.download' | translate: { name: fileName() } }}"
           class="header-button"
           [disabled]="isDownloading()"
           (click)="download(); $event.stopPropagation()"
-          [attr.aria-label]="'fileBrowser.fileViewer.download' | translate: { name: data.name }"
+          [attr.aria-label]="'fileBrowser.fileViewer.download' | translate: { name: fileName() }"
         >
           @if (isDownloading()) {
             <mat-spinner diameter="24"></mat-spinner>
@@ -38,6 +81,7 @@
       }
       <button
         mat-icon-button
+        matTooltip="{{ 'fileBrowser.fileViewer.closeViewer' | translate }}"
         class="header-button close-button"
         (click)="closeViewer.emit(); $event.stopPropagation()"
         [attr.aria-label]="'fileBrowser.fileViewer.closeViewer' | translate"
@@ -48,7 +92,7 @@
   </div>
 
   <div class="file-viewer-content">
-    @if (data.items.length > 1 && data.currentIndex > 0) {
+    @if (data.items.length > 1 && currentIndex() > 0) {
       <button
         mat-icon-button
         class="nav-button prev"
@@ -72,11 +116,11 @@
       }
 
       <div class="content-container" [class.loading]="isLoading()">
-        @switch (data.fileType) {
+        @switch (currentFileType()) {
           @case ('image') {
             <img
               [src]="sanitizedUrl"
-              [alt]="data.name"
+              [alt]="fileName()"
               class="preview-content image-content"
               (load)="onLoadComplete()"
               (error)="onLoadError()"
@@ -90,14 +134,17 @@
               (loadeddata)="onLoadComplete()"
               (error)="onLoadError()"
               [attr.aria-label]="
-                'fileBrowser.fileViewer.videoLabel' | translate: { name: data.name }
+                'fileBrowser.fileViewer.videoLabel' | translate: { name: fileName() }
               "
             ></video>
           }
           @case ('audio') {
             <div class="audio-container">
               <div class="audio-icon-wrapper">
-                <mat-icon svgIcon="music" aria-hidden="true"></mat-icon>
+                <mat-icon
+                  [svgIcon]="iconService.getIconForFileType('audio')"
+                  aria-hidden="true"
+                ></mat-icon>
               </div>
               <audio
                 [src]="sanitizedUrl"
@@ -105,7 +152,7 @@
                 (loadeddata)="onLoadComplete()"
                 (error)="onLoadError()"
                 [attr.aria-label]="
-                  'fileBrowser.fileViewer.audioLabel' | translate: { name: data.name }
+                  'fileBrowser.fileViewer.audioLabel' | translate: { name: fileName() }
                 "
               ></audio>
             </div>
@@ -115,34 +162,28 @@
               [src]="sanitizedUrl"
               class="pdf-viewer"
               (load)="onLoadComplete()"
-              [attr.title]="'fileBrowser.fileViewer.pdfTitle' | translate: { name: data.name }"
+              [attr.title]="'fileBrowser.fileViewer.pdfTitle' | translate: { name: fileName() }"
             ></iframe>
           }
           @case ('text') {
             @if (isMarkdownFile() && showMarkdownPreview()) {
               <div class="markdown-preview markdown-body" [innerHTML]="renderedMarkdown()"></div>
             } @else {
-              <div class="text-container" role="document">
-                <pre><code class="hljs" [innerHTML]="highlightedContent()"></code></pre>
-              </div>
-            }
-          }
-          @case ('previewable') {
-            @if (isMarkdownFile() && showMarkdownPreview()) {
-              <div class="markdown-preview markdown-body" [innerHTML]="renderedMarkdown()"></div>
-            } @else {
-              <div class="text-container" role="document">
-                <pre><code class="hljs" [innerHTML]="highlightedContent()"></code></pre>
+              <div class="editor-container">
+                <div #editorContainer class="code-mirror-container"></div>
               </div>
             }
           }
           @case ('directory') {
             <div class="unsupported-container" role="status">
               <div class="icon-wrapper">
-                <mat-icon svgIcon="folder" aria-hidden="true"></mat-icon>
+                <mat-icon
+                  [svgIcon]="iconService.getIconForFileType('directory')"
+                  aria-hidden="true"
+                ></mat-icon>
               </div>
               @if (folderSize()) {
-                <p class="unsupported-text">{{ data.name }}</p>
+                <p class="unsupported-text">{{ fileName() }}</p>
                 <p class="unsupported-subtext">
                   {{
                     'fileBrowser.fileViewer.containsFiles'
@@ -165,31 +206,34 @@
           @case ('binary') {
             <div class="unsupported-container" role="status">
               <div class="icon-wrapper">
-                <mat-icon svgIcon="file-zipper" aria-hidden="true"></mat-icon>
+                <mat-icon
+                  [svgIcon]="iconService.getIconForFileType('binary')"
+                  aria-hidden="true"
+                ></mat-icon>
               </div>
               <p class="unsupported-text">{{ 'fileBrowser.fileViewer.binaryFile' | translate }}</p>
-              <p class="unsupported-subtext">{{ data.name }}</p>
+              <p class="unsupported-subtext">{{ fileName() }}</p>
             </div>
           }
           @default {
             <div class="unsupported-container" role="status">
               <div class="icon-wrapper">
                 <mat-icon
-                  [svgIcon]="iconService.getIconForEntry(data.items[data.currentIndex])"
+                  [svgIcon]="iconService.getIconForEntry(data.items[currentIndex()])"
                   aria-hidden="true"
                 ></mat-icon>
               </div>
               <p class="unsupported-text">
                 {{ 'fileBrowser.fileViewer.previewNotAvailable' | translate }}
               </p>
-              <p class="unsupported-subtext">{{ data.name }}</p>
+              <p class="unsupported-subtext">{{ fileName() }}</p>
             </div>
           }
         }
       </div>
     </main>
 
-    @if (data.items.length > 1 && data.currentIndex < data.items.length - 1) {
+    @if (data.items.length > 1 && currentIndex() < data.items.length - 1) {
       <button
         mat-icon-button
         class="nav-button next"

@@ -15,7 +15,7 @@
 
 <p align="center">
   <b>A powerful, cross-platform GUI for managing Rclone remotes with style and ease.</b><br>
-  <i>Built with Angular 20 + Tauri · Linux • Windows • macOS • ARM Support</i>
+  <i>Built with Angular 21 + Tauri · Linux • Windows • macOS • ARM Support</i>
 </p>
 
 <p align="center">

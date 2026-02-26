@@ -1,9 +1,11 @@
 import { computed, Injectable, signal } from '@angular/core';
 import { TauriBaseService } from '../core/tauri-base.service';
+
 import {
   AddBackendConfig,
   BackendInfo,
   TestConnectionResult,
+  BackendSettingMetadata,
 } from 'src/app/shared/types/backend.types';
 
 /**
@@ -28,8 +30,20 @@ export class BackendService extends TauriBaseService {
     const backends = this.backends();
     const activeName = this.activeBackend();
     const active = backends.find(b => b.name === activeName);
-    return active?.runtime_config_path ?? null;
+    return active?.runtimeConfigPath ?? null;
   });
+
+  /**
+   * Get the backend settings schema for UI generation
+   */
+  async getBackendSchema(): Promise<Record<string, BackendSettingMetadata>> {
+    try {
+      return await this.invokeCommand<Record<string, BackendSettingMetadata>>('get_backend_schema');
+    } catch (error) {
+      console.error('[BackendService] Failed to get backend schema:', error);
+      throw error;
+    }
+  }
 
   /**
    * Load all backends from the Tauri backend
@@ -41,7 +55,7 @@ export class BackendService extends TauriBaseService {
       this.backends.set(backends);
 
       // Update active backend name
-      const active = backends.find(b => b.is_active);
+      const active = backends.find(b => b.isActive);
       if (active) {
         this.activeBackend.set(active.name);
       }
@@ -107,7 +121,7 @@ export class BackendService extends TauriBaseService {
       this.backends.update(current =>
         current.map(b => ({
           ...b,
-          is_active: b.name === name,
+          isActive: b.name === name,
         }))
       );
     } catch (error) {
@@ -132,12 +146,12 @@ export class BackendService extends TauriBaseService {
         name: config.name,
         host: config.host,
         port: config.port,
-        isLocal: config.is_local,
+        isLocal: config.isLocal,
         username: config.username,
         password: config.password,
-        configPassword: config.config_password,
-        configPath: config.config_path,
-        oauthPort: config.oauth_port,
+        configPassword: config.configPassword,
+        configPath: config.configPath,
+        oauthPort: config.oauthPort,
         copyBackendFrom: copyBackendFrom ?? null,
         copyRemotesFrom: copyRemotesFrom ?? null,
       });
@@ -164,9 +178,9 @@ export class BackendService extends TauriBaseService {
         port: config.port,
         username: config.username,
         password: config.password,
-        configPassword: config.config_password,
-        configPath: config.config_path,
-        oauthPort: config.oauth_port,
+        configPassword: config.configPassword,
+        configPath: config.configPath,
+        oauthPort: config.oauthPort,
       });
 
       // Reload to ensure consistency
@@ -215,7 +229,7 @@ export class BackendService extends TauriBaseService {
               status: result.success ? 'connected' : 'error',
               version: result.version,
               os: result.os,
-              runtime_config_path: result.config_path,
+              runtimeConfigPath: result.config_path,
             };
           }
           return b;
@@ -284,10 +298,28 @@ export class BackendService extends TauriBaseService {
               status,
               version: info?.version ?? b.version,
               os: info?.os ?? b.os,
-              runtime_config_path: info?.configPath ?? b.runtime_config_path,
+              runtimeConfigPath: info?.configPath ?? b.runtimeConfigPath,
             }
           : b
       )
     );
+  }
+  /**
+   * Helper to map form values to AddBackendConfig
+   */
+  mapFormToConfig(formValue: any, isEditingLocal: boolean): AddBackendConfig {
+    return {
+      name: formValue.name,
+      host: formValue.host,
+      port: Number(formValue.port),
+      isLocal: isEditingLocal,
+      // Send empty strings to signal "clear auth" when toggle is off
+      username: formValue.has_auth ? formValue.username : '',
+      password: formValue.has_auth ? formValue.password : '',
+      configPassword: formValue.config_password || undefined,
+      configPath: formValue.config_path || undefined,
+      // OAuth port only for Local backend
+      oauthPort: isEditingLocal ? Number(formValue.oauth_port) : undefined,
+    };
   }
 }

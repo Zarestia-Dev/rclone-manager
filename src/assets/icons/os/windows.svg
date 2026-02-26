@@ -1,3 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" width="500px" height="500px">
-    <path d="M4 4H24V24H4zM26 4H46V24H26zM4 26H24V46H4zM26 26H46V46H26z" />
+<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor">
+    <path
+        d="M3 5.548l7.065-.966v6.823H3V5.548zm0 12.904l7.065.966v-6.823H3v5.857zm7.876 1.076L21 21V12.595h-10.124v6.933zm0-15.056v7.038H21V3L10.876 4.472z" />
 </svg>

@@ -20,31 +20,7 @@ describe('OnboardingComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  describe('selectCustomFolder event emitter', () => {
-    it('should have selectCustomFolder method', () => {
-      expect(component.selectCustomFolder).toBeDefined();
-      expect(typeof component.selectCustomFolder).toBe('function');
-    });
-
-    it('should call selectCustomFolder method', async () => {
-      spyOn(component, 'selectCustomFolder').and.returnValue(Promise.resolve());
-
-      await component.selectCustomFolder();
-
-      expect(component.selectCustomFolder).toHaveBeenCalled();
-    });
-  });
-
-  describe('component properties', () => {
-    it('should have customPath property', () => {
-      expect(component.customPath).toBeDefined();
-    });
-
-    it('should allow setting customPath', () => {
-      const testPath = '/home/hakan/Downloads';
-      component.customPath = testPath;
-
-      expect(component.customPath).toBe(testPath);
-    });
+  it('should have initial loading state', () => {
+    expect(component.animationState()).toBe('loading');
   });
 });

@@ -81,6 +81,8 @@
       align-items: center;
       width: 100%;
       height: 100%;
+      overflow: hidden;
+      padding: var(--space-md);
 
       &.loading {
         opacity: 0.3;
@@ -142,9 +144,9 @@
       }
 
       mat-icon {
-        font-size: 56px;
-        width: 56px;
-        height: 56px;
+        width: var(--icon-size-xl);
+        height: var(--icon-size-xl);
+        font-size: var(--icon-size-xl);
         color: var(--accent-color);
       }
 
@@ -164,8 +166,7 @@
       box-shadow: var(--shadow-gnome);
     }
 
-    .markdown-preview,
-    .text-container {
+    .markdown-preview {
       width: calc(100vw - 200px);
       height: calc(100vh - 120px);
       overflow: auto;
@@ -175,13 +176,187 @@
       color: var(--window-fg-color);
       border-radius: var(--radius-sm);
       box-shadow: var(--shadow-gnome);
+    }
 
-      pre {
-        font-family: monospace;
+    .editor-container {
+      width: calc(100vw - 200px);
+      height: calc(100vh - 120px);
+      background: var(--view-bg-color);
+      box-shadow: var(--shadow-gnome);
+      border-radius: var(--radius-sm);
+      padding: 0;
+      overflow: hidden; // Container must clip — CM handles scrolling internally
+
+      .code-mirror-container {
+        width: 100%;
+        height: 100%;
         font-size: var(--font-size-md);
-        white-space: pre-wrap;
-        word-break: break-word;
-        margin: 0;
+
+        ::ng-deep .cm-editor {
+          height: 100%;
+          background: transparent;
+          border-radius: var(--radius-sm);
+
+          .cm-scroller {
+            font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+            line-height: 1.6;
+            overflow: auto;
+
+            // Styled scrollbar
+            &::-webkit-scrollbar {
+              width: 8px;
+              height: 8px;
+            }
+
+            &::-webkit-scrollbar-thumb {
+              background: rgba(var(--window-fg-color-rgb), 0.15);
+              border-radius: 4px;
+
+              &:hover {
+                background: rgba(var(--window-fg-color-rgb), 0.25);
+              }
+            }
+          }
+
+          // ── Search / Find & Replace Panel ──
+          .cm-panels {
+            background: var(--headerbar-bg-color);
+            border-bottom: 1px solid var(--border-color);
+            color: var(--window-fg-color);
+            font-family: inherit;
+            font-size: var(--font-size-sm);
+            padding: var(--space-xs) var(--space-sm);
+
+            &.cm-panels-top {
+              border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+            }
+
+            label {
+              color: var(--window-fg-color);
+              font-size: var(--font-size-sm);
+              display: inline-flex;
+              align-items: center;
+              gap: 4px;
+            }
+
+            input,
+            button {
+              font-family: inherit;
+              font-size: var(--font-size-sm);
+            }
+
+            input[type="text"],
+            input[type="checkbox"] {
+              background: var(--view-bg-color);
+              color: var(--window-fg-color);
+              border: 1px solid var(--border-color);
+              border-radius: var(--radius-xs);
+              padding: 3px 8px;
+              outline: none;
+              transition: border-color 0.15s ease;
+
+              &:focus {
+                border-color: var(--accent-color);
+                box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.15);
+              }
+            }
+
+            button {
+              background: var(--view-bg-color);
+              color: var(--window-fg-color);
+              border: 1px solid var(--border-color);
+              border-radius: var(--radius-xs);
+              padding: 3px 10px;
+              cursor: pointer;
+              transition: all 0.15s ease;
+
+              &:hover {
+                background: var(--selected-bg-color);
+              }
+
+              &[name="close"] {
+                background: transparent;
+                border: none;
+                font-size: 18px;
+                padding: 2px 6px;
+                opacity: 0.6;
+
+                &:hover {
+                  opacity: 1;
+                }
+              }
+            }
+
+            br {
+              display: none; // Prevent ugly line breaks in the panel
+            }
+          }
+
+          // ── Selection highlighting ──
+          .cm-selectionBackground {
+            background: rgba(var(--accent-color-rgb), 0.2) !important;
+          }
+
+          &.cm-focused .cm-selectionBackground {
+            background: rgba(var(--accent-color-rgb), 0.3) !important;
+          }
+
+          // ── Search match highlighting ──
+          .cm-searchMatch {
+            background: rgba(var(--accent-color-rgb), 0.2);
+            outline: 1px solid rgba(var(--accent-color-rgb), 0.4);
+            border-radius: 2px;
+
+            &.cm-searchMatch-selected {
+              background: rgba(var(--accent-color-rgb), 0.4);
+            }
+          }
+
+          // ── Tooltip styling ──
+          .cm-tooltip {
+            background: var(--popover-bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xs);
+            color: var(--window-fg-color);
+            box-shadow: var(--shadow-gnome);
+          }
+
+          // ── Light theme overrides ──
+          &:not(.cm-theme-dark) {
+            .cm-content {
+              color: var(--window-fg-color);
+              caret-color: var(--window-fg-color);
+            }
+
+            .cm-gutters {
+              background: var(--sidebar-bg-color);
+              color: var(--dim-color);
+              border-right: 1px solid var(--border-color);
+            }
+
+            .cm-activeLineGutter {
+              background: var(--selected-bg-color);
+            }
+
+            .cm-activeLine {
+              background: rgba(var(--window-fg-color-rgb), 0.04);
+            }
+
+            .cm-cursor {
+              border-left-color: var(--window-fg-color);
+            }
+
+            // ── Light mode syntax tokens ──
+            .cm-selectionMatch {
+              background: rgba(var(--accent-color-rgb), 0.12);
+            }
+
+            .cm-matchingBracket {
+              background: rgba(var(--accent-color-rgb), 0.15);
+              outline: 1px solid rgba(var(--accent-color-rgb), 0.3);
+            }
+          }
+        }
       }
     }
 
@@ -203,8 +378,8 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 100px;
-        height: 100px;
+        width: var(--icon-size-3xl);
+        height: var(--icon-size-3xl);
         border-radius: 50%;
         background: rgba(var(--window-fg-color-rgb), 0.05);
         margin-bottom: var(--space-sm);
@@ -263,10 +438,6 @@
       &:disabled {
         opacity: 0.3;
       }
-
-      mat-icon {
-        font-size: var(--icon-size-md);
-      }
     }
   }
 }
@@ -291,16 +462,10 @@
     }
 
     .file-viewer-content {
-      .text-container,
+      .editor-container,
       .pdf-viewer {
         width: calc(100vw - 10px);
         height: 100%;
-      }
-
-      .text-container pre {
-        min-width: auto;
-        padding: var(--space-md);
-        font-size: var(--font-size-sm);
       }
 
       .nav-button {

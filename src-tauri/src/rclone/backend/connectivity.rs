@@ -17,8 +17,7 @@ pub async fn check_connectivity(
         .ok_or_else(|| format!("Backend '{}' not found", name))?;
 
     let timeout = std::time::Duration::from_secs(5);
-    let runtime_info =
-        crate::rclone::backend::runtime::fetch_runtime_info(&backend, client, timeout).await;
+    let runtime_info = backend.fetch_runtime_info(client, timeout).await;
 
     let version = runtime_info.version().unwrap_or_default();
     let os = runtime_info.os().unwrap_or_default();

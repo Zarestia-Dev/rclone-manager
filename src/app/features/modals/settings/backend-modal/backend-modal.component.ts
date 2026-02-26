@@ -1,4 +1,5 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, effect, inject, resource, signal } from '@angular/core';
+import { NgClass, NgTemplateOutlet } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialogRef, MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -8,7 +9,11 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { BackendService } from 'src/app/services/system/backend.service';
-import type { BackendInfo } from 'src/app/shared/types/backend.types';
+import type {
+  AddBackendConfig,
+  BackendInfo,
+  BackendSettingMetadata,
+} from 'src/app/shared/types/backend.types';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -23,6 +28,7 @@ import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { ModalService } from '@app/services';
 import { ApiClientService } from 'src/app/services/core/api-client.service';
 import { FilePickerConfig } from 'src/app/shared/types/ui';
+import { BACKEND_CONSTANTS } from 'src/app/shared/constants/backend.constants';
 
 @Component({
   selector: 'app-backend-modal',
@@ -44,11 +50,13 @@ import { FilePickerConfig } from 'src/app/shared/types/ui';
     MatExpansionModule,
     MatTooltipModule,
     MatSlideToggle,
+    NgTemplateOutlet,
+    NgClass,
   ],
   templateUrl: './backend-modal.component.html',
   styleUrls: ['./backend-modal.component.scss', '../../../../styles/_shared-modal.scss'],
 })
-export class BackendModalComponent implements OnInit {
+export class BackendModalComponent {
   private readonly dialogRef = inject(MatDialogRef<BackendModalComponent>);
   private readonly backendService = inject(BackendService);
   private readonly fb = inject(FormBuilder);
@@ -66,11 +74,11 @@ export class BackendModalComponent implements OnInit {
 
   // UI state - consolidated form state
   readonly formState = signal<{
-    mode: 'closed' | 'add' | 'edit';
+    mode: 'add' | 'edit' | null;
     editingName?: string;
     isLoading?: boolean;
   }>({
-    mode: 'closed',
+    mode: null,
   });
   readonly testingBackend = signal<string | null>(null);
   readonly switchingTo = signal<string | null>(null);
@@ -87,20 +95,95 @@ export class BackendModalComponent implements OnInit {
   // Backend form
   backendForm: FormGroup = this.fb.group({
     name: ['', [Validators.required, Validators.pattern(/^[^/\\:*?"<>|]+$/)]],
-    host: ['localhost', [Validators.required]],
-    port: [51900, [Validators.required, Validators.min(1024), Validators.max(65535)]],
+    host: [BACKEND_CONSTANTS.DEFAULTS.HOST, [Validators.required]],
+    port: [
+      BACKEND_CONSTANTS.DEFAULTS.PORT,
+      [Validators.required, Validators.min(1024), Validators.max(65535)],
+    ],
     username: [''],
     password: [''],
     config_password: [''],
     config_path: [''],
     has_auth: [false],
     // OAuth fields (for Local backend)
-    oauth_host: ['127.0.0.1'],
-    oauth_port: [51901, [Validators.min(1024), Validators.max(65535)]],
+    oauth_host: [BACKEND_CONSTANTS.DEFAULTS.IP],
+    oauth_port: [
+      BACKEND_CONSTANTS.DEFAULTS.OAUTH_PORT,
+      [Validators.min(1024), Validators.max(65535)],
+    ],
   });
 
-  async ngOnInit(): Promise<void> {
-    await this.backendService.loadBackends();
+  constructor() {
+    this.backendService.loadBackends();
+
+    effect(() => {
+      const schema = this.schema();
+      if (schema && Object.keys(schema).length > 0) {
+        this.applyValidators(schema);
+      }
+    });
+  }
+
+  readonly schemaResource = resource({
+    loader: () => this.backendService.getBackendSchema(),
+  });
+
+  readonly schema = computed(() => this.schemaResource.value() ?? {});
+
+  readonly fieldGroups = computed(() => {
+    const schema = this.schema();
+    const groups: Record<string, { key: string; meta: BackendSettingMetadata }[]> = {};
+    const groupOrder = [
+      BACKEND_CONSTANTS.GROUPS.CONNECTION,
+      BACKEND_CONSTANTS.GROUPS.AUTHENTICATION,
+      BACKEND_CONSTANTS.GROUPS.OAUTH,
+      BACKEND_CONSTANTS.GROUPS.SECURITY,
+      BACKEND_CONSTANTS.GROUPS.ADVANCED,
+    ];
+
+    Object.entries(schema).forEach(([key, meta]) => {
+      if (key === 'is_local') return;
+      const group = (meta.metadata['group'] as string) || 'other';
+      if (!groups[group]) groups[group] = [];
+      groups[group].push({ key, meta });
+    });
+
+    Object.values(groups).forEach(fields => {
+      fields.sort(
+        (a, b) =>
+          ((a.meta.metadata['order'] as number) || 100) -
+          ((b.meta.metadata['order'] as number) || 100)
+      );
+    });
+
+    return groupOrder
+      .map(name => ({
+        name,
+        fields: groups[name] || [],
+      }))
+      .filter(g => g.fields.length > 0);
+  });
+
+  private applyValidators(schema: Record<string, BackendSettingMetadata>): void {
+    // Apply min/max/pattern from schema to form controls
+    Object.entries(schema).forEach(([key, meta]: [string, BackendSettingMetadata]) => {
+      const control = this.backendForm.get(key);
+      if (!control) return;
+
+      const validators = [];
+
+      if (meta.constraints?.number?.min !== undefined)
+        validators.push(Validators.min(meta.constraints.number.min));
+      if (meta.constraints?.number?.max !== undefined)
+        validators.push(Validators.max(meta.constraints.number.max));
+      if (meta.constraints?.text?.pattern)
+        validators.push(Validators.pattern(meta.constraints.text.pattern));
+
+      if (validators.length > 0) {
+        control.addValidators(validators);
+        control.updateValueAndValidity();
+      }
+    });
   }
 
   close(): void {
@@ -109,12 +192,12 @@ export class BackendModalComponent implements OnInit {
 
   toggleAddForm(): void {
     const current = this.formState();
-    if (current.mode === 'closed') {
+    if (current.mode === null) {
       this.formState.set({ mode: 'add' });
       this.copyBackendFrom.set('none');
       this.copyRemotesFrom.set('none');
     } else {
-      this.formState.set({ mode: 'closed' });
+      this.formState.set({ mode: null });
       this.resetForm();
     }
   }
@@ -124,7 +207,7 @@ export class BackendModalComponent implements OnInit {
     const state = this.formState();
     if (state.mode !== 'edit' || !state.editingName) return null;
     const backend = this.backends().find(b => b.name === state.editingName);
-    return backend?.runtime_config_path ?? null;
+    return backend?.runtimeConfigPath ?? null;
   }
 
   /** Check if the backend currently being edited is the active one */
@@ -141,35 +224,35 @@ export class BackendModalComponent implements OnInit {
       name: backend.name,
       host: backend.host,
       port: backend.port,
-      has_auth: backend.has_auth,
+      has_auth: backend.hasAuth,
       username: backend.username || '',
       password: backend.password || '', // Password now sent from backend for editing
       config_password: '', // Config passwords not sent from backend
-      config_path: backend.config_path || '',
+      config_path: backend.configPath || '',
       oauth_host: '127.0.0.1', // Default, oauth_host not tracked in BackendInfo
-      oauth_port: backend.oauth_port || 51901,
+      oauth_port: backend.oauthPort || 51901,
     });
 
     // Update validators based on initial state
-    this.updateAuthValidators(backend.has_auth);
+    this.updateAuthValidators(backend.hasAuth);
 
     // Name is always read-only in edit mode (users can delete and re-create to rename)
     this.backendForm.get('name')?.disable();
   }
 
   cancelEdit(): void {
-    this.formState.set({ mode: 'closed' });
+    this.formState.set({ mode: null });
     this.resetForm();
     this.backendForm.get('name')?.enable();
   }
 
   private resetForm(): void {
     this.backendForm.reset({
-      host: 'localhost',
-      port: 51900,
+      host: BACKEND_CONSTANTS.DEFAULTS.HOST,
+      port: BACKEND_CONSTANTS.DEFAULTS.PORT,
       has_auth: false,
-      oauth_host: '127.0.0.1',
-      oauth_port: 51901,
+      oauth_host: BACKEND_CONSTANTS.DEFAULTS.IP,
+      oauth_port: BACKEND_CONSTANTS.DEFAULTS.OAUTH_PORT,
     });
     this.updateAuthValidators(false); // Reset validators
     this.showPassword.set(false);
@@ -249,19 +332,10 @@ export class BackendModalComponent implements OnInit {
     // Determine if editing local backend
     const isEditingLocal = state.mode === 'edit' && state.editingName === 'Local';
 
-    const backendData = {
-      name: formValue.name,
-      host: formValue.host,
-      port: formValue.port,
-      is_local: isEditingLocal,
-      // Send empty strings to signal "clear auth" when toggle is off
-      username: formValue.has_auth ? formValue.username : '',
-      password: formValue.has_auth ? formValue.password : '',
-      config_password: formValue.config_password || undefined,
-      config_path: formValue.config_path || undefined,
-      // OAuth port only for Local backend
-      oauth_port: isEditingLocal ? formValue.oauth_port : undefined,
-    };
+    const backendData: AddBackendConfig = this.backendService.mapFormToConfig(
+      formValue,
+      isEditingLocal
+    );
 
     try {
       if (state.mode === 'edit' && state.editingName) {
@@ -350,7 +424,7 @@ export class BackendModalComponent implements OnInit {
     const state = this.formState();
     if (state.mode !== 'edit' || !state.editingName) return false;
     const backend = this.backends().find(b => b.name === state.editingName);
-    return backend?.has_config_password || false;
+    return backend?.hasConfigPassword || false;
   }
 
   async removeConfigPassword(): Promise<void> {
@@ -359,13 +433,12 @@ export class BackendModalComponent implements OnInit {
 
     try {
       this.formState.update(s => ({ ...s, isLoading: true }));
-      // Updating with empty config_password will trigger the removal logic in backend
       await this.backendService.updateBackend({
         name: state.editingName,
-        is_local: false,
-        host: '', // Not needed for password update but required by type
-        port: 0, // Not needed
-        config_password: '', // Empty string removes the password
+        isLocal: false,
+        host: '',
+        port: 0,
+        configPassword: '',
       });
 
       this.snackBar.open(
@@ -492,30 +565,75 @@ export class BackendModalComponent implements OnInit {
 
   // ============= Icon & Status Helpers =============
   getBackendIcon(backend: BackendInfo): string {
-    if (backend.is_local) return 'home';
-    if (!backend.os) return 'cloud';
+    if (backend.isLocal) return BACKEND_CONSTANTS.ICONS.LOCAL;
+    if (!backend.os) return BACKEND_CONSTANTS.ICONS.REMOTE;
     const os = backend.os.toLowerCase();
-    if (os.includes('linux')) return 'linux';
-    if (os.includes('darwin') || os.includes('macos')) return 'apple';
-    if (os.includes('windows')) return 'windows';
-    return 'cloud';
+    if (os.includes('linux')) return BACKEND_CONSTANTS.ICONS.LINUX;
+    if (os.includes('darwin') || os.includes('macos')) return BACKEND_CONSTANTS.ICONS.APPLE;
+    if (os.includes('windows')) return BACKEND_CONSTANTS.ICONS.WINDOWS;
+    return BACKEND_CONSTANTS.ICONS.REMOTE;
   }
 
   getStatusClass(backend: BackendInfo): string {
-    if (!backend.status) return 'unknown';
-    if (backend.status === 'connected') return 'connected';
-    if (backend.status.startsWith('error')) return 'error';
-    return 'unknown';
+    if (!backend.status) return BACKEND_CONSTANTS.STATUS.UNKNOWN;
+    if (backend.status === BACKEND_CONSTANTS.STATUS.CONNECTED)
+      return BACKEND_CONSTANTS.STATUS.CONNECTED;
+    if (backend.status.startsWith(BACKEND_CONSTANTS.STATUS.ERROR_PREFIX))
+      return BACKEND_CONSTANTS.STATUS.ERROR_PREFIX;
+    return BACKEND_CONSTANTS.STATUS.UNKNOWN;
   }
 
   getStatusTooltip(backend: BackendInfo): string {
     if (!backend.status) return this.translate.instant('modals.backend.status.notTested');
-    if (backend.status === 'connected')
+    if (backend.status === BACKEND_CONSTANTS.STATUS.CONNECTED)
       return this.translate.instant('modals.backend.status.connected');
-    if (backend.status.startsWith('error'))
+    if (backend.status.startsWith(BACKEND_CONSTANTS.STATUS.ERROR_PREFIX))
       return this.translate.instant('modals.backend.status.error', {
-        message: backend.status.replace('error:', '').trim(),
+        message: backend.status.replace(BACKEND_CONSTANTS.STATUS.ERROR_PREFIX + ':', '').trim(),
       });
     return backend.status;
+  }
+
+  getFieldClasses(field: { key: string }, group: string): string[] {
+    return [
+      'field-wrapper',
+      field.key === 'host' || field.key === 'oauth_host' ? 'host-field' : '',
+      field.key === 'port' || field.key === 'oauth_port' ? 'port-field' : '',
+      group !== BACKEND_CONSTANTS.GROUPS.CONNECTION && group !== BACKEND_CONSTANTS.GROUPS.OAUTH
+        ? 'full-width'
+        : '',
+    ].filter(Boolean);
+  }
+
+  getFieldIcon(key: string): string | null {
+    switch (key) {
+      case 'host':
+        return BACKEND_CONSTANTS.ICONS.GLOBE;
+      case 'username':
+        return BACKEND_CONSTANTS.ICONS.USER;
+      case 'password':
+      case 'config_password':
+        return key === 'config_password'
+          ? BACKEND_CONSTANTS.ICONS.LOCK
+          : BACKEND_CONSTANTS.ICONS.KEY;
+      case 'config_path':
+        return BACKEND_CONSTANTS.ICONS.FILE;
+      case 'oauth_host':
+        return BACKEND_CONSTANTS.ICONS.GLOBE; // Optional, if you want icon for oauth host
+      default:
+        return null;
+    }
+  }
+
+  isPasswordVisible(key: string): boolean {
+    return key === 'config_password' ? this.showConfigPassword() : this.showPassword();
+  }
+
+  toggleFieldPassword(key: string): void {
+    if (key === 'config_password') {
+      this.toggleConfigPasswordVisibility();
+    } else {
+      this.togglePasswordVisibility();
+    }
   }
 }

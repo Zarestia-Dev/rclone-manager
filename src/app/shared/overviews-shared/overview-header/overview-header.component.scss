@@ -22,7 +22,7 @@
       display: flex;
       align-items: center;
       gap: var(--space-md);
-      transition: all 0.2s ease;
+      transition: var(--transition-standard);
       border-radius: var(--radius-md);
 
       &:hover {
@@ -51,7 +51,8 @@
           border-radius: 50%;
           border: 2px solid var(--window-bg-color);
           background-color: var(--dim-color);
-          transition: background-color 0.3s ease;
+          transition: var(--transition-standard);
+          will-change: transform, opacity;
 
           &.connected {
             background-color: var(--primary-color);
@@ -97,14 +98,14 @@
       .title-section {
         .logo-container {
           .app-icon {
-            width: 32px;
-            height: 32px;
+            width: var(--icon-size-lg);
+            height: var(--icon-size-lg);
           }
         }
 
         .text-container {
           h2 {
-            font-size: 24px;
+            font-size: var(--font-size-2xl);
           }
         }
       }
@@ -116,11 +117,11 @@
 @media (max-width: 480px) {
   .overview-header .header-content {
     .title-section {
-      gap: 12px;
+      gap: var(--space-sm);
 
       .text-container {
         h2 {
-          font-size: 20px;
+          font-size: var(--font-size-xl);
         }
       }
     }

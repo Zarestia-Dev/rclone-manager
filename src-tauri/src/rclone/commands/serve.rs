@@ -3,10 +3,11 @@ use serde_json::{Value, json};
 use std::collections::HashMap;
 use tauri::{AppHandle, Manager};
 
+use crate::utils::types::origin::Origin;
 use crate::{
     rclone::{backend::BackendManager, state::watcher::force_check_serves},
     utils::{
-        app::notification::send_notification,
+        app::notification::{Notification, send_notification_typed},
         json_helpers::{
             get_string, json_to_hashmap, resolve_profile_options, unwrap_nested_options,
         },
@@ -178,18 +179,20 @@ pub async fn start_serve(
                 error.clone(),
                 None,
             );
-            send_notification(
+            send_notification_typed(
                 &app,
-                "notification.title.serveFailed",
-                &serde_json::json!({
-                    "key": "notification.body.serveFailed",
-                    "params": {
-                        "remote": &params.remote_name,
-                        "profile": params.profile.as_deref().unwrap_or(""),
-                        "error": e.to_string()
-                    }
-                })
-                .to_string(),
+                Notification::localized(
+                    "notification.title.serveFailed",
+                    "notification.body.serveFailed",
+                    Some(vec![
+                        ("remote", &params.remote_name),
+                        ("profile", params.profile.as_deref().unwrap_or("")),
+                        ("error", &e.to_string()),
+                    ]),
+                    None,
+                    Some(LogLevel::Error),
+                ),
+                Some(Origin::Internal),
             );
             error
         })?;
@@ -235,18 +238,20 @@ pub async fn start_serve(
         params.remote_name, serve_response.id, serve_response.addr
     );
 
-    send_notification(
+    send_notification_typed(
         &app,
-        "notification.title.serveStarted",
-        &serde_json::json!({
-            "key": "notification.body.serveStarted",
-            "params": {
-                "remote": &params.remote_name,
-                "profile": params.profile.as_deref().unwrap_or(""),
-                "addr": &serve_response.addr
-            }
-        })
-        .to_string(),
+        Notification::localized(
+            "notification.title.serveStarted",
+            "notification.body.serveStarted",
+            Some(vec![
+                ("remote", &params.remote_name),
+                ("profile", params.profile.as_deref().unwrap_or("")),
+                ("addr", &serve_response.addr),
+            ]),
+            None,
+            Some(LogLevel::Info),
+        ),
+        Some(Origin::Internal),
     );
 
     Ok(serve_response)
@@ -294,17 +299,16 @@ pub async fn stop_serve(
                 error.clone(),
                 None,
             );
-            send_notification(
+            send_notification_typed(
                 &app,
-                "notification.title.stopServeFailed",
-                &serde_json::json!({
-                    "key": "notification.body.stopServeFailed",
-                    "params": {
-                        "remote": &remote_name,
-                        "error": e.to_string()
-                    }
-                })
-                .to_string(),
+                Notification::localized(
+                    "notification.title.stopServeFailed",
+                    "notification.body.stopServeFailed",
+                    Some(vec![("remote", &remote_name), ("error", &e.to_string())]),
+                    None,
+                    Some(LogLevel::Error),
+                ),
+                Some(Origin::Internal),
             );
             error
         })?;
@@ -321,17 +325,16 @@ pub async fn stop_serve(
 
     info!("✅ Serve {server_id} stopped successfully");
 
-    send_notification(
+    send_notification_typed(
         &app,
-        "notification.title.serveStopped",
-        &serde_json::json!({
-            "key": "notification.body.serveStopped",
-            "params": {
-                "remote": &remote_name,
-                "profile": profile
-            }
-        })
-        .to_string(),
+        Notification::localized(
+            "notification.title.serveStopped",
+            "notification.body.serveStopped",
+            Some(vec![("remote", &remote_name), ("profile", &profile)]),
+            None,
+            Some(LogLevel::Info),
+        ),
+        Some(Origin::Internal),
     );
 
     Ok(crate::localized_success!("backendErrors.serve.stopSuccess", "serverId" => &server_id))
@@ -345,22 +348,45 @@ pub async fn stop_all_serves(app: AppHandle, context: String) -> Result<String, 
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
+    // If there are no active serves, use helper for the no-op policy
+    let serves = backend_manager.remote_cache.get_serves().await;
+    if !should_emit_stop_all_serves_notification(serves.len(), &context) {
+        debug!("No active serves to stop — skipping STOPALL");
+        if context != "shutdown" {
+            refresh_serves_safely(&app).await;
+            // Inform the user there's nothing to stop
+            send_notification_typed(
+                &app,
+                Notification::localized(
+                    "notification.title.nothingToDo",
+                    "notification.body.nothingToDoServes",
+                    None,
+                    None,
+                    Some(LogLevel::Info),
+                ),
+                Some(Origin::Internal),
+            );
+        }
+        // Silent no-op during shutdown
+        return Ok(crate::localized_success!("backendSuccess.serve.stopped"));
+    }
+
     let _ = backend
         .post_json(&app.state::<RcloneState>().client, serve::STOPALL, None)
         .await
         .map_err(|e| {
             let error = format!("Failed to stop all serves: {e}");
              let localized = crate::localized_error!("backendErrors.serve.failed", "operation" => "stop all", "error" => &error);
-             send_notification(
+             send_notification_typed(
                 &app,
-                "notification.title.stopAllServesFailed",
-                &serde_json::json!({
-                    "key": "notification.body.stopAllServesFailed",
-                    "params": {
-                        "error": e.to_string()
-                    }
-                })
-                .to_string(),
+                Notification::localized(
+                    "notification.title.stopAllServesFailed",
+                    "notification.body.stopAllServesFailed",
+                    Some(vec![("error", &e.to_string())]),
+                    None,
+                    Some(LogLevel::Error),
+                ),
+                Some(Origin::Internal),
             );
             localized
         })?;
@@ -371,10 +397,16 @@ pub async fn stop_all_serves(app: AppHandle, context: String) -> Result<String, 
 
     info!("✅ All serves stopped successfully");
 
-    send_notification(
+    send_notification_typed(
         &app,
-        "notification.title.allServesStopped",
-        "notification.body.allServesStopped",
+        Notification::localized(
+            "notification.title.allServesStopped",
+            "notification.body.allServesStopped",
+            None,
+            None,
+            Some(LogLevel::Info),
+        ),
+        Some(Origin::Internal),
     );
 
     Ok(crate::localized_success!("backendSuccess.serve.stopped"))
@@ -383,6 +415,26 @@ pub async fn stop_all_serves(app: AppHandle, context: String) -> Result<String, 
 async fn refresh_serves_safely(app: &AppHandle) {
     if let Err(e) = force_check_serves(app.clone()).await {
         warn!("Failed to refresh serves: {e}");
+    }
+}
+
+// Small helper to encapsulate the no-op policy for stopping all serves.
+fn should_emit_stop_all_serves_notification(serves_count: usize, context: &str) -> bool {
+    serves_count > 0 && context != "shutdown"
+}
+
+#[cfg(test)]
+mod tests {
+    use super::should_emit_stop_all_serves_notification;
+
+    #[test]
+    fn test_should_emit_stop_all_serves_notification() {
+        // No serves -> silent
+        assert!(!should_emit_stop_all_serves_notification(0, "menu"));
+        // Active serves -> notify
+        assert!(should_emit_stop_all_serves_notification(2, "menu"));
+        // Shutdown -> never notify
+        assert!(!should_emit_stop_all_serves_notification(2, "shutdown"));
     }
 }
 

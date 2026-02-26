@@ -15,7 +15,7 @@
 
 <p align="center">
   <b>Rclone uzak bağlantılarını stil ve kolaylıkla yönetmek için güçlü, çapraz platform bir GUI.</b><br>
-  <i>Angular 20 + Tauri ile yapıldı · Linux • Windows • macOS • ARM Desteği</i>
+  <i>Angular 21 + Tauri ile yapıldı · Linux • Windows • macOS • ARM Desteği</i>
 </p>
 
 <p align="center">

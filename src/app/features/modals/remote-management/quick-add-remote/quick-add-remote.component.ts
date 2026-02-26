@@ -6,6 +6,7 @@ import {
   inject,
   computed,
   signal,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
@@ -73,6 +74,7 @@ type WizardStep = 'setup' | 'operations' | 'interactive';
   ],
   templateUrl: './quick-add-remote.component.html',
   styleUrls: ['./quick-add-remote.component.scss', '../../../../styles/_shared-modal.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
@@ -578,23 +580,23 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     // This is simpler and ensures consistency with tray actions
 
     if (mountConfig?.autoStart && mountConfig?.dest) {
-      void this.mountManagementService.mountRemoteProfile(remoteName, 'default');
+      void this.mountManagementService.mountRemoteProfile(remoteName, 'default', 'ui');
     }
 
     if (copyConfig?.autoStart && copyConfig?.source && copyConfig?.dest) {
-      void this.jobManagementService.startCopyProfile(remoteName, 'default');
+      void this.jobManagementService.startCopyProfile(remoteName, 'default', 'ui');
     }
 
     if (syncConfig?.autoStart && syncConfig?.source && syncConfig?.dest) {
-      void this.jobManagementService.startSyncProfile(remoteName, 'default');
+      void this.jobManagementService.startSyncProfile(remoteName, 'default', 'ui');
     }
 
     if (bisyncConfig?.autoStart && bisyncConfig?.source && bisyncConfig?.dest) {
-      void this.jobManagementService.startBisyncProfile(remoteName, 'default');
+      void this.jobManagementService.startBisyncProfile(remoteName, 'default', 'ui');
     }
 
     if (moveConfig?.autoStart && moveConfig?.source && moveConfig?.dest) {
-      void this.jobManagementService.startMoveProfile(remoteName, 'default');
+      void this.jobManagementService.startMoveProfile(remoteName, 'default', 'ui');
     }
   }
 

@@ -5,8 +5,6 @@
 //! flexible HashMap structure. This means adding new runtime properties doesn't
 //! require code changes - they're automatically available.
 
-use log::{debug, warn};
-
 /// Extensible runtime information storage
 ///
 /// Stores all runtime properties as a flat key-value map, allowing
@@ -77,73 +75,6 @@ impl RuntimeInfo {
             None
         }
     }
-}
-
-/// Fetch runtime information from rclone API endpoints:
-/// - core/version: version, os, arch, goVersion, etc.
-/// - config/paths: config, cache, temp
-///   Fetch runtime information from a backend
-///
-/// This makes two API calls:
-/// 1. core/version - gets version, os, arch, etc.
-/// 2. config/paths - gets config, cache, temp paths
-///
-/// All properties are automatically merged into the RuntimeInfo.
-pub async fn fetch_runtime_info(
-    backend: &crate::rclone::backend::types::Backend,
-    client: &reqwest::Client,
-    timeout: std::time::Duration,
-) -> RuntimeInfo {
-    use crate::rclone::queries::system::{fetch_config_path, fetch_version_info};
-
-    let mut info = RuntimeInfo::new();
-
-    // Fetch core/version with timeout
-    let version_future = fetch_version_info(backend, client);
-    match tokio::time::timeout(timeout, version_future).await {
-        Ok(Ok(version_data)) => {
-            debug!("Fetched version info for backend: {}", backend.name);
-            info.version = Some(version_data.version);
-            info.os = Some(version_data.os);
-            info.arch = Some(version_data.arch);
-            info.go_version = Some(version_data.go_version);
-        }
-        Ok(Err(e)) => {
-            warn!(
-                "Failed to fetch version for backend {}: {}",
-                backend.name, e
-            );
-            return RuntimeInfo::with_error(e);
-        }
-        Err(_) => {
-            warn!("Timeout fetching version for backend {}", backend.name);
-            return RuntimeInfo::with_error("Connection timed out");
-        }
-    }
-
-    // Fetch config/paths (optional)
-    let paths_future = fetch_config_path(backend, client);
-    match tokio::time::timeout(timeout, paths_future).await {
-        Ok(Ok(path)) => {
-            debug!("Fetched config path for backend: {}", backend.name);
-            info.config_path = Some(path);
-        }
-        Ok(Err(e)) => {
-            debug!(
-                "Could not fetch paths for backend {} (non-critical): {}",
-                backend.name, e
-            );
-        }
-        Err(_) => {
-            debug!(
-                "Timeout fetching paths for backend {} (non-critical)",
-                backend.name
-            );
-        }
-    }
-
-    info.set_status("connected");
-    info
 }
 
 // ============================================================================

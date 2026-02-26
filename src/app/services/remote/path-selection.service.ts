@@ -131,7 +131,8 @@ export class PathSelectionService {
       const response = await this.remoteManagementService.getRemotePaths(
         normalizedRemote,
         path || '',
-        {}
+        {},
+        'ui'
       );
       const entries = response && Array.isArray(response.list) ? response.list : [];
       // Update state with new entries
@@ -159,8 +160,11 @@ export class PathSelectionService {
    * Normalize remote name for internal lookups / display keys.
    * Removes a trailing ':' if present and returns the plain remote identifier.
    */
-  public normalizeRemoteName(remoteName?: string): string {
+  public normalizeRemoteName(remoteName?: string, isLocal = false): string {
     if (!remoteName) return '';
+    // If it's a local Windows drive, we MUST preserve the colon
+    if (isLocal && /^[a-zA-Z]:$/.test(remoteName)) return remoteName;
+    // For remotes, we strip the colon even if it's named 'C:'
     return remoteName.endsWith(':') ? remoteName.slice(0, -1) : remoteName;
   }
 

@@ -3,21 +3,21 @@
 
 export interface BackendInfo {
   name: string;
-  is_local: boolean;
+  isLocal: boolean;
   host: string;
   port: number;
-  is_active: boolean;
-  has_auth: boolean;
-  has_config_password: boolean;
-  oauth_port?: number;
+  isActive: boolean;
+  hasAuth: boolean;
+  hasConfigPassword: boolean;
+  oauthPort?: number;
   username?: string;
   password?: string;
   version?: string;
   os?: string;
   status?: string;
-  config_path?: string;
+  configPath?: string;
   /** Actual config path being used by rclone (fetched at runtime) */
-  runtime_config_path?: string;
+  runtimeConfigPath?: string;
 }
 
 export interface TestConnectionResult {
@@ -32,13 +32,37 @@ export interface AddBackendConfig {
   name: string;
   host: string;
   port: number;
-  is_local: boolean;
+  isLocal: boolean;
   username?: string;
   password?: string;
-  /** Password for encrypted rclone config (remote backends only) */
-  config_password?: string;
-  /** Custom config file path (remote backends only) */
-  config_path?: string;
-  /** OAuth callback port (Local backend only) */
-  oauth_port?: number;
+  configPassword?: string;
+  configPath?: string;
+  oauthPort?: number;
+}
+
+export interface SettingOption {
+  value: unknown;
+  label: string;
+  description?: string;
+}
+
+export interface BackendSettingMetadata {
+  setting_type: 'toggle' | 'text' | 'number' | 'select' | 'info' | 'list';
+  default: unknown;
+  value?: unknown;
+  constraints: {
+    text?: { pattern?: string };
+    number?: { min?: number; max?: number; step?: number };
+    options?: SettingOption[];
+    list?: { reserved?: string[] };
+  };
+  metadata: {
+    label?: string;
+    description?: string;
+    placeholder?: string;
+    input_type?: string;
+    group?: string;
+    order?: number;
+    [key: string]: unknown;
+  };
 }

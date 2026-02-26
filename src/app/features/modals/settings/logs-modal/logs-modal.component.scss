@@ -4,14 +4,13 @@
   height: 100%;
   background: var(--window-bg-color);
   color: var(--window-fg-color);
-  border-radius: var(--radius-md);
   overflow: hidden;
 
   // Toolbar
   .toolbar-section {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-md);
+    gap: var(--header-gap);
     padding: var(--space-md);
     background: var(--window-bg-color);
     border-bottom: 1px solid var(--card-shade-color);
@@ -120,10 +119,9 @@
       transition: var(--transition-fast);
 
       mat-icon {
-        font-size: var(--font-size-base);
+        font-size: var(--icon-size-xs);
         width: var(--icon-size-xs);
         height: var(--icon-size-xs);
-        color: var(--gnome-dark-1);
 
         &:hover {
           color: var(--gnome-light-1);
@@ -133,8 +131,7 @@
       .expand-icon {
         width: var(--icon-size-xs);
         height: var(--icon-size-xs);
-        font-size: var(--font-size-base);
-        color: var(--gnome-dark-1);
+        font-size: var(--icon-size-xs);
         margin-left: var(--space-xxs);
         transition: var(--transition-fast);
       }

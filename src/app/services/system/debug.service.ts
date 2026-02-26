@@ -1,4 +1,4 @@
-import { Injectable, inject, DOCUMENT } from '@angular/core';
+import { Injectable, inject, DOCUMENT, isDevMode } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { ApiClientService } from '../core/api-client.service';
 import { NotificationService } from '../ui/notification.service';
@@ -147,6 +147,16 @@ export class DebugService {
         label: this.translateService.instant('developerTools.clearCache'),
         action: (): void => this.clearCache(),
       },
+      ...(isDevMode()
+        ? [
+            {
+              label: this.translateService.instant('developerTools.openDevTools'),
+              action: (): void => {
+                void this.openDevTools();
+              },
+            },
+          ]
+        : []),
     ];
 
     menuItems.forEach(item => {

@@ -2,29 +2,23 @@
 pub fn get_build_type() -> Option<&'static str> {
     #[cfg(feature = "flatpak")]
     {
-        Some("flatpak")
+        return Some("flatpak");
     }
     #[cfg(feature = "deb")]
     {
-        Some("deb")
+        return Some("deb");
     }
     #[cfg(feature = "rpm")]
     {
-        Some("rpm")
+        return Some("rpm");
     }
     #[cfg(feature = "arch")]
     {
-        Some("arch")
+        return Some("arch");
     }
-    #[cfg(not(any(
-        feature = "flatpak",
-        feature = "deb",
-        feature = "rpm",
-        feature = "arch"
-    )))]
-    {
-        None
-    }
+
+    // Default: not a packaged build
+    None
 }
 
 /// Check if updates are disabled for this build

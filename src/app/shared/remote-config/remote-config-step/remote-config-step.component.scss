@@ -39,36 +39,6 @@ form {
     }
   }
 
-  .remote-option-content {
-    display: flex;
-    align-items: center;
-
-    .remote-icon {
-      color: var(--primary-color);
-    }
-
-    .remote-text {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      overflow: hidden;
-
-      .remote-label {
-        font-weight: 500;
-        font-size: 0.9rem;
-        color: var(--window-fg-color);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .remote-value {
-        font-size: 0.75rem;
-        color: var(--dim-color);
-      }
-    }
-  }
-
   // ===== CONFIG SECTION =====
   .config-section {
     background: var(--view-bg-color);

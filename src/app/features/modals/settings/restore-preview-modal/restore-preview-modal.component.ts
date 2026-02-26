@@ -5,7 +5,6 @@ import {
   ChangeDetectionStrategy,
   computed,
   HostListener,
-  OnInit,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
@@ -41,7 +40,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
   styleUrls: ['./restore-preview-modal.component.scss', '../../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class RestorePreviewModalComponent implements OnInit {
+export class RestorePreviewModalComponent {
   // Injected Services
   private readonly dialogRef = inject(MatDialogRef<RestorePreviewModalComponent>);
   private readonly backupRestoreService = inject(BackupRestoreService);
@@ -60,10 +59,6 @@ export class RestorePreviewModalComponent implements OnInit {
   // Data from injection
   readonly analysis: BackupAnalysis = this.data.analysis;
   readonly backupPath: string = this.data.backupPath;
-
-  ngOnInit(): void {
-    console.log('Restore Analysis:', this.analysis);
-  }
 
   // Computed Signals
   readonly isEncrypted = computed(() => this.analysis.isEncrypted);

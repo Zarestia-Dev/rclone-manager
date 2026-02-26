@@ -5,13 +5,13 @@
       (click)="toggleSearch()"
       matIconButton
       [attr.aria-label]="
-        searchVisible ? ('shortcuts.hideSearch' | translate) : ('shortcuts.showSearch' | translate)
+        searchVisible() ? ('shared.search.hide' | translate) : ('shared.search.show' | translate)
       "
-      [attr.aria-expanded]="searchVisible"
+      [attr.aria-expanded]="searchVisible()"
     >
       <mat-icon svgIcon="search"></mat-icon>
     </button>
-    <p>{{ 'shortcuts.title' | translate }}</p>
+    <p>{{ title | translate }}</p>
     <button matIconButton (click)="close()" [attr.aria-label]="'shortcuts.ariaClose' | translate">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
@@ -19,8 +19,8 @@
 
   <!-- Search Box with Animation -->
   <app-search-container
-    [visible]="searchVisible"
-    [searchText]="searchText"
+    [visible]="searchVisible()"
+    [searchText]="searchText()"
     (searchTextChange)="onSearchTextChange($event)"
     [placeholder]="'shortcuts.searchPlaceholder' | translate"
     [ariaLabel]="'shortcuts.ariaSearch' | translate"
@@ -31,7 +31,7 @@
   <div class="modal-content">
     <table
       mat-table
-      [dataSource]="filteredShortcuts"
+      [dataSource]="filteredShortcuts()"
       class="shortcut-table"
       role="table"
       [attr.aria-label]="'shortcuts.ariaList' | translate"
@@ -57,13 +57,13 @@
     </table>
 
     <!-- Empty state when no shortcuts match search -->
-    @if (filteredShortcuts.length === 0 && searchText) {
+    @if (filteredShortcuts().length === 0 && searchText()) {
       <div class="empty-state">
         <mat-icon svgIcon="search"></mat-icon>
-        <span>{{ 'shortcuts.noResults.title' | translate }}</span>
-        <p>{{ 'shortcuts.noResults.description' | translate }}</p>
+        <span>{{ 'shared.search.title' | translate }}</span>
+        <p>{{ 'shared.search.description' | translate }}</p>
         <button matButton="filled" class="accent" (click)="clearSearch()">
-          {{ 'shortcuts.noResults.action' | translate }}
+          {{ 'shared.search.action' | translate }}
         </button>
       </div>
     }

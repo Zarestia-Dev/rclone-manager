@@ -1,34 +1,12 @@
 <div class="tabs-buttons">
-  <button
-    matIconButton
-    [matTooltip]="'tabs.general' | translate"
-    (click)="tabSelected.emit('general')"
-    [class.selected]="currentTab === 'general'"
-  >
-    <mat-icon svgIcon="home"></mat-icon>
-  </button>
-  <button
-    matIconButton
-    [matTooltip]="'tabs.mount' | translate"
-    (click)="tabSelected.emit('mount')"
-    [class.selected]="currentTab === 'mount'"
-  >
-    <mat-icon svgIcon="mount"></mat-icon>
-  </button>
-  <button
-    matIconButton
-    [matTooltip]="'tabs.sync' | translate"
-    (click)="tabSelected.emit('sync')"
-    [class.selected]="currentTab === 'sync'"
-  >
-    <mat-icon svgIcon="sync"></mat-icon>
-  </button>
-  <button
-    matIconButton
-    [matTooltip]="'tabs.serve' | translate"
-    (click)="tabSelected.emit('serve')"
-    [class.selected]="currentTab === 'serve'"
-  >
-    <mat-icon svgIcon="satellite-dish"></mat-icon>
-  </button>
+  @for (tab of tabs; track tab.id) {
+    <button
+      matIconButton
+      [matTooltip]="tab.label | translate"
+      (click)="tabSelected.emit(tab.id)"
+      [class.selected]="currentTab() === tab.id"
+    >
+      <mat-icon [svgIcon]="tab.icon"></mat-icon>
+    </button>
+  }
 </div>

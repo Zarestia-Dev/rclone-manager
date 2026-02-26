@@ -1,17 +1,19 @@
 import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { JobManagementService, UiStateService } from '@app/services';
+import { CdkMenuModule } from '@angular/cdk/menu';
+import { MatDividerModule } from '@angular/material/divider';
+import { JobManagementService, UiStateService, NotificationService } from '@app/services';
 import { JobInfo } from '@app/types';
-import { FormatFileSizePipe } from '@app/pipes';
+import { FormatFileSizePipe, FormatEtaPipe, FormatRateValuePipe } from '@app/pipes';
 import { Subject, interval } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-operations-panel',
@@ -23,8 +25,12 @@ import { TranslateModule } from '@ngx-translate/core';
     MatProgressBarModule,
     MatTooltipModule,
     MatExpansionModule,
-    MatExpansionModule,
+    CdkMenuModule,
+    MatDividerModule,
+    DatePipe,
     FormatFileSizePipe,
+    FormatEtaPipe,
+    FormatRateValuePipe,
     TranslateModule,
   ],
   templateUrl: './operations-panel.component.html',
@@ -33,6 +39,8 @@ import { TranslateModule } from '@ngx-translate/core';
 export class OperationsPanelComponent implements OnInit, OnDestroy {
   private jobManagementService = inject(JobManagementService);
   private uiStateService = inject(UiStateService);
+  private notificationService = inject(NotificationService);
+  private translate = inject(TranslateService);
   private destroy$ = new Subject<void>();
 
   // Subscribe to reactive job stream
@@ -83,7 +91,42 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
   }
 
   getFileName(job: JobInfo): string {
-    return this.uiStateService.extractFilename(job.destination || '');
+    const path = job.destination || job.source || '';
+    return this.uiStateService.extractFilename(path);
+  }
+
+  /** Get icon for the job's operation type */
+  getJobTypeIcon(job: JobInfo): string {
+    switch (job.job_type) {
+      case 'delete_file':
+      case 'purge':
+      case 'cleanup':
+        return 'trash';
+      case 'rmdirs':
+        return 'broom';
+      case 'copy':
+      case 'copy_file':
+      case 'copy_url':
+        return 'copy';
+      case 'move':
+      case 'move_file':
+        return 'move';
+      case 'sync':
+      case 'bisync':
+        return 'arrows-rotate';
+      default:
+        return 'folder';
+    }
+  }
+
+  /** Whether this job is a delete-type operation (no byte progress) */
+  isDeleteOperation(job: JobInfo): boolean {
+    return (
+      job.job_type === 'delete_file' ||
+      job.job_type === 'purge' ||
+      job.job_type === 'cleanup' ||
+      job.job_type === 'rmdirs'
+    );
   }
 
   getStatusIcon(job: JobInfo): string {
@@ -118,6 +161,17 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
       await this.jobManagementService.refreshNautilusJobs();
     } catch (err) {
       console.error('Failed to delete job:', err);
+    }
+  }
+
+  async copyError(error: string): Promise<void> {
+    if (!error) return;
+    try {
+      await navigator.clipboard.writeText(error);
+      this.notificationService.showSuccess(this.translate.instant('common.errorCopied'));
+    } catch (err) {
+      console.error('Failed to copy error:', err);
+      this.notificationService.showError(this.translate.instant('common.error'));
     }
   }
 }

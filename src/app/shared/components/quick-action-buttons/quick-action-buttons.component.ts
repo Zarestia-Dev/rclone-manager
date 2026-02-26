@@ -1,4 +1,4 @@
-import { Component, EventEmitter, input, Output } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -41,7 +41,7 @@ import { TranslateModule } from '@ngx-translate/core';
 export class QuickActionButtonsComponent {
   buttons = input.required<QuickActionButton[]>();
 
-  @Output() buttonClick = new EventEmitter<{ id: string; event: Event }>();
+  buttonClick = output<{ id: string; event: Event }>();
 
   onButtonClick(buttonId: string, event: Event): void {
     event.stopPropagation();

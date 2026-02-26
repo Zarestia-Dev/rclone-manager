@@ -1,0 +1,122 @@
+<mat-toolbar class="nautilus-toolbar" data-tauri-drag-region>
+  <div class="left-section">
+    @if (isMobile()) {
+      <button mat-icon-button (click)="toggleSidebar.emit()">
+        <mat-icon svgIcon="menu-bar"></mat-icon>
+      </button>
+    }
+
+    @if (!isMobile()) {
+      <button (click)="goBack.emit()" [disabled]="!canGoBack()" class="nav-button">
+        <mat-icon svgIcon="chevron-left"></mat-icon>
+      </button>
+      <button (click)="goForward.emit()" [disabled]="!canGoForward()" class="nav-button">
+        <mat-icon svgIcon="chevron-right"></mat-icon>
+      </button>
+    }
+  </div>
+  <div
+    class="path-container"
+    (click)="onPathContainerClick()"
+    (keydown.escape)="onPathContainerEscape()"
+    tabindex="0"
+  >
+    @if (isSearchMode()) {
+      <input
+        #searchInput
+        class="path-input"
+        [placeholder]="'nautilus.titles.searchPlaceholder' | translate"
+        [value]="searchFilter()"
+        (input)="searchFilterChange.emit(searchInput.value)"
+        (keydown.escape)="onSearchEscape(searchInput)"
+        (blur)="onSearchBlur()"
+      />
+    } @else if (!isEditingPath()) {
+      @if (starredMode()) {
+        <div class="path-scroll-view hide-scrollbar">
+          <button class="path-segment">
+            <mat-icon svgIcon="star"></mat-icon>
+            {{ 'nautilus.titles.starred' | translate }}
+          </button>
+        </div>
+      } @else {
+        <div class="path-scroll-view hide-scrollbar" #pathScrollView (wheel)="onPathScroll($event)">
+          <button
+            class="path-segment"
+            [class.segment-drag-over]="isDragging() && hoveredSegmentIndex() === -1"
+            data-segment-index="-1"
+            cdkDropList
+            cdkDropListSortingDisabled
+            [cdkDropListEnterPredicate]="canAcceptFile() || _acceptAll"
+            (cdkDropListDropped)="droppedOnSegment.emit($event)"
+            (click)="$event.stopPropagation(); updatePath.emit('')"
+          >
+            <mat-icon
+              [svgIcon]="
+                activeRemote()?.isLocal
+                  ? 'hard-drive'
+                  : this.iconService.getIconName(activeRemote()?.type || '')
+              "
+            ></mat-icon>
+            {{ activeRemote()?.label || ('nautilus.titles.local' | translate) }}
+          </button>
+
+          @for (segment of pathSegments(); track segment.path) {
+            <span class="path-separator">/</span>
+            <button
+              class="path-segment"
+              [class.active]="$index === pathSegments().length - 1"
+              [class.segment-drag-over]="isDragging() && hoveredSegmentIndex() === $index"
+              [attr.data-segment-index]="$index"
+              cdkDropList
+              cdkDropListSortingDisabled
+              [cdkDropListEnterPredicate]="canAcceptFile() || _acceptAll"
+              (cdkDropListDropped)="droppedOnSegment.emit($event)"
+              (click)="$event.stopPropagation(); navigateToSegment.emit($index)"
+            >
+              {{ segment.name }}
+            </button>
+          }
+        </div>
+      }
+      <button
+        class="nav-button"
+        style="border-radius: 0"
+        (click)="$event.stopPropagation()"
+        [cdkMenuTriggerFor]="pathOptionsMenu()"
+      >
+        <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
+      </button>
+    } @else {
+      <input
+        #pathInput
+        class="path-input"
+        [value]="fullPathInput()"
+        (keydown.enter)="navigateToPath.emit(pathInput.value); pathInput.blur()"
+        (blur)="isEditingPathChange.emit(false)"
+      />
+    }
+  </div>
+
+  <div class="right-section">
+    @if (!isMobile()) {
+      <button class="nav-button" (click)="layoutChange.emit(layout() === 'grid' ? 'list' : 'grid')">
+        <mat-icon [svgIcon]="layout() === 'grid' ? 'list' : 'grid'"></mat-icon>
+      </button>
+
+      <button
+        class="nav-button"
+        [cdkMenuTriggerFor]="viewMenu()"
+        [cdkMenuPosition]="[
+          { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
+        ]"
+      >
+        <mat-icon svgIcon="chevron-down"></mat-icon>
+      </button>
+    }
+
+    <button class="nav-button" (click)="closeOverlay.emit()">
+      <mat-icon svgIcon="circle-xmark"></mat-icon>
+    </button>
+  </div>
+</mat-toolbar>

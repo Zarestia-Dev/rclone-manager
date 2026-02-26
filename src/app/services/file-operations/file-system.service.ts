@@ -33,10 +33,11 @@ export class FileSystemService extends TauriBaseService {
         initialLocation: initialPath,
       };
       const result = await this.selectPathWithNautilus(config);
-      if (result.cancelled || result.paths.length === 0) {
+      if (result.cancelled || (result.items.length === 0 && result.paths.length === 0)) {
         throw new Error('Folder selection cancelled');
       }
-      return result.paths[0];
+      // Prefer structured item path, fallback to flat string
+      return result.items.length > 0 ? result.items[0].entry.Path : result.paths[0];
     }
 
     // In Tauri mode, use native dialog
@@ -87,10 +88,11 @@ export class FileSystemService extends TauriBaseService {
         multi: false,
       };
       const result = await this.selectPathWithNautilus(config);
-      if (result.cancelled || result.paths.length === 0) {
+      if (result.cancelled || (result.items.length === 0 && result.paths.length === 0)) {
         throw new Error('File selection cancelled');
       }
-      return result.paths[0];
+      // Prefer structured item path, fallback to flat string
+      return result.items.length > 0 ? result.items[0].entry.Path : result.paths[0];
     }
 
     // In Tauri mode, use native dialog

@@ -171,7 +171,7 @@
 
     .no-data-row {
       .no-data-cell {
-        padding: 40px var(--panel-padding);
+        padding: var(--space-xl) var(--panel-padding);
         text-align: center;
 
         .no-data-content {
@@ -182,8 +182,8 @@
           color: var(--dim-color);
 
           .no-data-icon {
-            width: 48px;
-            height: 48px;
+            width: var(--icon-size-xl);
+            height: var(--icon-size-xl);
             opacity: 0.5;
           }
 

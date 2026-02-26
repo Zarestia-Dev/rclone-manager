@@ -21,10 +21,12 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::core::check_binaries::{build_rclone_command, get_rclone_binary_path, read_rclone_path};
 use crate::core::settings::operations::core::save_setting;
 use crate::rclone::queries::get_rclone_info;
-use crate::utils::app::notification::send_notification;
+use crate::utils::app::notification::{Notification, send_notification_typed};
 use crate::utils::github_client;
 use crate::utils::types::core::EngineState;
 use crate::utils::types::events::RCLONE_ENGINE_UPDATING;
+use crate::utils::types::logs::LogLevel;
+use crate::utils::types::origin::Origin;
 
 // ============================================================================
 // Types and Constants
@@ -101,10 +103,16 @@ pub async fn check_rclone_update(
             log::warn!("Failed to emit rclone update event: {}", e);
         }
 
-        send_notification(
+        send_notification_typed(
             &app_handle,
-            "notification.title.rcloneUpdateFound",
-            &json!({ "key": "notification.body.rcloneUpdateFound", "params": { "version": result.latest_version } }).to_string(),
+            Notification::localized(
+                "notification.title.rcloneUpdateFound",
+                "notification.body.rcloneUpdateFound",
+                Some(vec![("version", result.latest_version.as_str())]),
+                None,
+                Some(LogLevel::Info),
+            ),
+            Some(Origin::System),
         );
     }
 
@@ -164,10 +172,16 @@ pub async fn update_rclone(
         serde_json::json!({ "status": "rclone_update_found", "data": update_check }),
     );
 
-    send_notification(
+    send_notification_typed(
         &app_handle,
-        "notification.title.rcloneUpdateFound",
-        &json!({ "key": "notification.body.rcloneUpdateFound", "params": { "version": latest_version } }).to_string(),
+        Notification::localized(
+            "notification.title.rcloneUpdateFound",
+            "notification.body.rcloneUpdateFound",
+            Some(vec![("version", latest_version)]),
+            None,
+            Some(LogLevel::Info),
+        ),
+        Some(Origin::System),
     );
 
     // Resolve binary path
@@ -206,10 +220,16 @@ pub async fn update_rclone(
         engine.process = None;
     }
 
-    send_notification(
+    send_notification_typed(
         &app_handle,
-        "notification.title.rcloneUpdateStarted",
-        &json!({ "key": "notification.body.rcloneUpdateStarted", "params": { "version": latest_version } }).to_string(),
+        Notification::localized(
+            "notification.title.rcloneUpdateStarted",
+            "notification.body.rcloneUpdateStarted",
+            Some(vec![("version", latest_version)]),
+            None,
+            Some(LogLevel::Info),
+        ),
+        Some(Origin::System),
     );
 
     // Execute update
@@ -223,10 +243,16 @@ pub async fn update_rclone(
     // Handle result
     match &update_result {
         Ok(res) if res["success"].as_bool().unwrap_or(false) => {
-            send_notification(
+            send_notification_typed(
                 &app_handle,
-                "notification.title.rcloneUpdateComplete",
-                &json!({ "key": "notification.body.rcloneUpdateComplete", "params": { "version": latest_version } }).to_string(),
+                Notification::localized(
+                    "notification.title.rcloneUpdateComplete",
+                    "notification.body.rcloneUpdateComplete",
+                    Some(vec![("version", latest_version)]),
+                    None,
+                    Some(LogLevel::Info),
+                ),
+                Some(Origin::System),
             );
 
             // Restart engine
@@ -255,10 +281,16 @@ pub async fn update_rclone(
                 update_result.as_ref().unwrap_err().clone()
             };
 
-            send_notification(
+            send_notification_typed(
                 &app_handle,
-                "notification.title.rcloneUpdateFailed",
-                &json!({ "key": "notification.body.rcloneUpdateFailed", "params": { "error": error_msg } }).to_string(),
+                Notification::localized(
+                    "notification.title.rcloneUpdateFailed",
+                    "notification.body.rcloneUpdateFailed",
+                    Some(vec![("error", error_msg.as_str())]),
+                    None,
+                    Some(LogLevel::Error),
+                ),
+                Some(Origin::System),
             );
         }
     }

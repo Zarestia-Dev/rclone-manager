@@ -1,5 +1,5 @@
-import { CommonModule } from '@angular/common';
-import { Component, computed, EventEmitter, input, Output, inject } from '@angular/core';
+import { NgClass } from '@angular/common';
+import { Component, computed, input, inject, output } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { RemoteCardComponent } from '../remote-card/remote-card.component';
@@ -8,8 +8,7 @@ import { IconService } from '@app/services';
 
 @Component({
   selector: 'app-remotes-panel',
-  standalone: true,
-  imports: [CommonModule, MatCardModule, MatIconModule, RemoteCardComponent],
+  imports: [NgClass, MatCardModule, MatIconModule, RemoteCardComponent],
   templateUrl: './remotes-panel.component.html',
   styleUrl: './remotes-panel.component.scss',
 })
@@ -22,10 +21,10 @@ export class RemotesPanelComponent {
   primaryActionLabel = input('Start');
   activeIcon = input('circle-check');
 
-  @Output() remoteSelected = new EventEmitter<Remote>();
-  @Output() openInFiles = new EventEmitter<string>();
-  @Output() startJob = new EventEmitter<{ type: PrimaryActionType; remoteName: string }>();
-  @Output() stopJob = new EventEmitter<{
+  remoteSelected = output<Remote>();
+  openInFiles = output<string>();
+  startJob = output<{ type: PrimaryActionType; remoteName: string }>();
+  stopJob = output<{
     type: PrimaryActionType;
     remoteName: string;
     profileName?: string;

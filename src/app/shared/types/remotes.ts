@@ -39,6 +39,7 @@ export interface DiskUsage {
   free_space?: number;
   loading?: boolean;
   error?: boolean;
+  errorMessage?: string;
   notSupported?: boolean;
 }
 

@@ -8,6 +8,8 @@ import {
   Output,
   signal,
   computed,
+  ViewChild,
+  ElementRef,
 } from '@angular/core';
 
 import { DomSanitizer, SafeResourceUrl, SafeHtml } from '@angular/platform-browser';
@@ -19,37 +21,26 @@ import { MatIconModule } from '@angular/material/icon';
 import { catchError, takeUntil } from 'rxjs/operators';
 import { Subject, of } from 'rxjs';
 import { marked } from 'marked';
-import hljs from 'highlight.js/lib/core';
-import javascript from 'highlight.js/lib/languages/javascript';
-import typescript from 'highlight.js/lib/languages/typescript';
-import css from 'highlight.js/lib/languages/css';
-import xml from 'highlight.js/lib/languages/xml';
-import json from 'highlight.js/lib/languages/json';
-import bash from 'highlight.js/lib/languages/bash';
-import yaml from 'highlight.js/lib/languages/yaml';
-import rust from 'highlight.js/lib/languages/rust';
-import python from 'highlight.js/lib/languages/python';
-import go from 'highlight.js/lib/languages/go';
-import sql from 'highlight.js/lib/languages/sql';
-import markdown from 'highlight.js/lib/languages/markdown';
-import scss from 'highlight.js/lib/languages/scss';
-import ini from 'highlight.js/lib/languages/ini';
 
-hljs.registerLanguage('javascript', javascript);
-hljs.registerLanguage('typescript', typescript);
-hljs.registerLanguage('css', css);
-hljs.registerLanguage('xml', xml);
-hljs.registerLanguage('json', json);
-hljs.registerLanguage('bash', bash);
-hljs.registerLanguage('sh', bash);
-hljs.registerLanguage('yaml', yaml);
-hljs.registerLanguage('rust', rust);
-hljs.registerLanguage('python', python);
-hljs.registerLanguage('go', go);
-hljs.registerLanguage('sql', sql);
-hljs.registerLanguage('markdown', markdown);
-hljs.registerLanguage('scss', scss);
-hljs.registerLanguage('ini', ini);
+// CodeMirror Imports
+import { EditorView, basicSetup } from 'codemirror';
+import { EditorState } from '@codemirror/state';
+import { keymap } from '@codemirror/view';
+import { oneDark } from '@codemirror/theme-one-dark';
+import { StreamLanguage, syntaxHighlighting, HighlightStyle } from '@codemirror/language';
+import { tags } from '@lezer/highlight';
+import { javascript as cmJavascript } from '@codemirror/lang-javascript';
+import { json as cmJson } from '@codemirror/lang-json';
+import { css as cmCss } from '@codemirror/lang-css';
+import { html as cmHtml } from '@codemirror/lang-html';
+import { python as cmPython } from '@codemirror/lang-python';
+import { markdown as cmMarkdown } from '@codemirror/lang-markdown';
+import { rust as cmRust } from '@codemirror/lang-rust';
+import { sql as cmSql } from '@codemirror/lang-sql';
+import { yaml as cmYaml } from '@codemirror/lang-yaml';
+import { go as legacyGo } from '@codemirror/legacy-modes/mode/go';
+import { shell as legacyShell } from '@codemirror/legacy-modes/mode/shell';
+
 import {
   RemoteManagementService,
   PathSelectionService,
@@ -63,6 +54,48 @@ import { NotificationService } from '@app/services';
 import { FormatFileSizePipe } from '@app/pipes';
 import { Entry } from '@app/types';
 
+import { FormsModule } from '@angular/forms';
+import { MatTooltip } from '@angular/material/tooltip';
+
+// ── GNOME / Adwaita Light Syntax Highlighting ──
+// Colors inspired by GNOME Builder's light theme and Adwaita palette
+const gnomeLightHighlighting = HighlightStyle.define([
+  { tag: tags.keyword, color: '#0d7377' }, // Teal — keywords (if, const, return)
+  { tag: tags.controlKeyword, color: '#0d7377', fontWeight: '500' },
+  { tag: tags.definitionKeyword, color: '#0d7377' },
+  { tag: tags.moduleKeyword, color: '#0d7377' },
+  { tag: tags.function(tags.variableName), color: '#1a5fb4' }, // Blue — function names
+  { tag: tags.function(tags.definition(tags.variableName)), color: '#1a5fb4', fontWeight: '500' },
+  { tag: tags.string, color: '#c64600' }, // Orange — strings
+  { tag: tags.number, color: '#813d9c' }, // Purple — numbers
+  { tag: tags.bool, color: '#813d9c' },
+  { tag: tags.null, color: '#813d9c', fontStyle: 'italic' },
+  { tag: tags.comment, color: '#5e5c64', fontStyle: 'italic' }, // Dim gray — comments
+  { tag: tags.lineComment, color: '#5e5c64', fontStyle: 'italic' },
+  { tag: tags.blockComment, color: '#5e5c64', fontStyle: 'italic' },
+  { tag: tags.typeName, color: '#1a5fb4' }, // Blue — types
+  { tag: tags.className, color: '#1a5fb4', fontWeight: '500' },
+  { tag: tags.propertyName, color: '#26a269' }, // Green — properties
+  { tag: tags.definition(tags.propertyName), color: '#26a269' },
+  { tag: tags.variableName, color: '#241f31' }, // Near-black — variables
+  { tag: tags.definition(tags.variableName), color: '#241f31' },
+  { tag: tags.operator, color: '#0d7377' }, // Teal — operators
+  { tag: tags.punctuation, color: '#77767b' }, // Gray — punctuation
+  { tag: tags.bracket, color: '#5e5c64' },
+  { tag: tags.meta, color: '#813d9c' }, // Purple — decorators / meta
+  { tag: tags.attributeName, color: '#26a269' }, // Green — HTML/XML attributes
+  { tag: tags.attributeValue, color: '#c64600' }, // Orange — attribute values
+  { tag: tags.tagName, color: '#1a5fb4' }, // Blue — HTML/XML tags
+  { tag: tags.heading, color: '#1a5fb4', fontWeight: 'bold' },
+  { tag: tags.emphasis, fontStyle: 'italic' },
+  { tag: tags.strong, fontWeight: 'bold' },
+  { tag: tags.link, color: '#1a5fb4', textDecoration: 'underline' },
+  { tag: tags.url, color: '#1a5fb4' },
+  { tag: tags.regexp, color: '#a51d2d' }, // Red — regex
+  { tag: tags.escape, color: '#a51d2d' },
+  { tag: tags.special(tags.string), color: '#a51d2d' },
+]);
+
 @Component({
   selector: 'app-file-viewer-modal',
   standalone: true,
@@ -72,6 +105,8 @@ import { Entry } from '@app/types';
     MatIconModule,
     FormatFileSizePipe,
     TranslateModule,
+    FormsModule,
+    MatTooltip,
   ],
   templateUrl: './file-viewer-modal.component.html',
   styleUrls: ['./file-viewer-modal.component.scss'],
@@ -81,8 +116,6 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     items: Entry[];
     currentIndex: number;
     url: string;
-    fileType: string;
-    name: string;
     isLocal: boolean;
     remoteName: string;
   };
@@ -101,23 +134,15 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
   sanitizedUrl!: SafeResourceUrl;
 
+  currentIndex = signal(0);
+  currentItem = computed(() => this.data.items[this.currentIndex()]);
+  fileCategory = computed(() => this.iconService.getFileTypeCategory(this.currentItem()));
+  currentFileType = signal<string>('text');
+  fileName = computed(() => this.currentItem().Name);
+  fileSize = computed(() => this.currentItem().Size ?? null);
+
   textContent = signal('');
   folderSize = signal<{ count: number; bytes: number } | null>(null);
-  fileSize = signal<number | null>(null);
-
-  // Computed highlighted content for direct text view
-  highlightedContent = computed<SafeHtml | string>(() => {
-    const text = this.textContent();
-    if (!text) return '';
-    try {
-      // Auto-detect language and highlight
-      const highlighted = hljs.highlightAuto(text).value;
-      return this.sanitizer.bypassSecurityTrustHtml(highlighted);
-    } catch (e) {
-      console.warn('HighlightJS failed, returning raw text', e);
-      return text; // Raw text is safe
-    }
-  });
 
   isLoading = signal(true);
   isDownloading = signal(false);
@@ -126,17 +151,23 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   showMarkdownPreview = signal(false);
   renderedMarkdown = signal<SafeHtml>('');
 
+  // Editing state
+  isEditing = signal(false);
+  editContent = signal('');
+  isSaving = signal(false);
+
+  @ViewChild('editorContainer') editorContainer!: ElementRef<HTMLDivElement>;
+  private editorView: EditorView | null = null;
+
   // Cancel pending requests when component updates or destroys
   private destroy$ = new Subject<void>();
   private cancelCurrentRequest$ = new Subject<void>();
 
   @Output() closeViewer = new EventEmitter<void>();
 
-  async ngOnInit(): Promise<void> {
-    // Initialize file size for the first item
-    const item = this.data.items[this.data.currentIndex];
-    this.fileSize.set(item.Size ?? null);
-    await this.updateContent();
+  ngOnInit(): void {
+    this.currentIndex.set(this.data.currentIndex);
+    this.updateData();
   }
 
   ngOnDestroy(): void {
@@ -146,10 +177,171 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Start editing the current file
+   */
+  startEditing(): void {
+    this.editContent.set(this.textContent());
+    this.isEditing.set(true);
+    this.showMarkdownPreview.set(false);
+
+    // Re-initialize as editable
+    setTimeout(() => this.initEditor(false, this.editContent()), 0);
+  }
+
+  /**
+   * Cancel editing
+   */
+  cancelEditing(): void {
+    this.isEditing.set(false);
+    this.editContent.set('');
+
+    // Re-initialize as read-only with original content
+    setTimeout(() => this.initEditor(true, this.textContent()), 0);
+  }
+
+  private initEditor(readOnly = true, content = ''): void {
+    if (this.editorView) {
+      this.editorView.destroy();
+      this.editorView = null;
+    }
+
+    if (!this.editorContainer) return;
+
+    // Detect current theme
+    const isDark = document.documentElement.classList.contains('dark');
+
+    const extensions = [
+      basicSetup,
+      ...(isDark ? [oneDark] : [syntaxHighlighting(gnomeLightHighlighting)]),
+      keymap.of([]),
+      EditorView.editable.of(!readOnly),
+      EditorState.readOnly.of(readOnly),
+    ];
+
+    if (!readOnly) {
+      extensions.push(
+        EditorView.updateListener.of(update => {
+          if (update.docChanged) {
+            this.editContent.set(update.state.doc.toString());
+          }
+        })
+      );
+    }
+
+    // Detect language based on extension
+    const ext = this.fileName().split('.').pop()?.toLowerCase() || '';
+    switch (ext) {
+      case 'js':
+        extensions.push(cmJavascript());
+        break;
+      case 'ts':
+        extensions.push(cmJavascript({ typescript: true }));
+        break;
+      case 'json':
+        extensions.push(cmJson());
+        break;
+      case 'css':
+      case 'scss':
+      case 'sass':
+        extensions.push(cmCss());
+        break;
+      case 'html':
+      case 'htm':
+        extensions.push(cmHtml());
+        break;
+      case 'xml':
+        extensions.push(cmHtml());
+        break;
+      case 'py':
+        extensions.push(cmPython());
+        break;
+      case 'rs':
+        extensions.push(cmRust());
+        break;
+      case 'yaml':
+      case 'yml':
+        extensions.push(cmYaml());
+        break;
+      case 'sql':
+        extensions.push(cmSql());
+        break;
+      case 'go':
+        extensions.push(StreamLanguage.define(legacyGo));
+        break;
+      case 'sh':
+      case 'bash':
+      case 'zsh':
+        extensions.push(StreamLanguage.define(legacyShell));
+        break;
+      case 'md':
+      case 'markdown':
+        extensions.push(cmMarkdown());
+        break;
+      default:
+        extensions.push(cmMarkdown());
+        break;
+    }
+
+    const state = EditorState.create({
+      doc: content,
+      extensions: extensions,
+    });
+
+    this.editorView = new EditorView({
+      state,
+      parent: this.editorContainer.nativeElement,
+    });
+  }
+
+  /**
+   * Save changes to remote
+   */
+  async saveChanges(): Promise<void> {
+    if (this.isSaving()) return;
+
+    this.isSaving.set(true);
+    const item = this.currentItem();
+
+    try {
+      const fsName = this.data.isLocal
+        ? this.data.remoteName
+        : this.pathSelectionService.normalizeRemoteForRclone(this.data.remoteName);
+
+      const lastSlashIndex = item.Path.lastIndexOf('/');
+      const dirPath = lastSlashIndex > -1 ? item.Path.substring(0, lastSlashIndex) : '';
+      const filename = lastSlashIndex > -1 ? item.Path.substring(lastSlashIndex + 1) : item.Path;
+
+      await this.remoteManagementService.uploadFile(
+        fsName,
+        dirPath,
+        filename,
+        this.editContent(),
+        'nautilus'
+      );
+
+      this.textContent.set(this.editContent());
+      this.isEditing.set(false);
+      // Update the size in the underlying item to reflect changes in computed signal
+      item.Size = new Blob([this.editContent()]).size;
+
+      this.notificationService.showSuccess(
+        this.translate.instant('fileBrowser.fileViewer.saveSuccess')
+      );
+    } catch (error) {
+      console.error('Failed to save file:', error);
+      this.notificationService.showError(
+        this.translate.instant('fileBrowser.fileViewer.saveError')
+      );
+    } finally {
+      this.isSaving.set(false);
+    }
+  }
+
+  /**
    * Check if file is markdown
    */
   isMarkdownFile(): boolean {
-    const name = this.data.name.toLowerCase();
+    const name = this.fileName().toLowerCase();
     return name.endsWith('.md') || name.endsWith('.markdown');
   }
 
@@ -158,14 +350,14 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
    */
   async toggleMarkdownPreview(): Promise<void> {
     if (!this.showMarkdownPreview() && this.textContent()) {
-      const item = this.data.items[this.data.currentIndex];
+      const item = this.currentItem();
       let content = this.textContent();
 
       // Helper to handle async replacements
       const replaceAsync = async (
         str: string,
         regex: RegExp,
-        asyncFn: (match: string, ...args: any[]) => Promise<string>
+        asyncFn: (match: string, ...args: string[]) => Promise<string>
       ): Promise<string> => {
         const promises: Promise<string>[] = [];
         str.replace(regex, (match, ...args) => {
@@ -240,7 +432,17 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
         this.sanitizer.bypassSecurityTrustHtml(marked.parse(content) as string)
       );
     }
+
     this.showMarkdownPreview.update(v => !v);
+
+    // If switching back to raw view, re-initialize CodeMirror
+    if (!this.showMarkdownPreview()) {
+      setTimeout(() => this.initEditor(true, this.textContent()), 0);
+    } else if (this.editorView) {
+      // Destroy editor when showing preview to save resources and avoid state desync
+      this.editorView.destroy();
+      this.editorView = null;
+    }
   }
 
   @HostListener('window:keydown', ['$event'])
@@ -266,9 +468,11 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.isLoading.set(true);
     this.textContent.set('');
     this.folderSize.set(null);
+    this.isEditing.set(false);
+    this.editContent.set('');
     try {
-      if (this.data.fileType === 'directory') {
-        const item = this.data.items[this.data.currentIndex];
+      if (this.currentFileType() === 'directory') {
+        const item = this.currentItem();
         // Logic is now robust for any path structure.
         let fsName = this.data.remoteName;
 
@@ -296,7 +500,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
         return;
       }
 
-      if (this.data.fileType === 'binary') {
+      if (this.fileCategory() === 'binary') {
         // Show "Cannot preview" immediately - no download needed
         this.isLoading.set(false);
         return;
@@ -305,8 +509,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       this.sanitizedUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.data.url);
 
       // Text-based files: try to load as text, browser will handle what it can
-      const textTypes = ['text', 'previewable'];
-      if (textTypes.includes(this.data.fileType)) {
+      if (this.fileCategory() === 'text') {
         this.http
           .get(this.data.url, {
             responseType: 'text',
@@ -318,17 +521,18 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
             catchError(err => {
               // Failed to load - probably binary
               console.warn('Browser cannot render file:', err);
-              this.data.fileType = 'binary';
+              this.currentFileType.set('binary'); // Update signal
               return of(null);
             })
           )
           .subscribe(res => {
             if (res?.body) {
-              // Check if content looks like binary after loading
               if (this.looksLikeBinary(res.body)) {
-                this.data.fileType = 'binary';
+                this.currentFileType.set('binary'); // Update signal
               } else {
                 this.textContent.set(res.body);
+                // Initialize CodeMirror in read-only mode
+                setTimeout(() => this.initEditor(true, res.body ?? ''), 0);
               }
             }
             this.isLoading.set(false);
@@ -338,7 +542,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
       // For media types (image, video, audio, pdf), loading handled by element events
       const mediaTypes = ['image', 'video', 'audio', 'pdf'];
-      if (!mediaTypes.includes(this.data.fileType)) {
+      if (!mediaTypes.includes(this.currentFileType())) {
         this.isLoading.set(false);
       }
     } catch (error) {
@@ -381,34 +585,31 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   onLoadError(): void {
     this.isLoading.set(false);
     this.notificationService.showError(
-      this.translate.instant('fileBrowser.fileViewer.errorLoadFile', { name: this.data.name })
+      this.translate.instant('fileBrowser.fileViewer.errorLoadFile', { name: this.fileName() })
     );
-    console.error('Failed to load file:', this.data.name);
+    console.error('Failed to load file:', this.fileName());
   }
 
-  async next(): Promise<void> {
-    if (this.data.currentIndex < this.data.items.length - 1) {
-      this.data.currentIndex++;
+  async back(): Promise<void> {
+    if (this.currentIndex() > 0) {
+      this.currentIndex.update(i => i - 1);
       await this.updateData();
     }
   }
 
-  async back(): Promise<void> {
-    if (this.data.currentIndex > 0) {
-      this.data.currentIndex--;
+  async next(): Promise<void> {
+    if (this.currentIndex() < this.data.items.length - 1) {
+      this.currentIndex.update(i => i + 1);
       await this.updateData();
     }
   }
 
   async updateData(): Promise<void> {
-    const item = this.data.items[this.data.currentIndex];
-    this.data.name = item.Name;
-    this.data.fileType = await this.fileViewerService.getFileType(
-      item,
-      this.data.remoteName,
-      this.data.isLocal
+    const item = this.currentItem();
+
+    this.currentFileType.set(
+      await this.fileViewerService.getFileType(item, this.data.remoteName, this.data.isLocal)
     );
-    this.fileSize.set(item.Size ?? null);
 
     this.data.url = await this.fileViewerService.generateUrl(
       item,
@@ -432,13 +633,13 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       const selectedPath = await this.fileSystemService.selectFolder();
 
       // Build destination path with filename using OS-aware separator
-      const fullDestPath = this.uiStateService.joinPath(selectedPath, this.data.name);
+      const fullDestPath = this.uiStateService.joinPath(selectedPath, this.fileName());
 
       // Start the copy job
       await this.jobManagementService.copyUrl(selectedPath, fullDestPath, this.data.url, true);
 
       this.notificationService.openSnackBar(
-        this.translate.instant('fileBrowser.fileViewer.downloading', { name: this.data.name }),
+        this.translate.instant('fileBrowser.fileViewer.downloading', { name: this.fileName() }),
         'OK'
       );
     } catch (err) {

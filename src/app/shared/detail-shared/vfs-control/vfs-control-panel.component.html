@@ -125,7 +125,7 @@
             </div>
           } @else {
             <div class="loading-shade">
-              <mat-spinner diameter="40" mode="indeterminate"></mat-spinner>
+              <mat-spinner diameter="48" mode="indeterminate"></mat-spinner>
               <p>{{ 'shared.vfsControl.loadingStats' | translate }}</p>
             </div>
           }
@@ -154,7 +154,7 @@
               @if (vfs.queue.length === 0) {
                 @if (!vfs.stats) {
                   <div class="empty-state">
-                    <mat-spinner diameter="32"></mat-spinner>
+                    <mat-spinner diameter="36"></mat-spinner>
                     <span>{{ 'shared.vfsControl.fetchingQueue' | translate }}</span>
                   </div>
                 } @else {
@@ -451,17 +451,26 @@
         <mat-label>{{ 'shared.vfsControl.actions.pollInterval' | translate }}</mat-label>
         <input
           matInput
-          [ngModel]="pollIntervalInput()"
+          [ngModel]="
+            vfs.pollIntervalSupported === false
+              ? ('shared.vfsControl.actions.pollIntervalNotSupported' | translate)
+              : pollIntervalInput()
+          "
           (ngModelChange)="pollIntervalInput.set($event)"
           [placeholder]="'shared.vfsControl.pollIntervalPlaceholder' | translate"
-          [disabled]="!hasUsableVfs() || loading()"
+          [disabled]="!hasUsableVfs() || loading() || vfs.pollIntervalSupported === false"
         />
         <button
           mat-icon-button
           matSuffix
           (click)="updatePollInterval()"
           [matTooltip]="'shared.vfsControl.actions.updateInterval' | translate"
-          [disabled]="!hasUsableVfs() || !pollIntervalInput().trim() || loading()"
+          [disabled]="
+            !hasUsableVfs() ||
+            !pollIntervalInput().trim() ||
+            loading() ||
+            vfs.pollIntervalSupported === false
+          "
         >
           <mat-icon svgIcon="bolt"></mat-icon>
         </button>

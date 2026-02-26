@@ -61,8 +61,6 @@
       font-weight: 500;
 
       .active-icon {
-        width: var(--icon-size-md);
-        height: var(--icon-size-md);
         color: var(--primary-color);
       }
 
@@ -79,12 +77,12 @@
   }
 
   .remotes-content {
-    padding: var(--panel-padding) 32px 32px 32px;
+    padding: var(--panel-padding) var(--space-2xl) var(--space-2xl) var(--space-2xl);
 
     .remotes-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 16px;
+      gap: var(--space-md);
     }
   }
 
@@ -113,6 +111,6 @@
 // 7.2 Mobile Styles (max-width: 480px)
 @media (max-width: 480px) {
   .app-overview {
-    padding: 12px;
+    padding: var(--space-sm);
   }
 }
