@@ -2087,7 +2087,7 @@
     },
     "notifications": {
       "undo": "Undo",
-      "trashEmptied": "Cleanup operation started",
+      "trashEmptied": "Cleanup operation completed",
       "locationCopied": "Location copied to clipboard",
       "rmdirsStarted": "Removing empty folders in \"{{name}}\"...",
       "deleteStarted": "Deleting {{count}} items...",
