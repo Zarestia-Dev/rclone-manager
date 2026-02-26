@@ -2042,7 +2042,7 @@
       "createFolderFailed": "Failed to create folder \"{{name}}\": {{error}}",
       "emptyTrashFailed": "Failed to empty trash in {{remote}}: {{error}}",
       "openFileFailed": "Cannot open file: missing remote server context",
-      "minSelection": "Lütfen en az {{min}} öge seçin."
+      "minSelection": "Please select at least {{min}} item{{s}}."
     },
     "contextMenu": {
       "open": "Open",
