@@ -2039,7 +2039,7 @@
       "undoFailed": "Undo failed for {{count}} items",
       "redoFailed": "Redo failed for {{count}} items",
       "rmdirsFailed": "Failed to remove empty folders in \"{{name}}\": {{error}}",
-      "openFileFailed": "Dosya açılamıyor: uzak sunucu bağlamı eksik",
+      "openFileFailed": "Cannot open file: missing remote server context",
       "minSelection": "Lütfen en az {{min}} öge seçin."
     },
     "contextMenu": {
