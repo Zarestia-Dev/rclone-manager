@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Removed Syntax Highlighting, added CodeMirror.
 - Nautilus Component: A lot of improvements and bug fixes.
 - Notification behavior improved.
+- Use Zoneless Change Detection.
 
 ### Fixed
 - Blury icons fixed. Icon provider change to Google Material Icons.
