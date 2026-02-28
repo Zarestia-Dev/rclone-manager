@@ -14,9 +14,9 @@ import {
   DestroyRef,
 } from '@angular/core';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { toSignal, toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, firstValueFrom, from, of } from 'rxjs';
-import { catchError, finalize, map, switchMap } from 'rxjs/operators';
+import { catchError, finalize, map } from 'rxjs/operators';
 
 import { MatIconModule } from '@angular/material/icon';
 import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
@@ -161,9 +161,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
   private readonly initialLocationApplied = signal(false);
 
   // --- Picker State ---
-  private readonly filePickerState = toSignal(this.nautilusService.filePickerState$, {
-    initialValue: { isOpen: false, options: undefined },
-  });
+  private readonly filePickerState = this.nautilusService.filePickerState;
   public readonly isPickerMode = computed(() => this.filePickerState().isOpen);
   public readonly pickerOptions = computed(
     (): FilePickerConfig =>
@@ -385,50 +383,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
   // No longer needed here as it's passed to sidebar or used there
 
   // --- File Data Pipeline ---
-  private readonly rawFiles = toSignal(
-    combineLatest([
-      toObservable(this.nautilusRemote),
-      toObservable(this.currentPath),
-      toObservable(this.refreshTrigger),
-    ]).pipe(
-      switchMap(([remote, path]) => {
-        if (!remote) return of([]);
-        this.isLoading.set(true);
-        let fsName = remote.name;
-        if (!remote.isLocal) {
-          fsName = this.pathSelectionService.normalizeRemoteForRclone(remote.name);
-        }
-        this.errorState.set(null);
-        return from(this.remoteManagement.getRemotePaths(fsName, path, {}, 'nautilus')).pipe(
-          map(res => {
-            const list = res.list || [];
-            // Hydrate items with context
-            return list.map(
-              f =>
-                ({
-                  entry: f,
-                  meta: {
-                    remote: this.pathSelectionService.normalizeRemoteName(fsName),
-                    isLocal: remote.isLocal,
-                    remoteType: remote.type,
-                  },
-                }) as FileBrowserItem
-            );
-          }),
-          catchError(err => {
-            console.error('Error fetching files:', err);
-            this.errorState.set(err || this.translate.instant('nautilus.errors.loadFailed'));
-            this.notificationService.showError(
-              this.translate.instant('nautilus.errors.loadFailed')
-            );
-            return of([]);
-          }),
-          finalize(() => this.isLoading.set(false))
-        );
-      })
-    ),
-    { initialValue: [] as FileBrowserItem[] }
-  );
+  private readonly rawFiles = signal<FileBrowserItem[]>([]);
 
   // 1. Source files (raw or starred)
   private readonly sourceFiles = computed(() => {
@@ -500,46 +455,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
   }
 
   // --- Right Pane File Data Pipeline ---
-  private readonly rawFilesRight = toSignal(
-    combineLatest([
-      toObservable(this.nautilusRemoteRight),
-      toObservable(this.currentPathRight),
-      toObservable(this.refreshTriggerRight),
-    ]).pipe(
-      switchMap(([remote, path]) => {
-        if (!remote) return of([]);
-        this.isLoadingRight.set(true);
-        let fsName = remote.name;
-        if (!remote.isLocal) {
-          fsName = this.pathSelectionService.normalizeRemoteForRclone(remote.name);
-        }
-        this.errorStateRight.set(null);
-        return from(this.remoteManagement.getRemotePaths(fsName, path, {}, 'nautilus')).pipe(
-          map(res => {
-            const list = res.list || [];
-            return list.map(
-              f =>
-                ({
-                  entry: f,
-                  meta: {
-                    remote: this.pathSelectionService.normalizeRemoteName(fsName),
-                    isLocal: remote.isLocal,
-                    remoteType: remote.type,
-                  },
-                }) as FileBrowserItem
-            );
-          }),
-          catchError(err => {
-            console.error('Error fetching right files:', err);
-            this.errorStateRight.set(err || this.translate.instant('nautilus.errors.loadFailed'));
-            return of([]);
-          }),
-          finalize(() => this.isLoadingRight.set(false))
-        );
-      })
-    ),
-    { initialValue: [] as FileBrowserItem[] }
-  );
+  private readonly rawFilesRight = signal<FileBrowserItem[]>([]);
 
   public readonly filesRight = computed(() => {
     let files = this.rawFilesRight();
@@ -565,6 +481,101 @@ export class NautilusComponent implements OnInit, OnDestroy {
   constructor() {
     this.setupEffects();
     this.subscribeToSettings();
+
+    // Subscribe to Left Pane file data updates
+    effect(() => {
+      const remote = this.nautilusRemote();
+      const path = this.currentPath();
+      this.refreshTrigger(); // track trigger
+
+      untracked(() => {
+        if (!remote) {
+          this.rawFiles.set([]);
+          return;
+        }
+        this.isLoading.set(true);
+        let fsName = remote.name;
+        if (!remote.isLocal) {
+          fsName = this.pathSelectionService.normalizeRemoteForRclone(remote.name);
+        }
+        this.errorState.set(null);
+
+        from(this.remoteManagement.getRemotePaths(fsName, path, {}, 'nautilus'))
+          .pipe(
+            map(res => {
+              const list = res.list || [];
+              return list.map(
+                f =>
+                  ({
+                    entry: f,
+                    meta: {
+                      remote: this.pathSelectionService.normalizeRemoteName(fsName),
+                      isLocal: remote.isLocal,
+                      remoteType: remote.type,
+                    },
+                  }) as FileBrowserItem
+              );
+            }),
+            catchError(err => {
+              console.error('Error fetching files:', err);
+              this.errorState.set(err || this.translate.instant('nautilus.errors.loadFailed'));
+              this.notificationService.showError(
+                this.translate.instant('nautilus.errors.loadFailed')
+              );
+              return of([]);
+            }),
+            finalize(() => this.isLoading.set(false)),
+            takeUntilDestroyed(this.destroyRef)
+          )
+          .subscribe(files => this.rawFiles.set(files));
+      });
+    });
+
+    // Subscribe to Right Pane file data updates
+    effect(() => {
+      const remote = this.nautilusRemoteRight();
+      const path = this.currentPathRight();
+      this.refreshTriggerRight();
+
+      untracked(() => {
+        if (!remote) {
+          this.rawFilesRight.set([]);
+          return;
+        }
+        this.isLoadingRight.set(true);
+        let fsName = remote.name;
+        if (!remote.isLocal) {
+          fsName = this.pathSelectionService.normalizeRemoteForRclone(remote.name);
+        }
+        this.errorStateRight.set(null);
+
+        from(this.remoteManagement.getRemotePaths(fsName, path, {}, 'nautilus'))
+          .pipe(
+            map(res => {
+              const list = res.list || [];
+              return list.map(
+                f =>
+                  ({
+                    entry: f,
+                    meta: {
+                      remote: this.pathSelectionService.normalizeRemoteName(fsName),
+                      isLocal: remote.isLocal,
+                      remoteType: remote.type,
+                    },
+                  }) as FileBrowserItem
+              );
+            }),
+            catchError(err => {
+              console.error('Error fetching right files:', err);
+              this.errorStateRight.set(err || this.translate.instant('nautilus.errors.loadFailed'));
+              return of([]);
+            }),
+            finalize(() => this.isLoadingRight.set(false)),
+            takeUntilDestroyed(this.destroyRef)
+          )
+          .subscribe(files => this.rawFilesRight.set(files));
+      });
+    });
   }
 
   async ngOnInit(): Promise<void> {

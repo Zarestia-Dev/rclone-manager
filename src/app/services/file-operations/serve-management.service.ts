@@ -1,5 +1,5 @@
-import { DestroyRef, inject, Injectable } from '@angular/core';
-import { BehaviorSubject, merge } from 'rxjs';
+import { DestroyRef, inject, Injectable, signal } from '@angular/core';
+import { merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TranslateService } from '@ngx-translate/core';
 import { TauriBaseService } from '../core/tauri-base.service';
@@ -21,8 +21,8 @@ export class ServeManagementService extends TauriBaseService {
   private readonly destroyRef = inject(DestroyRef);
 
   // Observable for running serves list
-  private runningServesSubject = new BehaviorSubject<ServeListItem[]>([]);
-  public runningServes$ = this.runningServesSubject.asObservable();
+  private readonly _runningServes = signal<ServeListItem[]>([]);
+  public readonly runningServes = this._runningServes.asReadonly();
 
   constructor() {
     super();
@@ -72,7 +72,7 @@ export class ServeManagementService extends TauriBaseService {
         servesToUpdate = response.list;
       }
 
-      this.runningServesSubject.next(servesToUpdate);
+      this._runningServes.set(servesToUpdate);
     } catch (error) {
       console.error('[ServeManagementService] Failed to refresh serves from cache:', error);
       throw error;
@@ -89,7 +89,7 @@ export class ServeManagementService extends TauriBaseService {
       console.debug('Cache failed, falling back to API:', cacheErr);
       try {
         const response = await this.listServes();
-        this.runningServesSubject.next(response?.list ?? []);
+        this._runningServes.set(response?.list ?? []);
       } catch (apiErr) {
         console.error('Both cache and API failed:', apiErr);
       }
@@ -162,7 +162,7 @@ export class ServeManagementService extends TauriBaseService {
       this.notificationService.showSuccess(this.translate.instant('serve.successStopAll'));
 
       // Clear the running serves list
-      this.runningServesSubject.next([]);
+      this._runningServes.set([]);
     } catch (error) {
       this.notificationService.showError(
         this.translate.instant('serve.failedStopAll', { error: String(error) })
@@ -175,35 +175,35 @@ export class ServeManagementService extends TauriBaseService {
    * Get the current list of running serves
    */
   getRunningServes(): ServeListItem[] {
-    return this.runningServesSubject.value;
+    return this._runningServes();
   }
 
   /**
    * Check if a specific serve is running
    */
   isServeRunning(serverId: string): boolean {
-    return this.runningServesSubject.value.some(serve => serve.id === serverId);
+    return this._runningServes().some(serve => serve.id === serverId);
   }
 
   /**
    * Get serve instance by ID
    */
   getServeById(serverId: string): ServeListItem | undefined {
-    return this.runningServesSubject.value.find(serve => serve.id === serverId);
+    return this._runningServes().find(serve => serve.id === serverId);
   }
 
   /**
    * Get serves for a specific remote
    */
   getServesByRemote(fs: string): ServeListItem[] {
-    return this.runningServesSubject.value.filter(serve => serve.params.fs === fs);
+    return this._runningServes().filter(serve => serve.params.fs === fs);
   }
 
   /**
    * Get serves by type
    */
   getServesByType(serveType: string): ServeListItem[] {
-    return this.runningServesSubject.value.filter(serve => serve.params.type === serveType);
+    return this._runningServes().filter(serve => serve.params.type === serveType);
   }
 
   /**
@@ -226,7 +226,7 @@ export class ServeManagementService extends TauriBaseService {
    * Get serves for a specific remote and profile
    */
   getServesForRemoteProfile(remoteName: string, profile?: string): ServeListItem[] {
-    return this.runningServesSubject.value.filter(serve => {
+    return this._runningServes().filter(serve => {
       const matchesRemote = serve.params.fs.startsWith(remoteName);
       if (profile) {
         return matchesRemote && serve.profile === profile;

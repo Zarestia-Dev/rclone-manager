@@ -5,6 +5,7 @@
       [matTooltip]="tab.label | translate"
       (click)="tabSelected.emit(tab.id)"
       [class.selected]="currentTab() === tab.id"
+      data-tauri-drag-region="false"
     >
       <mat-icon [svgIcon]="tab.icon"></mat-icon>
     </button>

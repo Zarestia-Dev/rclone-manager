@@ -1,12 +1,8 @@
-import { DestroyRef, Injectable, inject } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { distinctUntilChanged, filter } from 'rxjs/operators';
+import { DestroyRef, Injectable, inject, signal } from '@angular/core';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { AppUpdaterService } from '../system/app-updater.service';
 import { RcloneUpdateService } from '../system/rclone-update.service';
 import { SystemHealthService } from '../system/system-health.service';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-
 /**
  * Centralized service for managing onboarding state across the application
  * Provides a single source of truth for onboarding completion status
@@ -28,12 +24,12 @@ export class OnboardingStateService {
   private destroyRef = inject(DestroyRef);
 
   // State tracking
-  private _isCompleted$ = new BehaviorSubject<boolean>(false);
-  private _isInitialized$ = new BehaviorSubject<boolean>(false);
+  private readonly _isCompleted = signal<boolean>(false);
+  private readonly _isInitialized = signal<boolean>(false);
 
-  // Public observables
-  public readonly onboardingCompleted$ = this._isCompleted$.asObservable();
-  public readonly isInitialized$ = this._isInitialized$.asObservable();
+  // Public readonly signals
+  public readonly isCompleted = this._isCompleted.asReadonly();
+  public readonly isInitialized = this._isInitialized.asReadonly();
 
   constructor() {
     this.initializeOnboardingState().catch(error => {
@@ -53,14 +49,14 @@ export class OnboardingStateService {
         (await this.appSettingsService.getSettingValue<boolean>('core.completed_onboarding')) ||
         false;
 
-      this._isCompleted$.next(completed);
+      this._isCompleted.set(completed);
       this.systemHealthService.setOnboardingCompleted(completed);
-      this._isInitialized$.next(true);
+      this._isInitialized.set(true);
     } catch (error) {
       console.error('Error initializing onboarding state:', error);
-      this._isCompleted$.next(false);
+      this._isCompleted.set(false);
       this.systemHealthService.setOnboardingCompleted(false);
-      this._isInitialized$.next(true);
+      this._isInitialized.set(true);
     }
   }
 
@@ -69,7 +65,7 @@ export class OnboardingStateService {
    * Synchronous check using current state
    */
   isOnboardingActive(): boolean {
-    return !this._isCompleted$.value;
+    return !this._isCompleted();
   }
 
   /**
@@ -77,21 +73,21 @@ export class OnboardingStateService {
    * Synchronous check using current state
    */
   isOnboardingCompleted(): boolean {
-    return this._isCompleted$.value;
+    return this._isCompleted();
   }
 
   /**
-   * Get current onboarding completion status as observable
+   * Get current onboarding completion status
    */
-  getOnboardingStatus(): Observable<boolean> {
-    return this.onboardingCompleted$;
+  getOnboardingStatus(): boolean {
+    return this.isCompleted();
   }
 
   /**
    * Check if the service has been initialized with settings data
    */
-  isInitialized(): boolean {
-    return this._isInitialized$.value;
+  isInitializedSnapshot(): boolean {
+    return this._isInitialized();
   }
 
   /**
@@ -101,7 +97,7 @@ export class OnboardingStateService {
   async completeOnboarding(): Promise<void> {
     try {
       await this.appSettingsService.saveSetting('core', 'completed_onboarding', true);
-      this._isCompleted$.next(true);
+      this._isCompleted.set(true);
       this.systemHealthService.setOnboardingCompleted(true);
     } catch (error) {
       console.error('Failed to complete onboarding:', error);
@@ -116,7 +112,7 @@ export class OnboardingStateService {
   async resetOnboarding(): Promise<void> {
     try {
       await this.appSettingsService.saveSetting('core', 'completed_onboarding', false);
-      this._isCompleted$.next(false);
+      this._isCompleted.set(false);
       this.systemHealthService.setOnboardingCompleted(false);
     } catch (error) {
       console.error('Failed to reset onboarding:', error);
@@ -129,22 +125,22 @@ export class OnboardingStateService {
    * Useful for immediate UI updates before async operations complete
    */
   setOnboardingState(completed: boolean): void {
-    this._isCompleted$.next(completed);
+    this._isCompleted.set(completed);
     this.systemHealthService.setOnboardingCompleted(completed);
   }
 
   private setupPostOnboardingTasks(): void {
-    this.onboardingCompleted$
-      .pipe(
-        filter(completed => completed),
-        distinctUntilChanged(),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe(() => {
-        this.runPostOnboardingSetup().catch(error => {
-          console.error('Failed to run post-onboarding setup:', error);
-        });
+    import('@angular/core').then(({ effect, untracked }) => {
+      effect(() => {
+        if (this.isCompleted()) {
+          untracked(() => {
+            this.runPostOnboardingSetup().catch(error => {
+              console.error('Failed to run post-onboarding setup:', error);
+            });
+          });
+        }
       });
+    });
   }
 
   private async runPostOnboardingSetup(): Promise<void> {

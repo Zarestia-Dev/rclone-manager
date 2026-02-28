@@ -1,5 +1,4 @@
 import { Component, inject, input, signal, computed, output, effect } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -131,9 +130,7 @@ export class GeneralDetailComponent {
   readonly retryDiskUsage = output<void>();
 
   // Component State
-  private readonly allScheduledTasks = toSignal(this.schedulerService.scheduledTasks$, {
-    initialValue: [],
-  });
+  private readonly allScheduledTasks = this.schedulerService.scheduledTasks;
 
   currentTaskCardIndex = signal(0);
 

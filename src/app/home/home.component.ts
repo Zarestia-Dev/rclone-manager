@@ -8,7 +8,7 @@ import {
   DestroyRef,
   OnDestroy,
 } from '@angular/core';
-import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDrawerMode, MatSidenavModule } from '@angular/material/sidenav';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
@@ -108,12 +108,10 @@ export class HomeComponent implements OnInit, OnDestroy {
   // ============================================================================
   // PROPERTIES - DATA & UI STATE
   // ============================================================================
-  currentTab = toSignal(this.uiStateService.currentTab$, { initialValue: 'general' as any });
+  currentTab = this.uiStateService.currentTab;
 
   // Source of truth for SELECTION (from service)
-  private readonly _selectedRemoteSource = toSignal(this.uiStateService.selectedRemote$, {
-    initialValue: null as Remote | null,
-  });
+  private readonly _selectedRemoteSource = this.uiStateService.selectedRemote;
 
   // Facade provides unified and enriched data
   readonly remotes = this.remoteFacadeService.activeRemotes;

@@ -1,6 +1,5 @@
 import { NgClass, DecimalPipe, TitleCasePipe } from '@angular/common';
 import { Component, OnInit, inject, input, signal, computed, output } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -133,7 +132,7 @@ export class GeneralOverviewComponent implements OnInit {
     tasks: false,
     serves: false,
   });
-  scheduledTasks = toSignal(this.schedulerService.scheduledTasks$, { initialValue: [] });
+  scheduledTasks = this.schedulerService.scheduledTasks;
   isLoadingScheduledTasks = signal(false);
   isLoadingServes = signal(false);
 

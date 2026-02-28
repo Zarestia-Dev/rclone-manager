@@ -1,7 +1,5 @@
 import { Component, OnInit, inject, ChangeDetectionStrategy, computed } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { map } from 'rxjs/operators';
 
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -9,7 +7,6 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
-import { AsyncPipe } from '@angular/common';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
 
@@ -33,7 +30,6 @@ import { Theme } from '@app/types';
   selector: 'app-titlebar',
   standalone: true,
   imports: [
-    AsyncPipe,
     CdkMenuModule,
     MatDividerModule,
     MatIconModule,
@@ -67,18 +63,13 @@ export class TitlebarComponent implements OnInit {
   windowButtons = true;
 
   // Signals for update states
-  readonly updateAvailable = toSignal(this.appUpdaterService.updateAvailable$, {
-    initialValue: null,
-  });
-  readonly rcloneUpdateAvailable = toSignal(
-    this.rcloneUpdateService.updateStatus$.pipe(map(status => status.available)),
-    { initialValue: false }
+  readonly updateAvailable = this.appUpdaterService.updateAvailable;
+  readonly rcloneUpdateAvailable = computed(
+    () => this.rcloneUpdateService.updateStatus().available
   );
-  readonly restartRequired = toSignal(this.appUpdaterService.restartRequired$, {
-    initialValue: false,
-  });
+  readonly restartRequired = this.appUpdaterService.restartRequired;
 
-  currentTheme$ = this.windowService.theme$;
+  currentTheme = this.windowService.theme;
 
   readonly updateTooltip = computed(() => {
     if (this.updateAvailable() && this.rcloneUpdateAvailable()) {
@@ -99,7 +90,7 @@ export class TitlebarComponent implements OnInit {
     { id: 'dark', icon: 'circle-check', label: 'titlebar.menu.dark', class: 'dark' },
   ];
 
-  readonly isMaximized = toSignal(this.windowService.isMaximized$, { initialValue: false });
+  readonly isMaximized = this.windowService.isMaximized;
 
   readonly windowControls = computed(() => [
     {

@@ -1,5 +1,6 @@
-import { inject, Injectable } from '@angular/core';
-import { BehaviorSubject, filter, firstValueFrom, take } from 'rxjs';
+import { inject, Injectable, signal } from '@angular/core';
+import { filter, firstValueFrom, take } from 'rxjs';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { RemoteManagementService } from '../../services/remote/remote-management.service';
 
 /**
@@ -11,17 +12,24 @@ import { RemoteManagementService } from '../../services/remote/remote-management
 })
 export class AuthStateService {
   // Authentication state
-  private _isAuthInProgress$ = new BehaviorSubject<boolean>(false);
-  private _currentRemoteName$ = new BehaviorSubject<string | null>(null);
-  private _isAuthCancelled$ = new BehaviorSubject<boolean>(false);
-  private _isEditMode$ = new BehaviorSubject<boolean>(false);
-  private _cleanupInProgress$ = new BehaviorSubject<boolean>(false);
+  // Authentication state
+  private readonly _isAuthInProgress = signal<boolean>(false);
+  private readonly _currentRemoteName = signal<string | null>(null);
+  private readonly _isAuthCancelled = signal<boolean>(false);
+  private readonly _isEditMode = signal<boolean>(false);
+  private readonly _cleanupInProgress = signal<boolean>(false);
 
-  // Public observables
-  public isAuthInProgress$ = this._isAuthInProgress$.asObservable();
-  public isAuthCancelled$ = this._isAuthCancelled$.asObservable();
-  public currentRemoteName$ = this._currentRemoteName$.asObservable();
-  public cleanupInProgress$ = this._cleanupInProgress$.asObservable();
+  // Public readonly signals
+  public readonly isAuthInProgress = this._isAuthInProgress.asReadonly();
+  public readonly isAuthCancelled = this._isAuthCancelled.asReadonly();
+  public readonly currentRemoteName = this._currentRemoteName.asReadonly();
+  public readonly cleanupInProgress = this._cleanupInProgress.asReadonly();
+
+  // Public observables for backward compatibility
+  public readonly isAuthInProgress$ = toObservable(this._isAuthInProgress);
+  public readonly isAuthCancelled$ = toObservable(this._isAuthCancelled);
+  public readonly currentRemoteName$ = toObservable(this._currentRemoteName);
+  public readonly cleanupInProgress$ = toObservable(this._cleanupInProgress);
 
   private remoteManagementService = inject(RemoteManagementService);
 
@@ -29,20 +37,20 @@ export class AuthStateService {
    * Start authentication process
    */
   async startAuth(remoteName: string, isEditMode: boolean): Promise<void> {
-    if (this._cleanupInProgress$.value) {
+    if (this._cleanupInProgress()) {
       console.debug('Waiting for previous cleanup to complete');
       await firstValueFrom(
-        this._cleanupInProgress$.pipe(
+        this.cleanupInProgress$.pipe(
           filter(inProgress => !inProgress),
           take(1)
         )
       );
     }
 
-    this._isAuthInProgress$.next(true);
-    this._currentRemoteName$.next(remoteName);
-    this._isAuthCancelled$.next(false);
-    this._isEditMode$.next(isEditMode);
+    this._isAuthInProgress.set(true);
+    this._currentRemoteName.set(remoteName);
+    this._isAuthCancelled.set(false);
+    this._isEditMode.set(isEditMode);
 
     console.debug('Starting auth for remote:', remoteName, 'in edit mode:', isEditMode);
   }
@@ -51,17 +59,17 @@ export class AuthStateService {
    * Cancel authentication process
    */
   async cancelAuth(): Promise<void> {
-    if (this._cleanupInProgress$.value) {
+    if (this._cleanupInProgress()) {
       console.debug('Cleanup already in progress');
       return;
     }
 
-    this._cleanupInProgress$.next(true);
+    this._cleanupInProgress.set(true);
 
     try {
-      this._isAuthCancelled$.next(true);
-      const remoteName = this._currentRemoteName$.value;
-      const isEditMode = this._isEditMode$.value;
+      this._isAuthCancelled.set(true);
+      const remoteName = this._currentRemoteName();
+      const isEditMode = this._isEditMode();
 
       console.debug('Cancelling auth for remote:', remoteName, 'in edit mode:', isEditMode);
 
@@ -78,7 +86,7 @@ export class AuthStateService {
       }
     } finally {
       this.resetAuthState();
-      this._cleanupInProgress$.next(false);
+      this._cleanupInProgress.set(false);
     }
   }
 
@@ -86,10 +94,10 @@ export class AuthStateService {
    * Reset authentication state
    */
   resetAuthState(): void {
-    this._isAuthInProgress$.next(false);
-    this._currentRemoteName$.next(null);
-    this._isAuthCancelled$.next(false);
-    this._isEditMode$.next(false);
+    this._isAuthInProgress.set(false);
+    this._currentRemoteName.set(null);
+    this._isAuthCancelled.set(false);
+    this._isEditMode.set(false);
     console.debug('Auth state reset');
   }
 
@@ -104,11 +112,11 @@ export class AuthStateService {
     cleanupInProgress: boolean;
   } {
     return {
-      isInProgress: this._isAuthInProgress$.value,
-      remoteName: this._currentRemoteName$.value,
-      isCancelled: this._isAuthCancelled$.value,
-      isEditMode: this._isEditMode$.value,
-      cleanupInProgress: this._cleanupInProgress$.value,
+      isInProgress: this._isAuthInProgress(),
+      remoteName: this._currentRemoteName(),
+      isCancelled: this._isAuthCancelled(),
+      isEditMode: this._isEditMode(),
+      cleanupInProgress: this._cleanupInProgress(),
     };
   }
 }

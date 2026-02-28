@@ -1,4 +1,4 @@
-@if (hasJobs) {
+@if (hasJobs()) {
   <mat-accordion class="operations-accordion">
     <mat-expansion-panel
       [expanded]="isExpanded()"
@@ -9,8 +9,8 @@
         <mat-panel-title>
           <mat-icon svgIcon="download"></mat-icon>
           <span>{{ 'fileBrowser.operations.title' | translate }}</span>
-          @if (activeJobs.length > 0) {
-            <span class="job-count">{{ activeJobs.length }}</span>
+          @if (activeJobs().length > 0) {
+            <span class="job-count">{{ activeJobs().length }}</span>
           }
         </mat-panel-title>
       </mat-expansion-panel-header>

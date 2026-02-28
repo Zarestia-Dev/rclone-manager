@@ -1,5 +1,4 @@
-import { Injectable, inject } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { Injectable, inject, signal } from '@angular/core';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { ScheduledTask, CronValidationResponse, ScheduledTaskStats } from '@app/types';
 import { EventListenersService } from './event-listeners.service';
@@ -12,11 +11,11 @@ import { EventListenersService } from './event-listeners.service';
   providedIn: 'root',
 })
 export class SchedulerService extends TauriBaseService {
-  private scheduledTasksCache = new BehaviorSubject<ScheduledTask[]>([]);
-  public scheduledTasks$ = this.scheduledTasksCache.asObservable();
+  private readonly _scheduledTasks = signal<ScheduledTask[]>([]);
+  public readonly scheduledTasks = this._scheduledTasks.asReadonly();
 
-  private statsCache = new BehaviorSubject<ScheduledTaskStats | null>(null);
-  public stats$ = this.statsCache.asObservable();
+  private readonly _stats = signal<ScheduledTaskStats | null>(null);
+  public readonly stats = this._stats.asReadonly();
 
   private eventListeners = inject(EventListenersService);
 
@@ -40,7 +39,7 @@ export class SchedulerService extends TauriBaseService {
    */
   async getScheduledTasks(): Promise<ScheduledTask[]> {
     const tasks = await this.invokeCommand<ScheduledTask[]>('get_scheduled_tasks');
-    this.scheduledTasksCache.next(tasks);
+    this._scheduledTasks.set(tasks);
     return tasks;
   }
 
@@ -56,7 +55,7 @@ export class SchedulerService extends TauriBaseService {
    */
   async getScheduledTasksStats(): Promise<ScheduledTaskStats> {
     const stats = await this.invokeCommand<ScheduledTaskStats>('get_scheduled_tasks_stats');
-    this.statsCache.next(stats);
+    this._stats.set(stats);
     return stats;
   }
 
@@ -111,8 +110,8 @@ export class SchedulerService extends TauriBaseService {
     try {
       const tasks = await this.getScheduledTasks();
       const stats = await this.getScheduledTasksStats();
-      this.scheduledTasksCache.next(tasks);
-      this.statsCache.next(stats);
+      this._scheduledTasks.set(tasks);
+      this._stats.set(stats);
     } catch (error) {
       console.error('Failed to refresh scheduled tasks:', error);
     }

@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -12,7 +12,6 @@ import { JobInfo } from '@app/types';
 import { FormatFileSizePipe, FormatEtaPipe, FormatRateValuePipe } from '@app/pipes';
 import { Subject, interval } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
@@ -44,22 +43,14 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
   // Subscribe to reactive job stream
-  jobs = toSignal(this.jobManagementService.nautilusJobs$, { initialValue: [] });
+  jobs = this.jobManagementService.nautilusJobs;
   isExpanded = signal(true);
   isLoading = signal(false);
 
   // Computed
-  get activeJobs(): JobInfo[] {
-    return this.jobs().filter(j => j.status === 'Running');
-  }
-
-  get completedJobs(): JobInfo[] {
-    return this.jobs().filter(j => j.status !== 'Running');
-  }
-
-  get hasJobs(): boolean {
-    return this.jobs().length > 0;
-  }
+  activeJobs = computed(() => this.jobs().filter(j => j.status === 'Running'));
+  completedJobs = computed(() => this.jobs().filter(j => j.status !== 'Running'));
+  hasJobs = computed(() => this.jobs().length > 0);
 
   ngOnInit(): void {
     // Initial load from backend
@@ -70,7 +61,7 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
         // Only poll if there are active running jobs
-        if (this.activeJobs.length > 0) {
+        if (this.activeJobs().length > 0) {
           this.jobManagementService.refreshNautilusJobs();
         }
       });

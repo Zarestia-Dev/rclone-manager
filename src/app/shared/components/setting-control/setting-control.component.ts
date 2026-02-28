@@ -9,6 +9,7 @@ import {
   inject,
   signal,
   WritableSignal,
+  DestroyRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -38,7 +39,7 @@ import { RcConfigOption } from '@app/types';
 import { SENSITIVE_KEYS } from '@app/types';
 import { Subject, map } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { LineBreaksPipe } from '../../pipes/linebreaks.pipe';
 import { RcloneOptionTranslatePipe } from '../../pipes/rclone-option-translate.pipe';
 import { RcloneValueMapperService, AppSettingsService } from '@app/services';
@@ -83,14 +84,10 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   private validatorRegistry = inject(ValidatorRegistryService);
   private translate = inject(TranslateService);
   private appSettingsService = inject(AppSettingsService);
+  private destroyRef = inject(DestroyRef);
 
   // Reactive restriction mode from settings
-  restrictMode = toSignal(
-    this.appSettingsService
-      .selectSetting('general.restrict')
-      .pipe(map(setting => (setting?.value as boolean) ?? true)),
-    { initialValue: true }
-  );
+  restrictMode = signal<boolean>(true);
 
   /** Caller-provided per-option overrides. Parent components may bind to this Input to change
    * how specific options are presented (for example override DefaultStr for certain options).
@@ -168,7 +165,7 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   public dateControl = signal<FormControl>(new FormControl(''));
   public timeControl = signal<FormControl>(new FormControl(''));
 
-  private onChange: (value: any) => void = () => {
+  private onChange: (value: unknown) => void = () => {
     /* empty */
   };
   private onTouched: () => void = () => {
@@ -180,8 +177,8 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   private readonly COMMA_ARRAY_TYPES = ['Bits', 'Encoding', 'CommaSepList', 'DumpFlags'];
   // Types that need machine-to-human conversion
   private readonly CONVERTIBLE_TYPES = ['Duration', 'SizeSuffix', 'BwTimetable', 'FileMode'];
-  private holdInterval: any = null;
-  private holdTimeout: any = null;
+  private holdInterval: ReturnType<typeof setInterval> | null = null;
+  private holdTimeout: ReturnType<typeof setTimeout> | null = null;
   private readonly HOLD_DELAY = 400;
   private readonly HOLD_INTERVAL = 80;
 
@@ -189,7 +186,15 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   // ─── CORE LOGIC ──────────────────────────────────────────────────────────────
   //
 
-  private calculateDefaultValue(option: RcConfigOption): any {
+  constructor() {
+    this.appSettingsService
+      .selectSetting('general.restrict')
+      .pipe(map(setting => (setting?.value as boolean) ?? true))
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(val => this.restrictMode.set(val));
+  }
+
+  private calculateDefaultValue(option: RcConfigOption): unknown {
     switch (option.Type) {
       case 'bool':
         return option.Default === true || String(option.Default).toLowerCase() === 'true';
@@ -225,7 +230,7 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
     return !this.valuesEqual(ctrl.value, this.uiDefaultValue());
   }
 
-  private valuesEqual(current: any, defaultVal: any): boolean {
+  private valuesEqual(current: unknown, defaultVal: unknown): boolean {
     // Array comparison
     if (Array.isArray(current) || Array.isArray(defaultVal)) {
       const currArr = Array.isArray(current) ? current : [];

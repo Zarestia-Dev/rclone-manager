@@ -316,7 +316,7 @@
 
 <!-- Source Path Autocomplete Menu -->
 <ng-template #sourceAutocompleteMenu>
-  @if (sourcePathState$ | async; as state) {
+  @if (sourcePathState?.(); as state) {
     <div class="material-context-menu" cdkMenu>
       @if (state.isLoading) {
         <div class="menu-item">
@@ -354,7 +354,7 @@
 
 <!-- Destination Path Autocomplete Menu -->
 <ng-template #destAutocompleteMenu>
-  @if (destPathState$ | async; as state) {
+  @if (destPathState?.(); as state) {
     <div class="material-context-menu" cdkMenu>
       @if (state.isLoading) {
         <div class="menu-item">

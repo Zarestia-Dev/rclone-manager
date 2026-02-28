@@ -1,5 +1,5 @@
-import { Component, input, output, inject, computed } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { Component, input, output, inject, computed, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
 import { map } from 'rxjs';
 
@@ -87,12 +87,17 @@ export class SettingsPanelComponent {
   editSettings = output<{ section: string; settings: Record<string, unknown> }>();
 
   // Reactive restriction mode from settings
-  readonly restrictMode = toSignal(
+  readonly restrictMode = signal<boolean>(true);
+
+  constructor() {
     this.appSettingsService
       .selectSetting('general.restrict')
-      .pipe(map(setting => (setting?.value as boolean) ?? true)),
-    { initialValue: true }
-  );
+      .pipe(
+        map(setting => (setting?.value as boolean) ?? true),
+        takeUntilDestroyed()
+      )
+      .subscribe(val => this.restrictMode.set(val));
+  }
 
   // Derived State
   readonly settingsEntries = computed(() => {

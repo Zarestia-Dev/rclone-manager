@@ -11,7 +11,7 @@ import {
   untracked,
   model,
 } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -121,7 +121,7 @@ export class AppDetailComponent {
   private readonly jobService = inject(JobManagementService);
   readonly iconService = inject(IconService);
   private readonly translate = inject(TranslateService);
-  private readonly langChange = toSignal(this.translate.onLangChange);
+  private readonly langChange = signal<unknown | null>(null);
   private readonly formatFileSize = new FormatFileSizePipe();
   private readonly formatTime = new FormatTimePipe();
 
@@ -249,6 +249,10 @@ export class AppDetailComponent {
   showProfileSelector = computed(() => this.profiles().length > 1);
 
   constructor() {
+    this.translate.onLangChange.pipe(takeUntilDestroyed()).subscribe(val => {
+      this.langChange.set(val);
+    });
+
     // 1. Polling Effect - Uses group-based stats
     effect(onCleanup => {
       const isActive = this.operationActiveState();

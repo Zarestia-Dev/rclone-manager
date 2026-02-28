@@ -1,6 +1,14 @@
 import { TitleCasePipe } from '@angular/common';
-import { Component, computed, HostListener, input, signal, viewChild, inject } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import {
+  Component,
+  computed,
+  HostListener,
+  input,
+  signal,
+  viewChild,
+  inject,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSidenavModule } from '@angular/material/sidenav';
@@ -28,6 +36,7 @@ import { RemoteStatusService } from '../../shared/utils/remote-status.service';
   ],
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SidebarComponent {
   remotes = input.required<Remote[]>();
@@ -36,8 +45,7 @@ export class SidebarComponent {
 
   // Inject the i18n-aware service
   readonly statusService = inject(RemoteStatusService);
-
-  selectedRemote = toSignal(this.uiStateService.selectedRemote$);
+  selectedRemote = this.uiStateService.selectedRemote;
 
   searchTerm = signal('');
   searchVisible = signal(false);

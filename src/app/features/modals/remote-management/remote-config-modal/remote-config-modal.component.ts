@@ -8,9 +8,8 @@ import {
   OnDestroy,
   OnInit,
   signal,
-  Signal,
 } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import {
   FormBuilder,
@@ -21,7 +20,6 @@ import {
   ReactiveFormsModule,
   FormControlStatus,
 } from '@angular/forms';
-import { startWith } from 'rxjs/operators';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -154,8 +152,8 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   // Forms
   remoteForm!: FormGroup;
   remoteConfigForm!: FormGroup;
-  remoteFormStatus!: Signal<FormControlStatus>;
-  remoteConfigFormStatus!: Signal<FormControlStatus>;
+  remoteFormStatus = signal<FormControlStatus>('INVALID');
+  remoteConfigFormStatus = signal<FormControlStatus>('INVALID');
 
   // State
   remoteTypes = signal<RemoteType[]>([]);
@@ -198,8 +196,8 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   showAdvancedOptions = signal(false);
 
   isRemoteConfigLoading = signal(false);
-  isAuthInProgress = signal(false);
-  isAuthCancelled = signal(false);
+  isAuthInProgress = this.authStateService.isAuthInProgress;
+  isAuthCancelled = this.authStateService.isAuthCancelled;
   currentStep = signal(1);
 
   interactiveFlowState = signal<InteractiveFlowState>(createInitialInteractiveFlowState());
@@ -228,14 +226,15 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     this.remoteConfigForm = this.createRemoteConfigForm();
 
     // Initialize status signals
-    this.remoteFormStatus = toSignal(
-      this.remoteForm.statusChanges.pipe(startWith(this.remoteForm.status)),
-      { initialValue: this.remoteForm.status }
-    );
-    this.remoteConfigFormStatus = toSignal(
-      this.remoteConfigForm.statusChanges.pipe(startWith(this.remoteConfigForm.status)),
-      { initialValue: this.remoteConfigForm.status }
-    );
+    this.remoteFormStatus.set(this.remoteForm.status);
+    this.remoteForm.statusChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe(status => this.remoteFormStatus.set(status));
+
+    this.remoteConfigFormStatus.set(this.remoteConfigForm.status);
+    this.remoteConfigForm.statusChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe(status => this.remoteConfigFormStatus.set(status));
   }
 
   async ngOnInit(): Promise<void> {
@@ -627,17 +626,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
 
   private setupAuthStateListeners(): void {
+    // Sync local form state with auth progress
     this.authStateService.isAuthInProgress$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(isInProgress => {
-        this.isAuthInProgress.set(isInProgress);
         this.setFormState(isInProgress);
-      });
-
-    this.authStateService.isAuthCancelled$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(isCancelled => {
-        this.isAuthCancelled.set(isCancelled);
       });
   }
 
@@ -1818,6 +1811,9 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
   @HostListener('document:keydown.escape')
   close(): void {
-    this.modalService.animatedClose(this.dialogRef, false);
+    if (this.nautilusService.isNautilusOverlayOpen()) {
+      return;
+    }
+    this.modalService.animatedClose(this.dialogRef);
   }
 }

@@ -1,6 +1,5 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal, effect } from '@angular/core';
 import { WindowService } from './window.service';
-import { BehaviorSubject } from 'rxjs';
 import { platform } from '@tauri-apps/plugin-os';
 import { AppTab, Remote } from '@app/types';
 import { ApiClientService } from '../core/api-client.service';
@@ -18,16 +17,14 @@ export class UiStateService {
   private apiClient = inject(ApiClientService);
 
   // Viewport state
-  public isMaximized$ = this.windowService.isMaximized$;
+  public isMaximized = this.windowService.isMaximized;
 
   // Tab management
-  private currentTab = new BehaviorSubject<AppTab>('general' as AppTab);
-  public currentTab$ = this.currentTab.asObservable();
-
+  private readonly _currentTab = signal<AppTab>('general' as AppTab);
+  public readonly currentTab = this._currentTab.asReadonly();
   // Selected remote state
-  private selectedRemoteSource = new BehaviorSubject<Remote | null>(null);
-  public selectedRemote$ = this.selectedRemoteSource.asObservable();
-
+  private readonly _selectedRemote = signal<Remote | null>(null);
+  public readonly selectedRemote = this._selectedRemote.asReadonly();
   // Viewport settings configuration
   private viewportSettings = {
     maximized: {
@@ -54,27 +51,27 @@ export class UiStateService {
       }
     }
 
-    this.windowService.isMaximized$.subscribe(isMaximized => {
-      this.applyViewportSettings(isMaximized);
+    effect(() => {
+      this.applyViewportSettings(this.windowService.isMaximized());
     });
   }
 
   // === Tab Management ===
   setTab(tab: AppTab): void {
-    this.currentTab.next(tab);
+    this._currentTab.set(tab);
   }
 
   getCurrentTab(): AppTab {
-    return this.currentTab.value;
+    return this._currentTab();
   }
 
   // === Remote Selection ===
   setSelectedRemote(remote: Remote | null): void {
-    this.selectedRemoteSource.next(remote);
+    this._selectedRemote.set(remote);
   }
 
   resetSelectedRemote(): void {
-    this.selectedRemoteSource.next(null);
+    this._selectedRemote.set(null);
   }
 
   // === Path Utilities ===

@@ -1,9 +1,12 @@
-import { Component, inject, signal, isDevMode, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  inject,
+  signal,
+  effect,
+  isDevMode,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { toSignal, toObservable } from '@angular/core/rxjs-interop';
-import { merge, from, of, combineLatest } from 'rxjs';
-import { map, catchError, switchMap } from 'rxjs/operators';
-
 // Services
 import {
   EventListenersService,
@@ -34,45 +37,64 @@ export class BannerComponent {
   // --- STATE SIGNALS ---
   readonly showDevelopmentBanner = signal(isDevMode());
 
-  // Metered connection signal: combines initial check and real-time updates
-  readonly isMeteredConnection = toSignal(
-    merge(
-      from(this.systemInfoService.isNetworkMetered()).pipe(
-        catchError(() => of(false)),
-        map(v => !!v)
-      ),
-      this.eventListenersService.listenToNetworkStatusChanged().pipe(map(p => !!p?.isMetered))
-    ),
-    { initialValue: false }
-  );
+  // Metered connection signal
+  readonly isMeteredConnection = signal(false);
 
-  // Engine error signal: reflects the latest engine state/error event
-  readonly engineError = toSignal(
-    merge(
-      this.eventListenersService
-        .listenToRcloneEnginePasswordError()
-        .pipe(map(() => 'password' as const)),
-      this.eventListenersService.listenToRcloneEnginePathError().pipe(map(() => 'path' as const)),
-      this.eventListenersService.listenToRcloneEngineError().pipe(map(() => 'generic' as const)),
-      this.eventListenersService.listenToRcloneEngineReady().pipe(map(() => null))
-    ),
-    { initialValue: null }
-  );
+  // Engine error signal
+  readonly engineError = signal<'password' | 'path' | 'generic' | null>(null);
+
+  // Effect to handle flatpak warning display logic
+  constructor() {
+    effect(
+      () => {
+        const buildType = this.appUpdaterService.buildType();
+        const dismissed = this.flatpakDismissed();
+
+        if (buildType !== 'flatpak' || dismissed) {
+          this.showFlatpakWarning.set(false);
+          return;
+        }
+
+        this.appSettingsService
+          .getSettingValue<boolean>('runtime.flatpak_warn')
+          .then(warn => {
+            this.showFlatpakWarning.set(!!warn);
+          })
+          .catch(() => this.showFlatpakWarning.set(false));
+      },
+      { allowSignalWrites: true }
+    );
+
+    // Metered connection real-time updates
+    this.systemInfoService
+      .isNetworkMetered()
+      .then(isMetered => {
+        this.isMeteredConnection.set(!!isMetered);
+      })
+      .catch(() => this.isMeteredConnection.set(false));
+
+    this.eventListenersService.listenToNetworkStatusChanged().subscribe(p => {
+      this.isMeteredConnection.set(!!p?.isMetered);
+    });
+
+    // Engine error reflecting the latest event
+    this.eventListenersService.listenToRcloneEnginePasswordError().subscribe(() => {
+      this.engineError.set('password');
+    });
+    this.eventListenersService.listenToRcloneEnginePathError().subscribe(() => {
+      this.engineError.set('path');
+    });
+    this.eventListenersService.listenToRcloneEngineError().subscribe(() => {
+      this.engineError.set('generic');
+    });
+    this.eventListenersService.listenToRcloneEngineReady().subscribe(() => {
+      this.engineError.set(null);
+    });
+  }
 
   // Flatpak warning logic
   private readonly flatpakDismissed = signal(false);
-  readonly showFlatpakWarning = toSignal(
-    combineLatest([this.appUpdaterService.buildType$, toObservable(this.flatpakDismissed)]).pipe(
-      switchMap(([buildType, dismissed]) => {
-        if (buildType !== 'flatpak' || dismissed) return of(false);
-        return from(this.appSettingsService.getSettingValue<boolean>('runtime.flatpak_warn')).pipe(
-          map(warn => !!warn),
-          catchError(() => of(false))
-        );
-      })
-    ),
-    { initialValue: false }
-  );
+  readonly showFlatpakWarning = signal(false);
 
   async dismissFlatpakWarning(): Promise<void> {
     this.flatpakDismissed.set(true);

@@ -5,11 +5,17 @@
       matIconButton
       [cdkMenuTriggerFor]="addRemoteMenu"
       [attr.aria-label]="'titlebar.addRemoteMenu' | translate"
+      data-tauri-drag-region="false"
     >
       <mat-icon svgIcon="plus" aria-hidden="true"></mat-icon>
     </button>
 
-    <button matIconButton (click)="resetRemote()" [attr.aria-label]="'titlebar.home' | translate">
+    <button
+      matIconButton
+      (click)="resetRemote()"
+      [attr.aria-label]="'titlebar.home' | translate"
+      data-tauri-drag-region="false"
+    >
       <mat-icon svgIcon="rclone" aria-hidden="true"></mat-icon>
     </button>
 
@@ -21,6 +27,7 @@
         [disabled]="connectionService.status() === 'checking'"
         [attr.aria-label]="'titlebar.internetStatus' | translate"
         matTooltip="{{ getInternetStatusTooltip() }}"
+        data-tauri-drag-region="false"
       >
         @if (connectionService.status() !== 'checking') {
           <mat-icon svgIcon="no-internet" aria-hidden="true"> </mat-icon>
@@ -51,6 +58,7 @@
       matBadgePosition="below before"
       matBadgeSize="small"
       [matTooltip]="updateTooltip()"
+      data-tauri-drag-region="false"
     >
       <mat-icon svgIcon="menu-bar" aria-hidden="true"></mat-icon>
     </button>
@@ -63,6 +71,7 @@
           (click)="control.action()"
           [attr.aria-label]="control.label | translate"
           [class]="control.class || ''"
+          data-tauri-drag-region="false"
         >
           <mat-icon [svgIcon]="control.icon" aria-hidden="true"></mat-icon>
         </button>
@@ -75,16 +84,20 @@
 <ng-template #menu>
   <div cdkMenu class="material-context-menu">
     <!-- Theme Selector -->
-    <div class="theme-selector" [attr.aria-label]="'titlebar.menu.theme' | translate">
+    <div
+      class="theme-selector"
+      [attr.aria-label]="'titlebar.menu.theme' | translate"
+      data-tauri-drag-region="false"
+    >
       @for (theme of themes; track theme.id) {
         <button
           class="theme-button"
           [class]="theme.class"
-          [class.selected]="(currentTheme$ | async) === theme.id"
+          [class.selected]="currentTheme() === theme.id"
           (click)="setTheme(theme.id, $event)"
           [attr.aria-label]="theme.label | translate"
         >
-          @if ((currentTheme$ | async) === theme.id) {
+          @if (currentTheme() === theme.id) {
             <mat-icon
               [svgIcon]="theme.icon"
               class="checkmark"

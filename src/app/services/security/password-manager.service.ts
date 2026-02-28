@@ -1,10 +1,11 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal, Signal } from '@angular/core';
 import { LoadingStates, PasswordManagerState } from '@app/types';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { Observable } from 'rxjs';
+import { toObservable } from '@angular/core/rxjs-interop';
 
 @Injectable()
 export class PasswordManagerStateService {
-  private readonly _state$ = new BehaviorSubject<PasswordManagerState>({
+  private readonly _state = signal<PasswordManagerState>({
     hasStoredPassword: false,
     hasEnvPassword: false,
     isConfigEncrypted: false,
@@ -13,11 +14,15 @@ export class PasswordManagerStateService {
   });
 
   get state(): PasswordManagerState {
-    return this._state$.value;
+    return this._state();
+  }
+
+  get stateSignal(): Signal<PasswordManagerState> {
+    return this._state.asReadonly();
   }
 
   get state$(): Observable<PasswordManagerState> {
-    return this._state$.asObservable();
+    return toObservable(this._state);
   }
 
   setLoading(loading: Partial<LoadingStates>): void {
@@ -33,7 +38,7 @@ export class PasswordManagerStateService {
   }
 
   updateState(updates: Partial<PasswordManagerState>): void {
-    this._state$.next({ ...this.state, ...updates });
+    this._state.update(state => ({ ...state, ...updates }));
   }
 
   private createInitialLoadingState(): LoadingStates {

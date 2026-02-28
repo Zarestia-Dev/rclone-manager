@@ -46,21 +46,25 @@ mat-toolbar {
     }
   }
 
-  // CSS-based slide toggle animation
+  // GPU-accelerated slide toggle animation
   &.slide-toggle-banner {
-    max-height: 0;
-    padding: 0;
-    overflow: hidden;
+    position: relative;
+    transform: translateY(-100%);
     opacity: 0;
+    visibility: hidden;
+    margin-bottom: -44px; // Prevent layout jump when hidden
     transition:
-      max-height 0.3s ease-in-out,
-      padding 0.3s ease-in-out,
-      opacity 0.3s ease-in-out;
+      transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+      opacity 0.3s ease-in-out,
+      margin-bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+      visibility 0.3s;
+    will-change: transform;
 
     &.visible {
-      max-height: 44px;
-      padding: var(--banner-padding);
+      transform: translateY(0);
       opacity: 1;
+      visibility: visible;
+      margin-bottom: 0;
     }
   }
 }

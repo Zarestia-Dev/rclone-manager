@@ -1,5 +1,5 @@
-import { Injectable, OnDestroy, inject } from '@angular/core';
-import { BehaviorSubject, interval, Subscription, firstValueFrom, Subject } from 'rxjs';
+import { Injectable, OnDestroy, inject, signal } from '@angular/core';
+import { interval, Subject, Subscription, firstValueFrom } from 'rxjs';
 import { map, takeWhile, filter, takeUntil } from 'rxjs/operators';
 import { TranslateService } from '@ngx-translate/core';
 import { NotificationService } from '@app/services';
@@ -40,45 +40,45 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
 
   private destroy$ = new Subject<void>();
 
-  // Update state subjects (previously in UpdateStateService)
-  private buildTypeSubject = new BehaviorSubject<string | null>(null);
-  private updatesDisabledSubject = new BehaviorSubject<boolean>(false);
-  private hasUpdatesSubject = new BehaviorSubject<boolean>(false);
-  private updateInProgressSubject = new BehaviorSubject<boolean>(false);
+  // Update state signals
+  private readonly _buildType = signal<string | null>(null);
+  private readonly _updatesDisabled = signal<boolean>(false);
+  private readonly _hasUpdates = signal<boolean>(false);
+  private readonly _updateInProgress = signal<boolean>(false);
 
-  private updateAvailableSubject = new BehaviorSubject<UpdateMetadata | null>(null);
-  private downloadStatusSubject = new BehaviorSubject<DownloadStatus>({
+  private readonly _updateAvailable = signal<UpdateMetadata | null>(null);
+  private readonly _downloadStatus = signal<DownloadStatus>({
     downloadedBytes: 0,
     totalBytes: 0,
     percentage: 0,
     isComplete: false,
   });
-  private skippedVersionsSubject = new BehaviorSubject<string[]>([]);
-  private updateChannelSubject = new BehaviorSubject<string>('stable');
-  private restartRequiredSubject = new BehaviorSubject<boolean>(false);
+  private readonly _skippedVersions = signal<string[]>([]);
+  private readonly _updateChannel = signal<string>('stable');
+  private readonly _restartRequired = signal<boolean>(false);
+
+  // Public readonly signals
+  public readonly buildType = this._buildType.asReadonly();
+  public readonly updatesDisabled = this._updatesDisabled.asReadonly();
+  public readonly hasUpdates = this._hasUpdates.asReadonly();
+  public readonly updateInProgress = this._updateInProgress.asReadonly();
+  public readonly updateAvailable = this._updateAvailable.asReadonly();
+  public readonly downloadStatus = this._downloadStatus.asReadonly();
+  public readonly skippedVersions = this._skippedVersions.asReadonly();
+  public readonly updateChannel = this._updateChannel.asReadonly();
+  public readonly restartRequired = this._restartRequired.asReadonly();
 
   private statusPollingInterval = 500;
   private pollingSubscription: Subscription | null = null;
   private initialized = false;
 
-  // Public observables
-  public buildType$ = this.buildTypeSubject.asObservable();
-  public updatesDisabled$ = this.updatesDisabledSubject.asObservable();
-  public hasUpdates$ = this.hasUpdatesSubject.asObservable();
-  public updateInProgress$ = this.updateInProgressSubject.asObservable();
-  public updateAvailable$ = this.updateAvailableSubject.asObservable();
-  public downloadStatus$ = this.downloadStatusSubject.asObservable();
-  public skippedVersions$ = this.skippedVersionsSubject.asObservable();
-  public updateChannel$ = this.updateChannelSubject.asObservable();
-  public restartRequired$ = this.restartRequiredSubject.asObservable();
-
   async checkForUpdates(): Promise<UpdateMetadata | null> {
     try {
       await this.ensureInitialized();
 
-      console.debug('Checking for updates on channel:', this.updateChannelSubject.value);
+      console.debug('Checking for updates on channel:', this._updateChannel());
 
-      this.updateInProgressSubject.next(false);
+      this._updateInProgress.set(false);
       this.resetDownloadStatus();
 
       // Check if updates are disabled (use cached value)
@@ -88,21 +88,21 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
       }
 
       const result = await this.invokeCommand<UpdateMetadata | null>('fetch_update', {
-        channel: this.updateChannelSubject.value,
+        channel: this._updateChannel(),
       });
 
       if (result) {
         console.debug('Update available:', result.version);
 
         if (result.restartRequired) {
-          this.restartRequiredSubject.next(true);
+          this._restartRequired.set(true);
           return null;
         }
 
         if (result.updateInProgress) {
-          this.updateAvailableSubject.next(result);
-          this.updateInProgressSubject.next(true);
-          this.hasUpdatesSubject.next(true);
+          this._updateAvailable.set(result);
+          this._updateInProgress.set(true);
+          this._hasUpdates.set(true);
           this.startStatusPolling();
           return result;
         }
@@ -111,15 +111,15 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
           return null;
         }
 
-        this.updateAvailableSubject.next(result);
-        this.hasUpdatesSubject.next(true);
+        this._updateAvailable.set(result);
+        this._hasUpdates.set(true);
         this.notificationService.showInfo(
           this.translate.instant('updates.availableNotification', { version: result.version }),
           this.translate.instant('common.ok'),
           10000
         );
       } else {
-        this.updateAvailableSubject.next(null);
+        this._updateAvailable.set(null);
       }
 
       return result;
@@ -131,7 +131,7 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
   }
 
   async installUpdate(): Promise<void> {
-    const update = this.updateAvailableSubject.value;
+    const update = this._updateAvailable();
     if (!update) {
       this.notificationService.showWarning(this.translate.instant('updates.noUpdateAvailable'));
       return;
@@ -156,7 +156,7 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
         }
       }
 
-      this.updateInProgressSubject.next(true);
+      this._updateInProgress.set(true);
       this.resetDownloadStatus();
 
       this.startStatusPolling();
@@ -165,7 +165,7 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
       console.error('Failed to install update:', error);
       this.notificationService.showError(this.translate.instant('updates.installFailed'));
       this.stopStatusPolling();
-      this.updateInProgressSubject.next(false);
+      this._updateInProgress.set(false);
     }
   }
 
@@ -177,15 +177,15 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
       .subscribe(async () => {
         try {
           const status = await this.invokeCommand<DownloadStatus>('get_download_status');
-          this.downloadStatusSubject.next(status);
+          this._downloadStatus.set(status);
 
           // If backend reported a failure, stop polling and notify
           if (status.isFailed) {
             const msg = status.failureMessage || this.translate.instant('updates.installFailed');
             this.notificationService.showError(msg);
-            this.updateInProgressSubject.next(false);
-            this.updateAvailableSubject.next(null);
-            this.hasUpdatesSubject.next(false);
+            this._updateInProgress.set(false);
+            this._updateAvailable.set(null);
+            this._hasUpdates.set(false);
             this.stopStatusPolling();
             return;
           }
@@ -207,14 +207,14 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
   }
 
   private handleUpdateComplete(): void {
-    this.updateInProgressSubject.next(false);
-    this.updateAvailableSubject.next(null);
-    this.hasUpdatesSubject.next(false);
+    this._updateInProgress.set(false);
+    this._updateAvailable.set(null);
+    this._hasUpdates.set(false);
     this.stopStatusPolling();
 
     if (this.uiStateService.platform !== 'windows') {
       // Linux/MacOS: Set flag and show notification
-      this.restartRequiredSubject.next(true);
+      this._restartRequired.set(true);
       this.notificationService.showSuccess(this.translate.instant('updates.installSuccess'));
     } else {
       // Windows: the updater will auto-restart the application; no need for a modal here
@@ -232,7 +232,7 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
   }
 
   private resetDownloadStatus(): void {
-    this.downloadStatusSubject.next({
+    this._downloadStatus.set({
       downloadedBytes: 0,
       totalBytes: 0,
       percentage: 0,
@@ -241,11 +241,11 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
   }
 
   getUpdateAvailable(): UpdateMetadata | null {
-    return this.updateAvailableSubject.value;
+    return this._updateAvailable();
   }
 
   isUpdateInProgress(): boolean {
-    return this.updateInProgressSubject.value && !this.updatesDisabledSubject.value;
+    return this._updateInProgress() && !this._updatesDisabled();
   }
 
   async skipVersion(version: string): Promise<void> {
@@ -254,8 +254,8 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
       if (!currentSkipped.includes(version)) {
         const newSkipped = [...currentSkipped, version];
         await this.appSettingsService.saveSetting('runtime', 'app_skipped_updates', newSkipped);
-        this.skippedVersionsSubject.next(newSkipped);
-        this.updateAvailableSubject.next(null);
+        this._skippedVersions.set(newSkipped);
+        this._updateAvailable.set(null);
         this.notificationService.showInfo(
           this.translate.instant('updates.skipVersion', { version })
         );
@@ -271,7 +271,7 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
       const currentSkipped = await this.getSkippedVersions();
       const newSkipped = currentSkipped.filter(v => v !== version);
       await this.appSettingsService.saveSetting('runtime', 'app_skipped_updates', newSkipped);
-      this.skippedVersionsSubject.next(newSkipped);
+      this._skippedVersions.set(newSkipped);
       await this.checkForUpdates();
     } catch (error) {
       console.error('Failed to unskip version:', error);
@@ -280,7 +280,7 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
   }
 
   isVersionSkipped(version: string): boolean {
-    return this.skippedVersionsSubject.value.includes(version);
+    return this._skippedVersions().includes(version);
   }
 
   async getSkippedVersions(): Promise<string[]> {
@@ -317,17 +317,17 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
   }
 
   getCurrentChannel(): string {
-    return this.updateChannelSubject.value;
+    return this._updateChannel();
   }
 
   async setChannel(channel: string): Promise<void> {
     try {
       await this.appSettingsService.saveSetting('runtime', 'app_update_channel', channel);
-      this.updateChannelSubject.next(channel);
+      this._updateChannel.set(channel);
 
       // Clear update status when channel is changed
-      this.updateAvailableSubject.next(null);
-      this.hasUpdatesSubject.next(false);
+      this._updateAvailable.set(null);
+      this._hasUpdates.set(false);
       this.resetDownloadStatus();
 
       this.notificationService.showInfo(
@@ -366,19 +366,19 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
         this.checkIfUpdatesDisabled(),
       ]);
 
-      this.buildTypeSubject.next(await this.getBuildType());
-      this.skippedVersionsSubject.next(skippedVersions);
-      this.updateChannelSubject.next(channel);
-      this.updatesDisabledSubject.next(updatesDisabled);
+      this._buildType.set(await this.getBuildType());
+      this._skippedVersions.set(skippedVersions);
+      this._updateChannel.set(channel);
+      this._updatesDisabled.set(updatesDisabled);
 
       this.initialized = true;
     } catch (error) {
       console.error('Failed to initialize updater service:', error);
       // Set defaults on error
-      this.skippedVersionsSubject.next([]);
-      this.updateChannelSubject.next('stable');
-      this.updatesDisabledSubject.next(false);
-      this.buildTypeSubject.next(null);
+      this._skippedVersions.set([]);
+      this._updateChannel.set('stable');
+      this._updatesDisabled.set(false);
+      this._buildType.set(null);
     }
   }
 
@@ -392,7 +392,7 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
   }
 
   public areUpdatesDisabled(): boolean {
-    return this.updatesDisabledSubject.value;
+    return this._updatesDisabled();
   }
 
   constructor() {
@@ -417,7 +417,7 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
       .subscribe(metadata => {
         console.debug('Received update found event:', metadata);
         // Only trigger if we haven't already processed this update
-        const current = this.updateAvailableSubject.value;
+        const current = this._updateAvailable();
         if (!current || current.version !== metadata.version) {
           // Check if skipped
           if (this.isVersionSkipped(metadata.version)) {
@@ -425,8 +425,8 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
             return;
           }
 
-          this.updateAvailableSubject.next(metadata);
-          this.hasUpdatesSubject.next(true);
+          this._updateAvailable.set(metadata);
+          this._hasUpdates.set(true);
 
           // Show notification if not already shown
           this.notificationService.showInfo(
@@ -441,8 +441,9 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
   }
 
   public async getBuildType(): Promise<string> {
-    if (this.buildTypeSubject.value) {
-      return this.buildTypeSubject.value;
+    const currentBuildType = this._buildType();
+    if (currentBuildType) {
+      return currentBuildType;
     }
     return this.invokeCommand<string>('get_build_type');
   }

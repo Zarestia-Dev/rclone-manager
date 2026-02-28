@@ -6,6 +6,7 @@ import {
   inject,
   signal,
   DestroyRef,
+  effect,
 } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
@@ -37,7 +38,6 @@ import {
   BackendService,
   ModalService,
 } from '@app/services';
-import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 // Configure renderer once
 const renderer = new Renderer();
@@ -99,6 +99,12 @@ export class AboutModalComponent implements OnInit {
   readonly backendService = inject(BackendService);
   readonly modalService = inject(ModalService);
 
+  constructor() {
+    effect(() => {
+      this.rcloneAutoCheck.set(this.rcloneUpdateService.autoCheck());
+    });
+  }
+
   // Local State Signals
   readonly overlayStack = signal<OverlayView[]>([]);
   readonly scrolled = signal<boolean>(false);
@@ -112,22 +118,12 @@ export class AboutModalComponent implements OnInit {
 
   // App Updater Signals
   readonly appAutoCheckUpdates = signal<boolean>(true); // Initial default, updated in init
-  readonly appUpdateAvailable = toSignal(this.appUpdaterService.updateAvailable$, {
-    initialValue: null,
-  });
-  readonly appUpdateInProgress = toSignal(this.appUpdaterService.updateInProgress$, {
-    initialValue: false,
-  });
-  readonly appUpdateChannel = toSignal(this.appUpdaterService.updateChannel$, {
-    initialValue: 'stable',
-  });
-  readonly appSkippedVersions = toSignal(this.appUpdaterService.skippedVersions$, {
-    initialValue: [],
-  });
-  readonly appRestartRequired = toSignal(this.appUpdaterService.restartRequired$, {
-    initialValue: false,
-  });
-  readonly appDownloadStatus = toSignal(this.appUpdaterService.downloadStatus$);
+  readonly appUpdateAvailable = this.appUpdaterService.updateAvailable;
+  readonly appUpdateInProgress = this.appUpdaterService.updateInProgress;
+  readonly appUpdateChannel = this.appUpdaterService.updateChannel;
+  readonly appSkippedVersions = this.appUpdaterService.skippedVersions;
+  readonly appRestartRequired = this.appUpdaterService.restartRequired;
+  readonly appDownloadStatus = this.appUpdaterService.downloadStatus;
 
   // Computed App Updater Signals
   readonly appUpdateReleaseChannel = computed(() => {
@@ -145,22 +141,9 @@ export class AboutModalComponent implements OnInit {
   });
 
   // Rclone Updater Signals
-  readonly rcloneUpdateStatus = toSignal(this.rcloneUpdateService.updateStatus$, {
-    initialValue: {
-      checking: false,
-      updating: false,
-      available: false,
-      error: null,
-      lastCheck: null,
-      updateInfo: null,
-    },
-  });
-  readonly rcloneUpdateChannel = toSignal(this.rcloneUpdateService.updateChannel$, {
-    initialValue: 'stable',
-  });
-  readonly rcloneSkippedVersions = toSignal(this.rcloneUpdateService.skippedVersions$, {
-    initialValue: [],
-  });
+  readonly rcloneUpdateStatus = this.rcloneUpdateService.updateStatus;
+  readonly rcloneUpdateChannel = this.rcloneUpdateService.updateChannel;
+  readonly rcloneSkippedVersions = this.rcloneUpdateService.skippedVersions;
   readonly rcloneAutoCheck = signal<boolean>(true);
 
   // Rclone Computed
@@ -234,10 +217,6 @@ export class AboutModalComponent implements OnInit {
 
     this.loadAppAutoCheckSetting();
     this.loadFsCacheEntries();
-
-    this.rcloneUpdateService.autoCheck$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(enabled => this.rcloneAutoCheck.set(enabled));
   }
 
   readonly debugInfo = signal<DebugInfo | null>(null);

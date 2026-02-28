@@ -7,7 +7,7 @@ import {
   computed,
   WritableSignal,
 } from '@angular/core';
-import { BehaviorSubject, Subject } from 'rxjs';
+import { Subject } from 'rxjs';
 import { Overlay, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { take } from 'rxjs/operators';
@@ -39,19 +39,15 @@ export class NautilusService {
   private destroyRef = inject(DestroyRef);
 
   // Nautilus / Browser overlay
-  private _isNautilusOverlayOpen = new BehaviorSubject<boolean>(false);
-  public isNautilusOverlayOpen$ = this._isNautilusOverlayOpen.asObservable();
-
-  public get isNautilusOverlayOpen(): boolean {
-    return this._isNautilusOverlayOpen.getValue();
-  }
+  private readonly _isNautilusOverlayOpen = signal<boolean>(false);
+  public readonly isNautilusOverlayOpen = this._isNautilusOverlayOpen.asReadonly();
 
   // File Picker state
-  private _filePickerState = new BehaviorSubject<{
+  private readonly _filePickerState = signal<{
     isOpen: boolean;
     options?: FilePickerConfig;
   }>({ isOpen: false });
-  public filePickerState$ = this._filePickerState.asObservable();
+  public readonly filePickerState = this._filePickerState.asReadonly();
   private _filePickerResult = new Subject<FilePickerResult>();
   public filePickerResult$ = this._filePickerResult.asObservable();
 
@@ -156,9 +152,9 @@ export class NautilusService {
 
   toggleNautilusOverlay(): void {
     if (this.browserOverlayRef) {
-      this.closeBrowser();
+      this.createBrowserOverlay();
     } else {
-      this._isNautilusOverlayOpen.next(true);
+      this._isNautilusOverlayOpen.set(true);
       this.createBrowserOverlay();
     }
   }
@@ -194,7 +190,7 @@ export class NautilusService {
     }
 
     // Not open - create the overlay
-    this._isNautilusOverlayOpen.next(true);
+    this._isNautilusOverlayOpen.set(true);
     this.createBrowserOverlay(showAnimation);
   }
 
@@ -212,7 +208,7 @@ export class NautilusService {
     }
 
     // Not open - create the overlay
-    this._isNautilusOverlayOpen.next(true);
+    this._isNautilusOverlayOpen.set(true);
     this.createBrowserOverlay(showAnimation);
   }
 
@@ -226,7 +222,7 @@ export class NautilusService {
     const requestId = options.requestId ?? this.createRequestId();
     const optionsWithId: FilePickerConfig = { ...options, requestId };
 
-    this._filePickerState.next({ isOpen: true, options: optionsWithId });
+    this._filePickerState.set({ isOpen: true, options: optionsWithId });
     this.createPickerOverlay();
   }
 
@@ -234,7 +230,7 @@ export class NautilusService {
    * Closes the file picker and returns the result.
    */
   closeFilePicker(result: FileBrowserItem[] | null): void {
-    const requestId = this._filePickerState.getValue().options?.requestId;
+    const requestId = this._filePickerState().options?.requestId;
     const items = result ?? [];
 
     const config: FilePickerResult = {
@@ -253,7 +249,7 @@ export class NautilusService {
       requestId,
     };
     this._filePickerResult.next(config);
-    this._filePickerState.next({ isOpen: false });
+    this._filePickerState.set({ isOpen: false });
 
     if (this.pickerComponentRef) {
       this.pickerComponentRef.location.nativeElement.classList.add('slide-overlay-leave');
@@ -271,7 +267,7 @@ export class NautilusService {
    * Closes the Nautilus browser overlay.
    */
   closeBrowser(): void {
-    this._isNautilusOverlayOpen.next(false);
+    this._isNautilusOverlayOpen.set(false);
 
     if (this.browserComponentRef) {
       this.browserComponentRef.location.nativeElement.classList.add('slide-overlay-leave');

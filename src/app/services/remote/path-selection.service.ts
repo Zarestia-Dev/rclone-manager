@@ -1,6 +1,5 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal, WritableSignal } from '@angular/core';
 import { AbstractControl } from '@angular/forms';
-import { BehaviorSubject, Observable } from 'rxjs';
 import { RemoteManagementService } from './remote-management.service';
 import { Entry } from '@app/types';
 
@@ -18,7 +17,7 @@ export interface PathSelectionState {
 export class PathSelectionService {
   private readonly remoteManagementService = inject(RemoteManagementService);
 
-  private readonly pathStates = new Map<string, BehaviorSubject<PathSelectionState>>();
+  private readonly pathStates = new Map<string, WritableSignal<PathSelectionState>>();
 
   // ============================================================================
   // PUBLIC API
@@ -32,9 +31,10 @@ export class PathSelectionService {
     fieldId: string,
     remoteName: string,
     initialPath = ''
-  ): Observable<PathSelectionState> {
-    if (this.pathStates.has(fieldId)) {
-      return this.pathStates.get(fieldId)!.asObservable();
+  ): WritableSignal<PathSelectionState> {
+    const existingState = this.pathStates.get(fieldId);
+    if (existingState) {
+      return existingState;
     }
 
     const initialState: PathSelectionState = {
@@ -45,13 +45,13 @@ export class PathSelectionService {
       isLoading: false,
     };
 
-    const state$ = new BehaviorSubject<PathSelectionState>(initialState);
-    this.pathStates.set(fieldId, state$);
+    const stateSignal = signal<PathSelectionState>(initialState);
+    this.pathStates.set(fieldId, stateSignal);
 
     // Initial fetch of directory contents
     this.fetchEntries(fieldId, remoteName, initialPath);
 
-    return state$.asObservable();
+    return stateSignal;
   }
 
   /**
@@ -59,7 +59,6 @@ export class PathSelectionService {
    */
   public unregisterField(fieldId: string): void {
     if (this.pathStates.has(fieldId)) {
-      this.pathStates.get(fieldId)?.complete();
       this.pathStates.delete(fieldId);
     }
   }
@@ -68,7 +67,7 @@ export class PathSelectionService {
    * Handles user typing in the input field.
    */
   public updateInput(fieldId: string, value: string): void {
-    const state = this.pathStates.get(fieldId)?.getValue();
+    const state = this.pathStates.get(fieldId)?.();
     if (!state) return;
 
     this.fetchEntries(fieldId, state.remoteName, value);
@@ -82,7 +81,7 @@ export class PathSelectionService {
     entryName: string,
     formControl?: AbstractControl | null
   ): void {
-    const state = this.pathStates.get(fieldId)?.getValue();
+    const state = this.pathStates.get(fieldId)?.();
     if (!state) return;
 
     const selectedEntry = state.options.find(e => e.Name === entryName);
@@ -101,7 +100,7 @@ export class PathSelectionService {
    * Navigates one level up in the directory structure.
    */
   public navigateUp(fieldId: string, formControl?: AbstractControl | null): void {
-    const state = this.pathStates.get(fieldId)?.getValue();
+    const state = this.pathStates.get(fieldId)?.();
     if (!state) return;
 
     const parentPath = this.getParentPath(state.currentPath);
@@ -118,11 +117,11 @@ export class PathSelectionService {
   // ============================================================================
 
   private async fetchEntries(fieldId: string, remoteName: string, path: string): Promise<void> {
-    const state$ = this.pathStates.get(fieldId);
-    if (!state$) return;
+    const stateSignal = this.pathStates.get(fieldId);
+    if (!stateSignal) return;
 
     // Set loading state
-    state$.next({ ...state$.getValue(), isLoading: true, currentPath: path });
+    stateSignal.update(s => ({ ...s, isLoading: true, currentPath: path }));
 
     try {
       // For local paths (empty remoteName), use '/' as the filesystem root
@@ -136,10 +135,10 @@ export class PathSelectionService {
       );
       const entries = response && Array.isArray(response.list) ? response.list : [];
       // Update state with new entries
-      state$.next({ ...state$.getValue(), options: entries, isLoading: false });
+      stateSignal.update(s => ({ ...s, options: entries, isLoading: false }));
     } catch (error) {
       console.error(`Error fetching entries for ${fieldId}:`, error);
-      state$.next({ ...state$.getValue(), options: [], isLoading: false });
+      stateSignal.update(s => ({ ...s, options: [], isLoading: false }));
     }
   }
 
@@ -169,7 +168,7 @@ export class PathSelectionService {
   }
 
   public resetPath(fieldId: string): void {
-    const state = this.pathStates.get(fieldId)?.getValue();
+    const state = this.pathStates.get(fieldId)?.();
     if (!state) return;
 
     // Fetch entries for the root directory of the current remote

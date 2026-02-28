@@ -1,5 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { merge } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { JobManagementService } from '../file-operations/job-management.service';
@@ -36,13 +36,9 @@ export class RemoteFacadeService extends TauriBaseService {
 
   // Reactive data sources from underlying services
   // Expose these as readonly signals for consumers who need raw lists (e.g. HomeComponent)
-  readonly jobs = toSignal(this.jobService.jobs$, { initialValue: [] as JobInfo[] });
-  readonly mountedRemotes = toSignal(this.mountService.mountedRemotes$, {
-    initialValue: [] as MountedRemote[],
-  });
-  readonly runningServes = toSignal(this.serveService.runningServes$, {
-    initialValue: [] as ServeListItem[],
-  });
+  readonly jobs = this.jobService.jobs;
+  readonly mountedRemotes = this.mountService.mountedRemotes;
+  readonly runningServes = this.serveService.runningServes;
 
   // Local state for non-streamed data
   private baseRemotes = signal<Remote[]>([]);

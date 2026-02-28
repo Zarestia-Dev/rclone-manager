@@ -1,11 +1,11 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { NotificationService } from '@app/services';
-import { BehaviorSubject, firstValueFrom, Observable } from 'rxjs';
+import { firstValueFrom, Observable } from 'rxjs';
 import { map, distinctUntilChanged, filter, first } from 'rxjs/operators';
 import { TranslateService } from '@ngx-translate/core';
 import { CheckResult, SettingMetadata } from '@app/types';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { EventListenersService } from '../system/event-listeners.service';
 
 @Injectable({
@@ -16,8 +16,9 @@ export class AppSettingsService extends TauriBaseService {
   private translate = inject(TranslateService);
   private eventListeners = inject(EventListenersService);
 
-  private optionsState$ = new BehaviorSubject<Record<string, SettingMetadata> | null>(null);
-  public options$ = this.optionsState$.asObservable();
+  private readonly _options = signal<Record<string, SettingMetadata> | null>(null);
+  public readonly options = this._options.asReadonly();
+  public readonly options$ = toObservable(this._options);
 
   constructor() {
     super();
@@ -33,7 +34,7 @@ export class AppSettingsService extends TauriBaseService {
   }
 
   async loadSettings(): Promise<void> {
-    if (this.optionsState$.getValue()) {
+    if (this._options()) {
       return;
     }
     try {
@@ -42,7 +43,7 @@ export class AppSettingsService extends TauriBaseService {
       );
       console.debug(response);
 
-      this.optionsState$.next(response.options);
+      this._options.set(response.options);
     } catch (error) {
       console.error('Failed to load settings:', error);
       this.notificationService.showError(this.translate.instant('settings.loadFailed'));
@@ -81,7 +82,7 @@ export class AppSettingsService extends TauriBaseService {
 
   async saveSetting(category: string, key: string, value: unknown): Promise<void> {
     const fullKey = `${category}.${key}`;
-    const currentState = this.optionsState$.getValue();
+    const currentState = this._options();
 
     if (currentState && currentState[fullKey]) {
       const newState = {
@@ -91,7 +92,7 @@ export class AppSettingsService extends TauriBaseService {
           value: value,
         },
       };
-      this.optionsState$.next(newState);
+      this._options.set(newState);
     }
 
     return this.invokeCommand('save_setting', { category, key, value });
@@ -103,7 +104,7 @@ export class AppSettingsService extends TauriBaseService {
    */
   async resetSetting(category: string, key: string): Promise<unknown> {
     const fullKey = `${category}.${key}`;
-    const currentState = this.optionsState$.getValue();
+    const currentState = this._options();
 
     try {
       // Backend returns the default value for the setting
@@ -117,7 +118,7 @@ export class AppSettingsService extends TauriBaseService {
             value: defaultValue,
           },
         };
-        this.optionsState$.next(newState);
+        this._options.set(newState);
       }
 
       return defaultValue;
@@ -146,7 +147,7 @@ export class AppSettingsService extends TauriBaseService {
 
     if (confirmed) {
       await this.invokeCommand('reset_settings');
-      this.optionsState$.next(null);
+      this._options.set(null);
       await this.loadSettings();
       this.notificationService.showSuccess(this.translate.instant('settings.resetSuccess'));
       return true;
@@ -158,7 +159,7 @@ export class AppSettingsService extends TauriBaseService {
    * Merges incoming changes from backend events into the current state.
    */
   private updateStateFromEvent(payload: Record<string, Record<string, unknown>>): void {
-    const currentState = this.optionsState$.getValue();
+    const currentState = this._options();
     if (!currentState) return;
     const newState = { ...currentState };
     let hasChanges = false;
@@ -180,7 +181,7 @@ export class AppSettingsService extends TauriBaseService {
 
     // Only emit new state if something actually changed
     if (hasChanges) {
-      this.optionsState$.next(newState);
+      this._options.set(newState);
     } else {
       console.debug('No actual changes detected, skipping state update');
     }

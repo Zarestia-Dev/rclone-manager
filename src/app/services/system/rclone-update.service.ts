@@ -1,9 +1,9 @@
-import { Injectable, OnDestroy, inject } from '@angular/core';
+import { Injectable, OnDestroy, inject, signal } from '@angular/core';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { EventListenersService } from './event-listeners.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { NotificationService } from '@app/services';
-import { BehaviorSubject, Subject, takeUntil, filter, map } from 'rxjs';
+import { Subject, takeUntil, filter, map } from 'rxjs';
 import { TranslateService } from '@ngx-translate/core';
 
 import { RcloneUpdateInfo, UpdateStatus, UpdateResult } from '@app/types';
@@ -12,7 +12,7 @@ import { RcloneUpdateInfo, UpdateStatus, UpdateResult } from '@app/types';
   providedIn: 'root',
 })
 export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
-  private updateStatusSubject = new BehaviorSubject<UpdateStatus>({
+  private readonly _updateStatus = signal<UpdateStatus>({
     checking: false,
     updating: false,
     available: false,
@@ -21,17 +21,17 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
     updateInfo: null,
   });
 
-  private skippedVersionsSubject = new BehaviorSubject<string[]>([]);
-  private updateChannelSubject = new BehaviorSubject<string>('stable');
-  private autoCheckSubject = new BehaviorSubject<boolean>(true);
+  private readonly _skippedVersions = signal<string[]>([]);
+  private readonly _updateChannel = signal<string>('stable');
+  private readonly _autoCheck = signal<boolean>(true);
 
   private destroy$ = new Subject<void>();
   private initialized = false;
 
-  public updateStatus$ = this.updateStatusSubject.asObservable();
-  public skippedVersions$ = this.skippedVersionsSubject.asObservable();
-  public updateChannel$ = this.updateChannelSubject.asObservable();
-  public autoCheck$ = this.autoCheckSubject.asObservable();
+  public readonly updateStatus = this._updateStatus.asReadonly();
+  public readonly skippedVersions = this._skippedVersions.asReadonly();
+  public readonly updateChannel = this._updateChannel.asReadonly();
+  public readonly autoCheck = this._autoCheck.asReadonly();
 
   private eventListenersService = inject(EventListenersService);
   private appSettingsService = inject(AppSettingsService);
@@ -55,9 +55,9 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
         this.getAutoCheckEnabled(),
       ]);
 
-      this.skippedVersionsSubject.next(skippedVersions);
-      this.updateChannelSubject.next(channel);
-      this.autoCheckSubject.next(autoCheck);
+      this._skippedVersions.set(skippedVersions);
+      this._updateChannel.set(channel);
+      this._autoCheck.set(autoCheck);
 
       this.initialized = true;
       console.debug('Rclone update service initialized');
@@ -80,7 +80,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
         next: () => {
           try {
             console.debug('Rclone Engine updating started');
-            this.updateStatus({ updating: true });
+            this.patchUpdateStatus({ updating: true });
           } catch (error) {
             console.error('Error handling Rclone Engine updating event:', error);
           }
@@ -90,7 +90,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
     // Listen for engine restarted (indicates update completion)
     this.eventListenersService.listenToEngineRestarted().subscribe(event => {
       if (event.reason === 'rclone_update') {
-        this.updateStatus({ updating: false });
+        this.patchUpdateStatus({ updating: false });
         this.checkForUpdates();
       }
     });
@@ -110,13 +110,13 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
   }
 
   async checkForUpdates(): Promise<RcloneUpdateInfo | null> {
-    this.updateStatus({ checking: true, error: null });
+    this.patchUpdateStatus({ checking: true, error: null });
 
     try {
       // Ensure initialization
       await this.initialize();
 
-      const channel = this.updateChannelSubject.value;
+      const channel = this._updateChannel();
       const updateInfo = await this.invokeCommand<RcloneUpdateInfo>('check_rclone_update', {
         channel,
       });
@@ -126,7 +126,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
       return updateInfo;
     } catch (error) {
       console.error('Failed to check for updates:', error);
-      this.updateStatus({
+      this.patchUpdateStatus({
         checking: false,
         error: error as string,
         lastCheck: new Date(),
@@ -145,16 +145,16 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
   }
 
   async performUpdate(): Promise<boolean> {
-    this.updateStatus({ updating: true, error: null });
+    this.patchUpdateStatus({ updating: true, error: null });
 
     try {
-      const channel = this.updateChannelSubject.value;
+      const channel = this._updateChannel();
       const result = await this.invokeCommand<UpdateResult>('update_rclone', {
         channel,
       });
 
       if (result.success) {
-        this.updateStatus({
+        this.patchUpdateStatus({
           updating: false,
           available: false,
           updateInfo: null,
@@ -172,7 +172,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
 
         return true;
       } else {
-        this.updateStatus({
+        this.patchUpdateStatus({
           updating: false,
           error: result.message || this.translate.instant('rcloneUpdate.failed'),
         });
@@ -180,7 +180,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
       }
     } catch (error) {
       console.error('Failed to update rclone:', error);
-      this.updateStatus({
+      this.patchUpdateStatus({
         updating: false,
         error: error as string,
       });
@@ -188,13 +188,12 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
     }
   }
 
-  private updateStatus(update: Partial<UpdateStatus>): void {
-    const currentStatus = this.updateStatusSubject.value;
-    this.updateStatusSubject.next({ ...currentStatus, ...update });
+  private patchUpdateStatus(update: Partial<UpdateStatus>): void {
+    this._updateStatus.update(current => ({ ...current, ...update }));
   }
 
   getCurrentStatus(): UpdateStatus {
-    return this.updateStatusSubject.value;
+    return this._updateStatus();
   }
 
   // Channel management methods
@@ -213,10 +212,10 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
   async setChannel(channel: string): Promise<void> {
     try {
       await this.appSettingsService.saveSetting('runtime', 'rclone_update_channel', channel);
-      this.updateChannelSubject.next(channel);
+      this._updateChannel.set(channel);
 
       // Clear update status when channel is changed
-      this.updateStatus({
+      this.patchUpdateStatus({
         available: false,
         updateInfo: null,
         error: null,
@@ -237,7 +236,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
   }
 
   getCurrentChannel(): string {
-    return this.updateChannelSubject.value;
+    return this._updateChannel();
   }
 
   // Version skipping methods
@@ -260,15 +259,15 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
       if (!currentSkipped.includes(version)) {
         const newSkipped = [...currentSkipped, version];
         await this.appSettingsService.saveSetting('runtime', 'rclone_skipped_updates', newSkipped);
-        this.skippedVersionsSubject.next(newSkipped);
+        this._skippedVersions.set(newSkipped);
 
         // Immediately update the UI to hide the available update
-        const currentStatus = this.updateStatusSubject.value;
+        const currentStatus = this._updateStatus();
         if (
           currentStatus.updateInfo?.latest_version === version ||
           currentStatus.updateInfo?.latest_version_clean === version
         ) {
-          this.updateStatus({
+          this.patchUpdateStatus({
             available: false,
             updateInfo: currentStatus.updateInfo
               ? { ...currentStatus.updateInfo, update_available: false }
@@ -295,7 +294,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
       const currentSkipped = await this.getSkippedVersions();
       const newSkipped = currentSkipped.filter(v => v !== version);
       await this.appSettingsService.saveSetting('runtime', 'rclone_skipped_updates', newSkipped);
-      this.skippedVersionsSubject.next(newSkipped);
+      this._skippedVersions.set(newSkipped);
 
       this.checkForUpdates();
 
@@ -313,7 +312,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
   }
 
   isVersionSkipped(version: string): boolean {
-    return this.skippedVersionsSubject.value.includes(version);
+    return this._skippedVersions().includes(version);
   }
 
   // Auto-check methods
@@ -332,7 +331,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
   async setAutoCheckEnabled(enabled: boolean): Promise<void> {
     try {
       await this.appSettingsService.saveSetting('runtime', 'rclone_auto_check_updates', enabled);
-      this.autoCheckSubject.next(enabled);
+      this._autoCheck.set(enabled);
 
       this.notificationService.openSnackBar(
         this.translate.instant(
@@ -350,7 +349,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
   }
 
   private processUpdateResult(updateInfo: RcloneUpdateInfo): void {
-    const channel = this.updateChannelSubject.value;
+    const channel = this._updateChannel();
     // Check if this version is skipped
     const isSkipped =
       updateInfo.update_available &&
@@ -359,7 +358,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
     // If version is skipped, modify the updateInfo to reflect that
     const finalUpdateInfo = isSkipped ? { ...updateInfo, update_available: false } : updateInfo;
 
-    this.updateStatus({
+    this.patchUpdateStatus({
       checking: false,
       available: updateInfo.update_available && !isSkipped,
       lastCheck: new Date(),

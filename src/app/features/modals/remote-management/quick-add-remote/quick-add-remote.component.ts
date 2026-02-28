@@ -8,7 +8,6 @@ import {
   signal,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
 import {
   FormBuilder,
   FormControl,
@@ -94,13 +93,9 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   remoteTypes: RemoteType[] = [];
   existingRemotes: string[] = [];
 
-  // Auth state signals (from service observables)
-  readonly isAuthInProgress = toSignal(this.authStateService.isAuthInProgress$, {
-    initialValue: false,
-  });
-  readonly isAuthCancelled = toSignal(this.authStateService.isAuthCancelled$, {
-    initialValue: false,
-  });
+  // Auth state signals (from service)
+  readonly isAuthInProgress = this.authStateService.isAuthInProgress;
+  readonly isAuthCancelled = this.authStateService.isAuthCancelled;
 
   // Component state signals
   readonly currentStep = signal<WizardStep>('setup');
@@ -614,7 +609,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
 
   @HostListener('document:keydown.escape')
   close(): void {
-    if (this.nautilusService.isNautilusOverlayOpen) {
+    if (this.nautilusService.isNautilusOverlayOpen()) {
       return;
     }
     this.modalService.animatedClose(this.dialogRef);

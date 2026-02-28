@@ -9,7 +9,7 @@ import {
   effect,
   OnDestroy,
 } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   FormArray,
@@ -88,7 +88,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
   // Pending restart changes as a signal of Map
   readonly pendingRestartChanges = signal<Map<string, PendingChange>>(new Map());
 
-  readonly options = toSignal(this.appSettingsService.options$);
+  readonly options = signal<Record<string, SettingMetadata>>({});
 
   // Computed Signals
   readonly enrichedOptions = computed(() => {
@@ -161,6 +161,10 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
       } else {
         this.isLoading.set(true);
       }
+    });
+
+    this.appSettingsService.options$.pipe(takeUntilDestroyed()).subscribe(opts => {
+      this.options.set(opts || {});
     });
 
     this.populateSearchSuggestions();

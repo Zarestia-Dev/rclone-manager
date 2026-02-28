@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -71,22 +71,20 @@ export class RemoteConfigStepComponent {
   selectedProvider = signal<string | undefined>(undefined);
 
   // Convert FormControls to Signals for use in computed
-  private remoteSearchTerm = toSignal(
-    this.remoteSearchCtrl.valueChanges.pipe(startWith(this.remoteSearchCtrl.value)),
-    {
-      initialValue: this.remoteSearchCtrl.value || '',
-    }
-  );
-  private providerSearchTerm = toSignal(
-    this.providerSearchCtrl.valueChanges.pipe(startWith(this.providerSearchCtrl.value)),
-    {
-      initialValue: this.providerSearchCtrl.value || '',
-    }
-  );
+  private remoteSearchTerm = signal<string>(this.remoteSearchCtrl.value || '');
+  private providerSearchTerm = signal<string>(this.providerSearchCtrl.value || '');
 
   readonly iconService = inject(IconService);
 
   constructor() {
+    this.remoteSearchCtrl.valueChanges
+      .pipe(startWith(this.remoteSearchCtrl.value), takeUntilDestroyed())
+      .subscribe(val => this.remoteSearchTerm.set(val || ''));
+
+    this.providerSearchCtrl.valueChanges
+      .pipe(startWith(this.providerSearchCtrl.value), takeUntilDestroyed())
+      .subscribe(val => this.providerSearchTerm.set(val || ''));
+
     // Sync Provider control value -> Signal mapping
     effect(onCleanup => {
       const fieldDef = this.providerField();

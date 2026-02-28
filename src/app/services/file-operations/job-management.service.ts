@@ -1,5 +1,5 @@
-import { DestroyRef, inject, Injectable } from '@angular/core';
-import { BehaviorSubject, map, merge } from 'rxjs';
+import { DestroyRef, inject, Injectable, signal, computed } from '@angular/core';
+import { merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { JobInfo, Origin } from '@app/types';
@@ -24,15 +24,15 @@ export class JobManagementService extends TauriBaseService {
   // ============================================================================
 
   /** All jobs (running, completed, failed, stopped) */
-  private jobsSubject = new BehaviorSubject<JobInfo[]>([]);
-  public jobs$ = this.jobsSubject.asObservable();
+  private readonly _jobs = signal<JobInfo[]>([]);
+  public readonly jobs = this._jobs.asReadonly();
 
-  /** Active (running) jobs - derived from jobs$ */
-  public activeJobs$ = this.jobs$.pipe(map(jobs => jobs.filter(job => job.status === 'Running')));
+  /** Active (running) jobs - derived from jobs signal */
+  public readonly activeJobs = computed(() => this._jobs().filter(job => job.status === 'Running'));
 
   // Nautilus-specific jobs stream (kept for nautilus file browser)
-  private nautilusJobsSubject = new BehaviorSubject<JobInfo[]>([]);
-  public nautilusJobs$ = this.nautilusJobsSubject.asObservable();
+  private readonly _nautilusJobs = signal<JobInfo[]>([]);
+  public readonly nautilusJobs = this._nautilusJobs.asReadonly();
 
   private destroyRef = inject(DestroyRef);
   private eventListeners = inject(EventListenersService);
@@ -66,12 +66,12 @@ export class JobManagementService extends TauriBaseService {
 
   /** Get current jobs snapshot (synchronous) */
   getJobsSnapshot(): JobInfo[] {
-    return this.jobsSubject.value;
+    return this._jobs();
   }
 
   /** Get active jobs snapshot (synchronous) */
   getActiveJobsSnapshot(): JobInfo[] {
-    return this.jobsSubject.value.filter(job => job.status === 'Running');
+    return this.activeJobs();
   }
 
   /**
@@ -93,7 +93,7 @@ export class JobManagementService extends TauriBaseService {
    * Get jobs filtered by a specific remote (all statuses)
    */
   getJobsForRemote(remoteName: string): JobInfo[] {
-    return this.jobsSubject.value.filter(job => job.remote_name === remoteName);
+    return this._jobs().filter(job => job.remote_name === remoteName);
   }
 
   // ============================================================================
@@ -106,7 +106,7 @@ export class JobManagementService extends TauriBaseService {
    */
   async refreshJobs(): Promise<JobInfo[]> {
     const jobs = await this.invokeCommand<JobInfo[]>('get_jobs');
-    this.jobsSubject.next(jobs);
+    this._jobs.set(jobs);
     console.debug(
       '[JobManagementService] Jobs refreshed:',
       jobs.map(j => ({
@@ -276,7 +276,7 @@ export class JobManagementService extends TauriBaseService {
   async refreshNautilusJobs(): Promise<void> {
     try {
       const jobs = await this.getJobsBySource('nautilus');
-      this.nautilusJobsSubject.next(jobs);
+      this._nautilusJobs.set(jobs);
     } catch (err) {
       console.error('Failed to refresh nautilus jobs:', err);
     }
@@ -286,7 +286,7 @@ export class JobManagementService extends TauriBaseService {
    * Get the current nautilus jobs synchronously from the stream
    */
   getNautilusJobs(): JobInfo[] {
-    return this.nautilusJobsSubject.value;
+    return this._nautilusJobs();
   }
 
   /**

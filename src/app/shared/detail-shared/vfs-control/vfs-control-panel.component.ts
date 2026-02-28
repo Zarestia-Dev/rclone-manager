@@ -1,4 +1,13 @@
-import { Component, inject, input, signal, computed, effect, ViewChild } from '@angular/core';
+import {
+  Component,
+  inject,
+  input,
+  signal,
+  computed,
+  effect,
+  ViewChild,
+  untracked,
+} from '@angular/core';
 
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatCardModule } from '@angular/material/card';
@@ -182,11 +191,14 @@ export class VfsControlPanelComponent {
       )
       .subscribe();
 
-    // Listen for mount changes
-    this.mountService.mountedRemotes$.pipe(takeUntilDestroyed()).subscribe(() => this.loadAll());
-
-    // Listen for serve changes
-    this.serveService.runningServes$.pipe(takeUntilDestroyed()).subscribe(() => this.loadAll());
+    // Listen for mount and serve changes
+    effect(() => {
+      this.mountService.mountedRemotes();
+      this.serveService.runningServes();
+      untracked(() => {
+        this.loadAll();
+      });
+    });
   }
   // ============ Data Loading ============
 

@@ -18,7 +18,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatDividerModule } from '@angular/material/divider';
-import { Observable } from 'rxjs';
 import { CronValidationResponse, EditTarget, Entry, FileBrowserItem } from '@app/types';
 import { FileSystemService, PathSelectionService, PathSelectionState } from '@app/services';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -83,8 +82,8 @@ export class OperationConfigComponent {
   destPathType = signal<PathType>('local');
 
   // Inline autocomplete state
-  sourcePathState$!: Observable<PathSelectionState>;
-  destPathState$!: Observable<PathSelectionState>;
+  sourcePathState: ReturnType<typeof signal<PathSelectionState>> | null = null;
+  destPathState: ReturnType<typeof signal<PathSelectionState>> | null = null;
 
   // Search helper
   private matchesSearch = computed(() => {
@@ -158,14 +157,14 @@ export class OperationConfigComponent {
     if (this.isNewRemote()) return;
 
     // Register source field
-    this.sourcePathState$ = this.registerAutocomplete('source');
+    this.sourcePathState = this.registerAutocomplete('source');
 
     // Register dest field if needed
     if (!this.isMount() && !this.isServe()) {
-      this.destPathState$ = this.registerAutocomplete('dest');
+      this.destPathState = this.registerAutocomplete('dest');
     } else if (this.isMount()) {
       // Local mount destination
-      this.destPathState$ = this.pathSelectionService.registerField(
+      this.destPathState = this.pathSelectionService.registerField(
         'dest',
         '',
         this.getPathControl('dest')?.value || ''
@@ -173,7 +172,7 @@ export class OperationConfigComponent {
     }
   }
 
-  private registerAutocomplete(group: PathGroup): Observable<PathSelectionState> {
+  private registerAutocomplete(group: PathGroup): ReturnType<typeof signal<PathSelectionState>> {
     return this.pathSelectionService.registerField(
       group,
       this.currentRemoteName(),
@@ -239,10 +238,10 @@ export class OperationConfigComponent {
 
     this.pathSelectionService.unregisterField(group);
 
-    const state$ = this.pathSelectionService.registerField(group, effectiveRemoteName, currentPath);
+    const state = this.pathSelectionService.registerField(group, effectiveRemoteName, currentPath);
 
-    if (group === 'source') this.sourcePathState$ = state$;
-    else this.destPathState$ = state$;
+    if (group === 'source') this.sourcePathState = state;
+    else this.destPathState = state;
   }
 
   clearPathOnTypeChange(group: PathGroup): void {

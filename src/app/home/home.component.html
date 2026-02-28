@@ -124,7 +124,7 @@
           }
           @default {
             <app-app-detail
-              [mainOperationType]="currentTab()"
+              [mainOperationType]="$any(currentTab())"
               [selectedSyncOperation]="selectedSyncOperation()"
               [selectedRemote]="remote"
               [remoteSettings]="selectedRemoteSettings()"

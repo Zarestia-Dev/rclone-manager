@@ -1,6 +1,5 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { TauriBaseService } from '../core/tauri-base.service';
-import { BehaviorSubject } from 'rxjs';
 import { Theme } from '@app/types';
 import { AppSettingsService } from '../settings/app-settings.service';
 
@@ -8,26 +7,25 @@ import { AppSettingsService } from '../settings/app-settings.service';
   providedIn: 'root',
 })
 export class WindowService extends TauriBaseService {
-  private readonly _theme$ = new BehaviorSubject<Theme>('system');
-  public readonly theme$ = this._theme$.asObservable();
+  private readonly _theme = signal<Theme>('system');
+  public readonly theme = this._theme.asReadonly();
   appSettingsService = inject(AppSettingsService);
   private readonly systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
-  private readonly _isMaximized$ = new BehaviorSubject<boolean>(false);
-  public readonly isMaximized$ = this._isMaximized$.asObservable();
-
+  private readonly _isMaximized = signal<boolean>(false);
+  public readonly isMaximized = this._isMaximized.asReadonly();
   constructor() {
     super();
     // Reactively listen to settings changes
     this.appSettingsService.selectSetting('runtime.theme').subscribe(setting => {
       const theme = (setting?.value as Theme) || 'system';
       this.applyTheme(theme);
-      this._theme$.next(theme);
+      this._theme.set(theme);
     });
 
     // Listen for system theme changes
     this.systemThemeQuery.addEventListener('change', () => {
-      if (this._theme$.value === 'system') {
+      if (this._theme() === 'system') {
         this.applyTheme('system');
       }
     });
@@ -47,8 +45,8 @@ export class WindowService extends TauriBaseService {
   private async checkMaximizedState(): Promise<void> {
     try {
       const isMaximized = await this.isWindowMaximized();
-      if (this._isMaximized$.value !== isMaximized) {
-        this._isMaximized$.next(isMaximized);
+      if (this._isMaximized() !== isMaximized) {
+        this._isMaximized.set(isMaximized);
       }
     } catch (error) {
       console.error('Failed to check maximized state:', error);
@@ -101,7 +99,7 @@ export class WindowService extends TauriBaseService {
 
   async setTheme(theme: Theme): Promise<void> {
     // Avoid unnecessary work if the theme is already active
-    if (this._theme$.value === theme) {
+    if (this._theme() === theme) {
       return;
     }
 

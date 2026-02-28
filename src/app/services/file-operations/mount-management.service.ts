@@ -1,5 +1,5 @@
-import { DestroyRef, inject, Injectable } from '@angular/core';
-import { BehaviorSubject, merge } from 'rxjs';
+import { DestroyRef, inject, Injectable, signal } from '@angular/core';
+import { merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TranslateService } from '@ngx-translate/core';
 import { TauriBaseService } from '../core/tauri-base.service';
@@ -17,8 +17,8 @@ import { EventListenersService } from '../system/event-listeners.service';
   providedIn: 'root',
 })
 export class MountManagementService extends TauriBaseService {
-  private mountedRemotesCache = new BehaviorSubject<MountedRemote[]>([]);
-  public mountedRemotes$ = this.mountedRemotesCache.asObservable();
+  private readonly _mountedRemotes = signal<MountedRemote[]>([]);
+  public readonly mountedRemotes = this._mountedRemotes.asReadonly();
 
   private notificationService = inject(NotificationService);
   private translate = inject(TranslateService);
@@ -53,7 +53,7 @@ export class MountManagementService extends TauriBaseService {
    */
   async getMountedRemotes(): Promise<MountedRemote[]> {
     const mountedRemotes = await this.invokeCommand<MountedRemote[]>('get_cached_mounted_remotes');
-    this.mountedRemotesCache.next(mountedRemotes);
+    this._mountedRemotes.set(mountedRemotes);
     return mountedRemotes;
   }
 
@@ -148,7 +148,7 @@ export class MountManagementService extends TauriBaseService {
    * Get mounts for a specific remote and profile
    */
   getMountsForRemoteProfile(remoteName: string, profile?: string): MountedRemote[] {
-    return this.mountedRemotesCache.value.filter(mount => {
+    return this._mountedRemotes().filter(mount => {
       const matchesRemote = mount.fs.startsWith(remoteName);
       if (profile) {
         return matchesRemote && mount.profile === profile;

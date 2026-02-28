@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { TitlebarComponent } from './layout/titlebar/titlebar.component';
 import { OnboardingComponent } from './features/onboarding/onboarding.component';
 import { HomeComponent } from './home/home.component';
@@ -53,14 +52,10 @@ export class AppComponent implements OnInit {
   private readonly apiClient = inject(ApiClientService);
   private readonly sseClient = inject(SseClientService);
 
-  // --- DERIVED STATE & OBSERVABLE CONVERSIONS ---
-  readonly currentTab = toSignal(this.uiStateService.currentTab$, {
-    initialValue: 'general' as AppTab,
-  });
+  // --- DERIVED STATE & SIGNAL EXPOSURE ---
+  readonly currentTab = this.uiStateService.currentTab;
 
-  readonly completedOnboarding = toSignal(this.onboardingStateService.onboardingCompleted$, {
-    initialValue: false,
-  });
+  readonly completedOnboarding = this.onboardingStateService.isCompleted;
 
   constructor() {
     this.loadingService.bindToShutdownEvents();

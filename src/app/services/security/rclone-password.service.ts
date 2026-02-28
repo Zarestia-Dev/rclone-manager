@@ -1,13 +1,14 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { Injectable, signal } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../core/tauri-base.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class RclonePasswordService extends TauriBaseService {
-  private passwordRequiredSubject = new BehaviorSubject<boolean>(false);
-  public passwordRequired$ = this.passwordRequiredSubject.asObservable();
+  private readonly _passwordRequired = signal<boolean>(false);
+  public readonly passwordRequired = this._passwordRequired.asReadonly();
+  public readonly passwordRequired$ = toObservable(this._passwordRequired);
 
   /**
    * Check if password is stored
