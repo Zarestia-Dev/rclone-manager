@@ -154,4 +154,5 @@ export const BASE_ICONS: Record<string, string> = {
   azurefiles: 'assets/icons/remotes/azure.svg',
   rclone: 'assets/rclone-symbolic.svg',
   aws: 'assets/icons/remotes/s3.svg',
+  filen: 'assets/icons/remotes/filen.svg',
 };

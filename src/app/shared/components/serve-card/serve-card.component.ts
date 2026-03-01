@@ -1,4 +1,12 @@
-import { Component, Output, EventEmitter, inject, input, computed } from '@angular/core';
+import {
+  Component,
+  Output,
+  EventEmitter,
+  inject,
+  input,
+  computed,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -40,6 +48,7 @@ const URL_BASED_PROTOCOLS = ['http', 'webdav', 'ftp', 'sftp', 's3'];
   ],
   templateUrl: './serve-card.component.html',
   styleUrl: './serve-card.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ServeCardComponent {
   readonly iconService = inject(IconService);

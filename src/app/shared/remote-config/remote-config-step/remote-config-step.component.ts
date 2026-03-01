@@ -139,12 +139,6 @@ export class RemoteConfigStepComponent {
   }
 
   // --- Computed State ---
-
-  /** Map for O(1) label lookups */
-  private remoteTypeMap = computed(() => {
-    return new Map(this.remoteTypes().map(t => [t.value, t]));
-  });
-
   /** Filtered list of remotes based on search term */
   filteredRemotes = computed(() => {
     const types = this.remoteTypes();

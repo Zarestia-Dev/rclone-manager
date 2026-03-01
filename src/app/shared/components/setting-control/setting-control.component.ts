@@ -812,7 +812,7 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
    * Prevents clipboard events (paste, copy, cut) on sensitive fields when restrict mode is enabled
    */
   preventClipboardOnSensitive(event: ClipboardEvent): void {
-    if (this.isSensitiveField()) {
+    if (this.isSensitiveField() && (event.type === 'copy' || event.type === 'cut')) {
       event.preventDefault();
     }
   }

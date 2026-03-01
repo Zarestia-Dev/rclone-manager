@@ -249,9 +249,14 @@ async fn restore_remote_from_json(
         serde_json::from_value(config)
             .map_err(|e| format!("Failed to convert config to map: {e}"))?;
 
-    create_remote(app_handle.clone(), remote_name.to_string(), config_map)
-        .await
-        .map_err(|e| format!("Failed to create remote: {}", e))?;
+    create_remote(
+        app_handle.clone(),
+        remote_name.to_string(),
+        config_map,
+        None,
+    )
+    .await
+    .map_err(|e| format!("Failed to create remote: {}", e))?;
 
     Ok(())
 }

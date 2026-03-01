@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, input, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -129,6 +129,7 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
     </div>
   `,
   styleUrls: ['./transfer-tables.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ActiveTransfersTableComponent {
   transfers = input.required<TransferFile[]>();

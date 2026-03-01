@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -37,6 +37,7 @@ import { TranslateModule } from '@ngx-translate/core';
     </div>
   `,
   styleUrls: ['./quick-action-buttons.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class QuickActionButtonsComponent {
   buttons = input.required<QuickActionButton[]>();

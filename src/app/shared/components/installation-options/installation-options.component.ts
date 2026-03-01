@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectionStrategy, input, output } from '@angular/core';
 import { FormControl, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -29,18 +29,19 @@ type BinaryStatus = 'untested' | 'testing' | 'valid' | 'invalid';
   ],
   templateUrl: './installation-options.component.html',
   styleUrl: './installation-options.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class InstallationOptionsComponent implements OnInit {
-  @Input() disabled = false;
-  @Input() mode: 'install' | 'config' = 'install';
-  @Input() tabOptions: InstallationTabOption[] = [
+  disabled = input(false);
+  mode = input<'install' | 'config'>('install');
+  tabOptions = input<InstallationTabOption[]>([
     { key: 'default', label: 'shared.installationOptions.tabs.quickFix', icon: 'bolt' },
     { key: 'custom', label: 'shared.installationOptions.tabs.custom', icon: 'folder' },
     { key: 'existing', label: 'shared.installationOptions.tabs.existing', icon: 'file' },
-  ];
+  ]);
 
-  @Output() dataChange = new EventEmitter<InstallationOptionsData>();
-  @Output() validChange = new EventEmitter<boolean>();
+  dataChange = output<InstallationOptionsData>();
+  validChange = output<boolean>();
 
   installLocation: LocationType = 'default';
   binaryTestResult: BinaryStatus = 'untested';
@@ -90,7 +91,8 @@ export class InstallationOptionsComponent implements OnInit {
   }
 
   async selectCustomPath(): Promise<void> {
-    const path = this.mode === 'config' ? await this.fs.selectFile() : await this.fs.selectFolder();
+    const path =
+      this.mode() === 'config' ? await this.fs.selectFile() : await this.fs.selectFolder();
 
     if (path) this.customPathControl.setValue(path);
   }

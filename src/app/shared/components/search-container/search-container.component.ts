@@ -1,4 +1,12 @@
-import { Component, ElementRef, effect, input, output, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  effect,
+  input,
+  output,
+  viewChild,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -26,6 +34,7 @@ import { TranslateModule } from '@ngx-translate/core';
     </div>
   `,
   styleUrls: ['./search-container.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SearchContainerComponent {
   visible = input(false);

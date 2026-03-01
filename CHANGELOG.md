@@ -18,9 +18,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Use Zoneless Change Detection.
 
 ### Fixed
+- Fixed bug where remotes requiring sensitive fields like passwords or API keys (e.g., Filen) failed to create via UI due to being sent in plain text instead of an obscured format to the rclone RC API. (Fixed #128)
+- Sensitive fields are now accept the paste. (Fixed #129)
 - Blury icons fixed. Icon provider change to Google Material Icons.
 - Reorder tauri plugins (Cause of startup crash).
-- Remove the global shortcut handler from tauri.
+- Remove the global shortcut handler from tauri. (Fixed #117)
 
 ## [v0.2.1] - 2026-02-05
 

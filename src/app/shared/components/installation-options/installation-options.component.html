@@ -1,12 +1,15 @@
-<div class="advanced-options" [class]="mode">
-  <div class="options-tabs" [style.gridTemplateColumns]="'repeat(' + tabOptions.length + ', 1fr)'">
-    @for (tab of tabOptions; track tab.key) {
+<div class="advanced-options" [class]="mode()">
+  <div
+    class="options-tabs"
+    [style.gridTemplateColumns]="'repeat(' + tabOptions().length + ', 1fr)'"
+  >
+    @for (tab of tabOptions(); track tab.key) {
       <button
         type="button"
         class="option-tab"
         [class.active]="installLocation === tab.key"
         (click)="setLocation(tab.key)"
-        [disabled]="disabled"
+        [disabled]="disabled()"
       >
         <mat-icon [svgIcon]="tab.icon"></mat-icon>
         <span>{{ tab.label | translate }}</span>
@@ -19,9 +22,11 @@
       @case ('default') {
         <div class="option-info">
           <p>
-            {{ 'shared.installationOptions.modes.' + mode + '.default.description' | translate }}
+            {{ 'shared.installationOptions.modes.' + mode() + '.default.description' | translate }}
             <br />
-            {{ 'shared.installationOptions.modes.' + mode + '.default.recommendation' | translate }}
+            {{
+              'shared.installationOptions.modes.' + mode() + '.default.recommendation' | translate
+            }}
           </p>
         </div>
       }
@@ -29,27 +34,27 @@
       @case ('custom') {
         <div class="option-info">
           <p>
-            {{ 'shared.installationOptions.modes.' + mode + '.custom.description' | translate }}
+            {{ 'shared.installationOptions.modes.' + mode() + '.custom.description' | translate }}
           </p>
-          <mat-form-field [class]="mode === 'config' ? 'accent' : 'primary'" appearance="fill">
+          <mat-form-field [class]="mode() === 'config' ? 'accent' : 'primary'" appearance="fill">
             <mat-label>{{
-              'shared.installationOptions.modes.' + mode + '.custom.label' | translate
+              'shared.installationOptions.modes.' + mode() + '.custom.label' | translate
             }}</mat-label>
             <input
               matInput
               [formControl]="customPathControl"
               [placeholder]="
-                'shared.installationOptions.modes.' + mode + '.custom.placeholder' | translate
+                'shared.installationOptions.modes.' + mode() + '.custom.placeholder' | translate
               "
             />
             <button
               matSuffix
               matIconButton
               (click)="selectCustomPath()"
-              [disabled]="disabled"
+              [disabled]="disabled()"
               [matTooltip]="'shared.installationOptions.browse' | translate"
             >
-              <mat-icon [svgIcon]="mode === 'config' ? 'file' : 'folder'"></mat-icon>
+              <mat-icon [svgIcon]="mode() === 'config' ? 'file' : 'folder'"></mat-icon>
             </button>
             @if (customPathControl.invalid && customPathControl.touched) {
               <mat-error>{{ getError(customPathControl) }}</mat-error>
@@ -61,11 +66,11 @@
       @case ('existing') {
         <div class="option-info">
           <p>
-            {{ 'shared.installationOptions.modes.' + mode + '.existing.description' | translate }}
+            {{ 'shared.installationOptions.modes.' + mode() + '.existing.description' | translate }}
           </p>
-          <mat-form-field [class]="mode === 'config' ? 'accent' : 'primary'" appearance="fill">
+          <mat-form-field [class]="mode() === 'config' ? 'accent' : 'primary'" appearance="fill">
             <mat-label>{{
-              'shared.installationOptions.modes.' + mode + '.existing.label' | translate
+              'shared.installationOptions.modes.' + mode() + '.existing.label' | translate
             }}</mat-label>
             <input
               matInput
@@ -76,7 +81,7 @@
               matSuffix
               matIconButton
               (click)="selectBinary()"
-              [disabled]="disabled"
+              [disabled]="disabled()"
               [matTooltip]="'shared.installationOptions.browse' | translate"
             >
               <mat-icon svgIcon="file"></mat-icon>
@@ -97,7 +102,7 @@
                 <button
                   matButton="outlined"
                   (click)="testBinary()"
-                  [disabled]="disabled || binaryTestResult === 'testing'"
+                  [disabled]="disabled() || binaryTestResult === 'testing'"
                 >
                   {{
                     binaryTestResult === 'testing'

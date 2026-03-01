@@ -164,6 +164,7 @@ pub async fn create_remote(
     app: AppHandle,
     name: String,
     parameters: HashMap<String, Value>,
+    opt: Option<Value>,
 ) -> Result<(), String> {
     let state = app.state::<RcloneState>();
     let remote_type = parameters
@@ -190,11 +191,15 @@ pub async fn create_remote(
         .await
         .map_err(|e| e.to_string())?;
 
-    let body = json!({
+    let mut body = json!({
         "name": name,
         "type": remote_type,
         "parameters": json!(parameters)
     });
+
+    if let Some(extra) = opt {
+        body["opt"] = extra;
+    }
 
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
@@ -250,6 +255,7 @@ pub async fn update_remote(
     app: AppHandle,
     name: String,
     parameters: HashMap<String, Value>,
+    opt: Option<Value>,
 ) -> Result<(), String> {
     let state = app.state::<RcloneState>();
     let remote_type = parameters
@@ -279,7 +285,11 @@ pub async fn update_remote(
     let backend = backend_manager.get_active().await;
 
     let url = crate::rclone::commands::common::get_config_url(&backend, config::UPDATE)?;
-    let body = json!({ "name": name, "parameters": parameters });
+    let mut body = json!({ "name": name, "parameters": parameters });
+
+    if let Some(extra) = opt {
+        body["opt"] = extra;
+    }
 
     let response = backend
         .inject_auth(state.client.post(&url))

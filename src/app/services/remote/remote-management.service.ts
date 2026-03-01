@@ -98,15 +98,23 @@ export class RemoteManagementService extends TauriBaseService {
   /**
    * Create a new remote
    */
-  async createRemote(name: string, parameters: RemoteConfig): Promise<void> {
-    await this.invokeCommand('create_remote', { name, parameters });
+  async createRemote(
+    name: string,
+    parameters: RemoteConfig,
+    opt?: Record<string, unknown>
+  ): Promise<void> {
+    await this.invokeCommand('create_remote', { name, parameters, opt });
   }
 
   /**
    * Update an existing remote
    */
-  async updateRemote(name: string, parameters: RemoteConfig): Promise<void> {
-    await this.invokeCommand('update_remote', { name, parameters });
+  async updateRemote(
+    name: string,
+    parameters: RemoteConfig,
+    opt?: Record<string, unknown>
+  ): Promise<void> {
+    await this.invokeCommand('update_remote', { name, parameters, opt });
   }
 
   /**

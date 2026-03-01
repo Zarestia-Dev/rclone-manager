@@ -1107,7 +1107,9 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     await this.authStateService.startAuth(remoteData.name, false);
 
     if (!this.useInteractiveMode()) {
-      await this.remoteManagementService.createRemote(remoteData.name, remoteData);
+      await this.remoteManagementService.createRemote(remoteData.name, remoteData, {
+        obscure: true,
+      });
       this.pendingConfig = { remoteData, finalConfig };
       await this.finalizeRemoteCreation();
       return { success: true };
@@ -1492,7 +1494,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       name,
       type,
       paramRest,
-      { nonInteractive: true }
+      { nonInteractive: true, obscure: true }
     );
 
     if (!startResp || startResp.State === '') {
