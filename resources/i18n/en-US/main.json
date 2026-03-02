@@ -21,7 +21,8 @@
     "retry": "Retry",
     "default": "Default",
     "copyErrorFailed": "Failed to copy error",
-    "errorCopied": "Error copied to clipboard"
+    "errorCopied": "Error copied to clipboard",
+    "required": "This field is required."
   },
   "validators": {
     "integer": "Must be a valid integer",
@@ -528,7 +529,9 @@
       "description": "No options match your search",
       "action": "Clear Search",
       "hideSearch": "Hide search",
-      "showSearch": "Show search"
+      "showSearch": "Show search",
+      "hide": "Hide search",
+      "show": "Show search"
     },
     "installationOptions": {
       "tabs": {
@@ -858,7 +861,8 @@
         "required": "Password required",
         "remember": "Remember password",
         "keychain": "Stored in system keychain"
-      }
+      },
+      "pollIntervalPlaceholder": "Enter poll interval (seconds)"
     },
     "passwordManager": {
       "placeholder": "Enter your rclone config password",
@@ -1043,7 +1047,8 @@
           "one": "1 minute",
           "other": "{{count}} minutes"
         }
-      }
+      },
+      "cronPlaceholder": "Enter a cron expression (e.g. 0 0 * * *)"
     },
     "cronPresets": {
       "daily-9am": {
@@ -1156,7 +1161,7 @@
     "skipVersion": "Update {{version}} will be skipped",
     "confirmInstall": {
       "title": "Install Update",
-      "message": "Installing this update will restart the application automatically. Do you want to continue?",
+      "message": "Do you want to download and prepare the update? You will need to restart the application to apply changes when finished.",
       "confirm": "Install",
       "cancel": "Cancel"
     },
@@ -1277,6 +1282,19 @@
         "speed": "Speed",
         "eta": "ETA",
         "transfers": "Transfers"
+      },
+      "types": {
+        "delete_file": "Delete File",
+        "purge": "Purge",
+        "cleanup": "Cleanup",
+        "rmdirs": "Remove Empty Folders",
+        "copy": "Copy",
+        "copy_file": "Copy File",
+        "copy_url": "Copy URL",
+        "move": "Move",
+        "move_file": "Move File",
+        "sync": "Sync",
+        "bisync": "BiSync"
       }
     },
     "fileViewer": {
@@ -1311,6 +1329,7 @@
         "profileSelection": "Profile selection"
       },
       "operationMode": "Operation Mode",
+      "selectOperationMode": "Select operation mode",
       "monitoring": "Monitoring",
       "configuration": "Configuration",
       "selectedProfile": "Selected Profile",
@@ -1430,7 +1449,10 @@
       "fileBrowser": "File Browser",
       "fileBrowserNautilus": "File Browser (Nautilus)",
       "navigation": "Navigation"
-    }
+    },
+    "quitError": "Failed to quit application: {{error}}",
+    "refreshError": "Failed to refresh shortcuts: {{error}}",
+    "refreshSuccess": "Shortcuts refreshed successfully"
   },
   "repair": {
     "rclonePath": {
@@ -1483,13 +1505,15 @@
       "currentVersion": "Current Version",
       "restartRequired": "Restart Required",
       "restartDescription": "An update has been installed. Please restart the application to apply the changes.",
+      "rcloneRestartRequired": "Rclone Restart Required",
+      "rcloneRestartDescription": "An Rclone update has been installed. Please restart the engine to apply the changes.",
       "restartNow": "Restart Now",
       "updateAvailable": "Update Available",
       "version": "Version",
       "whatsNew": "What's New",
       "downloading": "Downloading...",
       "installing": "Installing...",
-      "installUpdate": "Install Update",
+      "installUpdate": "Download Update",
       "skipVersion": "Skip Version",
       "upToDate": "Up to Date",
       "latestVersionMsg": "You're running the latest version",
@@ -1511,7 +1535,7 @@
       "rcloneUpdateAvailable": "Rclone Update Available",
       "whatsNewRclone": "What's New in Rclone",
       "updating": "Updating...",
-      "updateRclone": "Update Rclone",
+      "updateRclone": "Download Rclone Update",
       "rcloneUpToDate": "Rclone Up to Date",
       "checkRcloneUpdates": "Check for Rclone Updates",
       "rcloneUpdateSettings": "Rclone Update Settings",
@@ -1979,7 +2003,11 @@
       "searchPlaceholder": "Search files...",
       "local": "Local",
       "cloud": "Cloud",
+      "fileSystem": "File System",
       "bookmarks": "Bookmarks"
+    },
+    "bookmarks": {
+      "emptyHint": "No bookmarks"
     },
     "sort": {
       "az": "A-Z",
@@ -2238,6 +2266,7 @@
       "ariaLabel": "Scheduled {{type}} task for {{remote}}. Status: {{status}}",
       "nextRun": "Next Run:",
       "lastRun": "Last Run:",
+      "running": "Running",
       "stats": {
         "success": "Success count",
         "failure": "Failure count",
