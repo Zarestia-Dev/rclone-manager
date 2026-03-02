@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, inject, Injector } from '@angular/core';
+import { ComponentRef, DestroyRef, Injectable, inject, Injector } from '@angular/core';
 import { Overlay, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { LoadingOverlayComponent } from '../../shared/components/loading-overlay/loading-overlay.component';
@@ -16,7 +16,7 @@ export class GlobalLoadingService {
   private translateService = inject(TranslateService);
   private destroyRef = inject(DestroyRef);
   private overlayRef: OverlayRef | null = null;
-  private componentRef: any = null;
+  private componentRef: ComponentRef<LoadingOverlayComponent> | null = null;
   private shutdownListenerInitialized = false;
 
   public bindToShutdownEvents(): void {
@@ -29,12 +29,20 @@ export class GlobalLoadingService {
       .listenToAppEvents()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(event => {
-        if (typeof event === 'object' && event?.status === 'shutting_down') {
-          this.show({
-            title: this.translateService.instant('app.shutdown.title'),
-            message: this.translateService.instant('app.shutdown.message'),
-            icon: 'refresh',
-          });
+        if (typeof event !== 'object' || !event?.status) {
+          return;
+        }
+
+        switch (event.status) {
+          case 'shutting_down':
+            this.show({
+              title: this.translateService.instant('app.shutdown.title'),
+              message: this.translateService.instant('app.shutdown.message'),
+              icon: 'refresh',
+            });
+            break;
+          default:
+            break;
         }
       });
   }

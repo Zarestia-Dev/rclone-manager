@@ -28,7 +28,9 @@ pub fn are_updates_disabled() -> bool {
 }
 
 #[tauri::command]
-pub fn relaunch_app(app: tauri::AppHandle) {
+pub async fn relaunch_app(app: tauri::AppHandle) -> Result<(), String> {
+    use crate::core::lifecycle::shutdown::handle_shutdown;
+    handle_shutdown(app.clone()).await;
     app.restart();
 }
 

@@ -118,8 +118,8 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
 
     const results: SearchResult[] = [];
     for (const [fullKey, meta] of Object.entries(options)) {
-      const displayName = meta.metadata.display_name || meta.metadata.label || '';
-      const helpText = meta.metadata.help_text || meta.metadata.description || '';
+      const displayName = meta.metadata?.display_name || meta.metadata?.label || '';
+      const helpText = meta.metadata?.help_text || meta.metadata?.description || '';
 
       if (displayName.toLowerCase().includes(query) || helpText.toLowerCase().includes(query)) {
         const { category, key } = this.splitKey(fullKey);
@@ -316,7 +316,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
 
   private getValidators(meta: SettingMetadata, fullKey: string): ValidatorFn[] {
     const validators: ValidatorFn[] = [];
-    if (meta.metadata.required) {
+    if (meta.metadata?.required) {
       validators.push(Validators.required);
     }
 
@@ -362,7 +362,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
       finalValue = finalValue.filter(item => item && String(item).trim() !== '');
     }
 
-    if (meta.metadata.engine_restart) {
+    if (meta.metadata?.engine_restart) {
       if (this.valuesEqual(meta.value, finalValue)) {
         this.pendingRestartChanges.update(map => {
           const newMap = new Map(map);
@@ -549,13 +549,13 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
   }
 
   getSettingLabel(_category: string, _key: string, meta: SettingMetadata): string {
-    const labelKey = meta.metadata.label || meta.metadata.display_name;
+    const labelKey = meta.metadata?.label || meta.metadata?.display_name;
     if (!labelKey) return _key;
     return this.translate.instant(labelKey);
   }
 
   getSettingDescription(_category: string, _key: string, meta: SettingMetadata): string {
-    const descKey = meta.metadata.description || meta.metadata.help_text;
+    const descKey = meta.metadata?.description || meta.metadata?.help_text;
     if (!descKey) return '';
     return this.translate.instant(descKey);
   }
@@ -604,7 +604,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     const control = this.getFormControl(category, key);
     if (control) this.resetControlValue(control, defaultValue, meta);
 
-    if (meta.metadata.engine_restart) {
+    if (meta.metadata?.engine_restart) {
       this.pendingRestartChanges.update(map => {
         const newMap = new Map(map);
         newMap.set(`${category}.${key}`, {
@@ -697,7 +697,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
   }[] {
     return Array.from(this.pendingRestartChanges().values()).map(change => ({
       displayName:
-        change.metadata.metadata.display_name || change.metadata.metadata.label || change.key,
+        change.metadata.metadata?.display_name || change.metadata.metadata?.label || change.key,
       category: change.category,
       key: change.key,
       value: change.value,

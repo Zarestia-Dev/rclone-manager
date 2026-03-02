@@ -79,9 +79,9 @@
   }
 
   mat-icon {
-    height: 1.1rem;
-    width: 1.1rem;
-    font-size: 1.1rem;
+    height: var(--icon-size-sm);
+    width: var(--icon-size-sm);
+    font-size: var(--icon-size-sm);
   }
 }
 
@@ -99,9 +99,9 @@
   margin-bottom: var(--space-md);
 
   mat-icon {
-    height: 1.2rem;
-    width: 1.2rem;
-    font-size: 1.2rem;
+    height: var(--icon-size-sm);
+    width: var(--icon-size-sm);
+    font-size: var(--icon-size-sm);
   }
 
   &.warning {

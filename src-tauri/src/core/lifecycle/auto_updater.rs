@@ -80,18 +80,10 @@ async fn run_update_checks(app: &AppHandle) {
 
 #[cfg(all(desktop, feature = "updater"))]
 async fn check_app_update(app: &AppHandle, channel: &str) -> Result<(), String> {
-    use crate::utils::app::updater::app_updates::{DownloadState, PendingUpdate, fetch_update};
+    use crate::utils::app::updater::app_updates::fetch_update;
 
-    let pending_state = app.state::<PendingUpdate>();
-    let download_state = app.state::<DownloadState>();
-
-    fetch_update(
-        app.clone(),
-        pending_state,
-        download_state,
-        channel.to_string(),
-    )
-    .await
-    .map(|_| ())
-    .map_err(|e| e.to_string())
+    fetch_update(app.clone(), channel.to_string())
+        .await
+        .map(|_| ())
+        .map_err(|e| e.to_string())
 }

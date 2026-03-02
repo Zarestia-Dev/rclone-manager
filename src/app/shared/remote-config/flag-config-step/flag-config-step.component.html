@@ -43,7 +43,7 @@
           @for (type of availableServeTypes(); track type) {
             <mat-option [value]="type">
               <div class="type-option">
-                <mat-icon [svgIcon]="iconService.getIconName(type)"></mat-icon>
+                <mat-icon [svgIcon]="iconService.getIconName(type)" class="primary"></mat-icon>
                 <div class="type-info">
                   <span class="type-name">{{ type.toUpperCase() }}</span>
                   <span class="type-desc">{{ 'wizards.serveTypes.' + type | translate }}</span>
@@ -53,7 +53,10 @@
           }
           <mat-select-trigger>
             <div class="type-option">
-              <mat-icon [svgIcon]="iconService.getIconName(selectedServeType())"></mat-icon>
+              <mat-icon
+                [svgIcon]="iconService.getIconName(selectedServeType())"
+                class="primary"
+              ></mat-icon>
               <span class="type-name">{{ selectedServeType().toUpperCase() }}</span>
             </div>
           </mat-select-trigger>

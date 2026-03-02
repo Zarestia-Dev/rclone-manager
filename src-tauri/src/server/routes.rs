@@ -154,7 +154,7 @@ fn system_routes() -> Router<WebServerState> {
         )
         .route("/provision-rclone", get(handlers::provision_rclone_handler))
         .route("/validate-cron", get(handlers::validate_cron_handler))
-        .route("/handle-shutdown", post(handlers::handle_shutdown_handler))
+        .route("/shutdown-app", post(handlers::shutdown_app_handler))
         .route("/get-configs", get(handlers::get_configs_handler))
         .route(
             "/force-check-serves",
@@ -247,6 +247,10 @@ fn settings_routes() -> Router<WebServerState> {
         .route(
             "/check-rclone-update",
             get(handlers::check_rclone_update_handler),
+        )
+        .route(
+            "/get-rclone-update-info",
+            get(handlers::get_rclone_update_info_handler),
         )
         .route("/update-rclone", get(handlers::update_rclone_handler))
 }

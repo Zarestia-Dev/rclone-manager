@@ -45,25 +45,22 @@ export class BannerComponent {
 
   // Effect to handle flatpak warning display logic
   constructor() {
-    effect(
-      () => {
-        const buildType = this.appUpdaterService.buildType();
-        const dismissed = this.flatpakDismissed();
+    effect(() => {
+      const buildType = this.appUpdaterService.buildType();
+      const dismissed = this.flatpakDismissed();
 
-        if (buildType !== 'flatpak' || dismissed) {
-          this.showFlatpakWarning.set(false);
-          return;
-        }
+      if (buildType !== 'flatpak' || dismissed) {
+        this.showFlatpakWarning.set(false);
+        return;
+      }
 
-        this.appSettingsService
-          .getSettingValue<boolean>('runtime.flatpak_warn')
-          .then(warn => {
-            this.showFlatpakWarning.set(!!warn);
-          })
-          .catch(() => this.showFlatpakWarning.set(false));
-      },
-      { allowSignalWrites: true }
-    );
+      this.appSettingsService
+        .getSettingValue<boolean>('runtime.flatpak_warn')
+        .then(warn => {
+          this.showFlatpakWarning.set(!!warn);
+        })
+        .catch(() => this.showFlatpakWarning.set(false));
+    });
 
     // Metered connection real-time updates
     this.systemInfoService

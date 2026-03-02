@@ -121,10 +121,10 @@
                       <div class="task-title-row">
                         <mat-icon
                           [svgIcon]="getTaskTypeIcon(task.taskType)"
-                          [class.sync-color]="task.taskType === 'sync'"
-                          [class.copy-color]="task.taskType === 'copy'"
-                          [class.move-color]="task.taskType === 'move'"
-                          [class.bisync-color]="task.taskType === 'bisync'"
+                          [class.primary]="task.taskType === 'sync'"
+                          [class.yellow]="task.taskType === 'copy'"
+                          [class.orange]="task.taskType === 'move'"
+                          [class.purple]="task.taskType === 'bisync'"
                         ></mat-icon>
                         <h4>{{ task.name }}</h4>
                         <span

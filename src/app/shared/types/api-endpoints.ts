@@ -138,7 +138,7 @@ export const POST_COMMANDS = new Set([
   'delete_job',
   'stop_serve',
   'stop_all_serves',
-  'handle_shutdown',
+  'shutdown_app',
   'quit_rclone_engine',
   'run_garbage_collector',
   'set_config_password_env',

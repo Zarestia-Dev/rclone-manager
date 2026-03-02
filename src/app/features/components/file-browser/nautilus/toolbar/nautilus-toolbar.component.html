@@ -58,7 +58,7 @@
                   : this.iconService.getIconName(activeRemote()?.type || '')
               "
             ></mat-icon>
-            {{ activeRemote()?.label || ('nautilus.titles.local' | translate) }}
+            {{ (activeRemote()?.label | translate) || ('nautilus.titles.local' | translate) }}
           </button>
 
           @for (segment of pathSegments(); track segment.path) {

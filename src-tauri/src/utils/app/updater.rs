@@ -1,19 +1,19 @@
 #[cfg(all(desktop, feature = "updater"))]
 pub mod app_updates {
+    use crate::core::lifecycle::shutdown::shutdown_app;
+    use crate::utils::app::platform::relaunch_app;
     use crate::utils::types::logs::LogLevel;
     use crate::utils::types::origin::Origin;
-    use crate::{
-        core::lifecycle::shutdown::handle_shutdown,
-        utils::{
-            app::notification::{Notification, send_notification_typed},
-            github_client,
-            types::core::RcloneState,
-        },
+    use crate::utils::types::updater::AppUpdaterState;
+    use crate::utils::{
+        app::notification::{Notification, send_notification_typed},
+        github_client,
+        types::core::RcloneState,
     };
     use log::{debug, info, warn};
-    use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-    use tauri::{AppHandle, Emitter, Manager, State};
-    use tauri_plugin_updater::{Update, UpdaterExt};
+    use std::sync::atomic::Ordering;
+    use tauri::{AppHandle, Emitter, Manager};
+    use tauri_plugin_updater::UpdaterExt;
 
     #[derive(Debug, thiserror::Error)]
     pub enum Error {
@@ -21,6 +21,8 @@ pub mod app_updates {
         Updater(#[from] tauri_plugin_updater::Error),
         #[error("there is no pending update")]
         NoPendingUpdate,
+        #[error("update artifact is no longer available: {0}")]
+        UpdateUnavailable(String),
         #[error("invalid URL: {0}")]
         InvalidUrl(#[from] url::ParseError),
         // Wrap the new GitHub client error
@@ -28,6 +30,8 @@ pub mod app_updates {
         GitHub(#[from] github_client::Error),
         #[error("mutex error: {0}")]
         Mutex(String),
+        #[error("relaunch error: {0}")]
+        Relaunch(String),
     }
 
     impl serde::Serialize for Error {
@@ -51,6 +55,12 @@ pub mod app_updates {
                 Error::Updater(e) => {
                     crate::localized_error!("backendErrors.updater.updateFailed", "error" => e)
                 }
+                Error::Relaunch(e) => {
+                    format!("Relaunch failed: {}", e)
+                }
+                Error::UpdateUnavailable(e) => {
+                    format!("Update unavailable: {}", e)
+                }
             };
             serializer.serialize_str(&error_msg)
         }
@@ -58,16 +68,7 @@ pub mod app_updates {
 
     type Result<T> = std::result::Result<T, Error>;
 
-    #[derive(Default)]
-    pub struct DownloadState {
-        pub total_bytes: AtomicU64,
-        pub downloaded_bytes: AtomicU64,
-        pub is_complete: AtomicBool,
-        pub is_failed: AtomicBool,
-        pub failure_message: std::sync::Mutex<Option<String>>,
-    }
-
-    #[derive(serde::Serialize)]
+    #[derive(serde::Serialize, serde::Deserialize, Clone)]
     #[serde(rename_all = "camelCase")]
     pub struct UpdateMetadata {
         version: String,
@@ -92,12 +93,8 @@ pub mod app_updates {
     }
 
     #[tauri::command]
-    pub async fn fetch_update(
-        app: AppHandle,
-        pending_update: State<'_, PendingUpdate>,
-        download_state: State<'_, DownloadState>,
-        channel: String,
-    ) -> Result<Option<UpdateMetadata>> {
+    pub async fn fetch_update(app: AppHandle, channel: String) -> Result<Option<UpdateMetadata>> {
+        let updater_state = app.state::<AppUpdaterState>();
         let state = app.state::<RcloneState>();
 
         // Check if restart is required first
@@ -120,8 +117,6 @@ pub mod app_updates {
         let is_updating = state.is_update_in_progress.load(Ordering::Relaxed);
         if is_updating {
             info!("Update is already in progress");
-            // Return a minimal metadata indicating update in progress
-            // We can reconstruct basic info from download state
             return Ok(Some(UpdateMetadata {
                 version: String::from("updating"),
                 current_version: app.package_info().version.to_string(),
@@ -135,9 +130,11 @@ pub mod app_updates {
         }
 
         // Reset download state
-        download_state.total_bytes.store(0, Ordering::Relaxed);
-        download_state.downloaded_bytes.store(0, Ordering::Relaxed);
-        download_state.is_complete.store(false, Ordering::Relaxed);
+        updater_state.total_bytes.store(0, Ordering::Relaxed);
+        updater_state.downloaded_bytes.store(0, Ordering::Relaxed);
+        if let Ok(mut failure_message) = updater_state.failure_message.lock() {
+            *failure_message = None;
+        }
 
         info!("Checking for updates on channel: {}", channel);
 
@@ -200,7 +197,7 @@ pub mod app_updates {
                     warn!("App is about to exit for update installation");
                     tauri::async_runtime::spawn(async move {
                         app.state::<RcloneState>().set_shutting_down();
-                        handle_shutdown(app).await;
+                        let _ = shutdown_app(app).await;
                     });
                 }
             })
@@ -271,10 +268,9 @@ pub mod app_updates {
             );
         }
 
-        *pending_update
-            .0
-            .lock()
-            .map_err(|e| Error::Mutex(format!("Failed to lock pending update: {e}")))? = update;
+        if let Ok(mut pending) = updater_state.pending_action.lock() {
+            *pending = update;
+        }
 
         Ok(update_metadata)
     }
@@ -305,21 +301,26 @@ pub mod app_updates {
     }
 
     #[tauri::command]
-    pub async fn get_download_status(
-        download_state: State<'_, DownloadState>,
-    ) -> Result<DownloadStatus> {
-        let downloaded = download_state.downloaded_bytes.load(Ordering::Relaxed);
-        let total = download_state.total_bytes.load(Ordering::Relaxed);
-        let is_complete = download_state.is_complete.load(Ordering::Relaxed);
-        let is_failed = download_state.is_failed.load(Ordering::Relaxed);
-        let failure_message = download_state
+    pub async fn get_download_status(app: AppHandle) -> Result<DownloadStatus> {
+        let updater_state = app.state::<AppUpdaterState>();
+        let downloaded = updater_state.downloaded_bytes.load(Ordering::Relaxed);
+        let total = updater_state.total_bytes.load(Ordering::Relaxed);
+        let failure_message = updater_state
             .failure_message
             .lock()
-            .map_err(|e| Error::Mutex(format!("Failed to lock failure message: {e}")))?
+            .map_err(|e| Error::Mutex(e.to_string()))?
             .clone();
+
+        let is_complete = app
+            .state::<RcloneState>()
+            .is_restart_required
+            .load(Ordering::Relaxed);
+        let is_failed = failure_message.is_some();
 
         let percentage = if total > 0 {
             (downloaded as f64 / total as f64) * 100.0
+        } else if is_complete {
+            100.0
         } else {
             0.0
         };
@@ -335,19 +336,28 @@ pub mod app_updates {
     }
 
     #[tauri::command]
-    pub async fn install_update(
-        app: AppHandle,
-        pending_update: State<'_, PendingUpdate>,
-        download_state: State<'_, DownloadState>,
-    ) -> Result<()> {
-        let Some(update) = pending_update
-            .0
-            .lock()
-            .map_err(|e| Error::Mutex(format!("Failed to lock pending update: {e}")))?
-            .take()
-        else {
-            return Err(Error::NoPendingUpdate);
+    pub async fn install_update(app: AppHandle) -> Result<()> {
+        let updater_state = app.state::<AppUpdaterState>();
+
+        // Extract pending action
+        let update = {
+            let mut pending = updater_state
+                .pending_action
+                .lock()
+                .map_err(|e| Error::Mutex(e.to_string()))?;
+            if let Some(u) = pending.take() {
+                u
+            } else {
+                return Err(Error::NoPendingUpdate);
+            }
         };
+
+        // Mark as updating
+        updater_state.downloaded_bytes.store(0, Ordering::Relaxed);
+        updater_state.total_bytes.store(0, Ordering::Relaxed);
+        if let Ok(mut failure_msg) = updater_state.failure_message.lock() {
+            *failure_msg = None;
+        }
 
         info!("Starting update installation...");
         info!("Preparing to download update from: {}", update.download_url);
@@ -373,6 +383,31 @@ pub mod app_updates {
         let client = reqwest::Client::new();
         match client.head(update.download_url.as_str()).send().await {
             Ok(resp) => {
+                if matches!(
+                    resp.status(),
+                    reqwest::StatusCode::NOT_FOUND | reqwest::StatusCode::GONE
+                ) {
+                    let message =
+                        "Update file is no longer available. Please check for updates again.";
+                    warn!("{} URL: {}", message, update.download_url);
+
+                    if let Ok(mut pending) = updater_state.pending_action.lock() {
+                        *pending = None;
+                    }
+                    if let Ok(mut signature_slot) = updater_state.signature.lock() {
+                        *signature_slot = None;
+                    }
+                    if let Ok(mut failure_msg) = updater_state.failure_message.lock() {
+                        *failure_msg = Some(message.to_string());
+                    }
+
+                    app.state::<RcloneState>()
+                        .is_update_in_progress
+                        .store(false, Ordering::Relaxed);
+
+                    return Err(Error::UpdateUnavailable(message.to_string()));
+                }
+
                 if let Err(e) = resp.error_for_status() {
                     warn!("HEAD check failed for {}: {}", update.download_url, e);
                     // Do not return an error, just a warning.
@@ -384,31 +419,27 @@ pub mod app_updates {
             }
         }
 
-        let res = update
-            .download_and_install(
-                |chunk_length, content_length| {
-                    if let Some(content_length) = content_length {
-                        download_state
-                            .total_bytes
-                            .store(content_length, Ordering::Relaxed);
-                    }
+        let download_app = app.clone();
 
-                    let _new = download_state
-                        .downloaded_bytes
-                        .fetch_add(chunk_length as u64, Ordering::Relaxed)
-                        + chunk_length as u64;
+        let res = update
+            .download(
+                move |chunk_length, content_length| {
+                    let st = download_app.state::<AppUpdaterState>();
+                    st.downloaded_bytes
+                        .fetch_add(chunk_length as u64, Ordering::Relaxed);
+                    if let Some(total) = content_length {
+                        st.total_bytes.store(total, Ordering::Relaxed);
+                    }
                 },
-                || {
-                    download_state.is_complete.store(true, Ordering::Relaxed);
+                move || {
                     info!("Update download completed");
                 },
             )
             .await;
 
         match res {
-            Ok(_) => {
+            Ok(signature) => {
                 info!("Update installation process completed");
-                download_state.is_failed.store(false, Ordering::Relaxed);
 
                 // Clear update in progress and set restart required flag
                 let state = app.state::<RcloneState>();
@@ -427,27 +458,39 @@ pub mod app_updates {
                     Some(Origin::Internal),
                 );
 
-                *download_state
-                    .failure_message
-                    .lock()
-                    .map_err(|e| Error::Mutex(format!("Failed to lock failure message: {e}")))? =
-                    None;
+                // Save update back to pending action for installation later
+                if let Ok(mut signature_slot) = updater_state.signature.lock() {
+                    *signature_slot = Some(signature);
+                }
+
+                if let Ok(mut pending) = updater_state.pending_action.lock() {
+                    *pending = Some(update);
+                }
+
                 Ok(())
             }
             Err(e) => {
                 warn!("Update installation failed: {}", e);
-                download_state.is_failed.store(true, Ordering::Relaxed);
+
+                // Preserve pending update so user can retry without re-checking
+                if let Ok(mut pending) = updater_state.pending_action.lock() {
+                    *pending = Some(update);
+                }
+
+                // Signature is invalid/absent on failed download
+                if let Ok(mut signature_slot) = updater_state.signature.lock() {
+                    *signature_slot = None;
+                }
+
+                // Record failure
+                if let Ok(mut failure_msg) = updater_state.failure_message.lock() {
+                    *failure_msg = Some(e.to_string());
+                }
 
                 // Clear update in progress flag on failure
                 app.state::<RcloneState>()
                     .is_update_in_progress
                     .store(false, Ordering::Relaxed);
-
-                *download_state
-                    .failure_message
-                    .lock()
-                    .map_err(|e| Error::Mutex(format!("Failed to lock failure message: {e}")))? =
-                    Some(e.to_string());
 
                 send_notification_typed(
                     &app,
@@ -466,5 +509,40 @@ pub mod app_updates {
         }
     }
 
-    pub struct PendingUpdate(pub std::sync::Mutex<Option<Update>>);
+    #[tauri::command]
+    pub async fn apply_app_update(app: AppHandle) -> Result<()> {
+        let updater_state = app.state::<AppUpdaterState>();
+
+        let (update, signature) = {
+            let mut pending = updater_state
+                .pending_action
+                .lock()
+                .map_err(|e| Error::Mutex(e.to_string()))?;
+            let mut sig = updater_state
+                .signature
+                .lock()
+                .map_err(|e| Error::Mutex(e.to_string()))?;
+
+            if let (Some(u), Some(s)) = (pending.take(), sig.take()) {
+                (u, s)
+            } else {
+                return Err(Error::NoPendingUpdate);
+            }
+        };
+
+        info!("Starting update installation (relaunching)...");
+
+        // Set update in progress flag
+        app.state::<RcloneState>().set_update_in_progress(true);
+
+        // Perform installation and relaunch
+        if let Err(e) = update.install(signature) {
+            app.state::<RcloneState>().set_update_in_progress(false);
+            return Err(Error::Updater(e));
+        }
+
+        relaunch_app(app).await.map_err(Error::Relaunch)?;
+
+        Ok(())
+    }
 }

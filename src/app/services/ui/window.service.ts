@@ -55,7 +55,7 @@ export class WindowService extends TauriBaseService {
 
   async quitApplication(): Promise<void> {
     try {
-      await this.invokeCommand('handle_shutdown');
+      await this.invokeCommand('shutdown_app');
     } catch (error) {
       console.error('Failed to quit application:', error);
     }

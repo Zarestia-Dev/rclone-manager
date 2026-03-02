@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, inject, signal, effect, untracked } from '@angular/core';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { AppUpdaterService } from '../system/app-updater.service';
 import { RcloneUpdateService } from '../system/rclone-update.service';
@@ -130,16 +130,14 @@ export class OnboardingStateService {
   }
 
   private setupPostOnboardingTasks(): void {
-    import('@angular/core').then(({ effect, untracked }) => {
-      effect(() => {
-        if (this.isCompleted()) {
-          untracked(() => {
-            this.runPostOnboardingSetup().catch(error => {
-              console.error('Failed to run post-onboarding setup:', error);
-            });
+    effect(() => {
+      if (this.isCompleted()) {
+        untracked(() => {
+          this.runPostOnboardingSetup().catch(error => {
+            console.error('Failed to run post-onboarding setup:', error);
           });
-        }
-      });
+        });
+      }
     });
   }
 

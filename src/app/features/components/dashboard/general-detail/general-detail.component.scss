@@ -282,10 +282,6 @@
     gap: 12px;
     color: var(--window-fg-color);
 
-    mat-icon {
-      color: var(--primary-color);
-    }
-
     .task-counter {
       margin-left: auto;
       font-size: 13px;
@@ -382,20 +378,6 @@
           }
         }
 
-        mat-icon {
-          &.sync-color {
-            color: var(--primary-color);
-          }
-          &.copy-color {
-            color: var(--yellow);
-          }
-          &.move-color {
-            color: var(--orange);
-          }
-          &.bisync-color {
-            color: var(--purple);
-          }
-        }
         .task-status-badge {
           padding: 4px 12px;
           border-radius: 12px;

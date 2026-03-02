@@ -6,3 +6,4 @@ pub mod logs;
 pub mod origin;
 pub mod remotes;
 pub mod scheduled_task;
+pub mod updater;

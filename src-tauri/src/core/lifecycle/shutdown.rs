@@ -17,22 +17,8 @@ use crate::core::scheduler::engine::CronScheduler;
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 
 /// Main entry point for handling shutdown tasks
-#[tauri::command]
 pub async fn handle_shutdown(app_handle: AppHandle) {
     info!("🔴 Beginning shutdown sequence...");
-    app_handle.state::<RcloneState>().set_shutting_down();
-
-    app_handle
-        .emit(
-            APP_EVENT,
-            json!({
-                "status": "shutting_down",
-                "message": "Shutting down RClone Manager"
-            }),
-        )
-        .unwrap_or_else(|e| {
-            error!("Failed to emit an app_event: {e}");
-        });
 
     let scheduler_state = app_handle.state::<CronScheduler>();
 
@@ -135,7 +121,78 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         debug!("SafeEnvironmentManager not available in app state during shutdown");
     }
 
-    app_handle.exit(0);
+    apply_pending_updates_on_shutdown(&app_handle).await;
+}
+
+#[tauri::command]
+pub async fn shutdown_app(app: AppHandle) -> Result<(), String> {
+    app.state::<RcloneState>().set_shutting_down();
+
+    let _ = app.emit(
+        APP_EVENT,
+        json!({
+            "status": "shutting_down",
+            "message": "Shutting down RClone Manager"
+        }),
+    );
+
+    handle_shutdown(app.clone()).await;
+    info!("✅ Shutdown completed successfully");
+
+    app.exit(0);
+    Ok(())
+}
+
+async fn apply_pending_updates_on_shutdown(app_handle: &AppHandle) {
+    #[cfg(all(desktop, feature = "updater"))]
+    {
+        use crate::utils::types::updater::AppUpdaterState;
+
+        if let Some(updater_state) = app_handle.try_state::<AppUpdaterState>() {
+            let mut pending = match updater_state.pending_action.lock() {
+                Ok(lock) => lock,
+                Err(e) => {
+                    error!("Failed to lock pending app update during shutdown: {e}");
+                    return;
+                }
+            };
+
+            let mut signature = match updater_state.signature.lock() {
+                Ok(lock) => lock,
+                Err(e) => {
+                    error!("Failed to lock app update signature during shutdown: {e}");
+                    return;
+                }
+            };
+
+            if let (Some(update), Some(sig)) = (pending.take(), signature.take()) {
+                info!("Applying pending app update during shutdown...");
+                if let Err(e) = update.install(sig) {
+                    error!("Failed to apply app update during shutdown: {e}");
+                }
+            }
+        }
+    }
+
+    use crate::utils::types::updater::RcloneUpdaterState;
+    if let Some(rclone_updater_state) = app_handle.try_state::<RcloneUpdaterState>() {
+        let has_pending = match rclone_updater_state.pending_version.lock() {
+            Ok(pending_version) => pending_version.is_some(),
+            Err(e) => {
+                error!("Failed to lock pending rclone update version during shutdown: {e}");
+                false
+            }
+        };
+
+        if has_pending {
+            info!("Applying pending rclone update during shutdown...");
+            if let Err(e) =
+                crate::utils::rclone::updater::activate_pending_rclone_update(app_handle).await
+            {
+                error!("Failed to apply rclone update during shutdown: {e}");
+            }
+        }
+    }
 }
 
 async fn stop_all_active_jobs(app: AppHandle) -> Result<(), String> {

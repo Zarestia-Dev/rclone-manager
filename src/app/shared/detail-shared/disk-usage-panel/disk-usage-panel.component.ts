@@ -30,12 +30,7 @@ import { FormatFileSizePipe } from '@app/pipes';
         </mat-card-title>
         <div class="header-actions">
           @if (!config().notSupported) {
-            <button
-              mat-icon-button
-              class="primary"
-              (click)="retry.emit()"
-              [disabled]="config().loading"
-            >
+            <button mat-icon-button (click)="retry.emit()" [disabled]="config().loading">
               <mat-icon svgIcon="rotate-right" [class.animate-spin]="config().loading"></mat-icon>
             </button>
           }

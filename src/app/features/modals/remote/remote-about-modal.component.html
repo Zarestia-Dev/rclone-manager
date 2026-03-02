@@ -37,7 +37,7 @@
 
           <!-- Content -->
           @if (aboutInfo(); as about) {
-            <div class="content-wrapper fade-in">
+            <div class="fade-in">
               <!-- Usage Card -->
               <mat-card class="usage-card">
                 <div class="usage-item">
@@ -91,6 +91,7 @@
                   (click)="fetchDiskUsage(true)"
                   [disabled]="loadingUsage()"
                   [matTooltip]="'fileBrowser.remoteAbout.reloadUsage' | translate"
+                  matTooltipPosition="left"
                 >
                   <mat-icon svgIcon="rotate-right" [class.animate-spin]="loadingUsage()"></mat-icon>
                 </button>

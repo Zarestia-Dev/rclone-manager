@@ -272,7 +272,7 @@
             class="reset-btn"
             (click)="resetSetting(category, key)"
             [attr.aria-label]="
-              ('modals.preferences.resetToDefault' | translate) + ': ' + meta.metadata.display_name
+              ('modals.preferences.resetToDefault' | translate) + ': ' + meta.metadata?.display_name
             "
             [matTooltip]="'modals.preferences.resetToDefault' | translate"
             matTooltipPosition="above"
@@ -316,7 +316,7 @@
                       [formControl]="$any(getFormControl(category, key))"
                       (keydown)="onIntegerInput($event)"
                       (blur)="onBlur(category, key)"
-                      [attr.aria-label]="meta.metadata.display_name"
+                      [attr.aria-label]="meta.metadata?.display_name"
                     />
                     @if (
                       getFormControl(category, key).invalid && getFormControl(category, key).touched
@@ -347,11 +347,11 @@
                   @if (meta.options) {
                     <mat-select
                       [formControl]="$any(getFormControl(category, key))"
-                      [attr.aria-label]="meta.metadata.display_name"
+                      [attr.aria-label]="meta.metadata?.display_name"
                       (selectionChange)="onValueChange(category, key)"
                     >
-                      @for (option of meta.options; track option.value || option) {
-                        <mat-option [value]="option.value ?? option">{{
+                      @for (option of meta.options; track $any(option).value || option) {
+                        <mat-option [value]="$any(option).value ?? option">{{
                           getOptionLabel(category, key, option)
                         }}</mat-option>
                       }
@@ -360,8 +360,8 @@
                     <input
                       matInput
                       [formControl]="$any(getFormControl(category, key))"
-                      [attr.aria-label]="meta.metadata.display_name"
-                      [placeholder]="(meta.metadata.placeholder | translate) || ''"
+                      [attr.aria-label]="meta.metadata?.display_name"
+                      [placeholder]="(meta.metadata?.placeholder | translate) || ''"
                       (blur)="onBlur(category, key)"
                     />
                   }
@@ -374,11 +374,11 @@
                 <mat-form-field class="input-field" appearance="fill">
                   <mat-select
                     [formControl]="$any(getFormControl(category, key))"
-                    [attr.aria-label]="meta.metadata.display_name"
+                    [attr.aria-label]="meta.metadata?.display_name"
                     (selectionChange)="onValueChange(category, key)"
                   >
-                    @for (option of meta.options; track option.value || option) {
-                      <mat-option [value]="option.value ?? option">{{
+                    @for (option of meta.options; track $any(option).value || option) {
+                      <mat-option [value]="$any(option).value ?? option">{{
                         getOptionLabel(category, key, option)
                       }}</mat-option>
                     }
@@ -393,8 +393,8 @@
                   <input
                     matInput
                     [formControl]="$any(getFormControl(category, key))"
-                    [attr.aria-label]="meta.metadata.display_name"
-                    [placeholder]="(meta.metadata.placeholder | translate) || ''"
+                    [attr.aria-label]="meta.metadata?.display_name"
+                    [placeholder]="(meta.metadata?.placeholder | translate) || ''"
                     (blur)="onBlur(category, key)"
                   />
                   @if (isControlInvalid(category, key)) {
@@ -444,7 +444,7 @@
                     (click)="addArrayItem(category, key)"
                     [attr.aria-label]="
                       'modals.preferences.aria.addNewItem'
-                        | translate: { name: meta.metadata.display_name }
+                        | translate: { name: meta.metadata?.display_name }
                     "
                   >
                     <mat-icon svgIcon="plus"></mat-icon>
@@ -461,7 +461,7 @@
                     (blur)="onBlur(category, key)"
                     [attr.aria-label]="
                       'modals.preferences.aria.filePathFor'
-                        | translate: { name: meta.metadata.display_name }
+                        | translate: { name: meta.metadata?.display_name }
                     "
                   />
                   <button
@@ -470,7 +470,7 @@
                     (click)="openFilePicker(category, key)"
                     [attr.aria-label]="
                       'modals.preferences.aria.browseFor'
-                        | translate: { name: meta.metadata.display_name }
+                        | translate: { name: meta.metadata?.display_name }
                     "
                   >
                     <mat-icon svgIcon="file"></mat-icon>
@@ -491,7 +491,7 @@
                     (blur)="onBlur(category, key)"
                     [attr.aria-label]="
                       'modals.preferences.aria.folderPathFor'
-                        | translate: { name: meta.metadata.display_name }
+                        | translate: { name: meta.metadata?.display_name }
                     "
                   />
                   <button
@@ -500,7 +500,7 @@
                     (click)="openFolderPicker(category, key)"
                     [attr.aria-label]="
                       'modals.preferences.aria.browseFor'
-                        | translate: { name: meta.metadata.display_name }
+                        | translate: { name: meta.metadata?.display_name }
                     "
                   >
                     <mat-icon svgIcon="folder"></mat-icon>

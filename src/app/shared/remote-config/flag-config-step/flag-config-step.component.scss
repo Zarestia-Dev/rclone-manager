@@ -32,13 +32,6 @@ form {
   align-items: center;
   gap: var(--space-xs);
 
-  mat-icon {
-    width: 24px;
-    height: 24px;
-    font-size: 24px;
-    color: var(--primary-color);
-  }
-
   .type-info {
     display: flex;
     flex-direction: column;

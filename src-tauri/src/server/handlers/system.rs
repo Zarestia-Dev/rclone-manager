@@ -12,14 +12,12 @@ use tauri::Manager;
 use tokio::sync::broadcast;
 
 use crate::LogCache;
-use crate::core::lifecycle::shutdown::handle_shutdown;
+use crate::core::lifecycle::shutdown::shutdown_app;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
 use crate::utils::types::core::BandwidthLimitResponse;
 
 #[cfg(feature = "updater")]
-use crate::utils::app::updater::app_updates::{
-    DownloadState, PendingUpdate, fetch_update, get_download_status, install_update,
-};
+use crate::utils::app::updater::app_updates::{fetch_update, get_download_status, install_update};
 
 pub async fn get_stats_handler(
     State(state): State<WebServerState>,
@@ -181,6 +179,16 @@ pub async fn check_rclone_update_handler(
     Ok(Json(ApiResponse::success(result)))
 }
 
+pub async fn get_rclone_update_info_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<Option<serde_json::Value>>>, AppError> {
+    use crate::utils::rclone::updater::get_rclone_update_info;
+    let result = get_rclone_update_info(state.app_handle.clone())
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(result)))
+}
+
 #[derive(Deserialize)]
 pub struct UpdateRcloneQuery {
     pub channel: Option<String>,
@@ -207,12 +215,14 @@ pub async fn get_configs_handler(
     Ok(Json(ApiResponse::success(configs)))
 }
 
-pub async fn handle_shutdown_handler(
+pub async fn shutdown_app_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     let app_handle = state.app_handle.clone();
     tokio::spawn(async move {
-        handle_shutdown(app_handle).await;
+        if let Err(e) = shutdown_app(app_handle).await {
+            log::error!("Failed to shutdown app from API handler: {}", e);
+        }
     });
     Ok(Json(ApiResponse::success(crate::localized_success!(
         "backendSuccess.system.shutdownInitiated"
@@ -304,16 +314,9 @@ pub async fn fetch_update_handler(
     State(state): State<WebServerState>,
     Query(query): Query<FetchUpdateQuery>,
 ) -> Result<Json<ApiResponse<Option<serde_json::Value>>>, AppError> {
-    let pending_update = state.app_handle.state::<PendingUpdate>();
-    let download_state = state.app_handle.state::<DownloadState>();
-    let result = fetch_update(
-        state.app_handle.clone(),
-        pending_update,
-        download_state,
-        query.channel,
-    )
-    .await
-    .map_err(anyhow::Error::msg)?;
+    let result = fetch_update(state.app_handle.clone(), query.channel)
+        .await
+        .map_err(anyhow::Error::msg)?;
     let json_result = result.map(|r| serde_json::to_value(r)).transpose()?;
     Ok(Json(ApiResponse::success(json_result)))
 }
@@ -329,8 +332,7 @@ pub async fn fetch_update_handler(
 pub async fn get_download_status_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    let download_state = state.app_handle.state::<DownloadState>();
-    let status = get_download_status(download_state)
+    let status = get_download_status(state.app_handle.clone())
         .await
         .map_err(anyhow::Error::msg)?;
     let json_status = serde_json::to_value(status)?;
@@ -348,9 +350,7 @@ pub async fn get_download_status_handler(
 pub async fn install_update_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
-    let pending_update = state.app_handle.state::<PendingUpdate>();
-    let download_state = state.app_handle.state::<DownloadState>();
-    install_update(state.app_handle.clone(), pending_update, download_state)
+    install_update(state.app_handle.clone())
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(crate::localized_success!(
@@ -369,7 +369,9 @@ pub async fn relaunch_app_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::utils::app::platform::relaunch_app;
-    relaunch_app(state.app_handle.clone());
+    relaunch_app(state.app_handle.clone())
+        .await
+        .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(
         "App relaunched successfully".to_string(),
     )))

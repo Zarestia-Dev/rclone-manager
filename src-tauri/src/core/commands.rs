@@ -38,7 +38,9 @@ macro_rules! generate_invoke_handler {
             $crate::rclone::queries::get_rclone_info,
             $crate::rclone::queries::get_rclone_pid,
             $crate::utils::rclone::updater::check_rclone_update,
+            $crate::utils::rclone::updater::get_rclone_update_info,
             $crate::utils::rclone::updater::update_rclone,
+            $crate::utils::rclone::updater::apply_rclone_update,
             $crate::utils::process::process_manager::kill_process_by_pid,
             // =================================================================
             // RCLONE QUERIES
@@ -247,7 +249,7 @@ macro_rules! generate_invoke_handler {
             // =================================================================
             // APPLICATION CONTROL
             // =================================================================
-            $crate::core::lifecycle::shutdown::handle_shutdown,
+            $crate::core::lifecycle::shutdown::shutdown_app,
             // =================================================================
             // SECURITY & PASSWORD MANAGEMENT
             // =================================================================
@@ -270,6 +272,8 @@ macro_rules! generate_invoke_handler {
             $crate::utils::app::updater::app_updates::get_download_status,
             #[cfg(all(desktop, feature = "updater"))]
             $crate::utils::app::updater::app_updates::install_update,
+            #[cfg(all(desktop, feature = "updater"))]
+            $crate::utils::app::updater::app_updates::apply_app_update,
             // =================================================================
             // DEBUG TOOLS
             // =================================================================

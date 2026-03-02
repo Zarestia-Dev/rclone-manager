@@ -2,7 +2,7 @@ import { Injectable, OnDestroy, inject, signal } from '@angular/core';
 import { interval, Subject, Subscription, firstValueFrom } from 'rxjs';
 import { map, takeWhile, filter, takeUntil } from 'rxjs/operators';
 import { TranslateService } from '@ngx-translate/core';
-import { NotificationService } from '@app/services';
+import { DebugService, NotificationService } from '@app/services';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { UpdateMetadata } from '@app/types';
 import { TauriBaseService } from '../core/tauri-base.service';
@@ -37,6 +37,7 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
   private dialog = inject(MatDialog);
   private translate = inject(TranslateService);
   private eventListenersService = inject(EventListenersService);
+  private debugService = inject(DebugService);
 
   private destroy$ = new Subject<void>();
 
@@ -166,6 +167,14 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
       this.notificationService.showError(this.translate.instant('updates.installFailed'));
       this.stopStatusPolling();
       this._updateInProgress.set(false);
+      this.resetDownloadStatus();
+
+      const errorMessage = this.extractErrorMessage(error);
+      if (this.isStaleUpdateError(errorMessage)) {
+        this._updateAvailable.set(null);
+        this._hasUpdates.set(false);
+        await this.checkForUpdates();
+      }
     }
   }
 
@@ -184,9 +193,15 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
             const msg = status.failureMessage || this.translate.instant('updates.installFailed');
             this.notificationService.showError(msg);
             this._updateInProgress.set(false);
-            this._updateAvailable.set(null);
-            this._hasUpdates.set(false);
+            // Keep update metadata available so user can retry immediately
             this.stopStatusPolling();
+            this.resetDownloadStatus();
+
+            if (this.isStaleUpdateError(msg)) {
+              this._updateAvailable.set(null);
+              this._hasUpdates.set(false);
+              await this.checkForUpdates();
+            }
             return;
           }
 
@@ -195,6 +210,9 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
           }
         } catch (error) {
           console.error('Error polling download status:', error);
+          this.stopStatusPolling();
+          this._updateInProgress.set(false);
+          this.resetDownloadStatus();
         }
       });
   }
@@ -212,19 +230,18 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
     this._hasUpdates.set(false);
     this.stopStatusPolling();
 
-    if (this.uiStateService.platform !== 'windows') {
-      // Linux/MacOS: Set flag and show notification
-      this._restartRequired.set(true);
-      this.notificationService.showSuccess(this.translate.instant('updates.installSuccess'));
-    } else {
-      // Windows: the updater will auto-restart the application; no need for a modal here
-      // Optionally, we could show a brief toast if required but we don't display a dialog now.
-    }
+    this._restartRequired.set(true);
+    this.notificationService.showSuccess(this.translate.instant('updates.installSuccess'));
   }
 
-  async relaunchApp(): Promise<void> {
+  async finishUpdate(): Promise<void> {
     try {
-      await this.invokeCommand('relaunch_app');
+      // Check if we are ready to restart with a pending app update
+      if (this._restartRequired()) {
+        await this.invokeCommand('apply_app_update');
+      } else {
+        this.debugService.restartApp();
+      }
     } catch (error) {
       console.error('Failed to relaunch:', error);
       this.notificationService.showError(this.translate.instant('updates.restartFailed'));
@@ -237,7 +254,29 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
       totalBytes: 0,
       percentage: 0,
       isComplete: false,
+      isFailed: false,
+      failureMessage: null,
     });
+  }
+
+  private extractErrorMessage(error: unknown): string {
+    if (typeof error === 'string') return error;
+    if (error instanceof Error) return error.message;
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return String(error);
+    }
+  }
+
+  private isStaleUpdateError(message: string): boolean {
+    const normalized = message.toLowerCase();
+    return (
+      normalized.includes('bekleyen güncelleme yok') ||
+      normalized.includes('no pending update') ||
+      normalized.includes('update unavailable') ||
+      normalized.includes('no longer available')
+    );
   }
 
   getUpdateAvailable(): UpdateMetadata | null {
@@ -372,6 +411,28 @@ export class AppUpdaterService extends TauriBaseService implements OnDestroy {
       this._updatesDisabled.set(updatesDisabled);
 
       this.initialized = true;
+
+      if (!updatesDisabled) {
+        // Attempt to pick up an update check on startup if auto-check is enabled
+        const autoCheck = await this.getAutoCheckEnabled();
+        if (autoCheck) {
+          const cachedUpdate = await this.invokeCommand<UpdateMetadata | null>('fetch_update', {
+            channel,
+          });
+          if (cachedUpdate && !this.isVersionSkipped(cachedUpdate.version)) {
+            if (cachedUpdate.restartRequired) {
+              this._restartRequired.set(true);
+            } else {
+              this._updateAvailable.set(cachedUpdate);
+              this._hasUpdates.set(true);
+              if (cachedUpdate.updateInProgress) {
+                this._updateInProgress.set(true);
+                this.startStatusPolling();
+              }
+            }
+          }
+        }
+      }
     } catch (error) {
       console.error('Failed to initialize updater service:', error);
       // Set defaults on error

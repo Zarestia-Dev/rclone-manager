@@ -4,7 +4,7 @@ use serde_json::Value;
 use tauri::{AppHandle, Emitter, Listener, Manager};
 
 use crate::{
-    core::{lifecycle::shutdown::handle_shutdown, scheduler::engine::CronScheduler},
+    core::{lifecycle::shutdown::shutdown_app, scheduler::engine::CronScheduler},
     rclone::{
         commands::system::set_bandwidth_limit,
         state::scheduled_tasks::{ScheduledTasksCache, reload_scheduled_tasks_from_configs},
@@ -61,7 +61,7 @@ fn handle_ctrl_c(app: &AppHandle) {
             return;
         }
         info!("🧹 Ctrl+C received via tokio. Initiating shutdown...");
-        handle_shutdown(app_handle_clone.clone()).await;
+        let _ = shutdown_app(app_handle_clone.clone()).await;
         app_handle_clone.exit(0);
     });
 }

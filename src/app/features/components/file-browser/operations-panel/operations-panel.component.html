@@ -103,7 +103,7 @@
               <div class="details-content job-details-menu" cdkMenu>
                 <div class="detail-header">
                   <mat-icon [svgIcon]="getJobTypeIcon(job)"></mat-icon>
-                  <span class="detail-title">{{ job.status }} - {{ job.job_type }}</span>
+                  <span class="detail-title">{{ job.status }} - {{ getJobTypeLabel(job) }}</span>
                 </div>
                 <mat-divider></mat-divider>
 

@@ -29,6 +29,12 @@ impl RcloneState {
         self.is_shutting_down
             .store(true, std::sync::atomic::Ordering::SeqCst);
     }
+
+    /// Set the update in progress flag
+    pub fn set_update_in_progress(&self, value: bool) {
+        self.is_update_in_progress
+            .store(value, std::sync::atomic::Ordering::SeqCst);
+    }
 }
 
 pub struct RcApiEngine {

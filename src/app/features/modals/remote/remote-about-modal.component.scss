@@ -60,6 +60,11 @@
   padding: 20px;
   margin-bottom: 24px;
   box-shadow: var(--shadow-gnome);
+
+  button {
+    position: absolute;
+    left: 8px;
+  }
 }
 
 .usage-item {

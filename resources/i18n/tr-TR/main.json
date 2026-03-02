@@ -21,7 +21,8 @@
     "retry": "Yeniden Dene",
     "default": "Varsayılan",
     "copyErrorFailed": "Hata kopyalanamadı",
-    "errorCopied": "Hata panoya kopyalandı"
+    "errorCopied": "Hata panoya kopyalandı",
+    "required": "Bu alan zorunludur."
   },
   "validators": {
     "integer": "Geçerli bir tam sayı olmalıdır",
@@ -341,6 +342,22 @@
       "dashboard_layout": {
         "label": "Panel Düzeni",
         "description": "Panel için özel düzen yapılandırması."
+      },
+      "app_auto_restart": {
+        "label": "Uygulamayı Otomatik Yeniden Başlat",
+        "description": "Güncelleme indirildikten sonra uygulamayı otomatik olarak yeniden başlat."
+      },
+      "app_update_on_quit": {
+        "label": "Çıkışta Uygulama Güncellemesini Yükle",
+        "description": "Uygulama kapatılırken bekleyen uygulama güncellemelerini otomatik olarak yükle."
+      },
+      "rclone_auto_restart": {
+        "label": "Rclone'u Otomatik Yeniden Başlat",
+        "description": "Güncelleme indirildikten sonra rclone motorunu otomatik olarak yeniden başlat."
+      },
+      "rclone_update_on_quit": {
+        "label": "Çıkışta Rclone Güncellemesini Yükle",
+        "description": "Uygulama kapatılırken bekleyen rclone güncellemelerini otomatik olarak uygula."
       }
     },
     "nautilus": {
@@ -534,7 +551,9 @@
       "description": "Farklı bir terim aramayı deneyin veya aramanızı temizleyin.",
       "action": "Aramayı Temizle",
       "hideSearch": "Aramayı gizle",
-      "showSearch": "Aramayı göster"
+      "showSearch": "Aramayı göster",
+      "hide": "Aramayı gizle",
+      "show": "Aramayı göster"
     },
     "installationOptions": {
       "tabs": {
@@ -864,7 +883,8 @@
         "required": "Şifre gerekli",
         "remember": "Şifreyi hatırla",
         "keychain": "Sistem anahtarlığında saklandı"
-      }
+      },
+      "pollIntervalPlaceholder": "Anket aralığını girin (saniye)"
     },
     "passwordManager": {
       "placeholder": "Rclone yapılandırma şifrenizi girin",
@@ -1049,7 +1069,8 @@
           "one": "1 dakika",
           "other": "{{count}} dakika"
         }
-      }
+      },
+      "cronPlaceholder": "Bir cron ifadesi girin (ör. 0 0 * * *)"
     },
     "cronPresets": {
       "daily-9am": {
@@ -1162,7 +1183,7 @@
     "skipVersion": "{{version}} sürümü atlanacak",
     "confirmInstall": {
       "title": "Güncellemeyi Kur",
-      "message": "Bu güncelleme uygulamayı otomatik olarak yeniden başlatacak. Devam etmek istiyor musunuz?",
+      "message": "Güncellemeyi indirip hazırlamak istiyor musunuz? Değişiklikleri uygulamak için işlem bittiğinde uygulamayı yeniden başlatmanız gerekecektir.",
       "confirm": "Kur",
       "cancel": "İptal"
     },
@@ -1283,6 +1304,19 @@
         "speed": "Hız",
         "eta": "Tahmini Süre",
         "transfers": "Transferler"
+      },
+      "types": {
+        "delete_file": "Dosya Silme",
+        "purge": "Temizleme",
+        "cleanup": "Temizlik",
+        "rmdirs": "Boş Klasörleri Sil",
+        "copy": "Kopyala",
+        "copy_file": "Dosya Kopyala",
+        "copy_url": "URL Kopyala",
+        "move": "Taşı",
+        "move_file": "Dosya Taşı",
+        "sync": "Senkronize",
+        "bisync": "Çift Yönlü Senkronize"
       }
     },
     "fileViewer": {
@@ -1317,6 +1351,7 @@
         "profileSelection": "Profil seçimi"
       },
       "operationMode": "Operasyon Modu",
+      "selectOperationMode": "İşlem modunu seç",
       "monitoring": "İzleme",
       "configuration": "Yapılandırma",
       "selectedProfile": "Seçili Profil",
@@ -1436,7 +1471,10 @@
       "fileBrowser": "Dosya Gezgini",
       "fileBrowserNautilus": "Dosya Gezgini (Nautilus)",
       "navigation": "Gezinti"
-    }
+    },
+    "quitError": "Uygulama kapatılamadı: {{error}}",
+    "refreshError": "Kısayollar yenilenemedi: {{error}}",
+    "refreshSuccess": "Kısayollar başarıyla yenilendi"
   },
   "repair": {
     "rclonePath": {
@@ -1456,6 +1494,14 @@
     "shutdown": {
       "title": "Kapatılıyor",
       "message": "Uygulama güvenli bir şekilde kapatılırken lütfen bekleyin..."
+    },
+    "updating": {
+      "title": "Uygulama Güncellemesi Yükleniyor",
+      "message": "Uygulama güncellemesi uygulanırken lütfen bekleyin..."
+    },
+    "rcloneUpdating": {
+      "title": "Rclone Güncellemesi Yükleniyor",
+      "message": "Rclone güncellemesi uygulanırken lütfen bekleyin..."
     }
   },
   "vfs": {
@@ -1489,13 +1535,15 @@
       "currentVersion": "Mevcut Sürüm",
       "restartRequired": "Yeniden Başlatma Gerekli",
       "restartDescription": "Bir güncelleme yüklendi. Değişiklikleri uygulamak için lütfen uygulamayı yeniden başlatın.",
+      "rcloneRestartRequired": "Rclone Yeniden Başlatma Gerekli",
+      "rcloneRestartDescription": "Bir Rclone güncellemesi yüklendi. Değişiklikleri uygulamak için lütfen motoru yeniden başlatın.",
       "restartNow": "Şimdi Yeniden Başlat",
       "updateAvailable": "Güncelleme Mevcut",
       "version": "Sürüm",
       "whatsNew": "Yenilikler",
       "downloading": "İndiriliyor...",
       "installing": "Kuruluyor...",
-      "installUpdate": "Güncellemeyi Kur",
+      "installUpdate": "Güncellemeyi İndir",
       "skipVersion": "Sürümü Atla",
       "upToDate": "Güncel",
       "latestVersionMsg": "En son sürümü çalıştırıyorsunuz",
@@ -1517,7 +1565,7 @@
       "rcloneUpdateAvailable": "Rclone Güncellemesi Mevcut",
       "whatsNewRclone": "Rclone'daki Yenilikler",
       "updating": "Güncelleniyor...",
-      "updateRclone": "Rclone'u Güncelle",
+      "updateRclone": "Rclone Güncellemesini İndir",
       "rcloneUpToDate": "Rclone Güncel",
       "checkRcloneUpdates": "Rclone Güncellemelerini Kontrol Et",
       "rcloneUpdateSettings": "Rclone Güncelleme Ayarları",
@@ -1985,6 +2033,7 @@
       "searchPlaceholder": "Dosyaları ara...",
       "local": "Yerel",
       "cloud": "Bulut",
+      "fileSytem": "Dosya Sistemi",
       "bookmarks": "Yer İmleri"
     },
     "sort": {
@@ -2004,6 +2053,9 @@
     "empty": {
       "noStarred": "Yıldızlı Dosya Yok",
       "folderEmpty": "Klasör Boş"
+    },
+    "bookmarks": {
+      "emptyHint": "Yer imi yok"
     },
     "selection": {
       "selected": "seçildi",
@@ -2066,6 +2118,7 @@
       "selectAll": "Tümünü Seç",
       "removeBookmark": "Yer İmini Kaldır",
       "duplicateTab": "Sekmeyi Çoğalt",
+      "closeTab": "Sekmeyi Kapat",
       "closeOtherTabs": "Diğer Sekmeleri Kapat",
       "closeTabsToRight": "Sağdaki Sekmeleri Kapat",
       "about": "Hakkında",
@@ -2234,6 +2287,7 @@
       "ariaLabel": "{{remote}} için zamanlanmış {{type}} görevi. Durum: {{status}}",
       "nextRun": "Sonraki Çalışma:",
       "lastRun": "Son Çalışma:",
+      "running": "Çalışıyor",
       "stats": {
         "success": "Başarı sayısı",
         "failure": "Hata sayısı",

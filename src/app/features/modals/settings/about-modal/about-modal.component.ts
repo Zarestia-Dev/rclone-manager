@@ -7,6 +7,7 @@ import {
   signal,
   DestroyRef,
   effect,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
@@ -81,6 +82,7 @@ export interface OverlayView {
   ],
   templateUrl: './about-modal.component.html',
   styleUrls: ['./about-modal.component.scss', '../../../../styles/_shared-modal.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AboutModalComponent implements OnInit {
   readonly rCloneManagerVersion = appVersion;
@@ -137,7 +139,7 @@ export class AboutModalComponent implements OnInit {
   readonly appDownloadPercentage = computed(() => this.appDownloadStatus()?.percentage || 0);
   readonly appDownloadInProgress = computed(() => {
     const status = this.appDownloadStatus();
-    return (status?.downloadedBytes || 0) > 0 && !status?.isComplete;
+    return !!this.appUpdateInProgress() && !status?.isComplete && !status?.isFailed;
   });
 
   // Rclone Updater Signals
@@ -145,6 +147,8 @@ export class AboutModalComponent implements OnInit {
   readonly rcloneUpdateChannel = this.rcloneUpdateService.updateChannel;
   readonly rcloneSkippedVersions = this.rcloneUpdateService.skippedVersions;
   readonly rcloneAutoCheck = signal<boolean>(true);
+  readonly restartingApp = signal<boolean>(false);
+  readonly restartingRcloneEngine = signal<boolean>(false);
 
   // Rclone Computed
   readonly rcloneInfo = computed(() => {
@@ -191,19 +195,35 @@ export class AboutModalComponent implements OnInit {
 
   // Navigation Items
   readonly navItems = [
-    { label: 'modals.about.details', page: 'Details', icon: 'chevron-right' },
+    {
+      label: 'modals.about.details',
+      page: 'Details',
+      viewId: 'details' as ViewId,
+      icon: 'chevron-right',
+    },
     // Updates is conditional, handled separately or via computed
     {
       label: 'modals.about.aboutRclone',
       page: 'About Rclone',
+      viewId: 'about-rclone' as ViewId,
       icon: 'chevron-right',
       badgeSignal: this.rcloneUpdateStatus,
     },
   ];
 
   readonly bottomNavItems = [
-    { label: 'modals.about.credits', page: 'Credits', icon: 'chevron-right' },
-    { label: 'modals.about.legal', page: 'Legal', icon: 'chevron-right' },
+    {
+      label: 'modals.about.credits',
+      page: 'Credits',
+      viewId: 'credits' as ViewId,
+      icon: 'chevron-right',
+    },
+    {
+      label: 'modals.about.legal',
+      page: 'Legal',
+      viewId: 'legal' as ViewId,
+      icon: 'chevron-right',
+    },
   ];
 
   // Logic
@@ -311,12 +331,29 @@ export class AboutModalComponent implements OnInit {
     await this.appUpdaterService.installUpdate();
   }
 
-  async relaunchApp(): Promise<void> {
+  async finishUpdate(): Promise<void> {
+    if (this.restartingApp()) return;
+    this.restartingApp.set(true);
     try {
-      await this.appUpdaterService.relaunchApp();
+      await this.appUpdaterService.finishUpdate();
     } catch (error) {
-      console.error('Failed to relaunch app:', error);
+      console.error('Failed to finish update:', error);
       this.notificationService.showError(this.translate.instant('updates.restartFailed'));
+    } finally {
+      this.restartingApp.set(false);
+    }
+  }
+
+  async restartApp(): Promise<void> {
+    if (this.restartingApp()) return;
+    this.restartingApp.set(true);
+    try {
+      await this.debugService.restartApp();
+    } catch (error) {
+      console.error('Failed to restart app:', error);
+      this.notificationService.showError(this.translate.instant('updates.restartFailed'));
+    } finally {
+      this.restartingApp.set(false);
     }
   }
 
@@ -378,6 +415,16 @@ export class AboutModalComponent implements OnInit {
   async installRcloneUpdate(): Promise<void> {
     if (this.rcloneUpdateStatus().updating) return;
     await this.rcloneUpdateService.performUpdate();
+  }
+
+  async restartRcloneEngine(): Promise<void> {
+    if (!this.rcloneUpdateStatus().readyToRestart || this.restartingRcloneEngine()) return;
+    this.restartingRcloneEngine.set(true);
+    try {
+      await this.rcloneUpdateService.restartEngine();
+    } finally {
+      this.restartingRcloneEngine.set(false);
+    }
   }
 
   async skipRcloneUpdate(): Promise<void> {
@@ -557,7 +604,7 @@ export class AboutModalComponent implements OnInit {
   formatReleaseDate(dateString: string): string {
     try {
       const date = new Date(dateString);
-      const locale = this.translate.currentLang === 'tr' ? 'tr-TR' : 'en-US';
+      const locale = this.translate.getCurrentLang();
       return date.toLocaleDateString(locale, {
         year: 'numeric',
         month: 'long',
@@ -570,16 +617,13 @@ export class AboutModalComponent implements OnInit {
 
   getFormattedReleaseNotes(markdown: string | undefined | null): SafeHtml {
     if (!markdown) {
-      return (
-        this.sanitizer.sanitize(
-          1,
-          `<p>${this.translate.instant('modals.about.noReleaseNotes')}</p>`
-        ) || ''
+      return this.sanitizer.bypassSecurityTrustHtml(
+        `<p>${this.translate.instant('modals.about.noReleaseNotes')}</p>`
       );
     }
     // Renderer is now static global const
-    const html = marked.parse(markdown, { gfm: true, breaks: true, renderer });
-    return this.sanitizer.sanitize(1, html) || '';
+    const html = marked.parse(markdown, { gfm: true, breaks: true, renderer }) as string;
+    return this.sanitizer.bypassSecurityTrustHtml(html);
   }
 
   getChannelLabel(channel: string | null | undefined): string {

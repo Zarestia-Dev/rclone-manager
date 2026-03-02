@@ -108,6 +108,7 @@ export interface UpdateStatus {
   checking: boolean;
   updating: boolean;
   available: boolean;
+  readyToRestart?: boolean;
   error: string | null;
   lastCheck: Date | null;
   updateInfo: RcloneUpdateInfo | null;
@@ -148,6 +149,16 @@ export interface SettingTab {
   key: string;
 }
 
+export interface RcloneFlagMetadata {
+  display_name?: string;
+  label?: string;
+  help_text?: string;
+  description?: string;
+  required?: boolean;
+  engine_restart?: boolean;
+  placeholder?: string;
+}
+
 export interface SettingMetadata {
   value_type?: 'bool' | 'int' | 'string' | 'select' | 'bandwidth' | 'file' | 'folder' | 'string[]';
   default: any;
@@ -156,7 +167,7 @@ export interface SettingMetadata {
   max?: number;
   step?: number;
   options?: any[]; // Backend sends tuples or objects? Schema says options(("val", "Label"))
-  metadata?: any;
+  metadata?: RcloneFlagMetadata;
   reserved?: string[];
 }
 

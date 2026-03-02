@@ -43,11 +43,13 @@
       }
     </div>
 
-    <div class="about-list">
+    <div class="about-list" role="tablist">
       @for (item of navItems; track item.page) {
         <button
           matButton
           class="about-item"
+          role="tab"
+          [attr.aria-selected]="currentView().id === item.viewId"
           (click)="navigateTo(item.page)"
           [matBadge]="item.badgeSignal ? (item.badgeSignal().available ? '!' : null) : null"
         >
@@ -68,9 +70,15 @@
         </button>
       }
 
-      <div class="stacked-buttons">
+      <div class="stacked-buttons" role="tablist">
         @for (item of bottomNavItems; track item.page; let last = $last) {
-          <button matButton class="about-item" (click)="navigateTo(item.page)">
+          <button
+            matButton
+            class="about-item"
+            role="tab"
+            [attr.aria-selected]="currentView().id === item.viewId"
+            (click)="navigateTo(item.page)"
+          >
             <span>{{ item.label | translate }}</span>
             <mat-icon [svgIcon]="item.icon"></mat-icon>
           </button>
@@ -167,7 +175,17 @@
                   </div>
                 </div>
                 <div class="update-buttons">
-                  <button mat-flat-button class="accent" (click)="relaunchApp()">
+                  <button
+                    mat-flat-button
+                    class="accent"
+                    (click)="finishUpdate()"
+                    [disabled]="restartingApp()"
+                  >
+                    @if (restartingApp()) {
+                      <mat-spinner diameter="16"></mat-spinner>
+                    } @else {
+                      <mat-icon svgIcon="reset-wrench"></mat-icon>
+                    }
                     <span>{{ 'modals.about.restartNow' | translate }}</span>
                   </button>
                 </div>
@@ -396,7 +414,34 @@
             </div>
 
             @if (isLocalBackend()) {
-              @if (rcloneUpdateStatus().updateInfo?.update_available) {
+              @if (rcloneUpdateStatus().readyToRestart) {
+                <div class="update-card restart-required">
+                  <div class="update-header">
+                    <mat-icon svgIcon="reset-wrench"></mat-icon>
+                    <div class="update-title">
+                      <h4>{{ 'modals.about.rcloneRestartRequired' | translate }}</h4>
+                      <p class="restart-description">
+                        {{ 'modals.about.rcloneRestartDescription' | translate }}
+                      </p>
+                    </div>
+                  </div>
+                  <div class="update-buttons">
+                    <button
+                      mat-flat-button
+                      class="accent"
+                      (click)="restartRcloneEngine()"
+                      [disabled]="restartingRcloneEngine()"
+                    >
+                      @if (restartingRcloneEngine()) {
+                        <mat-spinner diameter="16"></mat-spinner>
+                      } @else {
+                        <mat-icon svgIcon="reset-wrench"></mat-icon>
+                      }
+                      <span>{{ 'modals.about.restartNow' | translate }}</span>
+                    </button>
+                  </div>
+                </div>
+              } @else if (rcloneUpdateStatus().updateInfo?.update_available) {
                 <div class="update-card available">
                   <div class="update-header">
                     <mat-icon svgIcon="circle-up"></mat-icon>
@@ -680,7 +725,7 @@
                     <mat-icon svgIcon="terminal"></mat-icon>
                     {{ 'modals.about.openDevTools' | translate }}
                   </button>
-                  <button matButton="outlined" class="warn" (click)="relaunchApp()">
+                  <button matButton="outlined" class="warn" (click)="restartApp()">
                     <mat-icon svgIcon="reset-wrench"></mat-icon>
                     {{ 'modals.about.restartApp' | translate }}
                   </button>

@@ -33,7 +33,7 @@ use crate::utils::logging::log::init_logging;
 use crate::{
     core::{
         initialization::initialization,
-        lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
+        lifecycle::{shutdown::shutdown_app, startup::handle_startup},
         paths::AppPaths,
         scheduler::engine::CronScheduler,
         settings::operations::core::load_startup_settings,
@@ -41,16 +41,10 @@ use crate::{
     utils::types::{
         core::{RcApiEngine, RcloneState},
         logs::LogCache,
+        updater::{AppUpdaterState, RcloneUpdaterState},
     },
 };
 
-// =============================================================================
-// CONDITIONAL IMPORTS: Updater
-// =============================================================================
-#[cfg(all(desktop, feature = "updater"))]
-use crate::utils::app::updater::app_updates::{DownloadState, PendingUpdate};
-
-// =============================================================================
 // CONDITIONAL IMPORTS: Desktop Tray
 // =============================================================================
 #[cfg(desktop)]
@@ -226,7 +220,7 @@ pub fn run() {
                             .app_handle()
                             .state::<RcloneState>()
                             .set_shutting_down();
-                        handle_shutdown(window_.app_handle().clone()).await;
+                        let _ = shutdown_app(window_.app_handle().clone()).await;
                     });
                 }
             }
@@ -351,14 +345,14 @@ fn setup_app(
                 if let Some(root) = value.as_object_mut()
                     && let Some(app_settings) = root.remove("app_settings")
                 {
-                    log::info!("found legacy app_settings, flattening to root");
-                    if let Some(app_settings_obj) = app_settings.as_object() {
-                        for (k, v) in app_settings_obj {
-                            if !root.contains_key(k) {
-                                root.insert(k.clone(), v.clone());
+                        log::info!("found legacy app_settings, flattening to root");
+                        if let Some(app_settings_obj) = app_settings.as_object() {
+                            for (k, v) in app_settings_obj {
+                                if !root.contains_key(k) {
+                                    root.insert(k.clone(), v.clone());
+                                }
                             }
                         }
-                    }
                 }
                 value
             })
@@ -511,10 +505,9 @@ fn setup_app(
     app.manage(ScheduledTasksCache::new());
     app.manage(CronScheduler::new());
 
-    #[cfg(all(desktop, feature = "updater"))]
-    app.manage(PendingUpdate(std::sync::Mutex::new(None)));
-    #[cfg(all(desktop, feature = "updater"))]
-    app.manage(DownloadState::default());
+    // Initialize Updater States
+    app.manage(AppUpdaterState::default());
+    app.manage(RcloneUpdaterState::default());
 
     // -------------------------------------------------------------------------
     // Initialize Logging
@@ -688,7 +681,7 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent)
             let app_clone = app.clone();
             tauri::async_runtime::spawn(async move {
                 app_clone.state::<RcloneState>().set_shutting_down();
-                handle_shutdown(app_clone).await;
+                let _ = shutdown_app(app_clone).await;
             });
         }
         _ => {}

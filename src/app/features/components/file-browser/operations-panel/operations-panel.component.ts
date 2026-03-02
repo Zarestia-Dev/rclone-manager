@@ -76,6 +76,19 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
     this.isExpanded.update(v => !v);
   }
 
+  /**
+   * Return a human-readable label for the job type, using translations when available.
+   */
+  getJobTypeLabel(job: JobInfo): string {
+    const key = `fileBrowser.operations.types.${job.job_type}`;
+    const translated = this.translate.instant(key);
+    // If translation returns the key itself, fall back to a prettified name
+    if (translated === key) {
+      return job.job_type.replace(/_/g, ' ');
+    }
+    return translated;
+  }
+
   getProgress(job: JobInfo): number {
     if (!job.stats || !job.stats.totalBytes) return 0;
     return Math.round((job.stats.bytes / job.stats.totalBytes) * 100);

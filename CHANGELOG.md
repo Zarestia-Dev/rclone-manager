@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Nautilus Component: A lot of improvements and bug fixes.
 - Notification behavior improved.
 - Use Zoneless Change Detection.
+- On Rclone update, app now not auto restart the engine. User input needed.
 
 ### Fixed
 - Fixed bug where remotes requiring sensitive fields like passwords or API keys (e.g., Filen) failed to create via UI due to being sent in plain text instead of an obscured format to the rclone RC API. (Fixed #128)

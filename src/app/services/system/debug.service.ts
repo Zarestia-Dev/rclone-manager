@@ -37,6 +37,13 @@ export class DebugService {
   }
 
   /**
+   * Restart the application
+   */
+  async restartApp(): Promise<void> {
+    await this.apiClient.invoke<void>('relaunch_app');
+  }
+
+  /**
    * Get debug information (paths, versions, build info)
    */
   async getDebugInfo(): Promise<DebugInfo> {

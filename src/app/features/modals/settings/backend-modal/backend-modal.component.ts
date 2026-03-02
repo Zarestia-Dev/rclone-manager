@@ -433,11 +433,18 @@ export class BackendModalComponent {
 
     try {
       this.formState.update(s => ({ ...s, isLoading: true }));
+      const backend = this.backends().find(b => b.name === state.editingName);
+      if (!backend) throw new Error('Backend not found');
+
       await this.backendService.updateBackend({
         name: state.editingName,
-        isLocal: false,
-        host: '',
-        port: 0,
+        isLocal: backend.isLocal,
+        host: backend.host,
+        port: backend.port,
+        username: backend.username,
+        password: backend.password,
+        configPath: backend.configPath,
+        oauthPort: backend.oauthPort,
         configPassword: '',
       });
 

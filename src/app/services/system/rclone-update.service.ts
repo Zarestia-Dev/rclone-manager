@@ -60,6 +60,19 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
       this._autoCheck.set(autoCheck);
 
       this.initialized = true;
+
+      if (autoCheck) {
+        // Attempt to pick up an update that was automatically found in the background
+        const cachedUpdate = await this.getDetailedUpdateInfo();
+        if (
+          cachedUpdate &&
+          cachedUpdate.update_available &&
+          !this.isVersionSkipped(cachedUpdate.latest_version)
+        ) {
+          this.processUpdateResult(cachedUpdate);
+        }
+      }
+
       console.debug('Rclone update service initialized');
     } catch (error) {
       console.error('Failed to initialize rclone update service:', error);
@@ -157,7 +170,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
         this.patchUpdateStatus({
           updating: false,
           available: false,
-          updateInfo: null,
+          readyToRestart: true,
         });
 
         // Log the successful update with path info if available
@@ -190,6 +203,28 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
 
   private patchUpdateStatus(update: Partial<UpdateStatus>): void {
     this._updateStatus.update(current => ({ ...current, ...update }));
+  }
+
+  async restartEngine(): Promise<boolean> {
+    try {
+      await this.invokeCommand<void>('apply_rclone_update');
+
+      this.patchUpdateStatus({
+        readyToRestart: false,
+        updateInfo: null,
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Failed to restart and apply rclone update:', error);
+      this.notificationService.showError(
+        this.translate.instant('rcloneUpdate.failed') + ': ' + (error as string)
+      );
+      this.patchUpdateStatus({
+        readyToRestart: false,
+      });
+      return false;
+    }
   }
 
   getCurrentStatus(): UpdateStatus {
