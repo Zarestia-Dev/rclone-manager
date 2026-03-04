@@ -36,7 +36,6 @@ use crate::{
         lifecycle::{shutdown::shutdown_app, startup::handle_startup},
         paths::AppPaths,
         scheduler::engine::CronScheduler,
-        settings::operations::core::load_startup_settings,
     },
     utils::types::{
         core::{RcApiEngine, RcloneState},
@@ -384,7 +383,7 @@ fn setup_app(
             )
             .with_sub_settings(
                 rcman::SubSettingsConfig::singlefile("connections")
-                    .with_schema::<crate::rclone::backend::types::BackendConnectionSchema>()
+                    .with_schema::<crate::rclone::backend::schema::BackendConnectionSchema>()
                     .with_migrator(|value: serde_json::Value| {
                         // Secret Migration: Move keys from `backend:{name}:password` to `sub.connections.{name}.password`
                         #[cfg(desktop)]
@@ -464,8 +463,9 @@ fn setup_app(
     #[cfg(feature = "web-server")]
     app.manage(cli_args.clone());
 
-    let settings = load_startup_settings(&rcman_manager)
-        .map_err(|e| format!("Failed to load startup settings: {e}"))?;
+    let settings = rcman_manager
+        .get_all()
+        .map_err(|e: rcman::Error| format!("Failed to load startup settings: {e}"))?;
 
     use crate::core::security::SafeEnvironmentManager;
     let env_manager = SafeEnvironmentManager::new();

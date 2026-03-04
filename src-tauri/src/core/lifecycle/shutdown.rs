@@ -1,6 +1,6 @@
 use log::{debug, error, info};
 use serde_json::json;
-use tauri::{AppHandle, Emitter, Manager, async_runtime::spawn_blocking};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
     rclone::{
@@ -76,25 +76,20 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         Err(_) => error!("❌ Serve stopping operation timed out"),
     }
 
-    // Perform engine shutdown in a blocking task with timeout
+    // Perform engine shutdown with timeout
     let app_handle_clone = app_handle.clone();
-    let engine_shutdown_task = tokio::time::timeout(
-        tokio::time::Duration::from_secs(3),
-        spawn_blocking(move || -> Result<(), String> {
+    let engine_shutdown_task =
+        tokio::time::timeout(tokio::time::Duration::from_secs(3), async move {
             use crate::utils::types::core::EngineState;
             let engine_state = app_handle_clone.state::<EngineState>();
-            // Use blocking_lock to get the guard synchronously
-            let mut engine = engine_state.blocking_lock();
-            // Use block_on to run the async shutdown method
-            tauri::async_runtime::block_on(engine.shutdown(&app_handle_clone));
-            Ok(())
-        }),
-    );
+            let mut engine = engine_state.lock().await;
+            engine.shutdown(&app_handle_clone).await;
+            Ok::<(), String>(())
+        });
 
     match engine_shutdown_task.await {
-        Ok(Ok(Ok(_))) => info!("Engine shutdown completed successfully."),
-        Ok(Ok(Err(e))) => error!("Engine shutdown task failed: {e:?}"),
-        Ok(Err(e)) => error!("Failed to spawn engine shutdown task: {e:?}"),
+        Ok(Ok(_)) => info!("Engine shutdown completed successfully."),
+        Ok(Err(e)) => error!("Engine shutdown task failed: {e:?}"),
         Err(_) => {
             error!("Engine shutdown timed out after 3 seconds, forcing cleanup");
             // Force kill any remaining rclone processes on OUR managed ports as a last resort
@@ -200,19 +195,33 @@ async fn stop_all_active_jobs(app: AppHandle) -> Result<(), String> {
     let backend_manager = app.state::<BackendManager>();
     let job_cache = &backend_manager.job_cache;
     let active_jobs = job_cache.get_active_jobs().await;
-    let mut errors = Vec::new();
-    let scheduled_cache = app.state::<ScheduledTasksCache>();
+
+    if active_jobs.is_empty() {
+        return Ok(());
+    }
+
+    let mut tasks = Vec::new();
 
     for job in active_jobs {
-        if let Err(e) = stop_job(
-            app.clone(),
-            scheduled_cache.clone(),
-            job.jobid,
-            job.remote_name.clone(),
-        )
-        .await
-        {
-            errors.push(format!("Job {} ({}): {e}", job.jobid, job.remote_name));
+        let app_clone = app.clone();
+        let remote_name = job.remote_name.clone();
+        let jobid = job.jobid;
+
+        tasks.push(tokio::spawn(async move {
+            let scheduled_cache = app_clone.state::<ScheduledTasksCache>();
+            let app_to_stop = app_clone.clone();
+            stop_job(app_to_stop, scheduled_cache, jobid, remote_name).await
+        }));
+    }
+
+    let results = futures::future::join_all(tasks).await;
+    let mut errors = Vec::new();
+
+    for result in results {
+        match result {
+            Ok(Err(e)) => errors.push(e),
+            Err(e) => errors.push(format!("Task panic/failed: {e}")),
+            Ok(Ok(_)) => {}
         }
     }
 

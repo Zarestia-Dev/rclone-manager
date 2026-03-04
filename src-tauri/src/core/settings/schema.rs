@@ -228,7 +228,8 @@ pub struct RuntimeSettings {
 
     #[setting(
         label = "settings.runtime.dashboard_layout.label",
-        description = "settings.runtime.dashboard_layout.description"
+        description = "settings.runtime.dashboard_layout.description",
+        skip
     )]
     pub dashboard_layout: Option<Vec<String>>,
 }
@@ -290,13 +291,15 @@ pub struct NautilusSettings {
 
     #[setting(
         label = "settings.nautilus.starred.label",
-        description = "settings.nautilus.starred.description"
+        description = "settings.nautilus.starred.description",
+        skip
     )]
     pub starred: Option<Vec<Value>>,
 
     #[setting(
         label = "settings.nautilus.bookmarks.label",
-        description = "settings.nautilus.bookmarks.description"
+        description = "settings.nautilus.bookmarks.description",
+        skip
     )]
     pub bookmarks: Option<Vec<Value>>,
 }

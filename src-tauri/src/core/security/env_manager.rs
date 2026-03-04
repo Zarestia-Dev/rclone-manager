@@ -6,18 +6,17 @@ use std::sync::{Arc, Mutex};
 /// Thread-safe environment variable manager
 #[derive(Debug, Clone)]
 pub struct SafeEnvironmentManager {
-    env_vars: Arc<Mutex<HashMap<String, String>>>,
+    config_password: Arc<Mutex<Option<String>>>,
 }
 
 impl SafeEnvironmentManager {
     pub fn new() -> Self {
         Self {
-            env_vars: Arc::new(Mutex::new(HashMap::new())),
+            config_password: Arc::new(Mutex::new(None)),
         }
     }
 
     /// Initialize with stored credentials from rcman
-    #[cfg(desktop)]
     pub fn init_with_stored_credentials(&self, manager: &AppSettingsManager) -> Result<(), String> {
         match manager.sub_settings("connections") {
             Ok(connections) => match connections.get_value("Local") {
@@ -46,27 +45,18 @@ impl SafeEnvironmentManager {
         }
     }
 
-    /// Initialize with stored credentials (mobile no-op)
-    #[cfg(not(desktop))]
-    pub fn init_with_stored_credentials(
-        &self,
-        _manager: &AppSettingsManager,
-    ) -> Result<(), String> {
-        Ok(())
-    }
-
     /// Store password in internal safe storage instead of global env
     pub fn set_config_password(&self, password: String) {
-        if let Ok(mut env_vars) = self.env_vars.lock() {
-            env_vars.insert("RCLONE_CONFIG_PASS".to_string(), password);
+        if let Ok(mut lock) = self.config_password.lock() {
+            *lock = Some(password);
             debug!("✅ RCLONE_CONFIG_PASS stored in safe environment manager");
         }
     }
 
     /// Remove password from internal storage
     pub fn clear_config_password(&self) {
-        if let Ok(mut env_vars) = self.env_vars.lock() {
-            env_vars.remove("RCLONE_CONFIG_PASS");
+        if let Ok(mut lock) = self.config_password.lock() {
+            *lock = None;
             debug!("✅ RCLONE_CONFIG_PASS removed from safe environment manager");
         }
     }
@@ -76,8 +66,10 @@ impl SafeEnvironmentManager {
         let mut result = HashMap::new();
 
         // Add our managed variables
-        if let Ok(env_vars) = self.env_vars.lock() {
-            result.extend(env_vars.clone());
+        if let Ok(lock) = self.config_password.lock()
+            && let Some(password) = lock.as_ref()
+        {
+            result.insert("RCLONE_CONFIG_PASS".to_string(), password.clone());
         }
 
         // Add system rclone env vars (excluding our managed ones)

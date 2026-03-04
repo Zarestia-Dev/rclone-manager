@@ -15,7 +15,8 @@ use crate::{
             core::RcloneState,
             events::{
                 JOB_CACHE_CHANGED, RCLONE_PASSWORD_STORED, REMOTE_CACHE_CHANGED,
-                SERVE_STATE_CHANGED, SYSTEM_SETTINGS_CHANGED, UPDATE_TRAY_MENU,
+                SERVE_STATE_CHANGED, SYSTEM_SETTINGS_CHANGED, SettingsChangeEvent,
+                UPDATE_TRAY_MENU,
             },
         },
     },
@@ -135,206 +136,235 @@ fn handle_remote_presence_changed(app: &AppHandle) {
 // Settings Change Handlers (Refactored)
 // ============================================================================
 
-fn handle_general_settings_change(app: &AppHandle, general: &Value) {
-    // 1. Notifications
-    // Note: notifications setting is now read from AppSettingsManager which caches internally
-    if let Some(notification) = general.get("notifications").and_then(|v| v.as_bool()) {
-        debug!("💬 Notifications changed to: {notification}");
-    }
-
-    // 2. Start on Startup
-    if let Some(startup) = general.get("start_on_startup").and_then(|v| v.as_bool()) {
-        debug!("🚀 Start on Startup changed to: {startup}");
-
-        #[cfg(feature = "flatpak")]
-        {
-            use crate::utils::app::platform::manage_flatpak_autostart;
-            if let Err(e) = manage_flatpak_autostart(startup) {
-                error!("Failed to update flatpak autostart: {e}");
-            }
-        }
-
-        #[cfg(all(desktop, not(feature = "flatpak")))]
-        {
-            use tauri_plugin_autostart::ManagerExt;
-            let autostart = app.autolaunch();
-            let _ = if startup {
-                autostart.enable()
-            } else {
-                autostart.disable()
-            };
-        }
-    }
-
-    // 3. Tray Visibility
-    if let Some(tray_enabled) = general.get("tray_enabled").and_then(|v| v.as_bool()) {
-        #[cfg(desktop)]
-        {
-            let app_clone = app.clone();
-            tauri::async_runtime::spawn(async move {
-                debug!("🛠️ Tray visibility changed to: {tray_enabled}");
-                if let Some(tray) = app_clone.tray_by_id("main-tray") {
-                    let _ = tray.set_visible(tray_enabled);
-                } else {
-                    let app = app_clone.clone();
-                    // Double spawn to ensure independent task if setup_tray blocks/failures shouldn't crash
-                    tauri::async_runtime::spawn(async move {
-                        if let Err(e) = setup_tray(app).await {
-                            error!("Failed to set up tray: {e}");
-                        }
-                    });
-                }
-            });
-        }
-        #[cfg(not(desktop))]
-        {
-            let _ = tray_enabled; // Silence unused warning
-        }
-    }
-
-    // 4. Restrict Mode
-    if let Some(restrict) = general.get("restrict").and_then(|v| v.as_bool()) {
-        debug!("🔒 Restrict mode changed to: {restrict}");
-        // Note: restrict setting is now read from AppSettingsManager which caches internally
-        let app_clone = app.clone();
-        if let Err(e) = app_clone.emit(REMOTE_CACHE_CHANGED, "restrict_mode_changed") {
-            error!("❌ Failed to emit remote presence changed event: {e}");
-        }
-    }
-
-    // 5. Language
-    if let Some(language) = general.get("language").and_then(|v| v.as_str()) {
-        debug!("🌐 Language changed to: {language}");
-        crate::utils::i18n::set_language(language);
-
-        // Emit APP_EVENT for frontend
-        if let Err(e) = app.emit(
-            crate::utils::types::events::APP_EVENT,
-            serde_json::json!({
-                "status": "language_changed",
-                "language": language
-            }),
-        ) {
-            error!("❌ Failed to emit language change event: {e}");
-        }
-
-        #[cfg(desktop)]
-        {
-            if let Err(e) = app.emit(UPDATE_TRAY_MENU, ()) {
-                error!("❌ Failed to emit tray menu update event: {e}");
-            }
-        }
-    }
-}
-
-fn handle_core_settings_change(app: &AppHandle, core: &Value) {
-    // 1. Bandwidth Limit
-    if let Some(bandwidth_limit) = core.get("bandwidth_limit") {
-        debug!("🌐 Bandwidth limit changed to: {bandwidth_limit}");
-        let app = app.clone();
-
-        // Parse bandwidth limit safely
-        let bandwidth_limit_opt = if bandwidth_limit.is_null() {
-            None
-        } else if let Some(s) = bandwidth_limit.as_str() {
-            Some(s.to_string())
-        } else {
-            bandwidth_limit.as_u64().map(|n| n.to_string())
-        };
-
-        tauri::async_runtime::spawn(async move {
-            if let Err(e) = set_bandwidth_limit(app.clone(), bandwidth_limit_opt).await {
-                error!("Failed to set bandwidth limit: {e:?}");
-            }
-        });
-    }
-
-    // 2. Rclone Config Path
-    if let Some(rclone_path) = core.get("rclone_path").and_then(|v| v.as_str()) {
-        debug!("🔄 Rclone path changed to: {rclone_path}");
-
-        match crate::rclone::engine::lifecycle::restart_for_config_change(
-            app,
-            "rclone_path",
-            "previous",
-            rclone_path,
-        ) {
-            Ok(_) => info!("Rclone path updated to: {rclone_path}"),
-            Err(e) => error!("Failed to restart engine for rclone path change: {e}"),
-        }
-    }
-
-    // 3. Rclone Additional Flags
-    if let Some(flags) = core
-        .get("rclone_additional_flags")
-        .and_then(|v| v.as_array())
-    {
-        debug!("🚩 Rclone additional flags changed to: {:?}", flags);
-
-        // Convert flags to string representation for logging
-        let flags_str = serde_json::to_string(flags).unwrap_or_default();
-
-        match crate::rclone::engine::lifecycle::restart_for_config_change(
-            app,
-            "rclone_additional_flags",
-            "previous",
-            &flags_str,
-        ) {
-            Ok(_) => info!("Engine restarting due to additional flags change"),
-            Err(e) => error!("Failed to restart engine for flags change: {e}"),
-        }
-    }
-
-    // 3. Max Tray Items
-    if let Some(max_items) = core.get("max_tray_items").and_then(|v| v.as_u64()) {
-        debug!("🗂️ Max tray items changed to: {max_items}");
-        let app = app.clone();
-        tauri::async_runtime::spawn(async move {
-            if let Err(e) = update_tray_menu(app).await {
-                error!("Failed to update tray menu: {e}");
-            }
-        });
-    }
-}
-
-fn handle_developer_settings_change(_app: &AppHandle, developer: &Value) {
-    // 1. Log Level
-    if let Some(log_level) = developer.get("log_level").and_then(|v| v.as_str()) {
-        debug!("📊 Log level changed to: {log_level}");
-        update_log_level(log_level);
-    }
-
-    // 2. Destroy Window On Close
-    if let Some(destroy_window) = developer
-        .get("destroy_window_on_close")
-        .and_then(|v| v.as_bool())
-    {
-        debug!("♻️ Destroy window on close changed to: {destroy_window}");
-        // Note: destroy_window_on_close is read from AppSettingsManager
-    }
-}
-
 fn handle_settings_changed(app: &AppHandle) {
     let app_clone = app.clone();
     app.listen(SYSTEM_SETTINGS_CHANGED, move |event| {
         let app = app_clone.clone();
         debug!("🔄 Settings saved! Raw payload: {:?}", event.payload());
 
-        match parse_payload::<Value>(Some(event.payload())) {
-            Ok(settings) => {
-                if let Some(general) = settings.get("general") {
-                    handle_general_settings_change(&app, general);
-                }
+        match parse_payload::<SettingsChangeEvent>(Some(event.payload())) {
+            Ok(change) => {
+                match (change.category.as_str(), change.key.as_str()) {
+                    // --- General Settings ---
+                    ("general", "notifications") => {
+                        if let Some(n) = change.value.as_bool() {
+                            debug!("💬 Notifications changed to: {n}");
+                        }
+                    }
+                    ("general", "start_on_startup") => {
+                        if let Some(startup) = change.value.as_bool() {
+                            handle_autostart_change(&app, startup);
+                        }
+                    }
+                    ("general", "tray_enabled") => {
+                        if let Some(enabled) = change.value.as_bool() {
+                            handle_tray_visibility_change(&app, enabled);
+                        }
+                    }
+                    ("general", "restrict") => {
+                        if let Some(restrict) = change.value.as_bool() {
+                            handle_restrict_mode_change(&app, restrict);
+                        }
+                    }
+                    ("general", "language") => {
+                        if let Some(lang) = change.value.as_str() {
+                            handle_language_change(&app, lang);
+                        }
+                    }
 
-                if let Some(core) = settings.get("core") {
-                    handle_core_settings_change(&app, core);
-                }
+                    // --- Core Settings ---
+                    ("core", "bandwidth_limit") => {
+                        handle_bandwidth_limit_change(&app, &change.value);
+                    }
+                    ("core", "rclone_path") => {
+                        if let Some(path) = change.value.as_str() {
+                            handle_rclone_path_change(&app, path);
+                        }
+                    }
+                    ("core", "rclone_additional_flags") => {
+                        if let Some(flags) = change.value.as_array() {
+                            handle_rclone_flags_change(&app, flags);
+                        }
+                    }
+                    ("core", "max_tray_items") => {
+                        if let Some(max) = change.value.as_u64() {
+                            handle_max_tray_items_change(&app, max);
+                        }
+                    }
 
-                if let Some(developer) = settings.get("developer") {
-                    handle_developer_settings_change(&app, developer);
+                    // --- Developer Settings ---
+                    ("developer", "log_level") => {
+                        if let Some(level) = change.value.as_str() {
+                            debug!("📊 Log level changed to: {level}");
+                            update_log_level(level);
+                        }
+                    }
+                    ("developer", "destroy_window_on_close") => {
+                        if let Some(destroy) = change.value.as_bool() {
+                            debug!("♻️ Destroy window on close changed to: {destroy}");
+                        }
+                    }
+
+                    // --- System/Global ---
+                    ("*", "*") => {
+                        info!("🔄 Global settings reset detected, re-initializing core components");
+                        handle_global_reset(&app);
+                    }
+
+                    _ => debug!(
+                        "Unhandled setting change: {}.{}",
+                        change.category, change.key
+                    ),
                 }
             }
             Err(e) => error!("❌ Failed to parse settings change: {e}"),
+        }
+    });
+}
+
+// --- Specific Logic Handlers ---
+
+fn handle_autostart_change(app: &AppHandle, enabled: bool) {
+    debug!("🚀 Autostart changed to: {enabled}");
+    #[cfg(feature = "flatpak")]
+    {
+        use crate::utils::app::platform::manage_flatpak_autostart;
+        if let Err(e) = manage_flatpak_autostart(enabled) {
+            error!("Failed to update flatpak autostart: {e}");
+        }
+    }
+
+    #[cfg(all(desktop, not(feature = "flatpak")))]
+    {
+        use tauri_plugin_autostart::ManagerExt;
+        let autostart = app.autolaunch();
+        let _ = if enabled {
+            autostart.enable()
+        } else {
+            autostart.disable()
+        };
+    }
+}
+
+fn handle_tray_visibility_change(app: &AppHandle, enabled: bool) {
+    #[cfg(desktop)]
+    {
+        let app_clone = app.clone();
+        tauri::async_runtime::spawn(async move {
+            debug!("🛠️ Tray visibility changed to: {enabled}");
+            if let Some(tray) = app_clone.tray_by_id("main-tray") {
+                let _ = tray.set_visible(enabled);
+            } else {
+                let app = app_clone.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Err(e) = setup_tray(app).await {
+                        error!("Failed to set up tray: {e}");
+                    }
+                });
+            }
+        });
+    }
+}
+
+fn handle_restrict_mode_change(app: &AppHandle, enabled: bool) {
+    debug!("🔒 Restrict mode changed to: {enabled}");
+    if let Err(e) = app.emit(REMOTE_CACHE_CHANGED, "restrict_mode_changed") {
+        error!("❌ Failed to emit remote presence changed event: {e}");
+    }
+}
+
+fn handle_language_change(app: &AppHandle, lang: &str) {
+    debug!("🌐 Language changed to: {lang}");
+    crate::utils::i18n::set_language(lang);
+
+    if let Err(e) = app.emit(
+        crate::utils::types::events::APP_EVENT,
+        serde_json::json!({
+            "status": "language_changed",
+            "language": lang
+        }),
+    ) {
+        error!("❌ Failed to emit language change event: {e}");
+    }
+
+    #[cfg(desktop)]
+    {
+        if let Err(e) = app.emit(UPDATE_TRAY_MENU, ()) {
+            error!("❌ Failed to emit tray menu update event: {e}");
+        }
+    }
+}
+
+fn handle_bandwidth_limit_change(app: &AppHandle, value: &Value) {
+    debug!("🌐 Bandwidth limit changed to: {value}");
+    let app = app.clone();
+
+    let limit_opt = if value.is_null() {
+        None
+    } else if let Some(s) = value.as_str() {
+        Some(s.to_string())
+    } else {
+        value.as_u64().map(|n| n.to_string())
+    };
+
+    tauri::async_runtime::spawn(async move {
+        if let Err(e) = set_bandwidth_limit(app.clone(), limit_opt).await {
+            error!("Failed to set bandwidth limit: {e:?}");
+        }
+    });
+}
+
+fn handle_rclone_path_change(app: &AppHandle, path: &str) {
+    debug!("🔄 Rclone path changed to: {path}");
+    match crate::rclone::engine::lifecycle::restart_for_config_change(
+        app,
+        "rclone_path",
+        "previous",
+        path,
+    ) {
+        Ok(_) => info!("Rclone path updated to: {path}"),
+        Err(e) => error!("Failed to restart engine for rclone path change: {e}"),
+    }
+}
+
+fn handle_rclone_flags_change(app: &AppHandle, flags: &Vec<Value>) {
+    debug!("🚩 Rclone additional flags changed to: {:?}", flags);
+    let flags_str = serde_json::to_string(flags).unwrap_or_default();
+
+    match crate::rclone::engine::lifecycle::restart_for_config_change(
+        app,
+        "rclone_additional_flags",
+        "previous",
+        &flags_str,
+    ) {
+        Ok(_) => info!("Engine restarting due to additional flags change"),
+        Err(e) => error!("Failed to restart engine for flags change: {e}"),
+    }
+}
+
+fn handle_max_tray_items_change(app: &AppHandle, max: u64) {
+    debug!("🗂️ Max tray items changed to: {max}");
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        if let Err(e) = update_tray_menu(app).await {
+            error!("Failed to update tray menu: {e}");
+        }
+    });
+}
+
+fn handle_global_reset(app: &AppHandle) {
+    let app_clone = app.clone();
+    tauri::async_runtime::spawn(async move {
+        // 1. Reset bandwidth
+        let _ = set_bandwidth_limit(app_clone.clone(), None).await;
+
+        // 2. Reset language (default to English for safety, or re-read from manager if possible)
+        // Here we just use "en" as a safe fallback or whatever AppSettings::default() uses
+        crate::utils::i18n::set_language("en");
+
+        // 3. Update Tray
+        if let Err(e) = update_tray_menu(app_clone.clone()).await {
+            error!("Failed to update tray menu during reset: {e}");
         }
     });
 }

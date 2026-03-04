@@ -4,7 +4,6 @@
 // including settings application and cache refresh
 
 use crate::core::initialization::apply_settings::apply_core_settings;
-use crate::core::settings::operations::core::load_startup_settings;
 use crate::rclone::backend::BackendManager;
 use crate::utils::types::core::{EngineState, RcloneState};
 use log::{debug, error};
@@ -22,7 +21,8 @@ use crate::core::tray::core::update_tray_menu;
 pub fn trigger_post_start_setup(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         // Load and apply settings
-        match load_startup_settings(&app.state::<crate::core::settings::AppSettingsManager>()) {
+        let manager = app.state::<crate::core::settings::AppSettingsManager>();
+        match manager.get_all() {
             Ok(settings) => {
                 apply_core_settings(&app, &settings).await;
 
@@ -46,12 +46,19 @@ async fn refresh_caches_and_tray(app: &AppHandle) {
     // Fetch runtime info for Local backend (version, OS, config_path)
     // This is deterministic since we're called AFTER engine is confirmed ready
     let backend_manager = app.state::<BackendManager>();
-    if let Err(e) = backend_manager.check_connectivity("Local", &client).await {
+    if let Err(e) = crate::rclone::backend::connectivity::check_connectivity(
+        &backend_manager,
+        "Local",
+        &client,
+        None,
+    )
+    .await
+    {
         error!("Failed to fetch Local backend runtime info: {e}");
     }
 
     // Refresh active backend caches
-    match backend_manager.refresh_active_backend(&client).await {
+    match crate::rclone::backend::cache::refresh_active_backend(&backend_manager, &client).await {
         Ok(_) => debug!("Refreshed backend caches"),
         Err(e) => error!("Failed to refresh backend caches: {e}"),
     }

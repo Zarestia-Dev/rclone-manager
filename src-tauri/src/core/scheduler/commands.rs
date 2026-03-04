@@ -39,20 +39,17 @@ pub async fn validate_cron(cron_expression: String) -> Result<CronValidationResp
     match validate_cron_expression(&cron_expression) {
         Ok(_) => {
             let next_run = get_next_run(&cron_expression).ok();
-            let human_readable = Some(cron_expression.to_string());
 
             Ok(CronValidationResponse {
                 is_valid: true,
                 error_message: None,
                 next_run,
-                human_readable,
             })
         }
         Err(e) => Ok(CronValidationResponse {
             is_valid: false,
             error_message: Some(e),
             next_run: None,
-            human_readable: None,
         }),
     }
 }

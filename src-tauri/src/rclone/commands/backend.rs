@@ -8,8 +8,11 @@ use tauri::{AppHandle, Manager, State};
 
 use crate::{
     core::scheduler::engine::CronScheduler,
-    rclone::backend::BackendManager,
-    rclone::backend::types::{Backend, BackendConnectionSchema, BackendInfo},
+    rclone::backend::{
+        BackendManager,
+        schema::BackendConnectionSchema,
+        types::{Backend, BackendInfo},
+    },
     rclone::state::scheduled_tasks::ScheduledTasksCache,
     utils::{
         rclone::endpoints::{config, core},
@@ -213,10 +216,8 @@ pub async fn update_backend(
         username: None,
         password: None,
         oauth_port,
-        config_password: None,
-        config_path, // Updated from argument
-        version: existing.version.clone(),
-        os: existing.os.clone(),
+        config_password: existing.config_password.clone(),
+        config_path,
     };
 
     let settings_manager = app.state::<AppSettingsManager>();
@@ -324,13 +325,13 @@ pub async fn test_backend_connection(
 
     // Use 5s timeout for testing connections
     let backend_manager = app.state::<BackendManager>();
-    match backend_manager
-        .check_connectivity_with_timeout(
-            &name,
-            &app.state::<RcloneState>().client,
-            std::time::Duration::from_secs(5),
-        )
-        .await
+    match crate::rclone::backend::connectivity::check_connectivity_with_timeout(
+        &backend_manager,
+        &name,
+        &app.state::<RcloneState>().client,
+        std::time::Duration::from_secs(5),
+    )
+    .await
     {
         Ok((version, os)) => {
             // Persist to settings (optional but good)
@@ -473,7 +474,8 @@ async fn refresh_and_verify_cache(
     client: &reqwest::Client,
     name: &str,
 ) -> Result<(), String> {
-    let refresh_future = backend_manager.refresh_active_backend(client);
+    let refresh_future =
+        crate::rclone::backend::cache::refresh_active_backend(backend_manager, client);
 
     match tokio::time::timeout(std::time::Duration::from_secs(15), refresh_future).await {
         Ok(Ok(_)) => {

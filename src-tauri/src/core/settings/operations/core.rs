@@ -3,7 +3,6 @@
 //! These commands use the rcman SettingsManager for settings operations.
 
 use crate::core::settings::AppSettingsManager;
-use crate::core::settings::schema::AppSettings;
 use log::info;
 use serde_json::json;
 use tauri::{Emitter, State};
@@ -42,10 +41,16 @@ pub async fn save_setting(
         .save_setting(&category, &key, &value)
         .map_err(|e| crate::localized_error!("backendErrors.settings.saveFailed", "error" => e))?;
 
-    // Emit change event for UI updates
-    let change_payload = json!({ category.clone(): { key.clone(): value } });
+    // Emit strongly typed change event
     app_handle
-        .emit(SYSTEM_SETTINGS_CHANGED, change_payload)
+        .emit(
+            SYSTEM_SETTINGS_CHANGED,
+            crate::utils::types::events::SettingsChangeEvent {
+                category: category.clone(),
+                key: key.clone(),
+                value: value.clone(),
+            },
+        )
         .map_err(
             |e| crate::localized_error!("backendErrors.settings.eventEmitFailed", "error" => e),
         )?;
@@ -67,10 +72,16 @@ pub async fn reset_setting(
         .reset_setting(&category, &key)
         .map_err(|e| crate::localized_error!("backendErrors.settings.resetFailed", "error" => e))?;
 
-    // Emit change event
-    let change_payload = json!({ category.clone(): { key.clone(): default_value.clone() } });
+    // Emit strongly typed change event
     app_handle
-        .emit(SYSTEM_SETTINGS_CHANGED, change_payload)
+        .emit(
+            SYSTEM_SETTINGS_CHANGED,
+            crate::utils::types::events::SettingsChangeEvent {
+                category: category.clone(),
+                key: key.clone(),
+                value: default_value.clone(),
+            },
+        )
         .map_err(|e| format!("Failed to emit settings change event: {e}"))?;
 
     info!("✅ Setting {}.{} reset to default.", category, key);
@@ -87,21 +98,20 @@ pub async fn reset_settings(
         |e| crate::localized_error!("backendErrors.settings.resetAllFailed", "error" => e),
     )?;
 
-    // Emit event with default settings
-    let default_settings = AppSettings::default();
+    // Emit event indicating a full reset
     app_handle
-        .emit(SYSTEM_SETTINGS_CHANGED, &default_settings)
+        .emit(
+            SYSTEM_SETTINGS_CHANGED,
+            crate::utils::types::events::SettingsChangeEvent {
+                category: "*".to_string(),
+                key: "*".to_string(),
+                value: serde_json::Value::Null,
+            },
+        )
         .map_err(
             |e| crate::localized_error!("backendErrors.settings.eventEmitFailed", "error" => e),
         )?;
 
     info!("✅ All settings have been reset to default.");
     Ok(())
-}
-
-/// Load startup settings (blocking, for initialization)
-pub fn load_startup_settings(manager: &AppSettingsManager) -> Result<AppSettings, String> {
-    manager
-        .get_all()
-        .map_err(|e: rcman::Error| crate::localized_error!("backendErrors.settings.loadFailed", "error" => e))
 }

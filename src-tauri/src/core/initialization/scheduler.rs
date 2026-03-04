@@ -1,5 +1,6 @@
 use crate::core::scheduler::engine::CronScheduler;
 use crate::core::settings::AppSettingsManager;
+use crate::rclone::backend::BackendManager;
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 use log::info;
 use tauri::{AppHandle, Manager};
@@ -10,7 +11,6 @@ pub async fn initialize_scheduler(app_handle: AppHandle) -> Result<(), String> {
     let scheduler_state = app_handle.state::<CronScheduler>();
     let manager = app_handle.state::<AppSettingsManager>();
 
-    use crate::rclone::backend::BackendManager;
     let backend_manager = app_handle.state::<BackendManager>();
     let remote_names = backend_manager.remote_cache.get_remotes().await;
 

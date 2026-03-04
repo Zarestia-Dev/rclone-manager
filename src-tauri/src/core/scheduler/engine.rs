@@ -251,9 +251,21 @@ impl CronScheduler {
 }
 
 pub fn validate_cron_expression(cron_expr: &str) -> Result<(), String> {
+    // 1. Check with croner (used for next run calculation)
     croner::parser::CronParser::new().parse(cron_expr).map_err(
         |e| crate::localized_error!("backendErrors.scheduler.invalidCron", "error" => e),
     )?;
+
+    // 2. Check with tokio-cron-scheduler (used for actual scheduling)
+    // We prepend "0 " because we expect 5 fields from user but scheduler needs 6.
+    let cron_6_field = format!("0 {}", cron_expr);
+    JobBuilder::new()
+        .with_cron_job_type()
+        .with_schedule(&cron_6_field)
+        .map_err(
+            |e| crate::localized_error!("backendErrors.scheduler.invalidCron", "error" => e),
+        )?;
+
     Ok(())
 }
 
@@ -341,11 +353,15 @@ async fn execute_scheduled_task(
 
     match result {
         Ok(job_id) => {
+            // Calculate next_run early so the UI updates immediately
+            let next_run = get_next_run(&task.cron_expression).ok();
+
             cache
                 .update_task(
                     task_id,
                     |t| {
                         t.mark_running(job_id);
+                        t.next_run = next_run;
                     },
                     Some(app_handle),
                 )
@@ -374,5 +390,39 @@ async fn execute_scheduled_task(
 impl Default for CronScheduler {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::{Datelike, Timelike};
+
+    #[test]
+    fn test_validate_cron_expression() {
+        // Valid expressions (5 fields)
+        assert!(validate_cron_expression("* * * * *").is_ok());
+        assert!(validate_cron_expression("0 9 * * 1-5").is_ok());
+        assert!(validate_cron_expression("*/15 * * * *").is_ok());
+
+        // Invalid expressions
+        assert!(validate_cron_expression("invalid").is_err());
+        assert!(validate_cron_expression("* * * * * *").is_err()); // 6 fields from user is invalid for our logic
+        assert!(validate_cron_expression("60 * * * *").is_err()); // Minute 60 is out of range
+    }
+
+    #[test]
+    fn test_get_next_run() {
+        let now = Utc::now();
+        let next = get_next_run("* * * * *").unwrap();
+        assert!(next > now);
+
+        // Specific time (assuming it's not exactly that time now)
+        let specific = get_next_run("0 0 1 1 *").unwrap(); // Jan 1st Local
+        let specific_local = specific.with_timezone(&Local);
+        assert_eq!(specific_local.minute(), 0);
+        assert_eq!(specific_local.hour(), 0);
+        assert_eq!(specific_local.day(), 1);
+        assert_eq!(specific_local.month(), 1);
     }
 }

@@ -7,6 +7,7 @@ pub mod cache;
 pub mod connectivity;
 pub mod manager;
 pub mod runtime;
+pub mod schema;
 pub mod state;
 pub mod types;
 

@@ -1134,8 +1134,7 @@
       },
       "legacy": {
         "title": "Eski Yedekleme Tespit Edildi",
-        "description": "Bu yedekleme, profil sistemi tanıtılmadan önce oluşturulmuştu. 'Varsayılan' profile geri yüklenecektir.",
-        "defaultProfile": "Tüm ayarlar otomatik olarak varsayılan profile (Local) eklenecektir"
+        "description": "Bu yedekleme, profil sistemi tanıtılmadan önce oluşturulmuştu. 'Varsayılan' profile geri yüklenecektir."
       },
       "options": "Geri Yükleme Seçenekleri",
       "scope": {

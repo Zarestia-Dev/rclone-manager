@@ -3,6 +3,7 @@
 //! This module provides backup and analysis commands using the rcman library.
 
 use crate::core::settings::AppSettingsManager;
+use crate::localized_error;
 use crate::utils::types::backup_types::{BackupAnalysis, BackupContentsInfo, ExportType};
 use log::{error, info};
 use std::{fs::File, io::BufReader, path::PathBuf};
@@ -119,7 +120,7 @@ pub async fn backup_settings(
 }
 
 /// Helper to register the dynamic rclone config provider
-async fn register_rclone_config_provider(
+pub(super) async fn register_rclone_config_provider(
     app_handle: &AppHandle,
     manager: &AppSettingsManager,
 ) -> Result<(), String> {
@@ -164,30 +165,10 @@ pub async fn analyze_backup_file(
         ));
     }
 
-    // Read manifest to detect format
-    let file = File::open(&path).map_err(|e| format!("Failed to open .rcman: {e}"))?;
-    let mut archive =
-        ZipArchive::new(BufReader::new(file)).map_err(|e| format!("Invalid .rcman file: {e}"))?;
-
-    let manifest_file = archive
-        .by_name("manifest.json")
-        .map_err(|_| "Invalid .rcman: Missing manifest.json")?;
-
-    let manifest_json: serde_json::Value = serde_json::from_reader(manifest_file)
-        .map_err(|e| format!("Failed to parse manifest: {e}"))?;
-
-    // Detect format: rcman has root "version" as int
-    let is_rcman_format = manifest_json
-        .get("version")
-        .and_then(|v| v.as_u64())
-        .is_some();
-
-    if is_rcman_format {
-        let analysis = manager.backup().analyze(&path).map_err(|e| {
-            error!("❌ Backup analysis failed: {}", e);
-            format!("Analysis failed: {}", e)
-        })?;
-
+    // Improvement #3: Try rcman first (Double ZIP optimization)
+    if let Ok(analysis) = manager.backup().analyze(&path)
+        && analysis.format_version.parse::<u64>().unwrap_or(0) >= 1
+    {
         let contents =
             BackupContentsInfo {
                 settings: analysis.manifest.contents.settings,
@@ -250,7 +231,7 @@ pub async fn analyze_backup_file(
                     }),
             };
 
-        Ok(BackupAnalysis {
+        return Ok(BackupAnalysis {
             is_encrypted: analysis.is_encrypted,
             archive_type: if analysis.requires_password {
                 "zip-aes".into()
@@ -263,30 +244,43 @@ pub async fn analyze_backup_file(
             user_note: analysis.user_note,
             contents: Some(contents),
             is_legacy: Some(false),
-        })
-    } else {
-        // DEPRECATION (2026-2027): Delete this else block when removing legacy support
-        use super::legacy_restore::BackupManifest;
-
-        let manifest: BackupManifest = serde_json::from_value(manifest_json)
-            .map_err(|e| format!("Failed to parse legacy manifest: {e}"))?;
-
-        Ok(BackupAnalysis {
-            is_encrypted: manifest.backup.encrypted,
-            archive_type: manifest.backup.compression,
-            format_version: manifest.format.version,
-            created_at: Some(manifest.backup.created_at),
-            backup_type: Some(manifest.backup.backup_type),
-            user_note: manifest.metadata.and_then(|m| m.user_note),
-            contents: Some(BackupContentsInfo {
-                settings: manifest.contents.settings,
-                backend_config: manifest.contents.backend_config,
-                rclone_config: manifest.contents.rclone_config,
-                remote_count: manifest.contents.remote_configs.as_ref().map(|r| r.count),
-                remote_names: manifest.contents.remote_configs.and_then(|r| r.names),
-                profiles: Some(vec!["default".to_string()]), // Legacy backups always restore to "default"
-            }),
-            is_legacy: Some(true), // This is a legacy backup without profile support
-        })
+        });
     }
+
+    // Fallback: Read manifest manually to detect and handle legacy format
+    let file = File::open(&path)
+        .map_err(|e| localized_error!("backendErrors.backup.openFailed", "error" => e))?;
+    let mut archive = ZipArchive::new(BufReader::new(file))
+        .map_err(|e| localized_error!("backendErrors.backup.invalidArchive", "error" => e))?;
+
+    let manifest_file = archive
+        .by_name("manifest.json")
+        .map_err(|_| localized_error!("backendErrors.backup.missingManifest"))?;
+
+    let manifest_json: serde_json::Value = serde_json::from_reader(manifest_file)
+        .map_err(|e| localized_error!("backendErrors.backup.manifestParseFailed", "error" => e))?;
+
+    // DEPRECATION (2026-2027): Delete this block when removing legacy support
+    use super::legacy_restore::BackupManifest;
+
+    let manifest: BackupManifest = serde_json::from_value(manifest_json)
+        .map_err(|e| localized_error!("backendErrors.backup.manifestParseFailed", "error" => e))?;
+
+    Ok(BackupAnalysis {
+        is_encrypted: manifest.backup.encrypted,
+        archive_type: manifest.backup.compression,
+        format_version: manifest.format.version,
+        created_at: Some(manifest.backup.created_at),
+        backup_type: Some(manifest.backup.backup_type),
+        user_note: manifest.metadata.and_then(|m| m.user_note),
+        contents: Some(BackupContentsInfo {
+            settings: manifest.contents.settings,
+            backend_config: manifest.contents.backend_config,
+            rclone_config: manifest.contents.rclone_config,
+            remote_count: manifest.contents.remote_configs.as_ref().map(|r| r.count),
+            remote_names: manifest.contents.remote_configs.and_then(|r| r.names),
+            profiles: Some(vec!["default".to_string()]), // Legacy backups always restore to "default"
+        }),
+        is_legacy: Some(true),
+    })
 }

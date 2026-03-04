@@ -53,7 +53,7 @@
 
         <div class="info-item">
           <div class="info-icon-wrapper">
-            <mat-icon svgIcon="file-zipper" class="info-icon"></mat-icon>
+            <mat-icon svgIcon="folder_zip" class="info-icon"></mat-icon>
           </div>
           <div class="info-content">
             <span class="label">{{ 'backup.restore.format' | translate }}</span>
@@ -92,15 +92,11 @@
       <div class="info-card legacy-banner">
         <div class="banner-content">
           <div class="banner-icon-wrapper">
-            <mat-icon svgIcon="clock-rotate-right" class="banner-icon"></mat-icon>
+            <mat-icon svgIcon="clock-rotate-left" class="banner-icon"></mat-icon>
           </div>
           <div class="banner-text">
             <h4 class="banner-title">{{ 'backup.restore.legacy.title' | translate }}</h4>
             <p class="banner-description">{{ 'backup.restore.legacy.description' | translate }}</p>
-            <div class="banner-details">
-              <mat-icon svgIcon="circle-info" class="detail-icon"></mat-icon>
-              <span>{{ 'backup.restore.legacy.defaultProfile' | translate }}</span>
-            </div>
           </div>
         </div>
       </div>
@@ -129,7 +125,7 @@
                   'backup.restore.settings.description' | translate
                 }}</span>
               </div>
-              <mat-icon svgIcon="circle-check" class="check-icon accent"></mat-icon>
+              <mat-icon svgIcon="circle-check" class="accent"></mat-icon>
             </div>
           }
 
@@ -146,7 +142,7 @@
                   'backup.restore.backendConfig.description' | translate
                 }}</span>
               </div>
-              <mat-icon svgIcon="circle-check" class="check-icon accent"></mat-icon>
+              <mat-icon svgIcon="circle-check" class="accent"></mat-icon>
             </div>
           }
 
@@ -163,7 +159,7 @@
                   'backup.restore.rcloneConfig.description' | translate
                 }}</span>
               </div>
-              <mat-icon svgIcon="circle-check" class="check-icon accent"></mat-icon>
+              <mat-icon svgIcon="circle-check" class="accent"></mat-icon>
             </div>
           }
 
@@ -189,7 +185,7 @@
                   }}</span>
                 }
               </div>
-              <mat-icon svgIcon="circle-check" class="check-icon accent"></mat-icon>
+              <mat-icon svgIcon="circle-check" class="accent"></mat-icon>
             </div>
           }
 
@@ -205,7 +201,7 @@
                 </span>
                 <span class="item-description">{{ analysis.contents!.profiles.join(', ') }}</span>
               </div>
-              <mat-icon svgIcon="circle-check" class="check-icon accent"></mat-icon>
+              <mat-icon svgIcon="circle-check" class="accent"></mat-icon>
             </div>
           }
         </div>
@@ -230,7 +226,7 @@
     @if (profiles().length > 0 && !isLegacy()) {
       <div class="info-card options-card">
         <div class="card-header">
-          <mat-icon svgIcon="file-zipper" class="card-icon"></mat-icon>
+          <mat-icon svgIcon="folder_zip" class="card-icon"></mat-icon>
           <h4>{{ 'backup.restore.options' | translate }}</h4>
         </div>
 

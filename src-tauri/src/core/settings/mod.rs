@@ -7,6 +7,5 @@ pub mod schema;
 use schema::AppSettings;
 
 /// Type alias for the application's settings manager
-/// Uses rcman's TypedManager with our AppSettings schema
-/// This actually feels the wrong but its true. I dont know why this feels wrong?
-pub type AppSettingsManager = rcman::SettingsManager<rcman::JsonStorage, AppSettings>;
+/// Uses rcman's JsonManager convenience alias with our AppSettings schema
+pub type AppSettingsManager = rcman::JsonManager<AppSettings>;

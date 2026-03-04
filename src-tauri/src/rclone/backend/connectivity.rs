@@ -10,17 +10,18 @@ pub async fn check_connectivity(
     manager: &BackendManager,
     name: &str,
     client: &reqwest::Client,
+    timeout: Option<std::time::Duration>,
 ) -> Result<(String, String), String> {
     let backend = manager
         .get(name)
         .await
         .ok_or_else(|| format!("Backend '{}' not found", name))?;
 
-    let timeout = std::time::Duration::from_secs(5);
+    let timeout = timeout.unwrap_or(std::time::Duration::from_secs(5));
     let runtime_info = backend.fetch_runtime_info(client, timeout).await;
 
-    let version = runtime_info.version().unwrap_or_default();
-    let os = runtime_info.os().unwrap_or_default();
+    let version = runtime_info.version.clone().unwrap_or_default();
+    let os = runtime_info.os.clone().unwrap_or_default();
 
     if !runtime_info.is_connected() {
         if let Some(error) = runtime_info.error_message() {
@@ -42,7 +43,7 @@ pub async fn check_connectivity_with_timeout(
     client: &reqwest::Client,
     timeout: std::time::Duration,
 ) -> Result<(String, String), String> {
-    let check_future = check_connectivity(manager, name, client);
+    let check_future = check_connectivity(manager, name, client, Some(timeout));
 
     match tokio::time::timeout(timeout, check_future).await {
         Ok(result) => result,
@@ -60,7 +61,7 @@ pub async fn check_local_connectivity_retrying(
     let check_local_future = async {
         let mut attempts = 0;
         loop {
-            match check_connectivity(manager, "Local", client).await {
+            match check_connectivity(manager, "Local", client, None).await {
                 Ok(info) => return Ok(info),
                 Err(e) => {
                     attempts += 1;
@@ -185,7 +186,7 @@ pub async fn switch_to_local_fallback(
     use crate::utils::types::core::EngineState;
 
     // 1. Reset profiles to default (Local)
-    reset_profiles_to_default(app).await;
+    reset_profiles_to_default(app);
 
     // 2. Switch active index to Local
     manager.switch_to_local_index().await?;
@@ -206,19 +207,19 @@ pub async fn switch_to_local_fallback(
 }
 
 /// Helper to reset settings profiles to default (used during fallback)
-async fn reset_profiles_to_default(app: &tauri::AppHandle) {
+fn reset_profiles_to_default(app: &tauri::AppHandle) {
     use crate::core::settings::AppSettingsManager;
     let settings_manager = app.state::<AppSettingsManager>();
 
     // Helper to switch a sub-setting profile safely
-    async fn switch_profile(manager: &AppSettingsManager, sub: &str) {
+    fn switch_profile(manager: &AppSettingsManager, sub: &str) {
         if let Ok(s) = manager.sub_settings(sub) {
             let _ = s.switch_profile("default");
         }
     }
 
-    switch_profile(settings_manager.inner(), "remotes").await;
-    switch_profile(settings_manager.inner(), "backend").await;
+    switch_profile(settings_manager.inner(), "remotes");
+    switch_profile(settings_manager.inner(), "backend");
     info!("👤 Fallback switched profiles to default");
 }
 
@@ -233,7 +234,7 @@ pub async fn check_other_backends(manager: &BackendManager, client: &reqwest::Cl
         }
 
         info!("🔍 Background check for backend: {}", backend.name);
-        if let Err(e) = check_connectivity(manager, &backend.name, client).await {
+        if let Err(e) = check_connectivity(manager, &backend.name, client, None).await {
             log::warn!("⚠️ Backend '{}' unreachable: {}", backend.name, e);
             manager
                 .set_runtime_status(&backend.name, &format!("error:{}", e))

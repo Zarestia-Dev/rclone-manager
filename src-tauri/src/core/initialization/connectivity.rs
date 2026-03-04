@@ -30,9 +30,13 @@ pub async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
         // 1. Checking Active (Remote)
         // 2. Fallback to Local (if Remote fails)
         // 3. Logging success/failure
-        if let Err(e) = backend_manager
-            .ensure_connectivity_or_fallback(app_handle, &client, BACKEND_CONNECTIVITY_TIMEOUT)
-            .await
+        if let Err(e) = crate::rclone::backend::connectivity::ensure_connectivity_or_fallback(
+            &backend_manager,
+            app_handle,
+            &client,
+            BACKEND_CONNECTIVITY_TIMEOUT,
+        )
+        .await
         {
             error!("🔥 Critical startup failure: {}", e);
         }
@@ -51,7 +55,7 @@ async fn check_other_backends(app_handle: &tauri::AppHandle) {
 
     let client = app_handle.state::<RcloneState>().client.clone();
 
-    backend_manager.check_other_backends(&client).await;
+    crate::rclone::backend::connectivity::check_other_backends(&backend_manager, &client).await;
 }
 
 #[cfg(test)]

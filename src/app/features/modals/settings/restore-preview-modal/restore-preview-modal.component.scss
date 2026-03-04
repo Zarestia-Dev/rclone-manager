@@ -162,12 +162,6 @@
   border-radius: var(--radius-sm);
   box-shadow: var(--box-shadow);
   background: var(--window-bg-color);
-
-  .check-icon {
-    font-size: var(--icon-size-sm);
-    width: var(--icon-size-sm);
-    height: var(--icon-size-sm);
-  }
 }
 
 .item-icon-wrapper {
@@ -358,25 +352,6 @@
     font-size: var(--font-size-sm);
     line-height: 1.5;
     color: var(--secondary-text-color);
-  }
-
-  .banner-details {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    padding: var(--space-xs) var(--space-sm);
-    background: rgba(var(--blue-rgb), 0.15);
-    border-radius: var(--radius-sm);
-    font-size: var(--font-size-xs);
-    font-weight: 500;
-    color: var(--blue);
-    width: fit-content;
-
-    .detail-icon {
-      font-size: 14px;
-      width: 14px;
-      height: 14px;
-    }
   }
 }
 

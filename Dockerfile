@@ -1,125 +1,140 @@
-# Build stage - Build everything via Tauri
-FROM node:20-bookworm AS builder
+# =============================================================================
+# RClone Manager Headless — Multi-stage Docker Build
+# =============================================================================
+#
+# Usage:
+#   docker build -t rclone-manager .
+#   docker run -d -p 8080:8080 -v rclone-data:/data -v rclone-config:/config rclone-manager
+#
+# Environment variables:
+#   PUID / PGID           — Set container user/group ID (default: 1000)
+#   RCLONE_MANAGER_HOST   — Bind address (default: 0.0.0.0)
+#   RCLONE_MANAGER_PORT   — Listen port (default: 8080)
+#   RCLONE_MANAGER_USER   — Basic auth username
+#   RCLONE_MANAGER_PASS   — Basic auth password
+#   RCLONE_MANAGER_TLS_CERT / RCLONE_MANAGER_TLS_KEY — TLS certificate paths
+#
+# Volumes:
+#   /data                 — Persistent storage (rclone binary, app data)
+#   /config               — Rclone configuration directory
+# =============================================================================
 
-# Install Rust and build dependencies
+# -----------------------------------------------------------------------------
+# Stage 1: Build (frontend + backend via Tauri)
+# -----------------------------------------------------------------------------
+FROM node:bookworm AS builder
+
+# Install Rust toolchain and native build dependencies required by Tauri/GTK
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl build-essential pkg-config libssl-dev libdbus-1-dev \
-    libsoup-3.0-dev libjavascriptcoregtk-4.1-dev libwebkit2gtk-4.1-dev \
-    libgtk-3-dev libayatana-appindicator3-dev fuse3  \
+        build-essential \
+        curl \
+        fuse3 \
+        libayatana-appindicator3-dev \
+        libdbus-1-dev \
+        libgtk-3-dev \
+        libjavascriptcoregtk-4.1-dev \
+        libsoup-3.0-dev \
+        libssl-dev \
+        libwebkit2gtk-4.1-dev \
+        pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+    | sh -s -- -y --default-toolchain nightly --profile minimal
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 WORKDIR /app
 
-# Copy all project files
+# Install npm dependencies first to leverage Docker layer caching
 COPY package*.json ./
+RUN npm ci
+
+# Copy project source and build headless binary
 COPY . .
+RUN npm run tauri build -- \
+    --config src-tauri/tauri.conf.headless.json \
+    --config '{"bundle":{"createUpdaterArtifacts":false}}' \
+    --features web-server,updater \
+    --no-bundle
 
-# Install npm dependencies
-RUN npm install
-
-# Build via Tauri (builds both frontend and backend)
-RUN npm run tauri build -- --config src-tauri/tauri.conf.headless.json --config '{"bundle":{"createUpdaterArtifacts":false}}' --features web-server,updater --no-bundle
-
-# Stage 3: Runtime
+# -----------------------------------------------------------------------------
+# Stage 2: Runtime
+# -----------------------------------------------------------------------------
 FROM debian:bookworm-slim
 
+LABEL maintainer="Zarestia-Dev" \
+      org.opencontainers.image.title="RClone Manager" \
+      org.opencontainers.image.description="Web-based rclone management interface (headless)" \
+      org.opencontainers.image.source="https://github.com/Zarestia-Dev/rclone-manager"
+
+# Install runtime dependencies
+# Note: 'gosu' is used for privilege dropping in the entrypoint
+# Note: 'xvfb' and 'dbus-x11' trick Tauri into running without a physical display
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl unzip fuse3 libgtk-3-0 libwebkit2gtk-4.1-0 \
-    libayatana-appindicator3-1 xvfb dbus-x11 openssl \
+        ca-certificates \
+        curl \
+        dbus-x11 \
+        fuse3 \
+        gosu \
+        libayatana-appindicator3-1 \
+        libgtk-3-0 \
+        libwebkit2gtk-4.1-0 \
+        openssl \
+        unzip \
+        xvfb \
     && rm -rf /var/lib/apt/lists/*
 
-# Install rclone (multi-arch support)
-RUN ARCH=$(dpkg --print-architecture) && \
-    if [ "$ARCH" = "arm64" ]; then RCLONE_ARCH="arm64"; else RCLONE_ARCH="amd64"; fi && \
-    curl -O https://downloads.rclone.org/rclone-current-linux-${RCLONE_ARCH}.zip && \
-    unzip -q rclone-current-linux-${RCLONE_ARCH}.zip && \
-    cp rclone-*-linux-${RCLONE_ARCH}/rclone /usr/bin/ && \
-    chmod 755 /usr/bin/rclone && \
-    rm -rf rclone-*
+# Create the internal app user
+# The default UID/GID is 1000, but is dynamically overridden by PUID/PGID in entrypoint.sh
+RUN groupadd -g 1000 rclone-manager \
+    && useradd -m -u 1000 -g rclone-manager -s /bin/bash rclone-manager
 
-# Create non-root user
-RUN useradd -m -u 1000 rclone-manager && \
-    mkdir -p /home/rclone-manager/.local/share/com.rclone.manager.headless && \
-    mkdir -p /app && \
-    chown -R rclone-manager:rclone-manager /home/rclone-manager /app
+# Create required directories and set baseline ownership
+RUN mkdir -p \
+        /app/certs \
+        /config \
+        /data \
+        /home/rclone-manager/.local/share/com.rclone.manager.headless \
+        /home/rclone-manager/.config/rclone \
+    && chown -R rclone-manager:rclone-manager \
+        /app \
+        /config \
+        /data \
+        /home/rclone-manager
 
 WORKDIR /app
 
-# Copy built binary from builder stage
+# Copy the built backend binary
 COPY --from=builder /app/src-tauri/target/release/rclone-manager-headless /usr/local/bin/
 
-# Copy built browser files
-# Note: Path must match productName in tauri.conf.json ("RClone Manager Headless")
-COPY --from=builder ["/app/src-tauri/target/release/browser", "/usr/lib/RClone Manager Headless/browser/"]
-COPY --from=builder ["/app/src-tauri/target/release/i18n", "/usr/lib/RClone Manager Headless/i18n/"]
+# Copy the built frontend assets
+# The destination path is critical: it must exactly match the `productName` defined in tauri.conf.headless.json
+COPY --from=builder \
+    ["/app/src-tauri/target/release/browser", "/usr/lib/RClone Manager Headless/browser/"]
+COPY --from=builder \
+    ["/app/src-tauri/target/release/i18n", "/usr/lib/RClone Manager Headless/i18n/"]
 
-# Create directory for optional TLS certificates (mount your own certs here)
-RUN mkdir -p /app/certs && \
-    chown rclone-manager:rclone-manager /app/certs
-
-# Create entrypoint script with environment variable support
-RUN echo '#!/bin/bash\n\
-set -e\n\
-\n\
-# Setup virtual display\n\
-mkdir -p /tmp/.X11-unix && chmod 1777 /tmp/.X11-unix\n\
-rm -f /tmp/.X99-lock /tmp/.X11-unix/X99 2>/dev/null || true\n\
-Xvfb :99 -screen 0 1024x768x24 -nolisten tcp &\n\
-XVFB_PID=$!\n\
-sleep 2\n\
-if ! ps -p $XVFB_PID > /dev/null; then echo "Failed to start Xvfb"; exit 1; fi\n\
-export $(dbus-launch)\n\
-trap "kill $XVFB_PID 2>/dev/null || true" EXIT\n\
-\n\
-# Build command line arguments from environment variables\n\
-ARGS=()\n\
-\n\
-# Add host if set\n\
-if [ -n "$RCLONE_MANAGER_HOST" ]; then\n\
-    ARGS+=("--host" "$RCLONE_MANAGER_HOST")\n\
-fi\n\
-\n\
-# Add port if set\n\
-if [ -n "$RCLONE_MANAGER_PORT" ]; then\n\
-    ARGS+=("--port" "$RCLONE_MANAGER_PORT")\n\
-fi\n\
-\n\
-# Add authentication if set\n\
-if [ -n "$RCLONE_MANAGER_USER" ]; then\n\
-    ARGS+=("--user" "$RCLONE_MANAGER_USER")\n\
-fi\n\
-if [ -n "$RCLONE_MANAGER_PASS" ]; then\n\
-    ARGS+=("--pass" "$RCLONE_MANAGER_PASS")\n\
-fi\n\
-\n\
-# Add TLS if certificates are provided\n\
-if [ -n "$RCLONE_MANAGER_TLS_CERT" ]; then\n\
-    ARGS+=("--tls-cert" "$RCLONE_MANAGER_TLS_CERT")\n\
-fi\n\
-if [ -n "$RCLONE_MANAGER_TLS_KEY" ]; then\n\
-    ARGS+=("--tls-key" "$RCLONE_MANAGER_TLS_KEY")\n\
-fi\n\
-\n\
-# Execute with environment args first, then command line args\n\
-exec /usr/local/bin/rclone-manager-headless "${ARGS[@]}" "$@"\n\
-' > /usr/local/bin/entrypoint.sh && chmod +x /usr/local/bin/entrypoint.sh
-
-USER rclone-manager
+# Copy and setup the runtime entrypoint script
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f https://localhost:8080/api/health || exit 1
+# Healthcheck ensures the container marks itself unhealthy if the API stops responding
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -sf http://localhost:${RCLONE_MANAGER_PORT:-8080}/api/health || exit 1
 
+# Define mount points for persistent storage
+# /data: Application local data and runtime-downloaded rclone binary
+# /config: User's rclone.conf configuration file
+VOLUME ["/data", "/config"]
+
+# Environment variables needed by Tauri/GTK and rclone
 ENV DISPLAY=:99 \
     HOME=/home/rclone-manager \
     XDG_DATA_HOME=/home/rclone-manager/.local/share \
     XDG_CONFIG_HOME=/home/rclone-manager/.config \
-    RCLONE_CONFIG=/home/rclone-manager/.config/rclone/rclone.conf
+    RCLONE_CONFIG=/config/rclone.conf
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD []
-

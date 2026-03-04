@@ -3,80 +3,6 @@
 // Simplified flat structure - no nested types.
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-
-use rcman::{SettingMetadata, SettingsSchema, settings};
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct BackendConnectionSchema;
-
-impl SettingsSchema for BackendConnectionSchema {
-    fn get_metadata() -> HashMap<String, SettingMetadata> {
-        settings! {
-            "is_local" => SettingMetadata::toggle(true)
-                .meta_str("label", "Local Backend")
-                .meta_str("description", "Whether this backend is managed locally by the application")
-                .meta_str("input_type", "checkbox")
-                .meta_str("group", "system")
-                .meta_bool("readonly", true),
-
-            "host" => SettingMetadata::text("127.0.0.1")
-                .meta_str("label", "Host")
-                .meta_str("description", "Hostname or IP address of the rclone instance")
-                .meta_str("placeholder", "e.g. 127.0.0.1 or my-nas.local")
-                .meta_str("input_type", "text")
-                .meta_str("group", "connection")
-                .meta_num("order", 10.0),
-
-            "port" => SettingMetadata::number(51900.0)
-                .min(1.0).max(65535.0)
-                .meta_str("label", "Port")
-                .meta_str("placeholder", "51900")
-                .meta_str("input_type", "number")
-                .meta_str("group", "connection")
-                .meta_num("order", 20.0),
-
-            "username" => SettingMetadata::text("")
-                .meta_str("label", "Username")
-                .meta_str("placeholder", "Leave empty for no auth")
-                .meta_str("input_type", "text")
-                .meta_str("group", "authentication")
-                .meta_num("order", 30.0),
-
-            "password" => SettingMetadata::text("")
-                .secret()
-                .meta_str("label", "Password")
-                .meta_str("placeholder", "Leave empty for no auth")
-                .meta_str("input_type", "password")
-                .meta_str("group", "authentication")
-                .meta_num("order", 40.0),
-
-            "oauth_port" => SettingMetadata::number(51901.0)
-                .min(1.0).max(65535.0)
-                .meta_str("label", "OAuth Port")
-                .meta_str("description", "Port used for OAuth callbacks (Local backend only)")
-                .meta_str("input_type", "number")
-                .meta_str("group", "oauth")
-                .meta_num("order", 50.0),
-
-            "config_password" => SettingMetadata::text("")
-                .secret()
-                .meta_str("label", "Config Password")
-                .meta_str("description", "Password for encrypted configuration file")
-                .meta_str("input_type", "password")
-                .meta_str("group", "security")
-                .meta_num("order", 60.0),
-
-            "config_path" => SettingMetadata::text("")
-                .meta_str("label", "Config Path")
-                .meta_str("description", "Specific path to rclone.conf (optional)")
-                .meta_str("placeholder", "Leave empty to use default")
-                .meta_str("input_type", "file_path")
-                .meta_str("group", "advanced")
-                .meta_num("order", 70.0),
-        }
-    }
-}
 
 /// Single flat backend configuration
 ///
@@ -118,14 +44,6 @@ pub struct Backend {
     /// Config file path (for remote backends mostly) - optional
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub config_path: Option<String>,
-
-    /// Rclone version (runtime only - fetched from core/version)
-    #[serde(skip)]
-    pub version: Option<String>,
-
-    /// OS rclone is running on (runtime only - fetched from core/version)
-    #[serde(skip)]
-    pub os: Option<String>,
 }
 
 impl Default for Backend {
@@ -147,8 +65,6 @@ impl Backend {
             oauth_port: Some(51901),
             config_password: None,
             config_path: None,
-            version: None,
-            os: None,
         }
     }
 
@@ -164,8 +80,6 @@ impl Backend {
             oauth_port: None,
             config_password: None,
             config_path: None,
-            version: None,
-            os: None,
         }
     }
 

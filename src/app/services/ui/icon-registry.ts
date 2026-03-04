@@ -41,7 +41,6 @@ export const BASE_ICONS: Record<string, string> = {
   // ------------------- File & Folder Icons -------------------
   file: 'assets/icons/files/file.svg',
   folder: 'assets/icons/files/folder.svg',
-  'file-zipper': 'assets/icons/files/file-zipper.svg',
   'file-lines': 'assets/icons/files/file-lines.svg',
   'file-arrow-up': 'assets/icons/files/file-arrow-up.svg',
   database: 'assets/icons/files/database.svg',
@@ -113,12 +112,13 @@ export const BASE_ICONS: Record<string, string> = {
   bookmark: 'assets/icons/general/bookmark.svg',
   calendar: 'assets/icons/general/calendar.svg',
   clock: 'assets/icons/general/clock.svg',
-  'clock-rotate-right': 'assets/icons/general/clock-rotate-right.svg',
+  'clock-rotate-left': 'assets/icons/general/clock-rotate-left.svg',
   vfs: 'assets/icons/general/vfs.svg',
   mount: 'assets/icons/general/mount.svg',
   user: 'assets/icons/general/user.svg',
   code: 'assets/icons/general/code.svg',
   scissors: 'assets/icons/general/scissors.svg',
+  folder_zip: 'assets/icons/general/folder_zip.svg',
 
   // ------------------- Titlebar Icons -------------------
   expand: 'assets/icons/titlebar/expand.svg',

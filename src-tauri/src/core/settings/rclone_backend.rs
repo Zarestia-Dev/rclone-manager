@@ -33,18 +33,8 @@ pub fn load_backend_options_sync(manager: &AppSettingsManager) -> serde_json::Va
         Err(_) => return json!({}),
     };
 
-    // Get all block names
-    let blocks = sub.list().unwrap_or_default();
-
-    // Build the combined object
-    let mut result = serde_json::Map::new();
-    for block in blocks {
-        if let Ok(value) = sub.get_value(&block) {
-            result.insert(block, value);
-        }
-    }
-
-    json!(result)
+    let all = sub.get_all_values().unwrap_or_default();
+    json!(all)
 }
 
 // -----------------------------------------------------------------------------

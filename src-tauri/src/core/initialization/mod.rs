@@ -4,14 +4,15 @@ pub mod connectivity;
 pub mod scheduler;
 
 use crate::core::settings::AppSettingsManager;
+use crate::rclone::backend::BackendManager;
+use crate::rclone::engine::core::is_active_backend_local;
 use crate::rclone::state::watcher::{start_mounted_remote_watcher, start_serve_watcher};
+use crate::utils::types::core::{EngineState, RcloneState};
 use log::{debug, error, info};
 use tauri::Manager;
 
 /// Initializes Rclone API and OAuth state (does not start engine)
 pub async fn init_rclone_state(app_handle: &tauri::AppHandle) -> Result<(), String> {
-    use crate::rclone::backend::BackendManager;
-
     // Load persistent connections
     let backend_manager = app_handle.state::<BackendManager>();
     let settings_state = app_handle.state::<AppSettingsManager>();
@@ -30,9 +31,6 @@ pub async fn init_rclone_state(app_handle: &tauri::AppHandle) -> Result<(), Stri
 
 /// Handles async startup tasks
 pub async fn initialization(app_handle: tauri::AppHandle) {
-    use crate::rclone::engine::core::is_active_backend_local;
-    use crate::utils::types::core::EngineState;
-
     debug!("🚀 Starting async startup tasks");
 
     init_rclone_state(&app_handle)
@@ -71,13 +69,11 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
 
     // Step 2: Refresh caches (now that we know backend is reachable)
     info!("📊 Refreshing caches...");
-    use crate::rclone::backend::BackendManager;
-    use crate::utils::types::core::RcloneState;
 
     let backend_manager = app_handle.state::<BackendManager>();
     let client = app_handle.state::<RcloneState>().client.clone();
 
-    match backend_manager.refresh_active_backend(&client).await {
+    match crate::rclone::backend::cache::refresh_active_backend(&backend_manager, &client).await {
         Ok(_) => info!("✅ Caches refreshed successfully"),
         Err(e) => error!("❌ Failed to refresh caches: {e}"),
     }

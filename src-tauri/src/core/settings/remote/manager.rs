@@ -144,14 +144,12 @@ pub fn get_all_remote_settings_sync(
         Err(_) => return serde_json::json!({}),
     };
 
-    let mut all_settings = serde_json::Map::new();
-    for remote_name in remote_names {
-        if let Ok(settings) = remotes.get_value(remote_name) {
-            all_settings.insert(remote_name.clone(), settings);
-        }
-    }
+    let mut all_settings = remotes.get_all_values().unwrap_or_default();
 
-    serde_json::Value::Object(all_settings)
+    // Filter by requested names
+    all_settings.retain(|name, _| remote_names.contains(name));
+
+    serde_json::to_value(all_settings).unwrap_or_default()
 }
 
 /// Migrator to convert legacy singular configs to object-based configs.

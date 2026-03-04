@@ -57,7 +57,12 @@ impl BackendManager {
 
     /// Get the name of the active backend
     pub async fn get_active_name(&self) -> String {
-        self.get_active().await.name
+        let backends = self.backends.read().await;
+        let index = *self.active_index.read().await;
+        backends
+            .get(index)
+            .map(|b| b.name.clone())
+            .unwrap_or_default()
     }
 
     /// Get a specific backend by name
@@ -79,14 +84,14 @@ impl BackendManager {
                 let info = BackendInfo::from_backend(b, i == active_index);
                 if let Some(runtime) = runtime_cache.get(&b.name) {
                     info.with_runtime_info(
-                        runtime.version(),
-                        runtime.os(),
+                        runtime.version.clone(),
+                        runtime.os.clone(),
                         if runtime.status.is_empty() {
                             None
                         } else {
                             Some(runtime.status.clone())
                         },
-                        runtime.config_path(),
+                        runtime.config_path.clone(),
                     )
                 } else {
                     info
@@ -191,8 +196,8 @@ impl BackendManager {
             ));
         }
 
-        let mut backends = self.backends.write().await;
         let active_index = *self.active_index.read().await;
+        let mut backends = self.backends.write().await;
 
         let index = backends.iter().position(|b| b.name == name).ok_or_else(
             || crate::localized_error!("backendErrors.backend.notFound", "name" => name),
@@ -356,44 +361,6 @@ impl BackendManager {
     }
 
     // ============================================================================
-    // Connectivity methods (delegate to connectivity module)
-    // ============================================================================
-
-    /// Check connectivity - delegates to connectivity module
-    pub async fn check_connectivity(
-        &self,
-        name: &str,
-        client: &reqwest::Client,
-    ) -> Result<(String, String), String> {
-        super::connectivity::check_connectivity(self, name, client).await
-    }
-
-    /// Check connectivity with timeout - delegates to connectivity module
-    pub async fn check_connectivity_with_timeout(
-        &self,
-        name: &str,
-        client: &reqwest::Client,
-        timeout: std::time::Duration,
-    ) -> Result<(String, String), String> {
-        super::connectivity::check_connectivity_with_timeout(self, name, client, timeout).await
-    }
-
-    /// Ensure connectivity or fallback - delegates to connectivity module
-    pub async fn ensure_connectivity_or_fallback(
-        &self,
-        app: &tauri::AppHandle,
-        client: &reqwest::Client,
-        timeout: std::time::Duration,
-    ) -> Result<(), String> {
-        super::connectivity::ensure_connectivity_or_fallback(self, app, client, timeout).await
-    }
-
-    /// Check other backends - delegates to connectivity module
-    pub async fn check_other_backends(&self, client: &reqwest::Client) {
-        super::connectivity::check_other_backends(self, client).await
-    }
-
-    // ============================================================================
     // Helper methods for internal module access
     // ============================================================================
 
@@ -431,7 +398,7 @@ impl BackendManager {
     /// Get the runtime config path for a specific backend
     pub async fn get_runtime_config_path(&self, name: &str) -> Option<String> {
         let cache = self.runtime_info.read().await;
-        cache.get(name).and_then(|info| info.config_path())
+        cache.get(name).and_then(|info| info.config_path.clone())
     }
 
     /// Update runtime status for a backend (used for error states)
@@ -524,11 +491,6 @@ impl BackendManager {
 
         log::debug!("💾 Saved active backend: {}", name);
         Ok(())
-    }
-
-    /// Refresh active backend - delegates to cache module
-    pub async fn refresh_active_backend(&self, client: &reqwest::Client) -> Result<(), String> {
-        super::cache::refresh_active_backend(self, client).await
     }
 }
 

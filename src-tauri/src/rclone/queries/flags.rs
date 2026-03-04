@@ -447,3 +447,22 @@ pub async fn set_rclone_option(
 
     Ok(json)
 }
+
+/// Saves multiple RClone options simultaneously by sending a fully qualified nested JSON payload.
+/// Expected payload structure: { "main": { "LogLevel": "DEBUG" }, "vfs": { "CacheMode": "full" } }
+#[command]
+pub async fn set_rclone_options_bulk(app: AppHandle, payload: Value) -> Result<Value, String> {
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+
+    let json = backend
+        .post_json(
+            &app.state::<RcloneState>().client,
+            options::SET,
+            Some(&payload),
+        )
+        .await
+        .map_err(|e| format!("Failed to set bulk options: {}", e))?;
+
+    Ok(json)
+}

@@ -46,22 +46,6 @@ impl RuntimeInfo {
         self.status = status.into();
     }
 
-    // ============================================================================
-    // Common property accessors (kept for compatibility)
-    // ============================================================================
-
-    pub fn version(&self) -> Option<String> {
-        self.version.clone()
-    }
-
-    pub fn os(&self) -> Option<String> {
-        self.os.clone()
-    }
-
-    pub fn config_path(&self) -> Option<String> {
-        self.config_path.clone()
-    }
-
     /// Check if the backend is connected
     pub fn is_connected(&self) -> bool {
         self.status == "connected"

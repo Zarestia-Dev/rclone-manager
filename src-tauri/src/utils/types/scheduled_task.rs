@@ -203,7 +203,6 @@ pub struct CronValidationResponse {
     pub is_valid: bool,
     pub error_message: Option<String>,
     pub next_run: Option<DateTime<Utc>>,
-    pub human_readable: Option<String>,
 }
 
 /// Statistics for scheduled tasks
@@ -222,4 +221,129 @@ pub struct ScheduledTaskStats {
 /// Default backend name for deserialization (backward compatibility)
 fn default_backend_name() -> String {
     "Local".to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn create_test_task() -> ScheduledTask {
+        ScheduledTask {
+            id: "test-id".to_string(),
+            name: "Test Task".to_string(),
+            task_type: TaskType::Sync,
+            cron_expression: "0 0 * * *".to_string(),
+            status: TaskStatus::Enabled,
+            args: json!({}),
+            backend_name: "Local".to_string(),
+            created_at: Utc::now(),
+            last_run: None,
+            next_run: None,
+            last_error: None,
+            current_job_id: None,
+            scheduler_job_id: None,
+            run_count: 0,
+            success_count: 0,
+            failure_count: 0,
+        }
+    }
+
+    #[test]
+    fn test_task_type_conversion() {
+        assert_eq!(TaskType::Sync.as_job_type(), JobType::Sync);
+        assert_eq!(TaskType::Copy.as_job_type(), JobType::Copy);
+        assert_eq!(TaskType::Move.as_job_type(), JobType::Move);
+        assert_eq!(TaskType::Bisync.as_job_type(), JobType::Bisync);
+    }
+
+    #[test]
+    fn test_state_transitions() {
+        let mut task = create_test_task();
+
+        // Enabled -> Running
+        assert!(task.transition_to(TaskStatus::Running).is_ok());
+        assert_eq!(task.status, TaskStatus::Running);
+
+        // Running -> Enabled (Success)
+        assert!(task.transition_to(TaskStatus::Enabled).is_ok());
+        assert_eq!(task.status, TaskStatus::Enabled);
+
+        // Enabled -> Disabled
+        assert!(task.transition_to(TaskStatus::Disabled).is_ok());
+        assert_eq!(task.status, TaskStatus::Disabled);
+
+        // Disabled -> Enabled
+        assert!(task.transition_to(TaskStatus::Enabled).is_ok());
+        assert_eq!(task.status, TaskStatus::Enabled);
+
+        // Running -> Failed
+        task.status = TaskStatus::Running;
+        assert!(task.transition_to(TaskStatus::Failed).is_ok());
+        assert_eq!(task.status, TaskStatus::Failed);
+
+        // Failed -> Enabled
+        assert!(task.transition_to(TaskStatus::Enabled).is_ok());
+        assert_eq!(task.status, TaskStatus::Enabled);
+    }
+
+    #[test]
+    fn test_invalid_transitions() {
+        let mut task = create_test_task();
+        task.status = TaskStatus::Disabled;
+
+        // Disabled -> Running (Invalid)
+        assert!(task.transition_to(TaskStatus::Running).is_err());
+    }
+
+    #[test]
+    fn test_mark_starting_and_running() {
+        let mut task = create_test_task();
+
+        assert!(task.can_run());
+        assert!(task.mark_starting().is_ok());
+        assert_eq!(task.status, TaskStatus::Running);
+        assert_eq!(task.run_count, 1);
+        assert!(task.last_run.is_some());
+
+        task.mark_running(12345);
+        assert_eq!(task.current_job_id, Some(12345));
+        assert!(!task.can_run());
+    }
+
+    #[test]
+    fn test_mark_success_failure() {
+        let mut task = create_test_task();
+
+        // Success path
+        task.status = TaskStatus::Running;
+        task.mark_success();
+        assert_eq!(task.status, TaskStatus::Enabled);
+        assert_eq!(task.success_count, 1);
+        assert!(task.last_run.is_some());
+
+        // Failure path
+        task.status = TaskStatus::Running;
+        task.mark_failure("error".to_string());
+        assert_eq!(task.status, TaskStatus::Enabled);
+        assert_eq!(task.failure_count, 1);
+        assert_eq!(task.last_error, Some("error".to_string()));
+    }
+
+    #[test]
+    fn test_mark_stopped() {
+        let mut task = create_test_task();
+
+        task.status = TaskStatus::Running;
+        task.current_job_id = Some(123);
+        task.mark_stopped();
+
+        assert_eq!(task.status, TaskStatus::Enabled);
+        assert_eq!(task.current_job_id, None);
+
+        // Test Stopping -> Disabled
+        task.status = TaskStatus::Stopping;
+        task.mark_stopped();
+        assert_eq!(task.status, TaskStatus::Disabled);
+    }
 }

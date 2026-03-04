@@ -17,6 +17,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Notification behavior improved.
 - Use Zoneless Change Detection.
 - On Rclone update, app now not auto restart the engine. User input needed.
+- **Docker**: Rclone binary no longer bundled in the image. Downloaded at first startup to a persistent volume.
+- **Docker**: Added `PUID` and `PGID` environment variable support for user/group mapping.
+- **Docker**: Entrypoint extracted to standalone `entrypoint.sh` with `gosu` privilege dropping.
+- **Docker**: Simplified volume layout (`/data` and `/config`).
+- **Docker**: Minimal Rust profile in build stage to reduce image build time.
 
 ### Fixed
 - Fixed bug where remotes requiring sensitive fields like passwords or API keys (e.g., Filen) failed to create via UI due to being sent in plain text instead of an obscured format to the rclone RC API. (Fixed #128)

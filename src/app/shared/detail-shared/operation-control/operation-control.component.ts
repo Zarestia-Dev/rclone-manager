@@ -1,4 +1,13 @@
-import { Component, computed, input, output, inject, signal, effect } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  input,
+  output,
+  inject,
+  signal,
+  effect,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -22,6 +31,7 @@ import { TranslateModule } from '@ngx-translate/core';
 @Component({
   selector: 'app-operation-control',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     MatCardModule,
@@ -201,49 +211,40 @@ export class OperationControlComponent {
   isExpanded = false;
 
   diskUsage = signal<LocalDiskUsage | null>(null);
+  readonly mountDestination = computed(() => this.config().pathConfig.destination || '');
+  readonly shouldPollDiskUsage = computed(() => {
+    const cfg = this.config();
+    const destination = this.mountDestination();
+    return (
+      cfg.operationType === 'mount' &&
+      cfg.isActive &&
+      !!destination &&
+      !destination.includes('Not configured')
+    );
+  });
 
   constructor() {
-    effect(async () => {
-      const config = this.config();
-      // Only fetch for active mount operations with a valid destination
-      if (
-        config.operationType === 'mount' &&
-        config.isActive &&
-        config.pathConfig.destination &&
-        !config.pathConfig.destination.includes('Not configured')
-      ) {
-        try {
-          // Poll every 5 seconds while active
-          const usage = await this.systemInfo.getLocalDiskUsage(config.pathConfig.destination);
-          this.diskUsage.set(usage);
-        } catch (error) {
-          console.error('Failed to fetch disk usage:', error);
-          this.diskUsage.set(null);
-        }
-      } else {
-        this.diskUsage.set(null);
-      }
-    });
-
-    // Setup polling interval
     effect(onCleanup => {
-      const config = this.config();
-      if (
-        config.operationType === 'mount' &&
-        config.isActive &&
-        config.pathConfig.destination &&
-        !config.pathConfig.destination.includes('Not configured')
-      ) {
-        const interval = setInterval(async () => {
+      const shouldPoll = this.shouldPollDiskUsage();
+      const destination = this.mountDestination();
+
+      if (shouldPoll) {
+        const fetchDiskUsage = async (): Promise<void> => {
           try {
-            const usage = await this.systemInfo.getLocalDiskUsage(config.pathConfig.destination);
+            const usage = await this.systemInfo.getLocalDiskUsage(destination);
             this.diskUsage.set(usage);
-          } catch {
-            // Silently fail on poll
+          } catch (error) {
+            console.error('Failed to fetch disk usage:', error);
+            this.diskUsage.set(null);
           }
-        }, 5000);
+        };
+
+        void fetchDiskUsage();
+        const interval = setInterval(() => void fetchDiskUsage(), 5000);
 
         onCleanup(() => clearInterval(interval));
+      } else {
+        this.diskUsage.set(null);
       }
     });
   }

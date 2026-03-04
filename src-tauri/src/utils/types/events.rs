@@ -41,3 +41,47 @@ pub const SCHEDULED_TASKS_CACHE_CHANGED: &str = "scheduled_tasks_cache_changed";
 // Application events
 pub const APP_EVENT: &str = "app_event";
 pub const OPEN_INTERNAL_ROUTE: &str = "open_internal_route";
+
+/// Strongly typed payload for settings change events
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+pub struct SettingsChangeEvent {
+    pub category: String,
+    pub key: String,
+    pub value: serde_json::Value,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_settings_change_event_serialization() {
+        let event = SettingsChangeEvent {
+            category: "general".to_string(),
+            key: "language".to_string(),
+            value: json!("en"),
+        };
+
+        let serialized = serde_json::to_string(&event).unwrap();
+        let expected = r#"{"category":"general","key":"language","value":"en"}"#;
+        assert_eq!(serialized, expected);
+
+        let deserialized: SettingsChangeEvent = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized, event);
+    }
+
+    #[test]
+    fn test_settings_change_event_with_complex_value() {
+        let event = SettingsChangeEvent {
+            category: "core".to_string(),
+            key: "bandwidth_limit".to_string(),
+            value: json!({ "limit": "10M", "enabled": true }),
+        };
+
+        let serialized = serde_json::to_string(&event).unwrap();
+        let deserialized: SettingsChangeEvent = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized.value["limit"], "10M");
+        assert_eq!(deserialized.value["enabled"], true);
+    }
+}

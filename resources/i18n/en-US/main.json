@@ -1112,8 +1112,7 @@
       },
       "legacy": {
         "title": "Legacy Backup Detected",
-        "description": "This backup was created before the profile system was introduced. It will be restored to the 'default' profile.",
-        "defaultProfile": "All settings will be added to the default profile automatically"
+        "description": "This backup was created before the profile system was introduced. It will be restored to the 'default' profile."
       },
       "options": "Restore Options",
       "scope": {
