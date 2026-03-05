@@ -163,6 +163,8 @@ export const POST_COMMANDS = new Set([
   'purge_directory',
   'remove_empty_dirs',
   'upload_file',
+  'rename_file',
+  'rename_dir',
   // Backend Commands
   'add_backend',
   'update_backend',

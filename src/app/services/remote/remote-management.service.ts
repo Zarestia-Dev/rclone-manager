@@ -343,6 +343,44 @@ export class RemoteManagementService extends TauriBaseService {
   }
 
   /**
+   * Rename a single file
+   */
+  async renameFile(
+    remote: string,
+    srcPath: string,
+    dstPath: string,
+    source?: Origin,
+    noCache?: boolean
+  ): Promise<number> {
+    return this.invokeCommand<number>('rename_file', {
+      remote,
+      srcPath,
+      dstPath,
+      source,
+      noCache,
+    });
+  }
+
+  /**
+   * Rename a directory
+   */
+  async renameDir(
+    remote: string,
+    srcPath: string,
+    dstPath: string,
+    source?: Origin,
+    noCache?: boolean
+  ): Promise<number> {
+    return this.invokeCommand<number>('rename_dir', {
+      remote,
+      srcPath,
+      dstPath,
+      source,
+      noCache,
+    });
+  }
+
+  /**
    * Upload a file content string to a remote file
    */
   async uploadFile(

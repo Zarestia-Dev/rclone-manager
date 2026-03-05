@@ -370,18 +370,18 @@ impl BackendManager {
         cache.insert(name.to_string(), info);
     }
 
-    pub(super) async fn switch_to_local_index(&self) -> Result<(), String> {
-        let index = self
-            .backends
-            .read()
-            .await
-            .iter()
-            .position(|b| b.name == "Local")
-            .ok_or_else(|| "Local backend not found".to_string())?;
+    // pub(super) async fn switch_to_local_index(&self) -> Result<(), String> {
+    //     let index = self
+    //         .backends
+    //         .read()
+    //         .await
+    //         .iter()
+    //         .position(|b| b.name == "Local")
+    //         .ok_or_else(|| "Local backend not found".to_string())?;
 
-        *self.active_index.write().await = index;
-        Ok(())
-    }
+    //     *self.active_index.write().await = index;
+    //     Ok(())
+    // }
 
     /// Save backend state internally (used by state module)
     pub(super) async fn save_state(&self, name: &str, state: super::state::BackendState) {

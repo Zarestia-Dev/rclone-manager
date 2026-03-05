@@ -1655,6 +1655,64 @@ export class NautilusComponent implements OnInit, OnDestroy {
     }
   }
 
+  async openContextMenuRename(): Promise<void> {
+    const item = this.contextMenuItem;
+    const remote = this.nautilusRemote();
+    if (!item || !remote) return;
+
+    const normalizedRemote = !remote.isLocal
+      ? this.pathSelectionService.normalizeRemoteForRclone(remote.name)
+      : remote.name;
+
+    const ref = this.dialog.open(InputModalComponent, {
+      data: {
+        title: this.translate.instant('nautilus.modals.rename.title'),
+        label: this.translate.instant('nautilus.modals.rename.label'),
+        icon: 'pen',
+        placeholder: this.translate.instant('nautilus.modals.rename.placeholder'),
+        initialValue: item.entry.Name,
+        createLabel: this.translate.instant('nautilus.modals.rename.confirm'),
+        existingNames: this.files()
+          .filter(f => f.entry.Name !== item.entry.Name)
+          .map(f => f.entry.Name),
+      },
+      disableClose: true,
+    });
+
+    try {
+      const newName = await firstValueFrom(ref.afterClosed());
+      if (!newName || newName === item.entry.Name) return;
+
+      // Correctly construct the new path base on directory nesting
+      const pathParts = item.entry.Path.split('/');
+      pathParts[pathParts.length - 1] = newName;
+      const newPath = pathParts.join('/');
+
+      if (item.entry.IsDir) {
+        await this.remoteManagement.renameDir(
+          normalizedRemote,
+          item.entry.Path,
+          newPath,
+          'nautilus'
+        );
+      } else {
+        await this.remoteManagement.renameFile(
+          normalizedRemote,
+          item.entry.Path,
+          newPath,
+          'nautilus'
+        );
+      }
+
+      this.notificationService.showSuccess(
+        this.translate.instant('nautilus.notifications.renameStarted')
+      );
+      this.refresh();
+    } catch {
+      this.notificationService.showError(this.translate.instant('nautilus.errors.renameFailed'));
+    }
+  }
+
   onSidebarRequestAbout(remote: ExplorerRoot): void {
     const normalized = !remote.isLocal
       ? this.pathSelectionService.normalizeRemoteForRclone(remote.name)

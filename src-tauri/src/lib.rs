@@ -90,6 +90,89 @@ pub fn run() {
     let mut builder = tauri::Builder::default();
 
     // -------------------------------------------------------------------------
+    // Custom Protocol for Remote File Streaming (Desktop)
+    // -------------------------------------------------------------------------
+    builder =
+        builder.register_asynchronous_uri_scheme_protocol("rclone", |app, request, responder| {
+            let uri = request.uri().to_string();
+            // remove "rclone://" prefix using strip_prefix to avoid clippy manual_strip warning
+            let path_part = if let Some(stripped) = uri.strip_prefix("rclone://") {
+                stripped
+            } else {
+                &uri
+            };
+
+            // Find the first slash to separate remote from path
+            let (remote, path) = match path_part.find('/') {
+                Some(idx) => (&path_part[..idx], &path_part[idx + 1..]),
+                None => (path_part, ""),
+            };
+
+            let app_handle = app.app_handle().clone();
+            let remote = match urlencoding::decode(remote) {
+                Ok(decoded) => decoded.into_owned(),
+                Err(_) => remote.to_string(),
+            };
+            let path = match urlencoding::decode(path) {
+                Ok(decoded) => decoded.into_owned(),
+                Err(_) => path.to_string(),
+            };
+
+            tauri::async_runtime::spawn(async move {
+                use crate::rclone::backend::BackendManager;
+                let backend_manager = app_handle.state::<BackendManager>();
+                let backend: crate::rclone::backend::types::Backend =
+                    backend_manager.get_active().await;
+
+                let rclone_state = app_handle.state::<crate::utils::types::core::RcloneState>();
+                let client = &rclone_state.client;
+
+                match backend.fetch_file_stream(client, &remote, &path).await {
+                    Ok(response) => {
+                        let response: reqwest::Response = response;
+                        let status = response.status();
+                        if status.is_success() {
+                            let content_type = response
+                                .headers()
+                                .get(reqwest::header::CONTENT_TYPE)
+                                .and_then(|v: &reqwest::header::HeaderValue| v.to_str().ok())
+                                .unwrap_or("application/octet-stream")
+                                .to_string();
+
+                            let bytes = match response.bytes().await {
+                                Ok(b) => b.to_vec(),
+                                Err(_) => vec![],
+                            };
+
+                            responder.respond(
+                                tauri::http::Response::builder()
+                                    .status(200)
+                                    .header(tauri::http::header::CONTENT_TYPE, content_type)
+                                    .body(bytes)
+                                    .unwrap(),
+                            );
+                        } else {
+                            responder.respond(
+                                tauri::http::Response::builder()
+                                    .status(status.as_u16())
+                                    .body(format!("Rclone error: {}", status).into_bytes())
+                                    .unwrap(),
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        responder.respond(
+                            tauri::http::Response::builder()
+                                .status(500)
+                                .body(format!("Proxy error: {}", e).into_bytes())
+                                .unwrap(),
+                        );
+                    }
+                }
+            });
+        });
+
+    // -------------------------------------------------------------------------
     // Single Instance Plugin (Desktop)
     // -------------------------------------------------------------------------
     #[cfg(desktop)]

@@ -1988,6 +1988,12 @@
         "label": "Nombre de la carpeta",
         "placeholder": "Introduzca el nombre de la carpeta"
       },
+      "rename": {
+        "title": "Renombrar",
+        "label": "Nuevo nombre",
+        "placeholder": "Ingrese el nuevo nombre",
+        "confirm": "Renombrar"
+      },
       "emptyTrash": {
         "title": "Vaciar papelera",
         "message": "¿Eliminar archivos de la papelera de {{remote}}?"
@@ -1999,6 +2005,7 @@
       "bookmarkRemoteNotFound": "Remoto '{{remote}}' para marcador no encontrado",
       "loadFailed": "Error al cargar el directorio",
       "createFolderFailed": "Error al crear la carpeta",
+      "renameFailed": "Error al renombrar '{{name}}': {{error}}",
       "emptyTrashFailed": "Error al vaciar la papelera: {{error}}",
       "openFileFailed": "No se puede abrir el archivo: falta contexto remoto",
       "minSelection": "Por favor seleccione al menos {{min}} elemento{{s}}."
@@ -2009,6 +2016,7 @@
       "toggleSelect": "Alternar selección",
       "copyPath": "Copiar ruta",
       "newFolder": "Nueva carpeta",
+      "rename": "Renombrar",
       "refresh": "Actualizar",
       "properties": "Propiedades",
       "reload": "Recargar",
@@ -2029,6 +2037,7 @@
       "addedToStarred": "'{{item}}' añadido a Favoritos",
       "undo": "Deshacer",
       "trashEmptied": "Papelera vaciada",
+      "renameStarted": "Operación de renombrado iniciada",
       "locationCopied": "Ubicación copiada al portapapeles"
     }
   },
@@ -2158,8 +2167,8 @@
       "checks": "Comprobaciones:",
       "errors": "Errores:",
       "deletes": "Eliminaciones:",
-      "renames": "Renombrados:",
       "serverCopies": "Copias en servidor:",
+      "renames": "Renombrados:",
       "serverMoves": "Movimientos en servidor:",
       "lastError": "Último error:",
       "copyError": "Haga clic para copiar el error",

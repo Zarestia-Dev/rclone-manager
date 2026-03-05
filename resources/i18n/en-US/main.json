@@ -1292,6 +1292,8 @@
         "copy_url": "Copy URL",
         "move": "Move",
         "move_file": "Move File",
+        "rename_file": "Rename File",
+        "rename_dir": "Rename Folder",
         "sync": "Sync",
         "bisync": "BiSync"
       }
@@ -2045,6 +2047,12 @@
         "label": "Folder name",
         "placeholder": "Enter folder name"
       },
+      "rename": {
+        "title": "Rename",
+        "label": "New name",
+        "placeholder": "Enter new name",
+        "confirm": "Rename"
+      },
       "emptyTrash": {
         "title": "Empty Trash",
         "message": "Are you sure you want to remove trashed items in {{remote}}?"
@@ -2067,6 +2075,7 @@
       "redoFailed": "Redo failed for {{count}} items",
       "rmdirsFailed": "Failed to remove empty folders in \"{{name}}\": {{error}}",
       "createFolderFailed": "Failed to create folder \"{{name}}\": {{error}}",
+      "renameFailed": "Failed to rename '{{name}}': {{error}}",
       "emptyTrashFailed": "Failed to empty trash in {{remote}}: {{error}}",
       "openFileFailed": "Cannot open file: missing remote server context",
       "minSelection": "Please select at least {{min}} item{{s}}."
@@ -2091,6 +2100,7 @@
       "delete": "Delete",
       "copy": "Copy",
       "cut": "Cut",
+      "rename": "Rename",
       "paste": "Paste",
       "focusPath": "Focus Path",
       "newTab": "New Tab",
@@ -2119,6 +2129,7 @@
       "rmdirsStarted": "Removing empty folders in \"{{name}}\"...",
       "deleteStarted": "Deleting {{count}} items...",
       "pasteComplete": "Paste operation completed",
+      "renameStarted": "Rename operation started",
       "undoComplete": "Undo successful",
       "redoComplete": "Redo successful"
     }

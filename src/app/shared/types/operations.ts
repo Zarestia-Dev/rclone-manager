@@ -19,6 +19,8 @@ export type FileOperationType =
   | 'purge'
   | 'copy_file'
   | 'move_file'
+  | 'rename_file'
+  | 'rename_dir'
   | 'copy_url'
   | 'cleanup'
   | 'rmdirs'

@@ -236,6 +236,42 @@ impl Backend {
         info
     }
 
+    /// Helper to construct URL and fetch a remote file stream with authentication
+    pub async fn fetch_file_stream(
+        &self,
+        client: &reqwest::Client,
+        remote: &str,
+        path: &str,
+    ) -> Result<reqwest::Response, String> {
+        let r_name = if remote.contains(':') {
+            remote.to_string()
+        } else {
+            format!("{}:", remote)
+        };
+
+        // Encode path segments to ensure valid URL
+        let encoded_path = path
+            .split('/')
+            .map(urlencoding::encode)
+            .collect::<Vec<_>>()
+            .join("/");
+
+        let url = format!(
+            "{}/[{}]/{}",
+            self.api_url().trim_end_matches('/'),
+            r_name,
+            encoded_path.trim_start_matches('/')
+        );
+
+        let mut builder = client.get(&url);
+        builder = self.inject_auth(builder);
+
+        builder
+            .send()
+            .await
+            .map_err(|e| format!("Failed to fetch remote file: {}", e))
+    }
+
     /// Helper for POST requests expecting JSON response
     pub async fn post_json(
         &self,

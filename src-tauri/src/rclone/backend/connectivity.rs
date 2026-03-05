@@ -2,7 +2,6 @@
 
 use crate::rclone::backend::BackendManager;
 use log::info;
-use tauri::Manager;
 
 /// Check connectivity to a backend, updating cache if successful
 /// Returns (version, os) on success
@@ -87,7 +86,6 @@ pub async fn check_local_connectivity_retrying(
 /// This orchestrates the entire startup connectivity check process.
 pub async fn ensure_connectivity_or_fallback(
     manager: &BackendManager,
-    app: &tauri::AppHandle,
     client: &reqwest::Client,
     timeout: std::time::Duration,
 ) -> Result<(), String> {
@@ -129,99 +127,92 @@ pub async fn ensure_connectivity_or_fallback(
         }
         Err(e) => {
             log::warn!(
-                "⚠️ Active backend '{}' connectivity failed: {}. Falling back to Local.",
+                "⚠️ Active backend '{}' connectivity failed: {}. Keeping as active backend (marking offline).",
                 active_name,
                 e
             );
 
+            // Mark backend as offline but do NOT switch to Local.
+            // The user explicitly chose this backend; respect that choice even if it is
+            // temporarily unreachable at startup. The UI will show the offline status and
+            // the user can switch manually if needed.
             manager
                 .set_runtime_status(&active_name, &format!("error:{}", e))
                 .await;
 
-            if let Err(fallback_err) = switch_to_local_fallback(manager, app, client).await {
-                let msg = format!(
-                    "Critical: Failed to fallback to Local backend: {}",
-                    fallback_err
-                );
-                log::error!("{}", msg);
-                Err(msg)
-            } else {
-                info!("✅ Fallback to Local backend successful");
-                manager.set_runtime_status("Local", "connected").await;
-                Ok(())
-            }
+            Ok(())
         }
     }
 }
 
-/// Emergency fallback to Local backend (NO profile switching)
-///
-/// This is a "best effort" fallback used during startup connectivity checks
-/// when the active remote backend is unreachable. Unlike `BackendManager::switch_to()`,
-/// this function does NOT switch settings profiles, only updates internal backend state.
-///
-/// # Use Cases
-/// - Automatic fallback during app initialization
-/// - Recovery from remote backend connectivity failures
-/// - Temporary fallback until user manually switches
-///
-/// # Warning
-/// ⚠️ This may leave profile settings mismatched with the active backend.
-/// For full backend switches with profile management, use `BackendManager::switch_to()`.
-///
-/// # What it does
-/// 1. Switches the active backend index to Local
-/// 2. Updates the `is_local` flag
-/// 3. Starts Local engine if not already running (lazy init)
-///
-/// # What it does NOT do
-/// - Switch settings profiles (remotes/backend)
-/// - Save state from previous backend  
-/// - Restore Local backend state
-pub async fn switch_to_local_fallback(
-    manager: &BackendManager,
-    app: &tauri::AppHandle,
-    _client: &reqwest::Client,
-) -> Result<(), String> {
-    use crate::utils::types::core::EngineState;
+// /// Emergency fallback to Local backend (NO profile switching)
+// ///
+// /// This is a "best effort" fallback used during startup connectivity checks
+// /// when the active remote backend is unreachable. Unlike `BackendManager::switch_to()`,
+// /// this function does NOT switch settings profiles, only updates internal backend state.
+// ///
+// /// # Use Cases
+// /// - Automatic fallback during app initialization
+// /// - Recovery from remote backend connectivity failures
+// /// - Temporary fallback until user manually switches
+// ///
+// /// # Warning
+// /// ⚠️ This may leave profile settings mismatched with the active backend.
+// /// For full backend switches with profile management, use `BackendManager::switch_to()`.
+// ///
+// /// # What it does
+// /// 1. Switches the active backend index to Local
+// /// 2. Updates the `is_local` flag
+// /// 3. Starts Local engine if not already running (lazy init)
+// ///
+// /// # What it does NOT do
+// /// - Switch settings profiles (remotes/backend)
+// /// - Save state from previous backend
+// /// - Restore Local backend state
+// pub async fn switch_to_local_fallback(
+//     manager: &BackendManager,
+//     app: &tauri::AppHandle,
+//     _client: &reqwest::Client,
+// ) -> Result<(), String> {
+//     use crate::utils::types::core::EngineState;
 
-    // 1. Reset profiles to default (Local)
-    reset_profiles_to_default(app);
+//     // 1. Reset profiles to default (Local)
+//     reset_profiles_to_default(app);
 
-    // 2. Switch active index to Local
-    manager.switch_to_local_index().await?;
+//     // 2. Switch active index to Local
+//     manager.switch_to_local_index().await?;
 
-    crate::rclone::engine::core::set_active_is_local(true);
-    info!("🔄 Fallback switched to internal Local backend state");
+//     crate::rclone::engine::core::set_active_is_local(true);
+//     info!("🔄 Fallback switched to internal Local backend state");
 
-    // 3. Start Local engine if not running (lazy init on fallback)
-    let engine_state = app.state::<EngineState>();
-    let mut engine = engine_state.lock().await;
+//     // 3. Start Local engine if not running (lazy init on fallback)
+//     let engine_state = app.state::<EngineState>();
+//     let mut engine = engine_state.lock().await;
 
-    if !engine.running && !engine.path_error && !engine.password_error {
-        info!("🚀 Starting Local engine after fallback from Remote...");
-        engine.init(app).await;
-    }
+//     if !engine.running && !engine.path_error && !engine.password_error {
+//         info!("🚀 Starting Local engine after fallback from Remote...");
+//         engine.init(app).await;
+//     }
 
-    Ok(())
-}
+//     Ok(())
+// }
 
-/// Helper to reset settings profiles to default (used during fallback)
-fn reset_profiles_to_default(app: &tauri::AppHandle) {
-    use crate::core::settings::AppSettingsManager;
-    let settings_manager = app.state::<AppSettingsManager>();
+// /// Helper to reset settings profiles to default (used during fallback)
+// fn reset_profiles_to_default(app: &tauri::AppHandle) {
+//     use crate::core::settings::AppSettingsManager;
+//     let settings_manager = app.state::<AppSettingsManager>();
 
-    // Helper to switch a sub-setting profile safely
-    fn switch_profile(manager: &AppSettingsManager, sub: &str) {
-        if let Ok(s) = manager.sub_settings(sub) {
-            let _ = s.switch_profile("default");
-        }
-    }
+//     // Helper to switch a sub-setting profile safely
+//     fn switch_profile(manager: &AppSettingsManager, sub: &str) {
+//         if let Ok(s) = manager.sub_settings(sub) {
+//             let _ = s.switch_profile("default");
+//         }
+//     }
 
-    switch_profile(settings_manager.inner(), "remotes");
-    switch_profile(settings_manager.inner(), "backend");
-    info!("👤 Fallback switched profiles to default");
-}
+//     switch_profile(settings_manager.inner(), "remotes");
+//     switch_profile(settings_manager.inner(), "backend");
+//     info!("👤 Fallback switched profiles to default");
+// }
 
 /// Check non-active backends in background
 pub async fn check_other_backends(manager: &BackendManager, client: &reqwest::Client) {

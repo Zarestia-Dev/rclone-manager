@@ -98,9 +98,6 @@ export class FileViewerService {
     remoteName: string,
     isLocal: boolean
   ): Promise<string> {
-    // Always fetch the latest URL to handle dynamic engine port/host changes
-    const baseUrl = await this.configService.loadRcloneServeUrl();
-
     if (isLocal) {
       const separator = remoteName.endsWith('/') || remoteName.endsWith('\\') ? '' : '/';
       const fullPath = `${remoteName}${separator}${path}`;
@@ -118,7 +115,15 @@ export class FileViewerService {
       .split('/')
       .map(p => encodeURIComponent(p))
       .join('/');
-    return `${baseUrl}/[${rName}]/${encodedPath}`;
+
+    if (this.apiClient.isHeadless()) {
+      return `${this.apiClient.getApiBaseUrl()}/fs/stream/remote?remote=${encodeURIComponent(
+        rName
+      )}&path=${encodedPath}`;
+    }
+
+    // In Desktop mode, use the custom protocol to ensure authentication
+    return `rclone://${encodeURIComponent(rName)}/${encodedPath}`;
   }
 
   private normalizePath(p: string): string {

@@ -216,6 +216,8 @@ fn file_operations_routes() -> Router<WebServerState> {
         .route("/move-file", post(handlers::move_file_handler))
         .route("/copy-dir", post(handlers::copy_dir_handler))
         .route("/move-dir", post(handlers::move_dir_handler))
+        .route("/rename-file", post(handlers::rename_file_handler))
+        .route("/rename-dir", post(handlers::rename_dir_handler))
         .route(
             "/remove-empty-dirs",
             post(handlers::remove_empty_dirs_handler),
@@ -223,6 +225,10 @@ fn file_operations_routes() -> Router<WebServerState> {
         .route("/copy-url", post(handlers::copy_url_handler))
         .route("/remote/paths", post(handlers::get_remote_paths_handler))
         .route("/fs/stream", get(handlers::stream_file_handler))
+        .route(
+            "/fs/stream/remote",
+            get(handlers::stream_remote_file_handler),
+        )
         .route("/upload-file", post(handlers::upload_file_handler))
 }
 

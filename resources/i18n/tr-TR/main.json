@@ -2075,6 +2075,12 @@
         "label": "Klasör adı",
         "placeholder": "Klasör adını girin"
       },
+      "rename": {
+        "title": "Yeniden Adlandır",
+        "label": "Yeni ad",
+        "placeholder": "Yeni adı girin",
+        "confirm": "Yeniden Adlandır"
+      },
       "emptyTrash": {
         "title": "Çöpü Boşalt",
         "message": "{{remote}} içindeki çöpe atılmış dosyalar kaldırılsın mı?"
@@ -2091,6 +2097,7 @@
       "bookmarkRemoteNotFound": "Yer imi için uzak sunucu '{{remote}}' bulunamadı",
       "loadFailed": "Dizin yüklenemedi",
       "createFolderFailed": "Klasör oluşturulamadı",
+      "renameFailed": "'{{name}}' yeniden adlandırılamadı: {{error}}",
       "emptyTrashFailed": "Çöp boşaltılamadı: {{error}}",
       "openFileFailed": "Dosya açılamıyor: uzak sunucu bağlamı eksik",
       "minSelection": "Lütfen en az {{min}} öge seçin.",
@@ -2110,6 +2117,7 @@
       "cut": "Kes",
       "paste": "Yapıştır",
       "newFolder": "Yeni Klasör",
+      "rename": "Yeniden Adlandır",
       "refresh": "Yenile",
       "properties": "Özellikler",
       "reload": "Yeniden Yükle",
@@ -2140,6 +2148,7 @@
       "rmdirsStarted": "Boş klasörler kaldırılıyor: \"{{name}}\"...",
       "deleteStarted": "{{count}} öge siliniyor...",
       "pasteComplete": "Yapıştırma işlemi tamamlandı",
+      "renameStarted": "Yeniden adlandırma işlemi başlatıldı",
       "undoComplete": "Geri alma başarılı",
       "redoComplete": "Yineleme başarılı"
     }

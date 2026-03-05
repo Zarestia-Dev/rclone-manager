@@ -40,27 +40,32 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
 
     crate::core::event_listener::setup_event_listener(&app_handle);
 
-    // Lazy engine initialization - only start if Local backend is active
-    if is_active_backend_local() {
+    // Always initialize the engine – this starts the background monitoring loop
+    // regardless of which backend is active. The engine process itself is only
+    // started when Local is the active backend (RcApiEngine::init handles this
+    // internally). Without this call the health-check loop never spawns, so
+    // switching back to Local at runtime would leave the engine un-monitored.
+    {
         let engine_state = app_handle.state::<EngineState>();
         let mut engine = engine_state.lock().await;
 
-        // Only init if not already running and no errors
         if !engine.running && !engine.path_error && !engine.password_error {
-            info!("🚀 Starting Local engine (lazy init)...");
+            if is_active_backend_local() {
+                info!("🚀 Starting Local engine (lazy init)...");
+            } else {
+                info!("📡 Remote backend active – starting monitoring loop only...");
+            }
             engine.init(&app_handle).await;
         }
 
-        // Check if initialization failed
-        if engine.path_error || engine.password_error {
+        // If Local and engine failed to start, abort further startup steps
+        if is_active_backend_local() && (engine.path_error || engine.password_error) {
             info!(
                 "⚠️ Engine is in error state, skipping backend connectivity checks and cache refresh"
             );
             crate::rclone::engine::lifecycle::mark_startup_complete();
             return;
         }
-    } else {
-        info!("📡 Remote backend is active, skipping Local engine initialization");
     }
 
     // Step 1: Check connectivity FIRST to ensure backend is ready
