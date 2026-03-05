@@ -2570,6 +2570,7 @@
     "stop": "Stop",
     "browse": "Browse",
     "browseInApp": "Browse (In App)",
+    "browseWeb": "Browse (Web)",
     "jobs": "Jobs",
     "jobsCount": "Jobs [{{active}}/{{total}}]",
     "jobsNone": "Jobs [—]",
