@@ -113,24 +113,14 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
     let profile = profile_name.to_string();
 
     tauri::async_runtime::spawn(async move {
-        let backend_manager = app_clone.state::<BackendManager>();
-        // active backend check removed as get_active returns Backend directly
-        // We can just rely on get_active or if logic requires checking if active...
-        // But get_active returns the backend logic.
-        // Wait, for unmount, we need remote cache.
-        // We removed locks.
-        let cache = &backend_manager.remote_cache;
-
         let manager = app_clone.state::<AppSettingsManager>();
-        let remote_names = cache.get_remotes().await;
-        let settings_val = crate::core::settings::remote::manager::get_all_remote_settings_sync(
-            manager.inner(),
-            &remote_names,
-        );
-        let settings = settings_val
-            .get(&remote)
-            .cloned()
-            .unwrap_or(serde_json::Value::Null);
+
+        let settings = {
+            let remotes = manager.inner().sub_settings("remotes").ok();
+            remotes
+                .and_then(|r| r.get_value(&remote).ok())
+                .unwrap_or(serde_json::Value::Null)
+        };
 
         let mount_point = settings
             .get("mountConfigs")
@@ -445,20 +435,17 @@ pub fn handle_browse_remote(app: &AppHandle, remote_name: &str) {
     let remote = remote_name.to_string();
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
-        let backend_manager = app_clone.state::<BackendManager>();
-
-        let cache = backend_manager.remote_cache.clone();
-
         let manager = app_clone.state::<AppSettingsManager>();
-        let remote_names = cache.get_remotes().await;
-        let settings_val = crate::core::settings::remote::manager::get_all_remote_settings_sync(
-            manager.inner(),
-            &remote_names,
-        );
-        let settings = settings_val.get(&remote).cloned().unwrap_or_else(|| {
-            error!("🚨 Remote {remote} not found in cached settings");
-            serde_json::Value::Null
-        });
+
+        let settings = {
+            let remotes = manager.inner().sub_settings("remotes").ok();
+            remotes
+                .and_then(|r| r.get_value(&remote).ok())
+                .unwrap_or_else(|| {
+                    error!("🚨 Remote {remote} not found in cached settings");
+                    serde_json::Value::Null
+                })
+        };
 
         // Try to get first mount point from mountConfigs (object-based)
         let mount_point = settings

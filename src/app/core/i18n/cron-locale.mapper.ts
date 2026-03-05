@@ -1,4 +1,5 @@
 import 'cronstrue/locales/tr';
+import 'cronstrue/locales/es';
 
 /**
  * Maps the application locale (e.g., 'en-US', 'tr-TR') to a cronstrue supported locale (e.g., 'en', 'tr').

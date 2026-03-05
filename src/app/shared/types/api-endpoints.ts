@@ -155,6 +155,8 @@ export const POST_COMMANDS = new Set([
   'mkdir',
   'cleanup',
   'copy_url',
+  'copy_dir',
+  'move_dir',
   // Backend Commands
   'add_backend',
   'update_backend',

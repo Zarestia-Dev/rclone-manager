@@ -2600,7 +2600,16 @@
     "moveCount": "Taşı [{{active}}/{{total}}]",
     "bisyncCount": "Çift Yönlü [{{active}}/{{total}}]",
     "serveCount": "Sunucu [{{active}}/{{total}}]",
-    "defaultProfile": "varsayılan"
+    "defaultProfile": "varsayılan",
+    "tooltipDefault": "RClone Yöneticisi",
+    "tooltipActive": "RClone Yöneticisi ({{count}} aktif görev)",
+    "tooltipActivePlural": "RClone Yöneticisi ({{count}} aktif görev)",
+    "tooltipTask": "1 Görev",
+    "tooltipTasks": "{{count}} Görev",
+    "tooltipMount": "1 Bağlama",
+    "tooltipMounts": "{{count}} Bağlama",
+    "tooltipServe": "1 Sunucu",
+    "tooltipServes": "{{count}} Sunucu"
   },
   "notification": {
     "title": {

@@ -119,13 +119,13 @@ export class OnboardingComponent implements OnInit {
   private readonly baseCards: OnboardingCard[] = [
     {
       key: 'welcome',
-      image: '../assets/rclone.svg',
+      image: '../assets/rclone-manager.svg',
       title: 'onboarding.cards.welcome.title',
       content: 'onboarding.cards.welcome.content',
     },
     {
       key: 'features',
-      image: '../assets/rclone.svg',
+      image: '../assets/rclone-manager.svg',
       title: 'onboarding.cards.features.title',
       content: 'onboarding.cards.features.content',
     },
@@ -140,7 +140,7 @@ export class OnboardingComponent implements OnInit {
     if (this.systemHealth.rcloneInstalled() === false) {
       result.push({
         key: 'installRclone',
-        image: '../assets/rclone.svg',
+        image: '../assets/rclone-manager.svg',
         title: 'onboarding.cards.installRclone.title',
         content: 'onboarding.cards.installRclone.content',
       });
@@ -150,7 +150,7 @@ export class OnboardingComponent implements OnInit {
     if (this.systemHealth.mountPluginInstalled() === false) {
       result.push({
         key: 'installPlugin',
-        image: '../assets/rclone.svg',
+        image: '../assets/rclone-manager.svg',
         title: 'onboarding.cards.installPlugin.title',
         content: 'onboarding.cards.installPlugin.content',
       });
@@ -159,7 +159,7 @@ export class OnboardingComponent implements OnInit {
     // Always add config selection card
     result.push({
       key: 'selectConfig',
-      image: '../assets/rclone.svg',
+      image: '../assets/rclone-manager.svg',
       title: 'onboarding.cards.selectConfig.title',
       content: 'onboarding.cards.selectConfig.content',
     });
@@ -168,7 +168,7 @@ export class OnboardingComponent implements OnInit {
     if (this.systemHealth.passwordRequired()) {
       result.push({
         key: 'passwordRequired',
-        image: '../assets/rclone.svg',
+        image: '../assets/rclone-manager.svg',
         title: 'onboarding.cards.passwordRequired.title',
         content: 'onboarding.cards.passwordRequired.content',
       });
@@ -177,7 +177,7 @@ export class OnboardingComponent implements OnInit {
     // Always end with ready card
     result.push({
       key: 'ready',
-      image: '../assets/rclone.svg',
+      image: '../assets/rclone-manager.svg',
       title: 'onboarding.cards.ready.title',
       content: 'onboarding.cards.ready.content',
     });

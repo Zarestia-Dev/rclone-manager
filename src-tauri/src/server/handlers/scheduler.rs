@@ -139,6 +139,6 @@ pub async fn get_scheduled_task_handler(
     let task = get_scheduled_task(cache, query.task_id)
         .await
         .map_err(anyhow::Error::msg)?;
-    let json_task = task.map(|t| serde_json::to_value(t)).transpose()?;
+    let json_task = task.map(serde_json::to_value).transpose()?;
     Ok(Json(ApiResponse::success(json_task)))
 }

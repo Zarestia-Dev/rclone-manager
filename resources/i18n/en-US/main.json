@@ -2579,7 +2579,16 @@
     "moveCount": "Move [{{active}}/{{total}}]",
     "bisyncCount": "BiSync [{{active}}/{{total}}]",
     "serveCount": "Serve [{{active}}/{{total}}]",
-    "defaultProfile": "default"
+    "defaultProfile": "default",
+    "tooltipDefault": "RClone Manager",
+    "tooltipActive": "RClone Manager ({{count}} active task)",
+    "tooltipActivePlural": "RClone Manager ({{count}} active tasks)",
+    "tooltipTask": "1 Task",
+    "tooltipTasks": "{{count}} Tasks",
+    "tooltipMount": "1 Mount",
+    "tooltipMounts": "{{count}} Mounts",
+    "tooltipServe": "1 Serve",
+    "tooltipServes": "{{count}} Serves"
   },
   "notification": {
     "title": {

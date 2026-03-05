@@ -77,6 +77,7 @@ pub async fn get_oauth_supported_remotes_handler(
 pub struct CreateRemoteBody {
     pub name: String,
     pub parameters: serde_json::Value,
+    pub opt: Option<serde_json::Value>,
 }
 
 pub async fn create_remote_handler(
@@ -89,7 +90,7 @@ pub async fn create_remote_handler(
         .as_object()
         .map(|obj| obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect())
         .unwrap_or_default();
-    create_remote(state.app_handle.clone(), body.name, parameters)
+    create_remote(state.app_handle.clone(), body.name, parameters, body.opt)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(crate::localized_success!(
@@ -213,6 +214,7 @@ pub async fn delete_remote_handler(
 pub struct UpdateRemoteBody {
     pub name: String,
     pub parameters: std::collections::HashMap<String, serde_json::Value>,
+    pub opt: Option<serde_json::Value>,
 }
 
 pub async fn update_remote_handler(
@@ -220,9 +222,14 @@ pub async fn update_remote_handler(
     Json(body): Json<UpdateRemoteBody>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::rclone::commands::remote::update_remote;
-    update_remote(state.app_handle.clone(), body.name, body.parameters)
-        .await
-        .map_err(anyhow::Error::msg)?;
+    update_remote(
+        state.app_handle.clone(),
+        body.name,
+        body.parameters,
+        body.opt,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(crate::localized_success!(
         "backendSuccess.remote.updated"
     ))))

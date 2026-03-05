@@ -157,11 +157,11 @@ fn find_static_dir(app_handle: &AppHandle) -> Option<std::path::PathBuf> {
         .resolve("browser", BaseDirectory::Resource);
     info!("Looking for static files in resources: {:?}", resource_path);
 
-    if let Ok(path) = resource_path {
-        if path.exists() {
-            info!("✅ Found static files in resources: {}", path.display());
-            return Some(path);
-        }
+    if let Ok(path) = resource_path
+        && path.exists()
+    {
+        info!("✅ Found static files in resources: {}", path.display());
+        return Some(path);
     }
 
     let docker_path = std::path::PathBuf::from("/usr/lib/rclone-manager-headless/browser");
@@ -215,10 +215,12 @@ fn build_app(
         format!("http://localhost:{}", port).parse().unwrap(),
         format!("http://127.0.0.1:{}", port).parse().unwrap(),
     ];
-    if host != "0.0.0.0" && host != "127.0.0.1" && host != "localhost" {
-        if let Ok(origin) = format!("http://{}:{}", host, port).parse() {
-            allowed_origins.push(origin);
-        }
+    if host != "0.0.0.0"
+        && host != "127.0.0.1"
+        && host != "localhost"
+        && let Ok(origin) = format!("http://{}:{}", host, port).parse()
+    {
+        allowed_origins.push(origin);
     }
 
     #[cfg(debug_assertions)]

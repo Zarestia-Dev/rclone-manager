@@ -224,7 +224,7 @@ fn handle_settings_changed(app: &AppHandle) {
 
 // --- Specific Logic Handlers ---
 
-fn handle_autostart_change(app: &AppHandle, enabled: bool) {
+fn handle_autostart_change(_app: &AppHandle, enabled: bool) {
     debug!("🚀 Autostart changed to: {enabled}");
     #[cfg(feature = "flatpak")]
     {
@@ -237,7 +237,7 @@ fn handle_autostart_change(app: &AppHandle, enabled: bool) {
     #[cfg(all(desktop, not(feature = "flatpak")))]
     {
         use tauri_plugin_autostart::ManagerExt;
-        let autostart = app.autolaunch();
+        let autostart = _app.autolaunch();
         let _ = if enabled {
             autostart.enable()
         } else {

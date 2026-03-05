@@ -57,7 +57,7 @@ export class ShortcutHandlerDirective {
     }
 
     if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 'b') {
-      this.openFileBrowser();
+      this.toggleFileBrowser();
       return true;
     }
 
@@ -182,7 +182,7 @@ export class ShortcutHandlerDirective {
     }
   }
 
-  private openFileBrowser(): void {
+  private toggleFileBrowser(): void {
     this.nautilusService.toggleNautilusOverlay();
   }
 

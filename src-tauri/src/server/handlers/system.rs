@@ -317,7 +317,7 @@ pub async fn fetch_update_handler(
     let result = fetch_update(state.app_handle.clone(), query.channel)
         .await
         .map_err(anyhow::Error::msg)?;
-    let json_result = result.map(|r| serde_json::to_value(r)).transpose()?;
+    let json_result = result.map(serde_json::to_value).transpose()?;
     Ok(Json(ApiResponse::success(json_result)))
 }
 

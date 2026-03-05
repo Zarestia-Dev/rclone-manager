@@ -1,6 +1,6 @@
 #![cfg(desktop)]
 
-use tauri::{AppHandle, Emitter, image::Image, tray::TrayIconBuilder};
+use tauri::{AppHandle, Emitter, tray::TrayIconBuilder};
 
 use crate::core::tray::menu::create_tray_menu;
 use crate::utils::types::events::UPDATE_TRAY_MENU;
@@ -11,23 +11,20 @@ pub async fn setup_tray(app: AppHandle) -> tauri::Result<()> {
 
     #[allow(unused_mut)]
     let mut tray = TrayIconBuilder::with_id("main-tray")
-        .icon(Image::from_bytes(include_bytes!(
-            "../../../icons/rclone_symbolic.png"
-        ))?)
-        .tooltip("RClone Manager")
+        .icon(crate::core::tray::icon::get_icon(false)?)
+        .tooltip(crate::t!("tray.tooltipDefault"))
         .menu(&tray_menu);
 
     #[cfg(not(feature = "web-server"))]
     {
         tray = tray.on_tray_icon_event(move |tray, event| {
             let app = tray.app_handle();
-            if let tauri::tray::TrayIconEvent::Click {
+            if let tauri::tray::TrayIconEvent::DoubleClick {
                 button: tauri::tray::MouseButton::Left,
-                button_state: tauri::tray::MouseButtonState::Up,
                 ..
             } = event
             {
-                // Show the main window on left click
+                // Show the main window on left double click
                 crate::core::tray::actions::show_main_window(app.clone());
             }
         });

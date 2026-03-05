@@ -1,24 +1,16 @@
 #[tauri::command]
 pub fn get_build_type() -> Option<&'static str> {
-    #[cfg(feature = "flatpak")]
-    {
-        return Some("flatpak");
+    if cfg!(feature = "flatpak") {
+        Some("flatpak")
+    } else if cfg!(feature = "deb") {
+        Some("deb")
+    } else if cfg!(feature = "rpm") {
+        Some("rpm")
+    } else if cfg!(feature = "arch") {
+        Some("arch")
+    } else {
+        None
     }
-    #[cfg(feature = "deb")]
-    {
-        return Some("deb");
-    }
-    #[cfg(feature = "rpm")]
-    {
-        return Some("rpm");
-    }
-    #[cfg(feature = "arch")]
-    {
-        return Some("arch");
-    }
-
-    // Default: not a packaged build
-    None
 }
 
 /// Check if updates are disabled for this build
@@ -62,11 +54,9 @@ Terminal=false
 "#;
         fs::write(&desktop_file_path, content)
             .map_err(|e| format!("Failed to write autostart file: {e}"))?;
-    } else {
-        if desktop_file_path.exists() {
-            fs::remove_file(&desktop_file_path)
-                .map_err(|e| format!("Failed to remove autostart file: {e}"))?;
-        }
+    } else if desktop_file_path.exists() {
+        fs::remove_file(&desktop_file_path)
+            .map_err(|e| format!("Failed to remove autostart file: {e}"))?;
     }
 
     Ok(())

@@ -394,6 +394,44 @@ pub async fn move_file_handler(
     Ok(Json(ApiResponse::success(jobid)))
 }
 
+pub async fn copy_dir_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<CopyFileBody>,
+) -> Result<Json<ApiResponse<u64>>, AppError> {
+    use crate::rclone::commands::filesystem::copy_dir;
+    let jobid = copy_dir(
+        state.app_handle.clone(),
+        body.src_remote,
+        body.src_path,
+        body.dst_remote,
+        body.dst_path,
+        body.source,
+        body.no_cache,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(jobid)))
+}
+
+pub async fn move_dir_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<CopyFileBody>,
+) -> Result<Json<ApiResponse<u64>>, AppError> {
+    use crate::rclone::commands::filesystem::move_dir;
+    let jobid = move_dir(
+        state.app_handle.clone(),
+        body.src_remote,
+        body.src_path,
+        body.dst_remote,
+        body.dst_path,
+        body.source,
+        body.no_cache,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(jobid)))
+}
+
 #[derive(Deserialize)]
 pub struct RemotePathsBody {
     pub remote: String,

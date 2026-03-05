@@ -151,8 +151,8 @@ export class NautilusService {
   }
 
   toggleNautilusOverlay(): void {
-    if (this.browserOverlayRef) {
-      this.createBrowserOverlay();
+    if (this._isNautilusOverlayOpen()) {
+      this.closeBrowser();
     } else {
       this._isNautilusOverlayOpen.set(true);
       this.createBrowserOverlay();
@@ -251,32 +251,37 @@ export class NautilusService {
     this._filePickerResult.next(config);
     this._filePickerState.set({ isOpen: false });
 
-    if (this.pickerComponentRef) {
-      this.pickerComponentRef.location.nativeElement.classList.add('slide-overlay-leave');
+    const compRef = this.pickerComponentRef;
+    const overlayRef = this.pickerOverlayRef;
+
+    this.pickerComponentRef = null;
+    this.pickerOverlayRef = null;
+
+    if (compRef) {
+      compRef.location.nativeElement.classList.add('slide-overlay-leave');
     }
-    if (this.pickerOverlayRef) {
+    if (overlayRef) {
       setTimeout(() => {
-        this.pickerOverlayRef?.dispose();
-        this.pickerOverlayRef = null;
-        this.pickerComponentRef = null;
+        overlayRef.dispose();
       }, 200);
     }
   }
 
-  /**
-   * Closes the Nautilus browser overlay.
-   */
   closeBrowser(): void {
     this._isNautilusOverlayOpen.set(false);
 
-    if (this.browserComponentRef) {
-      this.browserComponentRef.location.nativeElement.classList.add('slide-overlay-leave');
+    const compRef = this.browserComponentRef;
+    const overlayRef = this.browserOverlayRef;
+
+    this.browserComponentRef = null;
+    this.browserOverlayRef = null;
+
+    if (compRef) {
+      compRef.location.nativeElement.classList.add('slide-overlay-leave');
     }
-    if (this.browserOverlayRef) {
+    if (overlayRef) {
       setTimeout(() => {
-        this.browserOverlayRef?.dispose();
-        this.browserOverlayRef = null;
-        this.browserComponentRef = null;
+        overlayRef.dispose();
       }, 200);
     }
   }

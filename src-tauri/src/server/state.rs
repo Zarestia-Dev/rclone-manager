@@ -96,26 +96,24 @@ pub async fn auth_middleware(
     let (_username, expected_creds) = state.auth_credentials.as_ref().unwrap();
 
     // Check Authorization header (Basic Auth)
-    if let Some(auth_header) = request.headers().get(AUTHORIZATION) {
-        if let Ok(auth_str) = auth_header.to_str() {
-            if auth_str.starts_with("Basic ") {
-                let creds = &auth_str[6..];
-                if creds == expected_creds {
-                    return Ok(next.run(request).await);
-                }
-            }
-        }
+    if let Some(auth_header) = request.headers().get(AUTHORIZATION)
+        && let Ok(auth_str) = auth_header.to_str()
+        && let Some(creds) = auth_str.strip_prefix("Basic ")
+        && creds == expected_creds
+    {
+        return Ok(next.run(request).await);
     }
 
     // Check query parameter as fallback
-    if let Some(query_string) = request.uri().query() {
-        if let Ok(decoded) = urlencoding::decode(query_string) {
-            for param in decoded.split('&') {
-                if let Some((key, value)) = param.split_once('=') {
-                    if key == "auth" && value == expected_creds {
-                        return Ok(next.run(request).await);
-                    }
-                }
+    if let Some(query_string) = request.uri().query()
+        && let Ok(decoded) = urlencoding::decode(query_string)
+    {
+        for param in decoded.split('&') {
+            if let Some((key, value)) = param.split_once('=')
+                && key == "auth"
+                && value == expected_creds
+            {
+                return Ok(next.run(request).await);
             }
         }
     }
@@ -124,7 +122,7 @@ pub async fn auth_middleware(
         .status(StatusCode::UNAUTHORIZED)
         .header(
             "WWW-Authenticate",
-            format!("Basic realm=\"RClone Manager\""),
+            "Basic realm=\"RClone Manager\"".to_string(),
         )
         .body(axum::body::Body::from("Unauthorized"))
         .unwrap();
