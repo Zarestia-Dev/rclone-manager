@@ -542,7 +542,22 @@ pub async fn create_tray_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<M
 
             submenu_items.push(Box::new(PredefinedMenuItem::separator(&handle)?));
 
-            // Show appropriate browse option based on mount status
+            // Show appropriate browse option
+            #[cfg(feature = "web-server")]
+            {
+                // In headless mode, always show "Browse (Web)" which opens the web UI
+                let browse_web_id = TrayAction::BrowseInApp(remote.clone()).to_id();
+                let browse_web_item = MenuItem::with_id(
+                    &handle,
+                    browse_web_id,
+                    t!("tray.browseWeb"),
+                    true,
+                    None::<&str>,
+                )?;
+                submenu_items.push(Box::new(browse_web_item));
+            }
+
+            #[cfg(not(feature = "web-server"))]
             if active_mount_count > 0 {
                 // Mounted: show "Browse" to open in native file manager
                 let browse_id = TrayAction::Browse(remote.clone()).to_id();
@@ -551,18 +566,15 @@ pub async fn create_tray_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<M
                 submenu_items.push(Box::new(browse_item));
             } else {
                 // Not mounted: show "Browse (In App)" to open in-app file browser
-                #[cfg(not(feature = "web-server"))]
-                {
-                    let browse_in_app_id = TrayAction::BrowseInApp(remote.clone()).to_id();
-                    let browse_in_app_item = MenuItem::with_id(
-                        &handle,
-                        browse_in_app_id,
-                        t!("tray.browseInApp"),
-                        true,
-                        None::<&str>,
-                    )?;
-                    submenu_items.push(Box::new(browse_in_app_item));
-                }
+                let browse_in_app_id = TrayAction::BrowseInApp(remote.clone()).to_id();
+                let browse_in_app_item = MenuItem::with_id(
+                    &handle,
+                    browse_in_app_id,
+                    t!("tray.browseInApp"),
+                    true,
+                    None::<&str>,
+                )?;
+                submenu_items.push(Box::new(browse_in_app_item));
             }
 
             let name = if remote.len() > 20 {

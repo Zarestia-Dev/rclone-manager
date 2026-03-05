@@ -42,6 +42,33 @@ pub const SCHEDULED_TASKS_CACHE_CHANGED: &str = "scheduled_tasks_cache_changed";
 pub const APP_EVENT: &str = "app_event";
 pub const OPEN_INTERNAL_ROUTE: &str = "open_internal_route";
 
+/// List of all events that should be forwarded to SSE clients in headless mode
+pub const SSE_FORWARD_EVENTS: &[&str] = &[
+    ENGINE_RESTARTED,
+    RCLONE_ENGINE_READY,
+    RCLONE_ENGINE_ERROR,
+    RCLONE_ENGINE_PASSWORD_ERROR,
+    RCLONE_ENGINE_PATH_ERROR,
+    RCLONE_ENGINE_UPDATING,
+    RCLONE_PASSWORD_STORED,
+    BACKEND_SWITCHED,
+    REMOTE_CACHE_CHANGED,
+    REMOTE_SETTINGS_CHANGED,
+    SYSTEM_SETTINGS_CHANGED,
+    BANDWIDTH_LIMIT_CHANGED,
+    RCLONE_CONFIG_UNLOCKED,
+    UPDATE_TRAY_MENU,
+    JOB_CACHE_CHANGED,
+    MOUNT_STATE_CHANGED,
+    SERVE_STATE_CHANGED,
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
+    MOUNT_PLUGIN_INSTALLED,
+    NETWORK_STATUS_CHANGED,
+    SCHEDULED_TASKS_CACHE_CHANGED,
+    APP_EVENT,
+    OPEN_INTERNAL_ROUTE,
+];
+
 /// Strongly typed payload for settings change events
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct SettingsChangeEvent {

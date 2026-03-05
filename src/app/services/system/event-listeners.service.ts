@@ -23,6 +23,7 @@ import {
   SYSTEM_SETTINGS_CHANGED,
   SCHEDULED_TASKS_CACHE_CHANGED,
   REMOTE_SETTINGS_CHANGED,
+  SettingsChangeEvent,
 } from '@app/types';
 /**
  * Service for handling installations of rclone and plugins
@@ -158,8 +159,8 @@ export class EventListenersService extends TauriBaseService {
   /**
    * Listen to system settings changed events
    */
-  listenToSystemSettingsChanged(): Observable<Record<string, Record<string, unknown>>> {
-    return this.listenToEvent<Record<string, Record<string, unknown>>>(SYSTEM_SETTINGS_CHANGED);
+  listenToSystemSettingsChanged(): Observable<SettingsChangeEvent> {
+    return this.listenToEvent<SettingsChangeEvent>(SYSTEM_SETTINGS_CHANGED);
   }
 
   /**

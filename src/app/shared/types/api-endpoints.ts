@@ -157,6 +157,12 @@ export const POST_COMMANDS = new Set([
   'copy_url',
   'copy_dir',
   'move_dir',
+  'copy_file',
+  'move_file',
+  'delete_file',
+  'purge_directory',
+  'remove_empty_dirs',
+  'upload_file',
   // Backend Commands
   'add_backend',
   'update_backend',

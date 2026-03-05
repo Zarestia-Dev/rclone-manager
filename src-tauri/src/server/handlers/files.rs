@@ -192,6 +192,7 @@ pub async fn get_public_link_handler(
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MkdirBody {
     pub remote: String,
     pub path: String,
@@ -217,6 +218,7 @@ pub async fn mkdir_handler(
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CleanupBody {
     pub remote: String,
     pub path: Option<String>,
@@ -272,6 +274,7 @@ pub async fn copy_url_handler(
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DeleteFileBody {
     pub remote: String,
     pub path: String,
@@ -297,6 +300,7 @@ pub async fn delete_file_handler(
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PurgeDirectoryBody {
     pub remote: String,
     pub path: String,
@@ -322,6 +326,7 @@ pub async fn purge_directory_handler(
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RemoveEmptyDirsBody {
     pub remote: String,
     pub path: String,
@@ -347,6 +352,7 @@ pub async fn remove_empty_dirs_handler(
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CopyFileBody {
     pub src_remote: String,
     pub src_path: String,
@@ -491,6 +497,7 @@ pub async fn stream_file_handler(
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UploadFileBody {
     pub remote: String,
     pub path: String,

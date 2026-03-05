@@ -454,16 +454,17 @@ pub async fn get_stats_groups_handler(
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GroupStatsQuery {
     pub group: Option<String>,
 }
 
 pub async fn reset_group_stats_handler(
     State(state): State<WebServerState>,
-    Query(query): Query<GroupStatsQuery>,
+    Json(body): Json<GroupStatsQuery>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::rclone::commands::system::reset_group_stats;
-    reset_group_stats(state.app_handle.clone(), query.group)
+    reset_group_stats(state.app_handle.clone(), body.group)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(crate::localized_success!(
@@ -472,16 +473,17 @@ pub async fn reset_group_stats_handler(
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DeleteGroupQuery {
     pub group: String,
 }
 
 pub async fn delete_stats_group_handler(
     State(state): State<WebServerState>,
-    Query(query): Query<DeleteGroupQuery>,
+    Json(body): Json<DeleteGroupQuery>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::rclone::commands::system::delete_stats_group;
-    delete_stats_group(state.app_handle.clone(), query.group)
+    delete_stats_group(state.app_handle.clone(), body.group)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(crate::localized_success!(

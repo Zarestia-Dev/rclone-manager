@@ -2591,6 +2591,7 @@
     "stop": "Durdur",
     "browse": "Gözat",
     "browseInApp": "Gözat (Uygulama İçi)",
+    "browseWeb": "Gözat (Web)",
     "jobs": "İşler",
     "jobsCount": "İşler [{{active}}/{{total}}]",
     "jobsNone": "İşler [—]",

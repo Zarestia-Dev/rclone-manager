@@ -2480,6 +2480,7 @@
     "stop": "Detener",
     "browse": "Explorar",
     "browseInApp": "Explorar (en la app)",
+    "browseWeb": "Explorar (Web)",
     "jobs": "Trabajos",
     "jobsCount": "Trabajos [{{active}}/{{total}}]",
     "jobsNone": "Trabajos [—]",

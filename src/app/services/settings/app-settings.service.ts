@@ -4,7 +4,7 @@ import { NotificationService } from '@app/services';
 import { firstValueFrom, Observable } from 'rxjs';
 import { map, distinctUntilChanged, filter, first } from 'rxjs/operators';
 import { TranslateService } from '@ngx-translate/core';
-import { CheckResult, SettingMetadata } from '@app/types';
+import { CheckResult, SettingMetadata, SettingsChangeEvent } from '@app/types';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { EventListenersService } from '../system/event-listeners.service';
 
@@ -27,7 +27,7 @@ export class AppSettingsService extends TauriBaseService {
       .listenToSystemSettingsChanged()
       .pipe(takeUntilDestroyed())
       .subscribe(payload => {
-        this.updateStateFromEvent(payload as Record<string, Record<string, SettingMetadata>>);
+        this.updateStateFromEvent(payload);
       });
 
     this.setupLanguageChangeListener();
@@ -158,32 +158,31 @@ export class AppSettingsService extends TauriBaseService {
   /**
    * Merges incoming changes from backend events into the current state.
    */
-  private updateStateFromEvent(payload: Record<string, Record<string, unknown>>): void {
+  private updateStateFromEvent(payload: SettingsChangeEvent): void {
     const currentState = this._options();
     if (!currentState) return;
-    const newState = { ...currentState };
-    let hasChanges = false;
 
-    for (const category in payload) {
-      for (const key in payload[category]) {
-        const fullKey = `${category}.${key}`;
-        const newValue = payload[category][key];
-
-        if (newState[fullKey]) {
-          // Only update if the value actually changed
-          if (newState[fullKey].value !== newValue) {
-            newState[fullKey] = { ...newState[fullKey], value: newValue };
-            hasChanges = true;
-          }
-        }
-      }
+    if (payload.category === '*' && payload.key === '*') {
+      // Matches the resetAll settings event payload shape
+      this.loadSettings();
+      return;
     }
 
-    // Only emit new state if something actually changed
-    if (hasChanges) {
-      this._options.set(newState);
-    } else {
-      console.debug('No actual changes detected, skipping state update');
+    const fullKey = `${payload.category}.${payload.key}`;
+    const newValue = payload.value;
+
+    if (currentState[fullKey]) {
+      // Only update if the value actually changed
+      if (currentState[fullKey].value !== newValue) {
+        const newState = {
+          ...currentState,
+          [fullKey]: {
+            ...currentState[fullKey],
+            value: newValue,
+          },
+        };
+        this._options.set(newState);
+      }
     }
   }
 

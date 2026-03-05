@@ -19,7 +19,6 @@ pub enum TrayAction {
 
     // Remote-level actions
     Browse(String),
-    #[cfg(not(feature = "web-server"))]
     BrowseInApp(String),
 
     // Global actions
@@ -64,7 +63,6 @@ impl TrayAction {
                 format!("stop_serve_profile__{}__{}", remote, profile)
             }
             Self::Browse(remote) => format!("browse-__{}", remote),
-            #[cfg(not(feature = "web-server"))]
             Self::BrowseInApp(remote) => format!("browse_in_app__{}", remote),
             Self::UnmountAll => "unmount_all".to_string(),
             Self::StopAllJobs => "stop_all_jobs".to_string(),
@@ -90,7 +88,6 @@ impl TrayAction {
             let (prefix, remote) = (parts[0], parts[1]);
             match prefix {
                 "browse-" => return Some(Self::Browse(remote.to_string())),
-                #[cfg(not(feature = "web-server"))]
                 "browse_in_app" => return Some(Self::BrowseInApp(remote.to_string())),
                 _ => return None,
             }

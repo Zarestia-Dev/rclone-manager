@@ -635,9 +635,36 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent)
                 handle_stop_serve_profile(app.clone(), &remote, &serve_id)
             }
             TrayAction::Browse(remote) => handle_browse_remote(app, &remote),
-            #[cfg(not(feature = "web-server"))]
             TrayAction::BrowseInApp(remote) => {
-                core::tray::actions::handle_browse_in_app(app, &remote)
+                #[cfg(not(feature = "web-server"))]
+                core::tray::actions::handle_browse_in_app(app, &remote);
+                #[cfg(feature = "web-server")]
+                {
+                    let args = app.state::<crate::core::cli::CliArgs>();
+                    let host = if args.host == "0.0.0.0" {
+                        "127.0.0.1"
+                    } else {
+                        &args.host
+                    };
+                    let protocol = if args.tls_cert.is_some() {
+                        "https"
+                    } else {
+                        "http"
+                    };
+                    // Encode the remote name for the query parameter
+                    let url = format!(
+                        "{}://{}:{}?browse={}",
+                        protocol,
+                        host,
+                        args.port,
+                        urlencoding::encode(&remote)
+                    );
+
+                    use tauri_plugin_opener::OpenerExt;
+                    if let Err(e) = app.opener().open_url(&url, None::<&str>) {
+                        log::error!("Failed to open web UI for browsing: {}", e);
+                    }
+                }
             }
             TrayAction::UnmountAll => {
                 let app_clone = app.clone();

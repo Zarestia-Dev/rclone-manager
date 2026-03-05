@@ -46,42 +46,7 @@ pub async fn start_web_server(
 
     // Auto-forward all events to SSE clients, except desktop-only events
     // This ensures new events are automatically available to headless clients
-    let all_events = vec![
-        ENGINE_RESTARTED,
-        RCLONE_ENGINE_READY,
-        RCLONE_ENGINE_ERROR,
-        RCLONE_ENGINE_PASSWORD_ERROR,
-        RCLONE_ENGINE_PATH_ERROR,
-        RCLONE_ENGINE_UPDATING,
-        RCLONE_PASSWORD_STORED,
-        REMOTE_CACHE_CHANGED,
-        SYSTEM_SETTINGS_CHANGED,
-        BANDWIDTH_LIMIT_CHANGED,
-        RCLONE_CONFIG_UNLOCKED,
-        UPDATE_TRAY_MENU,
-        JOB_CACHE_CHANGED,
-        MOUNT_STATE_CHANGED,
-        SERVE_STATE_CHANGED,
-        #[cfg(any(target_os = "macos", target_os = "windows"))]
-        MOUNT_PLUGIN_INSTALLED,
-        NETWORK_STATUS_CHANGED,
-        SCHEDULED_TASKS_CACHE_CHANGED,
-        APP_EVENT,
-        OPEN_INTERNAL_ROUTE,
-    ];
-
-    // Events to exclude from SSE forwarding (desktop-only events)
-    let excluded_events: Vec<&str> = vec![
-        // Add desktop-only events here if needed
-        // Example: "window_focus_changed", "tray_icon_clicked"
-    ];
-
-    let events_to_forward: Vec<&str> = all_events
-        .into_iter()
-        .filter(|event| !excluded_events.contains(event))
-        .collect();
-
-    for event_name in events_to_forward {
+    for &event_name in SSE_FORWARD_EVENTS {
         let event_tx_for_listener = event_tx.clone();
         let event_name_owned = event_name.to_string();
         app_handle.listen(event_name, move |event| {

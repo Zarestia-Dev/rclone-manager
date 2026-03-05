@@ -39,3 +39,13 @@ export const SCHEDULED_TASKS_CACHE_CHANGED = 'scheduled_tasks_cache_changed';
 // Application events
 export const APP_EVENT = 'app_event';
 export const OPEN_INTERNAL_ROUTE = 'open_internal_route';
+
+/**
+ * Strongly typed payload for settings change events
+ * Matches the Rust backend's SettingsChangeEvent struct
+ */
+export interface SettingsChangeEvent {
+  category: string;
+  key: string;
+  value: unknown;
+}
