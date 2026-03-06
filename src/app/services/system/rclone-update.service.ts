@@ -16,6 +16,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
     checking: false,
     updating: false,
     available: false,
+    readyToRestart: false,
     error: null,
     lastCheck: null,
     updateInfo: null,
@@ -41,14 +42,12 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
   constructor() {
     super();
     this.setupEventListeners();
-    // Auto-check will be handled by initialization and settings
   }
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
 
     try {
-      // Load settings
       const [skippedVersions, channel, autoCheck] = await Promise.all([
         this.getSkippedVersions(),
         this.getChannel(),
@@ -62,15 +61,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
       this.initialized = true;
 
       if (autoCheck) {
-        // Attempt to pick up an update that was automatically found in the background
-        const cachedUpdate = await this.getDetailedUpdateInfo();
-        if (
-          cachedUpdate &&
-          cachedUpdate.update_available &&
-          !this.isVersionSkipped(cachedUpdate.latest_version)
-        ) {
-          this.processUpdateResult(cachedUpdate);
-        }
+        await this.restoreUpdateState();
       }
 
       console.debug('Rclone update service initialized');
@@ -84,76 +75,26 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
     this.destroy$.complete();
   }
 
-  private setupEventListeners(): void {
-    // Listen for engine update started
-    this.eventListenersService
-      .listenToRcloneEngineUpdating()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: () => {
-          try {
-            console.debug('Rclone Engine updating started');
-            this.patchUpdateStatus({ updating: true });
-          } catch (error) {
-            console.error('Error handling Rclone Engine updating event:', error);
-          }
-        },
-      });
-
-    // Listen for engine restarted (indicates update completion)
-    this.eventListenersService.listenToEngineRestarted().subscribe(event => {
-      if (event.reason === 'rclone_update') {
-        this.patchUpdateStatus({ updating: false });
-        this.checkForUpdates();
-      }
-    });
-
-    // Listen to auto-updater results
-    this.eventListenersService
-      .listenToAppEvents()
-      .pipe(
-        takeUntil(this.destroy$),
-        filter(event => event.status === 'rclone_update_found' && !!event.data),
-        map(event => event.data as unknown as object)
-      )
-      .subscribe(data => {
-        console.debug('Received rclone update found event:', data);
-        this.processUpdateResult(data as RcloneUpdateInfo);
-      });
-  }
+  // -------------------------------------------------------------------------
+  // Update checks
+  // -------------------------------------------------------------------------
 
   async checkForUpdates(): Promise<RcloneUpdateInfo | null> {
     this.patchUpdateStatus({ checking: true, error: null });
 
     try {
-      // Ensure initialization
       await this.initialize();
 
-      const channel = this._updateChannel();
       const updateInfo = await this.invokeCommand<RcloneUpdateInfo>('check_rclone_update', {
-        channel,
+        channel: this._updateChannel(),
       });
 
       this.processUpdateResult(updateInfo);
-
       return updateInfo;
     } catch (error) {
       console.error('Failed to check for updates:', error);
-      this.patchUpdateStatus({
-        checking: false,
-        error: error as string,
-        lastCheck: new Date(),
-      });
+      this.patchUpdateStatus({ checking: false, error: error as string, lastCheck: new Date() });
       return null;
-    }
-  }
-
-  async getDetailedUpdateInfo(): Promise<RcloneUpdateInfo> {
-    try {
-      return await this.invokeCommand<RcloneUpdateInfo>('get_rclone_update_info');
-    } catch (error) {
-      console.error('Failed to get detailed update info:', error);
-      throw error;
     }
   }
 
@@ -161,85 +102,57 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
     this.patchUpdateStatus({ updating: true, error: null });
 
     try {
-      const channel = this._updateChannel();
       const result = await this.invokeCommand<UpdateResult>('update_rclone', {
-        channel,
+        channel: this._updateChannel(),
       });
 
       if (result.success) {
-        this.patchUpdateStatus({
-          updating: false,
-          available: false,
-          readyToRestart: true,
-        });
-
-        // Log the successful update with path info if available
-        if ('path' in result) {
-          console.debug(`Rclone updated successfully to ${channel} channel at:`, result.path);
-        }
-
-        this.notificationService.openSnackBar(
-          this.translate.instant('rcloneUpdate.success', { channel }),
-          'Close'
-        );
-
+        this.patchUpdateStatus({ updating: false, available: false, readyToRestart: true });
         return true;
-      } else {
-        this.patchUpdateStatus({
-          updating: false,
-          error: result.message || this.translate.instant('rcloneUpdate.failed'),
-        });
-        return false;
       }
-    } catch (error) {
-      console.error('Failed to update rclone:', error);
+
+      const errorMsg = result.message || this.translate.instant('rcloneUpdate.failed');
       this.patchUpdateStatus({
         updating: false,
-        error: error as string,
+        error: errorMsg,
       });
+      this.notificationService.showError(errorMsg, undefined, undefined);
+      return false;
+    } catch (error) {
+      console.error('Failed to update rclone:', error);
+      const errorMsg = this.translate.instant('rcloneUpdate.failed') + ': ' + (error as string);
+      this.patchUpdateStatus({ updating: false, error: errorMsg });
+      this.notificationService.showError(errorMsg, undefined, undefined);
       return false;
     }
   }
 
-  private patchUpdateStatus(update: Partial<UpdateStatus>): void {
-    this._updateStatus.update(current => ({ ...current, ...update }));
-  }
-
-  async restartEngine(): Promise<boolean> {
+  async applyUpdate(): Promise<boolean> {
     try {
       await this.invokeCommand<void>('apply_rclone_update');
-
-      this.patchUpdateStatus({
-        readyToRestart: false,
-        updateInfo: null,
-      });
-
+      this.patchUpdateStatus({ readyToRestart: false, updateInfo: null });
       return true;
     } catch (error) {
-      console.error('Failed to restart and apply rclone update:', error);
+      console.error('Failed to apply rclone update:', error);
       this.notificationService.showError(
         this.translate.instant('rcloneUpdate.failed') + ': ' + (error as string)
       );
-      this.patchUpdateStatus({
-        readyToRestart: false,
-      });
+      this.patchUpdateStatus({ readyToRestart: false });
       return false;
     }
   }
 
-  getCurrentStatus(): UpdateStatus {
-    return this._updateStatus();
-  }
+  // -------------------------------------------------------------------------
+  // Channel management
+  // -------------------------------------------------------------------------
 
-  // Channel management methods
   async getChannel(): Promise<string> {
     try {
-      const channel = await this.appSettingsService.getSettingValue<string>(
-        'runtime.rclone_update_channel'
+      return (
+        (await this.appSettingsService.getSettingValue<string>('runtime.rclone_update_channel')) ||
+        'stable'
       );
-      return channel || 'stable';
-    } catch (error) {
-      console.error('Failed to load rclone update channel:', error);
+    } catch {
       return 'stable';
     }
   }
@@ -248,15 +161,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
     try {
       await this.appSettingsService.saveSetting('runtime', 'rclone_update_channel', channel);
       this._updateChannel.set(channel);
-
-      // Clear update status when channel is changed
-      this.patchUpdateStatus({
-        available: false,
-        updateInfo: null,
-        error: null,
-        lastCheck: null,
-      });
-
+      this.patchUpdateStatus({ available: false, updateInfo: null, error: null, lastCheck: null });
       this.notificationService.openSnackBar(
         this.translate.instant('rcloneUpdate.channelChanged', { channel }),
         'Close'
@@ -270,51 +175,47 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
     }
   }
 
-  getCurrentChannel(): string {
-    return this._updateChannel();
-  }
+  // -------------------------------------------------------------------------
+  // Version skipping
+  // -------------------------------------------------------------------------
 
-  // Version skipping methods
   async getSkippedVersions(): Promise<string[]> {
     try {
-      const skipped = await this.appSettingsService.getSettingValue<string[]>(
-        'runtime.rclone_skipped_updates'
+      return (
+        (await this.appSettingsService.getSettingValue<string[]>(
+          'runtime.rclone_skipped_updates'
+        )) || []
       );
-      console.debug('Skipped rclone versions:', skipped);
-      return skipped || [];
-    } catch (error) {
-      console.error('Failed to load skipped rclone versions:', error);
+    } catch {
       return [];
     }
   }
 
+  isVersionSkipped(version: string): boolean {
+    return this._skippedVersions().includes(version);
+  }
+
   async skipVersion(version: string): Promise<void> {
     try {
-      const currentSkipped = await this.getSkippedVersions();
-      if (!currentSkipped.includes(version)) {
-        const newSkipped = [...currentSkipped, version];
-        await this.appSettingsService.saveSetting('runtime', 'rclone_skipped_updates', newSkipped);
-        this._skippedVersions.set(newSkipped);
+      const current = await this.getSkippedVersions();
+      if (current.includes(version)) return;
 
-        // Immediately update the UI to hide the available update
-        const currentStatus = this._updateStatus();
-        if (
-          currentStatus.updateInfo?.latest_version === version ||
-          currentStatus.updateInfo?.latest_version_clean === version
-        ) {
-          this.patchUpdateStatus({
-            available: false,
-            updateInfo: currentStatus.updateInfo
-              ? { ...currentStatus.updateInfo, update_available: false }
-              : null,
-          });
-        }
+      const updated = [...current, version];
+      await this.appSettingsService.saveSetting('runtime', 'rclone_skipped_updates', updated);
+      this._skippedVersions.set(updated);
 
-        this.notificationService.openSnackBar(
-          this.translate.instant('rcloneUpdate.skipped', { version }),
-          'Close'
-        );
+      const info = this._updateStatus().updateInfo;
+      if (info?.latest_version === version || info?.latest_version_clean === version) {
+        this.patchUpdateStatus({
+          available: false,
+          updateInfo: { ...info, update_available: false },
+        });
       }
+
+      this.notificationService.openSnackBar(
+        this.translate.instant('rcloneUpdate.skipped', { version }),
+        'Close'
+      );
     } catch (error) {
       console.error('Failed to skip rclone version:', error);
       this.notificationService.openSnackBar(
@@ -326,13 +227,10 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
 
   async unskipVersion(version: string): Promise<void> {
     try {
-      const currentSkipped = await this.getSkippedVersions();
-      const newSkipped = currentSkipped.filter(v => v !== version);
-      await this.appSettingsService.saveSetting('runtime', 'rclone_skipped_updates', newSkipped);
-      this._skippedVersions.set(newSkipped);
-
+      const updated = (await this.getSkippedVersions()).filter(v => v !== version);
+      await this.appSettingsService.saveSetting('runtime', 'rclone_skipped_updates', updated);
+      this._skippedVersions.set(updated);
       this.checkForUpdates();
-
       this.notificationService.openSnackBar(
         this.translate.instant('rcloneUpdate.restored', { version }),
         'Close'
@@ -346,19 +244,18 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
     }
   }
 
-  isVersionSkipped(version: string): boolean {
-    return this._skippedVersions().includes(version);
-  }
+  // -------------------------------------------------------------------------
+  // Auto-check
+  // -------------------------------------------------------------------------
 
-  // Auto-check methods
   async getAutoCheckEnabled(): Promise<boolean> {
     try {
-      const enabled = await this.appSettingsService.getSettingValue<boolean>(
-        'runtime.rclone_auto_check_updates'
+      return (
+        (await this.appSettingsService.getSettingValue<boolean>(
+          'runtime.rclone_auto_check_updates'
+        )) ?? true
       );
-      return enabled ?? true;
-    } catch (error) {
-      console.error('Failed to load rclone auto-check setting:', error);
+    } catch {
       return true;
     }
   }
@@ -367,7 +264,6 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
     try {
       await this.appSettingsService.saveSetting('runtime', 'rclone_auto_check_updates', enabled);
       this._autoCheck.set(enabled);
-
       this.notificationService.openSnackBar(
         this.translate.instant(
           enabled ? 'rcloneUpdate.autoCheckEnabled' : 'rcloneUpdate.autoCheckDisabled'
@@ -383,25 +279,90 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
     }
   }
 
+  // -------------------------------------------------------------------------
+  // Private helpers
+  // -------------------------------------------------------------------------
+
+  private setupEventListeners(): void {
+    this.eventListenersService
+      .listenToRcloneEngineUpdating()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        console.debug('Rclone engine update applying');
+        this.patchUpdateStatus({ updating: true });
+      });
+
+    this.eventListenersService
+      .listenToEngineRestarted()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(event => {
+        if (event.reason === 'rclone_update') {
+          this.patchUpdateStatus({ updating: false });
+          this.checkForUpdates();
+        }
+      });
+
+    this.eventListenersService
+      .listenToAppEvents()
+      .pipe(
+        takeUntil(this.destroy$),
+        filter(event => event.status === 'rclone_update_found' && !!event.data),
+        map(event => event.data as unknown as RcloneUpdateInfo)
+      )
+      .subscribe(data => {
+        console.debug('Received rclone_update_found event:', data);
+        this.processUpdateResult(data);
+      });
+  }
+
+  /**
+   * On startup, ask the backend for whatever update state it already holds
+   * so the UI can restore the correct phase without re-downloading.
+   *
+   * Backend returns one of:
+   *  - null                                    → nothing pending
+   *  - { update_available, ready_to_restart }  → .new file exists, waiting to apply
+   *  - { update_available, latest_version }    → update downloaded, not yet staged
+   */
+  private async restoreUpdateState(): Promise<void> {
+    try {
+      const cached = await this.invokeCommand<RcloneUpdateInfo | null>('get_rclone_update_info');
+      if (!cached?.update_available) return;
+
+      if (cached.ready_to_restart) {
+        // Binary is already staged as .new — go straight to the apply prompt
+        this.patchUpdateStatus({
+          available: false,
+          readyToRestart: true,
+          updateInfo: cached,
+          lastCheck: new Date(),
+        });
+        return;
+      }
+
+      // Normal pending update — run it through the skip filter
+      if (!this.isVersionSkipped(cached.latest_version_clean ?? cached.latest_version)) {
+        this.processUpdateResult(cached);
+      }
+    } catch (error) {
+      console.error('Failed to restore rclone update state:', error);
+    }
+  }
+
   private processUpdateResult(updateInfo: RcloneUpdateInfo): void {
-    const channel = this._updateChannel();
-    // Check if this version is skipped
     const isSkipped =
       updateInfo.update_available &&
-      this.isVersionSkipped(updateInfo.latest_version_clean || updateInfo.latest_version);
-
-    // If version is skipped, modify the updateInfo to reflect that
-    const finalUpdateInfo = isSkipped ? { ...updateInfo, update_available: false } : updateInfo;
+      this.isVersionSkipped(updateInfo.latest_version_clean ?? updateInfo.latest_version);
 
     this.patchUpdateStatus({
       checking: false,
       available: updateInfo.update_available && !isSkipped,
       lastCheck: new Date(),
-      updateInfo: finalUpdateInfo,
+      updateInfo: isSkipped ? { ...updateInfo, update_available: false } : updateInfo,
     });
+  }
 
-    if (updateInfo.update_available && !isSkipped) {
-      console.debug(`Rclone update available: ${updateInfo.latest_version} (${channel} channel)`);
-    }
+  private patchUpdateStatus(update: Partial<UpdateStatus>): void {
+    this._updateStatus.update(current => ({ ...current, ...update }));
   }
 }

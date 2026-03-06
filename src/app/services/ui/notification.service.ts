@@ -37,7 +37,7 @@ export class NotificationService {
    * @param action Button text (defaults to translated 'Close')
    * @param duration Display duration in milliseconds
    */
-  showError(message: string, action?: string, duration = 5000): void {
+  showError(message: string, action?: string, duration?: number): void {
     this.snackBar.open(message, action ?? this.translate.instant('common.close'), {
       duration,
       panelClass: ['error-snackbar'],
@@ -63,7 +63,7 @@ export class NotificationService {
    * @param action Button text (defaults to translated 'OK')
    * @param duration Display duration in milliseconds
    */
-  showWarning(message: string, action?: string, duration = 4000): void {
+  showWarning(message: string, action?: string, duration?: number): void {
     this.snackBar.open(message, action ?? this.translate.instant('common.ok'), {
       duration,
       panelClass: ['warning-snackbar'],

@@ -161,7 +161,13 @@
                     class="feature-icon"
                     [svgIcon]="feat.value ? 'circle-check' : 'circle-xmark'"
                   ></mat-icon>
-                  <span class="feature-name">{{ feat.key }}</span>
+                  <span
+                    class="feature-name"
+                    [matTooltip]="feat.key"
+                    matTooltipPosition="above"
+                    matTooltipShowDelay="500"
+                    >{{ feat.key }}</span
+                  >
                 </div>
               }
             </div>

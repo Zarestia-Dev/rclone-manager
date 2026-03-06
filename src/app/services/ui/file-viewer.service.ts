@@ -122,8 +122,11 @@ export class FileViewerService {
       )}&path=${encodedPath}`;
     }
 
-    // In Desktop mode, use the custom protocol to ensure authentication
-    return `rclone://${encodeURIComponent(rName)}/${encodedPath}`;
+    // In Desktop mode, use the custom protocol to ensure authentication.
+    // Strip the trailing colon from rName - colons are invalid in URL host position.
+    // The Rust handler re-appends the colon when calling rclone.
+    const urlSafeRemote = rName.endsWith(':') ? rName.slice(0, -1) : rName;
+    return `rclone://${encodeURIComponent(urlSafeRemote)}/${encodedPath}`;
   }
 
   private normalizePath(p: string): string {

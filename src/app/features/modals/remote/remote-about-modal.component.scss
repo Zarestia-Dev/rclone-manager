@@ -188,6 +188,10 @@
   .feature-name {
     font-size: var(--font-size-md);
     font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
   }
 
   &.supported {

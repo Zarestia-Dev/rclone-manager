@@ -119,7 +119,7 @@
         @switch (currentFileType()) {
           @case ('image') {
             <img
-              [src]="sanitizedUrl"
+              [src]="sanitizedUrl()"
               [alt]="fileName()"
               class="preview-content image-content"
               (load)="onLoadComplete()"
@@ -128,7 +128,7 @@
           }
           @case ('video') {
             <video
-              [src]="sanitizedUrl"
+              [src]="sanitizedUrl()"
               controls
               class="preview-content video-content"
               (loadeddata)="onLoadComplete()"
@@ -147,7 +147,7 @@
                 ></mat-icon>
               </div>
               <audio
-                [src]="sanitizedUrl"
+                [src]="sanitizedUrl()"
                 controls
                 (loadeddata)="onLoadComplete()"
                 (error)="onLoadError()"
@@ -158,12 +158,18 @@
             </div>
           }
           @case ('pdf') {
-            <iframe
-              [src]="sanitizedUrl"
+            <object
+              [data]="sanitizedUrl()"
+              type="application/pdf"
               class="pdf-viewer"
               (load)="onLoadComplete()"
-              [attr.title]="'fileBrowser.fileViewer.pdfTitle' | translate: { name: fileName() }"
-            ></iframe>
+              (error)="onLoadError()"
+            >
+              <div class="unsupported-container">
+                <p>{{ 'fileBrowser.fileViewer.previewNotAvailable' | translate }}</p>
+                <p class="unsupported-subtext">{{ fileName() }}</p>
+              </div>
+            </object>
           }
           @case ('text') {
             @if (isMarkdownFile() && showMarkdownPreview()) {

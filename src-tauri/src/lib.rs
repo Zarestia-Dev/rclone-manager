@@ -110,8 +110,23 @@ pub fn run() {
 
             let app_handle = app.app_handle().clone();
             let remote = match urlencoding::decode(remote) {
-                Ok(decoded) => decoded.into_owned(),
-                Err(_) => remote.to_string(),
+                Ok(decoded) => {
+                    let mut r = decoded.into_owned();
+                    // Restore the trailing colon stripped from the URL host by the frontend
+                    // (rclone remote names have the format "name:", but colons are invalid
+                    // in URL hostnames so the frontend omits it)
+                    if !r.ends_with(':') {
+                        r.push(':');
+                    }
+                    r
+                }
+                Err(_) => {
+                    let mut r = remote.to_string();
+                    if !r.ends_with(':') {
+                        r.push(':');
+                    }
+                    r
+                }
             };
             let path = match urlencoding::decode(path) {
                 Ok(decoded) => decoded.into_owned(),
@@ -148,6 +163,7 @@ pub fn run() {
                                 tauri::http::Response::builder()
                                     .status(200)
                                     .header(tauri::http::header::CONTENT_TYPE, content_type)
+                                    .header("Access-Control-Allow-Origin", "*")
                                     .body(bytes)
                                     .unwrap(),
                             );
@@ -155,6 +171,7 @@ pub fn run() {
                             responder.respond(
                                 tauri::http::Response::builder()
                                     .status(status.as_u16())
+                                    .header("Access-Control-Allow-Origin", "*")
                                     .body(format!("Rclone error: {}", status).into_bytes())
                                     .unwrap(),
                             );
@@ -164,6 +181,7 @@ pub fn run() {
                         responder.respond(
                             tauri::http::Response::builder()
                                 .status(500)
+                                .header("Access-Control-Allow-Origin", "*")
                                 .body(format!("Proxy error: {}", e).into_bytes())
                                 .unwrap(),
                         );
