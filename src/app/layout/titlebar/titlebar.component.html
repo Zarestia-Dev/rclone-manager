@@ -10,14 +10,16 @@
       <mat-icon svgIcon="plus" aria-hidden="true"></mat-icon>
     </button>
 
-    <button
-      matIconButton
-      (click)="resetRemote()"
-      [attr.aria-label]="'titlebar.home' | translate"
-      data-tauri-drag-region="false"
-    >
-      <mat-icon svgIcon="rclone" aria-hidden="true"></mat-icon>
-    </button>
+    <div class="contextual-action-wrapper" [class.hidden]="!uiStateService.selectedRemote()">
+      <button
+        matIconButton
+        (click)="resetRemote()"
+        [attr.aria-label]="'titlebar.home' | translate"
+        data-tauri-drag-region="false"
+      >
+        <mat-icon svgIcon="rclone" aria-hidden="true"></mat-icon>
+      </button>
+    </div>
 
     <!-- Connection Status Indicator -->
     @if (connectionService.status() === 'offline' || connectionService.status() === 'checking') {

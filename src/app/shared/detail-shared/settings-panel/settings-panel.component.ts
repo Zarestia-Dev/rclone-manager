@@ -24,7 +24,7 @@ import { SENSITIVE_KEYS, SettingsPanelConfig } from '@app/types';
   ],
   styleUrls: ['./settings-panel.component.scss'],
   template: `
-    <mat-expansion-panel class="settings-expansion-panel">
+    <mat-expansion-panel>
       <mat-expansion-panel-header>
         <mat-panel-title>
           <mat-icon [svgIcon]="config().section.icon" class="panel-icon"></mat-icon>

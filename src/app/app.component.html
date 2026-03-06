@@ -6,15 +6,14 @@
       }
     } @else {
       @defer {
-        <app-titlebar class="title-bar"> </app-titlebar>
-        <app-banner class="banner"></app-banner>
-        <app-home class="home-content"></app-home>
-        <app-tabs-buttons
+        <app-titlebar> </app-titlebar>
+        <app-banner></app-banner>
+        <app-home></app-home>
+        <app-tabs
           data-tauri-drag-region
-          class="tabs"
           [currentTab]="currentTab()"
           (tabSelected)="setTab($event)"
-        ></app-tabs-buttons>
+        ></app-tabs>
       }
     }
   }

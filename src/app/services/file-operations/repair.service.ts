@@ -43,7 +43,7 @@ export class RepairService extends TauriBaseService {
       messageKey: 'repairSheet.messages.missingMountPlugin',
       progressKey: 'repairSheet.progress.installingPlugin',
       buttonTextKey: 'repairSheet.actions.installPlugin',
-      icon: 'puzzle-piece',
+      icon: 'core',
       details: [
         {
           icon: 'circle-info',
@@ -51,7 +51,7 @@ export class RepairService extends TauriBaseService {
           valueKey: 'repairSheet.details.mountPlugin.issue',
         },
         {
-          icon: 'puzzle-piece',
+          icon: 'core',
           labelKey: 'repairSheet.details.actionLabel',
           valueKey: 'repairSheet.details.mountPlugin.action',
         },
