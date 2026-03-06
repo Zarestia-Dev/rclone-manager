@@ -2066,7 +2066,7 @@
       "undoFailed": "{{count}} öge için geri alma başarısız",
       "redoFailed": "{{count}} öge için yineleme başarısız",
       "rmdirsFailed": "\"{{name}}\" içinde boş klasörler kaldırılamadı: {{error}}",
-      "createFolderFailed": "Klasör oluşturulamadı",
+      "createFolderFailed": "\"{{name}}\" klasörü oluşturulamadı: {{error}}",
       "emptyTrashFailed": "Çöp boşaltılamadı: {{error}}",
       "openFileFailed": "Dosya açılamıyor: uzak sunucu bağlamı eksik",
       "minSelection": "Lütfen en az {{min}} öge seçin."
