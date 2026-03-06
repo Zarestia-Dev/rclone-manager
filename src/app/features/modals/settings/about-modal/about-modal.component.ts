@@ -6,7 +6,6 @@ import {
   inject,
   signal,
   DestroyRef,
-  effect,
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
@@ -27,7 +26,6 @@ import { marked, Renderer } from 'marked';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { NgTemplateOutlet, CommonModule } from '@angular/common';
 
-// Services
 import {
   SystemInfoService,
   AppUpdaterService,
@@ -40,7 +38,7 @@ import {
   ModalService,
 } from '@app/services';
 
-// Configure renderer once
+// Configure renderer once at module level
 const renderer = new Renderer();
 renderer.link = ({ href, title, text }): string => {
   const titleAttr = title ? ` title="${title}"` : '';
@@ -101,25 +99,24 @@ export class AboutModalComponent implements OnInit {
   readonly backendService = inject(BackendService);
   readonly modalService = inject(ModalService);
 
-  constructor() {
-    effect(() => {
-      this.rcloneAutoCheck.set(this.rcloneUpdateService.autoCheck());
-    });
-  }
+  // -------------------------------------------------------------------------
+  // Navigation state
+  // -------------------------------------------------------------------------
 
-  // Local State Signals
   readonly overlayStack = signal<OverlayView[]>([]);
   readonly scrolled = signal<boolean>(false);
 
-  // Computed State
   readonly isOverlayOpen = computed(() => this.overlayStack().length > 0);
   readonly currentView = computed(() => {
     const stack = this.overlayStack();
     return stack.length > 0 ? stack[stack.length - 1] : { id: 'main' as const };
   });
 
-  // App Updater Signals
-  readonly appAutoCheckUpdates = signal<boolean>(true); // Initial default, updated in init
+  // -------------------------------------------------------------------------
+  // App updater signals
+  // -------------------------------------------------------------------------
+
+  readonly appAutoCheckUpdates = signal<boolean>(true);
   readonly appUpdateAvailable = this.appUpdaterService.updateAvailable;
   readonly appUpdateInProgress = this.appUpdaterService.updateInProgress;
   readonly appUpdateChannel = this.appUpdaterService.updateChannel;
@@ -127,30 +124,38 @@ export class AboutModalComponent implements OnInit {
   readonly appRestartRequired = this.appUpdaterService.restartRequired;
   readonly appDownloadStatus = this.appUpdaterService.downloadStatus;
 
-  // Computed App Updater Signals
   readonly appUpdateReleaseChannel = computed(() => {
-    const update = this.appUpdateAvailable();
-    if (!update?.releaseTag) return null;
-    return update.releaseTag.toLowerCase().includes('beta') ? 'beta' : 'stable';
+    const tag = this.appUpdateAvailable()?.releaseTag;
+    if (!tag) return null;
+    return tag.toLowerCase().includes('beta') ? 'beta' : 'stable';
   });
 
-  readonly appDownloadProgress = computed(() => this.appDownloadStatus()?.downloadedBytes || 0);
-  readonly appDownloadTotal = computed(() => this.appDownloadStatus()?.totalBytes || 0);
-  readonly appDownloadPercentage = computed(() => this.appDownloadStatus()?.percentage || 0);
+  readonly appDownloadProgress = computed(() => this.appDownloadStatus()?.downloadedBytes ?? 0);
+  readonly appDownloadTotal = computed(() => this.appDownloadStatus()?.totalBytes ?? 0);
+  readonly appDownloadPercentage = computed(() => this.appDownloadStatus()?.percentage ?? 0);
   readonly appDownloadInProgress = computed(() => {
     const status = this.appDownloadStatus();
     return !!this.appUpdateInProgress() && !status?.isComplete && !status?.isFailed;
   });
 
-  // Rclone Updater Signals
+  // -------------------------------------------------------------------------
+  // Rclone updater signals
+  // -------------------------------------------------------------------------
+
   readonly rcloneUpdateStatus = this.rcloneUpdateService.updateStatus;
   readonly rcloneUpdateChannel = this.rcloneUpdateService.updateChannel;
   readonly rcloneSkippedVersions = this.rcloneUpdateService.skippedVersions;
-  readonly rcloneAutoCheck = signal<boolean>(true);
+  // Read directly from the service — no need for a local copy kept in sync via effect()
+  readonly rcloneAutoCheck = this.rcloneUpdateService.autoCheck;
+
   readonly restartingApp = signal<boolean>(false);
   readonly restartingRcloneEngine = signal<boolean>(false);
+  readonly checkingForUpdates = signal<boolean>(false);
 
-  // Rclone Computed
+  // -------------------------------------------------------------------------
+  // Rclone info
+  // -------------------------------------------------------------------------
+
   readonly rcloneInfo = computed(() => {
     const info = this.rcloneStatusService.rcloneInfo();
     const pid = this.rcloneStatusService.rclonePID();
@@ -159,7 +164,6 @@ export class AboutModalComponent implements OnInit {
   });
 
   readonly isLocalBackend = computed(() => this.backendService.activeBackend() === 'Local');
-
   readonly loadingRclone = this.rcloneStatusService.isLoading;
 
   readonly rcloneError = computed(() =>
@@ -171,15 +175,19 @@ export class AboutModalComponent implements OnInit {
   readonly memoryStats = this.rcloneStatusService.memoryUsage;
   readonly runningGc = signal(false);
 
-  // Platform Info Signals
+  // -------------------------------------------------------------------------
+  // Platform / fscache
+  // -------------------------------------------------------------------------
+
   readonly buildType = signal<string | null>(null);
   readonly updatesDisabled = signal<boolean>(false);
-
-  // Fscache Signals
   readonly fsCacheEntries = signal<number>(0);
   readonly clearingFsCache = signal<boolean>(false);
 
+  // -------------------------------------------------------------------------
   // Constants
+  // -------------------------------------------------------------------------
+
   readonly channels = [
     {
       value: 'stable',
@@ -193,94 +201,47 @@ export class AboutModalComponent implements OnInit {
     },
   ];
 
-  // Navigation Items
-  readonly navItems = [
-    {
-      label: 'modals.about.details',
-      page: 'Details',
-      viewId: 'details' as ViewId,
-      icon: 'chevron-right',
-    },
-    // Updates is conditional, handled separately or via computed
-    {
-      label: 'modals.about.aboutRclone',
-      page: 'About Rclone',
-      viewId: 'about-rclone' as ViewId,
-      icon: 'chevron-right',
-      badgeSignal: this.rcloneUpdateStatus,
-    },
+  readonly navItems: { label: string; viewId: ViewId; icon: string }[] = [
+    { label: 'modals.about.details', viewId: 'details', icon: 'chevron-right' },
+    { label: 'modals.about.aboutRclone', viewId: 'about-rclone', icon: 'chevron-right' },
   ];
 
-  readonly bottomNavItems = [
-    {
-      label: 'modals.about.credits',
-      page: 'Credits',
-      viewId: 'credits' as ViewId,
-      icon: 'chevron-right',
-    },
-    {
-      label: 'modals.about.legal',
-      page: 'Legal',
-      viewId: 'legal' as ViewId,
-      icon: 'chevron-right',
-    },
+  readonly bottomNavItems: { label: string; viewId: ViewId; icon: string }[] = [
+    { label: 'modals.about.credits', viewId: 'credits', icon: 'chevron-right' },
+    { label: 'modals.about.legal', viewId: 'legal', icon: 'chevron-right' },
   ];
 
-  // Logic
+  // Badge for the "About Rclone" nav item — true when there is any pending
+  // rclone action (update available OR binary staged and ready to apply).
+  readonly rcloneNavBadge = computed(() => {
+    const s = this.rcloneUpdateStatus();
+    return s.available || s.readyToRestart;
+  });
+
+  // -------------------------------------------------------------------------
+  // Easter egg / misc
+  // -------------------------------------------------------------------------
+
   protected logoClickCount = 0;
   private logoClickTimeout: ReturnType<typeof setTimeout> | null = null;
-  checkingForUpdates = false; // Kept as simple flag for async method guard if needed
+
+  readonly debugInfo = signal<DebugInfo | null>(null);
+
+  // -------------------------------------------------------------------------
+  // Lifecycle
+  // -------------------------------------------------------------------------
 
   async ngOnInit(): Promise<void> {
-    // Initial data loading that isn't purely reactive yet
     await this.loadPlatformInfo();
-
     this.loadAppAutoCheckSetting();
     this.loadFsCacheEntries();
   }
 
-  readonly debugInfo = signal<DebugInfo | null>(null);
+  // -------------------------------------------------------------------------
+  // Navigation
+  // -------------------------------------------------------------------------
 
-  // --- Actions ---
-
-  showWhatsNew(type: 'app' | 'rclone'): void {
-    const id = type === 'app' ? 'whats-new-app' : 'whats-new-rclone';
-    this.overlayStack.update(stack => [...stack, { id }]);
-  }
-
-  @HostListener('document:keydown.escape')
-  close(): void {
-    const stack = this.overlayStack();
-    if (stack.length > 0) {
-      this.goBack();
-    } else {
-      this.modalService.animatedClose(this.dialogRef);
-    }
-  }
-
-  navigateTo(page: string): void {
-    // Map existing string pages to ViewId
-    let viewId: ViewId;
-    switch (page) {
-      case 'Details':
-        viewId = 'details';
-        break;
-      case 'Updates':
-        viewId = 'updates';
-        break;
-      case 'About Rclone':
-        viewId = 'about-rclone';
-        break;
-      case 'Credits':
-        viewId = 'credits';
-        break;
-      case 'Legal':
-        viewId = 'legal';
-        break;
-      default:
-        console.warn('Unknown page navigation:', page);
-        return;
-    }
+  navigateTo(viewId: ViewId): void {
     this.overlayStack.update(stack => [...stack, { id: viewId }]);
   }
 
@@ -288,45 +249,51 @@ export class AboutModalComponent implements OnInit {
     this.overlayStack.update(stack => stack.slice(0, -1));
   }
 
-  getPageTitle(viewId?: ViewId): string {
-    const id = viewId || this.currentView().id;
-    switch (id) {
-      case 'details':
-        return this.translate.instant('modals.about.details');
-      case 'updates':
-        return this.translate.instant('modals.about.updates');
-      case 'about-rclone':
-        return this.translate.instant('modals.about.aboutRclone');
-      case 'credits':
-        return this.translate.instant('modals.about.credits');
-      case 'legal':
-        return this.translate.instant('modals.about.legal');
-      case 'whats-new-app':
-      case 'whats-new-rclone':
-        return this.translate.instant('modals.about.whatsNew');
-      case 'debug':
-        return this.translate.instant('modals.about.debugTools');
-      case 'memory':
-        return this.translate.instant('modals.about.memoryStats');
-      default:
-        return '';
+  showWhatsNew(type: 'app' | 'rclone'): void {
+    this.navigateTo(type === 'app' ? 'whats-new-app' : 'whats-new-rclone');
+  }
+
+  @HostListener('document:keydown.escape')
+  close(): void {
+    if (this.overlayStack().length > 0) {
+      this.goBack();
+    } else {
+      this.modalService.animatedClose(this.dialogRef);
     }
   }
 
-  // --- App Updater Actions ---
+  getPageTitle(viewId?: ViewId): string {
+    const id = viewId ?? this.currentView().id;
+    const titleMap: Partial<Record<ViewId | 'main', string>> = {
+      details: 'modals.about.details',
+      updates: 'modals.about.updates',
+      'about-rclone': 'modals.about.aboutRclone',
+      credits: 'modals.about.credits',
+      legal: 'modals.about.legal',
+      'whats-new-app': 'modals.about.whatsNew',
+      'whats-new-rclone': 'modals.about.whatsNew',
+      debug: 'modals.about.debugTools',
+      memory: 'modals.about.memoryStats',
+    };
+    const key = titleMap[id];
+    return key ? this.translate.instant(key) : '';
+  }
+
+  // -------------------------------------------------------------------------
+  // App updater actions
+  // -------------------------------------------------------------------------
 
   async checkForUpdates(): Promise<void> {
-    if (this.checkingForUpdates) return;
-    this.checkingForUpdates = true;
+    if (this.checkingForUpdates()) return;
+    this.checkingForUpdates.set(true);
     try {
       await this.appUpdaterService.checkForUpdates();
     } finally {
-      this.checkingForUpdates = false;
+      this.checkingForUpdates.set(false);
     }
   }
 
   async installUpdate(): Promise<void> {
-    // Prevent double execution
     if (this.appUpdateInProgress()) return;
     await this.appUpdaterService.installUpdate();
   }
@@ -364,7 +331,7 @@ export class AboutModalComponent implements OnInit {
   }
 
   async unskipVersion(version: string): Promise<void> {
-    this.checkingForUpdates = true;
+    this.checkingForUpdates.set(true);
     try {
       await this.appUpdaterService.unskipVersion(version);
       this.notificationService.showSuccess(this.translate.instant('updates.restored', { version }));
@@ -372,23 +339,26 @@ export class AboutModalComponent implements OnInit {
       console.error('Failed to unskip version:', error);
       this.notificationService.showError(this.translate.instant('updates.restoreFailed'));
     } finally {
-      this.checkingForUpdates = false;
+      this.checkingForUpdates.set(false);
     }
   }
 
   async toggleAutoCheck(): Promise<void> {
     const current = this.appAutoCheckUpdates();
+    this.appAutoCheckUpdates.set(!current);
     try {
-      this.appAutoCheckUpdates.set(!current); // Optimistic UI update
       await this.appUpdaterService.setAutoCheckEnabled(!current);
-      const msg = !current ? 'modals.about.autoCheckEnabled' : 'modals.about.autoCheckDisabled';
-      this.notificationService.showSuccess(this.translate.instant(msg));
+      this.notificationService.showSuccess(
+        this.translate.instant(
+          !current ? 'modals.about.autoCheckEnabled' : 'modals.about.autoCheckDisabled'
+        )
+      );
     } catch (error) {
       console.error('Failed to toggle auto-check:', error);
       this.notificationService.showError(
         this.translate.instant('modals.about.updateSettingFailed')
       );
-      this.appAutoCheckUpdates.set(current); // Revert on failure
+      this.appAutoCheckUpdates.set(current); // revert
     }
   }
 
@@ -398,14 +368,15 @@ export class AboutModalComponent implements OnInit {
 
   private async loadAppAutoCheckSetting(): Promise<void> {
     try {
-      const enabled = await this.appUpdaterService.getAutoCheckEnabled();
-      this.appAutoCheckUpdates.set(enabled);
+      this.appAutoCheckUpdates.set(await this.appUpdaterService.getAutoCheckEnabled());
     } catch (error) {
       console.error('Failed to load auto-check setting:', error);
     }
   }
 
-  // --- Rclone Updater Actions ---
+  // -------------------------------------------------------------------------
+  // Rclone updater actions
+  // -------------------------------------------------------------------------
 
   async checkForRcloneUpdates(): Promise<void> {
     if (this.rcloneUpdateStatus().checking) return;
@@ -417,21 +388,20 @@ export class AboutModalComponent implements OnInit {
     await this.rcloneUpdateService.performUpdate();
   }
 
-  async restartRcloneEngine(): Promise<void> {
+  async applyRcloneUpdate(): Promise<void> {
     if (!this.rcloneUpdateStatus().readyToRestart || this.restartingRcloneEngine()) return;
     this.restartingRcloneEngine.set(true);
     try {
-      await this.rcloneUpdateService.restartEngine();
+      await this.rcloneUpdateService.applyUpdate();
     } finally {
       this.restartingRcloneEngine.set(false);
     }
   }
 
   async skipRcloneUpdate(): Promise<void> {
-    const status = this.rcloneUpdateStatus();
-    if (!status.updateInfo) return;
-    const version = status.updateInfo.latest_version_clean || status.updateInfo.latest_version;
-    await this.rcloneUpdateService.skipVersion(version);
+    const info = this.rcloneUpdateStatus().updateInfo;
+    if (!info) return;
+    await this.rcloneUpdateService.skipVersion(info.latest_version_clean ?? info.latest_version);
   }
 
   async unskipRcloneVersion(version: string): Promise<void> {
@@ -441,14 +411,12 @@ export class AboutModalComponent implements OnInit {
   async toggleRcloneAutoCheck(): Promise<void> {
     const current = this.rcloneAutoCheck();
     try {
-      this.rcloneAutoCheck.set(!current); // Optimistic UI update
       await this.rcloneUpdateService.setAutoCheckEnabled(!current);
     } catch (error) {
       console.error('Failed to toggle rclone auto-check:', error);
       this.notificationService.showError(
         this.translate.instant('modals.about.updateSettingFailed')
       );
-      this.rcloneAutoCheck.set(current); // Revert on failure
     }
   }
 
@@ -456,13 +424,17 @@ export class AboutModalComponent implements OnInit {
     await this.rcloneUpdateService.setChannel(channel);
   }
 
-  // --- Other Methods ---
+  // -------------------------------------------------------------------------
+  // Platform / engine actions
+  // -------------------------------------------------------------------------
 
   private async loadPlatformInfo(): Promise<void> {
     try {
-      const type = await this.systemInfoService.getBuildType();
+      const [type, disabled] = await Promise.all([
+        this.systemInfoService.getBuildType(),
+        this.systemInfoService.areUpdatesDisabled(),
+      ]);
       this.buildType.set(type);
-      const disabled = await this.systemInfoService.areUpdatesDisabled();
       this.updatesDisabled.set(disabled);
     } catch (error) {
       console.error('Failed to load platform info:', error);
@@ -471,10 +443,7 @@ export class AboutModalComponent implements OnInit {
 
   async quitRcloneEngine(): Promise<void> {
     try {
-      const activeBackend = this.backendService.activeBackend();
-      const isLocal = activeBackend === 'Local';
-
-      if (isLocal) {
+      if (this.backendService.activeBackend() === 'Local') {
         const pid = this.rcloneStatusService.rclonePID();
         if (!pid) {
           this.notificationService.openSnackBar(
@@ -508,7 +477,6 @@ export class AboutModalComponent implements OnInit {
     try {
       await this.systemInfoService.runGarbageCollector();
       this.notificationService.showSuccess(this.translate.instant('modals.about.gcSuccess'));
-      // Trigger immediate refresh to see memory changes
       await this.rcloneStatusService.refresh();
     } catch (error) {
       console.error('Failed to run garbage collector:', error);
@@ -520,8 +488,7 @@ export class AboutModalComponent implements OnInit {
 
   async loadFsCacheEntries(): Promise<void> {
     try {
-      const entries = await this.systemInfoService.getFsCacheEntries();
-      this.fsCacheEntries.set(entries);
+      this.fsCacheEntries.set(await this.systemInfoService.getFsCacheEntries());
     } catch (error) {
       console.error('Failed to load fscache entries:', error);
     }
@@ -541,6 +508,10 @@ export class AboutModalComponent implements OnInit {
       this.clearingFsCache.set(false);
     }
   }
+
+  // -------------------------------------------------------------------------
+  // UI helpers
+  // -------------------------------------------------------------------------
 
   onScroll(content: HTMLElement): void {
     this.scrolled.set(content.scrollTop > 10);
@@ -562,17 +533,16 @@ export class AboutModalComponent implements OnInit {
   }
 
   async showDebugOverlay(): Promise<void> {
-    this.overlayStack.update(stack => [...stack, { id: 'debug' }]);
+    this.navigateTo('debug');
     try {
-      const info = await this.debugService.getDebugInfo();
-      this.debugInfo.set(info);
+      this.debugInfo.set(await this.debugService.getDebugInfo());
     } catch (error) {
       console.error('Failed to load debug info:', error);
     }
   }
 
   showMemoryOverlay(): void {
-    this.overlayStack.update(stack => [...stack, { id: 'memory' }]);
+    this.navigateTo('memory');
   }
 
   async openFolder(folderType: 'logs' | 'config' | 'cache'): Promise<void> {
@@ -585,12 +555,11 @@ export class AboutModalComponent implements OnInit {
 
   copyToClipboard(text: string): void {
     navigator.clipboard.writeText(text).then(
-      () => {
+      () =>
         this.notificationService.openSnackBar(
           this.translate.instant('modals.about.copied'),
           this.translate.instant('common.close')
-        );
-      },
+        ),
       err => {
         console.error('Failed to copy to clipboard:', err);
         this.notificationService.openSnackBar(
@@ -603,9 +572,7 @@ export class AboutModalComponent implements OnInit {
 
   formatReleaseDate(dateString: string): string {
     try {
-      const date = new Date(dateString);
-      const locale = this.translate.getCurrentLang();
-      return date.toLocaleDateString(locale, {
+      return new Date(dateString).toLocaleDateString(this.translate.getCurrentLang(), {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -621,14 +588,12 @@ export class AboutModalComponent implements OnInit {
         `<p>${this.translate.instant('modals.about.noReleaseNotes')}</p>`
       );
     }
-    // Renderer is now static global const
     const html = marked.parse(markdown, { gfm: true, breaks: true, renderer }) as string;
     return this.sanitizer.bypassSecurityTrustHtml(html);
   }
 
   getChannelLabel(channel: string | null | undefined): string {
     if (!channel) return '';
-    const ch = this.channels.find(c => c.value === channel);
-    return ch ? ch.label : channel;
+    return this.channels.find(c => c.value === channel)?.label ?? channel;
   }
 }

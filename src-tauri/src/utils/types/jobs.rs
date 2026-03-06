@@ -37,6 +37,10 @@ pub enum JobType {
     CopyDir,
     #[serde(rename = "move_dir")]
     MoveDir,
+    #[serde(rename = "rename_file")]
+    RenameFile,
+    #[serde(rename = "rename_dir")]
+    RenameDir,
     Unknown(String),
 }
 
@@ -65,6 +69,8 @@ impl JobType {
                 | JobType::MoveFile
                 | JobType::CopyDir
                 | JobType::MoveDir
+                | JobType::RenameFile
+                | JobType::RenameDir
         )
     }
 
@@ -96,6 +102,8 @@ impl JobType {
             JobType::MoveFile => "move_file",
             JobType::CopyDir => "copy_dir",
             JobType::MoveDir => "move_dir",
+            JobType::RenameFile => "rename_file",
+            JobType::RenameDir => "rename_dir",
             JobType::Unknown(s) => s,
         }
     }
@@ -126,6 +134,8 @@ impl From<String> for JobType {
             "move_file" => JobType::MoveFile,
             "copy_dir" => JobType::CopyDir,
             "move_dir" => JobType::MoveDir,
+            "rename_file" => JobType::RenameFile,
+            "rename_dir" => JobType::RenameDir,
             _ => JobType::Unknown(s),
         }
     }

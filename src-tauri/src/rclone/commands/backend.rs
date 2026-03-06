@@ -83,10 +83,22 @@ pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> 
         .switch_to(settings_manager.inner(), &name, None, None)
         .await?;
 
-    // 3. Configure (Set path, Auth)
+    // 3. Start Local engine if switching to Local (it may never have been started
+    //    when the app launched with a remote backend active).
+    if backend.is_local {
+        use crate::utils::types::core::EngineState;
+        let engine_state = app.state::<EngineState>();
+        let mut engine = engine_state.lock().await;
+        if !engine.running && !engine.path_error && !engine.password_error {
+            info!("🚀 Starting Local engine after switching from remote backend...");
+            crate::rclone::engine::lifecycle::start(&mut engine, &app).await;
+        }
+    }
+
+    // 4. Configure (Set path, Auth)
     configure_remote_backend(&app, &backend, &state.client).await;
 
-    // 4. Refresh Cache & Verify Stability
+    // 5. Refresh Cache & Verify Stability
     refresh_and_verify_cache(
         &app,
         &backend_manager,
@@ -96,7 +108,7 @@ pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> 
     )
     .await?;
 
-    // 5. Persist active backend selection
+    // 6. Persist active backend selection
     if let Err(e) = crate::rclone::backend::BackendManager::save_active_to_settings(
         settings_manager.inner(),
         &name,

@@ -115,6 +115,9 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
       case 'move':
       case 'move_file':
         return 'move';
+      case 'rename_file':
+      case 'rename_dir':
+        return 'pen';
       case 'sync':
       case 'bisync':
         return 'arrows-rotate';

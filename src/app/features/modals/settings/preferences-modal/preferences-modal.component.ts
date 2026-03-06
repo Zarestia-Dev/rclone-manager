@@ -99,8 +99,8 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
 
   readonly tabs: SettingTab[] = [
     { label: 'modals.preferences.tabs.general', icon: 'wrench', key: 'general' },
-    { label: 'modals.preferences.tabs.core', icon: 'puzzle-piece', key: 'core' },
-    { label: 'modals.preferences.tabs.developer', icon: 'flask', key: 'developer' },
+    { label: 'modals.preferences.tabs.core', icon: 'core', key: 'core' },
+    { label: 'modals.preferences.tabs.developer', icon: 'experiment', key: 'developer' },
   ];
 
   readonly filteredTabs = computed(() => {

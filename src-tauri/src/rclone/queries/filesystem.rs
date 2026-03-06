@@ -168,13 +168,6 @@ pub async fn get_local_drives(
             });
         }
     } else {
-        // Unix-like systems
-        drives.push(LocalDrive {
-            name: "/".to_string(),
-            label: "nautilus.titles.fileSystem".to_string(),
-            show_name: false,
-        });
-
         // Attempt to get home dir. If it's local, we can use the environment.
         let home_path = if backend.is_local {
             std::env::var("HOME").ok()
@@ -189,6 +182,13 @@ pub async fn get_local_drives(
                 show_name: false,
             });
         }
+
+        // Unix-like systems
+        drives.push(LocalDrive {
+            name: "/".to_string(),
+            label: "nautilus.titles.fileSystem".to_string(),
+            show_name: false,
+        });
     }
 
     Ok(drives)

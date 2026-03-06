@@ -102,6 +102,7 @@ export interface RcloneUpdateInfo {
   release_date?: string;
   release_url?: string;
   update_in_progress?: boolean;
+  ready_to_restart?: boolean;
 }
 
 export interface UpdateStatus {

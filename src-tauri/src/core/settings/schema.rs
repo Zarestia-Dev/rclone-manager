@@ -233,6 +233,9 @@ pub struct RuntimeSettings {
         skip
     )]
     pub dashboard_layout: Option<Vec<String>>,
+
+    #[setting(skip)]
+    pub active_backend: String,
 }
 
 impl Default for RuntimeSettings {
@@ -247,6 +250,7 @@ impl Default for RuntimeSettings {
             rclone_update_channel: "stable".to_string(),
             flatpak_warn: true,
             dashboard_layout: None,
+            active_backend: "Local".to_string(),
         }
     }
 }

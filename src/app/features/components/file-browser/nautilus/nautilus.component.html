@@ -246,6 +246,9 @@
             <button class="menu-item" cdkMenuItem (click)="cutItems()">
               <span>{{ 'nautilus.contextMenu.cut' | translate }}</span>
             </button>
+            <button class="menu-item" cdkMenuItem (click)="openContextMenuRename()">
+              <span>{{ 'nautilus.contextMenu.rename' | translate }}</span>
+            </button>
             <mat-divider></mat-divider>
             <button class="menu-item" cdkMenuItem (click)="deleteSelectedItems()">
               <span>{{ 'nautilus.contextMenu.delete' | translate }}</span>

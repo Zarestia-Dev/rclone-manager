@@ -12,7 +12,7 @@ import {
   ElementRef,
 } from '@angular/core';
 
-import { DomSanitizer, SafeResourceUrl, SafeHtml } from '@angular/platform-browser';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
@@ -132,7 +132,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   private readonly fileSystemService = inject(FileSystemService);
   private readonly uiStateService = inject(UiStateService);
 
-  sanitizedUrl!: SafeResourceUrl;
+  private currentUrl = signal<string>('about:blank');
+  sanitizedUrl = computed(() => this.sanitizer.bypassSecurityTrustResourceUrl(this.currentUrl()));
 
   currentIndex = signal(0);
   currentItem = computed(() => this.data.items[this.currentIndex()]);
@@ -506,7 +507,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
         return;
       }
 
-      this.sanitizedUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.data.url);
+      this.currentUrl.set(this.data.url);
 
       // Text-based files: try to load as text, browser will handle what it can
       if (this.fileCategory() === 'text') {
@@ -540,8 +541,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
         return;
       }
 
-      // For media types (image, video, audio, pdf), loading handled by element events
-      const mediaTypes = ['image', 'video', 'audio', 'pdf'];
+      // For media types (image, video, audio), loading handled by element events
+      const mediaTypes = ['image', 'video', 'audio'];
       if (!mediaTypes.includes(this.currentFileType())) {
         this.isLoading.set(false);
       }
@@ -611,11 +612,13 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       await this.fileViewerService.getFileType(item, this.data.remoteName, this.data.isLocal)
     );
 
-    this.data.url = await this.fileViewerService.generateUrl(
+    const url = await this.fileViewerService.generateUrl(
       item,
       this.data.remoteName,
       this.data.isLocal
     );
+    this.data.url = url;
+    this.currentUrl.set(url);
     await this.updateContent();
   }
 

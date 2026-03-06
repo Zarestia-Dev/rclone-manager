@@ -14,7 +14,6 @@
   gap: var(--space-sm);
   padding: var(--space-md);
   border-radius: var(--radius-md);
-  margin: var(--space-md) 0;
   background: rgba($bg-color, 0.1); // Default opacity
   color: $text-color;
 
@@ -68,7 +67,7 @@
   .stacked-buttons {
     display: flex;
     flex-direction: column;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 6, 0.2);
+    box-shadow: var(--shadow-gnome);
     border-radius: var(--radius-sm);
     overflow: hidden;
 
@@ -194,19 +193,6 @@
 // View: Rclone Info
 // ----------------------------------------------------------------------------
 .rclone-info {
-  .rclone-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-
-    // Fixed mismatch: HTML uses h4, not h3
-    h4 {
-      font-size: var(--font-size-xl);
-      font-weight: 600;
-      margin: 0;
-    }
-  }
-
   .loading {
     @include status-box(var(--primary-color-rgb), var(--primary-color));
   }
@@ -215,38 +201,92 @@
     @include status-box(var(--warn-color-rgb), var(--warn-color));
   }
 
-  .rclone-details {
-    background: var(--sidebar-bg-color);
-    box-shadow: var(--box-shadow);
-    border-radius: var(--panel-radius);
-    padding: var(--space-lg);
+  // GNOME-style hero: icon + name + version
+  .rclone-hero {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: 0 var(--space-md) var(--space-sm);
 
-    .detail-row {
+    .rclone-icon {
+      width: var(--icon-size-xl);
+      height: var(--icon-size-xl);
+    }
+
+    .rclone-identity {
       display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-      margin: var(--space-sm) 0;
+      align-items: start;
+      flex-direction: column;
+      gap: 4px;
 
-      &.warning {
-        color: var(--warn-color);
-        background: rgba(var(--warn-color-rgb), 0.1);
-        padding: var(--space-sm);
-        border-radius: var(--radius-md);
+      .rclone-name {
+        font-size: var(--font-size-xl);
+        font-weight: 700;
+        line-height: 1.1;
       }
 
-      .detail-label {
-        font-weight: 600;
-        min-width: 120px;
-        margin-right: var(--space-md);
-      }
-
-      .detail-value {
-        color: var(--dim-color);
-        background: rgba(var(--window-fg-color-rgb), 0.05);
-        padding: var(--space-xs);
-        border-radius: var(--radius-xs);
+      .rclone-version {
         font-size: var(--font-size-md);
+        color: var(--dim-color);
+        word-break: break-all;
       }
+
+      .channel-badge {
+        flex-shrink: 0;
+        padding: 1px var(--space-sm);
+        border-radius: var(--radius-sm);
+        font-size: var(--font-size-xs);
+        font-weight: 700;
+        letter-spacing: 0.04em;
+
+        &.beta {
+          background: rgba(var(--orange-rgb), 0.12);
+          color: var(--orange);
+        }
+
+        &.dev {
+          background: rgba(var(--accent-color-rgb), 0.12);
+          color: var(--accent-color);
+        }
+      }
+    }
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Shared detail list — rclone info, debug, memory, credits all use this
+// ----------------------------------------------------------------------------
+.rclone-details {
+  background: var(--sidebar-bg-color);
+  box-shadow: var(--box-shadow);
+  border-radius: var(--panel-radius);
+
+  .detail-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid rgba(var(--window-fg-color-rgb), 0.06);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:has(.action-button) {
+      grid-template-columns: 1fr auto auto;
+    }
+
+    .detail-label {
+      font-size: var(--font-size-sm);
+      color: var(--dim-color);
+      font-weight: 500;
+    }
+
+    .detail-value {
+      font-size: var(--font-size-sm);
+      font-weight: 600;
+      text-align: right;
     }
   }
 }
@@ -512,6 +552,24 @@
   }
 }
 
+// Prose paragraphs used in credits and legal
+.section-prose {
+  font-size: var(--font-size-md);
+  line-height: 1.6;
+  color: var(--dim-color);
+  margin: var(--space-xs) 0 0;
+
+  a {
+    color: var(--accent-color);
+    text-decoration: none;
+    font-weight: 500;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
 // ----------------------------------------------------------------------------
 // View: What's New
 // ----------------------------------------------------------------------------
@@ -584,36 +642,9 @@
         font-weight: 600;
         color: var(--window-fg-color);
       }
-    }
 
-    .debug-info-grid {
-      background: var(--view-bg-color);
-      border-radius: var(--radius-sm);
-      padding: var(--space-md);
-      box-shadow: var(--box-shadow);
-
-      .debug-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: var(--space-sm) 0;
-
-        &:not(:last-child) {
-          border-bottom: 1px solid rgba(var(--window-fg-color-rgb), 0.08);
-        }
-
-        .label {
-          font-weight: 500;
-          color: var(--dim-color);
-        }
-
-        .value {
-          font-family: monospace;
-          color: var(--window-fg-color);
-          background: rgba(var(--window-fg-color-rgb), 0.05);
-          padding: var(--space-xs) var(--space-sm);
-          border-radius: var(--radius-xs);
-        }
+      button {
+        width: 100%;
       }
     }
 
@@ -627,14 +658,6 @@
       display: flex;
       flex-wrap: wrap;
       gap: var(--space-sm);
-
-      button {
-        .content-wrapper {
-          display: flex;
-          align-items: center;
-          gap: var(--space-sm);
-        }
-      }
     }
 
     .loading {

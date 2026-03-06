@@ -1,28 +1,35 @@
-.tabs-buttons {
+:host {
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
   gap: var(--space-xs);
-  padding: var(--space-xs);
-  .mat-mdc-icon-button {
-    color: var(--window-fg-color);
+  padding: var(--space-xxs) var(--title-bar-padding);
 
-    &.selected {
-      outline: none !important;
-      background-color: var(--hover-bg-color) !important;
-    }
+  @media (max-width: 600px) {
+    width: 100%;
+    padding: var(--space-xs) var(--title-bar-padding);
+  }
 
-    &:active,
-    &:focus-visible {
-      outline: none !important;
-      background-color: var(--selected-tab-color) !important;
-    }
+  @media (min-width: 600px) {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
   }
 }
 
-@media (max-width: 600px) {
-  .tabs-buttons {
-    width: 100%;
+/* Your button styles stay exactly the same */
+.mat-mdc-icon-button {
+  color: var(--window-fg-color);
+
+  &.selected {
+    outline: none !important;
+    background-color: var(--hover-bg-color) !important;
+  }
+
+  &:active,
+  &:focus-visible {
+    outline: none !important;
+    background-color: var(--selected-tab-color) !important;
   }
 }

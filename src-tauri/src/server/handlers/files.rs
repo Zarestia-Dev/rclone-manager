@@ -439,6 +439,52 @@ pub async fn move_dir_handler(
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RenameBody {
+    pub remote: String,
+    pub src_path: String,
+    pub dst_path: String,
+    pub source: Option<String>,
+    pub no_cache: Option<bool>,
+}
+
+pub async fn rename_file_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<RenameBody>,
+) -> Result<Json<ApiResponse<u64>>, AppError> {
+    use crate::rclone::commands::filesystem::rename_file;
+    let jobid = rename_file(
+        state.app_handle.clone(),
+        body.remote,
+        body.src_path,
+        body.dst_path,
+        body.source,
+        body.no_cache,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(jobid)))
+}
+
+pub async fn rename_dir_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<RenameBody>,
+) -> Result<Json<ApiResponse<u64>>, AppError> {
+    use crate::rclone::commands::filesystem::rename_dir;
+    let jobid = rename_dir(
+        state.app_handle.clone(),
+        body.remote,
+        body.src_path,
+        body.dst_path,
+        body.source,
+        body.no_cache,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(jobid)))
+}
+
+#[derive(Deserialize)]
 pub struct RemotePathsBody {
     pub remote: String,
     pub path: Option<String>,
@@ -467,6 +513,54 @@ pub async fn get_remote_paths_handler(
     .map_err(anyhow::Error::msg)
     .map_err(AppError::BadRequest)?;
     Ok(Json(ApiResponse::success(value)))
+}
+
+#[derive(Deserialize)]
+pub struct StreamRemoteFileQuery {
+    pub remote: String,
+    pub path: String,
+}
+
+pub async fn stream_remote_file_handler(
+    State(state): State<WebServerState>,
+    Query(query): Query<StreamRemoteFileQuery>,
+) -> Result<impl IntoResponse, AppError> {
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = state.app_handle.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+
+    let rclone_state = state
+        .app_handle
+        .state::<crate::utils::types::core::RcloneState>();
+    let client = &rclone_state.client;
+
+    let response = backend
+        .fetch_file_stream(client, &query.remote, &query.path)
+        .await
+        .map_err(|e| AppError::InternalServerError(anyhow::Error::msg(e)))?;
+
+    if !response.status().is_success() {
+        return Err(AppError::BadRequest(anyhow::Error::msg(format!(
+            "Failed to fetch remote file ({}): {}/{}",
+            response.status(),
+            query.remote,
+            query.path
+        ))));
+    }
+
+    let content_type = response
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("application/octet-stream")
+        .to_string();
+
+    let body = axum::body::Body::from_stream(response.bytes_stream());
+
+    Ok(axum::response::Response::builder()
+        .header(header::CONTENT_TYPE, content_type)
+        .body(body)
+        .map_err(|e| AppError::InternalServerError(anyhow::Error::msg(e.to_string())))?)
 }
 
 #[derive(Deserialize)]

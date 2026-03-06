@@ -32,7 +32,6 @@ pub async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
         // 3. Logging success/failure
         if let Err(e) = crate::rclone::backend::connectivity::ensure_connectivity_or_fallback(
             &backend_manager,
-            app_handle,
             &client,
             BACKEND_CONNECTIVITY_TIMEOUT,
         )

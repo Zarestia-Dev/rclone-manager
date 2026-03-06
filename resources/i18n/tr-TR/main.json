@@ -2045,6 +2045,12 @@
         "label": "Klasör adı",
         "placeholder": "Klasör adını girin"
       },
+      "rename": {
+        "title": "Yeniden Adlandır",
+        "label": "Yeni ad",
+        "placeholder": "Yeni adı girin",
+        "confirm": "Yeniden Adlandır"
+      },
       "emptyTrash": {
         "title": "Çöpü Boşalt",
         "message": "{{remote}} içindeki çöpe atılmış dosyalar kaldırılsın mı?"
@@ -2076,6 +2082,7 @@
       "openNewTab": "Yeni Sekmede Aç",
       "copyPath": "Yolu Kopyala",
       "newFolder": "Yeni Klasör",
+      "rename": "Yeniden Adlandır",
       "refresh": "Yenile",
       "properties": "Özellikler",
       "reload": "Yeniden Yükle",
@@ -2119,6 +2126,7 @@
       "rmdirsStarted": "Boş klasörler kaldırılıyor: \"{{name}}\"...",
       "deleteStarted": "{{count}} öge siliniyor...",
       "pasteComplete": "Yapıştırma işlemi tamamlandı",
+      "renameStarted": "Yeniden adlandırma işlemi başlatıldı",
       "undoComplete": "Geri alma başarılı",
       "redoComplete": "Yineleme başarılı"
     }

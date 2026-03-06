@@ -4,8 +4,6 @@
   animate.enter="onboarding-entrance-enter"
   animate.leave="onboarding-entrance-leave"
 >
-  <div class="floating-shape"></div>
-
   @if (animationState() === 'loading') {
     <app-loading-overlay
       animate.enter="fade-in-out-enter"

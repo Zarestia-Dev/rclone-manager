@@ -100,8 +100,8 @@ mod tests {
         info.os = Some("linux".to_string());
         info.arch = Some("amd64".to_string());
 
-        assert_eq!(info.version(), Some("v1.66.0".to_string()));
-        assert_eq!(info.os(), Some("linux".to_string()));
+        assert_eq!(info.version, Some("v1.66.0".to_string()));
+        assert_eq!(info.os, Some("linux".to_string()));
         assert_eq!(info.arch.as_deref(), Some("amd64"));
     }
 }

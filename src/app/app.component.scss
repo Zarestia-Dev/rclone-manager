@@ -8,22 +8,10 @@
   background-color: var(--window-bg-color);
   border-radius: var(--app-border-radius);
 
-  .home-content {
+  app-home {
     flex: 1;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-  }
-
-  .tabs {
-    @media (min-width: 600px) {
-      display: flex;
-      justify-content: space-around;
-      align-items: center;
-      height: 48px;
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
-    }
   }
 }

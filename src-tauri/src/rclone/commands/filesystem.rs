@@ -564,3 +564,112 @@ pub async fn upload_file(
 
     Ok("Upload successful".to_string())
 }
+
+#[tauri::command]
+pub async fn rename_file(
+    app: AppHandle,
+    remote: String,
+    src_path: String,
+    dst_path: String,
+    source: Option<String>,
+    no_cache: Option<bool>,
+) -> Result<u64, String> {
+    let state = app.state::<RcloneState>();
+    debug!(
+        "🖊️ Renaming file: remote={} src_path={} dst_path={}",
+        remote, src_path, dst_path
+    );
+
+    let src_full = build_full_path(&remote, &src_path);
+    let dst_full = build_full_path(&remote, &dst_path);
+
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let url = backend.url_for(operations::MOVEFILE);
+
+    let payload = json!({
+        "srcFs": remote.clone(),
+        "srcRemote": src_path.clone(),
+        "dstFs": remote.clone(),
+        "dstRemote": dst_path.clone(),
+        "_async": true,
+    });
+
+    let (jobid, _, _) = submit_job(
+        app.clone(),
+        state.client.clone(),
+        backend.inject_auth(state.client.clone().post(&url)),
+        payload,
+        JobMetadata {
+            remote_name: remote.clone(),
+            job_type: JobType::RenameFile,
+            operation_name: "Rename File".to_string(),
+            source: src_full,
+            destination: dst_full,
+            profile: None,
+            origin: source
+                .as_deref()
+                .map(crate::utils::types::origin::Origin::parse),
+            group: None,
+            no_cache: no_cache.unwrap_or(false),
+        },
+    )
+    .await?;
+
+    Ok(jobid)
+}
+
+#[tauri::command]
+pub async fn rename_dir(
+    app: AppHandle,
+    remote: String,
+    src_path: String,
+    dst_path: String,
+    source: Option<String>,
+    no_cache: Option<bool>,
+) -> Result<u64, String> {
+    let state = app.state::<RcloneState>();
+    debug!(
+        "🖊️ Renaming directory: remote={} src_path={} dst_path={}",
+        remote, src_path, dst_path
+    );
+
+    let src_full = build_full_path(&remote, &src_path);
+    let dst_full = build_full_path(&remote, &dst_path);
+
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let url = backend.url_for(sync::MOVE);
+
+    // For sync/move (directories), fs means the root of the copy
+    let payload = json!({
+        "srcFs": src_full.clone(),
+        "dstFs": dst_full.clone(),
+        "createEmptySrcDirs": true,
+        "deleteEmptySrcDirs": true,
+        "_async": true,
+    });
+
+    let (jobid, _, _) = submit_job(
+        app.clone(),
+        state.client.clone(),
+        backend.inject_auth(state.client.clone().post(&url)),
+        payload,
+        JobMetadata {
+            remote_name: remote.clone(),
+            job_type: JobType::RenameDir,
+            operation_name: "Rename Directory".to_string(),
+            source: src_full.clone(),
+            destination: dst_full.clone(),
+            profile: None,
+            origin: source
+                .as_deref()
+                .map(crate::utils::types::origin::Origin::parse),
+            group: None,
+            no_cache: no_cache.unwrap_or(false),
+        },
+    )
+    .await?;
+
+    Ok(jobid)
+}

@@ -6,7 +6,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { AppTab } from '@app/types';
 
 @Component({
-  selector: 'app-tabs-buttons',
+  selector: 'app-tabs',
   standalone: true,
   imports: [MatIconModule, MatButtonModule, MatTooltipModule, TranslateModule],
   templateUrl: './tabs-buttons.component.html',
