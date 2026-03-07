@@ -229,13 +229,9 @@ pub struct RuntimeSettings {
 
     #[setting(
         label = "settings.runtime.dashboard_layout.label",
-        description = "settings.runtime.dashboard_layout.description",
-        skip
+        description = "settings.runtime.dashboard_layout.description"
     )]
-    pub dashboard_layout: Option<Vec<String>>,
-
-    #[setting(skip)]
-    pub active_backend: String,
+    pub dashboard_layout: Vec<String>,
 }
 
 impl Default for RuntimeSettings {
@@ -249,8 +245,7 @@ impl Default for RuntimeSettings {
             rclone_skipped_updates: vec![],
             rclone_update_channel: "stable".to_string(),
             flatpak_warn: true,
-            dashboard_layout: None,
-            active_backend: "Local".to_string(),
+            dashboard_layout: vec![],
         }
     }
 }
@@ -296,17 +291,15 @@ pub struct NautilusSettings {
 
     #[setting(
         label = "settings.nautilus.starred.label",
-        description = "settings.nautilus.starred.description",
-        skip
+        description = "settings.nautilus.starred.description"
     )]
-    pub starred: Option<Vec<Value>>,
+    pub starred: Vec<Value>,
 
     #[setting(
         label = "settings.nautilus.bookmarks.label",
-        description = "settings.nautilus.bookmarks.description",
-        skip
+        description = "settings.nautilus.bookmarks.description"
     )]
-    pub bookmarks: Option<Vec<Value>>,
+    pub bookmarks: Vec<Value>,
 }
 
 impl Default for NautilusSettings {
@@ -317,8 +310,8 @@ impl Default for NautilusSettings {
             list_icon_size: 40,
             show_hidden_items: false,
             sort_key: "name-asc".to_string(),
-            starred: Some(vec![]),
-            bookmarks: Some(vec![]),
+            starred: vec![],
+            bookmarks: vec![],
         }
     }
 }

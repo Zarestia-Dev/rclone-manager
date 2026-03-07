@@ -37,9 +37,6 @@ async fn update_tray_menu(_app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-// Use the cached version from core - no more block_on!
-use super::core::is_active_backend_local;
-
 /// Spawn background monitoring loop for engine health checks
 ///
 /// This loop runs continuously and:
@@ -58,11 +55,6 @@ fn spawn_monitoring_loop(app_handle: AppHandle) {
             // Check shutdown
             if app_handle.state::<RcloneState>().is_shutting_down() {
                 break;
-            }
-
-            // Skip if remote backend is active
-            if !is_active_backend_local() {
-                continue;
             }
 
             // Local backend: ensure engine is healthy
@@ -98,18 +90,10 @@ impl RcApiEngine {
     pub async fn init(&mut self, app: &AppHandle) {
         let app_handle = app.clone();
 
-        // Start engine only if Local backend is active
-        if is_active_backend_local() {
-            if self.validate_config(app).await {
-                start(self, app).await;
-            } else {
-                warn!("⚠️ Engine startup aborted due to configuration validation failure");
-            }
+        if self.validate_config(app).await {
+            start(self, app).await;
         } else {
-            // Remote backend: skip local engine initialization
-            // Note: Cache keys are refreshed in core/initialization.rs with proper timeout handling
-            // We should NOT do it here as this function is running in a blocking context during startup
-            info!("📡 Active backend is remote, skipping local engine initialization");
+            warn!("⚠️ Engine startup aborted due to configuration validation failure");
         }
 
         // Start background monitoring loop
@@ -120,10 +104,7 @@ impl RcApiEngine {
         info!("🛑 Shutting down Rclone engine...");
         self.should_exit = true;
 
-        // Only stop process for Local backends
-        if is_active_backend_local()
-            && let Err(e) = self.kill_process(app).await
-        {
+        if let Err(e) = self.kill_process(app).await {
             error!("Failed to stop engine cleanly: {e}");
         }
 
@@ -142,12 +123,6 @@ impl RcApiEngine {
 /// 4. Waits for API readiness
 /// 5. Triggers post-start setup (settings, cache refresh)
 pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
-    // Only start process for Local backends
-    if !is_active_backend_local() {
-        debug!("📡 Active backend is remote, skipping process start");
-        return;
-    }
-
     // 1. Check if engine is blocked
     if let Some(reason) = engine.start_blocked_reason() {
         debug!("⏸️ Engine cannot start: {}", reason);

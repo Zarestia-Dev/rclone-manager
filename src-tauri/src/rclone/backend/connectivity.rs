@@ -182,7 +182,6 @@ pub async fn ensure_connectivity_or_fallback(
 //     // 2. Switch active index to Local
 //     manager.switch_to_local_index().await?;
 
-//     crate::rclone::engine::core::set_active_is_local(true);
 //     info!("🔄 Fallback switched to internal Local backend state");
 
 //     // 3. Start Local engine if not running (lazy init on fallback)

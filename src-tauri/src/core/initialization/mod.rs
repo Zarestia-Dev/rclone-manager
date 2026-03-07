@@ -5,7 +5,6 @@ pub mod scheduler;
 
 use crate::core::settings::AppSettingsManager;
 use crate::rclone::backend::BackendManager;
-use crate::rclone::engine::core::is_active_backend_local;
 use crate::rclone::state::watcher::{start_mounted_remote_watcher, start_serve_watcher};
 use crate::utils::types::core::{EngineState, RcloneState};
 use log::{debug, error, info};
@@ -50,21 +49,7 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
         let mut engine = engine_state.lock().await;
 
         if !engine.running && !engine.path_error && !engine.password_error {
-            if is_active_backend_local() {
-                info!("🚀 Starting Local engine (lazy init)...");
-            } else {
-                info!("📡 Remote backend active – starting monitoring loop only...");
-            }
             engine.init(&app_handle).await;
-        }
-
-        // If Local and engine failed to start, abort further startup steps
-        if is_active_backend_local() && (engine.path_error || engine.password_error) {
-            info!(
-                "⚠️ Engine is in error state, skipping backend connectivity checks and cache refresh"
-            );
-            crate::rclone::engine::lifecycle::mark_startup_complete();
-            return;
         }
     }
 

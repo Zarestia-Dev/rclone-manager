@@ -6,6 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { PathDisplayConfig } from '../../types';
+import { isLocalPath } from 'src/app/shared/utils';
 
 @Component({
   selector: 'app-path-display',
@@ -83,9 +84,7 @@ export class PathDisplayComponent implements OnInit {
   @Output() openPath = new EventEmitter<string>();
   isMobile = false;
 
-  isLocalPath(path: string): boolean {
-    return !!(path && (path.startsWith('/') || path.match(/^[A-Za-z]:\\/)));
-  }
+  isLocalPath = isLocalPath;
 
   onOpenPath(path: string): void {
     this.openPath.emit(path);

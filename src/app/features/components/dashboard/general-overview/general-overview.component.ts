@@ -198,7 +198,7 @@ export class GeneralOverviewComponent implements OnInit {
   }
 
   resetLayout(): void {
-    this.appSettingsService.saveSetting('runtime', 'dashboard_layout', null);
+    this.appSettingsService.saveSetting('runtime', 'dashboard_layout', []);
     this.dashboardPanels.set(ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible })));
     this.showSnackbar(this.translate.instant('generalOverview.layout.resetSuccess'));
   }

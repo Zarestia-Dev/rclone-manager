@@ -122,3 +122,13 @@ export function getDefaultAnswerFromQuestion(
     opt.ValueStr || opt.DefaultStr || String(opt.Default || '') || opt.Examples?.[0]?.Value || ''
   );
 }
+
+/** * Checks if a given path is a local filesystem path.
+ * Recognizes Unix-style absolute paths (starting with '/') and Windows-style paths (e.g., 'C:\').
+ *
+ * @param path - The path string to check.
+ * @returns True if the path is a local filesystem path, false otherwise.
+ */
+export function isLocalPath(path: string): boolean {
+  return path.startsWith('/') || /^[a-zA-Z]:\\/.test(path);
+}

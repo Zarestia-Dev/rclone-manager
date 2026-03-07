@@ -225,7 +225,6 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   private async refreshData(): Promise<void> {
     await this.remoteFacadeService.refreshAll();
-    this.remoteFacadeService.loadDiskUsageInBackground(this.remotes());
   }
 
   // ============================================================================

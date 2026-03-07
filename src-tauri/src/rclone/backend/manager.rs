@@ -304,8 +304,6 @@ impl BackendManager {
 
         *self.active_index.write().await = new_index;
 
-        crate::rclone::engine::core::set_active_is_local(is_local);
-
         // Tasks restored for new backend (caller must trigger scheduler reload)
         if let (Some(_), Some(cache)) = (scheduler, task_cache) {
             let task_count = cache.get_tasks_for_backend(name).await.len();

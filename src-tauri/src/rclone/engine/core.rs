@@ -1,22 +1,8 @@
 use crate::utils::types::core::RcApiEngine;
 use std::fmt;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Default port for the rclone API
 pub const DEFAULT_API_PORT: u16 = 51900;
-
-/// Cached flag: is the active backend local?
-static ACTIVE_IS_LOCAL: AtomicBool = AtomicBool::new(true);
-
-/// Check if active backend is local (fast, no async)
-pub fn is_active_backend_local() -> bool {
-    ACTIVE_IS_LOCAL.load(Ordering::Relaxed)
-}
-
-/// Set the active backend local flag (call when switching backends)
-pub fn set_active_is_local(is_local: bool) {
-    ACTIVE_IS_LOCAL.store(is_local, Ordering::Relaxed);
-}
 
 /// Why the engine cannot start
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -104,13 +90,5 @@ mod tests {
         engine.password_error = false;
         engine.path_error = true;
         assert_eq!(engine.start_blocked_reason(), Some(PauseReason::Path));
-    }
-
-    #[test]
-    fn test_active_is_local() {
-        set_active_is_local(false);
-        assert!(!is_active_backend_local());
-        set_active_is_local(true);
-        assert!(is_active_backend_local());
     }
 }
