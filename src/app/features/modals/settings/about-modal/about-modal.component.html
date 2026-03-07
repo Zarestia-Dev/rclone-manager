@@ -750,11 +750,11 @@
                   </div>
                   <div class="detail-row">
                     <span class="detail-label">{{ 'modals.about.memMallocs' | translate }}</span>
-                    <span class="detail-value">{{ memoryStats()!.Mallocs }}</span>
+                    <span class="detail-value">{{ memoryStats()!.Mallocs | number }}</span>
                   </div>
                   <div class="detail-row">
                     <span class="detail-label">{{ 'modals.about.memFrees' | translate }}</span>
-                    <span class="detail-value">{{ memoryStats()!.Frees }}</span>
+                    <span class="detail-value">{{ memoryStats()!.Frees | number }}</span>
                   </div>
                 </div>
               </div>
@@ -794,7 +794,7 @@
                     <span class="detail-label">{{
                       'modals.about.memHeapObjects' | translate
                     }}</span>
-                    <span class="detail-value">{{ memoryStats()!.HeapObjects }}</span>
+                    <span class="detail-value">{{ memoryStats()!.HeapObjects | number }}</span>
                   </div>
                 </div>
               </div>

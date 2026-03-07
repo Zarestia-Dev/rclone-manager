@@ -55,8 +55,12 @@
       [cdkMenuTriggerFor]="menu"
       [attr.aria-label]="'titlebar.appMenu' | translate"
       class="menu-button"
-      [matBadge]="restartRequired() || updateAvailable() || rcloneUpdateAvailable() ? '!' : null"
-      [matBadgeColor]="restartRequired() ? 'warn' : 'primary'"
+      [matBadge]="
+        restartRequired() || rcloneRestartRequired() || updateAvailable() || rcloneUpdateAvailable()
+          ? '!'
+          : null
+      "
+      [matBadgeColor]="restartRequired() || rcloneRestartRequired() ? 'warn' : 'primary'"
       matBadgePosition="below before"
       matBadgeSize="small"
       [matTooltip]="updateTooltip()"
@@ -137,7 +141,9 @@
       [attr.aria-label]="'titlebar.menu.about' | translate"
     >
       <span>{{ 'titlebar.menu.about' | translate }}</span>
-      @if (restartRequired() || updateAvailable() || rcloneUpdateAvailable()) {
+      @if (
+        restartRequired() || rcloneRestartRequired() || updateAvailable() || rcloneUpdateAvailable()
+      ) {
         <span
           [matBadge]="aboutMenuBadge()"
           matBadgePosition="below before"

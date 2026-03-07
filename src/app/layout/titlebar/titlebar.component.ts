@@ -67,18 +67,26 @@ export class TitlebarComponent implements OnInit {
   readonly rcloneUpdateAvailable = computed(
     () => this.rcloneUpdateService.updateStatus().available
   );
+
+  readonly rcloneRestartRequired = computed(
+    () => this.rcloneUpdateService.updateStatus().readyToRestart
+  );
+
   readonly restartRequired = this.appUpdaterService.restartRequired;
 
   currentTheme = this.windowService.theme;
 
   readonly updateTooltip = computed(() => {
+    const appRestart = this.restartRequired();
+    const rcloneRestart = this.rcloneRestartRequired();
+
     if (this.updateAvailable() && this.rcloneUpdateAvailable()) {
       return this.translateService.instant('titlebar.updates.all');
     } else if (this.updateAvailable()) {
       return this.translateService.instant('titlebar.updates.app');
     } else if (this.rcloneUpdateAvailable()) {
       return this.translateService.instant('titlebar.updates.rclone');
-    } else if (this.restartRequired()) {
+    } else if (appRestart || rcloneRestart) {
       return this.translateService.instant('titlebar.updates.restart');
     }
     return '';
@@ -163,7 +171,11 @@ export class TitlebarComponent implements OnInit {
   ];
 
   readonly aboutMenuBadge = computed(() => {
-    if (this.restartRequired()) return '!';
+    // keep the old behaviour where updates available on both sides show a
+    // "2"; otherwise always show a single bang when *anything* needs
+    // attention.  this now includes either restart flag so that the about
+    // button also indicates an rclone pending restart.
+    if (this.restartRequired() || this.rcloneRestartRequired()) return '!';
     if (this.updateAvailable() && this.rcloneUpdateAvailable()) {
       return '2';
     } else if (this.updateAvailable() || this.rcloneUpdateAvailable()) {

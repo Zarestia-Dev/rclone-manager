@@ -8,10 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - **Language**: Added Spanish language support. (Thanks to @dikler!)
-- **Tray**: Added visual task indicator to system tray icon when transfers are active (Resolves #61).
+- **Tray**: Added visual task indicator to system tray icon when transfers are active. (Resolves #61).
 - Nautilus Component: Allow the edit text based files. Using rclone rc operations/uploadfile to save.
 - Nautilus Component: Added delete, move and copy operations support.
 - Nautilus Component: Added vertical split mode support.
+- Some cloud providers icons added to the app.
 
 ### Changed
 - **Tray**: Optimized performance of tray unmount and browse actions by eliminating global config lookups.

@@ -155,4 +155,7 @@ export const BASE_ICONS: Record<string, string> = {
   rclone: 'assets/rclone-symbolic.svg',
   aws: 'assets/icons/remotes/s3.svg',
   filen: 'assets/icons/remotes/filen.svg',
+  mailru: 'assets/icons/remotes/mailru.svg',
+  pikpak: 'assets/icons/remotes/pikpak.svg',
+  swift: 'assets/icons/remotes/swift.svg',
 };
