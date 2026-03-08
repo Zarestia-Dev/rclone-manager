@@ -9,7 +9,6 @@ pub mod security;
 pub mod settings;
 pub mod tray;
 
-#[cfg(feature = "web-server")]
 pub mod cli;
 #[cfg(not(feature = "web-server"))]
 pub mod commands;

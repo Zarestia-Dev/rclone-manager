@@ -10,7 +10,6 @@ use log::{debug, error, info};
 use std::sync::atomic::AtomicBool;
 use tauri::Manager;
 
-#[cfg(feature = "web-server")]
 use clap::Parser;
 #[cfg(not(feature = "web-server"))]
 use tauri::WindowEvent;
@@ -46,11 +45,13 @@ use crate::{
 
 // CONDITIONAL IMPORTS: Desktop Tray
 // =============================================================================
+#[cfg(all(desktop, not(feature = "web-server")))]
+use crate::core::tray::actions::handle_browse_remote;
 #[cfg(desktop)]
 use crate::core::tray::{
     actions::{
-        handle_bisync_profile, handle_browse_remote, handle_copy_profile, handle_mount_profile,
-        handle_move_profile, handle_serve_profile, handle_stop_all_jobs, handle_stop_all_serves,
+        handle_bisync_profile, handle_copy_profile, handle_mount_profile, handle_move_profile,
+        handle_serve_profile, handle_stop_all_jobs, handle_stop_all_serves,
         handle_stop_bisync_profile, handle_stop_copy_profile, handle_stop_move_profile,
         handle_stop_serve_profile, handle_stop_sync_profile, handle_sync_profile,
         handle_unmount_profile,
@@ -71,23 +72,36 @@ use crate::utils::io::network::monitor_network_changes;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // -------------------------------------------------------------------------
-    // Parse CLI args (web-server mode only)
+    // Parse CLI args
     // -------------------------------------------------------------------------
-    #[cfg(feature = "web-server")]
-    let cli_args = {
-        let args = crate::core::cli::CliArgs::parse();
-        // Validate CLI args early - fail fast with clear error
-        if let Err(e) = args.validate() {
-            eprintln!("❌ Invalid CLI arguments: {}", e);
-            std::process::exit(1);
+    let cli_args: crate::core::cli::CliArgs = match crate::core::cli::CliArgs::try_parse() {
+        Ok(args) => {
+            // Validate CLI args early - fail fast for logical inconsistencies
+            if let Err(e) = args.validate() {
+                eprintln!("❌ Invalid CLI arguments: {}", e);
+                std::process::exit(1);
+            }
+            args
         }
-        args
+        Err(e) => {
+            // If it's a help or version request, clap handles it and exits.
+            // For other errors (like invalid flags):
+            // - On Headless: fail fast as it's likely a config error in Docker/Script.
+            // - On Desktop: we might want to be more lenient, but claps default
+            //               behavior is to print and exit.
+            // Given we use Flatten, invalid flags for one feature might trigger errors.
+            // For now, mirroring claps default behavior but allowing future flexibility.
+            e.exit();
+        }
     };
 
     // -------------------------------------------------------------------------
     // Initialize Tauri Builder
     // -------------------------------------------------------------------------
     let mut builder = tauri::Builder::default();
+
+    // Manage CLI args state early so it's available for path resolution
+    builder = builder.manage(cli_args.clone());
 
     // -------------------------------------------------------------------------
     // Custom Protocol for Remote File Streaming (Desktop)
@@ -270,11 +284,6 @@ pub fn run() {
     }
 
     // -------------------------------------------------------------------------
-    // Core Plugins
-    // -------------------------------------------------------------------------
-    builder = builder.plugin(tauri_plugin_shell::init());
-
-    // -------------------------------------------------------------------------
     // Updater Plugin (Desktop + Updater feature)
     // -------------------------------------------------------------------------
     #[cfg(all(desktop, feature = "updater"))]
@@ -353,24 +362,18 @@ pub fn run() {
     builder = builder
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_os::init())
-        .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_opener::init());
 
     // Desktop-only plugins (not needed in headless/web-server mode)
-    #[cfg(not(feature = "web-server"))]
+    #[cfg(feature = "desktop")]
     {
         builder = builder
             .plugin(tauri_plugin_dialog::init())
+            .plugin(tauri_plugin_shell::init())
             .plugin(tauri_plugin_window_state::Builder::default().build());
     }
 
-    builder = builder.setup(move |app| {
-        setup_app(
-            app,
-            #[cfg(feature = "web-server")]
-            cli_args.clone(),
-        )
-    });
+    builder = builder.setup(move |app| setup_app(app, cli_args.clone()));
 
     // -------------------------------------------------------------------------
     // Tray Menu Events (Desktop)
@@ -427,7 +430,7 @@ pub fn run() {
 
 fn setup_app(
     app: &mut tauri::App,
-    #[cfg(feature = "web-server")] cli_args: crate::core::cli::CliArgs,
+    cli_args: crate::core::cli::CliArgs,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let app_handle = app.handle();
     let app_paths = AppPaths::setup(app_handle)?;
@@ -561,7 +564,6 @@ fn setup_app(
     // Load Settings & Initialize State
     // -------------------------------------------------------------------------
 
-    #[cfg(feature = "web-server")]
     app.manage(cli_args.clone());
 
     let settings = rcman_manager
@@ -652,23 +654,23 @@ fn setup_app(
 
         info!(
             "🚀 Initializing Web Server on {}:{}...",
-            args.host, args.port
+            args.headless.host, args.headless.port
         );
-        if args.user.is_some() {
+        if args.headless.user.is_some() {
             info!("🔐 Basic authentication enabled");
         }
-        if args.tls_cert.is_some() && args.tls_key.is_some() {
+        if args.headless.tls_cert.is_some() && args.headless.tls_key.is_some() {
             info!("🔒 TLS/HTTPS enabled");
         }
 
         tauri::async_runtime::spawn(async move {
             if let Err(e) = start_web_server(
                 web_handle,
-                args.host.clone(),
-                args.port,
+                args.headless.host.clone(),
+                args.headless.port,
                 args.auth_credentials(),
-                args.tls_cert.clone(),
-                args.tls_key.clone(),
+                args.headless.tls_cert.clone(),
+                args.headless.tls_key.clone(),
             )
             .await
             {
@@ -735,19 +737,22 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent)
             TrayAction::StopServeProfile(remote, serve_id) => {
                 handle_stop_serve_profile(app.clone(), &remote, &serve_id)
             }
-            TrayAction::Browse(remote) => handle_browse_remote(app, &remote),
+            TrayAction::Browse(_remote) => {
+                #[cfg(not(feature = "web-server"))]
+                handle_browse_remote(app, &_remote);
+            }
             TrayAction::BrowseInApp(remote) => {
                 #[cfg(not(feature = "web-server"))]
                 core::tray::actions::handle_browse_in_app(app, &remote);
                 #[cfg(feature = "web-server")]
                 {
                     let args = app.state::<crate::core::cli::CliArgs>();
-                    let host = if args.host == "0.0.0.0" {
+                    let host = if args.headless.host == "0.0.0.0" {
                         "127.0.0.1"
                     } else {
-                        &args.host
+                        &args.headless.host
                     };
-                    let protocol = if args.tls_cert.is_some() {
+                    let protocol = if args.headless.tls_cert.is_some() {
                         "https"
                     } else {
                         "http"
@@ -757,7 +762,7 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent)
                         "{}://{}:{}?browse={}",
                         protocol,
                         host,
-                        args.port,
+                        args.headless.port,
                         urlencoding::encode(&remote)
                     );
 
@@ -788,17 +793,17 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent)
         #[cfg(feature = "web-server")]
         "open_web_ui" => {
             let args = app.state::<crate::core::cli::CliArgs>();
-            let host = if args.host == "0.0.0.0" {
+            let host = if args.headless.host == "0.0.0.0" {
                 "127.0.0.1"
             } else {
-                &args.host
+                &args.headless.host
             };
-            let protocol = if args.tls_cert.is_some() {
+            let protocol = if args.headless.tls_cert.is_some() {
                 "https"
             } else {
                 "http"
             };
-            let url = format!("{}://{}:{}", protocol, host, args.port);
+            let url = format!("{}://{}:{}", protocol, host, args.headless.port);
 
             use tauri_plugin_opener::OpenerExt;
             if let Err(e) = app.opener().open_url(&url, None::<&str>) {

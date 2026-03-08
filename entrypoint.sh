@@ -20,10 +20,12 @@ chown -R rclone-manager:rclone-manager /home/rclone-manager /app /data /config 2
 # =============================================================================
 # 2. Runtime Rclone Provisioning
 # =============================================================================
-# The rclone binary is deliberately kept out of the Docker image to allow
-# the application's internal update mechanism to replace it. We check if it 
-# exists on the persistent volume on startup, downloading it if absent.
-RCLONE_BIN="/data/rclone-bin/rclone"
+# Check if rclone exists in /data (either as 'rclone' or 'rclone-bin/rclone')
+if [ -x "/data/rclone" ]; then
+    RCLONE_BIN="/data/rclone"
+else
+    RCLONE_BIN="/data/rclone-bin/rclone"
+fi
 
 if [ ! -x "$RCLONE_BIN" ]; then
     ARCH=$(dpkg --print-architecture)
@@ -44,15 +46,17 @@ if [ ! -x "$RCLONE_BIN" ]; then
     
     unzip -qo /tmp/rclone-dl/rclone.zip -d /tmp/rclone-dl
     
-    cp /tmp/rclone-dl/rclone-*-linux-${RCLONE_ARCH}/rclone "$RCLONE_BIN"
-    chmod 755 "$RCLONE_BIN"
-    chown rclone-manager:rclone-manager "$RCLONE_BIN"
+    cp /tmp/rclone-dl/rclone-*-linux-${RCLONE_ARCH}/rclone "/data/rclone-bin/rclone"
+    chmod 755 "/data/rclone-bin/rclone"
+    chown rclone-manager:rclone-manager "/data/rclone-bin/rclone"
+    RCLONE_BIN="/data/rclone-bin/rclone"
     
     rm -rf /tmp/rclone-dl
 fi
 
-# Add the provisioned binary path to the session execution context
-export PATH="/data/rclone-bin:${PATH}"
+# Add the directory of the found/downloaded binary to PATH
+RCLONE_DIR=$(dirname "$RCLONE_BIN")
+export PATH="${RCLONE_DIR}:${PATH}"
 
 # =============================================================================
 # 3. Virtual Display Initialization

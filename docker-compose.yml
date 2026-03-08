@@ -7,6 +7,9 @@ x-common: &common
     PUID: ${PUID:-1000}
     PGID: ${PGID:-1000}
     RUST_LOG: ${RUST_LOG:-info}
+    RCLONE_MANAGER_DATA_DIR: /data
+    RCLONE_MANAGER_CACHE_DIR: /data/cache
+    RCLONE_MANAGER_LOG_DIR: /data/logs
 
 services:
   rclone-manager:
@@ -116,6 +119,26 @@ services:
       start_period: 10s
     profiles:
       - auth-tls
+
+  rclone-manager-host:
+    <<: *common
+    container_name: rclone-manager-host
+    ports:
+      - "${RCLONE_MANAGER_PORT:-8080}:8080"
+      - "53682:53682"
+    volumes:
+      - /home/hakan/.local/share/com.rclone.manager:/data
+      - /home/hakan/.config/rclone:/config
+    environment:
+      <<: *common-env
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    profiles:
+      - host-test
 
 volumes:
   rclone-data:

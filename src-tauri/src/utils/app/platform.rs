@@ -47,8 +47,11 @@ pub fn manage_flatpak_autostart(enable: bool) -> Result<(), String> {
         let content = r#"[Desktop Entry]
 Type=Application
 Name=RClone Manager
-Comment=RClone Manager flatpak autostart entry (Not handled by tauri)
-Exec=/usr/bin/flatpak run io.github.zarestia_dev.rclone-manager --tray
+Comment=RClone Manager Flatpak autostart entry
+Exec=/usr/bin/flatpak run io.github.zarestia_dev.rclone-manager --tray"
+Icon=io.github.zarestia_dev.rclone-manager
+Categories=Utility;Network;
+Keywords=rclone;cloud;backup;sync;storage;
 X-Flatpak=io.github.zarestia_dev.rclone-manager
 Terminal=false
 "#;

@@ -138,7 +138,9 @@ ENV DISPLAY=:99 \
     HOME=/home/rclone-manager \
     XDG_DATA_HOME=/home/rclone-manager/.local/share \
     XDG_CONFIG_HOME=/home/rclone-manager/.config \
-    RCLONE_CONFIG=/config/rclone.conf
+    RCLONE_CONFIG=/config/rclone.conf \
+    RCLONE_MANAGER_DATA_DIR=/data \
+    RCLONE_MANAGER_CACHE_DIR=/data/cache
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD []

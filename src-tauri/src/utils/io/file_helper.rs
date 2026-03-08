@@ -1,14 +1,9 @@
-#[cfg(not(feature = "web-server"))]
 use log::{debug, error};
-#[cfg(not(feature = "web-server"))]
 use tauri::{AppHandle, Window, command};
-#[cfg(all(desktop, not(feature = "web-server")))]
 use tauri_plugin_dialog::DialogExt;
-#[cfg(not(feature = "web-server"))]
 use tauri_plugin_opener::OpenerExt;
 
 #[command]
-#[cfg(all(desktop, not(feature = "web-server")))]
 pub async fn get_folder_location(
     app: AppHandle,
     require_empty: bool,
@@ -85,19 +80,6 @@ pub async fn get_folder_location(
     Ok(Some(folder))
 }
 
-/// Folder picker is not available on mobile
-#[command]
-#[cfg(not(desktop))]
-pub async fn get_folder_location(
-    _app: AppHandle,
-    _require_empty: bool,
-) -> Result<Option<String>, String> {
-    Err(crate::localized_error!(
-        "backendErrors.file.pickerUnavailable"
-    ))
-}
-
-#[cfg(not(feature = "web-server"))]
 #[command]
 pub async fn open_in_files(
     app: tauri::AppHandle,
@@ -122,7 +104,6 @@ pub async fn open_in_files(
 }
 
 #[command]
-#[cfg(all(desktop, not(feature = "web-server")))]
 pub async fn get_file_location(window: Window) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::DialogExt;
     debug!("Opening file picker dialog...");
@@ -136,12 +117,4 @@ pub async fn get_file_location(window: Window) -> Result<Option<String>, String>
     debug!("File location: {file_location:?}");
 
     Ok(file_location)
-}
-
-#[command]
-#[cfg(not(desktop))]
-pub async fn get_file_location(_window: Window) -> Result<Option<String>, String> {
-    Err(crate::localized_error!(
-        "backendErrors.file.filePickerUnavailable"
-    ))
 }

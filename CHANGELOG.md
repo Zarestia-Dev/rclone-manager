@@ -4,28 +4,28 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [v0.2.2] - 2026-02-xx
+## [v0.2.2] - 2026-03-09
 
 ### Added
 - **Language**: Added Spanish language support. (Thanks to @dikler!)
 - **Tray**: Added visual task indicator to system tray icon when transfers are active. (Resolves #61).
+- **CLI**: Added `--data-dir`, `--cache-dir`, and `--logs-dir` flags for custom directory overrides.
+- **Docker**: Added `RCLONE_MANAGER_DATA_DIR`, `RCLONE_MANAGER_CACHE_DIR`, and `RCLONE_MANAGER_LOG_DIR` environment variables for native path overrides.
+- **Paths**: Implemented platform-native log directory resolution (Cache directory on Linux/Windows, Logs directory on macOS).
 - Nautilus Component: Allow the edit text based files. Using rclone rc operations/uploadfile to save.
 - Nautilus Component: Added delete, move and copy operations support.
 - Nautilus Component: Added vertical split mode support.
 - Some cloud providers icons added to the app.
 
 ### Changed
+- **CLI**: Structurally reorganized command-line arguments into `GeneralArgs` and `HeadlessArgs` for better maintainability and build-mode awareness.
+- **Build**: Optimized headless build by strictly feature-gating desktop-only plugins (`dialog`, `shell`, `window-state`).
 - **Tray**: Optimized performance of tray unmount and browse actions by eliminating global config lookups.
-- Removed Syntax Highlighting, added CodeMirror.
-- Nautilus Component: A lot of improvements and bug fixes.
-- Notification behavior improved.
-- Use Zoneless Change Detection.
-- On Rclone update, app now not auto restart the engine. User input needed.
 - **Docker**: Rclone binary no longer bundled in the image. Downloaded at first startup to a persistent volume.
 - **Docker**: Added `PUID` and `PGID` environment variable support for user/group mapping.
 - **Docker**: Entrypoint extracted to standalone `entrypoint.sh` with `gosu` privilege dropping.
 - **Docker**: Simplified volume layout (`/data` and `/config`).
-- **Docker**: Minimal Rust profile in build stage to reduce image build time.
+- **Environment**: Use Zoneless Change Detection and CodeMirror instead of Syntax Highlighting.
 
 ### Fixed
 - Fixed bug where remotes requiring sensitive fields like passwords or API keys (e.g., Filen) failed to create via UI due to being sent in plain text instead of an obscured format to the rclone RC API. (Fixed #128)

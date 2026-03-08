@@ -74,5 +74,4 @@ src-tauri/gen/
 # Docker files (don't include in build context)
 Dockerfile
 docker-compose*.yml
-entrypoint.sh
 .dockerignore

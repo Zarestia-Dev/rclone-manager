@@ -87,6 +87,23 @@
     </screenshot>
     </screenshots>
   <releases>
+    <release version="0.2.2" date="2026-03-08">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>CLI Overrides: Added --data-dir, --cache-dir, and --logs-dir flags for custom directory management.</li>
+          <li>Standardized Paths: Implemented platform-native paths for configuration, cache, and logs.</li>
+          <li>Cloud Native Docker: Improved environment variable support for seamless containerized deployments.</li>
+          <li>Nautilus Improvements: Enhanced file manager with split-view and better operation tracking.</li>
+          <li>Spanish language support added (Thanks to @dikler).</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>Optimized headless build by feature-gating desktop dependencies.</li>
+          <li>Improved system tray performance and visual indicators.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.1" date="2026-02-05">
       <description>
         <p>Added</p>

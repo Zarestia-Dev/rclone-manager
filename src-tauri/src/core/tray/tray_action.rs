@@ -78,6 +78,7 @@ impl TrayAction {
             "unmount_all" => return Some(Self::UnmountAll),
             "stop_all_jobs" => return Some(Self::StopAllJobs),
             "stop_all_serves" => return Some(Self::StopAllServes),
+            "show_app" | "open_web_ui" | "quit" => return None, // Handled separately in lib.rs
             _ => {}
         }
 

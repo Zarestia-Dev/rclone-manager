@@ -1,7 +1,6 @@
 use crate::core::settings::AppSettingsManager;
 use log::{error, info};
 use tauri::{AppHandle, Manager};
-use tauri_plugin_opener::OpenerExt;
 
 use crate::utils::types::origin::Origin;
 use crate::{
@@ -431,7 +430,9 @@ mod tests {
     }
 }
 
+#[cfg(not(feature = "web-server"))]
 pub fn handle_browse_remote(app: &AppHandle, remote_name: &str) {
+    use tauri_plugin_opener::OpenerExt;
     let remote = remote_name.to_string();
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
