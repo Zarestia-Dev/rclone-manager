@@ -51,7 +51,7 @@ sevenz-rust2 = "0.20.2"
 # rcman - Rust Config Manager library
 # Path is used for local development, version is used when path is not available (crates.io)
 # Note: keychain feature is added via target-specific dependencies below (not supported on Android/iOS)
-rcman = { path = "../../rcman", version = "0.1.5", features = ["backup", "derive", "profiles"] }
+rcman = { version = "0.1.6", features = ["backup", "derive", "profiles"] }
 
 urlencoding = "2.1"
 futures = { version = "0.3" }
@@ -87,11 +87,10 @@ keyring = { version = "3", features = ["apple-native"] }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-autostart = "2"
-tauri-plugin-global-shortcut = "2"
 tauri-plugin-single-instance = "2"
 tauri-plugin-updater = { version = "2", default-features = false, features = ["rustls-tls"], optional = true }
 url = { version = "2.5", optional = true }
-rcman = { path = "../../rcman", version = "0.1.4", features = ["keychain", "profiles"] }
+rcman = { version = "0.1.6", features = ["keychain", "profiles"] }
 
 [features]
 default = ["updater"]

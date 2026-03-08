@@ -1490,7 +1490,6 @@
       "devBuild": "Compilación de desarrollo",
       "rcloneUpdateAvailable": "Actualización de Rclone disponible",
       "whatsNewRclone": "Novedades de Rclone",
-      "updating": "Actualizando...",
       "updateRclone": "Actualizar Rclone",
       "rcloneUpToDate": "Rclone está actualizado",
       "checkRcloneUpdates": "Buscar actualizaciones de Rclone",
@@ -2556,8 +2555,9 @@
       "alreadyRunning": "Aplicación ya en ejecución",
       "rcloneUpdateFound": "Actualización de Rclone encontrada",
       "rcloneUpdateStarted": "Actualización de Rclone iniciada",
-      "rcloneUpdateComplete": "Actualización de Rclone completada",
-      "rcloneUpdateFailed": "Actualización de Rclone fallida"
+      "rcloneUpdateComplete": "Actualización de Rclone descargada",
+      "rcloneUpdateFailed": "Actualización de Rclone fallida",
+      "rcloneUpdateInstalled": "Actualización de Rclone instalada"
     },
     "body": {
       "mounted": "{{remote}} perfil '{{profile}}' montado",
@@ -2586,8 +2586,9 @@
       "updateFound": "Una nueva versión {{version}} representa el futuro de la gestión de archivos. ¡Actualice ahora!",
       "rcloneUpdateFound": "Nueva versión {{version}} de Rclone disponible",
       "rcloneUpdateStarted": "Actualizando Rclone a la versión {{version}}...",
-      "rcloneUpdateComplete": "Rclone ha sido actualizado a {{version}}",
+      "rcloneUpdateComplete": "La actualización de Rclone versión {{version}} ha sido descargada",
       "rcloneUpdateFailed": "Actualización de Rclone fallida: {{error}}",
+      "rcloneUpdateInstalled": "Rclone ha sido actualizado a {{version}}",
       "enginePathError": "Binario de rclone no encontrado",
       "enginePasswordError": "La configuración de rclone está protegida con contraseña",
       "engineRestartedSuccess": "Motor reiniciado exitosamente debido a cambio de {{reason}}",

@@ -384,7 +384,7 @@ export class AboutModalComponent implements OnInit {
   }
 
   async installRcloneUpdate(): Promise<void> {
-    if (this.rcloneUpdateStatus().updating) return;
+    if (this.rcloneUpdateStatus().downloading) return;
     await this.rcloneUpdateService.performUpdate();
   }
 

@@ -21,7 +21,7 @@ services:
     environment:
       <<: *common-env
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:8080/api/health"]
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -50,7 +50,7 @@ services:
           "-sf",
           "-u",
           "${RCLONE_MANAGER_USER:-admin}:${RCLONE_MANAGER_PASS}",
-          "http://localhost:8080/api/health",
+          "http://localhost:8080/health",
         ]
       interval: 30s
       timeout: 5s
@@ -75,13 +75,47 @@ services:
       RCLONE_MANAGER_TLS_CERT: /app/certs/cert.pem
       RCLONE_MANAGER_TLS_KEY: /app/certs/key.pem
     healthcheck:
-      test: ["CMD", "curl", "-sfk", "https://localhost:8443/api/health"]
+      test: ["CMD", "curl", "-sfk", "https://localhost:8443/health"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
     profiles:
       - tls
+
+  rclone-manager-auth-tls:
+    <<: *common
+    container_name: rclone-manager-auth-tls
+    ports:
+      - "${RCLONE_MANAGER_PORT:-8443}:8443"
+      - "53682:53682"
+    volumes:
+      - rclone-data:/data
+      - rclone-config:/config
+      - ./certs:/app/certs:ro
+    environment:
+      <<: *common-env
+      RCLONE_MANAGER_USER: ${RCLONE_MANAGER_USER:-admin}
+      RCLONE_MANAGER_PASS: ${RCLONE_MANAGER_PASS:?Set RCLONE_MANAGER_PASS in .env}
+      RCLONE_MANAGER_PORT: "8443"
+      RCLONE_MANAGER_TLS_CERT: /app/certs/cert.pem
+      RCLONE_MANAGER_TLS_KEY: /app/certs/key.pem
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-sfk",
+          "-u",
+          "${RCLONE_MANAGER_USER:-admin}:${RCLONE_MANAGER_PASS}",
+          "https://localhost:8443/health",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    profiles:
+      - auth-tls
 
 volumes:
   rclone-data:

@@ -207,7 +207,7 @@ pub async fn update_rclone(
     app_handle: tauri::AppHandle,
     channel: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    debug!("🔍 Starting rclone update process");
+    debug!("🔍 Starting rclone download/update process");
 
     let channel: UpdateChannel = channel.into();
     let update_check =
@@ -286,6 +286,8 @@ pub async fn update_rclone(
                 ),
                 Some(Origin::System),
             );
+            // the pending_version state is filled above; the actual binary swap will
+            // occur when the frontend calls `apply_rclone_update`.
 
             use crate::utils::types::updater::RcloneUpdaterState;
             if let Ok(mut pending) = app_handle
@@ -325,7 +327,21 @@ pub async fn update_rclone(
 /// Apply a previously downloaded rclone update and restart the engine.
 #[tauri::command]
 pub async fn apply_rclone_update(app_handle: tauri::AppHandle) -> Result<(), String> {
+    debug!("🎯 Applying previously downloaded rclone update");
     let pending_version = activate_pending_rclone_update(&app_handle).await?;
+
+    // send a notification that the update has actually been installed
+    send_notification_typed(
+        &app_handle,
+        Notification::localized(
+            "notification.title.rcloneUpdateInstalled",
+            "notification.body.rcloneUpdateInstalled",
+            Some(vec![("version", pending_version.as_str())]),
+            None,
+            Some(LogLevel::Info),
+        ),
+        Some(Origin::System),
+    );
 
     crate::rclone::engine::lifecycle::restart_for_config_change(
         &app_handle,
@@ -476,13 +492,13 @@ async fn execute_update_strategy(
     match strategy {
         UpdateStrategy::InPlace(target_file) => {
             let new_path = PathBuf::from(format!("{}.new", target_file.display()));
-            info!("Executing in-place update to: {:?}", new_path);
+            info!("Downloading update in-place to: {:?}", new_path);
             perform_rclone_selfupdate(app_handle, Some(&new_path), channel).await
         }
 
         UpdateStrategy::DownloadToLocal(full_path) => {
             let new_path = PathBuf::from(format!("{}.new", full_path.display()));
-            info!("Executing download-to-local update to: {:?}", new_path);
+            info!("Downloading update to local path: {:?}", new_path);
             // Do NOT save settings here — that would trigger the rclone_path event
             // listener and restart the engine before the binary is promoted.
             // The path is saved in activate_pending_rclone_update after the swap.
@@ -718,10 +734,10 @@ async fn perform_rclone_selfupdate(
         debug!("Update stderr: {}", String::from_utf8_lossy(&output.stderr));
     }
 
-    info!("Rclone selfupdate completed successfully");
+    info!("Rclone selfupdate finished (binary downloaded)");
     Ok(json!({
         "success": true,
-        "message": "Rclone updated successfully",
+        "message": "Rclone update downloaded successfully",
         "output": stdout.trim(),
         "channel": channel.as_str()
     }))

@@ -1,3 +1,5 @@
+// OH GOD THIS FILE. This is the big kahuna of the app, the mother of all modals, the remote config modal. It has a LOT of logic in it, and it's not pretty. I'm sorry. I tried to break it down into sections with comments to make it more digestible. If you're reading this, good luck. You're gonna need it.
+// DAYUM! But good think is, modal works. There is not good think about the code tho. Refactor is needed, but for now, let's just get this out there.
 import {
   ChangeDetectionStrategy,
   Component,

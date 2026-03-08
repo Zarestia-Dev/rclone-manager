@@ -16,14 +16,14 @@ export class NautilusBottomBarComponent {
   public readonly canGoBack = input.required<boolean>();
   public readonly canGoForward = input.required<boolean>();
   public readonly layout = input.required<'grid' | 'list'>();
-  public readonly viewMenu = input.required<any>(); // Reference to the CdkMenu template
+  public readonly viewMenu = input.required<CdkMenuModule>(); // Reference to the CdkMenu template
 
   // --- Outputs ---
   public readonly goBack = output<void>();
   public readonly goForward = output<void>();
   public readonly setLayout = output<'grid' | 'list'>();
 
-  toggleLayout() {
+  toggleLayout(): void {
     this.setLayout.emit(this.layout() === 'grid' ? 'list' : 'grid');
   }
 }

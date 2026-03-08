@@ -55,7 +55,7 @@ fn jobs_routes() -> Router<WebServerState> {
             "/start-bisync-profile",
             post(handlers::start_bisync_profile_handler),
         )
-        .route("/:id/status", get(handlers::get_job_status_handler))
+        .route("/{id}/status", get(handlers::get_job_status_handler))
         .route(
             "/rename-profile-in-cache",
             post(handlers::rename_job_profile_handler),
@@ -66,7 +66,7 @@ fn jobs_routes() -> Router<WebServerState> {
 fn remote_routes() -> Router<WebServerState> {
     Router::new()
         .route("/remotes", get(handlers::get_remotes_handler))
-        .route("/remote/:name", get(handlers::get_remote_config_handler))
+        .route("/remote/{name}", get(handlers::get_remote_config_handler))
         .route("/remote-types", get(handlers::get_remote_types_handler))
         .route("/create-remote", post(handlers::create_remote_handler))
         .route(

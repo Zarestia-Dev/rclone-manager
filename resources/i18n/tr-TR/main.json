@@ -1533,7 +1533,6 @@
       "devBuild": "Geliştirme sürümü",
       "rcloneUpdateAvailable": "Rclone Güncellemesi Mevcut",
       "whatsNewRclone": "Rclone'daki Yenilikler",
-      "updating": "Güncelleniyor...",
       "updateRclone": "Rclone Güncellemesini İndir",
       "rcloneUpToDate": "Rclone Güncel",
       "checkRcloneUpdates": "Rclone Güncellemelerini Kontrol Et",
@@ -2646,8 +2645,9 @@
       "alreadyRunning": "Uygulama Zaten Çalışıyor",
       "rcloneUpdateFound": "Rclone Güncellemesi Bulundu",
       "rcloneUpdateStarted": "Rclone Güncellemesi Başlatıldı",
-      "rcloneUpdateComplete": "Rclone Güncellemesi Tamamlandı",
-      "rcloneUpdateFailed": "Rclone Güncellemesi Başarısız"
+      "rcloneUpdateComplete": "Rclone Güncellemesi İndirildi",
+      "rcloneUpdateFailed": "Rclone Güncellemesi Başarısız",
+      "rcloneUpdateInstalled": "Rclone Güncellemesi Yüklendi"
     },
     "body": {
       "mounted": "{{remote}} profili '{{profile}}' bağlandı",
@@ -2679,8 +2679,9 @@
       "updateFound": "Rclone Manager'ın yeni bir {{version}} sürümü mevcut.",
       "rcloneUpdateFound": "Yeni Rclone sürümü {{version}} mevcut",
       "rcloneUpdateStarted": "Rclone {{version}} sürümüne güncelleniyor...",
-      "rcloneUpdateComplete": "Rclone {{version}} sürümüne güncellendi",
+      "rcloneUpdateComplete": "Rclone {{version}} sürümüne ait güncelleme indirildi",
       "rcloneUpdateFailed": "Rclone güncellemesi başarısız: {{error}}",
+      "rcloneUpdateInstalled": "Rclone {{version}} sürümüne güncellendi",
       "enginePathError": "rclone ikili dosyası bulunamadı",
       "enginePasswordError": "rclone yapılandırması şifre korumalı",
       "engineRestartedSuccess": "Motor {{reason}} değişikliği nedeniyle başarıyla yeniden başlatıldı",

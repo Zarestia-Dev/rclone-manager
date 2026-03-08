@@ -1,3 +1,6 @@
+// Oh boy, this is the big one. The Nautilus component is the main file browser interface for the app, and as such it has a LOT of logic in it. I've tried to break it down into sections with comments to make it more digestible, but be warned: this is a beast. If you're reading this, good luck. You're gonna need it.
+// This file is responsible for the main file browsing interface, actually working like a real file explorer.
+// Maybe on tauri side we can split this to another window?
 import {
   Component,
   EventEmitter,
@@ -1769,7 +1772,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     if (!remote) return;
 
     // 1. Identify items to delete
-    let itemsToDelete: FileBrowserItem[] = [];
+    let itemsToDelete: FileBrowserItem[];
     const selection = this.selectedItems();
 
     if (this.contextMenuItem) {

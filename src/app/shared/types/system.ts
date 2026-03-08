@@ -107,7 +107,7 @@ export interface RcloneUpdateInfo {
 
 export interface UpdateStatus {
   checking: boolean;
-  updating: boolean;
+  downloading: boolean;
   available: boolean;
   readyToRestart?: boolean;
   error: string | null;

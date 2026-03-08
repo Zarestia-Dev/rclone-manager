@@ -118,11 +118,15 @@ COPY --from=builder \
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-EXPOSE 8080
+EXPOSE 8080 53682
 
 # Healthcheck ensures the container marks itself unhealthy if the API stops responding
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -sf http://localhost:${RCLONE_MANAGER_PORT:-8080}/api/health || exit 1
+    CMD if [ -n "$RCLONE_MANAGER_TLS_CERT" ]; then \
+          curl -sfk https://localhost:${RCLONE_MANAGER_PORT:-8080}/health || exit 1; \
+        else \
+          curl -sf http://localhost:${RCLONE_MANAGER_PORT:-8080}/health || exit 1; \
+        fi
 
 # Define mount points for persistent storage
 # /data: Application local data and runtime-downloaded rclone binary

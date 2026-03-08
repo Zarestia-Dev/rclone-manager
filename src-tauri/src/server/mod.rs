@@ -85,7 +85,7 @@ pub async fn start_web_server(
     // Build the application router
     let app = build_app(state.clone(), static_dir, &host, port);
 
-    let addr = format!("{}:{}", host, port).parse()?;
+    let addr: std::net::SocketAddr = format!("{}:{}", host, port).parse()?;
 
     // Start server with or without TLS
     if let (Some(cert), Some(key)) = (tls_cert, tls_key) {

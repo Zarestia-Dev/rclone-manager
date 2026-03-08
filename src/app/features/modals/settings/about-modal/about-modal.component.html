@@ -460,13 +460,13 @@
                     <button
                       matButton="filled"
                       (click)="installRcloneUpdate()"
-                      [disabled]="rcloneUpdateStatus().updating"
+                      [disabled]="rcloneUpdateStatus().downloading"
                     >
-                      @if (rcloneUpdateStatus().updating) {
+                      @if (rcloneUpdateStatus().downloading) {
                         <mat-spinner diameter="16"></mat-spinner>
                         {{
-                          rcloneUpdateStatus().updating
-                            ? ('modals.about.updating' | translate)
+                          rcloneUpdateStatus().downloading
+                            ? ('modals.about.downloading' | translate)
                             : ('modals.about.updateRclone' | translate)
                         }}
                       } @else {

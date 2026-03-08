@@ -15,7 +15,7 @@ usermod -o -u "$PUID" rclone-manager 2>/dev/null || true
 
 # Ensure critical volumes and data directories have the correct ownership
 # This step is crucial for persistent volumes spawned as root by Docker.
-chown -R rclone-manager:rclone-manager /home/rclone-manager /app /data /config
+chown -R rclone-manager:rclone-manager /home/rclone-manager /app /data /config 2>/dev/null || true
 
 # =============================================================================
 # 2. Runtime Rclone Provisioning

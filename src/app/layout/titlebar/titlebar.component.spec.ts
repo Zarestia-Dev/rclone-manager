@@ -24,7 +24,7 @@ describe('TitlebarComponent', () => {
     // simulate a state where the rclone service reports a pending restart
     const fakeStatus = {
       available: false,
-      updating: false,
+      downloading: false,
       readyToRestart: true,
       checking: false,
       error: null,
