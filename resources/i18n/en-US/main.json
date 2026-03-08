@@ -1535,7 +1535,6 @@
       "devBuild": "Development build",
       "rcloneUpdateAvailable": "Rclone Update Available",
       "whatsNewRclone": "What's New in Rclone",
-      "updating": "Updating...",
       "updateRclone": "Download Rclone Update",
       "rcloneUpToDate": "Rclone Up to Date",
       "checkRcloneUpdates": "Check for Rclone Updates",
@@ -2649,8 +2648,9 @@
       "alreadyRunning": "App Already Running",
       "rcloneUpdateFound": "Rclone Update Found",
       "rcloneUpdateStarted": "Rclone Update Started",
-      "rcloneUpdateComplete": "Rclone Update Complete",
-      "rcloneUpdateFailed": "Rclone Update Failed"
+      "rcloneUpdateComplete": "Rclone Update Downloaded",
+      "rcloneUpdateFailed": "Rclone Update Failed",
+      "rcloneUpdateInstalled": "Rclone Update Installed"
     },
     "body": {
       "mounted": "Mounted {{remote}} profile '{{profile}}'",
@@ -2682,8 +2682,9 @@
       "updateFound": "A new version {{version}} represents the future of file management. Update now!",
       "rcloneUpdateFound": "New Rclone version {{version}} is available",
       "rcloneUpdateStarted": "Updating Rclone to version {{version}}...",
-      "rcloneUpdateComplete": "Rclone has been updated to {{version}}",
+      "rcloneUpdateComplete": "Rclone update for version {{version}} has been downloaded",
       "rcloneUpdateFailed": "Rclone update failed: {{error}}",
+      "rcloneUpdateInstalled": "Rclone has been updated to {{version}}",
       "enginePathError": "rclone binary not found",
       "enginePasswordError": "rclone configuration is password-protected",
       "engineRestartedSuccess": "Engine restarted successfully due to {{reason}} change",
