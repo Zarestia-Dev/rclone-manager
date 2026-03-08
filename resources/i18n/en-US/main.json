@@ -2649,8 +2649,7 @@
       "rcloneUpdateFound": "Rclone Update Found",
       "rcloneUpdateStarted": "Rclone Update Started",
       "rcloneUpdateComplete": "Rclone Update Downloaded",
-      "rcloneUpdateFailed": "Rclone Update Failed",
-      "rcloneUpdateInstalled": "Rclone Update Installed"
+      "rcloneUpdateFailed": "Rclone Update Failed"
     },
     "body": {
       "mounted": "Mounted {{remote}} profile '{{profile}}'",
