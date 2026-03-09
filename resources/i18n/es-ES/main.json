@@ -1953,7 +1953,8 @@
       "files": "Archivos",
       "starred": "Favoritos",
       "searchPlaceholder": "Buscar archivos...",
-      "local": "Local"
+      "local": "Local",
+      "localDisk": "Disco local"
     },
     "sort": {
       "az": "A-Z",

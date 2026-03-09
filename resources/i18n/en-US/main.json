@@ -2004,7 +2004,8 @@
       "local": "Local",
       "cloud": "Cloud",
       "fileSystem": "File System",
-      "bookmarks": "Bookmarks"
+      "bookmarks": "Bookmarks",
+      "localDisk": "Local Disk"
     },
     "bookmarks": {
       "emptyHint": "No bookmarks"

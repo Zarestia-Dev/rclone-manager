@@ -131,11 +131,17 @@ pub fn run() {
 
             let uri = request.uri().to_string();
             // On Linux/macOS (WebKit) the URI is "rclone://remote/path".
-            // On Windows (WebView2) Tauri maps the scheme to a virtual host, so
-            // the URI arrives as "http://rclone.localhost/remote/path" instead.
-            let path_part = if let Some(stripped) = uri.strip_prefix("rclone://") {
+            // On Windows (WebView2), frontend sends "http://rclone.localhost/remote/path"
+            // but WebView2 transforms it to "rclone://localhost/remote/path" when routing to handler.
+            debug!("🔍 rclone protocol handler received URI: {}", uri);
+            let path_part = if let Some(stripped) = uri.strip_prefix("rclone://localhost/") {
+                // Windows WebView2 format after transformation
+                stripped
+            } else if let Some(stripped) = uri.strip_prefix("rclone://") {
+                // Unix format
                 stripped
             } else if let Some(stripped) = uri.strip_prefix("http://rclone.localhost/") {
+                // Fallback if WebView2 doesn't transform
                 stripped
             } else {
                 &uri
@@ -171,6 +177,8 @@ pub fn run() {
                 Ok(decoded) => decoded.into_owned(),
                 Err(_) => path.to_string(),
             };
+
+            debug!("🔍 Parsed remote: '{}', path: '{}'", remote, path);
 
             tauri::async_runtime::spawn(async move {
                 use crate::rclone::backend::BackendManager;
@@ -231,6 +239,7 @@ pub fn run() {
                                     responder.respond(builder.body(bytes.to_vec()).unwrap());
                                 }
                                 Err(e) => {
+                                    error!("❌ Stream read error for {}: {}", remote, e);
                                     responder.respond(
                                         tauri::http::Response::builder()
                                             .status(500)
@@ -251,6 +260,7 @@ pub fn run() {
                         }
                     }
                     Err(e) => {
+                        error!("❌ Proxy error fetching {}:{} - {}", remote, path, e);
                         responder.respond(
                             tauri::http::Response::builder()
                                 .status(500)
@@ -279,6 +289,7 @@ pub fn run() {
         }
 
         let uri = request.uri().to_string();
+        debug!("🔍 local-asset protocol handler received URI: {}", uri);
 
         // Handle the prefix mapping across different OS webviews
         // Safely strip the 'localhost' authority we added in Angular to prevent Tauri parsing panics
@@ -308,6 +319,8 @@ pub fn run() {
             decoded_path
         };
 
+        debug!("🔍 Final decoded path: '{}'", decoded_path);
+
         // 1. Determine mime type so the browser knows how to render it (image, pdf, etc.)
         let mime_type = mime_guess::from_path(&decoded_path)
             .first_or_octet_stream()
@@ -317,7 +330,7 @@ pub fn run() {
         let mut file = match std::fs::File::open(&decoded_path) {
             Ok(f) => f,
             Err(e) => {
-                error!("Failed to open local asset '{}': {}", decoded_path, e);
+                error!("❌ Failed to open local asset '{}': {}", decoded_path, e);
                 return tauri::http::Response::builder()
                     .status(404)
                     .header("Access-Control-Allow-Origin", "*")
@@ -327,6 +340,10 @@ pub fn run() {
         };
 
         let file_size = file.metadata().map(|m| m.len()).unwrap_or(0);
+        debug!(
+            "✅ Opened local asset: {} (size: {} bytes)",
+            decoded_path, file_size
+        );
 
         // 3. Handle HTTP 206 Partial Content (Required for <video> tags to stream without crashing)
         let mut start = 0;
@@ -387,6 +404,7 @@ pub fn run() {
         if file_size > 0 {
             use std::io::{Read, Seek, SeekFrom};
             if let Err(e) = file.seek(SeekFrom::Start(start)) {
+                error!("❌ Seek error in local asset '{}': {}", decoded_path, e);
                 return tauri::http::Response::builder()
                     .status(500)
                     .header("Access-Control-Allow-Origin", "*")

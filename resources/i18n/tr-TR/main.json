@@ -2002,7 +2002,8 @@
       "local": "Yerel",
       "cloud": "Bulut",
       "fileSystem": "Dosya Sistemi",
-      "bookmarks": "Yer İmleri"
+      "bookmarks": "Yer İmleri",
+      "localDisk": "Yerel Disk"
     },
     "bookmarks": {
       "emptyHint": "Yer imi yok"

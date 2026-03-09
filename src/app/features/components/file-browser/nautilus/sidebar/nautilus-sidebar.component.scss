@@ -48,13 +48,10 @@ mat-nav-list {
   display: flex;
   align-items: center;
   padding: var(--space-xs) var(--space-sm);
-  margin-top: var(--space-sm);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-sm);
   font-weight: 700;
-  text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--dim-color);
-  user-select: none;
   border-radius: var(--radius-xs);
   transition: var(--transition-fast);
 

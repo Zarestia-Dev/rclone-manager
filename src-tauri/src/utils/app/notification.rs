@@ -123,10 +123,28 @@ pub fn send_notification_typed(
         .unwrap_or(false);
 
     // Suppress if app is focused and the origin is a UI-like origin
+    #[cfg(not(target_os = "windows"))]
     let is_focused = app
         .webview_windows()
         .values()
         .any(|w| w.is_focused().unwrap_or(false));
+
+    #[cfg(target_os = "windows")]
+    let is_focused = {
+        use windows_sys::Win32::UI::WindowsAndMessaging::{
+            GetForegroundWindow, GetWindowThreadProcessId,
+        };
+        unsafe {
+            let hwnd = GetForegroundWindow();
+            if hwnd.is_null() {
+                false
+            } else {
+                let mut process_id: u32 = 0;
+                GetWindowThreadProcessId(hwnd, &mut process_id);
+                process_id == std::process::id()
+            }
+        }
+    };
 
     let should_suppress = should_suppress(is_focused, origin.as_ref());
 
