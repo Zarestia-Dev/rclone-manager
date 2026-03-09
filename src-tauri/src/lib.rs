@@ -108,9 +108,34 @@ pub fn run() {
     // -------------------------------------------------------------------------
     builder =
         builder.register_asynchronous_uri_scheme_protocol("rclone", |app, request, responder| {
+            // 1. Handle CORS Preflight for Angular's HttpClient
+            if request.method() == tauri::http::Method::OPTIONS {
+                responder.respond(
+                    tauri::http::Response::builder()
+                        .status(204)
+                        .header("Access-Control-Allow-Origin", "*")
+                        .header("Access-Control-Allow-Methods", "GET, OPTIONS")
+                        .header("Access-Control-Allow-Headers", "*")
+                        .body(vec![])
+                        .unwrap(),
+                );
+                return;
+            }
+
+            // capture an incoming Range header so we can forward it later
+            let range_header = request
+                .headers()
+                .get("Range")
+                .and_then(|v| v.to_str().ok())
+                .map(|s| s.to_string());
+
             let uri = request.uri().to_string();
-            // remove "rclone://" prefix using strip_prefix to avoid clippy manual_strip warning
+            // On Linux/macOS (WebKit) the URI is "rclone://remote/path".
+            // On Windows (WebView2) Tauri maps the scheme to a virtual host, so
+            // the URI arrives as "http://rclone.localhost/remote/path" instead.
             let path_part = if let Some(stripped) = uri.strip_prefix("rclone://") {
+                stripped
+            } else if let Some(stripped) = uri.strip_prefix("http://rclone.localhost/") {
                 stripped
             } else {
                 &uri
@@ -156,31 +181,65 @@ pub fn run() {
                 let rclone_state = app_handle.state::<crate::utils::types::core::RcloneState>();
                 let client = &rclone_state.client;
 
-                match backend.fetch_file_stream(client, &remote, &path).await {
+                // forward Range header to rclone so we only fetch the requested bytes
+                match backend
+                    .fetch_file_stream_with_range(client, &remote, &path, range_header.as_deref())
+                    .await
+                {
                     Ok(response) => {
-                        let response: reqwest::Response = response;
                         let status = response.status();
+                        let is_range_response = status == reqwest::StatusCode::PARTIAL_CONTENT;
+                        let content_type = response
+                            .headers()
+                            .get(reqwest::header::CONTENT_TYPE)
+                            .and_then(|v| v.to_str().ok())
+                            .unwrap_or("application/octet-stream")
+                            .to_string();
+                        let content_range = response
+                            .headers()
+                            .get(reqwest::header::CONTENT_RANGE)
+                            .and_then(|v| v.to_str().ok())
+                            .map(|s| s.to_string());
+                        let content_length = response
+                            .headers()
+                            .get(reqwest::header::CONTENT_LENGTH)
+                            .and_then(|v| v.to_str().ok())
+                            .map(|s| s.to_string());
+                        let accept_ranges = response
+                            .headers()
+                            .get(reqwest::header::ACCEPT_RANGES)
+                            .and_then(|v| v.to_str().ok())
+                            .unwrap_or("bytes")
+                            .to_string();
+
                         if status.is_success() {
-                            let content_type = response
-                                .headers()
-                                .get(reqwest::header::CONTENT_TYPE)
-                                .and_then(|v: &reqwest::header::HeaderValue| v.to_str().ok())
-                                .unwrap_or("application/octet-stream")
-                                .to_string();
+                            match response.bytes().await {
+                                Ok(bytes) => {
+                                    let mut builder = tauri::http::Response::builder()
+                                        .status(if is_range_response { 206 } else { 200 })
+                                        .header(tauri::http::header::CONTENT_TYPE, content_type)
+                                        .header("Access-Control-Allow-Origin", "*")
+                                        .header("Accept-Ranges", accept_ranges);
 
-                            let bytes = match response.bytes().await {
-                                Ok(b) => b.to_vec(),
-                                Err(_) => vec![],
-                            };
+                                    if let Some(cr) = content_range {
+                                        builder = builder.header("Content-Range", cr);
+                                    }
+                                    if let Some(cl) = content_length {
+                                        builder = builder.header("Content-Length", cl);
+                                    }
 
-                            responder.respond(
-                                tauri::http::Response::builder()
-                                    .status(200)
-                                    .header(tauri::http::header::CONTENT_TYPE, content_type)
-                                    .header("Access-Control-Allow-Origin", "*")
-                                    .body(bytes)
-                                    .unwrap(),
-                            );
+                                    responder.respond(builder.body(bytes.to_vec()).unwrap());
+                                }
+                                Err(e) => {
+                                    responder.respond(
+                                        tauri::http::Response::builder()
+                                            .status(500)
+                                            .header("Access-Control-Allow-Origin", "*")
+                                            .body(format!("Stream read error: {}", e).into_bytes())
+                                            .unwrap(),
+                                    );
+                                }
+                            }
                         } else {
                             responder.respond(
                                 tauri::http::Response::builder()
@@ -203,6 +262,160 @@ pub fn run() {
                 }
             });
         });
+
+    // -------------------------------------------------------------------------
+    // Custom Protocol for Local Files Bypass (Desktop)
+    // -------------------------------------------------------------------------
+    builder = builder.register_uri_scheme_protocol("local-asset", |_app, request| {
+        // 1. Handle CORS Preflight for Angular's HttpClient
+        if request.method() == tauri::http::Method::OPTIONS {
+            return tauri::http::Response::builder()
+                .status(204)
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", "GET, OPTIONS")
+                .header("Access-Control-Allow-Headers", "*") // Required for Angular
+                .body(vec![])
+                .unwrap();
+        }
+
+        let uri = request.uri().to_string();
+
+        // Handle the prefix mapping across different OS webviews
+        // Safely strip the 'localhost' authority we added in Angular to prevent Tauri parsing panics
+        let path_part = if let Some(stripped) = uri.strip_prefix("local-asset://localhost") {
+            stripped // Leaves the leading slash, e.g., "/home/user"
+        } else if let Some(stripped) = uri.strip_prefix("http://local-asset.localhost") {
+            stripped
+        } else if let Some(stripped) = uri.strip_prefix("local-asset://") {
+            stripped
+        } else {
+            &uri
+        };
+
+        // Decode URL encoding (e.g., %20 to space)
+        let decoded_path = match urlencoding::decode(path_part) {
+            Ok(decoded) => decoded.into_owned(),
+            Err(_) => path_part.to_string(),
+        };
+
+        // On Windows, the browser might pass an extra leading slash (e.g., /Z:/folder/file.ext)
+        #[cfg(target_os = "windows")]
+        {
+            if decoded_path.starts_with('/') && decoded_path.chars().nth(2) == Some(':') {
+                decoded_path = decoded_path[1..].to_string();
+            }
+        }
+
+        // 1. Determine mime type so the browser knows how to render it (image, pdf, etc.)
+        let mime_type = mime_guess::from_path(&decoded_path)
+            .first_or_octet_stream()
+            .to_string();
+
+        // 2. Open the file
+        let mut file = match std::fs::File::open(&decoded_path) {
+            Ok(f) => f,
+            Err(e) => {
+                error!("Failed to open local asset '{}': {}", decoded_path, e);
+                return tauri::http::Response::builder()
+                    .status(404)
+                    .header("Access-Control-Allow-Origin", "*")
+                    .body(format!("File not found: {}", e).into_bytes())
+                    .unwrap();
+            }
+        };
+
+        let file_size = file.metadata().map(|m| m.len()).unwrap_or(0);
+
+        // 3. Handle HTTP 206 Partial Content (Required for <video> tags to stream without crashing)
+        let mut start = 0;
+        let mut end = if file_size > 0 { file_size - 1 } else { 0 };
+        let mut is_range_request = false;
+
+        if let Some(range_val) = request.headers().get("Range").and_then(|v| v.to_str().ok())
+            && let Some(stripped) = range_val.strip_prefix("bytes=")
+        {
+            // Browser requested a byte range; parse start/end values.
+            is_range_request = true;
+            let parts: Vec<&str> = stripped.split('-').collect();
+            if let Some(s) = parts.first().and_then(|s| s.parse::<u64>().ok()) {
+                start = s;
+            }
+            if parts.len() > 1
+                && !parts[1].is_empty()
+                && let Ok(e) = parts[1].parse::<u64>()
+            {
+                end = e;
+            }
+        }
+
+        // Safety bound: don't read past the end of the file
+        if end >= file_size && file_size > 0 {
+            end = file_size - 1;
+        }
+
+        // Prevent underflow panic if range start > end
+        if start > end {
+            return tauri::http::Response::builder()
+                .status(416) // Range Not Satisfiable
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Content-Range", format!("bytes */{}", file_size))
+                .body(vec![])
+                .unwrap();
+        }
+
+        // Cap chunk size to 2MB to prevent RAM exhaustion on huge MP4s.
+        // only apply the limit when the browser actually requested a range;
+        // a straight GET should return the full file (or whatever the app asks for).
+        let max_chunk_size = 2 * 1024 * 1024;
+        let mut chunk_size = if file_size > 0 {
+            (end - start + 1) as usize
+        } else {
+            0
+        };
+
+        let mut is_truncated = false;
+        if is_range_request && chunk_size > max_chunk_size {
+            chunk_size = max_chunk_size;
+            end = start + chunk_size as u64 - 1;
+            is_truncated = true;
+        }
+
+        // Read exactly the requested bytes into our chunk buffer
+        let mut buffer = vec![0; chunk_size];
+        if file_size > 0 {
+            use std::io::{Read, Seek, SeekFrom};
+            if let Err(e) = file.seek(SeekFrom::Start(start)) {
+                return tauri::http::Response::builder()
+                    .status(500)
+                    .header("Access-Control-Allow-Origin", "*")
+                    .body(format!("Seek error: {}", e).into_bytes())
+                    .unwrap();
+            }
+            // We use read_exact, but ignore errors in case EOF is hit early unexpectedly
+            let _ = file.read_exact(&mut buffer);
+        }
+
+        let response_builder = tauri::http::Response::builder()
+            .header(tauri::http::header::CONTENT_TYPE, mime_type)
+            .header("Access-Control-Allow-Origin", "*")
+            .header("Accept-Ranges", "bytes")
+            .header("Content-Length", chunk_size.to_string());
+
+        // FORCE a 206 Partial Content response if it was a Range request OR if we forcefully truncated the payload.
+        // WebKit2GTK / GStreamer will fail if a standard GET is truncated but returns 200 OK.
+        if (is_range_request || is_truncated) && file_size > 0 {
+            response_builder
+                .status(206)
+                .header(
+                    "Content-Range",
+                    format!("bytes {}-{}/{}", start, end, file_size),
+                )
+                .body(buffer)
+                .unwrap()
+        } else {
+            response_builder.status(200).body(buffer).unwrap()
+        }
+    });
 
     // -------------------------------------------------------------------------
     // Single Instance Plugin (Desktop)

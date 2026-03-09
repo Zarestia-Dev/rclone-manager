@@ -132,8 +132,13 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   private readonly fileSystemService = inject(FileSystemService);
   private readonly uiStateService = inject(UiStateService);
 
-  private currentUrl = signal<string>('about:blank');
-  sanitizedUrl = computed(() => this.sanitizer.bypassSecurityTrustResourceUrl(this.currentUrl()));
+  public currentUrl = signal<string>('');
+
+  sanitizedUrl = computed(() => {
+    const url = this.currentUrl();
+    if (!url) return null;
+    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+  });
 
   currentIndex = signal(0);
   currentItem = computed(() => this.data.items[this.currentIndex()]);
@@ -461,16 +466,35 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     }
   }
 
-  async updateContent(): Promise<void> {
-    // Cancel any pending requests from previous navigation
-    this.cancelCurrentRequest$.next();
+  async updateData(): Promise<void> {
+    const item = this.currentItem();
 
-    // Reset state immediately
+    // 1. Immediately reset state entirely, clear URLs so media elements unmount.
+    this.cancelCurrentRequest$.next();
     this.isLoading.set(true);
+    this.currentUrl.set('');
     this.textContent.set('');
     this.folderSize.set(null);
     this.isEditing.set(false);
     this.editContent.set('');
+
+    try {
+      const [type, url] = await Promise.all([
+        this.fileViewerService.getFileType(item, this.data.remoteName, this.data.isLocal),
+        this.fileViewerService.generateUrl(item, this.data.remoteName, this.data.isLocal),
+      ]);
+
+      this.currentFileType.set(type);
+      this.data.url = url;
+
+      await this.updateContent();
+    } catch (err) {
+      console.error('Failed to update data:', err);
+      this.isLoading.set(false);
+    }
+  }
+
+  async updateContent(): Promise<void> {
     try {
       if (this.currentFileType() === 'directory') {
         const item = this.currentItem();
@@ -501,13 +525,11 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
         return;
       }
 
-      if (this.fileCategory() === 'binary') {
+      if (this.fileCategory() === 'binary' || this.currentFileType() === 'binary') {
         // Show "Cannot preview" immediately - no download needed
         this.isLoading.set(false);
         return;
       }
-
-      this.currentUrl.set(this.data.url);
 
       // Text-based files: try to load as text, browser will handle what it can
       if (this.fileCategory() === 'text') {
@@ -541,9 +563,10 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
         return;
       }
 
-      // For media types (image, video, audio), loading handled by element events
-      const mediaTypes = ['image', 'video', 'audio'];
-      if (!mediaTypes.includes(this.currentFileType())) {
+      const mediaTypes = ['image', 'video', 'audio', 'pdf'];
+      if (mediaTypes.includes(this.currentFileType())) {
+        this.currentUrl.set(this.data.url);
+      } else {
         this.isLoading.set(false);
       }
     } catch (error) {
@@ -603,23 +626,6 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       this.currentIndex.update(i => i + 1);
       await this.updateData();
     }
-  }
-
-  async updateData(): Promise<void> {
-    const item = this.currentItem();
-
-    this.currentFileType.set(
-      await this.fileViewerService.getFileType(item, this.data.remoteName, this.data.isLocal)
-    );
-
-    const url = await this.fileViewerService.generateUrl(
-      item,
-      this.data.remoteName,
-      this.data.isLocal
-    );
-    this.data.url = url;
-    this.currentUrl.set(url);
-    await this.updateContent();
   }
 
   /**

@@ -272,6 +272,50 @@ impl Backend {
             .map_err(|e| format!("Failed to fetch remote file: {}", e))
     }
 
+    /// Same as [`fetch_file_stream`] but adds an optional `Range` header.
+    ///
+    /// The custom URI protocol handler uses this to forward browser range
+    /// requests unchanged, allowing rclone to return partial content and avoid
+    /// buffering large blobs in memory.
+    pub async fn fetch_file_stream_with_range(
+        &self,
+        client: &reqwest::Client,
+        remote: &str,
+        path: &str,
+        range: Option<&str>,
+    ) -> Result<reqwest::Response, String> {
+        let r_name = if remote.contains(':') {
+            remote.to_string()
+        } else {
+            format!("{}:", remote)
+        };
+
+        // Encode path segments to ensure valid URL
+        let encoded_path = path
+            .split('/')
+            .map(urlencoding::encode)
+            .collect::<Vec<_>>()
+            .join("/");
+
+        let url = format!(
+            "{}/[{}]/{}",
+            self.api_url().trim_end_matches('/'),
+            r_name,
+            encoded_path.trim_start_matches('/')
+        );
+
+        let mut builder = client.get(&url);
+        builder = self.inject_auth(builder);
+        if let Some(r) = range {
+            builder = builder.header(reqwest::header::RANGE, r);
+        }
+
+        builder
+            .send()
+            .await
+            .map_err(|e| format!("Failed to fetch remote file: {}", e))
+    }
+
     /// Helper for POST requests expecting JSON response
     pub async fn post_json(
         &self,

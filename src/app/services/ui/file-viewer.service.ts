@@ -1,7 +1,7 @@
 import { Injectable, inject, signal, WritableSignal } from '@angular/core';
 import { Overlay } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
-import { convertFileSrc } from '@tauri-apps/api/core';
+import { platform } from '@tauri-apps/plugin-os';
 import { FileViewerModalComponent } from '../../features/components/file-browser/file-viewer/file-viewer-modal.component';
 import { ConfigService } from '../system/config.service';
 import { Entry } from '@app/types';
@@ -106,11 +106,31 @@ export class FileViewerService {
         const encodedPath = encodeURIComponent(fullPath);
         return `${this.apiClient.getApiBaseUrl()}/fs/stream?path=${encodedPath}`;
       }
-      return convertFileSrc(fullPath);
+      // Use our own local-asset:// custom protocol instead of Tauri's asset://.
+      // Linux/macOS (WebKit): local-asset://localhost/path/to/file
+      // Windows   (WebView2): http://local-asset.localhost/Z%3A/path/to/file
+      let normalizedPath = fullPath.replace(/\\/g, '/');
+      // Fix missing drive colon: "Z/path" → "Z:/path"
+      if (/^[A-Za-z]\//.test(normalizedPath)) {
+        normalizedPath = `${normalizedPath[0]}:${normalizedPath.slice(1)}`;
+      }
+      // Encode each segment individually (preserves '/' separators)
+      const encodedSegments = normalizedPath
+        .split('/')
+        .map((seg, i) => (i === 0 && /^[A-Za-z]:$/.test(seg) ? seg : encodeURIComponent(seg)))
+        .join('/');
+      if (platform() === 'windows') {
+        // Drive colon is invalid in a URL host/path without encoding
+        const winPath = encodedSegments.replace(/^([A-Za-z]):/, '$1%3A');
+        return `http://local-asset.localhost/${winPath}`;
+      }
+
+      const pathWithSlash = encodedSegments.startsWith('/')
+        ? encodedSegments
+        : `/${encodedSegments}`;
+      return `local-asset://localhost${pathWithSlash}`;
     }
     const rName = remoteName.includes(':') ? remoteName : `${remoteName}:`;
-    // For remote files, we strictly follow the server format
-    // Ensure path is URL encoded for the browser fetch
     const encodedPath = path
       .split('/')
       .map(p => encodeURIComponent(p))
@@ -122,11 +142,12 @@ export class FileViewerService {
       )}&path=${encodedPath}`;
     }
 
-    // In Desktop mode, use the custom protocol to ensure authentication.
-    // Strip the trailing colon from rName - colons are invalid in URL host position.
-    // The Rust handler re-appends the colon when calling rclone.
     const urlSafeRemote = rName.endsWith(':') ? rName.slice(0, -1) : rName;
-    return `rclone://${encodeURIComponent(urlSafeRemote)}/${encodedPath}`;
+    const encodedRemote = encodeURIComponent(urlSafeRemote);
+    if (platform() === 'windows') {
+      return `http://rclone.localhost/${encodedRemote}/${encodedPath}`;
+    }
+    return `rclone://${encodedRemote}/${encodedPath}`;
   }
 
   private normalizePath(p: string): string {
