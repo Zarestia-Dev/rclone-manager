@@ -300,11 +300,13 @@ pub fn run() {
 
         // On Windows, the browser might pass an extra leading slash (e.g., /Z:/folder/file.ext)
         #[cfg(target_os = "windows")]
-        {
+        let decoded_path = {
+            let mut decoded_path = decoded_path;
             if decoded_path.starts_with('/') && decoded_path.chars().nth(2) == Some(':') {
                 decoded_path = decoded_path[1..].to_string();
             }
-        }
+            decoded_path
+        };
 
         // 1. Determine mime type so the browser knows how to render it (image, pdf, etc.)
         let mime_type = mime_guess::from_path(&decoded_path)

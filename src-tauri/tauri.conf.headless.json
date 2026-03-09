@@ -7,7 +7,7 @@
   "build": {
     "beforeDevCommand": "npm run start",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build && node -e \"require('fs').mkdirSync('src-tauri/empty', {recursive: true})\"",
+    "beforeBuildCommand": "npm run build && node scripts/ensure-tauri-empty-dir.cjs",
     "frontendDist": "empty"
   },
   "bundle": {
