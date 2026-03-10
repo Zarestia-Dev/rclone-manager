@@ -205,6 +205,7 @@ export interface Entry {
   Name: string;
   Path: string;
   Size: number;
+  Starred?: boolean;
 }
 
 export interface LocalDrive {

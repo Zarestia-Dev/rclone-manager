@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [v0.2.2] - 2026-03-10
+## [v0.2.2] - 2026-03-11
 
 ### Added
 - **Language**: Added Spanish language support. (Thanks to @dikler!)
@@ -15,9 +15,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Nautilus Component: Allow the edit text based files. Using rclone rc operations/uploadfile to save.
 - Nautilus Component: Added delete, move and copy operations support.
 - Nautilus Component: Added vertical split mode support.
+- Nautilus Component: Added cover image display support for audio files.
 - Some cloud providers icons added to the app.
 
 ### Changed
+- **Core**: Replaced Tauri's integrated protocols with custom OS-aware protocol schemas (`http://rclone.localhost` / `http://local-asset.localhost` for Windows WebView2, and `rclone://` / `local-asset://` for Unix WebKit) to fix media streaming display bugs.
 - **CLI**: Structurally reorganized command-line arguments into `GeneralArgs` and `HeadlessArgs` for better maintainability and build-mode awareness.
 - **Build**: Optimized headless build by strictly feature-gating desktop-only plugins (`dialog`, `shell`, `window-state`).
 - **Tray**: Optimized performance of tray unmount and browse actions by eliminating global config lookups.
@@ -33,6 +35,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Blury icons fixed. Icon provider change to Google Material Icons.
 - Reorder tauri plugins (Cause of startup crash).
 - Remove the global shortcut handler from tauri. (Fixed #117)
+- Fixed directory size calculation in the File Viewer returning the disk root size instead of the selected subfolder size.
 
 ## [v0.2.1] - 2026-02-05
 

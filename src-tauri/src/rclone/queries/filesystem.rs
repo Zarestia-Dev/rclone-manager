@@ -249,7 +249,19 @@ pub async fn get_size(
 ) -> Result<serde_json::Value, String> {
     debug!("📏 Getting size for remote: {remote}, path: {path:?}");
 
-    let params = create_fs_params(remote.clone(), path.clone());
+    let mut params = serde_json::Map::new();
+    let fs_with_path = if let Some(p) = path {
+        if p.is_empty() {
+            remote.clone()
+        } else if remote.ends_with('/') || remote.ends_with(':') {
+            format!("{}{}", remote, p)
+        } else {
+            format!("{}/{}", remote, p)
+        }
+    } else {
+        remote.clone()
+    };
+    params.insert("fs".to_string(), json!(fs_with_path));
 
     run_fs_command(app, state.client.clone(), operations::SIZE, params).await
 }

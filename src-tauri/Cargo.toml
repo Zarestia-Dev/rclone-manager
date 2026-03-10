@@ -19,7 +19,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["protocol-asset", "tray-icon", "image-png", "devtools"] }
+tauri = { version = "2", features = [ "tray-icon", "image-png", "devtools"] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -43,6 +43,8 @@ tokio-cron-scheduler = "0.15.1"
 croner = "3.0.1"
 sevenz-rust2 = "0.20.2"
 clap = { version = "4.5", features = ["derive", "env"] }
+id3 = "1.16.4"
+base64 = "0.22"
 
 tauri-plugin-shell = { version = "2", optional = true }
 tauri-plugin-window-state = { version = "2", optional = true }
@@ -58,7 +60,6 @@ futures = { version = "0.3" }
 axum = { version = "0.8", optional = true }
 tower-http = { version = "0.6", features = ["cors", "fs", "trace"], optional = true }
 async-stream = { version = "0.3", optional = true }
-base64 = { version = "0.22", optional = true }
 axum-server = { version = "0.8", features = ["tls-rustls"], optional = true }
 rustls = { version = "0.23", features = ["ring"], optional = true }
 anyhow = {version = "1.0.102", optional = true}
@@ -87,7 +88,7 @@ url = { version = "2.5", optional = true }
 default = ["updater", "desktop"]
 desktop = ["tauri-plugin-shell", "tauri-plugin-window-state", "tauri-plugin-dialog"]
 updater = ["tauri-plugin-updater", "url"]
-web-server = ["axum", "tower-http", "async-stream", "axum-server", "rustls", "base64", "anyhow"]
+web-server = ["axum", "tower-http", "async-stream", "axum-server", "rustls", "anyhow"]
 portable = []
 flatpak = []
 deb = []

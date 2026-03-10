@@ -11,6 +11,7 @@ import {
   ViewChild,
   ElementRef,
 } from '@angular/core';
+import { CommonModule } from '@angular/common';
 
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
@@ -107,11 +108,14 @@ const gnomeLightHighlighting = HighlightStyle.define([
     TranslateModule,
     FormsModule,
     MatTooltip,
+    CommonModule,
   ],
   templateUrl: './file-viewer-modal.component.html',
   styleUrls: ['./file-viewer-modal.component.scss'],
 })
 export class FileViewerModalComponent implements OnInit, OnDestroy {
+  private static readonly FILE_OPERATION_ORIGIN = 'nautilus';
+
   public data!: {
     items: Entry[];
     currentIndex: number;
@@ -134,7 +138,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
   public currentUrl = signal<string>('');
 
-  sanitizedUrl = computed(() => {
+  safeResourceUrl = computed(() => {
     const url = this.currentUrl();
     if (!url) return null;
     return this.sanitizer.bypassSecurityTrustResourceUrl(url);
@@ -142,25 +146,33 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
   currentIndex = signal(0);
   currentItem = computed(() => this.data.items[this.currentIndex()]);
-  fileCategory = computed(() => this.iconService.getFileTypeCategory(this.currentItem()));
-  currentFileType = signal<string>('text');
   fileName = computed(() => this.currentItem().Name);
   fileSize = computed(() => this.currentItem().Size ?? null);
-
   textContent = signal('');
   folderSize = signal<{ count: number; bytes: number } | null>(null);
+  coverImage = signal<string | null>(null);
+  rawUrl = signal<string>('');
+  fileCategory = computed(() => this.iconService.getFileTypeCategory(this.currentItem()));
+  currentFileType = signal<string>('text');
 
   isLoading = signal(true);
   isDownloading = signal(false);
+  isLoadingCover = signal(false);
+
+  // Editing state
+  isEditing = signal(false);
+  editContent = signal('');
 
   // Markdown preview
   showMarkdownPreview = signal(false);
   renderedMarkdown = signal<SafeHtml>('');
 
-  // Editing state
-  isEditing = signal(false);
-  editContent = signal('');
   isSaving = signal(false);
+
+  isMarkdownFile = computed(() => {
+    const name = this.fileName().toLowerCase();
+    return name.endsWith('.md') || name.endsWith('.markdown');
+  });
 
   @ViewChild('editorContainer') editorContainer!: ElementRef<HTMLDivElement>;
   private editorView: EditorView | null = null;
@@ -322,13 +334,11 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
         dirPath,
         filename,
         this.editContent(),
-        'nautilus'
+        FileViewerModalComponent.FILE_OPERATION_ORIGIN
       );
 
       this.textContent.set(this.editContent());
       this.isEditing.set(false);
-      // Update the size in the underlying item to reflect changes in computed signal
-      item.Size = new Blob([this.editContent()]).size;
 
       this.notificationService.showSuccess(
         this.translate.instant('fileBrowser.fileViewer.saveSuccess')
@@ -341,14 +351,6 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     } finally {
       this.isSaving.set(false);
     }
-  }
-
-  /**
-   * Check if file is markdown
-   */
-  isMarkdownFile(): boolean {
-    const name = this.fileName().toLowerCase();
-    return name.endsWith('.md') || name.endsWith('.markdown');
   }
 
   /**
@@ -453,6 +455,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
   @HostListener('window:keydown', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent): void {
+    if (this.isEditing()) return;
+
     switch (event.key) {
       case 'ArrowLeft':
         this.back();
@@ -475,6 +479,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.currentUrl.set('');
     this.textContent.set('');
     this.folderSize.set(null);
+    this.coverImage.set(null);
+    this.isLoadingCover.set(false);
     this.isEditing.set(false);
     this.editContent.set('');
 
@@ -485,7 +491,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       ]);
 
       this.currentFileType.set(type);
-      this.data.url = url;
+      this.rawUrl.set(url);
 
       await this.updateContent();
     } catch (err) {
@@ -534,7 +540,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       // Text-based files: try to load as text, browser will handle what it can
       if (this.fileCategory() === 'text') {
         this.http
-          .get(this.data.url, {
+          .get(this.rawUrl(), {
             responseType: 'text',
             observe: 'response',
           })
@@ -563,10 +569,26 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
         return;
       }
 
+      if (this.currentFileType() === 'audio') {
+        this.isLoadingCover.set(true);
+        this.fileViewerService
+          .getAudioCover(this.currentItem(), this.data.remoteName, this.data.isLocal)
+          .then(cover => {
+            this.coverImage.set(cover);
+          })
+          .catch(err => {
+            console.warn('Failed to extract audio cover:', err);
+          })
+          .finally(() => {
+            this.isLoadingCover.set(false);
+          });
+      }
+
       const mediaTypes = ['image', 'video', 'audio', 'pdf'];
       if (mediaTypes.includes(this.currentFileType())) {
-        this.currentUrl.set(this.data.url);
-      } else {
+        this.currentUrl.set(this.rawUrl());
+      }
+      if (!['image', 'video', 'audio'].includes(this.currentFileType())) {
         this.isLoading.set(false);
       }
     } catch (error) {
@@ -645,7 +667,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       const fullDestPath = this.uiStateService.joinPath(selectedPath, this.fileName());
 
       // Start the copy job
-      await this.jobManagementService.copyUrl(selectedPath, fullDestPath, this.data.url, true);
+      await this.jobManagementService.copyUrl(selectedPath, fullDestPath, this.rawUrl(), true);
 
       this.notificationService.openSnackBar(
         this.translate.instant('fileBrowser.fileViewer.downloading', { name: this.fileName() }),

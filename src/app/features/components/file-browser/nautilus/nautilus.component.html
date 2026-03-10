@@ -1,4 +1,9 @@
-<mat-sidenav-container class="nautilus-overlay-pane" autosize cdkDropListGroup>
+<mat-sidenav-container
+  class="nautilus-overlay-pane"
+  autosize
+  cdkDropListGroup
+  [style.--bottom-bar-offset]="bottomBarOffset()"
+>
   <mat-sidenav
     #sidenav
     [mode]="sidenavMode()"
@@ -11,7 +16,7 @@
       [isMobile]="isMobile()"
       [nautilusRemote]="nautilusRemote()"
       [currentPath]="currentPath()"
-      [starredMode]="starredMode()"
+      [starredMode]="activeStarredMode()"
       [localDrives]="localDrives()"
       [cloudRemotes]="cloudRemotes()"
       [bookmarks]="filteredBookmarks()"
@@ -46,7 +51,7 @@
       [isSearchMode]="isSearchMode()"
       [searchFilter]="searchFilter()"
       [isEditingPath]="isEditingPath()"
-      [starredMode]="starredMode()"
+      [starredMode]="activeStarredMode()"
       [activeRemote]="activeRemote()"
       [pathSegments]="pathSegments()"
       [isDragging]="isDragging()"
@@ -144,7 +149,7 @@
             [isDragging]="isDragging()"
             [hoveredFolder]="hoveredFolder()"
             [cutItemPaths]="cutItemPaths()"
-            [starredMode]="starredMode()"
+            [starredMode]="starredModeRight()"
             [sortKey]="sortKey()"
             [sortDirection]="sortDirection()"
             [activePaneIndex]="activePaneIndex()"
@@ -254,7 +259,7 @@
               <span>{{ 'nautilus.contextMenu.delete' | translate }}</span>
             </button>
           }
-          @if (!item && !starredMode()) {
+          @if (!item && !activeStarredMode()) {
             <button class="menu-item" cdkMenuItem (click)="openContextMenuNewFolder()">
               <span>{{ 'nautilus.contextMenu.newFolder' | translate }}</span>
             </button>
@@ -269,7 +274,7 @@
             </button>
           }
         }
-        @if (!errorState() && (item || !starredMode())) {
+        @if (!errorState() && (item || !activeStarredMode())) {
           <button class="menu-item" cdkMenuItem (click)="openPropertiesDialog('contextMenu')">
             <span>{{ 'nautilus.contextMenu.properties' | translate }}</span>
           </button>
@@ -280,7 +285,7 @@
     <ng-template #pathOptionsMenu>
       <div class="material-context-menu" cdkMenu>
         @if (!errorState()) {
-          @if (!starredMode()) {
+          @if (!activeStarredMode()) {
             <button class="menu-item" cdkMenuItem (click)="openContextMenuNewFolder()">
               <span>{{ 'nautilus.contextMenu.newFolder' | translate }}...</span>
             </button>
@@ -301,7 +306,7 @@
         </button>
 
         @if (!errorState()) {
-          @if (!starredMode()) {
+          @if (!activeStarredMode()) {
             <button class="menu-item" cdkMenuItem (click)="copyCurrentLocation()">
               <span>{{ 'nautilus.contextMenu.copyLocation' | translate }}</span>
             </button>
@@ -317,7 +322,7 @@
             <span>{{ 'nautilus.contextMenu.selectAll' | translate }}</span>
           </button>
 
-          @if (!starredMode()) {
+          @if (!activeStarredMode()) {
             <mat-divider></mat-divider>
 
             <button

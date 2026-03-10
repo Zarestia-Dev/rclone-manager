@@ -18,6 +18,7 @@ macro_rules! generate_invoke_handler {
             $crate::utils::io::file_helper::open_in_files,
             $crate::utils::io::file_helper::get_folder_location,
             $crate::utils::io::file_helper::get_file_location,
+            $crate::utils::app::audio::get_audio_cover,
             // =================================================================
             // UI & THEME
             // =================================================================

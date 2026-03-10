@@ -22,7 +22,7 @@
     "shortDescription": "User-friendly GUI for RClone (Headless)",
     "homepage": "https://github.com/Zarestia-Dev/rclone-manager",
     "publisher": "Zarestia Dev",
-    "longDescription": "RClone Manager (Headless) is a user-friendly WebUI for RClone, designed to simplify the process of managing and transferring files across various cloud storage services. With its intuitive interface, users can easily configure and execute Rclone commands without needing extensive technical knowledge.",
+    "longDescription": "RClone Manager (Headless) is a user-friendly WebUI for Rclone, designed to simplify the process of managing and transferring files across various cloud storage services. With its intuitive interface, users can easily configure and execute Rclone commands without needing extensive technical knowledge.",
     "copyright": "Copyright © 2026 Zarestia Dev",
     "license": "GNU GPLv3",
     "linux": {

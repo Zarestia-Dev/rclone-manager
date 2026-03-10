@@ -54,8 +54,15 @@
   }
 
   .grid-item {
+    outline: none;
+
     &.selected .folder-card {
       background: var(--selected-bg-color);
+    }
+
+    &:focus-visible .folder-card {
+      outline: 2px solid var(--accent-color);
+      outline-offset: 2px;
     }
   }
 
@@ -78,7 +85,6 @@
 /* THE SHARED CARD COMPONENT */
 .folder-card {
   box-sizing: border-box;
-  padding: var(--space-md);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -90,7 +96,7 @@
   padding: 0;
 
   &:hover {
-    background: var(--hover-bg-color);
+    background: var(--bg-elevated); // Consolidated hover
   }
 
   /* Typography */
@@ -109,14 +115,12 @@
     overflow: hidden;
   }
 
-  &:hover {
-    background: var(--bg-elevated);
+  &.hidden-item {
+    opacity: 0.55;
   }
 
-  &.hidden-item {
-    mat-icon {
-      opacity: 0.6;
-    }
+  &.cut-item {
+    opacity: 0.5;
   }
 }
 
@@ -209,6 +213,10 @@ tr.folder-drag-over {
     &.selected {
       background-color: var(--selected-bg-color);
     }
+    &:focus-visible {
+      outline: 2px solid var(--accent-color);
+      outline-offset: -2px;
+    }
 
     // Make row corners rounded
     td:first-child {
@@ -262,9 +270,11 @@ tr.folder-drag-over {
   }
 
   .hidden-item {
-    mat-icon {
-      opacity: 0.6;
-    }
+    opacity: 0.55;
+  }
+
+  tr.cut-item {
+    opacity: 0.5;
   }
 }
 

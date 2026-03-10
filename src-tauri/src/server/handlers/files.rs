@@ -615,3 +615,26 @@ pub async fn upload_file_handler(
     .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(result)))
 }
+
+#[derive(Deserialize)]
+pub struct AudioCoverQuery {
+    pub remote: String,
+    pub path: String,
+    pub is_local: bool,
+}
+
+pub async fn get_audio_cover_handler(
+    State(state): State<WebServerState>,
+    Query(query): Query<AudioCoverQuery>,
+) -> Result<Json<ApiResponse<Option<String>>>, AppError> {
+    use crate::utils::app::audio::get_audio_cover;
+    let cover = get_audio_cover(
+        query.remote,
+        query.path,
+        query.is_local,
+        state.app_handle.clone(),
+    )
+    .await
+    .map_err(|e| AppError::InternalServerError(anyhow::Error::msg(e)))?;
+    Ok(Json(ApiResponse::success(cover)))
+}

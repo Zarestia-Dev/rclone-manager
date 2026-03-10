@@ -3,19 +3,20 @@ import { Overlay } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { platform } from '@tauri-apps/plugin-os';
 import { FileViewerModalComponent } from '../../features/components/file-browser/file-viewer/file-viewer-modal.component';
-import { ConfigService } from '../system/config.service';
 import { Entry } from '@app/types';
 import { ApiClientService } from '../core/api-client.service';
 import { IconService } from './icon.service';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
 })
 export class FileViewerService {
   private overlay = inject(Overlay);
-  private configService = inject(ConfigService);
   private apiClient = inject(ApiClientService);
   private iconService = inject(IconService);
+  private http = inject(HttpClient);
 
   // Use Angular signal for viewer open state
   private readonly _isViewerOpen: WritableSignal<boolean> = signal(false);
@@ -60,6 +61,40 @@ export class FileViewerService {
 
   async getFileType(item: Entry, _remoteName: string, _isLocal: boolean): Promise<string> {
     return this.iconService.getFileTypeCategory(item);
+  }
+
+  async getAudioCover(item: Entry, remoteName: string, isLocal: boolean): Promise<string | null> {
+    if (this.apiClient.isHeadless()) {
+      try {
+        const response = await firstValueFrom(
+          this.http.get<{ data: string | null }>(
+            `${this.apiClient.getApiBaseUrl()}/fs/audio/cover`,
+            {
+              params: {
+                remote: remoteName,
+                path: item.Path,
+                is_local: String(isLocal),
+              },
+            }
+          )
+        );
+        return response?.data ?? null;
+      } catch (e) {
+        console.warn('Failed to fetch audio cover:', e);
+        return null;
+      }
+    } else {
+      try {
+        return await this.apiClient.invoke<string | null>('get_audio_cover', {
+          remote: remoteName,
+          path: item.Path,
+          isLocal: isLocal,
+        });
+      } catch (e) {
+        console.warn('Failed to invoke get_audio_cover:', e);
+        return null;
+      }
+    }
   }
 
   async generateUrl(item: Entry, remoteName: string, isLocal: boolean): Promise<string> {

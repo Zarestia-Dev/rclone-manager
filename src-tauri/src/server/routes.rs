@@ -229,6 +229,7 @@ fn file_operations_routes() -> Router<WebServerState> {
             "/fs/stream/remote",
             get(handlers::stream_remote_file_handler),
         )
+        .route("/fs/audio/cover", get(handlers::get_audio_cover_handler))
         .route("/upload-file", post(handlers::upload_file_handler))
 }
 

@@ -97,6 +97,9 @@
             mat-header-cell
             *matHeaderCellDef
             (click)="toggleSort.emit('name')"
+            (keydown.enter)="toggleSort.emit('name')"
+            tabindex="0"
+            role="button"
             class="sortable-header"
           >
             <div class="header-content">
@@ -128,6 +131,9 @@
             *matHeaderCellDef
             class="sortable-header"
             (click)="toggleSort.emit('size')"
+            (keydown.enter)="toggleSort.emit('size')"
+            tabindex="0"
+            role="button"
           >
             <div class="header-content right-aligned">
               @if (sortKey().startsWith('size')) {
@@ -149,6 +155,9 @@
             *matHeaderCellDef
             class="sortable-header"
             (click)="toggleSort.emit('modified')"
+            (keydown.enter)="toggleSort.emit('modified')"
+            tabindex="0"
+            role="button"
           >
             <div class="header-content right-aligned">
               @if (sortKey().startsWith('modified')) {

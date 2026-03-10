@@ -138,17 +138,20 @@
 
 .selection-info-container {
   position: absolute;
-  bottom: var(--space-md);
-  right: var(--space-md);
-  z-index: 10;
-  background: var(--view-bg-color);
-  box-shadow: var(--shadow-gnome);
-  border-radius: var(--radius-sm);
-  padding: var(--space-xxs) var(--space-sm);
-  max-width: calc(100vw - var(--sidenav-width) - 64px);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  bottom: var(--bottom-bar-offset, 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--mat-sys-surface-container-highest);
+  border: 1px solid var(--mat-sys-outline-variant);
+  padding: 6px 16px;
+  border-radius: 99px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: auto;
 }
 
 .selection-info {
