@@ -48,6 +48,8 @@
 
 **RClone Manager** is a **modern, cross-platform GUI** that makes managing [Rclone](https://rclone.org/) remotes effortless. Whether you're syncing files across cloud storage providers, mounting remote drives, or performing complex file operations, RClone Manager provides an intuitive interface that simplifies even the most advanced Rclone features.
 
+It also features a **built-in file manager (Nautilus)** that allows you to elegantly browse your remote files. You can display and edit files, move, delete, copy, and rename files and folders, as well as create new folders. The integrated file viewer lets you preview videos, images, PDFs, sound files, and text documents easily. It supports nearly all file operations, complete with right-click context menus and detailed properties modals!
+
 > Big `RC` comes from `Rclone RC`.
 
 <div align="center">
@@ -78,6 +80,10 @@ Regular updates with new features and improvements. Check out our [roadmap](http
 |                            Job Watcher                            |                             Serve Control                             |                          Dark Mode                          |
 | :---------------------------------------------------------------: | :-------------------------------------------------------------------: | :---------------------------------------------------------: |
 | <img src="assets/job-watcher.png" alt="Job Watcher" width="250"/> | <img src="assets/serve-control.png" alt="Serve Control" width="250"/> | <img src="assets/dark-ui.png" alt="Dark Mode" width="250"/> |
+
+|                      Nautilus File Manager                      |                            File Viewer                            |                                                             |
+| :-------------------------------------------------------------: | :---------------------------------------------------------------: | :---------------------------------------------------------: |
+|  <img src="assets/nautilus.png" alt="Nautilus" width="250"/>    | <img src="assets/file-viewer.png" alt="File Viewer" width="250"/> |                                                             |
 
 </p>
 

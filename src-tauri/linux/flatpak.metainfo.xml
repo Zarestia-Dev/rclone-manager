@@ -27,6 +27,9 @@
       Under the hood, it harnesses the incredible power of the underlying rclone engine but perfectly abstracts away the technical details. You can securely encrypt your configurations, fine-tune caching performance, and easily share files over HTTP or WebDAV—all from a beautifully crafted, responsive dashboard.
     </p>
     <p>
+      Our built-in file manager (Nautilus) allows you to elegantly browse your remote files. You can display and edit files; move, delete, copy, and rename files and folders; create new folders; edit text files; and preview videos, images, PDFs, sound files, and other text-based files. It nearly supports all file operations, including convenient right-click context menus and detailed properties modals.
+    </p>
+    <p>
       Troubleshooting Notice
     </p>
     <ul>
@@ -59,30 +62,38 @@
   <url type="vcs-browser">https://github.com/Zarestia-Dev/rclone-manager</url>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.0/assets/desktop-ui.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.2/assets/desktop-ui.png</image>
       <caption>Modern desktop interface for cloud management</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.0/assets/general-home.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.2/assets/general-home.png</image>
       <caption>Overview of connected cloud services</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.0/assets/general-remote.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.2/assets/general-remote.png</image>
       <caption>Add and configure cloud storage providers</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.0/assets/serve-control.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.2/assets/serve-control.png</image>
       <caption>Expose storage over network protocols</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.0/assets/job-watcher.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.2/assets/job-watcher.png</image>
       <caption>Job Watcher - Monitor your operations</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.0/assets/mount-control.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.2/assets/mount-control.png</image>
       <caption>Mount cloud drives as local storage</caption>
     </screenshot>
-    </screenshots>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.2/assets/nautilus.png</image>
+      <caption>Built-in Nautilus file manager</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.2/assets/file-viewer.png</image>
+      <caption>Preview files with the integrated viewer</caption>
+    </screenshot>
+  </screenshots>
   <releases>
     <release version="0.2.2" date="2026-03-08">
       <description>

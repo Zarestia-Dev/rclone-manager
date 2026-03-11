@@ -48,6 +48,8 @@
 
 **RClone Manager**, [Rclone](https://rclone.org/) uzak bağlantılarını yönetmeyi zahmetsiz hale getiren **modern, çapraz platform bir GUI**'dir. Bulut depolama sağlayıcıları arasında dosya senkronizasyonu, uzak sürücüleri bağlama veya karmaşık dosya işlemleri gerçekleştirme olsun, RClone Manager en gelişmiş Rclone özelliklerini bile basitleştiren sezgisel bir arayüz sunar.
 
+Ayrıca, uzak dosyalarınıza zarif bir şekilde göz atmanızı sağlayan **yerleşik bir dosya yöneticisi (Nautilus)** özelliğine sahiptir. Dosyaları görüntüleyebilir ve düzenleyebilir; dosya ve klasörleri taşıyabilir, silebilir, kopyalayabilir ve yeniden adlandırabilir; ayrıca yeni klasörler oluşturabilirsiniz. Entegre dosya görüntüleyici; videoları, resimleri, PDF'leri, ses ve metin tabanlı dosyaları kolayca önizlemenizi sağlar. Sağ tık menüleri ve özellik modalları dâhil olmak üzere neredeyse tüm dosya işlemlerini destekler!
+
 > Büyük `RC` harfleri `Rclone RC`'yi temsil ediyor.
 
 <div align="center">
@@ -86,6 +88,10 @@ Yeni özellikler ve iyileştirmelerle düzenli güncellemeler. Sırada ne olduğ
 |                            Görev İzleyici                            |                             Sunma Kontrolü                             |                          Karanlık Mod                          |
 | :------------------------------------------------------------------: | :--------------------------------------------------------------------: | :------------------------------------------------------------: |
 | <img src="assets/job-watcher.png" alt="Görev İzleyici" width="250"/> | <img src="assets/serve-control.png" alt="Sunma Kontrolü" width="250"/> | <img src="assets/dark-ui.png" alt="Karanlık Mod" width="250"/> |
+
+|                      Nautilus Dosya Yöneticisi                      |                      Dosya Görüntüleyici                      |                                                                |
+| :-----------------------------------------------------------------: | :-----------------------------------------------------------: | :------------------------------------------------------------: |
+| <img src="assets/nautilus.png" alt="Nautilus" width="250"/>         | <img src="assets/file-viewer.png" alt="Görüntüleyici" width="250"/> |                                                                |
 
 </p>
 
