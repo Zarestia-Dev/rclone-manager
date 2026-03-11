@@ -26,7 +26,7 @@
       gap: var(--space-sm);
       font-weight: 500;
 
-      .status-icon {
+      mat-icon {
         color: var(--mode-primary-color, var(--primary-color));
         transition: var(--transition-standard);
         will-change: color;

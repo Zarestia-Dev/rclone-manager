@@ -800,9 +800,11 @@ textarea,
 
 // Global mat-icon defaults
 mat-icon {
-  overflow: visible !important;
-  min-height: unset !important;
   flex-shrink: 0 !important;
+
+  svg {
+    display: block;
+  }
 
   &.warn {
     color: var(--warn-color) !important;

@@ -36,6 +36,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Reorder tauri plugins (Cause of startup crash).
 - Remove the global shortcut handler from tauri. (Fixed #117)
 - Fixed directory size calculation in the File Viewer returning the disk root size instead of the selected subfolder size.
+- Fixed shifted icons across the app.
 
 ## [v0.2.1] - 2026-02-05
 

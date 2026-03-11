@@ -172,7 +172,7 @@
       padding: var(--space-xxs) var(--space-xs);
       border-radius: var(--radius-md);
 
-      .status-icon {
+      mat-icon {
         font-size: var(--icon-size-xs);
         width: var(--icon-size-xs);
         height: var(--icon-size-xs);
@@ -197,8 +197,8 @@
         color: var(--primary-color);
         box-shadow: 0 0 0 1px rgba(var(--primary-color-rgb), 0.2);
 
-        .status-icon {
-          animation: spin 2s linear infinite;
+        mat-icon {
+          animation: spin 1s linear infinite;
         }
       }
 
@@ -207,7 +207,7 @@
         color: var(--yellow);
         box-shadow: 0 0 0 1px rgba(var(--yellow-rgb), 0.2);
 
-        .status-icon {
+        mat-icon {
           animation: breathing 2s ease-in-out infinite;
         }
       }
