@@ -463,9 +463,15 @@ export class NautilusComponent implements OnInit, OnDestroy {
     const multiplier = dir === 'asc' ? 1 : -1;
 
     return list.sort((a, b) => {
-      // Folders first
+      // 1. Folders first
       if (a.entry.IsDir !== b.entry.IsDir) return a.entry.IsDir ? -1 : 1;
 
+      // 2. Non-hidden before hidden
+      const aHidden = a.entry.Name.startsWith('.');
+      const bHidden = b.entry.Name.startsWith('.');
+      if (aHidden !== bHidden) return aHidden ? 1 : -1;
+
+      // 3. Sort by selected criteria
       switch (sort) {
         case 'name':
           return (

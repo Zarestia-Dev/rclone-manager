@@ -18,26 +18,23 @@
   </requires>
   <description>
     <p>
-      Provide a modern, intuitive interface for managing multiple cloud storage services. This tool combines a minimalist design with powerful features to help organize files across various platforms.
+      RClone Manager provides a sleek, modern, and intuitive graphical interface for managing all your cloud storage services in one place. Designed with simplicity in mind, it allows you to effortlessly connect to dozens of providers—including Google Drive, Dropbox, OneDrive, and S3—without dealing with complex command-line configurations.
     </p>
     <p>
-      Features
+      Whether you are looking to elegantly browse your remote files through our built-in file manager, seamlessly mount your cloud folders as native local drives, or set up scheduled background syncs, RClone Manager handles the heavy lifting. The beautiful UI features dark and light modes, and convenient system tray integration keeps your active file transfers and scheduled jobs just a click away.
+    </p>
+    <p>
+      Under the hood, it harnesses the incredible power of the underlying rclone engine but perfectly abstracts away the technical details. You can securely encrypt your configurations, fine-tune caching performance, and easily share files over HTTP or WebDAV—all from a beautifully crafted, responsive dashboard.
+    </p>
+    <p>
+      Troubleshooting Notice
     </p>
     <ul>
-      <li>Simple interface: Clean design for easy navigation and remote management.</li>
-      <li>Wide provider support: Connect to Google Drive, Dropbox, OneDrive, S3, and many more.</li>
-      <li>Secure authentication: Integration with popular providers for effortless access.</li>
-      <li>Automated tasks: Schedule file synchronizations to keep data up to date.</li>
-      <li>Security options: Protected configuration with optional encryption.</li>
-      <li>Customizable performance: Fine-tune caching and read sizes for optimal speed.</li>
-      <li>System integration: Quick access from the system tray.</li>
-      <li>Themes: Support for both light and dark display modes.</li>
-      <li>Integrated file manager: Browse and manage files across all services.</li>
-      <li>Drive mounting: Access cloud folders as if they were local drives.</li>
-      <li>Service sharing: Share storage over HTTP, WebDAV, FTP, and SFTP.</li>
-      <li>Operation tracking: Monitor active file transfers and jobs in real-time.</li>
+      <li>If you encounter an "Invalid binary" error during setup, it is likely caused by an outdated system rclone executable (e.g., v1.60.1-DEV on Linux Mint). RClone Manager requires the latest stable rclone binary to offer all of its features. To fix this instantly, we highly recommend letting the app automatically download and manage rclone for you: simply go to Settings → Core, clear the rclone binary path, click Save &amp; Reset Engine. When the "rclone binary missing" dialog appears, let the app install the latest version.</li>
+      <li>For other issues such as the App Won't Start, Shows a Blank Screen, or Freezes, please check our comprehensive Linux Troubleshooting Guide on our website.</li>
     </ul>
   </description>
+  <url type="help">https://hakanismail.info/zarestia/rclone-manager/docs/troubleshooting-linux</url>
   <categories>
     <category>Network</category>
     <category>Utility</category>
