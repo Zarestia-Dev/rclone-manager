@@ -24,7 +24,7 @@ AUR_DIR="$HOME/.aur-repos"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STABLE_PKGBUILD="$SCRIPT_DIR/PKGBUILD"
 GIT_PKGBUILD="$SCRIPT_DIR/PKGBUILD-git"
-HEADLESS_PKGBUILD="$SCRIPT_DIR/../headless/PKGBUILD"
+HEADLESS_PKGBUILD="$SCRIPT_DIR/PKGBUILD-headless"
 
 # Print colored output
 print_info() { echo -e "${BLUE}ℹ${NC} $1"; }

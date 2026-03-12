@@ -1,8 +1,8 @@
 # Maintainer: Hakan İSMAİL <hakanismail53@gmail.com>
 pkgname=rclone-manager
-appname='Rclone.Manager'
-releasetag=0.2.1
-pkgver=0.2.1
+appname='RClone.Manager'
+releasetag=0.2.2
+pkgver=0.2.2
 pkgrel=1
 pkgdesc="User-friendly GUI for Rclone"
 arch=('x86_64' 'aarch64')
@@ -14,8 +14,8 @@ options=('!strip' '!debug')
 # install=${pkgname}.install
 source_x86_64=("${url}/releases/download/v${releasetag}/${appname}_${pkgver}_amd64.deb")
 source_aarch64=("${url}/releases/download/v${releasetag}/${appname}_${pkgver}_arm64.deb")
-sha256sums_x86_64=('b5f1591c360ec45edabbda0e3b3ea8a61d2d61e04ebacfafb5d713bf96ef762d')
-sha256sums_aarch64=('b72c608f4342a6c2b242368543e4ba64848042e03dd11042c521b80430f29bab')
+sha256sums_x86_64=('2d66336fc42d25fb9f399a94679950b66c37700aae133075e41139c3136c4a04')
+sha256sums_aarch64=('2de353583bb9c1f883c583afc6e1ccebd00329ba5e77b7b43e252ac0753587ac')
 package() {
   tar -xvf data.tar.gz -C "${pkgdir}"
 }

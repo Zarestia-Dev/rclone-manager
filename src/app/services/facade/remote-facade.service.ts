@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal, Signal, WritableSignal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { merge } from 'rxjs';
+import { merge, tap } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { JobManagementService } from '../file-operations/job-management.service';
 import { MountManagementService } from '../file-operations/mount-management.service';
@@ -70,12 +70,25 @@ export class RemoteFacadeService extends TauriBaseService {
 
   constructor() {
     super();
+    this.eventListeners
+      .listenToRcloneEngineReady()
+      .pipe(
+        takeUntilDestroyed(),
+        tap({
+          next: () => this.refreshAll(),
+        })
+      )
+      .subscribe();
     merge(
       this.eventListeners.listenToRemoteCacheUpdated(),
-      this.eventListeners.listenToRemoteSettingsChanged(),
-      this.eventListeners.listenToRcloneEngineReady()
+      this.eventListeners.listenToRemoteSettingsChanged()
     )
-      .pipe(takeUntilDestroyed())
+      .pipe(
+        takeUntilDestroyed(),
+        tap({
+          next: () => this.loadRemotes(),
+        })
+      )
       .subscribe();
   }
 
