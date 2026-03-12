@@ -11,7 +11,7 @@ import { AboutModalComponent } from '../../features/modals/settings/about-modal/
 import { RcloneConfigModalComponent } from '../../features/modals/settings/rclone-config-modal/rclone-config-modal.component';
 import { KeyboardShortcutsModalComponent } from '../../features/modals/settings/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component';
 import { RestorePreviewModalComponent } from '../../features/modals/settings/restore-preview-modal/restore-preview-modal.component';
-import { RemoteSettings, STANDARD_MODAL_SIZE } from '@app/types';
+import { RemoteSettings, STANDARD_MODAL_SIZE, ABOUT_MODAL_SIZE } from '@app/types';
 import { BackupAnalysis } from '../settings/backup-restore.service';
 
 export interface RemoteConfigModalOptions {
@@ -124,12 +124,7 @@ export class ModalService {
 
   openAbout(): MatDialogRef<AboutModalComponent> {
     return this.dialog.open(AboutModalComponent, {
-      width: '362px',
-      maxWidth: '362px',
-      minWidth: '362px',
-      height: '80vh',
-      maxHeight: '650px',
-      minHeight: '240px',
+      ...ABOUT_MODAL_SIZE,
       disableClose: true,
     });
   }

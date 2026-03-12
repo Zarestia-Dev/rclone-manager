@@ -10,21 +10,21 @@ export class RcloneValueMapperService {
   /**
    * Convert a machine value to human-readable format based on type
    */
-  machineToHuman(value: any, type: string, fallback?: string): string {
+  machineToHuman(value: unknown, type: string, fallback?: string): string {
     if (value === null || value === undefined) {
       return fallback || '';
     }
 
     switch (type) {
       case 'Duration':
-        return this.nanosecondsToDuration(value, fallback);
+        return this.nanosecondsToDuration(value as number, fallback);
 
       case 'SizeSuffix':
       case 'BwTimetable':
-        return this.bytesToSize(value, fallback);
+        return this.bytesToSize(value as number, fallback);
 
       case 'FileMode':
-        return this.fileModeToString(value, fallback);
+        return this.fileModeToString(value as number | string, fallback);
 
       default:
         return String(value);
@@ -128,7 +128,7 @@ export class RcloneValueMapperService {
    * Parse octal string to numeric file mode (e.g., "777" → 511)
    * Returns the parsed number, or the original value if parsing fails
    */
-  parseFileMode(value: any): number | any {
+  parseFileMode(value: string | number | unknown): number | string | unknown {
     if (typeof value === 'string' && value.trim() !== '') {
       const parsed = parseInt(value, 8);
       return isNaN(parsed) ? value : parsed;
@@ -139,7 +139,7 @@ export class RcloneValueMapperService {
   /**
    * Convert string value to appropriate type for backend
    */
-  humanToMachine(value: any, type: string): any {
+  humanToMachine(value: unknown, type: string): unknown {
     switch (type) {
       case 'int':
       case 'int64':

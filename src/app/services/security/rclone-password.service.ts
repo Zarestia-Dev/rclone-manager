@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
-import { TauriBaseService } from '../core/tauri-base.service';
+import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 
 @Injectable({
   providedIn: 'root',
@@ -38,24 +38,20 @@ export class RclonePasswordService extends TauriBaseService {
    * Store password securely
    */
   async storePassword(password: string): Promise<void> {
-    try {
-      await this.invokeCommand('store_config_password', { password });
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
+    await this.invokeWithNotification('store_config_password', { password }, {
+      successKey: 'security.passwordStored',
+      errorKey: 'security.passwordStoreFailed'
+    });
   }
 
   /**
    * Remove stored password
    */
   async removeStoredPassword(): Promise<void> {
-    try {
-      await this.invokeCommand('remove_config_password');
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
+    await this.invokeWithNotification('remove_config_password', undefined, {
+      successKey: 'security.passwordRemoved',
+      errorKey: 'security.passwordRemoveFailed'
+    });
   }
 
   /**
@@ -75,12 +71,10 @@ export class RclonePasswordService extends TauriBaseService {
    * Validate the Rclone config password
    */
   async validatePassword(password: string): Promise<void> {
-    try {
-      await this.invokeCommand('validate_rclone_password', { password });
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
+    await this.invokeWithNotification('validate_rclone_password', { password }, {
+      errorKey: 'security.passwordInvalid',
+      showSuccess: false
+    });
   }
 
   /**
@@ -100,38 +94,32 @@ export class RclonePasswordService extends TauriBaseService {
    * Encrypt the Rclone config
    */
   async encryptConfig(password: string): Promise<void> {
-    try {
-      await this.invokeCommand('encrypt_config', { password: password });
-    } catch (error) {
-      console.error('Failed to encrypt config:', error);
-      throw error;
-    }
+    await this.invokeWithNotification('encrypt_config', { password }, {
+      successKey: 'security.configEncrypted',
+      errorKey: 'security.encryptionFailed'
+    });
   }
 
   /**
    * Unencrypt the Rclone config
    */
   async unencryptConfig(password: string): Promise<void> {
-    try {
-      await this.invokeCommand('unencrypt_config', { password: password });
-    } catch (error) {
-      console.error('Failed to unencrypt config:', error);
-      throw error;
-    }
+    await this.invokeWithNotification('unencrypt_config', { password }, {
+      successKey: 'security.configUnencrypted',
+      errorKey: 'security.decryptionFailed'
+    });
   }
 
   /**
    * Change the Rclone config password
    */
   async changeConfigPassword(currentPassword: string, newPassword: string): Promise<void> {
-    try {
-      await this.invokeCommand('change_config_password', {
-        currentPassword: currentPassword,
-        newPassword: newPassword,
-      });
-    } catch (error) {
-      console.error('Failed to change config password:', error);
-      throw error;
-    }
+    await this.invokeWithNotification('change_config_password', {
+      currentPassword,
+      newPassword,
+    }, {
+      successKey: 'security.passwordChanged',
+      errorKey: 'security.passwordChangeFailed'
+    });
   }
 }

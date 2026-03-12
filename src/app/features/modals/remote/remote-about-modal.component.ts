@@ -17,7 +17,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCardModule } from '@angular/material/card';
-import { RemoteManagementService, RemoteFacadeService, ModalService } from 'src/app/services';
+import { RemoteFileOperationsService, RemoteFacadeService, ModalService } from 'src/app/services';
 import { IconService } from '@app/services';
 import { FormatFileSizePipe } from 'src/app/shared/pipes';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -50,7 +50,7 @@ interface RemoteAboutData {
 })
 export class RemoteAboutModalComponent implements OnInit {
   private dialogRef = inject(MatDialogRef<RemoteAboutModalComponent>);
-  private remoteManagementService = inject(RemoteManagementService);
+  private remoteOps = inject(RemoteFileOperationsService);
   private remoteFacadeService = inject(RemoteFacadeService);
   public iconService = inject(IconService);
   private translate = inject(TranslateService);
@@ -86,7 +86,7 @@ export class RemoteAboutModalComponent implements OnInit {
     // 1. Load FS Info & Check for 'About' feature support
     this.loadingAbout.set(true);
     this.loadingUsage.set(true);
-    this.remoteManagementService
+    this.remoteOps
       .getFsInfo(this.remoteName(), 'ui')
       .then(info => {
         const typedInfo = info as Record<string, unknown>;
@@ -103,7 +103,7 @@ export class RemoteAboutModalComponent implements OnInit {
           this.diskUsageInfo.set(null);
         }
       })
-      .catch(err => {
+      .catch((err: unknown) => {
         console.error('Error loading fs info:', err);
         this.errorAbout.set(this.translate.instant('fileBrowser.remoteAbout.error'));
         this.loadingAbout.set(false);
@@ -112,13 +112,13 @@ export class RemoteAboutModalComponent implements OnInit {
 
     // 3. Load Size/Count (Slowest, can take time for large remotes)
     this.loadingSize.set(true);
-    this.remoteManagementService
+    this.remoteOps
       .getSize(this.remoteName(), undefined, 'ui')
       .then(size => {
         this.sizeInfo.set(size);
         this.loadingSize.set(false);
       })
-      .catch(err => {
+      .catch((err: unknown) => {
         console.warn('Size check failed:', err);
         this.loadingSize.set(false);
       });

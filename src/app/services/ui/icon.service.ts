@@ -1,10 +1,10 @@
 import { inject, Injectable } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
 import { MatIconRegistry } from '@angular/material/icon';
-import { ADWAITA_ICONS } from './adwaita-icons';
-import { BASE_ICONS } from './icon-registry';
-import { MIME_EXTENSION_MAP } from './mime-extension-map';
-import { getIconForMimeType, getGenericIconForMimeType } from './mime-icon-map';
+import { ADWAITA_ICONS } from './constants/adwaita-icons';
+import { BASE_ICONS } from './constants/icon-registry';
+import { MIME_EXTENSION_MAP } from './constants/mime-extension-map';
+import { getIconForMimeType, getGenericIconForMimeType } from './constants/mime-icon-map';
 import { Entry } from '@app/types';
 
 export type FileCategory = 'image' | 'video' | 'audio' | 'pdf' | 'directory' | 'binary' | 'text';

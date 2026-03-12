@@ -1,13 +1,14 @@
-import { Injectable, computed, inject, signal, Signal, WritableSignal } from '@angular/core';
+import { DestroyRef, Injectable, computed, inject, signal, Signal, WritableSignal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { merge, tap } from 'rxjs';
-import { TauriBaseService } from '../core/tauri-base.service';
-import { JobManagementService } from '../file-operations/job-management.service';
-import { MountManagementService } from '../file-operations/mount-management.service';
-import { ServeManagementService } from '../file-operations/serve-management.service';
+import { merge, tap, concatMap, delay, from, of } from 'rxjs';
+import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
+import { JobManagementService } from '../operations/job-management.service';
+import { MountManagementService } from '../operations/mount-management.service';
+import { ServeManagementService } from '../operations/serve-management.service';
 import { RemoteManagementService } from '../remote/remote-management.service';
+import { RemoteFileOperationsService } from '../remote/remote-file-operations.service';
 import { AppSettingsService } from '../settings/app-settings.service';
-import { EventListenersService } from '../system/event-listeners.service';
+import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import {
   Remote,
   JobInfo,
@@ -21,7 +22,7 @@ import {
   DiskUsage,
   Origin,
 } from '@app/types';
-import { isLocalPath } from 'src/app/shared/utils';
+import { isLocalPath } from 'src/app/services/remote/utils/remote-config.utils';
 
 @Injectable({ providedIn: 'root' })
 export class RemoteFacadeService extends TauriBaseService {
@@ -29,8 +30,10 @@ export class RemoteFacadeService extends TauriBaseService {
   private mountService = inject(MountManagementService);
   private serveService = inject(ServeManagementService);
   private remoteService = inject(RemoteManagementService);
+  private remoteOpsService = inject(RemoteFileOperationsService);
   private appSettingsService = inject(AppSettingsService);
   private eventListeners = inject(EventListenersService);
+  private destroyRef = inject(DestroyRef);
 
   readonly jobs = this.jobService.jobs;
   readonly mountedRemotes = this.mountService.mountedRemotes;
@@ -120,13 +123,13 @@ export class RemoteFacadeService extends TauriBaseService {
     this.updateDiskUsage(remoteName, { loading: true, error: false, total_space: undefined });
 
     try {
-      const fsInfo = await this.remoteService.getFsInfo(fsName, source);
+      const fsInfo = await this.remoteOpsService.getFsInfo(fsName, source);
       if (fsInfo.Features?.['About'] === false) {
         this.updateDiskUsage(remoteName, { notSupported: true, loading: false, error: false });
         return null;
       }
 
-      const usage = await this.remoteService.getDiskUsage(fsName, undefined, source);
+      const usage = await this.remoteOpsService.getDiskUsage(fsName, undefined, source);
       const newUsage: DiskUsage = {
         total_space: usage.total ?? -1,
         used_space: usage.used ?? -1,
@@ -210,32 +213,6 @@ export class RemoteFacadeService extends TauriBaseService {
     } finally {
       this.isLoading.set(false);
     }
-  }
-
-  loadDiskUsageInBackground(remotes?: Remote[]): void {
-    const generation = ++this.backgroundLoadGeneration;
-    const targets = (remotes ?? this.activeRemotes()).filter(
-      r =>
-        !r.diskUsage.error &&
-        !r.diskUsage.notSupported &&
-        (r.diskUsage.loading || r.diskUsage.total_space === undefined)
-    );
-    if (!targets.length) return;
-
-    (async () => {
-      for (const remote of targets) {
-        if (generation !== this.backgroundLoadGeneration) return;
-        try {
-          await this.getCachedOrFetchDiskUsage(remote.remoteSpecs.name);
-        } catch (e) {
-          console.error(
-            `[RemoteFacadeService] Disk usage failed for ${remote.remoteSpecs.name}:`,
-            e
-          );
-        }
-        await new Promise<void>(res => setTimeout(res, 500));
-      }
-    })();
   }
 
   // --- Action State ---
@@ -398,9 +375,7 @@ export class RemoteFacadeService extends TauriBaseService {
     if (!base) return null;
 
     const newName = this.generateUniqueRemoteName(base.remoteSpecs.name.replace(/-\d+$/, ''));
-    const settings = JSON.parse(
-      JSON.stringify(this.getRemoteSettings(remoteName) ?? {})
-    ) as RemoteSettings;
+    const settings = structuredClone(this.getRemoteSettings(remoteName) ?? {}) as RemoteSettings;
 
     for (const key of [
       'mountConfigs',
@@ -424,6 +399,29 @@ export class RemoteFacadeService extends TauriBaseService {
 
   async deleteJob(jobId: number): Promise<void> {
     await this.jobService.deleteJob(jobId);
+  }
+
+  loadDiskUsageInBackground(remotes?: Remote[]): void {
+    const generation = ++this.backgroundLoadGeneration;
+    const targets = (remotes ?? this.activeRemotes()).filter(
+      r =>
+        !r.diskUsage.error &&
+        !r.diskUsage.notSupported &&
+        (r.diskUsage.loading || r.diskUsage.total_space === undefined)
+    );
+    if (!targets.length) return;
+
+    from(targets)
+      .pipe(
+        concatMap(remote => {
+          if (generation !== this.backgroundLoadGeneration) return of(null);
+          return from(this.getCachedOrFetchDiskUsage(remote.remoteSpecs.name)).pipe(delay(500));
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        error: e => console.error('[RemoteFacadeService] Background loading error:', e),
+      });
   }
 
   // --- Private ---

@@ -8,7 +8,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { BackendService } from 'src/app/services/system/backend.service';
+import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import type {
   AddBackendConfig,
   BackendInfo,
@@ -23,10 +23,10 @@ import { ConfirmModalComponent } from 'src/app/shared/modals/confirm-modal/confi
 import { firstValueFrom } from 'rxjs';
 import { BackendSecurityComponent } from './backend-security/backend-security.component';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { FileSystemService } from 'src/app/services/file-operations/file-system.service';
+import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { ModalService } from '@app/services';
-import { ApiClientService } from 'src/app/services/core/api-client.service';
+import { ApiClientService } from 'src/app/services/infrastructure/platform/api-client.service';
 import { FilePickerConfig } from 'src/app/shared/types/ui';
 import { BACKEND_CONSTANTS } from 'src/app/shared/constants/backend.constants';
 

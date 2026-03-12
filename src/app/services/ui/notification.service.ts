@@ -4,6 +4,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { TranslateService } from '@ngx-translate/core';
 import { ConfirmDialogData } from '@app/types';
 import { ConfirmModalComponent } from 'src/app/shared/modals/confirm-modal/confirm-modal.component';
+import { firstValueFrom } from 'rxjs';
 
 /**
  * Service for handling user notifications and confirmations
@@ -88,7 +89,7 @@ export class NotificationService {
    * @param cancelText Cancel button text (defaults to translated 'No')
    * @param options Optional icon and styling options
    */
-  confirmModal(
+  async confirmModal(
     title: string,
     message: string,
     confirmText?: string,
@@ -103,17 +104,14 @@ export class NotificationService {
       ...options,
     };
 
-    return new Promise(resolve => {
-      const dialogRef = this.dialog.open(ConfirmModalComponent, {
-        maxWidth: '480px',
-        data: dialogData,
-        disableClose: true,
-      });
-
-      dialogRef.afterClosed().subscribe(result => {
-        resolve(!!result);
-      });
+    const dialogRef = this.dialog.open(ConfirmModalComponent, {
+      maxWidth: '480px',
+      data: dialogData,
+      disableClose: true,
     });
+
+    const result = await firstValueFrom(dialogRef.afterClosed());
+    return !!result;
   }
 
   /**
@@ -123,7 +121,7 @@ export class NotificationService {
    * @param buttonText Button text (defaults to translated 'OK')
    * @param options Optional icon and styling options
    */
-  alertModal(
+  async alertModal(
     title: string,
     message: string,
     buttonText?: string,
@@ -136,16 +134,12 @@ export class NotificationService {
       ...options,
     };
 
-    return new Promise(resolve => {
-      const dialogRef = this.dialog.open(ConfirmModalComponent, {
-        maxWidth: '480px',
-        data: dialogData,
-        disableClose: true,
-      });
-
-      dialogRef.afterClosed().subscribe(() => {
-        resolve();
-      });
+    const dialogRef = this.dialog.open(ConfirmModalComponent, {
+      maxWidth: '480px',
+      data: dialogData,
+      disableClose: true,
     });
+
+    await firstValueFrom(dialogRef.afterClosed());
   }
 }

@@ -53,7 +53,7 @@ import {
   isInteractiveContinueDisabled,
   convertBoolAnswerToString,
   updateInteractiveAnswer,
-} from '../../../../shared/utils/remote-config.utils';
+} from '../../../../services/remote/utils/remote-config.utils';
 
 type WizardStep = 'setup' | 'operations' | 'interactive';
 

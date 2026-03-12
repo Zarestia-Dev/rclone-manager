@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { FLAG_TYPES, FlagType, RcConfigOption } from '@app/types';
-import { TauriBaseService } from '../core/tauri-base.service';
+import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { staticFlagDefinitions } from './flag-definitions';
 
 // Define the shape of the grouped data returned by our new Rust command

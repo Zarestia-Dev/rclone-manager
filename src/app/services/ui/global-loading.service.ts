@@ -2,7 +2,7 @@ import { ComponentRef, DestroyRef, Injectable, inject, Injector } from '@angular
 import { Overlay, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { LoadingOverlayComponent } from '../../shared/components/loading-overlay/loading-overlay.component';
-import { EventListenersService } from '../system/event-listeners.service';
+import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { TranslateService } from '@ngx-translate/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 

@@ -34,7 +34,7 @@ import {
   VfsQueueItem,
   VfsService,
   VfsStats,
-} from 'src/app/services/file-operations/vfs.service';
+} from 'src/app/services/operations/vfs.service';
 import { PathSelectionService } from 'src/app/services/remote/path-selection.service';
 import { NotificationService } from '@app/services';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
@@ -42,7 +42,7 @@ import {
   FileSystemService,
   MountManagementService,
   ServeManagementService,
-  RemoteManagementService,
+  RemoteFileOperationsService,
 } from '@app/services';
 
 interface VfsInstance {
@@ -93,7 +93,7 @@ export class VfsControlPanelComponent {
   private readonly mountService = inject(MountManagementService);
   private readonly serveService = inject(ServeManagementService);
   private readonly translate = inject(TranslateService);
-  private readonly remoteService = inject(RemoteManagementService);
+  private readonly remoteOps = inject(RemoteFileOperationsService);
 
   // ViewChild for table rendering
   @ViewChild(MatTable) table?: MatTable<VfsQueueItem>;
@@ -288,7 +288,7 @@ export class VfsControlPanelComponent {
     const isIndexed = (name: string): boolean => /:\[\d+\]$/.test(name);
 
     // Use request info to check features
-    const fsInfo = await this.remoteService.getFsInfo(this.remoteName());
+    const fsInfo = await this.remoteOps.getFsInfo(this.remoteName());
     const supportsPollInterval = fsInfo.Features?.['ChangeNotify'];
 
     // Run side-effect to fetch intervals, then update signal once

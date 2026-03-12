@@ -58,6 +58,14 @@ import {
   REMOTE_NAME_REGEX,
   INTERACTIVE_REMOTES,
   ServeConfig,
+  MountConfig,
+  CopyConfig,
+  SyncConfig,
+  BisyncConfig,
+  MoveConfig,
+  FilterConfig,
+  VfsConfig,
+  BackendConfig,
   DEFAULT_PROFILE_NAME,
 } from '@app/types';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
@@ -69,7 +77,7 @@ import {
   getDefaultAnswerFromQuestion,
   createInitialInteractiveFlowState,
   convertBoolAnswerToString,
-} from '../../../../shared/utils/remote-config.utils';
+} from '../../../../services/remote/utils/remote-config.utils';
 
 interface DialogData {
   editTarget?: EditTarget;
@@ -85,6 +93,9 @@ interface PendingRemoteData {
   type?: string;
   [key: string]: unknown;
 }
+ 
+type ProfileData = Record<string, unknown>;
+type ProfilesMap = Record<string, ProfileData>;
 
 @Component({
   selector: 'app-remote-config-modal',
@@ -174,10 +185,10 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     >
   );
 
-  profiles = signal<Record<string, Record<string, any>>>(
-    Object.fromEntries(FLAG_TYPES.map(t => [t, {} as Record<string, any>])) as Record<
+  profiles = signal<Record<FlagType, ProfilesMap>>(
+    Object.fromEntries(FLAG_TYPES.map(t => [t, {} as ProfilesMap])) as Record<
       FlagType,
-      Record<string, any>
+      ProfilesMap
     >
   );
 
@@ -295,9 +306,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
       // Select default (first one or DEFAULT_PROFILE_NAME)
       // If a targetProfile is specified in dialog data AND matches the current type, use it
-      const profileNames = Object.keys(this.profiles()[type]);
-      if (this.dialogData?.targetProfile && profileNames.includes(this.dialogData.targetProfile)) {
-        this.selectedProfileName.update(s => ({ ...s, [type]: this.dialogData!.targetProfile! }));
+      const profiles = this.profiles()[type];
+      const profileNames = Object.keys(profiles);
+      const targetProfile = this.dialogData?.targetProfile;
+      if (targetProfile && profileNames.includes(targetProfile)) {
+        this.selectedProfileName.update(s => ({ ...s, [type]: targetProfile }));
       } else {
         this.selectedProfileName.update(s => ({
           ...s,
@@ -354,7 +367,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
       // Set selected type from existing config if available
       const serveConfigs = this.dialogData?.existingConfig?.['serveConfigs'] as
-        | Record<string, unknown>
+        | ProfilesMap
         | undefined;
       this.profiles.update(p => ({ ...p, serve: serveConfigs || {} }));
       if (serveConfigs && Object.keys(serveConfigs).length > 0) {
@@ -506,7 +519,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
 
   private createConfigGroup(fields: string[], includeProfiles = true): FormGroup {
-    const group: Record<string, any> = {};
+    const group: Record<string, unknown> = {};
     fields.forEach(field => {
       group[field] = field === 'autoStart' || field === 'cronEnabled' ? [false] : [''];
     });
@@ -585,10 +598,8 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe(enabled => {
               if (enabled) {
-                destControl?.setValidators([
-                  Validators.required,
-                  this.validatorRegistry.getValidator('crossPlatformPath')!,
-                ]);
+                const validator = this.validatorRegistry.getValidator('crossPlatformPath');
+                destControl?.setValidators([Validators.required, ...(validator ? [validator] : [])]);
               } else {
                 destControl?.clearValidators();
               }
@@ -661,9 +672,9 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
             const firstKey = Object.keys(configs)[0];
             const firstConfig = configs[firstKey];
             if (type === 'serve') {
-              this.populateServeForm({ serveConfig: firstConfig });
+              this.populateServeForm({ serveConfig: firstConfig as Record<string, unknown> });
             } else {
-              this.populateFlagForm(type as FlagType, firstConfig);
+              this.populateFlagForm(type as FlagType, firstConfig as Record<string, unknown>);
             }
           }
         });
@@ -692,9 +703,9 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     }
   }
 
-  private async populateRemoteForm(config: any): Promise<void> {
+  private async populateRemoteForm(config: Record<string, unknown>): Promise<void> {
     this.isPopulatingForm = true;
-    this.remoteForm.patchValue({ name: config.name, type: config.type });
+    this.remoteForm.patchValue({ name: config['name'], type: config['type'] });
     await this.onRemoteTypeChange();
     this.remoteForm.patchValue(config);
     // Use setTimeout to ensure all async value change events have fired
@@ -703,13 +714,13 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     }, 100);
   }
 
-  private async populateServeForm(config: any): Promise<void> {
+  private async populateServeForm(config: Record<string, unknown>): Promise<void> {
     this.isPopulatingForm = true;
 
     // Note: We don't reset to defaults here to enable "clone" behavior
     // New profiles inherit current form values as a template
 
-    const serveConfig = config?.['serveConfig'] || {};
+    const serveConfig = (config?.['serveConfig'] as Record<string, unknown>) || {};
     const options = serveConfig?.['options'] as Record<string, unknown>;
 
     // Get type
@@ -721,12 +732,12 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
     // Populate form with profile data
     this.remoteConfigForm.get('serveConfig')?.patchValue({
-      autoStart: serveConfig.autoStart || false,
-      source: this.parsePathString(serveConfig.source || '', 'currentRemote', this.getRemoteName()),
+      autoStart: serveConfig['autoStart'] || false,
+      source: this.parsePathString((serveConfig['source'] as string) || '', 'currentRemote', this.getRemoteName()),
       type: type,
-      vfsProfile: serveConfig.vfsProfile || DEFAULT_PROFILE_NAME,
-      filterProfile: serveConfig.filterProfile || DEFAULT_PROFILE_NAME,
-      backendProfile: serveConfig.backendProfile || DEFAULT_PROFILE_NAME,
+      vfsProfile: serveConfig['vfsProfile'] || DEFAULT_PROFILE_NAME,
+      filterProfile: serveConfig['filterProfile'] || DEFAULT_PROFILE_NAME,
+      backendProfile: serveConfig['backendProfile'] || DEFAULT_PROFILE_NAME,
     });
 
     // Populate options AFTER rebuilding (to overwrite defaults with saved values)
@@ -749,7 +760,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     }, 100);
   }
 
-  private populateFlagForm(type: FlagType, config: any): void {
+  private populateFlagForm(type: FlagType, config: Record<string, unknown>): void {
     const group = this.remoteConfigForm.get(`${type}Config`);
     if (!group) return;
 
@@ -758,29 +769,29 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
     // Basic fields - always patch these
     const patchData: any = {
-      autoStart: config.autoStart || false,
-      cronEnabled: config.cronEnabled || false,
-      cronExpression: config.cronExpression ?? null,
-      vfsProfile: config.vfsProfile || DEFAULT_PROFILE_NAME,
-      filterProfile: config.filterProfile || DEFAULT_PROFILE_NAME,
-      backendProfile: config.backendProfile || DEFAULT_PROFILE_NAME,
+      autoStart: config['autoStart'] || false,
+      cronEnabled: config['cronEnabled'] || false,
+      cronExpression: config['cronExpression'] ?? null,
+      vfsProfile: config['vfsProfile'] || DEFAULT_PROFILE_NAME,
+      filterProfile: config['filterProfile'] || DEFAULT_PROFILE_NAME,
+      backendProfile: config['backendProfile'] || DEFAULT_PROFILE_NAME,
     };
 
     // Mount type - patch if defined in config
-    if (type === 'mount' && config.type !== undefined) {
-      patchData.type = config.type;
+    if (type === 'mount' && config['type'] !== undefined) {
+      patchData.type = config['type'];
     }
 
     // Paths - only patch if defined in config
-    if (config.source !== undefined) {
-      patchData.source = this.parsePathString(config.source, 'currentRemote', this.getRemoteName());
+    if (config['source'] !== undefined) {
+      patchData.source = this.parsePathString(config['source'] as string, 'currentRemote', this.getRemoteName());
     }
 
-    if (config.dest !== undefined) {
+    if (config['dest'] !== undefined) {
       if (type === 'mount') {
-        patchData.dest = config.dest;
+        patchData.dest = config['dest'];
       } else {
-        patchData.dest = this.parsePathString(config.dest, 'local', this.getRemoteName());
+        patchData.dest = this.parsePathString(config['dest'] as string, 'local', this.getRemoteName());
       }
     }
 
@@ -801,8 +812,8 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         });
       }
       // Now apply saved option values (if any)
-      if (config.options) {
-        Object.entries(config.options).forEach(([fieldName, value]) => {
+      if (config['options']) {
+        Object.entries(config['options'] as Record<string, unknown>).forEach(([fieldName, value]) => {
           const field = this.dynamicFlagFields[type].find(f => f.FieldName === fieldName);
           if (field) {
             const controlKey = this.getUniqueControlKey(type, field);
@@ -1155,15 +1166,15 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
     const currentProfiles = this.profiles();
     return {
-      mountConfigs: currentProfiles['mount'],
-      copyConfigs: currentProfiles['copy'],
-      syncConfigs: currentProfiles['sync'],
-      bisyncConfigs: currentProfiles['bisync'],
-      moveConfigs: currentProfiles['move'],
-      serveConfigs: currentProfiles['serve'],
-      filterConfigs: currentProfiles['filter'],
-      vfsConfigs: currentProfiles['vfs'],
-      backendConfigs: currentProfiles['backend'],
+      mountConfigs: currentProfiles['mount'] as Record<string, MountConfig>,
+      copyConfigs: currentProfiles['copy'] as Record<string, CopyConfig>,
+      syncConfigs: currentProfiles['sync'] as Record<string, SyncConfig>,
+      bisyncConfigs: currentProfiles['bisync'] as Record<string, BisyncConfig>,
+      moveConfigs: currentProfiles['move'] as Record<string, MoveConfig>,
+      serveConfigs: currentProfiles['serve'] as unknown as Record<string, ServeConfig>,
+      filterConfigs: currentProfiles['filter'] as Record<string, FilterConfig>,
+      vfsConfigs: currentProfiles['vfs'] as Record<string, VfsConfig>,
+      backendConfigs: currentProfiles['backend'] as Record<string, BackendConfig>,
       showOnTray: true,
     };
   }
@@ -1299,7 +1310,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     }));
   }
 
-  getProfiles(type: FlagType): { name: string; [key: string]: any }[] {
+  getProfiles(type: FlagType): { name: string; [key: string]: unknown }[] {
     return Object.entries(this.profiles()[type] || {}).map(([name, data]) => ({
       name,
       ...data,
@@ -1360,8 +1371,8 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     };
   }
 
-  private buildUpdateConfig(): Promise<Record<string, any>> {
-    const updatedConfig: Record<string, any> = {};
+  private buildUpdateConfig(): Promise<Record<string, unknown>> {
+    const updatedConfig: Record<string, unknown> = {};
 
     if (this.editTarget() && this.editTarget() !== 'remote') {
       const target = this.editTarget() as FlagType;
@@ -1382,21 +1393,21 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     return Promise.resolve(updatedConfig);
   }
 
-  private buildServeConfig(serveData: any, remoteName: string): Record<string, unknown> {
+  private buildServeConfig(serveData: ProfileData, remoteName: string): Record<string, unknown> {
     // Build fs path from source
-    const fs = buildPathString(serveData.source, remoteName);
+    const fs = buildPathString(serveData['source'] as string, remoteName);
 
     // Clean serve options
-    const serveOptions = this.cleanServeOptions(serveData.options || {});
+    const serveOptions = this.cleanServeOptions((serveData['options'] as Record<string, unknown>) || {});
 
     return {
-      autoStart: serveData.autoStart,
+      autoStart: serveData['autoStart'] as boolean,
       source: fs,
-      vfsProfile: serveData.vfsProfile || DEFAULT_PROFILE_NAME,
-      filterProfile: serveData.filterProfile || DEFAULT_PROFILE_NAME,
-      backendProfile: serveData.backendProfile || DEFAULT_PROFILE_NAME,
+      vfsProfile: serveData['vfsProfile'] || DEFAULT_PROFILE_NAME,
+      filterProfile: serveData['filterProfile'] || DEFAULT_PROFILE_NAME,
+      backendProfile: serveData['backendProfile'] || DEFAULT_PROFILE_NAME,
       options: {
-        type: serveData.type,
+        type: serveData['type'],
         fs: fs,
         ...serveOptions,
       },
@@ -1419,10 +1430,10 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   // ============================================================================
   // DATA CLEANING
   // ============================================================================
-  private cleanFormData(formData: any): any {
-    const result: any = {
-      name: formData.name,
-      type: formData.type,
+  private cleanFormData(formData: Record<string, unknown>): PendingRemoteData {
+    const result: PendingRemoteData = {
+      name: formData['name'] as string,
+      type: formData['type'] as string,
     };
 
     this.dynamicRemoteFields.forEach(field => {
@@ -1445,7 +1456,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
 
   private cleanData(
-    formData: any,
+    formData: Record<string, unknown>,
     fieldDefinitions: RcConfigOption[],
     flagType: FlagType
   ): Record<string, unknown> {
@@ -1465,7 +1476,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     );
   }
 
-  private isDefaultValue(value: any, field: RcConfigOption): boolean {
+  private isDefaultValue(value: unknown, field: RcConfigOption): boolean {
     return (
       String(value) === String(field.Default) ||
       String(value) === String(field.DefaultStr) ||
@@ -1484,7 +1495,9 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     void this.processInteractiveResponse(String(answer));
   }
 
-  private async startInteractiveRemoteConfig(remoteData: any): Promise<{ success: boolean }> {
+  private async startInteractiveRemoteConfig(
+    remoteData: PendingRemoteData
+  ): Promise<{ success: boolean }> {
     this.interactiveFlowState.set({
       isActive: true,
       isProcessing: true,
@@ -1494,7 +1507,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     const { name, type, ...paramRest } = remoteData;
     const startResp = await this.remoteManagementService.startRemoteConfigInteractive(
       name,
-      type,
+      type || '',
       paramRest,
       { nonInteractive: true, obscure: true }
     );

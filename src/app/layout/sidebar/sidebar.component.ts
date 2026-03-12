@@ -20,7 +20,7 @@ import { SearchContainerComponent } from '../../shared/components/search-contain
 import { Remote } from '@app/types';
 import { IconService } from '@app/services';
 import { UiStateService } from '@app/services';
-import { RemoteStatusService } from '../../shared/utils/remote-status.service';
+import { RemoteStatusService } from '@app/services';
 
 @Component({
   selector: 'app-sidebar',

@@ -19,6 +19,7 @@ import {
   RemoteManagementService,
 } from '@app/services';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import {
   FileBrowserItem,
   CollectionType,
@@ -30,7 +31,7 @@ import {
 @Injectable({
   providedIn: 'root',
 })
-export class NautilusService {
+export class NautilusService extends TauriBaseService {
   private overlay = inject(Overlay);
   private appSettingsService = inject(AppSettingsService);
   private remoteManagement = inject(RemoteManagementService);
@@ -75,37 +76,44 @@ export class NautilusService {
 
   // Load data when Nautilus opens
   public async loadRemoteData(): Promise<void> {
-    const [remoteNames, drives, configs] = await Promise.all([
-      this.remoteManagement.getRemotes(),
-      this.remoteManagement.getLocalDrives(),
-      this.remoteManagement.getAllRemoteConfigs().catch(() => ({})),
-    ]);
+    try {
+      const [remoteNames, drives, configs] = await Promise.all([
+        this.remoteManagement.getRemotes(),
+        this.remoteManagement.getLocalDrives(),
+        this.remoteManagement.getAllRemoteConfigs().catch(e => {
+          console.error('[NautilusService] Failed to load remote configs:', e);
+          return {};
+        }),
+      ]);
 
-    // Set local drives
-    this.localDrives.set(
-      drives.map(drive => ({
-        name: drive.name,
-        label: drive.label || drive.name,
-        type: 'hard-drive',
-        isLocal: true,
-        showName: drive.show_name,
-      }))
-    );
+      // Set local drives
+      this.localDrives.set(
+        drives.map(drive => ({
+          name: drive.name,
+          label: drive.label || drive.name,
+          type: 'hard-drive',
+          isLocal: true,
+          showName: drive.show_name,
+        }))
+      );
 
-    // Set cloud remotes
-    this.cloudRemotes.set(
-      remoteNames.map(name => {
-        const config = (configs as Record<string, { type?: string; Type?: string } | undefined>)[
-          name
-        ];
-        return {
-          name,
-          label: name,
-          type: config?.type || config?.Type || 'cloud',
-          isLocal: false, // Will be updated from fsInfo cache later if needed
-        };
-      })
-    );
+      // Set cloud remotes
+      this.cloudRemotes.set(
+        remoteNames.map(name => {
+          const config = (configs as Record<string, { type?: string; Type?: string } | undefined>)[
+            name
+          ];
+          return {
+            name,
+            label: name,
+            type: config?.type || config?.Type || 'cloud',
+            isLocal: false,
+          };
+        })
+      );
+    } catch (e) {
+      console.error('[NautilusService] Failed to load remote data:', e);
+    }
   }
 
   // ========== COLLECTIONS CONFIG ==========
@@ -142,6 +150,7 @@ export class NautilusService {
   private pickerComponentRef: ComponentRef<NautilusComponent> | null = null;
 
   constructor() {
+    super();
     // Load all collections dynamically
     (Object.keys(this.collections) as CollectionType[]).forEach(type => {
       this.loadCollection(type);

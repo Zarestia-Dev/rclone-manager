@@ -4,18 +4,19 @@ import { ComponentPortal } from '@angular/cdk/portal';
 import { platform } from '@tauri-apps/plugin-os';
 import { FileViewerModalComponent } from '../../features/components/file-browser/file-viewer/file-viewer-modal.component';
 import { Entry } from '@app/types';
-import { ApiClientService } from '../core/api-client.service';
 import { IconService } from './icon.service';
+import { PathService } from '../infrastructure/platform/path.service';
 import { HttpClient } from '@angular/common/http';
+import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { firstValueFrom } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
 })
-export class FileViewerService {
+export class FileViewerService extends TauriBaseService {
   private overlay = inject(Overlay);
-  private apiClient = inject(ApiClientService);
   private iconService = inject(IconService);
+  private pathService = inject(PathService);
   private http = inject(HttpClient);
 
   // Use Angular signal for viewer open state
@@ -80,18 +81,18 @@ export class FileViewerService {
         );
         return response?.data ?? null;
       } catch (e) {
-        console.warn('Failed to fetch audio cover:', e);
+        console.warn('[FileViewerService] Failed to fetch audio cover:', e);
         return null;
       }
     } else {
       try {
-        return await this.apiClient.invoke<string | null>('get_audio_cover', {
+        return await this.invokeCommand<string | null>('get_audio_cover', {
           remote: remoteName,
           path: item.Path,
           isLocal: isLocal,
         });
       } catch (e) {
-        console.warn('Failed to invoke get_audio_cover:', e);
+        console.warn('[FileViewerService] Failed to invoke get_audio_cover:', e);
         return null;
       }
     }
@@ -118,7 +119,7 @@ export class FileViewerService {
       // 2. Construct full target path relative to remote/local root
       // If fileDir is "docs", relative is "../img.png" -> target is "img.png"
       const combined = fileDir ? `${fileDir}/${relativePath}` : relativePath;
-      const normalizedPath = this.normalizePath(combined);
+      const normalizedPath = this.pathService.normalizePath(combined);
 
       // 3. Generate URL for this new path
       return this.generateUrlFromPath(normalizedPath, remoteName, isLocal);
@@ -183,19 +184,5 @@ export class FileViewerService {
       return `http://rclone.localhost/${encodedRemote}/${encodedPath}`;
     }
     return `rclone://${encodedRemote}/${encodedPath}`;
-  }
-
-  private normalizePath(p: string): string {
-    const parts = p.split(/[/\\]/);
-    const stack: string[] = [];
-    for (const part of parts) {
-      if (part === '' || part === '.') continue;
-      if (part === '..') {
-        if (stack.length > 0) stack.pop();
-      } else {
-        stack.push(part);
-      }
-    }
-    return stack.join('/');
   }
 }

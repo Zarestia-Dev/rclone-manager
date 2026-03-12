@@ -11,7 +11,8 @@ import { RemoteManagementService } from '../../services/remote/remote-management
   providedIn: 'root',
 })
 export class AuthStateService {
-  // Authentication state
+  private readonly remoteManagementService = inject(RemoteManagementService);
+
   // Authentication state
   private readonly _isAuthInProgress = signal<boolean>(false);
   private readonly _currentRemoteName = signal<string | null>(null);
@@ -30,8 +31,6 @@ export class AuthStateService {
   public readonly isAuthCancelled$ = toObservable(this._isAuthCancelled);
   public readonly currentRemoteName$ = toObservable(this._currentRemoteName);
   public readonly cleanupInProgress$ = toObservable(this._cleanupInProgress);
-
-  private remoteManagementService = inject(RemoteManagementService);
 
   /**
    * Start authentication process

@@ -20,6 +20,16 @@ export const STANDARD_MODAL_SIZE: ModalSize = {
   disableClose: true,
 };
 
+export const ABOUT_MODAL_SIZE: ModalSize = {
+  width: '362px',
+  maxWidth: '362px',
+  minWidth: '362px',
+  height: '80vh',
+  maxHeight: '650px',
+  minHeight: '240px',
+  disableClose: true,
+};
+
 export interface ConfirmDialogData {
   title: string;
   message: string;
@@ -120,4 +130,13 @@ export interface FilePickerResult {
   cancelled: boolean;
   /** Optional request id that matches the open request */
   requestId?: string;
+}
+
+export interface NotifyOptions {
+  successKey?: string;
+  successParams?: Record<string, unknown>;
+  errorKey?: string;
+  errorParams?: Record<string, unknown>;
+  showSuccess?: boolean;
+  showError?: boolean;
 }

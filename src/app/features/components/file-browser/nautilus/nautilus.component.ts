@@ -46,10 +46,9 @@ import { CdkMenuModule } from '@angular/cdk/menu';
 // Services & Types
 import {
   NautilusService,
-  RemoteManagementService,
+  RemoteFileOperationsService,
   AppSettingsService,
   PathSelectionService,
-  JobManagementService,
 } from '@app/services';
 import {
   Entry,
@@ -134,13 +133,12 @@ interface UndoEntry {
 })
 export class NautilusComponent implements OnInit, OnDestroy {
   // --- Services ---
-  private readonly jobManagement = inject(JobManagementService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly translate = inject(TranslateService);
   public readonly iconService = inject(IconService);
   private readonly notificationService = inject(NotificationService);
   private readonly nautilusService = inject(NautilusService);
-  private readonly remoteManagement = inject(RemoteManagementService);
+  private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly pathSelectionService = inject(PathSelectionService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly fileViewerService = inject(FileViewerService);
@@ -588,7 +586,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
         }
         error.set(null);
 
-        from(this.remoteManagement.getRemotePaths(fsName, p, {}, 'nautilus'))
+        from(this.remoteOps.getRemotePaths(fsName, p, {}, 'nautilus'))
           .pipe(
             map(res => {
               const list = res.list || [];
@@ -1733,12 +1731,10 @@ export class NautilusComponent implements OnInit, OnDestroy {
       const current = this.currentPath();
       const sep = remote.isLocal && (current === '' || current.endsWith('/')) ? '' : '/';
       const newPath = current ? `${current}${sep}${folderName}` : folderName;
-      await this.remoteManagement.makeDirectory(normalized, newPath, 'nautilus', true);
+      await this.remoteOps.makeDirectory(normalized, newPath, 'nautilus', true);
       this.refresh();
-    } catch {
-      this.notificationService.showError(
-        this.translate.instant('nautilus.errors.createFolderFailed')
-      );
+    } catch (e) {
+      console.error('Create folder failed:', e);
     }
   }
 
@@ -1776,27 +1772,32 @@ export class NautilusComponent implements OnInit, OnDestroy {
       const newPath = pathParts.join('/');
 
       if (item.entry.IsDir) {
-        await this.remoteManagement.renameDir(
-          normalizedRemote,
-          item.entry.Path,
-          newPath,
-          'nautilus'
-        );
+        await this.remoteOps.renameDir(normalizedRemote, item.entry.Path, newPath, 'nautilus');
       } else {
-        await this.remoteManagement.renameFile(
-          normalizedRemote,
-          item.entry.Path,
-          newPath,
-          'nautilus'
-        );
+        await this.remoteOps.renameFile(normalizedRemote, item.entry.Path, newPath, 'nautilus');
       }
 
-      this.notificationService.showSuccess(
-        this.translate.instant('nautilus.notifications.renameStarted')
-      );
+      // Add to undo stack as a move operation
+      this._undoStack.update(stack => [
+        ...stack.slice(-19),
+        {
+          mode: 'move',
+          items: [
+            {
+              srcRemote: normalizedRemote,
+              srcPath: item.entry.Path,
+              dstRemote: normalizedRemote,
+              dstFullPath: newPath,
+              isDir: item.entry.IsDir ?? false,
+              name: newName,
+            },
+          ],
+        },
+      ]);
+
       this.refresh();
-    } catch {
-      this.notificationService.showError(this.translate.instant('nautilus.errors.renameFailed'));
+    } catch (e) {
+      console.error('Rename failed:', e);
     }
   }
 
@@ -1833,14 +1834,9 @@ export class NautilusComponent implements OnInit, OnDestroy {
       const normalized = !r.isLocal
         ? this.pathSelectionService.normalizeRemoteForRclone(r.name)
         : r.name;
-      await this.remoteManagement.cleanup(normalized, undefined, 'nautilus');
-      this.notificationService.showInfo(
-        this.translate.instant('nautilus.notifications.trashEmptied')
-      );
+      await this.remoteOps.cleanup(normalized, undefined, 'nautilus');
     } catch (e) {
-      this.notificationService.showError(
-        this.translate.instant('nautilus.errors.emptyTrashFailed', { error: (e as Error).message })
-      );
+      console.error('[Nautilus] Cleanup failed:', e);
     }
   }
 
@@ -1901,37 +1897,19 @@ export class NautilusComponent implements OnInit, OnDestroy {
     // 3. Perform Deletions
     const normalizedRemote = this.pathSelectionService.normalizeRemoteForRclone(remote.name);
 
-    let failCount = 0;
-
-    this.notificationService.showInfo(
-      this.translate.instant('nautilus.notifications.deleteStarted', {
-        count: itemsToDelete.length,
-      })
-    );
-
     for (const item of itemsToDelete) {
       try {
         if (item.entry.IsDir) {
-          await this.remoteManagement.purgeDirectory(normalizedRemote, item.entry.Path, 'nautilus');
+          await this.remoteOps.purgeDirectory(normalizedRemote, item.entry.Path, 'nautilus');
         } else {
-          await this.remoteManagement.deleteFile(normalizedRemote, item.entry.Path, 'nautilus');
+          await this.remoteOps.deleteFile(normalizedRemote, item.entry.Path, 'nautilus');
         }
       } catch (e) {
         console.error('Delete failed for', item.entry.Path, e);
-        failCount++;
       }
     }
 
     this.clearSelection();
-
-    if (failCount > 0) {
-      this.notificationService.showError(
-        this.translate.instant('nautilus.errors.deleteFailed', {
-          count: failCount,
-          total: itemsToDelete.length,
-        })
-      );
-    }
     this.refresh();
   }
 
@@ -2012,7 +1990,6 @@ export class NautilusComponent implements OnInit, OnDestroy {
     if (items.length === 0) return;
 
     const normalizedDstRemote = this.pathSelectionService.normalizeRemoteForRclone(dstRemote.name);
-    let failCount = 0;
     const succeededItems: UndoEntry['items'] = [];
 
     for (const item of items) {
@@ -2024,7 +2001,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
         if (item.entry.IsDir) {
           if (mode === 'copy') {
-            await this.remoteManagement.copyDirectory(
+            await this.remoteOps.copyDirectory(
               normalizedSrcRemote,
               item.entry.Path,
               normalizedDstRemote,
@@ -2032,7 +2009,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
               'nautilus'
             );
           } else {
-            await this.remoteManagement.moveDirectory(
+            await this.remoteOps.moveDirectory(
               normalizedSrcRemote,
               item.entry.Path,
               normalizedDstRemote,
@@ -2042,7 +2019,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
           }
         } else {
           if (mode === 'copy') {
-            await this.remoteManagement.copyFile(
+            await this.remoteOps.copyFile(
               normalizedSrcRemote,
               item.entry.Path,
               normalizedDstRemote,
@@ -2050,7 +2027,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
               'nautilus'
             );
           } else {
-            await this.remoteManagement.moveFile(
+            await this.remoteOps.moveFile(
               normalizedSrcRemote,
               item.entry.Path,
               normalizedDstRemote,
@@ -2070,29 +2047,17 @@ export class NautilusComponent implements OnInit, OnDestroy {
         });
       } catch (e) {
         console.error(`${mode} failed for ${item.entry.Path}`, e);
-        failCount++;
       }
-    }
-
-    if (succeededItems.length > 0) {
-      const MAX_STACK = 20;
-      this._undoStack.update(s => [...s.slice(-(MAX_STACK - 1)), { mode, items: succeededItems }]);
-      this._redoStack.set([]);
     }
 
     this.refresh();
 
-    if (failCount > 0) {
-      this.notificationService.showError(
-        this.translate.instant(
-          mode === 'copy' ? 'nautilus.errors.copyFailed' : 'nautilus.errors.moveFailed',
-          { count: failCount }
-        )
-      );
-    } else {
-      this.notificationService.showSuccess(
-        this.translate.instant('nautilus.notifications.pasteComplete')
-      );
+    if (mode === 'move') {
+      this.clearClipboard();
+    }
+
+    if (succeededItems.length > 0) {
+      this._undoStack.update(stack => [...stack.slice(-19), { mode, items: succeededItems }]);
     }
   }
 
@@ -2103,24 +2068,19 @@ export class NautilusComponent implements OnInit, OnDestroy {
     const entry = stack[stack.length - 1];
     this._undoStack.set(stack.slice(0, -1));
 
-    let failCount = 0;
     for (const item of entry.items) {
       try {
         if (entry.mode === 'copy') {
           // Undo copy → delete the destination file/dir
           if (item.isDir) {
-            await this.remoteManagement.purgeDirectory(
-              item.dstRemote,
-              item.dstFullPath,
-              'nautilus'
-            );
+            await this.remoteOps.purgeDirectory(item.dstRemote, item.dstFullPath, 'nautilus');
           } else {
-            await this.remoteManagement.deleteFile(item.dstRemote, item.dstFullPath, 'nautilus');
+            await this.remoteOps.deleteFile(item.dstRemote, item.dstFullPath, 'nautilus');
           }
         } else {
           // Undo move → move back to original location
           if (item.isDir) {
-            await this.remoteManagement.moveDirectory(
+            await this.remoteOps.moveDirectory(
               item.dstRemote,
               item.dstFullPath,
               item.srcRemote,
@@ -2128,7 +2088,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
               'nautilus'
             );
           } else {
-            await this.remoteManagement.moveFile(
+            await this.remoteOps.moveFile(
               item.dstRemote,
               item.dstFullPath,
               item.srcRemote,
@@ -2139,22 +2099,11 @@ export class NautilusComponent implements OnInit, OnDestroy {
         }
       } catch (e) {
         console.error('undo failed for', item.dstFullPath, e);
-        failCount++;
       }
     }
 
     this._redoStack.update(s => [...s.slice(-19), entry]);
     this.refresh();
-
-    if (failCount > 0) {
-      this.notificationService.showError(
-        this.translate.instant('nautilus.errors.undoFailed', { count: failCount })
-      );
-    } else {
-      this.notificationService.showSuccess(
-        this.translate.instant('nautilus.notifications.undoComplete')
-      );
-    }
   }
 
   async redoLastOperation(): Promise<void> {
@@ -2164,12 +2113,11 @@ export class NautilusComponent implements OnInit, OnDestroy {
     const entry = stack[stack.length - 1];
     this._redoStack.set(stack.slice(0, -1));
 
-    let failCount = 0;
     for (const item of entry.items) {
       try {
         if (entry.mode === 'copy') {
           if (item.isDir) {
-            await this.remoteManagement.copyDirectory(
+            await this.remoteOps.copyDirectory(
               item.srcRemote,
               item.srcPath,
               item.dstRemote,
@@ -2177,7 +2125,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
               'nautilus'
             );
           } else {
-            await this.remoteManagement.copyFile(
+            await this.remoteOps.copyFile(
               item.srcRemote,
               item.srcPath,
               item.dstRemote,
@@ -2187,7 +2135,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
           }
         } else {
           if (item.isDir) {
-            await this.remoteManagement.moveDirectory(
+            await this.remoteOps.moveDirectory(
               item.srcRemote,
               item.srcPath,
               item.dstRemote,
@@ -2195,7 +2143,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
               'nautilus'
             );
           } else {
-            await this.remoteManagement.moveFile(
+            await this.remoteOps.moveFile(
               item.srcRemote,
               item.srcPath,
               item.dstRemote,
@@ -2206,22 +2154,11 @@ export class NautilusComponent implements OnInit, OnDestroy {
         }
       } catch (e) {
         console.error('redo failed for', item.srcPath, e);
-        failCount++;
       }
     }
 
     this._undoStack.update(s => [...s.slice(-19), entry]);
     this.refresh();
-
-    if (failCount > 0) {
-      this.notificationService.showError(
-        this.translate.instant('nautilus.errors.redoFailed', { count: failCount })
-      );
-    } else {
-      this.notificationService.showSuccess(
-        this.translate.instant('nautilus.notifications.redoComplete')
-      );
-    }
   }
 
   public clearClipboard(): void {
@@ -2264,18 +2201,9 @@ export class NautilusComponent implements OnInit, OnDestroy {
     const normalizedRemote = this.pathSelectionService.normalizeRemoteForRclone(remote.name);
 
     try {
-      await this.remoteManagement.removeEmptyDirs(normalizedRemote, item.entry.Path, 'nautilus');
-      this.notificationService.showInfo(
-        this.translate.instant('nautilus.notifications.rmdirsStarted', { name: item.entry.Name })
-      );
+      await this.remoteOps.removeEmptyDirs(normalizedRemote, item.entry.Path, 'nautilus');
     } catch (e) {
       console.error('Remove empty dirs failed for', item.entry.Path, e);
-      this.notificationService.showError(
-        this.translate.instant('nautilus.errors.rmdirsFailed', {
-          name: item.entry.Name,
-          error: (e as Error).message,
-        })
-      );
     }
 
     this.refresh();
@@ -2630,7 +2558,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
       if (r.isLocal) continue;
       try {
         const normalized = this.pathSelectionService.normalizeRemoteForRclone(r.name);
-        const info = (await this.remoteManagement
+        const info = (await this.remoteOps
           .getFsInfo(normalized, 'nautilus')
           .catch(() => null)) as FsInfo | null;
 

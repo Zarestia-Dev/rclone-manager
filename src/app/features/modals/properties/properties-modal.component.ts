@@ -19,7 +19,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import {
-  RemoteManagementService,
+  RemoteFileOperationsService,
   NautilusService,
   RemoteFacadeService,
   ModalService,
@@ -71,7 +71,7 @@ export class PropertiesModalComponent implements OnInit {
     fsInfo?: FsInfo | null;
   } = inject(MAT_DIALOG_DATA);
 
-  private remoteManagementService = inject(RemoteManagementService);
+  private remoteOps = inject(RemoteFileOperationsService);
   private nautilusService = inject(NautilusService);
   private remoteFacadeService = inject(RemoteFacadeService);
   private iconService = inject(IconService);
@@ -165,7 +165,7 @@ export class PropertiesModalComponent implements OnInit {
 
     // 1. Get Size/Count (if directory)
     if (targetIsDir) {
-      this.remoteManagementService
+      this.remoteOps
         .getSize(remoteName, path, 'ui')
         .then(size => {
           this.size.set(size);
@@ -237,11 +237,7 @@ export class PropertiesModalComponent implements OnInit {
         diskUsagePath = '';
       }
 
-      const diskUsage = await this.remoteManagementService.getDiskUsage(
-        diskUsageRemote,
-        diskUsagePath,
-        'ui'
-      );
+      const diskUsage = await this.remoteOps.getDiskUsage(diskUsageRemote, diskUsagePath, 'ui');
       this.diskUsage.set(diskUsage);
     } catch (err) {
       console.error('Failed to load disk usage', err);
@@ -262,7 +258,7 @@ export class PropertiesModalComponent implements OnInit {
       let fsInfo = this.data.fsInfo;
       if (!fsInfo) {
         const fsRemote = this.buildFsRemote();
-        fsInfo = (await this.remoteManagementService.getFsInfo(fsRemote, 'ui')) as FsInfo;
+        fsInfo = (await this.remoteOps.getFsInfo(fsRemote, 'ui')) as FsInfo;
       }
 
       const hashes = fsInfo?.Hashes ?? [];
@@ -340,12 +336,7 @@ export class PropertiesModalComponent implements OnInit {
       const fsRemote = this.buildFsRemote();
       const hashPath = this.buildHashPath();
 
-      const result = await this.remoteManagementService.getHashsumFile(
-        fsRemote,
-        hashPath,
-        hashType,
-        'ui'
-      );
+      const result = await this.remoteOps.getHashsumFile(fsRemote, hashPath, hashType, 'ui');
 
       if (result.hash) {
         this.fileHashes.update(hashes => ({ ...hashes, [hashType]: result.hash }));
@@ -399,7 +390,7 @@ export class PropertiesModalComponent implements OnInit {
       let fsInfo = this.data.fsInfo;
       if (!fsInfo) {
         const fsRemote = this.buildFsRemote();
-        fsInfo = (await this.remoteManagementService.getFsInfo(fsRemote)) as FsInfo;
+        fsInfo = (await this.remoteOps.getFsInfo(fsRemote)) as FsInfo;
       }
       this.supportsPublicLink.set(fsInfo?.Features?.['PublicLink'] ?? false);
     } catch (err) {
@@ -421,7 +412,7 @@ export class PropertiesModalComponent implements OnInit {
       const fsRemote = this.buildFsRemote();
       const path = this.data.path;
 
-      const result = await this.remoteManagementService.getPublicLink(
+      const result = await this.remoteOps.getPublicLink(
         fsRemote,
         path,
         false,
@@ -456,7 +447,7 @@ export class PropertiesModalComponent implements OnInit {
       const fsRemote = this.buildFsRemote();
       const path = this.data.path;
 
-      await this.remoteManagementService.getPublicLink(fsRemote, path, true, undefined, 'ui'); // unlink = true
+      await this.remoteOps.getPublicLink(fsRemote, path, true, undefined, 'ui'); // unlink = true
       this.publicLinkUrl.set(null);
     } catch (err) {
       console.error('Failed to remove public link:', err);
@@ -560,12 +551,7 @@ export class PropertiesModalComponent implements OnInit {
       }
 
       // For directories, we use getHashsum (bulk)
-      const result = await this.remoteManagementService.getHashsum(
-        fsRemote,
-        hashPath,
-        hashType,
-        'ui'
-      );
+      const result = await this.remoteOps.getHashsum(fsRemote, hashPath, hashType, 'ui');
 
       if (result.hashsum && Array.isArray(result.hashsum)) {
         this.bulkHashResult.set(result.hashsum.join('\n'));

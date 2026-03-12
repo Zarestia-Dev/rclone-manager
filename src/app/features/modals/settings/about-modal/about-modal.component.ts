@@ -146,7 +146,7 @@ export class AboutModalComponent implements OnInit {
   readonly rcloneUpdateChannel = this.rcloneUpdateService.updateChannel;
   readonly rcloneSkippedVersions = this.rcloneUpdateService.skippedVersions;
   // Read directly from the service — no need for a local copy kept in sync via effect()
-  readonly rcloneAutoCheck = this.rcloneUpdateService.autoCheck;
+  readonly rcloneAutoCheck = this.rcloneUpdateService.autoCheckEnabled;
 
   readonly restartingApp = signal<boolean>(false);
   readonly restartingRcloneEngine = signal<boolean>(false);
@@ -368,7 +368,7 @@ export class AboutModalComponent implements OnInit {
 
   private async loadAppAutoCheckSetting(): Promise<void> {
     try {
-      this.appAutoCheckUpdates.set(await this.appUpdaterService.getAutoCheckEnabled());
+      this.appAutoCheckUpdates.set(this.appUpdaterService.autoCheckEnabled());
     } catch (error) {
       console.error('Failed to load auto-check setting:', error);
     }

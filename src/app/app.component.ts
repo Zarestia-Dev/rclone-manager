@@ -15,11 +15,11 @@ import {
   NautilusService,
   BackendService,
   IconService,
+  DebugService,
+  GlobalLoadingService,
 } from '@app/services';
-import { DebugService } from './services/system/debug.service';
-import { GlobalLoadingService } from './services/ui/global-loading.service';
-import { ApiClientService } from './services/core/api-client.service';
-import { SseClientService } from './services/core/sse-client.service';
+import { ApiClientService } from './services/infrastructure/platform/api-client.service';
+import { SseClientService } from './services/infrastructure/platform/sse-client.service';
 
 @Component({
   selector: 'app-root',

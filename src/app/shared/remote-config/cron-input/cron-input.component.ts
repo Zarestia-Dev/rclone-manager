@@ -22,7 +22,7 @@ import { SchedulerService } from '@app/services';
 import { CronValidationResponse } from '@app/types';
 import { toString as cronstrue } from 'cronstrue';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { getCronstrueLocale } from 'src/app/core/i18n/cron-locale.mapper';
+import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
 
 type PresetKey =
   | 'daily-9am'
