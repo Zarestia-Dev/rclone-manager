@@ -37,7 +37,11 @@ export class RemotesPanelComponent {
   hasActiveRemotes = computed(() =>
     this.remotes().some(
       remote =>
-        remote.mountState?.mounted || remote.syncState?.isOnSync || remote.copyState?.isOnCopy
+        remote.status.mount.active ||
+        remote.status.sync.active ||
+        remote.status.copy.active ||
+        remote.status.move.active ||
+        remote.status.bisync.active
     )
   );
 

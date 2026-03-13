@@ -43,9 +43,13 @@
       top: 0;
       height: 100%;
       background: var(--primary-color);
-      transition: var(--transition-slow);
-      border-end-end-radius: var(--usage-bar-radius);
-      border-start-end-radius: var(--usage-bar-radius);
+      transition: width var(--transition-slow);
+      border-radius: inherit;
+
+      &.hidden {
+        width: 0 !important;
+        opacity: 0;
+      }
     }
   }
 }

@@ -53,7 +53,11 @@ import { FormatFileSizePipe } from '@app/pipes';
                 <span>{{ 'detailShared.diskUsage.errorLoading' | translate }}</span>
               </div>
             } @else {
-              <div class="usage-fill" [ngStyle]="usageFillStyle()"></div>
+              <div
+                class="usage-fill"
+                [ngStyle]="usageFillStyle()"
+                [class.hidden]="config().loading"
+              ></div>
             }
           </div>
         </div>

@@ -1,12 +1,12 @@
-import { PrimaryActionType, SyncOperationType } from './operations';
+import { PrimaryActionType } from './operations';
 import { ServeListItem } from './serve';
 // ============================================================================
 // REMOTE CONFIGURATION & SPECS
 // ============================================================================
-export interface RemoteSpecs {
+export interface RemoteConfig {
   name: string;
   type: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface RemoteProvider {
@@ -14,8 +14,8 @@ export interface RemoteProvider {
   description: string;
 }
 
-export type RemoteConfig = Record<string, unknown>;
-export type RemoteSettings = Record<string, any>;
+export type ConfigRecord = Record<string, unknown>;
+export type RemoteSettings = Record<string, unknown>;
 
 export interface RemoteSettingsSection {
   key: string;
@@ -43,46 +43,44 @@ export interface DiskUsage {
   notSupported?: boolean;
 }
 
-export interface Remote {
-  name?: string;
-  showOnTray?: boolean;
-  type?: string;
-  remoteSpecs: RemoteSpecs;
+export interface RemoteOperationState {
+  active: boolean;
+  jobId?: number;
+  activeProfiles?: Record<string, number | string>;
+}
+
+export interface RemoteServeState {
+  active: boolean;
+  count: number;
+  serves: ServeListItem[];
+  activeProfiles?: Record<string, string>;
+}
+
+export interface RemoteStatus {
   diskUsage: DiskUsage;
-  mountState?: {
-    mounted?: boolean;
-    activeProfiles?: Record<string, string>;
-  };
-  syncState?: {
-    isOnSync?: boolean;
-    syncJobID?: number;
-    isLocal?: boolean;
-    activeProfiles?: Record<string, number>;
-  };
-  copyState?: {
-    isOnCopy?: boolean;
-    copyJobID?: number;
-    isLocal?: boolean;
-    activeProfiles?: Record<string, number>;
-  };
-  bisyncState?: {
-    isOnBisync?: boolean;
-    bisyncJobID?: number;
-    isLocal?: boolean;
-    activeProfiles?: Record<string, number>;
-  };
-  moveState?: {
-    isOnMove?: boolean;
-    moveJobID?: number;
-    isLocal?: boolean;
-    activeProfiles?: Record<string, number>;
-  };
-  serveState?: {
-    isOnServe?: boolean;
-    serveCount?: number;
-    serves?: ServeListItem[];
-    activeProfiles?: Record<string, string>;
-  };
-  primaryActions?: PrimaryActionType[];
-  selectedSyncOperation?: SyncOperationType;
+  mount: RemoteOperationState;
+  sync: RemoteOperationState;
+  copy: RemoteOperationState;
+  bisync: RemoteOperationState;
+  move: RemoteOperationState;
+  serve: RemoteServeState;
+}
+
+export interface RemoteFeatures {
+  isLocal: boolean;
+  hasAbout: boolean;
+  hasBucket: boolean;
+  hasCleanUp: boolean;
+  hasPublicLink: boolean;
+  changeNotify: boolean;
+  hashes: string[];
+}
+
+export interface Remote {
+  name: string;
+  type: string;
+  config: RemoteConfig;
+  status: RemoteStatus;
+  features: RemoteFeatures;
+  primaryActions: PrimaryActionType[];
 }

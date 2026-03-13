@@ -30,20 +30,20 @@
     <!-- Remote List -->
     @if (filteredRemotes().length > 0) {
       <ul>
-        @for (remote of filteredRemotes(); track remote.remoteSpecs.name) {
+        @for (remote of filteredRemotes(); track remote.name) {
           <mat-card
             class="remote-card"
             (click)="selectRemote(remote)"
-            [class.selected]="selectedRemote()?.remoteSpecs?.name === remote.remoteSpecs.name"
+            [class.selected]="selectedRemote()?.name === remote.name"
           >
             <mat-card-content class="card-content">
               <!-- Remote Name with Status Indicators -->
               <div class="remote-header">
-                <h4 matTooltipShowDelay="500" [matTooltip]="remote.remoteSpecs.name">
-                  {{ remote.remoteSpecs.name }}
+                <h4 matTooltipShowDelay="500" [matTooltip]="remote.name">
+                  {{ remote.name }}
                 </h4>
                 <div class="status-indicators">
-                  @if (remote.mountState) {
+                  @if (remote.status.mount) {
                     <div
                       class="status-dot mount"
                       [class.active]="statusService.getMountProfileCount(remote) > 0"
@@ -60,29 +60,27 @@
                     </div>
                   }
 
-                  @if (statusService.hasSyncOperations(remote)) {
-                    <div
-                      class="status-dot sync-operations"
-                      [class.active]="statusService.isAnySyncOperationActive(remote)"
-                      [matTooltip]="statusService.getSyncOperationsTooltip(remote)"
-                      matTooltipShowDelay="500"
-                      [attr.aria-label]="'sidebar.aria.syncStatus' | translate"
-                    >
-                      <mat-icon
-                        [svgIcon]="statusService.getActiveSyncOperationIcon(remote)"
-                      ></mat-icon>
-                      @if (statusService.getSyncProfileCount(remote) > 1) {
-                        <span class="count-badge">{{
-                          statusService.getSyncProfileCount(remote)
-                        }}</span>
-                      }
-                    </div>
-                  }
+                  <div
+                    class="status-dot sync-operations"
+                    [class.active]="statusService.isAnySyncOperationActive(remote)"
+                    [matTooltip]="statusService.getSyncOperationsTooltip(remote)"
+                    matTooltipShowDelay="500"
+                    [attr.aria-label]="'sidebar.aria.syncStatus' | translate"
+                  >
+                    <mat-icon
+                      [svgIcon]="statusService.getActiveSyncOperationIcon(remote)"
+                    ></mat-icon>
+                    @if (statusService.getSyncProfileCount(remote) > 1) {
+                      <span class="count-badge">{{
+                        statusService.getSyncProfileCount(remote)
+                      }}</span>
+                    }
+                  </div>
 
-                  @if (remote.serveState && remote.serveState.isOnServe) {
+                  @if (remote.status.serve.active) {
                     <div
                       class="status-dot serve"
-                      [class.active]="remote.serveState.isOnServe"
+                      [class.active]="remote.status.serve.active"
                       [matTooltip]="statusService.getServeTooltip(remote)"
                       matTooltipShowDelay="500"
                       [attr.aria-label]="'sidebar.aria.serveStatus' | translate"
@@ -100,8 +98,8 @@
 
               <!-- Remote Type -->
               <div class="remote-type">
-                <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon>
-                {{ remote.remoteSpecs.type | titlecase }}
+                <mat-icon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
+                {{ remote.type | titlecase }}
               </div>
             </mat-card-content>
           </mat-card>

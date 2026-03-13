@@ -775,7 +775,9 @@
           "Permissions": "Permissions",
           "Numbers": "Numbers",
           "Strings": "Strings"
-        }
+        },
+        "booleanEnabled": "✓ Enabled",
+        "booleanDisabled": "✗ Disabled"
       },
       "actions": {
         "pollInterval": "Poll Interval",

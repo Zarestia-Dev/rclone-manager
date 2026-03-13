@@ -662,9 +662,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       // Start the copy job
       await this.jobManagementService.copyUrl(selectedPath, fullDestPath, this.rawUrl(), true);
 
-      this.notificationService.openSnackBar(
-        this.translate.instant('fileBrowser.fileViewer.downloading', { name: this.fileName() }),
-        'OK'
+      this.notificationService.showInfo(
+        this.translate.instant('fileBrowser.fileViewer.downloading', { name: this.fileName() })
       );
     } catch (err) {
       console.error('Failed to start download:', err);

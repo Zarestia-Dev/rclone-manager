@@ -13,6 +13,9 @@ import {
   PrimaryActionType,
   QuickActionButton,
   Remote,
+  RemoteStatus,
+  RemoteOperationState,
+  RemoteServeState,
   RemoteAction,
   RemoteCardVariant,
 } from '@app/types';
@@ -22,20 +25,17 @@ import { IconService } from '@app/services';
  * Centralized configuration for all operation types.
  * Eliminates repetitive switch statements by providing lookup-based metadata.
  */
-interface OperationConfig {
-  stateKey: keyof Remote;
-  isActiveKey: string;
-  startIcon: string;
-  stopIcon: string;
-  startTooltip: string;
-  stopTooltip: string;
-  cssClass: string;
-}
-
-const OPERATION_CONFIG: Record<PrimaryActionType, OperationConfig> = {
+const OPERATION_CONFIG: Record<
+  PrimaryActionType,
+  {
+    startIcon: string;
+    stopIcon: string;
+    startTooltip: string;
+    stopTooltip: string;
+    cssClass: string;
+  }
+> = {
   mount: {
-    stateKey: 'mountState',
-    isActiveKey: 'mounted',
     startIcon: 'mount',
     stopIcon: 'eject',
     startTooltip: 'overviews.remoteCard.actions.mount',
@@ -43,8 +43,6 @@ const OPERATION_CONFIG: Record<PrimaryActionType, OperationConfig> = {
     cssClass: 'accent',
   },
   sync: {
-    stateKey: 'syncState',
-    isActiveKey: 'isOnSync',
     startIcon: 'refresh',
     stopIcon: 'stop',
     startTooltip: 'overviews.remoteCard.actions.startSync',
@@ -52,8 +50,6 @@ const OPERATION_CONFIG: Record<PrimaryActionType, OperationConfig> = {
     cssClass: 'primary',
   },
   copy: {
-    stateKey: 'copyState',
-    isActiveKey: 'isOnCopy',
     startIcon: 'copy',
     stopIcon: 'stop',
     startTooltip: 'overviews.remoteCard.actions.startCopy',
@@ -61,8 +57,6 @@ const OPERATION_CONFIG: Record<PrimaryActionType, OperationConfig> = {
     cssClass: 'yellow',
   },
   move: {
-    stateKey: 'moveState',
-    isActiveKey: 'isOnMove',
     startIcon: 'move',
     stopIcon: 'stop',
     startTooltip: 'overviews.remoteCard.actions.startMove',
@@ -70,8 +64,6 @@ const OPERATION_CONFIG: Record<PrimaryActionType, OperationConfig> = {
     cssClass: 'orange',
   },
   bisync: {
-    stateKey: 'bisyncState',
-    isActiveKey: 'isOnBisync',
     startIcon: 'right-left',
     stopIcon: 'stop',
     startTooltip: 'overviews.remoteCard.actions.startBisync',
@@ -79,8 +71,6 @@ const OPERATION_CONFIG: Record<PrimaryActionType, OperationConfig> = {
     cssClass: 'purple',
   },
   serve: {
-    stateKey: 'serveState',
-    isActiveKey: 'isOnServe',
     startIcon: 'satellite-dish',
     stopIcon: 'stop',
     startTooltip: 'overviews.remoteCard.actions.startServe',
@@ -203,16 +193,11 @@ export class RemoteCardComponent {
       }
 
       // Create stop buttons for all active sync operations using a loop
-      const syncOps: { type: PrimaryActionType; stateKey: keyof Remote; activeKey: string }[] = [
-        { type: 'sync', stateKey: 'syncState', activeKey: 'isOnSync' },
-        { type: 'copy', stateKey: 'copyState', activeKey: 'isOnCopy' },
-        { type: 'move', stateKey: 'moveState', activeKey: 'isOnMove' },
-        { type: 'bisync', stateKey: 'bisyncState', activeKey: 'isOnBisync' },
-      ];
+      const types: PrimaryActionType[] = ['sync', 'copy', 'move', 'bisync'];
 
-      syncOps.forEach(({ type, stateKey, activeKey }) => {
-        const state = remote[stateKey] as Record<string, unknown> | undefined;
-        if (state?.[activeKey]) {
+      types.forEach(type => {
+        const state = remote.status[type as keyof Omit<RemoteStatus, 'diskUsage'>];
+        if ('active' in state && state.active) {
           const config = OPERATION_CONFIG[type];
           buttons.push({
             id: type,
@@ -276,7 +261,7 @@ export class RemoteCardComponent {
       icon: 'folder',
       tooltip: this.translate.instant('overviews.remoteCard.browse'),
       isLoading: actionState === 'open',
-      isDisabled: !remote.mountState?.mounted || actionState === 'open',
+      isDisabled: !remote.status.mount.active || actionState === 'open',
       cssClass: 'accent',
     });
 
@@ -363,7 +348,7 @@ export class RemoteCardComponent {
 
   onActionButtonClick(action: { id: string; event: Event }): void {
     action.event.stopPropagation();
-    const remoteName = this.remote().remoteSpecs.name;
+    const remoteName = this.remote().name;
 
     // Handle browse/open actions
     if (action.id === 'open' || action.id === 'browse') {
@@ -387,12 +372,12 @@ export class RemoteCardComponent {
     const remote = this.remote();
     return {
       [`${this.cardVariant()}-remote`]: true,
-      mounted: !!remote.mountState?.mounted,
-      syncing: !!remote.syncState?.isOnSync,
-      copying: !!remote.copyState?.isOnCopy,
-      moving: !!remote.moveState?.isOnMove,
-      bisyncing: !!remote.bisyncState?.isOnBisync,
-      serving: !!remote.serveState?.isOnServe,
+      mounted: !!remote.status.mount.active,
+      syncing: !!remote.status.sync.active,
+      copying: !!remote.status.copy.active,
+      moving: !!remote.status.move.active,
+      bisyncing: !!remote.status.bisync.active,
+      serving: !!remote.status.serve.active,
     };
   });
 
@@ -402,7 +387,7 @@ export class RemoteCardComponent {
 
   onOpenInFiles(event: Event): void {
     event.stopPropagation();
-    this.openInFiles.emit(this.remote().remoteSpecs.name);
+    this.openInFiles.emit(this.remote().name);
   }
 
   private showOpenButton(): boolean {
@@ -410,38 +395,22 @@ export class RemoteCardComponent {
     const remote = this.remote();
     if (mode === 'mount') return true;
     if (mode === 'sync') {
-      return (
-        remote.syncState?.isLocal ||
-        remote.copyState?.isLocal ||
-        remote.moveState?.isLocal ||
-        remote.bisyncState?.isLocal ||
-        false
-      );
+      return false;
     }
-    if (mode === 'general') return remote.mountState?.mounted === true;
+    if (mode === 'general') return remote.status.mount.active === true || remote.features.isLocal;
     return false;
   }
 
-  /**
-   * Check if an operation is currently active for this remote
-   */
   isOperationActive(operationType: PrimaryActionType): boolean {
-    const config = OPERATION_CONFIG[operationType];
-    const state = this.remote()[config.stateKey] as Record<string, unknown> | undefined;
-    return !!state?.[config.isActiveKey];
+    const state = this.remote().status[operationType as keyof Omit<RemoteStatus, 'diskUsage'>];
+    return !!(state as RemoteOperationState | RemoteServeState)?.active;
   }
 
-  /**
-   * Get Selected Profiles map for an operation type
-   */
   private getOperationActiveProfiles(
     operationType: PrimaryActionType
   ): Record<string, unknown> | undefined {
-    const config = OPERATION_CONFIG[operationType];
-    const state = this.remote()[config.stateKey] as
-      | { activeProfiles?: Record<string, unknown> }
-      | undefined;
-    return state?.activeProfiles;
+    const state = this.remote().status[operationType as keyof Omit<RemoteStatus, 'diskUsage'>];
+    return (state as RemoteOperationState | RemoteServeState)?.activeProfiles;
   }
 
   /**

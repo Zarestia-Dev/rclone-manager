@@ -5,6 +5,8 @@ import {
   inject,
   OnInit,
   signal,
+  computed,
+  Signal,
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
@@ -17,10 +19,17 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCardModule } from '@angular/material/card';
-import { RemoteFileOperationsService, RemoteFacadeService, ModalService } from 'src/app/services';
-import { IconService } from '@app/services';
+import {
+  RemoteFileOperationsService,
+  RemoteFacadeService,
+  ModalService,
+  RemoteMetadataService,
+  IconService,
+  RcloneValueMapperService,
+} from 'src/app/services';
 import { FormatFileSizePipe } from 'src/app/shared/pipes';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { DiskUsage, RemoteFeatures, FsInfo } from '@app/types';
 
 interface RemoteAboutData {
   remote: { displayName: string; normalizedName: string; type?: string };
@@ -52,142 +61,110 @@ export class RemoteAboutModalComponent implements OnInit {
   private dialogRef = inject(MatDialogRef<RemoteAboutModalComponent>);
   private remoteOps = inject(RemoteFileOperationsService);
   private remoteFacadeService = inject(RemoteFacadeService);
+  private metadataService = inject(RemoteMetadataService);
   public iconService = inject(IconService);
   private translate = inject(TranslateService);
   private modalService = inject(ModalService);
+  private mapper = inject(RcloneValueMapperService);
   public data: RemoteAboutData = inject(MAT_DIALOG_DATA);
 
   // Independent Signals for separate loading states
-  aboutInfo = signal<Record<string, unknown> | null>(null);
-  remoteType = signal<string>('');
   remoteName = signal<string>('');
+  features = computed<RemoteFeatures>(() =>
+    (this.remoteFacadeService.featuresSignal(this.remoteName()) as Signal<RemoteFeatures>)()
+  );
+  diskUsage = computed<DiskUsage>(() =>
+    (this.remoteFacadeService.diskUsageSignal(this.remoteName()) as Signal<DiskUsage>)()
+  );
+
+  // Detailed FsInfo (Metadata, Hashes, etc.)
+  aboutInfo = signal<FsInfo | null>(null);
   sizeInfo = signal<{ count: number; bytes: number } | null>(null);
-  diskUsageInfo = signal<{ total?: number; used?: number; free?: number } | null>(null);
 
   loadingAbout = signal(true);
   loadingSize = signal(true);
-  loadingUsage = signal(true);
-
   errorAbout = signal<string | null>(null);
 
   ngOnInit(): void {
-    this.remoteType.set(
-      this.data.remote.type || this.translate.instant('fileBrowser.remoteAbout.unknown')
-    );
     this.remoteName.set(this.data.remote.normalizedName);
-    this.loadDataSeparately();
+    this.loadData();
   }
 
   /**
-   * Initiates separate async requests for data.
-   * Allows the UI to show partial data as it arrives.
+   * Loads detailed FsInfo and triggers background tasks if needed.
    */
-  loadDataSeparately(): void {
-    // 1. Load FS Info & Check for 'About' feature support
+  async loadData(): Promise<void> {
+    const name = this.remoteName();
+
+    // 1. Load detailed FsInfo (Metadata, Hashes, Precision, etc.)
     this.loadingAbout.set(true);
-    this.loadingUsage.set(true);
-    this.remoteOps
-      .getFsInfo(this.remoteName(), 'ui')
-      .then(info => {
-        const typedInfo = info as Record<string, unknown>;
-        this.aboutInfo.set(typedInfo);
-        this.loadingAbout.set(false);
+    try {
+      const info = await this.metadataService.getFsInfo(name, 'ui');
+      this.aboutInfo.set(info);
 
-        // Check if 'About' feature is supported before fetching usage
-        const features = typedInfo['Features'] as Record<string, boolean>;
-        if (features && features['About']) {
-          this.fetchDiskUsage();
-        } else {
-          // Feature not supported, skip disk usage fetch
-          this.loadingUsage.set(false);
-          this.diskUsageInfo.set(null);
-        }
-      })
-      .catch((err: unknown) => {
-        console.error('Error loading fs info:', err);
-        this.errorAbout.set(this.translate.instant('fileBrowser.remoteAbout.error'));
-        this.loadingAbout.set(false);
-        this.loadingUsage.set(false);
-      });
+      // Trigger disk usage fetch if supported and not already loading/loaded
+      if (info.Features && info.Features['About']) {
+        this.fetchDiskUsage();
+      }
+    } catch (err) {
+      console.error('Error loading fs info:', err);
+      this.errorAbout.set(this.translate.instant('fileBrowser.remoteAbout.error'));
+    } finally {
+      this.loadingAbout.set(false);
+    }
 
-    // 3. Load Size/Count (Slowest, can take time for large remotes)
+    // 2. Load Size/Count (Object count)
     this.loadingSize.set(true);
-    this.remoteOps
-      .getSize(this.remoteName(), undefined, 'ui')
-      .then(size => {
-        this.sizeInfo.set(size);
-        this.loadingSize.set(false);
-      })
-      .catch((err: unknown) => {
-        console.warn('Size check failed:', err);
-        this.loadingSize.set(false);
-      });
+    try {
+      const size = await this.remoteOps.getSize(name, undefined, 'ui');
+      this.sizeInfo.set(size);
+    } catch (err) {
+      console.warn('Size check failed:', err);
+    } finally {
+      this.loadingSize.set(false);
+    }
   }
 
   async fetchDiskUsage(forceRefresh = false): Promise<void> {
-    this.loadingUsage.set(true);
-    try {
-      // Use centralized method that handles caching and fetching
-      const diskUsage = await this.remoteFacadeService.getCachedOrFetchDiskUsage(
-        this.data.remote.displayName,
-        this.remoteName(),
-        'ui',
-        forceRefresh
-      );
-
-      if (diskUsage) {
-        this.diskUsageInfo.set({
-          total: diskUsage.total_space,
-          used: diskUsage.used_space,
-          free: diskUsage.free_space,
-        });
-      } else {
-        this.diskUsageInfo.set(null);
-      }
-    } catch (err) {
-      console.warn('Disk usage check failed:', err);
-      this.diskUsageInfo.set(null);
-    } finally {
-      this.loadingUsage.set(false);
-    }
+    await this.remoteFacadeService.getCachedOrFetchDiskUsage(
+      this.data.remote.displayName,
+      this.remoteName(),
+      'ui',
+      forceRefresh
+    );
   }
 
   // --- Helpers for Template ---
 
-  getRoot(about: Record<string, unknown> | null): string {
+  getRoot(about: FsInfo | null): string {
     return (about?.['Root'] as string) || '/';
   }
 
-  getPrecisionFormatted(about: Record<string, unknown> | null): string {
-    const ns = about?.['Precision'] as number;
-    if (!ns) return '-';
-    if (ns >= 1000000000)
-      return ns / 1000000000 + ' ' + this.translate.instant('fileBrowser.remoteAbout.precision.s');
-    if (ns >= 1000000)
-      return ns / 1000000 + ' ' + this.translate.instant('fileBrowser.remoteAbout.precision.ms');
-    if (ns >= 1000)
-      return ns / 1000 + ' ' + this.translate.instant('fileBrowser.remoteAbout.precision.us');
-    return ns + ' ' + this.translate.instant('fileBrowser.remoteAbout.precision.ns');
+  getPrecisionFormatted(about: FsInfo | null): string {
+    const ns = about?.Precision;
+    if (ns === undefined || ns === null) return '-';
+    return this.mapper.nanosecondsToDuration(ns);
   }
 
-  getHashes(about: Record<string, unknown> | null): string[] {
-    const h = about?.['Hashes'];
+  getHashes(about: FsInfo | null): string[] {
+    const h = about?.Hashes;
     return Array.isArray(h) ? h : [];
   }
 
-  getFeatures(about: Record<string, unknown> | null): { key: string; value: boolean }[] {
-    const features = about?.['Features'] as Record<string, unknown>;
+  getFeatures(about: FsInfo | null): { key: string; value: boolean }[] {
+    const features = about?.Features as Record<string, unknown>;
     if (!features) return [];
     return Object.entries(features)
+      .filter(([key]) => key !== 'IsLocal') // Filter out our internal flag
       .map(([key, value]) => ({ key, value: !!value }))
       .sort((a, b) => a.key.localeCompare(b.key));
   }
 
-  getMetadataGroups(about: Record<string, unknown> | null): {
+  getMetadataGroups(about: FsInfo | null): {
     name: string;
     items: { key: string; data: Record<string, unknown> }[];
   }[] {
-    const info = about?.['MetadataInfo'] as Record<string, unknown>;
+    const info = about?.MetadataInfo as Record<string, unknown>;
     if (!info) return [];
 
     const groups = [];

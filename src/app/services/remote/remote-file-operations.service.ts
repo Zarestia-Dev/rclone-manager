@@ -1,10 +1,6 @@
 import { Injectable } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import {
-  Entry,
-  FsInfo,
-  Origin,
-} from '@app/types';
+import { Entry, FsInfo, Origin } from '@app/types';
 
 /**
  * Service for remote file system operations
@@ -125,15 +121,12 @@ export class RemoteFileOperationsService extends TauriBaseService {
     source?: Origin,
     noCache?: boolean
   ): Promise<number> {
-    return this.invokeWithNotification<number>(
-      'delete_file',
-      { remote, path, source, noCache },
-      {
-        successKey: 'remote.operations.deleteSuccess',
-        errorKey: 'remote.operations.deleteError',
-        successParams: { name: path.split('/').pop() || path },
-      }
-    );
+    return this.invokeCommand<number>('delete_file', {
+      remote,
+      path,
+      source,
+      noCache,
+    });
   }
 
   /**
@@ -145,15 +138,12 @@ export class RemoteFileOperationsService extends TauriBaseService {
     source?: Origin,
     noCache?: boolean
   ): Promise<number> {
-    return this.invokeWithNotification<number>(
-      'purge_directory',
-      { remote, path, source, noCache },
-      {
-        successKey: 'remote.operations.purgeSuccess',
-        errorKey: 'remote.operations.purgeError',
-        successParams: { name: path.split('/').pop() || path },
-      }
-    );
+    return this.invokeCommand<number>('purge_directory', {
+      remote,
+      path,
+      source,
+      noCache,
+    });
   }
 
   /**
@@ -165,15 +155,12 @@ export class RemoteFileOperationsService extends TauriBaseService {
     source?: Origin,
     noCache?: boolean
   ): Promise<number> {
-    return this.invokeWithNotification<number>(
-      'remove_empty_dirs',
-      { remote, path, source, noCache },
-      {
-        successKey: 'remote.operations.rmdirsSuccess',
-        errorKey: 'remote.operations.rmdirsError',
-        successParams: { name: path.split('/').pop() || path },
-      }
-    );
+    return this.invokeCommand<number>('remove_empty_dirs', {
+      remote,
+      path,
+      source,
+      noCache,
+    });
   }
 
   /**
@@ -187,15 +174,14 @@ export class RemoteFileOperationsService extends TauriBaseService {
     source?: Origin,
     noCache?: boolean
   ): Promise<number> {
-    return this.invokeWithNotification<number>(
-      'copy_file',
-      { srcRemote, srcPath, dstRemote, dstPath, source, noCache },
-      {
-        successKey: 'remote.operations.copySuccess',
-        errorKey: 'remote.operations.copyError',
-        successParams: { name: srcPath.split('/').pop() || srcPath },
-      }
-    );
+    return this.invokeCommand<number>('copy_file', {
+      srcRemote,
+      srcPath,
+      dstRemote,
+      dstPath,
+      source,
+      noCache,
+    });
   }
 
   /**
@@ -209,15 +195,14 @@ export class RemoteFileOperationsService extends TauriBaseService {
     source?: Origin,
     noCache?: boolean
   ): Promise<number> {
-    return this.invokeWithNotification<number>(
-      'move_file',
-      { srcRemote, srcPath, dstRemote, dstPath, source, noCache },
-      {
-        successKey: 'remote.operations.moveSuccess',
-        errorKey: 'remote.operations.moveError',
-        successParams: { name: srcPath.split('/').pop() || srcPath },
-      }
-    );
+    return this.invokeCommand<number>('move_file', {
+      srcRemote,
+      srcPath,
+      dstRemote,
+      dstPath,
+      source,
+      noCache,
+    });
   }
 
   /**
@@ -230,15 +215,13 @@ export class RemoteFileOperationsService extends TauriBaseService {
     source?: Origin,
     noCache?: boolean
   ): Promise<number> {
-    return this.invokeWithNotification<number>(
-      'rename_file',
-      { remote, srcPath, dstPath, source, noCache },
-      {
-        successKey: 'remote.operations.renameSuccess',
-        errorKey: 'remote.operations.renameError',
-        successParams: { name: srcPath.split('/').pop() || srcPath },
-      }
-    );
+    return this.invokeCommand<number>('rename_file', {
+      remote,
+      srcPath,
+      dstPath,
+      source,
+      noCache,
+    });
   }
 
   /**
@@ -251,15 +234,13 @@ export class RemoteFileOperationsService extends TauriBaseService {
     source?: Origin,
     noCache?: boolean
   ): Promise<number> {
-    return this.invokeWithNotification<number>(
-      'rename_dir',
-      { remote, srcPath, dstPath, source, noCache },
-      {
-        successKey: 'remote.operations.renameSuccess',
-        errorKey: 'remote.operations.renameError',
-        successParams: { name: srcPath.split('/').pop() || srcPath },
-      }
-    );
+    return this.invokeCommand<number>('rename_dir', {
+      remote,
+      srcPath,
+      dstPath,
+      source,
+      noCache,
+    });
   }
 
   /**
@@ -272,15 +253,13 @@ export class RemoteFileOperationsService extends TauriBaseService {
     content: string,
     source?: Origin
   ): Promise<string> {
-    return this.invokeWithNotification<string>(
-      'upload_file',
-      { remote, path, filename, content, source },
-      {
-        successKey: 'remote.operations.uploadSuccess',
-        errorKey: 'remote.operations.uploadError',
-        successParams: { name: filename },
-      }
-    );
+    return this.invokeCommand<string>('upload_file', {
+      remote,
+      path,
+      filename,
+      content,
+      source,
+    });
   }
 
   /**
@@ -294,15 +273,14 @@ export class RemoteFileOperationsService extends TauriBaseService {
     source?: Origin,
     noCache?: boolean
   ): Promise<number> {
-    return this.invokeWithNotification<number>(
-      'copy_dir',
-      { srcRemote, srcPath, dstRemote, dstPath, source, noCache },
-      {
-        successKey: 'remote.operations.copySuccess',
-        errorKey: 'remote.operations.copyError',
-        successParams: { name: srcPath.split('/').pop() || srcPath },
-      }
-    );
+    return this.invokeCommand<number>('copy_dir', {
+      srcRemote,
+      srcPath,
+      dstRemote,
+      dstPath,
+      source,
+      noCache,
+    });
   }
 
   /**
@@ -316,15 +294,14 @@ export class RemoteFileOperationsService extends TauriBaseService {
     source?: Origin,
     noCache?: boolean
   ): Promise<number> {
-    return this.invokeWithNotification<number>(
-      'move_dir',
-      { srcRemote, srcPath, dstRemote, dstPath, source, noCache },
-      {
-        successKey: 'remote.operations.moveSuccess',
-        errorKey: 'remote.operations.moveError',
-        successParams: { name: srcPath.split('/').pop() || srcPath },
-      }
-    );
+    return this.invokeCommand<number>('move_dir', {
+      srcRemote,
+      srcPath,
+      dstRemote,
+      dstPath,
+      source,
+      noCache,
+    });
   }
 
   /**
@@ -336,15 +313,12 @@ export class RemoteFileOperationsService extends TauriBaseService {
     source?: Origin,
     noCache?: boolean
   ): Promise<number> {
-    return this.invokeWithNotification<number>(
-      'mkdir',
-      { remote, path, source, noCache },
-      {
-        successKey: 'remote.operations.mkdirSuccess',
-        errorKey: 'remote.operations.mkdirError',
-        successParams: { name: path.split('/').pop() || path },
-      }
-    );
+    return this.invokeCommand<number>('mkdir', {
+      remote,
+      path,
+      source,
+      noCache,
+    });
   }
 
   /**
@@ -356,14 +330,6 @@ export class RemoteFileOperationsService extends TauriBaseService {
     source?: Origin,
     noCache?: boolean
   ): Promise<number> {
-    return this.invokeWithNotification<number>(
-      'cleanup',
-      { remote, path, source, noCache },
-      {
-        successKey: 'remote.operations.cleanupSuccess',
-        errorKey: 'remote.operations.cleanupError',
-        successParams: { name: remote },
-      }
-    );
+    return this.invokeCommand<number>('cleanup', { remote, path, source, noCache });
   }
 }

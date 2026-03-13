@@ -3,23 +3,6 @@ import { NautilusBottomBarComponent } from './nautilus-bottom-bar.component';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { Component } from '@angular/core';
-
-// Mock component to test the view menu template injection
-@Component({
-  template: `
-    <app-nautilus-bottom-bar
-      [canGoBack]="false"
-      [canGoForward]="false"
-      layout="grid"
-      [viewMenu]="mockMenu"
-    ></app-nautilus-bottom-bar>
-    <ng-template #mockMenu></ng-template>
-  `,
-  imports: [NautilusBottomBarComponent],
-  standalone: true,
-})
-class TestHostComponent {}
 
 describe('NautilusBottomBarComponent', () => {
   let component: NautilusBottomBarComponent;

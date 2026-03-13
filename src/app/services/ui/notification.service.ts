@@ -72,16 +72,6 @@ export class NotificationService {
   }
 
   /**
-   * Show a generic snackbar (for backward compatibility)
-   * @param message Already translated message text
-   * @param action Button text (should be pre-translated)
-   * @param duration Display duration in milliseconds
-   */
-  openSnackBar(message: string, action: string, duration = 2000): void {
-    this.snackBar.open(message, action, { duration });
-  }
-
-  /**
    * Show confirmation modal
    * @param title Modal title (should be pre-translated)
    * @param message Modal message (should be pre-translated)

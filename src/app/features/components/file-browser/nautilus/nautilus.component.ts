@@ -45,10 +45,11 @@ import { CdkMenuModule } from '@angular/cdk/menu';
 
 // Services & Types
 import {
-  NautilusService,
-  RemoteFileOperationsService,
   AppSettingsService,
+  NautilusService,
   PathSelectionService,
+  RemoteFileOperationsService,
+  RemoteFacadeService,
 } from '@app/services';
 import {
   Entry,
@@ -56,12 +57,13 @@ import {
   STANDARD_MODAL_SIZE,
   FileBrowserItem,
   FilePickerConfig,
-  FsInfo,
+  RemoteFeatures,
 } from '@app/types';
 
 import { FormatFileSizePipe } from '@app/pipes';
 import { IconService } from '@app/services';
 import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
+import { isLocalPath } from 'src/app/services/remote/utils/remote-config.utils';
 
 import { InputModalComponent } from 'src/app/shared/modals/input-modal/input-modal.component';
 import { NotificationService } from '@app/services';
@@ -142,6 +144,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
   private readonly pathSelectionService = inject(PathSelectionService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly fileViewerService = inject(FileViewerService);
+  private readonly remoteFacadeService = inject(RemoteFacadeService);
   private readonly dialog = inject(MatDialog);
 
   // --- Outputs ---
@@ -345,10 +348,6 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
   // --- Data ---
   public readonly bookmarks = this.nautilusService.bookmarks; // Direct signal
-  public readonly cleanupSupportCache = signal<Record<string, boolean>>({});
-  public readonly publicLinkSupportCache = signal<Record<string, boolean>>({});
-  /** Cache of full FsInfo per remote (for hashes, features, etc.) */
-  public readonly fsInfoCache = signal<Record<string, FsInfo | null>>({});
 
   // Filtered bookmarks based on picker mode
   public readonly filteredBookmarks = computed(() => {
@@ -642,15 +641,6 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
   private setupEffects(): void {
     // Removed no-op effect
-
-    effect(() => {
-      const remotes = this.allRemotesLookup();
-      const cache = untracked(this.cleanupSupportCache);
-      const missing = remotes.filter(r => cache[r.name] === undefined && !r.isLocal);
-      if (missing.length > 0) {
-        this.runBackgroundFsInfoChecks(missing);
-      }
-    });
 
     // Fallback: Apply initialLocation if data wasn't ready during setupInitialTab
     effect(() => {
@@ -966,7 +956,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     this.hoveredTabIndex.set(null);
   }
 
-  onDropToStarred(event: CdkDragDrop<FileBrowserItem[]>): void {
+  onDropToStarred(event: CdkDragDrop<void, FileBrowserItem[]>): void {
     const items = this.getItemsToProcess(event.item.data as FileBrowserItem);
     if (!items.length) return;
 
@@ -977,7 +967,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     }
   }
 
-  onDropToLocal(event: CdkDragDrop<FileBrowserItem[]>): void {
+  onDropToLocal(event: CdkDragDrop<FileBrowserItem[], FileBrowserItem[]>): void {
     if (event.previousContainer !== event.container) {
       const items = this.getItemsToProcess(event.item.data as FileBrowserItem);
       for (const item of items) {
@@ -989,7 +979,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
   }
 
   async onDropToBookmark(
-    event: CdkDragDrop<FileBrowserItem[]>,
+    event: CdkDragDrop<FileBrowserItem, FileBrowserItem[]>,
     bookmark: FileBrowserItem
   ): Promise<void> {
     const items = this.getItemsToProcess(event.item.data as FileBrowserItem);
@@ -1013,10 +1003,14 @@ export class NautilusComponent implements OnInit, OnDestroy {
   }
 
   async onDropToRemote(
-    event: CdkDragDrop<FileBrowserItem[]>,
+    event: CdkDragDrop<ExplorerRoot, FileBrowserItem[]>,
     targetRemote: ExplorerRoot
   ): Promise<void> {
-    if (event.previousContainer === event.container && event.container.id === 'sidebar') return;
+    if (
+      (event.previousContainer as unknown) === (event.container as unknown) &&
+      (event.container as { id: string }).id === 'sidebar'
+    )
+      return;
 
     const items = this.getItemsToProcess(event.item.data as FileBrowserItem);
     if (!items.length) return;
@@ -1684,11 +1678,11 @@ export class NautilusComponent implements OnInit, OnDestroy {
       remoteName = this.pathSelectionService.normalizeRemoteForRclone(remoteName);
     }
 
-    // Get cached fsInfo for this remote
+    // Get features from RemoteFacadeService
     const baseName = this.pathSelectionService.normalizeRemoteName(
       item?.meta.remote || currentRemote?.name || ''
     );
-    const cachedFsInfo = this.fsInfoCache()[baseName] || null;
+    const features = this.remoteFacadeService.featuresSignal(baseName)() as RemoteFeatures;
 
     this.dialog.open(PropertiesModalComponent, {
       data: {
@@ -1697,7 +1691,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
         isLocal: isLocal,
         item: item?.entry,
         remoteType: item?.meta.remoteType || currentRemote?.type,
-        fsInfo: cachedFsInfo,
+        features: features,
       },
       height: '60vh',
       maxHeight: '800px',
@@ -1733,8 +1727,10 @@ export class NautilusComponent implements OnInit, OnDestroy {
       const newPath = current ? `${current}${sep}${folderName}` : folderName;
       await this.remoteOps.makeDirectory(normalized, newPath, 'nautilus', true);
       this.refresh();
-    } catch (e) {
-      console.error('Create folder failed:', e);
+    } catch {
+      this.notificationService.showError(
+        this.translate.instant('nautilus.errors.createFolderFailed')
+      );
     }
   }
 
@@ -1777,27 +1773,12 @@ export class NautilusComponent implements OnInit, OnDestroy {
         await this.remoteOps.renameFile(normalizedRemote, item.entry.Path, newPath, 'nautilus');
       }
 
-      // Add to undo stack as a move operation
-      this._undoStack.update(stack => [
-        ...stack.slice(-19),
-        {
-          mode: 'move',
-          items: [
-            {
-              srcRemote: normalizedRemote,
-              srcPath: item.entry.Path,
-              dstRemote: normalizedRemote,
-              dstFullPath: newPath,
-              isDir: item.entry.IsDir ?? false,
-              name: newName,
-            },
-          ],
-        },
-      ]);
-
+      this.notificationService.showSuccess(
+        this.translate.instant('nautilus.notifications.renameStarted')
+      );
       this.refresh();
-    } catch (e) {
-      console.error('Rename failed:', e);
+    } catch {
+      this.notificationService.showError(this.translate.instant('nautilus.errors.renameFailed'));
     }
   }
 
@@ -1835,8 +1816,13 @@ export class NautilusComponent implements OnInit, OnDestroy {
         ? this.pathSelectionService.normalizeRemoteForRclone(r.name)
         : r.name;
       await this.remoteOps.cleanup(normalized, undefined, 'nautilus');
+      this.notificationService.showInfo(
+        this.translate.instant('nautilus.notifications.trashEmptied')
+      );
     } catch (e) {
-      console.error('[Nautilus] Cleanup failed:', e);
+      this.notificationService.showError(
+        this.translate.instant('nautilus.errors.emptyTrashFailed', { error: (e as Error).message })
+      );
     }
   }
 
@@ -1897,6 +1883,14 @@ export class NautilusComponent implements OnInit, OnDestroy {
     // 3. Perform Deletions
     const normalizedRemote = this.pathSelectionService.normalizeRemoteForRclone(remote.name);
 
+    let failCount = 0;
+
+    this.notificationService.showInfo(
+      this.translate.instant('nautilus.notifications.deleteStarted', {
+        count: itemsToDelete.length,
+      })
+    );
+
     for (const item of itemsToDelete) {
       try {
         if (item.entry.IsDir) {
@@ -1906,10 +1900,20 @@ export class NautilusComponent implements OnInit, OnDestroy {
         }
       } catch (e) {
         console.error('Delete failed for', item.entry.Path, e);
+        failCount++;
       }
     }
 
     this.clearSelection();
+
+    if (failCount > 0) {
+      this.notificationService.showError(
+        this.translate.instant('nautilus.errors.deleteFailed', {
+          count: failCount,
+          total: itemsToDelete.length,
+        })
+      );
+    }
     this.refresh();
   }
 
@@ -1990,6 +1994,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     if (items.length === 0) return;
 
     const normalizedDstRemote = this.pathSelectionService.normalizeRemoteForRclone(dstRemote.name);
+    let failCount = 0;
     const succeededItems: UndoEntry['items'] = [];
 
     for (const item of items) {
@@ -2047,17 +2052,29 @@ export class NautilusComponent implements OnInit, OnDestroy {
         });
       } catch (e) {
         console.error(`${mode} failed for ${item.entry.Path}`, e);
+        failCount++;
       }
+    }
+
+    if (succeededItems.length > 0) {
+      const MAX_STACK = 20;
+      this._undoStack.update(s => [...s.slice(-(MAX_STACK - 1)), { mode, items: succeededItems }]);
+      this._redoStack.set([]);
     }
 
     this.refresh();
 
-    if (mode === 'move') {
-      this.clearClipboard();
-    }
-
-    if (succeededItems.length > 0) {
-      this._undoStack.update(stack => [...stack.slice(-19), { mode, items: succeededItems }]);
+    if (failCount > 0) {
+      this.notificationService.showError(
+        this.translate.instant(
+          mode === 'copy' ? 'nautilus.errors.copyFailed' : 'nautilus.errors.moveFailed',
+          { count: failCount }
+        )
+      );
+    } else {
+      this.notificationService.showSuccess(
+        this.translate.instant('nautilus.notifications.pasteComplete')
+      );
     }
   }
 
@@ -2068,6 +2085,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     const entry = stack[stack.length - 1];
     this._undoStack.set(stack.slice(0, -1));
 
+    let failCount = 0;
     for (const item of entry.items) {
       try {
         if (entry.mode === 'copy') {
@@ -2099,11 +2117,22 @@ export class NautilusComponent implements OnInit, OnDestroy {
         }
       } catch (e) {
         console.error('undo failed for', item.dstFullPath, e);
+        failCount++;
       }
     }
 
     this._redoStack.update(s => [...s.slice(-19), entry]);
     this.refresh();
+
+    if (failCount > 0) {
+      this.notificationService.showError(
+        this.translate.instant('nautilus.errors.undoFailed', { count: failCount })
+      );
+    } else {
+      this.notificationService.showSuccess(
+        this.translate.instant('nautilus.notifications.undoComplete')
+      );
+    }
   }
 
   async redoLastOperation(): Promise<void> {
@@ -2113,6 +2142,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     const entry = stack[stack.length - 1];
     this._redoStack.set(stack.slice(0, -1));
 
+    let failCount = 0;
     for (const item of entry.items) {
       try {
         if (entry.mode === 'copy') {
@@ -2154,11 +2184,22 @@ export class NautilusComponent implements OnInit, OnDestroy {
         }
       } catch (e) {
         console.error('redo failed for', item.srcPath, e);
+        failCount++;
       }
     }
 
     this._undoStack.update(s => [...s.slice(-19), entry]);
     this.refresh();
+
+    if (failCount > 0) {
+      this.notificationService.showError(
+        this.translate.instant('nautilus.errors.redoFailed', { count: failCount })
+      );
+    } else {
+      this.notificationService.showSuccess(
+        this.translate.instant('nautilus.notifications.redoComplete')
+      );
+    }
   }
 
   public clearClipboard(): void {
@@ -2202,8 +2243,17 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
     try {
       await this.remoteOps.removeEmptyDirs(normalizedRemote, item.entry.Path, 'nautilus');
+      this.notificationService.showInfo(
+        this.translate.instant('nautilus.notifications.rmdirsStarted', { name: item.entry.Name })
+      );
     } catch (e) {
       console.error('Remove empty dirs failed for', item.entry.Path, e);
+      this.notificationService.showError(
+        this.translate.instant('nautilus.errors.rmdirsFailed', {
+          name: item.entry.Name,
+          error: (e as Error).message,
+        })
+      );
     }
 
     this.refresh();
@@ -2237,11 +2287,14 @@ export class NautilusComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Get isLocal from fsInfoCache (rclone's fsinfo.Features.IsLocal) with fallback
+    // Get isLocal from features (or item meta) with fallback
     const baseName = this.pathSelectionService.normalizeRemoteName(actualRemoteName);
-    const cachedFsInfo = this.fsInfoCache()[baseName];
+    const features = this.remoteFacadeService.featuresSignal(baseName)() as RemoteFeatures;
     const isLocal =
-      cachedFsInfo?.Features?.IsLocal ?? item.meta.isLocal ?? currentRemote?.isLocal ?? false;
+      features?.isLocal ??
+      item.meta.isLocal ??
+      currentRemote?.isLocal ??
+      isLocalPath(actualRemoteName);
 
     // Pass Entry[] to the viewer
     const entries = this.files().map(f => f.entry);
@@ -2533,9 +2586,8 @@ export class NautilusComponent implements OnInit, OnDestroy {
     const path = this.fullPathInput();
     if (path) {
       navigator.clipboard?.writeText(path);
-      this.notificationService.openSnackBar(
-        this.translate.instant('nautilus.notifications.locationCopied'),
-        this.translate.instant('common.close')
+      this.notificationService.showInfo(
+        this.translate.instant('nautilus.notifications.locationCopied')
       );
     }
   }
@@ -2544,38 +2596,6 @@ export class NautilusComponent implements OnInit, OnDestroy {
     const newMode = !this.isSearchMode();
     this.isSearchMode.set(newMode);
     this.searchFilter.set('');
-  }
-
-  async runBackgroundFsInfoChecks(remotes: ExplorerRoot[]): Promise<void> {
-    // Initialize caches for new remotes
-    this.cleanupSupportCache.update(c => {
-      const u: Record<string, boolean> = {};
-      remotes.forEach(r => (u[r.name] = false));
-      return { ...c, ...u };
-    });
-
-    for (const r of remotes) {
-      if (r.isLocal) continue;
-      try {
-        const normalized = this.pathSelectionService.normalizeRemoteForRclone(r.name);
-        const info = (await this.remoteOps
-          .getFsInfo(normalized, 'nautilus')
-          .catch(() => null)) as FsInfo | null;
-
-        // Cache the full FsInfo
-        this.fsInfoCache.update(c => ({ ...c, [r.name]: info }));
-
-        // Also update feature-specific caches for convenience
-        if (info?.Features?.['CleanUp']) {
-          this.cleanupSupportCache.update(c => ({ ...c, [r.name]: true }));
-        }
-        if (info?.Features?.['PublicLink']) {
-          this.publicLinkSupportCache.update(c => ({ ...c, [r.name]: true }));
-        }
-      } catch {
-        console.error('Failed to check remote features');
-      }
-    }
   }
 
   private subscribeToSettings(): void {

@@ -10,6 +10,8 @@ import {
   OnDestroy,
   OnInit,
   signal,
+  effect,
+  untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
@@ -93,7 +95,7 @@ interface PendingRemoteData {
   type?: string;
   [key: string]: unknown;
 }
- 
+
 type ProfileData = Record<string, unknown>;
 type ProfilesMap = Record<string, ProfileData>;
 
@@ -186,10 +188,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   );
 
   profiles = signal<Record<FlagType, ProfilesMap>>(
-    Object.fromEntries(FLAG_TYPES.map(t => [t, {} as ProfilesMap])) as Record<
-      FlagType,
-      ProfilesMap
-    >
+    Object.fromEntries(FLAG_TYPES.map(t => [t, {} as ProfilesMap])) as Record<FlagType, ProfilesMap>
   );
 
   selectedProfileName = signal<Record<FlagType, string>>(
@@ -248,6 +247,8 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     this.remoteConfigForm.statusChanges
       .pipe(takeUntilDestroyed())
       .subscribe(status => this.remoteConfigFormStatus.set(status));
+
+    this.setupAuthStateListeners();
   }
 
   async ngOnInit(): Promise<void> {
@@ -264,7 +265,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     this.initCurrentStep();
     this.populateFormIfEditingOrCloning();
     this.setupAutoStartValidators();
-    this.setupAuthStateListeners();
   }
 
   private initCurrentStep(): void {
@@ -599,7 +599,10 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
             .subscribe(enabled => {
               if (enabled) {
                 const validator = this.validatorRegistry.getValidator('crossPlatformPath');
-                destControl?.setValidators([Validators.required, ...(validator ? [validator] : [])]);
+                destControl?.setValidators([
+                  Validators.required,
+                  ...(validator ? [validator] : []),
+                ]);
               } else {
                 destControl?.clearValidators();
               }
@@ -640,11 +643,12 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
   private setupAuthStateListeners(): void {
     // Sync local form state with auth progress
-    this.authStateService.isAuthInProgress$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(isInProgress => {
+    effect(() => {
+      const isInProgress = this.authStateService.isAuthInProgress();
+      untracked(() => {
         this.setFormState(isInProgress);
       });
+    });
   }
 
   // ============================================================================
@@ -655,7 +659,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
     if (this.editTarget() === 'remote' || this.cloneTarget()) {
       const remoteSpecs = this.cloneTarget()
-        ? this.dialogData.existingConfig['remoteSpecs']
+        ? this.dialogData.existingConfig['config']
         : this.dialogData.existingConfig;
       this.populateRemoteForm(remoteSpecs);
 
@@ -733,7 +737,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     // Populate form with profile data
     this.remoteConfigForm.get('serveConfig')?.patchValue({
       autoStart: serveConfig['autoStart'] || false,
-      source: this.parsePathString((serveConfig['source'] as string) || '', 'currentRemote', this.getRemoteName()),
+      source: this.parsePathString(
+        (serveConfig['source'] as string) || '',
+        'currentRemote',
+        this.getRemoteName()
+      ),
       type: type,
       vfsProfile: serveConfig['vfsProfile'] || DEFAULT_PROFILE_NAME,
       filterProfile: serveConfig['filterProfile'] || DEFAULT_PROFILE_NAME,
@@ -784,14 +792,22 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
     // Paths - only patch if defined in config
     if (config['source'] !== undefined) {
-      patchData.source = this.parsePathString(config['source'] as string, 'currentRemote', this.getRemoteName());
+      patchData.source = this.parsePathString(
+        config['source'] as string,
+        'currentRemote',
+        this.getRemoteName()
+      );
     }
 
     if (config['dest'] !== undefined) {
       if (type === 'mount') {
         patchData.dest = config['dest'];
       } else {
-        patchData.dest = this.parsePathString(config['dest'] as string, 'local', this.getRemoteName());
+        patchData.dest = this.parsePathString(
+          config['dest'] as string,
+          'local',
+          this.getRemoteName()
+        );
       }
     }
 
@@ -813,16 +829,18 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       }
       // Now apply saved option values (if any)
       if (config['options']) {
-        Object.entries(config['options'] as Record<string, unknown>).forEach(([fieldName, value]) => {
-          const field = this.dynamicFlagFields[type].find(f => f.FieldName === fieldName);
-          if (field) {
-            const controlKey = this.getUniqueControlKey(type, field);
-            const control = optionsGroup.get(controlKey);
-            if (control) {
-              control.setValue(value);
+        Object.entries(config['options'] as Record<string, unknown>).forEach(
+          ([fieldName, value]) => {
+            const field = this.dynamicFlagFields[type].find(f => f.FieldName === fieldName);
+            if (field) {
+              const controlKey = this.getUniqueControlKey(type, field);
+              const control = optionsGroup.get(controlKey);
+              if (control) {
+                control.setValue(value);
+              }
             }
           }
-        });
+        );
       }
     }
   }
@@ -1398,7 +1416,9 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     const fs = buildPathString(serveData['source'] as string, remoteName);
 
     // Clean serve options
-    const serveOptions = this.cleanServeOptions((serveData['options'] as Record<string, unknown>) || {});
+    const serveOptions = this.cleanServeOptions(
+      (serveData['options'] as Record<string, unknown>) || {}
+    );
 
     return {
       autoStart: serveData['autoStart'] as boolean,

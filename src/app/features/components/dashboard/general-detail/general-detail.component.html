@@ -3,15 +3,15 @@
     <div class="remote-info-section">
       <div class="icon-container">
         <mat-icon
-          [svgIcon]="iconService.getIconName(selectedRemote().remoteSpecs.type)"
+          [svgIcon]="iconService.getIconName(selectedRemote().type)"
           class="remote-type-icon"
         ></mat-icon>
       </div>
       <div class="remote-text-info">
-        <h2 class="remote-name" matTooltip="{{ selectedRemote().remoteSpecs.name }}">
-          {{ selectedRemote().remoteSpecs.name }}
+        <h2 class="remote-name" matTooltip="{{ selectedRemote().name }}">
+          {{ selectedRemote().name }}
         </h2>
-        <span class="remote-type">{{ selectedRemote().remoteSpecs.type | titlecase }}</span>
+        <span class="remote-type">{{ selectedRemote().type | titlecase }}</span>
       </div>
     </div>
     <div

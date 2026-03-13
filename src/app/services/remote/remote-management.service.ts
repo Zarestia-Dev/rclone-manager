@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { RemoteProvider, RemoteConfig, RcConfigQuestionResponse, LocalDrive } from '@app/types';
+import { RemoteProvider, ConfigRecord, RcConfigQuestionResponse, LocalDrive } from '@app/types';
 
 /**
  * Service for managing rclone remotes
@@ -75,7 +75,7 @@ export class RemoteManagementService extends TauriBaseService {
 
   async createRemote(
     name: string,
-    parameters: RemoteConfig,
+    parameters: ConfigRecord,
     opt?: Record<string, unknown>
   ): Promise<void> {
     await this.invokeWithNotification(
@@ -93,7 +93,7 @@ export class RemoteManagementService extends TauriBaseService {
    */
   async updateRemote(
     name: string,
-    parameters: RemoteConfig,
+    parameters: ConfigRecord,
     opt?: Record<string, unknown>
   ): Promise<void> {
     await this.invokeWithNotification(

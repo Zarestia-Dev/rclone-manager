@@ -25,8 +25,10 @@ import {
   ModalService,
   NotificationService,
   IconService,
+  RemoteMetadataService,
+  PathSelectionService,
 } from '@app/services';
-import { Entry, FileBrowserItem, FsInfo } from '@app/types';
+import { Entry, FileBrowserItem, RemoteFeatures } from '@app/types';
 import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
@@ -67,8 +69,8 @@ export class PropertiesModalComponent implements OnInit {
     isLocal: boolean;
     item?: Entry | null;
     remoteType?: string;
-    /** Cached FsInfo from Nautilus (avoids duplicate API calls) */
-    fsInfo?: FsInfo | null;
+    /** Simplified features from Nautilus (avoids duplicate API calls) */
+    features?: RemoteFeatures | null;
   } = inject(MAT_DIALOG_DATA);
 
   private remoteOps = inject(RemoteFileOperationsService);
@@ -78,6 +80,8 @@ export class PropertiesModalComponent implements OnInit {
   private translate = inject(TranslateService);
   private modalService = inject(ModalService);
   private notificationService = inject(NotificationService);
+  private remoteMetadata = inject(RemoteMetadataService);
+  private pathSelectionService = inject(PathSelectionService);
 
   // Separate loading states
   readonly loadingStat = signal(true);
@@ -254,18 +258,17 @@ export class PropertiesModalComponent implements OnInit {
     this.hashError.set(null);
 
     try {
-      // Use cached fsInfo from Nautilus if available, otherwise fetch
-      let fsInfo = this.data.fsInfo;
-      if (!fsInfo) {
-        const fsRemote = this.buildFsRemote();
-        fsInfo = (await this.remoteOps.getFsInfo(fsRemote, 'ui')) as FsInfo;
+      // Use passed features if available, otherwise fetch from metadata service
+      let features = this.data.features;
+      if (!features) {
+        const baseName = this.pathSelectionService.normalizeRemoteName(this.data.remoteName);
+        features = await this.remoteMetadata.getFeatures(baseName, 'ui');
       }
 
-      const hashes = fsInfo?.Hashes ?? [];
+      const hashes = features?.hashes ?? [];
       this.supportedHashes.set(hashes);
 
       // Auto-calculate only the first hash (usually md5) for single files
-      // For directories, we wait for user action (bulk op)
       const currentItem = this.item();
       const isFile = currentItem && !currentItem.IsDir;
       if (hashes.length > 0 && isFile) {
@@ -386,13 +389,13 @@ export class PropertiesModalComponent implements OnInit {
    */
   private async checkPublicLinkSupport(): Promise<void> {
     try {
-      // Use cached fsInfo from Nautilus if available, otherwise fetch
-      let fsInfo = this.data.fsInfo;
-      if (!fsInfo) {
-        const fsRemote = this.buildFsRemote();
-        fsInfo = (await this.remoteOps.getFsInfo(fsRemote)) as FsInfo;
+      // Use passed features if available, otherwise fetch from metadata service
+      let features = this.data.features;
+      if (!features) {
+        const baseName = this.pathSelectionService.normalizeRemoteName(this.data.remoteName);
+        features = await this.remoteMetadata.getFeatures(baseName, 'ui');
       }
-      this.supportsPublicLink.set(fsInfo?.Features?.['PublicLink'] ?? false);
+      this.supportsPublicLink.set(features?.hasPublicLink ?? false);
     } catch (err) {
       console.warn('Failed to check PublicLink support:', err);
       this.supportsPublicLink.set(false);

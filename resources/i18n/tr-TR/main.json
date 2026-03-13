@@ -775,7 +775,9 @@
           "Permissions": "İzinler",
           "Numbers": "Sayılar",
           "Strings": "Metinler"
-        }
+        },
+        "booleanEnabled": "✓ Etkin",
+        "booleanDisabled": "✗ Devre Dışı"
       },
       "actions": {
         "pollInterval": "Yoklama Aralığı",

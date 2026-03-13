@@ -3,11 +3,9 @@ import { NautilusViewPaneComponent } from './nautilus-view-pane.component';
 import { TranslateModule } from '@ngx-translate/core';
 import { IconService } from '@app/services';
 import { FormatFileSizePipe } from '@app/pipes';
-import { CdkDragDrop } from '@angular/cdk/drag-drop';
-import { signal } from '@angular/core';
 
 class MockIconService {
-  getIconForEntry(entry: any) {
+  getIconForEntry(_entry: any): string {
     return 'folder';
   }
 }
@@ -41,11 +39,11 @@ describe('NautilusViewPaneComponent', () => {
     fixture.componentRef.setInput('sortDirection', 'asc');
     fixture.componentRef.setInput('activePaneIndex', 0);
     fixture.componentRef.setInput('getItemKey', (item: any) => item.entry.Path);
-    fixture.componentRef.setInput('isItemSelectable', (entry: any) => true);
+    fixture.componentRef.setInput('isItemSelectable', (_entry: any) => true);
     fixture.componentRef.setInput('trackByFile', (index: number, item: any) => item.entry.Path);
     fixture.componentRef.setInput('trackBySortOption', (index: number, item: any) => item.key);
     fixture.componentRef.setInput('formatRelativeDate', (dateString: string) => dateString);
-    fixture.componentRef.setInput('canAcceptFile', (drag: any, drop: any) => false);
+    fixture.componentRef.setInput('canAcceptFile', (_drag: any, _drop: any) => false);
     fixture.componentRef.setInput('fileMenu', null);
 
     fixture.detectChanges();

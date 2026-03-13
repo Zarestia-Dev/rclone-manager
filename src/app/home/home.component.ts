@@ -130,13 +130,13 @@ export class HomeComponent implements OnInit, OnDestroy {
 
     // Find the up-to-date object in the list using the name from the selection
     // If not found (e.g. during loading), fallback to the source object
-    return allRemotes.find(r => r.remoteSpecs.name === source.remoteSpecs.name) || source;
+    return allRemotes.find(r => r.name === source.name) || source;
   });
 
   selectedRemoteSettings = computed(() => {
     const remote = this.selectedRemote();
     if (!remote) return {};
-    return this.remoteFacadeService.getRemoteSettings(remote.remoteSpecs.name);
+    return this.remoteFacadeService.getRemoteSettings(remote.name);
   });
 
   // Local UI state
@@ -272,8 +272,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   onSyncOperationChange(operation: SyncOperationType): void {
     this.selectedSyncOperation.set(operation);
     const remote = this.selectedRemote();
-    if (remote?.remoteSpecs.name) {
-      this.saveRemoteSettings(remote.remoteSpecs.name, { selectedSyncOperation: operation });
+    if (remote?.name) {
+      this.saveRemoteSettings(remote.name, { selectedSyncOperation: operation });
     }
   }
 
@@ -281,7 +281,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     const remote = this.selectedRemote();
     if (!remote) return;
 
-    const remoteName = remote.remoteSpecs.name;
+    const remoteName = remote.name;
     const currentActions = remote.primaryActions || [];
     const newActions = currentActions.includes(type)
       ? currentActions.filter(action => action !== type)
@@ -378,7 +378,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     targetProfile?: string
   ): void {
     this.modalService.openRemoteConfig({
-      remoteName: this.selectedRemote()?.remoteSpecs.name,
+      remoteName: this.selectedRemote()?.name,
       editTarget,
       existingConfig,
       initialSection,
@@ -394,10 +394,11 @@ export class HomeComponent implements OnInit, OnDestroy {
     const config = await this.remoteFacadeService.cloneRemote(remoteName);
     if (!config) return;
 
+    const configData = config as { name: string; [key: string]: any };
     this.modalService.openRemoteConfig({
-      remoteName: config['remoteSpecs'].name,
+      remoteName: configData['name'],
       cloneTarget: true,
-      existingConfig: config,
+      existingConfig: configData,
     });
   }
 
@@ -447,9 +448,8 @@ export class HomeComponent implements OnInit, OnDestroy {
       if (confirmed) {
         await this.appSettingsService.resetRemoteSettings(remoteName);
         await this.remoteFacadeService.loadRemotes();
-        this.notificationService.openSnackBar(
-          this.translate.instant('home.notifications.settingsReset', { name: remoteName }),
-          this.translate.instant('common.close')
+        this.notificationService.showSuccess(
+          this.translate.instant('home.notifications.settingsReset', { name: remoteName })
         );
       }
     } catch (error) {
@@ -483,7 +483,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     // Trigger reload to be responsive.
     this.remoteFacadeService.loadRemotes();
 
-    if (this.selectedRemote()?.remoteSpecs.name === remoteName) {
+    if (this.selectedRemote()?.name === remoteName) {
       this.uiStateService.resetSelectedRemote();
     }
   }

@@ -3,7 +3,6 @@
 .nautilus-overlay-pane {
   width: 100vw;
   height: 100vh;
-  border-radius: var(--app-border-radius) !important;
   --sidenav-width: clamp(180px, 20vw, 240px);
 
   ::ng-deep .cdk-drag-placeholder {

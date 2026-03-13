@@ -42,3 +42,4 @@ export * from './facade/remote-facade.service';
 export * from './remote/remote-status.service';
 export * from './ui/validation/validator-registry.service';
 export * from './remote/remote-file-operations.service';
+export * from './remote/remote-metadata.service';

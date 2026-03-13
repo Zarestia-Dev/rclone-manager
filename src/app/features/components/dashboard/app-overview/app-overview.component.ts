@@ -59,16 +59,16 @@ export class AppOverviewComponent {
   private isRemoteActive = (remote: Remote): boolean => {
     const mode = this.mode();
     if (mode === 'mount') {
-      return remote.mountState?.mounted === true;
+      return remote.status.mount.active;
     } else if (mode === 'sync') {
       return (
-        remote.syncState?.isOnSync === true ||
-        remote.copyState?.isOnCopy === true ||
-        remote.moveState?.isOnMove === true ||
-        remote.bisyncState?.isOnBisync === true
+        remote.status.sync.active ||
+        remote.status.copy.active ||
+        remote.status.move.active ||
+        remote.status.bisync.active
       );
     } else if (mode === 'serve') {
-      return remote.serveState?.isOnServe === true;
+      return remote.status.serve.active;
     }
     return false;
   };
@@ -157,7 +157,7 @@ export class AppOverviewComponent {
 
   handleServeCardClick(serve: ServeListItem): void {
     const remoteName = serve.params.fs.split(':')[0];
-    const remote = this.remotes().find(r => r.remoteSpecs.name === remoteName);
+    const remote = this.remotes().find(r => r.name === remoteName);
     if (remote) {
       this.selectRemote(remote);
     }

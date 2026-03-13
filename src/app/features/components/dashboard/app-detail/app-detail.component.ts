@@ -35,6 +35,10 @@ import {
   PathDisplayConfig,
   PrimaryActionType,
   Remote,
+  RemoteStatus,
+  RemoteOperationState,
+  RemoteServeState,
+  RemoteAction,
   RemoteSettings,
   RemoteSettingsSection,
   SENSITIVE_KEYS,
@@ -302,17 +306,12 @@ export class AppDetailComponent {
   // --- Helper Methods for State Access ---
 
   /** Get operation state from remote */
-  private getOperationState(type: SyncOperationType | 'mount' | 'serve'): any {
+  private getOperationState(
+    type: SyncOperationType | 'mount' | 'serve'
+  ): RemoteOperationState | RemoteServeState | null {
     const remote = this.selectedRemote();
-    const stateMap: Record<string, unknown> = {
-      sync: remote?.syncState,
-      bisync: remote?.bisyncState,
-      move: remote?.moveState,
-      copy: remote?.copyState,
-      mount: remote?.mountState,
-      serve: remote?.serveState,
-    };
-    return stateMap[type] as any;
+    if (!remote) return null;
+    return remote.status[type as keyof Omit<RemoteStatus, 'diskUsage'>];
   }
 
   /** Check if a profile is active for an operation type */
@@ -321,24 +320,23 @@ export class AppDetailComponent {
     if (!state) return false;
 
     if (type === 'serve') {
-      const serveState = state as Remote['serveState'];
+      const serveState = state as RemoteStatus['serve'];
       const serves = serveState?.serves || [];
-      return profileName ? serves.some(s => s.profile === profileName) : !!serveState?.isOnServe;
+      return profileName ? serves.some(s => s.profile === profileName) : !!serveState?.active;
     }
 
     if (type === 'mount') {
-      const mountState = state as Remote['mountState'];
-      return profileName ? !!mountState?.activeProfiles?.[profileName] : !!mountState?.mounted;
+      const mountState = state as RemoteStatus['mount'];
+      return profileName ? !!mountState?.activeProfiles?.[profileName] : !!mountState?.active;
     }
 
     if (['sync', 'copy', 'move', 'bisync'].includes(type)) {
       // These states all share the same structure regarding activeProfiles
-      const syncState = state as Remote['syncState'];
+      const opState = state as RemoteStatus['sync' | 'copy' | 'move' | 'bisync'];
       if (profileName) {
-        return !!syncState?.activeProfiles?.[profileName];
+        return !!opState?.activeProfiles?.[profileName];
       }
-      const isActiveKey = `isOn${type.charAt(0).toUpperCase() + type.slice(1)}`;
-      return !!(state as Record<string, unknown>)[isActiveKey];
+      return !!opState?.active;
     }
 
     return false;
@@ -353,11 +351,11 @@ export class AppDetailComponent {
 
   // --- Computed Signals ---
 
-  remoteName = computed(() => this.selectedRemote().remoteSpecs.name);
+  remoteName = computed(() => this.selectedRemote().name);
 
   /** Filters running serves to only show those belonging to the selected remote */
   filteredRunningServes = computed(() => {
-    return (this.selectedRemote().serveState?.serves || []) as ServeListItem[];
+    return (this.selectedRemote().status.serve?.serves || []) as ServeListItem[];
   });
 
   isSyncType = computed(() => this.mainOperationType() === 'sync');
@@ -375,7 +373,7 @@ export class AppDetailComponent {
     if (!this.isSyncType()) return undefined;
     const op = this.selectedSyncOperation();
     const profileName = this.selectedProfile() || 'default';
-    const state = this.getOperationState(op) as any;
+    const state = this.getOperationState(op) as RemoteOperationState;
     // Cast to syncState as we know op is partial SyncOperationType and all sync states have activeProfiles
     return state?.activeProfiles?.[profileName];
   });
@@ -653,7 +651,7 @@ export class AppDetailComponent {
         showOpenButtons: true,
         operationColor: 'accent',
         isDestinationActive: isActive,
-        actionInProgress: (actionType as any) || undefined,
+        actionInProgress: (actionType as RemoteAction) || undefined,
       },
       primaryButtonLabel:
         actionType === 'mount'
@@ -665,7 +663,7 @@ export class AppDetailComponent {
           ? this.translate.instant('dashboard.appDetail.unmounting')
           : this.translate.instant('dashboard.appDetail.unmount'),
       secondaryIcon: 'eject',
-      actionInProgress: (actionType as any) || undefined,
+      actionInProgress: (actionType as RemoteAction) || undefined,
       profileName: profileName,
     };
   }
@@ -696,7 +694,7 @@ export class AppDetailComponent {
     );
 
     // Extract source from config, fallback to remote name
-    const source = (config.source as string) || `${remote.remoteSpecs.name}:`;
+    const source = (config.source as string) || `${remote.name}:`;
 
     // Extract protocol type and address for destination display
     const serveType = (config?.options?.type as string) || 'http';
@@ -722,7 +720,7 @@ export class AppDetailComponent {
       primaryIcon: 'satellite-dish',
       secondaryButtonLabel: this.translate.instant('dashboard.appDetail.stop', { op: 'Serve' }),
       secondaryIcon: 'stop',
-      actionInProgress: (actionMatch?.type as any) || undefined,
+      actionInProgress: (actionMatch?.type as RemoteAction) || undefined,
       profileName: profileName,
     };
   }
@@ -731,8 +729,10 @@ export class AppDetailComponent {
     operationType: this.isSyncType()
       ? this.selectedSyncOperation()
       : (this.mainOperationType() ?? 'mount'),
-    jobId: this.jobId(),
-    startTime: this.jobStats().startTime ? new Date(this.jobStats().startTime!) : undefined,
+    jobId: this.jobId() ? Number(this.jobId()) : undefined,
+    startTime: this.jobStats().startTime
+      ? new Date(this.jobStats().startTime as string)
+      : undefined,
     // Profile selection support
     profiles: this.profiles(),
     selectedProfile: this.selectedProfile() ?? undefined,
@@ -796,7 +796,7 @@ export class AppDetailComponent {
     completedTransfers: this.completedTransfers(),
     operationClass: this.operationClass(),
     operationColor: this.operationColor(),
-    remoteName: this.selectedRemote()?.remoteSpecs?.name || '',
+    remoteName: this.selectedRemote()?.name || '',
     showHistory: this.completedTransfers().length > 0,
   }));
 
@@ -902,7 +902,7 @@ export class AppDetailComponent {
   }
 
   triggerOpenInFiles(path: string): void {
-    const name = this.selectedRemote()?.remoteSpecs?.name;
+    const name = this.selectedRemote()?.name;
     if (name) {
       this.openInFiles.emit({ remoteName: name, path });
     }
@@ -922,12 +922,12 @@ export class AppDetailComponent {
       editTarget: type,
       existingConfig: this.remoteSettings(), // Pass FULL config
       targetProfile: profileName, // Optional, undefined if not present
-    } as any);
+    } as { editTarget: string; existingConfig: RemoteSettings; targetProfile: string });
   }
 
   getSettingsPanelConfig(section: RemoteSettingsSection): SettingsPanelConfig {
     const [key, profileName] = section.key.split(':');
-    const settings = this.remoteSettings() as any;
+    const settings = this.remoteSettings() as Record<string, any>;
 
     let specificSettings = {};
 
@@ -1021,7 +1021,7 @@ export class AppDetailComponent {
             ...file,
             checked: false,
             error: '',
-            jobid: this.jobId() ?? 0,
+            jobid: Number(this.jobId() ?? 0),
             status: 'completed',
             startedAt: undefined,
             completedAt: new Date().toISOString(),

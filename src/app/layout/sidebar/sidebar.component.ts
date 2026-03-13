@@ -59,9 +59,7 @@ export class SidebarComponent {
     const term = this.searchTerm().trim().toLowerCase();
     if (!term) return this.remotes();
     return this.remotes().filter(
-      remote =>
-        remote.remoteSpecs.name.toLowerCase().includes(term) ||
-        remote.remoteSpecs.type.toLowerCase().includes(term)
+      remote => remote.name.toLowerCase().includes(term) || remote.type.toLowerCase().includes(term)
     );
   });
 

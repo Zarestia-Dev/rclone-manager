@@ -129,15 +129,19 @@ export class ApiClientService {
     } catch (error: unknown) {
       if (error instanceof HttpErrorResponse) {
         if (error.error?.error) {
-          throw new Error(error.error.error);
+          throw new Error(error.error.error, { cause: error });
         }
         if (error.status === 0) {
-          throw new Error('API server is unreachable. Is the headless server running?');
+          throw new Error('API server is unreachable. Is the headless server running?', {
+            cause: error,
+          });
         }
         if (error.status === 401) {
-          throw new Error('Authentication required. Please enter your credentials.');
+          throw new Error('Authentication required. Please enter your credentials.', {
+            cause: error,
+          });
         }
-        throw new Error(error.message);
+        throw new Error(error.message, { cause: error });
       }
       throw error;
     }

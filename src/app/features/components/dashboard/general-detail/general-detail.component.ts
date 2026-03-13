@@ -41,44 +41,43 @@ const ACTION_CONFIGS: ActionConfig[] = [
     key: 'mount',
     label: 'actions.mount',
     icon: 'mount',
-    getTooltip: remote => (remote.mountState?.mounted ? 'mount.mounted' : 'mount.toggleAction'),
-    getActiveState: remote => remote.mountState?.mounted || false,
+    getTooltip: remote => (remote.status.mount.active ? 'mount.mounted' : 'mount.toggleAction'),
+    getActiveState: remote => remote.status.mount.active || false,
   },
   {
     key: 'sync',
     label: 'actions.sync',
     icon: 'sync',
-    getTooltip: remote => (remote.syncState?.isOnSync ? 'sync.syncing' : 'sync.toggleSync'),
-    getActiveState: remote => remote.syncState?.isOnSync || false,
+    getTooltip: remote => (remote.status.sync.active ? 'sync.syncing' : 'sync.toggleSync'),
+    getActiveState: remote => remote.status.sync.active || false,
   },
   {
     key: 'copy',
     label: 'actions.copy',
     icon: 'copy',
-    getTooltip: remote => (remote.copyState?.isOnCopy ? 'sync.copying' : 'sync.toggleCopy'),
-    getActiveState: remote => remote.copyState?.isOnCopy || false,
+    getTooltip: remote => (remote.status.copy.active ? 'sync.copying' : 'sync.toggleCopy'),
+    getActiveState: remote => remote.status.copy.active || false,
   },
   {
     key: 'move',
     label: 'actions.move',
     icon: 'move',
-    getTooltip: remote => (remote.moveState?.isOnMove ? 'sync.moving' : 'sync.toggleMove'),
-    getActiveState: remote => remote.moveState?.isOnMove || false,
+    getTooltip: remote => (remote.status.move.active ? 'sync.moving' : 'sync.toggleMove'),
+    getActiveState: remote => remote.status.move.active || false,
   },
   {
     key: 'bisync',
     label: 'actions.bisync',
     icon: 'right-left',
-    getTooltip: remote =>
-      remote.bisyncState?.isOnBisync ? 'sync.bisyncActive' : 'sync.toggleBisync',
-    getActiveState: remote => remote.bisyncState?.isOnBisync || false,
+    getTooltip: remote => (remote.status.bisync.active ? 'sync.bisyncActive' : 'sync.toggleBisync'),
+    getActiveState: remote => remote.status.bisync.active || false,
   },
   {
     key: 'serve',
     label: 'actions.serve',
     icon: 'serve',
-    getTooltip: remote => (remote.serveState?.isOnServe ? 'serve.serving' : 'serve.toggleAction'),
-    getActiveState: remote => remote.serveState?.isOnServe || false,
+    getTooltip: remote => (remote.status.serve.active ? 'serve.serving' : 'serve.toggleAction'),
+    getActiveState: remote => remote.status.serve.active || false,
   },
 ];
 
@@ -139,7 +138,7 @@ export class GeneralDetailComponent {
     const allTasks = this.allScheduledTasks();
     const remote = this.selectedRemote();
     if (!remote) return [];
-    return allTasks.filter(task => task.args['remote_name'] === remote.remoteSpecs.name);
+    return allTasks.filter(task => task.args['remote_name'] === remote.name);
   });
 
   readonly hasScheduledTasks = computed(() => this.remoteScheduledTasks().length > 0);
@@ -217,13 +216,13 @@ export class GeneralDetailComponent {
       title: 'dashboard.generalDetail.remoteConfiguration',
       icon: 'wrench',
     },
-    settings: this.selectedRemote().remoteSpecs,
-    hasSettings: Object.keys(this.selectedRemote().remoteSpecs).length > 0,
+    settings: this.selectedRemote().config,
+    hasSettings: Object.keys(this.selectedRemote().config || {}).length > 0,
     buttonColor: 'primary',
     buttonLabel: 'dashboard.generalDetail.editConfiguration',
   }));
 
-  diskUsageConfig = computed<DiskUsage>(() => this.selectedRemote()?.diskUsage);
+  diskUsageConfig = computed<DiskUsage>(() => this.selectedRemote()?.status.diskUsage);
 
   jobsPanelConfig = computed<JobsPanelConfig>(() => ({
     jobs: this.jobs(),
@@ -233,7 +232,7 @@ export class GeneralDetailComponent {
   onEditRemoteConfiguration(): void {
     this.openRemoteConfigModal.emit({
       editTarget: 'remote',
-      existingConfig: this.selectedRemote().remoteSpecs as unknown as RemoteSettings,
+      existingConfig: this.selectedRemote().config as unknown as RemoteSettings,
     });
   }
 

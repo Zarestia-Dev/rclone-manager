@@ -3,21 +3,21 @@
     <div class="remote-info">
       <div class="icon-container">
         <mat-icon
-          [svgIcon]="iconService.getIconName(remote().remoteSpecs.type)"
+          [svgIcon]="iconService.getIconName(remote().type)"
           class="remote-type-icon"
         ></mat-icon>
       </div>
       <div class="remote-details">
-        <h4 class="remote-name" [matTooltip]="remote().remoteSpecs.name" matTooltipShowDelay="500">
-          {{ remote().remoteSpecs.name }}
+        <h4 class="remote-name" [matTooltip]="remote().name" matTooltipShowDelay="500">
+          {{ remote().name }}
         </h4>
-        <span class="remote-type">{{ remote().remoteSpecs.type | titlecase }}</span>
+        <span class="remote-type">{{ remote().type | titlecase }}</span>
       </div>
     </div>
 
     <!-- Status indicators showing actual remote states -->
     <div class="remote-status-indicators" aria-hidden="true">
-      @if (remote().mountState?.mounted) {
+      @if (remote().status.mount.active) {
         <div
           class="status-badge mounted"
           [matTooltip]="getProfileTooltip('mount')"
@@ -29,7 +29,7 @@
           ></mat-icon>
         </div>
       }
-      @if (remote().syncState?.isOnSync) {
+      @if (remote().status.sync.active) {
         <div
           class="status-badge syncing"
           [matTooltip]="getProfileTooltip('sync')"
@@ -41,7 +41,7 @@
           ></mat-icon>
         </div>
       }
-      @if (remote().copyState?.isOnCopy) {
+      @if (remote().status.copy.active) {
         <div
           class="status-badge copying"
           [matTooltip]="getProfileTooltip('copy')"
@@ -53,7 +53,7 @@
           ></mat-icon>
         </div>
       }
-      @if (remote().moveState?.isOnMove) {
+      @if (remote().status.move.active) {
         <div
           class="status-badge moving"
           [matTooltip]="getProfileTooltip('move')"
@@ -65,7 +65,7 @@
           ></mat-icon>
         </div>
       }
-      @if (remote().bisyncState?.isOnBisync) {
+      @if (remote().status.bisync.active) {
         <div
           class="status-badge bisyncing"
           [matTooltip]="getProfileTooltip('bisync')"
@@ -77,7 +77,7 @@
           ></mat-icon>
         </div>
       }
-      @if (remote().serveState?.isOnServe) {
+      @if (remote().status.serve.active) {
         <div
           class="status-badge serving"
           [matTooltip]="getProfileTooltip('serve')"

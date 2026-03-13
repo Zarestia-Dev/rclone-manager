@@ -769,7 +769,9 @@
           "Permissions": "Permisos",
           "Numbers": "Números",
           "Strings": "Cadenas"
-        }
+        },
+        "booleanEnabled": "✓ Activado",
+        "booleanDisabled": "✗ Desactivado"
       },
       "actions": {
         "pollInterval": "Intervalo de sondeo",

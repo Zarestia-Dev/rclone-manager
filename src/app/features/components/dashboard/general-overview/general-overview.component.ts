@@ -161,7 +161,7 @@ export class GeneralOverviewComponent implements OnInit {
     () => this.jobs()?.filter(job => job.status === 'Running').length || 0
   );
   allRunningServes = computed(() =>
-    this.remotes().flatMap(remote => remote.serveState?.serves || [])
+    this.remotes().flatMap(remote => remote.status.serve?.serves || [])
   );
 
   jobCompletionPercentage = computed(() => {
@@ -259,7 +259,7 @@ export class GeneralOverviewComponent implements OnInit {
 
   handleServeCardClick(serve: ServeListItem): void {
     const remoteName = serve.params.fs.split(':')[0];
-    const remote = this.remotes().find(r => r.remoteSpecs.name === remoteName);
+    const remote = this.remotes().find(r => r.name === remoteName);
 
     if (remote) {
       this.uiStateService.setTab('serve');
@@ -281,7 +281,7 @@ export class GeneralOverviewComponent implements OnInit {
   onTaskClick(task: ScheduledTask): void {
     const remoteName = task.args['remote_name'];
     if (remoteName) {
-      const remote = this.remotes().find(r => r.remoteSpecs.name === remoteName);
+      const remote = this.remotes().find(r => r.name === remoteName);
       if (remote) {
         this.selectRemote.emit(remote);
       }

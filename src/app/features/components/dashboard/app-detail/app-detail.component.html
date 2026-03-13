@@ -9,20 +9,20 @@
             copy: selectedSyncOperation() === 'copy' && operationActiveState(),
             move: selectedSyncOperation() === 'move' && operationActiveState(),
             bisync: selectedSyncOperation() === 'bisync' && operationActiveState(),
-            mount: selectedRemote().mountState?.mounted,
-            serve: selectedRemote().serveState?.isOnServe,
+            mount: selectedRemote().status.mount.active,
+            serve: selectedRemote().status.serve.active,
           }"
         >
           <mat-icon
-            [svgIcon]="iconService.getIconName(selectedRemote().remoteSpecs.type)"
+            [svgIcon]="iconService.getIconName(selectedRemote().type)"
             class="remote-type-icon"
           ></mat-icon>
         </div>
         <div class="remote-text-info">
-          <h2 class="remote-name" matTooltip="{{ selectedRemote().remoteSpecs.name }}">
-            {{ selectedRemote().remoteSpecs.name }}
+          <h2 class="remote-name" matTooltip="{{ selectedRemote().name }}">
+            {{ selectedRemote().name }}
           </h2>
-          <span class="remote-type">{{ selectedRemote().remoteSpecs.type | titlecase }}</span>
+          <span class="remote-type">{{ selectedRemote().type | titlecase }}</span>
         </div>
       </div>
     </div>
@@ -112,14 +112,14 @@
                     (startJob)="
                       startJob.emit({
                         type: $event,
-                        remoteName: selectedRemote().remoteSpecs.name,
+                        remoteName: selectedRemote().name,
                         profileName: opConfig.profileName,
                       })
                     "
                     (stopJob)="
                       stopJob.emit({
                         type: $event,
-                        remoteName: selectedRemote().remoteSpecs.name,
+                        remoteName: selectedRemote().name,
                         profileName: opConfig.profileName,
                       })
                     "
@@ -299,14 +299,14 @@
                     (startJob)="
                       startJob.emit({
                         type: 'serve',
-                        remoteName: selectedRemote().remoteSpecs.name,
+                        remoteName: selectedRemote().name,
                         profileName: opConfig.profileName,
                       })
                     "
                     (stopJob)="
                       stopJob.emit({
                         type: 'serve',
-                        remoteName: selectedRemote().remoteSpecs.name,
+                        remoteName: selectedRemote().name,
                         profileName: opConfig.profileName,
                       })
                     "
@@ -325,7 +325,7 @@
                           (stopServe)="
                             stopJob.emit({
                               type: 'serve',
-                              remoteName: selectedRemote().remoteSpecs.name,
+                              remoteName: selectedRemote().name,
                               serveId: serve.id,
                             })
                           "
@@ -337,9 +337,7 @@
                 }
                 <mat-divider></mat-divider>
 
-                <app-vfs-control-panel
-                  [remoteName]="selectedRemote().remoteSpecs.name"
-                ></app-vfs-control-panel>
+                <app-vfs-control-panel [remoteName]="selectedRemote().name"></app-vfs-control-panel>
               } @else {
                 <!-- Mount Control Panel -->
 
@@ -385,14 +383,14 @@
                     (startJob)="
                       startJob.emit({
                         type: 'mount',
-                        remoteName: selectedRemote().remoteSpecs.name,
+                        remoteName: selectedRemote().name,
                         profileName: opConfig.profileName,
                       })
                     "
                     (stopJob)="
                       stopJob.emit({
                         type: 'mount',
-                        remoteName: selectedRemote().remoteSpecs.name,
+                        remoteName: selectedRemote().name,
                         profileName: opConfig.profileName,
                       })
                     "
@@ -403,9 +401,7 @@
 
                 <mat-divider></mat-divider>
 
-                <app-vfs-control-panel
-                  [remoteName]="selectedRemote().remoteSpecs.name"
-                ></app-vfs-control-panel>
+                <app-vfs-control-panel [remoteName]="selectedRemote().name"></app-vfs-control-panel>
               }
             </div>
           </mat-tab>

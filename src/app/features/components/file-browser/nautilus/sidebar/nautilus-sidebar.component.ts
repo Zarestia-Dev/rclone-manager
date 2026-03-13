@@ -6,10 +6,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
-import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
+import { DragDropModule, CdkDragDrop, CdkDrag } from '@angular/cdk/drag-drop';
 import { CdkMenuModule } from '@angular/cdk/menu';
 
-import { IconService, PathSelectionService } from '@app/services';
+import { IconService, PathSelectionService, RemoteFacadeService } from '@app/services';
 import { ExplorerRoot, FileBrowserItem } from '@app/types';
 import { OperationsPanelComponent } from '../../operations-panel/operations-panel.component';
 
@@ -34,6 +34,7 @@ import { OperationsPanelComponent } from '../../operations-panel/operations-pane
 export class NautilusSidebarComponent {
   public readonly iconService = inject(IconService);
   private readonly pathSelectionService = inject(PathSelectionService);
+  private readonly remoteFacadeService = inject(RemoteFacadeService);
 
   // --- Inputs ---
   public readonly isMobile = input.required<boolean>();
@@ -45,14 +46,12 @@ export class NautilusSidebarComponent {
   public readonly title = input.required<string>();
   public readonly currentPath = input<string>('');
 
-  // Data caches for operations
-  public readonly cleanupSupportCache = input.required<Record<string, boolean>>();
-
   // Drag Drop Predicates
-  public readonly canDropOnStarred = input.required<(item: any) => boolean>();
-  public readonly canDropOnBookmarks = input.required<(item: any) => boolean>();
-  public readonly canDropOnBookmark = input.required<(item: any) => boolean>();
-  public readonly canAcceptFile = input.required<(item: any) => boolean>();
+  public readonly canDropOnStarred = input.required<(item: CdkDrag<FileBrowserItem>) => boolean>();
+  public readonly canDropOnBookmarks =
+    input.required<(item: CdkDrag<FileBrowserItem>) => boolean>();
+  public readonly canDropOnBookmark = input.required<(item: CdkDrag<FileBrowserItem>) => boolean>();
+  public readonly canAcceptFile = input.required<(item: CdkDrag<FileBrowserItem>) => boolean>();
 
   // --- Outputs ---
   public readonly remoteSelected = output<ExplorerRoot>();
@@ -69,13 +68,16 @@ export class NautilusSidebarComponent {
   public readonly requestProperties = output<FileBrowserItem>();
 
   // Drag Drop Events
-  public readonly droppedToStarred = output<CdkDragDrop<any>>();
-  public readonly droppedToLocal = output<CdkDragDrop<any>>();
+  public readonly droppedToStarred = output<CdkDragDrop<void, FileBrowserItem[]>>();
+  public readonly droppedToLocal = output<CdkDragDrop<FileBrowserItem[], FileBrowserItem[]>>();
   public readonly droppedToBookmark = output<{
-    event: CdkDragDrop<any>;
+    event: CdkDragDrop<FileBrowserItem, FileBrowserItem[]>;
     target: FileBrowserItem;
   }>();
-  public readonly droppedToRemote = output<{ event: CdkDragDrop<any>; target: ExplorerRoot }>();
+  public readonly droppedToRemote = output<{
+    event: CdkDragDrop<ExplorerRoot, FileBrowserItem[]>;
+    target: ExplorerRoot;
+  }>();
 
   // --- UI State ---
   public readonly isSearchMode = signal(false);
@@ -126,7 +128,8 @@ export class NautilusSidebarComponent {
       bm.meta.remote ?? '',
       bm.meta.isLocal
     );
-    return this.nautilusRemote()!.name === bmRemote && this.currentPath() === bm.entry.Path;
+    const remote = this.nautilusRemote();
+    return remote?.name === bmRemote && this.currentPath() === bm.entry.Path;
   }
 
   /** Returns true when any bookmark matches the current location (so remotes should not show selected). */
@@ -134,9 +137,8 @@ export class NautilusSidebarComponent {
     return this.bookmarks().some(bm => this.isBookmarkSelected(bm));
   }
 
-  // Helper for cleanup support
   supportsCleanup(remote: ExplorerRoot | null): boolean {
     if (!remote) return false;
-    return this.cleanupSupportCache()[remote.name] ?? false;
+    return this.remoteFacadeService.featuresSignal(remote.name)().hasCleanUp;
   }
 }

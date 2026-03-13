@@ -303,7 +303,7 @@ export class OperationControlComponent {
     }
 
     // Resolve the badge class per operation and state
-    let resolvedBadgeClass = '';
+    let resolvedBadgeClass: string;
     if (state === 'error') {
       resolvedBadgeClass = 'error';
     } else if (state === 'active') {
