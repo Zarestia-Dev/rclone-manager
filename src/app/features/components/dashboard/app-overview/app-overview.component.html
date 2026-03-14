@@ -60,7 +60,7 @@
                   stopJob.emit({
                     type: 'serve',
                     serveId: $event.id,
-                    remoteName: $event.params.fs.split(':')[0],
+                    remoteName: getServeRemoteName($event),
                   })
                 "
                 (copyToClipboard)="handleCopyToClipboard($event)"

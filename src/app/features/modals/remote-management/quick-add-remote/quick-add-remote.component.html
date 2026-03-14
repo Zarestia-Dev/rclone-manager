@@ -21,7 +21,7 @@
               [remoteTypes]="remoteTypes"
               [existingRemotes]="existingRemotes"
               [useInteractiveMode]="quickAddForm.get('setup.useInteractiveMode')?.value"
-              [showAdvancedToggle]="false"
+              [visibility]="{ advanced: false }"
               (interactiveModeToggled)="onInteractiveModeToggled($event)"
             />
           </div>

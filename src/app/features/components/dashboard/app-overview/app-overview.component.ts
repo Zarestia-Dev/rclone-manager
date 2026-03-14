@@ -14,7 +14,7 @@ import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remot
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 
 // Services
-import { IconService } from '@app/services';
+import { IconService, getRemoteNameFromFs } from '@app/services';
 
 @Component({
   selector: 'app-app-overview',
@@ -155,8 +155,13 @@ export class AppOverviewComponent {
     }
   }
 
+  getServeRemoteName(serve: ServeListItem): string {
+    return getRemoteNameFromFs(serve.params?.fs);
+  }
+
   handleServeCardClick(serve: ServeListItem): void {
-    const remoteName = serve.params.fs.split(':')[0];
+    const remoteName = this.getServeRemoteName(serve);
+    if (!remoteName) return;
     const remote = this.remotes().find(r => r.name === remoteName);
     if (remote) {
       this.selectRemote(remote);

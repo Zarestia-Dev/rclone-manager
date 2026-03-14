@@ -375,10 +375,12 @@ export class HomeComponent implements OnInit, OnDestroy {
     editTarget?: string,
     existingConfig?: RemoteSettings,
     initialSection?: string,
-    targetProfile?: string
+    targetProfile?: string,
+    remoteType?: string
   ): void {
     this.modalService.openRemoteConfig({
       remoteName: this.selectedRemote()?.name,
+      remoteType,
       editTarget,
       existingConfig,
       initialSection,

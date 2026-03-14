@@ -16,6 +16,7 @@ import { BackupAnalysis } from '../settings/backup-restore.service';
 
 export interface RemoteConfigModalOptions {
   remoteName?: string;
+  remoteType?: string;
   editTarget?: string;
   existingConfig?: RemoteSettings;
   initialSection?: string;
@@ -62,6 +63,7 @@ export class ModalService {
       disableClose: true,
       data: {
         name: options.remoteName,
+        remoteType: options.remoteType,
         editTarget: options.editTarget,
         existingConfig: options.existingConfig,
         initialSection: options.initialSection,

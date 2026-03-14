@@ -34,8 +34,9 @@ import {
   RcloneStatusService,
   AppSettingsService,
   BackendService,
+  IconService,
+  getRemoteNameFromFs,
 } from '@app/services';
-import { IconService } from '@app/services';
 import { FormatRateValuePipe } from '../../../../shared/pipes/format-rate-value.pipe';
 import { FormatBytes } from '../../../../shared/pipes/format-bytes.pipe';
 
@@ -253,12 +254,14 @@ export class GeneralOverviewComponent implements OnInit {
 
   // Serve actions
   async stopServe(serve: ServeListItem): Promise<void> {
-    const remoteName = serve.params.fs.split(':')[0];
+    const remoteName = getRemoteNameFromFs(serve.params?.fs);
+    if (!remoteName) return;
     this.stopJob.emit({ type: 'serve', remoteName, serveId: serve.id });
   }
 
   handleServeCardClick(serve: ServeListItem): void {
-    const remoteName = serve.params.fs.split(':')[0];
+    const remoteName = getRemoteNameFromFs(serve.params?.fs);
+    if (!remoteName) return;
     const remote = this.remotes().find(r => r.name === remoteName);
 
     if (remote) {

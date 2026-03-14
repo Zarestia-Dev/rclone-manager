@@ -18,7 +18,7 @@ import { RemoteFileOperationsService } from '../remote/remote-file-operations.se
 import { RemoteMetadataService } from '../remote/remote-metadata.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
-import { isLocalPath } from '../remote/utils/remote-config.utils';
+import { isLocalPath, getRemoteNameFromFs } from '../remote/utils/remote-config.utils';
 import {
   Remote,
   JobInfo,
@@ -35,6 +35,7 @@ import {
   RemoteConfig,
   ConfigRecord,
   PrimaryActionType,
+  REMOTE_CONFIG_KEYS,
 } from '@app/types';
 
 @Injectable({ providedIn: 'root' })
@@ -70,10 +71,10 @@ export class RemoteFacadeService extends TauriBaseService {
 
   private jobsByRemote = computed(() => this.groupBy(this.jobs(), j => j.remote_name));
   private mountsByRemote = computed(() =>
-    this.groupBy(this.mountedRemotes(), m => m.fs.split(':')[0])
+    this.groupBy(this.mountedRemotes(), m => getRemoteNameFromFs(m.fs))
   );
   private servesByRemote = computed(() =>
-    this.groupBy(this.runningServes(), s => s.params?.fs?.split(':')[0] ?? '')
+    this.groupBy(this.runningServes(), s => getRemoteNameFromFs(s.params?.fs))
   );
 
   readonly loading = this.isLoading.asReadonly();
@@ -137,6 +138,14 @@ export class RemoteFacadeService extends TauriBaseService {
     const cached = this.diskUsageSignal(remoteName)();
 
     if (!forceRefresh) {
+      if (features.error) {
+        this.updateDiskUsage(remoteName, {
+          loading: false,
+          error: true,
+          errorMessage: features.error,
+        });
+        return null;
+      }
       if (!features.hasAbout) {
         this.updateDiskUsage(remoteName, { notSupported: true, loading: false, error: false });
         return null;
@@ -144,15 +153,24 @@ export class RemoteFacadeService extends TauriBaseService {
       if (cached.total_space !== undefined && !cached.loading && !cached.error) return cached;
     }
 
+    if (features.error) {
+      this.updateDiskUsage(remoteName, {
+        loading: false,
+        error: true,
+        errorMessage: features.error,
+      });
+      return null;
+    }
+
+    if (!features.hasAbout) {
+      this.updateDiskUsage(remoteName, { notSupported: true, loading: false, error: false });
+      return null;
+    }
+
     const fsName = normalizedName ?? `${remoteName}:`;
     this.updateDiskUsage(remoteName, { loading: true, error: false, total_space: undefined });
 
     try {
-      if (!features.hasAbout) {
-        this.updateDiskUsage(remoteName, { notSupported: true, loading: false, error: false });
-        return null;
-      }
-
       const usage = await this.remoteOpsService.getDiskUsage(fsName, undefined, source);
       const newUsage: DiskUsage = {
         total_space: usage.total ?? -1,
@@ -193,9 +211,11 @@ export class RemoteFacadeService extends TauriBaseService {
           this.featuresSignals.delete(name);
           this.actionSignals.delete(name);
           this.enrichedSignals.delete(name);
+          this.metadataService.clearCache(name);
         }
       }
 
+      let newRemotesAdded = false;
       for (const name of incomingNames) {
         const config: RemoteConfig = {
           name,
@@ -204,8 +224,16 @@ export class RemoteFacadeService extends TauriBaseService {
         const existing = this.remoteBaseSignals.get(name);
 
         if (existing) {
+          const oldConfig = existing().config;
+          if (JSON.stringify(oldConfig) !== JSON.stringify(config)) {
+            this.metadataService.clearCache(name);
+            this.metadataService.getFeatures(name).then(f => {
+              this.featuresSignal(name).set(f);
+            });
+          }
           existing.update(r => ({ ...r, config }));
         } else {
+          newRemotesAdded = true;
           const baseSig = signal<Omit<Remote, 'status' | 'features'>>({
             name,
             type: config.type,
@@ -227,6 +255,10 @@ export class RemoteFacadeService extends TauriBaseService {
 
       this.remoteNames.set(incomingNames);
       this.remoteSettings.set(settings);
+
+      if (newRemotesAdded) {
+        this.loadDiskUsageInBackground();
+      }
     } catch (error) {
       console.error('[RemoteFacadeService] Error loading remotes:', error);
     }
@@ -297,9 +329,10 @@ export class RemoteFacadeService extends TauriBaseService {
     noCache?: boolean
   ): Promise<void> {
     const settings = this.getRemoteSettings(remoteName);
-    const profiles = settings[`${opType}Configs` as keyof RemoteSettings] as
-      | Record<string, Record<string, unknown>>
-      | undefined;
+    const configKey = REMOTE_CONFIG_KEYS[
+      opType as keyof typeof REMOTE_CONFIG_KEYS
+    ] as keyof RemoteSettings;
+    const profiles = settings[configKey] as Record<string, Record<string, unknown>> | undefined;
     const targetProfile =
       profileName ?? (profiles?.['default'] ? 'default' : Object.keys(profiles ?? {})[0]);
 
@@ -339,15 +372,17 @@ export class RemoteFacadeService extends TauriBaseService {
       'stop',
       async () => {
         if (type === 'serve') {
-          const serves = this.runningServes().filter(s =>
-            s.params?.fs?.startsWith(`${remoteName}:`)
+          const serves = this.runningServes().filter(
+            s => getRemoteNameFromFs(s.params?.fs) === remoteName
           );
           const idToStop =
             serveId ?? serves.find(s => s.profile === profileName)?.id ?? serves[0]?.id;
           if (!idToStop) throw new Error('Serve ID required to stop serve');
           await this.serveService.stopServe(idToStop, remoteName);
         } else if (type === 'mount') {
-          const mounts = this.mountedRemotes().filter(m => m.fs.startsWith(`${remoteName}:`));
+          const mounts = this.mountedRemotes().filter(
+            m => getRemoteNameFromFs(m.fs) === remoteName
+          );
           const mountPoint = profileName
             ? mounts.find(m => m.profile === profileName)?.mount_point
             : mounts[0]?.mount_point;
@@ -367,7 +402,7 @@ export class RemoteFacadeService extends TauriBaseService {
 
   async unmountRemote(remoteName: string): Promise<void> {
     await this.executeAction(remoteName, 'unmount', async () => {
-      const mount = this.mountedRemotes().find(m => m.fs.startsWith(`${remoteName}:`));
+      const mount = this.mountedRemotes().find(m => getRemoteNameFromFs(m.fs) === remoteName);
       if (!mount) throw new Error(`No mount point found for ${remoteName}`);
       await this.mountService.unmountRemote(mount.mount_point, remoteName);
     });
@@ -375,10 +410,28 @@ export class RemoteFacadeService extends TauriBaseService {
 
   async deleteRemote(remoteName: string): Promise<void> {
     await this.executeAction(remoteName, 'delete', async () => {
-      if (this.mountedRemotes().some(m => m.fs.startsWith(`${remoteName}:`))) {
-        await this.unmountRemote(remoteName);
+      // 1. Stop all active mounts
+      const mounts = this.mountedRemotes().filter(m => getRemoteNameFromFs(m.fs) === remoteName);
+      for (const m of mounts) {
+        await this.mountService.unmountRemote(m.mount_point, remoteName);
       }
+
+      // 2. Stop all running serves
+      const serves = this.serveService.getServesForRemoteProfile(remoteName);
+      for (const s of serves) {
+        await this.serveService.stopServe(s.id, remoteName);
+      }
+
+      // 3. Stop all running jobs
+      const jobs = this.jobService.getActiveJobsForRemote(remoteName);
+      for (const j of jobs) {
+        await this.jobService.stopJob(j.jobid, remoteName);
+      }
+
+      // 4. Delete rclone config and cleanup settings
       await this.remoteService.deleteRemote(remoteName);
+
+      // 5. Final state refresh
       await this.refreshAll();
     });
   }
@@ -387,7 +440,8 @@ export class RemoteFacadeService extends TauriBaseService {
     let path = pathOrOperation ?? '';
     if (['mount', 'sync', 'copy', 'bisync', 'move', 'serve'].includes(path)) {
       const settings = this.getRemoteSettings(remoteName);
-      const profiles = settings[`${path}Configs` as keyof RemoteSettings] as
+      const configKey = REMOTE_CONFIG_KEYS[path as keyof typeof REMOTE_CONFIG_KEYS];
+      const profiles = settings[configKey as keyof RemoteSettings] as
         | Record<string, Record<string, unknown>>
         | undefined;
       const firstProfile = profiles ? Object.values(profiles)[0] : undefined;
@@ -413,13 +467,7 @@ export class RemoteFacadeService extends TauriBaseService {
     const newName = this.generateUniqueRemoteName(base.name.replace(/-\d+$/, ''));
     const settings = structuredClone(this.getRemoteSettings(remoteName) ?? {}) as RemoteSettings;
 
-    for (const remote_config_key of [
-      'mountConfigs',
-      'syncConfigs',
-      'copyConfigs',
-      'bisyncConfigs',
-      'moveConfigs',
-    ] as const) {
+    for (const remote_config_key of Object.values(REMOTE_CONFIG_KEYS)) {
       const profiles = settings[remote_config_key as keyof RemoteSettings] as
         | Record<string, ConfigRecord>
         | undefined;
@@ -427,7 +475,7 @@ export class RemoteFacadeService extends TauriBaseService {
         for (const profile of Object.values(profiles)) {
           if (
             typeof profile['source'] === 'string' &&
-            profile['source'].startsWith(`${remoteName}:`)
+            getRemoteNameFromFs(profile['source']) === remoteName
           ) {
             profile['source'] = profile['source'].replace(`${remoteName}:`, `${newName}:`);
           }
@@ -540,10 +588,10 @@ export class RemoteFacadeService extends TauriBaseService {
     settings: RemoteSettings
   ): Omit<Remote, 'features'> {
     const mountProfiles = Object.keys(
-      (settings['mountConfigs'] ?? {}) as Record<string, Record<string, unknown>>
+      (settings[REMOTE_CONFIG_KEYS.mount] ?? {}) as Record<string, Record<string, unknown>>
     );
     const serveProfiles = Object.keys(
-      (settings['serveConfigs'] ?? {}) as Record<string, Record<string, unknown>>
+      (settings[REMOTE_CONFIG_KEYS.serve] ?? {}) as Record<string, Record<string, unknown>>
     );
     const config = settings['config'] as RemoteConfig | undefined;
 
@@ -606,11 +654,10 @@ export class RemoteFacadeService extends TauriBaseService {
     settings: RemoteSettings
   ): RemoteOperationState {
     const running = jobs.filter(j => j.status === 'Running' && j.job_type === type);
-    const profiles =
-      (settings[`${type}Configs` as keyof RemoteSettings] as Record<
-        string,
-        Record<string, unknown>
-      >) ?? {};
+    const configKey = REMOTE_CONFIG_KEYS[
+      type as keyof typeof REMOTE_CONFIG_KEYS
+    ] as keyof RemoteSettings;
+    const profiles = (settings[configKey] as Record<string, Record<string, unknown>>) ?? {};
     const profileNames = Object.keys(profiles);
 
     return {

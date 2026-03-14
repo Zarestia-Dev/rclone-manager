@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Windows version of headless builds now available.
 - Homebrew tap for macOS added.
+- Runtime Remote profile settings added. Now you can set the remote specific settings on runtime instead of the change it from the config file. It will be applied to runtime and does not change the rclone config file. You can set it from the remote details view. Note THAT! These settings saved the normal remote settings. So these are not saved on the keyring or encrypted like rclone config passwords or auth password setting on the Backend Management Dialog. So be careful when you set these settings.
 
 ### Fixed
 - App UI now update properly after values changed.

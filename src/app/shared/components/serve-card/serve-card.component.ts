@@ -14,7 +14,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ServeListItem } from '@app/types';
-import { IconService } from '@app/services';
+import { IconService, getRemoteNameFromFs } from '@app/services';
 
 interface TypeInfo {
   icon: string;
@@ -110,7 +110,7 @@ export class ServeCardComponent {
   });
 
   remoteName = computed<string>(() => {
-    return this.serve().params.fs.split(':')[0];
+    return getRemoteNameFromFs(this.serve().params?.fs);
   });
 
   onStopServe(): void {

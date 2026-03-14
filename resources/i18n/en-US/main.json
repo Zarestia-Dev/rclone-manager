@@ -1350,6 +1350,7 @@
       "vfsOptions": "VFS Options",
       "filterOptions": "Filter Options",
       "backendConfig": "Backend Config",
+      "runtimeRemoteOptions": "Runtime Remote",
       "profilesLabel": "{{op}} Profiles",
       "settingsLabel": "{{op}} Settings",
       "mountProfilesVfs": "Mount Profiles & VFS",
@@ -1885,14 +1886,16 @@
         "copy": "Copy",
         "filter": "Filter",
         "vfs": "VFS",
-        "backend": "Backend"
+        "backend": "Backend",
+        "runtimeRemote": "Runtime Remote"
       },
       "advancedProfiles": {
         "title": "Advanced Profiles",
         "linked": "{{count}} linked",
         "vfs": "VFS Profile",
         "filter": "Filter Profile",
-        "backend": "Backend Profile"
+        "backend": "Backend Profile",
+        "runtimeRemote": "Runtime Remote Profile"
       },
       "profile": {
         "label": "Profile",

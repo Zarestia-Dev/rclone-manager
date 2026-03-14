@@ -17,7 +17,9 @@ use crate::{
     },
 };
 
-use super::common::redact_sensitive_values;
+use super::common::{
+    fs_value_with_runtime_overrides, redact_sensitive_values, resolve_runtime_remote_options,
+};
 
 /// Parameters for starting a serve instance
 #[derive(Debug, serde::Deserialize, Clone)]
@@ -27,6 +29,7 @@ pub struct ServeParams {
     pub backend_options: Option<HashMap<String, Value>>,
     pub filter_options: Option<HashMap<String, Value>>,
     pub vfs_options: Option<HashMap<String, Value>>,
+    pub runtime_remote_options: Option<HashMap<String, Value>>,
     pub profile: Option<String>,
 }
 
@@ -68,6 +71,8 @@ impl ServeParams {
         let vfs_options = resolve_profile_options(settings, vfs_profile, "vfsConfigs");
         let filter_options = resolve_profile_options(settings, filter_profile, "filterConfigs");
         let backend_options = resolve_profile_options(settings, backend_profile, "backendConfigs");
+        let runtime_remote_options =
+            resolve_runtime_remote_options(config, settings, &remote_name, "runtimeRemotes");
 
         Some(Self {
             remote_name,
@@ -75,6 +80,7 @@ impl ServeParams {
             backend_options,
             filter_options,
             vfs_options,
+            runtime_remote_options,
             profile: Some(get_string(config, &["name"])).filter(|s| !s.is_empty()),
         })
     }
@@ -88,6 +94,12 @@ impl ServeParams {
                     _ => addr_val.clone(),
                 };
                 opts.insert("addr".to_string(), final_val);
+            }
+            if let Some(fs_val) = opts.get("fs").and_then(|value| value.as_str()) {
+                opts.insert(
+                    "fs".to_string(),
+                    fs_value_with_runtime_overrides(fs_val, self.runtime_remote_options.as_ref()),
+                );
             }
             opts
         });
@@ -125,7 +137,13 @@ pub async fn start_serve(
     // Check for duplicates
     let serves = backend_manager.remote_cache.get_serves().await;
     if serves.iter().any(|s| {
-        let fs_match = s.params.get("fs").and_then(|v| v.as_str()) == Some(&params.remote_name);
+        let fs_match = match s.params.get("fs") {
+            Some(Value::String(fs)) => fs == &params.remote_name,
+            Some(Value::Object(fs)) => {
+                fs.get("_name").and_then(|v| v.as_str()) == Some(&params.remote_name)
+            }
+            _ => false,
+        };
         let profile_match = s.profile == params.profile;
         fs_match && profile_match
     }) {

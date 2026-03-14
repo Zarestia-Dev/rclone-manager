@@ -1348,6 +1348,7 @@
       "vfsOptions": "VFS Seçenekleri",
       "filterOptions": "Filtre Seçenekleri",
       "backendConfig": "Arka Plan Yapılandırması",
+      "runtimeRemoteOptions": "Çalışma Zamanı Uzak",
       "profilesLabel": "{{op}} Profilleri",
       "settingsLabel": "{{op}} Ayarları",
       "mountProfilesVfs": "Bağlama Profilleri ve VFS",
@@ -1883,14 +1884,16 @@
         "copy": "Kopyala",
         "filter": "Filtre",
         "vfs": "VFS",
-        "backend": "Arka Uç"
+        "backend": "Arka Uç",
+        "runtimeRemote": "Çalışma Zamanı Uzak"
       },
       "advancedProfiles": {
         "title": "Gelişmiş Profiller",
         "linked": "{{count}} bağlı",
         "vfs": "VFS Profili",
         "filter": "Filtre Profili",
-        "backend": "Arka Uç Profili"
+        "backend": "Arka Uç Profili",
+        "runtimeRemote": "Çalışma Zamanı Uzak Profil"
       },
       "profile": {
         "label": "Profil",

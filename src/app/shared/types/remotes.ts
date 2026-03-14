@@ -74,6 +74,7 @@ export interface RemoteFeatures {
   hasPublicLink: boolean;
   changeNotify: boolean;
   hashes: string[];
+  error?: string;
 }
 
 export interface Remote {

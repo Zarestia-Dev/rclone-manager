@@ -3,7 +3,7 @@ import { merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { ServeStartResponse, ServeListResponse, ServeListItem } from '@app/types';
-import { EventListenersService } from '../infrastructure/system/event-listeners.service';
+import { EventListenersService, normalizeFs } from '@app/services';
 
 /**
  * Service for managing rclone serve instances
@@ -19,6 +19,20 @@ export class ServeManagementService extends TauriBaseService {
   // Observable for running serves list
   private readonly _runningServes = signal<ServeListItem[]>([]);
   public readonly runningServes = this._runningServes.asReadonly();
+
+  private normalizeServeItem(serve: ServeListItem): ServeListItem {
+    return {
+      ...serve,
+      params: {
+        ...serve.params,
+        fs: normalizeFs(serve.params?.fs),
+      },
+    };
+  }
+
+  private normalizeServeList(serves: ServeListItem[]): ServeListItem[] {
+    return serves.map(serve => this.normalizeServeItem(serve));
+  }
 
   constructor() {
     super();
@@ -63,9 +77,9 @@ export class ServeManagementService extends TauriBaseService {
 
       let servesToUpdate: ServeListItem[] = [];
       if (Array.isArray(response)) {
-        servesToUpdate = response;
+        servesToUpdate = this.normalizeServeList(response);
       } else if (response && 'list' in response && Array.isArray(response.list)) {
-        servesToUpdate = response.list;
+        servesToUpdate = this.normalizeServeList(response.list);
       }
 
       this._runningServes.set(servesToUpdate);
@@ -85,7 +99,7 @@ export class ServeManagementService extends TauriBaseService {
       console.debug('Cache failed, falling back to API:', cacheErr);
       try {
         const response = await this.listServes();
-        this._runningServes.set(response?.list ?? []);
+        this._runningServes.set(this.normalizeServeList(response?.list ?? []));
       } catch (apiErr) {
         console.error('Both cache and API failed:', apiErr);
       }
@@ -172,7 +186,7 @@ export class ServeManagementService extends TauriBaseService {
    * Get serves for a specific remote
    */
   getServesByRemote(fs: string): ServeListItem[] {
-    return this._runningServes().filter(serve => serve.params.fs === fs);
+    return this._runningServes().filter(serve => normalizeFs(serve.params?.fs) === fs);
   }
 
   /**
@@ -203,7 +217,8 @@ export class ServeManagementService extends TauriBaseService {
    */
   getServesForRemoteProfile(remoteName: string, profile?: string): ServeListItem[] {
     return this._runningServes().filter(serve => {
-      const matchesRemote = serve.params.fs.startsWith(remoteName);
+      const fs = normalizeFs(serve.params?.fs);
+      const matchesRemote = fs.startsWith(remoteName);
       if (profile) {
         return matchesRemote && serve.profile === profile;
       }

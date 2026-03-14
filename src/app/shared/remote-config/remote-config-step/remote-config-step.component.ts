@@ -18,7 +18,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { ScrollingModule } from '@angular/cdk/scrolling';
-import { RcConfigOption, RemoteType } from '@app/types';
+import { RcConfigOption, RemoteType, RemoteConfigStepVisibility } from '@app/types';
 import { SettingControlComponent } from 'src/app/shared/components';
 import { startWith } from 'rxjs/operators';
 import { TranslateModule } from '@ngx-translate/core';
@@ -53,7 +53,11 @@ export class RemoteConfigStepComponent {
   isTypeLocked = input(false);
   useInteractiveMode = input(false);
   remoteTypes = input<RemoteType[]>([]);
-  showAdvancedToggle = input(true);
+  visibility = input<RemoteConfigStepVisibility>({});
+  showTypeField = computed(() => this.visibility().type ?? true);
+  showAdvancedToggle = computed(() => this.visibility().advanced ?? true);
+  showNameField = computed(() => this.visibility().name ?? true);
+  showInteractiveToggle = computed(() => this.visibility().interactive ?? true);
   searchQuery = input('');
 
   // --- Signal Outputs ---

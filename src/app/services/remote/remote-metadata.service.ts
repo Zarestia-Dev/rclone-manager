@@ -16,19 +16,21 @@ export class RemoteMetadataService extends TauriBaseService {
    * Get and cache filesystem info for a remote
    */
   async getFsInfo(remoteName: string, source: Origin = 'dashboard'): Promise<FsInfo> {
-    const fsName = remoteName.endsWith(':') ? remoteName : `${remoteName}:`;
-    if (this.metadataCache.has(remoteName)) {
-      const cached = this.metadataCache.get(remoteName);
+    const normalizedKey = remoteName.endsWith(':') ? remoteName.slice(0, -1) : remoteName;
+    const fsName = `${normalizedKey}:`;
+
+    if (this.metadataCache.has(normalizedKey)) {
+      const cached = this.metadataCache.get(normalizedKey);
       if (cached) return cached;
-      throw new Error(`Metadata not found for ${remoteName}`); // Or handle appropriately
+      throw new Error(`Metadata not found for ${normalizedKey}`);
     }
 
     try {
       const info = await this.remoteOpsService.getFsInfo(fsName, source);
-      this.metadataCache.set(remoteName, info);
+      this.metadataCache.set(normalizedKey, info);
       return info;
     } catch (error) {
-      console.error(`[RemoteMetadataService] Error fetching info for ${remoteName}:`, error);
+      console.error(`[RemoteMetadataService] Error fetching info for ${normalizedKey}:`, error);
       throw error;
     }
   }
@@ -37,10 +39,12 @@ export class RemoteMetadataService extends TauriBaseService {
    * Extract and cache features for a remote
    */
   async getFeatures(remoteName: string, source: Origin = 'dashboard'): Promise<RemoteFeatures> {
-    if (this.featuresCache.has(remoteName)) {
-      const cached = this.featuresCache.get(remoteName);
+    const normalizedKey = remoteName.endsWith(':') ? remoteName.slice(0, -1) : remoteName;
+
+    if (this.featuresCache.has(normalizedKey)) {
+      const cached = this.featuresCache.get(normalizedKey);
       if (cached) return cached;
-      throw new Error(`Features not found for ${remoteName}`); // Or handle appropriately
+      throw new Error(`Features not found for ${normalizedKey}`);
     }
 
     try {
@@ -56,7 +60,7 @@ export class RemoteMetadataService extends TauriBaseService {
       };
       this.featuresCache.set(remoteName, features);
       return features;
-    } catch {
+    } catch (error) {
       // Fallback for failed feature detection
       return {
         isLocal: false,
@@ -66,6 +70,7 @@ export class RemoteMetadataService extends TauriBaseService {
         hasPublicLink: false,
         changeNotify: false,
         hashes: [],
+        error: String(error),
       };
     }
   }

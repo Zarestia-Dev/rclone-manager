@@ -132,3 +132,76 @@ export function getDefaultAnswerFromQuestion(
 export function isLocalPath(path: string): boolean {
   return path.startsWith('/') || /^[a-zA-Z]:\\/.test(path);
 }
+
+/**
+ * Normalizes an rclone fs value to a string.
+ * Handles both plain strings and object formats (e.g. from backend serve list).
+ *
+ * @param fs - The fs value (string or object).
+ * @returns The normalized fs string.
+ */
+export function normalizeFs(fs: unknown): string {
+  if (typeof fs === 'string') return fs;
+  if (!fs || typeof fs !== 'object') return '';
+
+  const fsObj = fs as Record<string, unknown>;
+  const root = typeof fsObj['_root'] === 'string' ? fsObj['_root'] : '';
+
+  if (typeof fsObj['_name'] === 'string') {
+    return `${fsObj['_name']}:${root}`;
+  }
+
+  if (typeof fsObj['type'] === 'string') {
+    return `:${fsObj['type']}:${root}`;
+  }
+
+  return '';
+}
+
+/**
+ * Safely extracts the remote name from an rclone fs value.
+ * Handles local paths, Windows drive letters, and object formats.
+ *
+ * @param fs - The rclone fs value (string or object).
+ * @returns The remote name or 'local' for local paths.
+ */
+export function getRemoteNameFromFs(fs: unknown): string {
+  const normalized = normalizeFs(fs);
+  if (!normalized) return '';
+  if (isLocalPath(normalized)) return 'local';
+  return normalized.split(':')[0];
+}
+
+/**
+ * Parses an rclone fs string into its components for UI configuration.
+ * Identifies if the path is local, on the current remote, or another remote.
+ *
+ * @param fullPath - The rclone fs string.
+ * @param defaultType - The default pathType to return if no match is found.
+ * @param currentRemoteName - The name of the current remote being configured.
+ * @param existingRemotes - List of existing remote names for lookup.
+ * @returns An object containing pathType, path, and optional otherRemoteName.
+ */
+export function parseFsString(
+  fullPath: string,
+  defaultType: string,
+  currentRemoteName: string,
+  existingRemotes: string[] = []
+): { pathType: string; path: string; otherRemoteName?: string } {
+  if (!fullPath) return { pathType: defaultType, path: '' };
+
+  const colonIdx = fullPath.indexOf(':');
+  const isLocal = colonIdx === -1 || colonIdx === 1 || fullPath.startsWith('/');
+
+  if (isLocal) return { pathType: 'local', path: fullPath };
+
+  const remote = fullPath.substring(0, colonIdx);
+  const path = fullPath.substring(colonIdx + 1);
+
+  if (remote === currentRemoteName) return { pathType: 'currentRemote', path };
+  if (existingRemotes.includes(remote)) {
+    return { pathType: `otherRemote:${remote}`, path, otherRemoteName: remote };
+  }
+
+  return { pathType: defaultType, path: fullPath };
+}

@@ -21,9 +21,104 @@ export const FLAG_TYPES: FlagType[] = [
 ];
 export const DEFAULT_PROFILE_NAME = 'default';
 
-export type EditTarget = FlagType | 'remote' | null;
+export type EditTarget = FlagType | 'remote' | 'runtimeRemote' | null;
 
 export const INTERACTIVE_REMOTES = ['iclouddrive', 'onedrive'];
+
+export const REMOTE_CONFIG_KEYS = {
+  mount: 'mountConfigs',
+  sync: 'syncConfigs',
+  copy: 'copyConfigs',
+  bisync: 'bisyncConfigs',
+  move: 'moveConfigs',
+  serve: 'serveConfigs',
+  filter: 'filterConfigs',
+  vfs: 'vfsConfigs',
+  backend: 'backendConfigs',
+  runtimeRemote: 'runtimeRemoteConfigs',
+} as const;
+
+export type RemoteConfigKeyType = (typeof REMOTE_CONFIG_KEYS)[keyof typeof REMOTE_CONFIG_KEYS];
+
+export interface UIOperationMetadata {
+  label: string;
+  icon: string;
+  cssClass: string;
+  description?: string;
+  supportsVfs?: boolean;
+  supportsProfiles?: boolean;
+}
+
+export const OPERATION_METADATA: Record<string, UIOperationMetadata> = {
+  sync: {
+    label: 'dashboard.appDetail.sync',
+    icon: 'refresh',
+    cssClass: 'primary',
+    description: 'dashboard.appDetail.syncDesc',
+    supportsProfiles: true,
+  },
+  bisync: {
+    label: 'dashboard.appDetail.bisync',
+    icon: 'right-left',
+    cssClass: 'purple',
+    description: 'dashboard.appDetail.bisyncDesc',
+    supportsProfiles: true,
+  },
+  move: {
+    label: 'dashboard.appDetail.move',
+    icon: 'move',
+    cssClass: 'orange',
+    description: 'dashboard.appDetail.moveDesc',
+    supportsProfiles: true,
+  },
+  copy: {
+    label: 'dashboard.appDetail.copy',
+    icon: 'copy',
+    cssClass: 'yellow',
+    description: 'dashboard.appDetail.copyDesc',
+    supportsProfiles: true,
+  },
+  mount: {
+    label: 'dashboard.appDetail.mount',
+    icon: 'mount',
+    cssClass: 'accent',
+    description: 'dashboard.appDetail.mountBehave',
+    supportsVfs: true,
+    supportsProfiles: true,
+  },
+  serve: {
+    label: 'dashboard.appDetail.serveConfigs',
+    icon: 'satellite-dish',
+    cssClass: 'accent',
+    description: 'dashboard.appDetail.serveBehave',
+    supportsVfs: true,
+    supportsProfiles: true,
+  },
+  vfs: {
+    label: 'dashboard.appDetail.vfsOptions',
+    icon: 'vfs',
+    cssClass: 'accent',
+    supportsProfiles: true,
+  },
+  filter: {
+    label: 'dashboard.appDetail.filterOptions',
+    icon: 'filter',
+    cssClass: 'accent',
+    supportsProfiles: true,
+  },
+  backend: {
+    label: 'dashboard.appDetail.backendConfig',
+    icon: 'server',
+    cssClass: 'accent',
+    supportsProfiles: true,
+  },
+  runtimeRemote: {
+    label: 'dashboard.appDetail.runtimeRemoteOptions',
+    icon: 'gear',
+    cssClass: 'accent',
+    supportsProfiles: true,
+  },
+};
 
 export interface LoadingState {
   saving: boolean;
@@ -37,6 +132,13 @@ export interface RemoteType {
   label: string;
 }
 
+export interface RemoteConfigStepVisibility {
+  type?: boolean;
+  name?: boolean;
+  advanced?: boolean;
+  interactive?: boolean;
+}
+
 // Base interface for operation configs (shared by copy, sync, move)
 interface BaseOperationConfig {
   autoStart: boolean;
@@ -48,6 +150,7 @@ interface BaseOperationConfig {
   name?: string;
   filterProfile?: string;
   backendProfile?: string;
+  runtimeRemoteProfile?: string;
   [key: string]: any;
 }
 
@@ -60,6 +163,7 @@ export interface MountConfig {
   vfsProfile?: string;
   filterProfile?: string;
   backendProfile?: string;
+  runtimeRemoteProfile?: string;
   [key: string]: any;
 }
 
@@ -117,6 +221,12 @@ export interface BisyncConfig {
   name?: string;
   filterProfile?: string;
   backendProfile?: string;
+  runtimeRemoteProfile?: string;
+  [key: string]: any;
+}
+
+export interface RuntimeRemoteConfig {
+  options?: Record<string, unknown>;
   [key: string]: any;
 }
 
@@ -130,6 +240,7 @@ export interface ServeConfig {
   vfsProfile?: string;
   filterProfile?: string;
   backendProfile?: string;
+  runtimeRemoteProfile?: string;
   [key: string]: any;
 }
 
@@ -149,6 +260,7 @@ export interface RemoteConfigSections {
   filterConfigs?: Record<string, FilterConfig>;
   backendConfigs?: Record<string, BackendConfig>;
   vfsConfigs?: Record<string, VfsConfig>;
+  runtimeRemoteConfigs?: Record<string, RuntimeRemoteConfig>;
 
   showOnTray: boolean;
 }

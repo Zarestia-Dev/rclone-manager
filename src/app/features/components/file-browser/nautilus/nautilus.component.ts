@@ -61,7 +61,7 @@ import {
 } from '@app/types';
 
 import { FormatFileSizePipe } from '@app/pipes';
-import { IconService } from '@app/services';
+import { IconService, getRemoteNameFromFs } from '@app/services';
 import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
 import { isLocalPath } from 'src/app/services/remote/utils/remote-config.utils';
 
@@ -824,7 +824,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     if (cfg.mode === 'local' && hasColon) return false;
     if (cfg.mode === 'remote') {
       if (!hasColon) return false;
-      const remote = loc.split(':')[0];
+      const remote = getRemoteNameFromFs(loc);
       if (cfg.allowedRemotes && cfg.allowedRemotes.length) {
         return cfg.allowedRemotes.includes(remote);
       }
@@ -832,7 +832,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     }
     // mode === 'both'
     if (hasColon && cfg.allowedRemotes && cfg.allowedRemotes.length) {
-      const remote = loc.split(':')[0];
+      const remote = getRemoteNameFromFs(loc);
       return cfg.allowedRemotes.includes(remote);
     }
     return true;
@@ -848,7 +848,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
       if (hasColon) {
         if (remoteCount === 0) return false;
         if (cfg.allowedRemotes && cfg.allowedRemotes.length) {
-          const r = cfg.initialLocation.split(':')[0];
+          const r = getRemoteNameFromFs(cfg.initialLocation);
           return cfg.allowedRemotes.includes(r) && remoteList.some(x => x.name === r);
         }
         return true;

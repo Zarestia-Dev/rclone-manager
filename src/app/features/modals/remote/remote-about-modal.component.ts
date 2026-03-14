@@ -71,10 +71,14 @@ export class RemoteAboutModalComponent implements OnInit {
   // Independent Signals for separate loading states
   remoteName = signal<string>('');
   features = computed<RemoteFeatures>(() =>
-    (this.remoteFacadeService.featuresSignal(this.remoteName()) as Signal<RemoteFeatures>)()
+    (
+      this.remoteFacadeService.featuresSignal(
+        this.data.remote.displayName
+      ) as Signal<RemoteFeatures>
+    )()
   );
   diskUsage = computed<DiskUsage>(() =>
-    (this.remoteFacadeService.diskUsageSignal(this.remoteName()) as Signal<DiskUsage>)()
+    (this.remoteFacadeService.diskUsageSignal(this.data.remote.displayName) as Signal<DiskUsage>)()
   );
 
   // Detailed FsInfo (Metadata, Hashes, etc.)
@@ -86,6 +90,11 @@ export class RemoteAboutModalComponent implements OnInit {
   errorAbout = signal<string | null>(null);
 
   ngOnInit(): void {
+    const name = this.data.remote.displayName;
+    // Ensure we clear the cache for this remote when opening the about modal
+    // to guarantee fresh data for the user.
+    this.metadataService.clearCache(name);
+
     this.remoteName.set(this.data.remote.normalizedName);
     this.loadData();
   }
@@ -101,16 +110,12 @@ export class RemoteAboutModalComponent implements OnInit {
     try {
       const info = await this.metadataService.getFsInfo(name, 'ui');
       this.aboutInfo.set(info);
-
-      // Trigger disk usage fetch if supported and not already loading/loaded
-      if (info.Features && info.Features['About']) {
-        this.fetchDiskUsage();
-      }
     } catch (err) {
       console.error('Error loading fs info:', err);
-      this.errorAbout.set(this.translate.instant('fileBrowser.remoteAbout.error'));
+      this.errorAbout.set(this.translate.instant('fileBrowser.remoteAbout.error') + ' ' + err);
     } finally {
       this.loadingAbout.set(false);
+      this.fetchDiskUsage();
     }
 
     // 2. Load Size/Count (Object count)
