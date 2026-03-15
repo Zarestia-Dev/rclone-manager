@@ -58,7 +58,8 @@
             <div class="input-card bool-input">
               <div class="toggle-container">
                 <mat-slide-toggle
-                  [(ngModel)]="answer"
+                  [ngModel]="answer"
+                  (ngModelChange)="onAnswerChange($event)"
                   [disabled]="canceling()"
                   class="toggle-input primary"
                   [attr.aria-label]="q.Option?.Name || 'Toggle option'"
@@ -89,7 +90,7 @@
                     "
                   >
                     <mat-select-trigger>
-                      {{ getDisplayValue(selectedIndex(), q.Option?.Examples) }}
+                      {{ selectedDisplayValue() }}
                     </mat-select-trigger>
                     @for (ex of q.Option?.Examples; track index; let index = $index) {
                       <mat-option [value]="index">
@@ -112,7 +113,8 @@
                   }}</mat-label>
                   <input
                     matInput
-                    [(ngModel)]="answer"
+                    [ngModel]="answer"
+                    (ngModelChange)="onAnswerChange($event)"
                     [disabled]="canceling()"
                     [placeholder]="inputPlaceholder()"
                     [attr.aria-label]="

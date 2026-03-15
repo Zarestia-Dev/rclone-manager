@@ -37,55 +37,26 @@ import { TranslateModule } from '@ngx-translate/core';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class InteractiveConfigStepComponent {
-  // Inputs as signals
   question = input<RcConfigQuestionResponse | null>(null);
   canceling = input(false);
   processing = input(false);
 
-  // Output
   answerChange = output<string | number | boolean | null>();
 
-  // Answer state as signal
-  private _answer = signal<string | boolean | number | null>(null);
+  private readonly _answer = signal<string | boolean | number | null>(null);
 
-  /** Selected index for dropdown to handle duplicate values */
-  selectedIndex = signal<number | null>(null);
+  // Keep an explicit selected index so duplicate option values remain selectable.
+  readonly selectedIndex = signal<number | null>(null);
+  readonly selectedDisplayValue = computed(() =>
+    this.getDisplayValue(this.selectedIndex(), this.question()?.Option?.Examples)
+  );
 
-  /** Getter for template usage */
   get answer(): string | boolean | number | null {
     return this._answer();
   }
 
-  /** Setter for [(ngModel)] support */
-  set answer(val: string | boolean | number | null) {
-    if (this._answer() !== val) {
-      this._answer.set(val);
-      this.answerChange.emit(val);
-
-      // Sync selectedIndex when answer changes externally or via other inputs
-      const ex = this.question()?.Option?.Examples;
-      if (ex && val !== null) {
-        // Find first matching value if index not already set or invalid
-        const currentIdx = this.selectedIndex();
-        if (
-          currentIdx === null ||
-          currentIdx < 0 ||
-          currentIdx >= ex.length ||
-          ex[currentIdx].Value !== val
-        ) {
-          const idx = ex.findIndex(e => e.Value === val);
-          this.selectedIndex.set(idx >= 0 ? idx : null);
-        }
-      } else {
-        this.selectedIndex.set(null);
-      }
-    }
-  }
-
-  /** Whether the current field is required */
   isFieldRequired = computed(() => !!this.question()?.Option?.Required);
 
-  /** Whether the current answer is valid */
   isValidAnswer = computed(() => {
     if (!this.isFieldRequired()) return true;
 
@@ -98,7 +69,6 @@ export class InteractiveConfigStepComponent {
     return true;
   });
 
-  /** Placeholder for input fields */
   inputPlaceholder = computed(() => {
     const q = this.question();
     if (!q) return 'Enter a value...';
@@ -112,14 +82,39 @@ export class InteractiveConfigStepComponent {
   });
 
   constructor() {
-    // React to question changes and set default answer
     effect(() => {
       const q = this.question();
-      this._answer.set(this.defaultAnswer(q));
+      const initialAnswer = this.defaultAnswer(q);
+      this._answer.set(initialAnswer);
+
+      const examples = q?.Option?.Examples;
+      if (!examples || !examples.length) {
+        this.selectedIndex.set(null);
+        return;
+      }
+
+      const initialIndex = examples.findIndex(ex => ex.Value === initialAnswer);
+      this.selectedIndex.set(initialIndex >= 0 ? initialIndex : null);
     });
   }
 
-  trackByIndex = (index: number): number => index;
+  onAnswerChange(val: string | number | boolean | null): void {
+    if (this._answer() === val) {
+      return;
+    }
+
+    this._answer.set(val);
+    this.answerChange.emit(val);
+
+    const examples = this.question()?.Option?.Examples;
+    if (!examples || val === null) {
+      this.selectedIndex.set(null);
+      return;
+    }
+
+    const idx = examples.findIndex(ex => ex.Value === val);
+    this.selectedIndex.set(idx >= 0 ? idx : null);
+  }
 
   private defaultAnswer(q: RcConfigQuestionResponse | null): string | boolean | number {
     const opt = q?.Option;
@@ -137,6 +132,7 @@ export class InteractiveConfigStepComponent {
     if (opt.Examples && opt.Examples.length > 0) return opt.Examples[0].Value;
     return '';
   }
+
   getDisplayValue(index: number | null, examples: RcConfigExample[] | undefined): string {
     if (!examples || index === null || index < 0 || index >= examples.length) return '';
     const selected = examples[index];
@@ -147,7 +143,9 @@ export class InteractiveConfigStepComponent {
     this.selectedIndex.set(index);
     const ex = this.question()?.Option?.Examples;
     if (ex && index >= 0 && index < ex.length) {
-      this.answer = ex[index].Value;
+      const selectedValue = ex[index].Value;
+      this._answer.set(selectedValue);
+      this.answerChange.emit(selectedValue);
     }
   }
 }

@@ -64,6 +64,24 @@ export class FlagConfigStepComponent {
 
   configGroup = computed(() => this.form().get(`${this.flagType()}Config`) as FormGroup);
 
+  isServe = computed(() => this.flagType() === 'serve');
+  isMount = computed(() => this.flagType() === 'mount');
+  showOperationConfig = computed(() => !['vfs', 'filter', 'backend'].includes(this.flagType()));
+  operationDescriptionKey = computed(() =>
+    this.isServe()
+      ? 'wizards.remoteConfig.serveDescription'
+      : 'wizards.remoteConfig.operationDescription'
+  );
+  operationExistingRemotes = computed(() => (this.isServe() ? [] : this.existingRemotes()));
+  operationIsNewRemote = computed(() => (this.isServe() ? false : this.isNewRemote()));
+
+  serveTypeValue = computed(() => {
+    const controlValue = this.configGroup()?.get('type')?.value;
+    return typeof controlValue === 'string' && controlValue
+      ? controlValue
+      : this.selectedServeType();
+  });
+
   filteredDynamicFlagFields = computed(() => {
     const query = this.searchQuery()?.toLowerCase().trim();
     if (!query) {
@@ -78,8 +96,19 @@ export class FlagConfigStepComponent {
     });
   });
 
-  isType(type: FlagType | FlagType[]): boolean {
-    const current = this.flagType();
-    return Array.isArray(type) ? type.includes(current) : current === type;
-  }
+  dynamicFieldBindings = computed(() => {
+    const controlKeyBuilder = this.getControlKey();
+    const currentFlagType = this.flagType();
+
+    return this.filteredDynamicFlagFields().map(field => {
+      const controlKey = controlKeyBuilder(currentFlagType, field);
+      const trackKey = field.FieldName || field.Name || controlKey;
+
+      return {
+        field,
+        controlKey,
+        trackKey,
+      };
+    });
+  });
 }

@@ -11,13 +11,12 @@ import {
 } from '@angular/core';
 
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { ScrollingModule } from '@angular/cdk/scrolling';
 import { RcConfigOption, RemoteType, RemoteConfigStepVisibility } from '@app/types';
 import { SettingControlComponent } from 'src/app/shared/components';
 import { startWith } from 'rxjs/operators';
@@ -27,7 +26,6 @@ import { IconService } from '@app/services';
 
 @Component({
   selector: 'app-remote-config-step',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     MatFormFieldModule,
@@ -36,7 +34,6 @@ import { IconService } from '@app/services';
     MatProgressSpinnerModule,
     MatAutocompleteModule,
     SettingControlComponent,
-    ScrollingModule,
     TranslateModule,
     MatIcon,
   ],
@@ -74,21 +71,16 @@ export class RemoteConfigStepComponent {
   showAdvancedOptions = input(false);
   selectedProvider = signal<string | undefined>(undefined);
 
-  // Convert FormControls to Signals for use in computed
-  private remoteSearchTerm = signal<string>(this.remoteSearchCtrl.value || '');
-  private providerSearchTerm = signal<string>(this.providerSearchCtrl.value || '');
+  private remoteSearchTerm = toSignal(this.remoteSearchCtrl.valueChanges, {
+    initialValue: this.remoteSearchCtrl.value ?? '',
+  });
+  private providerSearchTerm = toSignal(this.providerSearchCtrl.valueChanges, {
+    initialValue: this.providerSearchCtrl.value ?? '',
+  });
 
   readonly iconService = inject(IconService);
 
   constructor() {
-    this.remoteSearchCtrl.valueChanges
-      .pipe(startWith(this.remoteSearchCtrl.value), takeUntilDestroyed())
-      .subscribe(val => this.remoteSearchTerm.set(val || ''));
-
-    this.providerSearchCtrl.valueChanges
-      .pipe(startWith(this.providerSearchCtrl.value), takeUntilDestroyed())
-      .subscribe(val => this.providerSearchTerm.set(val || ''));
-
     // Sync Provider control value -> Signal mapping
     effect(onCleanup => {
       const fieldDef = this.providerField();
@@ -129,8 +121,9 @@ export class RemoteConfigStepComponent {
       });
 
       onCleanup(() => sub.unsubscribe());
+    });
 
-      // Sync disabled state
+    effect(() => {
       const isLocked = this.isTypeLocked();
       untracked(() => {
         if (isLocked) {
@@ -179,117 +172,57 @@ export class RemoteConfigStepComponent {
   });
 
   basicFields = computed(() => {
-    const fields = this.remoteFields();
-    const providerName = this.providerField()?.Name;
-    const currentProvider = this.selectedProvider();
-    const query = this.searchQuery().toLowerCase().trim();
-
-    let filtered = fields
-      .filter(f => !f.Advanced)
-      .filter(f => f.Name !== providerName) // Don't show provider field here
-      .filter(f => this.shouldShowField(f, currentProvider))
-      .map(f => this.getFilteredField(f, currentProvider));
-
-    // Apply search filter
-    if (query) {
-      filtered = filtered.filter(field => {
-        const nameMatch = field.Name?.toLowerCase().includes(query);
-        const fieldNameMatch = field.FieldName?.toLowerCase().includes(query);
-        const helpMatch = field.Help?.toLowerCase().includes(query);
-        return nameMatch || fieldNameMatch || helpMatch;
-      });
-    }
-
-    return filtered as RcConfigOption[];
+    return this.getFieldsByAdvanced(false);
   });
 
   /** Advanced config fields, filtered by selected provider and search query */
   advancedFields = computed(() => {
-    const fields = this.remoteFields();
-    const providerName = this.providerField()?.Name;
-    const currentProvider = this.selectedProvider();
-    const query = this.searchQuery().toLowerCase().trim();
-
-    let filtered = fields
-      .filter(f => f.Advanced)
-      .filter(f => f.Name !== providerName)
-      .filter(f => this.shouldShowField(f, currentProvider))
-      .map(f => this.getFilteredField(f, currentProvider));
-
-    // Apply search filter
-    if (query) {
-      filtered = filtered.filter(field => {
-        const nameMatch = field.Name?.toLowerCase().includes(query);
-        const fieldNameMatch = field.FieldName?.toLowerCase().includes(query);
-        const helpMatch = field.Help?.toLowerCase().includes(query);
-        return nameMatch || fieldNameMatch || helpMatch;
-      });
-    }
-
-    return filtered as RcConfigOption[];
+    return this.getFieldsByAdvanced(true);
   });
 
-  /** Virtual Scroll Data Source */
-  formFields = computed(() => {
-    const fields = [];
-    fields.push({ type: 'basic-info' });
-    fields.push({ type: 'config-toggles' });
-
-    if (this.providerField()) {
-      fields.push({ type: 'provider-field' });
-    }
-
-    const hasBasic = this.basicFields().length > 0;
-    // Show fields if no provider concept exists OR if a provider is selected
-    const providerReady = !this.providerField() || this.selectedProvider();
-
-    if (hasBasic && providerReady) {
-      fields.push({ type: 'basic-fields' });
-    }
-
-    if (this.showAdvancedOptions() && this.advancedFields().length > 0 && providerReady) {
-      fields.push({ type: 'advanced-section' });
-    }
-
-    return fields;
-  });
+  providerReady = computed(() => !this.providerField() || !!this.selectedProvider());
 
   // --- Logic Helpers ---
 
-  private shouldShowField(field: RcConfigOption, provider?: string): boolean {
-    const providerRule = field.Provider;
-    if (!providerRule) return true;
+  private matchesProviderRule(rule: string | undefined, provider?: string): boolean {
+    if (!rule) return true;
     if (!provider) return false;
-
-    const isNegated = providerRule.startsWith('!');
-    const cleanRule = isNegated ? providerRule.substring(1) : providerRule;
-    const parts = cleanRule.split(',').map(p => p.trim());
-
-    if (isNegated) {
-      return !parts.includes(provider);
-    } else {
-      return parts.includes(provider);
-    }
+    const isNegated = rule.startsWith('!');
+    const parts = (isNegated ? rule.substring(1) : rule).split(',').map(p => p.trim());
+    return isNegated ? !parts.includes(provider) : parts.includes(provider);
   }
 
   private getFilteredField(field: RcConfigOption, provider?: string): RcConfigOption {
     if (!field.Examples || field.Examples.length === 0 || !provider) {
       return field;
     }
-    // Filter examples based on provider rule
     const filteredExamples = field.Examples.filter(ex =>
-      this.isProviderMatch(ex.Provider, provider)
+      this.matchesProviderRule(ex.Provider, provider)
     );
     return { ...field, Examples: filteredExamples };
   }
 
-  private isProviderMatch(rule: string | undefined, provider: string): boolean {
-    if (!rule) return true;
-    const isNegated = rule.startsWith('!');
-    const cleanRule = isNegated ? rule.substring(1) : rule;
-    const parts = cleanRule.split(',').map(p => p.trim());
+  private matchesSearch(field: RcConfigOption, query: string): boolean {
+    if (!query) return true;
+    const normalized = query.toLowerCase();
+    return (
+      field.Name?.toLowerCase().includes(normalized) ||
+      field.FieldName?.toLowerCase().includes(normalized) ||
+      field.Help?.toLowerCase().includes(normalized)
+    );
+  }
 
-    return isNegated ? !parts.includes(provider) : parts.includes(provider);
+  private getFieldsByAdvanced(isAdvanced: boolean): RcConfigOption[] {
+    const providerName = this.providerField()?.Name;
+    const currentProvider = this.selectedProvider();
+    const query = this.searchQuery().trim();
+
+    return this.remoteFields()
+      .filter(f => !!f.Advanced === isAdvanced)
+      .filter(f => f.Name !== providerName)
+      .filter(f => this.matchesProviderRule(f.Provider, currentProvider))
+      .map(f => this.getFilteredField(f, currentProvider))
+      .filter(f => this.matchesSearch(f, query));
   }
 
   private clearProviderDependentFields(
@@ -298,44 +231,26 @@ export class RemoteConfigStepComponent {
     newProvider: string
   ): void {
     fields.forEach(field => {
-      // If a field has a specific Provider rule, checks if it is still valid
-      if (field.Provider) {
-        const isVisible = this.shouldShowField(field, newProvider);
-        if (!isVisible) {
-          // Field is hidden now -> reset it
-          form.get(field.Name)?.setValue(null);
-        }
+      if (field.Provider && !this.matchesProviderRule(field.Provider, newProvider)) {
+        form.get(field.Name)?.setValue(null);
       }
 
-      // If a field is shared (like 'endpoint') but the Examples list changed
       if (field.Examples && field.Examples.length > 0) {
         const control = form.get(field.Name);
         const currentValue = control?.value;
-
-        // If the current value was one of the OLD examples, we should probably clear it
-        // so the user doesn't accidentally send an Alibaba endpoint to AWS
-        // (Optional: strict check logic could go here)
         if (currentValue && !this.isValueValidForProvider(field, currentValue, newProvider)) {
-          control?.setValue(''); // Reset to empty so they pick a new one
+          control?.setValue('');
         }
       }
     });
   }
 
   private isValueValidForProvider(field: RcConfigOption, value: string, provider: string): boolean {
-    // If the value matches an Example that is NOT allowed for this provider, return false
     const match = field.Examples?.find(ex => ex.Value === value);
-    if (match && match.Provider && !this.isProviderMatch(match.Provider, provider)) {
-      return false;
-    }
-    return true;
+    return !(match && !this.matchesProviderRule(match.Provider, provider));
   }
 
   // --- Template Bindings ---
-
-  trackByField(index: number, field: { type: string }): string {
-    return `${field.type}-${index}`;
-  }
 
   onTypeSelected(value: string): void {
     this.form().get('type')?.setValue(value);
@@ -351,16 +266,22 @@ export class RemoteConfigStepComponent {
     }
 
     const baseName = remoteType.replace(/\s+/g, '');
-    const existingNames = this.existingRemotes();
+    const existingNames = new Set(this.existingRemotes());
     let newName = baseName;
     let counter = 1;
 
-    while (existingNames.includes(newName)) {
+    while (existingNames.has(newName)) {
       newName = `${baseName}-${counter}`;
       counter++;
     }
 
     nameControl.setValue(newName, { emitEvent: true });
+    nameControl.updateValueAndValidity({ emitEvent: false });
+
+    // If auto-generated value still fails validation, show the reason immediately.
+    if (nameControl.invalid) {
+      nameControl.markAsTouched();
+    }
   }
 
   displayRemote = (remoteValue: string): string => {

@@ -3,11 +3,13 @@
     <div class="setting">
       <div class="setting-info">
         <strong>{{
-          opt.Name | rcloneOptionTranslate: 'title' : opt.FieldName || opt.Name : provider
+          opt.Name | rcloneOptionTranslate: 'title' : opt.FieldName || opt.Name : provider()
         }}</strong>
         <p
           class="help-text"
-          [innerHTML]="opt.Name | rcloneOptionTranslate: 'help' : opt.Help : provider | linebreaks"
+          [innerHTML]="
+            opt.Name | rcloneOptionTranslate: 'help' : opt.Help : provider() | linebreaks
+          "
         ></p>
         <small class="default-value">{{
           'shared.settingControl.default' | translate: { value: getDisplayDefault() }
@@ -162,6 +164,48 @@
     </div>
   </ng-template>
 
+  <ng-template #arrayInput let-opt>
+    <div class="setting-full-width">
+      <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }"></ng-container>
+      <div class="array-items">
+        @for (itemControl of formArrayControls; track $index) {
+          <div class="array-item">
+            <mat-form-field appearance="fill" class="array-input">
+              <input
+                matInput
+                [type]="isSensitiveField() ? 'password' : 'text'"
+                [formControl]="$any(itemControl)"
+                [attr.aria-label]="
+                  'shared.settingControl.aria.item'
+                    | translate: { name: opt.Name, index: $index + 1 }
+                "
+                [attr.autocomplete]="isSensitiveField() ? 'off' : null"
+                (paste)="preventClipboardOnSensitive($event)"
+                (copy)="preventClipboardOnSensitive($event)"
+                (cut)="preventClipboardOnSensitive($event)"
+                (blur)="commitValue()"
+              />
+              <button
+                mat-icon-button
+                matSuffix
+                (click)="removeArrayItem($index)"
+                [attr.aria-label]="
+                  'shared.settingControl.aria.removeItem' | translate: { name: opt.Name }
+                "
+              >
+                <mat-icon svgIcon="trash"></mat-icon>
+              </button>
+            </mat-form-field>
+          </div>
+        }
+        <button mat-stroked-button class="add-array-item-btn" (click)="addArrayItem()">
+          <mat-icon svgIcon="plus"></mat-icon>
+          {{ 'shared.settingControl.addItem' | translate }}
+        </button>
+      </div>
+    </div>
+  </ng-template>
+
   <div class="setting-item" id="{{ 'setting-' + option.Name }}">
     @switch (option.Type) {
       @case ('bool') {
@@ -180,70 +224,6 @@
                 : ('shared.settingControl.disabled' | translate)
             }}
           </mat-slide-toggle>
-        </div>
-      }
-      @case ('string') {
-        @if (option.Examples && option.Examples.length > 0) {
-          <ng-container
-            *ngTemplateOutlet="standardSelect; context: { $implicit: option }"
-          ></ng-container>
-        } @else {
-          <ng-container
-            *ngTemplateOutlet="standardInput; context: { $implicit: option }"
-          ></ng-container>
-        }
-      }
-      @case ('Duration') {
-        <ng-container
-          *ngTemplateOutlet="
-            standardInput;
-            context: {
-              $implicit: option,
-            }
-          "
-        ></ng-container>
-      }
-      @case ('SpaceSepList') {
-        <div class="setting-full-width">
-          <ng-container
-            *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
-          ></ng-container>
-          <div class="array-items">
-            @for (itemControl of formArrayControls; track $index) {
-              <div class="array-item">
-                <mat-form-field appearance="fill" class="array-input">
-                  <input
-                    matInput
-                    [type]="isSensitiveField() ? 'password' : 'text'"
-                    [formControl]="$any(itemControl)"
-                    [attr.aria-label]="
-                      'shared.settingControl.aria.item'
-                        | translate: { name: option.Name, index: $index + 1 }
-                    "
-                    [attr.autocomplete]="isSensitiveField() ? 'off' : null"
-                    (paste)="preventClipboardOnSensitive($event)"
-                    (copy)="preventClipboardOnSensitive($event)"
-                    (cut)="preventClipboardOnSensitive($event)"
-                    (blur)="commitValue()"
-                  />
-                  <button
-                    mat-icon-button
-                    matSuffix
-                    (click)="removeArrayItem($index)"
-                    [attr.aria-label]="
-                      'shared.settingControl.aria.removeItem' | translate: { name: option.Name }
-                    "
-                  >
-                    <mat-icon svgIcon="trash"></mat-icon>
-                  </button>
-                </mat-form-field>
-              </div>
-            }
-            <button mat-stroked-button class="add-array-item-btn" (click)="addArrayItem()">
-              <mat-icon svgIcon="plus"></mat-icon>
-              {{ 'shared.settingControl.addItem' | translate }}
-            </button>
-          </div>
         </div>
       }
       @case ('Time') {
@@ -271,43 +251,55 @@
               <mat-label>{{ 'shared.settingControl.time' | translate }}</mat-label>
               <input
                 matInput
-                [ngxMatTimepicker]="timePicker"
+                [matTimepicker]="timePicker"
                 [formControl]="timeControl()"
                 [attr.aria-label]="
                   'shared.settingControl.aria.time' | translate: { name: option.Name }
                 "
-                readonly
+                (blur)="commitValue()"
               />
-              <mat-icon matSuffix (click)="timePicker.open()" svgIcon="clock"></mat-icon>
-              <ngx-mat-timepicker #timePicker [enableKeyboardInput]="true"></ngx-mat-timepicker>
+              <mat-timepicker-toggle matSuffix [for]="timePicker"></mat-timepicker-toggle>
+              <mat-timepicker #timePicker></mat-timepicker>
             </mat-form-field>
           </div>
         </div>
       }
-      @case ('BwTimetable') {
-        <ng-container
-          *ngTemplateOutlet="
-            standardInput;
-            context: {
-              $implicit: option,
-            }
-          "
-        ></ng-container>
+      @case ('Tristate') {
+        <div class="setting-full-width">
+          <ng-container
+            *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+          ></ng-container>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="fill">
+              <mat-select
+                [formControl]="$any(control())"
+                [attr.aria-label]="option.Name"
+                (selectionChange)="commitValue()"
+              >
+                <mat-option [value]="null">{{
+                  'shared.settingControl.autoUnset' | translate
+                }}</mat-option>
+                <mat-option [value]="true">{{
+                  'shared.settingControl.true' | translate
+                }}</mat-option>
+                <mat-option [value]="false">{{
+                  'shared.settingControl.false' | translate
+                }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+        </div>
       }
-      @case ('SizeSuffix') {
-        <ng-container
-          *ngTemplateOutlet="
-            standardInput;
-            context: {
-              $implicit: option,
-            }
-          "
-        ></ng-container>
-      }
-      @case ('FileMode') {
-        <ng-container
-          *ngTemplateOutlet="standardInput; context: { $implicit: option }"
-        ></ng-container>
+      @case ('string') {
+        @if (option.Examples && option.Examples.length > 0) {
+          <ng-container
+            *ngTemplateOutlet="standardSelect; context: { $implicit: option }"
+          ></ng-container>
+        } @else {
+          <ng-container
+            *ngTemplateOutlet="standardInput; context: { $implicit: option }"
+          ></ng-container>
+        }
       }
       @case ('int') {
         <ng-container
@@ -345,10 +337,7 @@
         <ng-container
           *ngTemplateOutlet="
             multiSelect;
-            context: {
-              $implicit: option,
-              optionsList: option.Examples || bitsFlags,
-            }
+            context: { $implicit: option, optionsList: option.Examples || bitsFlags }
           "
         ></ng-container>
       }
@@ -356,10 +345,7 @@
         <ng-container
           *ngTemplateOutlet="
             multiSelect;
-            context: {
-              $implicit: option,
-              optionsList: option.Examples || encodingFlags,
-            }
+            context: { $implicit: option, optionsList: option.Examples || encodingFlags }
           "
         ></ng-container>
       }
@@ -384,140 +370,19 @@
           "
         ></ng-container>
       }
-      @case ('Tristate') {
-        <div class="setting-full-width">
-          <ng-container
-            *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
-          ></ng-container>
-          <div class="setting-control">
-            <mat-form-field class="input-field" appearance="fill">
-              <mat-select
-                [formControl]="$any(control())"
-                [attr.aria-label]="option.Name"
-                (selectionChange)="commitValue()"
-              >
-                <mat-option [value]="null">{{
-                  'shared.settingControl.autoUnset' | translate
-                }}</mat-option>
-                <mat-option [value]="true">{{
-                  'shared.settingControl.true' | translate
-                }}</mat-option>
-                <mat-option [value]="false">{{
-                  'shared.settingControl.false' | translate
-                }}</mat-option>
-              </mat-select>
-            </mat-form-field>
-          </div>
-        </div>
+      @case ('SpaceSepList') {
+        <ng-container *ngTemplateOutlet="arrayInput; context: { $implicit: option }"></ng-container>
       }
       @case ('stringArray') {
-        <div class="setting-full-width">
-          <ng-container
-            *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
-          ></ng-container>
-          <div class="array-items">
-            @for (itemControl of formArrayControls; track $index) {
-              <div class="array-item">
-                <mat-form-field appearance="fill" class="array-input">
-                  <input
-                    matInput
-                    [type]="isSensitiveField() ? 'password' : 'text'"
-                    [formControl]="$any(itemControl)"
-                    [attr.aria-label]="
-                      'shared.settingControl.aria.item'
-                        | translate: { name: option.Name, index: $index + 1 }
-                    "
-                    [attr.autocomplete]="isSensitiveField() ? 'off' : null"
-                    (paste)="preventClipboardOnSensitive($event)"
-                    (copy)="preventClipboardOnSensitive($event)"
-                    (cut)="preventClipboardOnSensitive($event)"
-                    (blur)="commitValue()"
-                  />
-                  <button
-                    mat-icon-button
-                    matSuffix
-                    (click)="removeArrayItem($index)"
-                    [attr.aria-label]="
-                      'shared.settingControl.aria.removeItem' | translate: { name: option.Name }
-                    "
-                  >
-                    <mat-icon svgIcon="trash"></mat-icon>
-                  </button>
-                </mat-form-field>
-              </div>
-            }
-            <button mat-stroked-button class="add-array-item-btn" (click)="addArrayItem()">
-              <mat-icon svgIcon="plus"></mat-icon>
-              {{ 'shared.settingControl.addItem' | translate }}
-            </button>
-          </div>
-        </div>
+        <ng-container *ngTemplateOutlet="arrayInput; context: { $implicit: option }"></ng-container>
       }
       @case ('CommaSepList') {
-        <div class="setting-full-width">
-          <ng-container
-            *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
-          ></ng-container>
-          <div class="array-items">
-            @for (itemControl of formArrayControls; track $index) {
-              <div class="array-item">
-                <mat-form-field appearance="fill" class="array-input">
-                  <input
-                    matInput
-                    [type]="isSensitiveField() ? 'password' : 'text'"
-                    [formControl]="$any(itemControl)"
-                    [attr.aria-label]="
-                      'shared.settingControl.aria.item'
-                        | translate: { name: option.Name, index: $index + 1 }
-                    "
-                    [attr.autocomplete]="isSensitiveField() ? 'off' : null"
-                    (paste)="preventClipboardOnSensitive($event)"
-                    (copy)="preventClipboardOnSensitive($event)"
-                    (cut)="preventClipboardOnSensitive($event)"
-                    (blur)="commitValue()"
-                  />
-                  <button
-                    mat-icon-button
-                    matSuffix
-                    (click)="removeArrayItem($index)"
-                    [attr.aria-label]="
-                      'shared.settingControl.aria.removeItem' | translate: { name: option.Name }
-                    "
-                  >
-                    <mat-icon svgIcon="trash"></mat-icon>
-                  </button>
-                </mat-form-field>
-              </div>
-            }
-            <button mat-stroked-button class="add-array-item-btn" (click)="addArrayItem()">
-              <mat-icon svgIcon="plus"></mat-icon>
-              {{ 'shared.settingControl.addItem' | translate }}
-            </button>
-          </div>
-        </div>
+        <ng-container *ngTemplateOutlet="arrayInput; context: { $implicit: option }"></ng-container>
       }
       @default {
-        @if (option.Examples) {
-          <ng-container
-            *ngTemplateOutlet="standardSelect; context: { $implicit: option }"
-          ></ng-container>
-        } @else {
-          <div class="setting-full-width">
-            <div class="setting-info">
-              <strong>{{
-                option.Name
-                  | rcloneOptionTranslate: 'title' : option.FieldName || option.Name : provider
-              }}</strong>
-              <p>{{ option.Name | rcloneOptionTranslate: 'help' : option.Help : provider }}</p>
-              <small class="type-info">{{
-                'shared.settingControl.typeNotImplemented' | translate: { type: option.Type }
-              }}</small>
-              <small class="default-value">{{
-                'shared.settingControl.default' | translate: { value: option.DefaultStr }
-              }}</small>
-            </div>
-          </div>
-        }
+        <ng-container
+          *ngTemplateOutlet="standardInput; context: { $implicit: option }"
+        ></ng-container>
       }
     }
   </div>

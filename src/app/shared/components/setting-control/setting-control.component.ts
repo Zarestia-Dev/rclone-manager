@@ -2,14 +2,14 @@ import {
   Component,
   Input,
   forwardRef,
-  OnDestroy,
-  Output,
-  EventEmitter,
   ChangeDetectionStrategy,
   inject,
   signal,
   WritableSignal,
   DestroyRef,
+  effect,
+  input,
+  output,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -33,12 +33,11 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule, provideNativeDateAdapter } from '@angular/material/core';
+import { MatTimepickerModule } from '@angular/material/timepicker';
 import { ScrollingModule } from '@angular/cdk/scrolling';
-import { NgxMatTimepickerModule } from 'ngx-mat-timepicker';
 import { RcConfigOption } from '@app/types';
 import { SENSITIVE_KEYS } from '@app/types';
-import { Subject, map } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { Subscription, map } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { LineBreaksPipe } from '../../pipes/linebreaks.pipe';
 import { RcloneOptionTranslatePipe } from '../../pipes/rclone-option-translate.pipe';
@@ -47,7 +46,6 @@ import { ValidatorRegistryService } from '@app/services';
 
 @Component({
   selector: 'app-setting-control',
-  standalone: true,
   imports: [
     CommonModule,
     ReactiveFormsModule,
@@ -61,8 +59,8 @@ import { ValidatorRegistryService } from '@app/services';
     MatButtonModule,
     MatDatepickerModule,
     MatNativeDateModule,
+    MatTimepickerModule,
     ScrollingModule,
-    NgxMatTimepickerModule,
     LineBreaksPipe,
     RcloneOptionTranslatePipe,
     TranslateModule,
@@ -79,7 +77,7 @@ import { ValidatorRegistryService } from '@app/services';
     provideNativeDateAdapter(),
   ],
 })
-export class SettingControlComponent implements ControlValueAccessor, OnDestroy {
+export class SettingControlComponent implements ControlValueAccessor {
   private valueMapper = inject(RcloneValueMapperService);
   private validatorRegistry = inject(ValidatorRegistryService);
   private translate = inject(TranslateService);
@@ -92,7 +90,7 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   /** Caller-provided per-option overrides. Parent components may bind to this Input to change
    * how specific options are presented (for example override DefaultStr for certain options).
    */
-  @Input() optionOverrides: Record<string, Partial<RcConfigOption>> = {};
+  readonly optionOverrides = input<Record<string, Partial<RcConfigOption>>>({});
 
   /** Built-in default overrides for specific option names. These are merged with
    * any caller-provided overrides (caller overrides take precedence).
@@ -103,7 +101,9 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   };
 
   /** The provider context for translations (e.g. 's3', 'drive') */
-  @Input() provider?: string | null;
+  readonly provider = input<string | null>(null);
+
+  private rawOption = signal<RcConfigOption | null>(null);
 
   // option stored as a signal for better reactivity
   private optionSignal: WritableSignal<RcConfigOption | null> = signal<RcConfigOption | null>(null);
@@ -111,23 +111,16 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   public uiDefaultValue = signal<unknown>('');
 
   @Input()
+  set option(val: RcConfigOption | null) {
+    this.rawOption.set(val);
+  }
+
   get option(): RcConfigOption {
     return this.optionSignal() as RcConfigOption;
   }
-  set option(val: RcConfigOption | null) {
-    if (!val) return;
-    // Merge built-in and caller-provided overrides for this option
-    const builtIn = this.defaultOptionOverrides[val.Name] || {};
-    const caller = this.optionOverrides[val.Name] || {};
-    const merged = { ...val, ...builtIn, ...caller } as RcConfigOption;
-    this.optionSignal.set(merged);
-    // Update derived UI default value
-    this.uiDefaultValue.set(this.calculateDefaultValue(merged));
-    this.createControl();
-  }
 
-  @Output() valueCommit = new EventEmitter<void>();
-  @Output() valueChanged = new EventEmitter<boolean>();
+  readonly valueCommit = output<void>();
+  readonly valueChanged = output<boolean>();
 
   // control as a signal so the template and computed values can react to changes
   public control = signal<AbstractControl | null>(null);
@@ -162,8 +155,8 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   ].sort();
   public bitsFlags = ['date', 'time', 'microseconds', 'longfile', 'shortfile', 'pid'].sort();
   // For Time type UI (split date + time inputs) — converted to signals
-  public dateControl = signal<FormControl>(new FormControl(''));
-  public timeControl = signal<FormControl>(new FormControl(''));
+  public dateControl = signal<FormControl<Date | null>>(new FormControl<Date | null>(null));
+  public timeControl = signal<FormControl<Date | null>>(new FormControl<Date | null>(null));
 
   private onChange: (value: unknown) => void = () => {
     /* empty */
@@ -171,7 +164,7 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   private onTouched: () => void = () => {
     /* empty */
   };
-  private destroyed$ = new Subject<void>();
+  private controlSubscriptions = new Subscription();
 
   // Array-like types that split on comma
   private readonly COMMA_ARRAY_TYPES = ['Bits', 'Encoding', 'CommaSepList', 'DumpFlags'];
@@ -182,6 +175,9 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   private readonly HOLD_DELAY = 400;
   private readonly HOLD_INTERVAL = 80;
 
+  private pendingWriteValue: unknown = undefined;
+  private hasPendingWrite = false;
+
   //
   // ─── CORE LOGIC ──────────────────────────────────────────────────────────────
   //
@@ -189,9 +185,30 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   constructor() {
     this.appSettingsService
       .selectSetting('general.restrict')
-      .pipe(map(setting => (setting?.value as boolean) ?? true))
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        map(setting => (setting?.value as boolean) ?? true),
+        takeUntilDestroyed(this.destroyRef)
+      )
       .subscribe(val => this.restrictMode.set(val));
+
+    effect(() => {
+      const option = this.rawOption();
+      if (!option) {
+        return;
+      }
+
+      const builtIn = this.defaultOptionOverrides[option.Name] || {};
+      const caller = this.optionOverrides()[option.Name] || {};
+      const merged = { ...option, ...builtIn, ...caller } as RcConfigOption;
+
+      this.optionSignal.set(merged);
+      this.uiDefaultValue.set(this.calculateDefaultValue(merged));
+      this.createControl();
+    });
+
+    this.destroyRef.onDestroy(() => {
+      this.controlSubscriptions.unsubscribe();
+    });
   }
 
   private calculateDefaultValue(option: RcConfigOption): unknown {
@@ -316,7 +333,11 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
 
   writeValue(value: any): void {
     const ctrl = this.control();
-    if (!ctrl) return;
+    if (!ctrl) {
+      this.pendingWriteValue = value;
+      this.hasPendingWrite = true;
+      return;
+    }
 
     const internalValue = this.prepareValueForControl(value);
 
@@ -332,7 +353,6 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   }
 
   private prepareValueForControl(value: any): any {
-    // Handle convertible types (Duration, SizeSuffix, BwTimetable)
     if (this.CONVERTIBLE_TYPES.includes(this.option.Type)) {
       if (typeof value === 'number') {
         return this.valueMapper.machineToHuman(value, this.option.Type, this.option.ValueStr);
@@ -340,7 +360,6 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
       return value || this.option.ValueStr || this.option.DefaultStr || '';
     }
 
-    // Handle comma-separated lists
     if (this.COMMA_ARRAY_TYPES.includes(this.option.Type)) {
       if (typeof value === 'string' && value) {
         return this.splitToArray(value, ',');
@@ -348,7 +367,6 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
       return Array.isArray(value) ? value : [];
     }
 
-    // Handle space-separated lists
     if (this.option.Type === 'SpaceSepList') {
       if (typeof value === 'string' && value) {
         return this.splitToArray(value, /\s+/);
@@ -356,12 +374,14 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
       return Array.isArray(value) ? value : [];
     }
 
-    // Handle booleans
     if (this.option.Type === 'bool') {
       return value === true || String(value).toLowerCase() === 'true';
     }
 
-    // Handle string arrays
+    if (this.option.Type === 'Tristate') {
+      return this.parseTristateValue(value);
+    }
+
     if (this.option.Type === 'stringArray') {
       return Array.isArray(value) ? value : [];
     }
@@ -397,7 +417,9 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   //
 
   private createControl(): void {
-    this.destroyed$.next();
+    this.controlSubscriptions.unsubscribe();
+    this.controlSubscriptions = new Subscription();
+
     if (!this.optionSignal()) return;
 
     const validators = this.getValidators();
@@ -413,6 +435,12 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
     }
 
     this.subscribeToChanges();
+
+    if (this.hasPendingWrite) {
+      this.writeValue(this.pendingWriteValue);
+      this.pendingWriteValue = undefined;
+      this.hasPendingWrite = false;
+    }
   }
 
   private isArrayType(): boolean {
@@ -426,9 +454,6 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
     if (this.option.Type === 'SpaceSepList') {
       return this.splitToArray(this.option.ValueStr || this.option.DefaultStr, /\s+/);
     }
-    // stringArray
-    console.log('Getting initial array value:', this.option);
-
     return (Array.isArray(this.option.Value) ? this.option.Value : []).filter(v => v);
   }
 
@@ -453,6 +478,10 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
       return this.option.ValueStr || this.option.DefaultStr || '';
     }
 
+    if (this.option.Type === 'Tristate') {
+      return this.parseTristateValue(this.option.Value ?? this.option.ValueStr);
+    }
+
     return this.option.ValueStr || this.option.DefaultStr || '';
   }
 
@@ -460,90 +489,96 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
     const ctrl = this.control();
     if (!ctrl) return;
 
-    (ctrl as AbstractControl).valueChanges.pipe(takeUntil(this.destroyed$)).subscribe(value => {
-      const outputValue = this.prepareValueForBackend(value);
-      this.onChange(outputValue);
-      this.onTouched();
-      this.valueChanged.emit(this.isValueChanged());
-      // If option is Time, reflect any changes (including resets) into the split controls
-      if (this.option && this.option.Type === 'Time') {
-        this.updateSplitFromControl(value);
-      }
-    });
+    this.controlSubscriptions.add(
+      ctrl.valueChanges.subscribe(value => {
+        const outputValue = this.prepareValueForBackend(value);
+        this.onChange(outputValue);
+        this.onTouched();
+        this.valueChanged.emit(this.isValueChanged());
 
-    // If option is Time, keep the date/time split controls in sync with the main control
+        if (this.option && this.option.Type === 'Time') {
+          this.updateSplitFromControl(value);
+        }
+      })
+    );
+
     if (this.option && this.option.Type === 'Time') {
-      // initialize split controls
       this.updateSplitFromControl((this.control() as AbstractControl).value);
 
       const dateCtrl = this.dateControl();
-      dateCtrl.valueChanges.pipe(takeUntil(this.destroyed$)).subscribe(() => {
-        const combined = this.combineDateTime();
-        // update main control which will trigger prepareValueForBackend and onChange
-        (this.control() as AbstractControl).setValue(combined);
-      });
+      this.controlSubscriptions.add(
+        dateCtrl.valueChanges.subscribe(() => this.syncTimeControlValue())
+      );
 
       const timeCtrl = this.timeControl();
-      timeCtrl.valueChanges.pipe(takeUntil(this.destroyed$)).subscribe(() => {
-        const combined = this.combineDateTime();
-        (this.control() as AbstractControl).setValue(combined);
-      });
+      this.controlSubscriptions.add(
+        timeCtrl.valueChanges.subscribe(() => this.syncTimeControlValue())
+      );
     }
   }
 
-  private updateSplitFromControl(value: any): void {
-    // value expected to be ISO-like string (YYYY-MM-DDTHH:mm:ssZ) or empty
-    if (!value || typeof value !== 'string') {
-      this.dateControl().setValue('', { emitEvent: false });
-      this.timeControl().setValue('', { emitEvent: false });
+  private syncTimeControlValue(): void {
+    const ctrl = this.control();
+    if (!ctrl) {
       return;
     }
 
-    // Try to parse ISO-like value safely
-    // Accept forms like: YYYY-MM-DDTHH:mm[:ss][Z]
-    const m = value.match(/^(\d{4}-\d{2}-\d{2})[T\s](\d{2}:\d{2}(?::\d{2})?).*/);
-    if (m) {
-      const datePart = m[1];
-      let timePart = m[2];
-      // Trim seconds for time input (HH:mm)
-      const tmatch = timePart.match(/^(\d{2}:\d{2})/);
-      if (tmatch) timePart = tmatch[1];
-      this.dateControl().setValue(datePart, { emitEvent: false });
-      this.timeControl().setValue(timePart, { emitEvent: false });
-    } else {
-      // Fallback: clear
-      this.dateControl().setValue('', { emitEvent: false });
-      this.timeControl().setValue('', { emitEvent: false });
+    const combined = this.combineDateTime();
+    if (combined === null || ctrl.value === combined) {
+      return;
     }
+
+    ctrl.setValue(combined);
   }
 
-  private combineDateTime(): string {
-    const date = this.dateControl().value;
-    let time = this.timeControl().value || '00:00';
-    if (!date) return '';
-
-    // Handle time string - extract HH:mm and handle potential AM/PM format
-    if (typeof time === 'string') {
-      // Extract just HH:mm part (remove seconds and AM/PM if present)
-      const timeMatch = time.match(/^(\d{1,2}):(\d{2})/);
-      if (timeMatch) {
-        let hours = parseInt(timeMatch[1], 10);
-        const minutes = timeMatch[2];
-
-        // Handle 12-hour format if AM/PM is present
-        if (time.toLowerCase().includes('pm') && hours < 12) {
-          hours += 12;
-        } else if (time.toLowerCase().includes('am') && hours === 12) {
-          hours = 0;
-        }
-
-        time = `${hours.toString().padStart(2, '0')}:${minutes}`;
-      }
+  private updateSplitFromControl(value: any): void {
+    if (!value || typeof value !== 'string') {
+      this.dateControl().setValue(null, { emitEvent: false });
+      this.timeControl().setValue(null, { emitEvent: false });
+      return;
     }
 
-    // Ensure time includes minutes; we append seconds and Z to match ISO expected format
-    const seconds = ':00';
-    return `${date}T${time}${seconds}Z`;
+    const match = value.match(/^(\d{4}-\d{2}-\d{2})[T\s](\d{2}:\d{2}(?::\d{2})?).*/);
+    if (!match) {
+      this.dateControl().setValue(null, { emitEvent: false });
+      this.timeControl().setValue(null, { emitEvent: false });
+      return;
+    }
+
+    const [year, month, day] = match[1].split('-').map(part => parseInt(part, 10));
+    const timeMatch = match[2].match(/^(\d{2}):(\d{2})/);
+    const hours = timeMatch ? parseInt(timeMatch[1], 10) : 0;
+    const minutes = timeMatch ? parseInt(timeMatch[2], 10) : 0;
+
+    this.dateControl().setValue(new Date(year, month - 1, day), { emitEvent: false });
+    this.timeControl().setValue(new Date(1970, 0, 1, hours, minutes), { emitEvent: false });
+  }
+
+  private parseTristateValue(value: unknown): boolean | null {
+    if (value === null || value === undefined || value === '') return null;
+    if (typeof value === 'boolean') return value;
+    const s = String(value).toLowerCase();
+    if (s === 'true') return true;
+    if (s === 'false') return false;
+    return null;
+  }
+
+  private combineDateTime(): string | null {
+    const dateValue = this.dateControl().value;
+    const timeValue = this.timeControl().value;
+    if (!(dateValue instanceof Date) || Number.isNaN(dateValue.getTime())) {
+      return null;
+    }
+
+    const hours = timeValue instanceof Date ? timeValue.getHours() : 0;
+    const minutes = timeValue instanceof Date ? timeValue.getMinutes() : 0;
+    const year = dateValue.getFullYear();
+    const month = `${dateValue.getMonth() + 1}`.padStart(2, '0');
+    const day = `${dateValue.getDate()}`.padStart(2, '0');
+    const hour = `${hours}`.padStart(2, '0');
+    const minute = `${minutes}`.padStart(2, '0');
+
+    return `${year}-${month}-${day}T${hour}:${minute}:00Z`;
   }
 
   private prepareValueForBackend(value: any): any {
@@ -581,13 +616,7 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
     return value;
   }
 
-  /**
-   * Increments the number value in the control.
-   * @param step The amount to increment by. Defaults to 1. For floats, uses 'any'.
-   * @param commit Whether to commit the value immediately. Defaults to true.
-   */
-  increment(step: number | 'any' = 1, commit = true): void {
-    // Add commit parameter
+  stepChange(direction: 1 | -1, step: number | 'any' = 1, commit = true): void {
     const ctrl = this.control();
     if (!ctrl) return;
     const isFloat = this.option.Type === 'float64';
@@ -595,38 +624,12 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
     const numValue = isNaN(currentValue) ? 0 : currentValue;
 
     const effectiveStep = step === 'any' ? 1.0 : step;
-    const newValue = numValue + effectiveStep;
+    const newValue = numValue + effectiveStep * direction;
 
     const finalValue = isFloat ? parseFloat(newValue.toPrecision(15)) : newValue;
 
     ctrl.setValue(finalValue);
     if (commit) {
-      // Only commit if requested
-      this.commitValue();
-    }
-  }
-
-  /**
-   * Decrements the number value in the control.
-   * @param step The amount to decrement by. Defaults to 1. For floats, uses 'any'.
-   * @param commit Whether to commit the value immediately. Defaults to true.
-   */
-  decrement(step: number | 'any' = 1, commit = true): void {
-    // Add commit parameter
-    const ctrl = this.control();
-    if (!ctrl) return;
-    const isFloat = this.option.Type === 'float64';
-    const currentValue = isFloat ? parseFloat(ctrl.value) : parseInt(ctrl.value, 10);
-    const numValue = isNaN(currentValue) ? 0 : currentValue;
-
-    const effectiveStep = step === 'any' ? 1.0 : step;
-    const newValue = numValue - effectiveStep;
-
-    const finalValue = isFloat ? parseFloat(newValue.toPrecision(15)) : newValue;
-
-    ctrl.setValue(finalValue);
-    if (commit) {
-      // Only commit if requested
       this.commitValue();
     }
   }
@@ -674,38 +677,19 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
     }
   }
 
-  /**
-   * Starts the process of continuously changing the value when a button is held.
-   * @param action The action to perform ('increment' or 'decrement').
-   * @param step The step value for the action.
-   */
   startHold(action: 'increment' | 'decrement', step: number | 'any'): void {
-    // Clear any existing timers to be safe
-    this.stopHold(false); // Don't commit on start
+    this.stopHold(false);
+    const direction = action === 'increment' ? 1 : -1;
 
-    // Perform the action once immediately on click/press
-    if (action === 'increment') {
-      this.increment(step, false);
-    } else {
-      this.decrement(step, false);
-    }
+    this.stepChange(direction, step, false);
 
-    // Set a timeout to begin the repeating interval
     this.holdTimeout = setTimeout(() => {
       this.holdInterval = setInterval(() => {
-        if (action === 'increment') {
-          this.increment(step, false); // Pass false to prevent commit on each tick
-        } else {
-          this.decrement(step, false); // Pass false to prevent commit on each tick
-        }
+        this.stepChange(direction, step, false);
       }, this.HOLD_INTERVAL);
     }, this.HOLD_DELAY);
   }
 
-  /**
-   * Stops the continuous value change and commits the final value.
-   * @param commit Final value after stopping. Defaults to true.
-   */
   stopHold(commit = true): void {
     if (this.holdTimeout) clearTimeout(this.holdTimeout);
     if (this.holdInterval) clearInterval(this.holdInterval);
@@ -713,7 +697,7 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
     this.holdInterval = null;
 
     if (commit) {
-      this.commitValue(); // Commit the final value once the user releases the button
+      this.commitValue();
     }
   }
 
@@ -798,14 +782,10 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
       errors['sizeSuffix']?.message ||
       errors['bwTimetable']?.message ||
       errors['fileMode']?.message ||
+      errors['time']?.message ||
       errors['enum']?.message ||
       this.translate.instant('shared.settingControl.errors.invalidValue')
     );
-  }
-
-  ngOnDestroy(): void {
-    this.destroyed$.next();
-    this.destroyed$.complete();
   }
 
   /**

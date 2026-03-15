@@ -288,9 +288,9 @@ export class ValidatorRegistryService {
         };
       }
 
-      // Check uniqueness (trimmed)
-      const existingNormalized = existingNames.map(n => String(n).toLowerCase());
-      return existingNormalized.includes(String(value))
+      // Check uniqueness (case-sensitive, trimmed) to match rclone behavior.
+      const existingTrimmed = existingNames.map(n => String(n).trim());
+      return existingTrimmed.includes(String(value))
         ? { nameTaken: { message: this.translate.instant('validators.remoteName.nameTaken') } }
         : null;
     };

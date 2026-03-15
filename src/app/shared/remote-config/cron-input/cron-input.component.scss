@@ -109,10 +109,6 @@
 .inline-field {
   min-width: 150px;
   max-width: 200px;
-
-  ::ng-deep .mat-mdc-form-field-subscript-wrapper {
-    display: none;
-  }
 }
 
 // Schedule Preview
@@ -216,37 +212,6 @@
 
 .manual-field {
   width: 100%;
-}
-
-.advanced-preview {
-  display: flex;
-  align-items: start;
-  gap: 0.75rem;
-  padding: 1rem;
-  background: rgba(var(--accent-color-rgb), 0.08);
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-
-  mat-icon {
-    width: 20px;
-    height: 20px;
-    font-size: 20px;
-    color: var(--accent-color);
-  }
-
-  .preview-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-
-    code {
-      font-family: "Consolas", "Monaco", monospace;
-      background: var(--active-bg-color);
-      padding: 0.125rem 0.375rem;
-      border-radius: 0.188rem;
-      font-size: 0.813rem;
-    }
-  }
 }
 
 // ==================== GLOBAL ====================
