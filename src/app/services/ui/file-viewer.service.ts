@@ -183,6 +183,6 @@ export class FileViewerService extends TauriBaseService {
     if (platform() === 'windows') {
       return `http://rclone.localhost/${encodedRemote}/${encodedPath}`;
     }
-    return `rclone://${encodedRemote}/${encodedPath}`;
+    return `rclone://localhost/${encodedRemote}/${encodedPath}`;
   }
 }

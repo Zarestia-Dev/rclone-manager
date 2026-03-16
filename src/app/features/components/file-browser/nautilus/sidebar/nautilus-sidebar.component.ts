@@ -1,10 +1,16 @@
-import { Component, inject, input, output, signal, ViewChild, ElementRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { DragDropModule, CdkDragDrop, CdkDrag } from '@angular/cdk/drag-drop';
 import { CdkMenuModule } from '@angular/cdk/menu';
@@ -16,13 +22,12 @@ import { OperationsPanelComponent } from '../../operations-panel/operations-pane
 @Component({
   selector: 'app-nautilus-sidebar',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule,
     TranslateModule,
     MatListModule,
     MatIconModule,
     MatToolbarModule,
-    MatButtonModule,
     MatDividerModule,
     DragDropModule,
     CdkMenuModule,
@@ -45,8 +50,9 @@ export class NautilusSidebarComponent {
   public readonly bookmarks = input.required<FileBrowserItem[]>();
   public readonly title = input.required<string>();
   public readonly currentPath = input<string>('');
+  public readonly isPickerMode = input(false);
 
-  // Drag Drop Predicates
+  // Drag & Drop predicates
   public readonly canDropOnStarred = input.required<(item: CdkDrag<FileBrowserItem>) => boolean>();
   public readonly canDropOnBookmarks =
     input.required<(item: CdkDrag<FileBrowserItem>) => boolean>();
@@ -61,13 +67,13 @@ export class NautilusSidebarComponent {
   public readonly requestShortcuts = output<void>();
   public readonly sidenavAction = output<'close' | 'toggle'>();
 
-  // Modal Requests
+  // Modal requests
   public readonly requestAbout = output<ExplorerRoot>();
   public readonly requestCleanup = output<ExplorerRoot>();
   public readonly requestBookmarkRemoval = output<FileBrowserItem>();
   public readonly requestProperties = output<FileBrowserItem>();
 
-  // Drag Drop Events
+  // Drag & Drop events
   public readonly droppedToStarred = output<CdkDragDrop<void, FileBrowserItem[]>>();
   public readonly droppedToLocal = output<CdkDragDrop<FileBrowserItem[], FileBrowserItem[]>>();
   public readonly droppedToBookmark = output<{
@@ -81,64 +87,72 @@ export class NautilusSidebarComponent {
 
   // --- UI State ---
   public readonly isSearchMode = signal(false);
-  public sideContextRemote = signal<ExplorerRoot | null>(null);
-  public bookmarkContextItem: FileBrowserItem | null = null;
 
-  // Current path for bookmark selection highlighting
+  /**
+   * The active navigation key derived from the current remote + path.
+   * Recomputes only when those signals change, not on every CD cycle.
+   */
+  private readonly _activeKey = computed<string | null>(() => {
+    if (this.starredMode() || !this.nautilusRemote()) return null;
+    return `${this.nautilusRemote()!.name}::${this.currentPath()}`;
+  });
 
-  @ViewChild('searchInput') searchInput?: ElementRef<HTMLInputElement>;
+  /**
+   * True when any bookmark exactly matches the current browsing location.
+   * Drives the "don't highlight a remote when a bookmark is active" logic.
+   */
+  public readonly anyBookmarkSelected = computed(() => {
+    const active = this._activeKey();
+    if (!active) return false;
+    return this.bookmarks().some(bm => this._bookmarkKey(bm) === active);
+  });
+
+  // --- Methods ---
 
   toggleSearchMode(): void {
-    this.isSearchMode.set(!this.isSearchMode());
+    this.isSearchMode.update(v => !v);
     this.toggleSearch.emit();
-    if (this.isSearchMode()) {
-      setTimeout(() => {
-        this.searchInput?.nativeElement?.focus();
-        this.searchInput?.nativeElement?.select();
-      }, 10);
-    }
   }
 
   onSelectRemote(remote: ExplorerRoot): void {
     this.remoteSelected.emit(remote);
-    if (this.isMobile()) {
-      this.sidenavAction.emit('close');
-    }
+    this._closeSidenavOnMobile();
   }
 
   onOpenBookmark(bm: FileBrowserItem): void {
     this.bookmarkOpened.emit(bm);
-    if (this.isMobile()) {
-      this.sidenavAction.emit('close');
-    }
+    this._closeSidenavOnMobile();
   }
 
-  trackByRemote(index: number, remote: ExplorerRoot): string {
-    return remote.name;
-  }
-
-  trackByBookmark(index: number, item: FileBrowserItem): string {
-    return `${item.meta.remote}:${item.entry.Path}`;
-  }
-
-  /** Returns true when the user is currently browsing this bookmark's exact path. */
   isBookmarkSelected(bm: FileBrowserItem): boolean {
-    if (this.starredMode() || !this.nautilusRemote()) return false;
-    const bmRemote = this.pathSelectionService.normalizeRemoteName(
-      bm.meta.remote ?? '',
-      bm.meta.isLocal
-    );
-    const remote = this.nautilusRemote();
-    return remote?.name === bmRemote && this.currentPath() === bm.entry.Path;
-  }
-
-  /** Returns true when any bookmark matches the current location (so remotes should not show selected). */
-  isAnyBookmarkSelected(): boolean {
-    return this.bookmarks().some(bm => this.isBookmarkSelected(bm));
+    const active = this._activeKey();
+    return active !== null && this._bookmarkKey(bm) === active;
   }
 
   supportsCleanup(remote: ExplorerRoot | null): boolean {
     if (!remote) return false;
     return this.remoteFacadeService.featuresSignal(remote.name)().hasCleanUp;
+  }
+
+  trackByRemote(_index: number, remote: ExplorerRoot): string {
+    return remote.name;
+  }
+
+  trackByBookmark(_index: number, item: FileBrowserItem): string {
+    return `${item.meta.remote}:${item.entry.Path}`;
+  }
+
+  private _bookmarkKey(bm: FileBrowserItem): string {
+    const remote = this.pathSelectionService.normalizeRemoteName(
+      bm.meta.remote ?? '',
+      bm.meta.isLocal
+    );
+    return `${remote}::${bm.entry.Path}`;
+  }
+
+  private _closeSidenavOnMobile(): void {
+    if (this.isMobile()) {
+      this.sidenavAction.emit('close');
+    }
   }
 }

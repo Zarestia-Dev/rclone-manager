@@ -75,6 +75,7 @@ import { NautilusToolbarComponent } from './toolbar/nautilus-toolbar.component';
 import { NautilusTabsComponent } from './tabs/nautilus-tabs.component';
 import { NautilusViewPaneComponent } from './view-pane/nautilus-view-pane.component';
 import { NautilusBottomBarComponent } from './bottom-bar/nautilus-bottom-bar.component';
+import { TabItem } from './tabs/nautilus-tabs.component';
 
 // --- Interfaces ---
 interface PaneState {
@@ -293,6 +294,15 @@ export class NautilusComponent implements OnInit, OnDestroy {
   public readonly activeTabIndex = signal(0);
   public contextTabIndex: number | null = null;
 
+  public readonly mappedTabs = computed((): TabItem[] => {
+    return this.tabs().map(tab => ({
+      id: tab.id,
+      title: tab.title,
+      path: tab.left.path,
+      remote: tab.left.remote ? { label: tab.left.remote.label } : null,
+    }));
+  });
+
   public readonly activeRemote = computed(() => {
     return this.activePaneIndex() === 0 ? this.nautilusRemote() : this.nautilusRemoteRight();
   });
@@ -310,9 +320,10 @@ export class NautilusComponent implements OnInit, OnDestroy {
   });
 
   public readonly bottomBarOffset = computed(() => {
-    let offset = 16;
-    if (this.isMobile()) offset += 56;
-    if (this.isPickerMode()) offset += 64;
+    let offset = 4;
+    if (this.isMobile() || this.isPickerMode()) {
+      offset += 60;
+    }
     return offset + 'px';
   });
 
@@ -1351,6 +1362,11 @@ export class NautilusComponent implements OnInit, OnDestroy {
       window.removeEventListener('mouseup', onMouseUp);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
+      this.appSettingsService.saveSetting(
+        'nautilus',
+        'split_divider_pos',
+        Math.round(this.splitDividerPos())
+      );
     };
 
     window.addEventListener('mousemove', onMouseMove);
@@ -2518,9 +2534,10 @@ export class NautilusComponent implements OnInit, OnDestroy {
       this.appSettingsService.selectSetting('nautilus.show_hidden_items'),
       this.appSettingsService.selectSetting('nautilus.grid_icon_size'),
       this.appSettingsService.selectSetting('nautilus.list_icon_size'),
+      this.appSettingsService.selectSetting('nautilus.split_divider_pos'),
     ])
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(([layout, sortKey, showHidden, gridIconSize, listIconSize]) => {
+      .subscribe(([layout, sortKey, showHidden, gridIconSize, listIconSize, splitDividerPos]) => {
         if (layout?.value && layout.value !== this.layout()) {
           this.layout.set(layout.value);
         }
@@ -2549,6 +2566,13 @@ export class NautilusComponent implements OnInit, OnDestroy {
           if (this.iconSize() !== sizes[centerIndex]) {
             this.iconSize.set(sizes[centerIndex]);
           }
+        }
+
+        if (
+          splitDividerPos?.value !== undefined &&
+          splitDividerPos.value !== this.splitDividerPos()
+        ) {
+          this.splitDividerPos.set(splitDividerPos.value);
         }
       });
   }

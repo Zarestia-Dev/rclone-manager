@@ -20,14 +20,15 @@
         role="button"
         tabindex="0"
         (click)="onTabClick($index)"
+        (keydown.enter)="onTabClick($index)"
+        (keydown.space)="$event.preventDefault(); onTabClick($index)"
         (mousedown)="onTabMiddleClick($event, $index)"
         [cdkContextMenuTriggerFor]="tabContextMenu"
         [cdkContextMenuTriggerData]="{ $implicit: $index }"
-        (cdkContextMenuOpened)="contextTabIndex = $index"
-        [matTooltip]="(t.remote ? t.remote.label + ':' : '') + t.path"
+        [matTooltip]="(t.remote ? (t.remote.label | translate) + ':' : '') + t.path"
         matTooltipShowDelay="800"
       >
-        <span class="tab-title">{{ t.title }}</span>
+        <span class="tab-title">{{ t.title | translate }}</span>
         <button
           class="close-tab"
           (click)="onCloseTab($event, $index)"

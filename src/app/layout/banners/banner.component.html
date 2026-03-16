@@ -1,5 +1,5 @@
 @if (showDevelopmentBanner()) {
-  <mat-toolbar class="development-banner">
+  <mat-toolbar class="development-banner" role="alert">
     <span class="warning-icon">🚧</span>
     <span class="banner-message">{{ 'banners.development.title' | translate }}</span>
     <span class="banner-subtitle">{{ 'banners.development.subtitle' | translate }}</span>
@@ -9,25 +9,34 @@
 <mat-toolbar
   class="flatpak-warning-banner slide-toggle-banner"
   [class.visible]="showFlatpakWarning()"
+  role="status"
 >
-  <mat-icon
-    matTooltipShowDelay="500"
+  <mat-icon svgIcon="circle-info" class="banner-icon"></mat-icon>
+
+  <div class="banner-text-group">
+    <span class="banner-message">{{ 'banners.flatpak.title' | translate }}</span>
+    <span class="banner-subtitle">
+      {{ 'banners.flatpak.subtitle' | translate }}
+      <a
+        href="https://hakanismail.info/zarestia/rclone-manager/docs/troubleshooting-linux"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {{ 'banners.flatpak.learnMore' | translate }}
+      </a>
+    </span>
+  </div>
+
+  <!-- Use mat-icon-button for keyboard accessibility -->
+  <button
+    class="hide-button"
     [matTooltip]="'banners.flatpak.dismissTooltip' | translate"
+    matTooltipShowDelay="500"
     (click)="dismissFlatpakWarning()"
-    svgIcon="circle-xmark"
-    class="warning-icon"
-  ></mat-icon>
-  <span class="banner-message">{{ 'banners.flatpak.title' | translate }}</span>
-  <span class="banner-subtitle"
-    >{{ 'banners.flatpak.subtitle' | translate }}
-    <a
-      href="https://hakanismail.info/zarestia/rclone-manager/docs/troubleshooting-linux"
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      {{ 'banners.flatpak.learnMore' | translate }}
-    </a></span
+    [attr.aria-label]="'banners.flatpak.dismissTooltip' | translate"
   >
+    <mat-icon svgIcon="close"></mat-icon>
+  </button>
 </mat-toolbar>
 
 <mat-toolbar
@@ -38,10 +47,8 @@
   {{ 'banners.metered.message' | translate }}
 </mat-toolbar>
 
-<!-- Single Dynamic Engine Error Banner -->
 @if (engineError(); as errorType) {
   <mat-toolbar class="engine-error-banner slide-toggle-banner visible" role="alert">
-    <!-- Dynamic icon based on error type -->
     @switch (errorType) {
       @case ('password') {
         <mat-icon svgIcon="key" class="error-icon"></mat-icon>
@@ -54,7 +61,6 @@
       }
     }
 
-    <!-- Dynamic content based on error type -->
     <span class="banner-message">{{ 'banners.engine.' + errorType + '.title' | translate }}</span>
     <span class="banner-subtitle">{{
       'banners.engine.' + errorType + '.subtitle' | translate
