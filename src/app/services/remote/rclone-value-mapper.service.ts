@@ -26,6 +26,14 @@ export class RcloneValueMapperService {
       case 'FileMode':
         return this.fileModeToString(value as number | string, fallback);
 
+      case 'decimal number':
+      case 'hexadecimal':
+      case 'octal, unix style':
+      case 'RFC 3339':
+      case 'ISO 8601':
+      case 'mtime|atime|btime|ctime':
+        return String(value);
+
       default:
         return String(value);
     }
@@ -143,17 +151,42 @@ export class RcloneValueMapperService {
     switch (type) {
       case 'int':
       case 'int64':
+      case 'int32':
+      case 'uint':
       case 'uint32':
+      case 'uint64':
         if (typeof value === 'string' && value.trim() !== '') {
           const numValue = parseInt(value, 10);
           return isNaN(numValue) ? value : numValue;
         }
         return value;
 
+      case 'float':
+      case 'float32':
       case 'float64':
         if (typeof value === 'string' && value.trim() !== '') {
           const numValue = parseFloat(value);
           return isNaN(numValue) ? value : numValue;
+        }
+        return value;
+
+      case 'bool':
+        if (typeof value === 'boolean') return value;
+        if (typeof value === 'string') {
+          const s = value.toLowerCase().trim();
+          if (s === 'true') return true;
+          if (s === 'false') return false;
+        }
+        return value;
+
+      case 'Tristate':
+        if (value === null || value === undefined || value === '') return null;
+        if (typeof value === 'boolean') return value;
+        if (typeof value === 'string') {
+          const s = value.toLowerCase().trim();
+          if (s === 'true') return true;
+          if (s === 'false') return false;
+          if (s === 'unset' || s === 'null') return null;
         }
         return value;
 
@@ -162,9 +195,28 @@ export class RcloneValueMapperService {
 
       case 'Encoding':
       case 'Bits':
-      case 'CommaSepList':
       case 'DumpFlags':
         return Array.isArray(value) ? value.join(',') : value;
+
+      case 'CommaSepList':
+        if (Array.isArray(value)) return value.join(',');
+        if (typeof value === 'string')
+          return value
+            .split(',')
+            .map(v => v.trim())
+            .filter(v => v)
+            .join(',');
+        return value;
+
+      case 'SpaceSepList':
+        if (Array.isArray(value)) return value.join(' ');
+        if (typeof value === 'string')
+          return value
+            .trim()
+            .split(/\s+/)
+            .filter(v => v)
+            .join(' ');
+        return value;
 
       default:
         // Duration, SizeSuffix, BwTimetable, string, etc. - keep as string

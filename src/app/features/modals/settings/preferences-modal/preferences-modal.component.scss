@@ -284,12 +284,6 @@
   border-top: 1px solid var(--card-shade-color);
 }
 
-// Global strong styling
-strong {
-  color: var(--window-fg-color);
-  font-weight: 500;
-}
-
 // Search Suggestions
 .search-suggestions {
   display: flex;
@@ -327,6 +321,15 @@ strong {
 // ============================================================================
 // Pending Changes Section
 // ============================================================================
+
+// Shared pill style for change value badges.
+%value-chip {
+  padding: var(--space-xxs) var(--space-sm);
+  border-radius: 999px;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
 .pending-changes-section {
   margin-top: var(--space-xl);
   background: var(--card-bg-color);
@@ -390,6 +393,7 @@ strong {
         strong {
           font-size: var(--font-size-base);
           font-weight: 500;
+          color: var(--window-fg-color);
         }
 
         .change-category {
@@ -410,10 +414,7 @@ strong {
         flex-shrink: 0;
 
         .boolean-value {
-          padding: var(--space-xxs) var(--space-sm);
-          border-radius: 999px;
-          font-size: var(--font-size-sm);
-          font-weight: 500;
+          @extend %value-chip;
           background: rgba(var(--warn-color-rgb), 0.1);
           color: var(--warn-color);
 
@@ -424,10 +425,7 @@ strong {
         }
 
         .array-value {
-          padding: var(--space-xxs) var(--space-sm);
-          border-radius: 999px;
-          font-size: var(--font-size-sm);
-          font-weight: 500;
+          @extend %value-chip;
           background: rgba(var(--accent-color-rgb), 0.1);
           color: var(--accent-color);
         }

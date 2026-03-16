@@ -206,16 +206,16 @@
     </div>
   </ng-template>
 
-  <div class="setting-item" id="{{ 'setting-' + option.Name }}">
-    @switch (option.Type) {
+  <div class="setting-item" id="{{ 'setting-' + mergedOption()?.Name }}">
+    @switch (mergedOption()?.Type) {
       @case ('bool') {
         <ng-container
-          *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+          *ngTemplateOutlet="settingInfo; context: { $implicit: mergedOption() }"
         ></ng-container>
         <div class="setting-control">
           <mat-slide-toggle
             [formControl]="$any(control())"
-            [attr.aria-label]="option.Name"
+            [attr.aria-label]="mergedOption()?.Name"
             (change)="commitValue()"
           >
             {{
@@ -229,7 +229,7 @@
       @case ('Time') {
         <div class="setting-full-width">
           <ng-container
-            *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+            *ngTemplateOutlet="settingInfo; context: { $implicit: mergedOption() }"
           ></ng-container>
           <div class="setting-control time-split">
             <mat-form-field appearance="fill" class="input-field">
@@ -237,9 +237,9 @@
               <input
                 matInput
                 [matDatepicker]="picker"
-                [formControl]="dateControl()"
+                [formControl]="$any(dateControl())"
                 [attr.aria-label]="
-                  'shared.settingControl.aria.date' | translate: { name: option.Name }
+                  'shared.settingControl.aria.date' | translate: { name: mergedOption()?.Name }
                 "
                 (dateChange)="commitValue()"
               />
@@ -252,9 +252,9 @@
               <input
                 matInput
                 [matTimepicker]="timePicker"
-                [formControl]="timeControl()"
+                [formControl]="$any(timeControl())"
                 [attr.aria-label]="
-                  'shared.settingControl.aria.time' | translate: { name: option.Name }
+                  'shared.settingControl.aria.time' | translate: { name: mergedOption()?.Name }
                 "
                 (blur)="commitValue()"
               />
@@ -267,13 +267,13 @@
       @case ('Tristate') {
         <div class="setting-full-width">
           <ng-container
-            *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+            *ngTemplateOutlet="settingInfo; context: { $implicit: mergedOption() }"
           ></ng-container>
           <div class="setting-control">
             <mat-form-field class="input-field" appearance="fill">
               <mat-select
                 [formControl]="$any(control())"
-                [attr.aria-label]="option.Name"
+                [attr.aria-label]="mergedOption()?.Name"
                 (selectionChange)="commitValue()"
               >
                 <mat-option [value]="null">{{
@@ -291,13 +291,13 @@
         </div>
       }
       @case ('string') {
-        @if (option.Examples && option.Examples.length > 0) {
+        @if (mergedOption()?.Examples && mergedOption()!.Examples!.length > 0) {
           <ng-container
-            *ngTemplateOutlet="standardSelect; context: { $implicit: option }"
+            *ngTemplateOutlet="standardSelect; context: { $implicit: mergedOption() }"
           ></ng-container>
         } @else {
           <ng-container
-            *ngTemplateOutlet="standardInput; context: { $implicit: option }"
+            *ngTemplateOutlet="standardInput; context: { $implicit: mergedOption() }"
           ></ng-container>
         }
       }
@@ -305,7 +305,7 @@
         <ng-container
           *ngTemplateOutlet="
             stepperInput;
-            context: { $implicit: option, inputType: 'number', inputStep: 1 }
+            context: { $implicit: mergedOption(), inputType: 'number', inputStep: 1 }
           "
         ></ng-container>
       }
@@ -313,7 +313,7 @@
         <ng-container
           *ngTemplateOutlet="
             stepperInput;
-            context: { $implicit: option, inputType: 'number', inputStep: 1 }
+            context: { $implicit: mergedOption(), inputType: 'number', inputStep: 1 }
           "
         ></ng-container>
       }
@@ -321,7 +321,7 @@
         <ng-container
           *ngTemplateOutlet="
             stepperInput;
-            context: { $implicit: option, inputType: 'number', inputStep: 1 }
+            context: { $implicit: mergedOption(), inputType: 'number', inputStep: 1 }
           "
         ></ng-container>
       }
@@ -329,7 +329,7 @@
         <ng-container
           *ngTemplateOutlet="
             stepperInput;
-            context: { $implicit: option, inputType: 'number', inputStep: 'any' }
+            context: { $implicit: mergedOption(), inputType: 'number', inputStep: 'any' }
           "
         ></ng-container>
       }
@@ -337,7 +337,10 @@
         <ng-container
           *ngTemplateOutlet="
             multiSelect;
-            context: { $implicit: option, optionsList: option.Examples || bitsFlags }
+            context: {
+              $implicit: mergedOption(),
+              optionsList: mergedOption()?.Examples || bitsFlags,
+            }
           "
         ></ng-container>
       }
@@ -345,7 +348,10 @@
         <ng-container
           *ngTemplateOutlet="
             multiSelect;
-            context: { $implicit: option, optionsList: option.Examples || encodingFlags }
+            context: {
+              $implicit: mergedOption(),
+              optionsList: mergedOption()?.Examples || encodingFlags,
+            }
           "
         ></ng-container>
       }
@@ -354,8 +360,8 @@
           *ngTemplateOutlet="
             multiSelect;
             context: {
-              $implicit: option,
-              optionsList: option.Examples || [
+              $implicit: mergedOption(),
+              optionsList: mergedOption()?.Examples || [
                 'headers',
                 'bodies',
                 'requests',
@@ -371,17 +377,23 @@
         ></ng-container>
       }
       @case ('SpaceSepList') {
-        <ng-container *ngTemplateOutlet="arrayInput; context: { $implicit: option }"></ng-container>
+        <ng-container
+          *ngTemplateOutlet="arrayInput; context: { $implicit: mergedOption() }"
+        ></ng-container>
       }
       @case ('stringArray') {
-        <ng-container *ngTemplateOutlet="arrayInput; context: { $implicit: option }"></ng-container>
+        <ng-container
+          *ngTemplateOutlet="arrayInput; context: { $implicit: mergedOption() }"
+        ></ng-container>
       }
       @case ('CommaSepList') {
-        <ng-container *ngTemplateOutlet="arrayInput; context: { $implicit: option }"></ng-container>
+        <ng-container
+          *ngTemplateOutlet="arrayInput; context: { $implicit: mergedOption() }"
+        ></ng-container>
       }
       @default {
         <ng-container
-          *ngTemplateOutlet="standardInput; context: { $implicit: option }"
+          *ngTemplateOutlet="standardInput; context: { $implicit: mergedOption() }"
         ></ng-container>
       }
     }
