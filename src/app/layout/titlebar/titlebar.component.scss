@@ -13,7 +13,10 @@
       display: flex;
       align-items: center;
       overflow: hidden;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      transition:
+        max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
       max-width: 40px;
       opacity: 1;
@@ -32,6 +35,7 @@
     gap: var(--space-xxs);
   }
 }
+
 .shortcut {
   margin-left: auto;
   opacity: 0.6;
@@ -43,15 +47,16 @@
   gap: var(--space-md);
   padding: var(--space-xs);
 }
+
 .theme-button {
   width: 50px;
   height: 50px;
   border-radius: 50%;
   color: var(--window-fg-color);
   display: flex;
-  align-items: end;
+  align-items: flex-end;
   position: relative;
-  justify-content: left;
+  justify-content: flex-start;
   background: transparent;
 
   &::before {
@@ -60,7 +65,7 @@
     inset: 0;
     border-radius: 50%;
     box-shadow: 0 0 0 2px var(--border-color);
-    transition: all 200ms ease-in-out;
+    transition: box-shadow 200ms ease-in-out;
     z-index: 0;
   }
 
@@ -77,6 +82,7 @@
     z-index: 1;
   }
 }
+
 .light::before {
   background: var(--gnome-light-1);
 }

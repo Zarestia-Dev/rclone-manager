@@ -4,6 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { ServeStartResponse, ServeListResponse, ServeListItem } from '@app/types';
 import { EventListenersService, normalizeFs } from '@app/services';
+import { getRemoteNameFromFs } from '../remote/utils/remote-config.utils';
 
 /**
  * Service for managing rclone serve instances
@@ -186,7 +187,10 @@ export class ServeManagementService extends TauriBaseService {
    * Get serves for a specific remote
    */
   getServesByRemote(fs: string): ServeListItem[] {
-    return this._runningServes().filter(serve => normalizeFs(serve.params?.fs) === fs);
+    const targetRemote = getRemoteNameFromFs(fs);
+    return this._runningServes().filter(
+      serve => getRemoteNameFromFs(serve.params?.fs) === targetRemote
+    );
   }
 
   /**
@@ -217,8 +221,7 @@ export class ServeManagementService extends TauriBaseService {
    */
   getServesForRemoteProfile(remoteName: string, profile?: string): ServeListItem[] {
     return this._runningServes().filter(serve => {
-      const fs = normalizeFs(serve.params?.fs);
-      const matchesRemote = fs.startsWith(remoteName);
+      const matchesRemote = getRemoteNameFromFs(serve.params?.fs) === remoteName;
       if (profile) {
         return matchesRemote && serve.profile === profile;
       }

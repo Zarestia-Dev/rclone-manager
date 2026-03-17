@@ -10,6 +10,7 @@ use crate::{
         json_helpers::unwrap_nested_options,
         logging::log::log_operation,
         rclone::endpoints::mount,
+        rclone::util::{extract_remote_name_from_fs, normalize_remote_name},
         types::{core::RcloneState, jobs::JobType, logs::LogLevel, remotes::ProfileParams},
     },
 };
@@ -134,7 +135,11 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         return Err(error_msg);
     }
 
-    if mounted_remotes.iter().any(|m| m.fs == params.remote_name) {
+    let requested_remote = normalize_remote_name(&params.remote_name);
+    if mounted_remotes
+        .iter()
+        .any(|m| extract_remote_name_from_fs(&m.fs) == requested_remote)
+    {
         info!("Remote {} already mounted", params.remote_name);
         return Ok(());
     }

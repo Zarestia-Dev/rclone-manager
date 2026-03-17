@@ -45,41 +45,46 @@ export interface UIOperationMetadata {
   icon: string;
   cssClass: string;
   description?: string;
+  typeLabel?: string;
   supportsVfs?: boolean;
   supportsProfiles?: boolean;
 }
 
 export const OPERATION_METADATA: Record<string, UIOperationMetadata> = {
   sync: {
-    label: 'dashboard.appDetail.sync',
+    label: 'dashboard.appDetail.syncSettings',
     icon: 'refresh',
     cssClass: 'primary',
     description: 'dashboard.appDetail.syncDesc',
+    typeLabel: 'dashboard.appDetail.sync',
     supportsProfiles: true,
   },
   bisync: {
-    label: 'dashboard.appDetail.bisync',
+    label: 'dashboard.appDetail.bisyncSettings',
     icon: 'right-left',
     cssClass: 'purple',
     description: 'dashboard.appDetail.bisyncDesc',
+    typeLabel: 'dashboard.appDetail.bisync',
     supportsProfiles: true,
   },
   move: {
-    label: 'dashboard.appDetail.move',
+    label: 'dashboard.appDetail.moveSettings',
     icon: 'move',
     cssClass: 'orange',
     description: 'dashboard.appDetail.moveDesc',
+    typeLabel: 'dashboard.appDetail.move',
     supportsProfiles: true,
   },
   copy: {
-    label: 'dashboard.appDetail.copy',
+    label: 'dashboard.appDetail.copySettings',
     icon: 'copy',
     cssClass: 'yellow',
     description: 'dashboard.appDetail.copyDesc',
+    typeLabel: 'dashboard.appDetail.copy',
     supportsProfiles: true,
   },
   mount: {
-    label: 'dashboard.appDetail.mount',
+    label: 'dashboard.appDetail.mountSettings',
     icon: 'mount',
     cssClass: 'accent',
     description: 'dashboard.appDetail.mountBehave',
@@ -87,7 +92,7 @@ export const OPERATION_METADATA: Record<string, UIOperationMetadata> = {
     supportsProfiles: true,
   },
   serve: {
-    label: 'dashboard.appDetail.serveConfigs',
+    label: 'dashboard.appDetail.serveSettings',
     icon: 'satellite-dish',
     cssClass: 'accent',
     description: 'dashboard.appDetail.serveBehave',

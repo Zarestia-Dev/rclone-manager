@@ -12,7 +12,7 @@
           "
         ></p>
         <small class="default-value">{{
-          'shared.settingControl.default' | translate: { value: getDisplayDefault() }
+          'shared.settingControl.default' | translate: { value: displayDefault() }
         }}</small>
       </div>
       @if (isValueChanged()) {
@@ -23,7 +23,7 @@
           [matTooltip]="'shared.settingControl.resetToDefault' | translate"
           [attr.aria-label]="'shared.settingControl.resetToDefault' | translate"
         >
-          <mat-icon svgIcon="refresh"></mat-icon>
+          <mat-icon svgIcon="refresh" />
         </button>
       }
     </div>
@@ -31,7 +31,7 @@
 
   <ng-template #standardInput let-opt let-inputType="inputType" let-inputStep="inputStep">
     <div class="setting-full-width">
-      <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }"></ng-container>
+      <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }" />
       <div class="setting-control">
         <mat-form-field class="input-field" appearance="fill">
           <input
@@ -56,7 +56,7 @@
   </ng-template>
 
   <ng-template #stepperInput let-opt let-inputType="inputType" let-inputStep="inputStep">
-    <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }"></ng-container>
+    <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }" />
     <div class="setting-control">
       <div class="stepper-container">
         <button
@@ -69,7 +69,7 @@
           (mouseleave)="stopHold()"
           (touchend)="stopHold()"
         >
-          <mat-icon svgIcon="remove"></mat-icon>
+          <mat-icon svgIcon="remove" />
         </button>
         <mat-form-field class="input-field stepper-input" appearance="fill">
           <input
@@ -97,7 +97,7 @@
           (mouseleave)="stopHold()"
           (touchend)="stopHold()"
         >
-          <mat-icon svgIcon="plus"></mat-icon>
+          <mat-icon svgIcon="plus" />
         </button>
       </div>
     </div>
@@ -105,7 +105,7 @@
 
   <ng-template #standardSelect let-opt>
     <div class="setting-full-width">
-      <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }"></ng-container>
+      <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }" />
       <div class="setting-control">
         <mat-form-field class="input-field" appearance="fill">
           <mat-select
@@ -135,7 +135,7 @@
 
   <ng-template #multiSelect let-opt let-optionsList="optionsList">
     <div class="setting-full-width">
-      <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }"></ng-container>
+      <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }" />
       <div class="setting-control">
         <mat-form-field class="input-field" appearance="fill">
           <mat-select
@@ -166,9 +166,10 @@
 
   <ng-template #arrayInput let-opt>
     <div class="setting-full-width">
-      <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }"></ng-container>
+      <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }" />
       <div class="array-items">
-        @for (itemControl of formArrayControls; track $index) {
+        <!-- FIX: uses formArrayControls() signal instead of getter — updates reactively in zoneless -->
+        @for (itemControl of formArrayControls(); track $index) {
           <div class="array-item">
             <mat-form-field appearance="fill" class="array-input">
               <input
@@ -193,13 +194,13 @@
                   'shared.settingControl.aria.removeItem' | translate: { name: opt.Name }
                 "
               >
-                <mat-icon svgIcon="trash"></mat-icon>
+                <mat-icon svgIcon="trash" />
               </button>
             </mat-form-field>
           </div>
         }
         <button mat-stroked-button class="add-array-item-btn" (click)="addArrayItem()">
-          <mat-icon svgIcon="plus"></mat-icon>
+          <mat-icon svgIcon="plus" />
           {{ 'shared.settingControl.addItem' | translate }}
         </button>
       </div>
@@ -209,9 +210,7 @@
   <div class="setting-item" id="{{ 'setting-' + mergedOption()?.Name }}">
     @switch (mergedOption()?.Type) {
       @case ('bool') {
-        <ng-container
-          *ngTemplateOutlet="settingInfo; context: { $implicit: mergedOption() }"
-        ></ng-container>
+        <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: mergedOption() }" />
         <div class="setting-control">
           <mat-slide-toggle
             [formControl]="$any(control())"
@@ -228,9 +227,7 @@
       }
       @case ('Time') {
         <div class="setting-full-width">
-          <ng-container
-            *ngTemplateOutlet="settingInfo; context: { $implicit: mergedOption() }"
-          ></ng-container>
+          <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: mergedOption() }" />
           <div class="setting-control time-split">
             <mat-form-field appearance="fill" class="input-field">
               <mat-label>{{ 'shared.settingControl.date' | translate }}</mat-label>
@@ -243,10 +240,9 @@
                 "
                 (dateChange)="commitValue()"
               />
-              <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
-              <mat-datepicker #picker></mat-datepicker>
+              <mat-datepicker-toggle matSuffix [for]="picker" />
+              <mat-datepicker #picker />
             </mat-form-field>
-
             <mat-form-field appearance="fill" class="input-field">
               <mat-label>{{ 'shared.settingControl.time' | translate }}</mat-label>
               <input
@@ -258,17 +254,15 @@
                 "
                 (blur)="commitValue()"
               />
-              <mat-timepicker-toggle matSuffix [for]="timePicker"></mat-timepicker-toggle>
-              <mat-timepicker #timePicker></mat-timepicker>
+              <mat-timepicker-toggle matSuffix [for]="timePicker" />
+              <mat-timepicker #timePicker />
             </mat-form-field>
           </div>
         </div>
       }
       @case ('Tristate') {
         <div class="setting-full-width">
-          <ng-container
-            *ngTemplateOutlet="settingInfo; context: { $implicit: mergedOption() }"
-          ></ng-container>
+          <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: mergedOption() }" />
           <div class="setting-control">
             <mat-form-field class="input-field" appearance="fill">
               <mat-select
@@ -291,23 +285,22 @@
         </div>
       }
       @case ('string') {
-        @if (mergedOption()?.Examples && mergedOption()!.Examples!.length > 0) {
+        @if (mergedOption()?.Examples?.length) {
           <ng-container
             *ngTemplateOutlet="standardSelect; context: { $implicit: mergedOption() }"
-          ></ng-container>
+          />
         } @else {
-          <ng-container
-            *ngTemplateOutlet="standardInput; context: { $implicit: mergedOption() }"
-          ></ng-container>
+          <ng-container *ngTemplateOutlet="standardInput; context: { $implicit: mergedOption() }" />
         }
       }
+      <!-- int / int64 / uint32 all share the same integer stepper -->
       @case ('int') {
         <ng-container
           *ngTemplateOutlet="
             stepperInput;
             context: { $implicit: mergedOption(), inputType: 'number', inputStep: 1 }
           "
-        ></ng-container>
+        />
       }
       @case ('int64') {
         <ng-container
@@ -315,7 +308,7 @@
             stepperInput;
             context: { $implicit: mergedOption(), inputType: 'number', inputStep: 1 }
           "
-        ></ng-container>
+        />
       }
       @case ('uint32') {
         <ng-container
@@ -323,7 +316,7 @@
             stepperInput;
             context: { $implicit: mergedOption(), inputType: 'number', inputStep: 1 }
           "
-        ></ng-container>
+        />
       }
       @case ('float64') {
         <ng-container
@@ -331,7 +324,7 @@
             stepperInput;
             context: { $implicit: mergedOption(), inputType: 'number', inputStep: 'any' }
           "
-        ></ng-container>
+        />
       }
       @case ('Bits') {
         <ng-container
@@ -342,7 +335,7 @@
               optionsList: mergedOption()?.Examples || bitsFlags,
             }
           "
-        ></ng-container>
+        />
       }
       @case ('Encoding') {
         <ng-container
@@ -353,7 +346,7 @@
               optionsList: mergedOption()?.Examples || encodingFlags,
             }
           "
-        ></ng-container>
+        />
       }
       @case ('DumpFlags') {
         <ng-container
@@ -374,27 +367,19 @@
               ],
             }
           "
-        ></ng-container>
+        />
       }
       @case ('SpaceSepList') {
-        <ng-container
-          *ngTemplateOutlet="arrayInput; context: { $implicit: mergedOption() }"
-        ></ng-container>
+        <ng-container *ngTemplateOutlet="arrayInput; context: { $implicit: mergedOption() }" />
       }
       @case ('stringArray') {
-        <ng-container
-          *ngTemplateOutlet="arrayInput; context: { $implicit: mergedOption() }"
-        ></ng-container>
+        <ng-container *ngTemplateOutlet="arrayInput; context: { $implicit: mergedOption() }" />
       }
       @case ('CommaSepList') {
-        <ng-container
-          *ngTemplateOutlet="arrayInput; context: { $implicit: mergedOption() }"
-        ></ng-container>
+        <ng-container *ngTemplateOutlet="arrayInput; context: { $implicit: mergedOption() }" />
       }
       @default {
-        <ng-container
-          *ngTemplateOutlet="standardInput; context: { $implicit: mergedOption() }"
-        ></ng-container>
+        <ng-container *ngTemplateOutlet="standardInput; context: { $implicit: mergedOption() }" />
       }
     }
   </div>

@@ -11,7 +11,7 @@
   [class.visible]="showFlatpakWarning()"
   role="status"
 >
-  <mat-icon svgIcon="circle-info" class="banner-icon"></mat-icon>
+  <mat-icon svgIcon="circle-info" class="accent"></mat-icon>
 
   <div class="banner-text-group">
     <span class="banner-message">{{ 'banners.flatpak.title' | translate }}</span>
@@ -27,7 +27,6 @@
     </span>
   </div>
 
-  <!-- Use mat-icon-button for keyboard accessibility -->
   <button
     class="hide-button"
     [matTooltip]="'banners.flatpak.dismissTooltip' | translate"

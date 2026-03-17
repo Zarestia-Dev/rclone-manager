@@ -17,8 +17,8 @@
           [primaryActionLabel]="primaryActionLabel()"
           [activeIcon]="activeIcon()"
           [primaryActions]="remote.primaryActions || []"
-          (remoteClick)="onRemoteSelected($event)"
-          (openInFiles)="onOpenInFiles($event)"
+          (remoteClick)="remoteSelected.emit($event)"
+          (openInFiles)="openInFiles.emit($event)"
           (startJob)="startJob.emit($event)"
           (stopJob)="stopJob.emit($event)"
         ></app-remote-card>

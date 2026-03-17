@@ -18,7 +18,7 @@
   <div class="card-container" [class.onboarding-state-enter]="animationState() === 'visible'">
     <div class="onboarding-header">
       <div class="page-indicators">
-        @for (card of cards(); track trackByIndex(i); let i = $index) {
+        @for (card of cards(); track $index; let i = $index) {
           <div
             class="indicator"
             [class.active]="i === currentCardIndex()"
@@ -155,12 +155,7 @@
             </button>
           }
           @case ('finish') {
-            <button
-              matButton="filled"
-              class="primary"
-              (click)="completeOnboarding()"
-              class="finish-button"
-            >
+            <button matButton="filled" class="primary" (click)="completeOnboarding()">
               <mat-icon svgIcon="circle-check"></mat-icon>
               {{ 'onboarding.actions.getStarted' | translate }}
             </button>

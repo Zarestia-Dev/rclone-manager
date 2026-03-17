@@ -8,11 +8,11 @@ mat-toolbar {
   height: 44px;
   padding: var(--banner-padding);
   font-weight: 600;
-  font-size: 16px;
-  gap: var(--space-sm, 8px);
+  font-size: var(--font-size-base);
+  gap: var(--space-sm);
 
   .banner-message {
-    font-size: 14px;
+    font-size: var(--font-size-sm);
   }
 
   .banner-subtitle {
@@ -30,10 +30,10 @@ mat-toolbar {
     background-color: var(--banner-bg-color);
     padding: 0 var(--space-md);
 
-    .banner-icon {
-      color: var(--accent-color);
-      height: 20px;
-      width: 20px;
+    mat-icon {
+      height: var(--icon-size-sm);
+      width: var(--icon-size-sm);
+      font-size: var(--icon-size-sm);
       opacity: 0.9;
     }
 
@@ -44,13 +44,11 @@ mat-toolbar {
       margin-inline: auto;
     }
 
-    // Replaces the bare mat-icon; reset Material button chrome to match original look
     .hide-button {
+      padding: 2px;
       color: var(--dim-color);
       border-radius: var(--radius-xs);
-      transition:
-        background-color 0.2s ease-in-out,
-        color 0.2s ease-in-out;
+      transition: var(--transition-fast);
 
       &:hover {
         background-color: var(--hover-bg-color);
@@ -71,8 +69,8 @@ mat-toolbar {
 
     .error-icon {
       color: white;
-      height: 20px;
-      width: 20px;
+      height: var(--icon-size-sm);
+      width: var(--icon-size-sm);
     }
 
     .banner-message {
@@ -82,7 +80,6 @@ mat-toolbar {
 
   // GPU-accelerated slide toggle animation
   &.slide-toggle-banner {
-    position: relative;
     transform: translateY(-100%);
     opacity: 0;
     visibility: hidden;

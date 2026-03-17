@@ -159,6 +159,15 @@ export function normalizeFs(fs: unknown): string {
 }
 
 /**
+ * Removes runtime backend instance suffixes from remote names.
+ * Example: Mega{Gyju7} -> Mega
+ */
+export function normalizeRemoteName(remote: string): string {
+  const trimmed = remote.trim().replace(/:$/, '');
+  return trimmed.replace(/\{[A-Za-z0-9_-]+\}$/, '');
+}
+
+/**
  * Safely extracts the remote name from an rclone fs value.
  * Handles local paths, Windows drive letters, and object formats.
  *
@@ -169,7 +178,7 @@ export function getRemoteNameFromFs(fs: unknown): string {
   const normalized = normalizeFs(fs);
   if (!normalized) return '';
   if (isLocalPath(normalized)) return 'local';
-  return normalized.split(':')[0];
+  return normalizeRemoteName(normalized.split(':')[0]);
 }
 
 /**

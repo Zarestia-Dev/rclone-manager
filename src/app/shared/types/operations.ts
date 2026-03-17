@@ -46,6 +46,7 @@ export interface SyncOperation {
   icon: string;
   cssClass: string;
   description?: string;
+  typeLabel?: string;
 }
 
 export interface QuickActionButton {

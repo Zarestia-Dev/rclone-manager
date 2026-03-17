@@ -27,7 +27,6 @@
 
   <!-- Scrollable Content Area -->
   <div class="content-area">
-    <!-- Remote List -->
     @if (filteredRemotes().length > 0) {
       <ul>
         @for (remote of filteredRemotes(); track remote.name) {
@@ -79,8 +78,7 @@
 
                   @if (remote.status.serve.active) {
                     <div
-                      class="status-dot serve"
-                      [class.active]="remote.status.serve.active"
+                      class="status-dot serve active"
                       [matTooltip]="statusService.getServeTooltip(remote)"
                       matTooltipShowDelay="500"
                       [attr.aria-label]="'sidebar.aria.serveStatus' | translate"
@@ -105,10 +103,8 @@
           </mat-card>
         }
       </ul>
-    }
-
-    <!-- No Remotes State -->
-    @if (filteredRemotes().length === 0) {
+    } @else {
+      <!-- No Remotes State -->
       <div class="no-remotes">
         <mat-icon svgIcon="server"></mat-icon>
         @if (searchTerm().trim()) {

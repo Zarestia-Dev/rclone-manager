@@ -229,8 +229,9 @@ export class AppDetailComponent {
     effect(onCleanup => {
       const isActive = this.operationActiveState();
       const groupName = this.currentGroupName();
+      const isSyncType = this.isSyncType();
 
-      if (isActive && groupName) {
+      if (isSyncType && isActive && groupName) {
         const timer = setInterval(() => {
           this.fetchGroupData(groupName);
         }, this.POLL_INTERVAL_MS);
@@ -404,9 +405,7 @@ export class AppDetailComponent {
     const type = this.currentOpType();
 
     if (metadata) {
-      const title = this.translate.instant('dashboard.appDetail.settingsLabel', {
-        op: this.translate.instant(metadata.label),
-      });
+      const title = this.translate.instant(metadata.label);
       this.addSettingsSections(sections, settings, type, title, metadata.icon, 'operation');
     }
 
@@ -451,18 +450,17 @@ export class AppDetailComponent {
       'shared'
     );
 
-    // Runtime remote overrides are relevant for sync types
-    if (this.isSyncType()) {
-      const runtimeMeta = OPERATION_METADATA['runtimeRemote'];
-      this.addSettingsSections(
-        sections,
-        settings,
-        'runtimeRemote',
-        this.translate.instant(runtimeMeta.label),
-        runtimeMeta.icon,
-        'shared'
-      );
-    }
+    // Runtime remote overrides are available for all operation types.
+    const runtimeMeta = OPERATION_METADATA['runtimeRemote'];
+    const runtimeRemoteIcon = this.iconService.getIconName(this.selectedRemote().type);
+    this.addSettingsSections(
+      sections,
+      settings,
+      'runtimeRemote',
+      this.translate.instant(runtimeMeta.label),
+      runtimeRemoteIcon,
+      'shared'
+    );
 
     return sections;
   });
@@ -477,7 +475,7 @@ export class AppDetailComponent {
     if (count > 1) {
       return this.translate.instant('dashboard.appDetail.profilesLabel', { op: opLabel });
     }
-    return this.translate.instant('dashboard.appDetail.settingsLabel', { op: opLabel });
+    return opLabel;
   });
 
   operationSettingsDescription = computed(() => {
@@ -563,19 +561,23 @@ export class AppDetailComponent {
       cssClass: metadata.cssClass,
       pathConfig,
       primaryButtonLabel: isLoading
-        ? this.translate.instant('dashboard.appDetail.starting', {
-            op: this.translate.instant(metadata.label),
-          })
-        : this.translate.instant('dashboard.appDetail.start', {
-            op: this.translate.instant(metadata.label),
-          }),
+        ? this.translate.instant(
+            type === 'mount' ? 'dashboard.appDetail.mount' : 'dashboard.appDetail.starting',
+            { op: this.translate.instant(metadata.label) }
+          )
+        : this.translate.instant(
+            type === 'mount' ? 'dashboard.appDetail.mount' : 'dashboard.appDetail.start',
+            { op: this.translate.instant(metadata.label) }
+          ),
       secondaryButtonLabel: isLoading
-        ? this.translate.instant('dashboard.appDetail.stopping', {
-            op: this.translate.instant(metadata.label),
-          })
-        : this.translate.instant('dashboard.appDetail.stop', {
-            op: this.translate.instant(metadata.label),
-          }),
+        ? this.translate.instant(
+            type === 'mount' ? 'dashboard.appDetail.unmounting' : 'dashboard.appDetail.stopping',
+            { op: this.translate.instant(metadata.label) }
+          )
+        : this.translate.instant(
+            type === 'mount' ? 'dashboard.appDetail.unmount' : 'dashboard.appDetail.stop',
+            { op: this.translate.instant(metadata.label) }
+          ),
       primaryIcon: metadata.icon,
       secondaryIcon: type === 'mount' ? 'eject' : 'stop',
       actionInProgress: (actionType as RemoteAction) || undefined,

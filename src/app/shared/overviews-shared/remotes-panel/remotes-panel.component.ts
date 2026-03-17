@@ -1,10 +1,9 @@
 import { NgClass } from '@angular/common';
-import { Component, computed, input, inject, output } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { RemoteCardComponent } from '../remote-card/remote-card.component';
 import { AppTab, PrimaryActionType, Remote, RemoteAction, RemoteActionProgress } from '@app/types';
-import { IconService } from '@app/services';
 
 @Component({
   selector: 'app-remotes-panel',
@@ -30,40 +29,28 @@ export class RemotesPanelComponent {
     profileName?: string;
   }>();
 
-  readonly iconService = inject(IconService);
+  readonly count = computed(() => this.remotes().length);
 
-  count = computed(() => this.remotes().length);
-
-  hasActiveRemotes = computed(() =>
+  readonly hasActiveRemotes = computed(() =>
     this.remotes().some(
       remote =>
         remote.status.mount.active ||
         remote.status.sync.active ||
         remote.status.copy.active ||
         remote.status.move.active ||
-        remote.status.bisync.active
+        remote.status.bisync.active ||
+        remote.status.serve.active
     )
   );
 
-  panelClass = computed(() =>
+  readonly panelClass = computed(() =>
     this.hasActiveRemotes() ? 'active-remotes-panel' : 'inactive-remotes-panel'
   );
 
-  iconClass = computed(() => (this.hasActiveRemotes() ? 'active-icon' : 'inactive-icon'));
-
-  onRemoteSelected(remote: Remote): void {
-    this.remoteSelected.emit(remote);
-  }
-
-  onOpenInFiles(remoteName: string): void {
-    this.openInFiles.emit(remoteName);
-  }
+  readonly iconClass = computed(() => (this.hasActiveRemotes() ? 'active-icon' : 'inactive-icon'));
 
   getActionState(remoteName: string): RemoteAction | null {
     const actions = this.actionInProgress()[remoteName];
-    if (Array.isArray(actions) && actions.length > 0) {
-      return actions[0].type;
-    }
-    return null;
+    return Array.isArray(actions) && actions.length > 0 ? actions[0].type : null;
   }
 }

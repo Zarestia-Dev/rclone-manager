@@ -10,9 +10,12 @@ use crate::{
         get_cached_mounted_remotes, get_cached_remotes, get_cached_serves, get_settings,
     },
     t,
-    utils::types::{
-        jobs::{JobInfo, JobType},
-        remotes::{MountedRemote, ServeInstance},
+    utils::{
+        rclone::util::{extract_remote_name_from_fs, normalize_remote_name},
+        types::{
+            jobs::{JobInfo, JobType},
+            remotes::{MountedRemote, ServeInstance},
+        },
     },
 };
 
@@ -231,7 +234,7 @@ fn create_serve_submenu<R: Runtime>(
         .filter(|configs| !configs.is_empty());
 
     let mut items: Vec<Box<dyn tauri::menu::IsMenuItem<R>>> = vec![];
-    let remote_fs_prefix = format!("{}:", remote);
+    let target_remote = normalize_remote_name(remote);
 
     if let Some(configs) = serve_configs {
         for (profile_name, _config) in configs {
@@ -241,7 +244,7 @@ fn create_serve_submenu<R: Runtime>(
                 let fs = serve.params["fs"].as_str().unwrap_or("");
                 let serve_profile = serve.profile.as_deref().unwrap_or("");
 
-                (fs.starts_with(&remote_fs_prefix) || fs == remote) && serve_profile == profile_name
+                extract_remote_name_from_fs(fs) == target_remote && serve_profile == profile_name
             });
 
             let (action_id, label) = if let Some(serve) = active_serve {
@@ -397,10 +400,7 @@ pub async fn create_tray_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<M
             let active_mount_count = mounted_remotes
                 .iter()
                 .filter(|mounted| {
-                    let remote_name = remote.trim_end_matches(':');
-                    let mounted_name = mounted.fs.trim_end_matches(':');
-                    mounted_name == remote_name
-                        || mounted_name.starts_with(&format!("{remote_name}:"))
+                    extract_remote_name_from_fs(&mounted.fs) == normalize_remote_name(&remote)
                 })
                 .count();
 
@@ -426,12 +426,12 @@ pub async fn create_tray_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<M
 
             let total_job_profiles = sync_count + copy_count + move_count + bisync_count;
 
-            let remote_fs_prefix = format!("{}:", remote);
+            let target_remote = normalize_remote_name(&remote);
             let active_serves_for_remote: Vec<&ServeInstance> = all_serves
                 .iter()
                 .filter(|serve| {
                     let fs = serve.params["fs"].as_str().unwrap_or("");
-                    fs.starts_with(&remote_fs_prefix) || fs == remote
+                    extract_remote_name_from_fs(fs) == target_remote
                 })
                 .collect();
 

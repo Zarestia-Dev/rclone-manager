@@ -24,7 +24,7 @@
     --mat-form-field-container-vertical-padding: 10px;
 
     mat-icon {
-      transition: transform 0.2s ease;
+      transition: transform var(--transition-fast);
     }
   }
 

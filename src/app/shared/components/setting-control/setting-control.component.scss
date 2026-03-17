@@ -1,6 +1,5 @@
 .setting {
   display: flex;
-  flex-direction: row;
   align-items: center;
   justify-content: space-between;
   width: 100%;
@@ -39,6 +38,7 @@
       white-space: normal;
       font-feature-settings: "liga" 0;
 
+      // Override the block strong style for inline use inside help text
       strong {
         font-weight: 600;
         color: var(--window-fg-color);
@@ -68,7 +68,6 @@
           border-bottom-color: var(--primary-color);
           opacity: 0.8;
         }
-
         &:focus {
           outline: 2px solid var(--primary-color);
           outline-offset: 2px;
@@ -94,7 +93,6 @@
     .default-value {
       color: var(--secondary-text-color);
     }
-
     .type-info {
       color: var(--warning-color);
     }
@@ -135,7 +133,7 @@
     .stepper-container {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: var(--space-sm); // was hardcoded 8px
     }
 
     .stepper-input.mat-mdc-form-field {
@@ -143,8 +141,6 @@
       flex-grow: 0;
 
       input {
-        display: flex;
-        justify-content: center;
         text-align: center;
       }
 
@@ -153,6 +149,7 @@
       }
     }
 
+    // Hide native number spinners — custom stepper buttons are used instead
     input[type="number"]::-webkit-outer-spin-button,
     input[type="number"]::-webkit-inner-spin-button {
       -webkit-appearance: none;
@@ -181,7 +178,6 @@
 
     button[matSuffix] {
       color: var(--warn-color);
-
       &:hover {
         background: rgba(var(--warn-color-rgb), 0.1);
       }
@@ -191,13 +187,11 @@
 
 @media (max-width: 540px) {
   .setting-item {
-    padding: var(--space-md) !important;
+    padding: var(--space-md);
     flex-direction: column;
     text-align: center;
 
     .setting-info {
-      flex: 1 !important;
-
       p,
       strong {
         font-size: var(--font-size-sm);
@@ -208,10 +202,8 @@
         line-height: 1.5;
 
         code {
-          font-size: var(--font-size-xs);
           padding: 2px 4px;
         }
-
         a {
           display: inline-block;
           max-width: 100%;
@@ -221,7 +213,7 @@
 
     .setting-control {
       width: 100%;
-      flex-shrink: 1 !important;
+      flex-shrink: 1;
 
       .stepper-container {
         justify-content: center;
@@ -229,7 +221,7 @@
     }
 
     .setting-full-width {
-      width: 100% !important;
+      width: 100%;
     }
   }
 }

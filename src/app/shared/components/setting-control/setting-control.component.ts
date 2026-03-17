@@ -9,14 +9,13 @@ import {
   output,
   computed,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { NgTemplateOutlet } from '@angular/common';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import {
   AbstractControl,
   ControlValueAccessor,
   FormArray,
   FormControl,
-  FormsModule,
   NG_VALUE_ACCESSOR,
   ReactiveFormsModule,
   ValidatorFn,
@@ -32,7 +31,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule, provideNativeDateAdapter } from '@angular/material/core';
 import { MatTimepickerModule } from '@angular/material/timepicker';
-import { ScrollingModule } from '@angular/cdk/scrolling';
 import { RcConfigOption, SENSITIVE_KEYS } from '@app/types';
 import { Subscription, map } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -46,11 +44,9 @@ import {
 
 @Component({
   selector: 'app-setting-control',
-  standalone: true,
   imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    FormsModule,
+    NgTemplateOutlet, // replaces CommonModule — only thing the template actually used
+    ReactiveFormsModule, // FormsModule removed — component is fully reactive
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
@@ -61,20 +57,16 @@ import {
     MatDatepickerModule,
     MatNativeDateModule,
     MatTimepickerModule,
-    ScrollingModule,
+    // ScrollingModule removed — CDK virtual scroll is not used in this template
     LineBreaksPipe,
     RcloneOptionTranslatePipe,
     TranslateModule,
   ],
   templateUrl: './setting-control.component.html',
-  styleUrls: ['./setting-control.component.scss'],
+  styleUrl: './setting-control.component.scss', // singular styleUrl (Angular 19+)
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: SettingControlComponent,
-      multi: true,
-    },
+    { provide: NG_VALUE_ACCESSOR, useExisting: SettingControlComponent, multi: true },
     provideNativeDateAdapter(),
   ],
 })
@@ -85,7 +77,7 @@ export class SettingControlComponent implements ControlValueAccessor {
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly destroyRef = inject(DestroyRef);
 
-  // Inputs using modern signals
+  // Inputs
   readonly option = input<RcConfigOption | null>(null);
   readonly optionOverrides = input<Record<string, Partial<RcConfigOption>>>({});
   readonly provider = input<string | null>(null);
@@ -95,10 +87,36 @@ export class SettingControlComponent implements ControlValueAccessor {
   readonly valueChanged = output<boolean>();
 
   // Reactive state
-  readonly restrictMode = signal<boolean>(true);
+  readonly restrictMode = signal(true);
   readonly control = signal<AbstractControl | null>(null);
   readonly dateControl = signal<FormControl<Date | null>>(new FormControl<Date | null>(null));
   readonly timeControl = signal<FormControl<Date | null>>(new FormControl<Date | null>(null));
+
+  // Replaces the plain getter — signal updated on add/remove/create so zoneless CD works
+  readonly formArrayControls = signal<FormControl[]>([]);
+
+  // FIX: was a plain method reading ctrl.value (non-signal). Now a signal set in subscribeToChanges()
+  // so the reset button appears/disappears reactively in a zoneless app.
+  readonly isValueChanged = signal(false);
+
+  // FIX: depends only on restrictMode() + mergedOption(), both signals → computed is correct here
+  readonly isSensitiveField = computed(() => {
+    if (!this.restrictMode()) return false;
+    const opt = this.mergedOption();
+    if (!opt) return false;
+    if (opt.IsPassword || opt.Sensitive) return true;
+    const name = opt.Name.toLowerCase();
+    return SENSITIVE_KEYS.some(key => name.includes(key.toLowerCase()));
+  });
+
+  // FIX: depends only on uiDefaultValue() (a computed) → computed is correct here
+  readonly displayDefault = computed(() => {
+    const val = this.uiDefaultValue();
+    if (val === null || val === undefined || val === '') {
+      return this.translate.instant('shared.settingControl.none');
+    }
+    return Array.isArray(val) ? val.join(', ') || '[]' : String(val);
+  });
 
   // Constants
   private readonly DEFAULT_OVERRIDES: Record<string, Partial<RcConfigOption>> = {
@@ -145,18 +163,17 @@ export class SettingControlComponent implements ControlValueAccessor {
   readonly mergedOption = computed(() => {
     const opt = this.option();
     if (!opt) return null;
-    const builtIn = this.DEFAULT_OVERRIDES[opt.Name] || {};
-    const caller = this.optionOverrides()[opt.Name] || {};
+    const builtIn = this.DEFAULT_OVERRIDES[opt.Name] ?? {};
+    const caller = this.optionOverrides()[opt.Name] ?? {};
     return { ...opt, ...builtIn, ...caller } as RcConfigOption;
   });
 
   readonly uiDefaultValue = computed(() => {
     const opt = this.mergedOption();
-    if (!opt) return '';
-    return this.calculateDefaultValue(opt);
+    return opt ? this.calculateDefaultValue(opt) : '';
   });
 
-  // Hold functionality state
+  // Hold functionality
   private holdInterval: ReturnType<typeof setInterval> | null = null;
   private holdTimeout: ReturnType<typeof setTimeout> | null = null;
   private readonly HOLD_DELAY = 400;
@@ -164,10 +181,10 @@ export class SettingControlComponent implements ControlValueAccessor {
 
   // ControlValueAccessor hooks
   private onChange: (value: unknown) => void = () => {
-    /* Placeholder */
+    /* empty */
   };
   private onTouched: () => void = () => {
-    /* Placeholder */
+    /* empty */
   };
   private controlSubscriptions = new Subscription();
   private pendingWriteValue: unknown = undefined;
@@ -182,11 +199,8 @@ export class SettingControlComponent implements ControlValueAccessor {
       )
       .subscribe(val => this.restrictMode.set(val));
 
-    // React to option changes by creating/updating the control
     effect(() => {
-      if (this.mergedOption()) {
-        this.createControl();
-      }
+      if (this.mergedOption()) this.createControl();
     });
 
     this.destroyRef.onDestroy(() => {
@@ -222,12 +236,7 @@ export class SettingControlComponent implements ControlValueAccessor {
     return str
       .split(delimiter)
       .map(v => v.trim())
-      .filter(v => v);
-  }
-
-  isValueChanged(): boolean {
-    const ctrl = this.control();
-    return ctrl ? !this.valuesEqual(ctrl.value, this.uiDefaultValue()) : false;
+      .filter(Boolean);
   }
 
   private valuesEqual(current: unknown, defaultVal: unknown): boolean {
@@ -235,7 +244,9 @@ export class SettingControlComponent implements ControlValueAccessor {
       const currArr = Array.isArray(current) ? current : [];
       const defArr = Array.isArray(defaultVal) ? defaultVal : [];
       if (currArr.length !== defArr.length) return false;
-      return [...currArr].sort().every((val, idx) => val === [...defArr].sort()[idx]);
+      const sortedCurr = [...currArr].sort();
+      const sortedDef = [...defArr].sort();
+      return sortedCurr.every((val, idx) => val === sortedDef[idx]);
     }
 
     const isEmpty = (v: unknown): boolean => v === null || v === undefined || v === '';
@@ -254,44 +265,35 @@ export class SettingControlComponent implements ControlValueAccessor {
     if (!ctrl) return;
 
     const defaultValue = this.uiDefaultValue();
+
+    // FIX: FormArray branch now returns early — calling setValue() after clear()+push() was a
+    // double-write bug: controls were already populated, then setValue() fired again unnecessarily.
     if (ctrl instanceof FormArray) {
-      const defaultArr = Array.isArray(defaultValue)
-        ? (defaultValue as unknown[])
-        : ([] as unknown[]);
+      const defaultArr = Array.isArray(defaultValue) ? (defaultValue as unknown[]) : [];
       ctrl.clear({ emitEvent: false });
-      defaultArr.forEach((val: unknown) => ctrl.push(new FormControl(val), { emitEvent: false }));
+      defaultArr.forEach(val => ctrl.push(new FormControl(val), { emitEvent: false }));
+      this.syncFormArrayControls(ctrl);
+      this.commitValue();
+      return;
     }
+
     ctrl.setValue(defaultValue);
     this.commitValue();
   }
 
-  getDisplayDefault(): string {
-    const val = this.uiDefaultValue();
-    if (val === null || val === undefined || val === '') {
-      return this.translate.instant('shared.settingControl.none');
-    }
-    return Array.isArray(val) ? val.join(', ') || '[]' : val.toString();
+  isSensitiveClipboardEvent(e: ClipboardEvent): boolean {
+    return this.isSensitiveField() && (e.type === 'copy' || e.type === 'cut');
   }
 
-  isSensitiveField(): boolean {
-    if (!this.restrictMode()) return false;
-
-    const opt = this.mergedOption();
-    if (!opt) return false;
-
-    // Use explicit flags if available
-    if (opt.IsPassword || opt.Sensitive) return true;
-
-    // Fallback to name-based detection
-    const name = opt.Name.toLowerCase();
-    return SENSITIVE_KEYS.some(key => name.includes(key.toLowerCase()));
+  preventClipboardOnSensitive(e: ClipboardEvent): void {
+    if (this.isSensitiveClipboardEvent(e)) e.preventDefault();
   }
 
   //
   // ─── CONTROL VALUE ACCESSOR ──────────────────────────────────────────────────
   //
 
-  writeValue(value: any): void {
+  writeValue(value: unknown): void {
     const ctrl = this.control();
     if (!ctrl) {
       this.pendingWriteValue = value;
@@ -305,6 +307,7 @@ export class SettingControlComponent implements ControlValueAccessor {
       if (ctrl.length !== arrayValue.length) {
         ctrl.clear({ emitEvent: false });
         arrayValue.forEach(v => ctrl.push(new FormControl(v), { emitEvent: false }));
+        this.syncFormArrayControls(ctrl);
       } else {
         arrayValue.forEach((v, i) => ctrl.at(i).setValue(v, { emitEvent: false }));
       }
@@ -316,7 +319,7 @@ export class SettingControlComponent implements ControlValueAccessor {
     }
   }
 
-  private prepareValueForControl(value: any): any {
+  private prepareValueForControl(value: unknown): unknown {
     const opt = this.mergedOption();
     if (!opt) return value;
 
@@ -353,10 +356,10 @@ export class SettingControlComponent implements ControlValueAccessor {
     this.valueCommit.emit();
   }
 
-  registerOnChange(fn: any): void {
+  registerOnChange(fn: (value: unknown) => void): void {
     this.onChange = fn;
   }
-  registerOnTouched(fn: any): void {
+  registerOnTouched(fn: () => void): void {
     this.onTouched = fn;
   }
 
@@ -376,12 +379,12 @@ export class SettingControlComponent implements ControlValueAccessor {
 
     if (isArray) {
       const initial = this.getInitialArrayValue(opt);
-      this.control.set(
-        new FormArray(
-          initial.map(v => new FormControl(v)),
-          validators
-        )
+      const formArray = new FormArray(
+        initial.map(v => new FormControl(v)),
+        validators
       );
+      this.control.set(formArray);
+      this.syncFormArrayControls(formArray);
     } else {
       this.control.set(new FormControl(this.getInitialValue(opt), validators));
     }
@@ -395,6 +398,11 @@ export class SettingControlComponent implements ControlValueAccessor {
     }
   }
 
+  // FIX: keeps formArrayControls signal in sync so zoneless CD sees the update
+  private syncFormArrayControls(ctrl: FormArray): void {
+    this.formArrayControls.set([...ctrl.controls] as FormControl[]);
+  }
+
   private getInitialArrayValue(opt: RcConfigOption): string[] {
     if (opt.Type === 'CommaSepList') return this.splitToArray(opt.ValueStr || opt.DefaultStr, ',');
     if (opt.Type === 'SpaceSepList')
@@ -402,14 +410,11 @@ export class SettingControlComponent implements ControlValueAccessor {
     return (Array.isArray(opt.Value) ? opt.Value : []).filter((v): v is string => !!v);
   }
 
-  private getInitialValue(opt: RcConfigOption): any {
+  private getInitialValue(opt: RcConfigOption): unknown {
     if (opt.Type === 'bool')
       return opt.Value === true || String(opt.Value).toLowerCase() === 'true';
     if (opt.Type === 'Encoding' || opt.Type === 'Bits') {
-      return (opt.Value || opt.DefaultStr || '')
-        .toString()
-        .split(',')
-        .filter((v: string) => v);
+      return (opt.Value || opt.DefaultStr || '').toString().split(',').filter(Boolean);
     }
     if (this.CONVERTIBLE_TYPES.includes(opt.Type)) {
       return typeof opt.Value === 'number'
@@ -428,7 +433,10 @@ export class SettingControlComponent implements ControlValueAccessor {
       ctrl.valueChanges.subscribe(value => {
         this.onChange(this.prepareValueForBackend(value));
         this.onTouched();
-        this.valueChanged.emit(this.isValueChanged());
+        // FIX: update the signal so the reset button reacts in zoneless
+        const changed = !this.valuesEqual(ctrl.value, this.uiDefaultValue());
+        this.isValueChanged.set(changed);
+        this.valueChanged.emit(changed);
         if (this.mergedOption()?.Type === 'Time') this.updateSplitFromControl(value);
       })
     );
@@ -452,7 +460,7 @@ export class SettingControlComponent implements ControlValueAccessor {
     }
   }
 
-  private updateSplitFromControl(value: any): void {
+  private updateSplitFromControl(value: unknown): void {
     if (!value || typeof value !== 'string') {
       this.dateControl().setValue(null, { emitEvent: false });
       this.timeControl().setValue(null, { emitEvent: false });
@@ -463,9 +471,9 @@ export class SettingControlComponent implements ControlValueAccessor {
     if (!match) return;
 
     const [y, m, d] = match[1].split('-').map(Number);
-    const timeParts = match[2].match(/^(\d{2}):(\d{2})/)?.map(Number) || [0, 0, 0];
-    const hh = timeParts[1];
-    const mm = timeParts[2];
+    const timeMatch = match[2].match(/^(\d{2}):(\d{2})/);
+    const hh = timeMatch ? Number(timeMatch[1]) : 0;
+    const mm = timeMatch ? Number(timeMatch[2]) : 0;
 
     this.dateControl().setValue(new Date(y, m - 1, d), { emitEvent: false });
     this.timeControl().setValue(new Date(1970, 0, 1, hh, mm), { emitEvent: false });
@@ -482,19 +490,16 @@ export class SettingControlComponent implements ControlValueAccessor {
     const d = this.dateControl().value;
     const t = this.timeControl().value;
     if (!(d instanceof Date) || isNaN(d.getTime())) return null;
-
     const pad = (n: number): string => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(t?.getHours() || 0)}:${pad(t?.getMinutes() || 0)}:00Z`;
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(t?.getHours() ?? 0)}:${pad(t?.getMinutes() ?? 0)}:00Z`;
   }
 
-  private prepareValueForBackend(value: any): any {
+  private prepareValueForBackend(value: unknown): unknown {
     const opt = this.mergedOption();
     if (!opt) return value;
 
-    // Delegate to mapper service for standard types
     let machineValue = this.valueMapper.humanToMachine(value, opt.Type);
 
-    // Special handling for FileMode to match rclone's numeric expectation if it's a string
     if (opt.Type === 'FileMode' && typeof machineValue === 'string') {
       const parsed = parseInt(machineValue, 8);
       if (!isNaN(parsed)) machineValue = parsed;
@@ -502,6 +507,10 @@ export class SettingControlComponent implements ControlValueAccessor {
 
     return machineValue;
   }
+
+  //
+  // ─── STEPPER ─────────────────────────────────────────────────────────────────
+  //
 
   stepChange(direction: 1 | -1, step: number | 'any' = 1, commit = true): void {
     const ctrl = this.control();
@@ -518,24 +527,20 @@ export class SettingControlComponent implements ControlValueAccessor {
     const type = this.mergedOption()?.Type;
     if (!type || !['int', 'int64', 'int32', 'uint', 'uint32', 'uint64'].includes(type)) return;
 
-    if (
-      [
-        'Backspace',
-        'Delete',
-        'Tab',
-        'Escape',
-        'Enter',
-        'Home',
-        'End',
-        'ArrowLeft',
-        'ArrowRight',
-        'ArrowUp',
-        'ArrowDown',
-      ].includes(event.key) ||
-      event.ctrlKey ||
-      event.metaKey
-    )
-      return;
+    const navigationKeys = [
+      'Backspace',
+      'Delete',
+      'Tab',
+      'Escape',
+      'Enter',
+      'Home',
+      'End',
+      'ArrowLeft',
+      'ArrowRight',
+      'ArrowUp',
+      'ArrowDown',
+    ];
+    if (navigationKeys.includes(event.key) || event.ctrlKey || event.metaKey) return;
 
     if (event.key === '-' && !type.startsWith('uint')) {
       const input = event.target as HTMLInputElement;
@@ -561,32 +566,55 @@ export class SettingControlComponent implements ControlValueAccessor {
     if (commit) this.commitValue();
   }
 
+  //
+  // ─── ARRAY CONTROLS ──────────────────────────────────────────────────────────
+  //
+
+  addArrayItem(): void {
+    const ctrl = this.control();
+    if (!(ctrl instanceof FormArray)) return;
+    ctrl.push(new FormControl(''));
+    this.syncFormArrayControls(ctrl); // FIX: keeps signal in sync for zoneless
+  }
+
+  removeArrayItem(i: number): void {
+    const ctrl = this.control();
+    if (!(ctrl instanceof FormArray)) return;
+    ctrl.removeAt(i);
+    this.syncFormArrayControls(ctrl); // FIX: keeps signal in sync for zoneless
+    this.commitValue();
+  }
+
+  //
+  // ─── VALIDATORS ──────────────────────────────────────────────────────────────
+  //
+
   private getValidators(opt: RcConfigOption): ValidatorFn[] {
     const validators: ValidatorFn[] = [];
     if (opt.Required) validators.push(Validators.required);
 
-    const registry = this.validatorRegistry;
+    const r = this.validatorRegistry;
     const vMap: Record<string, () => ValidatorFn> = {
-      stringArray: () => registry.arrayValidator(),
-      CommaSepList: () => registry.arrayValidator(),
-      SpaceSepList: () => registry.arrayValidator(),
-      int: () => registry.integerValidator(opt.DefaultStr),
-      int64: () => registry.integerValidator(opt.DefaultStr),
-      int32: () => registry.integerValidator(opt.DefaultStr),
-      uint: () => registry.integerValidator(opt.DefaultStr),
-      uint32: () => registry.integerValidator(opt.DefaultStr),
-      uint64: () => registry.integerValidator(opt.DefaultStr),
-      float: () => registry.floatValidator(opt.DefaultStr),
-      float32: () => registry.floatValidator(opt.DefaultStr),
-      float64: () => registry.floatValidator(opt.DefaultStr),
-      Duration: () => registry.durationValidator(opt.DefaultStr),
-      SizeSuffix: () => registry.sizeSuffixValidator(opt.DefaultStr),
-      BwTimetable: () => registry.bwTimetableValidator(opt.DefaultStr),
-      FileMode: () => registry.fileModeValidator(opt.DefaultStr),
-      Time: () => registry.timeValidator(opt.DefaultStr),
-      Bits: () => registry.arrayValidator(),
-      Encoding: () => registry.arrayValidator(),
-      Tristate: () => registry.tristateValidator(),
+      stringArray: () => r.arrayValidator(),
+      CommaSepList: () => r.arrayValidator(),
+      SpaceSepList: () => r.arrayValidator(),
+      int: () => r.integerValidator(opt.DefaultStr),
+      int64: () => r.integerValidator(opt.DefaultStr),
+      int32: () => r.integerValidator(opt.DefaultStr),
+      uint: () => r.integerValidator(opt.DefaultStr),
+      uint32: () => r.integerValidator(opt.DefaultStr),
+      uint64: () => r.integerValidator(opt.DefaultStr),
+      float: () => r.floatValidator(opt.DefaultStr),
+      float32: () => r.floatValidator(opt.DefaultStr),
+      float64: () => r.floatValidator(opt.DefaultStr),
+      Duration: () => r.durationValidator(opt.DefaultStr),
+      SizeSuffix: () => r.sizeSuffixValidator(opt.DefaultStr),
+      BwTimetable: () => r.bwTimetableValidator(opt.DefaultStr),
+      FileMode: () => r.fileModeValidator(opt.DefaultStr),
+      Time: () => r.timeValidator(opt.DefaultStr),
+      Bits: () => r.arrayValidator(),
+      Encoding: () => r.arrayValidator(),
+      Tristate: () => r.tristateValidator(),
     };
 
     if (vMap[opt.Type]) validators.push(vMap[opt.Type]());
@@ -600,28 +628,10 @@ export class SettingControlComponent implements ControlValueAccessor {
       'SpaceSepList',
     ].includes(opt.Type);
     if (opt.Examples && !isMultiSelect) {
-      validators.push(registry.enumValidator(opt.Examples.map(e => e.Value)));
+      validators.push(r.enumValidator(opt.Examples.map(e => e.Value)));
     }
 
     return validators;
-  }
-
-  get formArrayControls(): FormControl[] {
-    const ctrl = this.control();
-    return ctrl instanceof FormArray ? (ctrl.controls as FormControl[]) : [];
-  }
-
-  addArrayItem(): void {
-    const ctrl = this.control();
-    if (ctrl instanceof FormArray) ctrl.push(new FormControl(''));
-  }
-
-  removeArrayItem(i: number): void {
-    const ctrl = this.control();
-    if (ctrl instanceof FormArray) {
-      ctrl.removeAt(i);
-      this.commitValue();
-    }
   }
 
   getControlError(): string | null {
@@ -639,12 +649,8 @@ export class SettingControlComponent implements ControlValueAccessor {
       'enum',
     ];
     for (const key of keys) {
-      if (errors[key]?.message) return errors[key].message;
+      if (errors[key]?.message) return errors[key].message!;
     }
     return this.translate.instant('shared.settingControl.errors.invalidValue');
-  }
-
-  preventClipboardOnSensitive(e: ClipboardEvent): void {
-    if (this.isSensitiveField() && (e.type === 'copy' || e.type === 'cut')) e.preventDefault();
   }
 }

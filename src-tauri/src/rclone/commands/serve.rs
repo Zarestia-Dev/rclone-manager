@@ -13,6 +13,7 @@ use crate::{
         },
         logging::log::log_operation,
         rclone::endpoints::serve,
+        rclone::util::{extract_remote_name_from_fs, normalize_remote_name},
         types::{core::RcloneState, logs::LogLevel, remotes::ProfileParams},
     },
 };
@@ -136,12 +137,15 @@ pub async fn start_serve(
 
     // Check for duplicates
     let serves = backend_manager.remote_cache.get_serves().await;
+    let requested_remote = normalize_remote_name(&params.remote_name);
     if serves.iter().any(|s| {
         let fs_match = match s.params.get("fs") {
-            Some(Value::String(fs)) => fs == &params.remote_name,
-            Some(Value::Object(fs)) => {
-                fs.get("_name").and_then(|v| v.as_str()) == Some(&params.remote_name)
-            }
+            Some(Value::String(fs)) => extract_remote_name_from_fs(fs) == requested_remote,
+            Some(Value::Object(fs)) => fs
+                .get("_name")
+                .and_then(|v| v.as_str())
+                .map(normalize_remote_name)
+                .is_some_and(|name| name == requested_remote),
             _ => false,
         };
         let profile_match = s.profile == params.profile;

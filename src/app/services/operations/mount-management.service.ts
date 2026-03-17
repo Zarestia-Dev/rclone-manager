@@ -4,6 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { MountedRemote, Origin } from '@app/types';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
+import { getRemoteNameFromFs } from '../remote/utils/remote-config.utils';
 
 /**
  * Service for managing rclone mounts
@@ -75,24 +76,32 @@ export class MountManagementService extends TauriBaseService {
       no_cache: noCache,
     };
 
-    await this.invokeWithNotification('mount_remote_profile', { params }, {
-      successKey: 'mount.successMount',
-      successParams: { remote: remoteName, profile: profileName },
-      errorKey: 'mount.failedMount',
-      errorParams: { remote: remoteName }
-    });
+    await this.invokeWithNotification(
+      'mount_remote_profile',
+      { params },
+      {
+        successKey: 'mount.successMount',
+        successParams: { remote: remoteName, profile: profileName },
+        errorKey: 'mount.failedMount',
+        errorParams: { remote: remoteName },
+      }
+    );
   }
 
   /**
    * Unmount a remote
    */
   async unmountRemote(mountPoint: string, remoteName: string): Promise<void> {
-    await this.invokeWithNotification('unmount_remote', { mountPoint, remoteName }, {
-      successKey: 'mount.successUnmount',
-      successParams: { remote: remoteName },
-      errorKey: 'mount.failedUnmount',
-      errorParams: { remote: remoteName }
-    });
+    await this.invokeWithNotification(
+      'unmount_remote',
+      { mountPoint, remoteName },
+      {
+        successKey: 'mount.successUnmount',
+        successParams: { remote: remoteName },
+        errorKey: 'mount.failedUnmount',
+        errorParams: { remote: remoteName },
+      }
+    );
   }
 
   /**
@@ -130,7 +139,7 @@ export class MountManagementService extends TauriBaseService {
    */
   getMountsForRemoteProfile(remoteName: string, profile?: string): MountedRemote[] {
     return this._mountedRemotes().filter(mount => {
-      const matchesRemote = mount.fs.startsWith(remoteName);
+      const matchesRemote = getRemoteNameFromFs(mount.fs) === remoteName;
       if (profile) {
         return matchesRemote && mount.profile === profile;
       }

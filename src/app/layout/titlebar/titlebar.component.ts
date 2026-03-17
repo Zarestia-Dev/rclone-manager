@@ -1,5 +1,4 @@
 import { Component, OnInit, inject, ChangeDetectionStrategy, computed } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
 
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -13,13 +12,10 @@ import { TranslateService, TranslateModule } from '@ngx-translate/core';
 // Services
 import {
   BackupRestoreUiService,
-  AppSettingsService,
   UiStateService,
   NautilusService,
-  NotificationService,
   AppUpdaterService,
   RcloneUpdateService,
-  RemoteManagementService,
   WindowService,
   ModalService,
   ConnectionService,
@@ -45,19 +41,14 @@ import { Theme } from '@app/types';
 })
 export class TitlebarComponent implements OnInit {
   private readonly modalService = inject(ModalService);
-  dialog = inject(MatDialog);
-  backupRestoreUiService = inject(BackupRestoreUiService);
+  private readonly backupRestoreUiService = inject(BackupRestoreUiService);
+  private readonly nautilusService = inject(NautilusService);
+  private readonly windowService = inject(WindowService);
+  private readonly appUpdaterService = inject(AppUpdaterService);
+  private readonly rcloneUpdateService = inject(RcloneUpdateService);
+  private readonly translateService = inject(TranslateService);
 
-  appSettingsService = inject(AppSettingsService);
-  uiStateService = inject(UiStateService);
-  nautilusService = inject(NautilusService);
-  windowService = inject(WindowService);
-  remoteManagementService = inject(RemoteManagementService);
-  notificationService = inject(NotificationService);
-  appUpdaterService = inject(AppUpdaterService);
-  rcloneUpdateService = inject(RcloneUpdateService);
-  private translateService = inject(TranslateService);
-
+  readonly uiStateService = inject(UiStateService);
   readonly connectionService = inject(ConnectionService);
 
   windowButtons = true;
@@ -67,14 +58,12 @@ export class TitlebarComponent implements OnInit {
   readonly rcloneUpdateAvailable = computed(
     () => this.rcloneUpdateService.updateStatus().available
   );
-
   readonly rcloneRestartRequired = computed(
     () => this.rcloneUpdateService.updateStatus().readyToRestart
   );
-
   readonly restartRequired = this.appUpdaterService.restartRequired;
 
-  currentTheme = this.windowService.theme;
+  readonly currentTheme = this.windowService.theme;
 
   readonly updateTooltip = computed(() => {
     const appRestart = this.restartRequired();
@@ -98,23 +87,23 @@ export class TitlebarComponent implements OnInit {
     { id: 'dark', icon: 'circle-check', label: 'titlebar.menu.dark', class: 'dark' },
   ];
 
-  readonly isMaximized = this.windowService.isMaximized;
+  private readonly isMaximized = this.windowService.isMaximized;
 
   readonly windowControls = computed(() => [
     {
       icon: 'minimize',
       label: 'titlebar.minimize',
-      action: (): Promise<void> => this.minimizeWindow(),
+      action: (): Promise<void> => this.windowService.minimize(),
     },
     {
       icon: this.isMaximized() ? 'collapse' : 'expand',
       label: 'titlebar.maximize',
-      action: (): Promise<void> => this.maximizeWindow(),
+      action: (): Promise<void> => this.windowService.maximize(),
     },
     {
       icon: 'close',
       label: 'titlebar.close',
-      action: (): Promise<void> => this.closeWindow(),
+      action: (): Promise<void> => this.windowService.close(),
       class: 'close-button',
     },
   ]);
@@ -171,16 +160,9 @@ export class TitlebarComponent implements OnInit {
   ];
 
   readonly aboutMenuBadge = computed(() => {
-    // keep the old behaviour where updates available on both sides show a
-    // "2"; otherwise always show a single bang when *anything* needs
-    // attention.  this now includes either restart flag so that the about
-    // button also indicates an rclone pending restart.
     if (this.restartRequired() || this.rcloneRestartRequired()) return '!';
-    if (this.updateAvailable() && this.rcloneUpdateAvailable()) {
-      return '2';
-    } else if (this.updateAvailable() || this.rcloneUpdateAvailable()) {
-      return '!';
-    }
+    if (this.updateAvailable() && this.rcloneUpdateAvailable()) return '2';
+    if (this.updateAvailable() || this.rcloneUpdateAvailable()) return '!';
     return '';
   });
 
@@ -203,25 +185,7 @@ export class TitlebarComponent implements OnInit {
       event.preventDefault();
       event.stopPropagation();
     }
-    // Delegate all the complex logic to the service
     await this.windowService.setTheme(theme);
-  }
-
-  getInternetStatusTooltip(): string {
-    return this.connectionService.getTooltip();
-  }
-
-  // Window Controls
-  async minimizeWindow(): Promise<void> {
-    await this.windowService.minimize();
-  }
-
-  async maximizeWindow(): Promise<void> {
-    await this.windowService.maximize();
-  }
-
-  async closeWindow(): Promise<void> {
-    await this.windowService.close();
   }
 
   // Modal Methods

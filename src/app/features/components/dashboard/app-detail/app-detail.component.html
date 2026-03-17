@@ -47,7 +47,7 @@
                 matTooltipPosition="below"
                 [class]="'operation-toggle operation-' + operation.type"
               >
-                <span class="toggle-label">{{ operation.label | translate }}</span>
+                <span class="toggle-label">{{ operation.typeLabel | translate }}</span>
               </mat-button-toggle>
             }
           </mat-button-toggle-group>
@@ -136,35 +136,36 @@
                 >
                 </app-operation-control>
               }
-
-              <!-- Human Readable Cron Schedule (for selected profile) -->
-              @if (hasCronSchedule()) {
-                @let schedule = selectedCronSchedule();
-                @if (schedule) {
-                  <div class="cron-human-readable">
-                    <mat-icon svgIcon="clock" class="cron-icon"></mat-icon>
-                    <span class="cron-schedule" [matTooltip]="schedule.cronExpression">{{
-                      schedule.humanReadable
-                    }}</span>
-                  </div>
-                }
-              }
-
               <!-- Job Information Panel -->
-              <app-job-info-panel
-                [config]="jobInfoConfig()"
-                class="info-panel"
-              ></app-job-info-panel>
+              @if (shouldShowCharts()) {
+                <!-- Human Readable Cron Schedule (for selected profile) -->
+                @if (hasCronSchedule()) {
+                  @let schedule = selectedCronSchedule();
+                  @if (schedule) {
+                    <div class="cron-human-readable">
+                      <mat-icon svgIcon="clock" class="cron-icon"></mat-icon>
+                      <span class="cron-schedule" [matTooltip]="schedule.cronExpression">{{
+                        schedule.humanReadable
+                      }}</span>
+                    </div>
+                  }
+                }
 
-              <!-- Statistics Panel -->
-              <app-stats-panel [config]="statsConfig()" class="stats-panel"></app-stats-panel>
+                <app-job-info-panel
+                  [config]="jobInfoConfig()"
+                  class="info-panel"
+                ></app-job-info-panel>
 
-              <!-- Transfer Activity Panel -->
-              <app-transfer-activity-panel
-                [config]="transferActivityConfig()"
-                (resetStats)="onResetStats()"
-                class="activity-panel"
-              ></app-transfer-activity-panel>
+                <!-- Statistics Panel -->
+                <app-stats-panel [config]="statsConfig()" class="stats-panel"></app-stats-panel>
+
+                <!-- Transfer Activity Panel -->
+                <app-transfer-activity-panel
+                  [config]="transferActivityConfig()"
+                  (resetStats)="onResetStats()"
+                  class="activity-panel"
+                ></app-transfer-activity-panel>
+              }
 
               <!-- Active Serves List (conditional for serve) -->
               @if (mainOperationType() === 'serve' && filteredRunningServes().length > 0) {
