@@ -22,6 +22,8 @@ import { FormatFileSizePipe } from '@app/pipes';
   ],
   styleUrls: ['./disk-usage-panel.component.scss'],
   template: `
+    @let cfg = config();
+
     <mat-card>
       <mat-card-header>
         <mat-card-title>
@@ -29,45 +31,39 @@ import { FormatFileSizePipe } from '@app/pipes';
           <span>{{ 'detailShared.diskUsage.title' | translate }}</span>
         </mat-card-title>
         <div class="header-actions">
-          @if (!config().notSupported) {
-            <button mat-icon-button (click)="retry.emit()" [disabled]="config().loading">
-              <mat-icon svgIcon="rotate-right" [class.animate-spin]="config().loading"></mat-icon>
+          @if (!cfg.notSupported) {
+            <button mat-icon-button (click)="retry.emit()" [disabled]="cfg.loading">
+              <mat-icon svgIcon="rotate-right" [class.animate-spin]="cfg.loading"></mat-icon>
             </button>
           }
         </div>
       </mat-card-header>
+
       <mat-card-content>
         <div class="usage-bar-container">
           <div class="disk-usage-bar" [ngStyle]="diskBarStyle()">
-            @if (config().notSupported) {
+            @if (cfg.notSupported) {
               <div class="usage-status-text">
-                {{
-                  config().notSupported
-                    ? ('detailShared.diskUsage.notSupported' | translate)
-                    : ('detailShared.diskUsage.unknown' | translate)
-                }}
+                {{ 'detailShared.diskUsage.notSupported' | translate }}
               </div>
-            } @else if (config().error) {
-              <div class="usage-status-error" [title]="config().errorMessage">
-                <mat-icon svgIcon="circle-exclamation" class="warn-color"></mat-icon>
+            } @else if (cfg.error) {
+              <div class="usage-status-error" [title]="cfg.errorMessage">
+                <mat-icon svgIcon="circle-exclamation" class="error-icon"></mat-icon>
                 <span>{{ 'detailShared.diskUsage.errorLoading' | translate }}</span>
               </div>
             } @else {
               <div
                 class="usage-fill"
                 [ngStyle]="usageFillStyle()"
-                [class.hidden]="config().loading"
+                [class.hidden]="cfg.loading"
               ></div>
             }
           </div>
         </div>
-        @if (config() && !config().notSupported && !config().error) {
+        @if (!cfg.notSupported && !cfg.error) {
           <div class="usage-legend">
-            @if (config().loading) {
-              <div
-                class="legend-spinner"
-                style="display:flex;align-items:center;justify-content:center;height:40px;"
-              >
+            @if (cfg.loading) {
+              <div class="legend-spinner">
                 <mat-progress-spinner diameter="24" mode="indeterminate"></mat-progress-spinner>
               </div>
             } @else {
@@ -75,21 +71,21 @@ import { FormatFileSizePipe } from '@app/pipes';
                 <div class="legend-color total"></div>
                 <span class="legend-text">{{
                   'detailShared.diskUsage.total'
-                    | translate: { value: (config().total_space ?? 0 | formatFileSize) }
+                    | translate: { value: (cfg.total_space ?? 0 | formatFileSize) }
                 }}</span>
               </div>
               <div class="legend-item">
                 <div class="legend-color used" [ngStyle]="usedLegendStyle()"></div>
                 <span class="legend-text">{{
                   'detailShared.diskUsage.used'
-                    | translate: { value: (config().used_space ?? 0 | formatFileSize) }
+                    | translate: { value: (cfg.used_space ?? 0 | formatFileSize) }
                 }}</span>
               </div>
               <div class="legend-item">
                 <div class="legend-color free"></div>
                 <span class="legend-text">{{
                   'detailShared.diskUsage.free'
-                    | translate: { value: (config().free_space ?? 0 | formatFileSize) }
+                    | translate: { value: (cfg.free_space ?? 0 | formatFileSize) }
                 }}</span>
               </div>
             }
@@ -100,30 +96,31 @@ import { FormatFileSizePipe } from '@app/pipes';
   `,
 })
 export class DiskUsagePanelComponent {
-  config = input.required<DiskUsage>();
-  retry = output<void>();
+  readonly config = input.required<DiskUsage>();
+  readonly retry = output<void>();
 
   readonly usagePercentage = computed(() => {
     const conf = this.config();
-    if (!conf || conf.notSupported) return 0;
+    if (conf.notSupported) return 0;
 
-    const used = conf.used_space || 0;
-    const total = conf.total_space || 1;
+    const used = conf.used_space ?? 0;
+    const total = conf.total_space;
+    if (!total) return 0;
 
-    return total > 0 ? (used / total) * 100 : 0;
+    return (used / total) * 100;
   });
 
   readonly usageColorVar = computed(() => {
-    const percentage = this.usagePercentage();
-
-    if (percentage >= 90) return '--warn-color'; // Red - Critical
-    if (percentage >= 80) return '--orange'; // Orange - High
-    if (percentage >= 60) return '--yellow'; // Yellow - Warning
-    return '--primary-color'; // Green - Healthy
+    const pct = this.usagePercentage();
+    if (pct >= 90) return '--warn-color'; // Critical
+    if (pct >= 80) return '--orange'; // High
+    if (pct >= 60) return '--yellow'; // Warning
+    return '--primary-color'; // Healthy
   });
 
   readonly diskBarStyle = computed(() => {
     const conf = this.config();
+
     if (conf.notSupported) {
       return {
         backgroundColor: 'rgba(var(--yellow-rgb), 0.3)',

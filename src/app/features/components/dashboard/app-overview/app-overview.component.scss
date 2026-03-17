@@ -9,7 +9,6 @@
   padding: var(--panel-padding);
 
   // MODE-SPECIFIC COLOR VARIABLES
-  // Dynamic color variables that change based on the current mode
   &.mount {
     --mode-primary-color: var(--accent-color);
     --mode-primary-color-rgb: var(--accent-color-rgb);
@@ -17,13 +16,8 @@
     --mode-light-color-rgb: var(--light-blue-rgb);
   }
 
-  &.sync {
-    --mode-primary-color: var(--primary-color);
-    --mode-primary-color-rgb: var(--primary-color-rgb);
-    --mode-light-color: var(--light-green);
-    --mode-light-color-rgb: var(--light-green-rgb);
-  }
-
+  // sync and serve share the same palette — combined to avoid drift
+  &.sync,
   &.serve {
     --mode-primary-color: var(--primary-color);
     --mode-primary-color-rgb: var(--primary-color-rgb);
@@ -32,7 +26,9 @@
   }
 }
 
+// =============================================
 // OVERVIEW CONTENT CONTAINER
+// =============================================
 .overview-content {
   display: grid;
   grid-template-columns: 1fr;
@@ -43,21 +39,21 @@
 }
 
 // =============================================
-// SERVE MODE - ACTIVE REMOTES PANEL
+// SERVE MODE — ACTIVE REMOTES PANEL
 // =============================================
 .remotes-panel.active-remotes-panel {
   border-radius: var(--card-border-radius-large);
   padding: 0;
 
   .remotes-header {
-    padding: var(--space-xl) var(--space-xl) var(--space-md) var(--space-xl);
+    padding: var(--space-xl) var(--space-xl) var(--space-md);
 
     .panel-title-content {
-      color: var(--window-fg-color);
-      font-size: var(--font-size-md);
       display: flex;
       align-items: center;
       gap: var(--space-sm);
+      color: var(--window-fg-color);
+      font-size: var(--font-size-md);
       font-weight: 500;
 
       .active-icon {
@@ -65,19 +61,19 @@
       }
 
       .remote-count {
-        color: var(--dim-color);
-        font-size: var(--font-size-base);
-        font-weight: 400;
         padding: var(--space-xxs) var(--space-xs);
         border-radius: var(--radius-sm);
         background: rgba(var(--primary-color-rgb), 0.1);
         box-shadow: 0 0 0 1px var(--card-shade-color);
+        color: var(--dim-color);
+        font-size: var(--font-size-base);
+        font-weight: 400;
       }
     }
   }
 
   .remotes-content {
-    padding: var(--panel-padding) var(--space-2xl) var(--space-2xl) var(--space-2xl);
+    padding: var(--panel-padding) var(--space-2xl) var(--space-2xl);
 
     .remotes-grid {
       display: grid;
@@ -85,30 +81,27 @@
       gap: var(--space-md);
     }
   }
-
-  @media (max-width: 768px) {
-    .remotes-content {
-      padding: var(--panel-padding-mobile) var(--panel-padding) var(--panel-padding)
-        var(--panel-padding);
-
-      .remotes-grid {
-        grid-template-columns: 1fr;
-        gap: var(--panel-padding-mobile);
-      }
-    }
-  }
 }
 
-// 7.1 Tablet Styles (max-width: 768px)
+// =============================================
+// RESPONSIVE
+// =============================================
 @media (max-width: 768px) {
-  // General overview adjustments
   .app-overview {
     padding: var(--panel-padding-mobile);
     gap: var(--section-gap-mobile);
   }
+
+  .remotes-panel.active-remotes-panel .remotes-content {
+    padding: var(--panel-padding-mobile) var(--panel-padding) var(--panel-padding);
+
+    .remotes-grid {
+      grid-template-columns: 1fr;
+      gap: var(--panel-padding-mobile);
+    }
+  }
 }
 
-// 7.2 Mobile Styles (max-width: 480px)
 @media (max-width: 480px) {
   .app-overview {
     padding: var(--space-sm);

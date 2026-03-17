@@ -781,6 +781,12 @@ body {
       container-elevation-shadow: var(--shadow-gnome),
     )
   );
+
+  @include mat.bottom-sheet-overrides(
+    (
+      container-background-color: var(--window-bg-color),
+    )
+  );
 }
 
 * {

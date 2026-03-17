@@ -1,7 +1,3 @@
-::ng-deep .mat-bottom-sheet-container {
-  background: var(--window-bg-color) !important;
-}
-
 .repair-sheet {
   display: flex;
   flex-direction: column;
@@ -90,9 +86,6 @@
         }
       }
     }
-    .config-toggle-container {
-      margin-top: var(--space-md);
-    }
   }
 
   .sheet-actions {
@@ -103,7 +96,6 @@
     border-top: 1px solid var(--border-color);
   }
 
-  // Caret rotation for toggle buttons
   mat-icon.rotated {
     transform: rotate(180deg);
   }
@@ -113,21 +105,18 @@
   }
 }
 
-// Responsive Design
 @media (max-width: 768px) {
   .repair-sheet {
     .sheet-header {
       padding: var(--panel-padding-mobile);
       padding-bottom: var(--space-sm);
 
-      .repair-header-top {
-        .repair-content {
-          h3 {
-            font-size: var(--font-size-base);
-          }
-          p {
-            font-size: var(--font-size-md);
-          }
+      .repair-header-top .repair-content {
+        h3 {
+          font-size: var(--font-size-base);
+        }
+        p {
+          font-size: var(--font-size-md);
         }
       }
 
@@ -146,12 +135,10 @@
 }
 
 @media (max-width: 480px) {
-  .repair-sheet .sheet-header {
-    .repair-header-top {
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      gap: var(--space-sm);
-    }
+  .repair-sheet .sheet-header .repair-header-top {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--space-sm);
   }
 }

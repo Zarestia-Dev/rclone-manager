@@ -114,7 +114,8 @@
                         </mat-panel-description>
                       </mat-expansion-panel-header>
 
-                      @if (bandwidthLimit()?.loading) {
+                      @let bandwidth = bandwidthLimit();
+                      @if (bandwidth?.loading) {
                         <div class="loading fade-in" aria-live="polite">
                           <mat-spinner
                             diameter="24"
@@ -122,14 +123,14 @@
                           ></mat-spinner>
                           <span>{{ 'generalOverview.bandwidth.loading' | translate }}</span>
                         </div>
-                      } @else if (bandwidthLimit()?.error) {
+                      } @else if (bandwidth?.error) {
                         <div class="bandwidth-error" role="alert">
                           <mat-icon
                             class="warn"
                             svgIcon="circle-exclamation"
                             aria-hidden="true"
                           ></mat-icon>
-                          <span>{{ bandwidthLimit()?.error }}</span>
+                          <span>{{ bandwidth?.error }}</span>
                           <button
                             matIconButton
                             (click)="rcloneStatusService.loadBandwidthLimit()"
@@ -152,33 +153,17 @@
                             aria-live="polite"
                           >
                             <div class="status-indicator" aria-hidden="true"></div>
-                            <span class="status-text">{{
-                              bandwidthLimit()?.rate | formatRateValue
-                            }}</span>
+                            <span class="status-text">{{ bandwidth?.rate | formatRateValue }}</span>
                           </div>
 
                           @if (isBandwidthLimited()) {
                             <div class="bandwidth-details">
-                              @for (
-                                detail of [
-                                  {
-                                    label: ('generalOverview.bandwidth.upload' | translate),
-                                    value: (bandwidthLimit()?.bytesPerSecondTx | formatRateValue),
-                                  },
-                                  {
-                                    label: ('generalOverview.bandwidth.download' | translate),
-                                    value: (bandwidthLimit()?.bytesPerSecondRx | formatRateValue),
-                                  },
-                                  {
-                                    label: ('generalOverview.bandwidth.total' | translate),
-                                    value: (bandwidthLimit()?.bytesPerSecond | formatRateValue),
-                                  },
-                                ];
-                                track $index
-                              ) {
+                              @for (detail of bandwidthDetails(); track $index) {
                                 <div class="detail-item">
-                                  <span class="label">{{ detail.label }}</span>
-                                  <span class="value">{{ detail.value }}</span>
+                                  <span class="label">{{ detail.labelKey | translate }}</span>
+                                  <span class="value">{{
+                                    detail.bytesPerSec | formatRateValue
+                                  }}</span>
                                 </div>
                               }
                             </div>
@@ -224,40 +209,45 @@
                           <span>{{ 'generalOverview.system.loading' | translate }}</span>
                         </div>
                       } @else {
+                        <!-- Explicit items are cleaner here — each row needs a different pipe -->
+                        @let status = rcloneStatus();
                         <div class="info-grid" role="grid">
-                          @for (
-                            item of [
-                              {
-                                label: ('generalOverview.system.status' | translate),
-                                value: ('generalOverview.system.' + rcloneStatus() | translate),
-                                status: rcloneStatus(),
-                              },
-                              {
-                                label: ('generalOverview.system.totalRemotes' | translate),
-                                value: totalRemotes(),
-                              },
-                              {
-                                label: ('generalOverview.system.activeJobs' | translate),
-                                value: activeJobsCount(),
-                              },
-                              {
-                                label: ('generalOverview.system.memoryUsage' | translate),
-                                value: (systemStats().memoryUsage | formatMemoryUsage),
-                              },
-                              {
-                                label: ('generalOverview.system.uptime' | translate),
-                                value: (systemStats().uptime | formatTime),
-                              },
-                            ];
-                            track $index
-                          ) {
-                            <div class="info-item" role="row">
-                              <span class="label" role="gridcell">{{ item.label }}</span>
-                              <span class="value" [ngClass]="item.status || ''" role="gridcell">{{
-                                item.value
-                              }}</span>
-                            </div>
-                          }
+                          <div class="info-item" role="row">
+                            <span class="label" role="gridcell">{{
+                              'generalOverview.system.status' | translate
+                            }}</span>
+                            <span class="value" [ngClass]="status" role="gridcell">{{
+                              'generalOverview.system.' + status | translate
+                            }}</span>
+                          </div>
+                          <div class="info-item" role="row">
+                            <span class="label" role="gridcell">{{
+                              'generalOverview.system.totalRemotes' | translate
+                            }}</span>
+                            <span class="value" role="gridcell">{{ totalRemotes() }}</span>
+                          </div>
+                          <div class="info-item" role="row">
+                            <span class="label" role="gridcell">{{
+                              'generalOverview.system.activeJobs' | translate
+                            }}</span>
+                            <span class="value" role="gridcell">{{ activeJobsCount() }}</span>
+                          </div>
+                          <div class="info-item" role="row">
+                            <span class="label" role="gridcell">{{
+                              'generalOverview.system.memoryUsage' | translate
+                            }}</span>
+                            <span class="value" role="gridcell">{{
+                              rcloneStatusService.memoryUsage() | formatMemoryUsage
+                            }}</span>
+                          </div>
+                          <div class="info-item" role="row">
+                            <span class="label" role="gridcell">{{
+                              'generalOverview.system.uptime' | translate
+                            }}</span>
+                            <span class="value" role="gridcell">{{
+                              rcloneStatusService.uptime() | formatTime
+                            }}</span>
+                          </div>
                         </div>
                       }
                     </mat-expansion-panel>
@@ -277,15 +267,13 @@
                           </div>
                         </mat-panel-title>
                         <mat-panel-description>
-                          <span [ngClass]="{ 'active-jobs-indicator': activeJobsCount() > 0 }">
+                          @let activeJobs = activeJobsCount();
+                          <span [ngClass]="{ 'active-jobs-indicator': activeJobs > 0 }">
                             {{
-                              activeJobsCount() > 0
+                              activeJobs > 0
                                 ? ('generalOverview.jobs.activeCount'
                                   | translate
-                                    : {
-                                        count: activeJobsCount(),
-                                        s: activeJobsCount() !== 1 ? 's' : '',
-                                      })
+                                    : { count: activeJobs, s: activeJobs !== 1 ? 's' : '' })
                                 : ('generalOverview.jobs.noActive' | translate)
                             }}
                           </span>
@@ -301,8 +289,10 @@
                           <span>{{ 'generalOverview.jobs.loading' | translate }}</span>
                         </div>
                       } @else {
+                        @let stats = jobStats();
+                        @let activeJobs = activeJobsCount();
                         <div class="job-grid" role="grid">
-                          @if (jobStats().totalBytes > 0) {
+                          @if (stats.totalBytes > 0) {
                             <div class="job-progress-section" role="rowgroup">
                               <div class="progress-header" role="row">
                                 <span class="label" role="gridcell">{{
@@ -322,67 +312,36 @@
                               ></mat-progress-bar>
                               <div class="progress-details" role="row">
                                 <span role="gridcell"
-                                  >{{ jobStats().bytes | formatBytes }}
+                                  >{{ stats.bytes | formatBytes }}
                                   {{ 'generalOverview.jobs.of' | translate }}
-                                  {{ jobStats().totalBytes | formatBytes }}</span
+                                  {{ stats.totalBytes | formatBytes }}</span
                                 >
                                 <span role="gridcell"
                                   >{{ 'generalOverview.jobs.eta' | translate }}
-                                  {{ jobStats().eta | formatEta }}</span
+                                  {{ stats.eta | formatEta }}</span
                                 >
                               </div>
                             </div>
                           }
 
                           <div class="job-stats-grid" role="grid">
-                            @for (
-                              item of [
-                                {
-                                  label: ('generalOverview.jobs.speed' | translate),
-                                  value: (jobStats().speed | formatBytes),
-                                },
-                                {
-                                  label: ('generalOverview.jobs.transfers' | translate),
-                                  value: jobStats().transfers + ' / ' + jobStats().totalTransfers,
-                                },
-                                {
-                                  label: ('generalOverview.jobs.checks' | translate),
-                                  value: jobStats().checks + ' / ' + jobStats().totalChecks,
-                                },
-                                {
-                                  label: ('generalOverview.jobs.errors' | translate),
-                                  value: jobStats().errors,
-                                  error: jobStats().errors > 0,
-                                },
-                                {
-                                  label: ('generalOverview.jobs.deletes' | translate),
-                                  value: jobStats().deletes,
-                                },
-                                {
-                                  label: ('generalOverview.jobs.renames' | translate),
-                                  value: jobStats().renames,
-                                },
-                                {
-                                  label: ('generalOverview.jobs.serverCopies' | translate),
-                                  value: jobStats().serverSideCopies,
-                                },
-                                {
-                                  label: ('generalOverview.jobs.serverMoves' | translate),
-                                  value: jobStats().serverSideMoves,
-                                },
-                              ];
-                              track $index
-                            ) {
+                            @for (item of jobStatsItems(); track $index) {
                               <div class="info-item" role="row">
-                                <span class="label" role="gridcell">{{ item.label }}</span>
-                                <span class="value" [class.error]="item.error" role="gridcell">{{
-                                  item.value
+                                <span class="label" role="gridcell">{{
+                                  item.labelKey | translate
                                 }}</span>
+                                <span class="value" [class.error]="item.error" role="gridcell">
+                                  @if (item.formatAsBytes) {
+                                    {{ $any(item.value) | formatBytes }}
+                                  } @else {
+                                    {{ item.value }}
+                                  }
+                                </span>
                               </div>
                             }
                           </div>
 
-                          @if (jobStats().lastError) {
+                          @if (stats.lastError) {
                             <div class="error-section" role="alert">
                               <div class="label">
                                 {{ 'generalOverview.jobs.lastError' | translate }}
@@ -395,17 +354,17 @@
                                 ></mat-icon>
                                 <span
                                   matTooltip="{{ 'generalOverview.jobs.copyError' | translate }}"
-                                  (click)="copyError(jobStats().lastError)"
+                                  (click)="copyError(stats.lastError)"
                                   tabindex="0"
                                   role="button"
                                   class="error-text-content"
-                                  >{{ jobStats().lastError }}</span
+                                  >{{ stats.lastError }}</span
                                 >
                               </div>
                             </div>
                           }
 
-                          @if (activeJobsCount() === 0) {
+                          @if (activeJobs === 0) {
                             <div class="no-jobs-message" role="status">
                               <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
                               <span>{{ 'generalOverview.jobs.noRunning' | translate }}</span>
@@ -467,6 +426,7 @@
                           } @else {
                             <div class="tasks-grid">
                               @for (task of scheduledTasks(); track task.id) {
+                                @let meta = getTaskMeta(task.taskType);
                                 <mat-card
                                   class="task-card"
                                   [class.disabled]="task.status === 'disabled'"
@@ -487,13 +447,8 @@
                                 >
                                   <mat-card-header class="task-header">
                                     <div class="task-info-section">
-                                      <div
-                                        class="task-icon-wrapper"
-                                        [class]="getTaskTypeColor(task.taskType)"
-                                      >
-                                        <mat-icon
-                                          [svgIcon]="getTaskTypeIcon(task.taskType)"
-                                        ></mat-icon>
+                                      <div class="task-icon-wrapper" [class]="meta.colorClass">
+                                        <mat-icon [svgIcon]="meta.icon"></mat-icon>
                                       </div>
                                       <div class="task-title-section">
                                         <div class="task-name-row">
@@ -501,9 +456,7 @@
                                           <span
                                             class="task-status-badge"
                                             [ngClass]="task.status"
-                                            [matTooltip]="
-                                              getTaskStatusTooltip(task.status) | translate
-                                            "
+                                            [matTooltip]="'task.status.' + task.status | translate"
                                           >
                                             {{ 'task.status.' + task.status | translate }}
                                           </span>
@@ -529,7 +482,9 @@
                                       (click)="
                                         toggleScheduledTask(task.id); $event.stopPropagation()
                                       "
-                                      [matTooltip]="getToggleTooltip(task.status) | translate"
+                                      [matTooltip]="
+                                        'task.toggle.' + getToggleKey(task.status) | translate
+                                      "
                                       class="task-toggle-btn"
                                       [disabled]="task.status === 'stopping'"
                                     >
@@ -604,6 +559,7 @@
                     </mat-expansion-panel>
                   }
                   @case ('serves') {
+                    @let serves = allRunningServes();
                     <mat-expansion-panel
                       [expanded]="getPanelOpenState('serves')"
                       (opened)="setPanelOpenState('serves', true)"
@@ -615,7 +571,7 @@
                           <div class="panel-title-content">
                             <mat-icon
                               svgIcon="satellite-dish"
-                              class="green"
+                              class="primary"
                               aria-hidden="true"
                             ></mat-icon>
                             <span>{{ 'generalOverview.panels.serves' | translate }}</span>
@@ -624,16 +580,16 @@
                         <mat-panel-description>
                           <span
                             [ngClass]="{
-                              'active-serves-indicator': allRunningServes().length > 0,
+                              'active-serves-indicator': serves.length > 0,
                             }"
                           >
                             {{
-                              allRunningServes().length > 0
+                              serves.length > 0
                                 ? ('generalOverview.serves.activeCount'
                                   | translate
                                     : {
-                                        count: allRunningServes().length,
-                                        s: allRunningServes().length !== 1 ? 's' : '',
+                                        count: serves.length,
+                                        s: serves.length !== 1 ? 's' : '',
                                       })
                                 : ('generalOverview.serves.noActive' | translate)
                             }}
@@ -641,33 +597,23 @@
                         </mat-panel-description>
                       </mat-expansion-panel-header>
 
-                      @if (isLoadingServes()) {
-                        <div class="loading fade-in" aria-live="polite">
-                          <mat-spinner
-                            diameter="24"
-                            [attr.aria-label]="'generalOverview.serves.aria.loading' | translate"
-                          ></mat-spinner>
-                          <span>{{ 'generalOverview.serves.loading' | translate }}</span>
+                      @if (serves.length === 0) {
+                        <div class="no-serves-message" role="status">
+                          <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
+                          <span>{{ 'generalOverview.serves.noRunning' | translate }}</span>
                         </div>
                       } @else {
-                        @if (allRunningServes().length === 0) {
-                          <div class="no-serves-message" role="status">
-                            <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
-                            <span>{{ 'generalOverview.serves.noRunning' | translate }}</span>
-                          </div>
-                        } @else {
-                          <div class="serves-grid">
-                            @for (serve of allRunningServes(); track serve.id) {
-                              <app-serve-card
-                                [serve]="serve"
-                                [showRemoteName]="true"
-                                (stopServe)="stopServe($event)"
-                                (copyToClipboard)="handleCopyToClipboard($event)"
-                                (cardClick)="handleServeCardClick($event)"
-                              ></app-serve-card>
-                            }
-                          </div>
-                        }
+                        <div class="serves-grid">
+                          @for (serve of serves; track serve.id) {
+                            <app-serve-card
+                              [serve]="serve"
+                              [showRemoteName]="true"
+                              (stopServe)="stopServe($event)"
+                              (copyToClipboard)="handleCopyToClipboard($event)"
+                              (cardClick)="handleServeCardClick($event)"
+                            ></app-serve-card>
+                          }
+                        </div>
                       }
                     </mat-expansion-panel>
                   }

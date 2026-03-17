@@ -1,9 +1,9 @@
-import { Component, input, output, inject, computed, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, input, output, inject, computed } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NgClass } from '@angular/common';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
 import { map } from 'rxjs';
 
-import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -11,11 +11,17 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { AppSettingsService } from '@app/services';
 import { SENSITIVE_KEYS, SettingsPanelConfig } from '@app/types';
 
+interface SettingEntry {
+  key: string;
+  display: string;
+  tooltip: string;
+}
+
 @Component({
   selector: 'app-settings-panel',
   standalone: true,
   imports: [
-    MatCardModule,
+    NgClass,
     MatIconModule,
     MatButtonModule,
     MatTooltipModule,
@@ -24,16 +30,18 @@ import { SENSITIVE_KEYS, SettingsPanelConfig } from '@app/types';
   ],
   styleUrls: ['./settings-panel.component.scss'],
   template: `
+    @let cfg = config();
+
     <mat-expansion-panel>
       <mat-expansion-panel-header>
         <mat-panel-title>
-          <mat-icon [svgIcon]="config().section.icon" class="panel-icon"></mat-icon>
-          <span>{{ config().section.title | translate }}</span>
+          <mat-icon [svgIcon]="cfg.section.icon" class="panel-icon"></mat-icon>
+          <span>{{ cfg.section.title | translate }}</span>
         </mat-panel-title>
         <mat-panel-description>
           @if (hasMeaningfulSettings()) {
             <span class="settings-count">{{
-              'detailShared.settings.metrics' | translate: { count: settingsCount() }
+              'detailShared.settings.metrics' | translate: { count: settingsEntries().length }
             }}</span>
           } @else {
             <span class="no-settings-hint">{{
@@ -57,19 +65,15 @@ import { SENSITIVE_KEYS, SettingsPanelConfig } from '@app/types';
           </div>
         } @else {
           <div class="no-settings">
-            <mat-icon [svgIcon]="config().section.icon" class="no-settings-icon"></mat-icon>
+            <mat-icon [svgIcon]="cfg.section.icon" class="no-settings-icon"></mat-icon>
             <span>{{ 'detailShared.settings.noData' | translate }}</span>
           </div>
         }
 
         <div class="panel-actions">
-          <button
-            matButton="filled"
-            [class]="'edit-settings-button ' + config().buttonColor"
-            (click)="onEditSettings()"
-          >
+          <button matButton="filled" [ngClass]="editButtonClass()" (click)="onEditSettings()">
             <mat-icon svgIcon="pen"></mat-icon>
-            <span>{{ config().buttonLabel || 'detailShared.settings.edit' | translate }}</span>
+            <span>{{ editButtonLabel() | translate }}</span>
           </button>
         </div>
       </div>
@@ -77,112 +81,80 @@ import { SENSITIVE_KEYS, SettingsPanelConfig } from '@app/types';
   `,
 })
 export class SettingsPanelComponent {
+  private static readonly TRUNCATE_LENGTH = 15;
+
   private readonly translate = inject(TranslateService);
   private readonly appSettingsService = inject(AppSettingsService);
 
-  // Inputs
-  config = input.required<SettingsPanelConfig>();
+  readonly config = input.required<SettingsPanelConfig>();
+  readonly editSettings = output<{ section: string; settings: Record<string, unknown> }>();
 
-  // Outputs
-  editSettings = output<{ section: string; settings: Record<string, unknown> }>();
-
-  // Reactive restriction mode from settings
-  readonly restrictMode = signal<boolean>(true);
-
-  constructor() {
+  private readonly restrictMode = toSignal(
     this.appSettingsService
       .selectSetting('general.restrict')
-      .pipe(
-        map(setting => (setting?.value as boolean) ?? true),
-        takeUntilDestroyed()
-      )
-      .subscribe(val => this.restrictMode.set(val));
-  }
+      .pipe(map(setting => (setting?.value as boolean) ?? true)),
+    { initialValue: true }
+  );
 
-  // Derived State
-  readonly settingsEntries = computed(() => {
-    const rawSettings = this.config().settings || {};
-    const entries: { key: string; value: unknown; display: string; tooltip: string }[] = [];
-
-    Object.entries(rawSettings).forEach(([key, value]) => {
-      if (this.isObjectButNotArray(value)) {
-        Object.entries(value as Record<string, unknown>).forEach(([subKey, subValue]) => {
-          entries.push(this.formatEntry(subKey, subValue));
-        });
-      } else {
-        entries.push(this.formatEntry(key, value));
-      }
-    });
-
-    return entries;
-  });
-
-  readonly hasMeaningfulSettings = computed(() => {
-    const settings = this.config().settings;
-    if (!settings || Object.keys(settings).length === 0) return false;
-
-    return Object.values(settings).some(value => {
-      if (value === null || value === undefined) return false;
-      if (typeof value === 'object' && !Array.isArray(value)) {
-        return Object.keys(value as Record<string, unknown>).length > 0;
-      }
-      return true;
-    });
-  });
-
-  readonly settingsCount = computed(() => this.settingsEntries().length);
-
-  private formatEntry(
-    key: string,
-    value: unknown
-  ): {
-    key: string;
-    value: unknown;
-    display: string;
-    tooltip: string;
-  } {
-    const isSensitive = this.isSensitiveKey(key);
+  readonly settingsEntries = computed<SettingEntry[]>(() => {
+    const rawSettings = this.config().settings ?? {};
     const restrictedLabel = this.translate.instant('detailShared.settings.restricted');
+
+    return Object.entries(rawSettings)
+      .filter(([, value]) => value !== null && value !== undefined)
+      .flatMap(([key, value]) => {
+        if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+          const nested = value as Record<string, unknown>;
+          if (Object.keys(nested).length === 0) return [];
+          return Object.entries(nested).map(([k, v]) => this.formatEntry(k, v, restrictedLabel));
+        }
+        return [this.formatEntry(key, value, restrictedLabel)];
+      });
+  });
+
+  readonly hasMeaningfulSettings = computed(() => this.settingsEntries().length > 0);
+
+  readonly editButtonLabel = computed(
+    () => this.config().buttonLabel || 'detailShared.settings.edit'
+  );
+
+  readonly editButtonClass = computed(() => ['edit-settings-button', this.config().buttonColor]);
+
+  private formatEntry(key: string, value: unknown, restrictedLabel: string): SettingEntry {
+    const isSensitive =
+      this.restrictMode() && SENSITIVE_KEYS.some(s => key.toLowerCase().includes(s));
 
     return {
       key,
-      value,
-      display: isSensitive ? restrictedLabel : this.truncateValue(value, 15),
-      tooltip: isSensitive ? `[${restrictedLabel}]` : this.generateTooltip(value),
+      display: isSensitive ? restrictedLabel : this.truncateValue(value),
+      tooltip: isSensitive ? `[${restrictedLabel}]` : this.valueToString(value),
     };
   }
 
-  private isObjectButNotArray(value: unknown): boolean {
-    return value !== null && typeof value === 'object' && !Array.isArray(value);
+  private truncateValue(value: unknown): string {
+    if (value === null || value === undefined) return '';
+
+    let str: string;
+    if (typeof value === 'object') {
+      try {
+        str = JSON.stringify(value);
+      } catch {
+        return this.translate.instant('detailShared.settings.invalidJson');
+      }
+    } else {
+      str = String(value);
+    }
+
+    const limit = SettingsPanelComponent.TRUNCATE_LENGTH;
+    return str.length > limit ? `${str.slice(0, limit)}...` : str;
   }
 
-  private isSensitiveKey(key: string): boolean {
-    if (!this.restrictMode()) return false;
-    return SENSITIVE_KEYS.some(sensitive => key.toLowerCase().includes(sensitive));
-  }
-
-  private generateTooltip(value: unknown): string {
+  private valueToString(value: unknown): string {
     try {
       return typeof value === 'object' ? JSON.stringify(value) : String(value);
     } catch {
       return this.translate.instant('detailShared.settings.invalidJson');
     }
-  }
-
-  private truncateValue(value: unknown, length: number): string {
-    if (value === null || value === undefined) return '';
-
-    if (typeof value === 'object') {
-      try {
-        const jsonString = JSON.stringify(value);
-        return jsonString.length > length ? `${jsonString.slice(0, length)}...` : jsonString;
-      } catch {
-        return this.translate.instant('detailShared.settings.invalidJson');
-      }
-    }
-
-    const stringValue = String(value);
-    return stringValue.length > length ? `${stringValue.slice(0, length)}...` : stringValue;
   }
 
   onEditSettings(): void {

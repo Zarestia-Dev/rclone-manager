@@ -51,10 +51,26 @@ interface PanelConfig {
 }
 
 export interface DashboardPanel extends PanelConfig {
-  visible: boolean; // This is the only dynamic part we merge in
+  visible: boolean;
 }
 
-// The Static Definitions (Source of Truth)
+interface TaskMeta {
+  icon: string;
+  colorClass: string;
+}
+
+interface BandwidthDetailItem {
+  labelKey: string;
+  bytesPerSec: number | undefined;
+}
+
+interface JobStatItem {
+  labelKey: string;
+  value: string | number;
+  error?: boolean;
+  formatAsBytes?: boolean;
+}
+
 const ALL_PANELS: PanelConfig[] = [
   { id: 'remotes', title: 'generalOverview.panels.remotes', defaultVisible: true },
   { id: 'bandwidth', title: 'generalOverview.panels.bandwidth', defaultVisible: true },
@@ -102,7 +118,6 @@ export class GeneralOverviewComponent implements OnInit {
   private appSettingsService = inject(AppSettingsService);
   public rcloneStatusService = inject(RcloneStatusService);
   public iconService = inject(IconService);
-
   readonly backendService = inject(BackendService);
   private translate = inject(TranslateService);
 
@@ -135,54 +150,83 @@ export class GeneralOverviewComponent implements OnInit {
   });
   scheduledTasks = this.schedulerService.scheduledTasks;
   isLoadingScheduledTasks = signal(false);
-  isLoadingServes = signal(false);
 
   dashboardPanels = signal<DashboardPanel[]>(
     ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible }))
   );
 
-  // Expose status service signals for template
+  // Status service signals exposed for the template
   readonly rcloneStatus = this.rcloneStatusService.rcloneStatus;
   readonly jobStats = this.rcloneStatusService.jobStats;
   readonly bandwidthLimit = this.rcloneStatusService.bandwidthLimit;
-  readonly systemStats = computed(() => ({
-    memoryUsage: this.rcloneStatusService.memoryUsage(),
-    uptime: this.rcloneStatusService.uptime(),
-  }));
   readonly isLoadingStats = this.rcloneStatusService.isLoading;
 
-  // No manual subscriptions needed anymore
-
-  // Track by functions
-  readonly trackByIndex: (index: number) => number = index => index;
-
   // Computed values
-  totalRemotes = computed(() => this.remotes()?.length || 0);
-  activeJobsCount = computed(
-    () => this.jobs()?.filter(job => job.status === 'Running').length || 0
-  );
-  allRunningServes = computed(() =>
-    this.remotes().flatMap(remote => remote.status.serve?.serves || [])
+  readonly totalRemotes = computed(() => this.remotes()?.length ?? 0);
+
+  readonly activeJobsCount = computed(
+    () => this.jobs()?.filter(job => job.status === 'Running').length ?? 0
   );
 
-  jobCompletionPercentage = computed(() => {
-    const totalBytes = this.jobStats().totalBytes || 0;
-    const bytes = this.jobStats().bytes || 0;
+  readonly allRunningServes = computed(() =>
+    this.remotes().flatMap(remote => remote.status.serve?.serves ?? [])
+  );
+
+  readonly jobCompletionPercentage = computed(() => {
+    const { totalBytes = 0, bytes = 0 } = this.jobStats();
     return totalBytes > 0 ? Math.min(100, (bytes / totalBytes) * 100) : 0;
   });
 
-  isBandwidthLimited = computed(() => {
+  readonly isBandwidthLimited = computed(() => {
     const limit = this.bandwidthLimit();
     return !!limit && limit.rate !== 'off' && limit.rate !== '' && limit.bytesPerSecond > 0;
   });
 
-  activeScheduledTasksCount = computed(
-    () =>
-      this.scheduledTasks().filter(task => task.status === 'enabled' || task.status === 'running')
-        .length
+  readonly activeScheduledTasksCount = computed(
+    () => this.scheduledTasks().filter(t => t.status === 'enabled' || t.status === 'running').length
   );
 
-  totalScheduledTasksCount = computed(() => this.scheduledTasks().length);
+  readonly totalScheduledTasksCount = computed(() => this.scheduledTasks().length);
+
+  // Stable computed arrays — avoids allocating new object arrays on every template render
+  readonly bandwidthDetails = computed((): BandwidthDetailItem[] => {
+    const limit = this.bandwidthLimit();
+    return [
+      { labelKey: 'generalOverview.bandwidth.upload', bytesPerSec: limit?.bytesPerSecondTx },
+      { labelKey: 'generalOverview.bandwidth.download', bytesPerSec: limit?.bytesPerSecondRx },
+      { labelKey: 'generalOverview.bandwidth.total', bytesPerSec: limit?.bytesPerSecond },
+    ];
+  });
+
+  readonly jobStatsItems = computed((): JobStatItem[] => {
+    const s = this.jobStats();
+    return [
+      { labelKey: 'generalOverview.jobs.speed', value: s.speed, formatAsBytes: true },
+      { labelKey: 'generalOverview.jobs.transfers', value: `${s.transfers} / ${s.totalTransfers}` },
+      { labelKey: 'generalOverview.jobs.checks', value: `${s.checks} / ${s.totalChecks}` },
+      { labelKey: 'generalOverview.jobs.errors', value: s.errors, error: s.errors > 0 },
+      { labelKey: 'generalOverview.jobs.deletes', value: s.deletes },
+      { labelKey: 'generalOverview.jobs.renames', value: s.renames },
+      { labelKey: 'generalOverview.jobs.serverCopies', value: s.serverSideCopies },
+      { labelKey: 'generalOverview.jobs.serverMoves', value: s.serverSideMoves },
+    ];
+  });
+
+  // Lookup tables — no reason for these to be methods
+  private readonly TASK_META: Record<string, TaskMeta> = {
+    sync: { icon: 'sync', colorClass: 'sync-color' },
+    copy: { icon: 'copy', colorClass: 'copy-color' },
+    move: { icon: 'move', colorClass: 'move-color' },
+    bisync: { icon: 'right-left', colorClass: 'bisync-color' },
+  };
+
+  private readonly TOGGLE_ICONS: Record<string, string> = {
+    enabled: 'pause',
+    running: 'pause',
+    disabled: 'play',
+    failed: 'play',
+    stopping: 'stop',
+  };
 
   constructor() {
     this.loadLayoutSettings();
@@ -194,8 +238,7 @@ export class GeneralOverviewComponent implements OnInit {
 
   // Layout management
   toggleEditLayout(): void {
-    const isEditing = this.isEditingLayout();
-    this.isEditingLayout.set(!isEditing);
+    this.isEditingLayout.update(v => !v);
   }
 
   resetLayout(): void {
@@ -205,14 +248,11 @@ export class GeneralOverviewComponent implements OnInit {
   }
 
   drop(event: CdkDragDrop<DashboardPanel[]>): void {
-    // Update the panels array in place
     this.dashboardPanels.update(panels => {
       const updated = [...panels];
       moveItemInArray(updated, event.previousIndex, event.currentIndex);
       return updated;
     });
-
-    // Persist to storage (without triggering UI update)
     this.persistLayout();
   }
 
@@ -224,7 +264,6 @@ export class GeneralOverviewComponent implements OnInit {
   }
 
   private persistLayout(): void {
-    // Extract only the visible IDs to save
     const idsToSave = this.dashboardPanels()
       .filter(p => p.visible)
       .map(p => p.id);
@@ -248,10 +287,6 @@ export class GeneralOverviewComponent implements OnInit {
     this.browseRemote.emit(remoteName);
   }
 
-  onSecondaryActionFromPanel(remoteName: string): void {
-    this.startJob.emit({ type: 'sync', remoteName });
-  }
-
   // Serve actions
   async stopServe(serve: ServeListItem): Promise<void> {
     const remoteName = getRemoteNameFromFs(serve.params?.fs);
@@ -263,7 +298,6 @@ export class GeneralOverviewComponent implements OnInit {
     const remoteName = getRemoteNameFromFs(serve.params?.fs);
     if (!remoteName) return;
     const remote = this.remotes().find(r => r.name === remoteName);
-
     if (remote) {
       this.uiStateService.setTab('serve');
       this.uiStateService.setSelectedRemote(remote);
@@ -285,9 +319,7 @@ export class GeneralOverviewComponent implements OnInit {
     const remoteName = task.args['remote_name'];
     if (remoteName) {
       const remote = this.remotes().find(r => r.name === remoteName);
-      if (remote) {
-        this.selectRemote.emit(remote);
-      }
+      if (remote) this.selectRemote.emit(remote);
     }
   }
 
@@ -298,7 +330,7 @@ export class GeneralOverviewComponent implements OnInit {
     }
   }
 
-  // Clipboard actions
+  // Clipboard
   handleCopyToClipboard(data: { text: string; message: string }): void {
     this.copyToClipboard(data.text, data.message);
   }
@@ -311,7 +343,7 @@ export class GeneralOverviewComponent implements OnInit {
     );
   }
 
-  // Task utility methods
+  // Task utilities
   getFormattedNextRun(task: ScheduledTask): string {
     if (task.status === 'disabled') return this.translate.instant('task.nextRun.disabled');
     if (task.status === 'stopping') return this.translate.instant('task.nextRun.stopping');
@@ -325,53 +357,23 @@ export class GeneralOverviewComponent implements OnInit {
       : this.translate.instant('task.lastRun.never');
   }
 
-  getTaskTypeIcon(taskType: string): string {
-    const iconMap: Record<string, string> = {
-      sync: 'sync',
-      copy: 'copy',
-      move: 'move',
-      bisync: 'right-left',
-    };
-    return iconMap[taskType] || 'circle-info';
+  // Returns icon + colorClass in one call — avoids two separate template method calls per task card
+  getTaskMeta(taskType: string): TaskMeta {
+    return this.TASK_META[taskType] ?? { icon: 'circle-info', colorClass: '' };
   }
 
-  getTaskTypeColor(taskType: string): string {
-    const colorMap: Record<string, string> = {
-      sync: 'sync-color',
-      copy: 'copy-color',
-      move: 'move-color',
-      bisync: 'bisync-color',
-    };
-    return colorMap[taskType] || '';
-  }
-
-  private readonly TOGGLE_ICONS: Record<string, string> = {
-    enabled: 'pause',
-    running: 'pause',
-    disabled: 'play',
-    failed: 'play',
-    stopping: 'stop',
-  };
-
-  getTaskStatusTooltip(status: string): string {
-    return this.translate.instant(`task.status.${status}`);
-  }
-
-  getToggleTooltip(status: string): string {
-    let key = 'enable'; // Default to enable
-    if (status === 'enabled' || status === 'running') {
-      key = 'disable';
-    } else if (status === 'stopping') {
-      key = 'stopping';
-    }
-    return this.translate.instant(`task.toggle.${key}`);
+  // Returns the translation key suffix — pipe applied in template, no double-translate
+  getToggleKey(status: string): string {
+    if (status === 'enabled' || status === 'running') return 'disable';
+    if (status === 'stopping') return 'stopping';
+    return 'enable';
   }
 
   getToggleIcon(status: string): string {
-    return this.TOGGLE_ICONS[status] || 'help';
+    return this.TOGGLE_ICONS[status] ?? 'help';
   }
 
-  // Private methods
+  // Private helpers
   private async loadLayoutSettings(): Promise<void> {
     try {
       const savedIds = await this.appSettingsService.getSettingValue<string[]>(
@@ -379,7 +381,6 @@ export class GeneralOverviewComponent implements OnInit {
       );
 
       if (savedIds && savedIds.length > 0) {
-        // 1. Map visible items in order
         const orderedPanels: DashboardPanel[] = savedIds
           .map(id => ALL_PANELS.find(p => p.id === id))
           .filter((p): p is PanelConfig => !!p)
@@ -410,11 +411,9 @@ export class GeneralOverviewComponent implements OnInit {
     }
   }
 
-  // Utility methods
   private scrollToTop(): void {
     const el = document.querySelector('.main-content') as HTMLElement | null;
-    const target = el || document.scrollingElement || document.documentElement;
-
+    const target = el ?? document.scrollingElement ?? document.documentElement;
     try {
       target.scrollTo({ top: 0, behavior: 'smooth' } as ScrollToOptions);
     } catch {
@@ -437,6 +436,6 @@ export class GeneralOverviewComponent implements OnInit {
   }
 
   private showSnackbar(message: string, action?: string, duration = 2000): void {
-    this.snackBar.open(message, action || this.translate.instant('common.close'), { duration });
+    this.snackBar.open(message, action ?? this.translate.instant('common.close'), { duration });
   }
 }

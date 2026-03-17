@@ -303,7 +303,8 @@
       }
 
       .task-toggle-btn {
-        transition: all 0.2s ease;
+        // Only animate the property that actually changes — not 'all'
+        transition: transform 0.2s ease;
 
         &:hover {
           transform: scale(1.1);
@@ -453,10 +454,6 @@
 // =============================================
 
 .serves-panel {
-  .green {
-    color: var(--primary-color);
-  }
-
   .no-serves-message {
     @include flex-center;
     gap: 12px;
@@ -480,7 +477,16 @@
   border-radius: var(--card-border-radius);
   border: 2px dashed transparent;
   padding: 0;
-  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+  transition:
+    border-color var(--transition-cubic),
+    background-color var(--transition-cubic),
+    padding var(--transition-cubic),
+    margin-bottom var(--transition-cubic);
+
+  &.cdk-drag-dragging {
+    transition: none;
+  }
 
   &.editing {
     border-color: rgba(var(--primary-color-rgb), 0.4);
@@ -495,12 +501,18 @@
   }
 
   .panel-content-wrapper {
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transition:
+      opacity var(--transition-cubic),
+      transform var(--transition-cubic);
 
     &.panel-hidden-visual {
       opacity: 0.4;
       transform: scale(0.98);
     }
+  }
+
+  &.cdk-drag-dragging .panel-content-wrapper {
+    transition: none;
   }
 }
 
@@ -543,7 +555,7 @@
   border-radius: 16px;
   min-height: 80px;
   margin-bottom: 16px;
-  transition: transform 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: transform var(--transition-cubic);
 }
 
 .cdk-drag-preview {
@@ -573,11 +585,11 @@
 }
 
 .cdk-drag-animating {
-  transition: transform 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: transform var(--transition-cubic);
 }
 
 .cdk-drop-list-dragging .draggable-panel-wrapper:not(.cdk-drag-placeholder) {
-  transition: transform 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: transform var(--transition-cubic);
 }
 
 // =============================================
@@ -635,7 +647,6 @@
   border-radius: 50%;
   background-color: var(--dim-color);
   display: inline-block;
-  will-change: transform, opacity;
 
   &.active {
     background-color: var(--primary-color);
