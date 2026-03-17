@@ -5,6 +5,13 @@
   min-height: 0;
   height: 100%;
   width: 100%;
+
+  ::ng-deep .cdk-drag-placeholder {
+    display: block !important;
+    opacity: 0.3;
+    border-radius: var(--border-radius);
+    background: var(--selected-bg-color);
+  }
 }
 
 .pane-wrapper {
@@ -117,10 +124,6 @@
 
   &.hidden-item {
     opacity: 0.55;
-  }
-
-  &.cut-item {
-    opacity: 0.5;
   }
 }
 

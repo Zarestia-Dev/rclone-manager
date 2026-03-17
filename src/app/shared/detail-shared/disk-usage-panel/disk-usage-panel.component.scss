@@ -32,7 +32,7 @@
       max-width: 100%;
       height: 100%;
 
-      &.warn-color {
+      .error-icon {
         color: var(--warn-color);
       }
     }
@@ -43,9 +43,13 @@
       top: 0;
       height: 100%;
       background: var(--primary-color);
-      transition: var(--transition-slow);
-      border-end-end-radius: var(--usage-bar-radius);
-      border-start-end-radius: var(--usage-bar-radius);
+      transition: width var(--transition-slow);
+      border-radius: inherit;
+
+      &.hidden {
+        width: 0 !important;
+        opacity: 0;
+      }
     }
   }
 }
@@ -54,6 +58,13 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: var(--header-gap);
+
+  .legend-spinner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+  }
 
   .legend-item {
     display: flex;

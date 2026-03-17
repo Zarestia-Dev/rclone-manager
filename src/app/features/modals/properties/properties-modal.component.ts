@@ -19,14 +19,16 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import {
-  RemoteManagementService,
+  RemoteFileOperationsService,
   NautilusService,
   RemoteFacadeService,
   ModalService,
   NotificationService,
   IconService,
+  RemoteMetadataService,
+  PathSelectionService,
 } from '@app/services';
-import { Entry, FileBrowserItem, FsInfo } from '@app/types';
+import { Entry, FileBrowserItem, RemoteFeatures } from '@app/types';
 import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
@@ -67,17 +69,19 @@ export class PropertiesModalComponent implements OnInit {
     isLocal: boolean;
     item?: Entry | null;
     remoteType?: string;
-    /** Cached FsInfo from Nautilus (avoids duplicate API calls) */
-    fsInfo?: FsInfo | null;
+    /** Simplified features from Nautilus (avoids duplicate API calls) */
+    features?: RemoteFeatures | null;
   } = inject(MAT_DIALOG_DATA);
 
-  private remoteManagementService = inject(RemoteManagementService);
+  private remoteOps = inject(RemoteFileOperationsService);
   private nautilusService = inject(NautilusService);
   private remoteFacadeService = inject(RemoteFacadeService);
   private iconService = inject(IconService);
   private translate = inject(TranslateService);
   private modalService = inject(ModalService);
   private notificationService = inject(NotificationService);
+  private remoteMetadata = inject(RemoteMetadataService);
+  private pathSelectionService = inject(PathSelectionService);
 
   // Separate loading states
   readonly loadingStat = signal(true);
@@ -165,7 +169,7 @@ export class PropertiesModalComponent implements OnInit {
 
     // 1. Get Size/Count (if directory)
     if (targetIsDir) {
-      this.remoteManagementService
+      this.remoteOps
         .getSize(remoteName, path, 'ui')
         .then(size => {
           this.size.set(size);
@@ -237,11 +241,7 @@ export class PropertiesModalComponent implements OnInit {
         diskUsagePath = '';
       }
 
-      const diskUsage = await this.remoteManagementService.getDiskUsage(
-        diskUsageRemote,
-        diskUsagePath,
-        'ui'
-      );
+      const diskUsage = await this.remoteOps.getDiskUsage(diskUsageRemote, diskUsagePath, 'ui');
       this.diskUsage.set(diskUsage);
     } catch (err) {
       console.error('Failed to load disk usage', err);
@@ -258,18 +258,17 @@ export class PropertiesModalComponent implements OnInit {
     this.hashError.set(null);
 
     try {
-      // Use cached fsInfo from Nautilus if available, otherwise fetch
-      let fsInfo = this.data.fsInfo;
-      if (!fsInfo) {
-        const fsRemote = this.buildFsRemote();
-        fsInfo = (await this.remoteManagementService.getFsInfo(fsRemote, 'ui')) as FsInfo;
+      // Use passed features if available, otherwise fetch from metadata service
+      let features = this.data.features;
+      if (!features) {
+        const baseName = this.pathSelectionService.normalizeRemoteName(this.data.remoteName);
+        features = await this.remoteMetadata.getFeatures(baseName, 'ui');
       }
 
-      const hashes = fsInfo?.Hashes ?? [];
+      const hashes = features?.hashes ?? [];
       this.supportedHashes.set(hashes);
 
       // Auto-calculate only the first hash (usually md5) for single files
-      // For directories, we wait for user action (bulk op)
       const currentItem = this.item();
       const isFile = currentItem && !currentItem.IsDir;
       if (hashes.length > 0 && isFile) {
@@ -340,12 +339,7 @@ export class PropertiesModalComponent implements OnInit {
       const fsRemote = this.buildFsRemote();
       const hashPath = this.buildHashPath();
 
-      const result = await this.remoteManagementService.getHashsumFile(
-        fsRemote,
-        hashPath,
-        hashType,
-        'ui'
-      );
+      const result = await this.remoteOps.getHashsumFile(fsRemote, hashPath, hashType, 'ui');
 
       if (result.hash) {
         this.fileHashes.update(hashes => ({ ...hashes, [hashType]: result.hash }));
@@ -395,13 +389,13 @@ export class PropertiesModalComponent implements OnInit {
    */
   private async checkPublicLinkSupport(): Promise<void> {
     try {
-      // Use cached fsInfo from Nautilus if available, otherwise fetch
-      let fsInfo = this.data.fsInfo;
-      if (!fsInfo) {
-        const fsRemote = this.buildFsRemote();
-        fsInfo = (await this.remoteManagementService.getFsInfo(fsRemote)) as FsInfo;
+      // Use passed features if available, otherwise fetch from metadata service
+      let features = this.data.features;
+      if (!features) {
+        const baseName = this.pathSelectionService.normalizeRemoteName(this.data.remoteName);
+        features = await this.remoteMetadata.getFeatures(baseName, 'ui');
       }
-      this.supportsPublicLink.set(fsInfo?.Features?.['PublicLink'] ?? false);
+      this.supportsPublicLink.set(features?.hasPublicLink ?? false);
     } catch (err) {
       console.warn('Failed to check PublicLink support:', err);
       this.supportsPublicLink.set(false);
@@ -421,7 +415,7 @@ export class PropertiesModalComponent implements OnInit {
       const fsRemote = this.buildFsRemote();
       const path = this.data.path;
 
-      const result = await this.remoteManagementService.getPublicLink(
+      const result = await this.remoteOps.getPublicLink(
         fsRemote,
         path,
         false,
@@ -456,7 +450,7 @@ export class PropertiesModalComponent implements OnInit {
       const fsRemote = this.buildFsRemote();
       const path = this.data.path;
 
-      await this.remoteManagementService.getPublicLink(fsRemote, path, true, undefined, 'ui'); // unlink = true
+      await this.remoteOps.getPublicLink(fsRemote, path, true, undefined, 'ui'); // unlink = true
       this.publicLinkUrl.set(null);
     } catch (err) {
       console.error('Failed to remove public link:', err);
@@ -560,12 +554,7 @@ export class PropertiesModalComponent implements OnInit {
       }
 
       // For directories, we use getHashsum (bulk)
-      const result = await this.remoteManagementService.getHashsum(
-        fsRemote,
-        hashPath,
-        hashType,
-        'ui'
-      );
+      const result = await this.remoteOps.getHashsum(fsRemote, hashPath, hashType, 'ui');
 
       if (result.hashsum && Array.isArray(result.hashsum)) {
         this.bulkHashResult.set(result.hashsum.join('\n'));

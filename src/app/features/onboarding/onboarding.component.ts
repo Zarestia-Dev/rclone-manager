@@ -1,24 +1,18 @@
 import {
   Component,
-  EventEmitter,
-  Output,
   OnInit,
   HostListener,
   inject,
   signal,
   computed,
   ChangeDetectionStrategy,
+  output,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatButtonToggleModule } from '@angular/material/button-toggle';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { FormsModule } from '@angular/forms';
 
 import { LoadingOverlayComponent } from '../../shared/components/loading-overlay/loading-overlay.component';
 import { InstallationOptionsComponent } from '../../shared/components/installation-options/installation-options.component';
@@ -26,12 +20,14 @@ import { PasswordManagerComponent } from '../../shared/components/password-manag
 import { TranslateModule } from '@ngx-translate/core';
 
 // Services
-import { InstallationService } from '@app/services';
-import { EventListenersService } from '@app/services';
-import { AppSettingsService } from '@app/services';
-import { FileSystemService } from '@app/services';
-import { RclonePasswordService } from '@app/services';
-import { SystemHealthService } from '@app/services';
+import {
+  InstallationService,
+  EventListenersService,
+  AppSettingsService,
+  FileSystemService,
+  RclonePasswordService,
+  SystemHealthService,
+} from '@app/services';
 import { InstallationOptionsData, InstallationTabOption } from '@app/types';
 
 /** Card definition for onboarding wizard */
@@ -55,17 +51,12 @@ type OnboardingAction =
   selector: 'app-onboarding',
   standalone: true,
   imports: [
-    MatCardModule,
     MatButtonModule,
     MatIconModule,
     MatTooltipModule,
     LoadingOverlayComponent,
     InstallationOptionsComponent,
-    MatButtonToggleModule,
-    MatFormFieldModule,
-    MatInputModule,
     MatProgressSpinnerModule,
-    FormsModule,
     PasswordManagerComponent,
     TranslateModule,
   ],
@@ -74,7 +65,7 @@ type OnboardingAction =
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OnboardingComponent implements OnInit {
-  @Output() completed = new EventEmitter<void>();
+  completed = output<void>();
 
   // ─── Services ───────────────────────────────────────────────────────────────
 
@@ -196,29 +187,18 @@ export class OnboardingComponent implements OnInit {
   readonly currentAction = computed<OnboardingAction>(() => {
     const card = this.currentCard();
 
-    if (card.key === 'installRclone' && !this.systemHealth.rcloneInstalled()) {
+    if (card.key === 'installRclone' && !this.systemHealth.rcloneInstalled())
       return 'install-rclone';
-    }
-    if (card.key === 'installPlugin' && !this.systemHealth.mountPluginInstalled()) {
+    if (card.key === 'installPlugin' && !this.systemHealth.mountPluginInstalled())
       return 'install-plugin';
-    }
-    if (card.key === 'selectConfig') {
-      return 'config-next';
-    }
-    if (card.key === 'passwordRequired') {
-      return 'unlock';
-    }
-    if (card.key === 'ready') {
-      return 'finish';
-    }
+    if (card.key === 'selectConfig') return 'config-next';
+    if (card.key === 'passwordRequired') return 'unlock';
+    if (card.key === 'ready') return 'finish';
     return 'next';
   });
 
   /** Whether install rclone button should be enabled */
-  readonly canInstall = computed(() => {
-    if (this.installing()) return false;
-    return this.installationValid();
-  });
+  readonly canInstall = computed(() => !this.installing() && this.installationValid());
 
   /** Dynamic install button text */
   readonly installButtonText = computed(() => {
@@ -267,7 +247,7 @@ export class OnboardingComponent implements OnInit {
       console.error('OnboardingComponent: System checks failed', error);
     }
 
-    // Show content with animation delay
+    // Show content after system checks settle
     setTimeout(() => this.animationState.set('visible'), 300);
   }
 
@@ -284,7 +264,6 @@ export class OnboardingComponent implements OnInit {
 
   @HostListener('document:keydown', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent): void {
-    // Handle Enter key based on current action
     if (event.key === 'Enter') {
       const action = this.currentAction();
       switch (action) {
@@ -335,10 +314,6 @@ export class OnboardingComponent implements OnInit {
     this.completed.emit();
   }
 
-  trackByIndex(index: number): number {
-    return index;
-  }
-
   // ─── Installation ───────────────────────────────────────────────────────────
 
   async installRclone(): Promise<void> {
@@ -370,7 +345,6 @@ export class OnboardingComponent implements OnInit {
       await this.installationService.installMountPlugin();
 
       // Re-check mount plugin status after installation
-      // The backend verifies installation before returning success
       await this.systemHealth.checkMountPlugin();
     } catch (error) {
       console.error('Plugin installation failed:', error);
@@ -382,7 +356,7 @@ export class OnboardingComponent implements OnInit {
   // ─── Installation Options Callbacks ─────────────────────────────────────────
 
   onInstallationOptionsChange(data: InstallationOptionsData): void {
-    this.installationData.set({ ...data });
+    this.installationData.set(data);
   }
 
   onInstallationValidChange(valid: boolean): void {
@@ -426,18 +400,6 @@ export class OnboardingComponent implements OnInit {
 
   onConfigValidChange(valid: boolean): void {
     this.configValid.set(valid);
-  }
-
-  async pickConfigFile(): Promise<void> {
-    try {
-      const selected = await this.fileSystemService.selectFile();
-      if (selected) {
-        this.customConfigPath.set(selected);
-        await this.onConfigPathChanged();
-      }
-    } catch (error) {
-      console.error('Failed to pick config file:', error);
-    }
   }
 
   // ─── Password Handling ──────────────────────────────────────────────────────

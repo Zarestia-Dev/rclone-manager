@@ -10,11 +10,14 @@ use crate::{
         json_helpers::unwrap_nested_options,
         logging::log::log_operation,
         rclone::endpoints::mount,
+        rclone::util::{extract_remote_name_from_fs, normalize_remote_name},
         types::{core::RcloneState, jobs::JobType, logs::LogLevel, remotes::ProfileParams},
     },
 };
 
-use super::common::{FromConfig, parse_common_config, redact_sensitive_values};
+use super::common::{
+    FromConfig, fs_value_with_runtime_overrides, parse_common_config, redact_sensitive_values,
+};
 use super::job::{JobMetadata, SubmitJobOptions, submit_job_with_options};
 
 /// Parameters for mounting a remote filesystem
@@ -28,6 +31,7 @@ pub struct MountParams {
     pub vfs_options: Option<HashMap<String, Value>>,
     pub filter_options: Option<HashMap<String, Value>>,
     pub backend_options: Option<HashMap<String, Value>>,
+    pub runtime_remote_options: Option<HashMap<String, Value>>,
     pub profile: Option<String>,
     pub origin: Option<crate::utils::types::origin::Origin>,
     pub no_cache: Option<bool>,
@@ -36,7 +40,7 @@ pub struct MountParams {
 /// Internal struct for Rclone API serialization
 #[derive(serde::Serialize)]
 struct RcloneMountBody {
-    pub fs: String,
+    pub fs: Value,
     #[serde(rename = "mountPoint")]
     pub mount_point: String,
     #[serde(rename = "mountType", skip_serializing_if = "Option::is_none")]
@@ -55,7 +59,7 @@ struct RcloneMountBody {
 
 impl FromConfig for MountParams {
     fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self> {
-        let common = parse_common_config(config, settings)?;
+        let common = parse_common_config(config, settings, &remote_name)?;
 
         Some(Self {
             remote_name,
@@ -70,6 +74,7 @@ impl FromConfig for MountParams {
             vfs_options: common.vfs_options,
             filter_options: common.filter_options,
             backend_options: common.backend_options,
+            runtime_remote_options: common.runtime_remote_options,
             profile: common.profile,
             origin: None,
             no_cache: None,
@@ -91,7 +96,7 @@ impl MountParams {
             .filter(|m: &HashMap<String, Value>| !m.is_empty());
 
         let body = RcloneMountBody {
-            fs: self.source.clone(),
+            fs: fs_value_with_runtime_overrides(&self.source, self.runtime_remote_options.as_ref()),
             mount_point: self.mount_point.clone(),
             mount_type: if self.mount_type.is_empty() {
                 None
@@ -130,7 +135,11 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         return Err(error_msg);
     }
 
-    if mounted_remotes.iter().any(|m| m.fs == params.remote_name) {
+    let requested_remote = normalize_remote_name(&params.remote_name);
+    if mounted_remotes
+        .iter()
+        .any(|m| extract_remote_name_from_fs(&m.fs) == requested_remote)
+    {
         info!("Remote {} already mounted", params.remote_name);
         return Ok(());
     }

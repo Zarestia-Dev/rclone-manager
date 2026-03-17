@@ -26,7 +26,7 @@ import { TranslateModule } from '@ngx-translate/core';
           #searchInput
           matInput
           [ngModel]="searchText()"
-          (ngModelChange)="onSearchTextChange($event)"
+          (ngModelChange)="searchTextChange.emit($event)"
           [placeholder]="placeholder() | translate"
           [attr.aria-label]="ariaLabel() | translate"
         />
@@ -54,17 +54,13 @@ export class SearchContainerComponent {
     });
   }
 
-  onSearchTextChange(value: string): void {
-    this.searchTextChange.emit(value);
-  }
-
-  public focus(): void {
+  focus(): void {
     setTimeout(() => {
       this.searchInput()?.nativeElement?.focus();
     }, 150);
   }
 
-  public clear(): void {
-    this.onSearchTextChange('');
+  clear(): void {
+    this.searchTextChange.emit('');
   }
 }

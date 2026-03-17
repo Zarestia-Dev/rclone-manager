@@ -1,28 +1,33 @@
-import { Component, inject, input, output, signal, ViewChild, ElementRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
-import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
+import { DragDropModule, CdkDragDrop, CdkDrag } from '@angular/cdk/drag-drop';
 import { CdkMenuModule } from '@angular/cdk/menu';
 
-import { IconService, PathSelectionService } from '@app/services';
+import { IconService, PathSelectionService, RemoteFacadeService } from '@app/services';
 import { ExplorerRoot, FileBrowserItem } from '@app/types';
 import { OperationsPanelComponent } from '../../operations-panel/operations-panel.component';
 
 @Component({
   selector: 'app-nautilus-sidebar',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule,
     TranslateModule,
     MatListModule,
     MatIconModule,
     MatToolbarModule,
-    MatButtonModule,
     MatDividerModule,
     DragDropModule,
     CdkMenuModule,
@@ -34,6 +39,7 @@ import { OperationsPanelComponent } from '../../operations-panel/operations-pane
 export class NautilusSidebarComponent {
   public readonly iconService = inject(IconService);
   private readonly pathSelectionService = inject(PathSelectionService);
+  private readonly remoteFacadeService = inject(RemoteFacadeService);
 
   // --- Inputs ---
   public readonly isMobile = input.required<boolean>();
@@ -44,15 +50,14 @@ export class NautilusSidebarComponent {
   public readonly bookmarks = input.required<FileBrowserItem[]>();
   public readonly title = input.required<string>();
   public readonly currentPath = input<string>('');
+  public readonly isPickerMode = input(false);
 
-  // Data caches for operations
-  public readonly cleanupSupportCache = input.required<Record<string, boolean>>();
-
-  // Drag Drop Predicates
-  public readonly canDropOnStarred = input.required<(item: any) => boolean>();
-  public readonly canDropOnBookmarks = input.required<(item: any) => boolean>();
-  public readonly canDropOnBookmark = input.required<(item: any) => boolean>();
-  public readonly canAcceptFile = input.required<(item: any) => boolean>();
+  // Drag & Drop predicates
+  public readonly canDropOnStarred = input.required<(item: CdkDrag<FileBrowserItem>) => boolean>();
+  public readonly canDropOnBookmarks =
+    input.required<(item: CdkDrag<FileBrowserItem>) => boolean>();
+  public readonly canDropOnBookmark = input.required<(item: CdkDrag<FileBrowserItem>) => boolean>();
+  public readonly canAcceptFile = input.required<(item: CdkDrag<FileBrowserItem>) => boolean>();
 
   // --- Outputs ---
   public readonly remoteSelected = output<ExplorerRoot>();
@@ -62,81 +67,92 @@ export class NautilusSidebarComponent {
   public readonly requestShortcuts = output<void>();
   public readonly sidenavAction = output<'close' | 'toggle'>();
 
-  // Modal Requests
+  // Modal requests
   public readonly requestAbout = output<ExplorerRoot>();
   public readonly requestCleanup = output<ExplorerRoot>();
   public readonly requestBookmarkRemoval = output<FileBrowserItem>();
   public readonly requestProperties = output<FileBrowserItem>();
 
-  // Drag Drop Events
-  public readonly droppedToStarred = output<CdkDragDrop<any>>();
-  public readonly droppedToLocal = output<CdkDragDrop<any>>();
+  // Drag & Drop events
+  public readonly droppedToStarred = output<CdkDragDrop<void, FileBrowserItem[]>>();
+  public readonly droppedToLocal = output<CdkDragDrop<FileBrowserItem[], FileBrowserItem[]>>();
   public readonly droppedToBookmark = output<{
-    event: CdkDragDrop<any>;
+    event: CdkDragDrop<FileBrowserItem, FileBrowserItem[]>;
     target: FileBrowserItem;
   }>();
-  public readonly droppedToRemote = output<{ event: CdkDragDrop<any>; target: ExplorerRoot }>();
+  public readonly droppedToRemote = output<{
+    event: CdkDragDrop<ExplorerRoot, FileBrowserItem[]>;
+    target: ExplorerRoot;
+  }>();
 
   // --- UI State ---
   public readonly isSearchMode = signal(false);
-  public sideContextRemote = signal<ExplorerRoot | null>(null);
-  public bookmarkContextItem: FileBrowserItem | null = null;
 
-  // Current path for bookmark selection highlighting
+  /**
+   * The active navigation key derived from the current remote + path.
+   * Recomputes only when those signals change, not on every CD cycle.
+   */
+  private readonly _activeKey = computed<string | null>(() => {
+    if (this.starredMode() || !this.nautilusRemote()) return null;
+    return `${this.nautilusRemote()!.name}::${this.currentPath()}`;
+  });
 
-  @ViewChild('searchInput') searchInput?: ElementRef<HTMLInputElement>;
+  /**
+   * True when any bookmark exactly matches the current browsing location.
+   * Drives the "don't highlight a remote when a bookmark is active" logic.
+   */
+  public readonly anyBookmarkSelected = computed(() => {
+    const active = this._activeKey();
+    if (!active) return false;
+    return this.bookmarks().some(bm => this._bookmarkKey(bm) === active);
+  });
+
+  // --- Methods ---
 
   toggleSearchMode(): void {
-    this.isSearchMode.set(!this.isSearchMode());
+    this.isSearchMode.update(v => !v);
     this.toggleSearch.emit();
-    if (this.isSearchMode()) {
-      setTimeout(() => {
-        this.searchInput?.nativeElement?.focus();
-        this.searchInput?.nativeElement?.select();
-      }, 10);
-    }
   }
 
   onSelectRemote(remote: ExplorerRoot): void {
     this.remoteSelected.emit(remote);
-    if (this.isMobile()) {
-      this.sidenavAction.emit('close');
-    }
+    this._closeSidenavOnMobile();
   }
 
   onOpenBookmark(bm: FileBrowserItem): void {
     this.bookmarkOpened.emit(bm);
-    if (this.isMobile()) {
-      this.sidenavAction.emit('close');
-    }
+    this._closeSidenavOnMobile();
   }
 
-  trackByRemote(index: number, remote: ExplorerRoot): string {
+  isBookmarkSelected(bm: FileBrowserItem): boolean {
+    const active = this._activeKey();
+    return active !== null && this._bookmarkKey(bm) === active;
+  }
+
+  supportsCleanup(remote: ExplorerRoot | null): boolean {
+    if (!remote) return false;
+    return this.remoteFacadeService.featuresSignal(remote.name)().hasCleanUp;
+  }
+
+  trackByRemote(_index: number, remote: ExplorerRoot): string {
     return remote.name;
   }
 
-  trackByBookmark(index: number, item: FileBrowserItem): string {
+  trackByBookmark(_index: number, item: FileBrowserItem): string {
     return `${item.meta.remote}:${item.entry.Path}`;
   }
 
-  /** Returns true when the user is currently browsing this bookmark's exact path. */
-  isBookmarkSelected(bm: FileBrowserItem): boolean {
-    if (this.starredMode() || !this.nautilusRemote()) return false;
-    const bmRemote = this.pathSelectionService.normalizeRemoteName(
+  private _bookmarkKey(bm: FileBrowserItem): string {
+    const remote = this.pathSelectionService.normalizeRemoteName(
       bm.meta.remote ?? '',
       bm.meta.isLocal
     );
-    return this.nautilusRemote()!.name === bmRemote && this.currentPath() === bm.entry.Path;
+    return `${remote}::${bm.entry.Path}`;
   }
 
-  /** Returns true when any bookmark matches the current location (so remotes should not show selected). */
-  isAnyBookmarkSelected(): boolean {
-    return this.bookmarks().some(bm => this.isBookmarkSelected(bm));
-  }
-
-  // Helper for cleanup support
-  supportsCleanup(remote: ExplorerRoot | null): boolean {
-    if (!remote) return false;
-    return this.cleanupSupportCache()[remote.name] ?? false;
+  private _closeSidenavOnMobile(): void {
+    if (this.isMobile()) {
+      this.sidenavAction.emit('close');
+    }
   }
 }

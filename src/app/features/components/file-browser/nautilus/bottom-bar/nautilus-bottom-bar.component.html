@@ -1,15 +1,25 @@
-<div class="nautilus-bottom-bar" data-tauri-drag-region>
-  <div class="nav-controls">
-    <button class="nav-button" (click)="goBack.emit()" [disabled]="!canGoBack()">
-      <mat-icon svgIcon="chevron-left"></mat-icon>
-    </button>
-    <button class="nav-button" (click)="goForward.emit()" [disabled]="!canGoForward()">
-      <mat-icon svgIcon="chevron-right"></mat-icon>
+<div class="nautilus-bottom-bar" [class.picker-mode]="isPickerMode()" data-tauri-drag-region>
+  <div class="bar-left">
+    <button class="nav-button" (click)="toggleSidebar.emit()" title="Toggle Sidebar">
+      <mat-icon svgIcon="menu-bar"></mat-icon>
     </button>
   </div>
 
-  <div class="view-controls">
-    <button class="nav-button" (click)="toggleLayout()">
+  <div class="bar-center">
+    @if (isPickerMode()) {
+      <button
+        mat-raised-button
+        class="accent"
+        (click)="confirmSelection.emit()"
+        [disabled]="isConfirmDisabled()"
+      >
+        {{ 'nautilus.contextMenu.open' | translate }}
+      </button>
+    }
+  </div>
+
+  <div class="bar-right">
+    <button class="nav-button" (click)="toggleLayout()" title="Toggle Layout">
       <mat-icon [svgIcon]="layout() === 'grid' ? 'list' : 'grid'"></mat-icon>
     </button>
     <button
@@ -25,6 +35,7 @@
           offsetX: -6,
         },
       ]"
+      title="View Options"
     >
       <mat-icon svgIcon="chevron-up"></mat-icon>
     </button>

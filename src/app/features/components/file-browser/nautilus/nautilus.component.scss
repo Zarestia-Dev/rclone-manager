@@ -3,11 +3,10 @@
 .nautilus-overlay-pane {
   width: 100vw;
   height: 100vh;
-  border-radius: var(--app-border-radius) !important;
   --sidenav-width: clamp(180px, 20vw, 240px);
 
   ::ng-deep .cdk-drag-placeholder {
-    display: none !important;
+    display: none;
   }
 }
 
@@ -112,63 +111,44 @@
 .sort-radio-group {
   display: flex;
   flex-direction: column;
+}
 
-  .menu-item-wrapper {
-    padding: var(--space-xxs) var(--space-xs);
-    display: flex;
-    align-items: center;
+.menu-item-wrapper {
+  padding: var(--space-xxs) var(--space-xs);
+  display: flex;
+  align-items: center;
 
-    mat-checkbox {
-      width: 100%;
-    }
+  mat-checkbox {
+    width: 100%;
   }
+}
 
-  .sort-options {
-    display: flex;
-    align-items: center;
-    flex-direction: column;
+.sort-options {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
 
-    .sort-label {
-      font-size: var(--font-size-md);
-      font-weight: 700;
-      color: var(--dim-color);
-    }
+  .sort-label {
+    font-size: var(--font-size-md);
+    font-weight: 700;
+    color: var(--dim-color);
   }
 }
 
 .selection-info-container {
   position: absolute;
-  bottom: var(--bottom-bar-offset, 16px);
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--mat-sys-surface-container-highest);
-  border: 1px solid var(--mat-sys-outline-variant);
+  bottom: var(--bottom-bar-offset);
+  right: var(--space-xxs);
+  font-weight: 500;
+  background: var(--sidebar-bg-color);
   padding: 6px 16px;
-  border-radius: 99px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  z-index: 100;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: auto;
+  border-radius: var(--radius-sm);
+  z-index: 5;
 }
 
 .selection-info {
   font-size: var(--font-size-md);
   color: var(--window-fg-color);
-}
-
-.nautilus-bottom-bar ~ .selection-info-container {
-  bottom: 64px;
-}
-
-.picker-actions ~ .selection-info-container {
-  bottom: 72px;
-}
-
-.picker-actions.mobile-picker ~ .selection-info-container {
-  bottom: 120px;
 }
 
 /*
@@ -181,7 +161,8 @@
   gap: var(--space-xs);
   padding: var(--space-xs) var(--space-md);
 
-  &.mobile-picker {
+  &.desktop-picker {
+    box-shadow: inset 0 1px 0 var(--card-shade-color);
     padding-bottom: var(--space-sm);
   }
 }
@@ -191,7 +172,6 @@
 
   &:hover {
     background: transparent;
-    background-color: initial;
   }
 }
 

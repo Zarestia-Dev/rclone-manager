@@ -4,7 +4,6 @@
   display: flex;
   flex-direction: column;
   background: rgba(var(--window-bg-color-rgb), 0.85);
-  border-radius: var(--app-border-radius);
   overflow: hidden;
 
   .file-viewer-header {

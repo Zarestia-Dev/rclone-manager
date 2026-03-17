@@ -1,56 +1,52 @@
 <div class="remote-details">
+  @let remote = selectedRemote();
   <div class="header-content">
     <div class="remote-info-section">
       <div class="icon-container">
         <mat-icon
-          [svgIcon]="iconService.getIconName(selectedRemote().remoteSpecs.type)"
+          [svgIcon]="iconService.getIconName(remote.type)"
           class="remote-type-icon"
         ></mat-icon>
       </div>
       <div class="remote-text-info">
-        <h2 class="remote-name" matTooltip="{{ selectedRemote().remoteSpecs.name }}">
-          {{ selectedRemote().remoteSpecs.name }}
-        </h2>
-        <span class="remote-type">{{ selectedRemote().remoteSpecs.type | titlecase }}</span>
+        <h2 class="remote-name" [matTooltip]="remote.name">{{ remote.name }}</h2>
+        <span class="remote-type">{{ remote.type | titlecase }}</span>
       </div>
     </div>
+
     <div
       class="remote-status-indicators"
       role="group"
       [attr.aria-label]="'dashboard.generalDetail.remoteActionQuickSelection' | translate"
     >
-      @for (actionConfig of actionConfigs; track actionConfig.key) {
+      @for (vc of viewActionConfigs(); track vc.key) {
         <div
           class="status-chip"
-          [class]="actionConfig.key"
-          [class.selected]="isActionSelected(actionConfig.key)"
-          [class.active]="isActionActive(actionConfig.key)"
-          [class.disabled]="!isActionSelected(actionConfig.key) && !canSelectMoreActions()"
+          [class]="vc.key"
+          [class.selected]="vc.isSelected"
+          [class.active]="vc.isActive"
+          [class.disabled]="!vc.canInteract"
           role="button"
           tabindex="0"
-          [attr.aria-pressed]="isActionSelected(actionConfig.key)"
-          [attr.aria-label]="getAriaLabel(actionConfig.key) | translate"
-          [matTooltip]="getActionTooltip(actionConfig.key) | translate"
-          (click)="onToggleAction(actionConfig.key)"
-          (keydown.enter)="onToggleAction(actionConfig.key)"
-          (keydown.space)="onToggleAction(actionConfig.key)"
+          [attr.aria-pressed]="vc.isSelected"
+          [attr.aria-label]="vc.ariaLabel"
+          [matTooltip]="vc.tooltip | translate"
+          (click)="onToggleAction(vc.key)"
+          (keydown.enter)="onToggleAction(vc.key)"
+          (keydown.space)="$event.preventDefault(); onToggleAction(vc.key)"
         >
           <div class="status-dot">
-            <mat-icon [svgIcon]="actionConfig.icon"></mat-icon>
+            <mat-icon [svgIcon]="vc.icon"></mat-icon>
           </div>
 
-          @if (isActionSelected(actionConfig.key)) {
-            <span class="selection-badge" aria-hidden="true">
-              {{ getActionPosition(actionConfig.key) }}
-            </span>
+          @if (vc.isSelected) {
+            <span class="selection-badge" aria-hidden="true">{{ vc.position }}</span>
           }
 
-          <span class="status-label">{{ actionConfig.label | translate }}</span>
+          <span class="status-label">{{ vc.label | translate }}</span>
 
-          @if (isActionSelected(actionConfig.key)) {
-            <span class="cdk-visually-hidden">
-              {{ getAriaLabel(actionConfig.key) | translate }}
-            </span>
+          @if (vc.isSelected) {
+            <span class="cdk-visually-hidden">{{ vc.ariaLabel }}</span>
           }
         </div>
       }
@@ -263,6 +259,7 @@
               }
             </div>
           </div>
+
           @if (remoteScheduledTasks().length > 1) {
             <div class="carousel-navigation">
               <button

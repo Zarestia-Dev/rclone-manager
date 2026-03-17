@@ -1,9 +1,7 @@
 import { inject, Injectable } from '@angular/core';
-import { TranslateService } from '@ngx-translate/core';
-import { TauriBaseService } from '../core/tauri-base.service';
-import { NotificationService } from '@app/services';
+import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { ExportType } from '../../shared/types/ui';
-import { FileSystemService } from '../file-operations/file-system.service';
+import { FileSystemService } from '../operations/file-system.service';
 
 // Matches the `BackupAnalysis` struct in `core/settings/backup/backup_types.rs`
 export interface BackupAnalysis {
@@ -44,9 +42,7 @@ export interface ExportCategory {
   providedIn: 'root',
 })
 export class BackupRestoreService extends TauriBaseService {
-  private notificationService = inject(NotificationService);
   private fileSystemService = inject(FileSystemService);
-  private translate = inject(TranslateService);
 
   /**
    * Backup settings to a specified location
@@ -59,21 +55,16 @@ export class BackupRestoreService extends TauriBaseService {
     userNote: string | null,
     includeProfiles?: string[]
   ): Promise<void> {
-    try {
-      await this.invokeCommand('backup_settings', {
-        backupDir: selectedPath,
-        exportType: selectedOption,
-        password,
-        remoteName,
-        userNote,
-        includeProfiles,
-      });
-
-      this.notificationService.showSuccess(this.translate.instant('backup.backupSuccess'));
-    } catch (error) {
-      this.notificationService.showError(String(error));
-      throw error;
-    }
+    await this.invokeWithNotification('backup_settings', {
+      backupDir: selectedPath,
+      exportType: selectedOption,
+      password,
+      remoteName,
+      userNote,
+      includeProfiles,
+    }, {
+      successKey: 'backup.backupSuccess'
+    });
   }
 
   /**
@@ -86,18 +77,14 @@ export class BackupRestoreService extends TauriBaseService {
     restoreProfile?: string,
     restoreProfileAs?: string
   ): Promise<void> {
-    try {
-      await this.invokeCommand('restore_settings', {
-        backupPath: path,
-        password,
-        restoreProfile,
-        restoreProfileAs,
-      });
-      this.notificationService.showSuccess(this.translate.instant('backup.restoreSuccess'));
-    } catch (error) {
-      this.notificationService.showError(String(error));
-      throw error;
-    }
+    await this.invokeWithNotification('restore_settings', {
+      backupPath: path,
+      password,
+      restoreProfile,
+      restoreProfileAs,
+    }, {
+      successKey: 'backup.restoreSuccess'
+    });
   }
 
   /**

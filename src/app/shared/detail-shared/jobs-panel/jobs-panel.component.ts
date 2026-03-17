@@ -1,13 +1,13 @@
-import { Component, input, output } from '@angular/core';
-import { NgClass, TitleCasePipe, LowerCasePipe, DatePipe } from '@angular/common';
+import { Component, input, output, effect, viewChild } from '@angular/core';
+import { NgClass, TitleCasePipe, DatePipe } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTableModule } from '@angular/material/table';
+import { MatTableDataSource, MatTableModule } from '@angular/material/table';
+import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatSortModule } from '@angular/material/sort';
 import { JobInfo, JobsPanelConfig, PrimaryActionType } from '../../types';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 
@@ -17,31 +17,32 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
   imports: [
     NgClass,
     TitleCasePipe,
-    LowerCasePipe,
     DatePipe,
     MatCardModule,
     MatIconModule,
     MatTableModule,
+    MatSortModule,
     MatButtonModule,
     MatProgressBarModule,
     MatTooltipModule,
-    MatSortModule,
     FormatFileSizePipe,
     TranslateModule,
   ],
   styleUrls: ['./jobs-panel.component.scss'],
   template: `
+    @let cfg = config();
+
     <mat-card>
       <mat-card-header>
         <mat-card-title>
           <mat-icon svgIcon="jobs"></mat-icon>
           <span>{{ 'detailShared.jobs.activeJobs' | translate }}</span>
-          <span class="count">{{ config().jobs.length }}</span>
+          <span class="count">{{ cfg.jobs.length }}</span>
         </mat-card-title>
       </mat-card-header>
       <mat-card-content>
         <div class="jobs-table-container">
-          <table mat-table [dataSource]="config().jobs" matSort class="jobs-table">
+          <table mat-table [dataSource]="dataSource" matSort class="jobs-table">
             <!-- Type Column -->
             <ng-container matColumnDef="type">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>
@@ -70,18 +71,17 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
                 {{ 'detailShared.jobs.columns.status' | translate }}
               </th>
               <td mat-cell *matCellDef="let job">
-                <div class="status-chip" [ngClass]="getJobStatus(job)">
+                @let status = getJobStatus(job);
+                <div class="status-chip" [ngClass]="status">
                   <div class="status-dot"></div>
-                  <span>{{
-                    'detailShared.jobs.status.' + (getJobStatus(job) | lowercase) | translate
-                  }}</span>
+                  <span>{{ 'detailShared.jobs.status.' + status | translate }}</span>
                 </div>
               </td>
             </ng-container>
 
             <!-- Progress Column -->
             <ng-container matColumnDef="progress">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>
+              <th mat-header-cell *matHeaderCellDef>
                 {{ 'detailShared.jobs.columns.progress' | translate }}
               </th>
               <td mat-cell *matCellDef="let job">
@@ -119,11 +119,12 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
                 {{ 'detailShared.jobs.columns.actions' | translate }}
               </th>
               <td mat-cell *matCellDef="let job">
+                @let status = getJobStatus(job);
                 <div class="job-actions">
-                  @if (job.status === 'Running') {
+                  @if (status === 'running') {
                     <button
                       matIconButton
-                      tabIndex="-1"
+                      tabindex="-1"
                       class="action-button stop-button"
                       [matTooltip]="'detailShared.jobs.actions.stop' | translate"
                       (click)="
@@ -139,7 +140,7 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
                   } @else {
                     <button
                       matIconButton
-                      tabIndex="-1"
+                      tabindex="-1"
                       class="action-button delete-button"
                       [matTooltip]="'detailShared.jobs.actions.delete' | translate"
                       (click)="deleteJob.emit(job.jobid)"
@@ -151,14 +152,10 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
               </td>
             </ng-container>
 
-            <tr mat-header-row *matHeaderRowDef="config().displayedColumns"></tr>
-            <tr
-              mat-row
-              *matRowDef="let row; columns: config().displayedColumns"
-              class="job-row"
-            ></tr>
+            <tr mat-header-row *matHeaderRowDef="cfg.displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: cfg.displayedColumns" class="job-row"></tr>
             <tr class="no-data-row" *matNoDataRow>
-              <td class="no-data-cell" [attr.colspan]="config().displayedColumns.length">
+              <td class="no-data-cell" [attr.colspan]="cfg.displayedColumns.length">
                 <div class="no-data-content">
                   <mat-icon svgIcon="jobs" class="no-data-icon"></mat-icon>
                   <span>{{ 'detailShared.jobs.empty' | translate }}</span>
@@ -172,17 +169,45 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
   `,
 })
 export class JobsPanelComponent {
-  config = input.required<JobsPanelConfig>();
+  readonly config = input.required<JobsPanelConfig>();
 
-  stopJob = output<{
+  readonly stopJob = output<{
     type: PrimaryActionType;
     remoteName: string;
     profileName?: string;
   }>();
-  deleteJob = output<number>();
+  readonly deleteJob = output<number>();
+
+  private readonly sort = viewChild(MatSort);
+
+  readonly dataSource = new MatTableDataSource<JobInfo>([]);
+
+  constructor() {
+    effect(() => {
+      this.dataSource.data = this.config().jobs;
+      const sort = this.sort();
+      if (sort) this.dataSource.sort = sort;
+    });
+
+    this.dataSource.sortingDataAccessor = (job: JobInfo, column: string): string | number => {
+      switch (column) {
+        case 'type':
+          return job.job_type;
+        case 'profile':
+          return job.profile ?? 'default';
+        case 'status':
+          return job.status.toLowerCase();
+        case 'startTime':
+          return job.start_time ? new Date(job.start_time).getTime() : 0;
+        default:
+          return '';
+      }
+    };
+  }
 
   getJobProgress(job: JobInfo): number {
     if (!job.stats) return 0;
+    if (!job.stats.totalBytes) return 0;
     return (job.stats.bytes / job.stats.totalBytes) * 100;
   }
 

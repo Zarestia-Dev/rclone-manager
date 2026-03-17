@@ -769,7 +769,9 @@
           "Permissions": "Permisos",
           "Numbers": "Números",
           "Strings": "Cadenas"
-        }
+        },
+        "booleanEnabled": "✓ Activado",
+        "booleanDisabled": "✗ Desactivado"
       },
       "actions": {
         "pollInterval": "Intervalo de sondeo",
@@ -1309,14 +1311,18 @@
       "vfsOptions": "Opciones de VFS",
       "filterOptions": "Opciones de filtro",
       "backendConfig": "Configuración del backend",
+      "runtimeRemoteOptions": "Remoto en tiempo de ejecución",
       "profilesLabel": "{{op}} Perfiles",
       "settingsLabel": "{{op}} Ajustes",
       "mountProfilesVfs": "Montar perfiles y VFS",
       "serveProfiles": "Servir perfiles",
       "syncBehave": "Ajuste el comportamiento del proceso {{op}}. Se admite el perfil múltiple.",
-      "serveSettings": "Servir ajustes",
+      "serveSettings": "Ajustes de servicio",
       "mountSettings": "Ajustes de montaje",
+      "copySettings": "Ajustes de copia",
       "syncSettings": "Ajustes de sincronización",
+      "moveSettings": "Ajustes de movimiento",
+      "bisyncSettings": "Ajustes de BiSync",
       "sync": "Sincronizar",
       "syncDesc": "Sincronización unidireccional",
       "bisync": "BiSync",
@@ -1838,14 +1844,16 @@
         "copy": "Copiar",
         "filter": "Filtrar",
         "vfs": "VFS",
-        "backend": "Backend"
+        "backend": "Backend",
+        "runtimeRemote": "Remoto en tiempo de ejecución"
       },
       "advancedProfiles": {
         "title": "Perfiles avanzados",
         "linked": "{{count}} vinculado(s)",
         "vfs": "Perfil VFS",
         "filter": "Perfil de filtro",
-        "backend": "Perfil de backend"
+        "backend": "Perfil de backend",
+        "runtimeRemote": "Perfil de remoto en tiempo de ejecución"
       },
       "profile": {
         "label": "Perfil",

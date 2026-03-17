@@ -174,27 +174,6 @@
   box-shadow: var(--shadow-gnome);
 }
 
-.input-header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  margin-bottom: var(--space-md);
-
-  .input-label {
-    font-size: var(--font-size-md);
-    font-weight: 600;
-    color: var(--window-fg-color);
-    letter-spacing: -0.25px;
-  }
-
-  .input-description {
-    font-size: var(--font-size-sm);
-    color: var(--dim-color);
-    line-height: 1.5;
-    opacity: 0.9;
-  }
-}
-
 // =============================================
 // INPUT TYPES
 // =============================================
@@ -227,17 +206,16 @@
   gap: var(--space-xxs);
   padding: var(--space-xs) 0;
 
-  .option-value {
+  .option-label {
     font-weight: 500;
     color: var(--window-fg-color);
     font-size: var(--font-size-base);
   }
 
-  .option-hint {
+  .option-secondary {
     font-size: var(--font-size-xs);
     color: var(--dim-color);
     opacity: 0.7;
-    font-style: italic;
   }
 }
 
@@ -276,54 +254,6 @@
     .invalid & {
       color: var(--warn-color);
     }
-  }
-}
-
-.actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-lg);
-  justify-content: center;
-}
-
-.continue-button {
-  min-width: 180px;
-  height: 48px;
-  font-weight: 600;
-  font-size: var(--font-size-base);
-  border-radius: var(--radius-md);
-  text-transform: none;
-  letter-spacing: 0.25px;
-  position: relative;
-  overflow: hidden;
-  transition: var(--transition-standard);
-
-  &:not(:disabled) {
-    background: linear-gradient(
-      135deg,
-      var(--primary-color) 0%,
-      rgba(var(--accent-color-rgb), 0.9) 100%
-    );
-
-    &:hover {
-      transform: translateY(-2px);
-    }
-
-    &:active {
-      transform: translateY(-1px);
-    }
-  }
-
-  &:disabled {
-    background: rgba(var(--dim-color-rgb), 0.3);
-    color: rgba(var(--window-fg-color-rgb), 0.5);
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-  }
-
-  &.loading {
-    pointer-events: none;
   }
 }
 
@@ -371,11 +301,6 @@
     padding: var(--space-md);
   }
 
-  .continue-button {
-    min-width: 160px;
-    height: 44px;
-  }
-
   .validation-status {
     padding: var(--space-sm);
   }
@@ -417,21 +342,6 @@
   .question-card,
   .input-card {
     padding: var(--space-sm);
-  }
-
-  .input-header {
-    margin-bottom: var(--space-sm);
-  }
-
-  .continue-button {
-    min-width: 140px;
-    height: 40px;
-    font-size: var(--font-size-sm);
-  }
-
-  .actions {
-    flex-direction: column;
-    gap: var(--space-md);
   }
 
   .validation-status {

@@ -1,7 +1,14 @@
-import { Component, inject, viewChild, ElementRef, input, output, effect } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import {
+  Component,
+  inject,
+  viewChild,
+  ElementRef,
+  input,
+  output,
+  effect,
+  signal,
+} from '@angular/core';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslateModule } from '@ngx-translate/core';
 import { CdkMenuModule } from '@angular/cdk/menu';
@@ -12,20 +19,12 @@ import { ExplorerRoot, FileBrowserItem } from '@app/types';
 @Component({
   selector: 'app-nautilus-toolbar',
   standalone: true,
-  imports: [
-    CommonModule,
-    MatToolbarModule,
-    MatButtonModule,
-    MatIconModule,
-    TranslateModule,
-    CdkMenuModule,
-    DragDropModule,
-  ],
+  imports: [MatToolbarModule, MatIconModule, TranslateModule, CdkMenuModule, DragDropModule],
   templateUrl: './nautilus-toolbar.component.html',
   styleUrls: ['./nautilus-toolbar.component.scss'],
 })
 export class NautilusToolbarComponent {
-  public readonly iconService = inject(IconService);
+  protected readonly iconService = inject(IconService);
 
   // --- Inputs ---
   public readonly isMobile = input.required<boolean>();
@@ -48,7 +47,6 @@ export class NautilusToolbarComponent {
   // --- Outputs ---
   public readonly goBack = output<void>();
   public readonly goForward = output<void>();
-  public readonly toggleSidebar = output<void>();
   public readonly navigateToSegment = output<number>();
   public readonly updatePath = output<string>();
   public readonly navigateToPath = output<string>();
@@ -63,6 +61,12 @@ export class NautilusToolbarComponent {
   public readonly pathScrollView = viewChild<ElementRef<HTMLDivElement>>('pathScrollView');
   public readonly searchInput = viewChild<ElementRef<HTMLInputElement>>('searchInput');
   public readonly pathInput = viewChild<ElementRef<HTMLInputElement>>('pathInput');
+
+  protected readonly _showLeftShadow = signal(false);
+  protected readonly _showRightShadow = signal(false);
+
+  /** Fallback predicate — accepts everything when no canAcceptFile is provided. */
+  public readonly _acceptAll = (_item: CdkDrag<FileBrowserItem>) => true;
 
   constructor() {
     effect(() => {
@@ -89,22 +93,37 @@ export class NautilusToolbarComponent {
 
   private scrollToEnd(): void {
     const el = this.pathScrollView()?.nativeElement;
-    if (el) {
-      setTimeout(() => {
-        el.scrollTo({ left: el.scrollWidth, behavior: 'smooth' });
-      }, 50);
-    }
+    if (!el) return;
+    setTimeout(() => {
+      el.scrollTo({ left: el.scrollWidth, behavior: 'smooth' });
+      // Re-evaluate shadow state after the DOM settles and scroll begins
+      this.updateScrollShadows();
+    }, 50);
+  }
+
+  /** Called by the template's (scroll) binding on the path scroll view. */
+  public onScrollViewScroll(): void {
+    this.updateScrollShadows();
+  }
+
+  private updateScrollShadows(): void {
+    const el = this.pathScrollView()?.nativeElement;
+    if (!el) return;
+    // Use a small threshold (4px) to avoid flickering on near-zero scroll offsets
+    this._showLeftShadow.set(el.scrollLeft > 4);
+    this._showRightShadow.set(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
   }
 
   public onPathScroll(event: WheelEvent): void {
     const el = this.pathScrollView()?.nativeElement;
-    if (el) {
-      el.scrollLeft += event.deltaY;
-      event.preventDefault();
-    }
+    if (!el) return;
+    el.scrollLeft += event.deltaY;
+    event.preventDefault();
   }
 
-  public onSearchEscape(inputElement: HTMLInputElement): void {
+  public onSearchEscape(inputElement: HTMLInputElement, event: Event): void {
+    // Stop propagation so the path-container keydown.escape handler doesn't double-fire
+    event.stopPropagation();
     this.searchFilterChange.emit('');
     this.isSearchModeChange.emit(false);
     inputElement.blur();
@@ -117,15 +136,16 @@ export class NautilusToolbarComponent {
   }
 
   public onPathContainerClick(): void {
-    if (!this.isSearchMode()) {
+    // Guard: only enter edit mode when idle — not already editing or searching
+    if (!this.isSearchMode() && !this.isEditingPath()) {
       this.isEditingPathChange.emit(true);
     }
   }
 
-  /** Fallback predicate — accepts everything when no canAcceptFile is provided. */
-  public readonly _acceptAll = () => true;
-
-  public onPathContainerEscape(): void {
+  public onPathContainerEscape(event: Event): void {
+    // Only handle escape when the container itself is focused,
+    // not when it bubbles up from a child input
+    if (event.target !== event.currentTarget) return;
     this.isEditingPathChange.emit(false);
     this.isSearchModeChange.emit(false);
   }

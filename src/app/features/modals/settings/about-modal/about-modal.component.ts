@@ -146,7 +146,7 @@ export class AboutModalComponent implements OnInit {
   readonly rcloneUpdateChannel = this.rcloneUpdateService.updateChannel;
   readonly rcloneSkippedVersions = this.rcloneUpdateService.skippedVersions;
   // Read directly from the service — no need for a local copy kept in sync via effect()
-  readonly rcloneAutoCheck = this.rcloneUpdateService.autoCheck;
+  readonly rcloneAutoCheck = this.rcloneUpdateService.autoCheckEnabled;
 
   readonly restartingApp = signal<boolean>(false);
   readonly restartingRcloneEngine = signal<boolean>(false);
@@ -368,7 +368,7 @@ export class AboutModalComponent implements OnInit {
 
   private async loadAppAutoCheckSetting(): Promise<void> {
     try {
-      this.appAutoCheckUpdates.set(await this.appUpdaterService.getAutoCheckEnabled());
+      this.appAutoCheckUpdates.set(this.appUpdaterService.autoCheckEnabled());
     } catch (error) {
       console.error('Failed to load auto-check setting:', error);
     }
@@ -446,10 +446,7 @@ export class AboutModalComponent implements OnInit {
       if (this.backendService.activeBackend() === 'Local') {
         const pid = this.rcloneStatusService.rclonePID();
         if (!pid) {
-          this.notificationService.openSnackBar(
-            this.translate.instant('modals.about.noProcessToKill'),
-            this.translate.instant('common.close')
-          );
+          this.notificationService.showInfo(this.translate.instant('modals.about.noProcessToKill'));
           return;
         }
         await this.systemInfoService.killProcess(pid);
@@ -457,17 +454,11 @@ export class AboutModalComponent implements OnInit {
         await this.systemInfoService.quitRcloneEngine();
       }
 
-      this.notificationService.openSnackBar(
-        this.translate.instant('modals.about.killSuccess'),
-        this.translate.instant('common.close')
-      );
+      this.notificationService.showSuccess(this.translate.instant('modals.about.killSuccess'));
       await this.rcloneStatusService.refresh();
     } catch (error) {
       console.error('Failed to quit rclone engine:', error);
-      this.notificationService.openSnackBar(
-        this.translate.instant('modals.about.killFailed'),
-        this.translate.instant('common.close')
-      );
+      this.notificationService.showError(this.translate.instant('modals.about.killFailed'));
     }
   }
 
@@ -555,17 +546,10 @@ export class AboutModalComponent implements OnInit {
 
   copyToClipboard(text: string): void {
     navigator.clipboard.writeText(text).then(
-      () =>
-        this.notificationService.openSnackBar(
-          this.translate.instant('modals.about.copied'),
-          this.translate.instant('common.close')
-        ),
+      () => this.notificationService.showInfo(this.translate.instant('modals.about.copied')),
       err => {
         console.error('Failed to copy to clipboard:', err);
-        this.notificationService.openSnackBar(
-          this.translate.instant('modals.about.copyFailed'),
-          this.translate.instant('common.close')
-        );
+        this.notificationService.showError(this.translate.instant('modals.about.copyFailed'));
       }
     );
   }

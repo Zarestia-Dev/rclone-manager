@@ -11,7 +11,8 @@ import { RemoteManagementService } from '../../services/remote/remote-management
   providedIn: 'root',
 })
 export class AuthStateService {
-  // Authentication state
+  private readonly remoteManagementService = inject(RemoteManagementService);
+
   // Authentication state
   private readonly _isAuthInProgress = signal<boolean>(false);
   private readonly _currentRemoteName = signal<string | null>(null);
@@ -25,14 +26,6 @@ export class AuthStateService {
   public readonly currentRemoteName = this._currentRemoteName.asReadonly();
   public readonly cleanupInProgress = this._cleanupInProgress.asReadonly();
 
-  // Public observables for backward compatibility
-  public readonly isAuthInProgress$ = toObservable(this._isAuthInProgress);
-  public readonly isAuthCancelled$ = toObservable(this._isAuthCancelled);
-  public readonly currentRemoteName$ = toObservable(this._currentRemoteName);
-  public readonly cleanupInProgress$ = toObservable(this._cleanupInProgress);
-
-  private remoteManagementService = inject(RemoteManagementService);
-
   /**
    * Start authentication process
    */
@@ -40,7 +33,7 @@ export class AuthStateService {
     if (this._cleanupInProgress()) {
       console.debug('Waiting for previous cleanup to complete');
       await firstValueFrom(
-        this.cleanupInProgress$.pipe(
+        toObservable(this._cleanupInProgress).pipe(
           filter(inProgress => !inProgress),
           take(1)
         )

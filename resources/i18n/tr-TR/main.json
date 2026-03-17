@@ -775,7 +775,9 @@
           "Permissions": "İzinler",
           "Numbers": "Sayılar",
           "Strings": "Metinler"
-        }
+        },
+        "booleanEnabled": "✓ Etkin",
+        "booleanDisabled": "✗ Devre Dışı"
       },
       "actions": {
         "pollInterval": "Yoklama Aralığı",
@@ -1346,6 +1348,7 @@
       "vfsOptions": "VFS Seçenekleri",
       "filterOptions": "Filtre Seçenekleri",
       "backendConfig": "Arka Plan Yapılandırması",
+      "runtimeRemoteOptions": "Çalışma Zamanı Uzak",
       "profilesLabel": "{{op}} Profilleri",
       "settingsLabel": "{{op}} Ayarları",
       "mountProfilesVfs": "Bağlama Profilleri ve VFS",
@@ -1353,7 +1356,10 @@
       "syncBehave": "{{op}} işleminin nasıl davranacağını ayarlayın. Çoklu profil desteklenir.",
       "serveSettings": "Sunucu Ayarları",
       "mountSettings": "Bağlama Ayarları",
+      "copySettings": "Kopyalama Ayarları",
       "syncSettings": "Senkronizasyon Ayarları",
+      "moveSettings": "Taşıma Ayarları",
+      "bisyncSettings": "Çift Yönlü Senkronizasyon Ayarları",
       "sync": "Senkronizasyon",
       "syncDesc": "Tek yönlü senkronizasyon",
       "bisync": "Çift Yönlü",
@@ -1374,8 +1380,8 @@
       "accessibleVia": "Erişim Yolu",
       "mounting": "Bağlanıyor...",
       "mount": "Bağla",
-      "unmounting": "Bağlantı kesiliyor...",
-      "unmount": "Bağlantıyı Kes",
+      "unmounting": "Çıkarılıyor...",
+      "unmount": "Çıkar",
       "progress": "İlerleme",
       "speed": "Hız",
       "eta": "Tahmini Süre",
@@ -1881,14 +1887,16 @@
         "copy": "Kopyala",
         "filter": "Filtre",
         "vfs": "VFS",
-        "backend": "Arka Uç"
+        "backend": "Arka Uç",
+        "runtimeRemote": "Çalışma Zamanı Uzak"
       },
       "advancedProfiles": {
         "title": "Gelişmiş Profiller",
         "linked": "{{count}} bağlı",
         "vfs": "VFS Profili",
         "filter": "Filtre Profili",
-        "backend": "Arka Uç Profili"
+        "backend": "Arka Uç Profili",
+        "runtimeRemote": "Çalışma Zamanı Uzak Profil"
       },
       "profile": {
         "label": "Profil",

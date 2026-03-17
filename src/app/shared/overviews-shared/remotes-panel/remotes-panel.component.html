@@ -9,16 +9,16 @@
 
   <mat-card-content class="remotes-content">
     <div class="remotes-grid">
-      @for (remote of remotes(); track remote.remoteSpecs.name) {
+      @for (remote of remotes(); track remote.name) {
         <app-remote-card
           [remote]="remote"
           [mode]="mode()"
-          [actionState]="getActionState(remote.remoteSpecs.name)"
+          [actionState]="getActionState(remote.name)"
           [primaryActionLabel]="primaryActionLabel()"
           [activeIcon]="activeIcon()"
           [primaryActions]="remote.primaryActions || []"
-          (remoteClick)="onRemoteSelected($event)"
-          (openInFiles)="onOpenInFiles($event)"
+          (remoteClick)="remoteSelected.emit($event)"
+          (openInFiles)="openInFiles.emit($event)"
           (startJob)="startJob.emit($event)"
           (stopJob)="stopJob.emit($event)"
         ></app-remote-card>

@@ -11,7 +11,6 @@ import {
 } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
 import { SearchContainerComponent } from '../../shared/components/search-container/search-container.component';
@@ -20,14 +19,13 @@ import { SearchContainerComponent } from '../../shared/components/search-contain
 import { Remote } from '@app/types';
 import { IconService } from '@app/services';
 import { UiStateService } from '@app/services';
-import { RemoteStatusService } from '../../shared/utils/remote-status.service';
+import { RemoteStatusService } from '@app/services';
 
 @Component({
   selector: 'app-sidebar',
   standalone: true,
   imports: [
     TitleCasePipe,
-    MatSidenavModule,
     MatCardModule,
     MatIconModule,
     MatTooltipModule,
@@ -40,11 +38,10 @@ import { RemoteStatusService } from '../../shared/utils/remote-status.service';
 })
 export class SidebarComponent {
   remotes = input.required<Remote[]>();
-  iconService = inject(IconService);
-  uiStateService = inject(UiStateService);
-
-  // Inject the i18n-aware service
+  readonly iconService = inject(IconService);
+  private readonly uiStateService = inject(UiStateService);
   readonly statusService = inject(RemoteStatusService);
+
   selectedRemote = this.uiStateService.selectedRemote;
 
   searchTerm = signal('');
@@ -52,16 +49,14 @@ export class SidebarComponent {
   searchContainer = viewChild(SearchContainerComponent);
 
   onSearchTextChange(searchText: string): void {
-    this.searchTerm.set(searchText.trim().toLowerCase());
+    this.searchTerm.set(searchText);
   }
 
   filteredRemotes = computed(() => {
     const term = this.searchTerm().trim().toLowerCase();
     if (!term) return this.remotes();
     return this.remotes().filter(
-      remote =>
-        remote.remoteSpecs.name.toLowerCase().includes(term) ||
-        remote.remoteSpecs.type.toLowerCase().includes(term)
+      remote => remote.name.toLowerCase().includes(term) || remote.type.toLowerCase().includes(term)
     );
   });
 
@@ -71,8 +66,7 @@ export class SidebarComponent {
 
   @HostListener('document:keydown.control.f', ['$event'])
   onControlF(event: Event): void {
-    const keyboardEvent = event as KeyboardEvent;
-    keyboardEvent.preventDefault();
+    (event as KeyboardEvent).preventDefault();
     this.toggleSearch();
     if (this.searchVisible()) {
       this.searchContainer()?.focus();
@@ -87,7 +81,6 @@ export class SidebarComponent {
   }
 
   clearSearch(): void {
-    this.searchTerm.set('');
     this.searchContainer()?.clear();
   }
 }

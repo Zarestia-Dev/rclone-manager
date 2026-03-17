@@ -1,26 +1,37 @@
 <div class="nautilus-layout">
   <div class="nautilus-header">
     <mat-toolbar data-tauri-drag-region>
-      <button class="nav-button" (click)="toggleSearchMode()" [class.active]="isSearchMode()">
-        <mat-icon svgIcon="search"></mat-icon>
-      </button>
-      <span>{{ title() | translate }}</span>
-      <button
-        class="nav-button"
-        [cdkMenuTriggerFor]="sidebarMainMenu"
-        [cdkMenuPosition]="[
-          { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
-        ]"
-      >
-        <mat-icon svgIcon="menu-bar"></mat-icon>
-      </button>
+      <div class="header-start">
+        <button class="nav-button" (click)="toggleSearchMode()" [class.active]="isSearchMode()">
+          <mat-icon svgIcon="search"></mat-icon>
+        </button>
+      </div>
+
+      <div class="header-center">
+        <span>{{ title() | translate }}</span>
+      </div>
+
+      <div class="header-end">
+        @if (!isPickerMode()) {
+          <button
+            class="nav-button"
+            [cdkMenuTriggerFor]="sidebarMainMenu"
+            [cdkMenuPosition]="[
+              { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
+            ]"
+          >
+            <mat-icon svgIcon="menu-bar"></mat-icon>
+          </button>
+        }
+      </div>
     </mat-toolbar>
   </div>
 
   <div class="nautilus-scroll-content">
     <mat-nav-list>
+      <!-- Starred -->
       <mat-list-item
-        class="remote-list-item starred-item"
+        class="remote-list-item"
         (click)="starredSelected.emit()"
         [class.selected]="starredMode()"
         cdkDropList
@@ -40,8 +51,8 @@
 
       <mat-divider></mat-divider>
 
+      <!-- Bookmarks -->
       <div class="bookmarks-section">
-        <!-- Permanent "Bookmarks" Header acting as the drop target -->
         <div
           class="sidebar-section-header"
           cdkDropList
@@ -59,12 +70,11 @@
             [cdkDropListData]="bm"
             [cdkDropListEnterPredicate]="canDropOnBookmark()"
             (cdkDropListDropped)="droppedToBookmark.emit({ event: $event, target: bm })"
-            class="remote-list-item bookmark-item"
+            class="remote-list-item"
             [class.selected]="isBookmarkSelected(bm)"
             (click)="onOpenBookmark(bm)"
             [cdkContextMenuTriggerFor]="sidebarBookmarkMenu"
             [cdkContextMenuTriggerData]="{ $implicit: bm }"
-            (cdkContextMenuOpened)="bookmarkContextItem = bm"
           >
             <span class="remote-info">
               <span class="remote-icon">
@@ -84,65 +94,69 @@
         }
       </div>
 
-      <div class="sidebar-section-header">
-        <span>{{ 'nautilus.titles.local' | translate }}</span>
-      </div>
+      <!-- Local Drives -->
+      @if (localDrives().length > 0) {
+        <div class="sidebar-section-header">
+          <span>{{ 'nautilus.titles.local' | translate }}</span>
+        </div>
 
-      @for (drive of localDrives(); track trackByRemote($index, drive)) {
-        <mat-list-item
-          class="remote-list-item"
-          (click)="onSelectRemote(drive)"
-          [class.selected]="
-            nautilusRemote()?.name === drive.name && !starredMode() && !isAnyBookmarkSelected()
-          "
-          [cdkContextMenuTriggerFor]="sidebarRemoteMenu"
-          [cdkContextMenuTriggerData]="{ $implicit: drive }"
-          (cdkContextMenuOpened)="sideContextRemote.set(drive)"
-          cdkDropList
-          [cdkDropListData]="drive"
-          [cdkDropListEnterPredicate]="canAcceptFile()"
-          (cdkDropListDropped)="droppedToRemote.emit({ event: $event, target: drive })"
-        >
-          <span class="remote-info">
-            <span class="remote-icon">
-              <mat-icon matListIcon svgIcon="hard-drive"></mat-icon>
-              <p matLine>
-                {{ drive.label | translate }}
-                @if (drive.showName) {
-                  ({{ drive.name }})
-                }
-              </p>
+        @for (drive of localDrives(); track trackByRemote($index, drive)) {
+          <mat-list-item
+            class="remote-list-item"
+            (click)="onSelectRemote(drive)"
+            [class.selected]="
+              nautilusRemote()?.name === drive.name && !starredMode() && !anyBookmarkSelected()
+            "
+            [cdkContextMenuTriggerFor]="sidebarRemoteMenu"
+            [cdkContextMenuTriggerData]="{ $implicit: drive }"
+            cdkDropList
+            [cdkDropListData]="drive"
+            [cdkDropListEnterPredicate]="canAcceptFile()"
+            (cdkDropListDropped)="droppedToRemote.emit({ event: $event, target: drive })"
+          >
+            <span class="remote-info">
+              <span class="remote-icon">
+                <mat-icon svgIcon="hard-drive"></mat-icon>
+                <p matLine>
+                  {{ drive.label | translate }}
+                  @if (drive.showName) {
+                    ({{ drive.name }})
+                  }
+                </p>
+              </span>
             </span>
-          </span>
-        </mat-list-item>
+          </mat-list-item>
+        }
       }
 
-      <div class="sidebar-section-header">
-        <span>{{ 'nautilus.titles.cloud' | translate }}</span>
-      </div>
+      <!-- Cloud Remotes -->
+      @if (cloudRemotes().length > 0) {
+        <div class="sidebar-section-header">
+          <span>{{ 'nautilus.titles.cloud' | translate }}</span>
+        </div>
 
-      @for (remote of cloudRemotes(); track trackByRemote($index, remote)) {
-        <mat-list-item
-          (click)="onSelectRemote(remote)"
-          [cdkContextMenuTriggerFor]="sidebarRemoteMenu"
-          [cdkContextMenuTriggerData]="{ $implicit: remote }"
-          (cdkContextMenuOpened)="sideContextRemote.set(remote)"
-          [class.selected]="
-            nautilusRemote()?.name === remote.name && !starredMode() && !isAnyBookmarkSelected()
-          "
-          class="remote-list-item"
-          cdkDropList
-          [cdkDropListData]="remote"
-          [cdkDropListEnterPredicate]="canAcceptFile()"
-          (cdkDropListDropped)="droppedToRemote.emit({ event: $event, target: remote })"
-        >
-          <span class="remote-info">
-            <span class="remote-icon">
-              <mat-icon matListIcon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
-              <p matLine>{{ remote.label }}</p>
+        @for (remote of cloudRemotes(); track trackByRemote($index, remote)) {
+          <mat-list-item
+            class="remote-list-item"
+            (click)="onSelectRemote(remote)"
+            [class.selected]="
+              nautilusRemote()?.name === remote.name && !starredMode() && !anyBookmarkSelected()
+            "
+            [cdkContextMenuTriggerFor]="sidebarRemoteMenu"
+            [cdkContextMenuTriggerData]="{ $implicit: remote }"
+            cdkDropList
+            [cdkDropListData]="remote"
+            [cdkDropListEnterPredicate]="canAcceptFile()"
+            (cdkDropListDropped)="droppedToRemote.emit({ event: $event, target: remote })"
+          >
+            <span class="remote-info">
+              <span class="remote-icon">
+                <mat-icon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
+                <p matLine>{{ remote.label }}</p>
+              </span>
             </span>
-          </span>
-        </mat-list-item>
+          </mat-list-item>
+        }
       }
     </mat-nav-list>
   </div>
@@ -150,7 +164,7 @@
   <app-operations-panel></app-operations-panel>
 </div>
 
-<!-- Sidebar Menus -->
+<!-- Context Menus -->
 <ng-template #sidebarStarredMenu>
   <div class="material-context-menu" cdkMenu>
     <button class="menu-item" cdkMenuItem (click)="starredSelected.emit()">

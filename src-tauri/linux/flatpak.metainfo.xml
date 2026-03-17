@@ -2,7 +2,7 @@
 <component type="desktop-application">
   <id>io.github.zarestia_dev.rclone-manager</id>
   <name>RClone Manager</name>
-  <summary>Simplified cloud storage access</summary>
+  <summary>Browse and sync cloud storage</summary>
   <metadata_license>MIT</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <developer id="io.github.zarestia_dev.rclone-manager">
@@ -18,26 +18,27 @@
   </requires>
   <description>
     <p>
-      RClone Manager provides a sleek, modern, and intuitive graphical interface for managing all your cloud storage services in one place. Designed with simplicity in mind, it allows you to effortlessly connect to dozens of providers—including Google Drive, Dropbox, OneDrive, and S3—without dealing with complex command-line configurations.
+      A graphical interface for rclone that lets you manage cloud storage accounts without using the command line. Supports dozens of providers including Google Drive, Dropbox, OneDrive, and S3.
     </p>
-    <p>
-      Whether you are looking to elegantly browse your remote files through our built-in file manager, seamlessly mount your cloud folders as native local drives, or set up scheduled background syncs, RClone Manager handles the heavy lifting. The beautiful UI features dark and light modes, and convenient system tray integration keeps your active file transfers and scheduled jobs just a click away.
-    </p>
-    <p>
-      Under the hood, it harnesses the incredible power of the underlying rclone engine but perfectly abstracts away the technical details. You can securely encrypt your configurations, fine-tune caching performance, and easily share files over HTTP or WebDAV—all from a beautifully crafted, responsive dashboard.
-    </p>
-    <p>
-      Our built-in file manager (Nautilus) allows you to elegantly browse your remote files. You can display and edit files; move, delete, copy, and rename files and folders; create new folders; edit text files; and preview videos, images, PDFs, sound files, and other text-based files. It nearly supports all file operations, including convenient right-click context menus and detailed properties modals.
-    </p>
-    <p>
-      Troubleshooting Notice
-    </p>
+    <p>Key features:</p>
     <ul>
-      <li>If you encounter an "Invalid binary" error during setup, it is likely caused by an outdated system rclone executable (e.g., v1.60.1-DEV on Linux Mint). RClone Manager requires the latest stable rclone binary to offer all of its features. To fix this instantly, we highly recommend letting the app automatically download and manage rclone for you: simply go to Settings → Core, clear the rclone binary path, click Save &amp; Reset Engine. When the "rclone binary missing" dialog appears, let the app install the latest version.</li>
-      <li>For other issues such as the App Won't Start, Shows a Blank Screen, or Freezes, please check our comprehensive Linux Troubleshooting Guide on our website.</li>
+      <li>Built-in file manager: browse, copy, move, rename, delete, and preview files on remote storage</li>
+      <li>Preview support for images, videos, PDFs, audio, text, Markdown, and code files with syntax highlighting</li>
+      <li>Mount remote storage as a local drive</li>
+      <li>Schedule sync, copy, move, and bisync operations using cron expressions</li>
+      <li>Serve remote storage over HTTP or WebDAV</li>
+      <li>System tray integration for monitoring active transfers and jobs</li>
+      <li>Dark and light mode</li>
+      <li>Encrypted configuration storage and backup/restore support</li>
+      <li>Multiple remote backends and per-operation profiles</li>
     </ul>
+    <p>
+      Troubleshooting: If you encounter an "Invalid binary" error during setup, it is likely caused by an outdated system rclone binary. Go to Settings → Core, clear the rclone binary path, and click Save &amp; Reset Engine. When prompted, let the app download and install the latest rclone version automatically.
+    </p>
+    <p>
+      For other issues such as a blank screen or freezes on Linux, refer to the Linux Troubleshooting Guide linked below.
+    </p>
   </description>
-  <url type="help">https://hakanismail.info/zarestia/rclone-manager/docs/troubleshooting-linux</url>
   <categories>
     <category>Network</category>
     <category>Utility</category>
@@ -57,13 +58,14 @@
     <color type="primary" scheme_preference="dark">#093a7b</color>
   </branding>
   <content_rating type="oars-1.1" />
+  <url type="help">https://hakanismail.info/zarestia/rclone-manager/docs/troubleshooting-linux</url>
   <url type="bugtracker">https://github.com/Zarestia-Dev/rclone-manager/issues</url>
   <url type="homepage">https://github.com/Zarestia-Dev/rclone-manager</url>
   <url type="vcs-browser">https://github.com/Zarestia-Dev/rclone-manager</url>
   <screenshots>
     <screenshot type="default">
       <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.2/assets/desktop-ui.png</image>
-      <caption>Modern desktop interface for cloud management</caption>
+      <caption>Dashboard with connected cloud remotes</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.2/assets/general-home.png</image>
@@ -75,23 +77,23 @@
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.2/assets/serve-control.png</image>
-      <caption>Expose storage over network protocols</caption>
+      <caption>Serve storage over HTTP or WebDAV</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.2/assets/job-watcher.png</image>
-      <caption>Job Watcher - Monitor your operations</caption>
+      <caption>Monitor active and scheduled operations</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.2/assets/mount-control.png</image>
-      <caption>Mount cloud drives as local storage</caption>
+      <caption>Mount cloud storage as a local drive</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.2/assets/nautilus.png</image>
-      <caption>Built-in Nautilus file manager</caption>
+      <caption>Browse and manage remote files</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.2/assets/file-viewer.png</image>
-      <caption>Preview files with the integrated viewer</caption>
+      <caption>Preview images, PDFs, and text files</caption>
     </screenshot>
   </screenshots>
   <releases>
@@ -99,16 +101,16 @@
       <description>
         <p>Added</p>
         <ul>
-          <li>CLI Overrides: Added --data-dir, --cache-dir, and --logs-dir flags for custom directory management.</li>
-          <li>Standardized Paths: Implemented platform-native paths for configuration, cache, and logs.</li>
-          <li>Cloud Native Docker: Improved environment variable support for seamless containerized deployments.</li>
-          <li>Nautilus Improvements: Enhanced file manager with split-view and better operation tracking.</li>
-          <li>Spanish language support added (Thanks to @dikler).</li>
+          <li>CLI flags: --data-dir, --cache-dir, and --logs-dir for custom directory paths.</li>
+          <li>Platform-native paths for configuration, cache, and logs.</li>
+          <li>Improved environment variable support for containerized deployments.</li>
+          <li>File manager: split-view and improved operation tracking.</li>
+          <li>Spanish language support (thanks to @dikler).</li>
         </ul>
         <p>Changed</p>
         <ul>
-          <li>Optimized headless build by feature-gating desktop dependencies.</li>
-          <li>Improved system tray performance and visual indicators.</li>
+          <li>Headless build optimized by feature-gating desktop dependencies.</li>
+          <li>System tray performance and visual indicators improved.</li>
         </ul>
       </description>
     </release>
@@ -116,10 +118,10 @@
       <description>
         <p>Added</p>
         <ul>
-          <li>Job Group Management: Jobs are now automatically organized by remote name and profile name (e.g., all sync operations for "gdrive" with "default" profile are grouped together named "sync/Google Drive/default"). This makes it easier to view stats per remote and manage operations.</li>
-          <li>rclone rc core/du added: When a remote is mounted, it shows disk usage inside the Mount Control accordion.</li>
-          <li>New nautilus icons from Morewaita icon theme.</li>
-          <li>Added more notifications for various app events.</li>
+          <li>Jobs are now grouped by remote name and profile (e.g., "sync/Google Drive/default"), making it easier to track per-remote stats.</li>
+          <li>Disk usage display inside Mount Control when a remote is mounted (rclone rc core/du).</li>
+          <li>New file manager icons from the Morewaita icon theme.</li>
+          <li>Additional notifications for app events.</li>
         </ul>
         <p>Changed</p>
         <ul>
@@ -127,8 +129,8 @@
         </ul>
         <p>Fixed</p>
         <ul>
-          <li>Rclone update writable path check: The app now checks if the preconfigured rclone path is writable. If not, it uses the default config path.</li>
-          <li>Fixed containerized version for path handling.</li>
+          <li>The app now checks if the configured rclone path is writable; falls back to the default path if not.</li>
+          <li>Path handling fixed for containerized deployments.</li>
           <li>Other small fixes and improvements.</li>
         </ul>
       </description>
@@ -137,62 +139,55 @@
       <description>
         <p>Added</p>
         <ul>
-          <li>Settings Management Library (rcman): Extracted and refactored the internal settings management system into a standalone, reusable Rust library called rcman. This provides schema-based configuration, backup/restore, secret storage, and a derive macro for automatic schema generation. The app now uses rcman as an external dependency.</li>
-          <li>Nautilus Component: Added dot and other text files preview support. Now you can preview the content of dot and other text files.</li>
-          <li>Nautilus Component: Added markdown preview support. Now you can preview the content of markdown files.</li>
-          <li>Nautilus Component: Added code highlight support. Now you can preview the content of code files with syntax highlighting.</li>
-          <li>Nautilus Component: Added bulk hash calculation support. Now you can calculate the hash of multiple files inside a directory.</li>
-          <li>Multiple backend support added. Now you can connect multiple and remote rclone instances via a single app. Remote config unlock supported (via rc config/unlock). Path change support added to (via rc config/setpath).</li>
-          <li>Multiple profile support added for backends. Every backend has a own remote settings profile. Also supported the export and import.</li>
-          <li>Multiple language support added. Now you can change the language of the app. Needs community help for translations.</li>
-          <li>Log file support added (both app and rclone logs). You can manage the log settings from configuration modal (Log file location cannot be changed on rclone. I think rclone has problem on that. Rclone version 1.72.1 :/).</li>
-          <li>Modals now transforms to bottom sheet on mobile devices. Like how it works on gnome. Basic SCSS trick but looks more native.</li>
-          <li>Window state persistence support added. Now the app remembers the window size on close and restores it on next launch.</li>
-          <li>Added support for additional rclone flags. Users can now configure and pass custom flags to rclone commands through the settings. Some rclone flags are reserved and cannot be used (App prevent these flags to use in the settings).</li>
+          <li>Settings management extracted into a standalone Rust library (rcman) with schema-based configuration, backup/restore, secret storage, and a derive macro for schema generation.</li>
+          <li>File manager: preview support for dot files, text files, Markdown, and code files with syntax highlighting.</li>
+          <li>File manager: bulk hash calculation for files in a directory.</li>
+          <li>Multiple backend support: connect to multiple remote rclone instances from a single app.</li>
+          <li>Multiple profiles per backend with export and import support.</li>
+          <li>Multi-language support with community translation.</li>
+          <li>Log file support for both app and rclone logs.</li>
+          <li>Modals convert to bottom sheets on mobile, matching GNOME conventions.</li>
+          <li>Window size is saved on close and restored on next launch.</li>
+          <li>Support for passing custom rclone flags through settings (reserved flags are blocked).</li>
         </ul>
         <p>Changed</p>
         <ul>
-          <li>Removed legacy integrated settings manager in favor of the new rcman library</li>
-          <li>Mount plugin detector and installer improved. Dynamic checks for the latest plugin version for installation.</li>
-          <li>Terminal remote support removed. App can handle the all remote operations.</li>
-          <li>UI simplified and modernized.</li>
-          <li>Allow tray icon on headless mode to.</li>
-          <li>Headless mode improvements.</li>
+          <li>Replaced legacy settings manager with the new rcman library.</li>
+          <li>Mount plugin detector improved with dynamic version checks.</li>
+          <li>Terminal remote support removed; all remote operations handled in-app.</li>
+          <li>UI simplified.</li>
+          <li>Tray icon now available in headless mode.</li>
         </ul>
         <p>Fixed</p>
         <ul>
-          <li>Broken theme setting fixed. Now it correctly applies the theme.</li>
-          <li>On headless mode cannot open the local files (Access denied error). Now it fixed.</li>
+          <li>Theme setting now applies correctly.</li>
+          <li>Access denied error when opening local files in headless mode resolved.</li>
         </ul>
       </description>
     </release>
     <release version="0.1.9" date="2025-12-20">
       <description>
-        <p>Warning</p>
-        <ul>
-          <li>Since multiple profiles support, the old profiles are automatically migrated to the new profile system. But before the update, please backup your old profiles. If there is a any problem with the new profile system, you can restore your old profiles from the backup and app try the re-migration to the new profile system.</li>
-        </ul>
+        <p>Note: Old profiles are automatically migrated to the new profile system. Back up your profiles before updating.</p>
         <p>Added</p>
         <ul>
-          <li>Multiple profiles support added for all operations (Sync, Copy, Move, Bisync, Mount, Serve). Now you can create multiple profiles for each operation and run them separately. Also operation UI has been changed to show profiles. User can configure it from the detailed remote setup modal. User also can select the shared settings and also add a multiple profiles for shared settings to. Quick Remote Access only works with default profile (When you start a action, it uses the default profile).</li>
-          <li>Added special Flatpak autostart entry for Flatpak version. Now it creates a desktop entry for Flatpak version of the app. This entry is not handled by Tauri. (Fixed #63)</li>
-          <li>Nautilus Component: Added hash calculation support for files. Now you can calculate the hash of a file and copy it to clipboard on the properties dialog.</li>
-          <li>Nautilus Component: Added public link generation support for files and directories. If remote supports public link generation, it will be available in the properties dialog.</li>
-          <li>Nautilus Component: Enabled download button for remote files. Now you can download remote files to your local machine.</li>
+          <li>Multiple profiles for all operations (Sync, Copy, Move, Bisync, Mount, Serve), configurable per remote.</li>
+          <li>Flatpak autostart desktop entry (fixes #63).</li>
+          <li>File manager: hash calculation with clipboard copy in the properties dialog.</li>
+          <li>File manager: public link generation for files and directories (where supported by the remote).</li>
+          <li>File manager: download button for remote files.</li>
         </ul>
         <p>Changed</p>
         <ul>
-          <li>On linux remove the rclone to required dependencies when installing via deb or rpm packages. Because app handle the rclone binary installation and update itself correctly.</li>
-          <li>Encrypted export not required standalone 7zip binary anymore. Changed to sevenz-rust crate. Not break the old encrypted exports.</li>
-          <li>On tray icon when remote not mounted, it shows the Browse (In App). Basically it opens the RClone Manager's Nautilus with that remote.</li>
-          <li>Angular and Angular Material updated to v21 and other dependencies updated to latest stable versions.</li>
-          <li>Small design changes on Quick Remote Modal.</li>
+          <li>System rclone no longer a required dependency on deb/rpm; the app manages its own rclone binary.</li>
+          <li>Encrypted export now uses the sevenz-rust crate instead of a standalone 7zip binary. Old exports remain compatible.</li>
+          <li>Tray icon now shows "Browse (In App)" for unmounted remotes, opening the built-in file manager.</li>
+          <li>Angular and Angular Material updated to v21.</li>
         </ul>
         <p>Fixed</p>
         <ul>
-          <li>Remote configuration step provider selection fixed. Now it correctly filters the provider-specific fields when Provider selected. (issue #59 and #1)</li>
-          <li>Broken reduce animations fixed. (issue #60)</li>
-          <li>Links openning in the about modal fixed. Now it opens the links in the default browser.</li>
+          <li>Provider-specific fields now filter correctly when a provider is selected (fixes #59 and #1).</li>
+          <li>Reduce animations fixed (fixes #60).</li>
+          <li>Links in the About modal now open in the default browser.</li>
         </ul>
       </description>
     </release>
@@ -200,24 +195,24 @@
       <description>
         <p>Added</p>
         <ul>
-          <li>Developer Setting: Memory Optimization (Destroy Window on Close). Added a new experimental option in Developer Settings that destroys the main window instead of hiding it when closed. This significantly reduces background RAM usage. On Linux, this also actively cleans up lingering WebKit "zombie" processes to prevent memory leaks over long sessions. On MacOS, this not so effective because MacOS version dont use a lot of memory for background processes. But its useful linux and windows.</li>
-          <li>Nautilus file manager component added for file browsing. This new file manager component provides a more native and integrated file browsing experience within the app, leveraging Nautilus' capabilities. Currently, it is not supports all features like copy, move, delete, etc. They will be added in future updates. Also support the preview for images, text files and pdf files.</li>
-          <li>marked dependency added for markdown rendering in the About modal. This allows us to display formatted release notes fetched from GitHub in a user-friendly manner.</li>
-          <li>Support for local path navigation on the remote config. User can now navigate to local paths when configuring remotes that use local file systems.</li>
-          <li>Added Flatpak detection and warning banner. If the app is running as a Flatpak, a warning banner will be displayed to inform the user about permission limitations. The banner can be dismissed and will not show again once dismissed.</li>
-          <li>VFS Control Panel added to mount and serve pages. Now you can manage VFS instances directly from the app. You can view the status of VFS instances, control their behavior and monitor their queues.</li>
+          <li>Memory optimization option (Developer Settings): destroys the window on close instead of hiding it, reducing background RAM usage. On Linux, also cleans up lingering WebKit processes.</li>
+          <li>Built-in file manager with preview support for images, text files, and PDFs.</li>
+          <li>Markdown rendering in the About modal for formatted release notes from GitHub.</li>
+          <li>Local path navigation when configuring remotes that use local file systems.</li>
+          <li>Flatpak detection with a dismissible warning banner about permission limitations.</li>
+          <li>VFS Control Panel in mount and serve pages for managing VFS instances and monitoring queues.</li>
         </ul>
         <p>Changed</p>
         <ul>
-          <li>Charts removed from sync, copy, move and bisync activity panels. Also chartjs dependency removed from the project to reduce the bundle size.</li>
-          <li>Remote Logs Modal design and functionality improvements.</li>
-          <li>Export Modal design and functionality improvements.</li>
-          <li>Dashboard General Overview panel design and functionality improvements. Now it supports layout customization.</li>
-          <li>App update now support the restart app. Also ask windows users to before updating the app because windows need to close the app to update it.</li>
+          <li>Charts removed from sync/copy/move/bisync activity panels; Chart.js dependency removed.</li>
+          <li>Remote Logs Modal redesigned.</li>
+          <li>Export Modal redesigned.</li>
+          <li>Dashboard General Overview panel now supports layout customization.</li>
+          <li>App update now supports restarting. Windows users are prompted to close the app before updating.</li>
         </ul>
         <p>Fixed</p>
         <ul>
-          <li>Windows bad looking scrollbars fixed. Now it uses Fluent Overlay scrollbars on Windows for a better look and feel. Also not pushes the content when they appear.</li>
+          <li>Windows scrollbars now use Fluent Overlay style and no longer push content on appearance.</li>
         </ul>
       </description>
     </release>
@@ -225,14 +220,14 @@
       <description>
         <p>Added</p>
         <ul>
-          <li>Added schedule support for sync, copy, move, and bisync operations. You can now schedule these operations to run at specific times or intervals using a cron-like syntax. You can find the scheduling options in the remote sync operation settings. (Supports detailed cron expressions. Example <code>15,45 8-18/2 * 1,11 1-5</code>: Every 2 hours at minutes 15 and 45 between 8 AM and 6 PM on Mondays and Fridays in January and November)</li>
-          <li>New time picker module added for better clock time selection.</li>
-          <li>Rclone Serve support added. You can now start and stop rclone serve commands. The serve status is displayed in the sidebar for easy access. You can find the serve options in the Serve Tab. Serve configurations (vfs, backend and filter) separated from the other configurations.</li>
+          <li>Schedule support for sync, copy, move, and bisync using cron expressions (e.g., <code>15,45 8-18/2 * 1,11 1-5</code>).</li>
+          <li>New time picker for clock-based scheduling.</li>
+          <li>rclone serve support: start/stop serve commands with status shown in the sidebar.</li>
         </ul>
         <p>Changed</p>
         <ul>
-          <li>Backup and Restore system has been completely redesigned and rewritten for better reliability and performance. Old backup files are not compatible with the new system. Please create a new backup after updating to this version.</li>
-          <li>A lot of Rust backend refactoring and optimizations have been made for better performance and maintainability.</li>
+          <li>Backup and restore system fully rewritten. Old backup files are not compatible; create a new backup after updating.</li>
+          <li>Rust backend refactored for better performance and maintainability.</li>
         </ul>
         <p>Fixed</p>
         <ul>
@@ -243,7 +238,7 @@
     <release version="0.1.6" date="2025-10-13">
       <url type="details">https://github.com/Zarestia-Dev/rclone-manager/releases/tag/v0.1.6</url>
       <description>
-        <p>Initial release of RClone Manager for FlatHub.</p>
+        <p>Initial Flathub release.</p>
       </description>
     </release>
   </releases>

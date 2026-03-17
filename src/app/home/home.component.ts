@@ -130,13 +130,13 @@ export class HomeComponent implements OnInit, OnDestroy {
 
     // Find the up-to-date object in the list using the name from the selection
     // If not found (e.g. during loading), fallback to the source object
-    return allRemotes.find(r => r.remoteSpecs.name === source.remoteSpecs.name) || source;
+    return allRemotes.find(r => r.name === source.name) || source;
   });
 
   selectedRemoteSettings = computed(() => {
     const remote = this.selectedRemote();
     if (!remote) return {};
-    return this.remoteFacadeService.getRemoteSettings(remote.remoteSpecs.name);
+    return this.remoteFacadeService.getRemoteSettings(remote.name);
   });
 
   // Local UI state
@@ -272,8 +272,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   onSyncOperationChange(operation: SyncOperationType): void {
     this.selectedSyncOperation.set(operation);
     const remote = this.selectedRemote();
-    if (remote?.remoteSpecs.name) {
-      this.saveRemoteSettings(remote.remoteSpecs.name, { selectedSyncOperation: operation });
+    if (remote?.name) {
+      this.saveRemoteSettings(remote.name, { selectedSyncOperation: operation });
     }
   }
 
@@ -281,7 +281,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     const remote = this.selectedRemote();
     if (!remote) return;
 
-    const remoteName = remote.remoteSpecs.name;
+    const remoteName = remote.name;
     const currentActions = remote.primaryActions || [];
     const newActions = currentActions.includes(type)
       ? currentActions.filter(action => action !== type)
@@ -310,13 +310,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         'dashboard'
       );
     } catch (error) {
-      this.handleError(
-        this.translate.instant('home.errors.startJobFailed', {
-          type: operationType,
-          name: remoteName,
-        }) + (profileName ? ` (${profileName})` : ''),
-        error
-      );
+      console.error('Start job failed:', error);
     }
   }
 
@@ -329,38 +323,17 @@ export class HomeComponent implements OnInit, OnDestroy {
     try {
       await this.remoteFacadeService.stopJob(remoteName, type, serveId, profileName);
     } catch (error) {
-      this.handleError(
-        this.translate.instant('home.errors.stopJobFailed', { type: type, name: remoteName }),
-        error
-      );
+      console.error('Stop job failed:', error);
     }
   }
 
   async deleteRemote(remoteName: string): Promise<void> {
     if (!remoteName) return;
     try {
-      const confirmed = await this.notificationService.confirmModal(
-        this.translate.instant('home.deleteRemote.title'),
-        this.translate.instant('home.deleteRemote.message', { name: remoteName }),
-        undefined,
-        undefined,
-        {
-          icon: 'trash',
-          iconColor: 'warn',
-          iconClass: 'destructive',
-          confirmButtonColor: 'warn',
-        }
-      );
-      if (!confirmed) return;
-
       await this.remoteFacadeService.deleteRemote(remoteName);
-
       this.handleRemoteDeletion(remoteName);
     } catch (error) {
-      this.handleError(
-        this.translate.instant('home.errors.deleteRemoteFailed', { name: remoteName }),
-        error
-      );
+      console.error('Delete remote failed:', error);
     }
   }
 
@@ -371,10 +344,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     try {
       await this.remoteFacadeService.openRemoteInFiles(remoteName, pathOrOperation);
     } catch (error) {
-      this.handleError(
-        this.translate.instant('home.errors.openFailed', { name: remoteName }),
-        error
-      );
+      console.error('Open remote failed:', error);
     }
   }
 
@@ -382,22 +352,15 @@ export class HomeComponent implements OnInit, OnDestroy {
     try {
       await this.remoteFacadeService.unmountRemote(remoteName);
     } catch (error) {
-      this.handleError(
-        this.translate.instant('home.errors.unmountFailed', { name: remoteName }),
-        error
-      );
+      console.error('Unmount failed:', error);
     }
   }
 
   async deleteJob(jobId: number): Promise<void> {
     try {
       await this.remoteFacadeService.deleteJob(jobId);
-      this.notificationService.openSnackBar(
-        this.translate.instant('home.notifications.jobDeleted', { id: jobId }),
-        this.translate.instant('common.close')
-      );
     } catch (error) {
-      this.handleError(this.translate.instant('home.errors.deleteJobFailed', { id: jobId }), error);
+      console.error('Delete job failed:', error);
     }
   }
 
@@ -412,10 +375,12 @@ export class HomeComponent implements OnInit, OnDestroy {
     editTarget?: string,
     existingConfig?: RemoteSettings,
     initialSection?: string,
-    targetProfile?: string
+    targetProfile?: string,
+    remoteType?: string
   ): void {
     this.modalService.openRemoteConfig({
-      remoteName: this.selectedRemote()?.remoteSpecs.name,
+      remoteName: this.selectedRemote()?.name,
+      remoteType,
       editTarget,
       existingConfig,
       initialSection,
@@ -431,10 +396,11 @@ export class HomeComponent implements OnInit, OnDestroy {
     const config = await this.remoteFacadeService.cloneRemote(remoteName);
     if (!config) return;
 
+    const configData = config as { name: string; [key: string]: any };
     this.modalService.openRemoteConfig({
-      remoteName: config['remoteSpecs'].name,
+      remoteName: configData['name'],
       cloneTarget: true,
-      existingConfig: config,
+      existingConfig: configData,
     });
   }
 
@@ -484,9 +450,8 @@ export class HomeComponent implements OnInit, OnDestroy {
       if (confirmed) {
         await this.appSettingsService.resetRemoteSettings(remoteName);
         await this.remoteFacadeService.loadRemotes();
-        this.notificationService.openSnackBar(
-          this.translate.instant('home.notifications.settingsReset', { name: remoteName }),
-          this.translate.instant('common.close')
+        this.notificationService.showSuccess(
+          this.translate.instant('home.notifications.settingsReset', { name: remoteName })
         );
       }
     } catch (error) {
@@ -520,13 +485,9 @@ export class HomeComponent implements OnInit, OnDestroy {
     // Trigger reload to be responsive.
     this.remoteFacadeService.loadRemotes();
 
-    if (this.selectedRemote()?.remoteSpecs.name === remoteName) {
+    if (this.selectedRemote()?.name === remoteName) {
       this.uiStateService.resetSelectedRemote();
     }
-    this.notificationService.openSnackBar(
-      this.translate.instant('home.notifications.deleteRemoteSuccess', { name: remoteName }),
-      this.translate.instant('common.close')
-    );
   }
 
   private handleError(message: string, error: unknown): void {

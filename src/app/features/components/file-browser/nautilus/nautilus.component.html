@@ -21,10 +21,10 @@
       [cloudRemotes]="cloudRemotes()"
       [bookmarks]="filteredBookmarks()"
       [title]="title()"
-      [cleanupSupportCache]="cleanupSupportCache()"
-      [canDropOnStarred]="canDropOnStarred"
+      [canDropOnStarred]="canAcceptFile"
       [canDropOnBookmarks]="canDropOnBookmarks"
       [canAcceptFile]="canAcceptFile"
+      [isPickerMode]="isPickerMode()"
       (remoteSelected)="selectRemote($event)"
       (bookmarkOpened)="openBookmark($event)"
       (starredSelected)="selectStarred()"
@@ -63,7 +63,6 @@
       [canAcceptFile]="canAcceptFile"
       (goBack)="goBack()"
       (goForward)="goForward()"
-      (toggleSidebar)="sidenav.toggle()"
       (navigateToSegment)="navigateToSegment($event)"
       (updatePath)="updatePath($event)"
       (navigateToPath)="navigateToPath($event)"
@@ -75,9 +74,9 @@
       (droppedOnSegment)="onDropToSegment($event)"
     ></app-nautilus-toolbar>
 
-    @if (tabs().length > 1) {
+    @if (tabs().length > 1 && !isPickerMode()) {
       <app-nautilus-tabs
-        [tabs]="tabs()"
+        [tabs]="mappedTabs()"
         [activeTabIndex]="activeTabIndex()"
         [isDragging]="isDragging()"
         [hoveredTabIndex]="hoveredTabIndex()"
@@ -113,11 +112,10 @@
             [sortKey]="sortKey()"
             [sortDirection]="sortDirection()"
             [activePaneIndex]="activePaneIndex()"
-            [getItemKey]="boundGetItemKey"
-            [isItemSelectable]="boundIsItemSelectable"
-            [trackByFile]="boundTrackByFile"
-            [trackBySortOption]="boundTrackBySortOption"
-            [formatRelativeDate]="boundFormatRelativeDate"
+            [getItemKey]="getItemKey"
+            [isItemSelectable]="isItemSelectable"
+            [trackByFile]="trackByFile"
+            [formatRelativeDate]="formatRelativeDate"
             [canAcceptFile]="canAcceptFile"
             [fileMenu]="fileMenu"
             (switchPane)="switchPane($event)"
@@ -153,11 +151,10 @@
             [sortKey]="sortKey()"
             [sortDirection]="sortDirection()"
             [activePaneIndex]="activePaneIndex()"
-            [getItemKey]="boundGetItemKey"
-            [isItemSelectable]="boundIsItemSelectable"
-            [trackByFile]="boundTrackByFile"
-            [trackBySortOption]="boundTrackBySortOption"
-            [formatRelativeDate]="boundFormatRelativeDate"
+            [getItemKey]="getItemKey"
+            [isItemSelectable]="isItemSelectable"
+            [trackByFile]="trackByFile"
+            [formatRelativeDate]="formatRelativeDate"
             [canAcceptFile]="canAcceptFile"
             [fileMenu]="fileMenu"
             (switchPane)="switchPane($event)"
@@ -192,11 +189,10 @@
           [sortKey]="sortKey()"
           [sortDirection]="sortDirection()"
           [activePaneIndex]="activePaneIndex()"
-          [getItemKey]="boundGetItemKey"
-          [isItemSelectable]="boundIsItemSelectable"
-          [trackByFile]="boundTrackByFile"
-          [trackBySortOption]="boundTrackBySortOption"
-          [formatRelativeDate]="boundFormatRelativeDate"
+          [getItemKey]="getItemKey"
+          [isItemSelectable]="isItemSelectable"
+          [trackByFile]="trackByFile"
+          [formatRelativeDate]="formatRelativeDate"
           [canAcceptFile]="canAcceptFile"
           [fileMenu]="fileMenu"
           (switchPane)="switchPane($event)"
@@ -217,13 +213,13 @@
 
     @if (isMobile()) {
       <app-nautilus-bottom-bar
-        [canGoBack]="canGoBack()"
-        [canGoForward]="canGoForward()"
         [layout]="layout()"
         [viewMenu]="viewMenu"
-        (goBack)="goBack()"
-        (goForward)="goForward()"
+        [isPickerMode]="isPickerMode()"
+        [isConfirmDisabled]="isConfirmDisabled()"
         (setLayout)="setLayout($event)"
+        (confirmSelection)="confirmSelection()"
+        (toggleSidebar)="sidenav.toggle()"
       ></app-nautilus-bottom-bar>
     }
 
@@ -337,12 +333,11 @@
       </div>
     </ng-template>
 
-    @if (isPickerMode()) {
-      <div class="picker-actions" [class.mobile-picker]="isMobile()">
-        <button mat-stroked-button (click)="onClose()">{{ 'common.cancel' | translate }}</button>
+    @if (isPickerMode() && !isMobile()) {
+      <div class="picker-actions desktop-picker">
         <button
           mat-flat-button
-          class="primary"
+          class="accent"
           (click)="confirmSelection()"
           [disabled]="isConfirmDisabled()"
         >
@@ -350,6 +345,7 @@
         </button>
       </div>
     }
+
     @if (selectionSummary()) {
       <div class="selection-info-container">
         <span class="selection-info">{{ selectionSummary() }}</span>

@@ -43,10 +43,10 @@
                 <div class="usage-item">
                   <span class="label">{{ 'fileBrowser.remoteAbout.totalSpace' | translate }}</span>
                   <span class="value">
-                    @if (loadingUsage()) {
+                    @if (diskUsage().loading) {
                       <mat-spinner diameter="16"></mat-spinner>
-                    } @else if (diskUsageInfo()) {
-                      {{ diskUsageInfo()?.total ?? 0 | formatFileSize }}
+                    } @else if (diskUsage().total_space !== undefined) {
+                      {{ diskUsage().total_space ?? 0 | formatFileSize }}
                     } @else {
                       -
                     }
@@ -55,10 +55,10 @@
                 <div class="usage-item">
                   <span class="label">{{ 'fileBrowser.remoteAbout.usedSpace' | translate }}</span>
                   <span class="value">
-                    @if (loadingUsage()) {
+                    @if (diskUsage().loading) {
                       <mat-spinner diameter="16"></mat-spinner>
-                    } @else if (diskUsageInfo()) {
-                      {{ diskUsageInfo()?.used ?? 0 | formatFileSize }}
+                    } @else if (diskUsage().used_space !== undefined) {
+                      {{ diskUsage().used_space ?? 0 | formatFileSize }}
                     } @else {
                       -
                     }
@@ -67,10 +67,10 @@
                 <div class="usage-item">
                   <span class="label">{{ 'fileBrowser.remoteAbout.freeSpace' | translate }}</span>
                   <span class="value">
-                    @if (loadingUsage()) {
+                    @if (diskUsage().loading) {
                       <mat-spinner diameter="16"></mat-spinner>
-                    } @else if (diskUsageInfo()) {
-                      {{ diskUsageInfo()?.free ?? 0 | formatFileSize }}
+                    } @else if (diskUsage().free_space !== undefined) {
+                      {{ diskUsage().free_space ?? 0 | formatFileSize }}
                     } @else {
                       -
                     }
@@ -89,11 +89,14 @@
                 <button
                   mat-icon-button
                   (click)="fetchDiskUsage(true)"
-                  [disabled]="loadingUsage()"
+                  [disabled]="diskUsage().loading"
                   [matTooltip]="'fileBrowser.remoteAbout.reloadUsage' | translate"
                   matTooltipPosition="left"
                 >
-                  <mat-icon svgIcon="rotate-right" [class.animate-spin]="loadingUsage()"></mat-icon>
+                  <mat-icon
+                    svgIcon="rotate-right"
+                    [class.animate-spin]="diskUsage().loading"
+                  ></mat-icon>
                 </button>
               </mat-card>
 

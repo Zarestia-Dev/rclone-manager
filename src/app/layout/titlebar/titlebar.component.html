@@ -28,13 +28,12 @@
         (click)="connectionService.runInternetCheck()"
         [disabled]="connectionService.status() === 'checking'"
         [attr.aria-label]="'titlebar.internetStatus' | translate"
-        matTooltip="{{ getInternetStatusTooltip() }}"
+        [matTooltip]="connectionService.getTooltip()"
         data-tauri-drag-region="false"
       >
         @if (connectionService.status() !== 'checking') {
-          <mat-icon svgIcon="no-internet" aria-hidden="true"> </mat-icon>
-        }
-        @if (connectionService.status() === 'checking') {
+          <mat-icon svgIcon="no-internet" aria-hidden="true"></mat-icon>
+        } @else {
           <mat-progress-spinner
             class="accent"
             diameter="24"
@@ -76,7 +75,7 @@
           matIconButton
           (click)="control.action()"
           [attr.aria-label]="control.label | translate"
-          [class]="control.class || ''"
+          [class]="control.class ?? null"
           data-tauri-drag-region="false"
         >
           <mat-icon [svgIcon]="control.icon" aria-hidden="true"></mat-icon>

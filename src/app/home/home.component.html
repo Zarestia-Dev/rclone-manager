@@ -19,7 +19,7 @@
     </div>
 
     <!-- Remote Options Menu -->
-    @for (remote of [selectedRemote()]; track remote?.remoteSpecs?.name) {
+    @for (remote of [selectedRemote()]; track remote?.name) {
       @if (remote) {
         <button
           matIconButton
@@ -105,7 +105,7 @@
       @switch (currentTab()) {
         @case ('general') {
           <app-general-detail
-            [jobs]="getJobsForRemote(remote.remoteSpecs.name)"
+            [jobs]="getJobsForRemote(remote.name)"
             [selectedRemote]="remote"
             (stopJob)="stopJob($event.type, $event.remoteName, undefined, $event.profileName)"
             (openRemoteConfigModal)="
@@ -113,7 +113,7 @@
             "
             (deleteJob)="deleteJob($event)"
             (togglePrimaryAction)="togglePrimaryAction($event)"
-            (retryDiskUsage)="handleRetryDiskUsage(remote.remoteSpecs.name)"
+            (retryDiskUsage)="handleRetryDiskUsage(remote.name)"
           >
           </app-general-detail>
         }
@@ -123,14 +123,15 @@
             [selectedSyncOperation]="selectedSyncOperation()"
             [selectedRemote]="remote"
             [remoteSettings]="selectedRemoteSettings()"
-            [actionInProgress]="actionInProgress()[remote.remoteSpecs.name]"
+            [actionInProgress]="actionInProgress()[remote.name]"
             (syncOperationChange)="onSyncOperationChange($event)"
             (openRemoteConfigModal)="
               openRemoteConfigModal(
                 $event.editTarget,
                 $event.existingConfig,
                 $event.initialSection,
-                $event.targetProfile
+                $event.targetProfile,
+                $event.remoteType
               )
             "
             (openInFiles)="openRemoteInFiles($event.remoteName, $event.path)"
@@ -150,30 +151,30 @@
     <button class="menu-item" cdkMenuItem (click)="$event.stopPropagation()">
       <mat-checkbox
         labelPosition="before"
-        [checked]="getRemoteSettingValue(remote.remoteSpecs.name, 'showOnTray')"
-        (change)="saveRemoteSettings(remote.remoteSpecs.name, { showOnTray: $event.checked })"
+        [checked]="getRemoteSettingValue(remote.name, 'showOnTray')"
+        (change)="saveRemoteSettings(remote.name, { showOnTray: $event.checked })"
       >
         <span>{{ 'home.options.showInTray' | translate }}</span>
       </mat-checkbox>
     </button>
     <mat-divider></mat-divider>
     <!-- Remote Actions -->
-    <button class="menu-item" cdkMenuItem (click)="openLogsModal(remote.remoteSpecs.name)">
+    <button class="menu-item" cdkMenuItem (click)="openLogsModal(remote.name)">
       <span>{{ 'home.options.viewLogs' | translate }}</span>
     </button>
-    <button class="menu-item" cdkMenuItem (click)="cloneRemote(remote.remoteSpecs.name)">
+    <button class="menu-item" cdkMenuItem (click)="cloneRemote(remote.name)">
       <span>{{ 'home.options.cloneRemote' | translate }}</span>
     </button>
     <mat-divider></mat-divider>
-    <button class="menu-item" cdkMenuItem (click)="openExportModal(remote.remoteSpecs.name)">
+    <button class="menu-item" cdkMenuItem (click)="openExportModal(remote.name)">
       <span>{{ 'home.options.exportConfig' | translate }}</span>
     </button>
-    <button class="menu-item" cdkMenuItem (click)="resetRemoteSettings(remote.remoteSpecs.name)">
+    <button class="menu-item" cdkMenuItem (click)="resetRemoteSettings(remote.name)">
       <span>{{ 'home.options.resetSettings' | translate }}</span>
     </button>
     <mat-divider></mat-divider>
     <!-- Delete Remote -->
-    <button class="menu-item" cdkMenuItem (click)="deleteRemote(remote.remoteSpecs.name)">
+    <button class="menu-item" cdkMenuItem (click)="deleteRemote(remote.name)">
       <span>{{ 'home.options.deleteRemote' | translate }}</span>
     </button>
   </div>

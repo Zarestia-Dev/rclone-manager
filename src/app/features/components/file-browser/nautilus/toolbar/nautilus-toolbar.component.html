@@ -1,24 +1,17 @@
 <mat-toolbar class="nautilus-toolbar" data-tauri-drag-region>
   <div class="left-section">
-    @if (isMobile()) {
-      <button mat-icon-button (click)="toggleSidebar.emit()">
-        <mat-icon svgIcon="menu-bar"></mat-icon>
-      </button>
-    }
-
-    @if (!isMobile()) {
-      <button (click)="goBack.emit()" [disabled]="!canGoBack()" class="nav-button">
-        <mat-icon svgIcon="chevron-left"></mat-icon>
-      </button>
-      <button (click)="goForward.emit()" [disabled]="!canGoForward()" class="nav-button">
-        <mat-icon svgIcon="chevron-right"></mat-icon>
-      </button>
-    }
+    <button (click)="goBack.emit()" [disabled]="!canGoBack()" class="nav-button">
+      <mat-icon svgIcon="chevron-left"></mat-icon>
+    </button>
+    <button (click)="goForward.emit()" [disabled]="!canGoForward()" class="nav-button">
+      <mat-icon svgIcon="chevron-right"></mat-icon>
+    </button>
   </div>
+
   <div
     class="path-container"
     (click)="onPathContainerClick()"
-    (keydown.escape)="onPathContainerEscape()"
+    (keydown.escape)="onPathContainerEscape($event)"
     tabindex="0"
   >
     @if (isSearchMode()) {
@@ -28,19 +21,30 @@
         [placeholder]="'nautilus.titles.searchPlaceholder' | translate"
         [value]="searchFilter()"
         (input)="searchFilterChange.emit(searchInput.value)"
-        (keydown.escape)="onSearchEscape(searchInput)"
+        (keydown.escape)="onSearchEscape(searchInput, $event)"
         (blur)="onSearchBlur()"
       />
     } @else if (!isEditingPath()) {
       @if (starredMode()) {
-        <div class="path-scroll-view hide-scrollbar">
+        <div
+          class="path-scroll-view hide-scrollbar"
+          [class.show-left-shadow]="_showLeftShadow()"
+          [class.show-right-shadow]="_showRightShadow()"
+        >
           <button class="path-segment">
             <mat-icon svgIcon="star"></mat-icon>
             {{ 'nautilus.titles.starred' | translate }}
           </button>
         </div>
       } @else {
-        <div class="path-scroll-view hide-scrollbar" #pathScrollView (wheel)="onPathScroll($event)">
+        <div
+          class="path-scroll-view hide-scrollbar"
+          #pathScrollView
+          [class.show-left-shadow]="_showLeftShadow()"
+          [class.show-right-shadow]="_showRightShadow()"
+          (scroll)="onScrollViewScroll()"
+          (wheel)="onPathScroll($event)"
+        >
           <button
             class="path-segment"
             [class.segment-drag-over]="isDragging() && hoveredSegmentIndex() === -1"
@@ -55,7 +59,7 @@
               [svgIcon]="
                 activeRemote()?.isLocal
                   ? 'hard-drive'
-                  : this.iconService.getIconName(activeRemote()?.type || '')
+                  : iconService.getIconName(activeRemote()?.type || '')
               "
             ></mat-icon>
             {{ (activeRemote()?.label | translate) || ('nautilus.titles.local' | translate) }}
@@ -79,9 +83,9 @@
           }
         </div>
       }
+
       <button
-        class="nav-button"
-        style="border-radius: 0"
+        class="nav-button nav-button--flush"
         (click)="$event.stopPropagation()"
         [cdkMenuTriggerFor]="pathOptionsMenu()"
       >

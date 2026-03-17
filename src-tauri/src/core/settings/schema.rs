@@ -300,18 +300,27 @@ pub struct NautilusSettings {
         description = "settings.nautilus.bookmarks.description"
     )]
     pub bookmarks: Vec<Value>,
+
+    #[setting(
+        label = "settings.nautilus.split_divider_pos.label",
+        description = "settings.nautilus.split_divider_pos.description",
+        min = 10,
+        max = 90
+    )]
+    pub split_divider_pos: i32,
 }
 
 impl Default for NautilusSettings {
     fn default() -> Self {
         Self {
             default_layout: "grid".to_string(),
-            grid_icon_size: 72,
-            list_icon_size: 40,
+            grid_icon_size: 96,
+            list_icon_size: 32,
             show_hidden_items: false,
             sort_key: "name-asc".to_string(),
             starred: vec![],
             bookmarks: vec![],
+            split_divider_pos: 50,
         }
     }
 }

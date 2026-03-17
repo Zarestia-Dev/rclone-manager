@@ -40,6 +40,7 @@ import {
   InteractiveFlowState,
   INTERACTIVE_REMOTES,
   DEFAULT_PROFILE_NAME,
+  REMOTE_CONFIG_KEYS,
 } from '@app/types';
 import { OperationConfigComponent } from '../../../../shared/remote-config/app-operation-config/app-operation-config.component';
 import { ValidatorRegistryService } from '@app/services';
@@ -53,7 +54,7 @@ import {
   isInteractiveContinueDisabled,
   convertBoolAnswerToString,
   updateInteractiveAnswer,
-} from '../../../../shared/utils/remote-config.utils';
+} from '../../../../services/remote/utils/remote-config.utils';
 
 type WizardStep = 'setup' | 'operations' | 'interactive';
 
@@ -418,17 +419,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   }
 
   private buildFinalConfig(remoteName: string, operations: any): RemoteConfigSections {
-    const createConfig = (
-      op: any
-    ): {
-      source: string;
-      dest: string;
-      autoStart: boolean;
-      cronEnabled?: boolean;
-      cronExpression?: string | null;
-      filterProfile: string;
-      backendProfile: string;
-    } => ({
+    const createBaseOpConfig = (op: any) => ({
       source: buildPathString(op.source, remoteName),
       dest: buildPathString(op.dest, remoteName),
       autoStart: op.autoStart || false,
@@ -438,32 +429,37 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
       backendProfile: DEFAULT_PROFILE_NAME,
     });
 
-    return {
-      mountConfigs: {
-        default: {
-          ...createConfig(operations.mount),
+    const config: Partial<RemoteConfigSections> = {
+      [REMOTE_CONFIG_KEYS.mount]: {
+        [DEFAULT_PROFILE_NAME]: {
+          ...createBaseOpConfig(operations.mount),
           type: 'mount',
           vfsProfile: DEFAULT_PROFILE_NAME,
         },
       },
-      copyConfigs: { default: createConfig(operations.copy) },
-      syncConfigs: { default: createConfig(operations.sync) },
-      bisyncConfigs: { default: createConfig(operations.bisync) },
-      moveConfigs: { default: createConfig(operations.move) },
-      filterConfigs: { default: {} },
-      vfsConfigs: {
-        default: {
+      [REMOTE_CONFIG_KEYS.copy]: { [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.copy) },
+      [REMOTE_CONFIG_KEYS.sync]: { [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.sync) },
+      [REMOTE_CONFIG_KEYS.bisync]: {
+        [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.bisync),
+      },
+      [REMOTE_CONFIG_KEYS.move]: { [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.move) },
+      [REMOTE_CONFIG_KEYS.filter]: { [DEFAULT_PROFILE_NAME]: {} },
+      [REMOTE_CONFIG_KEYS.vfs]: {
+        [DEFAULT_PROFILE_NAME]: {
           options: {
             CacheMode: 'writes',
             ChunkSize: '128M',
             DirCacheTime: '5m',
             VfsCacheMaxAge: '1h',
+            ReadOnly: false,
           },
         },
       },
-      backendConfigs: { default: {} },
+      [REMOTE_CONFIG_KEYS.backend]: { [DEFAULT_PROFILE_NAME]: {} },
       showOnTray: true,
     };
+
+    return config as RemoteConfigSections;
   }
 
   private async startInteractiveRemoteConfig(): Promise<void> {
@@ -562,14 +558,18 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     remoteName: string,
     finalConfig: RemoteConfigSections
   ): Promise<void> {
-    const { mountConfigs, copyConfigs, syncConfigs, bisyncConfigs, moveConfigs } = finalConfig;
+    const mountConfigs = finalConfig[REMOTE_CONFIG_KEYS.mount];
+    const copyConfigs = finalConfig[REMOTE_CONFIG_KEYS.copy];
+    const syncConfigs = finalConfig[REMOTE_CONFIG_KEYS.sync];
+    const bisyncConfigs = finalConfig[REMOTE_CONFIG_KEYS.bisync];
+    const moveConfigs = finalConfig[REMOTE_CONFIG_KEYS.move];
 
     // Get default profiles
-    const mountConfig = mountConfigs?.['default'];
-    const copyConfig = copyConfigs?.['default'];
-    const syncConfig = syncConfigs?.['default'];
-    const bisyncConfig = bisyncConfigs?.['default'];
-    const moveConfig = moveConfigs?.['default'];
+    const mountConfig = mountConfigs?.['default'] as any;
+    const copyConfig = copyConfigs?.['default'] as any;
+    const syncConfig = syncConfigs?.['default'] as any;
+    const bisyncConfig = bisyncConfigs?.['default'] as any;
+    const moveConfig = moveConfigs?.['default'] as any;
 
     // Use profile-based methods - backend resolves options from saved config
     // This is simpler and ensures consistency with tray actions

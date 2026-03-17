@@ -57,7 +57,8 @@ export class BackendTranslationService {
 
   private looksLikeTranslationKey(message: string): boolean {
     // Examples: "errors.mount.pointEmpty", "success.mount.completed", "common.error"
-    return /^[a-zA-Z0-9_]+\.[a-zA-Z0-9_.]+[a-zA-Z0-9_]+$/.test(message);
+    // Must start with category and have at least one dot.
+    return /^[a-z0-9_]+\.[a-z0-9_.]*[a-z0-9_]+$/i.test(message);
   }
 
   private translateWithFallback(

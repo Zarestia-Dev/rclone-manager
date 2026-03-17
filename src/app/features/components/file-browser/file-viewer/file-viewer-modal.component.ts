@@ -43,7 +43,7 @@ import { go as legacyGo } from '@codemirror/legacy-modes/mode/go';
 import { shell as legacyShell } from '@codemirror/legacy-modes/mode/shell';
 
 import {
-  RemoteManagementService,
+  RemoteFileOperationsService,
   PathSelectionService,
   JobManagementService,
   FileSystemService,
@@ -129,7 +129,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   private fileViewerService = inject(FileViewerService);
   public iconService = inject(IconService);
   private translate = inject(TranslateService);
-  private remoteManagementService = inject(RemoteManagementService);
+  private remoteOps = inject(RemoteFileOperationsService);
   private readonly notificationService = inject(NotificationService);
   private readonly pathSelectionService = inject(PathSelectionService);
   private readonly jobManagementService = inject(JobManagementService);
@@ -329,7 +329,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       const dirPath = lastSlashIndex > -1 ? item.Path.substring(0, lastSlashIndex) : '';
       const filename = lastSlashIndex > -1 ? item.Path.substring(lastSlashIndex + 1) : item.Path;
 
-      await this.remoteManagementService.uploadFile(
+      await this.remoteOps.uploadFile(
         fsName,
         dirPath,
         filename,
@@ -339,15 +339,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
       this.textContent.set(this.editContent());
       this.isEditing.set(false);
-
-      this.notificationService.showSuccess(
-        this.translate.instant('fileBrowser.fileViewer.saveSuccess')
-      );
     } catch (error) {
       console.error('Failed to save file:', error);
-      this.notificationService.showError(
-        this.translate.instant('fileBrowser.fileViewer.saveError')
-      );
     } finally {
       this.isSaving.set(false);
     }
@@ -514,7 +507,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
         // For local: fsName is "C:" or "/", path is "path/to/dir"
         // For remote: fsName is "gdrive:", path is "path/to/dir"
-        await this.remoteManagementService
+        await this.remoteOps
           .getSize(fsName, item.Path)
           .then((size: { count: number; bytes: number }) => {
             this.folderSize.set(size);
@@ -669,9 +662,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       // Start the copy job
       await this.jobManagementService.copyUrl(selectedPath, fullDestPath, this.rawUrl(), true);
 
-      this.notificationService.openSnackBar(
-        this.translate.instant('fileBrowser.fileViewer.downloading', { name: this.fileName() }),
-        'OK'
+      this.notificationService.showInfo(
+        this.translate.instant('fileBrowser.fileViewer.downloading', { name: this.fileName() })
       );
     } catch (err) {
       console.error('Failed to start download:', err);

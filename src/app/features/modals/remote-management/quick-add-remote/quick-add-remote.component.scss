@@ -71,14 +71,12 @@
 
 // ===== MESSAGE BAR =====
 .message-area {
-  padding: 0 var(--space-md);
-  margin-bottom: var(--space-sm);
-
   .message {
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 12px 16px;
+    margin: var(--space-md);
     border-radius: var(--radius-md);
     font-size: var(--font-size-sm);
 

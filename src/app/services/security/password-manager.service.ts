@@ -3,7 +3,9 @@ import { LoadingStates, PasswordManagerState } from '@app/types';
 import { Observable } from 'rxjs';
 import { toObservable } from '@angular/core/rxjs-interop';
 
-@Injectable()
+@Injectable({
+  providedIn: 'root',
+})
 export class PasswordManagerStateService {
   private readonly _state = signal<PasswordManagerState>({
     hasStoredPassword: false,

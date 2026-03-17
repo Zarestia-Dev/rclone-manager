@@ -1,11 +1,13 @@
 .setting {
   display: flex;
-  flex-direction: row;
   align-items: center;
   justify-content: space-between;
   width: 100%;
 
   .setting-info {
+    flex: 1;
+    min-width: 0;
+
     h3 {
       font-size: var(--font-size-xl);
       font-weight: 600;
@@ -16,6 +18,83 @@
       font-size: var(--font-size-sm);
       color: var(--secondary-text-color);
       margin: 0;
+    }
+
+    strong {
+      display: block;
+      font-weight: 600;
+      font-size: var(--font-size-base);
+      margin-bottom: var(--space-xs);
+      color: var(--window-fg-color);
+    }
+
+    .help-text {
+      font-size: var(--font-size-sm);
+      color: var(--secondary-text-color);
+      line-height: 1.6;
+      margin: 0 0 var(--space-xs);
+      word-break: break-word;
+      overflow-wrap: break-word;
+      white-space: normal;
+      font-feature-settings: "liga" 0;
+
+      // Override the block strong style for inline use inside help text
+      strong {
+        font-weight: 600;
+        color: var(--window-fg-color);
+        display: inline;
+        margin: 0;
+        font-size: inherit;
+      }
+
+      code {
+        background-color: rgba(0, 0, 0, 0.05);
+        border-radius: 3px;
+        padding: 2px 6px;
+        font-family: monospace;
+        font-size: var(--font-size-xs);
+        color: var(--warn-color);
+        word-break: break-word;
+      }
+
+      a {
+        color: var(--primary-color);
+        text-decoration: none;
+        border-bottom: 1px solid rgba(var(--primary-color-rgb, 25, 118, 210), 0.3);
+        transition: all 0.2s ease;
+        word-break: break-all;
+
+        &:hover {
+          border-bottom-color: var(--primary-color);
+          opacity: 0.8;
+        }
+        &:focus {
+          outline: 2px solid var(--primary-color);
+          outline-offset: 2px;
+          border-radius: 2px;
+        }
+      }
+
+      br {
+        display: block;
+        content: "";
+        margin: 4px 0;
+      }
+    }
+
+    .default-value,
+    .type-info {
+      display: block;
+      font-size: var(--font-size-xs);
+      margin-top: var(--space-xs);
+      font-style: italic;
+    }
+
+    .default-value {
+      color: var(--secondary-text-color);
+    }
+    .type-info {
+      color: var(--warning-color);
     }
   }
 
@@ -39,103 +118,6 @@
   gap: var(--space-md);
   transition: var(--transition-fast);
 
-  .setting-control {
-    .stepper-container {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .stepper-input.mat-mdc-form-field {
-      width: 100px;
-      flex-grow: 0;
-
-      // Center the text inside the input field
-      input {
-        display: flex;
-        justify-content: center;
-        text-align: center;
-      }
-      ::ng-deep .mat-mdc-form-field-subscript-wrapper {
-        display: none;
-      }
-    }
-
-    // Hide the default browser spinner for number inputs for a cleaner look
-    input[type="number"]::-webkit-outer-spin-button,
-    input[type="number"]::-webkit-inner-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
-    }
-  }
-
-  .setting-info {
-    flex: 1;
-    min-width: 0;
-
-    strong {
-      display: block;
-      font-weight: 600;
-      font-size: var(--font-size-base);
-      margin-bottom: var(--space-xs);
-      color: var(--window-fg-color);
-    }
-
-    p {
-      font-size: var(--font-size-sm);
-      color: var(--secondary-text-color);
-      line-height: 1.4;
-      margin: 0 0 var(--space-xs);
-    }
-
-    .default-value,
-    .type-info {
-      display: block;
-      font-size: var(--font-size-xs);
-      margin-top: var(--space-xs);
-      font-style: italic;
-    }
-
-    .default-value {
-      color: var(--secondary-text-color);
-    }
-
-    .type-info {
-      color: var(--warning-color);
-    }
-  }
-
-  .setting-control {
-    flex-shrink: 0;
-
-    .time-split {
-      display: flex;
-      gap: var(--space-md);
-      align-items: center;
-
-      .input-field {
-        flex: 1;
-      }
-    }
-
-    .stepper {
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-      background: var(--button-background);
-      border-radius: var(--radius-md);
-      padding: var(--space-xs);
-
-      .value-display {
-        min-width: 48px;
-        text-align: center;
-        font-weight: 600;
-        font-size: var(--font-size-base);
-        padding: 0 var(--space-sm);
-      }
-    }
-  }
-
   &.setting-full-width,
   .setting-full-width {
     display: flex;
@@ -145,24 +127,42 @@
     width: 100%;
   }
 
-  .setting-header-with-action {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: var(--space-md);
-    margin-bottom: var(--space-sm);
+  .setting-control {
+    flex-shrink: 0;
 
-    .setting-info {
-      flex: 1;
-      margin-bottom: 0;
+    .stepper-container {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm); // was hardcoded 8px
     }
 
-    button {
-      flex-shrink: 0;
-      color: var(--primary-color);
+    .stepper-input.mat-mdc-form-field {
+      width: 100px;
+      flex-grow: 0;
 
-      &:hover {
-        background: rgba(var(--primary-color-rgb), 0.1);
+      input {
+        text-align: center;
+      }
+
+      ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+        display: none;
+      }
+    }
+
+    // Hide native number spinners — custom stepper buttons are used instead
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    .time-split {
+      display: flex;
+      gap: var(--space-md);
+      align-items: center;
+
+      .input-field {
+        flex: 1;
       }
     }
   }
@@ -178,7 +178,6 @@
 
     button[matSuffix] {
       color: var(--warn-color);
-
       &:hover {
         background: rgba(var(--warn-color-rgb), 0.1);
       }
@@ -186,27 +185,35 @@
   }
 }
 
-// =============================================
-// RESPONSIVE ADJUSTMENTS
-// =============================================
 @media (max-width: 540px) {
   .setting-item {
-    padding: var(--space-md) !important;
+    padding: var(--space-md);
     flex-direction: column;
     text-align: center;
 
     .setting-info {
-      flex: 1 !important;
-
       p,
       strong {
         font-size: var(--font-size-sm);
+      }
+
+      .help-text {
+        font-size: var(--font-size-xs);
+        line-height: 1.5;
+
+        code {
+          padding: 2px 4px;
+        }
+        a {
+          display: inline-block;
+          max-width: 100%;
+        }
       }
     }
 
     .setting-control {
       width: 100%;
-      flex-shrink: 1 !important;
+      flex-shrink: 1;
 
       .stepper-container {
         justify-content: center;
@@ -214,118 +221,7 @@
     }
 
     .setting-full-width {
-      width: 100% !important;
-    }
-  }
-}
-
-.setting-info {
-  flex: 1;
-  min-width: 0;
-
-  strong {
-    display: block;
-    font-weight: 600;
-    font-size: var(--font-size-base);
-    margin-bottom: var(--space-xs);
-    color: var(--window-fg-color);
-  }
-
-  .help-text {
-    font-size: var(--font-size-sm);
-    color: var(--secondary-text-color);
-    line-height: 1.6;
-    margin: 0 0 var(--space-xs);
-    word-break: break-word;
-    overflow-wrap: break-word;
-
-    // Markdown formatting
-    strong {
-      font-weight: 600;
-      color: var(--window-fg-color);
-      display: inline;
-      margin: 0;
-      font-size: inherit;
-    }
-
-    em {
-      font-style: italic;
-      color: inherit;
-    }
-
-    code {
-      background-color: rgba(0, 0, 0, 0.05);
-      border-radius: 3px;
-      padding: 2px 6px;
-      font-family: monospace;
-      font-size: var(--font-size-xs);
-      color: var(--warn-color);
-      word-break: break-word;
-    }
-
-    // URL/Link styling
-    a {
-      color: var(--primary-color);
-      text-decoration: none;
-      border-bottom: 1px solid rgba(var(--primary-color-rgb, 25, 118, 210), 0.3);
-      transition: all 0.2s ease;
-      word-break: break-all;
-
-      &:hover {
-        border-bottom-color: var(--primary-color);
-        opacity: 0.8;
-      }
-
-      &:focus {
-        outline: 2px solid var(--primary-color);
-        outline-offset: 2px;
-        border-radius: 2px;
-      }
-    }
-
-    // Line breaks
-    br {
-      display: block;
-      content: "";
-      margin: 4px 0;
-    }
-
-    // Allow natural text flow while preserving intentional breaks
-    white-space: normal;
-    font-feature-settings: "liga" 0; // Disable ligatures in code
-  }
-
-  .default-value,
-  .type-info {
-    display: block;
-    font-size: var(--font-size-xs);
-    margin-top: var(--space-xs);
-    font-style: italic;
-  }
-
-  .default-value {
-    color: var(--secondary-text-color);
-  }
-
-  .type-info {
-    color: var(--warning-color);
-  }
-}
-
-// Mobile responsiveness
-@media (max-width: 540px) {
-  .setting-info .help-text {
-    font-size: var(--font-size-xs);
-    line-height: 1.5;
-
-    code {
-      font-size: var(--font-size-xs);
-      padding: 2px 4px;
-    }
-
-    a {
-      display: inline-block;
-      max-width: 100%;
+      width: 100%;
     }
   }
 }

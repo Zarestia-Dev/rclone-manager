@@ -1,5 +1,5 @@
 import { inject, Injectable, signal } from '@angular/core';
-import { TauriBaseService } from '../core/tauri-base.service';
+import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { Theme } from '@app/types';
 import { AppSettingsService } from '../settings/app-settings.service';
 
@@ -75,7 +75,7 @@ export class WindowService extends TauriBaseService {
 
   async minimize(): Promise<void> {
     try {
-      await this.appWindow.minimize();
+      await this.appWindow?.minimize();
     } catch (error) {
       console.error('Failed to minimize window:', error);
     }
@@ -83,7 +83,7 @@ export class WindowService extends TauriBaseService {
 
   async maximize(): Promise<void> {
     try {
-      await this.appWindow.toggleMaximize();
+      await this.appWindow?.toggleMaximize();
     } catch (error) {
       console.error('Failed to toggle maximize:', error);
     }
@@ -91,7 +91,7 @@ export class WindowService extends TauriBaseService {
 
   async close(): Promise<void> {
     try {
-      await this.appWindow.close();
+      await this.appWindow?.close();
     } catch (error) {
       console.error('Failed to close window:', error);
     }

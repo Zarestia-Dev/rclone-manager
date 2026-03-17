@@ -14,7 +14,7 @@ use crate::{
     },
 };
 
-use super::common::parse_common_config;
+use super::common::{fs_value_with_runtime_overrides, parse_common_config};
 use super::job::{JobMetadata, submit_job};
 
 // ============================================================================
@@ -76,6 +76,7 @@ pub struct GenericTransferParams {
     pub options: Option<HashMap<String, Value>>,
     pub filter_options: Option<HashMap<String, Value>>,
     pub backend_options: Option<HashMap<String, Value>>,
+    pub runtime_remote_options: Option<HashMap<String, Value>>,
     pub profile: Option<String>,
     pub transfer_type: TransferType,
     pub origin: Option<crate::utils::types::origin::Origin>,
@@ -85,14 +86,18 @@ pub struct GenericTransferParams {
 impl GenericTransferParams {
     pub fn to_rclone_body(&self) -> Value {
         let mut body = Map::new();
+        let src_fs =
+            fs_value_with_runtime_overrides(&self.source, self.runtime_remote_options.as_ref());
+        let dst_fs =
+            fs_value_with_runtime_overrides(&self.dest, self.runtime_remote_options.as_ref());
 
         // Bisync uses path1/path2, others use srcFs/dstFs
         if self.transfer_type == TransferType::Bisync {
-            body.insert("path1".to_string(), Value::String(self.source.clone()));
-            body.insert("path2".to_string(), Value::String(self.dest.clone()));
+            body.insert("path1".to_string(), src_fs);
+            body.insert("path2".to_string(), dst_fs);
         } else {
-            body.insert("srcFs".to_string(), Value::String(self.source.clone()));
-            body.insert("dstFs".to_string(), Value::String(self.dest.clone()));
+            body.insert("srcFs".to_string(), src_fs);
+            body.insert("dstFs".to_string(), dst_fs);
         }
         body.insert("_async".to_string(), Value::Bool(true));
 
@@ -207,7 +212,8 @@ async fn perform_transfer(app: AppHandle, params: GenericTransferParams) -> Resu
             "destination": params.dest,
             "options": params.options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
             "filters": params.filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>()),
-            "backend_options": params.backend_options.as_ref().map(|b| b.keys().collect::<Vec<_>>())
+            "backend_options": params.backend_options.as_ref().map(|b| b.keys().collect::<Vec<_>>()),
+            "runtime_remote_options": params.runtime_remote_options.as_ref().map(|r| r.keys().collect::<Vec<_>>())
         })),
     );
 
@@ -288,7 +294,7 @@ async fn load_profile_and_run(
     )
     .await?;
 
-    let common = parse_common_config(&config, &settings).ok_or_else(|| {
+    let common = parse_common_config(&config, &settings, &params.remote_name).ok_or_else(|| {
         crate::localized_error!(
             "backendErrors.sync.configIncomplete",
             "profile" => &params.profile_name
@@ -302,6 +308,7 @@ async fn load_profile_and_run(
         options: common.options,
         filter_options: common.filter_options,
         backend_options: common.backend_options,
+        runtime_remote_options: common.runtime_remote_options,
         profile: Some(params.profile_name.clone()),
         transfer_type,
         origin: params.source.as_deref().map(Origin::parse),
@@ -347,6 +354,7 @@ mod tests {
             ])),
             filter_options: None,
             backend_options: None,
+            runtime_remote_options: None,
             profile: Some("prof".to_string()),
             transfer_type: TransferType::Sync,
             origin: None,
@@ -373,6 +381,7 @@ mod tests {
             options: Some(HashMap::from([("resync".to_string(), Value::Bool(true))])),
             filter_options: None,
             backend_options: None,
+            runtime_remote_options: None,
             profile: Some("prof".to_string()),
             transfer_type: TransferType::Bisync,
             origin: None,
@@ -385,5 +394,44 @@ mod tests {
         assert_eq!(obj.get("path1").unwrap(), "path1");
         assert_eq!(obj.get("path2").unwrap(), "path2");
         assert_eq!(obj.get("resync").unwrap(), true);
+    }
+
+    #[test]
+    fn test_sync_body_generation_with_runtime_remote_overrides() {
+        let params = GenericTransferParams {
+            remote_name: "test".to_string(),
+            source: "srcRemote:bucket/a".to_string(),
+            dest: "dstRemote:bucket/b".to_string(),
+            options: None,
+            filter_options: None,
+            backend_options: None,
+            runtime_remote_options: Some(HashMap::from([
+                (
+                    "srcRemote".to_string(),
+                    json!({ "type": "s3", "env_auth": true, "provider": "AWS" }),
+                ),
+                (
+                    "dstRemote".to_string(),
+                    json!({ "type": "s3", "env_auth": true, "provider": "AWS" }),
+                ),
+            ])),
+            profile: Some("prof".to_string()),
+            transfer_type: TransferType::Sync,
+            origin: None,
+            no_cache: None,
+        };
+
+        let body = params.to_rclone_body();
+        let obj = body.as_object().unwrap();
+
+        let src_fs = obj.get("srcFs").unwrap().as_object().unwrap();
+        assert_eq!(src_fs.get("_name").unwrap(), "srcRemote");
+        assert_eq!(src_fs.get("_root").unwrap(), "bucket/a");
+        assert_eq!(src_fs.get("type").unwrap(), "s3");
+
+        let dst_fs = obj.get("dstFs").unwrap().as_object().unwrap();
+        assert_eq!(dst_fs.get("_name").unwrap(), "dstRemote");
+        assert_eq!(dst_fs.get("_root").unwrap(), "bucket/b");
+        assert_eq!(dst_fs.get("provider").unwrap(), "AWS");
     }
 }

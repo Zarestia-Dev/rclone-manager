@@ -1,19 +1,15 @@
 import { inject, Injectable, signal } from '@angular/core';
-import { TauriBaseService } from '../core/tauri-base.service';
-import { NotificationService } from '@app/services';
+import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { firstValueFrom, Observable } from 'rxjs';
 import { map, distinctUntilChanged, filter, first } from 'rxjs/operators';
-import { TranslateService } from '@ngx-translate/core';
-import { CheckResult, SettingMetadata, SettingsChangeEvent } from '@app/types';
+import { SettingMetadata, SettingsChangeEvent } from '@app/types';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { EventListenersService } from '../system/event-listeners.service';
+import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AppSettingsService extends TauriBaseService {
-  private notificationService = inject(NotificationService);
-  private translate = inject(TranslateService);
   private eventListeners = inject(EventListenersService);
 
   private readonly _options = signal<Record<string, SettingMetadata> | null>(null);
@@ -224,20 +220,5 @@ export class AppSettingsService extends TauriBaseService {
     this.notificationService.showSuccess(
       this.translate.instant('settings.remoteResetSuccess', { remote: remoteName })
     );
-  }
-
-  /**
-   * Check internet connectivity for links
-   */
-  async checkInternetLinks(
-    links: string[],
-    maxRetries: number,
-    retryDelaySecs: number
-  ): Promise<CheckResult> {
-    return this.invokeCommand<CheckResult>('check_links', {
-      links,
-      maxRetries,
-      retryDelaySecs,
-    });
   }
 }

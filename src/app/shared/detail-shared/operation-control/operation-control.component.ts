@@ -69,7 +69,14 @@ import { TranslateModule } from '@ngx-translate/core';
               [ngClass]="buttonClass()"
               (click)="handleQuickAction($event)"
               [disabled]="config().isLoading"
-              [matTooltip]="(config().isActive ? 'actions.stop' : 'actions.start') | translate"
+              [matTooltip]="
+                (config().isActive && config().operationType === 'mount'
+                  ? 'actions.unmount'
+                  : config().isActive
+                    ? 'actions.stop'
+                    : 'actions.start'
+                ) | translate
+              "
             >
               @if (config().isLoading) {
                 <mat-spinner diameter="24"></mat-spinner>
@@ -303,7 +310,7 @@ export class OperationControlComponent {
     }
 
     // Resolve the badge class per operation and state
-    let resolvedBadgeClass = '';
+    let resolvedBadgeClass: string;
     if (state === 'error') {
       resolvedBadgeClass = 'error';
     } else if (state === 'active') {

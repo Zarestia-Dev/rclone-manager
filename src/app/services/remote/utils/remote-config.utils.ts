@@ -1,0 +1,216 @@
+import { RcConfigQuestionResponse, InteractiveFlowState } from '@app/types';
+
+/**
+ * Creates the initial/reset state for interactive flow.
+ */
+export function createInitialInteractiveFlowState(): InteractiveFlowState {
+  return {
+    isActive: false,
+    question: null,
+    answer: null,
+    isProcessing: false,
+  };
+}
+
+/**
+ * Checks if the interactive continue button should be disabled.
+ * @param state - The current interactive flow state.
+ * @param isAuthCancelled - Whether auth has been cancelled.
+ * @returns True if the continue button should be disabled.
+ */
+export function isInteractiveContinueDisabled(
+  state: InteractiveFlowState,
+  isAuthCancelled: boolean
+): boolean {
+  if (isAuthCancelled || state.isProcessing) return true;
+  if (!state.question?.Option?.Required) return false;
+  const answer = state.answer;
+  return (
+    answer === null || answer === undefined || (typeof answer === 'string' && answer.trim() === '')
+  );
+}
+
+/**
+ * Converts a boolean answer to the string format expected by rclone API.
+ * @param answer - The answer value (boolean or string).
+ * @returns The string 'true' or 'false'.
+ */
+export function convertBoolAnswerToString(answer: unknown): string {
+  return typeof answer === 'boolean'
+    ? answer
+      ? 'true'
+      : 'false'
+    : String(answer).toLowerCase() === 'true'
+      ? 'true'
+      : 'false';
+}
+
+/**
+ * Updates the interactive flow state with a new answer value.
+ * Returns the updated state object.
+ *
+ * @param state - The current interactive flow state.
+ * @param newAnswer - The new answer value from the user.
+ * @returns The updated state object with the new answer.
+ */
+export function updateInteractiveAnswer(
+  state: InteractiveFlowState,
+  newAnswer: string | number | boolean | null
+): InteractiveFlowState {
+  return {
+    ...state,
+    answer: newAnswer,
+  };
+}
+
+/**
+ * Builds a path string (e.g., "myRemote:path") from a form path group object.
+ * Handles various path types: local, currentRemote, otherRemote.
+ *
+ * @param pathGroup - The path group object from the form, or a simple string for local paths.
+ * @param currentRemoteName - The name of the current remote being configured.
+ * @returns The formatted path string.
+ */
+export function buildPathString(pathGroup: any, currentRemoteName: string): string {
+  if (pathGroup === null || pathGroup === undefined) return '';
+
+  // Handle simple string path (e.g., mount dest which is always local)
+  if (typeof pathGroup === 'string') {
+    return pathGroup;
+  }
+
+  const { pathType, path, otherRemoteName } = pathGroup;
+  const p = path || '';
+
+  // Handle "otherRemote:remoteName" format
+  if (typeof pathType === 'string' && pathType.startsWith('otherRemote:')) {
+    const remote = otherRemoteName || pathType.split(':')[1];
+    return `${remote}:${p}`;
+  }
+
+  switch (pathType) {
+    case 'local':
+      return p;
+    case 'currentRemote':
+      return `${currentRemoteName}:${p}`;
+    default:
+      return '';
+  }
+}
+
+/**
+ * Extracts the default answer from an interactive config question response.
+ * Handles boolean, string, and numeric types.
+ *
+ * @param q - The RcConfigQuestionResponse from the rclone backend.
+ * @returns The default answer value.
+ */
+export function getDefaultAnswerFromQuestion(
+  q: RcConfigQuestionResponse
+): string | boolean | number {
+  const opt = q.Option;
+  if (!opt) return '';
+
+  if (opt.Type === 'bool') {
+    if (typeof opt.Value === 'boolean') return opt.Value;
+    if (opt.ValueStr !== undefined) return opt.ValueStr.toLowerCase() === 'true';
+    if (opt.DefaultStr !== undefined) return opt.DefaultStr.toLowerCase() === 'true';
+    return typeof opt.Default === 'boolean' ? opt.Default : true;
+  }
+
+  return (
+    opt.ValueStr || opt.DefaultStr || String(opt.Default || '') || opt.Examples?.[0]?.Value || ''
+  );
+}
+
+/** * Checks if a given path is a local filesystem path.
+ * Recognizes Unix-style absolute paths (starting with '/') and Windows-style paths (e.g., 'C:\').
+ *
+ * @param path - The path string to check.
+ * @returns True if the path is a local filesystem path, false otherwise.
+ */
+export function isLocalPath(path: string): boolean {
+  return path.startsWith('/') || /^[a-zA-Z]:\\/.test(path);
+}
+
+/**
+ * Normalizes an rclone fs value to a string.
+ * Handles both plain strings and object formats (e.g. from backend serve list).
+ *
+ * @param fs - The fs value (string or object).
+ * @returns The normalized fs string.
+ */
+export function normalizeFs(fs: unknown): string {
+  if (typeof fs === 'string') return fs;
+  if (!fs || typeof fs !== 'object') return '';
+
+  const fsObj = fs as Record<string, unknown>;
+  const root = typeof fsObj['_root'] === 'string' ? fsObj['_root'] : '';
+
+  if (typeof fsObj['_name'] === 'string') {
+    return `${fsObj['_name']}:${root}`;
+  }
+
+  if (typeof fsObj['type'] === 'string') {
+    return `:${fsObj['type']}:${root}`;
+  }
+
+  return '';
+}
+
+/**
+ * Removes runtime backend instance suffixes from remote names.
+ * Example: Mega{Gyju7} -> Mega
+ */
+export function normalizeRemoteName(remote: string): string {
+  const trimmed = remote.trim().replace(/:$/, '');
+  return trimmed.replace(/\{[A-Za-z0-9_-]+\}$/, '');
+}
+
+/**
+ * Safely extracts the remote name from an rclone fs value.
+ * Handles local paths, Windows drive letters, and object formats.
+ *
+ * @param fs - The rclone fs value (string or object).
+ * @returns The remote name or 'local' for local paths.
+ */
+export function getRemoteNameFromFs(fs: unknown): string {
+  const normalized = normalizeFs(fs);
+  if (!normalized) return '';
+  if (isLocalPath(normalized)) return 'local';
+  return normalizeRemoteName(normalized.split(':')[0]);
+}
+
+/**
+ * Parses an rclone fs string into its components for UI configuration.
+ * Identifies if the path is local, on the current remote, or another remote.
+ *
+ * @param fullPath - The rclone fs string.
+ * @param defaultType - The default pathType to return if no match is found.
+ * @param currentRemoteName - The name of the current remote being configured.
+ * @param existingRemotes - List of existing remote names for lookup.
+ * @returns An object containing pathType, path, and optional otherRemoteName.
+ */
+export function parseFsString(
+  fullPath: string,
+  defaultType: string,
+  currentRemoteName: string,
+  existingRemotes: string[] = []
+): { pathType: string; path: string; otherRemoteName?: string } {
+  if (!fullPath) return { pathType: defaultType, path: '' };
+
+  const colonIdx = fullPath.indexOf(':');
+  const isLocal = colonIdx === -1 || colonIdx === 1 || fullPath.startsWith('/');
+
+  if (isLocal) return { pathType: 'local', path: fullPath };
+
+  const remote = fullPath.substring(0, colonIdx);
+  const path = fullPath.substring(colonIdx + 1);
+
+  if (remote === currentRemoteName) return { pathType: 'currentRemote', path };
+  if (existingRemotes.includes(remote)) {
+    return { pathType: `otherRemote:${remote}`, path, otherRemoteName: remote };
+  }
+
+  return { pathType: defaultType, path: fullPath };
+}

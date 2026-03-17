@@ -9,20 +9,20 @@
             copy: selectedSyncOperation() === 'copy' && operationActiveState(),
             move: selectedSyncOperation() === 'move' && operationActiveState(),
             bisync: selectedSyncOperation() === 'bisync' && operationActiveState(),
-            mount: selectedRemote().mountState?.mounted,
-            serve: selectedRemote().serveState?.isOnServe,
+            mount: selectedRemote().status.mount.active,
+            serve: selectedRemote().status.serve.active,
           }"
         >
           <mat-icon
-            [svgIcon]="iconService.getIconName(selectedRemote().remoteSpecs.type)"
+            [svgIcon]="iconService.getIconName(selectedRemote().type)"
             class="remote-type-icon"
           ></mat-icon>
         </div>
         <div class="remote-text-info">
-          <h2 class="remote-name" matTooltip="{{ selectedRemote().remoteSpecs.name }}">
-            {{ selectedRemote().remoteSpecs.name }}
+          <h2 class="remote-name" matTooltip="{{ selectedRemote().name }}">
+            {{ selectedRemote().name }}
           </h2>
-          <span class="remote-type">{{ selectedRemote().remoteSpecs.type | titlecase }}</span>
+          <span class="remote-type">{{ selectedRemote().type | titlecase }}</span>
         </div>
       </div>
     </div>
@@ -30,9 +30,8 @@
 
   <!-- Main Content Area -->
   <div class="detail-content">
-    @if (mainOperationType() === 'sync') {
-      <div class="sync-operation-wrapper">
-        <!-- Operation Mode Selector -->
+    <div class="operation-wrapper">
+      @if (mainOperationType() === 'sync') {
         <div class="operation-mode-selector">
           <span class="selector-label">{{ 'dashboard.appDetail.operationMode' | translate }}</span>
           <mat-button-toggle-group
@@ -48,87 +47,97 @@
                 matTooltipPosition="below"
                 [class]="'operation-toggle operation-' + operation.type"
               >
-                <span class="toggle-label">{{ operation.label | translate }}</span>
+                <span class="toggle-label">{{ operation.typeLabel | translate }}</span>
               </mat-button-toggle>
             }
           </mat-button-toggle-group>
         </div>
+      }
 
-        <div class="sync-operation-content">
-          <mat-tab-group class="operation-tabs" animationDuration="300ms">
-            <!-- Monitoring Tab -->
-            <mat-tab>
-              <ng-template mat-tab-label>
-                <span>{{ 'dashboard.appDetail.monitoring' | translate }}</span>
-              </ng-template>
+      <div class="unified-operation-content">
+        <mat-tab-group class="operation-tabs" animationDuration="300ms">
+          <!-- Monitoring Tab -->
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <span>{{ 'dashboard.appDetail.monitoring' | translate }}</span>
+            </ng-template>
 
-              <div class="operation-monitor">
-                <!-- Profile Selector (when multiple profiles exist) -->
-                @if (showProfileSelector()) {
-                  <div class="profile-selector-container" [class.operation-sync]="isSyncType()">
-                    <div class="profile-selector-header">
-                      <span class="profile-selector-label">{{
-                        'dashboard.appDetail.selectedProfile' | translate
-                      }}</span>
-                      <span class="profile-count">{{
-                        'dashboard.appDetail.profilesCount'
-                          | translate: { count: enrichedProfiles().length }
-                      }}</span>
-                    </div>
-                    <mat-chip-set
-                      [attr.aria-label]="'dashboard.appDetail.aria.profileSelection' | translate"
-                      class="profile-chips"
-                    >
-                      @for (profile of enrichedProfiles(); track profile.name) {
-                        <mat-chip-option
-                          [selected]="selectedProfile() === profile.name"
-                          (click)="selectedProfile.set(profile.name)"
-                          [class.chip-running]="profile.status === 'running'"
-                          [class.chip-scheduled]="profile.status === 'scheduled'"
-                        >
-                          @if (profile.status === 'running') {
-                            <mat-icon
-                              svgIcon="refresh"
-                              class="primary animate-spin"
-                              matChipAvatar
-                            ></mat-icon>
-                          } @else if (profile.status === 'scheduled') {
-                            <mat-icon svgIcon="clock" class="orange" matChipAvatar></mat-icon>
-                          }
-                          {{ profile.label }}
-                        </mat-chip-option>
-                      }
-                    </mat-chip-set>
+            <div class="operation-monitor">
+              <!-- Profile Selector (when multiple profiles exist) -->
+              @if (showProfileSelector()) {
+                <div
+                  class="profile-selector-container"
+                  [ngClass]="{
+                    'operation-sync': isSyncType(),
+                    'operation-mount': mainOperationType() === 'mount',
+                    'operation-serve': mainOperationType() === 'serve',
+                  }"
+                >
+                  <div class="profile-selector-header">
+                    <span class="profile-selector-label">{{
+                      'dashboard.appDetail.selectedProfile' | translate
+                    }}</span>
+                    <span class="profile-count">{{
+                      'dashboard.appDetail.profilesCount'
+                        | translate: { count: enrichedProfiles().length }
+                    }}</span>
                   </div>
-                }
-
-                <!-- Operation Control Panel (filtered by selected profile) -->
-                @for (
-                  opConfig of filteredOperationControlConfigs();
-                  track opConfig.profileName || opConfig.operationType
-                ) {
-                  <app-operation-control
-                    [config]="opConfig"
-                    (startJob)="
-                      startJob.emit({
-                        type: $event,
-                        remoteName: selectedRemote().remoteSpecs.name,
-                        profileName: opConfig.profileName,
-                      })
-                    "
-                    (stopJob)="
-                      stopJob.emit({
-                        type: $event,
-                        remoteName: selectedRemote().remoteSpecs.name,
-                        profileName: opConfig.profileName,
-                      })
-                    "
-                    (openPath)="triggerOpenInFiles($event)"
-                    class="control-panel"
+                  <mat-chip-set
+                    [attr.aria-label]="'dashboard.appDetail.aria.profileSelection' | translate"
+                    class="profile-chips"
                   >
-                  </app-operation-control>
-                }
+                    @for (profile of enrichedProfiles(); track profile.name) {
+                      <mat-chip-option
+                        [selected]="selectedProfile() === profile.name"
+                        (click)="selectedProfile.set(profile.name)"
+                        [class.chip-running]="profile.status === 'running'"
+                        [class.chip-scheduled]="profile.status === 'scheduled'"
+                      >
+                        @if (profile.status === 'running') {
+                          <mat-icon
+                            [svgIcon]="currentOpMetadata().icon || 'refresh'"
+                            [class.animate-spin]="isSyncType()"
+                            [class]="operationColor()"
+                            matChipAvatar
+                          ></mat-icon>
+                        } @else if (profile.status === 'scheduled') {
+                          <mat-icon svgIcon="clock" class="orange" matChipAvatar></mat-icon>
+                        }
+                        {{ profile.label }}
+                      </mat-chip-option>
+                    }
+                  </mat-chip-set>
+                </div>
+              }
 
+              <!-- Operation Control Panel (filtered by selected profile) -->
+              @for (
+                opConfig of filteredControlConfigs();
+                track opConfig.profileName || opConfig.operationType
+              ) {
+                <app-operation-control
+                  [config]="opConfig"
+                  (startJob)="
+                    startJob.emit({
+                      type: $event,
+                      remoteName: selectedRemote().name,
+                      profileName: opConfig.profileName,
+                    })
+                  "
+                  (stopJob)="
+                    stopJob.emit({
+                      type: $event,
+                      remoteName: selectedRemote().name,
+                      profileName: opConfig.profileName,
+                    })
+                  "
+                  (openPath)="triggerOpenInFiles($event)"
+                  [class]="'control-panel ' + operationClass()"
+                >
+                </app-operation-control>
+              }
+              <!-- Job Information Panel -->
+              @if (shouldShowCharts()) {
                 <!-- Human Readable Cron Schedule (for selected profile) -->
                 @if (hasCronSchedule()) {
                   @let schedule = selectedCronSchedule();
@@ -142,7 +151,6 @@
                   }
                 }
 
-                <!-- Job Information Panel -->
                 <app-job-info-panel
                   [config]="jobInfoConfig()"
                   class="info-panel"
@@ -157,20 +165,50 @@
                   (resetStats)="onResetStats()"
                   class="activity-panel"
                 ></app-transfer-activity-panel>
-              </div>
-            </mat-tab>
+              }
 
-            <!-- Configuration Tab -->
-            <mat-tab>
-              <ng-template mat-tab-label>
-                <span>{{ 'dashboard.appDetail.configuration' | translate }}</span>
-              </ng-template>
+              <!-- Active Serves List (conditional for serve) -->
+              @if (mainOperationType() === 'serve' && filteredRunningServes().length > 0) {
+                <div class="active-serves-list">
+                  <h3>{{ 'dashboard.appDetail.activeServes' | translate }}</h3>
+                  <div class="serves-grid">
+                    @for (serve of filteredRunningServes(); track serve.id) {
+                      <app-serve-card
+                        [serve]="serve"
+                        (stopServe)="
+                          stopJob.emit({
+                            type: 'serve',
+                            remoteName: selectedRemote().name,
+                            serveId: serve.id,
+                          })
+                        "
+                        (copyToClipboard)="onCopyToClipboard($event)"
+                      ></app-serve-card>
+                    }
+                  </div>
+                </div>
+              }
 
-              <div class="configuration-content">
-                <!-- Operation-Specific Warnings -->
+              <!-- VFS Control Panel (conditional for mount or serve) -->
+              @if (currentOpMetadata().supportsVfs) {
+                <mat-divider></mat-divider>
+                <app-vfs-control-panel [remoteName]="selectedRemote().name"></app-vfs-control-panel>
+              }
+            </div>
+          </mat-tab>
+
+          <!-- Configuration Tab -->
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <span>{{ 'dashboard.appDetail.configuration' | translate }}</span>
+            </ng-template>
+
+            <div class="configuration-content">
+              <!-- Operation-Specific Warnings -->
+              @if (isSyncType()) {
                 @switch (selectedSyncOperation()) {
                   @case ('move') {
-                    <mat-card>
+                    <mat-card class="operation-warning">
                       <mat-card-header>
                         <mat-card-title>
                           <mat-icon svgIcon="warning" class="warn"></mat-icon
@@ -184,7 +222,7 @@
                     </mat-card>
                   }
                   @case ('bisync') {
-                    <mat-card>
+                    <mat-card class="operation-info">
                       <mat-card-header>
                         <mat-card-title>
                           <mat-icon svgIcon="info"></mat-icon
@@ -199,224 +237,8 @@
                     </mat-card>
                   }
                 }
-                <div class="settings-layout">
-                  <section class="settings-group operation-settings">
-                    <header class="group-header">
-                      <h3 class="group-title">{{ operationSettingsHeading() }}</h3>
-                      <p class="group-description">{{ operationSettingsDescription() }}</p>
-                    </header>
-                    <div class="group-panels">
-                      @for (section of operationSettingsSections(); track section.key) {
-                        <app-settings-panel
-                          [config]="getSettingsPanelConfig(section)"
-                          (editSettings)="onEditSettings($event)"
-                          class="settings-section"
-                        ></app-settings-panel>
-                      }
-                    </div>
-                  </section>
-
-                  <section class="settings-group shared-settings">
-                    <header class="group-header">
-                      <h3 class="group-title">
-                        {{ 'dashboard.appDetail.sharedSettings' | translate }}
-                      </h3>
-                      <p class="group-description">
-                        {{ 'dashboard.appDetail.sharedSettingsDesc' | translate }}
-                      </p>
-                    </header>
-                    <div class="group-panels">
-                      @for (section of sharedSettingsSections(); track section.key) {
-                        <app-settings-panel
-                          [config]="getSettingsPanelConfig(section)"
-                          (editSettings)="onEditSettings($event)"
-                          class="settings-section"
-                        ></app-settings-panel>
-                      }
-                    </div>
-                  </section>
-                </div>
-              </div>
-            </mat-tab>
-          </mat-tab-group>
-        </div>
-      </div>
-    }
-
-    <!-- MOUNT Operations -->
-    @else {
-      <div class="mount-operation-wrapper">
-        <mat-tab-group class="operation-tabs" animationDuration="300ms">
-          <!-- Monitoring Tab -->
-          <mat-tab>
-            <ng-template mat-tab-label>
-              <span>{{ 'dashboard.appDetail.monitoring' | translate }}</span>
-            </ng-template>
-
-            <div class="operation-monitor">
-              @if (mainOperationType() === 'serve') {
-                <!-- Serve Controls -->
-
-                <!-- Profile Selector (when multiple profiles exist) -->
-                @if (showProfileSelector()) {
-                  <div class="profile-selector-container operation-serve">
-                    <div class="profile-selector-header">
-                      <span class="profile-selector-label">{{
-                        'dashboard.appDetail.selectedProfile' | translate
-                      }}</span>
-                      <span class="profile-count">{{
-                        'dashboard.appDetail.profilesCount'
-                          | translate: { count: enrichedProfiles().length }
-                      }}</span>
-                    </div>
-                    <mat-chip-set
-                      [attr.aria-label]="'dashboard.appDetail.aria.profileSelection' | translate"
-                      class="profile-chips"
-                    >
-                      @for (profile of enrichedProfiles(); track profile.name) {
-                        <mat-chip-option
-                          [selected]="selectedProfile() === profile.name"
-                          (click)="selectedProfile.set(profile.name)"
-                          [class.chip-running]="profile.status === 'running'"
-                          [class.chip-scheduled]="profile.status === 'scheduled'"
-                        >
-                          @if (profile.status === 'running') {
-                            <mat-icon svgIcon="serve" class="accent" matChipAvatar></mat-icon>
-                          }
-                          {{ profile.label }}
-                        </mat-chip-option>
-                      }
-                    </mat-chip-set>
-                  </div>
-                }
-
-                @for (
-                  opConfig of filteredServeControlConfigs();
-                  track opConfig.profileName || opConfig.operationType
-                ) {
-                  <app-operation-control
-                    [config]="opConfig"
-                    (startJob)="
-                      startJob.emit({
-                        type: 'serve',
-                        remoteName: selectedRemote().remoteSpecs.name,
-                        profileName: opConfig.profileName,
-                      })
-                    "
-                    (stopJob)="
-                      stopJob.emit({
-                        type: 'serve',
-                        remoteName: selectedRemote().remoteSpecs.name,
-                        profileName: opConfig.profileName,
-                      })
-                    "
-                    class="control-panel"
-                  ></app-operation-control>
-                }
-
-                <!-- Active Serves List -->
-                @if (filteredRunningServes().length > 0) {
-                  <div class="active-serves-list">
-                    <h3>{{ 'dashboard.appDetail.activeServes' | translate }}</h3>
-                    <div class="serves-grid">
-                      @for (serve of filteredRunningServes(); track serve.id) {
-                        <app-serve-card
-                          [serve]="serve"
-                          (stopServe)="
-                            stopJob.emit({
-                              type: 'serve',
-                              remoteName: selectedRemote().remoteSpecs.name,
-                              serveId: serve.id,
-                            })
-                          "
-                          (copyToClipboard)="onCopyToClipboard($event)"
-                        ></app-serve-card>
-                      }
-                    </div>
-                  </div>
-                }
-                <mat-divider></mat-divider>
-
-                <app-vfs-control-panel
-                  [remoteName]="selectedRemote().remoteSpecs.name"
-                ></app-vfs-control-panel>
-              } @else {
-                <!-- Mount Control Panel -->
-
-                <!-- Profile Selector (when multiple profiles exist) -->
-                @if (showProfileSelector()) {
-                  <div class="profile-selector-container operation-mount">
-                    <div class="profile-selector-header">
-                      <span class="profile-selector-label">{{
-                        'dashboard.appDetail.selectedProfile' | translate
-                      }}</span>
-                      <span class="profile-count">{{
-                        'dashboard.appDetail.profilesCount'
-                          | translate: { count: enrichedProfiles().length }
-                      }}</span>
-                    </div>
-                    <mat-chip-set
-                      [attr.aria-label]="'dashboard.appDetail.aria.profileSelection' | translate"
-                      class="profile-chips"
-                    >
-                      @for (profile of enrichedProfiles(); track profile.name) {
-                        <mat-chip-option
-                          [selected]="selectedProfile() === profile.name"
-                          (click)="selectedProfile.set(profile.name)"
-                          [class.chip-running]="profile.status === 'running'"
-                          [class.chip-scheduled]="profile.status === 'scheduled'"
-                        >
-                          @if (profile.status === 'running') {
-                            <mat-icon svgIcon="mount" class="accent" matChipAvatar></mat-icon>
-                          }
-                          {{ profile.label }}
-                        </mat-chip-option>
-                      }
-                    </mat-chip-set>
-                  </div>
-                }
-
-                @for (
-                  opConfig of filteredMountControlConfigs();
-                  track opConfig.profileName || opConfig.operationType
-                ) {
-                  <app-operation-control
-                    [config]="opConfig"
-                    (startJob)="
-                      startJob.emit({
-                        type: 'mount',
-                        remoteName: selectedRemote().remoteSpecs.name,
-                        profileName: opConfig.profileName,
-                      })
-                    "
-                    (stopJob)="
-                      stopJob.emit({
-                        type: 'mount',
-                        remoteName: selectedRemote().remoteSpecs.name,
-                        profileName: opConfig.profileName,
-                      })
-                    "
-                    (openPath)="triggerOpenInFiles($event)"
-                    class="mount-control-panel"
-                  ></app-operation-control>
-                }
-
-                <mat-divider></mat-divider>
-
-                <app-vfs-control-panel
-                  [remoteName]="selectedRemote().remoteSpecs.name"
-                ></app-vfs-control-panel>
               }
-            </div>
-          </mat-tab>
 
-          <!-- Configuration Tab -->
-          <mat-tab>
-            <ng-template mat-tab-label>
-              <span>{{ 'dashboard.appDetail.configuration' | translate }}</span>
-            </ng-template>
-
-            <div class="configuration-content">
               <div class="settings-layout">
                 <section class="settings-group operation-settings">
                   <header class="group-header">
@@ -428,7 +250,7 @@
                       <app-settings-panel
                         [config]="getSettingsPanelConfig(section)"
                         (editSettings)="onEditSettings($event)"
-                        class="mount-settings-section"
+                        [class]="'settings-section ' + operationClass()"
                       ></app-settings-panel>
                     }
                   </div>
@@ -448,7 +270,7 @@
                       <app-settings-panel
                         [config]="getSettingsPanelConfig(section)"
                         (editSettings)="onEditSettings($event)"
-                        class="mount-settings-section"
+                        [class]="'settings-section ' + operationClass()"
                       ></app-settings-panel>
                     }
                   </div>
@@ -458,6 +280,6 @@
           </mat-tab>
         </mat-tab-group>
       </div>
-    }
+    </div>
   </div>
 </div>

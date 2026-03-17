@@ -1,17 +1,18 @@
 mat-toolbar {
+  position: relative;
   display: flex;
-  text-wrap: wrap;
+  white-space: normal;
   text-align: center;
   align-items: center;
   justify-content: center;
-  max-height: 44px;
+  height: 44px;
   padding: var(--banner-padding);
   font-weight: 600;
-  font-size: 16px;
-  gap: 8px;
+  font-size: var(--font-size-base);
+  gap: var(--space-sm);
 
   .banner-message {
-    font-size: 14px;
+    font-size: var(--font-size-sm);
   }
 
   .banner-subtitle {
@@ -20,25 +21,56 @@ mat-toolbar {
   }
 
   &.development-banner {
+    z-index: 10;
     background: linear-gradient(135deg, var(--warn-color), var(--orange));
   }
 
   &.flatpak-warning-banner {
+    z-index: 9;
     background-color: var(--banner-bg-color);
+    padding: 0 var(--space-md);
+
+    mat-icon {
+      height: var(--icon-size-sm);
+      width: var(--icon-size-sm);
+      font-size: var(--icon-size-sm);
+      opacity: 0.9;
+    }
+
+    .banner-text-group {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      margin-inline: auto;
+    }
+
+    .hide-button {
+      padding: 2px;
+      color: var(--dim-color);
+      border-radius: var(--radius-xs);
+      transition: var(--transition-fast);
+
+      &:hover {
+        background-color: var(--hover-bg-color);
+        color: var(--window-fg-color);
+      }
+    }
   }
 
   &.metered-banner {
+    z-index: 8;
     background-color: var(--banner-bg-color);
   }
 
   &.engine-error-banner {
+    z-index: 7;
     background: var(--warn-color);
     color: white;
 
     .error-icon {
       color: white;
-      height: 20px;
-      width: 20px;
+      height: var(--icon-size-sm);
+      width: var(--icon-size-sm);
     }
 
     .banner-message {
@@ -48,11 +80,10 @@ mat-toolbar {
 
   // GPU-accelerated slide toggle animation
   &.slide-toggle-banner {
-    position: relative;
     transform: translateY(-100%);
     opacity: 0;
     visibility: hidden;
-    margin-bottom: -44px; // Prevent layout jump when hidden
+    margin-bottom: -44px;
     transition:
       transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
       opacity 0.3s ease-in-out,

@@ -31,7 +31,7 @@
         <div class="custom-builder" [formGroup]="simpleForm">
           <div class="builder-row">
             <span class="builder-label">{{ 'wizards.appOperation.runThisTask' | translate }}</span>
-            <mat-form-field class="inline-field">
+            <mat-form-field class="inline-field" subscriptSizing="dynamic">
               <mat-select formControlName="frequency">
                 <mat-option value="daily">{{
                   'wizards.appOperation.everyDay' | translate
@@ -52,7 +52,7 @@
           @if (simpleForm.get('frequency')?.value === 'weekly') {
             <div class="builder-row">
               <span class="builder-label">{{ 'wizards.appOperation.on' | translate }}</span>
-              <mat-form-field class="inline-field">
+              <mat-form-field class="inline-field" subscriptSizing="dynamic">
                 <mat-select formControlName="dayOfWeek">
                   <mat-option value="1">{{
                     'wizards.appOperation.days.monday' | translate
@@ -86,7 +86,7 @@
           @if (simpleForm.get('frequency')?.value === 'monthly') {
             <div class="builder-row">
               <span class="builder-label">{{ 'wizards.appOperation.onDay' | translate }}</span>
-              <mat-form-field class="inline-field">
+              <mat-form-field class="inline-field" subscriptSizing="dynamic">
                 <mat-select formControlName="dayOfMonth">
                   @for (day of daysOfMonth; track day) {
                     <mat-option [value]="day">{{ day }}</mat-option>
@@ -100,7 +100,7 @@
           @if (simpleForm.get('frequency')?.value === 'interval') {
             <div class="builder-row">
               <span class="builder-label">{{ 'wizards.appOperation.every' | translate }}</span>
-              <mat-form-field class="inline-field">
+              <mat-form-field class="inline-field" subscriptSizing="dynamic">
                 <mat-select formControlName="intervalHours">
                   <mat-option [value]="2">{{
                     'wizards.appOperation.cronOptions.intervalN' | translate: { count: 2 }
@@ -125,20 +125,10 @@
           @if (simpleForm.get('frequency')?.value !== 'interval') {
             <div class="builder-row">
               <span class="builder-label">{{ 'wizards.appOperation.at' | translate }}</span>
-              <mat-form-field class="inline-field">
-                <input
-                  matInput
-                  [ngxMatTimepicker]="timePicker"
-                  formControlName="time"
-                  readonly
-                  (click)="timePicker.open()"
-                />
-                <mat-icon matSuffix svgIcon="clock"></mat-icon>
-                <ngx-mat-timepicker
-                  #timePicker
-                  [enableKeyboardInput]="true"
-                  (timeSet)="onSimpleFormChange()"
-                ></ngx-mat-timepicker>
+              <mat-form-field class="inline-field" subscriptSizing="dynamic">
+                <input matInput [matTimepicker]="timePicker" formControlName="time" />
+                <mat-timepicker-toggle matSuffix [for]="timePicker"></mat-timepicker-toggle>
+                <mat-timepicker #timePicker></mat-timepicker>
               </mat-form-field>
             </div>
           }

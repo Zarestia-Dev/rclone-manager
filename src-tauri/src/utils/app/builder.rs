@@ -89,6 +89,6 @@ pub fn create_app_window(app_handle: AppHandle, browse_remote: Option<&str>) {
     }
 
     main_window.show().unwrap_or_else(|e| {
-        eprintln!("Failed to show main window: {e}");
+        log::error!("Failed to show main window: {e}");
     });
 }

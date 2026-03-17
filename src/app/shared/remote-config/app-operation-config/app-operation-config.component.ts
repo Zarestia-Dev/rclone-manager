@@ -27,6 +27,7 @@ import { NotificationService } from '@app/services';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { Subscription } from 'rxjs';
 
 type PathType = 'local' | 'currentRemote' | 'otherRemote';
 type PathGroup = 'source' | 'dest';
@@ -108,11 +109,20 @@ export class OperationConfigComponent {
   cronExpression = signal<string | null>(null);
   isCronEnabled = signal<boolean>(false);
 
+  // Keep these subscriptions idempotent across effect re-runs
+  private controlSyncSubs = new Map<string, Subscription>();
+  private pathTypeSubs = new Map<PathGroup, Subscription>();
+
   constructor() {
     // Initialize things that depend on inputs
     effect(() => {
       if (!this.isNewRemote()) {
         this.initializeInlineAutocomplete();
+      } else {
+        this.pathSelectionService.unregisterField('source');
+        this.pathSelectionService.unregisterField('dest');
+        this.sourcePathState = null;
+        this.destPathState = null;
       }
     });
 
@@ -121,8 +131,8 @@ export class OperationConfigComponent {
       const formGroup = this.opFormGroup();
       if (!formGroup) return;
 
-      this.syncControlToSignal(formGroup.get('cronExpression'), this.cronExpression);
-      this.syncControlToSignal(formGroup.get('cronEnabled'), this.isCronEnabled);
+      this.syncControlToSignal('cronExpression', this.cronExpression);
+      this.syncControlToSignal('cronEnabled', this.isCronEnabled);
 
       // Initialize path type listeners
       this.watchPathType('source');
@@ -133,28 +143,39 @@ export class OperationConfigComponent {
 
     // Cleanup
     this.destroyRef.onDestroy(() => {
+      this.controlSyncSubs.forEach(sub => sub.unsubscribe());
+      this.pathTypeSubs.forEach(sub => sub.unsubscribe());
       this.pathSelectionService.unregisterField('source');
       this.pathSelectionService.unregisterField('dest');
     });
   }
 
   private syncControlToSignal<T>(
-    control: AbstractControl | null,
+    controlName: string,
     signalToUpdate: ReturnType<typeof signal<T>>
   ): void {
+    const control = this.opFormGroup().get(controlName);
     if (!control) return;
 
     // Set initial value
     signalToUpdate.set(control.value);
 
-    // Subscribe to changes
-    control.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(val => {
+    // Rebind idempotently when effect re-runs
+    this.controlSyncSubs.get(controlName)?.unsubscribe();
+    const sub = control.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(val => {
       signalToUpdate.set(val);
     });
+    this.controlSyncSubs.set(controlName, sub);
   }
 
   private initializeInlineAutocomplete(): void {
     if (this.isNewRemote()) return;
+
+    // Keep registrations stable across effect re-runs.
+    this.pathSelectionService.unregisterField('source');
+    this.pathSelectionService.unregisterField('dest');
+    this.sourcePathState = null;
+    this.destPathState = null;
 
     // Register source field
     this.sourcePathState = this.registerAutocomplete('source');
@@ -191,10 +212,12 @@ export class OperationConfigComponent {
     // Handle initial value
     this.handlePathTypeChange(group, control.value);
 
-    // Watch for changes
-    control.valueChanges
+    // Rebind idempotently when effect re-runs
+    this.pathTypeSubs.get(group)?.unsubscribe();
+    const sub = control.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(value => this.handlePathTypeChange(group, value));
+    this.pathTypeSubs.set(group, sub);
   }
 
   private handlePathTypeChange(group: PathGroup, value: string): void {
@@ -397,6 +420,7 @@ export class OperationConfigComponent {
   clearSchedule(event: Event): void {
     event.stopPropagation();
     this.updateControlAndSignal('cronExpression', null, this.cronExpression);
+    this.opFormGroup().get('cronValidation')?.setValue({ isValid: false }, { emitEvent: false });
   }
 
   private updateControlAndSignal<T>(
@@ -426,6 +450,14 @@ export class OperationConfigComponent {
       return value.substring('otherRemote:'.length) || null;
     }
     return value === 'currentRemote' ? this.currentRemoteName() : null;
+  }
+
+  getOtherRemoteName(group: PathGroup): string {
+    return this.getFormGroup(group)?.get('otherRemoteName')?.value || '';
+  }
+
+  hasRequiredError(controlPath: string): boolean {
+    return this.opFormGroup().get(controlPath)?.hasError('required') === true;
   }
 
   private getFormGroup(group: PathGroup): FormGroup | null {

@@ -1,4 +1,11 @@
-import { Component, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  inject,
+  signal,
+  computed,
+  ChangeDetectionStrategy,
+  DestroyRef,
+} from '@angular/core';
 import { MAT_BOTTOM_SHEET_DATA, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { MatListModule } from '@angular/material/list';
 import { MatButtonModule } from '@angular/material/button';
@@ -22,6 +29,18 @@ import {
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 type RepairMode = 'standard' | 'install' | 'config';
+
+const CONFIG_TAB_OPTIONS: InstallationTabOption[] = [
+  { key: 'default', label: 'repairSheet.configTabs.default', icon: 'bolt' },
+  { key: 'custom', label: 'repairSheet.configTabs.custom', icon: 'file' },
+];
+
+const DEFAULT_INSTALLATION_DATA: InstallationOptionsData = {
+  installLocation: 'default',
+  customPath: '',
+  existingBinaryPath: '',
+  binaryTestResult: 'untested',
+};
 
 @Component({
   selector: 'app-repair-sheet',
@@ -52,18 +71,14 @@ export class RepairSheetComponent {
   readonly showAdvanced = signal(false);
   readonly showConfigOptions = signal(false);
   readonly isRefreshingStatus = signal(false);
-  readonly installationData = signal<InstallationOptionsData>({
-    installLocation: 'default',
-    customPath: '',
-    existingBinaryPath: '',
-    binaryTestResult: 'untested',
-  });
+  readonly installationData = signal<InstallationOptionsData>({ ...DEFAULT_INSTALLATION_DATA });
   readonly installationValid = signal(true);
   readonly password = signal('');
   readonly storePassword = signal(true);
   readonly isSubmittingPassword = signal(false);
   readonly hasPasswordError = signal(false);
   readonly passwordErrorMessage = signal('');
+  private readonly messageOverride = signal<string | null>(null);
 
   // --- INJECTED DEPENDENCIES ---
   readonly data = inject<RepairData>(MAT_BOTTOM_SHEET_DATA);
@@ -73,14 +88,19 @@ export class RepairSheetComponent {
   private readonly passwordService = inject(RclonePasswordService);
   private readonly installationService = inject(InstallationService);
   private readonly translate = inject(TranslateService);
+  private readonly destroyRef = inject(DestroyRef);
 
   // --- UI CONFIGURATION ---
-  readonly configTabOptions: InstallationTabOption[] = [
-    { key: 'default', label: 'repairSheet.configTabs.default', icon: 'bolt' },
-    { key: 'custom', label: 'repairSheet.configTabs.custom', icon: 'file' },
-  ];
+  readonly configTabOptions = CONFIG_TAB_OPTIONS;
 
   // --- COMPUTED SIGNALS ---
+  readonly isRclonePathRepair = computed(() => this.data.type === 'rclone_path');
+  readonly isMountPluginRepair = computed(() => this.data.type === 'mount_plugin');
+  readonly requiresPassword = computed(
+    () => this.data.type === 'rclone_password' || this.data.requiresPassword === true
+  );
+  readonly canSubmitPassword = computed(() => !!this.password() && !this.isSubmittingPassword());
+
   readonly currentMode = computed((): RepairMode => {
     if (this.showConfigOptions()) return 'config';
     if (this.isRclonePathRepair() && this.showAdvanced()) return 'install';
@@ -92,44 +112,20 @@ export class RepairSheetComponent {
   );
 
   readonly repairIcon = computed(() => this.repairService.getRepairButtonIcon(this.data.type));
-
   readonly repairDetails = computed(() => this.repairService.getRepairDetails(this.data.type));
 
-  readonly repairButtonTextKey = computed(() => {
-    if (this.installing()) {
-      return this.repairService.getRepairProgressTextKey(this.data.type);
-    }
-    if (this.showConfigOptions()) {
-      return this.getConfigModeButtonTextKey();
-    }
-    if (this.requiresPassword() && !this.password()) {
-      return 'repairSheet.buttons.enterPassword';
-    }
-    if (this.isRclonePathRepair() && this.showAdvanced()) {
-      return this.getInstallModeButtonTextKey();
-    }
-    return this.repairService.getRepairButtonTextKey(this.data.type);
-  });
+  readonly displayTitle = computed(
+    () =>
+      this.data.title ??
+      this.translate.instant(this.repairService.getRepairTitleKey(this.data.type))
+  );
 
-  readonly repairProgressTextKey = computed(() => {
-    if (
-      this.currentMode() === 'install' &&
-      this.installationData().installLocation === 'existing'
-    ) {
-      return 'repairSheet.progress.configuring';
-    }
-    return this.repairService.getRepairProgressTextKey(this.data.type);
-  });
-
-  readonly repairButtonIcon = computed(() => {
-    if (this.isProcessing()) {
-      return this.installing() ? 'refresh' : 'download';
-    }
-    if (this.showConfigOptions()) {
-      return 'file';
-    }
-    return this.repairService.getRepairButtonIcon(this.data.type);
-  });
+  readonly displayMessage = computed(
+    () =>
+      this.messageOverride() ??
+      this.data.message ??
+      this.translate.instant(this.repairService.getRepairMessageKey(this.data.type))
+  );
 
   readonly canRepair = computed(() => {
     if (this.isProcessing()) return false;
@@ -142,50 +138,65 @@ export class RepairSheetComponent {
     }
   });
 
-  readonly displayTitle = computed(() => {
-    if (this.data.title) return this.data.title;
-    return this.translate.instant(this.repairService.getRepairTitleKey(this.data.type));
+  readonly repairButtonIcon = computed(() => {
+    if (this.installing()) return 'refresh';
+    if (this.isSubmittingPassword()) return 'download';
+    if (this.showConfigOptions()) return 'file';
+    return this.repairService.getRepairButtonIcon(this.data.type);
   });
 
-  readonly displayMessage = computed(() => {
-    if (this.data.message) return this.data.message;
-    return this.translate.instant(this.repairService.getRepairMessageKey(this.data.type));
+  // Single source of truth for button text — replaces the triple-nested ternary in the template
+  readonly repairActionTextKey = computed(() => {
+    if (this.isSubmittingPassword()) return 'repairSheet.validatingPassword';
+    if (this.installing()) return this.repairProgressTextKey();
+    return this.repairButtonTextKey();
+  });
+
+  private readonly repairButtonTextKey = computed(() => {
+    if (this.showConfigOptions()) return this.getConfigModeButtonTextKey();
+    if (this.requiresPassword() && !this.password()) return 'repairSheet.buttons.enterPassword';
+    if (this.isRclonePathRepair() && this.showAdvanced()) return this.getInstallModeButtonTextKey();
+    return this.repairService.getRepairButtonTextKey(this.data.type);
+  });
+
+  private readonly repairProgressTextKey = computed(() => {
+    if (
+      this.currentMode() === 'install' &&
+      this.installationData().installLocation === 'existing'
+    ) {
+      return 'repairSheet.progress.configuring';
+    }
+    return this.repairService.getRepairProgressTextKey(this.data.type);
   });
 
   readonly repairTooltip = computed(() => {
-    if (this.canRepair() || this.installing() || this.isSubmittingPassword()) return '';
+    if (this.canRepair() || this.isProcessing()) return '';
 
-    const data = this.installationData();
+    const { installLocation, customPath, existingBinaryPath, binaryTestResult } =
+      this.installationData();
 
     if (this.showConfigOptions()) {
-      if (data.installLocation === 'custom' && !data.customPath.trim()) {
+      if (installLocation === 'custom' && !customPath.trim()) {
         return 'repairSheet.tooltips.selectConfigFirst';
       }
-      if (!this.installationValid()) {
-        return 'repairSheet.tooltips.fixValidationErrors';
-      }
-      return '';
+      return this.installationValid() ? '' : 'repairSheet.tooltips.fixValidationErrors';
     }
 
     if (this.requiresPassword()) {
-      if (!this.password()) {
-        return 'repairSheet.tooltips.enterPasswordFirst';
-      }
-      return 'repairSheet.tooltips.accountLocked';
+      return this.password()
+        ? 'repairSheet.tooltips.accountLocked'
+        : 'repairSheet.tooltips.enterPasswordFirst';
     }
 
-    if (data.installLocation === 'custom' && !data.customPath.trim()) {
+    if (installLocation === 'custom' && !customPath.trim()) {
       return 'repairSheet.tooltips.selectInstallPathFirst';
     }
-    if (data.installLocation === 'existing') {
-      if (!data.existingBinaryPath.trim()) return 'repairSheet.tooltips.selectBinaryFirst';
-      if (data.binaryTestResult === 'invalid') return 'repairSheet.tooltips.invalidBinary';
-      if (data.binaryTestResult === 'untested') return 'repairSheet.tooltips.testBinaryFirst';
+    if (installLocation === 'existing') {
+      if (!existingBinaryPath.trim()) return 'repairSheet.tooltips.selectBinaryFirst';
+      if (binaryTestResult === 'invalid') return 'repairSheet.tooltips.invalidBinary';
+      if (binaryTestResult === 'untested') return 'repairSheet.tooltips.testBinaryFirst';
     }
-    if (!this.installationValid()) {
-      return 'repairSheet.tooltips.fixValidationErrors';
-    }
-    return '';
+    return this.installationValid() ? '' : 'repairSheet.tooltips.fixValidationErrors';
   });
 
   // --- PUBLIC METHODS ---
@@ -197,45 +208,32 @@ export class RepairSheetComponent {
       case 'config':
         await this.executeConfigRepair();
         break;
-      case 'standard':
-        if (this.requiresPassword() && this.password()) {
-          await this.submitPassword();
-        } else if (this.requiresPassword()) {
-          this.showPasswordError(this.translate.instant('repairSheet.errors.passwordRequired'));
-        } else {
-          await this.executeRepair();
-        }
-        break;
       case 'install':
         await this.executeRepair();
+        break;
+      case 'standard':
+        if (!this.requiresPassword()) {
+          await this.executeRepair();
+        } else if (this.password()) {
+          await this.submitPassword();
+        } else {
+          this.hasPasswordError.set(true);
+          this.passwordErrorMessage.set(
+            this.translate.instant('repairSheet.errors.passwordRequired')
+          );
+        }
         break;
     }
   }
 
   toggleInstallOptions(): void {
     this.showAdvanced.update(v => !v);
-    if (!this.showAdvanced()) {
-      this.resetInstallationOptions();
-    }
+    if (!this.showAdvanced()) this.resetInstallationOptions();
   }
 
   toggleConfigOptions(): void {
     this.showConfigOptions.update(v => !v);
-    if (!this.showConfigOptions()) {
-      this.resetInstallationOptions();
-    }
-  }
-
-  isRclonePathRepair(): boolean {
-    return this.data.type === 'rclone_path';
-  }
-
-  isMountPluginRepair(): boolean {
-    return this.data.type === 'mount_plugin';
-  }
-
-  requiresPassword(): boolean {
-    return this.data.type === 'rclone_password' || this.data.requiresPassword === true;
+    if (!this.showConfigOptions()) this.resetInstallationOptions();
   }
 
   onInstallationOptionsChange(data: InstallationOptionsData): void {
@@ -250,7 +248,8 @@ export class RepairSheetComponent {
     if (!this.password() || this.isSubmittingPassword()) return;
 
     this.isSubmittingPassword.set(true);
-    this.clearPasswordError();
+    this.hasPasswordError.set(false);
+    this.passwordErrorMessage.set('');
 
     try {
       await this.passwordService.validatePassword(this.password());
@@ -263,14 +262,11 @@ export class RepairSheetComponent {
       this.password.set('');
       await this.executeRepair();
     } catch (error) {
-      this.handlePasswordError(error);
+      this.hasPasswordError.set(true);
+      this.passwordErrorMessage.set(this.getPasswordErrorMessage(error));
     } finally {
       this.isSubmittingPassword.set(false);
     }
-  }
-
-  canSubmitPassword(): boolean {
-    return !!(this.password() && !this.isSubmittingPassword());
   }
 
   async refreshMountPluginStatus(): Promise<void> {
@@ -281,14 +277,16 @@ export class RepairSheetComponent {
       if (isInstalled) {
         this.sheetRef.dismiss('success');
       } else {
-        this.data.message = this.translate.instant(
-          'repairSheet.messages.mountPluginStatusChecked',
-          { time: new Date().toLocaleTimeString() }
+        this.messageOverride.set(
+          this.translate.instant('repairSheet.messages.mountPluginStatusChecked', {
+            time: new Date().toLocaleTimeString(),
+          })
         );
       }
-    } catch (error) {
-      console.error('Error refreshing mount plugin status:', error);
-      this.data.message = this.translate.instant('repairSheet.messages.mountPluginStatusError');
+    } catch {
+      this.messageOverride.set(
+        this.translate.instant('repairSheet.messages.mountPluginStatusError')
+      );
     } finally {
       this.isRefreshingStatus.set(false);
     }
@@ -300,19 +298,19 @@ export class RepairSheetComponent {
 
   // --- PRIVATE METHODS ---
 
+  // Centralised dismissal with leak-safe cleanup via DestroyRef
+  private dismissAfter(result: string, delay: number): void {
+    const id = setTimeout(() => this.sheetRef.dismiss(result), delay);
+    this.destroyRef.onDestroy(() => clearTimeout(id));
+  }
+
   private async executeConfigRepair(): Promise<void> {
     this.installing.set(true);
     try {
-      if (this.installationData().installLocation === 'default') {
-        await this.appSettingsService.saveSetting('core', 'rclone_config_file', '');
-      } else if (this.installationData().installLocation === 'custom') {
-        await this.appSettingsService.saveSetting(
-          'core',
-          'rclone_config_file',
-          this.installationData().customPath
-        );
-      }
-      setTimeout(() => this.sheetRef.dismiss('success'), 1000);
+      const { installLocation, customPath } = this.installationData();
+      const configPath = installLocation === 'custom' ? customPath : '';
+      await this.appSettingsService.saveSetting('core', 'rclone_config_file', configPath);
+      this.dismissAfter('success', 1000);
     } catch (error) {
       console.error('Config repair failed:', error);
     } finally {
@@ -328,36 +326,41 @@ export class RepairSheetComponent {
       } else {
         await this.repairService.executeRepair(this.data);
       }
-      const delay = this.data.type === 'mount_plugin' ? 2000 : 1000;
-      setTimeout(() => this.sheetRef.dismiss('success'), delay);
+      this.dismissAfter('success', this.isMountPluginRepair() ? 2000 : 1000);
     } catch (error) {
-      this.handleRepairError(error);
+      console.error('Repair failed:', error);
+      if (this.isMountPluginRepair() && error instanceof Error) {
+        this.messageOverride.set(
+          this.translate.instant('repairSheet.errors.mountPluginInstallFailed', {
+            error: error.message,
+          })
+        );
+      }
     } finally {
       this.installing.set(false);
     }
   }
 
   private async handleInstallModeRepair(): Promise<void> {
-    const data = this.installationData();
-    if (data.installLocation === 'existing') {
-      await this.appSettingsService.saveSetting('core', 'rclone_path', data.existingBinaryPath);
+    const { installLocation, existingBinaryPath, customPath } = this.installationData();
+    if (installLocation === 'existing') {
+      await this.appSettingsService.saveSetting('core', 'rclone_path', existingBinaryPath);
     } else {
-      const installPath = data.installLocation === 'default' ? null : data.customPath;
-      await this.repairService.repairRclonePath(installPath);
+      await this.repairService.repairRclonePath(installLocation === 'default' ? null : customPath);
     }
   }
 
   private getConfigModeButtonTextKey(): string {
-    const data = this.installationData();
-    if (data.installLocation === 'custom' && !data.customPath.trim()) {
-      return 'repairSheet.buttons.selectConfigFirst';
-    }
-    return 'repairSheet.buttons.useThisConfig';
+    const { installLocation, customPath } = this.installationData();
+    return installLocation === 'custom' && !customPath.trim()
+      ? 'repairSheet.buttons.selectConfigFirst'
+      : 'repairSheet.buttons.useThisConfig';
   }
 
   private getInstallModeButtonTextKey(): string {
     const { installLocation, customPath, existingBinaryPath, binaryTestResult } =
       this.installationData();
+
     if (installLocation === 'custom' && !customPath.trim()) {
       return 'repairSheet.buttons.selectPathFirst';
     }
@@ -369,22 +372,6 @@ export class RepairSheetComponent {
       return 'repairSheet.buttons.testBinaryFirst';
     }
     return this.repairService.getRepairButtonTextKey(this.data.type);
-  }
-
-  private showPasswordError(message: string): void {
-    this.hasPasswordError.set(true);
-    this.passwordErrorMessage.set(message);
-  }
-
-  private clearPasswordError(): void {
-    this.hasPasswordError.set(false);
-    this.passwordErrorMessage.set('');
-  }
-
-  private handlePasswordError(error: unknown): void {
-    console.error('Password validation failed:', error);
-    this.hasPasswordError.set(true);
-    this.passwordErrorMessage.set(this.getPasswordErrorMessage(error));
   }
 
   private getPasswordErrorMessage(error: unknown): string {
@@ -402,23 +389,8 @@ export class RepairSheetComponent {
     });
   }
 
-  private handleRepairError(error: unknown): void {
-    console.error('Repair failed:', error);
-    if (this.data.type === 'mount_plugin' && error instanceof Error) {
-      this.data.message = this.translate.instant('repairSheet.errors.mountPluginInstallFailed', {
-        error: error.message,
-      });
-    }
-    this.installing.set(false);
-  }
-
   private resetInstallationOptions(): void {
-    this.installationData.set({
-      installLocation: 'default',
-      customPath: '',
-      existingBinaryPath: '',
-      binaryTestResult: 'untested',
-    });
+    this.installationData.set({ ...DEFAULT_INSTALLATION_DATA });
     this.installationValid.set(true);
   }
 }

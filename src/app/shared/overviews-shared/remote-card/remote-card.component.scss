@@ -232,7 +232,6 @@
         background: rgba(var(--accent-color-rgb), 0.1);
         color: var(--accent-color);
         box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.2);
-
         animation: pulseBlue 1.5s infinite;
       }
     }
@@ -244,7 +243,7 @@
   }
 }
 
-// 7.1 Tablet Styles (max-width: 768px)
+// Tablet (max-width: 768px)
 @media (max-width: 768px) {
   .remote-card {
     .remote-header {
@@ -257,17 +256,15 @@
   }
 }
 
-// 7.2 Mobile Styles (max-width: 480px)
+// Mobile (max-width: 480px)
 @media (max-width: 480px) {
-  @media (max-width: 480px) {
-    .remote-card {
-      .remote-header {
-        padding: var(--space-sm);
-      }
+  .remote-card {
+    .remote-header {
+      padding: var(--space-sm);
+    }
 
-      .remote-content {
-        padding: var(--space-xxs) var(--space-sm) var(--space-sm) var(--space-sm);
-      }
+    .remote-content {
+      padding: var(--space-xxs) var(--space-sm) var(--space-sm) var(--space-sm);
     }
   }
 }

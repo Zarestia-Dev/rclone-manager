@@ -1,6 +1,6 @@
 import { Injectable, inject, signal, WritableSignal } from '@angular/core';
 import { AbstractControl } from '@angular/forms';
-import { RemoteManagementService } from './remote-management.service';
+import { RemoteFileOperationsService } from '../remote/remote-file-operations.service';
 import { Entry } from '@app/types';
 
 export interface PathSelectionState {
@@ -15,7 +15,7 @@ export interface PathSelectionState {
   providedIn: 'root',
 })
 export class PathSelectionService {
-  private readonly remoteManagementService = inject(RemoteManagementService);
+  private readonly remoteOps = inject(RemoteFileOperationsService);
 
   private readonly pathStates = new Map<string, WritableSignal<PathSelectionState>>();
 
@@ -127,12 +127,7 @@ export class PathSelectionService {
       // For local paths (empty remoteName), use '/' as the filesystem root
       // For remote paths, normalize with colon suffix
       const normalizedRemote = remoteName === '' ? '/' : this.normalizeRemoteForRclone(remoteName);
-      const response = await this.remoteManagementService.getRemotePaths(
-        normalizedRemote,
-        path || '',
-        {},
-        'ui'
-      );
+      const response = await this.remoteOps.getRemotePaths(normalizedRemote, path || '', {}, 'ui');
       const entries = response && Array.isArray(response.list) ? response.list : [];
       // Update state with new entries
       stateSignal.update(s => ({ ...s, options: entries, isLoading: false }));

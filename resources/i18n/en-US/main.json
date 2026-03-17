@@ -775,7 +775,9 @@
           "Permissions": "Permissions",
           "Numbers": "Numbers",
           "Strings": "Strings"
-        }
+        },
+        "booleanEnabled": "✓ Enabled",
+        "booleanDisabled": "✗ Disabled"
       },
       "actions": {
         "pollInterval": "Poll Interval",
@@ -1348,6 +1350,7 @@
       "vfsOptions": "VFS Options",
       "filterOptions": "Filter Options",
       "backendConfig": "Backend Config",
+      "runtimeRemoteOptions": "Runtime Remote",
       "profilesLabel": "{{op}} Profiles",
       "settingsLabel": "{{op}} Settings",
       "mountProfilesVfs": "Mount Profiles & VFS",
@@ -1355,7 +1358,10 @@
       "syncBehave": "Adjust how the {{op}} process behaves. Multi-profile supported.",
       "serveSettings": "Serve Settings",
       "mountSettings": "Mount Settings",
+      "copySettings": "Copy Settings",
       "syncSettings": "Sync Settings",
+      "moveSettings": "Move Settings",
+      "bisyncSettings": "BiSync Settings",
       "sync": "Sync",
       "syncDesc": "One-way synchronization",
       "bisync": "BiSync",
@@ -1883,14 +1889,16 @@
         "copy": "Copy",
         "filter": "Filter",
         "vfs": "VFS",
-        "backend": "Backend"
+        "backend": "Backend",
+        "runtimeRemote": "Runtime Remote"
       },
       "advancedProfiles": {
         "title": "Advanced Profiles",
         "linked": "{{count}} linked",
         "vfs": "VFS Profile",
         "filter": "Filter Profile",
-        "backend": "Backend Profile"
+        "backend": "Backend Profile",
+        "runtimeRemote": "Runtime Remote Profile"
       },
       "profile": {
         "label": "Profile",
@@ -2128,6 +2136,9 @@
       "locationCopied": "Location copied to clipboard",
       "rmdirsStarted": "Removing empty folders in \"{{name}}\"...",
       "deleteStarted": "Deleting {{count}} items...",
+      "copyStarted": "Copying {{count}} items...",
+      "moveStarted": "Moving {{count}} items...",
+      "pasteStarted": "Paste operation started",
       "pasteComplete": "Paste operation completed",
       "renameStarted": "Rename operation started",
       "undoComplete": "Undo successful",

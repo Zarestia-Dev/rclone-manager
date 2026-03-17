@@ -8,9 +8,7 @@
   box-shadow: 0 0 0 2px var(--primary-color);
   border-radius: var(--panel-radius);
   background: rgba(var(--primary-color-rgb), 0.05);
-}
 
-.header-section {
   .operation-enable,
   .cron-enable {
     display: flex;
@@ -30,6 +28,10 @@
       color: var(--window-fg-color);
     }
   }
+}
+
+.cron-panel {
+  margin-bottom: var(--space-md);
 }
 
 // ============================================================================
@@ -83,6 +85,10 @@
     width: var(--icon-size-sm);
     font-size: var(--icon-size-sm);
   }
+}
+
+.material-context-menu {
+  max-height: 300px;
 }
 
 // ============================================================================

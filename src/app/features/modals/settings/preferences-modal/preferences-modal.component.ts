@@ -1,7 +1,6 @@
 import {
   Component,
   HostListener,
-  OnInit,
   inject,
   ChangeDetectionStrategy,
   signal,
@@ -66,7 +65,7 @@ interface PendingChange {
   styleUrls: ['./preferences-modal.component.scss', '../../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PreferencesModalComponent implements OnInit, OnDestroy {
+export class PreferencesModalComponent implements OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly fileSystemService = inject(FileSystemService);
@@ -77,53 +76,44 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
 
   settingsForm: FormGroup;
 
-  // Signals
+  // ── Signals ───────────────────────────────────────────────────────────────
+
   readonly isLoading = signal(true);
   readonly selectedTabIndex = signal(0);
   readonly bottomTabs = signal(false);
   readonly searchQuery = signal('');
   readonly searchVisible = signal(false);
   readonly isDiscardingChanges = signal(false);
-
-  // Pending restart changes as a signal of Map
   readonly pendingRestartChanges = signal<Map<string, PendingChange>>(new Map());
-
   readonly options = signal<Record<string, SettingMetadata>>({});
 
-  // Computed Signals
-  readonly enrichedOptions = computed(() => {
-    const rawOptions = this.options();
-    if (!rawOptions) return {};
-    return this.enrichMetadata(rawOptions);
-  });
-
+  // Tabs are static; if they become dynamic, derive from a service instead.
   readonly tabs: SettingTab[] = [
     { label: 'modals.preferences.tabs.general', icon: 'wrench', key: 'general' },
     { label: 'modals.preferences.tabs.core', icon: 'core', key: 'core' },
     { label: 'modals.preferences.tabs.developer', icon: 'experiment', key: 'developer' },
   ];
 
-  readonly filteredTabs = computed(() => {
-    // Tabs are static in this case, but good to have prepared for future dynamic tabs
-    return this.tabs;
+  // ── Computed Signals ──────────────────────────────────────────────────────
+
+  readonly enrichedOptions = computed(() => {
+    const rawOptions = this.options();
+    return rawOptions ? this.enrichMetadata(rawOptions) : {};
   });
 
   readonly searchSuggestions = signal<string[]>([]);
 
-  readonly searchResults = computed(() => {
+  readonly searchResults = computed((): SearchResult[] => {
     const query = this.searchQuery().toLowerCase();
     const options = this.enrichedOptions();
-
     if (!query) return [];
 
     const results: SearchResult[] = [];
     for (const [fullKey, meta] of Object.entries(options)) {
       const displayName = meta.metadata?.display_name || meta.metadata?.label || '';
       const helpText = meta.metadata?.help_text || meta.metadata?.description || '';
-
       if (displayName.toLowerCase().includes(query) || helpText.toLowerCase().includes(query)) {
         const { category, key } = this.splitKey(fullKey);
-        // Only include if category exists in our tabs
         if (this.tabs.some(t => t.key === category)) {
           results.push({ category, key });
         }
@@ -132,12 +122,12 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     return results;
   });
 
-  readonly selectedTabKey = computed(() => {
-    return this.filteredTabs()[this.selectedTabIndex()]?.key || this.filteredTabs()[0].key;
-  });
+  readonly selectedTabKey = computed(
+    () => this.tabs[this.selectedTabIndex()]?.key ?? this.tabs[0].key
+  );
 
   readonly isGeneralTab = computed(() => this.selectedTabKey() === 'general');
-  readonly hasSearchResults = computed(() => this.searchQuery().length > 0);
+  readonly hasSearchResults = computed(() => !!this.searchQuery());
   readonly hasEmptySearchResults = computed(
     () => this.hasSearchResults() && this.searchResults().length === 0
   );
@@ -152,7 +142,6 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
   constructor() {
     this.settingsForm = this.fb.group({});
 
-    // Effect to build form when options change
     effect(() => {
       const options = this.enrichedOptions();
       if (Object.keys(options).length > 0) {
@@ -168,24 +157,21 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     });
 
     this.populateSearchSuggestions();
-  }
-
-  ngOnInit(): void {
-    this.onResize();
+    this.onResize(); // No need for ngOnInit — safe to call here
   }
 
   ngOnDestroy(): void {
-    this.stopHold(false);
+    this.stopHold(undefined, undefined, false);
   }
 
+  // ── Init Helpers ──────────────────────────────────────────────────────────
+
   private populateSearchSuggestions(): void {
-    const suggestionKeys = ['apiPort', 'startup', 'debug', 'bandwidth'];
+    const keys = ['apiPort', 'startup', 'debug', 'bandwidth'];
     this.translate
-      .get(suggestionKeys.map(k => `modals.preferences.searchSuggestions.${k}`))
+      .get(keys.map(k => `modals.preferences.searchSuggestions.${k}`))
       .pipe(takeUntilDestroyed())
-      .subscribe(translations => {
-        this.searchSuggestions.set(Object.values(translations));
-      });
+      .subscribe(translations => this.searchSuggestions.set(Object.values(translations)));
   }
 
   @HostListener('window:resize')
@@ -193,33 +179,30 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     this.bottomTabs.set(window.innerWidth < 540);
   }
 
+  // ── Metadata ──────────────────────────────────────────────────────────────
+
   private enrichMetadata(
     options: Record<string, SettingMetadata>
   ): Record<string, SettingMetadata> {
     const enriched: Record<string, SettingMetadata> = {};
     for (const [fullKey, meta] of Object.entries(options)) {
       const [, key] = fullKey.split('.');
-
-      // Infer Type if missing
-      if (!meta.value_type) {
-        enriched[fullKey] = { ...meta, value_type: this.inferValueType(meta, key) };
-      } else {
-        enriched[fullKey] = meta;
-      }
+      let value_type = meta.value_type || this.inferValueType(meta, key);
+      // A 'string' field with options is semantically a 'select' — normalize it
+      // so the template switch only needs a single 'select' case.
+      if (value_type === 'string' && meta.options?.length) value_type = 'select';
+      enriched[fullKey] = { ...meta, value_type };
     }
     return enriched;
   }
 
   private inferValueType(meta: SettingMetadata, key: string): SettingMetadata['value_type'] {
-    if (meta.options && meta.options.length > 0) return 'string';
-
-    // Check key patterns for specialized types
+    if (meta.options?.length) return 'select';
     if (key.includes('bandwidth')) return 'bandwidth';
-    if (key.endsWith('_urls') || key.endsWith('_apps')) return 'string[]'; // Lists
+    if (key.endsWith('_urls') || key.endsWith('_apps')) return 'string[]';
     if (key.includes('path') || key.includes('file')) return 'file';
     if (key.includes('folder') || key.includes('directory')) return 'folder';
 
-    // Fallback to type of default value
     const def = meta.default;
     if (typeof def === 'boolean') return 'bool';
     if (typeof def === 'number') return 'int';
@@ -228,12 +211,13 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     return 'string' as const;
   }
 
+  // ── Form Building ─────────────────────────────────────────────────────────
+
   private buildForm(options: Record<string, SettingMetadata>): void {
     for (const fullKey in options) {
       const meta = options[fullKey];
       const { category, key } = this.splitKey(fullKey);
 
-      // Only build for known tabs
       if (!this.tabs.some(t => t.key === category)) continue;
 
       let categoryGroup = this.settingsForm.get(category) as FormGroup;
@@ -280,6 +264,8 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     return this.normalizeValue(a) === this.normalizeValue(b);
   }
 
+  // ── Form Event Handlers ───────────────────────────────────────────────────
+
   onBlur(category: string, key: string): void {
     this.commitSetting(category, key);
   }
@@ -290,14 +276,14 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
 
   private commitSetting(category: string, key: string): void {
     const control = this.getFormControl(category, key);
-    if (control?.valid) {
-      this.updateSetting(category, key, control.value);
-    }
+    if (control?.valid) this.updateSetting(category, key, control.value);
   }
+
+  // ── Validators ────────────────────────────────────────────────────────────
 
   private getItemValidators(meta: SettingMetadata): ValidatorFn[] {
     const validators: ValidatorFn[] = [];
-    if (meta.reserved && meta.reserved.length > 0) {
+    if (meta.reserved?.length) {
       validators.push(this.createReservedValidator(meta.reserved));
     }
     return validators;
@@ -316,9 +302,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
 
   private getValidators(meta: SettingMetadata, fullKey: string): ValidatorFn[] {
     const validators: ValidatorFn[] = [];
-    if (meta.metadata?.required) {
-      validators.push(Validators.required);
-    }
+    if (meta.metadata?.required) validators.push(Validators.required);
 
     switch (meta.value_type) {
       case 'int':
@@ -328,24 +312,26 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
         break;
       case 'file':
       case 'folder': {
-        const validator = this.validatorRegistry.getValidator('crossPlatformPath');
-        if (validator) validators.push(validator);
+        const v = this.validatorRegistry.getValidator('crossPlatformPath');
+        if (v) validators.push(v);
         break;
       }
       case 'string[]':
         if (fullKey === 'core.connection_check_urls') {
-          const validator = this.validatorRegistry.getValidator('urlList');
-          if (validator) validators.push(validator);
+          const v = this.validatorRegistry.getValidator('urlList');
+          if (v) validators.push(v);
         }
         break;
       case 'bandwidth': {
-        const validator = this.validatorRegistry.getValidator('bandwidthFormat');
-        if (validator) validators.push(validator);
+        const v = this.validatorRegistry.getValidator('bandwidthFormat');
+        if (v) validators.push(v);
         break;
       }
     }
     return validators;
   }
+
+  // ── Settings CRUD ─────────────────────────────────────────────────────────
 
   updateSetting(category: string, key: string, value: unknown): void {
     const control = this.getFormControl(category, key);
@@ -362,29 +348,126 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
       finalValue = finalValue.filter(item => item && String(item).trim() !== '');
     }
 
+    const changeKey = `${category}.${key}`;
     if (meta.metadata?.engine_restart) {
       if (this.valuesEqual(meta.value, finalValue)) {
-        this.pendingRestartChanges.update(map => {
-          const newMap = new Map(map);
-          newMap.delete(`${category}.${key}`);
-          return newMap;
-        });
+        this.deletePendingChange(changeKey);
       } else {
-        this.pendingRestartChanges.update(map => {
-          const newMap = new Map(map);
-          newMap.set(`${category}.${key}`, {
-            category,
-            key,
-            value: finalValue,
-            metadata: meta,
-          });
-          return newMap;
-        });
+        this.setPendingChange(changeKey, { category, key, value: finalValue, metadata: meta });
       }
+    } else if (!this.valuesEqual(meta.value, finalValue)) {
+      this.appSettingsService.saveSetting(category, key, finalValue);
+    }
+  }
+
+  async resetSetting(category: string, key: string): Promise<void> {
+    const meta = this.getMetadata(category, key);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const defaultValue = (meta as any).default;
+    const control = this.getFormControl(category, key);
+    if (control) this.resetControlValue(control, defaultValue, meta);
+
+    const changeKey = `${category}.${key}`;
+    if (meta.metadata?.engine_restart) {
+      this.setPendingChange(changeKey, { category, key, value: defaultValue, metadata: meta });
     } else {
-      if (!this.valuesEqual(meta.value, finalValue)) {
-        this.appSettingsService.saveSetting(category, key, finalValue);
+      try {
+        await this.appSettingsService.resetSetting(category, key);
+      } catch (error) {
+        console.error(`Failed to reset setting ${changeKey}`, error);
       }
+    }
+  }
+
+  isModified(category: string, key: string): boolean {
+    const meta = this.getMetadata(category, key);
+    const control = this.getFormControl(category, key);
+    if (!meta || !control) return false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return !this.valuesEqual((meta as any).default, control.value);
+  }
+
+  async resetSettings(): Promise<void> {
+    try {
+      await this.appSettingsService.resetSettings();
+    } catch (error) {
+      console.error('Error resetting settings:', error);
+    }
+  }
+
+  async savePendingChanges(): Promise<void> {
+    if (!this.hasPendingRestartChanges()) return;
+    try {
+      await Promise.all(
+        Array.from(this.pendingRestartChanges().values()).map(({ category, key, value }) =>
+          this.appSettingsService.saveSetting(category, key, value)
+        )
+      );
+      this.clearPendingChanges();
+    } catch (error) {
+      console.error('Error saving pending changes:', error);
+    }
+  }
+
+  async discardPendingChanges(): Promise<void> {
+    this.isDiscardingChanges.set(true);
+    for (const change of this.pendingRestartChanges().values()) {
+      const originalValue = this.getMetadata(change.category, change.key).value;
+      const control = this.getFormControl(change.category, change.key);
+      if (control) this.resetControlValue(control, originalValue, change.metadata);
+    }
+    this.clearPendingChanges();
+    this.isDiscardingChanges.set(false);
+  }
+
+  getPendingChangesList(): {
+    displayName: string;
+    category: string;
+    key: string;
+    value: unknown;
+  }[] {
+    return Array.from(this.pendingRestartChanges().values()).map(change => ({
+      displayName:
+        change.metadata.metadata?.display_name || change.metadata.metadata?.label || change.key,
+      category: change.category,
+      key: change.key,
+      value: change.value,
+    }));
+  }
+
+  // ── Pending Change Map Helpers ────────────────────────────────────────────
+
+  private setPendingChange(key: string, change: PendingChange): void {
+    this.pendingRestartChanges.update(map => new Map(map).set(key, change));
+  }
+
+  private deletePendingChange(key: string): void {
+    this.pendingRestartChanges.update(map => {
+      const next = new Map(map);
+      next.delete(key);
+      return next;
+    });
+  }
+
+  private clearPendingChanges(): void {
+    this.pendingRestartChanges.set(new Map());
+  }
+
+  // ── Control Helpers ───────────────────────────────────────────────────────
+
+  private resetControlValue(
+    control: FormControl | FormArray,
+    value: unknown,
+    meta: SettingMetadata
+  ): void {
+    if (control instanceof FormArray) {
+      const itemValidators = this.getItemValidators(meta);
+      control.clear();
+      (Array.isArray(value) ? value : []).forEach(val =>
+        control.push(this.fb.control(val, itemValidators))
+      );
+    } else {
+      control.setValue(value, { emitEvent: false });
     }
   }
 
@@ -404,6 +487,12 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     return this.enrichedOptions()[`${category}.${key}`];
   }
 
+  /** Returns true for value types that render as a horizontal row (control beside label). */
+  isRowLayout(category: string, key: string): boolean {
+    const type = this.getMetadata(category, key)?.value_type;
+    return type === 'bool' || type === 'int';
+  }
+
   isControlInvalid(category: string, key: string, index?: number): boolean {
     const ctrl =
       index !== undefined
@@ -412,162 +501,84 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     return !!ctrl && ctrl.invalid && ctrl.touched;
   }
 
+  // ── Display Helpers ───────────────────────────────────────────────────────
+
   private splitKey(fullKey: string): { category: string; key: string } {
     const [category, key] = fullKey.split('.');
     return { category, key };
   }
 
-  onIntegerInput(event: KeyboardEvent): void {
-    if (
-      [
-        'Backspace',
-        'Delete',
-        'Tab',
-        'Escape',
-        'Enter',
-        'Home',
-        'End',
-        'ArrowLeft',
-        'ArrowRight',
-        'ArrowUp',
-        'ArrowDown',
-      ].includes(event.key) ||
-      event.ctrlKey ||
-      event.metaKey
-    ) {
-      return;
-    }
-    if (!/^\d$/.test(event.key)) {
-      event.preventDefault();
-    }
-  }
-
-  startHold(
-    action: 'increment' | 'decrement',
-    step: number | 'any',
-    category: string,
-    key: string,
-    meta: SettingMetadata
-  ): void {
-    this.stopHold(false);
-    const performAction = (): void => {
-      if (action === 'increment') this.incrementNumber(category, key, meta);
-      else this.decrementNumber(category, key, meta);
-    };
-    performAction();
-    this.holdTimeout = setTimeout(() => {
-      this.holdInterval = setInterval(performAction, this.HOLD_INTERVAL);
-    }, this.HOLD_DELAY);
-  }
-
-  stopHold(_commit = true): void {
-    if (this.holdTimeout) clearTimeout(this.holdTimeout);
-    if (this.holdInterval) clearInterval(this.holdInterval);
-    this.holdTimeout = null;
-    this.holdInterval = null;
-  }
-
-  incrementNumber(category: string, key: string, meta: SettingMetadata): void {
-    const control = this.getFormControl(category, key) as FormControl;
-    const step = meta.step || 1;
-    const max = meta.max ?? Infinity;
-    const newValue = (Number(control.value) || 0) + step;
-    if (newValue <= max) control.setValue(newValue);
-  }
-
-  decrementNumber(category: string, key: string, meta: SettingMetadata): void {
-    const control = this.getFormControl(category, key) as FormControl;
-    const step = meta.step || 1;
-    const min = meta.min ?? -Infinity;
-    const newValue = (Number(control.value) || 0) - step;
-    if (newValue >= min) control.setValue(newValue);
-  }
-
-  addArrayItem(category: string, key: string): void {
-    const control = this.getFormControl(category, key) as FormArray;
-    const meta = this.getMetadata(category, key);
-    const itemValidators = this.getItemValidators(meta);
-    control.push(this.fb.control('', itemValidators));
-  }
-
-  removeArrayItem(category: string, key: string, index: number): void {
-    const control = this.getFormControl(category, key) as FormArray;
-    control.removeAt(index);
-    this.updateSetting(category, key, control.value);
-  }
-
-  async openFilePicker(category: string, key: string): Promise<void> {
-    const result = await this.fileSystemService.selectFile();
-    if (result) this.getFormControl(category, key).setValue(result);
-  }
-
-  async openFolderPicker(category: string, key: string): Promise<void> {
-    const result = await this.fileSystemService.selectFolder();
-    if (result) this.getFormControl(category, key).setValue(result);
-  }
-
-  getValidationMessage(category: string, key: string, index?: number): string {
-    let ctrl: AbstractControl | null;
-    if (index !== undefined) {
-      ctrl = this.getArrayItemControl(category, key, index);
-    } else {
-      ctrl = this.getFormControl(category, key);
-    }
-
-    if (!ctrl?.errors) return '';
-    const meta = this.getMetadata(category, key);
-    if (ctrl.hasError('required'))
-      return this.translate.instant('modals.preferences.validation.required');
-    if (ctrl.hasError('integer'))
-      return this.translate.instant('modals.preferences.validation.integer');
-    if (ctrl.hasError('min'))
-      return this.translate.instant('modals.preferences.validation.min', { val: meta.min });
-    if (ctrl.hasError('max'))
-      return this.translate.instant('modals.preferences.validation.max', { val: meta.max });
-    if (ctrl.hasError('invalidPath'))
-      return this.translate.instant('modals.preferences.validation.invalidPath');
-    if (ctrl.hasError('bandwidth'))
-      return this.translate.instant('modals.preferences.validation.bandwidth');
-    if (ctrl.hasError('urlArray'))
-      return this.translate.instant('modals.preferences.validation.urlArray');
-    if (ctrl.hasError('reserved'))
-      return this.translate.instant('modals.preferences.validation.reserved', {
-        value: ctrl.errors['reserved'].value,
-      });
-
-    return this.translate.instant('modals.preferences.validation.invalid');
-  }
-
-  onSearchTextChange(searchText: string): void {
-    this.searchQuery.set(searchText.toLowerCase());
-  }
-
   getCategoryDisplayName(category: string): string {
-    const tab = this.tabs.find(tab => tab.key === category);
-    if (tab) return this.translate.instant(tab.label);
-    return category.charAt(0).toUpperCase() + category.slice(1);
+    const tab = this.tabs.find(t => t.key === category);
+    return tab
+      ? this.translate.instant(tab.label)
+      : category.charAt(0).toUpperCase() + category.slice(1);
   }
 
+  // _category and _key kept in signature so template callsites don't need updating
+  // if metadata ever becomes context-dependent.
   getSettingLabel(_category: string, _key: string, meta: SettingMetadata): string {
     const labelKey = meta.metadata?.label || meta.metadata?.display_name;
-    if (!labelKey) return _key;
-    return this.translate.instant(labelKey);
+    return labelKey ? this.translate.instant(labelKey) : _key;
   }
 
   getSettingDescription(_category: string, _key: string, meta: SettingMetadata): string {
     const descKey = meta.metadata?.description || meta.metadata?.help_text;
-    if (!descKey) return '';
-    return this.translate.instant(descKey);
+    return descKey ? this.translate.instant(descKey) : '';
   }
 
-  getOptionLabel(_category: string, _key: string, option: unknown): string {
-    const opt = option as { value: unknown; label: unknown };
-    const labelKey = opt?.label ?? option;
-    return this.translate.instant(String(labelKey));
+  getOptionLabel(option: unknown): string {
+    const opt = option as { label?: unknown };
+    return this.translate.instant(String(opt?.label ?? option));
   }
 
   getObjectKeys(obj: Record<string, unknown>): string[] {
     return obj ? Object.keys(obj) : [];
+  }
+
+  getValidationMessage(category: string, key: string, index?: number): string {
+    const ctrl =
+      index !== undefined
+        ? this.getArrayItemControl(category, key, index)
+        : this.getFormControl(category, key);
+
+    if (!ctrl?.errors) return '';
+
+    const meta = this.getMetadata(category, key);
+    const t = (k: string, p?: object) =>
+      this.translate.instant(`modals.preferences.validation.${k}`, p);
+
+    if (ctrl.hasError('required')) return t('required');
+    if (ctrl.hasError('integer')) return t('integer');
+    if (ctrl.hasError('min')) return t('min', { val: meta.min });
+    if (ctrl.hasError('max')) return t('max', { val: meta.max });
+    if (ctrl.hasError('invalidPath')) return t('invalidPath');
+    if (ctrl.hasError('bandwidth')) return t('bandwidth');
+    if (ctrl.hasError('urlArray')) return t('urlArray');
+    if (ctrl.hasError('reserved')) return t('reserved', { value: ctrl.errors['reserved'].value });
+    return t('invalid');
+  }
+
+  scrollToPendingChanges(): void {
+    document.querySelector('.pending-changes-section')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  }
+
+  // Template utility — Array.isArray can't be called directly in Angular templates.
+  isArray(value: unknown): boolean {
+    return Array.isArray(value);
+  }
+
+  asArray(value: unknown): unknown[] {
+    return value as unknown[];
+  }
+
+  // ── Keyboard & Search ─────────────────────────────────────────────────────
+
+  onSearchTextChange(searchText: string): void {
+    this.searchQuery.set(searchText.toLowerCase());
   }
 
   @HostListener('document:keydown.escape')
@@ -583,9 +594,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
 
   toggleSearch(): void {
     this.searchVisible.update(v => !v);
-    if (!this.searchVisible()) {
-      this.onSearchTextChange('');
-    }
+    if (!this.searchVisible()) this.onSearchTextChange('');
   }
 
   selectTab(index: number): void {
@@ -596,126 +605,84 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     this.getFormControl(category, key).updateValueAndValidity();
   }
 
-  async resetSetting(category: string, key: string): Promise<void> {
-    const meta = this.getMetadata(category, key);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const defaultValue = (meta as any).default;
+  // ── File / Folder Picker ──────────────────────────────────────────────────
 
-    const control = this.getFormControl(category, key);
-    if (control) this.resetControlValue(control, defaultValue, meta);
-
-    if (meta.metadata?.engine_restart) {
-      this.pendingRestartChanges.update(map => {
-        const newMap = new Map(map);
-        newMap.set(`${category}.${key}`, {
-          category,
-          key,
-          value: defaultValue,
-          metadata: meta,
-        });
-        return newMap;
-      });
-    } else {
-      try {
-        await this.appSettingsService.resetSetting(category, key);
-      } catch (error) {
-        console.error(`Failed to reset setting ${category}.${key}`, error);
-      }
-    }
+  async openPicker(category: string, key: string, type: 'file' | 'folder'): Promise<void> {
+    const result = await (type === 'file'
+      ? this.fileSystemService.selectFile()
+      : this.fileSystemService.selectFolder());
+    if (result) this.getFormControl(category, key).setValue(result);
   }
 
-  isModified(category: string, key: string): boolean {
-    const meta = this.getMetadata(category, key);
-    const control = this.getFormControl(category, key);
-    if (!meta || !control) return false;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const defaultValue = (meta as any).default;
-    return !this.valuesEqual(defaultValue, control.value);
+  // ── Integer Stepper ───────────────────────────────────────────────────────
+
+  onIntegerInput(event: KeyboardEvent): void {
+    const allowed = [
+      'Backspace',
+      'Delete',
+      'Tab',
+      'Escape',
+      'Enter',
+      'Home',
+      'End',
+      'ArrowLeft',
+      'ArrowRight',
+      'ArrowUp',
+      'ArrowDown',
+    ];
+    if (allowed.includes(event.key) || event.ctrlKey || event.metaKey) return;
+    if (!/^\d$/.test(event.key)) event.preventDefault();
   }
 
-  async resetSettings(): Promise<void> {
-    try {
-      await this.appSettingsService.resetSettings();
-    } catch (error) {
-      console.error('Error resetting settings:', error);
-    }
-  }
-
-  async savePendingChanges(): Promise<void> {
-    if (this.pendingRestartChanges().size === 0) return;
-    try {
-      const savePromises = Array.from(this.pendingRestartChanges().values()).map(change =>
-        this.appSettingsService.saveSetting(change.category, change.key, change.value)
-      );
-      await Promise.all(savePromises);
-      this.pendingRestartChanges.update(map => {
-        const newMap = new Map(map);
-        newMap.clear();
-        return newMap;
-      });
-    } catch (error) {
-      console.error('Error saving pending changes:', error);
-    }
-  }
-
-  async discardPendingChanges(): Promise<void> {
-    this.isDiscardingChanges.set(true);
-    for (const change of this.pendingRestartChanges().values()) {
-      const originalValue = this.getMetadata(change.category, change.key).value;
-      const control = this.getFormControl(change.category, change.key);
-      if (control) this.resetControlValue(control, originalValue, change.metadata);
-    }
-    this.pendingRestartChanges.update(map => {
-      const newMap = new Map(map);
-      newMap.clear();
-      return newMap;
-    });
-    this.isDiscardingChanges.set(false);
-  }
-
-  private resetControlValue(
-    control: FormControl | FormArray,
-    value: unknown,
+  startHold(
+    action: 'increment' | 'decrement',
+    category: string,
+    key: string,
     meta: SettingMetadata
   ): void {
-    if (control instanceof FormArray) {
-      const itemValidators = this.getItemValidators(meta);
-      control.clear();
-      (Array.isArray(value) ? value : []).forEach(val => {
-        control.push(this.fb.control(val, itemValidators));
-      });
-    } else {
-      control.setValue(value, { emitEvent: false });
+    this.stopHold(undefined, undefined, false);
+    const performAction = () => this.stepNumber(action, category, key, meta);
+    performAction();
+    this.holdTimeout = setTimeout(() => {
+      this.holdInterval = setInterval(performAction, this.HOLD_INTERVAL);
+    }, this.HOLD_DELAY);
+  }
+
+  stopHold(category?: string, key?: string, _commit = true): void {
+    if (this.holdTimeout) clearTimeout(this.holdTimeout);
+    if (this.holdInterval) clearInterval(this.holdInterval);
+    this.holdTimeout = null;
+    this.holdInterval = null;
+
+    if (_commit && category && key) {
+      this.commitSetting(category, key);
     }
   }
 
-  getPendingChangesList(): {
-    displayName: string;
-    category: string;
-    key: string;
-    value: unknown;
-  }[] {
-    return Array.from(this.pendingRestartChanges().values()).map(change => ({
-      displayName:
-        change.metadata.metadata?.display_name || change.metadata.metadata?.label || change.key,
-      category: change.category,
-      key: change.key,
-      value: change.value,
-    }));
+  private stepNumber(
+    action: 'increment' | 'decrement',
+    category: string,
+    key: string,
+    meta: SettingMetadata
+  ): void {
+    const control = this.getFormControl(category, key) as FormControl;
+    const step = meta.step || 1;
+    const current = Number(control.value) || 0;
+    const newValue = action === 'increment' ? current + step : current - step;
+    const min = meta.min ?? -Infinity;
+    const max = meta.max ?? Infinity;
+    if (newValue >= min && newValue <= max) control.setValue(newValue);
   }
 
-  scrollToPendingChanges(): void {
-    const pendingSection = document.querySelector('.pending-changes-section');
-    if (pendingSection) {
-      pendingSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+  addArrayItem(category: string, key: string): void {
+    const control = this.getFormControl(category, key) as FormArray;
+    const meta = this.getMetadata(category, key);
+    control.push(this.fb.control('', this.getItemValidators(meta)));
   }
 
-  isArray(value: unknown): boolean {
-    return Array.isArray(value);
-  }
-
-  asArray(value: unknown): unknown[] {
-    return value as unknown[];
+  removeArrayItem(category: string, key: string, index: number): void {
+    const control = this.getFormControl(category, key) as FormArray;
+    control.removeAt(index);
+    this.updateSetting(category, key, control.value);
   }
 }

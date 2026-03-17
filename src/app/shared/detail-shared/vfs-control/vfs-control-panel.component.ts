@@ -34,7 +34,7 @@ import {
   VfsQueueItem,
   VfsService,
   VfsStats,
-} from 'src/app/services/file-operations/vfs.service';
+} from 'src/app/services/operations/vfs.service';
 import { PathSelectionService } from 'src/app/services/remote/path-selection.service';
 import { NotificationService } from '@app/services';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
@@ -42,7 +42,8 @@ import {
   FileSystemService,
   MountManagementService,
   ServeManagementService,
-  RemoteManagementService,
+  RemoteFacadeService,
+  RcloneValueMapperService,
 } from '@app/services';
 
 interface VfsInstance {
@@ -50,7 +51,6 @@ interface VfsInstance {
   stats: VfsStats | null;
   queue: VfsQueueItem[];
   pollInterval: string;
-  pollIntervalSupported?: boolean;
 }
 
 // Constants
@@ -93,7 +93,13 @@ export class VfsControlPanelComponent {
   private readonly mountService = inject(MountManagementService);
   private readonly serveService = inject(ServeManagementService);
   private readonly translate = inject(TranslateService);
-  private readonly remoteService = inject(RemoteManagementService);
+  private readonly facade = inject(RemoteFacadeService);
+  private readonly mapper = inject(RcloneValueMapperService);
+
+  readonly remote = computed(() =>
+    this.facade.activeRemotes().find(r => r.name === this.remoteName())
+  );
+  readonly changeNotify = computed(() => this.remote()?.features?.changeNotify ?? false);
 
   // ViewChild for table rendering
   @ViewChild(MatTable) table?: MatTable<VfsQueueItem>;
@@ -224,7 +230,6 @@ export class VfsControlPanelComponent {
             stats: null,
             queue: [],
             pollInterval: '',
-            pollIntervalSupported: true, // Assume supported until checked
           }
       );
 
@@ -287,23 +292,14 @@ export class VfsControlPanelComponent {
     // Helper to check if a VFS name is indexed
     const isIndexed = (name: string): boolean => /:\[\d+\]$/.test(name);
 
-    // Use request info to check features
-    const fsInfo = await this.remoteService.getFsInfo(this.remoteName());
-    const supportsPollInterval = fsInfo.Features?.['ChangeNotify'];
+    // Skip if remote doesn't support ChangeNotify
+    if (!this.changeNotify()) return;
 
     // Run side-effect to fetch intervals, then update signal once
     await Promise.all(
       instances.map(async inst => {
         // Skip indexed VFS entries - they're not supported by rclone's API
         if (isIndexed(inst.name)) return;
-
-        // Skip if remote doesn't support ChangeNotify (which implies poll-interval support)
-        if (!supportsPollInterval) {
-          inst.pollIntervalSupported = false;
-          return;
-        }
-
-        inst.pollIntervalSupported = true;
 
         try {
           const res = await this.vfsService.getPollInterval(inst.name);
@@ -363,7 +359,7 @@ export class VfsControlPanelComponent {
     if (!fs) return;
     try {
       await this.vfsService.setQueueExpiry(fs, item.id, expiry, false);
-      this.notification.openSnackBar(msg, 'Close', 3000);
+      this.notification.showInfo(msg);
       this.refreshStatsAndQueue();
     } catch (e) {
       this.notification.showError(
@@ -419,7 +415,7 @@ export class VfsControlPanelComponent {
     if (!fs) return;
     try {
       const msg = await action(fs);
-      this.notification.openSnackBar(msg, 'Close', 3000);
+      this.notification.showInfo(msg);
       await this.refreshStatsAndQueue();
     } catch (e) {
       this.notification.showError(
@@ -480,46 +476,25 @@ export class VfsControlPanelComponent {
   formatOptionValue(key: string, value: unknown): string {
     if (value === null || value === undefined) return 'N/A';
 
-    if (typeof value === 'boolean') return value ? '✓ Enabled' : '✗ Disabled';
+    if (typeof value === 'boolean') {
+      return value
+        ? this.translate.instant('shared.vfsControl.advancedConfig.booleanEnabled')
+        : this.translate.instant('shared.vfsControl.advancedConfig.booleanDisabled');
+    }
 
-    if (typeof value === 'number') {
-      if (this.isDurationKey(key)) {
-        if (value === 0) return '0 (disabled)';
-        if (value === -1) return 'Unlimited';
-        return this.formatDuration(value);
-      }
+    if (this.isDurationKey(key)) {
+      return this.mapper.machineToHuman(value, 'Duration');
+    }
 
-      if (this.isSizeKey(key)) {
-        if (value === -1) return 'Unlimited';
-        return this.formatBytes(value);
-      }
+    if (this.isSizeKey(key)) {
+      return this.mapper.machineToHuman(value, 'SizeSuffix');
+    }
 
-      if (this.isPermissionKey(key)) {
-        return `${value} (${this.toOctal(value)})`;
-      }
+    if (this.isPermissionKey(key)) {
+      return this.mapper.machineToHuman(value, 'FileMode');
     }
 
     return String(value);
-  }
-
-  private formatDuration(ns: number): string {
-    const seconds = ns / 1_000_000_000;
-    if (seconds < 60) return `${seconds}s`;
-    if (seconds < 3600) return `${(seconds / 60).toFixed(1)}m`;
-    if (seconds < 86400) return `${(seconds / 3600).toFixed(1)}h`;
-    return `${(seconds / 86400).toFixed(1)}d`;
-  }
-
-  private formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
-  }
-
-  private toOctal(num: number): string {
-    return '0' + num.toString(8);
   }
 
   private isDurationKey(key: string): boolean {

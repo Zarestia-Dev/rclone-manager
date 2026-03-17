@@ -25,7 +25,7 @@
   }
 
   @if (!isMount() && !isServe() && isCronEnabled() && showCronSection()) {
-    <mat-expansion-panel style="margin-bottom: var(--space-md)">
+    <mat-expansion-panel class="cron-panel">
       <mat-expansion-panel-header>
         <mat-panel-title> {{ 'wizards.appOperation.cronSchedule' | translate }} </mat-panel-title>
         <mat-panel-description>
@@ -110,6 +110,7 @@
               <mat-select
                 matPrefix
                 formControlName="pathType"
+                [hideSingleSelectionIndicator]="true"
                 class="path-prefix"
                 [class.local]="sourcePathType() === 'local'"
                 [class.remote]="sourcePathType() === 'currentRemote'"
@@ -129,7 +130,7 @@
                     }
                     @case ('otherRemote') {
                       <mat-icon svgIcon="cloud" class="accent"></mat-icon>
-                      <span>{{ opFormGroup().get('source.otherRemoteName')?.value }}:</span>
+                      <span>{{ getOtherRemoteName('source') }}:</span>
                     }
                   }
                 </mat-select-trigger>
@@ -212,7 +213,7 @@
               >
                 <mat-icon svgIcon="folder" class="purple"></mat-icon>
               </button>
-              @if (opFormGroup().get('dest')?.hasError('required')) {
+              @if (hasRequiredError('dest')) {
                 <mat-error>{{ 'wizards.appOperation.destRequired' | translate }}</mat-error>
               }
             </mat-form-field>
@@ -226,6 +227,7 @@
               <mat-select
                 matPrefix
                 formControlName="pathType"
+                [hideSingleSelectionIndicator]="true"
                 class="path-prefix"
                 [class.local]="destPathType() === 'local'"
                 [class.remote]="destPathType() === 'currentRemote'"
@@ -245,7 +247,7 @@
                     }
                     @case ('otherRemote') {
                       <mat-icon svgIcon="cloud" class="accent"></mat-icon>
-                      <span>{{ opFormGroup().get('dest.otherRemoteName')?.value }}:</span>
+                      <span>{{ getOtherRemoteName('dest') }}:</span>
                     }
                   }
                 </mat-select-trigger>
@@ -296,7 +298,7 @@
                 ></mat-icon>
               </button>
 
-              @if (opFormGroup().get('dest.path')?.hasError('required')) {
+              @if (hasRequiredError('dest.path')) {
                 <mat-error>{{ 'wizards.appOperation.destRequired' | translate }}</mat-error>
               }
             </mat-form-field>

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { TauriBaseService } from '../core/tauri-base.service';
+import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 
 /**
  * Service for handling installations of rclone and plugins

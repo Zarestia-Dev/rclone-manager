@@ -15,7 +15,7 @@
       <div class="repair-details">
         @for (detail of details; track $index) {
           <div class="detail-item">
-            <mat-icon svgIcon="{{ detail.icon }}"></mat-icon>
+            <mat-icon [svgIcon]="detail.icon"></mat-icon>
             <span>
               <strong>{{ detail.labelKey | translate }}:</strong>
               {{ detail.valueKey | translate }}
@@ -65,8 +65,7 @@
           [disabled]="installing()"
           (dataChange)="onInstallationOptionsChange($event)"
           (validChange)="onInstallationValidChange($event)"
-        >
-        </app-installation-options>
+        ></app-installation-options>
       }
     }
 
@@ -91,8 +90,7 @@
           [disabled]="installing()"
           (dataChange)="onInstallationOptionsChange($event)"
           (validChange)="onInstallationValidChange($event)"
-        >
-        </app-installation-options>
+        ></app-installation-options>
       }
     }
   </div>
@@ -107,13 +105,7 @@
       "
       [matTooltip]="repairTooltip() ? (repairTooltip() | translate) : ''"
     >
-      {{
-        installing() || isSubmittingPassword()
-          ? isSubmittingPassword()
-            ? ('repairSheet.validatingPassword' | translate)
-            : (repairProgressTextKey() | translate)
-          : (repairButtonTextKey() | translate)
-      }}
+      {{ repairActionTextKey() | translate }}
       <mat-icon
         [svgIcon]="repairButtonIcon()"
         [class.animate-spin]="installing() || isSubmittingPassword()"

@@ -8,7 +8,6 @@
     width: 36px !important;
     height: 36px !important;
     transition: var(--transition-fast);
-    will-change: transform;
 
     mat-icon {
       font-size: var(--icon-size-sm);
@@ -17,6 +16,7 @@
     }
 
     &:hover {
+      will-change: transform;
       transform: scale(var(--action-btn-scale-hover));
     }
 

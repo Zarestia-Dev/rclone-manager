@@ -1,33 +1,25 @@
 import { Component, ChangeDetectionStrategy, inject, input, computed, output } from '@angular/core';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
-import { CommonModule } from '@angular/common';
-import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { TitleCasePipe } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 
 import { FlagType, RcConfigOption } from '@app/types';
 import { SettingControlComponent } from 'src/app/shared/components';
 import { OperationConfigComponent } from 'src/app/shared/remote-config/app-operation-config/app-operation-config.component';
 import { IconService } from '@app/services';
-import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-flag-config-step',
   imports: [
-    CommonModule,
+    TitleCasePipe,
     ReactiveFormsModule,
     MatFormFieldModule,
-    MatInputModule,
     MatSelectModule,
-    MatSlideToggleModule,
     MatIconModule,
-    MatTooltipModule,
-    MatButtonModule,
     MatProgressSpinnerModule,
     SettingControlComponent,
     OperationConfigComponent,
@@ -40,7 +32,7 @@ import { TranslateModule } from '@ngx-translate/core';
 export class FlagConfigStepComponent {
   readonly iconService = inject(IconService);
 
-  // Signal Inputs
+  // Inputs
   form = input.required<FormGroup>();
   flagType = input.required<FlagType>();
   existingRemotes = input<string[]>([]);
@@ -50,36 +42,49 @@ export class FlagConfigStepComponent {
   dynamicFlagFields = input<RcConfigOption[]>([]);
   mountTypes = input<string[]>([]);
   getControlKey = input.required<(flagType: FlagType, field: RcConfigOption) => string>();
-
-  // Serve-specific inputs
   availableServeTypes = input<string[]>([]);
-  selectedServeType = input('http');
   isLoadingServeFields = input(false);
 
   serveTypeChange = output<string>();
 
-  onServeTypeChange(type: string): void {
-    this.serveTypeChange.emit(type);
-  }
-
+  // Derived state
   configGroup = computed(() => this.form().get(`${this.flagType()}Config`) as FormGroup);
+
+  isServe = computed(() => this.flagType() === 'serve');
+  isMount = computed(() => this.flagType() === 'mount');
+
+  showOperationConfig = computed(() => !['vfs', 'filter', 'backend'].includes(this.flagType()));
+
+  operationDescriptionKey = computed(() =>
+    this.isServe()
+      ? 'wizards.remoteConfig.serveDescription'
+      : 'wizards.remoteConfig.operationDescription'
+  );
+
+  serveTypeValue = computed(() => (this.configGroup()?.get('type')?.value as string) ?? '');
 
   filteredDynamicFlagFields = computed(() => {
     const query = this.searchQuery()?.toLowerCase().trim();
-    if (!query) {
-      return this.dynamicFlagFields();
-    }
+    if (!query) return this.dynamicFlagFields();
 
-    return this.dynamicFlagFields().filter(field => {
-      const nameMatch = field.Name?.toLowerCase().includes(query);
-      const fieldNameMatch = field.FieldName?.toLowerCase().includes(query);
-      const helpMatch = field.Help?.toLowerCase().includes(query);
-      return nameMatch || fieldNameMatch || helpMatch;
-    });
+    return this.dynamicFlagFields().filter(
+      field =>
+        (field.Name?.toLowerCase().includes(query) ?? false) ||
+        (field.FieldName?.toLowerCase().includes(query) ?? false) ||
+        (field.Help?.toLowerCase().includes(query) ?? false)
+    );
   });
 
-  isType(type: FlagType | FlagType[]): boolean {
-    const current = this.flagType();
-    return Array.isArray(type) ? type.includes(current) : current === type;
-  }
+  dynamicFieldBindings = computed(() => {
+    const buildKey = this.getControlKey();
+    const flagType = this.flagType();
+
+    return this.filteredDynamicFlagFields()
+      .map(field => ({
+        field,
+        controlKey: buildKey(flagType, field),
+        trackKey: field.FieldName ?? field.Name ?? '',
+      }))
+      .filter(binding => !!binding.controlKey);
+  });
 }

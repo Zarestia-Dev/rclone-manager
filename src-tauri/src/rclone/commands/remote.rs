@@ -246,6 +246,8 @@ pub async fn create_remote(
     app.emit(REMOTE_CACHE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
+    let _ = get_fscache_entries(app).await;
+
     Ok(())
 }
 

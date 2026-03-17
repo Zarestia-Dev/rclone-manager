@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { RcConfigOption } from '@app/types';
-import { TauriBaseService } from '../core/tauri-base.service';
+import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 
 type RCloneOptionsInfo = Record<string, RcConfigOption[]>;
 

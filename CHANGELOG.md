@@ -4,7 +4,30 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Warning
+- On v0.2.2 release we added the `obscure` argument to the rclone remote generation process. This means that the passwords and api keys will be encrypted in the rclone config file. If you have remotes like `crypt` or similar to required keys, you need to re-create or update them. Otherwise keys will not be encrypted. (#90)
+
+### Added
+- Windows version of headless builds now available.
+- Homebrew tap for macOS added.
+- Restrict the 'sensitive' datas which mapped by rclone.
+- Runtime Remote profile settings added. Now you can set the remote specific settings on runtime instead of the change it from the config file. It will be applied to runtime and does not change the rclone config file. You can set it from the remote details view. Note THAT! These settings saved the normal remote settings. So these are not saved on the keyring or encrypted like rclone config passwords or auth password setting on the Backend Management Dialog. So be careful when you set these settings.
+
+### Changed
+- Custom date time picker replaced with the native date time picker on angular material.
+- Dependencies updated due to security vulnerabilities.
+
+### Fixed
+- App UI now update properly after values changed.
+- RPM dependencies fixed.
+- CLI `tray` argument fixed.
+
 ## [v0.2.2] - 2026-03-11
+
+### Warning
+- While this in this release we added the `obscure` argument to the rclone remote generation process. This means that the passwords and api keys will be encrypted in the rclone config file. If you have remotes like `crypt` or similar to required keys, you need to re-create or update them. Otherwise keys will not be encrypted. (#90)
 
 ### Added
 - **Language**: Added Spanish language support. (Thanks to @dikler!)

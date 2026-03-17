@@ -1,50 +1,50 @@
-form {
+:host form.flag-form {
   display: flex;
   flex-direction: column;
   overflow: hidden;
   height: 100%;
   position: relative;
+}
 
-  .form-container {
-    padding: var(--space-md);
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
+.form-container {
+  padding: var(--space-md);
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
 
-    .dynamic-fields {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-md);
-    }
-  }
+.loading-container {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin: var(--space-xs) 0;
+  color: var(--dim-color);
+}
 
-  mat-spinner {
-    display: flex;
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-  }
+.dynamic-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
 }
 
 .type-option {
   display: flex;
   align-items: center;
   gap: var(--space-xs);
+}
 
-  .type-info {
-    display: flex;
-    flex-direction: column;
-  }
+.type-info {
+  display: flex;
+  flex-direction: column;
+}
 
-  .type-name {
-    font-weight: 600;
-    font-size: 14px;
-    color: var(--text-primary);
-  }
+.type-name {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  color: var(--window-fg-color);
+}
 
-  .type-desc {
-    font-size: 12px;
-    color: var(--text-secondary);
-  }
+.type-desc {
+  font-size: var(--font-size-xs);
+  color: var(--dim-color);
 }

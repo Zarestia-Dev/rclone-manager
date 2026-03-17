@@ -1,14 +1,21 @@
-import { Component, input, output, effect, ElementRef, ViewChild } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import {
+  Component,
+  input,
+  output,
+  viewChild,
+  afterRenderEffect,
+  ElementRef,
+  ChangeDetectionStrategy,
+  signal,
+  effect,
+} from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
+import { DragDropModule, CdkDragDrop, CdkDrag } from '@angular/cdk/drag-drop';
 import { TranslateModule } from '@ngx-translate/core';
 
-// Reusing the Tab interface from NautilusComponent or a shared types file.
-// Since it's currently defined in nautilus.component.ts, I will declare the minimal subset needed here.
 export interface TabItem {
   id: number;
   title: string;
@@ -20,7 +27,6 @@ export interface TabItem {
   selector: 'app-nautilus-tabs',
   standalone: true,
   imports: [
-    CommonModule,
     MatIconModule,
     MatTooltipModule,
     MatDividerModule,
@@ -30,80 +36,101 @@ export interface TabItem {
   ],
   templateUrl: './nautilus-tabs.component.html',
   styleUrls: ['./nautilus-tabs.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NautilusTabsComponent {
   // --- Inputs ---
-  public readonly tabs = input.required<any[]>(); // Using any[] to avoid strict import tying for now, but typing it as Tab[] from parent.
-  public readonly activeTabIndex = input.required<number>();
-  public readonly isDragging = input<boolean>(false);
-  public readonly hoveredTabIndex = input<number | null>(null);
+  readonly tabs = input.required<TabItem[]>();
+  readonly activeTabIndex = input.required<number>();
+  readonly isDragging = input<boolean>(false);
+  readonly hoveredTabIndex = input<number | null>(null);
 
   // --- Outputs ---
-  public readonly switchTab = output<number>();
-  public readonly closeTab = output<number>();
-  public readonly moveTab = output<{ previousIndex: number; currentIndex: number }>();
-  public readonly duplicateTab = output<number>();
-  public readonly closeOtherTabs = output<number>();
-  public readonly closeTabsToRight = output<number>();
+  readonly switchTab = output<number>();
+  readonly closeTab = output<number>();
+  readonly moveTab = output<{ previousIndex: number; currentIndex: number }>();
+  readonly duplicateTab = output<number>();
+  readonly closeOtherTabs = output<number>();
+  readonly closeTabsToRight = output<number>();
 
-  public contextTabIndex: number | null = null;
-  @ViewChild('tabsScrollContainer') tabsScrollContainer?: ElementRef<HTMLDivElement>;
+  protected readonly _showLeftShadow = signal(false);
+  protected readonly _showRightShadow = signal(false);
+
+  private readonly tabsScrollContainer =
+    viewChild<ElementRef<HTMLDivElement>>('tabsScrollContainer');
 
   constructor() {
+    afterRenderEffect(() => {
+      this.scrollToActiveTab(this.activeTabIndex());
+    });
+
     effect(() => {
-      // Whenever the active tab changes, we should ensure it's visible in the scroll view
-      const idx = this.activeTabIndex();
-      setTimeout(() => this.scrollToActiveTab(idx), 50);
+      // Re-evaluate shadows when tabs change
+      this.tabs();
+      setTimeout(() => this.updateScrollShadows(), 50);
     });
   }
 
-  onTabClick(index: number) {
+  protected onTabClick(index: number): void {
     this.switchTab.emit(index);
   }
 
-  onTabMiddleClick(event: MouseEvent, index: number) {
+  protected onTabMiddleClick(event: MouseEvent, index: number): void {
     if (event.button === 1) {
       event.preventDefault();
       this.closeTab.emit(index);
     }
   }
 
-  onCloseTab(event: MouseEvent, index: number) {
+  protected onCloseTab(event: MouseEvent, index: number): void {
     event.stopPropagation();
     this.closeTab.emit(index);
   }
 
-  onDrop(event: CdkDragDrop<any>) {
+  protected onDrop(event: CdkDragDrop<TabItem[]>): void {
     this.moveTab.emit({
       previousIndex: event.previousIndex,
       currentIndex: event.currentIndex,
     });
   }
 
-  /** Reject FileBrowserItem drags — only allow tab reorder drags into the tab bar. */
-  readonly rejectFileDrags = (item: import('@angular/cdk/drag-drop').CdkDrag): boolean => {
-    return !(item.data?.entry?.Path !== undefined);
+  readonly rejectFileDrags = (item: CdkDrag): boolean => {
+    return item.data?.entry?.Path === undefined;
   };
 
-  onWheelScroll(event: WheelEvent) {
-    if (this.tabsScrollContainer?.nativeElement) {
-      this.tabsScrollContainer.nativeElement.scrollLeft += event.deltaY;
+  protected onWheelScroll(event: WheelEvent): void {
+    const container = this.tabsScrollContainer()?.nativeElement;
+    if (container) {
+      container.scrollLeft += event.deltaY;
+      this.updateScrollShadows();
       event.preventDefault();
     }
   }
 
-  private scrollToActiveTab(index: number) {
-    if (!this.tabsScrollContainer?.nativeElement) return;
-    const container = this.tabsScrollContainer.nativeElement;
-    const activeTabObj = container.children[index] as HTMLElement;
-    if (activeTabObj) {
-      // Simple logic to center the active tab if it's out of view
-      const containerRect = container.getBoundingClientRect();
-      const tabRect = activeTabObj.getBoundingClientRect();
+  protected onScroll(): void {
+    this.updateScrollShadows();
+  }
 
-      if (tabRect.left < containerRect.left || tabRect.right > containerRect.right) {
-        activeTabObj.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-      }
+  private updateScrollShadows(): void {
+    const el = this.tabsScrollContainer()?.nativeElement;
+    if (!el) return;
+    this._showLeftShadow.set(el.scrollLeft > 4);
+    this._showRightShadow.set(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+  }
+
+  private scrollToActiveTab(index: number): void {
+    const container = this.tabsScrollContainer()?.nativeElement;
+    if (!container) return;
+
+    const activeTab = container.querySelector<HTMLElement>(`[data-tab-index="${index}"]`);
+    if (!activeTab) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const tabRect = activeTab.getBoundingClientRect();
+
+    if (tabRect.left < containerRect.left || tabRect.right > containerRect.right) {
+      activeTab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      setTimeout(() => this.updateScrollShadows(), 300);
     }
   }
 }

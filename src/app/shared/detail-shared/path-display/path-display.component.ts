@@ -6,7 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { PathDisplayConfig } from '../../types';
-import { isLocalPath } from 'src/app/shared/utils';
+import { isLocalPath } from 'src/app/services/remote/utils/remote-config.utils';
 
 @Component({
   selector: 'app-path-display',
