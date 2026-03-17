@@ -6,7 +6,6 @@ import {
   inject,
   Output,
   OnInit,
-  OnDestroy,
   ViewChild,
   signal,
   computed,
@@ -50,6 +49,9 @@ import {
   PathSelectionService,
   RemoteFileOperationsService,
   RemoteFacadeService,
+  IconService,
+  NotificationService,
+  getRemoteNameFromFs,
 } from '@app/services';
 import {
   Entry,
@@ -61,12 +63,10 @@ import {
 } from '@app/types';
 
 import { FormatFileSizePipe } from '@app/pipes';
-import { IconService, getRemoteNameFromFs } from '@app/services';
 import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
 import { isLocalPath } from 'src/app/services/remote/utils/remote-config.utils';
 
 import { InputModalComponent } from 'src/app/shared/modals/input-modal/input-modal.component';
-import { NotificationService } from '@app/services';
 import { RemoteAboutModalComponent } from '../../../modals/remote/remote-about-modal.component';
 import { PropertiesModalComponent } from '../../../modals/properties/properties-modal.component';
 import { KeyboardShortcutsModalComponent } from '../../../modals/settings/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component';
@@ -129,10 +129,11 @@ interface UndoEntry {
     NautilusBottomBarComponent,
     TranslateModule,
   ],
+  providers: [FormatFileSizePipe],
   templateUrl: './nautilus.component.html',
   styleUrl: './nautilus.component.scss',
 })
-export class NautilusComponent implements OnInit, OnDestroy {
+export class NautilusComponent implements OnInit {
   // --- Services ---
   private readonly destroyRef = inject(DestroyRef);
   private readonly translate = inject(TranslateService);
@@ -145,6 +146,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
   private readonly fileViewerService = inject(FileViewerService);
   private readonly remoteFacadeService = inject(RemoteFacadeService);
   private readonly dialog = inject(MatDialog);
+  private readonly formatFileSizePipe = inject(FormatFileSizePipe);
 
   // --- Outputs ---
   @Output() closeOverlay = new EventEmitter<void>();
@@ -164,7 +166,6 @@ export class NautilusComponent implements OnInit, OnDestroy {
   });
   public readonly isSidenavOpen = signal(true);
   public readonly sidenavMode = computed(() => (this.isMobile() ? 'over' : 'side'));
-  // Removed duplicate errorState here
   public readonly isLoading = signal(false);
   private readonly initialLocationApplied = signal(false);
 
@@ -357,13 +358,6 @@ export class NautilusComponent implements OnInit, OnDestroy {
   public readonly selectedItemsRight = signal<Set<string>>(new Set());
   public readonly rawFilesRight = signal<FileBrowserItem[]>([]);
 
-  // Bound methods for view pane component
-  public readonly boundGetItemKey = this.getItemKey.bind(this);
-  public readonly boundIsItemSelectable = this.isItemSelectable.bind(this);
-  public readonly boundTrackByFile = this.trackByFile.bind(this);
-  public readonly boundTrackBySortOption = this.trackBySortOption.bind(this);
-  public readonly boundFormatRelativeDate = this.formatRelativeDate.bind(this);
-
   // --- Data ---
   public readonly bookmarks = this.nautilusService.bookmarks; // Direct signal
 
@@ -476,6 +470,12 @@ export class NautilusComponent implements OnInit, OnDestroy {
     const [sort, dir] = this.sortKey().split('-');
     const multiplier = dir === 'asc' ? 1 : -1;
 
+    const timeCache = new Map<string, number>();
+    const getTime = (modTime: string): number => {
+      if (!timeCache.has(modTime)) timeCache.set(modTime, new Date(modTime).getTime());
+      return timeCache.get(modTime)!;
+    };
+
     return list.sort((a, b) => {
       // 1. Folders first
       if (a.entry.IsDir !== b.entry.IsDir) return a.entry.IsDir ? -1 : 1;
@@ -494,9 +494,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
         case 'size':
           return (a.entry.Size - b.entry.Size) * multiplier;
         case 'modified':
-          return (
-            (new Date(a.entry.ModTime).getTime() - new Date(b.entry.ModTime).getTime()) * multiplier
-          );
+          return (getTime(a.entry.ModTime) - getTime(b.entry.ModTime)) * multiplier;
         default:
           return 0;
       }
@@ -613,16 +611,9 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
   async ngOnInit(): Promise<void> {
     await this.setupInitialTab();
-    this.setupEventListeners();
-  }
-
-  ngOnDestroy(): void {
-    this.removeEventListeners();
   }
 
   private setupEffects(): void {
-    // Removed no-op effect
-
     // Fallback: Apply initialLocation if data wasn't ready during setupInitialTab
     effect(() => {
       const open = this.isPickerMode();
@@ -839,22 +830,10 @@ export class NautilusComponent implements OnInit, OnDestroy {
     return true;
   }
 
-  private setupEventListeners(): void {
-    window.addEventListener('keydown', this._globalEscapeHandler, true);
-  }
-
-  private removeEventListeners(): void {
-    window.removeEventListener('keydown', this._globalEscapeHandler, true);
-  }
-
   // --- Drag & Drop ---
   public readonly canAcceptFile = (item: CdkDrag<FileBrowserItem>): boolean => {
     const data = item.data;
     return !!(data?.entry && data.entry.Path);
-  };
-
-  canDropOnStarred = (item: CdkDrag<FileBrowserItem>): boolean => {
-    return this.canAcceptFile(item);
   };
 
   canDropOnBookmarks = (item: CdkDrag<FileBrowserItem>): boolean => {
@@ -1425,58 +1404,34 @@ export class NautilusComponent implements OnInit, OnDestroy {
     }
   }
 
-  goBack(): void {
+  private traverseHistory(direction: 1 | -1): void {
     const idx = this.activeTabIndex();
     const tab = this.tabs()[idx];
     if (!tab) return;
     const pIdx = this.activePaneIndex();
     const pane = pIdx === 0 ? tab.left : tab.right;
-    if (pane && pane.historyIndex > 0) {
-      const newHistoryIndex = pane.historyIndex - 1;
-      const entry = pane.history[newHistoryIndex];
+    if (!pane) return;
 
-      this.tabs.update(tabs =>
-        tabs.map((t, i) => {
-          if (i !== idx) return t;
-          if (pIdx === 0) {
-            return { ...t, left: { ...t.left, historyIndex: newHistoryIndex } };
-          } else {
-            return {
-              ...t,
-              right: t.right ? { ...t.right, historyIndex: newHistoryIndex } : undefined,
-            };
-          }
-        })
-      );
-      this._navigate(entry.remote, entry.path, false);
-    }
+    const newHistoryIndex = pane.historyIndex + direction;
+    if (newHistoryIndex < 0 || newHistoryIndex >= pane.history.length) return;
+
+    const entry = pane.history[newHistoryIndex];
+    this.tabs.update(tabs =>
+      tabs.map((t, i) => {
+        if (i !== idx) return t;
+        if (pIdx === 0) return { ...t, left: { ...t.left, historyIndex: newHistoryIndex } };
+        return { ...t, right: t.right ? { ...t.right, historyIndex: newHistoryIndex } : undefined };
+      })
+    );
+    this._navigate(entry.remote, entry.path, false);
+  }
+
+  goBack(): void {
+    this.traverseHistory(-1);
   }
 
   goForward(): void {
-    const idx = this.activeTabIndex();
-    const tab = this.tabs()[idx];
-    if (!tab) return;
-    const pIdx = this.activePaneIndex();
-    const pane = pIdx === 0 ? tab.left : tab.right;
-    if (pane && pane.historyIndex < pane.history.length - 1) {
-      const newHistoryIndex = pane.historyIndex + 1;
-      const entry = pane.history[newHistoryIndex];
-
-      this.tabs.update(tabs =>
-        tabs.map((t, i) => {
-          if (i !== idx) return t;
-          if (pIdx === 0) {
-            return { ...t, left: { ...t.left, historyIndex: newHistoryIndex } };
-          } else {
-            return {
-              ...t,
-              right: t.right ? { ...t.right, historyIndex: newHistoryIndex } : undefined,
-            };
-          }
-        })
-      );
-      this._navigate(entry.remote, entry.path, false);
-    }
+    this.traverseHistory(1);
   }
 
   // --- Interactions ---
@@ -1540,8 +1495,6 @@ export class NautilusComponent implements OnInit, OnDestroy {
     if (!item) return;
     this.navigateTo(item);
   }
-
-  // Removed duplicate navigateTo from here
 
   openContextMenuOpenInNewTab(): void {
     const item = this.contextMenuItem();
@@ -1905,6 +1858,25 @@ export class NautilusComponent implements OnInit, OnDestroy {
     }
   }
 
+  private async dispatchFileOp(
+    mode: 'copy' | 'move',
+    srcRemote: string,
+    srcPath: string,
+    dstRemote: string,
+    dstPath: string,
+    isDir: boolean
+  ): Promise<void> {
+    if (mode === 'copy') {
+      if (isDir)
+        await this.remoteOps.copyDirectory(srcRemote, srcPath, dstRemote, dstPath, 'nautilus');
+      else await this.remoteOps.copyFile(srcRemote, srcPath, dstRemote, dstPath, 'nautilus');
+    } else {
+      if (isDir)
+        await this.remoteOps.moveDirectory(srcRemote, srcPath, dstRemote, dstPath, 'nautilus');
+      else await this.remoteOps.moveFile(srcRemote, srcPath, dstRemote, dstPath, 'nautilus');
+    }
+  }
+
   private async performFileOperations(
     items: FileBrowserItem[],
     dstRemote: ExplorerRoot,
@@ -1934,43 +1906,14 @@ export class NautilusComponent implements OnInit, OnDestroy {
         const destinationFile = dstPath ? `${dstPath}/${item.entry.Name}` : item.entry.Name;
         const isDir = item.entry.IsDir;
 
-        if (mode === 'copy') {
-          if (isDir) {
-            await this.remoteOps.copyDirectory(
-              normalizedSrcRemote,
-              item.entry.Path,
-              normalizedDstRemote,
-              destinationFile,
-              'nautilus'
-            );
-          } else {
-            await this.remoteOps.copyFile(
-              normalizedSrcRemote,
-              item.entry.Path,
-              normalizedDstRemote,
-              destinationFile,
-              'nautilus'
-            );
-          }
-        } else {
-          if (isDir) {
-            await this.remoteOps.moveDirectory(
-              normalizedSrcRemote,
-              item.entry.Path,
-              normalizedDstRemote,
-              destinationFile,
-              'nautilus'
-            );
-          } else {
-            await this.remoteOps.moveFile(
-              normalizedSrcRemote,
-              item.entry.Path,
-              normalizedDstRemote,
-              destinationFile,
-              'nautilus'
-            );
-          }
-        }
+        await this.dispatchFileOp(
+          mode,
+          normalizedSrcRemote,
+          item.entry.Path,
+          normalizedDstRemote,
+          destinationFile,
+          !!isDir
+        );
 
         succeededItems.push({
           srcRemote: normalizedSrcRemote,
@@ -2003,7 +1946,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
       );
     } else {
       this.notificationService.showSuccess(
-        this.translate.instant('nautilus.notifications.pasteComplete')
+        this.translate.instant('nautilus.notifications.pasteStarted')
       );
     }
   }
@@ -2027,23 +1970,14 @@ export class NautilusComponent implements OnInit, OnDestroy {
           }
         } else {
           // Undo move → move back to original location
-          if (item.isDir) {
-            await this.remoteOps.moveDirectory(
-              item.dstRemote,
-              item.dstFullPath,
-              item.srcRemote,
-              item.srcPath,
-              'nautilus'
-            );
-          } else {
-            await this.remoteOps.moveFile(
-              item.dstRemote,
-              item.dstFullPath,
-              item.srcRemote,
-              item.srcPath,
-              'nautilus'
-            );
-          }
+          await this.dispatchFileOp(
+            'move',
+            item.dstRemote,
+            item.dstFullPath,
+            item.srcRemote,
+            item.srcPath,
+            item.isDir
+          );
         }
       } catch (e) {
         console.error('undo failed for', item.dstFullPath, e);
@@ -2075,43 +2009,14 @@ export class NautilusComponent implements OnInit, OnDestroy {
     let failCount = 0;
     for (const item of entry.items) {
       try {
-        if (entry.mode === 'copy') {
-          if (item.isDir) {
-            await this.remoteOps.copyDirectory(
-              item.srcRemote,
-              item.srcPath,
-              item.dstRemote,
-              item.dstFullPath,
-              'nautilus'
-            );
-          } else {
-            await this.remoteOps.copyFile(
-              item.srcRemote,
-              item.srcPath,
-              item.dstRemote,
-              item.dstFullPath,
-              'nautilus'
-            );
-          }
-        } else {
-          if (item.isDir) {
-            await this.remoteOps.moveDirectory(
-              item.srcRemote,
-              item.srcPath,
-              item.dstRemote,
-              item.dstFullPath,
-              'nautilus'
-            );
-          } else {
-            await this.remoteOps.moveFile(
-              item.srcRemote,
-              item.srcPath,
-              item.dstRemote,
-              item.dstFullPath,
-              'nautilus'
-            );
-          }
-        }
+        await this.dispatchFileOp(
+          entry.mode,
+          item.srcRemote,
+          item.srcPath,
+          item.dstRemote,
+          item.dstFullPath,
+          item.isDir
+        );
       } catch (e) {
         console.error('redo failed for', item.srcPath, e);
         failCount++;
@@ -2140,11 +2045,6 @@ export class NautilusComponent implements OnInit, OnDestroy {
   private getSelectedItemsList(): FileBrowserItem[] {
     const selection = this.selectedItems();
     return this.activeFiles().filter(item => selection.has(this.getItemKey(item)));
-  }
-
-  private hasFolderInSelection(): boolean {
-    const selection = this.selectedItems();
-    return this.activeFiles().some(f => selection.has(this.getItemKey(f)) && f.entry.IsDir);
   }
 
   async removeEmptyDirs(): Promise<void> {
@@ -2188,10 +2088,8 @@ export class NautilusComponent implements OnInit, OnDestroy {
     this.refresh();
   }
 
-  // No longer needed
-
   // --- Utilities ---
-  formatRelativeDate(dateString: string): string {
+  formatRelativeDate = (dateString: string): string => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleDateString(undefined, {
       year: 'numeric',
@@ -2200,12 +2098,20 @@ export class NautilusComponent implements OnInit, OnDestroy {
       hour: '2-digit',
       minute: '2-digit',
     });
-  }
+  };
 
-  public getItemKey(item: FileBrowserItem | null): string {
+  public getItemKey = (item: FileBrowserItem | null): string => {
     if (!item) return '';
     return `${item.meta.remote}:${item.entry.Path}`;
-  }
+  };
+
+  trackByFile = (index: number, item: FileBrowserItem): string => {
+    return item.entry.ID || item.entry.Path;
+  };
+
+  trackBySortOption = (index: number, option: { key: string; label: string }): string => {
+    return option.key;
+  };
 
   async openFilePreview(item: FileBrowserItem): Promise<void> {
     const currentRemote = this.nautilusRemote();
@@ -2308,7 +2214,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
             `"${item.entry.Name}" ${this.translate.instant('nautilus.selection.selected')}`
           );
         } else {
-          const fileSize = new FormatFileSizePipe().transform(item.entry.Size);
+          const fileSize = this.formatFileSizePipe.transform(item.entry.Size);
           this.selectionSummary.set(
             `"${item.entry.Name}" ${this.translate.instant('nautilus.selection.selected')} (${fileSize})`
           );
@@ -2336,7 +2242,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
     if (fileCount > 0) {
       const totalFileSize = files.reduce((sum, f) => sum + f.entry.Size, 0);
-      const formattedSize = new FormatFileSizePipe().transform(totalFileSize);
+      const formattedSize = this.formatFileSizePipe.transform(totalFileSize);
       const itemLabel = this.translate.instant(
         folderCount > 0
           ? 'nautilus.selection.otherItems'
@@ -2373,7 +2279,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     this.updateSelectionSummary();
   }
 
-  isItemSelectable(item: Entry): boolean {
+  isItemSelectable = (item: Entry): boolean => {
     if (!this.isPickerMode()) return true;
     const opts = this.pickerOptions();
     if (opts.selection === 'folders' && !item.IsDir) return false;
@@ -2384,7 +2290,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
       if (!ok) return false;
     }
     return true;
-  }
+  };
 
   increaseIconSize(): void {
     this.changeIconSize(1);
@@ -2466,22 +2372,8 @@ export class NautilusComponent implements OnInit, OnDestroy {
   selectStarred(): void {
     if (this.activeStarredMode()) return;
 
-    // We update the active pane to Starred
-    if (this.activePaneIndex() === 0) {
-      this.nautilusRemote.set(null);
-      this.currentPath.set('');
-      this.selectedItems.set(new Set());
-      this.errorState.set(null);
-    } else {
-      this.nautilusRemoteRight.set(null);
-      this.currentPathRight.set('');
-      this.selectedItemsRight.set(new Set());
-      this.errorStateRight.set(null);
-    }
-
-    this.updateSelectionSummary();
-    // Update the active tab to reflect that we're in Starred view
     this._navigate(null, '', true);
+    this.updateSelectionSummary();
   }
 
   openStarredInNewTab(): void {
@@ -2538,68 +2430,29 @@ export class NautilusComponent implements OnInit, OnDestroy {
     ])
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(([layout, sortKey, showHidden, gridIconSize, listIconSize, splitDividerPos]) => {
-        if (layout?.value && layout.value !== this.layout()) {
-          this.layout.set(layout.value);
-        }
-        if (sortKey?.value && sortKey.value !== this.sortKey()) {
-          this.sortKey.set(sortKey.value);
-        }
-        if (showHidden?.value !== undefined && showHidden.value !== this.showHidden()) {
-          this.showHidden.set(showHidden.value);
-        }
-
+        if (layout?.value) this.layout.set(layout.value);
+        if (sortKey?.value) this.sortKey.set(sortKey.value);
+        if (showHidden?.value !== undefined) this.showHidden.set(showHidden.value);
         if (gridIconSize?.value) this.savedGridIconSize.set(gridIconSize.value);
         if (listIconSize?.value) this.savedListIconSize.set(listIconSize.value);
 
-        // Update current icon size if needed
-        const currentLayout = this.layout();
-        // If we just switched layout or sizes updated, re-evaluate
+        const currentLayout = layout?.value ?? this.layout();
         const savedSize =
           currentLayout === 'grid' ? this.savedGridIconSize() : this.savedListIconSize();
-
-        if (savedSize && savedSize !== this.iconSize()) {
+        if (savedSize) {
           this.iconSize.set(savedSize);
-        } else if (!savedSize) {
-          // Fallback if no saved size yet
+        } else {
           const sizes = currentLayout === 'grid' ? this.GRID_ICON_SIZES : this.LIST_ICON_SIZES;
-          const centerIndex = Math.floor(sizes.length / 2);
-          if (this.iconSize() !== sizes[centerIndex]) {
-            this.iconSize.set(sizes[centerIndex]);
-          }
+          this.iconSize.set(sizes[Math.floor(sizes.length / 2)]);
         }
 
-        if (
-          splitDividerPos?.value !== undefined &&
-          splitDividerPos.value !== this.splitDividerPos()
-        ) {
-          this.splitDividerPos.set(splitDividerPos.value);
-        }
+        if (splitDividerPos?.value !== undefined) this.splitDividerPos.set(splitDividerPos.value);
       });
   }
 
-  trackByFile(i: number, item: FileBrowserItem): string {
-    return item.entry.ID || item.entry.Path;
-  }
-  trackByRemote(i: number, r: ExplorerRoot): string {
-    return r.name;
-  }
-  trackBySortOption(i: number, o: { key: string }): string {
-    return o.key;
-  }
-  trackByTab(i: number, t: { id: number }): number {
-    return t.id;
-  }
-  trackByBookmark(i: number, b: FileBrowserItem): string {
-    return (b.meta.remote || '') + b.entry.Path;
-  }
-
-  private _globalEscapeHandler = (e: KeyboardEvent): void => {
-    if (e.key === 'Escape') {
-      if (this.isPickerMode()) {
-        this.onClose();
-      }
-    }
-  };
+  trackByRemote = (i: number, r: ExplorerRoot): string => r.name;
+  trackByTab = (i: number, t: { id: number }): number => t.id;
+  trackByBookmark = (i: number, b: FileBrowserItem): string => (b.meta.remote || '') + b.entry.Path;
 
   @HostListener('window:keydown', ['$event'])
   public async handleKeyDown(event: KeyboardEvent): Promise<void> {
@@ -2737,6 +2590,10 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
     if (event.key === 'Escape') {
       event.preventDefault();
+      if (this.isPickerMode()) {
+        this.onClose();
+        return true;
+      }
       if (this.selectedItems().size > 0) this.clearSelection();
       else this.clearClipboard();
       return true;

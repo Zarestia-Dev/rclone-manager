@@ -531,7 +531,7 @@ fn setup_app(
     let app_handle_clone = app_handle.clone();
     tauri::async_runtime::spawn(async move {
         initialization(app_handle_clone.clone()).await;
-        let force_tray = std::env::args().any(|arg| arg == "--tray");
+        let force_tray = cli_args.general.tray;
         if settings.general.tray_enabled || force_tray {
             if force_tray {
                 debug!("🧊 Setting up tray (forced by --tray argument)");
@@ -590,7 +590,7 @@ fn setup_app(
     // Window Creation (Desktop, non-web-server)
     // -------------------------------------------------------------------------
     #[cfg(all(desktop, not(feature = "web-server")))]
-    if !std::env::args().any(|arg| arg == "--tray") {
+    if !cli_args.general.tray {
         debug!("Creating main window");
         create_app_window(app.handle().clone(), None);
     }

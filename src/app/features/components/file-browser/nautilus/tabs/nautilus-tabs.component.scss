@@ -1,3 +1,39 @@
+.tabs-container {
+  position: relative;
+  width: 100%;
+  display: flex;
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 28px;
+    pointer-events: none;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+
+  &::before {
+    left: 0;
+    background: linear-gradient(to right, var(--view-bg-color) 0%, transparent 100%);
+  }
+
+  &::after {
+    right: 0;
+    background: linear-gradient(to left, var(--view-bg-color) 0%, transparent 100%);
+  }
+
+  &:has(.show-left-shadow)::before {
+    opacity: 1;
+  }
+  &:has(.show-right-shadow)::after {
+    opacity: 1;
+  }
+}
+
 .tabs-scroll-container {
   display: flex;
   width: 100%;
@@ -5,26 +41,6 @@
   overflow-y: hidden;
   scroll-behavior: smooth;
   border-bottom: 1px solid var(--mdc-outlined-button-outline-color);
-
-  // GNOME-style fade at ends for scrollability indication
-  -webkit-mask-image: linear-gradient(
-    90deg,
-    transparent 0%,
-    black 24px,
-    black calc(100% - 24px),
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    90deg,
-    transparent 0%,
-    black 24px,
-    black calc(100% - 24px),
-    transparent 100%
-  );
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
 }
 
 .tabs-bar {
@@ -45,7 +61,6 @@
     min-width: 100px;
     margin: 0 2px;
     position: relative;
-    // Reserve space for the absolutely-positioned close button
     padding-right: 44px;
     background: transparent;
     cursor: pointer;
@@ -116,8 +131,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      width: var(--icon-size-lg);
-      height: var(--icon-size-lg);
+      width: var(--icon-size-md);
+      height: var(--icon-size-md);
       background: none;
       border: none;
       border-radius: var(--radius-md);
@@ -132,9 +147,9 @@
       }
 
       mat-icon {
-        width: var(--icon-size-sm);
-        height: var(--icon-size-sm);
-        font-size: var(--icon-size-sm);
+        width: var(--icon-size-xs);
+        height: var(--icon-size-xs);
+        font-size: var(--icon-size-xs);
       }
     }
   }

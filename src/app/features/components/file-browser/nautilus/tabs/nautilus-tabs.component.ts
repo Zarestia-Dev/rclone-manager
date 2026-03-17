@@ -6,6 +6,8 @@ import {
   afterRenderEffect,
   ElementRef,
   ChangeDetectionStrategy,
+  signal,
+  effect,
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -51,12 +53,21 @@ export class NautilusTabsComponent {
   readonly closeOtherTabs = output<number>();
   readonly closeTabsToRight = output<number>();
 
+  protected readonly _showLeftShadow = signal(false);
+  protected readonly _showRightShadow = signal(false);
+
   private readonly tabsScrollContainer =
     viewChild<ElementRef<HTMLDivElement>>('tabsScrollContainer');
 
   constructor() {
     afterRenderEffect(() => {
       this.scrollToActiveTab(this.activeTabIndex());
+    });
+
+    effect(() => {
+      // Re-evaluate shadows when tabs change
+      this.tabs();
+      setTimeout(() => this.updateScrollShadows(), 50);
     });
   }
 
@@ -91,8 +102,20 @@ export class NautilusTabsComponent {
     const container = this.tabsScrollContainer()?.nativeElement;
     if (container) {
       container.scrollLeft += event.deltaY;
+      this.updateScrollShadows();
       event.preventDefault();
     }
+  }
+
+  protected onScroll(): void {
+    this.updateScrollShadows();
+  }
+
+  private updateScrollShadows(): void {
+    const el = this.tabsScrollContainer()?.nativeElement;
+    if (!el) return;
+    this._showLeftShadow.set(el.scrollLeft > 4);
+    this._showRightShadow.set(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
   }
 
   private scrollToActiveTab(index: number): void {
@@ -107,6 +130,7 @@ export class NautilusTabsComponent {
 
     if (tabRect.left < containerRect.left || tabRect.right > containerRect.right) {
       activeTab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      setTimeout(() => this.updateScrollShadows(), 300);
     }
   }
 }

@@ -34,6 +34,10 @@ pub struct GeneralArgs {
     /// Path to logs directory (overrides default/env)
     #[arg(long, env = "RCLONE_MANAGER_LOG_DIR")]
     pub logs_dir: Option<PathBuf>,
+
+    /// Start in system tray
+    #[arg(long)]
+    pub tray: bool,
 }
 
 /// Headless web server specific arguments
@@ -141,6 +145,13 @@ mod tests {
         ]);
         assert_eq!(args.general.data_dir, Some(PathBuf::from("/data")));
         assert_eq!(args.general.cache_dir, Some(PathBuf::from("/cache")));
+        assert!(!args.general.tray);
+    }
+
+    #[test]
+    fn test_tray_flag() {
+        let args = CliArgs::parse_from(["rclone-manager", "--tray"]);
+        assert!(args.general.tray);
     }
 
     #[cfg(feature = "web-server")]

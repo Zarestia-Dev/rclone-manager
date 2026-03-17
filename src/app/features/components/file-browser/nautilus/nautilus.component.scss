@@ -6,7 +6,7 @@
   --sidenav-width: clamp(180px, 20vw, 240px);
 
   ::ng-deep .cdk-drag-placeholder {
-    display: none !important;
+    display: none;
   }
 }
 
@@ -111,27 +111,27 @@
 .sort-radio-group {
   display: flex;
   flex-direction: column;
+}
 
-  .menu-item-wrapper {
-    padding: var(--space-xxs) var(--space-xs);
-    display: flex;
-    align-items: center;
+.menu-item-wrapper {
+  padding: var(--space-xxs) var(--space-xs);
+  display: flex;
+  align-items: center;
 
-    mat-checkbox {
-      width: 100%;
-    }
+  mat-checkbox {
+    width: 100%;
   }
+}
 
-  .sort-options {
-    display: flex;
-    align-items: center;
-    flex-direction: column;
+.sort-options {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
 
-    .sort-label {
-      font-size: var(--font-size-md);
-      font-weight: 700;
-      color: var(--dim-color);
-    }
+  .sort-label {
+    font-size: var(--font-size-md);
+    font-weight: 700;
+    color: var(--dim-color);
   }
 }
 
@@ -172,7 +172,6 @@
 
   &:hover {
     background: transparent;
-    background-color: initial;
   }
 }
 

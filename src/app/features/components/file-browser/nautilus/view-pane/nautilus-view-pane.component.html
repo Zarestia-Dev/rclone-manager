@@ -17,8 +17,8 @@
       (cdkContextMenuOpened)="setContextItem.emit(null)"
       cdkDropList
       [cdkDropListEnterPredicate]="canAcceptFile()"
-      [cdkDropListHasAnchor]="true"
       [cdkDropListSortingDisabled]="true"
+      [cdkDropListHasAnchor]="true"
       (cdkDropListDropped)="dropToCurrentDirectory.emit({ event: $event, paneIndex: paneIndex() })"
     >
       <div
@@ -87,8 +87,8 @@
       (cdkContextMenuOpened)="setContextItem.emit(null)"
       cdkDropList
       [cdkDropListEnterPredicate]="canAcceptFile()"
-      [cdkDropListHasAnchor]="true"
       [cdkDropListSortingDisabled]="true"
+      [cdkDropListHasAnchor]="true"
       (cdkDropListDropped)="dropToCurrentDirectory.emit({ event: $event, paneIndex: paneIndex() })"
     >
       <table mat-table [dataSource]="files()" class="nautilus-table">
@@ -117,7 +117,6 @@
                 [ngTemplateOutlet]="nameCellContent"
                 [ngTemplateOutletContext]="{
                   item: item,
-                  rowTitle: false,
                   isCut: cutItemPaths().has(getItemKey()(item)),
                 }"
               ></ng-container>
@@ -279,7 +278,7 @@
   </mat-card>
 </ng-template>
 
-<ng-template #nameCellContent let-item="item" let-rowTitle="rowTitle" let-isCut="isCut">
+<ng-template #nameCellContent let-item="item" let-isCut="isCut">
   @if (isCut) {
     <mat-icon class="cut-icon list-view" svgIcon="scissors"></mat-icon>
   } @else {
@@ -290,7 +289,7 @@
       [svgIcon]="iconService.getIconForEntry(item.entry)"
     ></mat-icon>
   }
-  <span [class.row-title]="rowTitle">{{ item.entry.Name }}</span>
+  <span>{{ item.entry.Name }}</span>
 </ng-template>
 
 <!-- Note: fileMenu is defined in NautilusComponent, but referenced here via [cdkContextMenuTriggerFor]="fileMenu"-->

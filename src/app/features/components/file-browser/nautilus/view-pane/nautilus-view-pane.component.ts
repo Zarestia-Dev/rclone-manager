@@ -1,5 +1,5 @@
 import { Component, input, output, inject, TemplateRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { NgTemplateOutlet } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -17,15 +17,14 @@ import { ScrollingModule } from '@angular/cdk/scrolling';
 import { MatTableModule } from '@angular/material/table';
 import { TranslateModule } from '@ngx-translate/core';
 import { FormatFileSizePipe } from '@app/pipes';
-import { IconService } from '@app/services';
-import { NautilusService } from '@app/services';
+import { IconService, NautilusService } from '@app/services';
 import { Entry, FileBrowserItem } from '@app/types';
 
 @Component({
   selector: 'app-nautilus-view-pane',
   standalone: true,
   imports: [
-    CommonModule,
+    NgTemplateOutlet,
     MatIconModule,
     MatCardModule,
     MatProgressSpinnerModule,
@@ -38,11 +37,11 @@ import { Entry, FileBrowserItem } from '@app/types';
     FormatFileSizePipe,
   ],
   templateUrl: './nautilus-view-pane.component.html',
-  styleUrls: ['./nautilus-view-pane.component.scss'],
+  styleUrl: './nautilus-view-pane.component.scss',
 })
 export class NautilusViewPaneComponent {
   private readonly nautilusService = inject(NautilusService);
-  public iconService = inject(IconService);
+  protected readonly iconService = inject(IconService);
 
   // --- Inputs ---
   public readonly files = input.required<FileBrowserItem[]>();
@@ -68,7 +67,6 @@ export class NautilusViewPaneComponent {
   public readonly getItemKey = input.required<(item: FileBrowserItem) => string>();
   public readonly isItemSelectable = input.required<(entry: Entry) => boolean>();
   public readonly trackByFile = input.required<(index: number, item: FileBrowserItem) => string>();
-  public readonly trackBySortOption = input.required<(index: number, item: any) => any>();
   public readonly formatRelativeDate = input.required<(dateString: string) => string>();
   public readonly canAcceptFile =
     input.required<(drag: CdkDrag<FileBrowserItem>, drop: CdkDropList<any>) => boolean>();

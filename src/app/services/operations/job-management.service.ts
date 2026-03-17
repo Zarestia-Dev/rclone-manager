@@ -198,10 +198,18 @@ export class JobManagementService extends TauriBaseService {
       `start_${type}_profile`,
       { params },
       {
-        successKey: `job.notifications.${type}_start_success`,
-        successParams: { remote: remote_name, profile: profile_name },
-        errorKey: `job.notifications.${type}_start_error`,
-        errorParams: { remote: remote_name, profile: profile_name },
+        successKey: 'notification.title.operationStarted',
+        successParams: {
+          operation: type.charAt(0).toUpperCase() + type.slice(1),
+          remote: remote_name,
+          profile: profile_name,
+        },
+        errorKey: 'notification.title.operationFailed',
+        errorParams: {
+          operation: type.charAt(0).toUpperCase() + type.slice(1),
+          remote: remote_name,
+          profile: profile_name,
+        },
       }
     );
   }
@@ -240,9 +248,9 @@ export class JobManagementService extends TauriBaseService {
       'stop_job',
       { jobid, remoteName },
       {
-        successKey: 'job.notifications.stop_success',
+        successKey: 'backendSuccess.job.stopped',
         successParams: { id: jobid.toString() },
-        errorKey: 'job.notifications.stop_error',
+        errorKey: 'backendErrors.job.executionFailed',
         errorParams: { id: jobid.toString() },
       }
     );
@@ -256,9 +264,9 @@ export class JobManagementService extends TauriBaseService {
       'delete_job',
       { jobid },
       {
-        successKey: 'job.notifications.delete_success',
+        successKey: 'backendSuccess.job.deleted',
         successParams: { id: jobid.toString() },
-        errorKey: 'job.notifications.delete_error',
+        errorKey: 'backendErrors.job.executionFailed',
         errorParams: { id: jobid.toString() },
       }
     );

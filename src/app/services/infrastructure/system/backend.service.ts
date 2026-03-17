@@ -113,10 +113,14 @@ export class BackendService extends TauriBaseService {
   async switchBackend(name: string): Promise<void> {
     try {
       this.isLoading.set(true);
-      await this.invokeWithNotification('switch_backend', { name }, {
-        successKey: 'backend.switchSuccess',
-        errorKey: 'backend.switchError'
-      });
+      await this.invokeWithNotification(
+        'switch_backend',
+        { name },
+        {
+          successKey: 'backendSuccess.backend.switched',
+          errorKey: 'backendErrors.request.failed',
+        }
+      );
       this.activeBackend.set(name);
 
       // Update local state - backend switch already updates status
@@ -141,22 +145,26 @@ export class BackendService extends TauriBaseService {
   ): Promise<void> {
     try {
       this.isLoading.set(true);
-      await this.invokeWithNotification('add_backend', {
-        name: config.name,
-        host: config.host,
-        port: config.port,
-        isLocal: config.isLocal,
-        username: config.username,
-        password: config.password,
-        configPassword: config.configPassword,
-        configPath: config.configPath,
-        oauthPort: config.oauthPort,
-        copyBackendFrom: copyBackendFrom ?? null,
-        copyRemotesFrom: copyRemotesFrom ?? null,
-      }, {
-        successKey: 'backend.addSuccess',
-        errorKey: 'backend.addError'
-      });
+      await this.invokeWithNotification(
+        'add_backend',
+        {
+          name: config.name,
+          host: config.host,
+          port: config.port,
+          isLocal: config.isLocal,
+          username: config.username,
+          password: config.password,
+          configPassword: config.configPassword,
+          configPath: config.configPath,
+          oauthPort: config.oauthPort,
+          copyBackendFrom: copyBackendFrom ?? null,
+          copyRemotesFrom: copyRemotesFrom ?? null,
+        },
+        {
+          successKey: 'backendSuccess.backend.added',
+          errorKey: 'backendErrors.request.failed',
+        }
+      );
 
       // Reload to ensure we have the exact state from backend
       await this.loadBackends();
@@ -171,19 +179,23 @@ export class BackendService extends TauriBaseService {
   async updateBackend(config: AddBackendConfig): Promise<void> {
     try {
       this.isLoading.set(true);
-      await this.invokeWithNotification('update_backend', {
-        name: config.name,
-        host: config.host,
-        port: config.port,
-        username: config.username,
-        password: config.password,
-        configPassword: config.configPassword,
-        configPath: config.configPath,
-        oauthPort: config.oauthPort,
-      }, {
-        successKey: 'backend.updateSuccess',
-        errorKey: 'backend.updateError'
-      });
+      await this.invokeWithNotification(
+        'update_backend',
+        {
+          name: config.name,
+          host: config.host,
+          port: config.port,
+          username: config.username,
+          password: config.password,
+          configPassword: config.configPassword,
+          configPath: config.configPath,
+          oauthPort: config.oauthPort,
+        },
+        {
+          successKey: 'backendSuccess.backend.updated',
+          errorKey: 'backendErrors.request.failed',
+        }
+      );
 
       // Reload to ensure consistency
       await this.loadBackends();
@@ -198,10 +210,14 @@ export class BackendService extends TauriBaseService {
   async removeBackend(name: string): Promise<void> {
     try {
       this.isLoading.set(true);
-      await this.invokeWithNotification('remove_backend', { name }, {
-        successKey: 'backend.removeSuccess',
-        errorKey: 'backend.removeError'
-      });
+      await this.invokeWithNotification(
+        'remove_backend',
+        { name },
+        {
+          successKey: 'backendSuccess.backend.removed',
+          errorKey: 'backendErrors.request.failed',
+        }
+      );
 
       // Update local state without reloading
       this.backends.update(current => current.filter(b => b.name !== name));
