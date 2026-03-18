@@ -83,6 +83,7 @@ export class RemoteManagementService extends TauriBaseService {
       { name, parameters, opt },
       {
         successKey: 'backendSuccess.remote.created',
+        successParams: { name },
         errorKey: 'backendErrors.remote.configFailed',
       }
     );
@@ -101,6 +102,7 @@ export class RemoteManagementService extends TauriBaseService {
       { name, parameters, opt },
       {
         successKey: 'backendSuccess.remote.updated',
+        successParams: { name },
         errorKey: 'backendErrors.remote.configFailed',
       }
     );
@@ -125,6 +127,7 @@ export class RemoteManagementService extends TauriBaseService {
       { name },
       {
         successKey: 'backendSuccess.remote.deleted',
+        successParams: { name },
         errorKey: 'backendErrors.remote.deleteFailed',
       }
     );

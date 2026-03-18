@@ -330,11 +330,6 @@ export class GeneralOverviewComponent implements OnInit {
     }
   }
 
-  // Clipboard
-  handleCopyToClipboard(data: { text: string; message: string }): void {
-    this.copyToClipboard(data.text, data.message);
-  }
-
   async copyError(error: string): Promise<void> {
     this.copyToClipboard(
       error,

@@ -2695,7 +2695,8 @@
     },
     "errors": {
       "passwordRequired": "Se requiere contraseña",
-      "mountPluginInstallFailed": "Instalación del complemento falló: {{error}}"
+      "mountPluginInstallFailed": "Instalación del complemento falló: {{error}}",
+      "rcloneInstallFailed": "La instalación de Rclone falló: {{error}}"
     },
     "configTabs": {
       "default": "Predeterminado",

@@ -27,7 +27,7 @@
   @if (!isMount() && !isServe() && isCronEnabled() && showCronSection()) {
     <mat-expansion-panel class="cron-panel">
       <mat-expansion-panel-header>
-        <mat-panel-title> {{ 'wizards.appOperation.cronSchedule' | translate }} </mat-panel-title>
+        <mat-panel-title>{{ 'wizards.appOperation.cronSchedule' | translate }}</mat-panel-title>
         <mat-panel-description>
           <span [class.no-schedule]="!cronExpression()">
             {{ cronExpression() || ('wizards.appOperation.notConfigured' | translate) }}
@@ -71,7 +71,7 @@
                   ? ('wizards.appOperation.remotePathServe' | translate)
                   : ('wizards.appOperation.sourcePath' | translate)
               }}</mat-label>
-              <span matPrefix class="path-prefix mount-remote locked">
+              <span matPrefix class="path-prefix mount-remote">
                 <mat-icon svgIcon="hard-drive"></mat-icon>
                 <span>{{ currentRemoteName() }}:</span>
               </span>
@@ -166,7 +166,6 @@
                 [cdkMenuTriggerFor]="sourceAutocompleteMenu"
               />
 
-              <!-- Picker Button -->
               <button
                 matIconButton
                 matSuffix
@@ -191,7 +190,7 @@
           <div class="path-input-wrapper">
             <mat-form-field appearance="fill">
               <mat-label>{{ 'wizards.appOperation.destPath' | translate }}</mat-label>
-              <span matPrefix class="path-prefix mount-local locked">
+              <span matPrefix class="path-prefix mount-local">
                 <mat-icon svgIcon="folder" class="purple"></mat-icon>
                 <span>{{ 'wizards.appOperation.localPath' | translate }}</span>
               </span>
@@ -203,7 +202,6 @@
                 (input)="onInputChanged($event, 'dest')"
                 [cdkMenuTriggerFor]="destAutocompleteMenu"
               />
-              <!-- Picker Button for Mount Dest (Local) -->
               <button
                 matIconButton
                 matSuffix
@@ -283,7 +281,6 @@
                 [cdkMenuTriggerFor]="destAutocompleteMenu"
               />
 
-              <!-- Picker Button -->
               <button
                 matIconButton
                 matSuffix
@@ -333,12 +330,12 @@
           </button>
           <mat-divider></mat-divider>
         }
-        @if (state.options.length === 0 && !state.isLoading) {
+        @if (state.options.length === 0) {
           <div class="empty-state">
             <span>{{ 'wizards.appOperation.noItemsFound' | translate }}</span>
           </div>
         }
-        @for (entry of state.options; track trackByEntry($index, entry)) {
+        @for (entry of state.options; track entry.Path) {
           <button
             cdkMenuItem
             class="menu-item"
@@ -371,12 +368,12 @@
           </button>
           <mat-divider></mat-divider>
         }
-        @if (state.options.length === 0 && !state.isLoading) {
+        @if (state.options.length === 0) {
           <div class="empty-state">
             <span>{{ 'wizards.appOperation.noItemsFound' | translate }}</span>
           </div>
         }
-        @for (entry of state.options; track trackByEntry($index, entry)) {
+        @for (entry of state.options; track entry.Path) {
           <button
             cdkMenuItem
             class="menu-item"

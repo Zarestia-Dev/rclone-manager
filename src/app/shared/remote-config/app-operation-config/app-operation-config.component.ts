@@ -1,4 +1,4 @@
-import { CommonModule, TitleCasePipe } from '@angular/common';
+import { TitleCasePipe } from '@angular/common';
 import {
   Component,
   ChangeDetectionStrategy,
@@ -8,6 +8,7 @@ import {
   signal,
   effect,
   DestroyRef,
+  WritableSignal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormGroup, ReactiveFormsModule, AbstractControl } from '@angular/forms';
@@ -18,16 +19,20 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatDividerModule } from '@angular/material/divider';
-import { CronValidationResponse, EditTarget, Entry, FileBrowserItem } from '@app/types';
-import { FileSystemService, PathSelectionService, PathSelectionState } from '@app/services';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { CdkMenuModule } from '@angular/cdk/menu';
-import { CronInputComponent } from '@app/shared/components';
-import { NotificationService } from '@app/services';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { CdkMenuModule } from '@angular/cdk/menu';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { Subscription } from 'rxjs';
+import { CronValidationResponse, EditTarget, FileBrowserItem } from '@app/types';
+import {
+  FileSystemService,
+  NotificationService,
+  PathSelectionService,
+  PathSelectionState,
+} from '@app/services';
+import { CronInputComponent } from '@app/shared/components';
 
 type PathType = 'local' | 'currentRemote' | 'otherRemote';
 type PathGroup = 'source' | 'dest';
@@ -36,7 +41,6 @@ type PathGroup = 'source' | 'dest';
   selector: 'app-operation-config',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,
@@ -59,13 +63,13 @@ type PathGroup = 'source' | 'dest';
 })
 export class OperationConfigComponent {
   // Signal Inputs
-  opFormGroup = input.required<FormGroup>();
-  operationType = input.required<EditTarget>();
-  currentRemoteName = input.required<string>();
-  existingRemotes = input<string[]>([]);
-  description = input('');
-  isNewRemote = input(true);
-  searchQuery = input('');
+  readonly opFormGroup = input.required<FormGroup>();
+  readonly operationType = input.required<EditTarget>();
+  readonly currentRemoteName = input.required<string>();
+  readonly existingRemotes = input<string[]>([]);
+  readonly description = input('');
+  readonly isNewRemote = input(true);
+  readonly searchQuery = input('');
 
   private readonly fileSystemService = inject(FileSystemService);
   private readonly pathSelectionService = inject(PathSelectionService);
@@ -74,23 +78,24 @@ export class OperationConfigComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   // Computed State
-  isMount = computed(() => this.operationType() === 'mount');
-  isServe = computed(() => this.operationType() === 'serve');
-  otherRemotes = computed(() => this.existingRemotes().filter(r => r !== this.currentRemoteName()));
+  readonly isMount = computed(() => this.operationType() === 'mount');
+  readonly isServe = computed(() => this.operationType() === 'serve');
+  readonly otherRemotes = computed(() =>
+    this.existingRemotes().filter(r => r !== this.currentRemoteName())
+  );
 
   // Writable State Signals
-  sourcePathType = signal<PathType>('currentRemote');
-  destPathType = signal<PathType>('local');
+  readonly sourcePathType = signal<PathType>('currentRemote');
+  readonly destPathType = signal<PathType>('local');
 
   // Inline autocomplete state
-  sourcePathState: ReturnType<typeof signal<PathSelectionState>> | null = null;
-  destPathState: ReturnType<typeof signal<PathSelectionState>> | null = null;
+  sourcePathState: WritableSignal<PathSelectionState> | null = null;
+  destPathState: WritableSignal<PathSelectionState> | null = null;
 
   // Search helper
-  private matchesSearch = computed(() => {
+  private readonly matchesSearch = computed(() => {
     const query = this.searchQuery().toLowerCase();
     if (!query) return (_: string) => true;
-
     return (keywords: string) => {
       const keywordList = keywords.toLowerCase();
       return (
@@ -100,21 +105,22 @@ export class OperationConfigComponent {
   });
 
   // Computed Visibility flags
-  showAutoStart = computed(() => this.matchesSearch()('auto start enable automatic'));
-  showCronSection = computed(() => this.matchesSearch()('cron schedule task scheduled timing'));
-  showSourcePath = computed(() => this.matchesSearch()('source path input from origin'));
-  showDestPath = computed(() => this.matchesSearch()('destination dest output target'));
+  readonly showAutoStart = computed(() => this.matchesSearch()('auto start enable automatic'));
+  readonly showCronSection = computed(() =>
+    this.matchesSearch()('cron schedule task scheduled timing')
+  );
+  readonly showSourcePath = computed(() => this.matchesSearch()('source path input from origin'));
+  readonly showDestPath = computed(() => this.matchesSearch()('destination dest output target'));
 
-  // Writable signals that are synced with form controls
-  cronExpression = signal<string | null>(null);
-  isCronEnabled = signal<boolean>(false);
+  // Writable signals synced with form controls
+  readonly cronExpression = signal<string | null>(null);
+  readonly isCronEnabled = signal<boolean>(false);
 
-  // Keep these subscriptions idempotent across effect re-runs
-  private controlSyncSubs = new Map<string, Subscription>();
-  private pathTypeSubs = new Map<PathGroup, Subscription>();
+  // Keep subscriptions idempotent across effect re-runs
+  private readonly controlSyncSubs = new Map<string, Subscription>();
+  private readonly pathTypeSubs = new Map<PathGroup, Subscription>();
 
   constructor() {
-    // Initialize things that depend on inputs
     effect(() => {
       if (!this.isNewRemote()) {
         this.initializeInlineAutocomplete();
@@ -126,7 +132,6 @@ export class OperationConfigComponent {
       }
     });
 
-    // Simplify form syncing using a single effect for the stable form group
     effect(() => {
       const formGroup = this.opFormGroup();
       if (!formGroup) return;
@@ -134,14 +139,12 @@ export class OperationConfigComponent {
       this.syncControlToSignal('cronExpression', this.cronExpression);
       this.syncControlToSignal('cronEnabled', this.isCronEnabled);
 
-      // Initialize path type listeners
       this.watchPathType('source');
       if (!this.isMount() && !this.isServe()) {
         this.watchPathType('dest');
       }
     });
 
-    // Cleanup
     this.destroyRef.onDestroy(() => {
       this.controlSyncSubs.forEach(sub => sub.unsubscribe());
       this.pathTypeSubs.forEach(sub => sub.unsubscribe());
@@ -150,17 +153,12 @@ export class OperationConfigComponent {
     });
   }
 
-  private syncControlToSignal<T>(
-    controlName: string,
-    signalToUpdate: ReturnType<typeof signal<T>>
-  ): void {
+  private syncControlToSignal<T>(controlName: string, signalToUpdate: WritableSignal<T>): void {
     const control = this.opFormGroup().get(controlName);
     if (!control) return;
 
-    // Set initial value
     signalToUpdate.set(control.value);
 
-    // Rebind idempotently when effect re-runs
     this.controlSyncSubs.get(controlName)?.unsubscribe();
     const sub = control.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(val => {
       signalToUpdate.set(val);
@@ -169,22 +167,16 @@ export class OperationConfigComponent {
   }
 
   private initializeInlineAutocomplete(): void {
-    if (this.isNewRemote()) return;
-
-    // Keep registrations stable across effect re-runs.
     this.pathSelectionService.unregisterField('source');
     this.pathSelectionService.unregisterField('dest');
     this.sourcePathState = null;
     this.destPathState = null;
 
-    // Register source field
     this.sourcePathState = this.registerAutocomplete('source');
 
-    // Register dest field if needed
     if (!this.isMount() && !this.isServe()) {
       this.destPathState = this.registerAutocomplete('dest');
     } else if (this.isMount()) {
-      // Local mount destination
       this.destPathState = this.pathSelectionService.registerField(
         'dest',
         '',
@@ -193,7 +185,7 @@ export class OperationConfigComponent {
     }
   }
 
-  private registerAutocomplete(group: PathGroup): ReturnType<typeof signal<PathSelectionState>> {
+  private registerAutocomplete(group: PathGroup): WritableSignal<PathSelectionState> {
     return this.pathSelectionService.registerField(
       group,
       this.currentRemoteName(),
@@ -209,10 +201,8 @@ export class OperationConfigComponent {
     const control = this.getFormGroup(group)?.get('pathType');
     if (!control) return;
 
-    // Handle initial value
     this.handlePathTypeChange(group, control.value);
 
-    // Rebind idempotently when effect re-runs
     this.pathTypeSubs.get(group)?.unsubscribe();
     const sub = control.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -224,21 +214,18 @@ export class OperationConfigComponent {
     const pathType = this.parsePathType(value);
     const remoteName = this.getRemoteNameFromValue(value);
 
-    // Update local signal state
     if (group === 'source') {
       this.sourcePathType.set(pathType);
     } else {
       this.destPathType.set(pathType);
     }
 
-    // Update 'otherRemoteName' control if needed
     if (pathType === 'otherRemote') {
       this.getFormGroup(group)
         ?.get('otherRemoteName')
         ?.patchValue(remoteName || '', { emitEvent: false });
     }
 
-    // Update autocomplete if active
     if (!this.isNewRemote()) {
       this.updateAutocompleteRegistration(group, pathType, remoteName);
     }
@@ -260,7 +247,6 @@ export class OperationConfigComponent {
     // else local -> empty string
 
     this.pathSelectionService.unregisterField(group);
-
     const state = this.pathSelectionService.registerField(group, effectiveRemoteName, currentPath);
 
     if (group === 'source') this.sourcePathState = state;
@@ -289,10 +275,6 @@ export class OperationConfigComponent {
     this.pathSelectionService.navigateUp(group, this.getPathControl(group));
   }
 
-  trackByEntry(_: number, entry: Entry): string {
-    return entry.Path;
-  }
-
   // ===================================
   // Path Selection (Dialogs)
   // ===================================
@@ -311,9 +293,7 @@ export class OperationConfigComponent {
 
   private async selectLocalPath(group: PathGroup): Promise<void> {
     const allowNonEmpty = this.opFormGroup().get('options.mount---allow_non_empty')?.value;
-    // Require empty only if it's a mount dest and not explicitly allowed non-empty
     const requireEmpty = this.isMount() && group === 'dest' && !allowNonEmpty;
-
     const currentPath = this.getPathControl(group)?.value || '';
 
     try {
@@ -364,7 +344,7 @@ export class OperationConfigComponent {
       return;
     }
 
-    let pathTypeValue = 'local';
+    let pathTypeValue: string;
     if (isLocal) {
       pathTypeValue = 'local';
     } else if (
@@ -373,6 +353,8 @@ export class OperationConfigComponent {
       pathTypeValue = 'currentRemote';
     } else if (remoteName !== '') {
       pathTypeValue = `otherRemote:${remoteName}`;
+    } else {
+      pathTypeValue = 'local';
     }
 
     this.updatePathForm(group, path, pathTypeValue);
@@ -383,10 +365,8 @@ export class OperationConfigComponent {
     path: string,
     restrictToCurrent: boolean
   ): string | undefined {
-    // If strict local
     if (pathType === 'local') return path || undefined;
 
-    // Determine remote prefix
     let prefix = '';
     if (pathType === 'currentRemote' || restrictToCurrent) {
       prefix = `${this.currentRemoteName()}:`;
@@ -426,7 +406,7 @@ export class OperationConfigComponent {
   private updateControlAndSignal<T>(
     controlName: string,
     value: T,
-    signalToUpdate: ReturnType<typeof signal<T | null>>
+    signalToUpdate: WritableSignal<T | null>
   ): void {
     const control = this.opFormGroup().get(controlName);
     if (!control) return;
@@ -434,7 +414,6 @@ export class OperationConfigComponent {
     if (control.value !== value) {
       control.setValue(value, { emitEvent: false });
     }
-    // Always sync signal manually when bypassing events
     signalToUpdate.set(value);
   }
 

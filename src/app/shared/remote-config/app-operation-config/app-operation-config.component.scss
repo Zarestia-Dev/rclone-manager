@@ -45,18 +45,13 @@
 }
 
 .path-prefix {
+  // Mount variants (locked, no dropdown)
   &.mount-local,
   &.mount-remote,
   mat-select-trigger {
     display: flex;
     align-items: center;
     gap: var(--space-xxs);
-  }
-
-  // Mount variants (locked, no dropdown)
-  &.mount-local,
-  &.mount-remote,
-  mat-select-trigger {
     padding: 19.4px;
   }
 

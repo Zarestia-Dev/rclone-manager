@@ -31,8 +31,7 @@
               <small class="option-description">{{ remote.value }}</small>
             </div>
           </mat-option>
-        }
-        @if (filteredRemotes().length === 0) {
+        } @empty {
           <mat-option disabled>{{ 'wizards.remoteConfig.noMatchingTypes' | translate }}</mat-option>
         }
       </mat-autocomplete>
@@ -52,21 +51,19 @@
             [placeholder]="'wizards.remoteConfig.remoteNamePlaceholder' | translate"
           />
           @if (form().get('name')?.hasError('required')) {
-            <mat-error>
-              {{ 'wizards.remoteConfig.remoteNameRequired' | translate }}
-            </mat-error>
+            <mat-error>{{ 'wizards.remoteConfig.remoteNameRequired' | translate }}</mat-error>
           }
           @if (form().get('name')?.hasError('invalidChars')) {
-            <mat-error> {{ 'wizards.remoteConfig.invalidChars' | translate }} </mat-error>
+            <mat-error>{{ 'wizards.remoteConfig.invalidChars' | translate }}</mat-error>
           }
           @if (form().get('name')?.hasError('invalidStart')) {
-            <mat-error> {{ 'wizards.remoteConfig.invalidStart' | translate }} </mat-error>
+            <mat-error>{{ 'wizards.remoteConfig.invalidStart' | translate }}</mat-error>
           }
           @if (form().get('name')?.hasError('invalidEnd')) {
-            <mat-error> {{ 'wizards.remoteConfig.invalidEnd' | translate }} </mat-error>
+            <mat-error>{{ 'wizards.remoteConfig.invalidEnd' | translate }}</mat-error>
           }
           @if (form().get('name')?.hasError('nameTaken')) {
-            <mat-error> {{ 'wizards.remoteConfig.nameTaken' | translate }} </mat-error>
+            <mat-error>{{ 'wizards.remoteConfig.nameTaken' | translate }}</mat-error>
           }
         </mat-form-field>
       }
@@ -75,9 +72,7 @@
         <div class="interactive-option">
           <div class="option-info">
             <span class="option-title">{{ 'wizards.remoteConfig.showAdvanced' | translate }}</span>
-            <p class="option-desc">
-              {{ 'wizards.remoteConfig.showAdvancedDesc' | translate }}
-            </p>
+            <p class="option-desc">{{ 'wizards.remoteConfig.showAdvancedDesc' | translate }}</p>
           </div>
           <mat-slide-toggle (change)="toggleAdvancedOptions()" [checked]="showAdvancedOptions()">
           </mat-slide-toggle>
@@ -90,9 +85,7 @@
             <span class="option-title">{{
               'wizards.remoteConfig.useInteractive' | translate
             }}</span>
-            <p class="option-desc">
-              {{ 'wizards.remoteConfig.useInteractiveDesc' | translate }}
-            </p>
+            <p class="option-desc">{{ 'wizards.remoteConfig.useInteractiveDesc' | translate }}</p>
           </div>
           <mat-slide-toggle (change)="toggleInteractiveMode()" [checked]="useInteractiveMode()">
           </mat-slide-toggle>

@@ -2794,7 +2794,8 @@
     },
     "errors": {
       "passwordRequired": "Password is required",
-      "mountPluginInstallFailed": "Plugin installation failed: {{error}}"
+      "mountPluginInstallFailed": "Plugin installation failed: {{error}}",
+      "rcloneInstallFailed": "Rclone installation failed: {{error}}"
     },
     "configTabs": {
       "default": "Default",

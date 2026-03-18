@@ -14,7 +14,14 @@ export class InstallationService extends TauriBaseService {
    * @param path Optional custom installation path. If null, uses default location
    */
   async installRclone(path?: string | null): Promise<string> {
-    return this.invokeCommand<string>('provision_rclone', { path });
+    return this.invokeWithNotification<string>(
+      'provision_rclone',
+      { path },
+      {
+        errorKey: 'repairSheet.errors.rcloneInstallFailed',
+        errorParams: { errorKey: 'repairSheet.errors.rcloneInstallFailed' },
+      }
+    );
   }
 
   /**
@@ -36,6 +43,11 @@ export class InstallationService extends TauriBaseService {
     } catch (error) {
       console.error('Error checking mount plugin installation:', error);
 
+      const translatedError = this.backendTranslation.translateBackendMessage(error);
+      this.notificationService.showError(
+        `${this.translate.instant('repairSheet.messages.mountPluginStatusError')}: ${translatedError}`
+      );
+
       // If this is a retry attempt, don't retry again
       if (retryCount > 0) {
         throw error;
@@ -50,6 +62,9 @@ export class InstallationService extends TauriBaseService {
    * Install the mount plugin
    */
   async installMountPlugin(): Promise<string> {
-    return this.invokeCommand<string>('install_mount_plugin');
+    return this.invokeWithNotification<string>('install_mount_plugin', undefined, {
+      errorKey: 'repairSheet.errors.mountPluginInstallFailed',
+      errorParams: { errorKey: 'repairSheet.errors.mountPluginInstallFailed' },
+    });
   }
 }

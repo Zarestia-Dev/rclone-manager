@@ -7,7 +7,7 @@
       <button
         type="button"
         class="option-tab"
-        [class.active]="installLocation === tab.key"
+        [class.active]="installLocation() === tab.key"
         (click)="setLocation(tab.key)"
         [disabled]="disabled()"
       >
@@ -18,7 +18,7 @@
   </div>
 
   <div class="option-content">
-    @switch (installLocation) {
+    @switch (installLocation()) {
       @case ('default') {
         <div class="option-info">
           <p>
@@ -92,20 +92,20 @@
           </mat-form-field>
 
           @if (existingBinaryControl.value?.trim()) {
-            <div class="binary-status" [class]="binaryTestResult">
+            <div class="binary-status" [class]="binaryTestResult()">
               <mat-icon
-                [svgIcon]="getStatusIcon()"
-                [class.animate-spin]="binaryTestResult === 'testing'"
+                [svgIcon]="statusIcon()"
+                [class.animate-spin]="binaryTestResult() === 'testing'"
               ></mat-icon>
-              <span>{{ getStatusText() }}</span>
-              @if (binaryTestResult !== 'valid') {
+              <span>{{ statusText() }}</span>
+              @if (binaryTestResult() !== 'valid') {
                 <button
                   matButton="outlined"
                   (click)="testBinary()"
-                  [disabled]="disabled() || binaryTestResult === 'testing'"
+                  [disabled]="disabled() || binaryTestResult() === 'testing'"
                 >
                   {{
-                    binaryTestResult === 'testing'
+                    binaryTestResult() === 'testing'
                       ? ('shared.installationOptions.testingAction' | translate)
                       : ('shared.installationOptions.test' | translate)
                   }}

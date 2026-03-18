@@ -58,7 +58,12 @@ import {
   TransferActivityPanelComponent,
 } from '../../../../shared/detail-shared';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
-import { IconService, SystemInfoService, JobManagementService } from '@app/services';
+import {
+  IconService,
+  SystemInfoService,
+  JobManagementService,
+  NotificationService,
+} from '@app/services';
 import { toString as cronstrue } from 'cronstrue';
 import { VfsControlPanelComponent } from '../../../../shared/detail-shared/vfs-control/vfs-control-panel.component';
 import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
@@ -122,6 +127,7 @@ export class AppDetailComponent {
   // --- Services ---
   private readonly jobService = inject(JobManagementService);
   readonly iconService = inject(IconService);
+  private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
   private readonly langChange = signal<unknown | null>(null);
   private readonly formatFileSize = new FormatFileSizePipe();
@@ -760,14 +766,6 @@ export class AppDetailComponent {
     const name = this.selectedRemote().name;
     if (name) {
       this.openInFiles.emit({ remoteName: name, path });
-    }
-  }
-
-  async onCopyToClipboard(event: { text: string; message: string }): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(event.text);
-    } catch (err) {
-      console.error('Failed to copy to clipboard:', err);
     }
   }
 

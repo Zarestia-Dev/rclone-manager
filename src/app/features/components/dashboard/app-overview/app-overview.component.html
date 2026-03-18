@@ -50,7 +50,6 @@
                 [serve]="serve"
                 [showRemoteName]="true"
                 (stopServe)="stopJob.emit(buildServeStopEvent($event))"
-                (copyToClipboard)="handleCopyToClipboard($event)"
                 (cardClick)="handleServeCardClick($event)"
               />
             }

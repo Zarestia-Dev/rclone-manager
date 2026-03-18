@@ -158,4 +158,5 @@ export const BASE_ICONS: Record<string, string> = {
   mailru: 'assets/icons/remotes/mailru.svg',
   pikpak: 'assets/icons/remotes/pikpak.svg',
   swift: 'assets/icons/remotes/swift.svg',
+  crypt: 'assets/icons/remotes/crypt.svg',
 };

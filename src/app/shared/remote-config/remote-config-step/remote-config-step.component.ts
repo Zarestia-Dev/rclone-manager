@@ -9,20 +9,19 @@ import {
   inject,
   ChangeDetectionStrategy,
 } from '@angular/core';
-
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { startWith } from 'rxjs';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { RcConfigOption, RemoteType, RemoteConfigStepVisibility } from '@app/types';
-import { SettingControlComponent } from 'src/app/shared/components';
-import { startWith } from 'rxjs/operators';
-import { TranslateModule } from '@ngx-translate/core';
 import { MatIcon } from '@angular/material/icon';
+import { TranslateModule } from '@ngx-translate/core';
+import { RcConfigOption, RemoteType, RemoteConfigStepVisibility } from '@app/types';
 import { IconService } from '@app/services';
+import { SettingControlComponent } from 'src/app/shared/components';
 
 @Component({
   selector: 'app-remote-config-step',
@@ -42,46 +41,48 @@ import { IconService } from '@app/services';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RemoteConfigStepComponent {
+  readonly iconService = inject(IconService);
+
   // --- Signal Inputs ---
-  form = input.required<FormGroup>();
-  remoteFields = input<RcConfigOption[]>([]);
-  isLoading = input(false);
-  existingRemotes = input<string[]>([]);
-  isTypeLocked = input(false);
-  useInteractiveMode = input(false);
-  remoteTypes = input<RemoteType[]>([]);
-  visibility = input<RemoteConfigStepVisibility>({});
-  showTypeField = computed(() => this.visibility().type ?? true);
-  showAdvancedToggle = computed(() => this.visibility().advanced ?? true);
-  showNameField = computed(() => this.visibility().name ?? true);
-  showInteractiveToggle = computed(() => this.visibility().interactive ?? true);
-  searchQuery = input('');
+  readonly form = input.required<FormGroup>();
+  readonly remoteFields = input<RcConfigOption[]>([]);
+  readonly isLoading = input(false);
+  readonly existingRemotes = input<string[]>([]);
+  readonly isTypeLocked = input(false);
+  readonly useInteractiveMode = input(false);
+  readonly remoteTypes = input<RemoteType[]>([]);
+  readonly visibility = input<RemoteConfigStepVisibility>({});
+  readonly showAdvancedOptions = input(false);
+  readonly searchQuery = input('');
 
   // --- Signal Outputs ---
-  remoteTypeChanged = output<void>();
-  interactiveModeToggled = output<boolean>();
-  advancedOptionsToggled = output<boolean>();
-  fieldChanged = output<{ fieldName: string; isChanged: boolean }>();
+  readonly remoteTypeChanged = output<void>();
+  readonly interactiveModeToggled = output<boolean>();
+  readonly advancedOptionsToggled = output<boolean>();
+  readonly fieldChanged = output<{ fieldName: string; isChanged: boolean }>();
+
+  // --- Visibility Computed ---
+  readonly showTypeField = computed(() => this.visibility().type ?? true);
+  readonly showAdvancedToggle = computed(() => this.visibility().advanced ?? true);
+  readonly showNameField = computed(() => this.visibility().name ?? true);
+  readonly showInteractiveToggle = computed(() => this.visibility().interactive ?? true);
 
   // --- Local Form Controls ---
-  remoteSearchCtrl = new FormControl('');
-  providerSearchCtrl = new FormControl('');
+  readonly remoteSearchCtrl = new FormControl('');
+  readonly providerSearchCtrl = new FormControl('');
 
   // --- Local Signals ---
-  showAdvancedOptions = input(false);
-  selectedProvider = signal<string | undefined>(undefined);
+  readonly selectedProvider = signal<string | undefined>(undefined);
 
-  private remoteSearchTerm = toSignal(this.remoteSearchCtrl.valueChanges, {
+  private readonly remoteSearchTerm = toSignal(this.remoteSearchCtrl.valueChanges, {
     initialValue: this.remoteSearchCtrl.value ?? '',
   });
-  private providerSearchTerm = toSignal(this.providerSearchCtrl.valueChanges, {
+  private readonly providerSearchTerm = toSignal(this.providerSearchCtrl.valueChanges, {
     initialValue: this.providerSearchCtrl.value ?? '',
   });
 
-  readonly iconService = inject(IconService);
-
   constructor() {
-    // Sync Provider control value -> Signal mapping
+    // Sync provider control value → selectedProvider signal
     effect(onCleanup => {
       const fieldDef = this.providerField();
       if (!fieldDef) return;
@@ -89,55 +90,50 @@ export class RemoteConfigStepComponent {
       const control = this.form().get(fieldDef.Name);
       if (!control) return;
 
-      // Manually subscribe since the control instance can change
       const sub = control.valueChanges.pipe(startWith(control.value)).subscribe(val => {
         const oldVal = untracked(this.selectedProvider);
-        if (val !== oldVal) {
-          untracked(() => {
-            this.selectedProvider.set(val);
-            if (oldVal) {
-              this.clearProviderDependentFields(this.remoteFields(), this.form(), val);
-            }
-            // Sync search control
-            if (val !== this.providerSearchCtrl.value) {
-              this.providerSearchCtrl.setValue(val, { emitEvent: false });
-            }
-          });
-        }
-      });
+        if (val === oldVal) return;
 
-      onCleanup(() => sub.unsubscribe());
-    });
-
-    // Sync Type control value -> local search control
-    effect(onCleanup => {
-      const typeControl = this.form().get('type');
-      if (!typeControl) return;
-
-      const sub = typeControl.valueChanges.pipe(startWith(typeControl.value)).subscribe(val => {
-        this.remoteSearchCtrl.setValue(this.displayRemote(val), {
-          emitEvent: false,
+        untracked(() => {
+          this.selectedProvider.set(val);
+          if (oldVal) {
+            this.clearProviderDependentFields(this.remoteFields(), this.form(), val);
+          }
+          if (val !== this.providerSearchCtrl.value) {
+            this.providerSearchCtrl.setValue(val, { emitEvent: false });
+          }
         });
       });
 
       onCleanup(() => sub.unsubscribe());
     });
 
-    effect(() => {
-      const isLocked = this.isTypeLocked();
-      untracked(() => {
-        if (isLocked) {
-          this.remoteSearchCtrl.disable({ emitEvent: false });
-        } else {
-          this.remoteSearchCtrl.enable({ emitEvent: false });
-        }
+    // Sync type control value → remote search control
+    effect(onCleanup => {
+      const typeControl = this.form().get('type');
+      if (!typeControl) return;
+
+      const sub = typeControl.valueChanges.pipe(startWith(typeControl.value)).subscribe(val => {
+        this.remoteSearchCtrl.setValue(this.displayRemote(val), { emitEvent: false });
       });
+
+      onCleanup(() => sub.unsubscribe());
+    });
+
+    // Lock/unlock remote type search control
+    effect(() => {
+      if (this.isTypeLocked()) {
+        this.remoteSearchCtrl.disable({ emitEvent: false });
+      } else {
+        this.remoteSearchCtrl.enable({ emitEvent: false });
+      }
     });
   }
 
   // --- Computed State ---
+
   /** Filtered list of remotes based on search term */
-  filteredRemotes = computed(() => {
+  readonly filteredRemotes = computed(() => {
     const types = this.remoteTypes();
     const term = (this.remoteSearchTerm() || '').toLowerCase();
     return types.filter(
@@ -146,22 +142,27 @@ export class RemoteConfigStepComponent {
     );
   });
 
-  /** The identified provider field configuration */
-  providerField = computed(() => {
+  /**
+   * The identified provider field — first checks for a field named 'provider' with examples,
+   * then falls back to any field with examples where provider-scoped fields exist.
+   */
+  readonly providerField = computed(() => {
     const fields = this.remoteFields();
-    let f = fields.find(f => f.Name === 'provider' && f.Examples && f.Examples.length > 0);
-    if (!f) {
-      f = fields.find(
-        x => x.Examples && x.Examples.length > 0 && fields.some(other => other.Provider)
-      );
-    }
-    return f || null;
+    const byName = fields.find(
+      field => field.Name === 'provider' && field.Examples && field.Examples.length > 0
+    );
+    if (byName) return byName;
+
+    const hasProviderScoped = fields.some(field => field.Provider);
+    if (!hasProviderScoped) return null;
+
+    return fields.find(field => field.Examples && field.Examples.length > 0) ?? null;
   });
 
   /** Filtered provider examples */
-  filteredProviders = computed(() => {
+  readonly filteredProviders = computed(() => {
     const field = this.providerField();
-    if (!field || !field.Examples) return [];
+    if (!field?.Examples) return [];
 
     const term = (this.providerSearchTerm() || '').toLowerCase();
     return field.Examples.filter(
@@ -171,16 +172,9 @@ export class RemoteConfigStepComponent {
     );
   });
 
-  basicFields = computed(() => {
-    return this.getFieldsByAdvanced(false);
-  });
-
-  /** Advanced config fields, filtered by selected provider and search query */
-  advancedFields = computed(() => {
-    return this.getFieldsByAdvanced(true);
-  });
-
-  providerReady = computed(() => !this.providerField() || !!this.selectedProvider());
+  readonly basicFields = computed(() => this.getFieldsByAdvanced(false));
+  readonly advancedFields = computed(() => this.getFieldsByAdvanced(true));
+  readonly providerReady = computed(() => !this.providerField() || !!this.selectedProvider());
 
   // --- Logic Helpers ---
 
@@ -193,9 +187,7 @@ export class RemoteConfigStepComponent {
   }
 
   private getFilteredField(field: RcConfigOption, provider?: string): RcConfigOption {
-    if (!field.Examples || field.Examples.length === 0 || !provider) {
-      return field;
-    }
+    if (!field.Examples || field.Examples.length === 0 || !provider) return field;
     const filteredExamples = field.Examples.filter(ex =>
       this.matchesProviderRule(ex.Provider, provider)
     );
@@ -234,7 +226,6 @@ export class RemoteConfigStepComponent {
       if (field.Provider && !this.matchesProviderRule(field.Provider, newProvider)) {
         form.get(field.Name)?.setValue(null);
       }
-
       if (field.Examples && field.Examples.length > 0) {
         const control = form.get(field.Name);
         const currentValue = control?.value;
@@ -260,10 +251,7 @@ export class RemoteConfigStepComponent {
 
   private generateRemoteName(remoteType: string): void {
     const nameControl = this.form().get('name');
-    // Only auto-generate if the field is empty or hasn't been manually edited
-    if (!nameControl || (nameControl.value && nameControl.dirty)) {
-      return;
-    }
+    if (!nameControl || (nameControl.value && nameControl.dirty)) return;
 
     const baseName = remoteType.replace(/\s+/g, '');
     const existingNames = new Set(this.existingRemotes());
@@ -278,32 +266,28 @@ export class RemoteConfigStepComponent {
     nameControl.setValue(newName, { emitEvent: true });
     nameControl.updateValueAndValidity({ emitEvent: false });
 
-    // If auto-generated value still fails validation, show the reason immediately.
     if (nameControl.invalid) {
       nameControl.markAsTouched();
     }
   }
 
-  displayRemote = (remoteValue: string): string => {
+  readonly displayRemote = (remoteValue: string): string => {
     if (!remoteValue) return '';
     return this.remoteTypes().find(t => t.value === remoteValue)?.label || remoteValue;
   };
 
-  displayProvider = (value: string): string => {
+  readonly displayProvider = (value: string): string => {
     const field = this.providerField();
     if (!field?.Examples) return value;
-    const option = field.Examples.find(o => o.Value === value);
-    return option ? option.Help : value;
+    return field.Examples.find(o => o.Value === value)?.Help ?? value;
   };
 
   toggleAdvancedOptions(): void {
-    const newValue = !this.showAdvancedOptions();
-    this.advancedOptionsToggled.emit(newValue);
+    this.advancedOptionsToggled.emit(!this.showAdvancedOptions());
   }
 
   toggleInteractiveMode(): void {
-    const newValue = !this.useInteractiveMode();
-    this.interactiveModeToggled.emit(newValue);
+    this.interactiveModeToggled.emit(!this.useInteractiveMode());
   }
 
   onProviderSelected(value: string): void {

@@ -26,14 +26,6 @@ export class RcloneValueMapperService {
       case 'FileMode':
         return this.fileModeToString(value as number | string, fallback);
 
-      case 'decimal number':
-      case 'hexadecimal':
-      case 'octal, unix style':
-      case 'RFC 3339':
-      case 'ISO 8601':
-      case 'mtime|atime|btime|ctime':
-        return String(value);
-
       default:
         return String(value);
     }

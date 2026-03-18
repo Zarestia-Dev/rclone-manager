@@ -37,16 +37,9 @@
           display: flex;
           align-items: center;
           justify-content: center;
-          width: var(--icon-size-lg);
-          height: var(--icon-size-lg);
+          padding: var(--space-xs);
           border-radius: var(--button-border-radius);
           transition: all 0.3s ease;
-
-          mat-icon {
-            width: 20px;
-            height: 20px;
-            font-size: 20px;
-          }
         }
 
         .step-label-animated {
@@ -117,7 +110,7 @@
         box-shadow: none !important;
         border-bottom: 1px solid var(--border-color);
 
-        mat-expansion-panel-header {
+        ::ng-deep mat-expansion-panel-header {
           min-height: 56px;
         }
 

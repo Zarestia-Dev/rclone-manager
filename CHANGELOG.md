@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+### Added
+- **Language**: Added Simplified Chinese language support. (Thanks to @why25!)
+
 ## [v0.2.3] - 2026-03-17
 
 ### Warning

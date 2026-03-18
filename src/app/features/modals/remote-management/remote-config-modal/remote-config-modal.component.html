@@ -12,14 +12,15 @@
       <mat-icon svgIcon="search"></mat-icon>
     </button>
     <p data-tauri-drag-region>
+      @let target = editTarget();
       {{
-        editTarget()
-          ? ('modals.remoteConfig.title.edit' | translate: { target: editTarget() | titlecase })
+        target
+          ? ('modals.remoteConfig.title.edit' | translate: { target: target | titlecase })
           : ('modals.remoteConfig.title.add' | translate)
       }}
     </p>
     <button
-      matIconButton
+      mat-icon-button
       (click)="close()"
       [attr.aria-label]="'common.close' | translate"
       [attr.title]="'common.close' | translate"
@@ -37,7 +38,7 @@
     [ariaLabel]="'shared.search.ariaLabel'"
   ></app-search-container>
 
-  <!-- Step Progress Indicator (Only shown during multi-step create flow) -->
+  <!-- Step Progress Indicator (only shown during multi-step create flow) -->
   @if (!interactiveFlowState().isActive && !editTarget()) {
     <div class="step-indicator-container">
       <div
@@ -45,10 +46,11 @@
         role="tablist"
         [attr.aria-label]="'modals.remoteConfig.aria.stepIndicator' | translate"
       >
-        @for (step of stepLabels; track step; let i = $index) {
+        @for (step of stepLabels(); track step; let i = $index) {
+          @let stepState = getStepState(i + 1);
           <button
             class="step"
-            [ngClass]="getStepState(i + 1)"
+            [ngClass]="stepState"
             [class.clickable]="editTarget()"
             (click)="goToStep(i + 1)"
             [attr.tabindex]="editTarget() ? '0' : '-1'"
@@ -57,13 +59,13 @@
             [attr.aria-selected]="currentStep() === i + 1"
           >
             <div class="step-number">
-              @if (getStepState(i + 1) === 'completed') {
+              @if (stepState === 'completed') {
                 <mat-icon svgIcon="circle-check"></mat-icon>
               } @else {
-                <mat-icon [svgIcon]="stepIcons()[i]"></mat-icon>
+                <mat-icon [svgIcon]="stepConfigs()[i].icon"></mat-icon>
               }
             </div>
-            @if (getStepState(i + 1) === 'current') {
+            @if (stepState === 'current') {
               <span class="step-label-animated">{{ step | translate }}</span>
             }
           </button>
@@ -258,7 +260,7 @@
             <app-remote-config-step
               class="step"
               [form]="remoteForm"
-              [remoteFields]="dynamicRemoteFields"
+              [remoteFields]="dynamicRemoteFields()"
               [remoteTypes]="remoteTypes()"
               [isLoading]="isRemoteConfigLoading()"
               [existingRemotes]="existingRemotes()"
@@ -267,14 +269,14 @@
               [searchQuery]="searchQuery()"
               [showAdvancedOptions]="showAdvancedOptions()"
               (remoteTypeChanged)="onRemoteTypeChange()"
-              (interactiveModeToggled)="onInteractiveModeToggled($event)"
-              (advancedOptionsToggled)="onAdvancedOptionsToggled($event)"
+              (interactiveModeToggled)="useInteractiveMode.set($event)"
+              (advancedOptionsToggled)="showAdvancedOptions.set($event)"
               (fieldChanged)="onRemoteFieldChanged($event.fieldName, $event.isChanged)"
             />
           </section>
         }
 
-        <!-- Steps 2 to 10: Flags and Serve -->
+        <!-- Steps 2–10: Flag and Serve configs -->
         @default {
           @if (currentStep() < TOTAL_STEPS) {
             @let flagType = FLAG_TYPES[currentStep() - 2];
@@ -302,7 +304,7 @@
                 [flagType]="flagType"
                 [existingRemotes]="existingRemotes()"
                 [dynamicFlagFields]="
-                  flagType === 'serve' ? dynamicServeFields : dynamicFlagFields[flagType]
+                  flagType === 'serve' ? dynamicServeFields() : dynamicFlagFields()[flagType]
                 "
                 [mountTypes]="mountTypes()"
                 [currentRemoteName]="getRemoteName()"
@@ -326,7 +328,7 @@
               <app-remote-config-step
                 class="step"
                 [form]="$any(remoteConfigForm.get('runtimeRemoteConfig'))"
-                [remoteFields]="dynamicRuntimeRemoteFields"
+                [remoteFields]="dynamicRuntimeRemoteFields()"
                 [remoteTypes]="remoteTypes()"
                 [isLoading]="isLoadingRuntimeRemoteFields()"
                 [existingRemotes]="existingRemotes()"
@@ -363,9 +365,9 @@
       }
     </div>
 
-    <!-- Center/Right Side: Action Buttons -->
+    <!-- Right Side: Action Buttons -->
     <div class="button-container-inner">
-      <!-- Cancel Button (During Auth or Interactive Flow) -->
+      <!-- Cancel Button (during auth or interactive flow) -->
       @if ((isAuthInProgress() && !isAuthCancelled()) || interactiveFlowState().isActive) {
         <button
           matButton="filled"
@@ -383,7 +385,7 @@
         </button>
       }
 
-      <!-- Cleanup Status (Shows when auth is cancelled) -->
+      <!-- Cleanup Status (shown when auth is cancelled) -->
       @if (isAuthCancelled()) {
         <span class="cleanup-status" aria-live="polite">
           {{ 'modals.remoteConfig.buttons.cleanup' | translate }}
@@ -391,7 +393,7 @@
         </span>
       }
 
-      <!-- Save Button (Shown on step > 1 in create mode, or in edit mode) -->
+      <!-- Save Button (step > 1 in create mode, or edit mode) -->
       @if (
         ((currentStep() > 1 && !editTarget()) || editTarget()) && !interactiveFlowState().isActive
       ) {
@@ -402,30 +404,25 @@
           animate.enter="fade-in-out-enter"
           animate.leave="fade-in-out-leave"
           aria-live="polite"
-          [attr.aria-label]="
-            editTarget()
-              ? ('modals.remoteConfig.buttons.saveChanges' | translate)
-              : ('modals.remoteConfig.buttons.saveConfig' | translate)
-          "
-          [attr.title]="
-            editTarget()
-              ? ('modals.remoteConfig.buttons.saveChanges' | translate)
-              : ('modals.remoteConfig.buttons.saveConfig' | translate)
-          "
+          [attr.aria-label]="saveButtonLabel() | translate"
+          [attr.title]="saveButtonLabel() | translate"
         >
-          <!-- Loading State -->
           @if (isAuthInProgress() && !isAuthCancelled()) {
             <div class="saving-overlay" aria-hidden="true">
               <mat-spinner diameter="16"></mat-spinner>
             </div>
           }
-
-          <!-- Button Label -->
           <span>{{ saveButtonLabel() | translate }}</span>
         </button>
       }
 
+      <!-- Continue Button (during interactive flow) -->
       @if (interactiveFlowState().isActive) {
+        @let continueLabel =
+          (interactiveFlowState().isProcessing
+            ? 'modals.remoteConfig.buttons.processing'
+            : 'modals.remoteConfig.buttons.continue'
+          ) | translate;
         <button
           matButton="filled"
           (click)="onInteractiveContinue(interactiveFlowState().answer)"
@@ -435,37 +432,20 @@
           animate.enter="fade-in-out-enter"
           animate.leave="fade-in-out-leave"
           aria-live="polite"
-          [attr.aria-label]="
-            (interactiveFlowState().isProcessing
-              ? 'modals.remoteConfig.buttons.processing'
-              : 'modals.remoteConfig.buttons.continue'
-            ) | translate
-          "
-          [attr.title]="
-            (interactiveFlowState().isProcessing
-              ? 'modals.remoteConfig.buttons.processing'
-              : 'modals.remoteConfig.buttons.continue'
-            ) | translate
-          "
+          [attr.aria-label]="continueLabel"
+          [attr.title]="continueLabel"
         >
           @if (interactiveFlowState().isProcessing && !isAuthCancelled()) {
             <div class="saving-overlay" aria-hidden="true">
               <mat-spinner diameter="16"></mat-spinner>
             </div>
           }
-          <span>{{
-            (interactiveFlowState().isProcessing
-              ? 'modals.remoteConfig.buttons.processing'
-              : 'modals.remoteConfig.buttons.continue'
-            ) | translate
-          }}</span>
+          <span>{{ continueLabel }}</span>
         </button>
       }
 
-      <!-- Next Button (Shown in create mode when not on last step) -->
-      @if (
-        currentStep() < currentTotalSteps() && !editTarget() && !interactiveFlowState().isActive
-      ) {
+      <!-- Next Button (create mode, not on last step) -->
+      @if (currentStep() < TOTAL_STEPS && !editTarget() && !interactiveFlowState().isActive) {
         <button
           matButton="filled"
           class="accent"

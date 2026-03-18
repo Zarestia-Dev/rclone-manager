@@ -8,10 +8,10 @@ import { REMOTE_NAME_REGEX } from '@app/types';
   providedIn: 'root',
 })
 export class ValidatorRegistryService {
-  private validators = new Map<string, ValidatorFn>();
-  private translate = inject(TranslateService);
-  private uiStateService = inject(UiStateService);
-  private regexCache = new Map<string, RegExp>();
+  private readonly validators = new Map<string, ValidatorFn>();
+  private readonly translate = inject(TranslateService);
+  private readonly uiStateService = inject(UiStateService);
+  private readonly regexCache = new Map<string, RegExp>();
 
   constructor() {
     this.registerBuiltinValidators();
@@ -409,9 +409,6 @@ export class ValidatorRegistryService {
     };
   }
 
-  /**
-   * Create a regex validator
-   */
   /**
    * Debug method to test validators from console
    * Usage: (window as any).validatorRegistry.testValidator('crossPlatformPath', '/invalid<>path')

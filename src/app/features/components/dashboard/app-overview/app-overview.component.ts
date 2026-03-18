@@ -137,12 +137,6 @@ export class AppOverviewComponent {
     }
   }
 
-  handleCopyToClipboard(data: { text: string; message: string }): Promise<void> {
-    return navigator.clipboard.writeText(data.text).catch(error => {
-      console.error('Error copying to clipboard:', error);
-    });
-  }
-
   handleServeCardClick(serve: ServeListItem): void {
     const remoteName = this.getServeRemoteName(serve);
     if (!remoteName) return;

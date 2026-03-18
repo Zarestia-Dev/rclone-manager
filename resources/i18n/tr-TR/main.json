@@ -2788,7 +2788,8 @@
     },
     "errors": {
       "passwordRequired": "Parola gerekli",
-      "mountPluginInstallFailed": "Eklenti kurulumu başarısız: {{error}}"
+      "mountPluginInstallFailed": "Eklenti kurulumu başarısız: {{error}}",
+      "rcloneInstallFailed": "Rclone kurulumu başarısız: {{error}}"
     },
     "configTabs": {
       "default": "Varsayılan",

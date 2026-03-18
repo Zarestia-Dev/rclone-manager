@@ -218,6 +218,11 @@ export class SettingControlComponent implements ControlValueAccessor {
       case 'bool':
         return option.Default === true || String(option.Default).toLowerCase() === 'true';
       case 'Bits':
+        // Combo Bits (e.g. 'read,write') are single-select strings, not split arrays.
+        if (this.isBitsWithCombos(option)) return option.DefaultStr ?? '';
+        // Bits with no examples are plain text inputs — default is the raw string.
+        if (!option.Examples?.length) return option.DefaultStr ?? '';
+        return this.splitToArray(option.DefaultStr, ',');
       case 'Encoding':
       case 'CommaSepList':
       case 'DumpFlags':
@@ -330,6 +335,19 @@ export class SettingControlComponent implements ControlValueAccessor {
     }
 
     if (this.COMMA_ARRAY_TYPES.includes(opt.Type)) {
+      // Bits with preset combination examples behave as single-select strings, not arrays.
+      if (this.isBitsWithCombos(opt)) {
+        return typeof value === 'string' ? value : opt.ValueStr || opt.DefaultStr || '';
+      }
+      // Bits with no examples are plain text inputs — store as string, no array splitting.
+      if (opt.Type === 'Bits' && !opt.Examples?.length) {
+        if (typeof value === 'number') return opt.ValueStr || opt.DefaultStr || '';
+        return typeof value === 'string' ? value : opt.ValueStr || opt.DefaultStr || '';
+      }
+      // rclone may return an integer bitmask — use ValueStr (always human-readable).
+      if (typeof value === 'number') {
+        return this.splitToArray(opt.ValueStr || opt.DefaultStr || '', ',');
+      }
       return typeof value === 'string'
         ? this.splitToArray(value, ',')
         : Array.isArray(value)
@@ -396,9 +414,13 @@ export class SettingControlComponent implements ControlValueAccessor {
       this.hasPendingWrite = false;
       this.pendingWriteValue = undefined;
     }
+
+    const ctrl = this.control();
+    if (ctrl) {
+      this.isValueChanged.set(!this.valuesEqual(ctrl.value, this.uiDefaultValue()));
+    }
   }
 
-  // FIX: keeps formArrayControls signal in sync so zoneless CD sees the update
   private syncFormArrayControls(ctrl: FormArray): void {
     this.formArrayControls.set([...ctrl.controls] as FormControl[]);
   }
@@ -413,9 +435,23 @@ export class SettingControlComponent implements ControlValueAccessor {
   private getInitialValue(opt: RcConfigOption): unknown {
     if (opt.Type === 'bool')
       return opt.Value === true || String(opt.Value).toLowerCase() === 'true';
+
     if (opt.Type === 'Encoding' || opt.Type === 'Bits') {
-      return (opt.Value || opt.DefaultStr || '').toString().split(',').filter(Boolean);
+      if (this.isBitsWithCombos(opt)) {
+        return opt.ValueStr || opt.DefaultStr || '';
+      }
+      if (opt.Type === 'Bits' && !opt.Examples?.length) {
+        return typeof opt.Value === 'number'
+          ? opt.ValueStr || opt.DefaultStr || ''
+          : (opt.Value || opt.ValueStr || opt.DefaultStr || '').toString();
+      }
+      const str =
+        typeof opt.Value === 'number'
+          ? opt.ValueStr || opt.DefaultStr || ''
+          : (opt.Value || opt.ValueStr || opt.DefaultStr || '').toString();
+      return this.splitToArray(str, ',');
     }
+
     if (this.CONVERTIBLE_TYPES.includes(opt.Type)) {
       return typeof opt.Value === 'number'
         ? this.valueMapper.machineToHuman(opt.Value, opt.Type, opt.ValueStr)
@@ -424,6 +460,12 @@ export class SettingControlComponent implements ControlValueAccessor {
     if (opt.Type === 'Tristate') return this.parseTristateValue(opt.Value ?? opt.ValueStr);
     return opt.ValueStr || opt.DefaultStr || '';
   }
+
+  private isBitsWithCombos(opt: RcConfigOption | null): boolean {
+    return opt?.Type === 'Bits' && !!opt.Examples?.some(ex => ex.Value.includes(','));
+  }
+
+  readonly hasBitsComboExamples = computed(() => this.isBitsWithCombos(this.mergedOption()));
 
   private subscribeToChanges(): void {
     const ctrl = this.control();
@@ -482,7 +524,12 @@ export class SettingControlComponent implements ControlValueAccessor {
   private parseTristateValue(v: unknown): boolean | null {
     if (v === null || v === undefined || v === '') return null;
     if (typeof v === 'boolean') return v;
+    if (typeof v === 'object' && 'Valid' in (v as object) && 'Value' in (v as object)) {
+      const obj = v as { Valid: boolean; Value: boolean };
+      return obj.Valid ? obj.Value : null;
+    }
     const s = String(v).toLowerCase();
+    if (s === 'unset' || s === '[object object]') return null;
     return s === 'true' ? true : s === 'false' ? false : null;
   }
 
@@ -612,7 +659,10 @@ export class SettingControlComponent implements ControlValueAccessor {
       BwTimetable: () => r.bwTimetableValidator(opt.DefaultStr),
       FileMode: () => r.fileModeValidator(opt.DefaultStr),
       Time: () => r.timeValidator(opt.DefaultStr),
-      Bits: () => r.arrayValidator(),
+      Bits: () =>
+        opt.Examples?.length && !this.isBitsWithCombos(opt)
+          ? r.arrayValidator()
+          : Validators.nullValidator,
       Encoding: () => r.arrayValidator(),
       Tristate: () => r.tristateValidator(),
     };

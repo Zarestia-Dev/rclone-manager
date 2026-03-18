@@ -11,8 +11,7 @@
       [title]="'onboarding.loadingTitle' | translate"
       [message]="'onboarding.loadingMessage' | translate"
       icon="refresh"
-    >
-    </app-loading-overlay>
+    ></app-loading-overlay>
   }
 
   <div class="card-container" [class.onboarding-state-enter]="animationState() === 'visible'">
@@ -27,6 +26,7 @@
         }
       </div>
     </div>
+
     <div class="content-area">
       <div class="card-content">
         <div class="icon-container">
@@ -36,49 +36,51 @@
           <h2 class="card-title">{{ currentCard().title | translate }}</h2>
           <p class="card-description">{{ currentCard().content | translate }}</p>
         </div>
-        @if (currentCard().key === 'selectConfig') {
-          <div class="form-section">
-            <app-installation-options
-              [mode]="'config'"
-              [disabled]="installing()"
-              [tabOptions]="[
-                { key: 'default', label: 'onboarding.options.default', icon: 'file' },
-                { key: 'custom', label: 'onboarding.options.custom', icon: 'folder' },
-              ]"
-              (dataChange)="onConfigOptionsChange($event)"
-              (validChange)="onConfigValidChange($event)"
-            ></app-installation-options>
-          </div>
-        }
-        @if (currentCard().key === 'passwordRequired') {
-          <div class="form-section">
-            <app-password-manager
-              [password]="configPassword()"
-              [hasError]="!!passwordValidationError()"
-              [storePassword]="true"
-              [isSubmitting]="isSubmittingPassword()"
-              [errorMessage]="passwordValidationError() || ''"
-              [showStoreOption]="false"
-              (passwordChange)="configPassword.set($event)"
-              (unlock)="submitConfigPassword()"
-            >
-            </app-password-manager>
-          </div>
-        }
-        @if (currentCard().key === 'installRclone' && !systemHealth.rcloneInstalled()) {
-          <div class="form-section">
-            <app-installation-options
-              [mode]="'install'"
-              [disabled]="installing()"
-              [tabOptions]="onboardingTabOptions"
-              (dataChange)="onInstallationOptionsChange($event)"
-              (validChange)="onInstallationValidChange($event)"
-            >
-            </app-installation-options>
-          </div>
+
+        @switch (currentCard().key) {
+          @case ('selectConfig') {
+            <div class="form-section">
+              <app-installation-options
+                [mode]="'config'"
+                [disabled]="installing()"
+                [tabOptions]="[
+                  { key: 'default', label: 'onboarding.options.default', icon: 'file' },
+                  { key: 'custom', label: 'onboarding.options.custom', icon: 'folder' },
+                ]"
+                (dataChange)="onConfigOptionsChange($event)"
+                (validChange)="onConfigValidChange($event)"
+              ></app-installation-options>
+            </div>
+          }
+          @case ('passwordRequired') {
+            <div class="form-section">
+              <app-password-manager
+                [password]="configPassword()"
+                [hasError]="!!passwordValidationError()"
+                [storePassword]="true"
+                [isSubmitting]="isSubmittingPassword()"
+                [errorMessage]="passwordValidationError() || ''"
+                [showStoreOption]="false"
+                (passwordChange)="configPassword.set($event)"
+                (unlock)="submitConfigPassword()"
+              ></app-password-manager>
+            </div>
+          }
+          @case ('installRclone') {
+            <div class="form-section">
+              <app-installation-options
+                [mode]="'install'"
+                [disabled]="installing()"
+                [tabOptions]="onboardingTabOptions"
+                (dataChange)="onInstallationOptionsChange($event)"
+                (validChange)="onInstallationValidChange($event)"
+              ></app-installation-options>
+            </div>
+          }
         }
       </div>
     </div>
+
     <div class="footer-navigation">
       <div>
         @if (currentCardIndex() > 0) {

@@ -327,15 +327,20 @@
         />
       }
       @case ('Bits') {
-        <ng-container
-          *ngTemplateOutlet="
-            multiSelect;
-            context: {
-              $implicit: mergedOption(),
-              optionsList: mergedOption()?.Examples || bitsFlags,
-            }
-          "
-        />
+        @if (hasBitsComboExamples()) {
+          <ng-container
+            *ngTemplateOutlet="standardSelect; context: { $implicit: mergedOption() }"
+          />
+        } @else if (mergedOption()?.Examples?.length) {
+          <ng-container
+            *ngTemplateOutlet="
+              multiSelect;
+              context: { $implicit: mergedOption(), optionsList: mergedOption()?.Examples }
+            "
+          />
+        } @else {
+          <ng-container *ngTemplateOutlet="standardInput; context: { $implicit: mergedOption() }" />
+        }
       }
       @case ('Encoding') {
         <ng-container
@@ -379,7 +384,13 @@
         <ng-container *ngTemplateOutlet="arrayInput; context: { $implicit: mergedOption() }" />
       }
       @default {
-        <ng-container *ngTemplateOutlet="standardInput; context: { $implicit: mergedOption() }" />
+        @if (mergedOption()?.Examples?.length) {
+          <ng-container
+            *ngTemplateOutlet="standardSelect; context: { $implicit: mergedOption() }"
+          />
+        } @else {
+          <ng-container *ngTemplateOutlet="standardInput; context: { $implicit: mergedOption() }" />
+        }
       }
     }
   </div>
