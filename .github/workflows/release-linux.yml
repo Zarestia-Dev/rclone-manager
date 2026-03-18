@@ -34,10 +34,30 @@ jobs:
         with:
           workspaces: "./src-tauri -> target"
 
-      - name: install dependencies (ubuntu only)
+      - name: Install linux dependencies
+        shell: bash
+        if: matrix.platform == 'ubuntu-22.04' || matrix.platform == 'ubuntu-22.04-arm'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils
+          sudo apt update;
+          sudo apt install -y \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libssl-dev \
+            libgtk-3-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            xdg-utils;
+
+          webkit_version='2.50.*'
+          sudo apt install -y \
+            libwebkit2gtk-4.1-0="$webkit_version" \
+            libwebkit2gtk-4.1-dev="$webkit_version" \
+            libjavascriptcoregtk-4.1-0="$webkit_version" \
+            libjavascriptcoregtk-4.1-dev="$webkit_version" \
+            gir1.2-javascriptcoregtk-4.1="$webkit_version" \
+            gir1.2-webkit2-4.1="$webkit_version";
 
       - name: Override linuxdeploy
         run: |
