@@ -1,0 +1,1150 @@
+{
+  "addr": {
+    "title": "地址",
+    "help": "服务器绑定的IP地址:端口 或 :端口"
+  },
+  "name": {
+    "title": "名称",
+    "help": "DLNA服务器名称"
+  },
+  "log_trace": {
+    "title": "日志追踪",
+    "help": "启用SOAP流量的追踪日志"
+  },
+  "interface": {
+    "title": "网络接口",
+    "help": "用于SSDP的网络接口（可重复指定）"
+  },
+  "announce_interval": {
+    "title": "公告间隔",
+    "help": "SSDP公告的发送间隔"
+  },
+  "delete_excluded": {
+    "title": "删除排除项",
+    "help": "删除目标端中被排除在同步范围外的文件"
+  },
+  "exclude_if_present": {
+    "title": "存在指定文件则排除",
+    "help": "若目录下存在指定文件名，则排除该目录"
+  },
+  "files_from": {
+    "title": "文件列表来源",
+    "help": "从文件读取源文件名称列表（使用-表示从标准输入读取）"
+  },
+  "files_from_raw": {
+    "title": "原始文件列表来源",
+    "help": "从文件读取源文件名称列表，不对行做任何处理（使用-表示从标准输入读取）"
+  },
+  "min_age": {
+    "title": "最小文件年龄",
+    "help": "仅传输超过该时长的文件，单位为秒，或带后缀 ms|s|m|h|d|w|M|y"
+  },
+  "max_age": {
+    "title": "最大文件年龄",
+    "help": "仅传输不到该时长的文件，单位为秒，或带后缀 ms|s|m|h|d|w|M|y"
+  },
+  "min_size": {
+    "title": "最小文件大小",
+    "help": "仅传输大于该大小的文件，单位为KiB，或带后缀 B|K|M|G|T|P"
+  },
+  "max_size": {
+    "title": "最大文件大小",
+    "help": "仅传输小于该大小的文件，单位为KiB，或带后缀 B|K|M|G|T|P"
+  },
+  "ignore_case": {
+    "title": "忽略大小写",
+    "help": "过滤规则中忽略大小写（大小写不敏感）"
+  },
+  "hash_filter": {
+    "title": "哈希过滤",
+    "help": "按哈希值 k/n 或随机 @/n 对文件名进行分区过滤"
+  },
+  "filter": {
+    "title": "过滤规则",
+    "help": "添加文件过滤规则"
+  },
+  "filter_from": {
+    "title": "过滤规则来源",
+    "help": "从文件读取文件过滤模式（使用-表示从标准输入读取）"
+  },
+  "exclude": {
+    "title": "排除规则",
+    "help": "排除匹配指定模式的文件"
+  },
+  "exclude_from": {
+    "title": "排除规则来源",
+    "help": "从文件读取文件排除模式（使用-表示从标准输入读取）"
+  },
+  "include": {
+    "title": "包含规则",
+    "help": "包含匹配指定模式的文件"
+  },
+  "include_from": {
+    "title": "包含规则来源",
+    "help": "从文件读取文件包含模式（使用-表示从标准输入读取）"
+  },
+  "metadata_filter": {
+    "title": "元数据过滤规则",
+    "help": "添加元数据过滤规则"
+  },
+  "metadata_filter_from": {
+    "title": "元数据过滤规则来源",
+    "help": "从文件读取元数据过滤模式（使用-表示从标准输入读取）"
+  },
+  "metadata_exclude": {
+    "title": "元数据排除规则",
+    "help": "排除匹配指定模式的元数据"
+  },
+  "metadata_exclude_from": {
+    "title": "元数据排除规则来源",
+    "help": "从文件读取元数据排除模式（使用-表示从标准输入读取）"
+  },
+  "metadata_include": {
+    "title": "元数据包含规则",
+    "help": "包含匹配指定模式的元数据"
+  },
+  "metadata_include_from": {
+    "title": "元数据包含规则来源",
+    "help": "从文件读取元数据包含模式（使用-表示从标准输入读取）"
+  },
+  "public_ip": {
+    "title": "公网IP",
+    "help": "为被动连接公告的公网IP地址"
+  },
+  "passive_port": {
+    "title": "被动端口",
+    "help": "使用的被动端口范围"
+  },
+  "user": {
+    "title": "用户名",
+    "help": "认证用用户名"
+  },
+  "pass": {
+    "title": "密码",
+    "help": "认证用密码"
+  },
+  "cert": {
+    "title": "证书",
+    "help": "TLS PEM密钥（证书和CA证书的拼接）"
+  },
+  "key": {
+    "title": "私钥",
+    "help": "TLS PEM私钥"
+  },
+  "server_read_timeout": {
+    "title": "服务器读取超时",
+    "help": "服务器读取数据的超时时间"
+  },
+  "server_write_timeout": {
+    "title": "服务器写入超时",
+    "help": "服务器写入数据的超时时间"
+  },
+  "max_header_bytes": {
+    "title": "最大请求头字节数",
+    "help": "请求头的最大大小"
+  },
+  "client_ca": {
+    "title": "客户端CA证书",
+    "help": "用于验证客户端的客户端证书颁发机构"
+  },
+  "baseurl": {
+    "title": "基础URL",
+    "help": "URL前缀 - 根路径留空"
+  },
+  "min_tls_version": {
+    "title": "最小TLS版本",
+    "help": "可接受的最低TLS版本"
+  },
+  "allow_origin": {
+    "title": "允许跨域源",
+    "help": "可执行跨域请求（CORS）的源地址"
+  },
+  "htpasswd": {
+    "title": "Htpasswd文件",
+    "help": "htpasswd认证文件 - 未提供则不进行认证"
+  },
+  "realm": {
+    "title": "认证域",
+    "help": "认证用的域名称"
+  },
+  "salt": {
+    "title": "密码盐值",
+    "help": "密码哈希盐值"
+  },
+  "user_from_header": {
+    "title": "从请求头获取用户名",
+    "help": "从指定HTTP请求头获取用户名"
+  },
+  "template": {
+    "title": "模板",
+    "help": "用户指定的模板"
+  },
+  "log_file": {
+    "title": "日志文件",
+    "help": "将所有日志输出到该文件"
+  },
+  "log_file_max_size": {
+    "title": "日志文件最大大小",
+    "help": "日志文件轮换前的最大大小（例如\"10M\"）"
+  },
+  "log_file_max_backups": {
+    "title": "日志文件最大备份数",
+    "help": "保留的旧日志文件最大数量"
+  },
+  "log_file_max_age": {
+    "title": "日志文件最大保留时长",
+    "help": "保留旧日志文件的最长时间（例如\"7d\"）"
+  },
+  "log_file_compress": {
+    "title": "压缩日志文件",
+    "help": "若启用，使用gzip压缩轮换后的日志文件"
+  },
+  "log_format": {
+    "title": "日志格式",
+    "help": "日志格式选项的逗号分隔列表"
+  },
+  "syslog": {
+    "title": "系统日志",
+    "help": "使用系统日志（Syslog）记录日志"
+  },
+  "syslog_facility": {
+    "title": "系统日志设施",
+    "help": "系统日志的设施类型，例如KERN、USER"
+  },
+  "log_systemd": {
+    "title": "Systemd日志集成",
+    "help": "为日志器启用systemd集成"
+  },
+  "windows_event_log_level": {
+    "title": "Windows事件日志级别",
+    "help": "Windows事件日志级别 DEBUG|INFO|NOTICE|ERROR|OFF"
+  },
+  "modify_window": {
+    "title": "修改时间窗口",
+    "help": "被视为相同文件的最大时间差值"
+  },
+  "checkers": {
+    "title": "检查器数量",
+    "help": "并行运行的检查器数量"
+  },
+  "transfers": {
+    "title": "传输任务数",
+    "help": "并行运行的文件传输任务数量"
+  },
+  "checksum": {
+    "title": "校验和校验",
+    "help": "通过大小和校验和检查文件变化（若可用，否则仅用大小）"
+  },
+  "size_only": {
+    "title": "仅按大小校验",
+    "help": "仅根据大小跳过文件，忽略修改时间或校验和"
+  },
+  "ignore_times": {
+    "title": "忽略时间",
+    "help": "不跳过大小和时间匹配的文件 - 无条件传输所有文件"
+  },
+  "ignore_existing": {
+    "title": "忽略已存在文件",
+    "help": "跳过所有目标端已存在的文件"
+  },
+  "ignore_errors": {
+    "title": "忽略错误",
+    "help": "即使出现I/O错误也继续删除操作"
+  },
+  "dry_run": {
+    "title": "模拟运行",
+    "help": "试运行，不进行永久性修改"
+  },
+  "interactive": {
+    "title": "交互模式",
+    "help": "启用交互模式"
+  },
+  "links": {
+    "title": "符号链接转换",
+    "help": "将符号链接转换为/从带.rclonelink扩展名的普通文件"
+  },
+  "contimeout": {
+    "title": "连接超时",
+    "help": "连接超时时间"
+  },
+  "timeout": {
+    "title": "IO超时",
+    "help": "IO空闲超时时间"
+  },
+  "expect_continue_timeout": {
+    "title": "Expect Continue超时",
+    "help": "HTTP中使用expect/100-continue的超时时间"
+  },
+  "no_check_certificate": {
+    "title": "不检查证书",
+    "help": "不验证服务器SSL证书（不安全）"
+  },
+  "ask_password": {
+    "title": "询问密码",
+    "help": "允许为加密配置提示输入密码"
+  },
+  "password_command": {
+    "title": "密码命令",
+    "help": "为加密配置提供密码的命令"
+  },
+  "max_delete": {
+    "title": "最大删除数",
+    "help": "同步时限制删除文件的数量"
+  },
+  "max_delete_size": {
+    "title": "最大删除大小",
+    "help": "同步时限制删除文件的总大小"
+  },
+  "track_renames": {
+    "title": "追踪重命名",
+    "help": "同步时追踪文件重命名，尽可能在服务端执行移动操作"
+  },
+  "track_renames_strategy": {
+    "title": "重命名追踪策略",
+    "help": "使用track-renames同步时的策略 hash|modtime|leaf"
+  },
+  "retries": {
+    "title": "重试次数",
+    "help": "操作失败时的重试次数"
+  },
+  "retries_sleep": {
+    "title": "重试间隔",
+    "help": "操作失败后重试的间隔时间，例如500ms、60s、5m（0表示禁用）"
+  },
+  "low_level_retries": {
+    "title": "底层重试次数",
+    "help": "底层操作的重试次数"
+  },
+  "update": {
+    "title": "增量更新",
+    "help": "跳过目标端中更新时间更新的文件"
+  },
+  "use_server_modtime": {
+    "title": "使用服务器修改时间",
+    "help": "使用服务器修改时间而非对象元数据中的时间"
+  },
+  "no_gzip_encoding": {
+    "title": "禁用Gzip编码",
+    "help": "不设置Accept-Encoding: gzip请求头"
+  },
+  "max_depth": {
+    "title": "最大递归深度",
+    "help": "若设置，将递归深度限制为此值"
+  },
+  "ignore_size": {
+    "title": "忽略大小",
+    "help": "跳过文件时忽略大小，使用修改时间或校验和"
+  },
+  "ignore_checksum": {
+    "title": "忽略校验和",
+    "help": "跳过复制后的校验和验证"
+  },
+  "ignore_case_sync": {
+    "title": "同步时忽略大小写",
+    "help": "同步过程中忽略大小写"
+  },
+  "fix_case": {
+    "title": "修正大小写",
+    "help": "强制重命名目标端大小写不敏感的文件以匹配源端"
+  },
+  "no_traverse": {
+    "title": "不遍历目标端",
+    "help": "复制时不遍历目标端文件系统"
+  },
+  "check_first": {
+    "title": "先检查后传输",
+    "help": "开始传输前完成所有检查操作"
+  },
+  "no_check_dest": {
+    "title": "不检查目标端",
+    "help": "不检查目标端，直接复制"
+  },
+  "no_unicode_normalization": {
+    "title": "禁用Unicode归一化",
+    "help": "不对文件名中的Unicode字符进行归一化处理"
+  },
+  "no_update_modtime": {
+    "title": "不更新修改时间",
+    "help": "文件内容相同时不更新目标端文件的修改时间"
+  },
+  "no_update_dir_modtime": {
+    "title": "不更新目录修改时间",
+    "help": "不更新目录的修改时间"
+  },
+  "compare_dest": {
+    "title": "对比目标端",
+    "help": "对比时包含额外的服务端路径"
+  },
+  "copy_dest": {
+    "title": "复制目标端",
+    "help": "隐含--compare-dest，同时从指定路径复制文件到目标端"
+  },
+  "backup_dir": {
+    "title": "备份目录",
+    "help": "将备份文件存入基于指定目录的层级结构中"
+  },
+  "suffix": {
+    "title": "后缀",
+    "help": "为修改过的文件添加后缀"
+  },
+  "suffix_keep_extension": {
+    "title": "保留扩展名后缀",
+    "help": "使用--suffix时保留文件扩展名"
+  },
+  "fast_list": {
+    "title": "快速列表",
+    "help": "若可用则使用递归列表；占用更多内存但减少事务数"
+  },
+  "list_cutoff": {
+    "title": "列表阈值",
+    "help": "为节省内存，超过此阈值时在磁盘上排序目录列表"
+  },
+  "tpslimit": {
+    "title": "TPS限制",
+    "help": "限制每秒HTTP事务数为此值"
+  },
+  "tpslimit_burst": {
+    "title": "TPS限制突发量",
+    "help": "--tpslimit的最大事务突发量"
+  },
+  "user_agent": {
+    "title": "用户代理",
+    "help": "将user-agent设置为指定字符串"
+  },
+  "immutable": {
+    "title": "不可变模式",
+    "help": "不修改文件，若已有文件被修改则执行失败"
+  },
+  "auto_confirm": {
+    "title": "自动确认",
+    "help": "若启用，不请求控制台确认"
+  },
+  "stats_unit": {
+    "title": "统计单位",
+    "help": "统计数据中显示的数据速率单位，可选'bits'（比特）或'bytes'（字节）每秒"
+  },
+  "stats_file_name_length": {
+    "title": "统计文件名长度",
+    "help": "统计中显示的最大文件名长度（0表示无限制）"
+  },
+  "log_level": {
+    "title": "日志级别",
+    "help": "日志级别 DEBUG|INFO|NOTICE|ERROR"
+  },
+  "stats_log_level": {
+    "title": "统计日志级别",
+    "help": "显示--stats输出的日志级别 DEBUG|INFO|NOTICE|ERROR"
+  },
+  "bwlimit": {
+    "title": "带宽限制",
+    "help": "带宽限制，单位为KiB/s，或带后缀 B|K|M|G|T|P，也可使用完整时间表"
+  },
+  "bwlimit_file": {
+    "title": "单文件带宽限制",
+    "help": "单个文件的带宽限制，单位为KiB/s，或带后缀 B|K|M|G|T|P，也可使用完整时间表"
+  },
+  "buffer_size": {
+    "title": "缓冲区大小",
+    "help": "每个--transfer读取文件时的内存缓冲区大小"
+  },
+  "streaming_upload_cutoff": {
+    "title": "流式上传阈值",
+    "help": "文件大小未知时切换为分块上传的阈值，达到阈值或文件结束时开始上传"
+  },
+  "dump": {
+    "title": "调试输出",
+    "help": "需要输出的调试项列表：headers、bodies、requests、responses、auth、filters、goroutines、openfiles、mapper"
+  },
+  "max_transfer": {
+    "title": "最大传输量",
+    "help": "最大数据传输量"
+  },
+  "max_duration": {
+    "title": "最大传输时长",
+    "help": "rclone传输数据的最长持续时间"
+  },
+  "cutoff_mode": {
+    "title": "阈值模式",
+    "help": "达到最大传输限制时停止传输的模式 HARD|SOFT|CAUTIOUS"
+  },
+  "max_backlog": {
+    "title": "最大待处理队列",
+    "help": "同步或检查待处理队列中的最大对象数"
+  },
+  "max_stats_groups": {
+    "title": "最大统计分组数",
+    "help": "内存中保留的最大统计分组数，达到上限时丢弃最旧的分组"
+  },
+  "stats_one_line": {
+    "title": "单行统计",
+    "help": "将统计信息适配为单行显示"
+  },
+  "stats_one_line_date": {
+    "title": "带日期的单行统计",
+    "help": "启用--stats-one-line并添加当前日期/时间前缀"
+  },
+  "stats_one_line_date_format": {
+    "title": "自定义日期格式的单行统计",
+    "help": "启用--stats-one-line-date并使用自定义格式的日期：将日期字符串用双引号（\"）包裹，格式参考https://golang.org/pkg/time/#Time.Format"
+  },
+  "error_on_no_transfer": {
+    "title": "无传输时返回错误",
+    "help": "若没有文件被传输则设置退出码为9，适用于脚本场景"
+  },
+  "progress": {
+    "title": "进度显示",
+    "help": "传输过程中显示进度"
+  },
+  "progress_terminal_title": {
+    "title": "终端标题显示进度",
+    "help": "在终端标题显示进度（需要-P/--progress）"
+  },
+  "use_cookies": {
+    "title": "使用Cookie",
+    "help": "启用会话CookieJar"
+  },
+  "use_mmap": {
+    "title": "使用MMAP",
+    "help": "使用mmap内存分配器（详见文档）"
+  },
+  "max_buffer_memory": {
+    "title": "最大缓冲区内存",
+    "help": "若设置，缓冲区分配的内存不超过此值"
+  },
+  "ca_cert": {
+    "title": "CA证书",
+    "help": "用于验证服务器的CA证书"
+  },
+  "client_cert": {
+    "title": "客户端证书",
+    "help": "用于双向TLS认证的客户端SSL证书（PEM格式）"
+  },
+  "client_key": {
+    "title": "客户端私钥",
+    "help": "用于双向TLS认证的客户端SSL私钥（PEM格式）"
+  },
+  "client_pass": {
+    "title": "客户端私钥密码",
+    "help": "用于双向TLS认证的客户端SSL私钥（PEM格式）密码（隐藏显示）"
+  },
+  "multi_thread_cutoff": {
+    "title": "多线程阈值",
+    "help": "超过此大小的文件使用多线程下载"
+  },
+  "multi_thread_streams": {
+    "title": "多线程流数",
+    "help": "多线程下载使用的流数量"
+  },
+  "multi_thread_write_buffer_size": {
+    "title": "多线程写入缓冲区大小",
+    "help": "多线程模式下写入的内存缓冲区大小"
+  },
+  "multi_thread_chunk_size": {
+    "title": "多线程分块大小",
+    "help": "多线程下载/上传的分块大小，若文件系统未指定则使用此值"
+  },
+  "use_json_log": {
+    "title": "使用JSON日志格式",
+    "help": "使用JSON格式记录日志"
+  },
+  "order_by": {
+    "title": "排序方式",
+    "help": "传输任务的排序方式，例如'size,descending'（按大小降序）"
+  },
+  "refresh_times": {
+    "title": "刷新时间",
+    "help": "刷新远程文件的修改时间"
+  },
+  "no_console": {
+    "title": "隐藏控制台",
+    "help": "隐藏控制台窗口（仅Windows支持）"
+  },
+  "fs_cache_expire_duration": {
+    "title": "文件系统缓存过期时长",
+    "help": "远程存储的缓存时长（0表示禁用缓存）"
+  },
+  "fs_cache_expire_interval": {
+    "title": "文件系统缓存过期检查间隔",
+    "help": "检查过期远程存储的间隔时间"
+  },
+  "disable_http2": {
+    "title": "禁用HTTP2",
+    "help": "在全局传输中禁用HTTP/2"
+  },
+  "human_readable": {
+    "title": "易读格式",
+    "help": "以人类易读的格式打印数字，大小带后缀 Ki|Mi|Gi|Ti|Pi"
+  },
+  "kv_lock_time": {
+    "title": "KV数据库锁定时间",
+    "help": "进程锁定键值数据库的最长时间"
+  },
+  "disable_http_keep_alives": {
+    "title": "禁用HTTP长连接",
+    "help": "禁用HTTP长连接，每个连接仅使用一次"
+  },
+  "metadata": {
+    "title": "元数据保留",
+    "help": "若启用，复制对象时保留元数据"
+  },
+  "server_side_across_configs": {
+    "title": "跨配置服务端操作",
+    "help": "允许跨不同配置执行服务端操作（例如复制）"
+  },
+  "color": {
+    "title": "颜色输出",
+    "help": "何时显示颜色（及其他ANSI代码） AUTO|NEVER|ALWAYS"
+  },
+  "default_time": {
+    "title": "默认时间",
+    "help": "文件和目录修改时间未知时显示的时间"
+  },
+  "inplace": {
+    "title": "原地下载",
+    "help": "直接下载到目标文件，而非先下载到临时文件再重命名"
+  },
+  "metadata_mapper": {
+    "title": "元数据映射器",
+    "help": "上传前用于转换元数据的运行程序"
+  },
+  "partial_suffix": {
+    "title": "临时文件后缀",
+    "help": "未使用--inplace时为临时文件名添加的后缀"
+  },
+  "max_connections": {
+    "title": "最大连接数",
+    "help": "同时建立的后端API连接最大数量，0表示无限制"
+  },
+  "name_transform": {
+    "title": "名称转换",
+    "help": "复制过程中转换路径名称"
+  },
+  "http_proxy": {
+    "title": "HTTP代理",
+    "help": "HTTP代理URL地址。"
+  },
+  "debug_fuse": {
+    "title": "FUSE调试",
+    "help": "调试FUSE内部逻辑 - 需要配合-v参数使用"
+  },
+  "attr_timeout": {
+    "title": "属性缓存超时",
+    "help": "文件/目录属性的缓存时长"
+  },
+  "option": {
+    "title": "FUSE选项",
+    "help": "传递给libfuse/WinFsp的选项（可重复指定）"
+  },
+  "fuse_flag": {
+    "title": "FUSE标志",
+    "help": "直接传递给libfuse/WinFsp的标志或参数（可重复指定）"
+  },
+  "daemon": {
+    "title": "守护进程模式",
+    "help": "后台运行挂载并退出父进程（由于后台输出被抑制，需配合--log-file和--log-format=pid,...参数监控）（Windows不支持）"
+  },
+  "daemon_timeout": {
+    "title": "守护进程超时",
+    "help": "rclone响应内核的时间限制（Windows不支持）"
+  },
+  "default_permissions": {
+    "title": "默认权限控制",
+    "help": "让内核基于文件模式强制实施访问控制（Windows不支持）"
+  },
+  "allow_non_empty": {
+    "title": "允许非空挂载",
+    "help": "允许挂载到非空目录（Windows不支持）"
+  },
+  "allow_root": {
+    "title": "允许root访问",
+    "help": "允许root用户访问挂载点（Windows不支持）"
+  },
+  "allow_other": {
+    "title": "允许其他用户访问",
+    "help": "允许非挂载用户访问挂载点（Windows不支持）"
+  },
+  "async_read": {
+    "title": "异步读取",
+    "help": "使用异步读取模式（Windows不支持）"
+  },
+  "max_read_ahead": {
+    "title": "最大预读字节数",
+    "help": "顺序读取时可预读取的字节数（Windows不支持）"
+  },
+  "write_back_cache": {
+    "title": "写回缓存",
+    "help": "让内核先缓存写入数据再发送给rclone（不启用则使用直写缓存）（Windows不支持）"
+  },
+  "devname": {
+    "title": "设备名称",
+    "help": "设置设备名称 - 默认值为 remote:path"
+  },
+  "mount_case_insensitive": {
+    "title": "挂载大小写不敏感",
+    "help": "告知操作系统挂载点是大小写不敏感（true）或敏感（false），忽略后端实际特性（auto为自动）"
+  },
+  "direct_io": {
+    "title": "直接IO",
+    "help": "使用直接IO模式，禁用数据缓存"
+  },
+  "volname": {
+    "title": "卷名",
+    "help": "设置卷名称（仅Windows和OSX支持）"
+  },
+  "noappledouble": {
+    "title": "忽略Apple Double文件",
+    "help": "忽略Apple Double（._）和.DS_Store文件（仅OSX支持）"
+  },
+  "noapplexattr": {
+    "title": "忽略Apple扩展属性",
+    "help": "忽略所有\"com.apple.*\"类型的扩展属性（仅OSX支持）"
+  },
+  "network_mode": {
+    "title": "网络驱动器模式",
+    "help": "挂载为远程网络驱动器，而非固定磁盘驱动器（仅Windows支持）"
+  },
+  "daemon_wait": {
+    "title": "守护进程等待时间",
+    "help": "等待守护进程完成挂载的时间（Linux为最大等待时间，OSX/BSD为固定休眠时间）（Windows不支持）"
+  },
+  "nfs_cache_handle_limit": {
+    "title": "NFS缓存句柄限制",
+    "help": "同时缓存的文件句柄最大数量（最小值为5）"
+  },
+  "nfs_cache_type": {
+    "title": "NFS缓存类型",
+    "help": "使用的NFS句柄缓存类型"
+  },
+  "nfs_cache_dir": {
+    "title": "NFS缓存目录",
+    "help": "若设置，NFS句柄缓存将使用此目录"
+  },
+  "auth_proxy": {
+    "title": "认证代理",
+    "help": "用于通过认证信息创建后端的程序"
+  },
+  "rc": {
+    "title": "远程控制",
+    "help": "启用远程控制服务器"
+  },
+  "rc_files": {
+    "title": "远程控制文件服务",
+    "help": "HTTP服务器上提供本地文件服务的路径"
+  },
+  "rc_serve": {
+    "title": "远程控制对象服务",
+    "help": "启用远程对象的服务功能"
+  },
+  "rc_serve_no_modtime": {
+    "title": "远程控制服务忽略修改时间",
+    "help": "不读取文件修改时间（可提升性能）"
+  },
+  "rc_no_auth": {
+    "title": "远程控制免认证",
+    "help": "某些方法无需认证即可访问"
+  },
+  "rc_web_gui": {
+    "title": "远程控制Web界面",
+    "help": "在本地启动Web图形界面"
+  },
+  "rc_web_gui_update": {
+    "title": "远程控制Web界面更新",
+    "help": "检查并更新到最新版本的Web界面"
+  },
+  "rc_web_gui_force_update": {
+    "title": "远程控制Web界面强制更新",
+    "help": "强制更新到最新版本的Web界面"
+  },
+  "rc_web_gui_no_open_browser": {
+    "title": "远程控制Web界面不自动打开浏览器",
+    "help": "不自动打开浏览器窗口"
+  },
+  "rc_web_fetch_url": {
+    "title": "远程控制Web界面下载地址",
+    "help": "获取Web界面版本的URL地址"
+  },
+  "rc_enable_metrics": {
+    "title": "远程控制启用监控指标",
+    "help": "在远程控制服务器启用Prometheus监控指标路径"
+  },
+  "rc_job_expire_duration": {
+    "title": "远程控制任务过期时长",
+    "help": "过期此时长的已完成异步任务将被清理"
+  },
+  "rc_job_expire_interval": {
+    "title": "远程控制任务过期检查间隔",
+    "help": "检查过期异步任务的间隔时间"
+  },
+  "metrics_addr": {
+    "title": "监控指标地址",
+    "help": "服务器绑定的IP地址:端口 或 :端口"
+  },
+  "rc_addr": {
+    "title": "远程控制地址",
+    "help": "服务器绑定的IP地址:端口 或 :端口"
+  },
+  "rc_server_read_timeout": {
+    "title": "远程控制服务器读取超时",
+    "help": "服务器读取数据的超时时间"
+  },
+  "rc_server_write_timeout": {
+    "title": "远程控制服务器写入超时",
+    "help": "服务器写入数据的超时时间"
+  },
+  "rc_max_header_bytes": {
+    "title": "远程控制最大请求头字节数",
+    "help": "请求头的最大大小"
+  },
+  "rc_cert": {
+    "title": "远程控制证书",
+    "help": "TLS PEM密钥（证书和CA证书的拼接）"
+  },
+  "rc_key": {
+    "title": "远程控制私钥",
+    "help": "TLS PEM私钥"
+  },
+  "rc_client_ca": {
+    "title": "远程控制客户端CA证书",
+    "help": "用于验证客户端的客户端证书颁发机构"
+  },
+  "rc_baseurl": {
+    "title": "远程控制基础URL",
+    "help": "URL前缀 - 根路径留空"
+  },
+  "rc_min_tls_version": {
+    "title": "远程控制最小TLS版本",
+    "help": "可接受的最低TLS版本"
+  },
+  "rc_allow_origin": {
+    "title": "远程控制允许跨域源",
+    "help": "可执行跨域请求（CORS）的源地址"
+  },
+  "rc_htpasswd": {
+    "title": "远程控制Htpasswd文件",
+    "help": "htpasswd认证文件 - 未提供则不进行认证"
+  },
+  "rc_realm": {
+    "title": "远程控制认证域",
+    "help": "认证用的域名称"
+  },
+  "rc_user": {
+    "title": "远程控制用户名",
+    "help": "认证用用户名"
+  },
+  "rc_pass": {
+    "title": "远程控制密码",
+    "help": "认证用密码"
+  },
+  "rc_salt": {
+    "title": "远程控制密码盐值",
+    "help": "密码哈希盐值"
+  },
+  "rc_user_from_header": {
+    "title": "远程控制从请求头获取用户名",
+    "help": "从指定HTTP请求头获取用户名"
+  },
+  "rc_template": {
+    "title": "远程控制模板",
+    "help": "用户指定的模板"
+  },
+  "metrics_server_read_timeout": {
+    "title": "监控指标服务器读取超时",
+    "help": "服务器读取数据的超时时间"
+  },
+  "metrics_server_write_timeout": {
+    "title": "监控指标服务器写入超时",
+    "help": "服务器写入数据的超时时间"
+  },
+  "metrics_max_header_bytes": {
+    "title": "监控指标最大请求头字节数",
+    "help": "请求头的最大大小"
+  },
+  "metrics_cert": {
+    "title": "监控指标证书",
+    "help": "TLS PEM密钥（证书和CA证书的拼接）"
+  },
+  "metrics_key": {
+    "title": "监控指标私钥",
+    "help": "TLS PEM私钥"
+  },
+  "metrics_client_ca": {
+    "title": "监控指标客户端CA证书",
+    "help": "用于验证客户端的客户端证书颁发机构"
+  },
+  "metrics_baseurl": {
+    "title": "监控指标基础URL",
+    "help": "URL前缀 - 根路径留空"
+  },
+  "metrics_min_tls_version": {
+    "title": "监控指标最小TLS版本",
+    "help": "可接受的最低TLS版本"
+  },
+  "metrics_allow_origin": {
+    "title": "监控指标允许跨域源",
+    "help": "可执行跨域请求（CORS）的源地址"
+  },
+  "metrics_htpasswd": {
+    "title": "监控指标Htpasswd文件",
+    "help": "htpasswd认证文件 - 未提供则不进行认证"
+  },
+  "metrics_realm": {
+    "title": "监控指标认证域",
+    "help": "认证用的域名称"
+  },
+  "metrics_user": {
+    "title": "监控指标用户名",
+    "help": "认证用用户名"
+  },
+  "metrics_pass": {
+    "title": "监控指标密码",
+    "help": "认证用密码"
+  },
+  "metrics_salt": {
+    "title": "监控指标密码盐值",
+    "help": "密码哈希盐值"
+  },
+  "metrics_user_from_header": {
+    "title": "监控指标从请求头获取用户名",
+    "help": "从指定HTTP请求头获取用户名"
+  },
+  "metrics_template": {
+    "title": "监控指标模板",
+    "help": "用户指定的模板"
+  },
+  "stdio": {
+    "title": "标准IO模式",
+    "help": "在标准输入/输出上运行sftp服务器"
+  },
+  "append_only": {
+    "title": "仅追加模式",
+    "help": "禁止删除仓库数据"
+  },
+  "private_repos": {
+    "title": "私有仓库",
+    "help": "用户仅能访问自己的私有仓库"
+  },
+  "cache_objects": {
+    "title": "对象缓存",
+    "help": "缓存已列出的对象"
+  },
+  "force_path_style": {
+    "title": "强制路径样式",
+    "help": "若为true使用路径样式访问，false使用虚拟主机样式"
+  },
+  "etag_hash": {
+    "title": "ETag哈希算法",
+    "help": "用于ETag的哈希算法，auto为自动选择，留空则禁用"
+  },
+  "auth_key": {
+    "title": "认证密钥",
+    "help": "设置v4认证的密钥对：access_key_id,secret_access_key"
+  },
+  "no_cleanup": {
+    "title": "不清理空目录",
+    "help": "删除对象后不清理空文件夹"
+  },
+  "authorized_keys": {
+    "title": "授权密钥文件",
+    "help": "授权密钥文件路径"
+  },
+  "no_auth": {
+    "title": "免认证",
+    "help": "若设置，允许无认证连接"
+  },
+  "no_modtime": {
+    "title": "忽略修改时间",
+    "help": "不读取/写入文件修改时间（可提升性能）"
+  },
+  "no_checksum": {
+    "title": "忽略校验和",
+    "help": "上传/下载时不对比校验和"
+  },
+  "no_seek": {
+    "title": "禁止文件定位",
+    "help": "不允许在文件中进行定位操作"
+  },
+  "dir_cache_time": {
+    "title": "目录缓存时长",
+    "help": "目录条目缓存的时长"
+  },
+  "vfs_refresh": {
+    "title": "VFS缓存刷新",
+    "help": "启动时在后台递归刷新目录缓存"
+  },
+  "poll_interval": {
+    "title": "轮询间隔",
+    "help": "轮询变更的等待时间，必须小于dir-cache-time且仅支持部分远程存储（设为0禁用）"
+  },
+  "read_only": {
+    "title": "只读模式",
+    "help": "仅允许只读访问"
+  },
+  "vfs_links": {
+    "title": "VFS符号链接转换",
+    "help": "为VFS将符号链接转换为/从带.rclonelink扩展名的普通文件"
+  },
+  "vfs_cache_mode": {
+    "title": "VFS缓存模式",
+    "help": "缓存模式 off|minimal|writes|full"
+  },
+  "vfs_cache_poll_interval": {
+    "title": "VFS缓存轮询间隔",
+    "help": "轮询缓存中过期对象的间隔时间"
+  },
+  "vfs_cache_max_age": {
+    "title": "VFS缓存最大保留时长",
+    "help": "缓存中对象自上次访问后的最大保留时间"
+  },
+  "vfs_cache_max_size": {
+    "title": "VFS缓存最大大小",
+    "help": "缓存中对象的总大小上限"
+  },
+  "vfs_cache_min_free_space": {
+    "title": "VFS缓存最小可用空间",
+    "help": "缓存所在磁盘的目标最小可用空间"
+  },
+  "vfs_read_chunk_size": {
+    "title": "VFS读取分块大小",
+    "help": "分块读取源对象"
+  },
+  "vfs_read_chunk_size_limit": {
+    "title": "VFS读取分块大小上限",
+    "help": "若大于--vfs-read-chunk-size，每次读取后将分块大小翻倍，直到达到此上限（'off'表示无限制）"
+  },
+  "vfs_read_chunk_streams": {
+    "title": "VFS读取分块流数",
+    "help": "同时读取的并行流数量"
+  },
+  "dir_perms": {
+    "title": "目录权限",
+    "help": "目录的权限设置"
+  },
+  "file_perms": {
+    "title": "文件权限",
+    "help": "文件的权限设置"
+  },
+  "link_perms": {
+    "title": "链接权限",
+    "help": "符号链接的权限设置"
+  },
+  "vfs_case_insensitive": {
+    "title": "VFS大小写不敏感",
+    "help": "若未找到文件名，查找大小写不敏感的匹配项"
+  },
+  "vfs_block_norm_dupes": {
+    "title": "VFS阻止归一化重复项",
+    "help": "若同一目录下存在归一化后的重复文件名，记录错误日志并隐藏重复项（可能影响性能）"
+  },
+  "vfs_write_wait": {
+    "title": "VFS写入等待时间",
+    "help": "等待顺序写入的时间，超时则返回错误"
+  },
+  "vfs_read_wait": {
+    "title": "VFS读取等待时间",
+    "help": "等待顺序读取的时间，超时则执行定位操作"
+  },
+  "vfs_write_back": {
+    "title": "VFS写回延迟",
+    "help": "使用缓存时，文件最后一次使用后延迟写入的时间"
+  },
+  "vfs_read_ahead": {
+    "title": "VFS预读大小",
+    "help": "使用cache-mode full时，超出--buffer-size的额外预读大小"
+  },
+  "vfs_used_is_size": {
+    "title": "VFS已用空间计算方式",
+    "help": "使用`rclone size`算法计算已用空间"
+  },
+  "vfs_fast_fingerprint": {
+    "title": "VFS快速指纹",
+    "help": "使用快速（精度较低）的指纹检测文件变更"
+  },
+  "vfs_disk_space_total_size": {
+    "title": "VFS磁盘总空间",
+    "help": "指定磁盘的总空间大小"
+  },
+  "umask": {
+    "title": "权限掩码",
+    "help": "覆盖文件系统设置的权限位（Windows不支持）"
+  },
+  "uid": {
+    "title": "用户ID",
+    "help": "覆盖文件系统设置的uid字段（Windows不支持）"
+  },
+  "gid": {
+    "title": "组ID",
+    "help": "覆盖文件系统设置的gid字段（Windows不支持）"
+  },
+  "vfs_metadata_extension": {
+    "title": "VFS元数据扩展名",
+    "help": "设置读取元数据的文件扩展名。"
+  },
+  "disable_dir_list": {
+    "title": "禁用目录列表",
+    "help": "禁用GET请求目录时的HTML目录列表"
+  },
+  "create_empty_src_dirs": {
+    "title": "创建空源目录",
+    "help": "移动操作后在目标端创建空的源目录。"
+  },
+  "delete_empty_src_dirs": {
+    "title": "删除空源目录",
+    "help": "移动操作后删除空的源目录。"
+  },
+  "dryRun": {
+    "title": "模拟运行",
+    "help": "执行模拟运行。"
+  },
+  "resync": {
+    "title": "重新同步",
+    "help": "执行重新同步操作。"
+  },
+  "checkAccess": {
+    "title": "访问检查",
+    "help": "若未在两端文件系统找到RCLONE_TEST文件则终止操作。"
+  },
+  "checkFilename": {
+    "title": "检查文件名",
+    "help": "--check-access使用的文件名。"
+  },
+  "maxDelete": {
+    "title": "最大删除比例",
+    "help": "若删除文件的比例超过此阈值则终止同步。"
+  },
+  "force": {
+    "title": "强制执行",
+    "help": "绕过--max-delete安全检查并执行同步。"
+  },
+  "checkSync": {
+    "title": "同步校验",
+    "help": "控制最终列表的对比方式。"
+  },
+  "remove_empty_dirs": {
+    "title": "移除空目录",
+    "help": "在最终清理步骤中移除空目录。"
+  },
+  "filters_file": {
+    "title": "过滤规则文件",
+    "help": "从文件读取过滤模式。"
+  },
+  "ignore_listing_checksum": {
+    "title": "忽略列表校验和",
+    "help": "列表操作中不使用校验和。"
+  },
+  "resilient": {
+    "title": "弹性模式",
+    "help": "允许后续运行重试某些非严重错误。"
+  },
+  "work_dir": {
+    "title": "工作目录",
+    "help": "存放历史文件的服务器目录。"
+  },
+  "backup_dir1": {
+    "title": "备份目录1",
+    "help": "Path1对应的--backup-dir参数。"
+  },
+  "backup_dir2": {
+    "title": "备份目录2",
+    "help": "Path2对应的--backup-dir参数。"
+  }
+}
