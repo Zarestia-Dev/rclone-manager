@@ -1,4 +1,4 @@
-name: 'Release Linux'
+name: "Release Linux"
 
 on:
   workflow_dispatch:
@@ -11,10 +11,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'ubuntu-22.04'
-            args: ''
-          - platform: 'ubuntu-22.04-arm'
-            args: ''
+          - platform: "ubuntu-22.04"
+            args: ""
+          - platform: "ubuntu-22.04-arm"
+            args: ""
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -24,7 +24,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
-          cache: 'npm'
+          cache: "npm"
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -32,32 +32,18 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: "./src-tauri -> target"
 
-      - name: Install linux dependencies
-        shell: bash
-        if: matrix.platform == 'ubuntu-22.04' || matrix.platform == 'ubuntu-22.04-arm'
+      - name: install dependencies (ubuntu only)
         run: |
-          sudo apt update;
-          sudo apt install -y \
-            build-essential \
-            curl \
-            wget \
-            file \
-            libssl-dev \
-            libgtk-3-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            xdg-utils;
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils
 
-          webkit_version='2.50.*'
-          sudo apt install -y \
-            libwebkit2gtk-4.1-0="$webkit_version" \
-            libwebkit2gtk-4.1-dev="$webkit_version" \
-            libjavascriptcoregtk-4.1-0="$webkit_version" \
-            libjavascriptcoregtk-4.1-dev="$webkit_version" \
-            gir1.2-javascriptcoregtk-4.1="$webkit_version" \
-            gir1.2-webkit2-4.1="$webkit_version";
+      - name: Override linuxdeploy
+        run: |
+          cargo install tauri-cli --git https://github.com/tauri-apps/tauri --branch feat/truly-portable-appimage --force
+          echo "Installed tauri-cli version:"
+          cargo tauri --version
 
       - name: install frontend dependencies
         run: npm install
@@ -69,9 +55,9 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: v__VERSION__-test # the action automatically replaces \_\_VERSION\_\_ with the app version.
-          releaseName: 'RClone Manager v__VERSION__-test'
-          releaseBody: 'See the assets to download this version and install.'
+          tagName: v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
+          releaseName: "RClone Manager v__VERSION__"
+          releaseBody: "See the assets to download this version and install."
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
