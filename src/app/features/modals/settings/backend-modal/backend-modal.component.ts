@@ -1,4 +1,5 @@
 import { Component, computed, effect, inject, resource, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { NgClass, NgTemplateOutlet } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialogRef, MatDialog } from '@angular/material/dialog';
@@ -7,7 +8,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import type {
   AddBackendConfig,
@@ -20,12 +20,12 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { ConfirmModalComponent } from 'src/app/shared/modals/confirm-modal/confirm-modal.component';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, map } from 'rxjs';
 import { BackendSecurityComponent } from './backend-security/backend-security.component';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
-import { ModalService } from '@app/services';
+import { ModalService, NotificationService } from '@app/services';
 import { ApiClientService } from 'src/app/services/infrastructure/platform/api-client.service';
 import { FilePickerConfig } from 'src/app/shared/types/ui';
 import { BACKEND_CONSTANTS } from 'src/app/shared/constants/backend.constants';
@@ -43,12 +43,10 @@ import { BACKEND_CONSTANTS } from 'src/app/shared/constants/backend.constants';
     MatProgressSpinnerModule,
     MatTooltipModule,
     MatCheckboxModule,
-    MatSnackBarModule,
     MatTabsModule,
     BackendSecurityComponent,
     TranslateModule,
     MatExpansionModule,
-    MatTooltipModule,
     MatSlideToggle,
     NgTemplateOutlet,
     NgClass,
@@ -58,42 +56,38 @@ import { BACKEND_CONSTANTS } from 'src/app/shared/constants/backend.constants';
 })
 export class BackendModalComponent {
   private readonly dialogRef = inject(MatDialogRef<BackendModalComponent>);
+  private readonly notificationService = inject(NotificationService);
   private readonly backendService = inject(BackendService);
   private readonly fb = inject(FormBuilder);
-  private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
   private readonly translate = inject(TranslateService);
   private readonly fileSystemService = inject(FileSystemService);
   private readonly modalService = inject(ModalService);
   private readonly apiClient = inject(ApiClientService);
 
-  // State
+  // State from service
   readonly backends = this.backendService.backends;
   readonly activeBackend = this.backendService.activeBackend;
   readonly isLoading = this.backendService.isLoading;
 
-  // UI state - consolidated form state
+  // UI state
   readonly formState = signal<{
     mode: 'add' | 'edit' | null;
     editingName?: string;
     isLoading?: boolean;
-  }>({
-    mode: null,
-  });
+  }>({ mode: null });
+
   readonly testingBackend = signal<string | null>(null);
   readonly switchingTo = signal<string | null>(null);
   readonly showPassword = signal(false);
   readonly showConfigPassword = signal(false);
 
-  // Copy options for new backend
   readonly copyBackendFrom = signal<string>('none');
   readonly copyRemotesFrom = signal<string>('none');
 
-  /** Get the active config path from service's computed signal */
   readonly activeConfigPath = this.backendService.activeConfigPath;
 
-  // Backend form
-  backendForm: FormGroup = this.fb.group({
+  readonly backendForm: FormGroup = this.fb.group({
     name: ['', [Validators.required, Validators.pattern(/^[^/\\:*?"<>|]+$/)]],
     host: [BACKEND_CONSTANTS.DEFAULTS.HOST, [Validators.required]],
     port: [
@@ -105,7 +99,6 @@ export class BackendModalComponent {
     config_password: [''],
     config_path: [''],
     has_auth: [false],
-    // OAuth fields (for Local backend)
     oauth_host: [BACKEND_CONSTANTS.DEFAULTS.IP],
     oauth_port: [
       BACKEND_CONSTANTS.DEFAULTS.OAUTH_PORT,
@@ -113,17 +106,51 @@ export class BackendModalComponent {
     ],
   });
 
-  constructor() {
-    this.backendService.loadBackends();
+  private readonly formValue = toSignal(
+    this.backendForm.valueChanges.pipe(map(() => this.backendForm.getRawValue())),
+    { initialValue: this.backendForm.getRawValue() }
+  );
 
-    effect(() => {
-      const schema = this.schema();
-      if (schema && Object.keys(schema).length > 0) {
-        this.applyValidators(schema);
-      }
-    });
-  }
+  // ─── Computed signals ───────────────────────
+  readonly isDuplicateName = computed(() => {
+    const name = this.formValue()['name']?.toLowerCase();
+    const state = this.formState();
+    if (!name || (state.mode === 'edit' && state.editingName?.toLowerCase() === name)) return false;
+    return this.backends().some(b => b.name.toLowerCase() === name);
+  });
 
+  readonly isDuplicateHost = computed(() => {
+    const { host, port } = this.formValue();
+    const state = this.formState();
+    if (!host || !port) return false;
+    return this.backends().some(
+      b => b.name !== state.editingName && b.host === host && b.port === port
+    );
+  });
+
+  readonly hasConfigPassword = computed(() => {
+    const state = this.formState();
+    if (state.mode !== 'edit' || !state.editingName) return false;
+    return this.backends().find(b => b.name === state.editingName)?.hasConfigPassword ?? false;
+  });
+
+  readonly editingBackendRuntimePath = computed(() => {
+    const state = this.formState();
+    if (state.mode !== 'edit' || !state.editingName) return null;
+    return this.backends().find(b => b.name === state.editingName)?.runtimeConfigPath ?? null;
+  });
+
+  readonly isActiveEditing = computed(() => {
+    const state = this.formState();
+    if (state.mode !== 'edit' || !state.editingName) return false;
+    return this.activeBackend() === state.editingName;
+  });
+
+  readonly securityFields = computed(
+    () => this.fieldGroups().find(g => g.name === 'security')?.fields ?? []
+  );
+
+  // ─── Schema & Field Groups ───────────────────────────────────────────────────
   readonly schemaResource = resource({
     loader: () => this.backendService.getBackendSchema(),
   });
@@ -157,15 +184,24 @@ export class BackendModalComponent {
     });
 
     return groupOrder
-      .map(name => ({
-        name,
-        fields: groups[name] || [],
-      }))
+      .map(name => ({ name, fields: groups[name] || [] }))
       .filter(g => g.fields.length > 0);
   });
 
+  constructor() {
+    this.backendService.loadBackends();
+
+    effect(() => {
+      const schema = this.schema();
+      if (schema && Object.keys(schema).length > 0) {
+        this.applyValidators(schema);
+      }
+    });
+  }
+
+  // ─── Form / Backend Management ───────────────────────────────────────────────
+
   private applyValidators(schema: Record<string, BackendSettingMetadata>): void {
-    // Apply min/max/pattern from schema to form controls
     Object.entries(schema).forEach(([key, meta]: [string, BackendSettingMetadata]) => {
       const control = this.backendForm.get(key);
       if (!control) return;
@@ -191,8 +227,7 @@ export class BackendModalComponent {
   }
 
   toggleAddForm(): void {
-    const current = this.formState();
-    if (current.mode === null) {
+    if (this.formState().mode === null) {
       this.formState.set({ mode: 'add' });
       this.copyBackendFrom.set('none');
       this.copyRemotesFrom.set('none');
@@ -200,21 +235,6 @@ export class BackendModalComponent {
       this.formState.set({ mode: null });
       this.resetForm();
     }
-  }
-
-  /** Get the runtime config path for the currently editing backend */
-  getEditingBackendRuntimePath(): string | null {
-    const state = this.formState();
-    if (state.mode !== 'edit' || !state.editingName) return null;
-    const backend = this.backends().find(b => b.name === state.editingName);
-    return backend?.runtimeConfigPath ?? null;
-  }
-
-  /** Check if the backend currently being edited is the active one */
-  isEditingActiveBackend(): boolean {
-    const state = this.formState();
-    if (state.mode !== 'edit' || !state.editingName) return false;
-    return this.activeBackend() === state.editingName;
   }
 
   startEdit(backend: BackendInfo): void {
@@ -226,17 +246,14 @@ export class BackendModalComponent {
       port: backend.port,
       has_auth: backend.hasAuth,
       username: backend.username || '',
-      password: backend.password || '', // Password now sent from backend for editing
-      config_password: '', // Config passwords not sent from backend
+      password: backend.password || '',
+      config_password: '',
       config_path: backend.configPath || '',
-      oauth_host: '127.0.0.1', // Default, oauth_host not tracked in BackendInfo
+      oauth_host: '127.0.0.1',
       oauth_port: backend.oauthPort || 51901,
     });
 
-    // Update validators based on initial state
     this.updateAuthValidators(backend.hasAuth);
-
-    // Name is always read-only in edit mode (users can delete and re-create to rename)
     this.backendForm.get('name')?.disable();
   }
 
@@ -254,7 +271,7 @@ export class BackendModalComponent {
       oauth_host: BACKEND_CONSTANTS.DEFAULTS.IP,
       oauth_port: BACKEND_CONSTANTS.DEFAULTS.OAUTH_PORT,
     });
-    this.updateAuthValidators(false); // Reset validators
+    this.updateAuthValidators(false);
     this.showPassword.set(false);
     this.showConfigPassword.set(false);
   }
@@ -264,27 +281,16 @@ export class BackendModalComponent {
     try {
       this.switchingTo.set(name);
       await this.backendService.switchBackend(name);
-      this.snackBar.open(
-        this.translate.instant('modals.backend.notifications.switched', { name }),
-        this.translate.instant('common.close'),
-        {
-          duration: 3000,
-          panelClass: 'snackbar-success',
-        }
+      this.notificationService.showSuccess(
+        this.translate.instant('modals.backend.notifications.switched', { name })
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.snackBar.open(
-        this.translate.instant('modals.backend.notifications.switchFailed', { message }),
-        this.translate.instant('common.close'),
-        {
-          duration: 5000,
-          panelClass: 'snackbar-error',
-        }
+      this.notificationService.showError(
+        this.translate.instant('modals.backend.notifications.switchFailed', { message })
       );
     } finally {
       this.switchingTo.set(null);
-      // Reload to get updated status (connected/error) and runtime_config_path
       await this.backendService.loadBackends();
     }
   }
@@ -294,29 +300,17 @@ export class BackendModalComponent {
       this.testingBackend.set(name);
       const result = await this.backendService.testConnection(name);
 
-      this.snackBar.open(
+      this.notificationService.showSuccess(
         result.success
           ? this.translate.instant('modals.backend.notifications.connectionSuccess') +
               (result.version ? ` (${result.version})` : '')
           : this.translate.instant('modals.backend.notifications.connectionFailed', {
               message: result.message,
-            }),
-        this.translate.instant('common.close'),
-        {
-          duration: 4000,
-          panelClass: result.success ? 'snackbar-success' : 'snackbar-error',
-          horizontalPosition: 'center',
-          verticalPosition: 'bottom',
-        }
+            })
       );
     } catch {
-      this.snackBar.open(
-        this.translate.instant('modals.backend.notifications.testFailed'),
-        this.translate.instant('common.close'),
-        {
-          duration: 4000,
-          panelClass: 'snackbar-error',
-        }
+      this.notificationService.showError(
+        this.translate.instant('modals.backend.notifications.testFailed')
       );
     } finally {
       this.testingBackend.set(null);
@@ -324,14 +318,11 @@ export class BackendModalComponent {
   }
 
   async saveBackend(): Promise<void> {
-    if (this.backendForm.invalid || this.hasDuplicateName() || this.hasDuplicateHost()) return;
+    if (this.backendForm.invalid || this.isDuplicateName() || this.isDuplicateHost()) return;
 
     const formValue = this.backendForm.getRawValue();
     const state = this.formState();
-
-    // Determine if editing local backend
     const isEditingLocal = state.mode === 'edit' && state.editingName === 'Local';
-
     const backendData: AddBackendConfig = this.backendService.mapFormToConfig(
       formValue,
       isEditingLocal
@@ -340,31 +331,23 @@ export class BackendModalComponent {
     try {
       if (state.mode === 'edit' && state.editingName) {
         await this.backendService.updateBackend(backendData);
-        this.snackBar.open(
-          this.translate.instant('modals.backend.notifications.updated'),
-          this.translate.instant('common.close'),
-          { duration: 3000, panelClass: 'snackbar-success' }
+        this.notificationService.showSuccess(
+          this.translate.instant('modals.backend.notifications.updated')
         );
       } else {
-        // Check if copy options are selected
         const copyBackend = this.copyBackendFrom() !== 'none' ? this.copyBackendFrom() : undefined;
         const copyRemotes = this.copyRemotesFrom() !== 'none' ? this.copyRemotesFrom() : undefined;
 
         await this.backendService.addBackend(backendData, copyBackend, copyRemotes);
-
-        this.snackBar.open(
-          this.translate.instant('modals.backend.notifications.added'),
-          this.translate.instant('common.close'),
-          { duration: 3000, panelClass: 'snackbar-success' }
+        this.notificationService.showSuccess(
+          this.translate.instant('modals.backend.notifications.added')
         );
       }
       this.cancelEdit();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.snackBar.open(
-        this.translate.instant('modals.backend.notifications.saveFailed', { message }),
-        this.translate.instant('common.close'),
-        { duration: 5000, panelClass: 'snackbar-error' }
+      this.notificationService.showError(
+        this.translate.instant('modals.backend.notifications.saveFailed', { message })
       );
     }
   }
@@ -420,13 +403,6 @@ export class BackendModalComponent {
     passwordCtrl?.updateValueAndValidity();
   }
 
-  hasConfigPassword(): boolean {
-    const state = this.formState();
-    if (state.mode !== 'edit' || !state.editingName) return false;
-    const backend = this.backends().find(b => b.name === state.editingName);
-    return backend?.hasConfigPassword || false;
-  }
-
   async removeConfigPassword(): Promise<void> {
     const state = this.formState();
     if (state.mode !== 'edit' || !state.editingName) return;
@@ -448,59 +424,33 @@ export class BackendModalComponent {
         configPassword: '',
       });
 
-      this.snackBar.open(
-        this.translate.instant('modals.backend.notifications.updated'),
-        this.translate.instant('common.close'),
-        { duration: 3000, panelClass: 'snackbar-success' }
+      this.notificationService.showSuccess(
+        this.translate.instant('modals.backend.notifications.updated')
       );
     } catch (error) {
-      this.snackBar.open(
+      this.notificationService.showError(
         this.translate.instant('modals.backend.notifications.saveFailed', {
           message: String(error),
-        }),
-        this.translate.instant('common.close'),
-        { duration: 5000, panelClass: 'snackbar-error' }
+        })
       );
     } finally {
       this.formState.update(s => ({ ...s, isLoading: false }));
     }
   }
 
-  hasDuplicateName(): boolean {
-    const name = this.backendForm.get('name')?.value?.toLowerCase();
-    const state = this.formState();
-    if (!name || (state.mode === 'edit' && state.editingName?.toLowerCase() === name)) return false;
-    return this.backends().some(b => b.name.toLowerCase() === name);
-  }
-
-  hasDuplicateHost(): boolean {
-    const host = this.backendForm.get('host')?.value;
-    const port = this.backendForm.get('port')?.value;
-    const state = this.formState();
-    if (!host || !port) return false;
-
-    return this.backends().some(
-      b => b.name !== state.editingName && b.host === host && b.port === port
-    );
-  }
+  // ─── Config File Selection ───────────────────────────────────────────────────
 
   isConfigSelectionAllowed(): boolean {
     const state = this.formState();
-    // 3. On new backend hide or disable this button (disable in this case as we return false)
     if (state.mode === 'add') return false;
 
-    // Determine if editing local backend
     const isEditingLocal = state.editingName === 'Local';
-
     if (isEditingLocal) {
-      // In headless mode, selecting a config path for the Local backend is problematic
-      // because the internal file picker (Nautilus) relies on a working backend connection.
       if (this.apiClient.isHeadless()) return false;
       return true;
     }
 
-    // 2. On remote backends... Its needs to be selected (active). Or else disable or hide.
-    return this.isEditingActiveBackend();
+    return this.isActiveEditing();
   }
 
   async selectConfigFile(): Promise<void> {
@@ -512,40 +462,16 @@ export class BackendModalComponent {
     try {
       let selectedPath: string | null = null;
 
-      // 1. Local backend selector logic
       if (isEditingLocal) {
-        // In headless mode, use Nautilus file browser
-        if (this.apiClient.isHeadless()) {
-          const config: FilePickerConfig = {
-            mode: 'local',
-            selection: 'files',
-            multi: false,
-            initialLocation: this.backendForm.get('config_path')?.value || undefined,
-          };
-          const result = await this.fileSystemService.selectPathWithNautilus(config);
-          if (!result.cancelled && result.paths.length > 0) {
-            selectedPath = result.paths[0];
-          }
-        } else {
-          // In Tauri mode, use native dialog
-          // Use 'get_file_location' as requested, via apiClient.invoke to handle tauri invoke
-          // Ideally this command opens a native file dialog and returns the path
-          selectedPath = await this.apiClient.invoke<string>('get_file_location');
-        }
+        selectedPath = await this.apiClient.invoke<string>('get_file_location');
       } else {
-        // 2. Remote backends... use the nautilus file picker
-        // We already checked isConfigSelectionAllowed() so we know it is active if we are here
         const config: FilePickerConfig = {
-          mode: 'local', // We are selecting a local path for the config file? Or remote?
-          // Usually strict config path selection is on the filesystem where rclone runs.
-          // Nautilus picker 'local' mode browses the FS where rclone-manager runs.
+          mode: 'local',
           selection: 'files',
           multi: false,
           initialLocation: this.backendForm.get('config_path')?.value || undefined,
         };
-
         const result = await this.fileSystemService.selectPathWithNautilus(config);
-
         if (!result.cancelled && result.paths.length > 0) {
           selectedPath = result.paths[0];
         }
@@ -559,18 +485,14 @@ export class BackendModalComponent {
       if (String(error).includes('cancelled') || String(error).includes('File selection cancelled'))
         return;
       console.error('Failed to select config file:', error);
-      this.snackBar.open(
-        this.translate.instant('modals.backend.notifications.fileSelectFailed'),
-        this.translate.instant('common.close'),
-        { duration: 3000, panelClass: 'snackbar-error' }
+      this.notificationService.showError(
+        this.translate.instant('modals.backend.notifications.fileSelectFailed')
       );
     }
   }
 
-  // ============= Encryption Actions =============
-  // Moved to BackendSecurityComponent
+  // ─── Icon & Status Helpers ───────────────────────────────────────────────────
 
-  // ============= Icon & Status Helpers =============
   getBackendIcon(backend: BackendInfo): string {
     if (backend.isLocal) return BACKEND_CONSTANTS.ICONS.LOCAL;
     if (!backend.os) return BACKEND_CONSTANTS.ICONS.REMOTE;
@@ -615,18 +537,16 @@ export class BackendModalComponent {
   getFieldIcon(key: string): string | null {
     switch (key) {
       case 'host':
+      case 'oauth_host':
         return BACKEND_CONSTANTS.ICONS.GLOBE;
       case 'username':
         return BACKEND_CONSTANTS.ICONS.USER;
       case 'password':
+        return BACKEND_CONSTANTS.ICONS.KEY;
       case 'config_password':
-        return key === 'config_password'
-          ? BACKEND_CONSTANTS.ICONS.LOCK
-          : BACKEND_CONSTANTS.ICONS.KEY;
+        return BACKEND_CONSTANTS.ICONS.LOCK;
       case 'config_path':
         return BACKEND_CONSTANTS.ICONS.FILE;
-      case 'oauth_host':
-        return BACKEND_CONSTANTS.ICONS.GLOBE; // Optional, if you want icon for oauth host
       default:
         return null;
     }

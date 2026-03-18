@@ -61,7 +61,7 @@
             <!-- Search result items, or empty state when nothing matches -->
             @if (searchResults().length > 0) {
               @for (result of searchResults(); track result.category + '.' + result.key) {
-                @if (getFormControl(result.category, result.key)) {
+                @if (getFormControl(result.category, result.key); as ctrl) {
                   <div
                     class="setting-item"
                     role="listitem"
@@ -105,10 +105,8 @@
               </div>
             }
           } @else {
-            <!-- Active tab items — @if unwraps selectedTabKey() into a local alias,
-                 eliminating the previous @for(allCategories) + @if(isSelected) double loop. -->
             @if (selectedTabKey(); as activeCategory) {
-              @for (key of getObjectKeys(settingsForm.get(activeCategory)?.value); track key) {
+              @for (key of selectedTabKeys(); track key) {
                 <div
                   class="setting-item"
                   role="listitem"
@@ -154,7 +152,7 @@
             </div>
           </div>
           <div class="pending-changes-list">
-            @for (change of getPendingChangesList(); track change.category + '.' + change.key) {
+            @for (change of pendingChangesList(); track change.category + '.' + change.key) {
               <div class="pending-change-item">
                 <div class="change-info">
                   <strong>{{ change.displayName }}</strong>
@@ -185,19 +183,10 @@
             <button
               matButton
               (click)="discardPendingChanges()"
-              [disabled]="isDiscardingChanges()"
               [attr.aria-label]="'modals.preferences.aria.discardChanges' | translate"
             >
-              @if (isDiscardingChanges()) {
-                <mat-spinner diameter="16" class="inline-spinner"></mat-spinner>
-              } @else {
-                <mat-icon svgIcon="close"></mat-icon>
-              }
-              {{
-                isDiscardingChanges()
-                  ? ('modals.preferences.discarding' | translate)
-                  : ('modals.preferences.discardChanges' | translate)
-              }}
+              <mat-icon svgIcon="close"></mat-icon>
+              {{ 'modals.preferences.discardChanges' | translate }}
             </button>
             <button
               mat-raised-button
@@ -322,20 +311,16 @@
                 </div>
               }
               @case ('string') {
-                <!-- 'string' + options was normalized to 'select' at enrichment time,
-                     so this case is always a plain text input. -->
-                <mat-form-field class="input-field" appearance="fill">
-                  <input
-                    matInput
-                    [formControl]="$any(getFormControl(category, key))"
-                    [attr.aria-label]="meta.metadata?.display_name"
-                    [placeholder]="(meta.metadata?.placeholder | translate) || ''"
-                    (blur)="onBlur(category, key)"
-                  />
-                  @if (isControlInvalid(category, key)) {
-                    <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
-                  }
-                </mat-form-field>
+                <ng-container
+                  [ngTemplateOutlet]="textInputTemplate"
+                  [ngTemplateOutletContext]="{ category, key, meta }"
+                ></ng-container>
+              }
+              @case ('bandwidth') {
+                <ng-container
+                  [ngTemplateOutlet]="textInputTemplate"
+                  [ngTemplateOutletContext]="{ category, key, meta }"
+                ></ng-container>
               }
               @case ('select') {
                 <mat-form-field class="input-field" appearance="fill">
@@ -350,20 +335,6 @@
                       </mat-option>
                     }
                   </mat-select>
-                  @if (isControlInvalid(category, key)) {
-                    <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
-                  }
-                </mat-form-field>
-              }
-              @case ('bandwidth') {
-                <mat-form-field class="input-field" appearance="fill">
-                  <input
-                    matInput
-                    [formControl]="$any(getFormControl(category, key))"
-                    [attr.aria-label]="meta.metadata?.display_name"
-                    [placeholder]="(meta.metadata?.placeholder | translate) || ''"
-                    (blur)="onBlur(category, key)"
-                  />
                   @if (isControlInvalid(category, key)) {
                     <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
                   }
@@ -447,6 +418,22 @@
         </div>
       </div>
     }
+  </ng-template>
+
+  <!-- ── Text Input Template (shared by 'string' and 'bandwidth' cases) ────── -->
+  <ng-template #textInputTemplate let-category="category" let-key="key" let-meta="meta">
+    <mat-form-field class="input-field" appearance="fill">
+      <input
+        matInput
+        [formControl]="$any(getFormControl(category, key))"
+        [attr.aria-label]="meta.metadata?.display_name"
+        [placeholder]="(meta.metadata?.placeholder | translate) || ''"
+        (blur)="onBlur(category, key)"
+      />
+      @if (isControlInvalid(category, key)) {
+        <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
+      }
+    </mat-form-field>
   </ng-template>
 
   <!-- ── Path Picker Template (shared by 'file' and 'folder' cases) ──────── -->

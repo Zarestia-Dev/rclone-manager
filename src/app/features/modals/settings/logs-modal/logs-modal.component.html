@@ -92,7 +92,7 @@
 
     <!-- Empty State -->
     @else if (filteredLogs().length === 0) {
-      <div class="empty-state" style="color: color-mix(in srgb, white 55%, transparent)">
+      <div class="empty-state empty-state--dimmed">
         <mat-icon svgIcon="search"></mat-icon>
         <span>{{ 'modals.logs.noLogsFound' | translate }}</span>
         <p>{{ 'modals.logs.adjustFilters' | translate }}</p>
@@ -103,25 +103,26 @@
     @else {
       <div #terminalLogArea class="log-scroller">
         @for (log of filteredLogs(); track getLogId(log)) {
+          @let expanded = isExpanded(log);
           <div
             class="log-entry"
-            [class.expanded]="isExpanded(log)"
-            [class.has-context]="!!log.context"
             [class]="log.level"
+            [class.expanded]="expanded"
+            [class.has-context]="!!log.context"
           >
             <!-- Log Header Line -->
             <div
               class="log-header"
               role="button"
               tabindex="0"
-              (click)="log.context ? toggleDetails(log) : null"
-              (keydown.enter)="log.context ? toggleDetails(log) : null"
+              (click)="toggleDetails(log)"
+              (keydown.enter)="toggleDetails(log)"
             >
               <span class="timestamp">{{ log.timestamp | date: 'HH:mm:ss.SSS' }}</span>
               <span class="level-tag">{{ log.level | uppercase }}</span>
-              <span class="message" [title]="translateLogMessage(log.message)">{{
-                translateLogMessage(log.message)
-              }}</span>
+
+              @let translatedMessage = translateLogMessage(log.message);
+              <span class="message" [title]="translatedMessage">{{ translatedMessage }}</span>
 
               <div class="actions-hover">
                 <mat-icon
@@ -132,14 +133,14 @@
                   <mat-icon
                     class="expand-icon"
                     svgIcon="caret-down"
-                    [style.transform]="isExpanded(log) ? 'rotate(180deg)' : 'rotate(0deg)'"
+                    [style.transform]="expanded ? 'rotate(180deg)' : 'rotate(0deg)'"
                   ></mat-icon>
                 }
               </div>
             </div>
 
             <!-- Log Detail Body (Expanded) -->
-            @if (isExpanded(log) && log.context) {
+            @if (expanded && log.context) {
               <div class="log-body">
                 <!-- 1. Command Output (The one with ANSI colors) -->
                 @if (getCommandOutput(log); as output) {

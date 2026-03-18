@@ -14,10 +14,9 @@
   gap: var(--space-sm);
   padding: var(--space-md);
   border-radius: var(--radius-md);
-  background: rgba($bg-color, 0.1); // Default opacity
+  background: rgba($bg-color, 0.1);
   color: $text-color;
 
-  // Specific overrides if needed
   &.error {
     background: rgba($bg-color, 0.08);
   }
@@ -54,7 +53,6 @@
     box-shadow: 0 1px 3px 0 rgba(0, 0, 6, 0.2);
     color: var(--window-fg-color);
 
-    // Override ripple color for buttons in about-item
     ::ng-deep .mat-mdc-button-persistent-ripple::before {
       background-color: var(--dim-color) !important;
     }
@@ -89,11 +87,11 @@
   gap: var(--space-xs);
   flex-direction: column;
 
-  // App Header Info
   .app-icon {
     width: var(--icon-size);
     height: var(--icon-size);
     align-self: center;
+    cursor: pointer;
   }
 
   .app-name {
@@ -177,10 +175,8 @@
   background: var(--window-bg-color);
   display: flex;
   flex-direction: column;
-  overflow: hidden; // Prevent overlay itself from scrolling
+  overflow: hidden;
 
-  // Ensure content inside overlay scrolls independently
-  // Excludes the header to prevent it from scrolling away
   > *:not(.modal-header) {
     flex: 1;
     overflow-y: auto;
@@ -201,7 +197,6 @@
     @include status-box(var(--warn-color-rgb), var(--warn-color));
   }
 
-  // GNOME-style hero: icon + name + version
   .rclone-hero {
     display: flex;
     align-items: center;
@@ -217,7 +212,8 @@
       display: flex;
       align-items: start;
       flex-direction: column;
-      gap: 4px;
+      // Replaced hard-coded 4px with a spacing token
+      gap: var(--space-xxs);
 
       .rclone-name {
         font-size: var(--font-size-xl);
@@ -402,8 +398,9 @@
           color: var(--warn-color);
         }
 
-        h4 {
-          color: var(--warn-color) !important;
+        // Raised specificity to avoid needing !important
+        .update-title h4 {
+          color: var(--warn-color);
         }
       }
     }
@@ -452,8 +449,7 @@
       padding: var(--space-lg);
       box-shadow: var(--shadow-gnome);
       transition: var(--transition-standard);
-      will-change: box-shadow;
-
+      // Removed will-change: box-shadow — no animation targets this property
       display: flex;
       flex-direction: column;
       gap: var(--space-sm);
@@ -592,7 +588,6 @@
 .whats-new-content {
   padding: var(--space-md) var(--space-xl);
 
-  // Release Header
   .release-header {
     display: flex;
     justify-content: space-between;
@@ -618,7 +613,6 @@
     }
   }
 
-  // Release Notes Content
   .release-notes {
     font-size: var(--font-size-md);
     line-height: 1.7;

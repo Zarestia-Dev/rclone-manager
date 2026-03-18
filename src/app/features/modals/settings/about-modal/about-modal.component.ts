@@ -1,11 +1,9 @@
 import {
   Component,
-  HostListener,
   OnInit,
   computed,
   inject,
   signal,
-  DestroyRef,
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
@@ -24,7 +22,7 @@ import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { marked, Renderer } from 'marked';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { NgTemplateOutlet, CommonModule } from '@angular/common';
+import { CommonModule, NgTemplateOutlet } from '@angular/common';
 
 import {
   SystemInfoService,
@@ -63,6 +61,7 @@ export interface OverlayView {
 @Component({
   selector: 'app-about-modal',
   imports: [
+    CommonModule,
     MatDividerModule,
     MatIconModule,
     MatButtonModule,
@@ -76,47 +75,46 @@ export interface OverlayView {
     FormatFileSizePipe,
     TranslateModule,
     NgTemplateOutlet,
-    CommonModule,
   ],
   templateUrl: './about-modal.component.html',
   styleUrls: ['./about-modal.component.scss', '../../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '(document:keydown.escape)': 'close()' },
 })
 export class AboutModalComponent implements OnInit {
   readonly rCloneManagerVersion = appVersion;
 
-  private dialogRef = inject(MatDialogRef<AboutModalComponent>);
-  private systemInfoService = inject(SystemInfoService);
-  private notificationService = inject(NotificationService);
-  private destroyRef = inject(DestroyRef);
-  protected appUpdaterService = inject(AppUpdaterService);
-  protected rcloneUpdateService = inject(RcloneUpdateService);
-  private debugService = inject(DebugService);
-  private sanitizer = inject(DomSanitizer);
-  private translate = inject(TranslateService);
+  private readonly dialogRef = inject(MatDialogRef<AboutModalComponent>);
+  private readonly systemInfoService = inject(SystemInfoService);
+  private readonly notificationService = inject(NotificationService);
+  protected readonly appUpdaterService = inject(AppUpdaterService);
+  protected readonly rcloneUpdateService = inject(RcloneUpdateService);
+  private readonly debugService = inject(DebugService);
+  private readonly sanitizer = inject(DomSanitizer);
+  private readonly translate = inject(TranslateService);
 
   readonly rcloneStatusService = inject(RcloneStatusService);
   readonly backendService = inject(BackendService);
   readonly modalService = inject(ModalService);
 
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // Navigation state
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
 
   readonly overlayStack = signal<OverlayView[]>([]);
-  readonly scrolled = signal<boolean>(false);
+  readonly scrolled = signal(false);
 
-  readonly isOverlayOpen = computed(() => this.overlayStack().length > 0);
   readonly currentView = computed(() => {
     const stack = this.overlayStack();
     return stack.length > 0 ? stack[stack.length - 1] : { id: 'main' as const };
   });
 
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // App updater signals
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
 
-  readonly appAutoCheckUpdates = signal<boolean>(true);
+  // Directly alias service signals — no local mirror needed.
+  readonly appAutoCheckUpdates = this.appUpdaterService.autoCheckEnabled;
   readonly appUpdateAvailable = this.appUpdaterService.updateAvailable;
   readonly appUpdateInProgress = this.appUpdaterService.updateInProgress;
   readonly appUpdateChannel = this.appUpdaterService.updateChannel;
@@ -138,23 +136,22 @@ export class AboutModalComponent implements OnInit {
     return !!this.appUpdateInProgress() && !status?.isComplete && !status?.isFailed;
   });
 
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // Rclone updater signals
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
 
   readonly rcloneUpdateStatus = this.rcloneUpdateService.updateStatus;
   readonly rcloneUpdateChannel = this.rcloneUpdateService.updateChannel;
   readonly rcloneSkippedVersions = this.rcloneUpdateService.skippedVersions;
-  // Read directly from the service — no need for a local copy kept in sync via effect()
   readonly rcloneAutoCheck = this.rcloneUpdateService.autoCheckEnabled;
 
-  readonly restartingApp = signal<boolean>(false);
-  readonly restartingRcloneEngine = signal<boolean>(false);
-  readonly checkingForUpdates = signal<boolean>(false);
+  readonly restartingApp = signal(false);
+  readonly restartingRcloneEngine = signal(false);
+  readonly checkingForUpdates = signal(false);
 
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // Rclone info
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
 
   readonly rcloneInfo = computed(() => {
     const info = this.rcloneStatusService.rcloneInfo();
@@ -175,18 +172,44 @@ export class AboutModalComponent implements OnInit {
   readonly memoryStats = this.rcloneStatusService.memoryUsage;
   readonly runningGc = signal(false);
 
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // Platform / fscache
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
 
   readonly buildType = signal<string | null>(null);
-  readonly updatesDisabled = signal<boolean>(false);
-  readonly fsCacheEntries = signal<number>(0);
-  readonly clearingFsCache = signal<boolean>(false);
+  readonly updatesDisabled = signal(false);
+  readonly fsCacheEntries = signal(0);
+  readonly clearingFsCache = signal(false);
 
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // Debug
+  // ---------------------------------------------------------------------------
+
+  readonly debugInfo = signal<DebugInfo | null>(null);
+
+  // ---------------------------------------------------------------------------
+  // Easter egg
+  // ---------------------------------------------------------------------------
+
+  // Must be a signal — plain properties are invisible to zoneless OnPush CD.
+  readonly logoClickCount = signal(0);
+  private logoClickTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  // ---------------------------------------------------------------------------
+  // Memoized markdown rendering
+  // ---------------------------------------------------------------------------
+
+  readonly formattedAppReleaseNotes = computed(() =>
+    this.formatReleaseNotes(this.appUpdateAvailable()?.releaseNotes)
+  );
+
+  readonly formattedRcloneReleaseNotes = computed(() =>
+    this.formatReleaseNotes(this.rcloneUpdateStatus().updateInfo?.release_notes)
+  );
+
+  // ---------------------------------------------------------------------------
   // Constants
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
 
   readonly channels = [
     {
@@ -211,35 +234,38 @@ export class AboutModalComponent implements OnInit {
     { label: 'modals.about.legal', viewId: 'legal', icon: 'chevron-right' },
   ];
 
-  // Badge for the "About Rclone" nav item — true when there is any pending
-  // rclone action (update available OR binary staged and ready to apply).
   readonly rcloneNavBadge = computed(() => {
     const s = this.rcloneUpdateStatus();
     return s.available || s.readyToRestart;
   });
 
-  // -------------------------------------------------------------------------
-  // Easter egg / misc
-  // -------------------------------------------------------------------------
+  // Static lookup — extracted to a field so getPageTitle() doesn't allocate a
+  // new object literal on every call.
+  private readonly pageTitleMap: Partial<Record<ViewId | 'main', string>> = {
+    details: 'modals.about.details',
+    updates: 'modals.about.updates',
+    'about-rclone': 'modals.about.aboutRclone',
+    credits: 'modals.about.credits',
+    legal: 'modals.about.legal',
+    'whats-new-app': 'modals.about.whatsNew',
+    'whats-new-rclone': 'modals.about.whatsNew',
+    debug: 'modals.about.debugTools',
+    memory: 'modals.about.memoryStats',
+  };
 
-  protected logoClickCount = 0;
-  private logoClickTimeout: ReturnType<typeof setTimeout> | null = null;
-
-  readonly debugInfo = signal<DebugInfo | null>(null);
-
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // Lifecycle
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
 
-  async ngOnInit(): Promise<void> {
-    await this.loadPlatformInfo();
-    this.loadAppAutoCheckSetting();
+  ngOnInit(): void {
+    // Fire-and-forget; each loader handles its own errors internally.
+    this.loadPlatformInfo();
     this.loadFsCacheEntries();
   }
 
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // Navigation
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
 
   navigateTo(viewId: ViewId): void {
     this.overlayStack.update(stack => [...stack, { id: viewId }]);
@@ -250,10 +276,9 @@ export class AboutModalComponent implements OnInit {
   }
 
   showWhatsNew(type: 'app' | 'rclone'): void {
-    this.navigateTo(type === 'app' ? 'whats-new-app' : 'whats-new-rclone');
+    this.navigateTo(`whats-new-${type}` as ViewId);
   }
 
-  @HostListener('document:keydown.escape')
   close(): void {
     if (this.overlayStack().length > 0) {
       this.goBack();
@@ -264,24 +289,13 @@ export class AboutModalComponent implements OnInit {
 
   getPageTitle(viewId?: ViewId): string {
     const id = viewId ?? this.currentView().id;
-    const titleMap: Partial<Record<ViewId | 'main', string>> = {
-      details: 'modals.about.details',
-      updates: 'modals.about.updates',
-      'about-rclone': 'modals.about.aboutRclone',
-      credits: 'modals.about.credits',
-      legal: 'modals.about.legal',
-      'whats-new-app': 'modals.about.whatsNew',
-      'whats-new-rclone': 'modals.about.whatsNew',
-      debug: 'modals.about.debugTools',
-      memory: 'modals.about.memoryStats',
-    };
-    const key = titleMap[id];
+    const key = this.pageTitleMap[id];
     return key ? this.translate.instant(key) : '';
   }
 
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // App updater actions
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
 
   async checkForUpdates(): Promise<void> {
     if (this.checkingForUpdates()) return;
@@ -331,34 +345,24 @@ export class AboutModalComponent implements OnInit {
   }
 
   async unskipVersion(version: string): Promise<void> {
-    this.checkingForUpdates.set(true);
+    // Note: no loading state needed — the button has no disabled binding.
     try {
       await this.appUpdaterService.unskipVersion(version);
       this.notificationService.showSuccess(this.translate.instant('updates.restored', { version }));
     } catch (error) {
       console.error('Failed to unskip version:', error);
       this.notificationService.showError(this.translate.instant('updates.restoreFailed'));
-    } finally {
-      this.checkingForUpdates.set(false);
     }
   }
 
   async toggleAutoCheck(): Promise<void> {
-    const current = this.appAutoCheckUpdates();
-    this.appAutoCheckUpdates.set(!current);
     try {
-      await this.appUpdaterService.setAutoCheckEnabled(!current);
-      this.notificationService.showSuccess(
-        this.translate.instant(
-          !current ? 'modals.about.autoCheckEnabled' : 'modals.about.autoCheckDisabled'
-        )
-      );
+      await this.appUpdaterService.setAutoCheckEnabled(!this.appAutoCheckUpdates());
     } catch (error) {
       console.error('Failed to toggle auto-check:', error);
       this.notificationService.showError(
         this.translate.instant('modals.about.updateSettingFailed')
       );
-      this.appAutoCheckUpdates.set(current); // revert
     }
   }
 
@@ -366,17 +370,9 @@ export class AboutModalComponent implements OnInit {
     await this.appUpdaterService.setChannel(channel);
   }
 
-  private async loadAppAutoCheckSetting(): Promise<void> {
-    try {
-      this.appAutoCheckUpdates.set(this.appUpdaterService.autoCheckEnabled());
-    } catch (error) {
-      console.error('Failed to load auto-check setting:', error);
-    }
-  }
-
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // Rclone updater actions
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
 
   async checkForRcloneUpdates(): Promise<void> {
     if (this.rcloneUpdateStatus().checking) return;
@@ -409,9 +405,8 @@ export class AboutModalComponent implements OnInit {
   }
 
   async toggleRcloneAutoCheck(): Promise<void> {
-    const current = this.rcloneAutoCheck();
     try {
-      await this.rcloneUpdateService.setAutoCheckEnabled(!current);
+      await this.rcloneUpdateService.setAutoCheckEnabled(!this.rcloneAutoCheck());
     } catch (error) {
       console.error('Failed to toggle rclone auto-check:', error);
       this.notificationService.showError(
@@ -424,9 +419,9 @@ export class AboutModalComponent implements OnInit {
     await this.rcloneUpdateService.setChannel(channel);
   }
 
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // Platform / engine actions
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
 
   private async loadPlatformInfo(): Promise<void> {
     try {
@@ -453,7 +448,6 @@ export class AboutModalComponent implements OnInit {
       } else {
         await this.systemInfoService.quitRcloneEngine();
       }
-
       this.notificationService.showSuccess(this.translate.instant('modals.about.killSuccess'));
       await this.rcloneStatusService.refresh();
     } catch (error) {
@@ -500,27 +494,27 @@ export class AboutModalComponent implements OnInit {
     }
   }
 
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // UI helpers
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
 
   onScroll(content: HTMLElement): void {
     this.scrolled.set(content.scrollTop > 10);
   }
 
   onLogoClick(): void {
-    this.logoClickCount++;
+    const count = this.logoClickCount() + 1;
+    this.logoClickCount.set(count);
+
     if (this.logoClickTimeout) clearTimeout(this.logoClickTimeout);
 
-    if (this.logoClickCount >= 5) {
-      this.logoClickCount = 0;
+    if (count >= 5) {
+      this.logoClickCount.set(0);
       this.showDebugOverlay();
       return;
     }
 
-    this.logoClickTimeout = setTimeout(() => {
-      this.logoClickCount = 0;
-    }, 2000);
+    this.logoClickTimeout = setTimeout(() => this.logoClickCount.set(0), 2000);
   }
 
   async showDebugOverlay(): Promise<void> {
@@ -566,7 +560,12 @@ export class AboutModalComponent implements OnInit {
     }
   }
 
-  getFormattedReleaseNotes(markdown: string | undefined | null): SafeHtml {
+  getChannelLabel(channel: string | null | undefined): string {
+    if (!channel) return '';
+    return this.channels.find(c => c.value === channel)?.label ?? channel;
+  }
+
+  private formatReleaseNotes(markdown: string | undefined | null): SafeHtml {
     if (!markdown) {
       return this.sanitizer.bypassSecurityTrustHtml(
         `<p>${this.translate.instant('modals.about.noReleaseNotes')}</p>`
@@ -574,10 +573,5 @@ export class AboutModalComponent implements OnInit {
     }
     const html = marked.parse(markdown, { gfm: true, breaks: true, renderer }) as string;
     return this.sanitizer.bypassSecurityTrustHtml(html);
-  }
-
-  getChannelLabel(channel: string | null | undefined): string {
-    if (!channel) return '';
-    return this.channels.find(c => c.value === channel)?.label ?? channel;
   }
 }

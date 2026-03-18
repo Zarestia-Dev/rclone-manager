@@ -1673,7 +1673,25 @@
       "configFiles": "Archivos de configuración",
       "externalConfig": "Archivo de configuración externo",
       "profiles": "Incluir perfiles",
-      "profilesHint": "Seleccione perfiles específicos para incluir en la copia de seguridad."
+      "profilesHint": "Seleccione perfiles específicos para incluir en la copia de seguridad.",
+      "categories": {
+        "settings": {
+          "label": "Configuración de la aplicación",
+          "description": "Configuración y preferencias principales de la aplicación"
+        },
+        "backend": {
+          "label": "Backend",
+          "description": "Configuración de backend y conectividad"
+        },
+        "connections": {
+          "label": "Conexiones",
+          "description": "Detalles de conexión remota guardados"
+        },
+        "remotes": {
+          "label": "Remotos",
+          "description": "Datos de configuración remota de Rclone"
+        }
+      }
     },
     "backend": {
       "title": "Gestión del backend",

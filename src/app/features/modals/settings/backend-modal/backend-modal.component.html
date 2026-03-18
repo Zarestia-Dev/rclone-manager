@@ -16,7 +16,6 @@
       </div>
     }
 
-    <!-- Backend List -->
     @if (formState().mode === null) {
       <div class="backends-list">
         @for (backend of backends(); track backend.name) {
@@ -29,7 +28,6 @@
             tabindex="0"
             [attr.aria-label]="'modals.backend.switchTitle' | translate: { name: backend.name }"
           >
-            <!-- Backend Icon with Status -->
             <div
               class="backend-icon"
               [class.local]="backend.isLocal"
@@ -40,7 +38,6 @@
               <span class="status-dot" [class]="getStatusClass(backend)"></span>
             </div>
 
-            <!-- Backend Info -->
             <div class="backend-info">
               <div class="backend-title">
                 <span class="name">{{ backend.name }}</span>
@@ -72,7 +69,6 @@
               </div>
             </div>
 
-            <!-- Action Buttons -->
             <div class="backend-actions">
               <button
                 mat-icon-button
@@ -116,16 +112,12 @@
           </div>
         }
       </div>
-    }
-
-    <!-- Add/Edit Form -->
-    @if (formState().mode !== null) {
+    } @else {
       <form [formGroup]="backendForm" (ngSubmit)="saveBackend()">
         <mat-tab-group>
           <!-- Tab 1: Connection Settings -->
           <mat-tab [label]="'modals.backend.connectionTab' | translate">
             <div class="tab-content">
-              <!-- Header Section: Copy Options & Name -->
               @if (formState().editingName !== 'Local') {
                 @if (formState().mode === 'add') {
                   <div class="copy-options-section">
@@ -194,7 +186,7 @@
                   <mat-label>{{ 'modals.backend.name' | translate }}</mat-label>
                   <mat-icon matPrefix svgIcon="tag"></mat-icon>
                   <input matInput formControlName="name" />
-                  @if (hasDuplicateName()) {
+                  @if (isDuplicateName()) {
                     <mat-error>{{ 'modals.backend.nameExists' | translate }}</mat-error>
                   }
                 </mat-form-field>
@@ -202,7 +194,6 @@
 
               <!-- Dynamic Groups Loop -->
               @for (group of fieldGroups(); track group.name) {
-                <!-- Connection & Advanced Row -->
                 @if (group.name === 'connection' || group.name === 'advanced') {
                   <div class="form-row wrap">
                     @for (field of group.fields; track field.key) {
@@ -214,9 +205,7 @@
                       ></ng-container>
                     }
                   </div>
-                }
-                <!-- Authentication Panel -->
-                @else if (group.name === 'authentication') {
+                } @else if (group.name === 'authentication') {
                   <div class="auth-group">
                     <mat-expansion-panel
                       [expanded]="backendForm.get('has_auth')?.value"
@@ -225,10 +214,10 @@
                       hideToggle="true"
                     >
                       <mat-expansion-panel-header>
-                        <mat-panel-title
-                          ><mat-icon svgIcon="key"></mat-icon>
-                          {{ 'modals.backend.enableAuth' | translate }}</mat-panel-title
-                        >
+                        <mat-panel-title>
+                          <mat-icon svgIcon="key"></mat-icon>
+                          {{ 'modals.backend.enableAuth' | translate }}
+                        </mat-panel-title>
                         <mat-panel-description>
                           <mat-slide-toggle
                             [checked]="backendForm.get('has_auth')?.value"
@@ -249,9 +238,7 @@
                       </div>
                     </mat-expansion-panel>
                   </div>
-                }
-                <!-- OAuth Group -->
-                @else if (group.name === 'oauth' && formState().editingName === 'Local') {
+                } @else if (group.name === 'oauth' && formState().editingName === 'Local') {
                   <div class="oauth-group">
                     <h4>{{ 'modals.backend.oauthSettings' | translate }}</h4>
                     <div class="form-row">
@@ -277,17 +264,13 @@
                 <app-backend-security></app-backend-security>
               } @else {
                 <!-- Remote Security Fields -->
-                @for (group of fieldGroups(); track group.name) {
-                  @if (group.name === 'security') {
-                    @for (field of group.fields; track field.key) {
-                      <ng-container
-                        *ngTemplateOutlet="
-                          fieldTemplate;
-                          context: { field: field, group: group.name, form: backendForm }
-                        "
-                      ></ng-container>
-                    }
-                  }
+                @for (field of securityFields(); track field.key) {
+                  <ng-container
+                    *ngTemplateOutlet="
+                      fieldTemplate;
+                      context: { field: field, group: 'security', form: backendForm }
+                    "
+                  ></ng-container>
                 }
 
                 <div class="info-card">
@@ -301,9 +284,7 @@
                     [class.encrypted]="hasConfigPassword()"
                     [class.unencrypted]="!hasConfigPassword()"
                   >
-                    <div class="status-icon">
-                      <mat-icon [svgIcon]="hasConfigPassword() ? 'security' : 'shield'"></mat-icon>
-                    </div>
+                    <mat-icon [svgIcon]="hasConfigPassword() ? 'security' : 'shield'"></mat-icon>
                     <div class="status-text">
                       <strong>{{
                         (hasConfigPassword()
@@ -333,7 +314,7 @@
             </div>
           </mat-tab>
         </mat-tab-group>
-        <!-- Shared Field Template (Inside form to preserve injection context) -->
+
         <ng-template #fieldTemplate let-field="field" let-group="group" let-form="form">
           <div [formGroup]="form" [ngClass]="getFieldClasses(field, group)">
             @if (
@@ -370,12 +351,12 @@
                 <mat-icon
                   matPrefix
                   svgIcon="file-lines"
-                  [class.primary]="getEditingBackendRuntimePath()"
+                  [class.primary]="editingBackendRuntimePath()"
                   [matTooltip]="
-                    getEditingBackendRuntimePath()
+                    editingBackendRuntimePath()
                       ? ('modals.backend.activeConfigPath' | translate) +
                         ': ' +
-                        getEditingBackendRuntimePath()
+                        editingBackendRuntimePath()
                       : ''
                   "
                 ></mat-icon>
@@ -414,7 +395,7 @@
                   [formControlName]="field.key"
                   [placeholder]="field.meta.metadata['placeholder'] || ''"
                 />
-                @if (field.key === 'host' && hasDuplicateHost()) {
+                @if (field.key === 'host' && isDuplicateHost()) {
                   <mat-error>{{ 'modals.backend.hostExists' | translate }}</mat-error>
                 }
                 @if (field.meta.metadata['description']) {
@@ -434,13 +415,12 @@
         <mat-icon svgIcon="plus"></mat-icon>
         {{ 'modals.backend.addBackend' | translate }}
       </button>
-    }
-    @if (formState().mode !== null) {
+    } @else {
       <button mat-stroked-button (click)="cancelEdit()">{{ 'common.cancel' | translate }}</button>
       <button
         mat-flat-button
         class="primary"
-        [disabled]="backendForm.invalid || hasDuplicateName() || hasDuplicateHost()"
+        [disabled]="backendForm.invalid || isDuplicateName() || isDuplicateHost()"
         (click)="saveBackend()"
       >
         {{ 'modals.backend.save' | translate }}

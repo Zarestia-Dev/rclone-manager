@@ -1718,7 +1718,25 @@
       "configFiles": "Configuration files",
       "externalConfig": "External configuration file",
       "profiles": "Include Profiles",
-      "profilesHint": "Select specific profiles to include in the backup."
+      "profilesHint": "Select specific profiles to include in the backup.",
+      "categories": {
+        "settings": {
+          "label": "Application Settings",
+          "description": "Main application settings and preferences"
+        },
+        "backend": {
+          "label": "Backend",
+          "description": "App backend and connectivity settings"
+        },
+        "connections": {
+          "label": "Connections",
+          "description": "Saved remote connection details"
+        },
+        "remotes": {
+          "label": "Remotes",
+          "description": "Rclone remote configuration data"
+        }
+      }
     },
     "backend": {
       "title": "Backend Management",

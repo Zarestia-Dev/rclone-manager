@@ -48,6 +48,22 @@
         animation: spin 1s linear infinite;
       }
     }
+
+    @media (max-width: 540px) {
+      flex-direction: column;
+      align-items: stretch;
+
+      .filter-controls {
+        flex-direction: column;
+      }
+
+      .action-controls {
+        justify-content: flex-end;
+        border-top: 1px solid var(--card-shade-color);
+        padding-top: var(--space-sm);
+        margin-top: var(--space-sm);
+      }
+    }
   }
 
   // Terminal Area
@@ -119,21 +135,13 @@
       transition: var(--transition-fast);
 
       mat-icon {
-        font-size: var(--icon-size-xs);
-        width: var(--icon-size-xs);
-        height: var(--icon-size-xs);
+        font-size: var(--icon-size-sm);
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
 
         &:hover {
           color: var(--gnome-light-1);
         }
-      }
-
-      .expand-icon {
-        width: var(--icon-size-xs);
-        height: var(--icon-size-xs);
-        font-size: var(--icon-size-xs);
-        margin-left: var(--space-xxs);
-        transition: var(--transition-fast);
       }
     }
   }
@@ -180,6 +188,7 @@
     }
   }
 
+  // --- Level Variants ---
   &.error {
     .level-tag {
       color: var(--warn-color);
@@ -234,25 +243,6 @@
   }
 }
 
-// Responsive
-@media (max-width: 540px) {
-  .toolbar-section {
-    flex-direction: column;
-    align-items: stretch;
-
-    .filter-controls {
-      flex-direction: column;
-
-      .level-select {
-        width: 100% !important;
-      }
-    }
-
-    .action-controls {
-      justify-content: flex-end;
-      border-top: 1px solid var(--card-shade-color);
-      padding-top: var(--space-sm);
-      margin-top: var(--space-sm);
-    }
-  }
+.empty-state--dimmed {
+  color: color-mix(in srgb, white 55%, transparent);
 }

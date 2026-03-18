@@ -26,6 +26,7 @@ import {
   RclonePasswordService,
   SystemHealthService,
 } from '@app/services';
+import { BackendService } from '../../services/infrastructure/system/backend.service';
 import { InstallationOptionsData, InstallationTabOption } from '@app/types';
 
 interface OnboardingCard {
@@ -72,6 +73,7 @@ export class OnboardingComponent {
   private readonly eventListenersService = inject(EventListenersService);
   private readonly fileSystemService = inject(FileSystemService);
   private readonly rclonePasswordService = inject(RclonePasswordService);
+  private readonly backendService = inject(BackendService);
   readonly systemHealth = inject(SystemHealthService);
 
   // ─── State ──────────────────────────────────────────────────────────────────
@@ -338,7 +340,24 @@ export class OnboardingComponent {
     try {
       const data = this.configData();
       if (data.installLocation === 'custom' && data.customPath) {
-        await this.appSettingsService.saveSetting('core', 'rclone_config_file', data.customPath);
+        // rclone_config_file is now stored as config_path on the Local backend.
+        // Ensure backends are loaded (they may not be during onboarding).
+        if (this.backendService.backends().length === 0) {
+          await this.backendService.loadBackends();
+        }
+        const localBackend = this.backendService.backends().find(b => b.name === 'Local');
+        if (localBackend) {
+          await this.backendService.updateBackend({
+            name: 'Local',
+            host: localBackend.host,
+            port: localBackend.port,
+            isLocal: true,
+            username: localBackend.username,
+            password: localBackend.password,
+            configPath: data.customPath,
+            oauthPort: localBackend.oauthPort,
+          });
+        }
       }
       await this.systemHealth.checkConfigEncryption();
     } catch (error) {

@@ -1,12 +1,12 @@
 <div class="restore-preview-modal">
   <!-- Modal Header -->
   <div class="modal-header" data-tauri-drag-region>
-    <button>
+    <button mat-icon-button>
       <mat-icon svgIcon="box-archive"></mat-icon>
     </button>
     <p>{{ 'backup.restore.title' | translate }}</p>
     <button
-      matIconButton
+      mat-icon-button
       (click)="close()"
       [attr.aria-label]="'backup.restore.ariaClose' | translate"
     >
@@ -64,13 +64,13 @@
         </div>
 
         <div class="info-item">
-          <div class="info-icon-wrapper" [class.encrypted]="isEncrypted()">
-            <mat-icon [svgIcon]="isEncrypted() ? 'lock' : 'lock-open'" class="info-icon"></mat-icon>
+          <div class="info-icon-wrapper" [class.encrypted]="isEncrypted">
+            <mat-icon [svgIcon]="isEncrypted ? 'lock' : 'lock-open'" class="info-icon"></mat-icon>
           </div>
           <div class="info-content">
             <span class="label">{{ 'backup.restore.security' | translate }}</span>
-            <span class="value" [class.encrypted]="isEncrypted()">
-              @if (isEncrypted()) {
+            <span class="value" [class.encrypted]="isEncrypted">
+              @if (isEncrypted) {
                 <span class="badge">
                   <mat-icon svgIcon="shield" class="badge-icon"></mat-icon>
                   {{ 'backup.restore.encrypted' | translate }}
@@ -88,7 +88,7 @@
     </div>
 
     <!-- Legacy Backup Info Banner -->
-    @if (isLegacy()) {
+    @if (isLegacy) {
       <div class="info-card legacy-banner">
         <div class="banner-content">
           <div class="banner-icon-wrapper">
@@ -103,13 +103,13 @@
     }
 
     <!-- Contents Card -->
-    @if (hasContents()) {
+    @if (hasContents) {
       <div class="info-card contents-card">
         <div class="card-header">
           <mat-icon svgIcon="file-lines" class="card-icon"></mat-icon>
           <h4>{{ 'backup.restore.contents' | translate }}</h4>
           <span class="items-count">{{
-            'backup.restore.itemCount' | translate: { count: getItemCount() }
+            'backup.restore.itemCount' | translate: { count: itemCount }
           }}</span>
         </div>
 
@@ -171,17 +171,13 @@
               <div class="item-content">
                 <span class="item-title">
                   {{ 'backup.restore.remoteConfigs.title' | translate }}
-                  @if (shouldShowRemoteCount()) {
+                  @if (showRemoteCount) {
                     <span class="count-badge">{{ analysis.contents!.remoteCount }}</span>
                   }
                 </span>
-                @if (
-                  shouldShowRemoteDetails() &&
-                  analysis.contents!.remoteNames &&
-                  analysis.contents!.remoteNames.length > 0
-                ) {
+                @if (showRemoteCount && analysis.contents!.remoteNames?.length) {
                   <span class="item-description">{{
-                    analysis.contents!.remoteNames.join(', ')
+                    analysis.contents!.remoteNames!.join(', ')
                   }}</span>
                 }
               </div>
@@ -189,7 +185,7 @@
             </div>
           }
 
-          @if (analysis.contents!.profiles && analysis.contents!.profiles.length > 0) {
+          @if (analysis.contents!.profiles?.length) {
             <div class="content-item">
               <div class="item-icon-wrapper">
                 <mat-icon svgIcon="user" class="item-icon"></mat-icon>
@@ -197,9 +193,9 @@
               <div class="item-content">
                 <span class="item-title">
                   {{ 'backup.restore.profiles.title' | translate }}
-                  <span class="count-badge">{{ analysis.contents!.profiles.length }}</span>
+                  <span class="count-badge">{{ analysis.contents!.profiles!.length }}</span>
                 </span>
-                <span class="item-description">{{ analysis.contents!.profiles.join(', ') }}</span>
+                <span class="item-description">{{ analysis.contents!.profiles!.join(', ') }}</span>
               </div>
               <mat-icon svgIcon="circle-check" class="accent"></mat-icon>
             </div>
@@ -209,7 +205,7 @@
     }
 
     <!-- User Note Card -->
-    @if (hasUserNote()) {
+    @if (hasUserNote) {
       <div class="info-card note-card">
         <div class="card-header">
           <mat-icon svgIcon="note-sticky" class="card-icon"></mat-icon>
@@ -223,7 +219,7 @@
     }
 
     <!-- Restore Options Card -->
-    @if (profiles().length > 0 && !isLegacy()) {
+    @if (profiles.length > 0 && !isLegacy) {
       <div class="info-card options-card">
         <div class="card-header">
           <mat-icon svgIcon="folder_zip" class="card-icon"></mat-icon>
@@ -254,7 +250,7 @@
                   [value]="selectedProfile()"
                   (selectionChange)="selectedProfile.set($event.value)"
                 >
-                  @for (profile of profiles(); track profile) {
+                  @for (profile of profiles; track profile) {
                     <mat-option [value]="profile">{{ profile }}</mat-option>
                   }
                 </mat-select>
@@ -266,7 +262,7 @@
     }
 
     <!-- Password Section -->
-    @if (isEncrypted()) {
+    @if (isEncrypted) {
       <div class="info-card password-card">
         <div class="card-header warning">
           <mat-icon svgIcon="lock" class="card-icon"></mat-icon>
@@ -285,6 +281,7 @@
               <span>{{ passwordError() }}</span>
             </div>
           }
+
           <mat-form-field appearance="fill">
             <mat-label>{{ 'backup.restore.passwordRequired' | translate }}</mat-label>
             <input
@@ -299,7 +296,7 @@
             />
             <mat-icon matPrefix svgIcon="key"></mat-icon>
             <button
-              matIconButton
+              mat-icon-button
               matSuffix
               (click)="togglePasswordVisibility()"
               [attr.aria-label]="
@@ -325,17 +322,16 @@
 
     <button
       mat-flat-button
-      class="primary"
+      class="primary restore-btn"
       (click)="verifyAndRestore()"
-      [disabled]="isVerifying() || (isEncrypted() && !password())"
-      class="restore-btn"
+      [disabled]="isVerifying() || (isEncrypted && !password())"
     >
       @if (isVerifying()) {
         <mat-spinner diameter="24"></mat-spinner>
         <span>{{ 'backup.restore.verifying' | translate }}</span>
       } @else {
         <span>{{
-          isEncrypted()
+          isEncrypted
             ? ('backup.restore.decryptAndRestore' | translate)
             : ('backup.restore.restoreAction' | translate)
         }}</span>

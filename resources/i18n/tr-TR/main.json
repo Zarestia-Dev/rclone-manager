@@ -1711,12 +1711,30 @@
       "fullBackup": "Tam Yedekleme",
       "allConfigs": "Tüm Yapılandırmalar",
       "singleRemote": "Tekil Uzak Bağlantı",
-      "singleRemoteDesc": "Belirli bir uzak bağlantı yapılandırmasını dışa aktar",
+      "singleRemoteDesc": "Belirli bir uzak bağlantıyı dışa aktar",
       "appPreferences": "Uygulama tercihleri",
       "configFiles": "Yapılandırma dosyaları",
       "externalConfig": "Harici yapılandırma dosyası",
       "profiles": "Profilleri Dahil Et",
-      "profilesHint": "Yedeklemeye dahil edilecek belirli profilleri seçin."
+      "profilesHint": "Yedeklemeye dahil edilecek belirli profilleri seçin.",
+      "categories": {
+        "settings": {
+          "label": "Uygulama Ayarları",
+          "description": "Ana uygulama ayarları ve tercihleri"
+        },
+        "backend": {
+          "label": "Arka Uç",
+          "description": "Uygulama arka ucu ve bağlantı ayarları"
+        },
+        "connections": {
+          "label": "Bağlantılar",
+          "description": "Kayıtlı uzak bağlantı detayları"
+        },
+        "remotes": {
+          "label": "Uzak Bağlantılar",
+          "description": "Rclone uzak bağlantı yapılandırma verileri"
+        }
+      }
     },
     "backend": {
       "title": "Arka Uç Yönetimi",
