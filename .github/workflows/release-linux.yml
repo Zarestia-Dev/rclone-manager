@@ -1,5 +1,4 @@
 name: "Release Linux"
-
 on:
   workflow_dispatch:
 
@@ -15,8 +14,8 @@ jobs:
             args: ""
           - platform: "ubuntu-22.04-arm"
             args: ""
-
     runs-on: ${{ matrix.platform }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -33,37 +32,52 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
+          key: ${{ matrix.platform }}
 
-      - name: Install linux dependencies
-        shell: bash
-        if: matrix.platform == 'ubuntu-22.04' || matrix.platform == 'ubuntu-22.04-arm'
+      - name: install dependencies (ubuntu-22.04 x86_64)
+        if: matrix.platform == 'ubuntu-22.04'
         run: |
-          sudo apt update;
-          sudo apt install -y \
-            build-essential \
-            curl \
-            wget \
-            file \
-            libssl-dev \
-            libgtk-3-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            xdg-utils;
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential curl wget file \
+            libgtk-3-dev libxdo-dev libssl-dev \
+            libappindicator3-dev librsvg2-dev patchelf xdg-utils
 
-          webkit_version='2.50.*'
-          sudo apt install -y \
-            libwebkit2gtk-4.1-0="$webkit_version" \
-            libwebkit2gtk-4.1-dev="$webkit_version" \
-            libjavascriptcoregtk-4.1-0="$webkit_version" \
-            libjavascriptcoregtk-4.1-dev="$webkit_version" \
-            gir1.2-javascriptcoregtk-4.1="$webkit_version" \
-            gir1.2-webkit2-4.1="$webkit_version";
+          mkdir -p /tmp/ubuntu-packages
+          cd /tmp/ubuntu-packages
 
-      - name: Override linuxdeploy
+          wget https://launchpadlibrarian.net/723972773/libwebkit2gtk-4.1-0_2.44.0-0ubuntu0.22.04.1_amd64.deb
+          wget https://launchpadlibrarian.net/723972761/libwebkit2gtk-4.1-dev_2.44.0-0ubuntu0.22.04.1_amd64.deb
+          wget https://launchpadlibrarian.net/723972770/libjavascriptcoregtk-4.1-0_2.44.0-0ubuntu0.22.04.1_amd64.deb
+          wget https://launchpadlibrarian.net/723972746/libjavascriptcoregtk-4.1-dev_2.44.0-0ubuntu0.22.04.1_amd64.deb
+          wget https://launchpadlibrarian.net/723972735/gir1.2-javascriptcoregtk-4.1_2.44.0-0ubuntu0.22.04.1_amd64.deb
+          wget https://launchpadlibrarian.net/723972739/gir1.2-webkit2-4.1_2.44.0-0ubuntu0.22.04.1_amd64.deb
+          wget https://launchpadlibrarian.net/606433947/libicu70_70.1-2ubuntu1_amd64.deb
+          wget https://launchpadlibrarian.net/606433941/libicu-dev_70.1-2ubuntu1_amd64.deb
+          wget https://launchpadlibrarian.net/606433945/icu-devtools_70.1-2ubuntu1_amd64.deb
+          wget https://launchpadlibrarian.net/595623693/libjpeg8_8c-2ubuntu10_amd64.deb
+          wget https://launchpadlibrarian.net/587202140/libjpeg-turbo8_2.1.2-0ubuntu1_amd64.deb
+          wget https://launchpadlibrarian.net/592959859/xdg-desktop-portal-gtk_1.14.0-1build1_amd64.deb
+
+          sudo apt-get install -y /tmp/ubuntu-packages/*.deb
+
+      - name: install dependencies (ubuntu-22.04-arm)
+        if: matrix.platform == 'ubuntu-22.04-arm'
         run: |
-          cargo install tauri-cli --git https://github.com/tauri-apps/tauri --branch feat/truly-portable-appimage --force
-          echo "Installed tauri-cli version:"
-          cargo tauri --version
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev patchelf xdg-utils
+
+      - name: install portable tauri-cli (ubuntu-22.04 x86_64 only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          cargo install tauri-cli \
+            --git https://github.com/tauri-apps/tauri \
+            --branch feat/truly-portable-appimage \
+            --force
+          echo "tauri-cli version: $(cargo tauri --version)"
 
       - name: install frontend dependencies
         run: npm install
@@ -71,12 +85,12 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_BUNDLER_NEW_APPIMAGE_FORMAT: true
         with:
-          tagName: v__VERSION__-test # the action automatically replaces \_\_VERSION\_\_ with the app version.
-          releaseName: "RClone Manager v__VERSION__ Test Release"
+          tagName: v__VERSION__-beta
+          releaseName: "RClone Manager v__VERSION__ Beta"
           releaseBody: "See the assets to download this version and install."
           releaseDraft: true
           prerelease: false
