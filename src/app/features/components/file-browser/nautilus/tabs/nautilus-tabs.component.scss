@@ -29,6 +29,7 @@
   &:has(.show-left-shadow)::before {
     opacity: 1;
   }
+
   &:has(.show-right-shadow)::after {
     opacity: 1;
   }
@@ -56,17 +57,16 @@
     justify-content: center;
     gap: var(--space-xs);
     padding: var(--space-xs) var(--space-sm);
+    padding-right: 44px;
     border-radius: var(--radius-xs);
     flex: 1 1 100px;
     min-width: 100px;
     margin: 0 2px;
     position: relative;
-    padding-right: 44px;
     background: transparent;
     cursor: pointer;
-    transition: background-color 0.15s ease;
+    transition: var(--transition-fast);
 
-    // GNOME-style separators between tabs
     &::before {
       content: "";
       position: absolute;
@@ -100,15 +100,14 @@
       font-weight: 600;
     }
 
+    &:hover:not(.active) {
+      background: var(--hover-bg-color);
+    }
+
     &.file-drag-over {
-      // border-radius intentionally omitted — already set on .tab above
       background: rgba(var(--accent-color-rgb), 0.15);
       outline: 2px solid var(--accent-color);
       color: var(--accent-color);
-    }
-
-    &:hover:not(.active) {
-      background: var(--hover-bg-color);
     }
 
     .tab-title {
@@ -139,9 +138,8 @@
       color: var(--window-fg-color);
       cursor: pointer;
       padding: var(--space-xxs);
-      transition: background-color 0.15s ease;
+      transition: var(--transition-fast);
 
-      // Hover on the button itself — not the icon — so the target matches the click area
       &:hover {
         background: var(--selected-bg-color);
       }
@@ -154,13 +152,11 @@
     }
   }
 
-  /* CDK list dragging reorder animation */
   &.cdk-drop-list-dragging .tab:not(.cdk-drag-placeholder) {
     transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
   }
 }
 
-/* Global drag preview */
 .cdk-drag-preview {
   background: var(--selected-bg-color);
   display: flex !important;

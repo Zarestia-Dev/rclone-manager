@@ -1,12 +1,10 @@
 import { Component, input, output, inject, TemplateRef } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
-import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { ScrollingModule } from '@angular/cdk/scrolling';
-
 import { MatTableModule } from '@angular/material/table';
 import { TranslateModule } from '@ngx-translate/core';
 import { FormatFileSizePipe } from '@app/pipes';
@@ -19,7 +17,6 @@ import { Entry, FileBrowserItem } from '@app/types';
   imports: [
     NgTemplateOutlet,
     MatIconModule,
-    MatCardModule,
     MatProgressSpinnerModule,
     MatButtonModule,
     CdkMenuModule,
@@ -28,7 +25,6 @@ import { Entry, FileBrowserItem } from '@app/types';
     TranslateModule,
     FormatFileSizePipe,
   ],
-
   templateUrl: './nautilus-view-pane.component.html',
   styleUrl: './nautilus-view-pane.component.scss',
 })
@@ -53,58 +49,43 @@ export class NautilusViewPaneComponent {
   public readonly starredMode = input.required<boolean>();
   public readonly sortKey = input.required<string>();
   public readonly sortDirection = input.required<'asc' | 'desc'>();
-
   public readonly activePaneIndex = input.required<0 | 1>();
-
-  // Custom function passed as input (depends on parent picker state)
   public readonly isItemSelectable = input.required<(entry: Entry) => boolean>();
-
-  public readonly displayedColumns = ['name', 'size', 'modified', 'star'];
-  public readonly fileMenu = input.required<TemplateRef<unknown>>(); // Reference to the CdkMenu template
+  public readonly fileMenu = input.required<TemplateRef<unknown>>();
 
   // --- Outputs ---
   public readonly switchPane = output<0 | 1>();
   public readonly clearSelection = output<void>();
   public readonly setContextItem = output<FileBrowserItem | null>();
-  public readonly dropToCurrentDirectory = output<{
-    event: DragEvent;
-    paneIndex: 0 | 1;
-  }>();
+  public readonly dropToCurrentDirectory = output<{ event: DragEvent; paneIndex: 0 | 1 }>();
   public readonly dragStarted = output<{ event: DragEvent; item: FileBrowserItem }>();
-  public readonly dragEnded = output<DragEvent>();
-
-  public readonly itemClick = output<{
-    item: FileBrowserItem;
-    event: Event;
-    index: number;
-  }>();
+  // Emits void — the parent's onDragEnded() takes no arguments.
+  public readonly dragEnded = output<void>();
+  public readonly itemClick = output<{ item: FileBrowserItem; event: Event; index: number }>();
   public readonly navigateTo = output<FileBrowserItem>();
   public readonly toggleStar = output<FileBrowserItem>();
   public readonly toggleSort = output<string>();
   public readonly refresh = output<void>();
   public readonly cancelLoad = output<0 | 1>();
 
+  // Stable column order for list view — declared as const so the reference never changes.
+  protected readonly displayedColumns = ['name', 'size', 'modified', 'star'] as const;
+
   isStarred(item: FileBrowserItem): boolean {
-    const remote = item.meta.remote || '';
-    return this.nautilusService.isSaved('starred', remote, item.entry.Path, item.meta.isLocal);
+    return this.nautilusService.isSaved(
+      'starred',
+      item.meta.remote || '',
+      item.entry.Path,
+      item.meta.isLocal
+    );
   }
 
   onDragStart(event: DragEvent, item: FileBrowserItem): void {
     this.dragStarted.emit({ event, item });
   }
 
-  onDragEnd(event: DragEvent): void {
-    this.dragEnded.emit(event);
-  }
-
-  // --- Pure utility methods (moved from parent inputs) ---
   getItemKey(item: FileBrowserItem): string {
-    if (!item) return '';
     return `${item.meta.remote}:${item.entry.Path}`;
-  }
-
-  trackByFile(index: number, item: FileBrowserItem): string {
-    return item.entry.ID || item.entry.Path;
   }
 
   formatRelativeDate(dateString: string): string {

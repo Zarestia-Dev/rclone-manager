@@ -13,7 +13,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { DragDropModule, CdkDragDrop, CdkDrag } from '@angular/cdk/drag-drop';
+import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { TranslateModule } from '@ngx-translate/core';
 
 export interface TabItem {
@@ -35,7 +35,7 @@ export interface TabItem {
     TranslateModule,
   ],
   templateUrl: './nautilus-tabs.component.html',
-  styleUrls: ['./nautilus-tabs.component.scss'],
+  styleUrl: './nautilus-tabs.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NautilusTabsComponent {
@@ -53,6 +53,7 @@ export class NautilusTabsComponent {
   readonly closeOtherTabs = output<number>();
   readonly closeTabsToRight = output<number>();
 
+  // --- Scroll Shadow State ---
   protected readonly _showLeftShadow = signal(false);
   protected readonly _showRightShadow = signal(false);
 
@@ -65,9 +66,8 @@ export class NautilusTabsComponent {
     });
 
     effect(() => {
-      // Re-evaluate shadows when tabs change
       this.tabs();
-      setTimeout(() => this.updateScrollShadows(), 50);
+      setTimeout(() => this.updateScrollShadows(), 0);
     });
   }
 
@@ -94,17 +94,11 @@ export class NautilusTabsComponent {
     });
   }
 
-  readonly rejectFileDrags = (item: CdkDrag): boolean => {
-    return item.data?.entry?.Path === undefined;
-  };
-
   protected onWheelScroll(event: WheelEvent): void {
     const container = this.tabsScrollContainer()?.nativeElement;
-    if (container) {
-      container.scrollLeft += event.deltaY;
-      this.updateScrollShadows();
-      event.preventDefault();
-    }
+    if (!container) return;
+    container.scrollLeft += event.deltaY;
+    event.preventDefault();
   }
 
   protected onScroll(): void {
@@ -130,7 +124,6 @@ export class NautilusTabsComponent {
 
     if (tabRect.left < containerRect.left || tabRect.right > containerRect.right) {
       activeTab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-      setTimeout(() => this.updateScrollShadows(), 300);
     }
   }
 }

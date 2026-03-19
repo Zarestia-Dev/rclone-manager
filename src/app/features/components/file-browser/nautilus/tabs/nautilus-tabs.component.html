@@ -7,13 +7,7 @@
     (scroll)="onScroll()"
     (wheel)="onWheelScroll($event)"
   >
-    <div
-      class="tabs-bar"
-      cdkDropList
-      cdkDropListOrientation="horizontal"
-      [cdkDropListEnterPredicate]="rejectFileDrags"
-      (cdkDropListDropped)="onDrop($event)"
-    >
+    <div class="tabs-bar" cdkDropList (cdkDropListDropped)="onDrop($event)">
       @for (t of tabs(); track t.id) {
         <div
           class="tab"

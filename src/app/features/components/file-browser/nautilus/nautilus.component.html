@@ -305,7 +305,6 @@
 
           @if (!activeStarredMode()) {
             <mat-divider></mat-divider>
-
             <button
               class="menu-item"
               cdkMenuItem
@@ -362,7 +361,7 @@
         [value]="sortKey()"
         (change)="setSort($event.value)"
       >
-        @for (opt of sortOptions; track trackBySortOption($index, opt)) {
+        @for (opt of sortOptions; track opt.key) {
           <mat-radio-button [value]="opt.key">{{ opt.label | translate }}</mat-radio-button>
         }
       </mat-radio-group>

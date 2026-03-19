@@ -1,3 +1,7 @@
+/* ==========================================================================
+   1. Nav Buttons
+   ========================================================================== */
+
 .nav-button {
   display: flex;
   align-items: center;
@@ -22,10 +26,15 @@
     color: var(--accent-color);
   }
 
+  // Attached to the path-container edge — no rounded corners on the join side.
   &--flush {
     border-radius: 0;
   }
 }
+
+/* ==========================================================================
+   2. Toolbar Shell
+   ========================================================================== */
 
 .nautilus-toolbar {
   display: flex;
@@ -47,6 +56,10 @@
   }
 }
 
+/* ==========================================================================
+   3. Path Container
+   ========================================================================== */
+
 .path-container {
   display: flex;
   align-items: center;
@@ -61,8 +74,8 @@
   height: 34px;
   position: relative;
 
-  // Scroll-edge fade overlays — controlled by .show-*-shadow on the scroll view.
-  // Using :has() keeps the logic in CSS without extra wrapper elements.
+  // Scroll-edge fade overlays — driven by .show-left-shadow / .show-right-shadow
+  // on the child scroll view. :has() keeps logic in CSS without wrapper elements.
   &::before,
   &::after {
     content: "";
@@ -81,6 +94,7 @@
     background: linear-gradient(to right, rgba(0, 0, 0, 0.15) 0%, transparent 100%);
   }
 
+  // The right fade stops before the options button (≈ 36 px wide).
   &::after {
     right: 36px;
     background: linear-gradient(to left, rgba(0, 0, 0, 0.15) 0%, transparent 100%);
@@ -89,10 +103,15 @@
   &:has(.show-left-shadow)::before {
     opacity: 1;
   }
+
   &:has(.show-right-shadow)::after {
     opacity: 1;
   }
 }
+
+/* ==========================================================================
+   4. Path Scroll View & Segments
+   ========================================================================== */
 
 .path-scroll-view {
   display: flex;
@@ -139,12 +158,16 @@
   }
 
   &.segment-drag-over {
+    // border-radius is inherited from base — no need to restate it.
     background: rgba(var(--accent-color-rgb), 0.15);
     outline: 2px solid var(--accent-color);
     color: var(--accent-color);
-    border-radius: var(--border-radius);
   }
 }
+
+/* ==========================================================================
+   5. Path / Search Input
+   ========================================================================== */
 
 .path-input {
   width: 100%;

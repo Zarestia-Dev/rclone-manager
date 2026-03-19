@@ -7,6 +7,10 @@
   width: 100%;
 }
 
+/* ==========================================================================
+   1. Pane Wrapper
+   ========================================================================== */
+
 .pane-wrapper {
   position: relative;
   flex: 1;
@@ -17,8 +21,10 @@
   background: var(--window-bg-color);
   transition: var(--transition-fast);
 
+  // Active pane indicator in split mode
   &.split-enabled.focused {
     z-index: 10;
+
     &::after {
       content: "";
       position: absolute;
@@ -37,12 +43,17 @@
   }
 }
 
-/* 3.2.1 Grid View */
+/* ==========================================================================
+   2. Grid View
+   ========================================================================== */
+
 .nautilus-grid {
   padding: var(--space-md) var(--space-xs);
   flex: 1;
   min-height: 0;
   box-sizing: border-box;
+  overflow-y: auto;
+  overflow-x: hidden;
 
   .grid {
     display: grid;
@@ -74,8 +85,8 @@
     padding: var(--space-xxs);
     transition: var(--transition-fast);
     width: var(--icon-size-sm);
-    color: var(--dim-color);
     height: var(--icon-size-sm);
+    color: var(--dim-color);
     z-index: 1;
 
     &:hover {
@@ -84,7 +95,10 @@
   }
 }
 
-/* THE SHARED CARD COMPONENT */
+/* ==========================================================================
+   3. Grid Card
+   ========================================================================== */
+
 .folder-card {
   box-sizing: border-box;
   display: flex;
@@ -94,14 +108,12 @@
   border-radius: var(--card-border-radius);
   transition: var(--transition-fast);
   background: none;
-  box-shadow: none;
   padding: 0;
 
   &:hover {
-    background: var(--bg-elevated); // Consolidated hover
+    background: var(--bg-elevated);
   }
 
-  /* Typography */
   .folder-title {
     margin: 0;
     font-size: var(--font-size-md);
@@ -111,7 +123,6 @@
     overflow-wrap: break-word;
     word-break: break-all;
     display: -webkit-box;
-    line-clamp: 3;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
@@ -122,58 +133,20 @@
   }
 }
 
-/* Dragging styles */
-.drag-preview {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-sm) var(--space-md);
-
-  background: var(--view-bg-color);
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
-  border: 1px solid var(--card-shade-color);
-  opacity: 1 !important;
-  z-index: 10000;
-
-  mat-icon {
-    color: var(--accent-color);
-  }
-
-  span {
-    font-weight: 500;
-    max-width: 240px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: var(--window-fg-color);
-  }
-
-  .count-badge {
-    background: var(--accent-color);
-    color: white;
-    font-size: var(--font-size-xs);
-    font-weight: 700;
-    padding: 2px 6px;
-    border-radius: 10px;
-    margin-left: var(--space-xxs);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-  }
-}
-
-/* Drop indicator for folder items during drag hover */
-.grid-item.folder-drag-over {
-  .folder-card {
-    background: rgba(var(--accent-color-rgb), 0.15) !important;
-    box-shadow: inset 0 0 0 2px var(--accent-color) !important;
-    border-radius: var(--border-radius);
-  }
-}
-
-tr.folder-drag-over {
+/* Drag-hover highlight on folder targets */
+.grid-item.folder-drag-over .folder-card {
   background: rgba(var(--accent-color-rgb), 0.15) !important;
-  outline: 2px solid var(--accent-color);
-  outline-offset: -2px;
+  box-shadow: inset 0 0 0 2px var(--accent-color) !important;
+  border-radius: var(--border-radius);
+}
+
+/* ==========================================================================
+   4. List View
+   ========================================================================== */
+
+.nautilus-list-container {
+  flex: 1;
+  min-height: 0;
 }
 
 .nautilus-table {
@@ -181,13 +154,11 @@ tr.folder-drag-over {
   border-inline: var(--space-md) solid transparent;
   width: 100%;
 
-  // 1. The Name column takes all remaining space
   .mat-column-name {
     width: auto;
     overflow: hidden;
   }
 
-  // 2. Set fixed widths for other columns so they don't get squished
   .mat-column-size {
     width: 80px;
   }
@@ -210,24 +181,25 @@ tr.folder-drag-over {
     &:hover {
       background-color: var(--hover-bg-color);
     }
+
     &.selected {
       background-color: var(--selected-bg-color);
     }
+
     &:focus-visible {
       outline: 2px solid var(--accent-color);
       outline-offset: -2px;
     }
 
-    // Make row corners rounded
     td:first-child {
       border-radius: var(--border-radius) 0 0 var(--border-radius);
     }
+
     td:last-child {
       border-radius: 0 var(--border-radius) var(--border-radius) 0;
     }
   }
 
-  /* HEADER STYLING */
   th.mat-mdc-header-cell {
     font-weight: 600;
     color: var(--dim-color);
@@ -278,6 +250,33 @@ tr.folder-drag-over {
   }
 }
 
+tr.folder-drag-over {
+  background: rgba(var(--accent-color-rgb), 0.15) !important;
+  outline: 2px solid var(--accent-color);
+  outline-offset: -2px;
+}
+
+/* ==========================================================================
+   5. Cut Item Icon
+   ========================================================================== */
+
+.cut-icon {
+  color: var(--dim-color);
+  border: 4px dashed var(--dim-color);
+  border-radius: var(--border-radius);
+  box-sizing: border-box;
+  opacity: 0.7;
+
+  &.list-view {
+    border-width: 2px;
+    padding: 2px;
+  }
+}
+
+/* ==========================================================================
+   6. Overlays — Loading & Empty State
+   ========================================================================== */
+
 .loading-overlay {
   position: absolute;
   bottom: var(--space-md);
@@ -322,23 +321,4 @@ tr.folder-drag-over {
     text-align: center;
     margin: 0;
   }
-}
-
-/* Scissors icon replacing file/folder icon on cut items */
-.cut-icon {
-  color: var(--dim-color);
-  border: 4px dashed var(--dim-color);
-  border-radius: var(--border-radius);
-  box-sizing: border-box;
-  opacity: 0.7;
-
-  &.list-view {
-    border-width: 2px;
-    padding: 2px;
-  }
-}
-
-.nautilus-list-container {
-  flex: 1;
-  min-height: 0;
 }

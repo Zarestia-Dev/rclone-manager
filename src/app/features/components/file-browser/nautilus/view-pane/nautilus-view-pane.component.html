@@ -6,9 +6,8 @@
   (mousedown)="switchPane.emit(paneIndex())"
 >
   @if (layout() === 'grid') {
-    <cdk-virtual-scroll-viewport
+    <div
       class="nautilus-grid"
-      itemSize="48"
       (click)="clearSelection.emit()"
       (keydown.enter)="clearSelection.emit()"
       (keydown.space)="clearSelection.emit()"
@@ -23,12 +22,12 @@
         class="grid"
         [style.gridTemplateColumns]="'repeat(auto-fill, ' + (iconSize() + 40) + 'px)'"
       >
-        @for (item of files(); track trackByFile($index, item)) {
+        @for (item of files(); track item.entry.ID || item.entry.Path) {
           <div
             class="grid-item"
             draggable="true"
             (dragstart)="onDragStart($event, item)"
-            (dragend)="dragEnded.emit($event)"
+            (dragend)="dragEnded.emit()"
             (click)="itemClick.emit({ item, event: $event, index: $index })"
             (keydown.enter)="itemClick.emit({ item, event: $event, index: $index })"
             (keydown.space)="itemClick.emit({ item, event: $event, index: $index })"
@@ -43,7 +42,7 @@
             [attr.data-folder-path]="item.entry.IsDir ? item.entry.Path : null"
             [class.item-drop-target]="item.entry.IsDir"
             [class.folder-drag-over]="
-              isDragging() && (hoveredFolder()?.entry?.Path ?? null) === item.entry.Path
+              isDragging() && hoveredFolder()?.entry?.Path === item.entry.Path
             "
           >
             @if (starredMode()) {
@@ -57,30 +56,13 @@
               [ngTemplateOutlet]="itemCard"
               [ngTemplateOutletContext]="{
                 item: item,
-                isPlaceholder: false,
                 isCut: cutItemPaths().has(getItemKey(item)),
               }"
-            >
-            </ng-container>
+            ></ng-container>
           </div>
         }
       </div>
-
-      <!-- Hidden template for setDragImage (ghost) -->
-      <div
-        id="native-drag-ghost"
-        class="drag-preview ghost-preview"
-        style="position: fixed; top: -1000px; left: -1000px; pointer-events: none"
-      >
-        @if (isDragging() && hoveredFolder()) {
-          <mat-icon [svgIcon]="iconService.getIconForEntry(hoveredFolder()!.entry)"></mat-icon>
-          <span>{{ hoveredFolder()!.entry.Name }}</span>
-          @if (selection().size > 1) {
-            <span class="count-badge">{{ selection().size }}</span>
-          }
-        }
-      </div>
-    </cdk-virtual-scroll-viewport>
+    </div>
   } @else if (layout() === 'list') {
     <cdk-virtual-scroll-viewport
       [itemSize]="listRowHeight()"
@@ -89,6 +71,7 @@
       (keydown.enter)="clearSelection.emit()"
       tabindex="0"
       [cdkContextMenuTriggerFor]="fileMenu()"
+      [cdkContextMenuTriggerData]="{ $implicit: null }"
       (cdkContextMenuOpened)="setContextItem.emit(null)"
       (dragover)="$event.preventDefault()"
       (drop)="dropToCurrentDirectory.emit({ event: $event, paneIndex: paneIndex() })"
@@ -194,7 +177,7 @@
           *matRowDef="let item; columns: displayedColumns; let i = index"
           draggable="true"
           (dragstart)="onDragStart($event, item)"
-          (dragend)="onDragEnd($event)"
+          (dragend)="dragEnded.emit()"
           (click)="itemClick.emit({ item, event: $event, index: i })"
           (keydown.enter)="itemClick.emit({ item, event: $event, index: i })"
           (dblclick)="navigateTo.emit(item)"
@@ -207,7 +190,7 @@
           [attr.data-folder-path]="item.entry.IsDir ? item.entry.Path : null"
           [class.item-drop-target]="item.entry.IsDir"
           [class.folder-drag-over]="
-            isDragging() && (hoveredFolder()?.entry?.Path ?? null) === item.entry.Path
+            isDragging() && hoveredFolder()?.entry?.Path === item.entry.Path
           "
         ></tr>
       </table>
@@ -244,31 +227,29 @@
   }
 </div>
 
-<ng-template #itemCard let-item="item" let-isPlaceholder="isPlaceholder" let-isCut="isCut">
-  <mat-card
+<ng-template #itemCard let-item="item" let-isCut="isCut">
+  <div
     class="folder-card"
     [class.file-card]="!item.entry.IsDir"
-    [class.hidden-item]="!isPlaceholder && item.entry.Name.startsWith('.')"
+    [class.hidden-item]="item.entry.Name.startsWith('.')"
   >
-    <mat-card-content>
-      @if (isCut) {
-        <mat-icon
-          class="cut-icon"
-          [style.width.px]="iconSize()"
-          [style.height.px]="iconSize()"
-          svgIcon="scissors"
-        ></mat-icon>
-      } @else {
-        <mat-icon
-          [class.accent]="item.entry.IsDir"
-          [style.width.px]="iconSize()"
-          [style.height.px]="iconSize()"
-          [svgIcon]="iconService.getIconForEntry(item.entry)"
-        ></mat-icon>
-      }
-      <p class="folder-title">{{ item.entry.Name }}</p>
-    </mat-card-content>
-  </mat-card>
+    @if (isCut) {
+      <mat-icon
+        class="cut-icon"
+        [style.width.px]="iconSize()"
+        [style.height.px]="iconSize()"
+        svgIcon="scissors"
+      ></mat-icon>
+    } @else {
+      <mat-icon
+        [class.accent]="item.entry.IsDir"
+        [style.width.px]="iconSize()"
+        [style.height.px]="iconSize()"
+        [svgIcon]="iconService.getIconForEntry(item.entry)"
+      ></mat-icon>
+    }
+    <p class="folder-title">{{ item.entry.Name }}</p>
+  </div>
 </ng-template>
 
 <ng-template #nameCellContent let-item="item" let-isCut="isCut">

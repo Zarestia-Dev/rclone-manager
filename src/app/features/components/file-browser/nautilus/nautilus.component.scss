@@ -1,4 +1,6 @@
-/* 1. Main Container & Layout */
+/* ==========================================================================
+   1. Main Container & Sidenav
+   ========================================================================== */
 
 .nautilus-overlay-pane {
   width: 100vw;
@@ -12,28 +14,6 @@
   border-radius: 0 !important;
 }
 
-/* 1. LAYOUT WRAPPER */
-.nautilus-layout {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-}
-
-/* 2. HEADER WRAPPER */
-.nautilus-header {
-  flex-shrink: 0;
-  z-index: 10;
-  background-color: var(--sidebar-bg-color);
-  height: var(--titlebar-height);
-  padding-block: var(--space-xxs);
-
-  span {
-    font-weight: 600;
-    color: var(--window-fg-color);
-  }
-}
-
 .nautilus-sidenav mat-toolbar {
   display: flex;
   justify-content: space-between;
@@ -42,21 +22,17 @@
   height: var(--titlebar-height);
 }
 
-/* 3. SCROLLABLE CONTENT AREA */
-.nautilus-scroll-content {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  min-height: 0;
+/* ==========================================================================
+   2. Main Content Area
+   ========================================================================== */
+
+.nautilus-main-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
 }
 
-/*
- * 3. Main Content Area
- * -------------------------------------------------------------------------- */
-
-/* 3.1 Toolbar & Path Navigation */
-
-/* 3.2 Main File Display Area */
 .nautilus-content {
   overflow: hidden;
   flex: 1;
@@ -66,9 +42,47 @@
   flex-direction: column;
 }
 
-/*
- * 4. Popups and Overlays
- * -------------------------------------------------------------------------- */
+/* ==========================================================================
+   3. Split View
+   ========================================================================== */
+
+.split-container {
+  display: grid;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.split-divider {
+  width: 0.5rem;
+  background: var(--sidebar-bg-color);
+  cursor: col-resize;
+  position: relative;
+  transition: var(--transition-fast);
+  z-index: 20;
+
+  &:hover,
+  &:active {
+    background: var(--accent-color);
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 3px;
+    right: 3px;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 40px;
+    border-left: 1px solid var(--dim-color);
+    border-right: 1px solid var(--dim-color);
+    opacity: 0.5;
+  }
+}
+
+/* ==========================================================================
+   4. View Menu Popups
+   ========================================================================== */
 
 .icon-size-control {
   display: flex;
@@ -109,16 +123,6 @@
   flex-direction: column;
 }
 
-.menu-item-wrapper {
-  padding: var(--space-xxs) var(--space-xs);
-  display: flex;
-  align-items: center;
-
-  mat-checkbox {
-    width: 100%;
-  }
-}
-
 .sort-options {
   display: flex;
   align-items: center;
@@ -131,13 +135,27 @@
   }
 }
 
+.menu-item-wrapper {
+  padding: var(--space-xxs) var(--space-xs);
+  display: flex;
+  align-items: center;
+
+  mat-checkbox {
+    width: 100%;
+  }
+}
+
+/* ==========================================================================
+   5. Selection Info Bar
+   ========================================================================== */
+
 .selection-info-container {
   position: absolute;
   bottom: var(--bottom-bar-offset);
   right: var(--space-xxs);
   font-weight: 500;
   background: var(--sidebar-bg-color);
-  padding: 6px 16px;
+  padding: var(--space-xxs) var(--space-md);
   border-radius: var(--radius-sm);
   z-index: 5;
 }
@@ -147,9 +165,9 @@
   color: var(--window-fg-color);
 }
 
-/*
- * 5. File Picker Actions & States
- * -------------------------------------------------------------------------- */
+/* ==========================================================================
+   6. File Picker Actions
+   ========================================================================== */
 
 .picker-actions {
   display: flex;
@@ -160,56 +178,5 @@
   &.desktop-picker {
     box-shadow: inset 0 1px 0 var(--card-shade-color);
     padding-bottom: var(--space-sm);
-  }
-}
-
-.unselectable {
-  opacity: 0.6;
-
-  &:hover {
-    background: transparent;
-  }
-}
-
-/* 3. Main Content Area Update */
-.nautilus-main-content {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-}
-
-// --- Split View Styles ---
-.split-container {
-  display: grid;
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-}
-
-.split-divider {
-  width: 0.5rem;
-  background: var(--sidebar-bg-color);
-  cursor: col-resize;
-  position: relative;
-  transition: var(--transition-fast);
-  z-index: 20;
-
-  &:hover,
-  &:active {
-    background: var(--accent-color);
-  }
-
-  &::after {
-    content: "";
-    position: absolute;
-    left: 3px;
-    right: 3px;
-    top: 50%;
-    transform: translateY(-50%);
-    height: 40px;
-    border-left: 1px solid var(--dim-color);
-    border-right: 1px solid var(--dim-color);
-    opacity: 0.5;
   }
 }
