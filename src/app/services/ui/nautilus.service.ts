@@ -18,7 +18,7 @@ import {
   PathSelectionService,
   RemoteManagementService,
 } from '@app/services';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, outputToObservable } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import {
   FileBrowserItem,
@@ -446,9 +446,11 @@ export class NautilusService extends TauriBaseService {
       componentRef.location.nativeElement.classList.add('slide-overlay-enter');
     }
 
-    componentRef.instance.closeOverlay.pipe(take(1)).subscribe(() => {
-      this.closeBrowser();
-    });
+    outputToObservable(componentRef.instance.closeOverlay)
+      .pipe(take(1))
+      .subscribe(() => {
+        this.closeBrowser();
+      });
 
     this.browserOverlayRef
       .backdropClick()
@@ -473,9 +475,11 @@ export class NautilusService extends TauriBaseService {
 
     componentRef.location.nativeElement.classList.add('slide-overlay-enter');
 
-    componentRef.instance.closeOverlay.pipe(take(1)).subscribe(() => {
-      this.closeFilePicker(null);
-    });
+    outputToObservable(componentRef.instance.closeOverlay)
+      .pipe(take(1))
+      .subscribe(() => {
+        this.closeFilePicker(null);
+      });
 
     this.pickerOverlayRef
       .backdropClick()

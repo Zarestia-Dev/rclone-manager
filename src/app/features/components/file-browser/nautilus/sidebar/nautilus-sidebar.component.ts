@@ -12,7 +12,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatDividerModule } from '@angular/material/divider';
-import { DragDropModule, CdkDragDrop, CdkDrag } from '@angular/cdk/drag-drop';
+
 import { CdkMenuModule } from '@angular/cdk/menu';
 
 import { IconService, PathSelectionService, RemoteFacadeService } from '@app/services';
@@ -29,10 +29,10 @@ import { OperationsPanelComponent } from '../../operations-panel/operations-pane
     MatIconModule,
     MatToolbarModule,
     MatDividerModule,
-    DragDropModule,
     CdkMenuModule,
     OperationsPanelComponent,
   ],
+
   templateUrl: './nautilus-sidebar.component.html',
   styleUrl: './nautilus-sidebar.component.scss',
 })
@@ -49,15 +49,11 @@ export class NautilusSidebarComponent {
   public readonly cloudRemotes = input.required<ExplorerRoot[]>();
   public readonly bookmarks = input.required<FileBrowserItem[]>();
   public readonly title = input.required<string>();
+  public readonly isDragging = input.required<boolean>();
+
   public readonly currentPath = input<string>('');
   public readonly isPickerMode = input(false);
-
-  // Drag & Drop predicates
-  public readonly canDropOnStarred = input.required<(item: CdkDrag<FileBrowserItem>) => boolean>();
-  public readonly canDropOnBookmarks =
-    input.required<(item: CdkDrag<FileBrowserItem>) => boolean>();
-  public readonly canDropOnBookmark = input.required<(item: CdkDrag<FileBrowserItem>) => boolean>();
-  public readonly canAcceptFile = input.required<(item: CdkDrag<FileBrowserItem>) => boolean>();
+  public readonly hoveredSidebarItem = input<string | null>(null);
 
   // --- Outputs ---
   public readonly remoteSelected = output<ExplorerRoot>();
@@ -74,14 +70,14 @@ export class NautilusSidebarComponent {
   public readonly requestProperties = output<FileBrowserItem>();
 
   // Drag & Drop events
-  public readonly droppedToStarred = output<CdkDragDrop<void, FileBrowserItem[]>>();
-  public readonly droppedToLocal = output<CdkDragDrop<FileBrowserItem[], FileBrowserItem[]>>();
+  public readonly droppedToStarred = output<DragEvent>();
+  public readonly droppedToLocal = output<DragEvent>();
   public readonly droppedToBookmark = output<{
-    event: CdkDragDrop<FileBrowserItem, FileBrowserItem[]>;
+    event: DragEvent;
     target: FileBrowserItem;
   }>();
   public readonly droppedToRemote = output<{
-    event: CdkDragDrop<ExplorerRoot, FileBrowserItem[]>;
+    event: DragEvent;
     target: ExplorerRoot;
   }>();
 

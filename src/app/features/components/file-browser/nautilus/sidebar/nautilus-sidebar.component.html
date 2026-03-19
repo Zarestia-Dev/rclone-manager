@@ -32,13 +32,12 @@
       <!-- Starred -->
       <mat-list-item
         class="remote-list-item"
-        (click)="starredSelected.emit()"
+        data-sidebar-starred="true"
         [class.selected]="starredMode()"
-        cdkDropList
-        id="sidebar-starred"
-        [cdkDropListEnterPredicate]="canDropOnStarred()"
-        (cdkDropListDropped)="droppedToStarred.emit($event)"
-        [cdkDropListAutoScrollDisabled]="true"
+        [class.sidebar-drag-over]="isDragging() && hoveredSidebarItem() === 'starred'"
+        (click)="starredSelected.emit()"
+        (dragover)="$event.preventDefault()"
+        (drop)="droppedToStarred.emit($event)"
         [cdkContextMenuTriggerFor]="sidebarStarredMenu"
       >
         <span class="remote-info">
@@ -55,10 +54,10 @@
       <div class="bookmarks-section">
         <div
           class="sidebar-section-header"
-          cdkDropList
-          [cdkDropListData]="bookmarks()"
-          [cdkDropListEnterPredicate]="canDropOnBookmarks()"
-          (cdkDropListDropped)="droppedToLocal.emit($event)"
+          data-sidebar-bookmarks-header="true"
+          [class.sidebar-drag-over]="isDragging() && hoveredSidebarItem() === 'bookmarks-header'"
+          (dragover)="$event.preventDefault()"
+          (drop)="droppedToLocal.emit($event)"
           id="sidebar-bookmarks-header"
         >
           <span>{{ 'nautilus.titles.bookmarks' | translate }}</span>
@@ -66,13 +65,15 @@
 
         @for (bm of bookmarks(); track trackByBookmark($index, bm)) {
           <mat-list-item
-            cdkDropList
-            [cdkDropListData]="bm"
-            [cdkDropListEnterPredicate]="canDropOnBookmark()"
-            (cdkDropListDropped)="droppedToBookmark.emit({ event: $event, target: bm })"
             class="remote-list-item"
+            [attr.data-sidebar-bookmark-path]="bm.entry.Path"
+            [class.sidebar-drag-over]="
+              isDragging() && hoveredSidebarItem() === 'bookmark:' + bm.entry.Path
+            "
             [class.selected]="isBookmarkSelected(bm)"
             (click)="onOpenBookmark(bm)"
+            (dragover)="$event.preventDefault()"
+            (drop)="droppedToBookmark.emit({ event: $event, target: bm })"
             [cdkContextMenuTriggerFor]="sidebarBookmarkMenu"
             [cdkContextMenuTriggerData]="{ $implicit: bm }"
           >
@@ -103,16 +104,18 @@
         @for (drive of localDrives(); track trackByRemote($index, drive)) {
           <mat-list-item
             class="remote-list-item"
+            [attr.data-sidebar-remote-name]="drive.name"
+            [class.sidebar-drag-over]="
+              isDragging() && hoveredSidebarItem() === 'remote:' + drive.name
+            "
             (click)="onSelectRemote(drive)"
             [class.selected]="
               nautilusRemote()?.name === drive.name && !starredMode() && !anyBookmarkSelected()
             "
+            (dragover)="$event.preventDefault()"
+            (drop)="droppedToRemote.emit({ event: $event, target: drive })"
             [cdkContextMenuTriggerFor]="sidebarRemoteMenu"
             [cdkContextMenuTriggerData]="{ $implicit: drive }"
-            cdkDropList
-            [cdkDropListData]="drive"
-            [cdkDropListEnterPredicate]="canAcceptFile()"
-            (cdkDropListDropped)="droppedToRemote.emit({ event: $event, target: drive })"
           >
             <span class="remote-info">
               <span class="remote-icon">
@@ -138,16 +141,18 @@
         @for (remote of cloudRemotes(); track trackByRemote($index, remote)) {
           <mat-list-item
             class="remote-list-item"
+            [attr.data-sidebar-remote-name]="remote.name"
+            [class.sidebar-drag-over]="
+              isDragging() && hoveredSidebarItem() === 'remote:' + remote.name
+            "
             (click)="onSelectRemote(remote)"
             [class.selected]="
               nautilusRemote()?.name === remote.name && !starredMode() && !anyBookmarkSelected()
             "
+            (dragover)="$event.preventDefault()"
+            (drop)="droppedToRemote.emit({ event: $event, target: remote })"
             [cdkContextMenuTriggerFor]="sidebarRemoteMenu"
             [cdkContextMenuTriggerData]="{ $implicit: remote }"
-            cdkDropList
-            [cdkDropListData]="remote"
-            [cdkDropListEnterPredicate]="canAcceptFile()"
-            (cdkDropListDropped)="droppedToRemote.emit({ event: $event, target: remote })"
           >
             <span class="remote-info">
               <span class="remote-icon">

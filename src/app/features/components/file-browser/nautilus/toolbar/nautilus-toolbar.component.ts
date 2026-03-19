@@ -12,14 +12,15 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslateModule } from '@ngx-translate/core';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { DragDropModule, CdkDrag, CdkDragDrop } from '@angular/cdk/drag-drop';
+
 import { IconService } from '@app/services';
-import { ExplorerRoot, FileBrowserItem } from '@app/types';
+import { ExplorerRoot } from '@app/types';
 
 @Component({
   selector: 'app-nautilus-toolbar',
   standalone: true,
-  imports: [MatToolbarModule, MatIconModule, TranslateModule, CdkMenuModule, DragDropModule],
+  imports: [MatToolbarModule, MatIconModule, TranslateModule, CdkMenuModule],
+
   templateUrl: './nautilus-toolbar.component.html',
   styleUrls: ['./nautilus-toolbar.component.scss'],
 })
@@ -42,7 +43,6 @@ export class NautilusToolbarComponent {
   public readonly layout = input.required<'grid' | 'list'>();
   public readonly pathOptionsMenu = input<any>();
   public readonly viewMenu = input<any>();
-  public readonly canAcceptFile = input<(item: CdkDrag<FileBrowserItem>) => boolean>();
 
   // --- Outputs ---
   public readonly goBack = output<void>();
@@ -56,7 +56,7 @@ export class NautilusToolbarComponent {
   public readonly searchFilterChange = output<string>();
   public readonly isSearchModeChange = output<boolean>();
   public readonly isEditingPathChange = output<boolean>();
-  public readonly droppedOnSegment = output<CdkDragDrop<any>>();
+  public readonly droppedOnSegment = output<{ event: DragEvent; segmentIndex: number }>();
 
   public readonly pathScrollView = viewChild<ElementRef<HTMLDivElement>>('pathScrollView');
   public readonly searchInput = viewChild<ElementRef<HTMLInputElement>>('searchInput');
@@ -64,9 +64,6 @@ export class NautilusToolbarComponent {
 
   protected readonly _showLeftShadow = signal(false);
   protected readonly _showRightShadow = signal(false);
-
-  /** Fallback predicate — accepts everything when no canAcceptFile is provided. */
-  public readonly _acceptAll = (_item: CdkDrag<FileBrowserItem>) => true;
 
   constructor() {
     effect(() => {

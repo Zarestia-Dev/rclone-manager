@@ -7,6 +7,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 ### Added
 - **Language**: Added Simplified Chinese language support. (Thanks to @why25!)
+- **Nautilus**: Added "spring-loaded folder" behavior. Dragging an item and hovering over a folder, breadcrumb, tab, or sidebar item for 800ms will automatically open/navigate to it.
+
+### Changed
+- **Nautilus**: Replaced Angular CDK drag-and-drop with native HTML5 Drag and Drop API for file and folder operations. This provides a more responsive, system-native feel. (Note: CDK remains active for tab reordering).
+- **Nautilus**: Improved split view drag UX. The active pane now automatically switches when hovering over the other panel during a drag operation.
+
+### Fixed
+- **Nautilus**: Prevented invalid drag-and-drop operations, such as dropping a file into its current directory or dropping a folder onto itself.
+- **Nautilus**: Prevented spring-opening a folder that is currently being dragged.
+
 
 ## [v0.2.3] - 2026-03-17
 

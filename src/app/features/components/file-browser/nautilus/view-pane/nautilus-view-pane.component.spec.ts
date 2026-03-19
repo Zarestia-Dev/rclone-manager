@@ -38,12 +38,7 @@ describe('NautilusViewPaneComponent', () => {
     fixture.componentRef.setInput('sortKey', 'name');
     fixture.componentRef.setInput('sortDirection', 'asc');
     fixture.componentRef.setInput('activePaneIndex', 0);
-    fixture.componentRef.setInput('getItemKey', (item: any) => item.entry.Path);
     fixture.componentRef.setInput('isItemSelectable', (_entry: any) => true);
-    fixture.componentRef.setInput('trackByFile', (index: number, item: any) => item.entry.Path);
-    fixture.componentRef.setInput('trackBySortOption', (index: number, item: any) => item.key);
-    fixture.componentRef.setInput('formatRelativeDate', (dateString: string) => dateString);
-    fixture.componentRef.setInput('canAcceptFile', (_drag: any, _drop: any) => false);
     fixture.componentRef.setInput('fileMenu', null);
 
     fixture.detectChanges();

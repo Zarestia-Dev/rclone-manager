@@ -1,5 +1,6 @@
 <div
   class="pane-wrapper"
+  [attr.data-pane-index]="paneIndex()"
   [class.focused]="activePaneIndex() === paneIndex()"
   [class.split-enabled]="isSplitEnabled()"
   (mousedown)="switchPane.emit(paneIndex())"
@@ -15,23 +16,19 @@
       [cdkContextMenuTriggerFor]="fileMenu()"
       [cdkContextMenuTriggerData]="{ $implicit: null }"
       (cdkContextMenuOpened)="setContextItem.emit(null)"
-      cdkDropList
-      [cdkDropListEnterPredicate]="canAcceptFile()"
-      [cdkDropListSortingDisabled]="true"
-      [cdkDropListHasAnchor]="true"
-      (cdkDropListDropped)="dropToCurrentDirectory.emit({ event: $event, paneIndex: paneIndex() })"
+      (dragover)="$event.preventDefault()"
+      (drop)="dropToCurrentDirectory.emit({ event: $event, paneIndex: paneIndex() })"
     >
       <div
         class="grid"
         [style.gridTemplateColumns]="'repeat(auto-fill, ' + (iconSize() + 40) + 'px)'"
       >
-        @for (item of files(); track trackByFile()($index, item)) {
+        @for (item of files(); track trackByFile($index, item)) {
           <div
             class="grid-item"
-            cdkDrag
-            [cdkDragData]="item"
-            (cdkDragStarted)="dragStarted.emit($event)"
-            (cdkDragEnded)="dragEnded.emit($event)"
+            draggable="true"
+            (dragstart)="onDragStart($event, item)"
+            (dragend)="dragEnded.emit($event)"
             (click)="itemClick.emit({ item, event: $event, index: $index })"
             (keydown.enter)="itemClick.emit({ item, event: $event, index: $index })"
             (keydown.space)="itemClick.emit({ item, event: $event, index: $index })"
@@ -40,9 +37,9 @@
             [cdkContextMenuTriggerData]="{ $implicit: item }"
             (cdkContextMenuOpened)="setContextItem.emit(item)"
             tabindex="0"
-            [class.selected]="selection().has(getItemKey()(item))"
+            [class.selected]="selection().has(getItemKey(item))"
             [class.unselectable]="!isItemSelectable()(item.entry)"
-            [class.cut-item]="cutItemPaths().has(getItemKey()(item))"
+            [class.cut-item]="cutItemPaths().has(getItemKey(item))"
             [attr.data-folder-path]="item.entry.IsDir ? item.entry.Path : null"
             [class.item-drop-target]="item.entry.IsDir"
             [class.folder-drag-over]="
@@ -56,23 +53,31 @@
                 [svgIcon]="isStarred(item) ? 'star' : 'star-outline'"
               ></mat-icon>
             }
-            <div class="drag-preview" *cdkDragPreview>
-              <mat-icon [svgIcon]="iconService.getIconForEntry(item.entry)"></mat-icon>
-              <span>{{ item.entry.Name }}</span>
-              @if (selection().size > 1 && selection().has(getItemKey()(item))) {
-                <span class="count-badge">{{ selection().size }}</span>
-              }
-            </div>
             <ng-container
               [ngTemplateOutlet]="itemCard"
               [ngTemplateOutletContext]="{
                 item: item,
                 isPlaceholder: false,
-                isCut: cutItemPaths().has(getItemKey()(item)),
+                isCut: cutItemPaths().has(getItemKey(item)),
               }"
             >
             </ng-container>
           </div>
+        }
+      </div>
+
+      <!-- Hidden template for setDragImage (ghost) -->
+      <div
+        id="native-drag-ghost"
+        class="drag-preview ghost-preview"
+        style="position: fixed; top: -1000px; left: -1000px; pointer-events: none"
+      >
+        @if (isDragging() && hoveredFolder()) {
+          <mat-icon [svgIcon]="iconService.getIconForEntry(hoveredFolder()!.entry)"></mat-icon>
+          <span>{{ hoveredFolder()!.entry.Name }}</span>
+          @if (selection().size > 1) {
+            <span class="count-badge">{{ selection().size }}</span>
+          }
         }
       </div>
     </cdk-virtual-scroll-viewport>
@@ -85,11 +90,8 @@
       tabindex="0"
       [cdkContextMenuTriggerFor]="fileMenu()"
       (cdkContextMenuOpened)="setContextItem.emit(null)"
-      cdkDropList
-      [cdkDropListEnterPredicate]="canAcceptFile()"
-      [cdkDropListSortingDisabled]="true"
-      [cdkDropListHasAnchor]="true"
-      (cdkDropListDropped)="dropToCurrentDirectory.emit({ event: $event, paneIndex: paneIndex() })"
+      (dragover)="$event.preventDefault()"
+      (drop)="dropToCurrentDirectory.emit({ event: $event, paneIndex: paneIndex() })"
     >
       <table mat-table [dataSource]="files()" class="nautilus-table">
         <ng-container matColumnDef="name">
@@ -117,7 +119,7 @@
                 [ngTemplateOutlet]="nameCellContent"
                 [ngTemplateOutletContext]="{
                   item: item,
-                  isCut: cutItemPaths().has(getItemKey()(item)),
+                  isCut: cutItemPaths().has(getItemKey(item)),
                 }"
               ></ng-container>
             </div>
@@ -168,7 +170,7 @@
             </div>
           </th>
           <td mat-cell *matCellDef="let item">
-            {{ formatRelativeDate()(item.entry.ModTime) }}
+            {{ formatRelativeDate(item.entry.ModTime) }}
           </td>
         </ng-container>
 
@@ -185,38 +187,29 @@
           </td>
         </ng-container>
 
-        <tr mat-header-row *matHeaderRowDef="displayedColumns(); sticky: true"></tr>
+        <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
 
         <tr
           mat-row
-          *matRowDef="let item; columns: displayedColumns(); let i = index"
-          cdkDrag
-          [cdkDragData]="item"
-          (cdkDragStarted)="dragStarted.emit($event)"
-          (cdkDragEnded)="dragEnded.emit($event)"
+          *matRowDef="let item; columns: displayedColumns; let i = index"
+          draggable="true"
+          (dragstart)="onDragStart($event, item)"
+          (dragend)="onDragEnd($event)"
           (click)="itemClick.emit({ item, event: $event, index: i })"
           (keydown.enter)="itemClick.emit({ item, event: $event, index: i })"
           (dblclick)="navigateTo.emit(item)"
           [cdkContextMenuTriggerFor]="fileMenu()"
           [cdkContextMenuTriggerData]="{ $implicit: item }"
           (cdkContextMenuOpened)="setContextItem.emit(item)"
-          [class.selected]="selection().has(getItemKey()(item))"
+          [class.selected]="selection().has(getItemKey(item))"
           [class.hidden-item]="item.entry.Name.startsWith('.')"
-          [class.cut-item]="cutItemPaths().has(getItemKey()(item))"
+          [class.cut-item]="cutItemPaths().has(getItemKey(item))"
           [attr.data-folder-path]="item.entry.IsDir ? item.entry.Path : null"
           [class.item-drop-target]="item.entry.IsDir"
           [class.folder-drag-over]="
             isDragging() && (hoveredFolder()?.entry?.Path ?? null) === item.entry.Path
           "
-        >
-          <div class="drag-preview" *cdkDragPreview>
-            <mat-icon [svgIcon]="iconService.getIconForEntry(item.entry)"></mat-icon>
-            <span>{{ item.entry.Name }}</span>
-            @if (selection().size > 1 && selection().has(getItemKey()(item))) {
-              <span class="count-badge">{{ selection().size }}</span>
-            }
-          </div>
-        </tr>
+        ></tr>
       </table>
     </cdk-virtual-scroll-viewport>
   }
@@ -291,5 +284,3 @@
   }
   <span>{{ item.entry.Name }}</span>
 </ng-template>
-
-<!-- Note: fileMenu is defined in NautilusComponent, but referenced here via [cdkContextMenuTriggerFor]="fileMenu"-->

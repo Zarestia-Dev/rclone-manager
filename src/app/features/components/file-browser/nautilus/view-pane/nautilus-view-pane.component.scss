@@ -5,13 +5,6 @@
   min-height: 0;
   height: 100%;
   width: 100%;
-
-  ::ng-deep .cdk-drag-placeholder {
-    display: block !important;
-    opacity: 0.3;
-    border-radius: var(--border-radius);
-    background: var(--selected-bg-color);
-  }
 }
 
 .pane-wrapper {
@@ -62,6 +55,8 @@
 
   .grid-item {
     outline: none;
+    user-select: none;
+    -webkit-user-drag: element;
 
     &.selected .folder-card {
       background: var(--selected-bg-color);
@@ -209,6 +204,8 @@ tr.folder-drag-over {
   tr.mat-mdc-row {
     transition: none;
     border-radius: var(--border-radius);
+    user-select: none;
+    -webkit-user-drag: element;
 
     &:hover {
       background-color: var(--hover-bg-color);

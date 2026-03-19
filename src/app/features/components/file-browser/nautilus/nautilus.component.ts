@@ -2,9 +2,7 @@
 // It handles tabs, split-view navigation, and rich file operations.
 import {
   Component,
-  EventEmitter,
   inject,
-  Output,
   OnInit,
   ViewChild,
   signal,
@@ -15,6 +13,7 @@ import {
   DestroyRef,
   Signal,
   WritableSignal,
+  output,
 } from '@angular/core';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -28,18 +27,8 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatDialog } from '@angular/material/dialog';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatTooltipModule } from '@angular/material/tooltip';
 
 // CDK
-import {
-  CdkDrag,
-  CdkDragDrop,
-  CdkDragEnd,
-  CdkDragStart,
-  CdkDropList,
-  DragDropModule,
-  moveItemInArray,
-} from '@angular/cdk/drag-drop';
 import { CdkMenuModule } from '@angular/cdk/menu';
 
 // Services & Types
@@ -109,25 +98,31 @@ interface UndoEntry {
   }[];
 }
 
+/** Payload for native HTML5 Drag & Drop inter-component communication. */
+export interface NautilusDragPayload {
+  items: FileBrowserItem[];
+  sourcePaneIndex: 0 | 1;
+}
+
+export const NAUTILUS_DRAG_MIME_TYPE = 'application/nautilus-files';
+
 @Component({
   selector: 'app-nautilus',
   standalone: true,
   imports: [
-    DragDropModule,
-    CdkMenuModule,
-    MatIconModule,
-    MatSidenavModule,
-    MatButtonModule,
-    MatDividerModule,
-    MatTooltipModule,
-    MatRadioModule,
-    MatCheckboxModule,
     NautilusSidebarComponent,
     NautilusToolbarComponent,
     NautilusTabsComponent,
     NautilusViewPaneComponent,
     NautilusBottomBarComponent,
     TranslateModule,
+    MatIconModule,
+    MatSidenavModule,
+    MatButtonModule,
+    MatDividerModule,
+    MatRadioModule,
+    MatCheckboxModule,
+    CdkMenuModule,
   ],
   providers: [FormatFileSizePipe],
   templateUrl: './nautilus.component.html',
@@ -149,7 +144,7 @@ export class NautilusComponent implements OnInit {
   private readonly formatFileSizePipe = inject(FormatFileSizePipe);
 
   // --- Outputs ---
-  @Output() closeOverlay = new EventEmitter<void>();
+  public readonly closeOverlay = output<void>();
 
   // --- View Children ---
   @ViewChild('sidenav') sidenav!: MatSidenav;
@@ -165,7 +160,9 @@ export class NautilusComponent implements OnInit {
     return 'nautilus.titles.files';
   });
   public readonly isSidenavOpen = signal(true);
+  public readonly isDragging = signal(false);
   public readonly sidenavMode = computed(() => (this.isMobile() ? 'over' : 'side'));
+
   public readonly isLoading = signal(false);
   private readonly initialLocationApplied = signal(false);
 
@@ -239,15 +236,17 @@ export class NautilusComponent implements OnInit {
   public readonly selectedItems = signal<Set<string>>(new Set());
   public readonly selectionSummary = signal('');
   private lastSelectedIndex: number | null = null;
-  public readonly isDragging = signal(false);
-  /** Folder currently under the drag cursor — used to highlight and target drops. */
-  public readonly hoveredFolder = signal<FileBrowserItem | null>(null);
-  /** Path-segment index (-1 = root) currently under the drag cursor. null = none. */
-  public readonly hoveredSegmentIndex = signal<number | null>(null);
-  /** Tab index currently under the drag cursor (file drag hovering over a tab). null = none. */
   public readonly hoveredTabIndex = signal<number | null>(null);
-  private _dragMoveUnsub: (() => void) | null = null;
+  public readonly hoveredSidebarItem = signal<string | null>(null);
+  public readonly hoveredFolder = signal<FileBrowserItem | null>(null);
+  public readonly hoveredSegmentIndex = signal<number | null>(null);
   private _lastDragHitKey = '';
+
+  // Spring-loaded folder: auto-open hovered targets after a delay
+  private static readonly HOVER_OPEN_DELAY_MS = 800;
+  private _hoverOpenTimer: ReturnType<typeof setTimeout> | null = null;
+  private _hoverOpenKey = '';
+  private _draggedItems: FileBrowserItem[] = [];
 
   // --- Navigation State ---
   public readonly nautilusRemote = signal<ExplorerRoot | null>(null);
@@ -551,7 +550,7 @@ export class NautilusComponent implements OnInit {
       const p = path();
       trigger(); // track trigger
 
-      const targetTabId = this.tabs()[this.activeTabIndex()]?.id;
+      const targetTabId = untracked(() => this.tabs())[this.activeTabIndex()]?.id;
       untracked(() => {
         if (!r) {
           rawFiles.set([]);
@@ -830,30 +829,7 @@ export class NautilusComponent implements OnInit {
     return true;
   }
 
-  // --- Drag & Drop ---
-  public readonly canAcceptFile = (item: CdkDrag<FileBrowserItem>): boolean => {
-    const data = item.data;
-    return !!(data?.entry && data.entry.Path);
-  };
-
-  canDropOnBookmarks = (item: CdkDrag<FileBrowserItem>): boolean => {
-    return this.canAcceptFile(item) && !!item.data.entry.IsDir;
-  };
-
-  canDropOnBookmark = (item: CdkDrag<FileBrowserItem>): boolean => {
-    return this.canAcceptFile(item);
-  };
-
-  canDropOnFolder = (
-    item: CdkDrag<FileBrowserItem>,
-    dropList: CdkDropList<FileBrowserItem>
-  ): boolean => {
-    if (!this.canAcceptFile(item)) return false;
-    const targetItem = dropList.data;
-    if (!targetItem?.entry?.IsDir) return false;
-    // Prevent dropping onto self
-    return item.data.entry.Path !== targetItem.entry.Path;
-  };
+  // --- Drag & Drop Native Handlers ---
 
   private getItemsToProcess(draggedItem: FileBrowserItem): FileBrowserItem[] {
     const currentSelected = this.selectedItems();
@@ -868,56 +844,74 @@ export class NautilusComponent implements OnInit {
     return [draggedItem];
   }
 
-  onDragStarted(event: CdkDragStart<FileBrowserItem>): void {
+  onDragStarted(event: DragEvent, item: FileBrowserItem): void {
+    const items = this.getItemsToProcess(item);
+
     this.isDragging.set(true);
     this._lastDragHitKey = '';
-    const sub = event.source.moved.subscribe(moveEvt => this._onDragMove(moveEvt.pointerPosition));
-    this._dragMoveUnsub = (): void => sub.unsubscribe();
+    this._draggedItems = items;
+
+    const payload: NautilusDragPayload = {
+      items,
+      sourcePaneIndex: this.activePaneIndex(),
+    };
+
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'copyMove';
+      event.dataTransfer.setData(NAUTILUS_DRAG_MIME_TYPE, JSON.stringify(payload));
+    }
   }
 
-  onDragEnded(event?: CdkDragEnd<FileBrowserItem>): void {
-    // If the drag was released over a tab (outside any accepting drop list),
-    // cdkDropListDropped never fires — handle the operation here instead.
-    // Re-hit-test at drop point for the same reliability reason as onDropToCurrentDirectory.
-    const freshHit = event?.dropPoint ? this._resolveDropHit(event.dropPoint) : null;
-    const tabIdx = freshHit?.tabIndex ?? this.hoveredTabIndex();
-    if (tabIdx !== null && event) {
-      const items = this.getItemsToProcess(event.source.data);
-      const tab = this.tabs()[tabIdx];
-      if (items.length && tab?.left.remote) {
-        const sourceRemoteName = items[0].meta.remote ?? '';
-        const isSameRemote =
-          this.pathSelectionService.normalizeRemoteName(sourceRemoteName) ===
-          this.pathSelectionService.normalizeRemoteName(tab.left.remote.name);
-        this.performFileOperations(
-          items,
-          tab.left.remote,
-          tab.left.path,
-          isSameRemote ? 'move' : 'copy'
-        );
-      }
-    }
+  onDragEnded(): void {
     this.isDragging.set(false);
-    this._dragMoveUnsub?.();
-    this._dragMoveUnsub = null;
     this._lastDragHitKey = '';
+    this._clearHoverOpenTimer();
+    this._draggedItems = [];
     this.hoveredFolder.set(null);
     this.hoveredSegmentIndex.set(null);
     this.hoveredTabIndex.set(null);
   }
 
+  onDragOver(event: DragEvent): void {
+    event.preventDefault(); // Required to allow drop
+
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+    this._onDragMove({ x: event.clientX, y: event.clientY });
+  }
+
   /** Unified processor for Drag & Drop operations */
   private async processDrop(
-    event: CdkDragDrop<any, any>,
+    event: DragEvent,
     target: { remote: ExplorerRoot | null; path: string }
   ): Promise<void> {
-    const items = this.getItemsToProcess(event.item.data);
-    if (!items.length || !target.remote) return;
+    event.preventDefault();
+
+    const data = event.dataTransfer?.getData(NAUTILUS_DRAG_MIME_TYPE);
+    if (!data || !target.remote) return;
+
+    const payload: NautilusDragPayload = JSON.parse(data);
+    const items = payload.items;
+    if (!items.length) return;
+
+    // Guard: prevent dropping a folder onto itself
+    const isSelfDrop = items.some(item => item.entry.IsDir && item.entry.Path === target.path);
+    if (isSelfDrop) return;
+
+    // Guard: prevent dropping items into the same directory they're already in
+    const sourceParentPath = items[0].entry.Path.substring(
+      0,
+      items[0].entry.Path.lastIndexOf(items[0].entry.Name)
+    ).replace(/\/$/, '');
+    const normalizedTarget = target.path.replace(/\/$/, '');
 
     const sourceRemote = items[0].meta.remote ?? '';
     const isSameRemote =
       this.pathSelectionService.normalizeRemoteName(sourceRemote) ===
       this.pathSelectionService.normalizeRemoteName(target.remote.name);
+
+    if (isSameRemote && sourceParentPath === normalizedTarget) return;
 
     await this.performFileOperations(
       items,
@@ -927,22 +921,21 @@ export class NautilusComponent implements OnInit {
     );
   }
 
-  onDropToStarred(event: CdkDragDrop<any, FileBrowserItem[]>): void {
-    const items = this.getItemsToProcess(event.item.data);
-    items.forEach(item => !this.isStarred(item) && this.toggleStar(item));
+  async onDropToStarred(event: DragEvent): Promise<void> {
+    const data = event.dataTransfer?.getData(NAUTILUS_DRAG_MIME_TYPE);
+    if (!data) return;
+    const payload: NautilusDragPayload = JSON.parse(data);
+    payload.items.forEach(item => !this.isStarred(item) && this.toggleStar(item));
   }
 
-  onDropToLocal(event: CdkDragDrop<any, FileBrowserItem[]>): void {
-    if ((event.previousContainer as any) !== (event.container as any)) {
-      const items = this.getItemsToProcess(event.item.data);
-      items.forEach(item => item.entry.IsDir && this.addBookmark(item));
-    }
+  async onDropToLocal(event: DragEvent): Promise<void> {
+    const data = event.dataTransfer?.getData(NAUTILUS_DRAG_MIME_TYPE);
+    if (!data) return;
+    const payload: NautilusDragPayload = JSON.parse(data);
+    payload.items.forEach(item => item.entry.IsDir && this.toggleBookmark(item));
   }
 
-  async onDropToBookmark(
-    event: CdkDragDrop<FileBrowserItem, FileBrowserItem[]>,
-    bookmark: FileBrowserItem
-  ): Promise<void> {
+  async onDropToBookmark(event: DragEvent, bookmark: FileBrowserItem): Promise<void> {
     const targetRemote = this.allRemotesLookup().find(
       r =>
         this.pathSelectionService.normalizeRemoteName(r.name) ===
@@ -954,22 +947,11 @@ export class NautilusComponent implements OnInit {
     });
   }
 
-  async onDropToRemote(
-    event: CdkDragDrop<ExplorerRoot, FileBrowserItem[]>,
-    targetRemote: ExplorerRoot
-  ): Promise<void> {
-    const isSidebarMove =
-      (event.previousContainer as any) === (event.container as any) &&
-      (event.container as any).id === 'sidebar';
-    if (isSidebarMove) return;
-
+  async onDropToRemote(event: DragEvent, targetRemote: ExplorerRoot): Promise<void> {
     await this.processDrop(event, { remote: targetRemote, path: '' });
   }
 
-  async onDropToFolder(
-    event: CdkDragDrop<FileBrowserItem[]>,
-    targetFolder: FileBrowserItem
-  ): Promise<void> {
+  async onDropToFolder(event: DragEvent, targetFolder: FileBrowserItem): Promise<void> {
     const targetRemote = this.allRemotesLookup().find(
       r =>
         this.pathSelectionService.normalizeRemoteName(r.name) ===
@@ -978,16 +960,22 @@ export class NautilusComponent implements OnInit {
     await this.processDrop(event, { remote: targetRemote ?? null, path: targetFolder.entry.Path });
   }
 
-  async onDropToCurrentDirectory(
-    event: CdkDragDrop<FileBrowserItem[]>,
-    paneIndex: number
-  ): Promise<void> {
+  async onDropToCurrentDirectory(event: DragEvent, paneIndex: number): Promise<void> {
     const targetRemote = paneIndex === 0 ? this.nautilusRemote() : this.nautilusRemoteRight();
     if (!targetRemote) return;
 
-    const resolved = this._resolveDropHit(event.dropPoint);
+    const resolved = this._resolveDropHit({ x: event.clientX, y: event.clientY });
     const folder = resolved.folder ?? this.hoveredFolder();
     const segIdx = resolved.segmentIndex ?? this.hoveredSegmentIndex();
+    const tabIdx = resolved.tabIndex ?? this.hoveredTabIndex();
+
+    if (tabIdx !== null) {
+      const tab = this.tabs()[tabIdx];
+      if (tab?.left.remote) {
+        await this.processDrop(event, { remote: tab.left.remote, path: tab.left.path });
+      }
+      return;
+    }
 
     let targetPath: string;
     if (folder) {
@@ -995,79 +983,18 @@ export class NautilusComponent implements OnInit {
     } else if (segIdx !== null) {
       targetPath = segIdx < 0 ? '' : (this.pathSegments()[segIdx]?.path ?? '');
     } else {
-      if (event.previousContainer === event.container) return;
       targetPath = paneIndex === 0 ? this.currentPath() : this.currentPathRight();
     }
 
     await this.processDrop(event, { remote: targetRemote, path: targetPath });
   }
 
-  // --- Drag hover hit-testing (cdkDragMoved) ---
-
-  /**
-   * Hit-tests a screen position and returns which folder/segment/tab the pointer is over.
-   * Used both during drag-move (for hover highlights) and at drop-time (to get the final target).
-   */
-  private _resolveDropHit(pos: { x: number; y: number }): {
-    folder: FileBrowserItem | null;
-    segmentIndex: number | null;
-    tabIndex: number | null;
-  } {
-    const elements = document.elementsFromPoint(pos.x, pos.y) as HTMLElement[];
-    const hit = elements.find(
-      el =>
-        !el.classList.contains('cdk-drag-dragging') &&
-        !el.classList.contains('cdk-drag-preview') &&
-        (el.hasAttribute('data-folder-path') ||
-          el.hasAttribute('data-segment-index') ||
-          el.hasAttribute('data-tab-index'))
-    ) as HTMLElement | undefined;
-
-    const folderPath = hit?.getAttribute('data-folder-path') ?? null;
-    const segmentAttr = hit?.getAttribute('data-segment-index') ?? null;
-    const tabAttr = hit?.getAttribute('data-tab-index') ?? null;
-
-    if (folderPath) {
-      const allFiles = [...this.files(), ...this.filesRight()];
-      return {
-        folder: allFiles.find(f => f.entry.Path === folderPath) ?? null,
-        segmentIndex: null,
-        tabIndex: null,
-      };
-    }
-    if (segmentAttr !== null) {
-      return { folder: null, segmentIndex: Number(segmentAttr), tabIndex: null };
-    }
-    if (tabAttr !== null) {
-      return { folder: null, segmentIndex: null, tabIndex: Number(tabAttr) };
-    }
-    return { folder: null, segmentIndex: null, tabIndex: null };
-  }
-
-  private _onDragMove(pos: { x: number; y: number }): void {
-    const { folder, segmentIndex, tabIndex } = this._resolveDropHit(pos);
-    const hitKey =
-      folder?.entry.Path ??
-      (segmentIndex !== null ? `seg:${segmentIndex}` : tabIndex !== null ? `tab:${tabIndex}` : '');
-
-    if (hitKey === this._lastDragHitKey) return;
-    this._lastDragHitKey = hitKey;
-
-    this.hoveredFolder.set(folder);
-    this.hoveredSegmentIndex.set(segmentIndex);
-    this.hoveredTabIndex.set(tabIndex);
-  }
-
-  /** Drop on a path breadcrumb segment in the toolbar. */
-  async onDropToSegment(event: CdkDragDrop<FileBrowserItem[]>): Promise<void> {
+  async onDropToSegment(event: DragEvent, segIdx: number): Promise<void> {
     const paneIndex = this.activePaneIndex();
     const targetRemote = paneIndex === 0 ? this.nautilusRemote() : this.nautilusRemoteRight();
     if (!targetRemote) return;
 
-    // CDK drops onto the exact button — read segment index directly from it
-    const segIdx = Number(event.container.element.nativeElement.getAttribute('data-segment-index'));
     const targetPath = segIdx < 0 ? '' : (this.pathSegments()[segIdx]?.path ?? '');
-
     const currentPath = paneIndex === 0 ? this.currentPath() : this.currentPathRight();
     if (targetPath === currentPath) return;
 
@@ -1075,12 +1002,8 @@ export class NautilusComponent implements OnInit {
   }
 
   // --- Bookmarks ---
-  addBookmark(item: FileBrowserItem): void {
+  toggleBookmark(item: FileBrowserItem): void {
     this.nautilusService.toggleItem('bookmarks', item);
-  }
-
-  removeBookmark(bookmark: FileBrowserItem): void {
-    this.nautilusService.toggleItem('bookmarks', bookmark);
   }
 
   openBookmark(bookmark: FileBrowserItem): void {
@@ -1378,18 +1301,11 @@ export class NautilusComponent implements OnInit {
     this.createTab(tab.left.remote, tab.left.path);
   }
 
-  public onTabMiddleClick(event: MouseEvent, index: number): void {
-    if (event.button === 1) {
-      // Middle mouse button
-      event.preventDefault();
-      this.closeTab(index);
-    }
-  }
-
   public moveTab(previousIndex: number, currentIndex: number): void {
     this.tabs.update(list => {
       const newList = [...list];
-      moveItemInArray(newList, previousIndex, currentIndex);
+      const item = newList.splice(previousIndex, 1)[0];
+      newList.splice(currentIndex, 0, item);
       return newList;
     });
 
@@ -1534,17 +1450,6 @@ export class NautilusComponent implements OnInit {
     const full = `${cleanRemote}${item.entry.Path}`.replace('//', '/');
 
     navigator.clipboard?.writeText(full);
-  }
-
-  openContextMenuSelectToggle(): void {
-    const item = this.contextMenuItem();
-    if (item) {
-      const sel = new Set(this.selectedItems());
-      const key = this.getItemKey(item);
-      if (sel.has(key)) sel.delete(key);
-      else sel.add(key);
-      this.syncSelection(sel);
-    }
   }
 
   onSidebarRequestProperties(item: FileBrowserItem): void {
@@ -2180,10 +2085,6 @@ export class NautilusComponent implements OnInit {
     this.nautilusService.closeFilePicker(items);
   }
 
-  onClose(): void {
-    this.nautilusService.closeFilePicker(null);
-  }
-
   toggleStar(item: FileBrowserItem): void {
     this.nautilusService.toggleItem('starred', item);
   }
@@ -2312,12 +2213,12 @@ export class NautilusComponent implements OnInit {
     this.saveIconSize();
   }
 
-  increaseIconDisabled(): boolean {
-    return this.iconSize() >= this.currentIconSizes().slice(-1)[0];
-  }
-  decreaseIconDisabled(): boolean {
-    return this.iconSize() <= this.currentIconSizes()[0];
-  }
+  public readonly increaseIconDisabled = computed(
+    () => this.iconSize() >= this.currentIconSizes().slice(-1)[0]
+  );
+  public readonly decreaseIconDisabled = computed(
+    () => this.iconSize() <= this.currentIconSizes()[0]
+  );
 
   saveIconSize(): void {
     const key = this.layout() === 'list' ? 'list_icon_size' : 'grid_icon_size';
@@ -2348,7 +2249,6 @@ export class NautilusComponent implements OnInit {
   setSort(k: string): void {
     this.sortKey.set(k);
     this.appSettingsService.saveSetting('nautilus', 'sort_key', k);
-    this.refresh();
   }
 
   toggleSort(column: string): void {
@@ -2376,10 +2276,6 @@ export class NautilusComponent implements OnInit {
     this.updateSelectionSummary();
   }
 
-  openStarredInNewTab(): void {
-    this.createTab(null, '');
-  }
-
   clearSelection(): void {
     this.syncSelection(new Set());
   }
@@ -2390,12 +2286,6 @@ export class NautilusComponent implements OnInit {
     } else {
       this.isLoadingRight.set(false);
     }
-
-    this.stopActiveListingJob(paneIndex);
-  }
-
-  private stopActiveListingJob(paneIndex: number): void {
-    console.log('Needs cancel listing job for pane', paneIndex);
   }
 
   selectAll(): void {
@@ -2449,10 +2339,6 @@ export class NautilusComponent implements OnInit {
         if (splitDividerPos?.value !== undefined) this.splitDividerPos.set(splitDividerPos.value);
       });
   }
-
-  trackByRemote = (i: number, r: ExplorerRoot): string => r.name;
-  trackByTab = (i: number, t: { id: number }): number => t.id;
-  trackByBookmark = (i: number, b: FileBrowserItem): string => (b.meta.remote || '') + b.entry.Path;
 
   @HostListener('window:keydown', ['$event'])
   public async handleKeyDown(event: KeyboardEvent): Promise<void> {
@@ -2591,7 +2477,7 @@ export class NautilusComponent implements OnInit {
     if (event.key === 'Escape') {
       event.preventDefault();
       if (this.isPickerMode()) {
-        this.onClose();
+        this.nautilusService.closeFilePicker(null);
         return true;
       }
       if (this.selectedItems().size > 0) this.clearSelection();
@@ -2669,5 +2555,178 @@ export class NautilusComponent implements OnInit {
     if (wasMobile !== nowMobile) {
       this.isSidenavOpen.set(!nowMobile);
     }
+  }
+
+  /**
+   * Tracks the mouse position during drag to provide visual feedback
+   * for folders, segments, and tabs.
+   */
+  private _onDragMove(point: { x: number; y: number }): void {
+    const hit = this._resolveDropHit(point);
+
+    // Only update signals if something changed to avoid unnecessary CD
+    const hitKey = `${hit.folder?.entry.Path ?? 'null'}:${hit.segmentIndex ?? 'null'}:${hit.tabIndex ?? 'null'}:${hit.sidebarItem ?? 'null'}`;
+    if (hitKey === this._lastDragHitKey) return;
+    this._lastDragHitKey = hitKey;
+
+    this.hoveredFolder.set(hit.folder);
+    this.hoveredSegmentIndex.set(hit.segmentIndex);
+    this.hoveredTabIndex.set(hit.tabIndex);
+    this.hoveredSidebarItem.set(hit.sidebarItem);
+
+    // Auto-switch split pane when hovering over the other pane during drag
+    if (
+      hit.paneIndex !== null &&
+      this.isSplitEnabled() &&
+      hit.paneIndex !== this.activePaneIndex()
+    ) {
+      this.switchPane(hit.paneIndex as 0 | 1);
+    }
+
+    // Spring-loaded folder: start a timer to auto-open the hovered target
+
+    this._scheduleHoverOpen(hitKey, hit);
+  }
+
+  private _clearHoverOpenTimer(): void {
+    if (this._hoverOpenTimer !== null) {
+      clearTimeout(this._hoverOpenTimer);
+      this._hoverOpenTimer = null;
+    }
+    this._hoverOpenKey = '';
+  }
+
+  /**
+   * Schedules automatic navigation to the hovered target after a delay.
+   * Mimics the spring-loaded folder behavior in GNOME/Windows/macOS.
+   */
+  private _scheduleHoverOpen(
+    hitKey: string,
+    hit: {
+      folder: FileBrowserItem | null;
+      segmentIndex: number | null;
+      tabIndex: number | null;
+      sidebarItem: string | null;
+    }
+  ): void {
+    // If we're hovering over the same target, let the existing timer run
+    if (hitKey === this._hoverOpenKey) return;
+
+    // Clear any existing timer for the previous target
+    this._clearHoverOpenTimer();
+
+    // Don't start a timer if nothing actionable is hovered
+    if (!hit.folder && hit.segmentIndex === null && hit.tabIndex === null && !hit.sidebarItem)
+      return;
+
+    this._hoverOpenKey = hitKey;
+    this._hoverOpenTimer = setTimeout(() => {
+      this._hoverOpenTimer = null;
+
+      // Only act if we're still dragging
+      if (!this.isDragging()) return;
+
+      // Auto-open folder (but not if it's one of the items being dragged)
+      if (hit.folder && hit.folder.entry.IsDir) {
+        const isDraggedItem = this._draggedItems.some(
+          item => item.entry.Path === hit.folder!.entry.Path
+        );
+        if (!isDraggedItem) {
+          this.navigateTo(hit.folder);
+        }
+        return;
+      }
+
+      // Auto-navigate to breadcrumb segment
+      if (hit.segmentIndex !== null) {
+        if (hit.segmentIndex < 0) {
+          this.updatePath('');
+        } else {
+          this.navigateToSegment(hit.segmentIndex);
+        }
+        return;
+      }
+
+      // Auto-switch tab
+      if (hit.tabIndex !== null) {
+        this.switchTab(hit.tabIndex);
+        return;
+      }
+
+      // Auto-navigate sidebar items
+      if (hit.sidebarItem) {
+        if (hit.sidebarItem === 'starred') {
+          this.selectStarred();
+        } else if (hit.sidebarItem.startsWith('bookmark:')) {
+          const bmPath = hit.sidebarItem.replace('bookmark:', '');
+          const bm = this.bookmarks().find(b => b.entry.Path === bmPath);
+          if (bm) this.openBookmark(bm);
+        } else if (hit.sidebarItem.startsWith('remote:')) {
+          const remoteName = hit.sidebarItem.replace('remote:', '');
+          const remote = this.allRemotesLookup().find(r => r.name === remoteName);
+          if (remote) this.selectRemote(remote);
+        }
+        return;
+      }
+    }, NautilusComponent.HOVER_OPEN_DELAY_MS);
+  }
+
+  /**
+   * Resolves which element is currently under the mouse during a drag.
+   */
+  private _resolveDropHit(point: { x: number; y: number }): {
+    folder: FileBrowserItem | null;
+    segmentIndex: number | null;
+    tabIndex: number | null;
+    sidebarItem: string | null;
+    paneIndex: number | null;
+  } {
+    const el = document.elementFromPoint(point.x, point.y);
+    if (!el)
+      return {
+        folder: null,
+        segmentIndex: null,
+        tabIndex: null,
+        sidebarItem: null,
+        paneIndex: null,
+      };
+
+    const folderTarget = el.closest('[data-folder-path]');
+    const segmentTarget = el.closest('[data-segment-index]');
+    const tabTarget = el.closest('[data-tab-index]');
+    const sidebarStarred = el.closest('[data-sidebar-starred]');
+    const sidebarBookmarksHeader = el.closest('[data-sidebar-bookmarks-header]');
+    const sidebarBookmark = el.closest('[data-sidebar-bookmark-path]');
+    const sidebarRemote = el.closest('[data-sidebar-remote-name]');
+
+    const pIdx = this.activePaneIndex();
+    const currentFiles = pIdx === 0 ? this.files() : this.filesRight();
+
+    let folder: FileBrowserItem | null = null;
+    if (folderTarget) {
+      const path = folderTarget.getAttribute('data-folder-path');
+      folder = currentFiles.find(f => f.entry.Path === path) || null;
+    }
+
+    const paneTarget = el.closest('[data-pane-index]');
+
+    let sidebarItem: string | null = null;
+
+    if (sidebarStarred) sidebarItem = 'starred';
+    else if (sidebarBookmarksHeader) sidebarItem = 'bookmarks-header';
+    else if (sidebarBookmark)
+      sidebarItem = 'bookmark:' + sidebarBookmark.getAttribute('data-sidebar-bookmark-path');
+    else if (sidebarRemote)
+      sidebarItem = 'remote:' + sidebarRemote.getAttribute('data-sidebar-remote-name');
+
+    return {
+      folder,
+      segmentIndex: segmentTarget
+        ? parseInt(segmentTarget.getAttribute('data-segment-index')!, 10)
+        : null,
+      tabIndex: tabTarget ? parseInt(tabTarget.getAttribute('data-tab-index')!, 10) : null,
+      sidebarItem,
+      paneIndex: paneTarget ? parseInt(paneTarget.getAttribute('data-pane-index')!, 10) : null,
+    };
   }
 }

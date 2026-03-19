@@ -4,10 +4,6 @@
   width: 100vw;
   height: 100vh;
   --sidenav-width: clamp(180px, 20vw, 240px);
-
-  ::ng-deep .cdk-drag-placeholder {
-    display: none;
-  }
 }
 
 .nautilus-sidenav {

@@ -81,8 +81,7 @@ mat-nav-list {
   border-radius: var(--radius-xs);
   transition: var(--transition-fast);
 
-  &.cdk-drop-list-receiving,
-  &.cdk-drop-list-dragging {
+  &.sidebar-drag-over {
     background: rgba(var(--accent-color-rgb), 0.1) !important;
     box-shadow: 0 0 0 2px var(--accent-color);
     color: var(--accent-color);
@@ -95,8 +94,10 @@ mat-nav-list {
   margin-block: var(--space-xxs);
   transition: var(--transition-fast);
 
-  &.cdk-drop-list-dragging {
+  &.sidebar-drag-over {
     background: var(--selected-bg-color) !important;
+    outline: 2px solid var(--accent-color);
+    outline-offset: -2px;
   }
 
   &.selected {

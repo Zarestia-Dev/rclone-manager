@@ -47,12 +47,10 @@
         >
           <button
             class="path-segment"
-            [class.segment-drag-over]="isDragging() && hoveredSegmentIndex() === -1"
             data-segment-index="-1"
-            cdkDropList
-            cdkDropListSortingDisabled
-            [cdkDropListEnterPredicate]="canAcceptFile() || _acceptAll"
-            (cdkDropListDropped)="droppedOnSegment.emit($event)"
+            [class.segment-drag-over]="isDragging() && hoveredSegmentIndex() === -1"
+            (dragover)="$event.preventDefault()"
+            (drop)="droppedOnSegment.emit({ event: $event, segmentIndex: -1 })"
             (click)="$event.stopPropagation(); updatePath.emit('')"
           >
             <mat-icon
@@ -69,13 +67,11 @@
             <span class="path-separator">/</span>
             <button
               class="path-segment"
+              [attr.data-segment-index]="$index"
               [class.active]="$index === pathSegments().length - 1"
               [class.segment-drag-over]="isDragging() && hoveredSegmentIndex() === $index"
-              [attr.data-segment-index]="$index"
-              cdkDropList
-              cdkDropListSortingDisabled
-              [cdkDropListEnterPredicate]="canAcceptFile() || _acceptAll"
-              (cdkDropListDropped)="droppedOnSegment.emit($event)"
+              (dragover)="$event.preventDefault()"
+              (drop)="droppedOnSegment.emit({ event: $event, segmentIndex: $index })"
               (click)="$event.stopPropagation(); navigateToSegment.emit($index)"
             >
               {{ segment.name }}
