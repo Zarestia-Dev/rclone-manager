@@ -35,7 +35,7 @@ which = "8.0.1"
 walkdir = "2.5.0"
 sha2 = "0.10.9"
 tempfile = "3.26.0"
-uuid = { version = "1.22", features = ["v4"] }
+uuid = { version = "1.19", features = ["v4"] }
 thiserror = "2.0"
 netstat2 = "0.11.2"
 sysinfo = "0.38.3"
@@ -51,7 +51,7 @@ tauri-plugin-window-state = { version = "2", optional = true }
 tauri-plugin-dialog = { version = "2", optional = true }
 
 # rcman - Rust Config Manager library
-rcman = { version = "0.1.6", features = ["backup", "derive", "profiles", "keychain"] }
+rcman = { path = "../../rcman", version = "0.1.6", features = ["backup", "derive", "profiles", "keychain"] }
 
 urlencoding = "2.1"
 futures = { version = "0.3" }

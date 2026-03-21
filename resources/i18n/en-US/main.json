@@ -1939,6 +1939,18 @@
         "processing": "Processing...",
         "continue": "Continue",
         "saving": "Saving..."
+      },
+      "editMode": {
+        "sections": {
+          "label": "Sections",
+          "general": "General",
+          "auth": "Authentication",
+          "advanced": "Advanced"
+        },
+        "profiles": "{{type}} Profiles"
+      },
+      "errors": {
+        "interactiveProcessingFailed": "Failed to process interactive response"
       }
     },
     "rcloneConfig": {

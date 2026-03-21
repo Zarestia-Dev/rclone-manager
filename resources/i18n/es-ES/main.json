@@ -1894,6 +1894,18 @@
         "processing": "Procesando...",
         "continue": "Continuar",
         "saving": "Guardando..."
+      },
+      "editMode": {
+        "sections": {
+          "label": "Secciones",
+          "general": "General",
+          "auth": "Autenticación",
+          "advanced": "Avanzado"
+        },
+        "profiles": "Perfiles de {{type}}"
+      },
+      "errors": {
+        "interactiveProcessingFailed": "Error al procesar la respuesta interactiva"
       }
     },
     "rcloneConfig": {

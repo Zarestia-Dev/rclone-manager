@@ -10,9 +10,11 @@ import {
   effect,
   untracked,
   Signal,
+  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { NgClass, NgTemplateOutlet, TitleCasePipe } from '@angular/common';
+import { startWith } from 'rxjs';
+import { NgTemplateOutlet, TitleCasePipe } from '@angular/common';
 import {
   FormBuilder,
   FormGroup,
@@ -20,6 +22,7 @@ import {
   FormControl,
   FormsModule,
   ReactiveFormsModule,
+  AbstractControl,
 } from '@angular/forms';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -30,7 +33,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
-import { MatExpansionModule } from '@angular/material/expansion';
+import { MatListModule } from '@angular/material/list';
+import { MatDividerModule } from '@angular/material/divider';
 import { RemoteConfigStepComponent } from '../../../../shared/remote-config/remote-config-step/remote-config-step.component';
 import { FlagConfigStepComponent } from '../../../../shared/remote-config/flag-config-step/flag-config-step.component';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
@@ -80,6 +84,7 @@ import {
   convertBoolAnswerToString,
   parseFsString,
 } from '../../../../services/remote/utils/remote-config.utils';
+import { MatExpansionModule } from '@angular/material/expansion';
 
 // ============================================================================
 // TYPES
@@ -114,7 +119,6 @@ const JOB_TYPES = new Set(['sync', 'copy', 'bisync', 'move']);
   standalone: true,
   imports: [
     TitleCasePipe,
-    NgClass,
     NgTemplateOutlet,
     FormsModule,
     ReactiveFormsModule,
@@ -127,6 +131,8 @@ const JOB_TYPES = new Set(['sync', 'copy', 'bisync', 'move']);
     MatTooltipModule,
     MatProgressSpinner,
     MatExpansionModule,
+    MatListModule,
+    MatDividerModule,
     RemoteConfigStepComponent,
     FlagConfigStepComponent,
     InteractiveConfigStepComponent,
@@ -145,6 +151,8 @@ export class RemoteConfigModalComponent implements OnInit {
   private readonly authStateService = inject(AuthStateService);
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly jobManagementService = inject(JobManagementService);
+
+  readonly configStep = viewChild(RemoteConfigStepComponent);
   private readonly mountManagementService = inject(MountManagementService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly fileSystemService = inject(FileSystemService);
@@ -166,7 +174,7 @@ export class RemoteConfigModalComponent implements OnInit {
   readonly FLAG_TYPES = FLAG_TYPES;
 
   readonly stepConfigs = computed(() => {
-    const remoteType = this.remoteForm?.get('type')?.value;
+    const remoteType = this.remoteTypeSignal();
     const remoteIcon = this.iconService.getIconName(remoteType || 'hard-drive');
     return [
       {
@@ -207,6 +215,7 @@ export class RemoteConfigModalComponent implements OnInit {
    */
   remoteFormStatus!: Signal<string>;
   remoteConfigFormStatus!: Signal<string>;
+  remoteTypeSignal!: Signal<string>;
 
   // ============================================================================
   // STATE SIGNALS
@@ -268,9 +277,41 @@ export class RemoteConfigModalComponent implements OnInit {
   currentStep = signal(1);
   interactiveFlowState = signal<InteractiveFlowState>(createInitialInteractiveFlowState());
 
+  editTargetType = computed(() => {
+    const target = this.editTarget();
+    return target as SharedProfileType;
+  });
+
   // Search state
   isSearchVisible = signal(false);
   searchQuery = signal('');
+
+  remoteEditCategories = [
+    { id: 'section-general', label: 'modals.remoteConfig.editMode.sections.general', icon: 'gear' },
+    { id: 'section-auth', label: 'modals.remoteConfig.editMode.sections.auth', icon: 'lock' },
+    {
+      id: 'section-advanced',
+      label: 'modals.remoteConfig.editMode.sections.advanced',
+      icon: 'wrench',
+    },
+  ];
+
+  visibleSections = computed(() => {
+    const step = this.configStep();
+    if (!step) return new Set<string>(['section-general', 'section-auth', 'section-advanced']);
+
+    const visible = new Set<string>();
+    if (step.showNameField() || step.showAdvancedToggle() || step.showInteractiveToggle()) {
+      visible.add('section-general');
+    }
+    if (step.providerField()) {
+      visible.add('section-auth');
+    }
+    if (step.showAdvancedOptions() && step.advancedFields().length > 0 && step.providerReady()) {
+      visible.add('section-advanced');
+    }
+    return visible;
+  });
 
   private pendingConfig: {
     remoteData: PendingRemoteData;
@@ -304,6 +345,13 @@ export class RemoteConfigModalComponent implements OnInit {
     this.remoteConfigFormStatus = toSignal(this.remoteConfigForm.statusChanges, {
       initialValue: this.remoteConfigForm.status,
     });
+
+    this.remoteTypeSignal = toSignal(
+      this.remoteForm
+        .get('type')!
+        .valueChanges.pipe(startWith(this.remoteForm.get('type')!.value as string)),
+      { initialValue: this.remoteForm.get('type')?.value ?? '' }
+    );
 
     this.setupAuthStateListeners();
     this.destroyRef.onDestroy(() => this.authStateService.cancelAuth());
@@ -537,19 +585,15 @@ export class RemoteConfigModalComponent implements OnInit {
   }
 
   private createRemoteConfigForm(): FormGroup {
-    const group: Record<string, FormGroup> = {};
+    const group: Record<string, AbstractControl> = {};
 
-    if (this.editTarget() === 'serve') {
-      group['serveConfig'] = this.createServeConfigGroup();
-    } else {
-      FLAG_TYPES.forEach(flag => {
-        group[flag === 'serve' ? 'serveConfig' : `${flag}Config`] =
-          flag === 'serve'
-            ? this.createServeConfigGroup()
-            : this.createConfigGroup(this.getFieldsForFlagType(flag));
-      });
-      group['runtimeRemoteConfig'] = this.createRuntimeRemoteConfigGroup();
-    }
+    FLAG_TYPES.forEach(flag => {
+      group[flag === 'serve' ? 'serveConfig' : `${flag}Config`] =
+        flag === 'serve'
+          ? this.createServeConfigGroup()
+          : this.createConfigGroup(this.getFieldsForFlagType(flag));
+    });
+    group['runtimeRemoteConfig'] = this.createRuntimeRemoteConfigGroup();
 
     return this.fb.group(group);
   }
@@ -563,11 +607,18 @@ export class RemoteConfigModalComponent implements OnInit {
   private createServeConfigGroup(): FormGroup {
     return this.fb.group({
       autoStart: [false],
-      source: this.fb.group({ pathType: ['currentRemote'], path: [''] }),
+      cronEnabled: [false],
+      cronExpression: [null],
+      source: this.fb.group({
+        pathType: ['currentRemote'],
+        path: [''],
+        otherRemoteName: [''],
+      }),
       type: ['http', Validators.required],
       vfsProfile: [DEFAULT_PROFILE_NAME],
       filterProfile: [DEFAULT_PROFILE_NAME],
       backendProfile: [DEFAULT_PROFILE_NAME],
+      runtimeRemoteProfile: [DEFAULT_PROFILE_NAME],
       options: this.fb.group({}),
     });
   }
@@ -626,9 +677,13 @@ export class RemoteConfigModalComponent implements OnInit {
   // ============================================================================
   // FORM SETUP
   // ============================================================================
+  private static readonly AUTO_START_OP_TYPES = new Set(['sync', 'copy', 'move', 'bisync']);
+
   private setupAutoStartValidators(): void {
     if (this.editTarget() === 'remote' || !this.editTarget() || this.cloneTarget()) {
       FLAG_TYPES.forEach(type => {
+        if (type !== 'mount' && !RemoteConfigModalComponent.AUTO_START_OP_TYPES.has(type)) return;
+
         const configName = `${type}Config`;
         const opGroup = this.remoteConfigForm.get(configName);
         if (!opGroup) return;
@@ -896,10 +951,16 @@ export class RemoteConfigModalComponent implements OnInit {
   });
 
   goToStep(step: number): void {
-    if (this.isAuthInProgress()) return;
+    if (this.isStepDisabled(step)) return;
     this.saveCurrentStepProfile();
     this.currentStep.set(step);
     this.scrollToTop();
+  }
+
+  isStepDisabled(step: number): boolean {
+    if (this.isAuthInProgress()) return true;
+    if (this.editTarget()) return false;
+    return step > 1 && this.remoteForm.status === 'INVALID';
   }
 
   nextStep(): void {
@@ -1091,19 +1152,10 @@ export class RemoteConfigModalComponent implements OnInit {
   }
 
   private createEmptyFinalConfig(): RemoteConfigSections {
-    return {
-      [REMOTE_CONFIG_KEYS.mount]: {},
-      [REMOTE_CONFIG_KEYS.copy]: {},
-      [REMOTE_CONFIG_KEYS.sync]: {},
-      [REMOTE_CONFIG_KEYS.bisync]: {},
-      [REMOTE_CONFIG_KEYS.move]: {},
-      [REMOTE_CONFIG_KEYS.serve]: {},
-      [REMOTE_CONFIG_KEYS.filter]: {},
-      [REMOTE_CONFIG_KEYS.vfs]: {},
-      [REMOTE_CONFIG_KEYS.backend]: {},
-      [REMOTE_CONFIG_KEYS.runtimeRemote]: {},
-      showOnTray: true,
-    };
+    const empty = Object.fromEntries(
+      Object.values(REMOTE_CONFIG_KEYS).map(k => [k, {}])
+    ) as unknown as RemoteConfigSections;
+    return { ...empty, showOnTray: true };
   }
 
   // ============================================================================
@@ -1197,6 +1249,7 @@ export class RemoteConfigModalComponent implements OnInit {
   selectProfile(type: SharedProfileType, name: string): void {
     if (!this.profiles()[type]?.[name]) return;
     this.saveCurrentProfile(type);
+    this.selectedProfileName.update(prev => ({ ...prev, [type]: name }));
     void this.populateProfileForm(type, this.profiles()[type][name] as Record<string, unknown>);
   }
 
@@ -1222,6 +1275,23 @@ export class RemoteConfigModalComponent implements OnInit {
     return this.selectedProfileName()[type];
   }
 
+  private static readonly PROFILE_ICONS: Partial<Record<SharedProfileType, string>> = {
+    mount: 'hard-drive',
+    sync: 'refresh',
+    copy: 'copy',
+    move: 'move',
+    bisync: 'right-left',
+    serve: 'server',
+    vfs: 'folder-tree',
+    filter: 'filter',
+    backend: 'database',
+    runtimeRemote: 'gear',
+  };
+
+  getProfileIcon(type: SharedProfileType | null): string {
+    return (type && RemoteConfigModalComponent.PROFILE_ICONS[type]) || 'circle-info';
+  }
+
   getProfileOptions(type: 'vfs' | 'filter' | 'backend' | 'runtimeRemote'): string[] {
     if (type === 'runtimeRemote') {
       const names = Object.keys(this.profiles()['runtimeRemote'] ?? {});
@@ -1232,12 +1302,14 @@ export class RemoteConfigModalComponent implements OnInit {
 
   private buildProfileConfig(type: SharedProfileType, remoteName: string, configData: any): any {
     if (type === 'serve') {
-      const fs = buildPathString(configData['source'] as string, remoteName);
+      const fs = buildPathString(configData['source'], remoteName);
       const serveOptions = this.cleanServeOptions(
         (configData['options'] as Record<string, unknown>) ?? {}
       );
       return {
         autoStart: configData['autoStart'] as boolean,
+        cronEnabled: configData['cronEnabled'] as boolean,
+        cronExpression: configData['cronExpression'] as string | null,
         source: fs,
         vfsProfile: configData['vfsProfile'] ?? DEFAULT_PROFILE_NAME,
         filterProfile: configData['filterProfile'] ?? DEFAULT_PROFILE_NAME,
@@ -1302,18 +1374,16 @@ export class RemoteConfigModalComponent implements OnInit {
     );
   }
 
+  private static readonly FLAG_TYPE_FIELDS: Partial<Record<string, string[]>> = {
+    mount: ['autoStart', 'dest', 'source', 'type'],
+    sync: ['autoStart', 'cronEnabled', 'cronExpression', 'source', 'dest'],
+    copy: ['autoStart', 'cronEnabled', 'cronExpression', 'source', 'dest'],
+    move: ['autoStart', 'cronEnabled', 'cronExpression', 'source', 'dest'],
+    bisync: ['autoStart', 'cronEnabled', 'cronExpression', 'source', 'dest'],
+  };
+
   private getFieldsForFlagType(type: string): string[] {
-    switch (type) {
-      case 'mount':
-        return ['autoStart', 'dest', 'source', 'type'];
-      case 'sync':
-      case 'copy':
-      case 'move':
-      case 'bisync':
-        return ['autoStart', 'cronEnabled', 'cronExpression', 'source', 'dest'];
-      default:
-        return [];
-    }
+    return RemoteConfigModalComponent.FLAG_TYPE_FIELDS[type] ?? [];
   }
 
   // ============================================================================
@@ -1432,7 +1502,9 @@ export class RemoteConfigModalComponent implements OnInit {
     } catch (error) {
       console.error('Error processing interactive response:', error);
       this.interactiveFlowState.update(s => ({ ...s, isProcessing: false }));
-      this.notificationService.showError('Failed to process interactive response');
+      this.notificationService.showError(
+        this.translate.instant('modals.remoteConfig.errors.interactiveProcessingFailed')
+      );
     }
   }
 
@@ -1604,6 +1676,50 @@ export class RemoteConfigModalComponent implements OnInit {
     this.profileState.update(state => ({ ...state, [key]: { ...state[key], tempName: name } }));
   }
 
+  asProfileType(type: string): SharedProfileType {
+    return type as SharedProfileType;
+  }
+
+  profileGetSelected(type: string): string {
+    return this.getSelectedProfile(type as SharedProfileType);
+  }
+
+  profileGetAll(type: string): { name: string; [key: string]: unknown }[] {
+    return this.getProfiles(type as SharedProfileType);
+  }
+
+  profileSelect(type: string, name: string): void {
+    this.selectProfile(type as SharedProfileType, name);
+  }
+
+  profileStartAdd(type: string): void {
+    this.startAddProfile(type as SharedProfileType);
+  }
+
+  profileStartEdit(type: string): void {
+    this.startEditProfile(type as SharedProfileType);
+  }
+
+  profileDelete(type: string, name: string): void {
+    this.deleteProfile(type as SharedProfileType, name);
+  }
+
+  profileSave(type: string): void {
+    this.saveProfile(type as SharedProfileType);
+  }
+
+  profileCancelEdit(type: string): void {
+    this.cancelProfileEdit(type as SharedProfileType);
+  }
+
+  formControl(path: string): FormControl {
+    return this.remoteConfigForm.get(path) as FormControl;
+  }
+
+  get runtimeRemoteConfigGroup(): FormGroup {
+    return this.remoteConfigForm.get('runtimeRemoteConfig') as FormGroup;
+  }
+
   setFormState(disabled: boolean): void {
     if (disabled) {
       this.remoteForm.disable();
@@ -1622,26 +1738,28 @@ export class RemoteConfigModalComponent implements OnInit {
 
   isSaveDisabled = computed(() => {
     if (this.isAuthInProgress()) return true;
+
     const remoteStatus = this.remoteFormStatus();
-    const configStatus = this.remoteConfigFormStatus(); // establishes reactivity; form read below is current
+    const configStatus = this.remoteConfigFormStatus();
     const editTargetValue = this.editTarget();
 
     if (editTargetValue) {
       if (editTargetValue === 'remote') return remoteStatus === 'INVALID';
-      // Check the specific sub-group — more precise than checking the whole form status.
+      void configStatus;
       return this.remoteConfigForm.get(`${editTargetValue}Config`)?.invalid ?? true;
     }
 
     return remoteStatus === 'INVALID' || configStatus === 'INVALID';
   });
 
-  saveButtonLabel = computed(() =>
-    this.isAuthInProgress() && !this.isAuthCancelled()
-      ? 'modals.remoteConfig.buttons.saving'
-      : this.editTarget()
-        ? 'modals.remoteConfig.buttons.saveChanges'
-        : 'modals.remoteConfig.buttons.save'
-  );
+  saveButtonLabel = computed(() => {
+    if (this.isAuthInProgress() && !this.isAuthCancelled()) {
+      return 'modals.remoteConfig.buttons.saving';
+    }
+    return this.editTarget()
+      ? 'modals.remoteConfig.buttons.saveChanges'
+      : 'modals.remoteConfig.buttons.save';
+  });
 
   // ============================================================================
   // SEARCH
@@ -1651,8 +1769,15 @@ export class RemoteConfigModalComponent implements OnInit {
     if (!this.isSearchVisible()) this.searchQuery.set('');
   }
 
-  onSearchInput(searchText: string): void {
-    this.searchQuery.set(searchText);
+  onSearchInput(query: string): void {
+    this.searchQuery.set(query);
+  }
+
+  scrollToSection(sectionId: string): void {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+    }
   }
 
   @HostListener('window:keydown', ['$event'])

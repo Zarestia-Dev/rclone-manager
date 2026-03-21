@@ -6,7 +6,7 @@
   margin-bottom: var(--space-md);
   padding: var(--space-sm);
   box-shadow: 0 0 0 2px var(--primary-color);
-  border-radius: var(--panel-radius);
+  border-radius: var(--radius-md);
   background: rgba(var(--primary-color-rgb), 0.05);
 
   .operation-enable,
@@ -95,7 +95,7 @@
   align-items: center;
   gap: var(--space-xxs);
   padding: var(--space-xs);
-  border-radius: var(--border-radius);
+  border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
   margin-bottom: var(--space-md);
 

@@ -1,18 +1,3 @@
-:host form.flag-form {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  height: 100%;
-  position: relative;
-}
-
-.form-container {
-  padding: var(--space-md);
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
 .loading-container {
   display: inline-flex;
   align-items: center;

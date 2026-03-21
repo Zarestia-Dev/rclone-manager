@@ -1939,6 +1939,18 @@
         "processing": "处理中...",
         "continue": "继续",
         "saving": "保存中..."
+      },
+      "editMode": {
+        "sections": {
+          "label": "章节",
+          "general": "常规",
+          "auth": "身份验证",
+          "advanced": "高级"
+        },
+        "profiles": "{{type}} 配置文件"
+      },
+      "errors": {
+        "interactiveProcessingFailed": "处理交互式响应失败"
       }
     },
     "rcloneConfig": {

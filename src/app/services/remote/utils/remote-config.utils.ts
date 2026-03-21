@@ -1,4 +1,4 @@
-import { RcConfigQuestionResponse, InteractiveFlowState } from '@app/types';
+import { RcConfigQuestionResponse, InteractiveFlowState, RcConfigOption } from '@app/types';
 
 /**
  * Creates the initial/reset state for interactive flow.
@@ -169,4 +169,39 @@ export function parseFsString(
   }
 
   return { pathType: defaultType, path: fullPath };
+}
+
+/**
+ * Normalizes an rclone configuration key/flag for flexible searching.
+ * Converts to lowercase and replaces hyphens and spaces with underscores.
+ */
+export function normalizeRcloneKey(val: string | undefined | null): string {
+  if (!val) return '';
+  return val.toLowerCase().replace(/[- ]/g, '_');
+}
+
+/**
+ * Checks if a configuration field matches a given search query.
+ * Performs both raw substring matching and flexible matching (hyphens/spaces as underscores).
+ */
+export function matchesConfigSearch(field: RcConfigOption, query: string): boolean {
+  if (!query) return true;
+
+  const trimmedQuery = query.toLowerCase().trim();
+  const flexibleQuery = normalizeRcloneKey(trimmedQuery);
+
+  const name = field.Name?.toLowerCase() ?? '';
+  const fieldName = field.FieldName?.toLowerCase() ?? '';
+  const help = field.Help?.toLowerCase() ?? '';
+
+  const flexibleName = normalizeRcloneKey(field.Name);
+  const flexibleFieldName = normalizeRcloneKey(field.FieldName);
+
+  return (
+    name.includes(trimmedQuery) ||
+    fieldName.includes(trimmedQuery) ||
+    help.includes(trimmedQuery) ||
+    flexibleName.includes(flexibleQuery) ||
+    flexibleFieldName.includes(flexibleQuery)
+  );
 }

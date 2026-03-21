@@ -1937,6 +1937,18 @@
         "processing": "İşleniyor...",
         "continue": "Devam Et",
         "saving": "Kaydediliyor..."
+      },
+      "editMode": {
+        "sections": {
+          "label": "Bölümler",
+          "general": "Genel",
+          "auth": "Kimlik Doğrulama",
+          "advanced": "Gelişmiş"
+        },
+        "profiles": "{{type}} Profilleri"
+      },
+      "errors": {
+        "interactiveProcessingFailed": "Etkileşimli yanıt işlenemedi"
       }
     },
     "rcloneConfig": {

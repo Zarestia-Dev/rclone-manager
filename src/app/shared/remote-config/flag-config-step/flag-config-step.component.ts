@@ -1,4 +1,12 @@
-import { Component, ChangeDetectionStrategy, inject, input, computed, output } from '@angular/core';
+import {
+  Component,
+  ChangeDetectionStrategy,
+  inject,
+  input,
+  computed,
+  output,
+  Signal,
+} from '@angular/core';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -6,11 +14,13 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TitleCasePipe } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
+import { toSignal, toObservable } from '@angular/core/rxjs-interop';
+import { switchMap, startWith, of } from 'rxjs';
 
 import { FlagType, RcConfigOption } from '@app/types';
 import { SettingControlComponent } from 'src/app/shared/components';
 import { OperationConfigComponent } from 'src/app/shared/remote-config/app-operation-config/app-operation-config.component';
-import { IconService } from '@app/services';
+import { IconService, matchesConfigSearch } from '@app/services';
 
 @Component({
   selector: 'app-flag-config-step',
@@ -32,6 +42,8 @@ import { IconService } from '@app/services';
 export class FlagConfigStepComponent {
   readonly iconService = inject(IconService);
 
+  private static readonly EMPTY_GROUP = new FormGroup({});
+
   // Inputs
   form = input.required<FormGroup>();
   flagType = input.required<FlagType>();
@@ -48,7 +60,11 @@ export class FlagConfigStepComponent {
   serveTypeChange = output<string>();
 
   // Derived state
-  configGroup = computed(() => this.form().get(`${this.flagType()}Config`) as FormGroup);
+  configGroup = computed(
+    () =>
+      (this.form().get(`${this.flagType()}Config`) as FormGroup | null) ??
+      FlagConfigStepComponent.EMPTY_GROUP
+  );
 
   isServe = computed(() => this.flagType() === 'serve');
   isMount = computed(() => this.flagType() === 'mount');
@@ -61,18 +77,24 @@ export class FlagConfigStepComponent {
       : 'wizards.remoteConfig.operationDescription'
   );
 
-  serveTypeValue = computed(() => (this.configGroup()?.get('type')?.value as string) ?? '');
+  private readonly configGroupAny = this.configGroup as unknown as Signal<FormGroup<any>>;
+
+  readonly serveTypeValue = toSignal(
+    toObservable(this.configGroupAny).pipe(
+      switchMap(group => {
+        const ctrl = group.get('type');
+        if (!ctrl) return of('');
+        return ctrl.valueChanges.pipe(startWith((ctrl.value as string) ?? ''));
+      })
+    ),
+    { initialValue: '' }
+  );
 
   filteredDynamicFlagFields = computed(() => {
-    const query = this.searchQuery()?.toLowerCase().trim();
+    const query = this.searchQuery();
     if (!query) return this.dynamicFlagFields();
 
-    return this.dynamicFlagFields().filter(
-      field =>
-        (field.Name?.toLowerCase().includes(query) ?? false) ||
-        (field.FieldName?.toLowerCase().includes(query) ?? false) ||
-        (field.Help?.toLowerCase().includes(query) ?? false)
-    );
+    return this.dynamicFlagFields().filter(field => matchesConfigSearch(field, query));
   });
 
   dynamicFieldBindings = computed(() => {

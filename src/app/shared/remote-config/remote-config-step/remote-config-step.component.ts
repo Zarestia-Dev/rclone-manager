@@ -10,8 +10,8 @@ import {
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { startWith } from 'rxjs';
+import { toSignal, toObservable } from '@angular/core/rxjs-interop';
+import { startWith, switchMap } from 'rxjs';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -20,7 +20,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIcon } from '@angular/material/icon';
 import { TranslateModule } from '@ngx-translate/core';
 import { RcConfigOption, RemoteType, RemoteConfigStepVisibility } from '@app/types';
-import { IconService } from '@app/services';
+import { IconService, matchesConfigSearch } from '@app/services';
 import { SettingControlComponent } from 'src/app/shared/components';
 
 @Component({
@@ -70,6 +70,15 @@ export class RemoteConfigStepComponent {
   // --- Local Form Controls ---
   readonly remoteSearchCtrl = new FormControl('');
   readonly providerSearchCtrl = new FormControl('');
+
+  readonly remoteTypeValue = toSignal(
+    toObservable(this.form).pipe(
+      switchMap(f =>
+        (f.get('type')?.valueChanges ?? f.valueChanges).pipe(startWith(f.get('type')?.value ?? ''))
+      )
+    ),
+    { initialValue: '' }
+  );
 
   // --- Local Signals ---
   readonly selectedProvider = signal<string | undefined>(undefined);
@@ -195,13 +204,7 @@ export class RemoteConfigStepComponent {
   }
 
   private matchesSearch(field: RcConfigOption, query: string): boolean {
-    if (!query) return true;
-    const normalized = query.toLowerCase();
-    return (
-      field.Name?.toLowerCase().includes(normalized) ||
-      field.FieldName?.toLowerCase().includes(normalized) ||
-      field.Help?.toLowerCase().includes(normalized)
-    );
+    return matchesConfigSearch(field, query);
   }
 
   private getFieldsByAdvanced(isAdvanced: boolean): RcConfigOption[] {

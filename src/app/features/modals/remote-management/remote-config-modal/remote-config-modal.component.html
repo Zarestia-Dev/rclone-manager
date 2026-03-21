@@ -1,4 +1,6 @@
 <div class="modal-container">
+  @let flow = interactiveFlowState();
+
   <!-- Modal Header -->
   <header class="modal-header" data-tauri-drag-region>
     <button
@@ -6,7 +8,7 @@
       (click)="toggleSearchVisibility()"
       [matTooltip]="'shared.search.toggle' | translate"
       [attr.aria-label]="'shared.search.toggle' | translate"
-      [disabled]="interactiveFlowState().isActive"
+      [disabled]="flow.isActive"
       type="button"
     >
       <mat-icon svgIcon="search"></mat-icon>
@@ -18,6 +20,9 @@
           ? ('modals.remoteConfig.title.edit' | translate: { target: target | titlecase })
           : ('modals.remoteConfig.title.add' | translate)
       }}
+      @if (!flow.isActive && !editTarget()) {
+        <span class="mobile-step-indicator"> ({{ currentStep() }}/{{ TOTAL_STEPS }}) </span>
+      }
     </p>
     <button
       mat-icon-button
@@ -29,437 +34,471 @@
     </button>
   </header>
 
-  <!-- Search Container -->
-  <app-search-container
-    [visible]="isSearchVisible()"
-    [searchText]="searchQuery()"
-    (searchTextChange)="onSearchInput($event)"
-    [placeholder]="'shared.search.placeholder'"
-    [ariaLabel]="'shared.search.ariaLabel'"
-  ></app-search-container>
+  <div class="modal-body">
+    <!-- Sidebar for Navigation -->
+    @if (!flow.isActive) {
+      <aside class="modal-sidebar">
+        @if (!editTarget()) {
+          <div class="step-indicator-container hide-scrollbar">
+            <mat-nav-list
+              class="step-indicator"
+              [attr.aria-label]="'modals.remoteConfig.aria.stepIndicator' | translate"
+            >
+              @for (config of stepConfigs(); track $index) {
+                @let stepNum = $index + 1;
+                @let isCompleted = currentStep() > stepNum;
+                @let isCurrent = currentStep() === stepNum;
 
-  <!-- Step Progress Indicator (only shown during multi-step create flow) -->
-  @if (!interactiveFlowState().isActive && !editTarget()) {
-    <div class="step-indicator-container">
-      <div
-        class="step-indicator hide-scrollbar"
-        role="tablist"
-        [attr.aria-label]="'modals.remoteConfig.aria.stepIndicator' | translate"
-      >
-        @for (step of stepLabels(); track step; let i = $index) {
-          @let stepState = getStepState(i + 1);
-          <button
-            class="step"
-            [ngClass]="stepState"
-            [class.clickable]="editTarget()"
-            (click)="goToStep(i + 1)"
-            [attr.tabindex]="editTarget() ? '0' : '-1'"
-            role="tab"
-            [disabled]="isAuthInProgress() || !remoteForm.valid"
-            [attr.aria-selected]="currentStep() === i + 1"
-          >
-            <div class="step-number">
-              @if (stepState === 'completed') {
-                <mat-icon svgIcon="circle-check"></mat-icon>
-              } @else {
-                <mat-icon [svgIcon]="stepConfigs()[i].icon"></mat-icon>
+                <button
+                  mat-list-item
+                  [activated]="isCurrent"
+                  [disabled]="isStepDisabled(stepNum)"
+                  (click)="goToStep(stepNum)"
+                  [class.completed]="isCompleted"
+                  [attr.aria-selected]="isCurrent"
+                >
+                  <mat-icon
+                    matListItemIcon
+                    [svgIcon]="isCompleted ? 'circle-check' : config.icon"
+                  ></mat-icon>
+                  <span matListItemTitle>{{ config.label | translate }}</span>
+                </button>
               }
-            </div>
-            @if (stepState === 'current') {
-              <span class="step-label-animated">{{ step | translate }}</span>
-            }
-          </button>
-        }
-      </div>
-    </div>
-  }
-
-  <!-- Modal Content -->
-  <main class="modal-content">
-    <!-- Interactive Configuration Flow -->
-    @if (interactiveFlowState().isActive && interactiveFlowState().question) {
-      <section class="step-container interactive" aria-live="polite" aria-busy="true">
-        <app-interactive-config-step
-          [question]="interactiveFlowState().question"
-          [canceling]="isAuthCancelled()"
-          [processing]="interactiveFlowState().isProcessing"
-          (answerChange)="handleInteractiveAnswerUpdate($event)"
-        />
-      </section>
-    }
-
-    <!-- Shared Profile Template -->
-    <ng-template #profileHeader let-flagType="type">
-      <div class="profile-header">
-        @if (getProfileState(flagType).mode === 'view') {
-          <mat-form-field subscriptSizing="dynamic" class="profile-select">
-            <mat-label>{{ 'modals.remoteConfig.profile.label' | translate }}</mat-label>
-            <mat-select
-              [value]="getSelectedProfile($any(flagType))"
-              (selectionChange)="selectProfile($any(flagType), $event.value)"
-            >
-              @for (profile of getProfiles($any(flagType)); track profile.name) {
-                <mat-option [value]="profile.name">{{ profile.name }}</mat-option>
+            </mat-nav-list>
+          </div>
+        } @else if (editTarget() === 'remote') {
+          <!-- Categories for Remote Edit Mode -->
+          <div class="sidebar-header">
+            <span class="header-label">{{
+              'modals.remoteConfig.editMode.sections.label' | translate
+            }}</span>
+          </div>
+          <div class="step-indicator-container hide-scrollbar">
+            <mat-nav-list class="step-indicator">
+              @for (category of remoteEditCategories; track category.id) {
+                @if (visibleSections().has(category.id)) {
+                  <button mat-list-item (click)="scrollToSection(category.id)">
+                    <mat-icon matListItemIcon [svgIcon]="category.icon"></mat-icon>
+                    <span matListItemTitle>{{ category.label | translate }}</span>
+                  </button>
+                }
               }
-            </mat-select>
-          </mat-form-field>
-
-          <div class="profile-actions">
-            <button
-              mat-icon-button
-              (click)="startAddProfile($any(flagType))"
-              [attr.title]="'modals.remoteConfig.profile.add' | translate"
-            >
-              <mat-icon svgIcon="plus"></mat-icon>
-            </button>
-            <button
-              mat-icon-button
-              (click)="startEditProfile($any(flagType))"
-              [attr.title]="'modals.remoteConfig.profile.rename' | translate"
-              [disabled]="getSelectedProfile($any(flagType)).toLowerCase() === 'default'"
-            >
-              <mat-icon svgIcon="pen"></mat-icon>
-            </button>
-            <button
-              mat-icon-button
-              class="warn"
-              (click)="deleteProfile($any(flagType), getSelectedProfile($any(flagType)))"
-              [attr.title]="'modals.remoteConfig.profile.delete' | translate"
-              [disabled]="
-                getProfiles($any(flagType)).length <= 1 ||
-                getSelectedProfile($any(flagType)).toLowerCase() === 'default'
-              "
-            >
-              <mat-icon svgIcon="trash"></mat-icon>
-            </button>
+            </mat-nav-list>
           </div>
         } @else {
-          <!-- Edit/Add Mode -->
-          <mat-form-field subscriptSizing="dynamic" class="profile-input">
-            <mat-label>{{
-              (getProfileState(flagType).mode === 'add'
-                ? 'modals.remoteConfig.profile.new'
-                : 'modals.remoteConfig.profile.rename'
-              ) | translate
-            }}</mat-label>
-            <input
-              matInput
-              [ngModel]="getProfileState(flagType).tempName"
-              (ngModelChange)="setProfileTempName(flagType, $event)"
-              [ngModelOptions]="{ standalone: true }"
-              (keyup.enter)="saveProfile($any(flagType))"
-              (keyup.escape)="cancelProfileEdit($any(flagType))"
-              autoFocus
-            />
-          </mat-form-field>
-
-          <div class="profile-actions">
-            <button
-              mat-icon-button
-              class="primary"
-              (click)="saveProfile($any(flagType))"
-              [attr.title]="'modals.remoteConfig.profile.save' | translate"
-            >
-              <mat-icon svgIcon="circle-check"></mat-icon>
-            </button>
-            <button
-              mat-icon-button
-              class="warn"
-              (click)="cancelProfileEdit($any(flagType))"
-              [attr.title]="'modals.remoteConfig.profile.cancel' | translate"
-            >
-              <mat-icon svgIcon="circle-xmark"></mat-icon>
-            </button>
+          <!-- Profiles Selector for Flag Edit Mode -->
+          <div class="sidebar-header">
+            <span class="header-label">{{
+              'modals.remoteConfig.editMode.profiles'
+                | translate: { type: editTarget() | titlecase }
+            }}</span>
+          </div>
+          <div class="step-indicator-container hide-scrollbar">
+            <mat-nav-list class="step-indicator">
+              @let targetType = editTargetType();
+              @for (profile of getProfiles(targetType); track profile.name) {
+                @let isActive = getSelectedProfile(targetType) === profile.name;
+                <button
+                  mat-list-item
+                  [activated]="isActive"
+                  (click)="selectProfile(targetType, profile.name)"
+                  [attr.aria-selected]="isActive"
+                >
+                  <mat-icon
+                    matListItemIcon
+                    [svgIcon]="getProfileIcon(targetType)"
+                    [class.primary]="isActive"
+                  ></mat-icon>
+                  <span matListItemTitle>{{ profile.name }}</span>
+                </button>
+              }
+            </mat-nav-list>
           </div>
         }
-      </div>
-    </ng-template>
+      </aside>
+    }
 
-    <!-- Linked Profiles Template (Collapsible) -->
-    <ng-template
-      #linkedProfiles
-      let-configPath="configPath"
-      let-showVfs="showVfs"
-      let-showRuntimeRemote="showRuntimeRemote"
-    >
-      <mat-expansion-panel class="linked-profiles-panel">
-        <mat-expansion-panel-header>
-          <mat-panel-title>
-            <mat-icon svgIcon="gear" class="panel-icon"></mat-icon>
-            <span>{{ 'modals.remoteConfig.advancedProfiles.title' | translate }}</span>
-          </mat-panel-title>
-          <mat-panel-description>
-            <span class="profile-count">{{
-              'modals.remoteConfig.advancedProfiles.linked'
-                | translate
-                  : {
-                      count: (showVfs ? 1 : 0) + (showRuntimeRemote ? 1 : 0) + 2,
-                    }
-            }}</span>
-          </mat-panel-description>
-        </mat-expansion-panel-header>
+    <!-- Modal Content -->
+    <main class="modal-content">
+      <app-search-container
+        [visible]="isSearchVisible()"
+        [searchText]="searchQuery()"
+        (searchTextChange)="onSearchInput($event)"
+        [placeholder]="'shared.search.placeholder'"
+        [ariaLabel]="'shared.search.ariaLabel'"
+      ></app-search-container>
 
-        <div class="linked-profiles-content">
-          @if (showVfs) {
-            <mat-form-field subscriptSizing="dynamic">
-              <mat-label>{{ 'modals.remoteConfig.advancedProfiles.vfs' | translate }}</mat-label>
-              <mat-select [formControl]="$any(remoteConfigForm.get(configPath)?.get('vfsProfile'))">
-                @for (opt of getProfileOptions('vfs'); track opt) {
-                  <mat-option [value]="opt">{{ opt }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-          }
+      @if (flow.isActive && flow.question) {
+        <section class="step-container interactive" aria-live="polite" aria-busy="true">
+          <app-interactive-config-step
+            [question]="flow.question"
+            [canceling]="isAuthCancelled()"
+            [processing]="flow.isProcessing"
+            (answerChange)="handleInteractiveAnswerUpdate($event)"
+          />
+        </section>
+      }
 
-          <mat-form-field subscriptSizing="dynamic">
-            <mat-label>{{ 'modals.remoteConfig.advancedProfiles.filter' | translate }}</mat-label>
-            <mat-select
-              [formControl]="$any(remoteConfigForm.get(configPath)?.get('filterProfile'))"
-            >
-              @for (opt of getProfileOptions('filter'); track opt) {
-                <mat-option [value]="opt">{{ opt }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field subscriptSizing="dynamic">
-            <mat-label>{{ 'modals.remoteConfig.advancedProfiles.backend' | translate }}</mat-label>
-            <mat-select
-              [formControl]="$any(remoteConfigForm.get(configPath)?.get('backendProfile'))"
-            >
-              @for (opt of getProfileOptions('backend'); track opt) {
-                <mat-option [value]="opt">{{ opt }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-
-          @if (showRuntimeRemote) {
-            <mat-form-field subscriptSizing="dynamic">
-              <mat-label>{{
-                'modals.remoteConfig.advancedProfiles.runtimeRemote' | translate
-              }}</mat-label>
+      <!-- Shared Profile Template -->
+      <ng-template #profileHeader let-flagType="type">
+        <div class="profile-header">
+          @if (getProfileState(flagType).mode === 'view') {
+            <mat-form-field subscriptSizing="dynamic" class="profile-select">
+              <mat-label>{{ 'modals.remoteConfig.profile.label' | translate }}</mat-label>
               <mat-select
-                [formControl]="$any(remoteConfigForm.get(configPath)?.get('runtimeRemoteProfile'))"
+                [value]="profileGetSelected(flagType)"
+                (selectionChange)="profileSelect(flagType, $event.value)"
               >
-                @for (opt of getProfileOptions('runtimeRemote'); track opt) {
-                  <mat-option [value]="opt">{{ opt }}</mat-option>
+                @for (profile of profileGetAll(flagType); track profile.name) {
+                  <mat-option [value]="profile.name">{{ profile.name }}</mat-option>
                 }
               </mat-select>
             </mat-form-field>
+
+            <div class="profile-actions">
+              <button
+                mat-icon-button
+                (click)="profileStartAdd(flagType)"
+                [attr.title]="'modals.remoteConfig.profile.add' | translate"
+              >
+                <mat-icon svgIcon="plus"></mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                (click)="profileStartEdit(flagType)"
+                [attr.title]="'modals.remoteConfig.profile.rename' | translate"
+                [disabled]="profileGetSelected(flagType).toLowerCase() === 'default'"
+              >
+                <mat-icon svgIcon="pen"></mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                class="warn"
+                (click)="profileDelete(flagType, profileGetSelected(flagType))"
+                [attr.title]="'modals.remoteConfig.profile.delete' | translate"
+                [disabled]="
+                  profileGetAll(flagType).length <= 1 ||
+                  profileGetSelected(flagType).toLowerCase() === 'default'
+                "
+              >
+                <mat-icon svgIcon="trash"></mat-icon>
+              </button>
+            </div>
+          } @else {
+            <!-- Edit/Add Mode -->
+            <mat-form-field subscriptSizing="dynamic" class="profile-input">
+              <mat-label>{{
+                (getProfileState(flagType).mode === 'add'
+                  ? 'modals.remoteConfig.profile.new'
+                  : 'modals.remoteConfig.profile.rename'
+                ) | translate
+              }}</mat-label>
+              <input
+                matInput
+                [ngModel]="getProfileState(flagType).tempName"
+                (ngModelChange)="setProfileTempName(flagType, $event)"
+                [ngModelOptions]="{ standalone: true }"
+                (keyup.enter)="profileSave(flagType)"
+                (keyup.escape)="profileCancelEdit(flagType)"
+                autoFocus
+              />
+            </mat-form-field>
+
+            <div class="profile-actions">
+              <button
+                mat-icon-button
+                class="primary"
+                (click)="profileSave(flagType)"
+                [attr.title]="'modals.remoteConfig.profile.save' | translate"
+              >
+                <mat-icon svgIcon="circle-check"></mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                class="warn"
+                (click)="profileCancelEdit(flagType)"
+                [attr.title]="'modals.remoteConfig.profile.cancel' | translate"
+              >
+                <mat-icon svgIcon="circle-xmark"></mat-icon>
+              </button>
+            </div>
           }
         </div>
-      </mat-expansion-panel>
-    </ng-template>
+      </ng-template>
 
-    <!-- Non-Interactive Configuration Flow -->
-    @if (!interactiveFlowState().isActive) {
-      @switch (currentStep()) {
-        <!-- Step 1: Remote Configuration -->
-        @case (1) {
-          <section class="step-container">
-            <app-remote-config-step
-              class="step"
-              [form]="remoteForm"
-              [remoteFields]="dynamicRemoteFields()"
-              [remoteTypes]="remoteTypes()"
-              [isLoading]="isRemoteConfigLoading()"
-              [existingRemotes]="existingRemotes()"
-              [isTypeLocked]="!!editTarget() || cloneTarget()"
-              [useInteractiveMode]="useInteractiveMode()"
-              [searchQuery]="searchQuery()"
-              [showAdvancedOptions]="showAdvancedOptions()"
-              (remoteTypeChanged)="onRemoteTypeChange()"
-              (interactiveModeToggled)="useInteractiveMode.set($event)"
-              (advancedOptionsToggled)="showAdvancedOptions.set($event)"
-              (fieldChanged)="onRemoteFieldChanged($event.fieldName, $event.isChanged)"
-            />
-          </section>
-        }
+      <!-- Linked Profiles Template (Collapsible) -->
+      <ng-template
+        #linkedProfiles
+        let-configPath="configPath"
+        let-showVfs="showVfs"
+        let-showRuntimeRemote="showRuntimeRemote"
+      >
+        <mat-expansion-panel class="linked-profiles-panel">
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              <mat-icon svgIcon="gear" class="panel-icon"></mat-icon>
+              <span>{{ 'modals.remoteConfig.advancedProfiles.title' | translate }}</span>
+            </mat-panel-title>
+            <mat-panel-description>
+              <span class="profile-count">{{
+                'modals.remoteConfig.advancedProfiles.linked'
+                  | translate
+                    : {
+                        count: (showVfs ? 1 : 0) + (showRuntimeRemote ? 1 : 0) + 2,
+                      }
+              }}</span>
+            </mat-panel-description>
+          </mat-expansion-panel-header>
 
-        <!-- Steps 2–10: Flag and Serve configs -->
-        @default {
-          @if (currentStep() < TOTAL_STEPS) {
-            @let flagType = FLAG_TYPES[currentStep() - 2];
+          <div class="linked-profiles-content">
+            @if (showVfs) {
+              <mat-form-field subscriptSizing="dynamic">
+                <mat-label>{{ 'modals.remoteConfig.advancedProfiles.vfs' | translate }}</mat-label>
+                <mat-select [formControl]="formControl(configPath + '.vfsProfile')">
+                  @for (opt of getProfileOptions('vfs'); track opt) {
+                    <mat-option [value]="opt">{{ opt }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            }
+
+            <mat-form-field subscriptSizing="dynamic">
+              <mat-label>{{ 'modals.remoteConfig.advancedProfiles.filter' | translate }}</mat-label>
+              <mat-select [formControl]="formControl(configPath + '.filterProfile')">
+                @for (opt of getProfileOptions('filter'); track opt) {
+                  <mat-option [value]="opt">{{ opt }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field subscriptSizing="dynamic">
+              <mat-label>{{
+                'modals.remoteConfig.advancedProfiles.backend' | translate
+              }}</mat-label>
+              <mat-select [formControl]="formControl(configPath + '.backendProfile')">
+                @for (opt of getProfileOptions('backend'); track opt) {
+                  <mat-option [value]="opt">{{ opt }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            @if (showRuntimeRemote) {
+              <mat-form-field subscriptSizing="dynamic">
+                <mat-label>{{
+                  'modals.remoteConfig.advancedProfiles.runtimeRemote' | translate
+                }}</mat-label>
+                <mat-select [formControl]="formControl(configPath + '.runtimeRemoteProfile')">
+                  @for (opt of getProfileOptions('runtimeRemote'); track opt) {
+                    <mat-option [value]="opt">{{ opt }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            }
+          </div>
+        </mat-expansion-panel>
+      </ng-template>
+
+      <!-- Non-Interactive Configuration Flow -->
+      @if (!flow.isActive) {
+        @switch (currentStep()) {
+          <!-- Step 1: Remote Configuration -->
+          @case (1) {
             <section class="step-container">
-              <ng-container
-                *ngTemplateOutlet="profileHeader; context: { type: flagType }"
-              ></ng-container>
-
-              @if (['mount', 'serve', 'sync', 'copy', 'move', 'bisync'].includes(flagType)) {
-                <ng-container
-                  *ngTemplateOutlet="
-                    linkedProfiles;
-                    context: {
-                      configPath: flagType + 'Config',
-                      showVfs: flagType === 'mount' || flagType === 'serve',
-                      showRuntimeRemote: true,
-                    }
-                  "
-                ></ng-container>
-              }
-
-              <app-flag-config-step
-                class="step"
-                [form]="remoteConfigForm"
-                [flagType]="flagType"
-                [existingRemotes]="existingRemotes()"
-                [dynamicFlagFields]="
-                  flagType === 'serve' ? dynamicServeFields() : dynamicFlagFields()[flagType]
-                "
-                [mountTypes]="mountTypes()"
-                [currentRemoteName]="getRemoteName()"
-                [isNewRemote]="!editTarget()"
-                [getControlKey]="getUniqueControlKey.bind(this)"
-                [availableServeTypes]="availableServeTypes()"
-                [isLoadingServeFields]="isLoadingServeFields()"
-                [searchQuery]="searchQuery()"
-                (sourceFolderSelected)="handleSourceFolderSelect(flagType)"
-                (destFolderSelected)="handleDestFolderSelect(flagType)"
-                (serveTypeChange)="onServeTypeChange($event)"
-              />
-            </section>
-          } @else {
-            <!-- Final Step: Runtime Remote Configuration -->
-            <section class="step-container">
-              <ng-container
-                *ngTemplateOutlet="profileHeader; context: { type: 'runtimeRemote' }"
-              ></ng-container>
-
               <app-remote-config-step
                 class="step"
-                [form]="$any(remoteConfigForm.get('runtimeRemoteConfig'))"
-                [remoteFields]="dynamicRuntimeRemoteFields()"
+                [form]="remoteForm"
+                [remoteFields]="dynamicRemoteFields()"
                 [remoteTypes]="remoteTypes()"
-                [isLoading]="isLoadingRuntimeRemoteFields()"
+                [isLoading]="isRemoteConfigLoading()"
                 [existingRemotes]="existingRemotes()"
-                [useInteractiveMode]="false"
+                [isTypeLocked]="!!editTarget() || cloneTarget()"
+                [useInteractiveMode]="useInteractiveMode()"
                 [searchQuery]="searchQuery()"
-                [visibility]="{ type: false, name: false, advanced: false, interactive: false }"
-                [showAdvancedOptions]="true"
+                [showAdvancedOptions]="showAdvancedOptions()"
+                (remoteTypeChanged)="onRemoteTypeChange()"
+                (interactiveModeToggled)="useInteractiveMode.set($event)"
+                (advancedOptionsToggled)="showAdvancedOptions.set($event)"
+                (fieldChanged)="onRemoteFieldChanged($event.fieldName, $event.isChanged)"
               />
             </section>
+          }
+
+          <!-- Steps 2–10: Flag and Serve configs -->
+          @default {
+            @if (currentStep() < TOTAL_STEPS) {
+              @let flagType = FLAG_TYPES[currentStep() - 2];
+              <section class="step-container">
+                <ng-container
+                  *ngTemplateOutlet="profileHeader; context: { type: flagType }"
+                ></ng-container>
+
+                @if (['mount', 'serve', 'sync', 'copy', 'move', 'bisync'].includes(flagType)) {
+                  <ng-container
+                    *ngTemplateOutlet="
+                      linkedProfiles;
+                      context: {
+                        configPath: flagType + 'Config',
+                        showVfs: flagType === 'mount' || flagType === 'serve',
+                        showRuntimeRemote: true,
+                      }
+                    "
+                  ></ng-container>
+                }
+
+                <app-flag-config-step
+                  class="step"
+                  [form]="remoteConfigForm"
+                  [flagType]="flagType"
+                  [existingRemotes]="existingRemotes()"
+                  [dynamicFlagFields]="
+                    flagType === 'serve' ? dynamicServeFields() : dynamicFlagFields()[flagType]
+                  "
+                  [mountTypes]="mountTypes()"
+                  [currentRemoteName]="getRemoteName()"
+                  [isNewRemote]="!editTarget()"
+                  [getControlKey]="getUniqueControlKey.bind(this)"
+                  [availableServeTypes]="availableServeTypes()"
+                  [isLoadingServeFields]="isLoadingServeFields()"
+                  [searchQuery]="searchQuery()"
+                  (sourceFolderSelected)="handleSourceFolderSelect(flagType)"
+                  (destFolderSelected)="handleDestFolderSelect(flagType)"
+                  (serveTypeChange)="onServeTypeChange($event)"
+                />
+              </section>
+            } @else {
+              <!-- Final Step: Runtime Remote Configuration -->
+              <section class="step-container">
+                <ng-container
+                  *ngTemplateOutlet="profileHeader; context: { type: 'runtimeRemote' }"
+                ></ng-container>
+
+                <app-remote-config-step
+                  class="step"
+                  [form]="runtimeRemoteConfigGroup"
+                  [remoteFields]="dynamicRuntimeRemoteFields()"
+                  [remoteTypes]="remoteTypes()"
+                  [isLoading]="isLoadingRuntimeRemoteFields()"
+                  [existingRemotes]="existingRemotes()"
+                  [useInteractiveMode]="false"
+                  [searchQuery]="searchQuery()"
+                  [visibility]="{ type: false, name: false, advanced: false, interactive: false }"
+                  [showAdvancedOptions]="true"
+                />
+              </section>
+            }
           }
         }
       }
-    }
-  </main>
+    </main>
+  </div>
 
   <!-- Footer Buttons -->
   <footer class="button-container">
     <!-- Left Side: Back Button -->
-    <div class="button-container-inner">
-      @if (currentStep() > 1 && !editTarget() && !interactiveFlowState().isActive) {
-        <button
-          matButton="filled"
-          class="accent"
-          [disabled]="isAuthInProgress()"
-          (click)="prevStep()"
-          animate.enter="fade-in-out-enter"
-          animate.leave="fade-in-out-leave"
-          [attr.title]="'modals.remoteConfig.buttons.back' | translate"
-          [attr.aria-label]="'modals.remoteConfig.buttons.back' | translate"
-        >
-          <mat-icon svgIcon="left-arrow"></mat-icon>
-          {{ 'modals.remoteConfig.buttons.back' | translate }}
-        </button>
-      }
-    </div>
+    @if (currentStep() > 1 && !editTarget() && !flow.isActive) {
+      <button
+        matButton="filled"
+        class="accent back-btn"
+        [disabled]="isAuthInProgress()"
+        (click)="prevStep()"
+        animate.enter="fade-in-out-enter"
+        animate.leave="fade-in-out-leave"
+        [attr.title]="'modals.remoteConfig.buttons.back' | translate"
+        [attr.aria-label]="'modals.remoteConfig.buttons.back' | translate"
+      >
+        <mat-icon svgIcon="left-arrow"></mat-icon>
+        {{ 'modals.remoteConfig.buttons.back' | translate }}
+      </button>
+    }
 
-    <!-- Right Side: Action Buttons -->
-    <div class="button-container-inner">
-      <!-- Cancel Button (during auth or interactive flow) -->
-      @if ((isAuthInProgress() && !isAuthCancelled()) || interactiveFlowState().isActive) {
-        <button
-          matButton="filled"
-          class="warn"
-          animate.enter="fade-in-out-enter"
-          animate.leave="fade-in-out-leave"
-          (click)="cancelAuth()"
-          [disabled]="
-            (!isAuthInProgress() && !interactiveFlowState().isActive) || isAuthCancelled()
-          "
-          [attr.title]="'modals.remoteConfig.buttons.cancel' | translate"
-          [attr.aria-label]="'modals.remoteConfig.buttons.cancel' | translate"
-        >
-          {{ 'modals.remoteConfig.buttons.cancel' | translate }}
-        </button>
-      }
+    <!-- Cancel Button (during auth or interactive flow) -->
+    @if ((isAuthInProgress() && !isAuthCancelled()) || flow.isActive) {
+      <button
+        matButton="filled"
+        class="warn cancel-btn"
+        animate.enter="fade-in-out-enter"
+        animate.leave="fade-in-out-leave"
+        (click)="cancelAuth()"
+        [disabled]="(!isAuthInProgress() && !flow.isActive) || isAuthCancelled()"
+        [attr.title]="'modals.remoteConfig.buttons.cancel' | translate"
+        [attr.aria-label]="'modals.remoteConfig.buttons.cancel' | translate"
+      >
+        {{ 'modals.remoteConfig.buttons.cancel' | translate }}
+      </button>
+    }
 
-      <!-- Cleanup Status (shown when auth is cancelled) -->
-      @if (isAuthCancelled()) {
-        <span class="cleanup-status" aria-live="polite">
-          {{ 'modals.remoteConfig.buttons.cleanup' | translate }}
-          <mat-spinner diameter="16" aria-hidden="true"></mat-spinner>
-        </span>
-      }
+    <!-- Cleanup Status (shown when auth is cancelled) -->
+    @if (isAuthCancelled()) {
+      <span class="cleanup-status" aria-live="polite">
+        {{ 'modals.remoteConfig.buttons.cleanup' | translate }}
+        <mat-spinner diameter="16" aria-hidden="true"></mat-spinner>
+      </span>
+    }
 
-      <!-- Save Button (step > 1 in create mode, or edit mode) -->
-      @if (
-        ((currentStep() > 1 && !editTarget()) || editTarget()) && !interactiveFlowState().isActive
-      ) {
-        <button
-          matButton="filled"
-          (click)="onSubmit()"
-          [disabled]="isSaveDisabled()"
-          animate.enter="fade-in-out-enter"
-          animate.leave="fade-in-out-leave"
-          aria-live="polite"
-          [attr.aria-label]="saveButtonLabel() | translate"
-          [attr.title]="saveButtonLabel() | translate"
-        >
-          @if (isAuthInProgress() && !isAuthCancelled()) {
-            <div class="saving-overlay" aria-hidden="true">
-              <mat-spinner diameter="16"></mat-spinner>
-            </div>
-          }
-          <span>{{ saveButtonLabel() | translate }}</span>
-        </button>
-      }
+    <!-- Save Button (step > 1 in create mode, or edit mode) -->
+    @if (((currentStep() > 1 && !editTarget()) || editTarget()) && !flow.isActive) {
+      <button
+        matButton="filled"
+        (click)="onSubmit()"
+        [disabled]="isSaveDisabled()"
+        animate.enter="fade-in-out-enter"
+        animate.leave="fade-in-out-leave"
+        aria-live="polite"
+        [attr.aria-label]="saveButtonLabel() | translate"
+        [attr.title]="saveButtonLabel() | translate"
+      >
+        @if (isAuthInProgress() && !isAuthCancelled()) {
+          <div class="saving-overlay" aria-hidden="true">
+            <mat-spinner diameter="16"></mat-spinner>
+          </div>
+        }
+        <span>{{ saveButtonLabel() | translate }}</span>
+      </button>
+    }
 
-      <!-- Continue Button (during interactive flow) -->
-      @if (interactiveFlowState().isActive) {
-        @let continueLabel =
-          (interactiveFlowState().isProcessing
-            ? 'modals.remoteConfig.buttons.processing'
-            : 'modals.remoteConfig.buttons.continue'
-          ) | translate;
-        <button
-          matButton="filled"
-          (click)="onInteractiveContinue(interactiveFlowState().answer)"
-          [disabled]="isInteractiveContinueDisabled()"
-          class="continue-button"
-          [class.loading]="interactiveFlowState().isProcessing || isAuthCancelled()"
-          animate.enter="fade-in-out-enter"
-          animate.leave="fade-in-out-leave"
-          aria-live="polite"
-          [attr.aria-label]="continueLabel"
-          [attr.title]="continueLabel"
-        >
-          @if (interactiveFlowState().isProcessing && !isAuthCancelled()) {
-            <div class="saving-overlay" aria-hidden="true">
-              <mat-spinner diameter="16"></mat-spinner>
-            </div>
-          }
-          <span>{{ continueLabel }}</span>
-        </button>
-      }
+    <!-- Continue Button (during interactive flow) -->
+    @if (flow.isActive) {
+      @let continueLabel =
+        (flow.isProcessing
+          ? 'modals.remoteConfig.buttons.processing'
+          : 'modals.remoteConfig.buttons.continue'
+        ) | translate;
+      <button
+        matButton="filled"
+        (click)="onInteractiveContinue(flow.answer)"
+        [disabled]="isInteractiveContinueDisabled()"
+        class="continue-button"
+        [class.loading]="flow.isProcessing || isAuthCancelled()"
+        animate.enter="fade-in-out-enter"
+        animate.leave="fade-in-out-leave"
+        aria-live="polite"
+        [attr.aria-label]="continueLabel"
+        [attr.title]="continueLabel"
+      >
+        @if (flow.isProcessing && !isAuthCancelled()) {
+          <div class="saving-overlay" aria-hidden="true">
+            <mat-spinner diameter="16"></mat-spinner>
+          </div>
+        }
+        <span>{{ continueLabel }}</span>
+      </button>
+    }
 
-      <!-- Next Button (create mode, not on last step) -->
-      @if (currentStep() < TOTAL_STEPS && !editTarget() && !interactiveFlowState().isActive) {
-        <button
-          matButton="filled"
-          class="accent"
-          (click)="nextStep()"
-          [disabled]="!remoteForm.valid || isAuthInProgress()"
-          animate.enter="fade-in-out-enter"
-          animate.leave="fade-in-out-leave"
-          [attr.title]="'modals.remoteConfig.buttons.next' | translate"
-          [attr.aria-label]="'modals.remoteConfig.buttons.next' | translate"
-        >
-          {{ 'modals.remoteConfig.buttons.next' | translate }}
-          <mat-icon svgIcon="right-arrow"></mat-icon>
-        </button>
-      }
-    </div>
+    <!-- Next Button (create mode, not on last step) -->
+    @if (currentStep() < TOTAL_STEPS && !editTarget() && !flow.isActive) {
+      <button
+        matButton="filled"
+        class="accent next-btn"
+        (click)="nextStep()"
+        [disabled]="remoteFormStatus() !== 'VALID' || isAuthInProgress()"
+        animate.enter="fade-in-out-enter"
+        animate.leave="fade-in-out-leave"
+        [attr.title]="'modals.remoteConfig.buttons.next' | translate"
+        [attr.aria-label]="'modals.remoteConfig.buttons.next' | translate"
+      >
+        {{ 'modals.remoteConfig.buttons.next' | translate }}
+        <mat-icon svgIcon="right-arrow"></mat-icon>
+      </button>
+    }
   </footer>
 </div>

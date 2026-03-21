@@ -1,5 +1,5 @@
-<form [formGroup]="form()" class="remote-form">
-  @let remoteType = form().get('type')?.value;
+<form [formGroup]="form()">
+  @let remoteType = remoteTypeValue();
   @if (showTypeField()) {
     <mat-form-field appearance="fill" class="remote-type-field">
       <mat-label>{{ 'wizards.remoteConfig.remoteType' | translate }}</mat-label>
@@ -39,7 +39,7 @@
   }
 
   @if (showNameField() || showAdvancedToggle() || showInteractiveToggle()) {
-    <div class="config-section">
+    <div class="config-section" id="section-general">
       @if (showNameField()) {
         <mat-form-field appearance="fill">
           <mat-label>{{ 'wizards.remoteConfig.remoteName' | translate }}</mat-label>
@@ -102,7 +102,7 @@
   }
 
   @if (providerField(); as pField) {
-    <mat-form-field appearance="fill">
+    <mat-form-field appearance="fill" id="section-auth">
       <mat-label>{{
         pField.Help || ('wizards.remoteConfig.authenticationMethod' | translate)
       }}</mat-label>
@@ -151,7 +151,7 @@
   }
 
   @if (showAdvancedOptions() && advancedFields().length > 0 && providerReady()) {
-    <div class="advanced-section">
+    <div class="advanced-section" id="section-advanced">
       <h3 class="section-heading">
         {{ 'wizards.remoteConfig.advancedOptions' | translate }}
         <span>{{ advancedFields().length }}</span>

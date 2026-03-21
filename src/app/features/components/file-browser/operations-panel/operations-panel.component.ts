@@ -120,7 +120,7 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
         return 'pen';
       case 'sync':
       case 'bisync':
-        return 'arrows-rotate';
+        return 'refresh';
       default:
         return 'folder';
     }

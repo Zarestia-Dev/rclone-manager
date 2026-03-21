@@ -306,7 +306,6 @@ export class RemoteCardComponent {
 
   /**
    * Builds an ordered, deduplicated list of primary actions up to `slotCount`.
-   * User-supplied actions are prioritised in general mode; defaults fill remaining slots.
    */
   private buildPrimaryActions(slotCount: number, includeMount = true): PrimaryActionType[] {
     const mode = this.mode();
@@ -329,8 +328,6 @@ export class RemoteCardComponent {
     };
 
     fill(source);
-    if (result.length < slotCount) fill(defaults);
-
     return result;
   }
 

@@ -1,11 +1,7 @@
 form {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
   gap: var(--space-md);
-  padding: var(--space-md);
 
   .advanced-section {
     display: flex;
@@ -14,7 +10,7 @@ form {
     padding: var(--space-md);
     box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.5);
     background: rgba(var(--accent-color-rgb), 0.06);
-    border-radius: var(--border-radius);
+    border-radius: var(--radius-md);
   }
 
   // ===== SECTIONS =====
@@ -31,13 +27,16 @@ form {
     .field-icon {
       color: var(--dim-color);
     }
+    ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+      display: none;
+    }
   }
 
   // ===== CONFIG SECTION =====
   .config-section {
     background: var(--view-bg-color);
     padding: var(--space-md);
-    border-radius: var(--border-radius);
+    border-radius: var(--radius-md);
     box-shadow: var(--shadow-gnome);
 
     .field-icon {
@@ -87,12 +86,11 @@ form {
 
     span {
       font-size: var(--font-size-md);
-      font-weight: 500;
+      font-weight: 600;
       color: var(--purple);
       background: rgba(var(--purple-rgb), 0.1);
-      box-shadow: 0 0 0 1px var(--purple);
       padding: 2px 4px;
-      border-radius: 12px;
+      border-radius: var(--radius-xs);
       min-width: 40px;
       text-align: center;
     }
@@ -112,14 +110,6 @@ form {
   }
 
   @media (max-width: 768px) {
-    .interactive-option {
-      flex-direction: column;
-
-      .option-info {
-        text-align: center;
-      }
-    }
-
     .advanced-section {
       padding: var(--space-md);
       gap: var(--space-sm);
