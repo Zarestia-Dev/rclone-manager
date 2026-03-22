@@ -108,8 +108,9 @@ export class RemoteConfigStepComponent {
           if (oldVal) {
             this.clearProviderDependentFields(this.remoteFields(), this.form(), val);
           }
-          if (val !== this.providerSearchCtrl.value) {
-            this.providerSearchCtrl.setValue(val, { emitEvent: false });
+          const displayVal = this.displayProvider(val);
+          if (displayVal !== this.providerSearchCtrl.value) {
+            this.providerSearchCtrl.setValue(displayVal, { emitEvent: false });
           }
         });
       });

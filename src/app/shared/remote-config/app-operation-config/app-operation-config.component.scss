@@ -111,3 +111,18 @@
     box-shadow: 0 0 0 1px var(--orange);
   }
 }
+
+@media (max-width: 640px) {
+  .header-section {
+    .operation-enable,
+    .cron-enable {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--space-sm);
+    }
+  }
+
+  .cron-panel {
+    margin-bottom: var(--space-sm);
+  }
+}

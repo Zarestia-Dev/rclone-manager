@@ -22,7 +22,7 @@
     </button>
   </div>
 
-  <div class="modal-content custom-scrollbar">
+  <div class="modal-content">
     @if (loadingStat()) {
       <div class="loading-container main-loader">
         <mat-spinner diameter="40"></mat-spinner>
@@ -136,7 +136,7 @@
         } @else if (supportedHashes().length > 0) {
           <!-- FILE MODE: Show calculated list -->
           @if (isFile()) {
-            <div class="hash-content custom-scrollbar">
+            <div class="hash-content">
               <!-- Calculated hashes -->
               @for (hash of hashEntries(); track hash.type) {
                 <div class="hash-item">
@@ -206,9 +206,7 @@
                     </div>
                   </div>
                   <!-- Use a read-only textarea for code-block feel -->
-                  <textarea class="bulk-textarea custom-scrollbar" readonly>{{
-                    bulkHashResult()
-                  }}</textarea>
+                  <textarea class="bulk-textarea" readonly>{{ bulkHashResult() }}</textarea>
 
                   <button mat-stroked-button (click)="bulkHashResult.set(null)">
                     {{ 'fileBrowser.properties.calculateAnother' | translate }}

@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 - **Nautilus**: Replaced Angular CDK drag-and-drop with native HTML5 Drag and Drop API for file and folder operations. This provides a more responsive, system-native feel. (Note: CDK remains active for tab reordering).
 - **Nautilus**: Improved split view drag UX. The active pane now automatically switches when hovering over the other panel during a drag operation.
+- Small design changes on the remote management dialogs.
 
 ### Fixed
 - **Nautilus**: Prevented invalid drag-and-drop operations, such as dropping a file into its current directory or dropping a folder onto itself.

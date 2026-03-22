@@ -3,7 +3,6 @@
   flex-direction: column;
   width: 100%;
   height: 100%;
-  background: var(--window-bg-color);
   box-sizing: border-box;
   overflow: hidden;
 
@@ -167,7 +166,6 @@
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
           gap: var(--space-lg);
-          padding: var(--space-md) var(--space-lg) var(--space-lg);
         }
       }
 

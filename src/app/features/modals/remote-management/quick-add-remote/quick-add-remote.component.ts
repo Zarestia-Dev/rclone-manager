@@ -1,10 +1,10 @@
 import {
   Component,
   HostListener,
-  OnDestroy,
   inject,
   computed,
   signal,
+  Signal,
   ChangeDetectionStrategy,
   DestroyRef,
 } from '@angular/core';
@@ -18,8 +18,8 @@ import {
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
-import { merge } from 'rxjs';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { merge, startWith } from 'rxjs';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
 import { TranslateModule } from '@ngx-translate/core';
@@ -76,7 +76,7 @@ type WizardStep = 'setup' | 'operations' | 'interactive';
   styleUrls: ['./quick-add-remote.component.scss', '../../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class QuickAddRemoteComponent implements OnDestroy {
+export class QuickAddRemoteComponent {
   private readonly fb = inject(FormBuilder);
   private readonly dialogRef = inject(MatDialogRef<QuickAddRemoteComponent>);
   private readonly destroyRef = inject(DestroyRef);
@@ -132,9 +132,14 @@ export class QuickAddRemoteComponent implements OnDestroy {
   readonly currentStep = signal<WizardStep>('setup');
   readonly interactiveFlowState = signal<InteractiveFlowState>(createInitialInteractiveFlowState());
 
-  // FIX: was a plain method — broken in zoneless since form validity changes
-  // wouldn't trigger change detection without a computed signal.
-  readonly isSetupStepValid = computed(() => this.quickAddForm.get('setup')?.valid === true);
+  setupFormStatus!: Signal<string>;
+  quickAddFormStatus!: Signal<string>;
+
+  setupTypeValue!: Signal<string>;
+  setupInteractiveModeValue!: Signal<boolean>;
+  setupNameValue!: Signal<string>;
+
+  readonly isSetupStepValid = computed(() => this.setupFormStatus() === 'VALID');
 
   readonly submitButtonText = computed(() =>
     this.isAuthInProgress() && !this.isAuthCancelled()
@@ -153,12 +158,48 @@ export class QuickAddRemoteComponent implements OnDestroy {
 
   constructor() {
     this.quickAddForm = this.createQuickAddForm();
-    this.setupFormListeners();
-    this.initializeComponent();
-  }
 
-  ngOnDestroy(): void {
-    this.authStateService.cancelAuth();
+    this.setupFormStatus = toSignal(
+      this.quickAddForm
+        .get('setup')!
+        .statusChanges.pipe(startWith(this.quickAddForm.get('setup')!.status)),
+      { initialValue: this.quickAddForm.get('setup')!.status }
+    );
+    this.quickAddFormStatus = toSignal(
+      this.quickAddForm.statusChanges.pipe(startWith(this.quickAddForm.status)),
+      { initialValue: this.quickAddForm.status }
+    );
+
+    this.setupTypeValue = toSignal(
+      this.quickAddForm
+        .get('setup.type')!
+        .valueChanges.pipe(startWith(this.quickAddForm.get('setup.type')!.value as string)),
+      { initialValue: '' }
+    );
+
+    this.setupInteractiveModeValue = toSignal(
+      this.quickAddForm
+        .get('setup.useInteractiveMode')!
+        .valueChanges.pipe(
+          startWith(this.quickAddForm.get('setup.useInteractiveMode')!.value as boolean)
+        ),
+      { initialValue: false }
+    );
+
+    this.setupNameValue = toSignal(
+      this.quickAddForm
+        .get('setup.name')!
+        .valueChanges.pipe(startWith(this.quickAddForm.get('setup.name')!.value as string)),
+      { initialValue: '' }
+    );
+
+    this.setupFormListeners();
+
+    this.destroyRef.onDestroy(() => {
+      void this.authStateService.cancelAuth();
+    });
+
+    void this.initializeComponent();
   }
 
   private async initializeComponent(): Promise<void> {
@@ -235,6 +276,8 @@ export class QuickAddRemoteComponent implements OnDestroy {
     });
   }
 
+  private static readonly SOURCE_DEST_OP_TYPES = new Set(['sync', 'copy', 'bisync', 'move']);
+
   private setupFormListeners(): void {
     this.quickAddForm
       .get('setup.type')
@@ -260,7 +303,7 @@ export class QuickAddRemoteComponent implements OnDestroy {
             }
             destControl?.updateValueAndValidity();
           });
-      } else {
+      } else if (QuickAddRemoteComponent.SOURCE_DEST_OP_TYPES.has(opName)) {
         const sourcePathControl = opGroup.get('source.path');
         const destPathControl = opGroup.get('dest.path');
 
@@ -542,6 +585,14 @@ export class QuickAddRemoteComponent implements OnDestroy {
     await this.authStateService.cancelAuth();
     this.currentStep.set('operations');
     this.interactiveFlowState.set(createInitialInteractiveFlowState());
+  }
+
+  setupFormGroup(): FormGroup {
+    return this.quickAddForm.get('setup') as FormGroup;
+  }
+
+  operationFormGroup(type: string): FormGroup {
+    return this.quickAddForm.get(`operations.${type}`) as FormGroup;
   }
 
   @HostListener('document:keydown.escape')

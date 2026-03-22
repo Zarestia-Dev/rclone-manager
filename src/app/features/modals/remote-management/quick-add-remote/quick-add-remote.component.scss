@@ -1,4 +1,6 @@
-// ===== MODAL CONTAINER =====
+// =============================================
+// MODAL CONTAINER
+// =============================================
 .quick-add-modal {
   display: flex;
   flex-direction: column;
@@ -15,61 +17,63 @@
   }
 }
 
-// ===== CONTENT AREA =====
+// =============================================
+// CONTENT AREA
+// =============================================
 .modal-content {
   flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-xl);
+  background: var(--window-bg-color);
 
   .step-content {
-    height: 100%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-sm) var(--space-lg);
+    max-width: 900px;
+    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
   }
 }
 
-// ===== OPERATIONS STEP =====
+// =============================================
+// OPERATIONS STEP
+// =============================================
+.section-group {
+  display: flex;
+  flex-direction: column;
+}
+
 .operations-header {
   display: flex;
   flex-direction: column;
+  padding-inline: var(--space-md);
 
   .section-label {
     font-size: var(--font-size-md);
     font-weight: 600;
     color: var(--window-fg-color);
-    margin-bottom: 0;
+    margin: 0;
     opacity: 0.9;
   }
 
   .section-description {
     font-size: var(--font-size-sm);
     color: var(--dim-color);
+    margin: 0;
   }
 }
 
-.tabs-container {
-  box-shadow: var(--shadow-gnome);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background: var(--view-bg-color);
-
-  .operation-config {
-    padding: var(--space-sm);
-  }
-}
-
-.section-group {
-  display: flex;
-  flex-direction: column;
-  padding-inline: var(--space-md);
-}
-
-// ===== INTERACTIVE STEP =====
-.interactive-section {
+.operation-config {
   padding: var(--space-sm);
 }
 
-// ===== MESSAGE BAR =====
+// =============================================
+// MESSAGE BAR
+// =============================================
 .message-area {
   .message {
     display: flex;
@@ -94,12 +98,50 @@
   }
 }
 
-// ===== FOOTER =====
+// =============================================
+// FOOTER
+// =============================================
 .modal-actions {
-  padding: var(--space-md) var(--space-lg);
-  border-top: 1px solid var(--border-color);
+  box-shadow: inset 0 1px 0 0 var(--border-color);
   display: flex;
-  justify-content: flex-end;
-  gap: var(--space-sm);
-  background: var(--view-bg-color);
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-sm) var(--space-md);
+  gap: var(--space-md);
+  background: var(--window-bg-color);
+}
+
+// =============================================
+// RESPONSIVE STATES
+// =============================================
+@media (max-width: 640px) {
+  .modal-content .step-content {
+    padding: var(--space-md) !important;
+  }
+
+  .modal-actions {
+    padding: var(--space-md);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+
+    button {
+      width: 100% !important;
+
+      &.warn {
+        grid-column: span 2;
+        order: -1;
+      }
+
+      &[type="submit"] {
+        grid-column: span 1;
+        order: 2;
+      }
+
+      &.back-btn {
+        grid-column: span 1;
+        order: 1;
+      }
+    }
+  }
 }
