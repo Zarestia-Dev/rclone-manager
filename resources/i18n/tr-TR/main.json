@@ -866,6 +866,9 @@
       },
       "pollIntervalPlaceholder": "Anket aralığını girin (saniye)"
     },
+    "jsonEditor": {
+      "noFields": "JSON modunda gösterilecek alan yok"
+    },
     "passwordManager": {
       "placeholder": "Rclone yapılandırma şifrenizi girin",
       "label": "Yapılandırma Şifresi",
@@ -888,6 +891,9 @@
       "remoteType": "Uzak Bağlantı Türü",
       "noMatchingTypes": "Eşleşen tür yok",
       "loadingOptions": "Yapılandırma seçenekleri yükleniyor...",
+      "fields": "Alanlar",
+      "switchToForm": "Form Moduna Geç",
+      "switchToJson": "JSON Moduna Geç",
       "showAdvanced": "Gelişmiş Seçenekleri Göster",
       "showAdvancedDesc": "İleri düzey kullanıcılar için ek yapılandırma seçeneklerini göster",
       "useInteractive": "İnteraktif Yapılandırmayı Kullan",

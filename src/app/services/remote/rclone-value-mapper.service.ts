@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { RcConfigOption } from '@app/types';
 
 /**
  * Service for converting between rclone's machine values and human-readable formats
@@ -88,17 +89,9 @@ export class RcloneValueMapperService {
     ];
 
     for (const unit of units) {
-      if (bytes >= unit.value && bytes % unit.value === 0) {
-        return `${bytes / unit.value}${unit.suffix}`;
-      }
-    }
-
-    // If no exact match, use the closest unit
-    for (const unit of units) {
       if (bytes >= unit.value) {
-        const value = bytes / unit.value;
-        // Round to 2 decimal places
-        return `${Math.round(value * 100) / 100}${unit.suffix}`;
+        if (bytes % unit.value === 0) return `${bytes / unit.value}${unit.suffix}`;
+        return `${Math.round((bytes / unit.value) * 100) / 100}${unit.suffix}`;
       }
     }
 
@@ -137,6 +130,40 @@ export class RcloneValueMapperService {
   }
 
   /**
+   * Parse a Tristate value (e.g. from rclone backend) to a boolean or null.
+   * Rclone sometimes returns Tristate objects like { Valid: false, Value: false }
+   */
+  parseTristate(value: unknown): boolean | null {
+    if (value === null || value === undefined || value === '') return null;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'object' && 'Valid' in (value as object) && 'Value' in (value as object)) {
+      const obj = value as { Valid: boolean; Value: boolean };
+      return obj.Valid ? obj.Value : null;
+    }
+    const s = String(value).toLowerCase().trim();
+    // '[object object]' guards against cases where a Tristate object was accidentally
+    // passed through String() without being unwrapped first (e.g. stale serialised cache).
+    if (s === 'unset' || s === 'null' || s === '[object object]') return null;
+    if (s === 'true') return true;
+    if (s === 'false') return false;
+    return null;
+  }
+
+  /**
+   * Normalizes an RcConfigOption by unwrapping its Default and Value properties if they are Tristate objects.
+   */
+  normalizeOption(opt: RcConfigOption): RcConfigOption {
+    if (opt.Type === 'Tristate') {
+      return {
+        ...opt,
+        Default: this.parseTristate(opt.Default),
+        Value: this.parseTristate(opt.Value),
+      };
+    }
+    return opt;
+  }
+
+  /**
    * Convert string value to appropriate type for backend
    */
   humanToMachine(value: unknown, type: string): unknown {
@@ -172,15 +199,7 @@ export class RcloneValueMapperService {
         return value;
 
       case 'Tristate':
-        if (value === null || value === undefined || value === '') return null;
-        if (typeof value === 'boolean') return value;
-        if (typeof value === 'string') {
-          const s = value.toLowerCase().trim();
-          if (s === 'true') return true;
-          if (s === 'false') return false;
-          if (s === 'unset' || s === 'null') return null;
-        }
-        return value;
+        return this.parseTristate(value);
 
       case 'FileMode':
         return this.parseFileMode(value);

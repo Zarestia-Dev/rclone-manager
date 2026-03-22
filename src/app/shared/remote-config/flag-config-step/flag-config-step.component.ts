@@ -5,6 +5,7 @@ import {
   input,
   computed,
   output,
+  signal,
   Signal,
 } from '@angular/core';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
@@ -12,13 +13,15 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { TitleCasePipe } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { switchMap, startWith, of } from 'rxjs';
 
 import { FlagType, RcConfigOption } from '@app/types';
-import { SettingControlComponent } from 'src/app/shared/components';
+import { JsonEditorComponent, SettingControlComponent } from 'src/app/shared/components';
 import { OperationConfigComponent } from 'src/app/shared/remote-config/app-operation-config/app-operation-config.component';
 import { IconService, matchesConfigSearch } from '@app/services';
 
@@ -31,8 +34,11 @@ import { IconService, matchesConfigSearch } from '@app/services';
     MatSelectModule,
     MatIconModule,
     MatProgressSpinnerModule,
+    MatButtonModule,
+    MatTooltipModule,
     SettingControlComponent,
     OperationConfigComponent,
+    JsonEditorComponent,
     TranslateModule,
   ],
   templateUrl: './flag-config-step.component.html',
@@ -42,7 +48,7 @@ import { IconService, matchesConfigSearch } from '@app/services';
 export class FlagConfigStepComponent {
   readonly iconService = inject(IconService);
 
-  private static readonly EMPTY_GROUP = new FormGroup({});
+  private static readonly EMPTY_GROUP = new FormGroup<any>({});
 
   // Inputs
   form = input.required<FormGroup>();
@@ -109,4 +115,18 @@ export class FlagConfigStepComponent {
       }))
       .filter(binding => !!binding.controlKey);
   });
+
+  // JSON editor toggle
+  readonly showJsonMode = signal(false);
+
+  toggleJsonMode(): void {
+    this.showJsonMode.update(v => !v);
+  }
+
+  readonly editorKeyPrefix = computed(() => (this.isServe() ? '' : `${this.flagType()}---`));
+
+  // The JSON editor operates on the options sub-group
+  get optionsGroup(): FormGroup {
+    return (this.configGroup().get('options') as FormGroup | null) ?? new FormGroup({});
+  }
 }

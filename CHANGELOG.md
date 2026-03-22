@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - **Language**: Added Simplified Chinese language support. (Thanks to @why25!)
 - **Nautilus**: Added "spring-loaded folder" behavior. Dragging an item and hovering over a folder, breadcrumb, tab, or sidebar item for 800ms will automatically open/navigate to it.
+- Readd the Json Editor for rclone fields. (Now it is optional with toggle button. Not like before v0.1.5). This one more user friendly.
+- Legacy config directories for docker users.
+- Added `RCLONE_MANAGER_FUSE_COMPAT` environment variable for docker users. This will enable the fuse compatibility mode for rclone.
 
 ### Changed
 - **Nautilus**: Replaced Angular CDK drag-and-drop with native HTML5 Drag and Drop API for file and folder operations. This provides a more responsive, system-native feel. (Note: CDK remains active for tab reordering).

@@ -3,6 +3,7 @@ import {
   Component,
   computed,
   DestroyRef,
+  ElementRef,
   HostListener,
   inject,
   OnInit,
@@ -96,7 +97,6 @@ interface DialogData {
   name?: string;
   remoteType?: string;
   targetProfile?: string;
-  initialSection?: string;
 }
 
 interface PendingRemoteData {
@@ -148,6 +148,7 @@ export class RemoteConfigModalComponent implements OnInit {
   // ============================================================================
   private readonly fb = inject(FormBuilder);
   private readonly dialogRef = inject(MatDialogRef<RemoteConfigModalComponent>);
+  private readonly hostEl = inject(ElementRef<HTMLElement>);
   private readonly authStateService = inject(AuthStateService);
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly jobManagementService = inject(JobManagementService);
@@ -170,7 +171,6 @@ export class RemoteConfigModalComponent implements OnInit {
   // ============================================================================
   // CONFIGURATION (static, exposed to template)
   // ============================================================================
-  readonly TOTAL_STEPS = 11;
   readonly FLAG_TYPES = FLAG_TYPES;
 
   readonly stepConfigs = computed(() => {
@@ -277,11 +277,6 @@ export class RemoteConfigModalComponent implements OnInit {
   currentStep = signal(1);
   interactiveFlowState = signal<InteractiveFlowState>(createInitialInteractiveFlowState());
 
-  editTargetType = computed(() => {
-    const target = this.editTarget();
-    return target as SharedProfileType;
-  });
-
   // Search state
   isSearchVisible = signal(false);
   searchQuery = signal('');
@@ -324,15 +319,12 @@ export class RemoteConfigModalComponent implements OnInit {
   /** Signal instead of plain boolean — visible to the signal graph (zoneless safe). */
   private readonly isPopulatingForm = signal(false);
 
-  private initialSection: string | null = null;
-
   // ============================================================================
   // LIFECYCLE
   // ============================================================================
   constructor() {
     this.editTarget.set(this.dialogData?.editTarget ?? null);
     this.cloneTarget.set(this.dialogData?.cloneTarget ?? false);
-    this.initialSection = this.dialogData?.initialSection ?? null;
 
     this.remoteForm = this.createRemoteForm();
     this.remoteConfigForm = this.createRemoteConfigForm();
@@ -944,7 +936,7 @@ export class RemoteConfigModalComponent implements OnInit {
   applicableSteps = computed(() => {
     const editTargetValue = this.editTarget();
     if (!editTargetValue || editTargetValue === 'remote') {
-      return Array.from({ length: this.TOTAL_STEPS }, (_, i) => i + 1);
+      return this.stepConfigs().map((_, i) => i + 1);
     }
     const index = this.stepConfigs().findIndex(s => s.type === editTargetValue);
     return index !== -1 ? [index + 1] : [1];
@@ -982,7 +974,7 @@ export class RemoteConfigModalComponent implements OnInit {
   }
 
   private scrollToTop(): void {
-    document.querySelector('.modal-content')?.scrollTo(0, 0);
+    this.hostEl.nativeElement.querySelector('.modal-content')?.scrollTo(0, 0);
   }
 
   // ============================================================================
@@ -1166,57 +1158,61 @@ export class RemoteConfigModalComponent implements OnInit {
     if (type && type !== 'remote') this.saveCurrentProfile(type);
   }
 
-  startAddProfile(type: SharedProfileType): void {
-    const existingNames = Object.keys(this.profiles()[type] ?? {});
+  startAddProfile(type: string): void {
+    const t = type as SharedProfileType;
+    const existingNames = Object.keys(this.profiles()[t] ?? {});
     let counter = 1;
     while (existingNames.includes(`profile-${counter}`)) counter++;
-    this.setProfileMode(type, 'add', `profile-${counter}`);
+    this.setProfileMode(t, 'add', `profile-${counter}`);
   }
 
-  startEditProfile(type: SharedProfileType): void {
-    const currentName = this.getSelectedProfile(type);
+  startEditProfile(type: string): void {
+    const t = type as SharedProfileType;
+    const currentName = this.getSelectedProfile(t);
     if (!currentName || currentName.toLowerCase() === DEFAULT_PROFILE_NAME) return;
-    this.setProfileMode(type, 'edit', currentName);
+    this.setProfileMode(t, 'edit', currentName);
   }
 
-  cancelProfileEdit(type: SharedProfileType): void {
-    this.setProfileMode(type, 'view');
+  cancelProfileEdit(type: string): void {
+    this.setProfileMode(type as SharedProfileType, 'view');
   }
 
-  saveProfile(type: SharedProfileType): void {
-    const state = this.profileState()[type];
+  saveProfile(type: string): void {
+    const t = type as SharedProfileType;
+    const state = this.profileState()[t];
     const newName = state.tempName.trim();
     if (!newName) return;
 
     if (state.mode === 'add') {
-      this.profiles.update(p => ({ ...p, [type]: { ...p[type], [newName]: {} } }));
-      this.selectProfile(type, newName);
+      this.profiles.update(p => ({ ...p, [t]: { ...p[t], [newName]: {} } }));
+      this.selectProfile(t, newName);
     } else if (state.mode === 'edit') {
-      const oldName = this.getSelectedProfile(type);
+      const oldName = this.getSelectedProfile(t);
       if (oldName === newName) {
-        this.cancelProfileEdit(type);
+        this.cancelProfileEdit(t);
         return;
       }
-      if (this.profiles()[type][newName] !== undefined) return;
+      if (this.profiles()[t][newName] !== undefined) return;
 
-      const profileData = this.profiles()[type][oldName];
+      const profileData = this.profiles()[t][oldName];
       this.profiles.update(p => {
-        const updated = { ...p, [type]: { ...p[type], [newName]: profileData } };
-        delete updated[type][oldName];
+        const updated = { ...p, [t]: { ...p[t], [newName]: profileData } };
+        delete updated[t][oldName];
         return updated;
       });
-      this.selectedProfileName.update(s => ({ ...s, [type]: newName }));
-      this.cascadeProfileRename(type, oldName, newName);
+      this.selectedProfileName.update(s => ({ ...s, [t]: newName }));
+      this.cascadeProfileRename(t, oldName, newName);
     }
-    this.setProfileMode(type, 'view');
+    this.setProfileMode(t, 'view');
   }
 
-  deleteProfile(type: SharedProfileType, name: string): void {
+  deleteProfile(type: string, name: string): void {
+    const t = type as SharedProfileType;
     if (name.toLowerCase() === DEFAULT_PROFILE_NAME) return;
 
     const remoteName = this.getRemoteName();
     if (remoteName) {
-      const usage = this.getProfileUsage(type, remoteName, name);
+      const usage = this.getProfileUsage(t, remoteName, name);
       if (usage.inUse) {
         this.notificationService.showWarning(
           this.translate.instant('modals.remoteConfig.profile.inUseWarning', {
@@ -1230,49 +1226,54 @@ export class RemoteConfigModalComponent implements OnInit {
     }
 
     this.profiles.update(p => {
-      const rest = { ...p[type] };
+      const rest = { ...p[t] };
       delete rest[name];
-      return { ...p, [type]: rest };
+      return { ...p, [t]: rest };
     });
 
-    if (this.selectedProfileName()[type] === name) {
-      const remaining = Object.keys(this.profiles()[type]);
+    if (this.selectedProfileName()[t] === name) {
+      const remaining = Object.keys(this.profiles()[t]);
       if (remaining.length > 0) {
-        this.selectProfile(type, remaining[0]);
+        this.selectProfile(t, remaining[0]);
       } else {
-        this.profiles.update(p => ({ ...p, [type]: { [DEFAULT_PROFILE_NAME]: {} } }));
-        this.selectProfile(type, DEFAULT_PROFILE_NAME);
+        this.profiles.update(p => ({ ...p, [t]: { [DEFAULT_PROFILE_NAME]: {} } }));
+        this.selectProfile(t, DEFAULT_PROFILE_NAME);
       }
     }
   }
 
-  selectProfile(type: SharedProfileType, name: string): void {
-    if (!this.profiles()[type]?.[name]) return;
-    this.saveCurrentProfile(type);
-    this.selectedProfileName.update(prev => ({ ...prev, [type]: name }));
-    void this.populateProfileForm(type, this.profiles()[type][name] as Record<string, unknown>);
+  selectProfile(type: string, name: string): void {
+    const t = type as SharedProfileType;
+    if (!this.profiles()[t]?.[name]) return;
+    this.saveCurrentProfile(t);
+    this.selectedProfileName.update(prev => ({ ...prev, [t]: name }));
+    void this.populateProfileForm(t, this.profiles()[t][name] as Record<string, unknown>);
   }
 
-  saveCurrentProfile(type: SharedProfileType): void {
-    const currentName = this.selectedProfileName()[type];
-    if (!this.profiles()[type]?.[currentName]) return;
-    const formValue = this.remoteConfigForm.get(`${type}Config`)?.getRawValue();
+  saveCurrentProfile(type: string): void {
+    const t = type as SharedProfileType;
+    const currentName = this.selectedProfileName()[t];
+    if (!this.profiles()[t]?.[currentName]) return;
+    const formValue = this.remoteConfigForm.get(`${t}Config`)?.getRawValue();
     if (!formValue) return;
     this.profiles.update(p => ({
       ...p,
-      [type]: {
-        ...p[type],
-        [currentName]: this.buildProfileConfig(type, this.getRemoteName(), formValue),
+      [t]: {
+        ...p[t],
+        [currentName]: this.buildProfileConfig(t, this.getRemoteName(), formValue),
       },
     }));
   }
 
-  getProfiles(type: SharedProfileType): { name: string; [key: string]: unknown }[] {
-    return Object.entries(this.profiles()[type] ?? {}).map(([name, data]) => ({ name, ...data }));
+  getProfiles(type: string): { name: string; [key: string]: unknown }[] {
+    return Object.entries(this.profiles()[type as SharedProfileType] ?? {}).map(([name, data]) => ({
+      name,
+      ...data,
+    }));
   }
 
-  getSelectedProfile(type: SharedProfileType): string {
-    return this.selectedProfileName()[type];
+  getSelectedProfile(type: string): string {
+    return this.selectedProfileName()[type as SharedProfileType];
   }
 
   private static readonly PROFILE_ICONS: Partial<Record<SharedProfileType, string>> = {
@@ -1288,8 +1289,10 @@ export class RemoteConfigModalComponent implements OnInit {
     runtimeRemote: 'gear',
   };
 
-  getProfileIcon(type: SharedProfileType | null): string {
-    return (type && RemoteConfigModalComponent.PROFILE_ICONS[type]) || 'circle-info';
+  getProfileIcon(type: string | null): string {
+    return (
+      (type && RemoteConfigModalComponent.PROFILE_ICONS[type as SharedProfileType]) || 'circle-info'
+    );
   }
 
   getProfileOptions(type: 'vfs' | 'filter' | 'backend' | 'runtimeRemote'): string[] {
@@ -1676,42 +1679,6 @@ export class RemoteConfigModalComponent implements OnInit {
     this.profileState.update(state => ({ ...state, [key]: { ...state[key], tempName: name } }));
   }
 
-  asProfileType(type: string): SharedProfileType {
-    return type as SharedProfileType;
-  }
-
-  profileGetSelected(type: string): string {
-    return this.getSelectedProfile(type as SharedProfileType);
-  }
-
-  profileGetAll(type: string): { name: string; [key: string]: unknown }[] {
-    return this.getProfiles(type as SharedProfileType);
-  }
-
-  profileSelect(type: string, name: string): void {
-    this.selectProfile(type as SharedProfileType, name);
-  }
-
-  profileStartAdd(type: string): void {
-    this.startAddProfile(type as SharedProfileType);
-  }
-
-  profileStartEdit(type: string): void {
-    this.startEditProfile(type as SharedProfileType);
-  }
-
-  profileDelete(type: string, name: string): void {
-    this.deleteProfile(type as SharedProfileType, name);
-  }
-
-  profileSave(type: string): void {
-    this.saveProfile(type as SharedProfileType);
-  }
-
-  profileCancelEdit(type: string): void {
-    this.cancelProfileEdit(type as SharedProfileType);
-  }
-
   formControl(path: string): FormControl {
     return this.remoteConfigForm.get(path) as FormControl;
   }
@@ -1739,17 +1706,15 @@ export class RemoteConfigModalComponent implements OnInit {
   isSaveDisabled = computed(() => {
     if (this.isAuthInProgress()) return true;
 
-    const remoteStatus = this.remoteFormStatus();
-    const configStatus = this.remoteConfigFormStatus();
+    const remoteInvalid = this.remoteFormStatus() === 'INVALID';
+    // Always read configStatus to register the reactive dependency in every branch.
+    const configInvalid = this.remoteConfigFormStatus() === 'INVALID';
     const editTargetValue = this.editTarget();
 
-    if (editTargetValue) {
-      if (editTargetValue === 'remote') return remoteStatus === 'INVALID';
-      void configStatus;
+    if (editTargetValue === 'remote') return remoteInvalid;
+    if (editTargetValue)
       return this.remoteConfigForm.get(`${editTargetValue}Config`)?.invalid ?? true;
-    }
-
-    return remoteStatus === 'INVALID' || configStatus === 'INVALID';
+    return remoteInvalid || configInvalid;
   });
 
   saveButtonLabel = computed(() => {
@@ -1774,10 +1739,9 @@ export class RemoteConfigModalComponent implements OnInit {
   }
 
   scrollToSection(sectionId: string): void {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
-    }
+    this.hostEl.nativeElement
+      .querySelector('#' + sectionId)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
   }
 
   @HostListener('window:keydown', ['$event'])

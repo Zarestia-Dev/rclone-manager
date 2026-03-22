@@ -364,7 +364,7 @@ export class SettingControlComponent implements ControlValueAccessor {
     }
 
     if (opt.Type === 'bool') return value === true || String(value).toLowerCase() === 'true';
-    if (opt.Type === 'Tristate') return this.parseTristateValue(value);
+    if (opt.Type === 'Tristate') return this.valueMapper.parseTristate(value);
     if (opt.Type === 'stringArray') return Array.isArray(value) ? value : [];
 
     return value;
@@ -457,7 +457,7 @@ export class SettingControlComponent implements ControlValueAccessor {
         ? this.valueMapper.machineToHuman(opt.Value, opt.Type, opt.ValueStr)
         : opt.ValueStr || opt.DefaultStr || '';
     }
-    if (opt.Type === 'Tristate') return this.parseTristateValue(opt.Value ?? opt.ValueStr);
+    if (opt.Type === 'Tristate') return this.valueMapper.parseTristate(opt.Value ?? opt.ValueStr);
     return opt.ValueStr || opt.DefaultStr || '';
   }
 
@@ -519,18 +519,6 @@ export class SettingControlComponent implements ControlValueAccessor {
 
     this.dateControl().setValue(new Date(y, m - 1, d), { emitEvent: false });
     this.timeControl().setValue(new Date(1970, 0, 1, hh, mm), { emitEvent: false });
-  }
-
-  private parseTristateValue(v: unknown): boolean | null {
-    if (v === null || v === undefined || v === '') return null;
-    if (typeof v === 'boolean') return v;
-    if (typeof v === 'object' && 'Valid' in (v as object) && 'Value' in (v as object)) {
-      const obj = v as { Valid: boolean; Value: boolean };
-      return obj.Valid ? obj.Value : null;
-    }
-    const s = String(v).toLowerCase();
-    if (s === 'unset' || s === '[object object]') return null;
-    return s === 'true' ? true : s === 'false' ? false : null;
   }
 
   private combineDateTime(): string | null {

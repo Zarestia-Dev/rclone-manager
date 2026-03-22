@@ -1,0 +1,52 @@
+<div class="chips-row" aria-label="Config fields overview">
+  @if (chips().length === 0) {
+    <span class="chips-empty">
+      {{ 'shared.jsonEditor.noFields' | translate }}
+    </span>
+  }
+
+  @for (chip of chips(); track chip.controlKey) {
+    <div
+      class="config-chip"
+      [class.active]="chip.isActive"
+      [class.changed]="chip.isChanged"
+      [class.inactive]="!chip.isActive"
+      [matTooltip]="chip.field.Help || chip.displayKey + ': ' + chip.fullValue"
+      matTooltipShowDelay="700"
+      matTooltipPosition="above"
+      (click)="toggleChip(chip)"
+      role="button"
+      tabindex="0"
+      (keydown.enter)="toggleChip(chip)"
+      (keydown.space)="toggleChip(chip); $event.preventDefault()"
+    >
+      <span class="chip-key">{{ chip.displayKey }}</span>
+
+      @if (chip.isActive) {
+        <span class="chip-sep">:</span>
+        <span class="chip-value">{{ chip.displayValue }}</span>
+        <button
+          type="button"
+          class="chip-remove"
+          (click)="$event.stopPropagation(); resetChip(chip)"
+          [attr.aria-label]="('shared.jsonEditor.resetField' | translate) + ' ' + chip.displayKey"
+          [matTooltip]="'shared.jsonEditor.resetField' | translate"
+          matTooltipPosition="above"
+        >
+          <mat-icon svgIcon="circle-xmark" />
+        </button>
+      }
+    </div>
+  }
+</div>
+
+<div class="editor-wrapper">
+  <div #editorContainer class="editor-container"></div>
+
+  @if (parseError()) {
+    <div class="parse-error" role="alert" aria-live="polite">
+      <mat-icon svgIcon="circle-xmark" />
+      <span>{{ parseError() }}</span>
+    </div>
+  }
+</div>

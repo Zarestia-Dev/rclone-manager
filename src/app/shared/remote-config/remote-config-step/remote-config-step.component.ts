@@ -17,11 +17,13 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIcon } from '@angular/material/icon';
 import { TranslateModule } from '@ngx-translate/core';
 import { RcConfigOption, RemoteType, RemoteConfigStepVisibility } from '@app/types';
 import { IconService, matchesConfigSearch } from '@app/services';
-import { SettingControlComponent } from 'src/app/shared/components';
+import { JsonEditorComponent, SettingControlComponent } from 'src/app/shared/components';
 
 @Component({
   selector: 'app-remote-config-step',
@@ -32,7 +34,10 @@ import { SettingControlComponent } from 'src/app/shared/components';
     MatSlideToggleModule,
     MatProgressSpinnerModule,
     MatAutocompleteModule,
+    MatButtonModule,
+    MatTooltipModule,
     SettingControlComponent,
+    JsonEditorComponent,
     TranslateModule,
     MatIcon,
   ],
@@ -303,5 +308,18 @@ export class RemoteConfigStepComponent {
 
   onFieldChanged(fieldName: string, isChanged: boolean): void {
     this.fieldChanged.emit({ fieldName, isChanged });
+  }
+
+  // JSON editor toggle — switches both basic and advanced fields to a single JSON view.
+  readonly showJsonMode = signal(false);
+
+  toggleJsonMode(): void {
+    this.showJsonMode.update(v => !v);
+  }
+
+  // The JSON editor operates on the form directly (remote config fields are top-level
+  // controls on `form()`, not nested under an 'options' sub-group).
+  get allRemoteFields(): RcConfigOption[] {
+    return [...this.basicFields(), ...this.advancedFields()];
   }
 }

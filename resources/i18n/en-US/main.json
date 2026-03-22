@@ -866,6 +866,9 @@
       },
       "pollIntervalPlaceholder": "Enter poll interval (seconds)"
     },
+    "jsonEditor": {
+      "noFields": "No fields to display in JSON mode"
+    },
     "passwordManager": {
       "placeholder": "Enter your rclone config password",
       "label": "Configuration Password",
@@ -888,6 +891,9 @@
       "remoteType": "Remote Type",
       "noMatchingTypes": "No matching remote types",
       "loadingOptions": "Loading configuration options...",
+      "fields": "Fields",
+      "switchToForm": "Switch to Form Mode",
+      "switchToJson": "Switch to JSON Mode",
       "showAdvanced": "Show Advanced Options",
       "showAdvancedDesc": "Display additional configuration options for power users",
       "useInteractive": "Use Interactive Configuration",

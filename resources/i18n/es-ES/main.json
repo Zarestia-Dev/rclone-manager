@@ -775,6 +775,7 @@
       },
       "actions": {
         "pollInterval": "Intervalo de sondeo",
+        "pollIntervalPlaceholder": "Ingrese el intervalo de sondeo (segundos)",
         "updateInterval": "Actualizar intervalo de sondeo",
         "refreshMetadata": "Actualizar metadatos",
         "clearCache": "Borrar caché de metadatos",
@@ -858,6 +859,9 @@
         "keychain": "Almacenado en el llavero del sistema"
       }
     },
+    "jsonEditor": {
+      "noFields": "No hay campos para mostrar en modo JSON"
+    },
     "passwordManager": {
       "placeholder": "Ingrese su contraseña de configuración de rclone",
       "label": "Contraseña de configuración",
@@ -880,6 +884,9 @@
       "remoteType": "Tipo remoto",
       "noMatchingTypes": "No hay tipos remotos coincidentes",
       "loadingOptions": "Cargando opciones de configuración...",
+      "fields": "Campos",
+      "switchToForm": "Cambiar a modo formulario",
+      "switchToJson": "Cambiar a modo JSON",
       "showAdvanced": "Mostrar opciones avanzadas",
       "showAdvancedDesc": "Mostrar opciones de configuración adicionales para usuarios avanzados",
       "useInteractive": "Usar configuración interactiva",

@@ -65,10 +65,41 @@
 
   <!-- Dynamic flag fields -->
   @if (dynamicFieldBindings().length && !(isServe() && isLoadingServeFields())) {
-    <div class="dynamic-fields" formGroupName="options">
-      @for (binding of dynamicFieldBindings(); track binding.trackKey) {
-        <app-setting-control [option]="binding.field" [formControlName]="binding.controlKey" />
-      }
+    <div class="dynamic-fields-header">
+      <span class="fields-count">
+        {{ dynamicFieldBindings().length }}
+        {{ 'wizards.remoteConfig.fields' | translate }}
+      </span>
+      <button
+        type="button"
+        mat-icon-button
+        class="json-toggle-btn"
+        [class.active]="showJsonMode()"
+        (click)="toggleJsonMode()"
+        [matTooltip]="
+          (showJsonMode()
+            ? 'wizards.remoteConfig.switchToForm'
+            : 'wizards.remoteConfig.switchToJson'
+          ) | translate
+        "
+        [attr.aria-pressed]="showJsonMode()"
+      >
+        <mat-icon svgIcon="code" />
+      </button>
     </div>
+
+    @if (showJsonMode()) {
+      <app-json-editor
+        [formGroup]="optionsGroup"
+        [fieldDefs]="filteredDynamicFlagFields()"
+        [keyPrefix]="editorKeyPrefix()"
+      />
+    } @else {
+      <div class="dynamic-fields" formGroupName="options">
+        @for (binding of dynamicFieldBindings(); track binding.trackKey) {
+          <app-setting-control [option]="binding.field" [formControlName]="binding.controlKey" />
+        }
+      </div>
+    }
   }
 </form>

@@ -140,24 +140,42 @@
   }
 
   @if (providerReady()) {
-    @for (item of basicFields(); track item.Name) {
-      <app-setting-control
-        [option]="item"
-        [formControlName]="item.Name"
-        [provider]="remoteType"
-        (valueChanged)="onFieldChanged(item.Name, $event)"
-      ></app-setting-control>
-    }
-  }
+    <!-- JSON / Form mode toggle header -->
+    <div class="fields-mode-header">
+      <span class="fields-count">
+        {{ basicFields().length + advancedFields().length }}
+        {{ 'wizards.remoteConfig.fields' | translate }}
+      </span>
+      <button
+        type="button"
+        mat-icon-button
+        class="json-toggle-btn"
+        [class.active]="showJsonMode()"
+        (click)="toggleJsonMode()"
+        [matTooltip]="
+          (showJsonMode()
+            ? 'wizards.remoteConfig.switchToForm'
+            : 'wizards.remoteConfig.switchToJson'
+          ) | translate
+        "
+        [attr.aria-label]="
+          (showJsonMode()
+            ? 'wizards.remoteConfig.switchToForm'
+            : 'wizards.remoteConfig.switchToJson'
+          ) | translate
+        "
+        [attr.aria-pressed]="showJsonMode()"
+      >
+        <mat-icon svgIcon="code" />
+      </button>
+    </div>
 
-  @if (showAdvancedOptions() && advancedFields().length > 0 && providerReady()) {
-    <div class="advanced-section" id="section-advanced">
-      <h3 class="section-heading">
-        {{ 'wizards.remoteConfig.advancedOptions' | translate }}
-        <span>{{ advancedFields().length }}</span>
-      </h3>
-
-      @for (item of advancedFields(); track item.Name) {
+    @if (showJsonMode()) {
+      <!-- JSON editor — operates directly on form() which holds all remote config fields -->
+      <app-json-editor [formGroup]="form()" [fieldDefs]="allRemoteFields" />
+    } @else {
+      <!-- Standard form control rendering -->
+      @for (item of basicFields(); track item.Name) {
         <app-setting-control
           [option]="item"
           [formControlName]="item.Name"
@@ -165,6 +183,24 @@
           (valueChanged)="onFieldChanged(item.Name, $event)"
         ></app-setting-control>
       }
-    </div>
+
+      @if (showAdvancedOptions() && advancedFields().length > 0) {
+        <div class="advanced-section" id="section-advanced">
+          <h3 class="section-heading">
+            {{ 'wizards.remoteConfig.advancedOptions' | translate }}
+            <span>{{ advancedFields().length }}</span>
+          </h3>
+
+          @for (item of advancedFields(); track item.Name) {
+            <app-setting-control
+              [option]="item"
+              [formControlName]="item.Name"
+              [provider]="remoteType"
+              (valueChanged)="onFieldChanged(item.Name, $event)"
+            ></app-setting-control>
+          }
+        </div>
+      }
+    }
   }
 </form>

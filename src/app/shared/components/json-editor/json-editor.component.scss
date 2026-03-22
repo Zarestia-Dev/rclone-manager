@@ -1,0 +1,243 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-height: 0;
+}
+
+// ============================================================================
+// CHIP ROW
+// ============================================================================
+
+.chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  align-items: center;
+  min-height: 32px;
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--view-bg-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-gnome);
+}
+
+.chips-empty {
+  font-size: var(--font-size-xs);
+  color: var(--dim-color);
+  font-style: italic;
+}
+
+.config-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px var(--space-xs) 3px var(--space-sm);
+  border-radius: 20px;
+  font-size: var(--font-size-xs);
+  max-width: 220px;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease;
+
+  &.active {
+    background: rgba(var(--primary-color-rgb), 0.08);
+    border: 1px solid rgba(var(--primary-color-rgb), 0.25);
+
+    &:hover {
+      background: rgba(var(--primary-color-rgb), 0.15);
+    }
+
+    .chip-key {
+      color: var(--primary-color);
+    }
+  }
+
+  &.active.changed {
+    background: rgba(var(--accent-color-rgb), 0.1);
+    border-color: rgba(var(--accent-color-rgb), 0.35);
+
+    &:hover {
+      background: rgba(var(--accent-color-rgb), 0.18);
+    }
+
+    .chip-key {
+      color: var(--accent-color);
+    }
+
+    .chip-sep,
+    .chip-value {
+      color: var(--accent-color);
+      opacity: 0.85;
+    }
+  }
+
+  &.inactive {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    opacity: 0.55;
+
+    .chip-key {
+      color: var(--dim-color);
+    }
+  }
+
+  .chip-key {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+  }
+
+  .chip-sep {
+    color: var(--dim-color);
+    flex-shrink: 0;
+  }
+
+  .chip-value {
+    color: var(--window-fg-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 80px;
+  }
+
+  .chip-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    margin-left: 2px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 50%;
+    color: var(--dim-color);
+    transition:
+      color 0.15s ease,
+      background-color 0.15s ease;
+
+    mat-icon {
+      width: 14px;
+      height: 14px;
+      font-size: 14px;
+    }
+
+    &:hover {
+      color: var(--warn-color);
+      background: rgba(var(--warn-color-rgb), 0.12);
+    }
+  }
+}
+
+// ============================================================================
+// EDITOR WRAPPER
+// ============================================================================
+
+.editor-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-gnome);
+  outline: 1px solid var(--border-color);
+  transition: outline-color 0.2s ease;
+
+  &:focus-within {
+    outline-color: var(--primary-color);
+  }
+}
+
+.editor-container {
+  flex: 1;
+  min-height: 280px;
+  overflow: hidden;
+
+  // ── Gutter & structure ─────────────────────────────────────────────────────
+
+  ::ng-deep .cm-editor {
+    height: 100%;
+    background: var(--view-bg-color);
+
+    &.cm-focused {
+      outline: none; // we handle focus ring on .editor-wrapper instead
+    }
+  }
+
+  ::ng-deep .cm-gutters {
+    background: var(--view-bg-color);
+    border-right: 1px solid var(--border-color);
+    color: var(--dim-color);
+  }
+
+  ::ng-deep .cm-activeLineGutter {
+    background: rgba(var(--primary-color-rgb), 0.06);
+  }
+
+  ::ng-deep .cm-activeLine {
+    background: rgba(var(--primary-color-rgb), 0.04);
+  }
+
+  ::ng-deep .cm-lint-marker-error {
+    color: var(--warn-color);
+  }
+  ::ng-deep .cm-lint-marker-warning {
+    color: var(--orange);
+  }
+}
+
+// ============================================================================
+// PARSE ERROR BAR
+// ============================================================================
+
+.parse-error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  background: rgba(var(--warn-color-rgb), 0.08);
+  color: var(--warn-color);
+  font-size: var(--font-size-xs);
+  border-top: 1px solid rgba(var(--warn-color-rgb), 0.25);
+
+  mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+}
+
+// ============================================================================
+// MOBILE
+// ============================================================================
+
+@media (max-width: 640px) {
+  .chips-row {
+    gap: var(--space-xxs);
+  }
+
+  .config-chip {
+    max-width: 160px;
+
+    .chip-key,
+    .chip-value {
+      max-width: 55px;
+    }
+  }
+
+  .editor-container {
+    min-height: 220px;
+
+    ::ng-deep .cm-editor {
+      min-height: 220px;
+    }
+  }
+}

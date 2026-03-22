@@ -12,6 +12,46 @@
   gap: var(--space-md);
 }
 
+// ============================================================================
+// JSON / FORM MODE TOGGLE HEADER
+// ============================================================================
+
+.dynamic-fields-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+
+  .fields-count {
+    font-size: var(--font-size-xs);
+    color: var(--dim-color);
+    font-weight: 500;
+  }
+}
+
+// Shared toggle button style (also used in remote-config-step)
+.json-toggle-btn {
+  color: var(--dim-color);
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
+
+  &:hover {
+    color: var(--window-fg-color);
+    background: rgba(var(--primary-color-rgb), 0.08);
+  }
+
+  &.active {
+    color: var(--primary-color);
+    background: rgba(var(--primary-color-rgb), 0.1);
+  }
+}
+
+// ============================================================================
+// SERVE TYPE SELECTOR
+// ============================================================================
+
 .type-option {
   display: flex;
   align-items: center;

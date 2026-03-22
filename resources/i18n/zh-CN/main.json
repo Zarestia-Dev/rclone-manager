@@ -866,6 +866,9 @@
       },
       "pollIntervalPlaceholder": "输入轮询间隔（秒）"
     },
+    "jsonEditor": {
+      "noFields": "JSON 模式下没有可显示的字段"
+    },
     "passwordManager": {
       "placeholder": "输入 rclone 配置密码",
       "label": "配置密码",
@@ -888,6 +891,9 @@
       "remoteType": "远程存储类型",
       "noMatchingTypes": "无匹配的远程存储类型",
       "loadingOptions": "加载配置选项...",
+      "fields": "字段",
+      "switchToForm": "切换到表单模式",
+      "switchToJson": "切换到 JSON 模式",
       "showAdvanced": "显示高级选项",
       "showAdvancedDesc": "为高级用户显示额外配置选项",
       "useInteractive": "使用交互式配置",

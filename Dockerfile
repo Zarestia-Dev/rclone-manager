@@ -13,6 +13,7 @@
 #   RCLONE_MANAGER_USER   — Basic auth username
 #   RCLONE_MANAGER_PASS   — Basic auth password
 #   RCLONE_MANAGER_TLS_CERT / RCLONE_MANAGER_TLS_KEY — TLS certificate paths
+#   RCLONE_MANAGER_FUSE_COMPAT — Enable to skip modification time updates (for Unraid/FUSE)
 #
 # Volumes:
 #   /data                 — Persistent storage (rclone binary, app data)
@@ -115,6 +116,8 @@ COPY --from=builder \
     ["/app/src-tauri/target/release/i18n", "/usr/lib/RClone Manager Headless/i18n/"]
 
 # Copy and setup the runtime entrypoint script
+# Moving this to the end ensures that changes to entrypoint.sh don't invalidate 
+# the heavy compilation layers above.
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 

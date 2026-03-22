@@ -20,7 +20,9 @@
           : ('modals.remoteConfig.title.add' | translate)
       }}
       @if (!flow.isActive && !editTarget()) {
-        <span class="mobile-step-indicator"> ({{ currentStep() }}/{{ TOTAL_STEPS }}) </span>
+        <span class="mobile-step-indicator">
+          ({{ currentStep() }}/{{ stepConfigs().length }})
+        </span>
       }
     </p>
     <button
@@ -94,7 +96,7 @@
           </div>
           <div class="step-indicator-container hide-scrollbar">
             <mat-nav-list class="step-indicator">
-              @let targetType = editTargetType();
+              @let targetType = editTarget()!;
               @for (profile of getProfiles(targetType); track profile.name) {
                 @let isActive = getSelectedProfile(targetType) === profile.name;
                 <button
@@ -145,10 +147,10 @@
             <mat-form-field subscriptSizing="dynamic" class="profile-select">
               <mat-label>{{ 'modals.remoteConfig.profile.label' | translate }}</mat-label>
               <mat-select
-                [value]="profileGetSelected(flagType)"
-                (selectionChange)="profileSelect(flagType, $event.value)"
+                [value]="getSelectedProfile(flagType)"
+                (selectionChange)="selectProfile(flagType, $event.value)"
               >
-                @for (profile of profileGetAll(flagType); track profile.name) {
+                @for (profile of getProfiles(flagType); track profile.name) {
                   <mat-option [value]="profile.name">{{ profile.name }}</mat-option>
                 }
               </mat-select>
@@ -157,27 +159,27 @@
             <div class="profile-actions">
               <button
                 mat-icon-button
-                (click)="profileStartAdd(flagType)"
+                (click)="startAddProfile(flagType)"
                 [attr.title]="'modals.remoteConfig.profile.add' | translate"
               >
                 <mat-icon svgIcon="plus"></mat-icon>
               </button>
               <button
                 mat-icon-button
-                (click)="profileStartEdit(flagType)"
+                (click)="startEditProfile(flagType)"
                 [attr.title]="'modals.remoteConfig.profile.rename' | translate"
-                [disabled]="profileGetSelected(flagType).toLowerCase() === 'default'"
+                [disabled]="getSelectedProfile(flagType).toLowerCase() === 'default'"
               >
                 <mat-icon svgIcon="pen"></mat-icon>
               </button>
               <button
                 mat-icon-button
                 class="warn"
-                (click)="profileDelete(flagType, profileGetSelected(flagType))"
+                (click)="deleteProfile(flagType, getSelectedProfile(flagType))"
                 [attr.title]="'modals.remoteConfig.profile.delete' | translate"
                 [disabled]="
-                  profileGetAll(flagType).length <= 1 ||
-                  profileGetSelected(flagType).toLowerCase() === 'default'
+                  getProfiles(flagType).length <= 1 ||
+                  getSelectedProfile(flagType).toLowerCase() === 'default'
                 "
               >
                 <mat-icon svgIcon="trash"></mat-icon>
@@ -197,8 +199,8 @@
                 [ngModel]="getProfileState(flagType).tempName"
                 (ngModelChange)="setProfileTempName(flagType, $event)"
                 [ngModelOptions]="{ standalone: true }"
-                (keyup.enter)="profileSave(flagType)"
-                (keyup.escape)="profileCancelEdit(flagType)"
+                (keyup.enter)="saveProfile(flagType)"
+                (keyup.escape)="cancelProfileEdit(flagType)"
                 autoFocus
               />
             </mat-form-field>
@@ -207,7 +209,7 @@
               <button
                 mat-icon-button
                 class="primary"
-                (click)="profileSave(flagType)"
+                (click)="saveProfile(flagType)"
                 [attr.title]="'modals.remoteConfig.profile.save' | translate"
               >
                 <mat-icon svgIcon="circle-check"></mat-icon>
@@ -215,7 +217,7 @@
               <button
                 mat-icon-button
                 class="warn"
-                (click)="profileCancelEdit(flagType)"
+                (click)="cancelProfileEdit(flagType)"
                 [attr.title]="'modals.remoteConfig.profile.cancel' | translate"
               >
                 <mat-icon svgIcon="circle-xmark"></mat-icon>
@@ -324,7 +326,7 @@
 
           <!-- Steps 2–10: Flag and Serve configs -->
           @default {
-            @if (currentStep() < TOTAL_STEPS) {
+            @if (currentStep() < stepConfigs().length) {
               @let flagType = FLAG_TYPES[currentStep() - 2];
               <section class="step-container">
                 <ng-container
@@ -484,7 +486,7 @@
     }
 
     <!-- Next Button (create mode, not on last step) -->
-    @if (currentStep() < TOTAL_STEPS && !editTarget() && !flow.isActive) {
+    @if (currentStep() < stepConfigs().length && !editTarget() && !flow.isActive) {
       <button
         matButton="filled"
         class="accent next-btn"
