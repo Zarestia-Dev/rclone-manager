@@ -895,6 +895,7 @@
       "switchToForm": "Form Moduna Geç",
       "switchToJson": "JSON Moduna Geç",
       "showAdvanced": "Gelişmiş Seçenekleri Göster",
+      "hideAdvanced": "Gelişmiş Seçenekleri Gizle",
       "showAdvancedDesc": "İleri düzey kullanıcılar için ek yapılandırma seçeneklerini göster",
       "useInteractive": "İnteraktif Yapılandırmayı Kullan",
       "useInteractiveDesc": "Adım adım yapılandırma rehberini kullan",
@@ -921,7 +922,40 @@
       "serveType": "Tür",
       "loadingServeOptions": "{{type}} seçenekleri yükleniyor...",
       "serveDescription": "Sunmak istediğiniz uzak yolu seçin. Tüm uzak bağlantıyı veya belirli bir klasörü sunabilirsiniz.",
-      "operationDescription": "Bu işlem için kaynak, hedef ve otomatik başlatma seçeneklerini yapılandırın."
+      "operationDescription": "Bu işlem için kaynak, hedef ve otomatik başlatma seçeneklerini yapılandırın.",
+      "hideCommandOptions": "Komut Seçeneklerini Gizle",
+      "showCommandOptions": "Komut Seçeneklerini Göster",
+      "quickAdd": "Hızlı Ekle",
+      "managedOptionTooltip": "Bu seçenek uygulama tarafından otomatik olarak yönetiliyor",
+      "auto": "Otomatik",
+      "addValue": "Değer ekle",
+      "removeOption": "Seçeneği kaldır",
+      "optionKey": "Seçenek Anahtarı",
+      "optionKeyPlaceholder": "örn., özelBayrak",
+      "optionType": "Seçenek Türü",
+      "addOption": "Seçenek Ekle",
+      "predefinedOptions": {
+        "obscure": {
+          "label": "Obscure (Gizle)",
+          "description": "Parolaları düz metin olarak işle ve yapılandırmaya kaydetmeden önce gizle"
+        },
+        "noObscure": {
+          "label": "Gizleme",
+          "description": "Parolalar zaten gizlenmiş; gizleme adımını atla"
+        },
+        "nonInteractive": {
+          "label": "Etkileşimli Değil",
+          "description": "Sormak yerine bir JSON soru bloğu döndür; uygulama odaklı yapılandırma akışları için"
+        },
+        "all": {
+          "label": "Tüm Sorular",
+          "description": "Sadece yapılandırma sonrası alt kümeyi değil, her yapılandırma sorusunu sor"
+        },
+        "noOutput": {
+          "label": "Çıktı Yok",
+          "description": "RC yapılandırma çağrısından gelen herhangi bir standart çıktıyı bastır"
+        }
+      }
     },
     "serveTypes": {
       "http": "HTTP üzerinden dosya sunumu",

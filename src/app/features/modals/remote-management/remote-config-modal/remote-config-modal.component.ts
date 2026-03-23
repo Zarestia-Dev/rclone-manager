@@ -36,7 +36,10 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatListModule } from '@angular/material/list';
 import { MatDividerModule } from '@angular/material/divider';
-import { RemoteConfigStepComponent } from '../../../../shared/remote-config/remote-config-step/remote-config-step.component';
+import {
+  RemoteConfigStepComponent,
+  INITIAL_COMMAND_OPTIONS,
+} from '../../../../shared/remote-config/remote-config-step/remote-config-step.component';
 import { FlagConfigStepComponent } from '../../../../shared/remote-config/flag-config-step/flag-config-step.component';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
@@ -64,7 +67,6 @@ import {
   InteractiveFlowState,
   FLAG_TYPES,
   REMOTE_NAME_REGEX,
-  INTERACTIVE_REMOTES,
   ServeConfig,
   MountConfig,
   CopyConfig,
@@ -77,6 +79,7 @@ import {
   RuntimeRemoteConfig,
   DEFAULT_PROFILE_NAME,
   REMOTE_CONFIG_KEYS,
+  CommandOption,
 } from '@app/types';
 import {
   buildPathString,
@@ -101,7 +104,7 @@ interface DialogData {
 
 interface PendingRemoteData {
   name: string;
-  type?: string;
+  type: string;
   [key: string]: unknown;
 }
 
@@ -267,7 +270,7 @@ export class RemoteConfigModalComponent implements OnInit {
   // General state
   editTarget = signal<EditTarget>(null);
   cloneTarget = signal(false);
-  useInteractiveMode = signal(false);
+  commandOptions = signal<CommandOption[]>(INITIAL_COMMAND_OPTIONS);
   showAdvancedOptions = signal(false);
   isRemoteConfigLoading = signal(false);
   isLoadingServeFields = signal(false);
@@ -296,7 +299,7 @@ export class RemoteConfigModalComponent implements OnInit {
     if (!step) return new Set<string>(['section-general', 'section-auth', 'section-advanced']);
 
     const visible = new Set<string>();
-    if (step.showNameField() || step.showAdvancedToggle() || step.showInteractiveToggle()) {
+    if (step.showNameField() || step.showAdvancedToggle()) {
       visible.add('section-general');
     }
     if (step.providerField()) {
@@ -928,9 +931,6 @@ export class RemoteConfigModalComponent implements OnInit {
   }
 
   // ============================================================================
-  // GETTERS
-  // ============================================================================
-  // ============================================================================
   // STEP NAVIGATION
   // ============================================================================
   applicableSteps = computed(() => {
@@ -982,7 +982,6 @@ export class RemoteConfigModalComponent implements OnInit {
   // ============================================================================
   async onRemoteTypeChange(): Promise<void> {
     const remoteType = this.remoteForm.get('type')?.value;
-    this.useInteractiveMode.set(INTERACTIVE_REMOTES.includes(remoteType?.toLowerCase()));
     await this.loadRemoteFields(remoteType);
     await this.syncRuntimeRemoteType();
   }
@@ -1066,10 +1065,16 @@ export class RemoteConfigModalComponent implements OnInit {
     const finalConfig = this.buildFinalConfig();
     await this.authStateService.startAuth(remoteData.name, false);
 
-    if (!this.useInteractiveMode()) {
-      await this.remoteManagementService.createRemote(remoteData.name, remoteData, {
-        obscure: true,
-      });
+    const isInteractive = this.commandOptions().some(
+      o => o.key === 'nonInteractive' && o.value === true
+    );
+
+    if (!isInteractive) {
+      await this.remoteManagementService.createRemote(
+        remoteData.name,
+        remoteData,
+        this.remoteManagementService.buildOpt(this.commandOptions())
+      );
       this.pendingConfig = { remoteData, finalConfig };
       await this.finalizeRemoteCreation();
       return { success: true };
@@ -1083,8 +1088,12 @@ export class RemoteConfigModalComponent implements OnInit {
     const remoteName = this.getRemoteName();
     await this.authStateService.startAuth(remoteName, true);
 
-    if (this.editTarget() === 'remote' && this.useInteractiveMode()) {
-      const remoteData = this.cleanFormData(this.remoteForm.getRawValue());
+    const remoteData = this.cleanFormData(this.remoteForm.getRawValue());
+    const isInteractive = this.commandOptions().some(
+      o => o.key === 'nonInteractive' && o.value === true
+    );
+
+    if (this.editTarget() === 'remote' && isInteractive) {
       this.pendingConfig = { remoteData, finalConfig: this.createEmptyFinalConfig() };
       return await this.startInteractiveRemoteConfig(remoteData);
     }
@@ -1457,7 +1466,7 @@ export class RemoteConfigModalComponent implements OnInit {
       name,
       type ?? '',
       paramRest,
-      { nonInteractive: true, obscure: true }
+      this.remoteManagementService.buildOpt(this.commandOptions())
     );
 
     if (!startResp || startResp.State === '') {
@@ -1483,12 +1492,12 @@ export class RemoteConfigModalComponent implements OnInit {
       const processedAnswer: unknown =
         state.question?.Option?.Type === 'bool' ? convertBoolAnswerToString(answer) : answer;
 
-      const resp = await this.remoteManagementService.continueRemoteConfigNonInteractive(
+      const resp = await this.remoteManagementService.continueRemoteConfigInteractive(
         name,
         state.question.State,
         processedAnswer,
         paramRest,
-        { nonInteractive: true }
+        this.remoteManagementService.buildOpt(this.commandOptions())
       );
 
       if (!resp || resp.State === '') {

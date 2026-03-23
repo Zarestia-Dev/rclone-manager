@@ -1,74 +1,61 @@
 import { Injectable } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { RemoteProvider, ConfigRecord, RcConfigQuestionResponse, LocalDrive } from '@app/types';
+import {
+  RemoteProvider,
+  ConfigRecord,
+  RcConfigOption,
+  RcConfigQuestionResponse,
+  LocalDrive,
+  CommandOption,
+  INTERACTIVE_REMOTES,
+} from '@app/types';
 
-/**
- * Service for managing rclone remotes
- * Handles CRUD operations, OAuth, and remote configuration
- * Self-refreshes on REMOTE_CACHE_UPDATED events from backend
- */
-@Injectable({
-  providedIn: 'root',
-})
+interface RawProvider {
+  Name: string;
+  Description: string;
+  Options?: RcConfigOption[];
+}
+
+type ProvidersResponse = Record<string, RawProvider[]>;
+
+@Injectable({ providedIn: 'root' })
 export class RemoteManagementService extends TauriBaseService {
-  /**
-   * Get all available remote types
-   */
+  isInteractiveRemote(type: string): boolean {
+    return INTERACTIVE_REMOTES.has(type.toLowerCase());
+  }
+
+  buildOpt(userOptions: CommandOption[]): Record<string, unknown> {
+    return Object.fromEntries(userOptions.map(o => [o.key, o.value]));
+  }
+
+  private mapProviders(response: ProvidersResponse): RemoteProvider[] {
+    return Object.values(response)
+      .flat()
+      .map(p => ({ name: p.Name, description: p.Description }));
+  }
+
   async getRemoteTypes(): Promise<RemoteProvider[]> {
-    const response =
-      await this.invokeCommand<Record<string, { Name: string; Description: string }[]>>(
-        'get_remote_types'
-      );
-
-    return Object.values(response)
-      .flat()
-      .map(provider => ({
-        name: provider.Name,
-        description: provider.Description,
-      }));
+    return this.mapProviders(await this.invokeCommand<ProvidersResponse>('get_remote_types'));
   }
 
-  /**
-   * Get OAuth-supported remote types
-   */
   async getOAuthSupportedRemotes(): Promise<RemoteProvider[]> {
-    const response = await this.invokeCommand<
-      Record<string, { Name: string; Description: string }[]>
-    >('get_oauth_supported_remotes');
+    return this.mapProviders(
+      await this.invokeCommand<ProvidersResponse>('get_oauth_supported_remotes')
+    );
+  }
 
-    return Object.values(response)
+  async getRemoteConfigFields(type: string): Promise<RcConfigOption[]> {
+    const response = await this.invokeCommand<ProvidersResponse>('get_remote_types');
+    const match = Object.values(response)
       .flat()
-      .map(provider => ({
-        name: provider.Name,
-        description: provider.Description,
-      }));
+      .find(p => p.Name === type);
+    return match?.Options ?? [];
   }
 
-  async getRemoteConfigFields(type: string): Promise<any[]> {
-    const response = await this.invokeCommand<any>('get_remote_types');
-
-    // Response can be either { [category]: Provider[] } or { providers: Provider[] }
-    let providers: any[] = [];
-    if (response && response.providers && Array.isArray(response.providers)) {
-      providers = response.providers;
-    } else if (response && typeof response === 'object') {
-      providers = Object.values(response).flat() as any[];
-    }
-
-    const match = providers.find(p => p && p.Name === type);
-    return Array.isArray(match?.Options) ? match.Options : [];
-  }
-
-  /**
-   * Get all remotes
-   */
   async getRemotes(): Promise<string[]> {
     return this.invokeCommand<string[]>('get_cached_remotes');
   }
 
-  /**
-   * Get all remote configurations
-   */
   async getAllRemoteConfigs(): Promise<Record<string, unknown>> {
     return this.invokeCommand<Record<string, unknown>>('get_configs');
   }
@@ -80,7 +67,7 @@ export class RemoteManagementService extends TauriBaseService {
   ): Promise<void> {
     await this.invokeWithNotification(
       'create_remote',
-      { name, parameters, opt },
+      { name, parameters, ...(opt && { opt }) },
       {
         successKey: 'backendSuccess.remote.created',
         successParams: { name },
@@ -89,9 +76,6 @@ export class RemoteManagementService extends TauriBaseService {
     );
   }
 
-  /**
-   * Update an existing remote
-   */
   async updateRemote(
     name: string,
     parameters: ConfigRecord,
@@ -99,7 +83,7 @@ export class RemoteManagementService extends TauriBaseService {
   ): Promise<void> {
     await this.invokeWithNotification(
       'update_remote',
-      { name, parameters, opt },
+      { name, parameters, ...(opt && { opt }) },
       {
         successKey: 'backendSuccess.remote.updated',
         successParams: { name },
@@ -108,20 +92,7 @@ export class RemoteManagementService extends TauriBaseService {
     );
   }
 
-  /**
-   * Delete a remote
-   */
   async deleteRemote(name: string): Promise<void> {
-    const confirmed = await this.notificationService.confirmModal(
-      this.translate.instant('remotes.deleteConfirm.title'),
-      this.translate.instant('remotes.deleteConfirm.message', { name }),
-      this.translate.instant('common.delete'),
-      this.translate.instant('common.cancel'),
-      { confirmButtonColor: 'warn', icon: 'delete' }
-    );
-
-    if (!confirmed) return;
-
     await this.invokeWithNotification(
       'delete_remote',
       { name },
@@ -132,15 +103,11 @@ export class RemoteManagementService extends TauriBaseService {
       }
     );
 
-    // Also cleanup settings silently
     await this.invokeCommand('delete_remote_settings', { remoteName: name }).catch(() => {
       this.notificationService.showError(this.translate.instant('remotes.deleteSettingsError'));
     });
   }
 
-  /**
-   * Quit OAuth process
-   */
   async quitOAuth(): Promise<void> {
     return this.invokeCommand('quit_rclone_oauth');
   }
@@ -149,9 +116,6 @@ export class RemoteManagementService extends TauriBaseService {
     return this.invokeCommand<LocalDrive[]>('get_local_drives');
   }
 
-  /**
-   * Start non-interactive remote config. Returns a question or an empty state when finished.
-   */
   async startRemoteConfigInteractive(
     name: string,
     type: string,
@@ -160,32 +124,25 @@ export class RemoteManagementService extends TauriBaseService {
   ): Promise<RcConfigQuestionResponse> {
     return this.invokeCommand('create_remote_interactive', {
       name,
-      // Send both casing variants for compatibility with different backend builds
-      rclone_type: type,
       rcloneType: type,
-      parameters: parameters ?? {},
-      opt: opt ?? {},
+      ...(parameters && { parameters }),
+      ...(opt && { opt }),
     });
   }
 
-  /**
-   * Continue non-interactive remote config flow by passing state and user's answer (result).
-   */
-  async continueRemoteConfigNonInteractive(
+  async continueRemoteConfigInteractive(
     name: string,
-    state: string,
+    stateToken: string,
     result: unknown,
     parameters?: Record<string, unknown>,
     opt?: Record<string, unknown>
   ): Promise<RcConfigQuestionResponse> {
     return this.invokeCommand('continue_create_remote_interactive', {
       name,
-      // Send both casing variants for compatibility
-      state_token: state,
-      stateToken: state,
+      stateToken,
       result,
-      parameters: parameters ?? {},
-      opt: opt ?? {},
+      ...(parameters && { parameters }),
+      ...(opt && { opt }),
     });
   }
 }

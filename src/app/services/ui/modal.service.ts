@@ -117,7 +117,7 @@ export class ModalService {
 
   openRcloneConfig(): MatDialogRef<RcloneConfigModalComponent> {
     return this.dialog.open(RcloneConfigModalComponent, {
-      ...CONFIG_MODAL_SIZE,
+      ...STANDARD_MODAL_SIZE,
       disableClose: true,
     });
   }

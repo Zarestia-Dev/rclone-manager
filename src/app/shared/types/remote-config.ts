@@ -23,7 +23,65 @@ export const DEFAULT_PROFILE_NAME = 'default';
 
 export type EditTarget = FlagType | 'remote' | 'runtimeRemote' | null;
 
-export const INTERACTIVE_REMOTES = ['iclouddrive', 'onedrive'];
+export const INTERACTIVE_REMOTES: ReadonlySet<string> = new Set(['onedrive', 'iclouddrive']);
+
+// ─── Command Option types ───────────────────────────────────────────────────
+
+export type CommandOptionType = 'boolean' | 'string' | 'number' | 'array';
+
+export interface CommandOption {
+  id: string;
+  key: string;
+  type: CommandOptionType;
+  value: boolean | string | number | string[];
+  managed?: boolean;
+}
+
+export interface PredefinedOption {
+  key: string;
+  label: string;
+  description: string;
+  type: CommandOptionType;
+  defaultValue: CommandOption['value'];
+}
+
+export const PREDEFINED_OPTIONS: PredefinedOption[] = [
+  {
+    key: 'obscure',
+    label: 'wizards.remoteConfig.predefinedOptions.obscure.label',
+    description: 'wizards.remoteConfig.predefinedOptions.obscure.description',
+    type: 'boolean',
+    defaultValue: true,
+  },
+  {
+    key: 'noObscure',
+    label: 'wizards.remoteConfig.predefinedOptions.noObscure.label',
+    description: 'wizards.remoteConfig.predefinedOptions.noObscure.description',
+    type: 'boolean',
+    defaultValue: true,
+  },
+  {
+    key: 'nonInteractive',
+    label: 'wizards.remoteConfig.predefinedOptions.nonInteractive.label',
+    description: 'wizards.remoteConfig.predefinedOptions.nonInteractive.description',
+    type: 'boolean',
+    defaultValue: true,
+  },
+  {
+    key: 'all',
+    label: 'wizards.remoteConfig.predefinedOptions.all.label',
+    description: 'wizards.remoteConfig.predefinedOptions.all.description',
+    type: 'boolean',
+    defaultValue: true,
+  },
+  {
+    key: 'noOutput',
+    label: 'wizards.remoteConfig.predefinedOptions.noOutput.label',
+    description: 'wizards.remoteConfig.predefinedOptions.noOutput.description',
+    type: 'boolean',
+    defaultValue: true,
+  },
+];
 
 export const REMOTE_CONFIG_KEYS = {
   mount: 'mountConfigs',
@@ -142,6 +200,7 @@ export interface RemoteConfigStepVisibility {
   name?: boolean;
   advanced?: boolean;
   interactive?: boolean;
+  commands?: boolean;
 }
 
 // Base interface for operation configs (shared by copy, sync, move)

@@ -895,6 +895,7 @@
       "switchToForm": "Switch to Form Mode",
       "switchToJson": "Switch to JSON Mode",
       "showAdvanced": "Show Advanced Options",
+      "hideAdvanced": "Hide Advanced Options",
       "showAdvancedDesc": "Display additional configuration options for power users",
       "useInteractive": "Use Interactive Configuration",
       "useInteractiveDesc": "Step-by-step configuration wizard with guided setup",
@@ -921,7 +922,40 @@
       "serveType": "Type",
       "loadingServeOptions": "Loading {{type}} options...",
       "serveDescription": "Select the remote path you want to serve. You can serve the entire remote or a specific folder.",
-      "operationDescription": "Configure source, destination, and auto-start options for this operation."
+      "operationDescription": "Configure source, destination, and auto-start options for this operation.",
+      "hideCommandOptions": "Hide Command Options",
+      "showCommandOptions": "Show Command Options",
+      "quickAdd": "Quick Add",
+      "managedOptionTooltip": "This option is automatically managed by the application",
+      "auto": "Auto",
+      "addValue": "Add value",
+      "removeOption": "Remove option",
+      "optionKey": "Option Key",
+      "optionKeyPlaceholder": "e.g., myFlag",
+      "optionType": "Option Type",
+      "addOption": "Add Option",
+      "predefinedOptions": {
+        "obscure": {
+          "label": "Obscure",
+          "description": "Treat passwords as plain text and obscure them before saving to config"
+        },
+        "noObscure": {
+          "label": "No Obscure",
+          "description": "Passwords are already obscured — skip the obscuring step"
+        },
+        "nonInteractive": {
+          "label": "Non-Interactive",
+          "description": "Return a JSON question blob instead of prompting; for app-driven config flows"
+        },
+        "all": {
+          "label": "All Questions",
+          "description": "Ask every config question, not just the post-config subset"
+        },
+        "noOutput": {
+          "label": "No Output",
+          "description": "Suppress any stdout output from the RC config call"
+        }
+      }
     },
     "serveTypes": {
       "http": "Serve files via HTTP",

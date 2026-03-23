@@ -19,7 +19,7 @@ import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { switchMap, startWith } from 'rxjs';
 
 import { RcConfigOption } from '@app/types';
-import { RcloneValueMapperService } from '@app/services';
+import { RcloneValueMapperService, matchesConfigSearch } from '@app/services';
 
 import {
   EditorView,
@@ -203,6 +203,7 @@ export class JsonEditorComponent {
   // ---- Inputs ----
   readonly formGroup = input.required<FormGroup>();
   readonly fieldDefs = input<RcConfigOption[]>([]);
+  readonly searchQuery = input('');
   readonly keyPrefix = input('');
 
   // ---- DI ----
@@ -231,10 +232,13 @@ export class JsonEditorComponent {
   readonly chips = computed<ChipDef[]>(() => {
     const value = this.formValue() as Record<string, unknown>;
     const defs = this.fieldDefs();
+    const query = this.searchQuery().trim().toLowerCase();
     const prefix = this.keyPrefix();
     const explicit = this.explicitKeys();
 
-    return defs.map(field => {
+    const filteredDefs = query ? defs.filter(f => matchesConfigSearch(f, query)) : defs;
+
+    return filteredDefs.map(field => {
       const controlKey = prefix + field.Name;
       const currentValue = value[controlKey] ?? null;
       const isChanged = !isDefaultValue(currentValue, field, this.valueMapper);
@@ -375,6 +379,9 @@ export class JsonEditorComponent {
       const cleaned: Record<string, unknown> = {};
 
       for (const [controlKey, val] of Object.entries(raw)) {
+        // Skip if a prefix is provided but the control key doesn't start with it
+        if (prefix && !controlKey.startsWith(prefix)) continue;
+
         // Strip prefix to get the display key shown in the JSON editor
         const displayKey =
           prefix && controlKey.startsWith(prefix) ? controlKey.slice(prefix.length) : controlKey;

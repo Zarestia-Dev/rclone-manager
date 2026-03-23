@@ -2,11 +2,10 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
-  effect,
   inject,
   input,
+  linkedSignal,
   output,
-  signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -47,15 +46,27 @@ export class InteractiveConfigStepComponent {
 
   readonly answerChange = output<string | number | boolean | null>();
 
-  readonly answer = signal<string | boolean | number | null>(null);
+  readonly answer = linkedSignal(() => {
+    const q = this.question();
+    return q ? getDefaultAnswerFromQuestion(q) : null;
+  });
 
-  // Keep an explicit selected index so duplicate option values remain selectable.
-  readonly selectedIndex = signal<number | null>(null);
+  readonly selectedIndex = linkedSignal<number | null>(() => {
+    const q = this.question();
+    const examples = q?.Option?.Examples;
+    if (!examples?.length) return null;
+    const initial = getDefaultAnswerFromQuestion(q!);
+    const idx = examples.findIndex(ex => ex.Value === initial);
+    return idx >= 0 ? idx : null;
+  });
+
   readonly selectedDisplayValue = computed(() =>
     this.getDisplayValue(this.selectedIndex(), this.question()?.Option?.Examples)
   );
 
   readonly isFieldRequired = computed(() => !!this.question()?.Option?.Required);
+
+  readonly isPassword = computed(() => !!this.question()?.Option?.IsPassword);
 
   readonly isValidAnswer = computed(() => {
     if (!this.isFieldRequired()) return true;
@@ -76,23 +87,6 @@ export class InteractiveConfigStepComponent {
     }
     return fallback;
   });
-
-  constructor() {
-    effect(() => {
-      const q = this.question();
-      const initialAnswer = q ? getDefaultAnswerFromQuestion(q) : null;
-      this.answer.set(initialAnswer);
-
-      const examples = q?.Option?.Examples;
-      if (!examples?.length) {
-        this.selectedIndex.set(null);
-        return;
-      }
-
-      const initialIndex = examples.findIndex(ex => ex.Value === initialAnswer);
-      this.selectedIndex.set(initialIndex >= 0 ? initialIndex : null);
-    });
-  }
 
   onAnswerChange(val: string | number | boolean | null): void {
     if (this.answer() === val) return;

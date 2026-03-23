@@ -117,7 +117,6 @@
                       </mat-expansion-panel-header>
 
                       <div class="category-items">
-                        <!-- ✅ Use service.categories directly — no method call needed -->
                         @for (categoryName of service.categories; track categoryName) {
                           <div
                             class="config-item"
@@ -173,8 +172,6 @@
   <!-- SETTINGS PAGE (overlay) -->
   @if (currentPage() !== 'home' && !isLoading()) {
     <div class="overlay" animate.enter="slide-overlay-enter" animate.leave="slide-overlay-leave">
-      <!-- ✅ Header is no longer duplicated. pageTitle() / pageTitleParams() are shared
-               computed helpers used by both the home header and this overlay header. -->
       <div class="modal-header" data-tauri-drag-region>
         <button
           mat-icon-button
@@ -190,6 +187,29 @@
       </div>
 
       <div class="modal-content">
+        <div class="dynamic-fields-header">
+          <span class="fields-count">
+            {{ filteredOptionsCount() }}
+            {{ 'wizards.remoteConfig.fields' | translate }}
+          </span>
+          <button
+            type="button"
+            mat-icon-button
+            class="json-toggle-btn"
+            [class.active]="showJsonMode()"
+            (click)="toggleJsonMode()"
+            [matTooltip]="
+              (showJsonMode()
+                ? 'wizards.remoteConfig.switchToForm'
+                : 'wizards.remoteConfig.switchToJson'
+              ) | translate
+            "
+            [attr.aria-pressed]="showJsonMode()"
+          >
+            <mat-icon svgIcon="code" />
+          </button>
+        </div>
+
         @if (hasSearchQuery()) {
           <div class="search-results-info">
             <small>{{
@@ -206,24 +226,33 @@
             <p>{{ 'modals.rcloneConfig.search.adjustTerms' | translate }}</p>
           </div>
         } @else {
-          <cdk-virtual-scroll-viewport [itemSize]="20" class="virtual-scroll-viewport">
-            <form [formGroup]="rcloneOptionsForm">
-              @for (option of virtualScrollData(); track trackByOption($index, option)) {
-                <app-setting-control
-                  [id]="'setting-' + option.Name"
-                  [option]="option"
-                  [formControlName]="getUniqueControlKey(option)"
-                  (valueCommit)="
-                    saveRCloneOption(
-                      getUniqueControlKey(option),
-                      isOptionAtDefault(getUniqueControlKey(option))
-                    )
-                  "
-                  (valueChanged)="onOptionValueChanged(getUniqueControlKey(option), $event)"
-                ></app-setting-control>
-              }
-            </form>
-          </cdk-virtual-scroll-viewport>
+          @if (showJsonMode()) {
+            <app-json-editor
+              [formGroup]="rcloneOptionsForm"
+              [fieldDefs]="categoryOptions()"
+              [searchQuery]="searchQuery()"
+              [keyPrefix]="editorKeyPrefix()"
+            />
+          } @else {
+            <cdk-virtual-scroll-viewport [itemSize]="20" class="virtual-scroll-viewport">
+              <form [formGroup]="rcloneOptionsForm">
+                @for (option of virtualScrollData(); track trackByOption($index, option)) {
+                  <app-setting-control
+                    [id]="'setting-' + option.Name"
+                    [option]="option"
+                    [formControlName]="getUniqueControlKey(option)"
+                    (valueCommit)="
+                      saveRCloneOption(
+                        getUniqueControlKey(option),
+                        isOptionAtDefault(getUniqueControlKey(option))
+                      )
+                    "
+                    (valueChanged)="onOptionValueChanged(getUniqueControlKey(option), $event)"
+                  ></app-setting-control>
+                }
+              </form>
+            </cdk-virtual-scroll-viewport>
+          }
         }
       </div>
     </div>

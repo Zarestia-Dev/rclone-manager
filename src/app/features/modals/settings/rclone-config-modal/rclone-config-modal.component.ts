@@ -28,9 +28,10 @@ import {
 } from '@app/services';
 import { RcConfigOption } from '@app/types';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
-import { SettingControlComponent } from 'src/app/shared/components';
+import { SettingControlComponent, JsonEditorComponent } from 'src/app/shared/components';
 import { ConfirmModalComponent } from 'src/app/shared/modals/confirm-modal/confirm-modal.component';
 import { TitleCasePipe } from '@angular/common';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 type PageType = 'home' | string;
 type GroupedRCloneOptions = Record<string, Record<string, RcConfigOption[]>>;
@@ -176,6 +177,8 @@ const MAIN_CATEGORY_CONFIG: Record<
     ReactiveFormsModule,
     SearchContainerComponent,
     SettingControlComponent,
+    JsonEditorComponent,
+    MatTooltipModule,
     TranslateModule,
   ],
   templateUrl: './rclone-config-modal.component.html',
@@ -200,6 +203,7 @@ export class RcloneConfigModalComponent implements OnInit {
   readonly isLoading = signal(true);
   readonly searchQuery = signal('');
   readonly isSearchVisible = signal(false);
+  readonly showJsonMode = signal(false);
   readonly savingOptions = signal(new Set<string>());
   readonly isResetting = signal(false);
 
@@ -321,6 +325,15 @@ export class RcloneConfigModalComponent implements OnInit {
       grouped[mainCat]?.push(service);
     }
     return grouped;
+  });
+
+  readonly editorKeyPrefix = computed(() => `${this.currentPage()}---${this.currentCategory()}---`);
+
+  readonly categoryOptions = computed<RcConfigOption[]>(() => {
+    const page = this.currentPage();
+    const category = this.currentCategory();
+    if (page === 'home' || !category) return [];
+    return this.groupedOptions()[page]?.[category] ?? [];
   });
 
   // ── Constructor ────────────────────────────────────────────────────────────
@@ -461,6 +474,10 @@ export class RcloneConfigModalComponent implements OnInit {
     if (!this.isSearchVisible()) {
       this.search$.next('');
     }
+  }
+
+  toggleJsonMode(): void {
+    this.showJsonMode.update(v => !v);
   }
 
   // ── Service panel state ────────────────────────────────────────────────────

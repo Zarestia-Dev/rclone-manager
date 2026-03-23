@@ -116,6 +116,7 @@
                   }}</mat-label>
                   <input
                     matInput
+                    [type]="isPassword() ? 'password' : 'text'"
                     [ngModel]="answer()"
                     (ngModelChange)="onAnswerChange($event)"
                     [disabled]="canceling()"

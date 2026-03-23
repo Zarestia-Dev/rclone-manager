@@ -21,14 +21,12 @@
         @case ('setup') {
           <div class="step-content">
             <app-remote-config-step
-              [form]="setupFormGroup()"
+              [form]="setupFormGroup"
               [remoteTypes]="remoteTypes()"
               [existingRemotes]="existingRemotes()"
-              [useInteractiveMode]="setupInteractiveModeValue()"
               [visibility]="{ advanced: false }"
-              (interactiveModeToggled)="
-                quickAddForm.get('setup.useInteractiveMode')?.setValue($event)
-              "
+              [initialCommandOptions]="commandOptions()"
+              (commandOptionsChanged)="commandOptions.set($event)"
             />
           </div>
         }
@@ -48,7 +46,7 @@
                   <mat-tab [label]="tab.label | translate">
                     <div class="operation-config">
                       <app-operation-config
-                        [opFormGroup]="operationFormGroup(tab.type)"
+                        [opFormGroup]="operationFormGroups.get(tab.type)!"
                         [operationType]="tab.type"
                         [currentRemoteName]="setupNameValue() || 'remote'"
                         [existingRemotes]="existingRemotes()"
@@ -127,11 +125,11 @@
             </button>
           }
 
+          <!-- type="submit" triggers ngSubmit — no (click) handler needed -->
           <button
             mat-flat-button
             class="primary"
             type="submit"
-            (click)="onSubmit()"
             [disabled]="isAuthInProgress() || quickAddFormStatus() !== 'VALID'"
           >
             @if (isAuthInProgress() && !isAuthCancelled()) {

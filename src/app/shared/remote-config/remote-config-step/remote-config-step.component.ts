@@ -20,10 +20,25 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIcon } from '@angular/material/icon';
+import { MatChipsModule, MatChipInputEvent } from '@angular/material/chips';
+import { MatSelectModule } from '@angular/material/select';
+import { COMMA, ENTER } from '@angular/cdk/keycodes';
 import { TranslateModule } from '@ngx-translate/core';
-import { RcConfigOption, RemoteType, RemoteConfigStepVisibility } from '@app/types';
-import { IconService, matchesConfigSearch } from '@app/services';
+import {
+  RcConfigOption,
+  RemoteType,
+  RemoteConfigStepVisibility,
+  CommandOption,
+  CommandOptionType,
+  PREDEFINED_OPTIONS,
+  PredefinedOption,
+} from '@app/types';
+import { IconService, matchesConfigSearch, RemoteManagementService } from '@app/services';
 import { JsonEditorComponent, SettingControlComponent } from 'src/app/shared/components';
+
+export const INITIAL_COMMAND_OPTIONS: CommandOption[] = [
+  { id: 'default-obscure', key: 'obscure', type: 'boolean', value: true, managed: false },
+];
 
 @Component({
   selector: 'app-remote-config-step',
@@ -36,6 +51,8 @@ import { JsonEditorComponent, SettingControlComponent } from 'src/app/shared/com
     MatAutocompleteModule,
     MatButtonModule,
     MatTooltipModule,
+    MatChipsModule,
+    MatSelectModule,
     SettingControlComponent,
     JsonEditorComponent,
     TranslateModule,
@@ -46,33 +63,39 @@ import { JsonEditorComponent, SettingControlComponent } from 'src/app/shared/com
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RemoteConfigStepComponent {
+  readonly remoteManagementService = inject(RemoteManagementService);
   readonly iconService = inject(IconService);
 
-  // --- Signal Inputs ---
+  readonly separatorKeysCodes = [ENTER, COMMA] as const;
+
+  // ── Inputs ────────────────────────────────────────────────────────────────
+
   readonly form = input.required<FormGroup>();
   readonly remoteFields = input<RcConfigOption[]>([]);
   readonly isLoading = input(false);
   readonly existingRemotes = input<string[]>([]);
   readonly isTypeLocked = input(false);
-  readonly useInteractiveMode = input(false);
   readonly remoteTypes = input<RemoteType[]>([]);
   readonly visibility = input<RemoteConfigStepVisibility>({});
   readonly showAdvancedOptions = input(false);
   readonly searchQuery = input('');
+  readonly initialCommandOptions = input<CommandOption[]>();
 
-  // --- Signal Outputs ---
+  // ── Outputs ───────────────────────────────────────────────────────────────
+
   readonly remoteTypeChanged = output<void>();
-  readonly interactiveModeToggled = output<boolean>();
   readonly advancedOptionsToggled = output<boolean>();
   readonly fieldChanged = output<{ fieldName: string; isChanged: boolean }>();
+  readonly commandOptionsChanged = output<CommandOption[]>();
 
-  // --- Visibility Computed ---
+  // ── Visibility ────────────────────────────────────────────────────────────
+
   readonly showTypeField = computed(() => this.visibility().type ?? true);
   readonly showAdvancedToggle = computed(() => this.visibility().advanced ?? true);
   readonly showNameField = computed(() => this.visibility().name ?? true);
-  readonly showInteractiveToggle = computed(() => this.visibility().interactive ?? true);
 
-  // --- Local Form Controls ---
+  // ── Local form controls ───────────────────────────────────────────────────
+
   readonly remoteSearchCtrl = new FormControl('');
   readonly providerSearchCtrl = new FormControl('');
 
@@ -85,18 +108,93 @@ export class RemoteConfigStepComponent {
     { initialValue: '' }
   );
 
-  // --- Local Signals ---
-  readonly selectedProvider = signal<string | undefined>(undefined);
-
   private readonly remoteSearchTerm = toSignal(this.remoteSearchCtrl.valueChanges, {
     initialValue: this.remoteSearchCtrl.value ?? '',
   });
+
   private readonly providerSearchTerm = toSignal(this.providerSearchCtrl.valueChanges, {
     initialValue: this.providerSearchCtrl.value ?? '',
   });
 
+  // ── Signals ───────────────────────────────────────────────────────────────
+
+  readonly selectedProvider = signal<string | undefined>(undefined);
+  readonly showJsonMode = signal(false);
+  readonly showCommandOptions = signal(false);
+  readonly commandOptions = signal<CommandOption[]>(INITIAL_COMMAND_OPTIONS);
+  readonly newOptionKey = signal('');
+  readonly newOptionType = signal<CommandOptionType>('boolean');
+
+  readonly predefinedOptions = PREDEFINED_OPTIONS;
+
+  // ── Computed ──────────────────────────────────────────────────────────────
+
+  readonly filteredRemotes = computed(() => {
+    const term = (this.remoteSearchTerm() ?? '').toLowerCase();
+    return this.remoteTypes().filter(
+      r => r.label.toLowerCase().includes(term) || r.value.toLowerCase().includes(term)
+    );
+  });
+
+  readonly providerField = computed(() => {
+    const fields = this.remoteFields();
+    const byName = fields.find(f => f.Name === 'provider' && f.Examples?.length);
+    if (byName) return byName;
+    if (!fields.some(f => f.Provider)) return null;
+    return fields.find(f => f.Examples?.length) ?? null;
+  });
+
+  readonly filteredProviders = computed(() => {
+    const field = this.providerField();
+    if (!field?.Examples) return [];
+    const term = (this.providerSearchTerm() ?? '').toLowerCase();
+    return field.Examples.filter(
+      o => o.Value?.toLowerCase().includes(term) || o.Help?.toLowerCase().includes(term)
+    );
+  });
+
+  readonly basicFields = computed(() => this.getFieldsByAdvanced(false));
+  readonly advancedFields = computed(() => this.getFieldsByAdvanced(true));
+  readonly allRemoteFields = computed(() => [...this.basicFields(), ...this.advancedFields()]);
+
+  readonly providerReady = computed(
+    () => !!this.remoteTypeValue() && (!this.providerField() || !!this.selectedProvider())
+  );
+
+  readonly availablePredefinedOptions = computed(() => {
+    const active = new Set(this.commandOptions().map(o => o.key));
+    return this.predefinedOptions.filter(p => !active.has(p.key));
+  });
+
+  // ── Effects ───────────────────────────────────────────────────────────────
+
   constructor() {
-    // Sync provider control value → selectedProvider signal
+    effect(() => {
+      this.commandOptionsChanged.emit(this.commandOptions());
+    });
+
+    effect(() => {
+      const initial = this.initialCommandOptions();
+      if (initial !== undefined) {
+        untracked(() => {
+          this.commandOptions.set(initial);
+        });
+      }
+    });
+
+    effect(onCleanup => {
+      const typeControl = this.form().get('type');
+      if (!typeControl) return;
+
+      const sub = typeControl.valueChanges
+        .pipe(startWith(typeControl.value))
+        .subscribe(val =>
+          this.remoteSearchCtrl.setValue(this.displayRemote(val), { emitEvent: false })
+        );
+
+      onCleanup(() => sub.unsubscribe());
+    });
+
     effect(onCleanup => {
       const fieldDef = this.providerField();
       if (!fieldDef) return;
@@ -105,17 +203,16 @@ export class RemoteConfigStepComponent {
       if (!control) return;
 
       const sub = control.valueChanges.pipe(startWith(control.value)).subscribe(val => {
-        const oldVal = untracked(this.selectedProvider);
-        if (val === oldVal) return;
+        const prev = untracked(this.selectedProvider);
+        if (val === prev) return;
 
         untracked(() => {
           this.selectedProvider.set(val);
-          if (oldVal) {
-            this.clearProviderDependentFields(this.remoteFields(), this.form(), val);
-          }
-          const displayVal = this.displayProvider(val);
-          if (displayVal !== this.providerSearchCtrl.value) {
-            this.providerSearchCtrl.setValue(displayVal, { emitEvent: false });
+          if (prev) this.clearProviderDependentFields(this.remoteFields(), this.form(), val);
+
+          const display = this.displayProvider(val);
+          if (display !== this.providerSearchCtrl.value) {
+            this.providerSearchCtrl.setValue(display, { emitEvent: false });
           }
         });
       });
@@ -123,94 +220,61 @@ export class RemoteConfigStepComponent {
       onCleanup(() => sub.unsubscribe());
     });
 
-    // Sync type control value → remote search control
-    effect(onCleanup => {
-      const typeControl = this.form().get('type');
-      if (!typeControl) return;
-
-      const sub = typeControl.valueChanges.pipe(startWith(typeControl.value)).subscribe(val => {
-        this.remoteSearchCtrl.setValue(this.displayRemote(val), { emitEvent: false });
-      });
-
-      onCleanup(() => sub.unsubscribe());
+    effect(() => {
+      const opts = { emitEvent: false } as const;
+      if (this.isTypeLocked()) {
+        this.remoteSearchCtrl.disable(opts);
+      } else {
+        this.remoteSearchCtrl.enable(opts);
+      }
     });
 
-    // Lock/unlock remote type search control
     effect(() => {
-      if (this.isTypeLocked()) {
-        this.remoteSearchCtrl.disable({ emitEvent: false });
-      } else {
-        this.remoteSearchCtrl.enable({ emitEvent: false });
-      }
+      const isInteractive = this.remoteManagementService.isInteractiveRemote(
+        this.remoteTypeValue()
+      );
+
+      untracked(() => {
+        const opts = this.commandOptions();
+        const hasNonInteractive = opts.some(o => o.key === 'nonInteractive');
+        const hasManagedNonInteractive = opts.some(o => o.key === 'nonInteractive' && o.managed);
+
+        if (isInteractive && !hasNonInteractive) {
+          this.commandOptions.update(list => [
+            ...list,
+            {
+              id: crypto.randomUUID(),
+              key: 'nonInteractive',
+              type: 'boolean',
+              value: true,
+              managed: true,
+            },
+          ]);
+        } else if (!isInteractive && hasManagedNonInteractive) {
+          this.commandOptions.update(list =>
+            list.filter(o => !(o.key === 'nonInteractive' && o.managed))
+          );
+        }
+      });
     });
   }
 
-  // --- Computed State ---
-
-  /** Filtered list of remotes based on search term */
-  readonly filteredRemotes = computed(() => {
-    const types = this.remoteTypes();
-    const term = (this.remoteSearchTerm() || '').toLowerCase();
-    return types.filter(
-      remote =>
-        remote.label.toLowerCase().includes(term) || remote.value.toLowerCase().includes(term)
-    );
-  });
-
-  /**
-   * The identified provider field — first checks for a field named 'provider' with examples,
-   * then falls back to any field with examples where provider-scoped fields exist.
-   */
-  readonly providerField = computed(() => {
-    const fields = this.remoteFields();
-    const byName = fields.find(
-      field => field.Name === 'provider' && field.Examples && field.Examples.length > 0
-    );
-    if (byName) return byName;
-
-    const hasProviderScoped = fields.some(field => field.Provider);
-    if (!hasProviderScoped) return null;
-
-    return fields.find(field => field.Examples && field.Examples.length > 0) ?? null;
-  });
-
-  /** Filtered provider examples */
-  readonly filteredProviders = computed(() => {
-    const field = this.providerField();
-    if (!field?.Examples) return [];
-
-    const term = (this.providerSearchTerm() || '').toLowerCase();
-    return field.Examples.filter(
-      opt =>
-        (opt.Value && opt.Value.toLowerCase().includes(term)) ||
-        (opt.Help && opt.Help.toLowerCase().includes(term))
-    );
-  });
-
-  readonly basicFields = computed(() => this.getFieldsByAdvanced(false));
-  readonly advancedFields = computed(() => this.getFieldsByAdvanced(true));
-  readonly providerReady = computed(() => !this.providerField() || !!this.selectedProvider());
-
-  // --- Logic Helpers ---
+  // ── Private helpers ───────────────────────────────────────────────────────
 
   private matchesProviderRule(rule: string | undefined, provider?: string): boolean {
     if (!rule) return true;
     if (!provider) return false;
-    const isNegated = rule.startsWith('!');
-    const parts = (isNegated ? rule.substring(1) : rule).split(',').map(p => p.trim());
-    return isNegated ? !parts.includes(provider) : parts.includes(provider);
+    const negated = rule.startsWith('!');
+    const parts = (negated ? rule.slice(1) : rule).split(',').map(p => p.trim());
+    return negated ? !parts.includes(provider) : parts.includes(provider);
   }
 
   private getFilteredField(field: RcConfigOption, provider?: string): RcConfigOption {
-    if (!field.Examples || field.Examples.length === 0 || !provider) return field;
-    const filteredExamples = field.Examples.filter(ex =>
-      this.matchesProviderRule(ex.Provider, provider)
-    );
-    return { ...field, Examples: filteredExamples };
-  }
-
-  private matchesSearch(field: RcConfigOption, query: string): boolean {
-    return matchesConfigSearch(field, query);
+    if (!field.Examples?.length || !provider) return field;
+    return {
+      ...field,
+      Examples: field.Examples.filter(ex => this.matchesProviderRule(ex.Provider, provider)),
+    };
   }
 
   private getFieldsByAdvanced(isAdvanced: boolean): RcConfigOption[] {
@@ -223,7 +287,7 @@ export class RemoteConfigStepComponent {
       .filter(f => f.Name !== providerName)
       .filter(f => this.matchesProviderRule(f.Provider, currentProvider))
       .map(f => this.getFilteredField(f, currentProvider))
-      .filter(f => this.matchesSearch(f, query));
+      .filter(f => matchesConfigSearch(f, query));
   }
 
   private clearProviderDependentFields(
@@ -231,18 +295,22 @@ export class RemoteConfigStepComponent {
     form: FormGroup,
     newProvider: string
   ): void {
-    fields.forEach(field => {
+    for (const field of fields) {
+      const control = form.get(field.Name);
+      if (!control) continue;
+
       if (field.Provider && !this.matchesProviderRule(field.Provider, newProvider)) {
-        form.get(field.Name)?.setValue(null);
+        control.setValue(null);
+        continue;
       }
-      if (field.Examples && field.Examples.length > 0) {
-        const control = form.get(field.Name);
-        const currentValue = control?.value;
-        if (currentValue && !this.isValueValidForProvider(field, currentValue, newProvider)) {
-          control?.setValue('');
+
+      if (field.Examples?.length) {
+        const current = control.value;
+        if (current && !this.isValueValidForProvider(field, current, newProvider)) {
+          control.setValue('');
         }
       }
-    });
+    }
   }
 
   private isValueValidForProvider(field: RcConfigOption, value: string, provider: string): boolean {
@@ -250,7 +318,13 @@ export class RemoteConfigStepComponent {
     return !(match && !this.matchesProviderRule(match.Provider, provider));
   }
 
-  // --- Template Bindings ---
+  // ── Template bindings ─────────────────────────────────────────────────────
+
+  readonly displayRemote = (value: string): string =>
+    this.remoteTypes().find(t => t.value === value)?.label ?? value ?? '';
+
+  readonly displayProvider = (value: string): string =>
+    this.providerField()?.Examples?.find(o => o.Value === value)?.Help ?? value;
 
   onTypeSelected(value: string): void {
     this.form().get('type')?.setValue(value);
@@ -262,64 +336,104 @@ export class RemoteConfigStepComponent {
     const nameControl = this.form().get('name');
     if (!nameControl || (nameControl.value && nameControl.dirty)) return;
 
-    const baseName = remoteType.replace(/\s+/g, '');
-    const existingNames = new Set(this.existingRemotes());
-    let newName = baseName;
-    let counter = 1;
+    const base = remoteType.replace(/\s+/g, '');
+    const existing = new Set(this.existingRemotes());
+    let name = base;
+    let n = 1;
+    while (existing.has(name)) name = `${base}-${n++}`;
 
-    while (existingNames.has(newName)) {
-      newName = `${baseName}-${counter}`;
-      counter++;
-    }
-
-    nameControl.setValue(newName, { emitEvent: true });
+    nameControl.setValue(name, { emitEvent: true });
     nameControl.updateValueAndValidity({ emitEvent: false });
-
-    if (nameControl.invalid) {
-      nameControl.markAsTouched();
-    }
+    if (nameControl.invalid) nameControl.markAsTouched();
   }
 
-  readonly displayRemote = (remoteValue: string): string => {
-    if (!remoteValue) return '';
-    return this.remoteTypes().find(t => t.value === remoteValue)?.label || remoteValue;
-  };
-
-  readonly displayProvider = (value: string): string => {
-    const field = this.providerField();
-    if (!field?.Examples) return value;
-    return field.Examples.find(o => o.Value === value)?.Help ?? value;
-  };
+  toggleJsonMode(): void {
+    this.showJsonMode.update(v => !v);
+  }
 
   toggleAdvancedOptions(): void {
     this.advancedOptionsToggled.emit(!this.showAdvancedOptions());
   }
 
-  toggleInteractiveMode(): void {
-    this.interactiveModeToggled.emit(!this.useInteractiveMode());
+  toggleCommandOptions(): void {
+    this.showCommandOptions.update(v => !v);
   }
 
   onProviderSelected(value: string): void {
     const field = this.providerField();
-    if (field) {
-      this.form().get(field.Name)?.setValue(value);
-    }
+    if (field) this.form().get(field.Name)?.setValue(value);
   }
 
   onFieldChanged(fieldName: string, isChanged: boolean): void {
     this.fieldChanged.emit({ fieldName, isChanged });
   }
 
-  // JSON editor toggle — switches both basic and advanced fields to a single JSON view.
-  readonly showJsonMode = signal(false);
+  // ── Command option mutations ──────────────────────────────────────────────
 
-  toggleJsonMode(): void {
-    this.showJsonMode.update(v => !v);
+  addPredefinedOption(predefined: PredefinedOption): void {
+    this.commandOptions.update(opts => [
+      ...opts,
+      {
+        id: crypto.randomUUID(),
+        key: predefined.key,
+        type: predefined.type,
+        value: predefined.defaultValue,
+        managed: false,
+      },
+    ]);
   }
 
-  // The JSON editor operates on the form directly (remote config fields are top-level
-  // controls on `form()`, not nested under an 'options' sub-group).
-  get allRemoteFields(): RcConfigOption[] {
-    return [...this.basicFields(), ...this.advancedFields()];
+  addCustomOption(): void {
+    const key = this.newOptionKey().trim();
+    if (!key) return;
+
+    const type = this.newOptionType();
+    const value: CommandOption['value'] =
+      type === 'boolean' ? true : type === 'number' ? 0 : type === 'array' ? [] : '';
+
+    this.commandOptions.update(opts => [...opts, { id: crypto.randomUUID(), key, type, value }]);
+    this.newOptionKey.set('');
+  }
+
+  removeOption(id: string): void {
+    this.commandOptions.update(opts => opts.filter(o => o.id !== id));
+  }
+
+  // Single update method — replaces separate updateBooleanOption / updateStringOption
+  updateOption(id: string, value: CommandOption['value']): void {
+    this.commandOptions.update(opts => opts.map(o => (o.id === id ? { ...o, value } : o)));
+  }
+
+  // Number input needs parsing before the generic update
+  updateNumberOption(id: string, rawValue: string): void {
+    const num = parseFloat(rawValue);
+    if (!isNaN(num)) this.updateOption(id, num);
+  }
+
+  addArrayChip(id: string, event: MatChipInputEvent): void {
+    const val = event.value.trim();
+    if (!val) return;
+    this.commandOptions.update(opts =>
+      opts.map(o => (o.id === id ? { ...o, value: [...(o.value as string[]), val] } : o))
+    );
+    event.chipInput!.clear();
+  }
+
+  removeArrayChip(id: string, chip: string): void {
+    this.commandOptions.update(opts =>
+      opts.map(o =>
+        o.id === id ? { ...o, value: (o.value as string[]).filter(v => v !== chip) } : o
+      )
+    );
+  }
+
+  // ── Template type helpers ─────────────────────────────────────────────────
+
+  asStringArray(value: CommandOption['value']): string[] {
+    return Array.isArray(value) ? value : [];
+  }
+
+  asString(value: CommandOption['value']): string {
+    return typeof value === 'string' ? value : String(value);
   }
 }

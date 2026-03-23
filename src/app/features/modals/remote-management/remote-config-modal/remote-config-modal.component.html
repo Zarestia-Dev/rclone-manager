@@ -313,13 +313,13 @@
                 [isLoading]="isRemoteConfigLoading()"
                 [existingRemotes]="existingRemotes()"
                 [isTypeLocked]="!!editTarget() || cloneTarget()"
-                [useInteractiveMode]="useInteractiveMode()"
                 [searchQuery]="searchQuery()"
                 [showAdvancedOptions]="showAdvancedOptions()"
+                [initialCommandOptions]="commandOptions()"
                 (remoteTypeChanged)="onRemoteTypeChange()"
-                (interactiveModeToggled)="useInteractiveMode.set($event)"
                 (advancedOptionsToggled)="showAdvancedOptions.set($event)"
                 (fieldChanged)="onRemoteFieldChanged($event.fieldName, $event.isChanged)"
+                (commandOptionsChanged)="commandOptions.set($event)"
               />
             </section>
           }
@@ -380,10 +380,16 @@
                   [remoteTypes]="remoteTypes()"
                   [isLoading]="isLoadingRuntimeRemoteFields()"
                   [existingRemotes]="existingRemotes()"
-                  [useInteractiveMode]="false"
                   [searchQuery]="searchQuery()"
-                  [visibility]="{ type: false, name: false, advanced: false, interactive: false }"
+                  [visibility]="{
+                    type: false,
+                    name: false,
+                    advanced: false,
+                    interactive: false,
+                    commands: false,
+                  }"
                   [showAdvancedOptions]="true"
+                  [initialCommandOptions]="commandOptions()"
                 />
               </section>
             }

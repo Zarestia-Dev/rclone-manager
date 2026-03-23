@@ -888,6 +888,7 @@
       "switchToForm": "Cambiar a modo formulario",
       "switchToJson": "Cambiar a modo JSON",
       "showAdvanced": "Mostrar opciones avanzadas",
+      "hideAdvanced": "Ocultar opciones avanzadas",
       "showAdvancedDesc": "Mostrar opciones de configuración adicionales para usuarios avanzados",
       "useInteractive": "Usar configuración interactiva",
       "useInteractiveDesc": "Asistente de configuración paso a paso con configuración guiada",
@@ -914,7 +915,40 @@
       "serveType": "Tipo",
       "loadingServeOptions": "Cargando opciones de {{type}}...",
       "serveDescription": "Seleccione la ruta remota que desea servir. Puede servir todo el control remoto o una carpeta específica.",
-      "operationDescription": "Configure las opciones de origen, destino e inicio automático para esta operación."
+      "operationDescription": "Configure las opciones de origen, destino e inicio automático para esta operación.",
+      "hideCommandOptions": "Ocultar opciones de comando",
+      "showCommandOptions": "Mostrar opciones de comando",
+      "quickAdd": "Añadir rápido",
+      "managedOptionTooltip": "Esta opción es gestionada automáticamente por la aplicación",
+      "auto": "Auto",
+      "addValue": "Añadir valor",
+      "removeOption": "Eliminar opción",
+      "optionKey": "Clave de opción",
+      "optionKeyPlaceholder": "p.ej., miFlag",
+      "optionType": "Tipo de opción",
+      "addOption": "Añadir opción",
+      "predefinedOptions": {
+        "obscure": {
+          "label": "Oscurecer",
+          "description": "Trate las contraseñas como texto plano y oscurézcalas antes de guardarlas en la configuración"
+        },
+        "noObscure": {
+          "label": "No oscurecer",
+          "description": "Las contraseñas ya están oscurecidas: omita el paso de oscurecimiento"
+        },
+        "nonInteractive": {
+          "label": "No interactivo",
+          "description": "Devuelve un bloque de preguntas JSON en lugar de solicitarlo; para flujos de configuración controlados por la aplicación"
+        },
+        "all": {
+          "label": "Todas las preguntas",
+          "description": "Haga todas las preguntas de configuración, no solo el subconjunto posterior a la configuración"
+        },
+        "noOutput": {
+          "label": "Sin salida",
+          "description": "Suprimir cualquier salida estándar de la llamada de configuración de RC"
+        }
+      }
     },
     "serveTypes": {
       "http": "Servir archivos a través de HTTP",

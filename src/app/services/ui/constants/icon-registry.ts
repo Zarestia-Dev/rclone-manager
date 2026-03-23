@@ -94,6 +94,7 @@ export const BASE_ICONS: Record<string, string> = {
   // ------------------- General Icons -------------------
   home: 'assets/icons/general/home.svg',
   gear: 'assets/icons/general/gear.svg',
+  tune: 'assets/icons/general/tune.svg',
   info: 'assets/icons/general/info.svg',
   bug: 'assets/icons/general/bug.svg',
   chart: 'assets/icons/general/chart.svg',
