@@ -141,7 +141,5 @@ export class OnboardingStateService {
 
   private async runPostOnboardingSetup(): Promise<void> {
     await this.systemHealthService.checkMountPluginAndPromptRepair();
-    await this.appUpdaterService.initialize();
-    await this.rcloneUpdateService.initialize();
   }
 }

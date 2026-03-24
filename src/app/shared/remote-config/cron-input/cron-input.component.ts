@@ -6,6 +6,8 @@ import {
   effect,
   output,
   DestroyRef,
+  signal,
+  computed,
 } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -25,10 +27,11 @@ import {
   from,
   map,
   of,
+  startWith,
   switchMap,
   tap,
 } from 'rxjs';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { SchedulerService } from '@app/services';
 import { CronValidationResponse } from '@app/types';
 import { toString as cronstrue } from 'cronstrue';
@@ -76,9 +79,27 @@ export class CronInputComponent {
 
   private isUpdatingForms = false;
   cronControl = new FormControl<string>('');
-  validationResponse: CronValidationResponse | null = null;
-  validationError = '';
-  selectedPreset: PresetKey | null = null;
+
+  readonly validationResponse = signal<CronValidationResponse | null>(null);
+  readonly validationError = signal('');
+  readonly selectedPreset = signal<PresetKey | null>(null);
+
+  readonly cronValue = toSignal(
+    this.cronControl.valueChanges.pipe(startWith(this.cronControl.value ?? '')),
+    { initialValue: '' }
+  );
+
+  readonly humanReadableSchedule = computed(() => {
+    const cron = this.cronValue()?.trim();
+    if (!cron) return '';
+    try {
+      const locale = getCronstrueLocale(this.translate.getCurrentLang());
+      return cronstrue(cron, { locale });
+    } catch {
+      return cron;
+    }
+  });
+
   userTimezone = this.getUserTimezoneOffset();
   readonly daysOfMonth = Array.from({ length: 31 }, (_, i) => i + 1);
 
@@ -206,7 +227,7 @@ export class CronInputComponent {
     try {
       // 1. Match Preset
       const preset = this.presetOptions.find(p => p.cron === cron);
-      this.selectedPreset = preset ? preset.key : null;
+      this.selectedPreset.set(preset ? preset.key : null);
 
       // 2. Parse into Advanced Form (Standard 5-part cron)
       const parts = cron.split(' ');
@@ -237,7 +258,7 @@ export class CronInputComponent {
   // ===================================
 
   private updateFromSimpleForm(): void {
-    this.selectedPreset = null;
+    this.selectedPreset.set(null);
     const { frequency, time, dayOfWeek, dayOfMonth, intervalHours } = this.simpleForm.getRawValue();
     const hours = time instanceof Date ? time.getHours() : 9;
     const minutes = time instanceof Date ? time.getMinutes() : 0;
@@ -262,14 +283,14 @@ export class CronInputComponent {
   }
 
   private updateFromAdvancedForm(): void {
-    this.selectedPreset = null;
+    this.selectedPreset.set(null);
     const v = this.advancedForm.getRawValue();
     const cron = `${v.minute} ${v.hour} ${v.dayOfMonth} ${v.month} ${v.dayOfWeek}`;
     this.setCronControlValue(cron);
   }
 
   applyPreset(key: PresetKey, cron: string): void {
-    this.selectedPreset = key;
+    this.selectedPreset.set(key);
     this.setCronControlValue(cron);
   }
 
@@ -344,28 +365,19 @@ export class CronInputComponent {
   // ===================================
 
   private applyValidationResult(expression: string, result: CronValidationResponse): void {
-    this.validationResponse = result;
-    this.validationError = result.isValid ? '' : result.errorMessage || 'Invalid cron expression';
+    this.validationResponse.set(result);
+    this.validationError.set(
+      result.isValid ? '' : result.errorMessage || 'Invalid cron expression'
+    );
     this.cronControl.setErrors(result.isValid ? null : { invalidCron: true });
     this.cronChange.emit(expression);
     this.validationChange.emit(result);
   }
 
   private resetValidation(): void {
-    this.validationResponse = null;
-    this.cronChange.emit(null);
+    this.validationResponse.set(null);
     this.validationChange.emit({ isValid: false });
-  }
-
-  getHumanReadableSchedule(): string {
-    const cron = this.cronControl.value?.trim();
-    if (!cron) return '';
-    try {
-      const locale = getCronstrueLocale(this.translate.getCurrentLang());
-      return cronstrue(cron, { locale });
-    } catch {
-      return cron;
-    }
+    this.cronChange.emit(null);
   }
 
   formatNextRun(dateString: string | null): string {

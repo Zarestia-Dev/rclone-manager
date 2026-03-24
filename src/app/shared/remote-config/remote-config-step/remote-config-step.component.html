@@ -55,9 +55,12 @@
     @if (showTypeField() && !remoteType && !isLoading()) {
       <div class="empty-state">
         <div class="empty-state-icon-ring">
-          @for (icon of randomIconList(); track icon) {
-            <mat-icon [svgIcon]="icon" class="empty-state-icon"></mat-icon>
-          }
+          <mat-icon
+            [svgIcon]="randomIcon()"
+            class="empty-state-icon"
+            [class.anim-icon-fade-a]="animTrigger() % 2 === 0"
+            [class.anim-icon-fade-b]="animTrigger() % 2 === 1"
+          ></mat-icon>
         </div>
         <div class="empty-state-body">
           <h3 class="empty-state-title">
@@ -177,7 +180,7 @@
           }
         </div>
         <div class="mode-actions">
-          @if (visibility().commands !== false) {
+          @if (showCommandField()) {
             @let cmdLabel =
               (showCommandOptions()
                 ? 'wizards.remoteConfig.hideCommandOptions'
@@ -292,12 +295,12 @@
                   @switch (optType) {
                     @case ('boolean') {
                       <mat-slide-toggle
-                        [checked]="$any(opt.value)"
+                        [checked]="asBoolean(opt.value)"
                         (change)="updateOption(opt.key, $event.checked)"
                       ></mat-slide-toggle>
                     }
                     @case ('string') {
-                      <mat-form-field appearance="fill" class="option-value-field">
+                      <mat-form-field appearance="fill" class="option-value-field no-subscript">
                         <input
                           matInput
                           [value]="asString(opt.value)"
@@ -307,7 +310,7 @@
                       </mat-form-field>
                     }
                     @case ('number') {
-                      <mat-form-field appearance="fill" class="option-value-field">
+                      <mat-form-field appearance="fill" class="option-value-field no-subscript">
                         <input
                           matInput
                           type="number"
@@ -320,11 +323,11 @@
                     @case ('array') {
                       <mat-form-field
                         appearance="fill"
-                        class="option-value-field option-chip-field"
+                        class="option-value-field option-chip-field no-subscript"
                       >
                         <mat-chip-grid #chipGrid>
-                          @for (chip of asStringArray(opt.value); track chip) {
-                            <mat-chip-row (removed)="removeArrayChip(opt.key, chip)">
+                          @for (chip of asStringArray(opt.value); track chip; let ci = $index) {
+                            <mat-chip-row (removed)="removeArrayChip(opt.key, ci)">
                               {{ chip }}
                               <button matChipRemove [attr.aria-label]="'remove ' + chip">
                                 <mat-icon svgIcon="close" />
@@ -358,7 +361,7 @@
 
         <!-- Add custom option -->
         <div class="add-custom-row">
-          <mat-form-field appearance="fill" class="custom-key-field">
+          <mat-form-field appearance="fill" class="custom-key-field no-subscript">
             <mat-label>{{ 'wizards.remoteConfig.optionKey' | translate }}</mat-label>
             <mat-icon matPrefix svgIcon="terminal" class="field-icon" />
             <input
@@ -370,7 +373,7 @@
             />
           </mat-form-field>
 
-          <mat-form-field appearance="fill" class="custom-type-field">
+          <mat-form-field appearance="fill" class="custom-type-field no-subscript">
             <mat-label>{{ 'wizards.remoteConfig.optionType' | translate }}</mat-label>
             <mat-select [value]="newOptionType()" (valueChange)="newOptionType.set($event)">
               <mat-option value="boolean">boolean</mat-option>

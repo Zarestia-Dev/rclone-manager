@@ -2,9 +2,12 @@
   <ng-template #settingInfo let-opt>
     <div class="setting">
       <div class="setting-info">
-        <strong>{{
-          opt.Name | rcloneOptionTranslate: 'title' : opt.FieldName || opt.Name : provider()
-        }}</strong>
+        <strong>
+          {{ opt.Name | rcloneOptionTranslate: 'title' : opt.FieldName || opt.Name : provider() }}
+          @if (opt.Required) {
+            <span class="required-asterisk">*</span>
+          }
+        </strong>
         <p
           class="help-text"
           [innerHTML]="

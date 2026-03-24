@@ -114,10 +114,12 @@
         }
 
         @case ('operations') {
-          <button type="button" mat-button (click)="prevStep()" [disabled]="isAuthInProgress()">
-            <mat-icon iconPositionStart svgIcon="left-arrow"></mat-icon>
-            {{ 'common.back' | translate }}
-          </button>
+          @if (!isAuthInProgress()) {
+            <button type="button" mat-button (click)="prevStep()">
+              <mat-icon iconPositionStart svgIcon="left-arrow"></mat-icon>
+              {{ 'common.back' | translate }}
+            </button>
+          }
 
           @if (isAuthInProgress() && !isAuthCancelled()) {
             <button type="button" mat-button class="warn" (click)="cancelAuth()">

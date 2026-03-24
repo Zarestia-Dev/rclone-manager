@@ -21,7 +21,7 @@
   .section-description {
     font-size: var(--font-size-sm);
     color: var(--window-fg-color-secondary);
-    margin: 0 0 var(--space-xs) 0;
+    margin: var(--space-xs) 0 0;
     line-height: 1.5;
 
     strong {

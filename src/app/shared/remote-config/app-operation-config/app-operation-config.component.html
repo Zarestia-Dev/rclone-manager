@@ -89,16 +89,17 @@
                     : ('wizards.appOperation.sourcePath' | translate)
                 "
                 (input)="onInputChanged($event, 'source')"
-                [cdkMenuTriggerFor]="sourceAutocompleteMenu"
+                [cdkMenuTriggerFor]="isSourcePickerDisabled() ? null : sourceAutocompleteMenu"
               />
               <button
                 matIconButton
                 matSuffix
+                [disabled]="isSourcePickerDisabled()"
                 (click)="selectRemotePath('source'); $event.stopPropagation()"
                 type="button"
                 [attr.aria-label]="'wizards.appOperation.selectRemoteSource' | translate"
               >
-                <mat-icon svgIcon="folder" class="accent"></mat-icon>
+                <mat-icon svgIcon="folder" [class.accent]="!isSourcePickerDisabled()"></mat-icon>
               </button>
             </mat-form-field>
           </div>
@@ -163,20 +164,21 @@
                 [attr.aria-label]="'wizards.appOperation.sourcePath' | translate"
                 (click)="$event.stopPropagation()"
                 (input)="onInputChanged($event, 'source')"
-                [cdkMenuTriggerFor]="sourceAutocompleteMenu"
+                [cdkMenuTriggerFor]="isSourcePickerDisabled() ? null : sourceAutocompleteMenu"
               />
 
               <button
                 matIconButton
                 matSuffix
+                [disabled]="isSourcePickerDisabled()"
                 (click)="selectRemotePath('source'); $event.stopPropagation()"
                 type="button"
                 [attr.aria-label]="'wizards.appOperation.selectRemoteSource' | translate"
               >
                 <mat-icon
                   svgIcon="folder"
-                  [class.purple]="sourcePathType() === 'local'"
-                  [class.accent]="sourcePathType() !== 'local'"
+                  [class.purple]="sourcePathType() === 'local' && !isSourcePickerDisabled()"
+                  [class.accent]="sourcePathType() !== 'local' && !isSourcePickerDisabled()"
                 ></mat-icon>
               </button>
             </mat-form-field>
@@ -185,7 +187,7 @@
       </div>
 
       <!-- Destination Path Section -->
-      @if (isMount() && !isServe() && showDestPath()) {
+      @if (isMount() && showDestPath()) {
         <div class="path-section">
           <div class="path-input-wrapper">
             <mat-form-field appearance="fill">
@@ -278,20 +280,21 @@
                 [attr.aria-label]="'wizards.appOperation.destPath' | translate"
                 (click)="$event.stopPropagation()"
                 (input)="onInputChanged($event, 'dest')"
-                [cdkMenuTriggerFor]="destAutocompleteMenu"
+                [cdkMenuTriggerFor]="isDestPickerDisabled() ? null : destAutocompleteMenu"
               />
 
               <button
                 matIconButton
                 matSuffix
+                [disabled]="isDestPickerDisabled()"
                 (click)="selectRemotePath('dest'); $event.stopPropagation()"
                 type="button"
                 [attr.aria-label]="'wizards.appOperation.selectDestFolder' | translate"
               >
                 <mat-icon
                   svgIcon="folder"
-                  [class.purple]="destPathType() === 'local'"
-                  [class.accent]="destPathType() !== 'local'"
+                  [class.purple]="destPathType() === 'local' && !isDestPickerDisabled()"
+                  [class.accent]="destPathType() !== 'local' && !isDestPickerDisabled()"
                 ></mat-icon>
               </button>
 

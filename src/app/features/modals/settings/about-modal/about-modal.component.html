@@ -1,8 +1,6 @@
 <div class="about-modal">
   <div class="modal-header" data-tauri-drag-region [class.scrolled]="scrolled()">
-    <button class="ghost-header-btn" aria-hidden="true" tabindex="-1">
-      <mat-icon></mat-icon>
-    </button>
+    <div class="ghost-header-spacer" aria-hidden="true"></div>
     <p class="header-title-ghost">{{ 'modals.about.title' | translate }}</p>
     <button mat-icon-button (click)="close()" [aria-label]="'common.close' | translate">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
@@ -35,7 +33,7 @@
       @if (buildTypeVal) {
         <span
           class="platform-badge"
-          [class]="buildTypeVal"
+          [ngClass]="buildTypeVal"
           [matTooltip]="getChannelLabel(buildTypeVal) | translate"
         >
           <mat-icon svgIcon="package"></mat-icon>
@@ -44,7 +42,7 @@
       }
     </div>
 
-    <div class="about-list">
+    <div class="about-list" role="tablist">
       @for (item of navItems; track item.viewId) {
         <button
           matButton
@@ -63,6 +61,8 @@
         <button
           matButton
           class="about-item"
+          role="tab"
+          [attr.aria-selected]="currentView().id === 'updates'"
           (click)="navigateTo('updates')"
           [matBadge]="appUpdateAvailable() || appRestartRequired() ? '!' : null"
         >

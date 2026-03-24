@@ -26,6 +26,11 @@
       font-size: var(--font-size-base);
       margin-bottom: var(--space-xs);
       color: var(--window-fg-color);
+
+      .required-asterisk {
+        color: var(--warn-color);
+        margin-left: 2px;
+      }
     }
 
     .help-text {

@@ -6,23 +6,6 @@
 }
 
 // ----------------------------------------------------------------------------
-// Mixins & Shared Styles
-// ----------------------------------------------------------------------------
-@mixin status-box($bg-color, $text-color) {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-md);
-  border-radius: var(--radius-md);
-  background: rgba($bg-color, 0.1);
-  color: $text-color;
-
-  &.error {
-    background: rgba($bg-color, 0.08);
-  }
-}
-
-// ----------------------------------------------------------------------------
 // Main Modal Layout
 // ----------------------------------------------------------------------------
 .about-modal {
@@ -74,6 +57,15 @@
       box-shadow: none;
     }
   }
+}
+
+// ----------------------------------------------------------------------------
+// Header spacer
+// ----------------------------------------------------------------------------
+.ghost-header-spacer {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
 }
 
 // ----------------------------------------------------------------------------
@@ -190,11 +182,23 @@
 // ----------------------------------------------------------------------------
 .rclone-info {
   .loading {
-    @include status-box(var(--primary-color-rgb), var(--primary-color));
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+    border-radius: var(--radius-md);
+    background: rgba(var(--primary-color-rgb), 0.1);
+    color: var(--primary-color);
   }
 
   .error {
-    @include status-box(var(--warn-color-rgb), var(--warn-color));
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+    border-radius: var(--radius-md);
+    background: rgba(var(--warn-color-rgb), 0.08);
+    color: var(--warn-color);
   }
 
   .rclone-hero {
@@ -212,7 +216,6 @@
       display: flex;
       align-items: start;
       flex-direction: column;
-      // Replaced hard-coded 4px with a spacing token
       gap: var(--space-xxs);
 
       .rclone-name {
@@ -449,7 +452,6 @@
       padding: var(--space-lg);
       box-shadow: var(--shadow-gnome);
       transition: var(--transition-standard);
-      // Removed will-change: box-shadow — no animation targets this property
       display: flex;
       flex-direction: column;
       gap: var(--space-sm);

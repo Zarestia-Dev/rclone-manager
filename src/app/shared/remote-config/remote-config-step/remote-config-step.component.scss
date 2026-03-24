@@ -1,55 +1,68 @@
-@keyframes scaleIn {
-  from {
+@keyframes iconFadeCycleA {
+  0% {
     opacity: 0;
-    transform: scale(0.98) translateY(3px);
+    transform: perspective(400px) rotateX(-15deg) scale(0.92) translateY(6px);
   }
-  to {
+  15% {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: perspective(400px) rotateX(0deg) scale(1) translateY(0);
+  }
+  85% {
+    opacity: 1;
+    transform: perspective(400px) rotateX(0deg) scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: perspective(400px) rotateX(15deg) scale(1.06) translateY(-6px);
   }
 }
 
-@keyframes badgeIn {
-  from {
+@keyframes iconFadeCycleB {
+  0% {
     opacity: 0;
-    transform: scale(0.88) translateX(-4px);
+    transform: perspective(400px) rotateX(-15deg) scale(0.92) translateY(6px);
   }
-  to {
+  15% {
     opacity: 1;
-    transform: scale(1) translateX(0);
+    transform: perspective(400px) rotateX(0deg) scale(1) translateY(0);
   }
-}
-
-@keyframes iconCycle {
-  from {
+  85% {
+    opacity: 1;
+    transform: perspective(400px) rotateX(0deg) scale(1) translateY(0);
+  }
+  100% {
     opacity: 0;
-    transform: scale(0.8);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
+    transform: perspective(400px) rotateX(15deg) scale(1.06) translateY(-6px);
   }
 }
 
 // ── Animation utility classes ──────────────────────────────────────────────
 
 .anim-field {
-  animation: slideInFromBottomIn 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  animation: slideInFromBottomIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .anim-panel {
-  animation: scaleIn 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  animation: scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .option-row {
-  animation: slideInFromBottomIn 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-  animation-delay: calc(var(--row-index, 0) * 35ms);
+  animation: slideInFromBottomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--row-index, 0) * 45ms);
 }
 
 .anim-setting-control {
   display: block;
-  animation: slideInFromBottomIn 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-  animation-delay: calc(var(--field-index, 0) * 28ms);
+  animation: slideInFromBottomIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--field-index, 0) * 35ms);
+}
+
+.anim-icon-fade-a {
+  animation: iconFadeCycleA 2.8s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.anim-icon-fade-b {
+  animation: iconFadeCycleB 2.8s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
 // ============================================================================
@@ -160,28 +173,37 @@ form {
   padding: 40px var(--space-lg) 32px;
   background: rgba(var(--accent-color-rgb), 0.03);
   border: 1px dashed rgba(var(--accent-color-rgb), 0.2);
-  border-radius: var(--radius-lg, 16px);
+  border-radius: var(--radius-md);
+  opacity: 1 !important;
   overflow: hidden;
 
   &-icon-ring {
     position: relative;
     z-index: 1;
-    width: 64px;
-    height: 64px;
-    border-radius: 18px;
-    background: rgba(var(--accent-color-rgb), 0.07);
-    box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.16);
+    width: 72px;
+    height: 72px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(
+      135deg,
+      rgba(var(--accent-color-rgb), 0.14) 0%,
+      rgba(var(--primary-color-rgb), 0.08) 100%
+    );
+    box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.18);
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+
+    &:hover {
+      box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.25);
+    }
   }
 
   &-icon {
-    width: 32px;
-    height: 32px;
+    width: var(--icon-size-lg);
+    height: var(--icon-size-lg);
     color: var(--primary-color);
-    opacity: 0.9;
-    animation: iconCycle 0.32s cubic-bezier(0.34, 1.08, 0.64, 1) both;
+    will-change: transform, opacity;
   }
 
   &-body {
@@ -207,13 +229,10 @@ form {
   }
 
   &-pills {
-    position: relative;
-    z-index: 1;
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 6px;
-    margin-top: 4px;
+    gap: var(--space-xs);
   }
 }
 
@@ -549,13 +568,13 @@ form {
       .option-value-field {
         width: 100%;
 
-        ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+        &.no-subscript .mat-mdc-form-field-subscript-wrapper {
           display: none;
         }
       }
 
       .option-chip-field {
-        ::ng-deep .mat-mdc-form-field-infix {
+        .mat-mdc-form-field-infix {
           min-height: 40px;
         }
       }
@@ -593,7 +612,7 @@ form {
       flex: 2;
       min-width: 0;
 
-      ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+      &.no-subscript .mat-mdc-form-field-subscript-wrapper {
         display: none;
       }
 
@@ -606,7 +625,7 @@ form {
       flex: 1;
       min-width: 0;
 
-      ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+      &.no-subscript .mat-mdc-form-field-subscript-wrapper {
         display: none;
       }
     }

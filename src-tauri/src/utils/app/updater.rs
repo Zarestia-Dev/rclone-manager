@@ -232,16 +232,34 @@ pub mod app_updates {
             }
         }
 
-        let update_metadata = update.as_ref().map(|update| UpdateMetadata {
-            version: update.version.clone(),
-            current_version: update.current_version.clone(),
-            release_tag: release.tag_name.clone(),
-            release_notes: release.body.clone(),
-            release_date: release.published_at.clone(),
-            release_url: Some(release.html_url.clone()),
-            update_in_progress: false,
-            restart_required: false,
-        });
+        let update_metadata = if let Some(ref u) = update {
+            // Fetch the specific release by tag to ensure we have the full body/notes
+            let release_with_notes =
+                match github_client::get_release_by_tag(owner, repo, &release.tag_name).await {
+                    Ok(r) => r,
+                    Err(e) => {
+                        log::warn!(
+                            "Failed to fetch full release notes for {}: {}",
+                            release.tag_name,
+                            e
+                        );
+                        release.clone()
+                    }
+                };
+
+            Some(UpdateMetadata {
+                version: u.version.clone(),
+                current_version: u.current_version.clone(),
+                release_tag: release_with_notes.tag_name.clone(),
+                release_notes: release_with_notes.body,
+                release_date: release_with_notes.published_at,
+                release_url: Some(release_with_notes.html_url),
+                update_in_progress: false,
+                restart_required: false,
+            })
+        } else {
+            None
+        };
 
         if let Some(ref metadata) = update_metadata {
             // Emit APP_EVENT to notify frontend

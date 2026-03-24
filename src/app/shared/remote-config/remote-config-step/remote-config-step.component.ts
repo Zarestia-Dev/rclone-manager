@@ -34,11 +34,10 @@ import {
 import { IconService, matchesConfigSearch, RemoteManagementService } from '@app/services';
 import { JsonEditorComponent, SettingControlComponent } from 'src/app/shared/components';
 
-export const INITIAL_COMMAND_OPTIONS: CommandOption[] = [
-  ...(PREDEFINED_OPTIONS.find(o => o.key === 'obscure')
-    ? [{ ...(PREDEFINED_OPTIONS.find(o => o.key === 'obscure') as CommandOption) }]
-    : []),
-];
+const _obscureOption = PREDEFINED_OPTIONS.find(o => o.key === 'obscure');
+export const INITIAL_COMMAND_OPTIONS: CommandOption[] = _obscureOption
+  ? [{ ..._obscureOption }]
+  : [];
 
 @Component({
   selector: 'app-remote-config-step',
@@ -93,6 +92,7 @@ export class RemoteConfigStepComponent {
   readonly showTypeField = computed(() => this.visibility().type ?? true);
   readonly showAdvancedToggle = computed(() => this.visibility().advanced ?? true);
   readonly showNameField = computed(() => this.visibility().name ?? true);
+  readonly showCommandField = computed(() => this.visibility().commands !== false);
 
   // ── Local form controls ───────────────────────────────────────────────────
 
@@ -125,11 +125,11 @@ export class RemoteConfigStepComponent {
   readonly newOptionKey = signal('');
   readonly newOptionType = signal<'boolean' | 'string' | 'number' | 'array'>('boolean');
   readonly randomIcon = signal('cloud');
+  readonly animTrigger = signal(0);
   readonly suggestedRemotes = signal<RemoteType[]>([]);
 
   // ── Computed ──────────────────────────────────────────────────────────────
 
-  readonly randomIconList = computed(() => [this.randomIcon()]);
   readonly filteredRemotes = computed(() => {
     const term = (this.remoteSearchTerm() ?? '').toLowerCase();
     return this.remoteTypes().filter(
@@ -175,9 +175,13 @@ export class RemoteConfigStepComponent {
 
   // ── Effects ───────────────────────────────────────────────────────────────
 
+  private _cmdOptsReady = false;
+
   constructor() {
     effect(() => {
-      this.commandOptionsChanged.emit(this.commandOptions());
+      const opts = this.commandOptions();
+      if (this._cmdOptsReady) this.commandOptionsChanged.emit(opts);
+      else this._cmdOptsReady = true;
     });
 
     effect(() => {
@@ -236,8 +240,8 @@ export class RemoteConfigStepComponent {
 
     effect(() => {
       const types = this.remoteTypes();
-      if (types.length > 0 && this.suggestedRemotes().length === 0) {
-        untracked(() => this.suggestedRemotes.set(this.shuffleSample(types)));
+      if (types.length > 0 && untracked(this.suggestedRemotes).length === 0) {
+        this.suggestedRemotes.set(this.shuffleSample(types));
       }
     });
 
@@ -252,10 +256,7 @@ export class RemoteConfigStepComponent {
         const hasManagedNonInteractive = opts.some(o => o.key === 'nonInteractive');
 
         if (isInteractive && !hasNonInteractive) {
-          this.commandOptions.update(list => [
-            ...list,
-            { key: 'nonInteractive', value: true, managed: true },
-          ]);
+          this.commandOptions.update(list => [...list, { key: 'nonInteractive', value: true }]);
         } else if (!isInteractive && hasManagedNonInteractive) {
           this.commandOptions.update(list => list.filter(o => o.key !== 'nonInteractive'));
         }
@@ -268,21 +269,24 @@ export class RemoteConfigStepComponent {
         if (types.length === 0) return;
 
         const icons = types.map(t => this.iconService.getIconName(t.value));
-
-        const pickNext = (): string => {
+        const pickNextIcon = (): string => {
           if (icons.length === 1) return icons[0];
           const current = this.randomIcon();
-          let next: string;
+          let nextIcon: string;
           do {
-            next = icons[Math.floor(Math.random() * icons.length)];
-          } while (next === current);
-          return next;
+            nextIcon = icons[Math.floor(Math.random() * icons.length)];
+          } while (nextIcon === current);
+          return nextIcon;
         };
 
-        const id = setInterval(() => this.randomIcon.set(pickNext()), 3000);
+        const id = setInterval(() => {
+          this.randomIcon.set(pickNextIcon());
+          this.animTrigger.update(v => v + 1);
+        }, 3000);
         onCleanup(() => clearInterval(id));
       } else {
         this.randomIcon.set('cloud');
+        this.animTrigger.set(0);
       }
     });
   }
@@ -418,7 +422,7 @@ export class RemoteConfigStepComponent {
   // ── Command option mutations ──────────────────────────────────────────────
 
   addPredefinedOption(predefined: CommandOption): void {
-    this.commandOptions.update(opts => [...opts, { ...predefined, managed: false }]);
+    this.commandOptions.update(opts => [...opts, { ...predefined }]);
   }
 
   addCustomOption(): void {
@@ -455,10 +459,10 @@ export class RemoteConfigStepComponent {
     event.chipInput.clear();
   }
 
-  removeArrayChip(key: string, chip: string): void {
+  removeArrayChip(key: string, index: number): void {
     this.commandOptions.update(opts =>
       opts.map(o =>
-        o.key === key ? { ...o, value: (o.value as string[]).filter(v => v !== chip) } : o
+        o.key === key ? { ...o, value: (o.value as string[]).filter((_, i) => i !== index) } : o
       )
     );
   }
@@ -471,6 +475,10 @@ export class RemoteConfigStepComponent {
 
   asString(value: CommandOption['value']): string {
     return typeof value === 'string' ? value : String(value);
+  }
+
+  asBoolean(value: CommandOption['value']): boolean {
+    return typeof value === 'boolean' ? value : false;
   }
 
   // ── Suggestion helpers ────────────────────────────────────────────────────

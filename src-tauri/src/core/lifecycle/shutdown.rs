@@ -143,6 +143,8 @@ async fn apply_pending_updates_on_shutdown(app_handle: &AppHandle) {
     {
         use crate::utils::types::updater::AppUpdaterState;
 
+        // Note: App updates are guarded by the 'updater' feature because they use
+        // the tauri-plugin-updater which may be disabled in certain builds.
         if let Some(updater_state) = app_handle.try_state::<AppUpdaterState>() {
             let mut pending = match updater_state.pending_action.lock() {
                 Ok(lock) => lock,
@@ -168,13 +170,14 @@ async fn apply_pending_updates_on_shutdown(app_handle: &AppHandle) {
             }
         }
     }
-
+    // Note: Rclone updates are always available (not feature-guarded) because
+    // they are managed internally via binary swaps rather than the Tauri plugin.
     use crate::utils::types::updater::RcloneUpdaterState;
     if let Some(rclone_updater_state) = app_handle.try_state::<RcloneUpdaterState>() {
-        let has_pending = match rclone_updater_state.pending_version.lock() {
-            Ok(pending_version) => pending_version.is_some(),
+        let has_pending = match rclone_updater_state.pending_update.lock() {
+            Ok(pending) => pending.is_some(),
             Err(e) => {
-                error!("Failed to lock pending rclone update version during shutdown: {e}");
+                error!("Failed to lock pending rclone update during shutdown: {e}");
                 false
             }
         };

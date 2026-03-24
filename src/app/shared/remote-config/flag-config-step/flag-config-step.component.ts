@@ -6,7 +6,6 @@ import {
   computed,
   output,
   signal,
-  Signal,
 } from '@angular/core';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -49,9 +48,10 @@ export class FlagConfigStepComponent {
   readonly iconService = inject(IconService);
 
   private static readonly EMPTY_GROUP = new FormGroup<any>({});
+  private static readonly EMPTY_OPTIONS_GROUP = new FormGroup<any>({});
 
   // Inputs
-  form = input.required<FormGroup>();
+  readonly form = input.required<FormGroup>();
   flagType = input.required<FlagType>();
   existingRemotes = input<string[]>([]);
   currentRemoteName = input.required<string>();
@@ -66,9 +66,9 @@ export class FlagConfigStepComponent {
   serveTypeChange = output<string>();
 
   // Derived state
-  configGroup = computed(
+  configGroup = computed<FormGroup<any>>(
     () =>
-      (this.form().get(`${this.flagType()}Config`) as FormGroup | null) ??
+      (this.form().get(`${this.flagType()}Config`) as FormGroup<any> | null) ??
       FlagConfigStepComponent.EMPTY_GROUP
   );
 
@@ -83,7 +83,7 @@ export class FlagConfigStepComponent {
       : 'wizards.remoteConfig.operationDescription'
   );
 
-  private readonly configGroupAny = this.configGroup as unknown as Signal<FormGroup<any>>;
+  private readonly configGroupAny = this.configGroup;
 
   readonly serveTypeValue = toSignal(
     toObservable(this.configGroupAny).pipe(
@@ -127,6 +127,9 @@ export class FlagConfigStepComponent {
 
   // The JSON editor operates on the options sub-group
   get optionsGroup(): FormGroup {
-    return (this.configGroup().get('options') as FormGroup | null) ?? new FormGroup({});
+    return (
+      (this.configGroup().get('options') as FormGroup | null) ??
+      FlagConfigStepComponent.EMPTY_OPTIONS_GROUP
+    );
   }
 }

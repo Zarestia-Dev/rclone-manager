@@ -116,6 +116,13 @@ export class OperationConfigComponent {
   readonly cronExpression = signal<string | null>(null);
   readonly isCronEnabled = signal<boolean>(false);
 
+  readonly isSourcePickerDisabled = computed(
+    () => this.isNewRemote() && this.sourcePathType() === 'currentRemote'
+  );
+  readonly isDestPickerDisabled = computed(
+    () => this.isNewRemote() && this.destPathType() === 'currentRemote'
+  );
+
   // Keep subscriptions idempotent across effect re-runs
   private readonly controlSyncSubs = new Map<string, Subscription>();
   private readonly pathTypeSubs = new Map<PathGroup, Subscription>();
@@ -280,6 +287,8 @@ export class OperationConfigComponent {
   // ===================================
 
   async selectRemotePath(group: PathGroup): Promise<void> {
+    if (group === 'source' ? this.isSourcePickerDisabled() : this.isDestPickerDisabled()) return;
+
     const formGroup = this.getFormGroup(group);
     const pathType = formGroup?.get('pathType')?.value;
     const isMountDest = this.isMount() && group === 'dest';

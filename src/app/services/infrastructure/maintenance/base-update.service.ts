@@ -17,6 +17,7 @@ export abstract class BaseUpdateService extends TauriBaseService {
   public readonly updateChannel = this._updateChannel.asReadonly();
   public readonly autoCheckEnabled = this._autoCheckEnabled.asReadonly();
 
+  protected abstract get settingNamespace(): string;
   protected abstract get skippedVersionsKey(): string;
   protected abstract get updateChannelKey(): string;
   protected abstract get autoCheckKey(): string;
@@ -36,10 +37,11 @@ export abstract class BaseUpdateService extends TauriBaseService {
     this._autoCheckEnabled.set(autoCheck);
   }
 
-  // === Skipped Versions ===
   async getSkippedVersions(): Promise<string[]> {
     try {
-      const skipped = await this.appSettingsService.getSettingValue<string[]>(this.skippedVersionsKey);
+      const skipped = await this.appSettingsService.getSettingValue<string[]>(
+        `${this.settingNamespace}.${this.skippedVersionsKey}`
+      );
       return Array.isArray(skipped) ? skipped : [];
     } catch (error) {
       console.error(`Failed to load ${this.skippedVersionsKey}:`, error);
@@ -51,18 +53,18 @@ export abstract class BaseUpdateService extends TauriBaseService {
     return this._skippedVersions().includes(version);
   }
 
-  async skipVersion(version: string, notificationKey: string): Promise<void> {
+  async skipVersion(version: string): Promise<void> {
     try {
       const current = this._skippedVersions();
       if (current.includes(version)) return;
 
       const updated = [...current, version];
-      await this.appSettingsService.saveSetting('runtime', this.skippedVersionsKey.replace('runtime.', ''), updated);
-      this._skippedVersions.set(updated);
-      
-      this.notificationService.showInfo(
-        this.translate.instant(notificationKey, { version })
+      await this.appSettingsService.saveSetting(
+        this.settingNamespace,
+        this.skippedVersionsKey,
+        updated
       );
+      this._skippedVersions.set(updated);
     } catch (error) {
       console.error(`Failed to skip version ${version} for ${this.skippedVersionsKey}:`, error);
     }
@@ -72,7 +74,11 @@ export abstract class BaseUpdateService extends TauriBaseService {
     try {
       const current = this._skippedVersions();
       const updated = current.filter(v => v !== version);
-      await this.appSettingsService.saveSetting('runtime', this.skippedVersionsKey.replace('runtime.', ''), updated);
+      await this.appSettingsService.saveSetting(
+        this.settingNamespace,
+        this.skippedVersionsKey,
+        updated
+      );
       this._skippedVersions.set(updated);
     } catch (error) {
       console.error(`Failed to unskip version ${version} for ${this.skippedVersionsKey}:`, error);
@@ -82,20 +88,23 @@ export abstract class BaseUpdateService extends TauriBaseService {
   // === Update Channel ===
   async getChannel(): Promise<string> {
     try {
-      const channel = await this.appSettingsService.getSettingValue<string>(this.updateChannelKey);
+      const channel = await this.appSettingsService.getSettingValue<string>(
+        `${this.settingNamespace}.${this.updateChannelKey}`
+      );
       return channel || 'stable';
     } catch {
       return 'stable';
     }
   }
 
-  async setChannel(channel: string, notificationKey: string): Promise<void> {
+  async setChannel(channel: string): Promise<void> {
     try {
-      await this.appSettingsService.saveSetting('runtime', this.updateChannelKey.replace('runtime.', ''), channel);
-      this._updateChannel.set(channel);
-      this.notificationService.showInfo(
-        this.translate.instant(notificationKey, { channel })
+      await this.appSettingsService.saveSetting(
+        this.settingNamespace,
+        this.updateChannelKey,
+        channel
       );
+      this._updateChannel.set(channel);
     } catch (error) {
       console.error(`Failed to save channel for ${this.updateChannelKey}:`, error);
     }
@@ -104,20 +113,19 @@ export abstract class BaseUpdateService extends TauriBaseService {
   // === Auto Check ===
   async getAutoCheckEnabled(): Promise<boolean> {
     try {
-      const enabled = await this.appSettingsService.getSettingValue<boolean>(this.autoCheckKey);
+      const enabled = await this.appSettingsService.getSettingValue<boolean>(
+        `${this.settingNamespace}.${this.autoCheckKey}`
+      );
       return enabled ?? true;
     } catch {
       return true;
     }
   }
 
-  async setAutoCheckEnabled(enabled: boolean, notificationKey?: string): Promise<void> {
+  async setAutoCheckEnabled(enabled: boolean): Promise<void> {
     try {
-      await this.appSettingsService.saveSetting('runtime', this.autoCheckKey.replace('runtime.', ''), enabled);
+      await this.appSettingsService.saveSetting(this.settingNamespace, this.autoCheckKey, enabled);
       this._autoCheckEnabled.set(enabled);
-      if (notificationKey) {
-        this.notificationService.showInfo(this.translate.instant(notificationKey));
-      }
     } catch (error) {
       console.error(`Failed to save auto-check for ${this.autoCheckKey}:`, error);
     }

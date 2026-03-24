@@ -497,7 +497,7 @@
         matButton="filled"
         class="accent next-btn"
         (click)="nextStep()"
-        [disabled]="remoteFormStatus() !== 'VALID' || isAuthInProgress()"
+        [disabled]="isNextDisabled()"
         animate.enter="fade-in-out-enter"
         animate.leave="fade-in-out-leave"
         [attr.title]="'modals.remoteConfig.buttons.next' | translate"

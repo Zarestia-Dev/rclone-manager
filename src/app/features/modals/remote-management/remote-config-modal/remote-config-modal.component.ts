@@ -518,7 +518,8 @@ export class RemoteConfigModalComponent implements OnInit {
       if (key !== 'type') group.removeControl(key);
     });
     this.dynamicRuntimeRemoteFields().forEach(field => {
-      group.addControl(field.Name, new FormControl(field.Value ?? field.Default));
+      const validators = field.Required ? [Validators.required] : [];
+      group.addControl(field.Name, new FormControl(field.Value ?? field.Default, validators));
     });
   }
 
@@ -549,7 +550,11 @@ export class RemoteConfigModalComponent implements OnInit {
         const uniqueKey = this.getUniqueControlKey(flagType, field);
         this.optionToFlagTypeMap[uniqueKey] = flagType;
         this.optionToFieldNameMap[uniqueKey] = field.FieldName;
-        optionsGroup.addControl(uniqueKey, new FormControl(field.Value ?? field.Default));
+        const validators = field.Required ? [Validators.required] : [];
+        optionsGroup.addControl(
+          uniqueKey,
+          new FormControl(field.Value ?? field.Default, validators)
+        );
       });
     });
   }
@@ -1004,7 +1009,8 @@ export class RemoteConfigModalComponent implements OnInit {
       if (!['name', 'type'].includes(key)) this.remoteForm.removeControl(key);
     });
     this.dynamicRemoteFields().forEach(field => {
-      this.remoteForm.addControl(field.Name, new FormControl(field.Value));
+      const validators = field.Required ? [Validators.required] : [];
+      this.remoteForm.addControl(field.Name, new FormControl(field.Value, validators));
     });
   }
 
@@ -1711,6 +1717,22 @@ export class RemoteConfigModalComponent implements OnInit {
       this.remoteConfigForm.enable();
     }
   }
+
+  isNextDisabled = computed(() => {
+    if (this.isAuthInProgress()) return true;
+    if (this.remoteFormStatus() === 'INVALID') return true;
+
+    const currentStepIdx = this.currentStep() - 1;
+    const currentStepConfig = this.stepConfigs()[currentStepIdx];
+
+    if (currentStepConfig && currentStepConfig.type !== 'remote') {
+      this.remoteConfigFormStatus(); // register dependency
+      const group = this.remoteConfigForm.get(`${currentStepConfig.type}Config`);
+      if (group && group.invalid) return true;
+    }
+
+    return false;
+  });
 
   isSaveDisabled = computed(() => {
     if (this.isAuthInProgress()) return true;

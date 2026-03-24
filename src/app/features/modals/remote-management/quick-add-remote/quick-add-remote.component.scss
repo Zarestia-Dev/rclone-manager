@@ -128,11 +128,6 @@
     button {
       width: 100% !important;
 
-      &.warn {
-        grid-column: span 2;
-        order: -1;
-      }
-
       &[type="submit"] {
         grid-column: span 1;
         order: 2;

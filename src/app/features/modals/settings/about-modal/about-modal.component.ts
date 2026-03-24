@@ -5,6 +5,7 @@ import {
   inject,
   signal,
   ChangeDetectionStrategy,
+  DestroyRef,
 } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
@@ -92,6 +93,7 @@ export class AboutModalComponent implements OnInit {
   private readonly debugService = inject(DebugService);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly translate = inject(TranslateService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly rcloneStatusService = inject(RcloneStatusService);
   readonly backendService = inject(BackendService);
@@ -261,6 +263,12 @@ export class AboutModalComponent implements OnInit {
     // Fire-and-forget; each loader handles its own errors internally.
     this.loadPlatformInfo();
     this.loadFsCacheEntries();
+
+    this.destroyRef.onDestroy(() => {
+      if (this.logoClickTimeout) {
+        clearTimeout(this.logoClickTimeout);
+      }
+    });
   }
 
   // ---------------------------------------------------------------------------
