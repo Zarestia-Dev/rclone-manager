@@ -22,7 +22,8 @@
     "default": "Varsayılan",
     "copyErrorFailed": "Hata kopyalanamadı",
     "errorCopied": "Hata panoya kopyalandı",
-    "required": "Bu alan zorunludur."
+    "required": "Bu alan zorunludur.",
+    "clear": "Temizle"
   },
   "validators": {
     "integer": "Geçerli bir tam sayı olmalıdır",
@@ -896,9 +897,9 @@
       "switchToJson": "JSON Moduna Geç",
       "showAdvanced": "Gelişmiş Seçenekleri Göster",
       "hideAdvanced": "Gelişmiş Seçenekleri Gizle",
-      "showAdvancedDesc": "İleri düzey kullanıcılar için ek yapılandırma seçeneklerini göster",
-      "useInteractive": "İnteraktif Yapılandırmayı Kullan",
-      "useInteractiveDesc": "Adım adım yapılandırma rehberini kullan",
+      "emptyStateTitle": "Sıradaki bulut maceranız nedir?",
+      "emptyStateDesc": "Yeni uzak bağlantınızı yapılandırmaya başlamak için bir sağlayıcı seçin.",
+      "shuffleSuggestions": "Önerileri karıştır",
       "authenticationMethod": "Kimlik Doğrulama Yöntemi",
       "providerRequired": "Sağlayıcı gerekli",
       "advancedOptions": "Gelişmiş Seçenekler",
@@ -926,8 +927,6 @@
       "hideCommandOptions": "Komut Seçeneklerini Gizle",
       "showCommandOptions": "Komut Seçeneklerini Göster",
       "quickAdd": "Hızlı Ekle",
-      "managedOptionTooltip": "Bu seçenek uygulama tarafından otomatik olarak yönetiliyor",
-      "auto": "Otomatik",
       "addValue": "Değer ekle",
       "removeOption": "Seçeneği kaldır",
       "optionKey": "Seçenek Anahtarı",

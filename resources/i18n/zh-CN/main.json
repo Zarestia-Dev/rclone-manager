@@ -22,7 +22,8 @@
     "default": "默认",
     "copyErrorFailed": "复制错误信息失败",
     "errorCopied": "错误信息已复制到剪贴板",
-    "required": "此字段为必填项"
+    "required": "此字段为必填项",
+    "clear": "清除"
   },
   "validators": {
     "integer": "必须为有效的整数",
@@ -896,9 +897,9 @@
       "switchToJson": "切换到 JSON 模式",
       "showAdvanced": "显示高级选项",
       "hideAdvanced": "隐藏高级选项",
-      "showAdvancedDesc": "为高级用户显示额外配置选项",
-      "useInteractive": "使用交互式配置",
-      "useInteractiveDesc": "带引导的分步配置向导",
+      "emptyStateTitle": "您的下一个云端冒险是什么？",
+      "emptyStateDesc": "选择一个提供商开始配置您的新远程连接。",
+      "shuffleSuggestions": "刷新建议",
       "authenticationMethod": "认证方式",
       "providerRequired": "服务商为必填项",
       "advancedOptions": "高级选项",
@@ -926,8 +927,6 @@
       "hideCommandOptions": "隐藏命令行选项",
       "showCommandOptions": "显示命令行选项",
       "quickAdd": "快速添加",
-      "managedOptionTooltip": "此选项由应用程序自动管理",
-      "auto": "自动",
       "addValue": "添加值",
       "removeOption": "删除选项",
       "optionKey": "选项键",

@@ -10,7 +10,7 @@
       <mat-icon svgIcon="plus" aria-hidden="true"></mat-icon>
     </button>
 
-    <div class="contextual-action-wrapper" [class.hidden]="!uiStateService.selectedRemote()">
+    <div class="contextual-action-wrapper" [class.visible]="uiStateService.selectedRemote()">
       <button
         matIconButton
         (click)="resetRemote()"

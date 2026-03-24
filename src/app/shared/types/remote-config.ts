@@ -27,59 +27,43 @@ export const INTERACTIVE_REMOTES: ReadonlySet<string> = new Set(['onedrive', 'ic
 
 // ─── Command Option types ───────────────────────────────────────────────────
 
-export type CommandOptionType = 'boolean' | 'string' | 'number' | 'array';
-
 export interface CommandOption {
-  id: string;
   key: string;
-  type: CommandOptionType;
   value: boolean | string | number | string[];
-  managed?: boolean;
+  label?: string;
+  description?: string;
 }
 
-export interface PredefinedOption {
-  key: string;
-  label: string;
-  description: string;
-  type: CommandOptionType;
-  defaultValue: CommandOption['value'];
-}
-
-export const PREDEFINED_OPTIONS: PredefinedOption[] = [
+export const PREDEFINED_OPTIONS: CommandOption[] = [
   {
     key: 'obscure',
     label: 'wizards.remoteConfig.predefinedOptions.obscure.label',
     description: 'wizards.remoteConfig.predefinedOptions.obscure.description',
-    type: 'boolean',
-    defaultValue: true,
+    value: true,
   },
   {
     key: 'noObscure',
     label: 'wizards.remoteConfig.predefinedOptions.noObscure.label',
     description: 'wizards.remoteConfig.predefinedOptions.noObscure.description',
-    type: 'boolean',
-    defaultValue: true,
+    value: true,
   },
   {
     key: 'nonInteractive',
     label: 'wizards.remoteConfig.predefinedOptions.nonInteractive.label',
     description: 'wizards.remoteConfig.predefinedOptions.nonInteractive.description',
-    type: 'boolean',
-    defaultValue: true,
+    value: true,
   },
   {
     key: 'all',
     label: 'wizards.remoteConfig.predefinedOptions.all.label',
     description: 'wizards.remoteConfig.predefinedOptions.all.description',
-    type: 'boolean',
-    defaultValue: true,
+    value: true,
   },
   {
     key: 'noOutput',
     label: 'wizards.remoteConfig.predefinedOptions.noOutput.label',
     description: 'wizards.remoteConfig.predefinedOptions.noOutput.description',
-    type: 'boolean',
-    defaultValue: true,
+    value: true,
   },
 ];
 

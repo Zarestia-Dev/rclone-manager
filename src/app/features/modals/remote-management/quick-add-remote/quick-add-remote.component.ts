@@ -379,7 +379,7 @@ export class QuickAddRemoteComponent {
     await this.authStateService.startAuth(setup.name, false);
 
     const requiresInteractiveFlow = this.commandOptions().some(
-      o => o.key === 'nonInteractive' && o.value === true && o.managed
+      o => o.key === 'nonInteractive' && o.value === true
     );
 
     try {

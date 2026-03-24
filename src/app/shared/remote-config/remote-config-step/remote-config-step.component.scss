@@ -1,67 +1,95 @@
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes badgeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.88) translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateX(0);
+  }
+}
+
+@keyframes iconCycle {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+// ── Animation utility classes ──────────────────────────────────────────────
+
+.anim-field {
+  animation: slideInFromBottomIn 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+.anim-panel {
+  animation: scaleIn 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+.option-row {
+  animation: slideInFromBottomIn 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  animation-delay: calc(var(--row-index, 0) * 35ms);
+}
+
+.anim-setting-control {
+  display: block;
+  animation: slideInFromBottomIn 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  animation-delay: calc(var(--field-index, 0) * 28ms);
+}
+
+// ============================================================================
+// FORM ROOT
+// ============================================================================
 form {
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
+
+  .main-fields-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  // ── Advanced section ──────────────────────────────────────────────────────
 
   .advanced-section {
     display: flex;
     flex-direction: column;
     gap: var(--space-md);
     padding: var(--space-md);
-    box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.5);
-    background: rgba(var(--accent-color-rgb), 0.06);
+    background: rgba(var(--accent-color-rgb), 0.05);
+    border: 1px solid rgba(var(--accent-color-rgb), 0.18);
     border-radius: var(--radius-md);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 1px 3px rgba(0, 0, 0, 0.08);
   }
 
-  // ===== SECTIONS =====
-  .section-group {
-    .grid-error {
-      margin-top: 8px;
-      font-size: var(--font-size-xs);
-    }
-  }
+  // ── Field icon ────────────────────────────────────────────────────────────
 
-  // ===== REMOTE TYPE AUTOCOMPLETE =====
   .field-icon {
     color: var(--dim-color);
-  }
-  .remote-type-field {
-    ::ng-deep .mat-mdc-form-field-subscript-wrapper {
-      display: none;
-    }
+    transition: color 0.15s ease;
   }
 
-  // ===== INTERACTIVE OPTION =====
-  .interactive-option {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-block: 8px;
-    border-top: 1px solid var(--border-color);
+  // ── Section heading ───────────────────────────────────────────────────────
 
-    .option-info {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-
-      .option-title {
-        font-size: var(--font-size-md);
-        font-weight: 500;
-        color: var(--window-fg-color);
-      }
-
-      .option-desc {
-        margin: 0;
-        font-size: var(--font-size-sm);
-        color: var(--dim-color);
-        max-width: 300px;
-      }
-    }
-  }
-
-  // =============================================
-  // SECTION HEADING
-  // =============================================
   .section-heading {
     font-size: var(--font-size-md);
     font-weight: 600;
@@ -70,31 +98,36 @@ form {
     align-items: center;
     gap: var(--space-sm);
     margin: 0;
+    letter-spacing: -0.01em;
+  }
 
-    span {
-      font-size: var(--font-size-md);
-      font-weight: 600;
-      color: var(--purple);
-      background: rgba(var(--purple-rgb), 0.1);
-      padding: 2px 4px;
-      border-radius: var(--radius-xs);
-      min-width: 40px;
-      text-align: center;
+  // ── Loading state ─────────────────────────────────────────────────────────
+
+  .loading-container {
+    display: flex;
+    align-items: center;
+    padding: var(--space-md) var(--space-lg);
+    background: rgba(var(--accent-color-rgb), 0.04);
+    border: 1px solid rgba(var(--accent-color-rgb), 0.12);
+    border-radius: var(--radius-md);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+    .loading-inner {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      margin: 0 auto;
+
+      span {
+        font-size: var(--font-size-sm);
+        color: var(--dim-color);
+        font-weight: 500;
+        letter-spacing: 0.01em;
+      }
     }
   }
 
-  // =============================================
-  // LOADING STATE
-  // =============================================
-  .loading-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: var(--space-md);
-    padding: var(--space-lg);
-    background: rgba(var(--accent-color-rgb), 0.06);
-    border-radius: 8px;
-  }
+  // ── Mobile ────────────────────────────────────────────────────────────────
 
   @media (max-width: 768px) {
     .advanced-section {
@@ -104,11 +137,6 @@ form {
 
     .section-heading {
       font-size: 15px;
-
-      span {
-        font-size: 12px;
-        padding: 2px 6px;
-      }
     }
 
     mat-slide-toggle {
@@ -119,7 +147,144 @@ form {
 }
 
 // ============================================================================
-// JSON / FORM MODE TOGGLE HEADER
+// EMPTY STATE
+// ============================================================================
+
+.empty-state {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  padding: 40px var(--space-lg) 32px;
+  background: rgba(var(--accent-color-rgb), 0.03);
+  border: 1px dashed rgba(var(--accent-color-rgb), 0.2);
+  border-radius: var(--radius-lg, 16px);
+  overflow: hidden;
+
+  &-icon-ring {
+    position: relative;
+    z-index: 1;
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    background: rgba(var(--accent-color-rgb), 0.07);
+    box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.16);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &-icon {
+    width: 32px;
+    height: 32px;
+    color: var(--primary-color);
+    opacity: 0.9;
+    animation: iconCycle 0.32s cubic-bezier(0.34, 1.08, 0.64, 1) both;
+  }
+
+  &-body {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+  }
+
+  &-title {
+    margin: 0 0 6px;
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    color: var(--window-fg-color);
+    letter-spacing: -0.015em;
+  }
+
+  &-desc {
+    margin: 0;
+    font-size: var(--font-size-sm);
+    color: var(--dim-color);
+    max-width: 280px;
+    line-height: 1.55;
+  }
+
+  &-pills {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 4px;
+  }
+}
+
+// ── Empty-state pill ───────────────────────────────────────────────────────
+
+.empty-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xxs);
+  padding: var(--space-xxs) var(--space-sm);
+  border-radius: var(--space-md);
+  box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.16);
+  background: rgba(var(--accent-color-rgb), 0.06);
+  color: var(--dim-color);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  cursor: pointer;
+  animation: slideInFromBottomIn 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  animation-delay: calc(var(--pill-index, 0) * 45ms);
+  transition:
+    color 0.15s ease,
+    background 0.15s ease,
+    transform 0.12s ease,
+    box-shadow 0.15s ease;
+
+  // Stagger the first 6 pills via nth-child (still clean, no JS needed)
+  @for $i from 1 through 6 {
+    &:nth-child(#{$i}) {
+      animation-delay: #{$i * 45ms};
+    }
+  }
+
+  span {
+    white-space: normal;
+  }
+
+  .pill-icon {
+    width: 14px;
+    height: 14px;
+    opacity: 0.7;
+  }
+
+  &:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background: rgba(var(--primary-color-rgb), 0.08);
+    box-shadow: 0 0 0 1px rgba(var(--primary-color-rgb), 0.16);
+  }
+
+  &:active {
+    box-shadow: none;
+  }
+
+  // Reshuffle variant — icon-only, dimmer
+  &--reshuffle {
+    padding: 5px 8px;
+    opacity: 0.55;
+    animation: none;
+
+    &:hover {
+      opacity: 1;
+
+      .pill-icon {
+        animation: spin 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+      }
+    }
+  }
+}
+
+// ============================================================================
+// FIELDS MODE HEADER
 // ============================================================================
 
 .fields-mode-header {
@@ -127,11 +292,49 @@ form {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-sm);
+  padding: 6px 10px 6px 12px;
+  background: rgba(var(--accent-color-rgb), 0.04);
+  border: 1px solid rgba(var(--accent-color-rgb), 0.1);
+  border-radius: var(--radius-sm);
 
-  .fields-count {
-    font-size: var(--font-size-xs);
-    color: var(--dim-color);
-    font-weight: 500;
+  .fields-count-badge {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+
+    .fields-count-num {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--window-fg-color);
+      letter-spacing: -0.02em;
+      transition: color 0.2s ease;
+
+      &--basic {
+        color: var(--primary-color);
+      }
+      &--advanced {
+        color: var(--purple);
+      }
+    }
+
+    .fields-count-separator {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--dim-color);
+      opacity: 0.6;
+      margin: 0 1px;
+      animation: badgeIn 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+    }
+
+    .fields-count-num--advanced {
+      animation: badgeIn 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.04s both;
+    }
+
+    .fields-count-label {
+      font-size: var(--font-size-xs);
+      color: var(--dim-color);
+      font-weight: 500;
+    }
   }
 
   .mode-actions {
@@ -141,7 +344,8 @@ form {
   }
 }
 
-// ── Shared toggle-button base ────────────────────────────────────────────────
+// ── Shared toggle-button base ──────────────────────────────────────────────
+
 %mode-toggle-btn {
   color: var(--dim-color);
   transition:
@@ -162,11 +366,9 @@ form {
 .json-toggle-btn {
   @extend %mode-toggle-btn;
 }
-
 .cmd-options-btn {
   @extend %mode-toggle-btn;
 }
-
 .advanced-toggle-btn {
   @extend %mode-toggle-btn;
 }
@@ -182,9 +384,13 @@ form {
   padding: var(--space-md);
   background: var(--view-bg-color);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-gnome);
+  border: 1px solid rgba(var(--accent-color-rgb), 0.12);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 
-  // ── Quick-add predefined chips ────────────────────────────────────────────
+  // ── Predefined chips row ───────────────────────────────────────────────────
 
   .predefined-chips-row {
     display: flex;
@@ -194,11 +400,13 @@ form {
 
     .predefined-label {
       font-size: var(--font-size-xs);
-      font-weight: 500;
+      font-weight: 600;
       color: var(--dim-color);
       white-space: nowrap;
       flex-shrink: 0;
       padding-top: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
     }
 
     .predefined-chips {
@@ -208,23 +416,25 @@ form {
     }
   }
 
-  // Predefined chip — pill style, dashed border until hovered
+  // ── Predefined chip ────────────────────────────────────────────────────────
+
   .predefined-chip {
     display: inline-flex;
     align-items: center;
     gap: 4px;
     padding: 4px 10px 4px 6px;
     border-radius: 99px;
-    border: 1px dashed var(--border-color);
+    border: 1px dashed rgba(var(--accent-color-rgb), 0.3);
     background: transparent;
     color: var(--dim-color);
     font-size: var(--font-size-xs);
     font-weight: 500;
     cursor: pointer;
     transition:
-      border-color 0.15s,
-      color 0.15s,
-      background 0.15s;
+      border-color 0.15s ease,
+      color 0.15s ease,
+      background 0.15s ease,
+      transform 0.12s ease;
 
     mat-icon {
       font-size: 14px;
@@ -234,26 +444,30 @@ form {
 
     &:hover {
       border-color: var(--primary-color);
+      border-style: solid;
       color: var(--primary-color);
       background: rgba(var(--primary-color-rgb), 0.06);
+      transform: translateY(-1px);
     }
 
     &:active {
+      transform: translateY(0);
       background: rgba(var(--primary-color-rgb), 0.12);
     }
   }
 
-  // ── Active options list container ─────────────────────────────────────────
+  // ── Active options list ────────────────────────────────────────────────────
 
   .active-options {
     display: flex;
     flex-direction: column;
     border-radius: var(--radius-sm);
     overflow: hidden;
-    border: 1px solid var(--border-color);
+    border: 1px solid rgba(var(--accent-color-rgb), 0.12);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
 
-  // ── Option row — desktop layout ───────────────────────────────────────────
+  // ── Option row ─────────────────────────────────────────────────────────────
 
   .option-row {
     display: flex;
@@ -261,76 +475,63 @@ form {
     gap: var(--space-md);
     padding: 8px var(--space-md);
     background: var(--view-bg-color);
-    border-bottom: 1px solid var(--border-color);
-    min-height: 60px;
-    transition: background 0.2s ease;
+    border-bottom: 1px solid rgba(var(--accent-color-rgb), 0.08);
+    min-height: 58px;
+    transition: background 0.15s ease;
 
     &:last-child {
       border-bottom: none;
     }
 
     &:hover {
-      background: rgba(var(--primary-color-rgb), 0.03);
+      background: rgba(var(--primary-color-rgb), 0.025);
     }
 
     .option-key-container {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       flex: 0 0 280px;
       min-width: 0;
 
       .option-key {
-        font-size: 13px;
+        font-size: 12.5px;
         font-weight: 600;
         font-family: var(--font-mono, monospace);
         color: var(--window-fg-color);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        letter-spacing: -0.01em;
       }
 
       .option-type-badge {
         font-size: 10px;
-        font-weight: 600;
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.05em;
         padding: 2px 6px;
-        border-radius: var(--radius-xs);
-        background: rgba(var(--accent-color-rgb), 0.12);
-        color: var(--dim-color);
+        border-radius: 99px;
         white-space: nowrap;
+        background: rgba(var(--accent-color-rgb), 0.1);
+        color: var(--dim-color);
 
         &[data-type="boolean"] {
-          background: rgba(var(--green-rgb), 0.12);
+          background: rgba(var(--green-rgb), 0.1);
           color: var(--green);
         }
         &[data-type="string"] {
-          background: rgba(var(--blue-rgb), 0.12);
+          background: rgba(var(--blue-rgb), 0.1);
           color: var(--blue);
         }
         &[data-type="number"] {
-          background: rgba(var(--orange-rgb), 0.12);
+          background: rgba(var(--orange-rgb), 0.1);
           color: var(--orange);
         }
         &[data-type="array"] {
-          background: rgba(var(--purple-rgb), 0.12);
+          background: rgba(var(--purple-rgb), 0.1);
           color: var(--purple);
         }
-      }
-
-      .managed-badge {
-        font-size: 9px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        padding: 2px 5px;
-        border-radius: var(--radius-xs);
-        border: 1px dashed rgba(var(--primary-color-rgb), 0.4);
-        background: rgba(var(--primary-color-rgb), 0.06);
-        color: var(--primary-color);
-        cursor: help;
-        white-space: nowrap;
       }
     }
 
@@ -342,7 +543,7 @@ form {
       min-width: 0;
 
       mat-slide-toggle {
-        margin-right: auto; // push remove btn to right if slide toggle is small
+        margin-right: auto;
       }
 
       .option-value-field {
@@ -362,44 +563,31 @@ form {
       .remove-option-btn {
         flex-shrink: 0;
         color: var(--dim-color);
-        opacity: 0.4;
+        opacity: 0.35;
         transition:
-          opacity 0.15s,
-          color 0.15s;
+          opacity 0.15s ease,
+          color 0.15s ease;
 
         &:hover {
           opacity: 1;
           color: var(--warn-color);
-          background: rgba(var(--warn-color-rgb), 0.1);
+          background: rgba(var(--warn-color-rgb), 0.08);
         }
-      }
-
-      // lock icon — replaces remove button for non-removable options
-      .locked-icon {
-        flex-shrink: 0;
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 16px;
-        color: var(--dim-color);
-        opacity: 0.35;
       }
     }
   }
 
-  // ── Add custom option row ─────────────────────────────────────────────────
+  // ── Add custom option row ──────────────────────────────────────────────────
 
   .add-custom-row {
     display: flex;
     align-items: flex-end;
     gap: var(--space-md);
-    padding: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
     background: rgba(var(--accent-color-rgb), 0.03);
     border-radius: var(--radius-sm);
-    border: 1px dashed var(--border-color);
-    margin-top: var(--space-sm);
+    border: 1px dashed rgba(var(--accent-color-rgb), 0.18);
+    margin-top: var(--space-xs);
 
     .custom-key-field {
       flex: 2;
@@ -426,13 +614,15 @@ form {
     .add-custom-btn {
       flex-shrink: 0;
       height: 48px;
-      border-color: var(--border-color);
+      border-color: rgba(var(--accent-color-rgb), 0.25);
       color: var(--dim-color);
       font-size: var(--font-size-sm);
+      font-weight: 500;
       transition:
-        border-color 0.15s,
-        color 0.15s,
-        background 0.15s;
+        border-color 0.15s ease,
+        color 0.15s ease,
+        background 0.15s ease,
+        box-shadow 0.15s ease;
 
       mat-icon {
         margin-right: 4px;
@@ -442,24 +632,22 @@ form {
         border-color: var(--primary-color);
         color: var(--primary-color);
         background: rgba(var(--primary-color-rgb), 0.05);
+        box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.08);
       }
 
       &[disabled] {
-        opacity: 0.4;
+        opacity: 0.35;
         cursor: not-allowed;
       }
     }
   }
 
-  // ============================================================
-  // MOBILE: card layout (≤ 600px)
-  // ============================================================
+  // ── Mobile ─────────────────────────────────────────────────────────────────
 
   @media (max-width: 600px) {
     padding: var(--space-sm);
     gap: var(--space-sm);
 
-    // Predefined chips: label full-width on its own line
     .predefined-chips-row {
       flex-direction: column;
       gap: var(--space-xs);
@@ -467,39 +655,26 @@ form {
       .predefined-label {
         padding-top: 0;
       }
-
-      .predefined-chips {
-        // chips already wrap naturally
-        gap: 6px;
-      }
     }
 
-    // Option row → card layout
     .option-row {
       flex-direction: column;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      padding: 16px;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 14px var(--space-md);
       min-height: unset;
 
       .option-key-container {
         flex: 1 1 auto;
         width: 100%;
-        margin-bottom: 4px;
         justify-content: space-between;
 
         .option-key {
           flex: 1;
           min-width: 0;
         }
-
-        .option-type-badge {
-          min-width: auto;
-        }
       }
 
-      // Value control on its own full-width line 2
       .option-controls {
         flex: 1;
         width: 100%;
@@ -510,13 +685,11 @@ form {
         }
 
         .remove-option-btn {
-          flex-shrink: 0;
           opacity: 0.6;
         }
       }
     }
 
-    // Add custom: stack vertically
     .add-custom-row {
       flex-direction: column;
       align-items: stretch;
@@ -532,7 +705,6 @@ form {
       .add-custom-btn {
         width: 100%;
         justify-content: center;
-        margin-top: 0;
       }
     }
   }

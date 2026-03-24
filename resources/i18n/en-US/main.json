@@ -22,7 +22,8 @@
     "default": "Default",
     "copyErrorFailed": "Failed to copy error",
     "errorCopied": "Error copied to clipboard",
-    "required": "This field is required."
+    "required": "This field is required.",
+    "clear": "Clear"
   },
   "validators": {
     "integer": "Must be a valid integer",
@@ -896,9 +897,9 @@
       "switchToJson": "Switch to JSON Mode",
       "showAdvanced": "Show Advanced Options",
       "hideAdvanced": "Hide Advanced Options",
-      "showAdvancedDesc": "Display additional configuration options for power users",
-      "useInteractive": "Use Interactive Configuration",
-      "useInteractiveDesc": "Step-by-step configuration wizard with guided setup",
+      "emptyStateTitle": "What's your next cloud adventure?",
+      "emptyStateDesc": "Pick a provider to start configuring your new remote connection.",
+      "shuffleSuggestions": "Shuffle suggestions",
       "authenticationMethod": "Authentication Method",
       "providerRequired": "Provider is required",
       "advancedOptions": "Advanced Options",
@@ -926,8 +927,6 @@
       "hideCommandOptions": "Hide Command Options",
       "showCommandOptions": "Show Command Options",
       "quickAdd": "Quick Add",
-      "managedOptionTooltip": "This option is automatically managed by the application",
-      "auto": "Auto",
       "addValue": "Add value",
       "removeOption": "Remove option",
       "optionKey": "Option Key",

@@ -19,7 +19,8 @@
     "copy": "Copiar",
     "move": "Mover",
     "retry": "Reintentar",
-    "default": "Predeterminado"
+    "default": "Predeterminado",
+    "clear": "Limpiar"
   },
   "validators": {
     "integer": "Debe ser un entero válido",
@@ -889,9 +890,9 @@
       "switchToJson": "Cambiar a modo JSON",
       "showAdvanced": "Mostrar opciones avanzadas",
       "hideAdvanced": "Ocultar opciones avanzadas",
-      "showAdvancedDesc": "Mostrar opciones de configuración adicionales para usuarios avanzados",
-      "useInteractive": "Usar configuración interactiva",
-      "useInteractiveDesc": "Asistente de configuración paso a paso con configuración guiada",
+      "emptyStateTitle": "¿Cuál es tu próxima aventura en la nube?",
+      "emptyStateDesc": "Elija un proveedor para comenzar a configurar su nueva conexión remota.",
+      "shuffleSuggestions": "Barajar sugerencias",
       "authenticationMethod": "Método de autenticación",
       "providerRequired": "Se requiere un proveedor",
       "advancedOptions": "Opciones avanzadas",
@@ -919,8 +920,6 @@
       "hideCommandOptions": "Ocultar opciones de comando",
       "showCommandOptions": "Mostrar opciones de comando",
       "quickAdd": "Añadir rápido",
-      "managedOptionTooltip": "Esta opción es gestionada automáticamente por la aplicación",
-      "auto": "Auto",
       "addValue": "Añadir valor",
       "removeOption": "Eliminar opción",
       "optionKey": "Clave de opción",
