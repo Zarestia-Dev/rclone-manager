@@ -42,14 +42,9 @@ import {
 import { syntaxTree, bracketMatching, indentOnInput } from '@codemirror/language';
 import { oneDark } from '@codemirror/theme-one-dark';
 
-// ============================================================================
-// TYPES
-// ============================================================================
-
 interface ChipDef {
   controlKey: string;
   displayKey: string;
-  label: string;
   currentValue: unknown;
   displayValue: string;
   fullValue: string;
@@ -57,10 +52,6 @@ interface ChipDef {
   isActive: boolean;
   field: RcConfigOption;
 }
-
-// ============================================================================
-// HELPERS
-// ============================================================================
 
 function isDefaultValue(
   value: unknown,
@@ -99,7 +90,6 @@ function buildRcloneCompletionSource(getFieldDefs: () => RcConfigOption[]) {
     const nodeBefore = tree.resolveInner(context.pos, -1);
     const fieldDefs = getFieldDefs();
 
-    // ── KEY position ──────────────────────────────────────────────────────────
     const isPropertyName =
       nodeBefore.name === 'PropertyName' ||
       (nodeBefore.name === 'String' &&
@@ -130,10 +120,8 @@ function buildRcloneCompletionSource(getFieldDefs: () => RcConfigOption[]) {
       };
     }
 
-    // ── VALUE position ────────────────────────────────────────────────────────
     let cursor = nodeBefore;
     while (cursor.parent && cursor.name !== 'Property') cursor = cursor.parent;
-
     if (cursor.name !== 'Property') return null;
 
     const keyNode = cursor.getChild('PropertyName') ?? cursor.firstChild;
@@ -142,7 +130,6 @@ function buildRcloneCompletionSource(getFieldDefs: () => RcConfigOption[]) {
     const rawKey = context.state.sliceDoc(keyNode.from, keyNode.to);
     const keyText = rawKey.replace(/^"|"$/g, '');
     const fieldDef = fieldDefs.find(f => f.FieldName === keyText || f.Name === keyText);
-
     if (!fieldDef?.Examples?.length) return null;
 
     const word = context.matchBefore(/"[^"]*/) ?? context.matchBefore(/\w*/);
@@ -164,10 +151,6 @@ function buildRcloneCompletionSource(getFieldDefs: () => RcConfigOption[]) {
   };
 }
 
-// ============================================================================
-// COMPONENT
-// ============================================================================
-
 @Component({
   selector: 'app-json-editor',
   imports: [MatIconModule, MatTooltipModule, TranslateModule],
@@ -176,14 +159,12 @@ function buildRcloneCompletionSource(getFieldDefs: () => RcConfigOption[]) {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class JsonEditorComponent {
-  // ── Inputs ──────────────────────────────────────────────────────────────────
   readonly formGroup = input.required<FormGroup>();
   readonly fieldDefs = input<RcConfigOption[]>([]);
   readonly searchQuery = input('');
   readonly keyPrefix = input('');
   readonly excludeKeys = input<string[]>([]);
 
-  // ── DI ──────────────────────────────────────────────────────────────────────
   private readonly destroyRef = inject(DestroyRef);
   private readonly hostEl = inject(ElementRef<HTMLElement>);
   private readonly valueMapper = inject(RcloneValueMapperService);
@@ -196,18 +177,14 @@ export class JsonEditorComponent {
     { initialValue: true }
   );
 
-  // ── View refs ────────────────────────────────────────────────────────────────
   private readonly editorContainer = viewChild<ElementRef<HTMLElement>>('editorContainer');
 
-  // ── Internal state ───────────────────────────────────────────────────────────
   private editorView: EditorView | null = null;
   private _debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly explicitKeys = signal<ReadonlySet<string>>(new Set());
-
   private readonly customControlKeys = signal<ReadonlySet<string>>(new Set());
   readonly parseError = signal<string | null>(null);
 
-  // ── Reactive form value ──────────────────────────────────────────────────────
   private readonly formValue = toSignal(
     toObservable(this.formGroup).pipe(
       switchMap(fg => fg.valueChanges.pipe(startWith(fg.getRawValue())))
@@ -215,15 +192,26 @@ export class JsonEditorComponent {
     { initialValue: {} as Record<string, unknown> }
   );
 
-  // ── Chips ────────────────────────────────────────────────────────────────────
+  private readonly excludedSet = computed(() => {
+    const prefix = this.keyPrefix();
+    const excluded = new Set<string>();
+    for (const key of this.excludeKeys()) {
+      excluded.add(key);
+      if (prefix && !key.startsWith(prefix)) {
+        excluded.add(prefix + key);
+      }
+    }
+    return excluded;
+  });
+
   readonly chips = computed<ChipDef[]>(() => {
     const value = this.formValue() as Record<string, unknown>;
     const defs = this.fieldDefs();
     const query = this.searchQuery().trim().toLowerCase();
     const prefix = this.keyPrefix();
     const explicit = this.explicitKeys();
+    const excluded = this.excludedSet();
 
-    const excluded = this.buildExcludedSet();
     const baseDefs = defs.filter(f => !excluded.has(prefix + f.Name));
     const filteredDefs = query ? baseDefs.filter(f => matchesConfigSearch(f, query)) : baseDefs;
 
@@ -252,7 +240,6 @@ export class JsonEditorComponent {
       return {
         controlKey,
         displayKey: field.FieldName || field.Name,
-        label: field.Name,
         currentValue,
         displayValue,
         fullValue: rawDisplay,
@@ -275,10 +262,6 @@ export class JsonEditorComponent {
       if (this._debounceTimer) clearTimeout(this._debounceTimer);
     });
   }
-
-  // ============================================================================
-  // EDITOR INITIALISATION
-  // ============================================================================
 
   private initEditor(): void {
     const container = this.editorContainer();
@@ -328,10 +311,6 @@ export class JsonEditorComponent {
     });
   }
 
-  // ============================================================================
-  // EDITOR → FORM SYNC
-  // ============================================================================
-
   private applyEditorChanges(text: string): void {
     let parsed: Record<string, unknown>;
     try {
@@ -349,11 +328,10 @@ export class JsonEditorComponent {
     const prefix = this.keyPrefix();
     const fg = this.formGroup();
     const defs = this.fieldDefs();
-    const excluded = this.buildExcludedSet();
+    const excluded = this.excludedSet();
     const restored = this.restorePrefix(parsed);
     this.explicitKeys.set(new Set(Object.keys(restored)));
 
-    // ── Dynamic control management ────────────────────────────────────────────
     const existingControls = new Set(Object.keys(fg.getRawValue()));
     const prevCustom = new Set(this.customControlKeys());
     const nextCustom = new Set<string>();
@@ -377,7 +355,6 @@ export class JsonEditorComponent {
 
     this.customControlKeys.set(nextCustom);
 
-    // ── Build patch ───────────────────────────────────────────────────────────
     const latestRaw = fg.getRawValue() as Record<string, unknown>;
     const patch: Record<string, unknown> = {};
 
@@ -402,17 +379,13 @@ export class JsonEditorComponent {
     fg.patchValue(patch, { emitEvent: false });
   }
 
-  // ============================================================================
-  // FORM → EDITOR SYNC
-  // ============================================================================
-
   private serializeForm(): string {
     try {
       const raw = this.formGroup().getRawValue() as Record<string, unknown>;
       const defs = this.fieldDefs();
       const prefix = this.keyPrefix();
       const explicit = this.explicitKeys();
-      const excluded = this.buildExcludedSet();
+      const excluded = this.excludedSet();
       const out: Record<string, unknown> = {};
 
       for (const [controlKey, val] of Object.entries(raw)) {
@@ -460,10 +433,6 @@ export class JsonEditorComponent {
     });
   }
 
-  // ============================================================================
-  // CHIP ACTIONS
-  // ============================================================================
-
   toggleChip(chip: ChipDef): void {
     if (chip.isActive) {
       this.resetChip(chip);
@@ -499,22 +468,6 @@ export class JsonEditorComponent {
 
     ctrl.setValue(chip.field.Default ?? chip.field.DefaultStr ?? null);
     ctrl.markAsDirty();
-  }
-
-  // ============================================================================
-  // PRIVATE HELPERS
-  // ============================================================================
-
-  private buildExcludedSet(): Set<string> {
-    const prefix = this.keyPrefix();
-    const excluded = new Set<string>();
-    for (const key of this.excludeKeys()) {
-      excluded.add(key);
-      if (prefix && !key.startsWith(prefix)) {
-        excluded.add(prefix + key);
-      }
-    }
-    return excluded;
   }
 
   private restorePrefix(parsed: Record<string, unknown>): Record<string, unknown> {

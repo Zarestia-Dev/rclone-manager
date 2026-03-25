@@ -36,7 +36,7 @@
   }
 }
 
-@keyframes diskLoadingShimmer {
+@keyframes shimmer {
   0% {
     background-position: 200% 0;
   }
@@ -502,7 +502,7 @@
 }
 
 .animate-shimmer {
-  animation: diskLoadingShimmer 1.5s infinite linear;
+  animation: shimmer 1.5s infinite linear;
   background: linear-gradient(
     90deg,
     rgba(var(--window-fg-color-rgb), 0.1) 25%,

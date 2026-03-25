@@ -39,6 +39,7 @@ export class RcloneValueMapperService {
   nanosecondsToDuration(nanoseconds: number, fallback?: string): string {
     if (nanoseconds === 0) return '0s';
     if (nanoseconds < 0) return fallback || '';
+    if (nanoseconds >= 9e18) return fallback || 'off';
 
     const hours = Math.floor(nanoseconds / 3600000000000);
     const minutes = Math.floor((nanoseconds % 3600000000000) / 60000000000);

@@ -45,8 +45,8 @@ import {
 @Component({
   selector: 'app-setting-control',
   imports: [
-    NgTemplateOutlet, // replaces CommonModule — only thing the template actually used
-    ReactiveFormsModule, // FormsModule removed — component is fully reactive
+    NgTemplateOutlet,
+    ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
@@ -57,13 +57,12 @@ import {
     MatDatepickerModule,
     MatNativeDateModule,
     MatTimepickerModule,
-    // ScrollingModule removed — CDK virtual scroll is not used in this template
     LineBreaksPipe,
     RcloneOptionTranslatePipe,
     TranslateModule,
   ],
   templateUrl: './setting-control.component.html',
-  styleUrl: './setting-control.component.scss', // singular styleUrl (Angular 19+)
+  styleUrl: './setting-control.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     { provide: NG_VALUE_ACCESSOR, useExisting: SettingControlComponent, multi: true },
@@ -77,12 +76,11 @@ export class SettingControlComponent implements ControlValueAccessor {
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly destroyRef = inject(DestroyRef);
 
-  // Inputs
+  // Inputs / Outputs
   readonly option = input<RcConfigOption | null>(null);
   readonly optionOverrides = input<Record<string, Partial<RcConfigOption>>>({});
   readonly provider = input<string | null>(null);
 
-  // Outputs
   readonly valueCommit = output<void>();
   readonly valueChanged = output<boolean>();
 
@@ -92,14 +90,11 @@ export class SettingControlComponent implements ControlValueAccessor {
   readonly dateControl = signal<FormControl<Date | null>>(new FormControl<Date | null>(null));
   readonly timeControl = signal<FormControl<Date | null>>(new FormControl<Date | null>(null));
 
-  // Replaces the plain getter — signal updated on add/remove/create so zoneless CD works
+  // Signal-backed list of FormArray controls — zoneless CD picks up add/remove.
   readonly formArrayControls = signal<FormControl[]>([]);
 
-  // FIX: was a plain method reading ctrl.value (non-signal). Now a signal set in subscribeToChanges()
-  // so the reset button appears/disappears reactively in a zoneless app.
   readonly isValueChanged = signal(false);
 
-  // FIX: depends only on restrictMode() + mergedOption(), both signals → computed is correct here
   readonly isSensitiveField = computed(() => {
     if (!this.restrictMode()) return false;
     const opt = this.mergedOption();
@@ -109,7 +104,6 @@ export class SettingControlComponent implements ControlValueAccessor {
     return SENSITIVE_KEYS.some(key => name.includes(key.toLowerCase()));
   });
 
-  // FIX: depends only on uiDefaultValue() (a computed) → computed is correct here
   readonly displayDefault = computed(() => {
     const val = this.uiDefaultValue();
     if (val === null || val === undefined || val === '') {
@@ -157,9 +151,7 @@ export class SettingControlComponent implements ControlValueAccessor {
     'Exclamation',
   ].sort();
 
-  readonly bitsFlags = ['date', 'time', 'microseconds', 'longfile', 'shortfile', 'pid'].sort();
-
-  // Computed properties
+  // Computed
   readonly mergedOption = computed(() => {
     const opt = this.option();
     if (!opt) return null;
@@ -173,13 +165,13 @@ export class SettingControlComponent implements ControlValueAccessor {
     return opt ? this.calculateDefaultValue(opt) : '';
   });
 
-  // Hold functionality
+  // Hold (stepper long-press)
   private holdInterval: ReturnType<typeof setInterval> | null = null;
   private holdTimeout: ReturnType<typeof setTimeout> | null = null;
   private readonly HOLD_DELAY = 400;
   private readonly HOLD_INTERVAL = 80;
 
-  // ControlValueAccessor hooks
+  // ControlValueAccessor
   private onChange: (value: unknown) => void = () => {
     /* empty */
   };
@@ -209,18 +201,16 @@ export class SettingControlComponent implements ControlValueAccessor {
     });
   }
 
-  //
-  // ─── CORE LOGIC ──────────────────────────────────────────────────────────────
-  //
+  // Core logic
 
   private calculateDefaultValue(option: RcConfigOption): unknown {
     switch (option.Type) {
       case 'bool':
         return option.Default === true || String(option.Default).toLowerCase() === 'true';
+      case 'Tristate':
+        return this.valueMapper.parseTristate(option.Default);
       case 'Bits':
-        // Combo Bits (e.g. 'read,write') are single-select strings, not split arrays.
         if (this.isBitsWithCombos(option)) return option.DefaultStr ?? '';
-        // Bits with no examples are plain text inputs — default is the raw string.
         if (!option.Examples?.length) return option.DefaultStr ?? '';
         return this.splitToArray(option.DefaultStr, ',');
       case 'Encoding':
@@ -230,7 +220,11 @@ export class SettingControlComponent implements ControlValueAccessor {
       case 'SpaceSepList':
         return this.splitToArray(option.DefaultStr, /\s+/);
       case 'stringArray':
-        return Array.isArray(option.Default) ? option.Default.map(v => v ?? '') : [];
+        return Array.isArray(option.Default) && option.Default.length > 0
+          ? option.Default.map(v => v ?? '')
+          : Array.isArray(option.Value) && option.Value.length > 0
+            ? option.Value.map(v => v ?? '')
+            : [];
       default:
         return option.DefaultStr ?? '';
     }
@@ -271,13 +265,14 @@ export class SettingControlComponent implements ControlValueAccessor {
 
     const defaultValue = this.uiDefaultValue();
 
-    // FIX: FormArray branch now returns early — calling setValue() after clear()+push() was a
-    // double-write bug: controls were already populated, then setValue() fired again unnecessarily.
     if (ctrl instanceof FormArray) {
       const defaultArr = Array.isArray(defaultValue) ? (defaultValue as unknown[]) : [];
       ctrl.clear({ emitEvent: false });
       defaultArr.forEach(val => ctrl.push(new FormControl(val), { emitEvent: false }));
       this.syncFormArrayControls(ctrl);
+      this.onChange(this.prepareValueForBackend(ctrl.value));
+      this.isValueChanged.set(false);
+      this.valueChanged.emit(false);
       this.commitValue();
       return;
     }
@@ -286,17 +281,13 @@ export class SettingControlComponent implements ControlValueAccessor {
     this.commitValue();
   }
 
-  isSensitiveClipboardEvent(e: ClipboardEvent): boolean {
-    return this.isSensitiveField() && (e.type === 'copy' || e.type === 'cut');
-  }
-
   preventClipboardOnSensitive(e: ClipboardEvent): void {
-    if (this.isSensitiveClipboardEvent(e)) e.preventDefault();
+    if (this.isSensitiveField() && (e.type === 'copy' || e.type === 'cut')) {
+      e.preventDefault();
+    }
   }
 
-  //
-  // ─── CONTROL VALUE ACCESSOR ──────────────────────────────────────────────────
-  //
+  // ControlValueAccessor implementation
 
   writeValue(value: unknown): void {
     const ctrl = this.control();
@@ -322,6 +313,7 @@ export class SettingControlComponent implements ControlValueAccessor {
         this.updateSplitFromControl(internalValue);
       }
     }
+    this.isValueChanged.set(!this.valuesEqual(ctrl.value, this.uiDefaultValue()));
   }
 
   private prepareValueForControl(value: unknown): unknown {
@@ -335,11 +327,9 @@ export class SettingControlComponent implements ControlValueAccessor {
     }
 
     if (this.COMMA_ARRAY_TYPES.includes(opt.Type)) {
-      // Bits with preset combination examples behave as single-select strings, not arrays.
       if (this.isBitsWithCombos(opt)) {
         return typeof value === 'string' ? value : opt.ValueStr || opt.DefaultStr || '';
       }
-      // Bits with no examples are plain text inputs — store as string, no array splitting.
       if (opt.Type === 'Bits' && !opt.Examples?.length) {
         if (typeof value === 'number') return opt.ValueStr || opt.DefaultStr || '';
         return typeof value === 'string' ? value : opt.ValueStr || opt.DefaultStr || '';
@@ -366,6 +356,9 @@ export class SettingControlComponent implements ControlValueAccessor {
     if (opt.Type === 'bool') return value === true || String(value).toLowerCase() === 'true';
     if (opt.Type === 'Tristate') return this.valueMapper.parseTristate(value);
     if (opt.Type === 'stringArray') return Array.isArray(value) ? value : [];
+    if (typeof value === 'number' && opt.Examples?.length) {
+      return opt.ValueStr || opt.DefaultStr || '';
+    }
 
     return value;
   }
@@ -381,9 +374,7 @@ export class SettingControlComponent implements ControlValueAccessor {
     this.onTouched = fn;
   }
 
-  //
-  // ─── CONTROL CREATION ────────────────────────────────────────────────────────
-  //
+  // Control creation
 
   private createControl(): void {
     this.controlSubscriptions.unsubscribe();
@@ -429,14 +420,18 @@ export class SettingControlComponent implements ControlValueAccessor {
     if (opt.Type === 'CommaSepList') return this.splitToArray(opt.ValueStr || opt.DefaultStr, ',');
     if (opt.Type === 'SpaceSepList')
       return this.splitToArray(opt.ValueStr || opt.DefaultStr, /\s+/);
-    return (Array.isArray(opt.Value) ? opt.Value : []).filter((v): v is string => !!v);
+    if (Array.isArray(opt.Value) && opt.Value.length > 0)
+      return opt.Value.filter((v): v is string => !!v);
+    if (Array.isArray(opt.Default) && opt.Default.length > 0)
+      return (opt.Default as unknown[]).filter((v): v is string => !!v);
+    return [];
   }
 
   private getInitialValue(opt: RcConfigOption): unknown {
     if (opt.Type === 'bool')
       return opt.Value === true || String(opt.Value).toLowerCase() === 'true';
 
-    if (opt.Type === 'Encoding' || opt.Type === 'Bits') {
+    if (opt.Type === 'Encoding' || opt.Type === 'Bits' || opt.Type === 'DumpFlags') {
       if (this.isBitsWithCombos(opt)) {
         return opt.ValueStr || opt.DefaultStr || '';
       }
@@ -475,7 +470,6 @@ export class SettingControlComponent implements ControlValueAccessor {
       ctrl.valueChanges.subscribe(value => {
         this.onChange(this.prepareValueForBackend(value));
         this.onTouched();
-        // FIX: update the signal so the reset button reacts in zoneless
         const changed = !this.valuesEqual(ctrl.value, this.uiDefaultValue());
         this.isValueChanged.set(changed);
         this.valueChanged.emit(changed);
@@ -543,9 +537,7 @@ export class SettingControlComponent implements ControlValueAccessor {
     return machineValue;
   }
 
-  //
-  // ─── STEPPER ─────────────────────────────────────────────────────────────────
-  //
+  // Stepper
 
   stepChange(direction: 1 | -1, step: number | 'any' = 1, commit = true): void {
     const ctrl = this.control();
@@ -601,28 +593,24 @@ export class SettingControlComponent implements ControlValueAccessor {
     if (commit) this.commitValue();
   }
 
-  //
-  // ─── ARRAY CONTROLS ──────────────────────────────────────────────────────────
-  //
+  // Array controls
 
   addArrayItem(): void {
     const ctrl = this.control();
     if (!(ctrl instanceof FormArray)) return;
     ctrl.push(new FormControl(''));
-    this.syncFormArrayControls(ctrl); // FIX: keeps signal in sync for zoneless
+    this.syncFormArrayControls(ctrl);
   }
 
   removeArrayItem(i: number): void {
     const ctrl = this.control();
     if (!(ctrl instanceof FormArray)) return;
     ctrl.removeAt(i);
-    this.syncFormArrayControls(ctrl); // FIX: keeps signal in sync for zoneless
+    this.syncFormArrayControls(ctrl);
     this.commitValue();
   }
 
-  //
-  // ─── VALIDATORS ──────────────────────────────────────────────────────────────
-  //
+  // Validators
 
   private getValidators(opt: RcConfigOption): ValidatorFn[] {
     const validators: ValidatorFn[] = [];

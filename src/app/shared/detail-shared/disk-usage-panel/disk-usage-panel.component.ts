@@ -143,7 +143,7 @@ export class DiskUsagePanelComponent {
         backgroundImage:
           'linear-gradient(90deg, transparent 0%, rgba(var(--orange-rgb), 0.3) 50%, transparent 100%)',
         backgroundSize: '200% 100%',
-        animation: 'diskLoadingShimmer 1.5s ease-in-out infinite',
+        animation: 'shimmer 1.5s ease-in-out infinite',
       };
     }
 

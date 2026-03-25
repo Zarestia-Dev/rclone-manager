@@ -28,6 +28,65 @@
     opacity: 0.8;
   }
 
+  .init-skeleton {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+
+    &__sidebar {
+      width: 280px;
+      flex-shrink: 0;
+      background: var(--sidebar-bg-color);
+      box-shadow:
+        inset -1px 0 0 0 var(--border-color),
+        inset -5px 0 10px -5px rgba(0, 0, 0, 0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: var(--space-sm) var(--space-xs);
+    }
+
+    &__nav-item {
+      height: 40px;
+      border-radius: var(--radius-sm);
+    }
+
+    &__content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-lg);
+      padding: var(--space-lg) var(--space-xl);
+      max-width: 700px;
+    }
+
+    &__heading {
+      height: 18px;
+      width: 38%;
+      border-radius: var(--radius-xs);
+    }
+
+    &__field {
+      height: 56px;
+      width: 100%;
+      border-radius: var(--radius-md);
+
+      &--short {
+        width: 55%;
+      }
+
+      &--mid {
+        width: 72%;
+      }
+    }
+
+    &__block {
+      height: 112px;
+      width: 100%;
+      border-radius: var(--radius-md);
+    }
+  }
+
   // =============================================
   // SIDEBAR
   // =============================================
@@ -41,6 +100,7 @@
     flex-direction: column;
     overflow: hidden;
     transition: width var(--transition-qubic);
+    animation: fadeInUp 0.2s ease-out both;
 
     .sidebar-header {
       padding: var(--space-sm) var(--space-lg);
@@ -113,6 +173,7 @@
     display: flex;
     flex-direction: column;
     background: var(--window-bg-color);
+    animation: fadeInUp 0.2s ease-out both;
 
     .step-container:not(.interactive) {
       flex: 1;
@@ -229,6 +290,10 @@
         }
       }
     }
+
+    .init-skeleton__sidebar {
+      width: 64px;
+    }
   }
 
   @media (max-width: 640px) {
@@ -244,6 +309,19 @@
     .mobile-step-indicator {
       display: inline-block !important;
     }
+
+    .init-skeleton {
+      flex-direction: column;
+
+      &__sidebar {
+        display: none;
+      }
+
+      &__content {
+        padding: var(--space-md);
+      }
+    }
+
     .button-container {
       padding: var(--space-md);
       display: grid;

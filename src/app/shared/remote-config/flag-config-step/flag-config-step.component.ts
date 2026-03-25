@@ -50,7 +50,6 @@ export class FlagConfigStepComponent {
   private static readonly EMPTY_GROUP = new FormGroup<any>({});
   private static readonly EMPTY_OPTIONS_GROUP = new FormGroup<any>({});
 
-  // Inputs
   readonly form = input.required<FormGroup>();
   flagType = input.required<FlagType>();
   existingRemotes = input<string[]>([]);
@@ -65,28 +64,27 @@ export class FlagConfigStepComponent {
 
   serveTypeChange = output<string>();
 
-  // Derived state
-  configGroup = computed<FormGroup<any>>(
+  readonly configGroup = computed<FormGroup<any>>(
     () =>
       (this.form().get(`${this.flagType()}Config`) as FormGroup<any> | null) ??
       FlagConfigStepComponent.EMPTY_GROUP
   );
 
-  isServe = computed(() => this.flagType() === 'serve');
-  isMount = computed(() => this.flagType() === 'mount');
+  readonly isServe = computed(() => this.flagType() === 'serve');
+  readonly isMount = computed(() => this.flagType() === 'mount');
 
-  showOperationConfig = computed(() => !['vfs', 'filter', 'backend'].includes(this.flagType()));
+  readonly showOperationConfig = computed(
+    () => !['vfs', 'filter', 'backend'].includes(this.flagType())
+  );
 
-  operationDescriptionKey = computed(() =>
+  readonly operationDescriptionKey = computed(() =>
     this.isServe()
       ? 'wizards.remoteConfig.serveDescription'
       : 'wizards.remoteConfig.operationDescription'
   );
 
-  private readonly configGroupAny = this.configGroup;
-
   readonly serveTypeValue = toSignal(
-    toObservable(this.configGroupAny).pipe(
+    toObservable(this.configGroup).pipe(
       switchMap(group => {
         const ctrl = group.get('type');
         if (!ctrl) return of('');
@@ -96,14 +94,13 @@ export class FlagConfigStepComponent {
     { initialValue: '' }
   );
 
-  filteredDynamicFlagFields = computed(() => {
+  readonly filteredDynamicFlagFields = computed(() => {
     const query = this.searchQuery();
     if (!query) return this.dynamicFlagFields();
-
     return this.dynamicFlagFields().filter(field => matchesConfigSearch(field, query));
   });
 
-  dynamicFieldBindings = computed(() => {
+  readonly dynamicFieldBindings = computed(() => {
     const buildKey = this.getControlKey();
     const flagType = this.flagType();
 
@@ -116,7 +113,6 @@ export class FlagConfigStepComponent {
       .filter(binding => !!binding.controlKey);
   });
 
-  // JSON editor toggle
   readonly showJsonMode = signal(false);
 
   toggleJsonMode(): void {
@@ -125,7 +121,6 @@ export class FlagConfigStepComponent {
 
   readonly editorKeyPrefix = computed(() => (this.isServe() ? '' : `${this.flagType()}---`));
 
-  // The JSON editor operates on the options sub-group
   get optionsGroup(): FormGroup {
     return (
       (this.configGroup().get('options') as FormGroup | null) ??

@@ -171,7 +171,6 @@
     <div class="setting-full-width">
       <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }" />
       <div class="array-items">
-        <!-- FIX: uses formArrayControls() signal instead of getter — updates reactively in zoneless -->
         @for (itemControl of formArrayControls(); track $index) {
           <div class="array-item">
             <mat-form-field appearance="fill" class="array-input">
@@ -296,7 +295,6 @@
           <ng-container *ngTemplateOutlet="standardInput; context: { $implicit: mergedOption() }" />
         }
       }
-      <!-- int / int64 / uint32 all share the same integer stepper -->
       @case ('int') {
         <ng-container
           *ngTemplateOutlet="
