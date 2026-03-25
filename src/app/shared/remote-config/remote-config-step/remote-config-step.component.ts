@@ -161,6 +161,8 @@ export class RemoteConfigStepComponent {
     () => !!this.remoteTypeValue() && (!this.providerField() || !!this.selectedProvider())
   );
 
+  readonly jsonExcludeKeys = computed(() => (this.isTypeLocked() ? ['type', 'name'] : []));
+
   readonly availablePredefinedOptions = computed(() => {
     const active = new Set(this.commandOptions().map(o => o.key));
     return PREDEFINED_OPTIONS.filter(p => !active.has(p.key));
@@ -253,11 +255,9 @@ export class RemoteConfigStepComponent {
       untracked(() => {
         const opts = this.commandOptions();
         const hasNonInteractive = opts.some(o => o.key === 'nonInteractive');
-        const hasManagedNonInteractive = opts.some(o => o.key === 'nonInteractive');
-
         if (isInteractive && !hasNonInteractive) {
           this.commandOptions.update(list => [...list, { key: 'nonInteractive', value: true }]);
-        } else if (!isInteractive && hasManagedNonInteractive) {
+        } else if (!isInteractive && hasNonInteractive) {
           this.commandOptions.update(list => list.filter(o => o.key !== 'nonInteractive'));
         }
       });
@@ -360,6 +360,7 @@ export class RemoteConfigStepComponent {
   }
 
   // ── Template bindings ─────────────────────────────────────────────────────
+
   readonly displayRemote = (value: string): string =>
     this.remoteTypes().find(t => t.value === value)?.label ?? value ?? '';
 
@@ -480,8 +481,6 @@ export class RemoteConfigStepComponent {
   asBoolean(value: CommandOption['value']): boolean {
     return typeof value === 'boolean' ? value : false;
   }
-
-  // ── Suggestion helpers ────────────────────────────────────────────────────
 
   reshuffleSuggestions(): void {
     this.suggestedRemotes.set(this.shuffleSample(this.remoteTypes()));

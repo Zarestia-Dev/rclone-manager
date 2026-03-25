@@ -281,7 +281,7 @@
                   >
                     <mat-icon svgIcon="remove"></mat-icon>
                   </button>
-                  <mat-form-field appearance="fill" class="number-input">
+                  <mat-form-field appearance="fill" class="number-input no-subscript">
                     <input
                       matInput
                       type="number"
@@ -323,7 +323,7 @@
                 ></ng-container>
               }
               @case ('select') {
-                <mat-form-field class="input-field" appearance="fill">
+                <mat-form-field class="input-field no-subscript" appearance="fill">
                   <mat-select
                     [formControl]="$any(getFormControl(category, key))"
                     [attr.aria-label]="meta.metadata?.display_name"

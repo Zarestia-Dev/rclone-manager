@@ -183,6 +183,17 @@
   }
 }
 
+@keyframes badgeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-12px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
 // ===== ICON PULSE ANIMATIONS =====
 // Smaller, more subtle pulse effects for icons with scaling
 

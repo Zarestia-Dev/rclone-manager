@@ -20,7 +20,7 @@
   <!-- Controls Toolbar -->
   <div class="toolbar-section">
     <div class="filter-controls">
-      <mat-form-field class="compact">
+      <mat-form-field class="compact no-subscript">
         <mat-label>{{ 'modals.logs.logLevel' | translate }}</mat-label>
         <mat-select [value]="selectedLevel()" (selectionChange)="selectedLevel.set($event.value)">
           <mat-option value="">{{ 'modals.logs.allLevels' | translate }}</mat-option>

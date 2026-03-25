@@ -21,7 +21,7 @@
     } @else if (vfsInstances().length > 0) {
       @if (vfsInstances().length > 1) {
         <div class="vfs-selector">
-          <mat-form-field>
+          <mat-form-field class="no-subscript">
             <mat-label>{{ 'shared.vfsControl.vfsInstance' | translate }}</mat-label>
             <mat-select
               [ngModel]="selectedVfs()"
@@ -383,7 +383,7 @@
               @if (showAdvancedConfig()) {
                 <div class="advanced-config-content">
                   <div class="config-search">
-                    <mat-form-field>
+                    <mat-form-field class="no-subscript">
                       <mat-label>{{
                         'shared.vfsControl.advancedConfig.search' | translate
                       }}</mat-label>
@@ -447,7 +447,7 @@
 
   @if (selectedVfs(); as vfs) {
     <mat-card-actions>
-      <mat-form-field>
+      <mat-form-field class="no-subscript">
         <mat-label>{{ 'shared.vfsControl.actions.pollInterval' | translate }}</mat-label>
         <input
           matInput

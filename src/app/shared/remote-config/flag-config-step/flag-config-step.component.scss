@@ -27,6 +27,7 @@
     font-size: var(--font-size-xs);
     color: var(--dim-color);
     font-weight: 500;
+    animation: badgeIn var(--transition-qubic) both;
   }
 }
 

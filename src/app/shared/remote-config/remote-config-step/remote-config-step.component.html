@@ -254,7 +254,6 @@
   @if (providerReady()) {
     @if (showCommandOptions()) {
       <div class="command-options-panel anim-panel">
-        <!-- Quick-add predefined flags -->
         @if (availablePredefinedOptions().length > 0) {
           <div class="predefined-chips-row">
             <span class="predefined-label">
@@ -277,20 +276,17 @@
           </div>
         }
 
-        <!-- Active options list -->
         @if (commandOptions().length > 0) {
           <div class="active-options">
             @for (opt of commandOptions(); track opt.key; let i = $index) {
               @let optType = getOptionType(opt.value);
               <div class="option-row" [style.--row-index]="i">
-                <!-- Key badge -->
                 <div class="option-key-container">
                   <span class="option-key" [matTooltip]="opt.description | translate">{{
                     opt.key
                   }}</span>
                   <span class="option-type-badge" [attr.data-type]="optType">{{ optType }}</span>
                 </div>
-                <!-- Value control -->
                 <div class="option-controls">
                   @switch (optType) {
                     @case ('boolean') {
@@ -359,7 +355,6 @@
           </div>
         }
 
-        <!-- Add custom option -->
         <div class="add-custom-row">
           <mat-form-field appearance="fill" class="custom-key-field no-subscript">
             <mat-label>{{ 'wizards.remoteConfig.optionKey' | translate }}</mat-label>
@@ -403,6 +398,7 @@
           [formGroup]="form()"
           [fieldDefs]="remoteFields()"
           [searchQuery]="searchQuery()"
+          [excludeKeys]="jsonExcludeKeys()"
         />
       </div>
     } @else {

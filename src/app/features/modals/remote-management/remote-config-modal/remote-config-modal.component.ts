@@ -90,9 +90,8 @@ import {
 } from '../../../../services/remote/utils/remote-config.utils';
 import { MatExpansionModule } from '@angular/material/expansion';
 
-// ============================================================================
-// TYPES
-// ============================================================================
+// ── Types ─────────────────────────────────────────────────────────────────────
+
 interface DialogData {
   editTarget?: EditTarget;
   cloneTarget?: boolean;
@@ -114,8 +113,10 @@ type SharedProfileType = FlagType | 'runtimeRemote';
 
 const PROFILE_TYPES: SharedProfileType[] = [...FLAG_TYPES, 'runtimeRemote'];
 
-/** Operation types managed by jobManagementService (extracted from repeated inline arrays) */
+/** Operation types managed by jobManagementService */
 const JOB_TYPES = new Set(['sync', 'copy', 'bisync', 'move']);
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 @Component({
   selector: 'app-remote-config-modal',
@@ -146,16 +147,14 @@ const JOB_TYPES = new Set(['sync', 'copy', 'bisync', 'move']);
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RemoteConfigModalComponent implements OnInit {
-  // ============================================================================
-  // INJECTIONS
-  // ============================================================================
+  // ── Injections ───────────────────────────────────────────────────────────────
+
   private readonly fb = inject(FormBuilder);
   private readonly dialogRef = inject(MatDialogRef<RemoteConfigModalComponent>);
   private readonly hostEl = inject(ElementRef<HTMLElement>);
   private readonly authStateService = inject(AuthStateService);
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly jobManagementService = inject(JobManagementService);
-
   readonly configStep = viewChild(RemoteConfigStepComponent);
   private readonly mountManagementService = inject(MountManagementService);
   private readonly appSettingsService = inject(AppSettingsService);
@@ -171,9 +170,9 @@ export class RemoteConfigModalComponent implements OnInit {
   private readonly modalService = inject(ModalService);
   private readonly destroyRef = inject(DestroyRef);
 
-  // ============================================================================
-  // CONFIGURATION (static, exposed to template)
-  // ============================================================================
+  // ── Static config ─────────────────────────────────────────────────────────────
+  // FLAG_TYPES is exposed so the template can index it with currentStep.
+
   readonly FLAG_TYPES = FLAG_TYPES;
 
   readonly stepConfigs = computed(() => {
@@ -202,38 +201,25 @@ export class RemoteConfigModalComponent implements OnInit {
     ];
   });
 
-  /** Derived labels list — computed so no new array is created every CD cycle (was a getter). */
   readonly stepLabels = computed(() => this.stepConfigs().map(s => s.label));
 
-  // ============================================================================
-  // FORMS
-  // ============================================================================
+  // ── Forms ─────────────────────────────────────────────────────────────────────
+
   remoteForm!: FormGroup;
   remoteConfigForm!: FormGroup;
 
-  /**
-   * Form status signals via toSignal — replaces manual statusChanges subscriptions +
-   * WritableSignal pair. toSignal shares the same reactive graph so computed signals
-   * that read these will re-evaluate whenever the form validity changes.
-   */
   remoteFormStatus!: Signal<string>;
   remoteConfigFormStatus!: Signal<string>;
   remoteTypeSignal!: Signal<string>;
 
-  // ============================================================================
-  // STATE SIGNALS
-  // ============================================================================
+  // ── State signals ─────────────────────────────────────────────────────────────
+
   remoteTypes = signal<RemoteType[]>([]);
   existingRemotes = signal<string[]>([]);
   mountTypes = signal<string[]>([]);
   availableServeTypes = signal<string[]>([]);
   selectedServeType = signal('http');
 
-  /**
-   * Dynamic field arrays converted to signals — required for zoneless Angular
-   * (OnPush + no Zone.js). Plain class properties are invisible to the signal graph
-   * and won't trigger re-renders when mutated.
-   */
   dynamicRemoteFields = signal<RcConfigOption[]>([]);
   dynamicServeFields = signal<RcConfigOption[]>([]);
   dynamicRuntimeRemoteFields = signal<RcConfigOption[]>([]);
@@ -244,7 +230,6 @@ export class RemoteConfigModalComponent implements OnInit {
     >
   );
 
-  // Profile management
   profileState = signal<
     Record<SharedProfileType, { mode: 'view' | 'edit' | 'add'; tempName: string }>
   >(
@@ -267,7 +252,6 @@ export class RemoteConfigModalComponent implements OnInit {
     >
   );
 
-  // General state
   editTarget = signal<EditTarget>(null);
   cloneTarget = signal(false);
   commandOptions = signal<CommandOption[]>(INITIAL_COMMAND_OPTIONS);
@@ -280,7 +264,6 @@ export class RemoteConfigModalComponent implements OnInit {
   currentStep = signal(1);
   interactiveFlowState = signal<InteractiveFlowState>(createInitialInteractiveFlowState());
 
-  // Search state
   isSearchVisible = signal(false);
   searchQuery = signal('');
 
@@ -299,12 +282,8 @@ export class RemoteConfigModalComponent implements OnInit {
     if (!step) return new Set<string>(['section-general', 'section-auth', 'section-advanced']);
 
     const visible = new Set<string>();
-    if (step.showNameField() || step.showAdvancedToggle()) {
-      visible.add('section-general');
-    }
-    if (step.providerField()) {
-      visible.add('section-auth');
-    }
+    if (step.showNameField() || step.showAdvancedToggle()) visible.add('section-general');
+    if (step.providerField()) visible.add('section-auth');
     if (step.showAdvancedOptions() && step.advancedFields().length > 0 && step.providerReady()) {
       visible.add('section-advanced');
     }
@@ -318,13 +297,10 @@ export class RemoteConfigModalComponent implements OnInit {
   private readonly changedRemoteFields = new Set<string>();
   private readonly optionToFlagTypeMap: Record<string, FlagType> = {};
   private readonly optionToFieldNameMap: Record<string, string> = {};
-
-  /** Signal instead of plain boolean — visible to the signal graph (zoneless safe). */
   private readonly isPopulatingForm = signal(false);
 
-  // ============================================================================
-  // LIFECYCLE
-  // ============================================================================
+  // ── Lifecycle ─────────────────────────────────────────────────────────────────
+
   constructor() {
     this.editTarget.set(this.dialogData?.editTarget ?? null);
     this.cloneTarget.set(this.dialogData?.cloneTarget ?? false);
@@ -332,15 +308,12 @@ export class RemoteConfigModalComponent implements OnInit {
     this.remoteForm = this.createRemoteForm();
     this.remoteConfigForm = this.createRemoteConfigForm();
 
-    // toSignal replaces the manual statusChanges subscription + WritableSignal boilerplate.
-    // Must be called in injection context (constructor ✓).
     this.remoteFormStatus = toSignal(this.remoteForm.statusChanges, {
       initialValue: this.remoteForm.status,
     });
     this.remoteConfigFormStatus = toSignal(this.remoteConfigForm.statusChanges, {
       initialValue: this.remoteConfigForm.status,
     });
-
     this.remoteTypeSignal = toSignal(
       this.remoteForm
         .get('type')!
@@ -353,7 +326,6 @@ export class RemoteConfigModalComponent implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    // Parallel load of all independent data sources — was sequential awaits.
     await Promise.all([
       this.loadExistingRemotes(),
       this.loadRemoteTypes(),
@@ -362,7 +334,7 @@ export class RemoteConfigModalComponent implements OnInit {
       this.loadServeTypes(),
     ]);
 
-    // loadServeFields depends on selectedServeType set by loadServeTypes above.
+    // loadServeFields depends on selectedServeType which is set by loadServeTypes above.
     await this.loadServeFields();
 
     this.initProfiles();
@@ -382,7 +354,6 @@ export class RemoteConfigModalComponent implements OnInit {
   }
 
   private initProfiles(): void {
-    // Batch all updates — was N individual signal.update() calls inside forEach loop.
     const newProfiles = { ...this.profiles() };
     const newSelectedNames = { ...this.selectedProfileName() };
 
@@ -409,9 +380,8 @@ export class RemoteConfigModalComponent implements OnInit {
     this.selectedProfileName.set(newSelectedNames);
   }
 
-  // ============================================================================
-  // DATA LOADING
-  // ============================================================================
+  // ── Data loading ──────────────────────────────────────────────────────────────
+
   private async loadExistingRemotes(): Promise<void> {
     try {
       this.existingRemotes.set(await this.remoteManagementService.getRemotes());
@@ -439,7 +409,7 @@ export class RemoteConfigModalComponent implements OnInit {
     try {
       this.mountTypes.set(await this.mountManagementService.getMountTypes());
     } catch (error) {
-      console.error('Failed to load mount types:', error);
+      console.error('Error fetching mount types:', error);
     }
   }
 
@@ -447,44 +417,31 @@ export class RemoteConfigModalComponent implements OnInit {
     try {
       const types = await this.serveManagementService.getServeTypes();
       this.availableServeTypes.set(types);
-
-      const serveConfigs = this.dialogData?.existingConfig?.[REMOTE_CONFIG_KEYS.serve] as
-        | ProfilesMap
-        | undefined;
-      this.profiles.update(p => ({ ...p, serve: serveConfigs ?? {} }));
-
-      if (serveConfigs && Object.keys(serveConfigs).length > 0) {
-        const firstConfig = Object.values(serveConfigs)[0] as Record<string, any>;
-        this.selectedServeType.set((firstConfig?.['options']?.['type'] as string) ?? 'http');
-      } else if (types.length > 0) {
-        this.selectedServeType.set(types[0]);
-      }
+      if (types.length > 0) this.selectedServeType.set(types[0]);
     } catch (error) {
-      console.error('Failed to load serve types:', error);
+      console.error('Error fetching serve types:', error);
     }
   }
 
   private async loadServeFields(): Promise<void> {
-    if (!this.selectedServeType()) return;
+    const type = this.selectedServeType();
+    if (!type) return;
+
     this.isLoadingServeFields.set(true);
+    this.dynamicServeFields.set([]);
     try {
-      this.dynamicServeFields.set(
-        await this.flagConfigService.loadServeFlagFields(this.selectedServeType())
-      );
+      this.dynamicServeFields.set(await this.flagConfigService.loadServeFlagFields(type));
       this.rebuildServeOptionsGroup();
     } catch (error) {
-      console.error('Failed to load serve fields:', error);
-      this.dynamicServeFields.set([]);
+      console.error('Error loading serve config fields:', error);
     } finally {
       this.isLoadingServeFields.set(false);
     }
   }
 
   private async loadRuntimeRemoteFields(type: string): Promise<void> {
-    if (!type) {
-      this.dynamicRuntimeRemoteFields.set([]);
-      return;
-    }
+    if (!type) return;
+
     this.isLoadingRuntimeRemoteFields.set(true);
     this.dynamicRuntimeRemoteFields.set([]);
     try {
@@ -502,8 +459,10 @@ export class RemoteConfigModalComponent implements OnInit {
   private async syncRuntimeRemoteType(): Promise<void> {
     const runtimeRemoteGroup = this.remoteConfigForm.get('runtimeRemoteConfig') as FormGroup | null;
     if (!runtimeRemoteGroup) return;
+
     const currentRemoteType = String(this.remoteForm.get('type')?.value ?? '').trim();
     runtimeRemoteGroup.get('type')?.setValue(currentRemoteType, { emitEvent: false });
+
     if (!currentRemoteType) {
       this.dynamicRuntimeRemoteFields.set([]);
       return;
@@ -518,8 +477,10 @@ export class RemoteConfigModalComponent implements OnInit {
       if (key !== 'type') group.removeControl(key);
     });
     this.dynamicRuntimeRemoteFields().forEach(field => {
-      const validators = field.Required ? [Validators.required] : [];
-      group.addControl(field.Name, new FormControl(field.Value ?? field.Default, validators));
+      group.addControl(
+        field.Name,
+        new FormControl(field.Value ?? field.Default, field.Required ? [Validators.required] : [])
+      );
     });
   }
 
@@ -550,10 +511,9 @@ export class RemoteConfigModalComponent implements OnInit {
         const uniqueKey = this.getUniqueControlKey(flagType, field);
         this.optionToFlagTypeMap[uniqueKey] = flagType;
         this.optionToFieldNameMap[uniqueKey] = field.FieldName;
-        const validators = field.Required ? [Validators.required] : [];
         optionsGroup.addControl(
           uniqueKey,
-          new FormControl(field.Value ?? field.Default, validators)
+          new FormControl(field.Value ?? field.Default, field.Required ? [Validators.required] : [])
         );
       });
     });
@@ -563,9 +523,8 @@ export class RemoteConfigModalComponent implements OnInit {
     return flagType === 'serve' ? field.Name : `${flagType}---${field.Name}`;
   }
 
-  // ============================================================================
-  // FORM CREATION
-  // ============================================================================
+  // ── Form creation ─────────────────────────────────────────────────────────────
+
   private createRemoteForm(): FormGroup {
     const isEdit = this.editTarget() === 'remote';
     const isClone = isEdit && this.cloneTarget();
@@ -587,8 +546,9 @@ export class RemoteConfigModalComponent implements OnInit {
   private createRemoteConfigForm(): FormGroup {
     const group: Record<string, AbstractControl> = {};
 
+    // All flag types use the `${flag}Config` naming convention — including 'serve' → 'serveConfig'.
     FLAG_TYPES.forEach(flag => {
-      group[flag === 'serve' ? 'serveConfig' : `${flag}Config`] =
+      group[`${flag}Config`] =
         flag === 'serve'
           ? this.createServeConfigGroup()
           : this.createConfigGroup(this.getFieldsForFlagType(flag));
@@ -609,11 +569,7 @@ export class RemoteConfigModalComponent implements OnInit {
       autoStart: [false],
       cronEnabled: [false],
       cronExpression: [null],
-      source: this.fb.group({
-        pathType: ['currentRemote'],
-        path: [''],
-        otherRemoteName: [''],
-      }),
+      source: this.fb.group({ pathType: ['currentRemote'], path: [''], otherRemoteName: [''] }),
       type: ['http', Validators.required],
       vfsProfile: [DEFAULT_PROFILE_NAME],
       filterProfile: [DEFAULT_PROFILE_NAME],
@@ -637,7 +593,7 @@ export class RemoteConfigModalComponent implements OnInit {
       });
     }
     if (fields.includes('dest') && !fields.includes('type')) {
-      // 'type' check excludes mount (mount dest is a simple string)
+      // 'type' check excludes mount (mount dest is a simple string, not a path group)
       group['dest'] = this.fb.group({ pathType: ['local'], path: [''], otherRemoteName: [''] });
     } else if (fields.includes('dest') && fields.includes('type')) {
       group['dest'] = [''];
@@ -674,9 +630,8 @@ export class RemoteConfigModalComponent implements OnInit {
     nameCtrl.updateValueAndValidity({ onlySelf: true, emitEvent: false });
   }
 
-  // ============================================================================
-  // FORM SETUP
-  // ============================================================================
+  // ── Form setup ────────────────────────────────────────────────────────────────
+
   private static readonly AUTO_START_OP_TYPES = new Set(['sync', 'copy', 'move', 'bisync']);
 
   private setupAutoStartValidators(): void {
@@ -684,8 +639,7 @@ export class RemoteConfigModalComponent implements OnInit {
       FLAG_TYPES.forEach(type => {
         if (type !== 'mount' && !RemoteConfigModalComponent.AUTO_START_OP_TYPES.has(type)) return;
 
-        const configName = `${type}Config`;
-        const opGroup = this.remoteConfigForm.get(configName);
+        const opGroup = this.remoteConfigForm.get(`${type}Config`);
         if (!opGroup) return;
 
         if (type === 'mount') {
@@ -718,12 +672,10 @@ export class RemoteConfigModalComponent implements OnInit {
           });
           sourcePathTypeCtrl?.valueChanges
             .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe(() => {
-              sourcePathCtrl?.updateValueAndValidity();
-            });
-          destPathTypeCtrl?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-            destPathCtrl?.updateValueAndValidity();
-          });
+            .subscribe(() => sourcePathCtrl?.updateValueAndValidity());
+          destPathTypeCtrl?.valueChanges
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe(() => destPathCtrl?.updateValueAndValidity());
         }
       });
     }
@@ -736,9 +688,8 @@ export class RemoteConfigModalComponent implements OnInit {
     });
   }
 
-  // ============================================================================
-  // FORM POPULATION
-  // ============================================================================
+  // ── Form population ───────────────────────────────────────────────────────────
+
   private populateFormIfEditingOrCloning(): void {
     if (!this.dialogData?.existingConfig) return;
 
@@ -800,7 +751,6 @@ export class RemoteConfigModalComponent implements OnInit {
     this.remoteForm.patchValue({ name: config['name'], type: config['type'] });
     await this.onRemoteTypeChange();
     this.remoteForm.patchValue(config);
-    // Set false directly after all awaits — setTimeout(100) was fragile in zoneless Angular.
     this.isPopulatingForm.set(false);
   }
 
@@ -859,11 +809,10 @@ export class RemoteConfigModalComponent implements OnInit {
         group.get(field.Name)?.setValue(value, { emitEvent: false });
       });
     } else {
-      // Flag types
       const flagType = type as FlagType;
       const hasActualData = Object.keys(config).some(k => k !== 'name');
 
-      const patchData: any = {
+      const patchData: Record<string, unknown> = {
         autoStart: config['autoStart'] ?? false,
         cronEnabled: config['cronEnabled'] ?? false,
         cronExpression: config['cronExpression'] ?? null,
@@ -873,10 +822,10 @@ export class RemoteConfigModalComponent implements OnInit {
         runtimeRemoteProfile: config['runtimeRemoteProfile'] ?? DEFAULT_PROFILE_NAME,
       };
 
-      if (flagType === 'mount' && config['type'] !== undefined) patchData.type = config['type'];
+      if (flagType === 'mount' && config['type'] !== undefined) patchData['type'] = config['type'];
 
       if (config['source'] !== undefined) {
-        patchData.source = parseFsString(
+        patchData['source'] = parseFsString(
           config['source'] as string,
           'currentRemote',
           this.getRemoteName(),
@@ -884,7 +833,7 @@ export class RemoteConfigModalComponent implements OnInit {
         );
       }
       if (config['dest'] !== undefined) {
-        patchData.dest =
+        patchData['dest'] =
           flagType === 'mount'
             ? config['dest']
             : parseFsString(
@@ -919,7 +868,6 @@ export class RemoteConfigModalComponent implements OnInit {
       }
     }
 
-    // Set false after all awaits — no setTimeout needed.
     this.isPopulatingForm.set(false);
   }
 
@@ -935,9 +883,8 @@ export class RemoteConfigModalComponent implements OnInit {
     this.refreshRemoteNameValidator();
   }
 
-  // ============================================================================
-  // STEP NAVIGATION
-  // ============================================================================
+  // ── Step navigation ───────────────────────────────────────────────────────────
+
   applicableSteps = computed(() => {
     const editTargetValue = this.editTarget();
     if (!editTargetValue || editTargetValue === 'remote') {
@@ -954,10 +901,12 @@ export class RemoteConfigModalComponent implements OnInit {
     this.scrollToTop();
   }
 
+  // Bug fix: was reading this.remoteForm.status directly (plain property, not tracked
+  // by Angular's signal graph in zoneless mode). Now uses the remoteFormStatus signal.
   isStepDisabled(step: number): boolean {
     if (this.isAuthInProgress()) return true;
     if (this.editTarget()) return false;
-    return step > 1 && this.remoteForm.status === 'INVALID';
+    return step > 1 && this.remoteFormStatus() === 'INVALID';
   }
 
   nextStep(): void {
@@ -982,9 +931,8 @@ export class RemoteConfigModalComponent implements OnInit {
     this.hostEl.nativeElement.querySelector('.modal-content')?.scrollTo(0, 0);
   }
 
-  // ============================================================================
-  // EVENT HANDLERS
-  // ============================================================================
+  // ── Event handlers ────────────────────────────────────────────────────────────
+
   async onRemoteTypeChange(): Promise<void> {
     const remoteType = this.remoteForm.get('type')?.value;
     await this.loadRemoteFields(remoteType);
@@ -1009,8 +957,10 @@ export class RemoteConfigModalComponent implements OnInit {
       if (!['name', 'type'].includes(key)) this.remoteForm.removeControl(key);
     });
     this.dynamicRemoteFields().forEach(field => {
-      const validators = field.Required ? [Validators.required] : [];
-      this.remoteForm.addControl(field.Name, new FormControl(field.Value, validators));
+      this.remoteForm.addControl(
+        field.Name,
+        new FormControl(field.Value, field.Required ? [Validators.required] : [])
+      );
     });
   }
 
@@ -1033,8 +983,8 @@ export class RemoteConfigModalComponent implements OnInit {
 
   onRemoteFieldChanged(fieldName: string, isChanged: boolean): void {
     if (this.isPopulatingForm()) return;
-    // In edit mode we always track the field (even when "unchanged") so existing
-    // values are not silently dropped during save. In create mode, track only real changes.
+    // In edit mode we always track the field so existing values aren't silently
+    // dropped during save. In create mode, track only actual user changes.
     if (isChanged || this.editTarget() === 'remote') {
       this.changedRemoteFields.add(fieldName);
     } else {
@@ -1048,9 +998,8 @@ export class RemoteConfigModalComponent implements OnInit {
     }
   }
 
-  // ============================================================================
-  // FORM SUBMISSION
-  // ============================================================================
+  // ── Form submission ───────────────────────────────────────────────────────────
+
   async onSubmit(): Promise<void> {
     if (this.isAuthInProgress()) return;
     try {
@@ -1071,11 +1020,13 @@ export class RemoteConfigModalComponent implements OnInit {
     const finalConfig = this.buildFinalConfig();
     await this.authStateService.startAuth(remoteData.name, false);
 
-    const isInteractive = this.commandOptions().some(
+    // When the `nonInteractive` rclone flag is set, rclone won't prompt for config
+    // values itself — so the frontend drives the interactive config wizard instead.
+    const requiresInteractiveFlow = this.commandOptions().some(
       o => o.key === 'nonInteractive' && o.value === true
     );
 
-    if (!isInteractive) {
+    if (!requiresInteractiveFlow) {
       await this.remoteManagementService.createRemote(
         remoteData.name,
         remoteData,
@@ -1095,17 +1046,16 @@ export class RemoteConfigModalComponent implements OnInit {
     await this.authStateService.startAuth(remoteName, true);
 
     const remoteData = this.cleanFormData(this.remoteForm.getRawValue());
-    const isInteractive = this.commandOptions().some(
+    const requiresInteractiveFlow = this.commandOptions().some(
       o => o.key === 'nonInteractive' && o.value === true
     );
 
-    if (this.editTarget() === 'remote' && isInteractive) {
+    if (this.editTarget() === 'remote' && requiresInteractiveFlow) {
       this.pendingConfig = { remoteData, finalConfig: this.createEmptyFinalConfig() };
       return await this.startInteractiveRemoteConfig(remoteData);
     }
 
     if (this.editTarget() === 'remote') {
-      const remoteData = this.cleanFormData(this.remoteForm.getRawValue());
       await this.remoteManagementService.updateRemote(remoteData.name, remoteData);
       return { success: true };
     }
@@ -1115,9 +1065,8 @@ export class RemoteConfigModalComponent implements OnInit {
     return { success: true };
   }
 
-  // ============================================================================
-  // CONFIG BUILDING
-  // ============================================================================
+  // ── Config building ───────────────────────────────────────────────────────────
+
   private buildFinalConfig(): RemoteConfigSections {
     this.saveCurrentStepProfile();
     const p = this.profiles();
@@ -1136,10 +1085,6 @@ export class RemoteConfigModalComponent implements OnInit {
     };
   }
 
-  /**
-   * Synchronous — was incorrectly marked async and returned Promise.resolve().
-   * Always includes runtimeRemote alongside the target config.
-   */
   private buildUpdateConfig(): Record<string, unknown> {
     const target = this.editTarget() as SharedProfileType;
     if (!target) return {};
@@ -1165,9 +1110,8 @@ export class RemoteConfigModalComponent implements OnInit {
     return { ...empty, showOnTray: true };
   }
 
-  // ============================================================================
-  // PROFILE MANAGEMENT
-  // ============================================================================
+  // ── Profile management ────────────────────────────────────────────────────────
+
   saveCurrentStepProfile(): void {
     const type = this.stepConfigs()[this.currentStep() - 1]?.type;
     if (type && type !== 'remote') this.saveCurrentProfile(type);
@@ -1275,7 +1219,11 @@ export class RemoteConfigModalComponent implements OnInit {
       ...p,
       [t]: {
         ...p[t],
-        [currentName]: this.buildProfileConfig(t, this.getRemoteName(), formValue),
+        [currentName]: this.buildProfileConfig(
+          t,
+          this.getRemoteName(),
+          formValue as Record<string, unknown>
+        ),
       },
     }));
   }
@@ -1318,7 +1266,11 @@ export class RemoteConfigModalComponent implements OnInit {
     return Object.keys(this.profiles()[type] ?? {});
   }
 
-  private buildProfileConfig(type: SharedProfileType, remoteName: string, configData: any): any {
+  private buildProfileConfig(
+    type: SharedProfileType,
+    remoteName: string,
+    configData: Record<string, unknown>
+  ): Record<string, unknown> {
     if (type === 'serve') {
       const fs = buildPathString(configData['source'], remoteName);
       const serveOptions = this.cleanServeOptions(
@@ -1351,7 +1303,7 @@ export class RemoteConfigModalComponent implements OnInit {
     }
 
     // Flag types
-    const result: any = {};
+    const result: Record<string, unknown> = {};
     for (const key in configData) {
       result[key] =
         key === 'source' || key === 'dest'
@@ -1362,19 +1314,19 @@ export class RemoteConfigModalComponent implements OnInit {
     const isMainOp = ['mount', 'sync', 'copy', 'move', 'bisync'].includes(type);
     if (isMainOp) {
       const runtimeOptions = this.getProfileOptions('runtimeRemote');
-      const selectedProfile = String(result.runtimeRemoteProfile ?? '').trim();
-      result.runtimeRemoteProfile = runtimeOptions.includes(selectedProfile)
+      const selectedProfile = String(result['runtimeRemoteProfile'] ?? '').trim();
+      result['runtimeRemoteProfile'] = runtimeOptions.includes(selectedProfile)
         ? selectedProfile
         : DEFAULT_PROFILE_NAME;
     } else {
-      delete result.vfsProfile;
-      delete result.filterProfile;
-      delete result.backendProfile;
-      delete result.runtimeRemoteProfile;
+      delete result['vfsProfile'];
+      delete result['filterProfile'];
+      delete result['backendProfile'];
+      delete result['runtimeRemoteProfile'];
     }
 
-    result.options = this.cleanData(
-      configData.options,
+    result['options'] = this.cleanData(
+      configData['options'] as Record<string, unknown>,
       this.dynamicFlagFields()[type as FlagType],
       type as FlagType
     );
@@ -1404,9 +1356,8 @@ export class RemoteConfigModalComponent implements OnInit {
     return RemoteConfigModalComponent.FLAG_TYPE_FIELDS[type] ?? [];
   }
 
-  // ============================================================================
-  // DATA CLEANING
-  // ============================================================================
+  // ── Data cleaning ─────────────────────────────────────────────────────────────
+
   private cleanFormData(formData: Record<string, unknown>): PendingRemoteData {
     const result: PendingRemoteData = {
       name: formData['name'] as string,
@@ -1449,9 +1400,8 @@ export class RemoteConfigModalComponent implements OnInit {
     );
   }
 
-  // ============================================================================
-  // INTERACTIVE FLOW
-  // ============================================================================
+  // ── Interactive flow ──────────────────────────────────────────────────────────
+
   onInteractiveContinue(answer: string | number | boolean | null): void {
     if (this.interactiveFlowState().isProcessing) return;
     this.interactiveFlowState.update(s => ({ ...s, isProcessing: true, answer: String(answer) }));
@@ -1538,9 +1488,8 @@ export class RemoteConfigModalComponent implements OnInit {
     );
   });
 
-  // ============================================================================
-  // FINALIZATION
-  // ============================================================================
+  // ── Finalization ──────────────────────────────────────────────────────────────
+
   private async finalizeRemoteCreation(): Promise<void> {
     if (!this.pendingConfig) return;
     const { remoteData, finalConfig } = this.pendingConfig;
@@ -1567,7 +1516,6 @@ export class RemoteConfigModalComponent implements OnInit {
       }
     }
 
-    // Unified job dispatch — replaces four identical copy-paste blocks.
     const jobConfigMap = {
       copy: finalConfig[REMOTE_CONFIG_KEYS.copy] as Record<
         string,
@@ -1617,9 +1565,8 @@ export class RemoteConfigModalComponent implements OnInit {
     this.interactiveFlowState.set(createInitialInteractiveFlowState());
   }
 
-  // ============================================================================
-  // UTILITIES
-  // ============================================================================
+  // ── Utilities ─────────────────────────────────────────────────────────────────
+
   public getRemoteName(): string {
     return this.dialogData?.name ?? this.remoteForm.get('name')?.value;
   }
@@ -1722,13 +1669,15 @@ export class RemoteConfigModalComponent implements OnInit {
     if (this.isAuthInProgress()) return true;
     if (this.remoteFormStatus() === 'INVALID') return true;
 
-    const currentStepIdx = this.currentStep() - 1;
-    const currentStepConfig = this.stepConfigs()[currentStepIdx];
-
-    if (currentStepConfig && currentStepConfig.type !== 'remote') {
-      this.remoteConfigFormStatus(); // register dependency
-      const group = this.remoteConfigForm.get(`${currentStepConfig.type}Config`);
-      if (group && group.invalid) return true;
+    const currentStepConfig = this.stepConfigs()[this.currentStep() - 1];
+    if (currentStepConfig?.type !== 'remote') {
+      // Reading remoteConfigFormStatus() registers the reactive dependency so
+      // this computed re-evaluates when any sub-form group changes validity.
+      const configStatus = this.remoteConfigFormStatus();
+      if (configStatus === 'INVALID') {
+        const group = this.remoteConfigForm.get(`${currentStepConfig.type}Config`);
+        return group?.invalid ?? false;
+      }
     }
 
     return false;
@@ -1757,9 +1706,8 @@ export class RemoteConfigModalComponent implements OnInit {
       : 'modals.remoteConfig.buttons.save';
   });
 
-  // ============================================================================
-  // SEARCH
-  // ============================================================================
+  // ── Search ────────────────────────────────────────────────────────────────────
+
   toggleSearchVisibility(): void {
     this.isSearchVisible.update(visible => !visible);
     if (!this.isSearchVisible()) this.searchQuery.set('');

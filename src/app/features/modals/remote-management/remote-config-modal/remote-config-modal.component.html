@@ -1,7 +1,6 @@
 <div class="modal-container">
   @let flow = interactiveFlowState();
 
-  <!-- Modal Header -->
   <header class="modal-header" data-tauri-drag-region>
     <button
       mat-icon-button
@@ -36,10 +35,10 @@
   </header>
 
   <div class="modal-body">
-    <!-- Sidebar for Navigation -->
     @if (!flow.isActive) {
       <aside class="modal-sidebar">
         @if (!editTarget()) {
+          <!-- Step wizard navigation -->
           <div class="step-indicator-container hide-scrollbar">
             <mat-nav-list
               class="step-indicator"
@@ -50,25 +49,27 @@
                 @let isCompleted = currentStep() > stepNum;
                 @let isCurrent = currentStep() === stepNum;
 
-                <button
+                <a
                   mat-list-item
                   [activated]="isCurrent"
                   [disabled]="isStepDisabled(stepNum)"
                   (click)="goToStep(stepNum)"
                   [class.completed]="isCompleted"
                   [attr.aria-selected]="isCurrent"
+                  (keydown.enter)="goToStep(stepNum)"
+                  (keydown.space)="goToStep(stepNum)"
                 >
                   <mat-icon
                     matListItemIcon
                     [svgIcon]="isCompleted ? 'circle-check' : config.icon"
                   ></mat-icon>
                   <span matListItemTitle>{{ config.label | translate }}</span>
-                </button>
+                </a>
               }
             </mat-nav-list>
           </div>
         } @else if (editTarget() === 'remote') {
-          <!-- Categories for Remote Edit Mode -->
+          <!-- Section jump nav for remote edit mode -->
           <div class="sidebar-header">
             <span class="header-label">{{
               'modals.remoteConfig.editMode.sections.label' | translate
@@ -87,7 +88,7 @@
             </mat-nav-list>
           </div>
         } @else {
-          <!-- Profiles Selector for Flag Edit Mode -->
+          <!-- Profile selector for flag edit mode -->
           <div class="sidebar-header">
             <span class="header-label">{{
               'modals.remoteConfig.editMode.profiles'
@@ -119,7 +120,6 @@
       </aside>
     }
 
-    <!-- Modal Content -->
     <main class="modal-content">
       <app-search-container
         [visible]="isSearchVisible()"
@@ -140,7 +140,7 @@
         </section>
       }
 
-      <!-- Shared Profile Template -->
+      <!-- Profile header template (shared across all flag steps) -->
       <ng-template #profileHeader let-flagType="type">
         <div class="profile-header">
           @if (getProfileState(flagType).mode === 'view') {
@@ -186,7 +186,6 @@
               </button>
             </div>
           } @else {
-            <!-- Edit/Add Mode -->
             <mat-form-field subscriptSizing="dynamic" class="profile-input">
               <mat-label>{{
                 (getProfileState(flagType).mode === 'add'
@@ -227,7 +226,7 @@
         </div>
       </ng-template>
 
-      <!-- Linked Profiles Template (Collapsible) -->
+      <!-- Linked profiles (VFS / filter / backend / runtime remote) template -->
       <ng-template
         #linkedProfiles
         let-configPath="configPath"
@@ -299,10 +298,8 @@
         </mat-expansion-panel>
       </ng-template>
 
-      <!-- Non-Interactive Configuration Flow -->
       @if (!flow.isActive) {
         @switch (currentStep()) {
-          <!-- Step 1: Remote Configuration -->
           @case (1) {
             <section class="step-container">
               <app-remote-config-step
@@ -324,7 +321,6 @@
             </section>
           }
 
-          <!-- Steps 2–10: Flag and Serve configs -->
           @default {
             @if (currentStep() < stepConfigs().length) {
               @let flagType = FLAG_TYPES[currentStep() - 2];
@@ -367,7 +363,7 @@
                 />
               </section>
             } @else {
-              <!-- Final Step: Runtime Remote Configuration -->
+              <!-- Final step: runtime remote configuration -->
               <section class="step-container">
                 <ng-container
                   *ngTemplateOutlet="profileHeader; context: { type: 'runtimeRemote' }"
@@ -399,9 +395,7 @@
     </main>
   </div>
 
-  <!-- Footer Buttons -->
   <footer class="button-container">
-    <!-- Left Side: Back Button -->
     @if (currentStep() > 1 && !editTarget() && !flow.isActive) {
       <button
         matButton="filled"
@@ -418,7 +412,6 @@
       </button>
     }
 
-    <!-- Cancel Button (during auth or interactive flow) -->
     @if ((isAuthInProgress() && !isAuthCancelled()) || flow.isActive) {
       <button
         matButton="filled"
@@ -434,7 +427,6 @@
       </button>
     }
 
-    <!-- Cleanup Status (shown when auth is cancelled) -->
     @if (isAuthCancelled()) {
       <span class="cleanup-status" aria-live="polite">
         {{ 'modals.remoteConfig.buttons.cleanup' | translate }}
@@ -442,7 +434,6 @@
       </span>
     }
 
-    <!-- Save Button (step > 1 in create mode, or edit mode) -->
     @if (((currentStep() > 1 && !editTarget()) || editTarget()) && !flow.isActive) {
       <button
         matButton="filled"
@@ -463,7 +454,6 @@
       </button>
     }
 
-    <!-- Continue Button (during interactive flow) -->
     @if (flow.isActive) {
       @let continueLabel =
         (flow.isProcessing
@@ -491,7 +481,6 @@
       </button>
     }
 
-    <!-- Next Button (create mode, not on last step) -->
     @if (currentStep() < stepConfigs().length && !editTarget() && !flow.isActive) {
       <button
         matButton="filled"

@@ -280,14 +280,6 @@
     display: flex;
     align-items: center;
     gap: var(--space-sm);
-
-    .expiry-select {
-      flex: 1;
-
-      ::ng-deep .mat-mdc-form-field-subscript-wrapper {
-        display: none;
-      }
-    }
   }
 
   .link-error {

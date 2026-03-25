@@ -1,3 +1,6 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// KEYFRAMES
+// ─────────────────────────────────────────────────────────────────────────────
 @keyframes iconFadeCycleA {
   0% {
     opacity: 0;
@@ -36,19 +39,37 @@
   }
 }
 
-// ── Animation utility classes ──────────────────────────────────────────────
+// Base for the three icon-button toggles in the fields-mode-header.
+%mode-toggle-btn {
+  color: var(--dim-color);
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
 
+  &:hover {
+    color: var(--window-fg-color);
+    background: rgba(var(--primary-color-rgb), 0.08);
+  }
+
+  &.active {
+    color: var(--primary-color);
+    background: rgba(var(--primary-color-rgb), 0.1);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ANIMATION UTILITY CLASSES
+// ─────────────────────────────────────────────────────────────────────────────
 .anim-field {
   animation: slideInFromBottomIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.anim-panel {
-  animation: scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+.anim-fade {
+  animation: fadeIn 0.25s ease both;
 }
 
-.option-row {
-  animation: slideInFromBottomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: calc(var(--row-index, 0) * 45ms);
+.anim-panel {
+  animation: scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .anim-setting-control {
@@ -65,9 +86,19 @@
   animation: iconFadeCycleB 2.8s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// TOGGLE BUTTONS (fields-mode-header actions)
+// ─────────────────────────────────────────────────────────────────────────────
+.json-toggle-btn,
+.cmd-options-btn,
+.advanced-toggle-btn {
+  @extend %mode-toggle-btn;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // FORM ROOT
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+
 form {
   display: flex;
   flex-direction: column;
@@ -79,42 +110,10 @@ form {
     gap: 0;
   }
 
-  // ── Advanced section ──────────────────────────────────────────────────────
-
-  .advanced-section {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-md);
-    padding: var(--space-md);
-    background: rgba(var(--accent-color-rgb), 0.05);
-    border: 1px solid rgba(var(--accent-color-rgb), 0.18);
-    border-radius: var(--radius-md);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.06),
-      0 1px 3px rgba(0, 0, 0, 0.08);
-  }
-
-  // ── Field icon ────────────────────────────────────────────────────────────
-
   .field-icon {
     color: var(--dim-color);
     transition: color 0.15s ease;
   }
-
-  // ── Section heading ───────────────────────────────────────────────────────
-
-  .section-heading {
-    font-size: var(--font-size-md);
-    font-weight: 600;
-    color: var(--window-fg-color);
-    display: flex;
-    align-items: center;
-    gap: var(--space-sm);
-    margin: 0;
-    letter-spacing: -0.01em;
-  }
-
-  // ── Loading state ─────────────────────────────────────────────────────────
 
   .loading-container {
     display: flex;
@@ -140,7 +139,29 @@ form {
     }
   }
 
-  // ── Mobile ────────────────────────────────────────────────────────────────
+  .advanced-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    background: rgba(var(--accent-color-rgb), 0.05);
+    border: 1px solid rgba(var(--accent-color-rgb), 0.18);
+    border-radius: var(--radius-md);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+
+  .section-heading {
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    color: var(--window-fg-color);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
 
   @media (max-width: 768px) {
     .advanced-section {
@@ -159,9 +180,9 @@ form {
   }
 }
 
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
 // EMPTY STATE
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
 
 .empty-state {
   position: relative;
@@ -174,7 +195,6 @@ form {
   background: rgba(var(--accent-color-rgb), 0.03);
   border: 1px dashed rgba(var(--accent-color-rgb), 0.2);
   border-radius: var(--radius-md);
-  opacity: 1 !important;
   overflow: hidden;
 
   &-icon-ring {
@@ -236,8 +256,6 @@ form {
   }
 }
 
-// ── Empty-state pill ───────────────────────────────────────────────────────
-
 .empty-pill {
   display: inline-flex;
   align-items: center;
@@ -251,14 +269,13 @@ form {
   font-weight: 500;
   cursor: pointer;
   animation: slideInFromBottomIn 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-  animation-delay: calc(var(--pill-index, 0) * 45ms);
   transition:
     color 0.15s ease,
     background 0.15s ease,
     transform 0.12s ease,
     box-shadow 0.15s ease;
 
-  // Stagger the first 6 pills via nth-child (still clean, no JS needed)
+  // Stagger the first 6 pills via nth-child (no JS needed)
   @for $i from 1 through 6 {
     &:nth-child(#{$i}) {
       animation-delay: #{$i * 45ms};
@@ -276,7 +293,6 @@ form {
   }
 
   &:hover {
-    border-color: var(--primary-color);
     color: var(--primary-color);
     background: rgba(var(--primary-color-rgb), 0.08);
     box-shadow: 0 0 0 1px rgba(var(--primary-color-rgb), 0.16);
@@ -286,25 +302,19 @@ form {
     box-shadow: none;
   }
 
-  // Reshuffle variant — icon-only, dimmer
   &--reshuffle {
     padding: 5px 8px;
-    opacity: 0.55;
     animation: none;
 
-    &:hover {
-      opacity: 1;
-
-      .pill-icon {
-        animation: spin 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-      }
+    &:hover .pill-icon {
+      animation: spin 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
     }
   }
 }
 
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
 // FIELDS MODE HEADER
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
 
 .fields-mode-header {
   display: flex;
@@ -330,9 +340,12 @@ form {
 
       &--basic {
         color: var(--primary-color);
+        animation: badgeIn var(--transition-qubic) both;
       }
+
       &--advanced {
         color: var(--purple);
+        animation: badgeIn 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.04s both;
       }
     }
 
@@ -343,10 +356,6 @@ form {
       opacity: 0.6;
       margin: 0 1px;
       animation: badgeIn 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-    }
-
-    .fields-count-num--advanced {
-      animation: badgeIn 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.04s both;
     }
 
     .fields-count-label {
@@ -363,38 +372,9 @@ form {
   }
 }
 
-// ── Shared toggle-button base ──────────────────────────────────────────────
-
-%mode-toggle-btn {
-  color: var(--dim-color);
-  transition:
-    color 0.15s ease,
-    background-color 0.15s ease;
-
-  &:hover {
-    color: var(--window-fg-color);
-    background: rgba(var(--primary-color-rgb), 0.08);
-  }
-
-  &.active {
-    color: var(--primary-color);
-    background: rgba(var(--primary-color-rgb), 0.1);
-  }
-}
-
-.json-toggle-btn {
-  @extend %mode-toggle-btn;
-}
-.cmd-options-btn {
-  @extend %mode-toggle-btn;
-}
-.advanced-toggle-btn {
-  @extend %mode-toggle-btn;
-}
-
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
 // COMMAND OPTIONS PANEL
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
 
 .command-options-panel {
   display: flex;
@@ -409,7 +389,7 @@ form {
     0 1px 2px rgba(0, 0, 0, 0.04),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
 
-  // ── Predefined chips row ───────────────────────────────────────────────────
+  // ── Quick-add predefined flags ─────────────────────────────────────────────
 
   .predefined-chips-row {
     display: flex;
@@ -434,8 +414,6 @@ form {
       gap: var(--space-xs);
     }
   }
-
-  // ── Predefined chip ────────────────────────────────────────────────────────
 
   .predefined-chip {
     display: inline-flex;
@@ -486,8 +464,6 @@ form {
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
 
-  // ── Option row ─────────────────────────────────────────────────────────────
-
   .option-row {
     display: flex;
     align-items: center;
@@ -496,6 +472,8 @@ form {
     background: var(--view-bg-color);
     border-bottom: 1px solid rgba(var(--accent-color-rgb), 0.08);
     min-height: 58px;
+    animation: slideInFromBottomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--row-index, 0) * 45ms);
     transition: background 0.15s ease;
 
     &:last-child {
@@ -565,14 +543,6 @@ form {
         margin-right: auto;
       }
 
-      .option-value-field {
-        width: 100%;
-
-        &.no-subscript .mat-mdc-form-field-subscript-wrapper {
-          display: none;
-        }
-      }
-
       .option-chip-field {
         .mat-mdc-form-field-infix {
           min-height: 40px;
@@ -596,7 +566,7 @@ form {
     }
   }
 
-  // ── Add custom option row ──────────────────────────────────────────────────
+  // ── Add custom option ──────────────────────────────────────────────────────
 
   .add-custom-row {
     display: flex;
@@ -612,10 +582,6 @@ form {
       flex: 2;
       min-width: 0;
 
-      &.no-subscript .mat-mdc-form-field-subscript-wrapper {
-        display: none;
-      }
-
       .field-icon {
         color: var(--dim-color);
       }
@@ -624,10 +590,6 @@ form {
     .custom-type-field {
       flex: 1;
       min-width: 0;
-
-      &.no-subscript .mat-mdc-form-field-subscript-wrapper {
-        display: none;
-      }
     }
 
     .add-custom-btn {

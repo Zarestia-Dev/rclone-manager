@@ -46,7 +46,7 @@
   @if (parseError()) {
     <div class="parse-error" role="alert" aria-live="polite">
       <mat-icon svgIcon="circle-xmark" />
-      <span>{{ parseError() }}</span>
+      <span>{{ parseError() | translate }}</span>
     </div>
   }
 </div>

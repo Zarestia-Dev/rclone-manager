@@ -2,8 +2,6 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--window-bg-color);
-  color: var(--window-fg-color);
   overflow: hidden;
 
   // Toolbar
@@ -22,10 +20,6 @@
       flex: 1;
       gap: var(--space-sm);
       min-width: 280px;
-
-      ::ng-deep .mat-mdc-form-field-subscript-wrapper {
-        display: none;
-      }
 
       .compact {
         font-size: var(--font-size-md);

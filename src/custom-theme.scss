@@ -655,6 +655,7 @@ $dark-theme: (
   mat-card-header {
     display: flex;
     justify-content: space-between;
+    padding: var(--space-md);
 
     mat-card-title {
       display: flex;
@@ -1019,6 +1020,10 @@ mat-accordion {
   &::-webkit-scrollbar {
     display: none;
   }
+}
+
+.no-subscript .mat-mdc-form-field-subscript-wrapper {
+  display: none;
 }
 
 // Dropdown option content styling

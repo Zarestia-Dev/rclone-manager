@@ -30,7 +30,7 @@
 .config-chip {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--space-xxs);
   padding: 3px var(--space-xs) 3px var(--space-sm);
   border-radius: 20px;
   font-size: var(--font-size-xs);
@@ -39,11 +39,11 @@
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease,
+    color 0.15s ease,
     opacity 0.15s ease;
 
   &.active {
     background: rgba(var(--primary-color-rgb), 0.08);
-    border: 1px solid rgba(var(--primary-color-rgb), 0.25);
 
     &:hover {
       background: rgba(var(--primary-color-rgb), 0.15);

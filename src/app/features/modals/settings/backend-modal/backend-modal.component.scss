@@ -1,5 +1,4 @@
 .modal {
-  background: var(--window-bg-color);
   display: flex;
   flex-direction: column;
   position: relative;
@@ -19,7 +18,6 @@
     align-items: center;
     justify-content: center;
     z-index: 1000;
-    // FIX: was rgba(255, 255, 255, 0.5) — hardcoded white breaks dark themes
     background: color-mix(in srgb, var(--window-bg-color) 80%, transparent);
   }
 }

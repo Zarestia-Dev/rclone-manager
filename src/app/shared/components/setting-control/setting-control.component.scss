@@ -138,7 +138,7 @@
     .stepper-container {
       display: flex;
       align-items: center;
-      gap: var(--space-sm); // was hardcoded 8px
+      gap: var(--space-xs);
     }
 
     .stepper-input.mat-mdc-form-field {
@@ -147,10 +147,6 @@
 
       input {
         text-align: center;
-      }
-
-      ::ng-deep .mat-mdc-form-field-subscript-wrapper {
-        display: none;
       }
     }
 
