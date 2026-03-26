@@ -115,7 +115,7 @@ export class SettingsPanelComponent {
   readonly hasMeaningfulSettings = computed(() => this.settingsEntries().length > 0);
 
   readonly editButtonLabel = computed(
-    () => this.config().buttonLabel || 'detailShared.settings.edit'
+    () => this.config().buttonLabel ?? 'detailShared.settings.edit'
   );
 
   readonly editButtonClass = computed(() => ['edit-settings-button', this.config().buttonColor]);
@@ -133,7 +133,6 @@ export class SettingsPanelComponent {
 
   private truncateValue(value: unknown): string {
     if (value === null || value === undefined) return '';
-
     let str: string;
     if (typeof value === 'object') {
       try {
@@ -144,7 +143,6 @@ export class SettingsPanelComponent {
     } else {
       str = String(value);
     }
-
     const limit = SettingsPanelComponent.TRUNCATE_LENGTH;
     return str.length > limit ? `${str.slice(0, limit)}...` : str;
   }

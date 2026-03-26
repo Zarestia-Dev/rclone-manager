@@ -5,13 +5,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 import { CompletedTransfer } from '@app/types';
-import { FormatTimePipe } from '../../pipes/format-time.pipe';
 
 @Component({
   selector: 'app-completed-transfers-table',
+  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
@@ -20,21 +19,24 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
     MatTooltipModule,
     MatChipsModule,
     TranslateModule,
+    FormatFileSizePipe,
   ],
   template: `
     <div class="transfer-table-container">
       @if (transfers().length > 0) {
         <div class="transfer-viewport">
           <table mat-table [dataSource]="transfers()" class="transfer-table">
-            <!-- Name Column -->
             <ng-container matColumnDef="name">
               <th mat-header-cell *matHeaderCellDef>
                 {{ 'shared.transferActivity.table.file' | translate }}
               </th>
               <td mat-cell *matCellDef="let transfer" class="name-cell">
                 <div class="file-info">
-                  <mat-icon svgIcon="file" class="file-icon" matTooltip="{{ transfer.name }}">
-                  </mat-icon>
+                  <mat-icon
+                    svgIcon="file"
+                    class="file-icon"
+                    [matTooltip]="transfer.name"
+                  ></mat-icon>
                   <span class="file-name" [title]="transfer.name">{{
                     getFileName(transfer.name)
                   }}</span>
@@ -42,70 +44,72 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
               </td>
             </ng-container>
 
-            <!-- Status Column -->
             <ng-container matColumnDef="status">
               <th mat-header-cell *matHeaderCellDef>
                 {{ 'shared.transferActivity.table.status' | translate }}
               </th>
               <td mat-cell *matCellDef="let transfer" class="status-cell">
-                @if (transfer.status === 'failed') {
-                  <mat-chip class="status-chip error">
-                    <span>
-                      <mat-icon svgIcon="circle-exclamation" class="chip-icon"></mat-icon>
-                      {{ 'shared.transferActivity.status.failed' | translate }}
-                    </span>
-                  </mat-chip>
-                } @else if (transfer.status === 'checked') {
-                  <mat-chip class="status-chip checked">
-                    <span>
-                      <mat-icon svgIcon="circle-check" class="chip-icon accent"></mat-icon>
-                      {{ 'shared.transferActivity.status.checked' | translate }}
-                    </span>
-                  </mat-chip>
-                } @else if (transfer.status === 'partial') {
-                  <mat-chip class="status-chip partial">
-                    <span>
-                      <mat-icon svgIcon="circle-exclamation" class="chip-icon warn"></mat-icon>
-                      {{ 'shared.transferActivity.status.partial' | translate }}
-                    </span>
-                  </mat-chip>
-                } @else {
-                  <mat-chip class="status-chip success">
-                    <span>
-                      <mat-icon svgIcon="circle-check" class="chip-icon accent"></mat-icon>
-                      {{ 'shared.transferActivity.status.completed' | translate }}
-                    </span>
-                  </mat-chip>
+                @switch (transfer.status) {
+                  @case ('failed') {
+                    <mat-chip class="status-chip error">
+                      <span>
+                        <mat-icon svgIcon="circle-exclamation" class="chip-icon"></mat-icon>
+                        {{ 'shared.transferActivity.status.failed' | translate }}
+                      </span>
+                    </mat-chip>
+                  }
+                  @case ('checked') {
+                    <mat-chip class="status-chip checked">
+                      <span>
+                        <mat-icon svgIcon="circle-check" class="chip-icon accent"></mat-icon>
+                        {{ 'shared.transferActivity.status.checked' | translate }}
+                      </span>
+                    </mat-chip>
+                  }
+                  @case ('partial') {
+                    <mat-chip class="status-chip partial">
+                      <span>
+                        <mat-icon svgIcon="circle-exclamation" class="chip-icon warn"></mat-icon>
+                        {{ 'shared.transferActivity.status.partial' | translate }}
+                      </span>
+                    </mat-chip>
+                  }
+                  @default {
+                    <mat-chip class="status-chip success">
+                      <span>
+                        <mat-icon svgIcon="circle-check" class="chip-icon accent"></mat-icon>
+                        {{ 'shared.transferActivity.status.completed' | translate }}
+                      </span>
+                    </mat-chip>
+                  }
                 }
               </td>
             </ng-container>
 
-            <!-- Size Column -->
             <ng-container matColumnDef="size">
               <th mat-header-cell *matHeaderCellDef>
                 {{ 'shared.transferActivity.table.size' | translate }}
               </th>
               <td mat-cell *matCellDef="let transfer" class="size-cell">
                 <div class="size-info">
-                  <span class="size-value">{{ FormatFileSizePipe.transform(transfer.size) }}</span>
+                  <span class="size-value">{{ transfer.size | formatFileSize }}</span>
                   @if (transfer.bytes !== transfer.size && transfer.bytes > 0) {
                     <span class="size-transferred"
                       >({{
                         'shared.transferActivity.table.transferred'
-                          | translate: { bytes: FormatFileSizePipe.transform(transfer.bytes) }
+                          | translate: { bytes: (transfer.bytes | formatFileSize) }
                       }})</span
                     >
                   }
                   @if (transfer.status === 'checked' && transfer.size > 0) {
-                    <span class="size-note">
-                      ({{ 'shared.transferActivity.table.alreadyExisted' | translate }})</span
+                    <span class="size-note"
+                      >({{ 'shared.transferActivity.table.alreadyExisted' | translate }})</span
                     >
                   }
                 </div>
               </td>
             </ng-container>
 
-            <!-- Path Column -->
             <ng-container matColumnDef="path">
               <th mat-header-cell *matHeaderCellDef>
                 {{ 'shared.transferActivity.table.path' | translate }}
@@ -136,7 +140,6 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
               </td>
             </ng-container>
 
-            <!-- Time Column -->
             <ng-container matColumnDef="time">
               <th mat-header-cell *matHeaderCellDef>
                 {{ 'shared.transferActivity.table.completed' | translate }}
@@ -187,27 +190,18 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
 export class CompletedTransfersTableComponent {
   transfers = input.required<CompletedTransfer[]>();
   operationClass = input('');
-  trackBy = input<(index: number, transfer: CompletedTransfer) => string>();
-  private translate = inject(TranslateService);
 
-  FormatFileSizePipe = new FormatFileSizePipe();
-  FormatTimePipe = new FormatTimePipe();
+  private readonly translate = inject(TranslateService);
 
-  defaultTrackBy(_index: number, transfer: CompletedTransfer): string {
-    return transfer.name + transfer.completedAt;
-  }
-
-  displayedColumns: string[] = ['name', 'status', 'size', 'path', 'time'];
+  readonly displayedColumns = ['name', 'status', 'size', 'path', 'time'];
 
   getFileName(path: string): string {
-    return path.split('/').pop() || path;
+    return path.split('/').pop() ?? path;
   }
 
   getRelativeTime(timestamp: string): string {
-    const now = Date.now();
-    const time = new Date(timestamp).getTime();
-    const diff = now - time;
-    const minutes = Math.floor(diff / 60000);
+    const diff = Date.now() - new Date(timestamp).getTime();
+    const minutes = Math.floor(diff / 60_000);
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
 
@@ -221,9 +215,7 @@ export class CompletedTransfersTableComponent {
   }
 
   getDuration(startedAt: string, completedAt: string): string {
-    const start = new Date(startedAt).getTime();
-    const end = new Date(completedAt).getTime();
-    const diff = end - start;
+    const diff = new Date(completedAt).getTime() - new Date(startedAt).getTime();
 
     if (diff < 1000)
       return this.translate.instant('shared.transferActivity.time.duration.lessThanSecond');

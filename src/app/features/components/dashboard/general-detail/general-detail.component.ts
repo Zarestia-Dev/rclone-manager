@@ -236,7 +236,6 @@ export class GeneralDetailComponent {
       icon: 'wrench',
     },
     settings: this.selectedRemote().config,
-    hasSettings: Object.keys(this.selectedRemote().config ?? {}).length > 0,
     buttonColor: 'primary',
     buttonLabel: 'dashboard.generalDetail.editConfiguration',
   }));

@@ -6,12 +6,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
-import { TransferFile } from '@app/types';
 import { FormatTimePipe } from '../../pipes/format-time.pipe';
+import { TransferFile } from '@app/types';
 
 @Component({
   selector: 'app-active-transfers-table',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     MatTableModule,
@@ -19,20 +20,20 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
     MatIconModule,
     MatTooltipModule,
     TranslateModule,
+    FormatFileSizePipe,
+    FormatTimePipe,
   ],
   template: `
     <div class="transfer-table-container">
       @if (transfers().length > 0) {
         <table mat-table [dataSource]="transfers()" [trackBy]="trackByName" class="transfer-table">
-          <!-- Name Column -->
           <ng-container matColumnDef="name">
             <th mat-header-cell *matHeaderCellDef>
               {{ 'shared.transferActivity.table.file' | translate }}
             </th>
             <td mat-cell *matCellDef="let transfer" class="name-cell">
               <div class="file-info">
-                <mat-icon svgIcon="file" class="file-icon" matTooltip="{{ transfer.name }}">
-                </mat-icon>
+                <mat-icon svgIcon="file" class="file-icon" [matTooltip]="transfer.name"></mat-icon>
                 <span class="file-name" [title]="transfer.name">{{
                   getFileName(transfer.name)
                 }}</span>
@@ -54,7 +55,6 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
             </td>
           </ng-container>
 
-          <!-- Progress Column -->
           <ng-container matColumnDef="progress">
             <th mat-header-cell *matHeaderCellDef>
               {{ 'shared.transferActivity.table.progress' | translate }}
@@ -63,18 +63,18 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
               <div class="progress-info">
                 <div class="progress-header">
                   <span class="progress-text">{{ transfer.percentage }}%</span>
-                  <span class="size-text"
-                    >{{ FormatFileSizePipe.transform(transfer.bytes) }} /
-                    {{ FormatFileSizePipe.transform(transfer.size) }}</span
-                  >
+                  <span class="size-text">
+                    {{ transfer.bytes | formatFileSize }} / {{ transfer.size | formatFileSize }}
+                  </span>
                 </div>
-                <mat-progress-bar mode="determinate" [value]="transfer.percentage">
-                </mat-progress-bar>
+                <mat-progress-bar
+                  mode="determinate"
+                  [value]="transfer.percentage"
+                ></mat-progress-bar>
               </div>
             </td>
           </ng-container>
 
-          <!-- Speed Column -->
           <ng-container matColumnDef="speed">
             <th mat-header-cell *matHeaderCellDef>
               {{ 'shared.transferActivity.table.speed' | translate }}
@@ -82,9 +82,7 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
             <td mat-cell *matCellDef="let transfer" class="speed-cell">
               <div class="speed-info">
                 @if (transfer.speed > 0) {
-                  <span class="speed-value"
-                    >{{ FormatFileSizePipe.transform(transfer.speed) }}/s</span
-                  >
+                  <span class="speed-value">{{ transfer.speed | formatFileSize }}/s</span>
                   <div class="speed-indicator" [ngClass]="getSpeedClass(transfer.speed)"></div>
                 } @else {
                   <span class="speed-idle">-</span>
@@ -93,14 +91,13 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
             </td>
           </ng-container>
 
-          <!-- ETA Column -->
           <ng-container matColumnDef="eta">
             <th mat-header-cell *matHeaderCellDef>
               {{ 'shared.transferActivity.table.eta' | translate }}
             </th>
             <td mat-cell *matCellDef="let transfer" class="eta-cell">
               @if (transfer.eta > 0 && !transfer.isCompleted) {
-                <span class="eta-value">{{ FormatTimePipe.transform(transfer.eta) }}</span>
+                <span class="eta-value">{{ transfer.eta | formatTime }}</span>
               } @else {
                 <span class="eta-complete">-</span>
               }
@@ -129,32 +126,19 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
     </div>
   `,
   styleUrls: ['./transfer-tables.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ActiveTransfersTableComponent {
   transfers = input.required<TransferFile[]>();
   operationClass = input('');
-  trackBy = input<(index: number, transfer: TransferFile) => string>();
 
-  FormatFileSizePipe = new FormatFileSizePipe();
-  FormatTimePipe = new FormatTimePipe();
+  readonly displayedColumns = ['name', 'progress', 'speed', 'eta'];
 
-  // Optimized trackBy: Only track by name.
-  // Percentage changes will update bindings inside the row, not destroy the row.
   trackByName(_index: number, transfer: TransferFile): string {
     return transfer.name;
   }
 
-  displayedColumns: string[] = ['name', 'progress', 'speed', 'eta'];
-
   getFileName(path: string): string {
-    return path.split('/').pop() || path;
-  }
-
-  getProgressColor(transfer: TransferFile): string {
-    if (transfer.isError) return 'warn';
-    if (transfer.isCompleted) return 'accent';
-    return 'primary';
+    return path.split('/').pop() ?? path;
   }
 
   getSpeedClass(speed: number): string {

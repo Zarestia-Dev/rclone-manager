@@ -11,10 +11,8 @@ export interface SettingsSection {
 export interface SettingsPanelConfig {
   section: SettingsSection;
   settings: any;
-  hasSettings: boolean;
   buttonColor?: string;
   buttonLabel?: string;
-  sensitiveKeys?: string[];
 }
 
 // Status Badge

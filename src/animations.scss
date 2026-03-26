@@ -446,8 +446,47 @@
   }
 }
 
+@keyframes pulse {
+  0% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
+}
+
+@keyframes move-slide {
+  0%,
+  100% {
+    transform: translateX(0) rotate(0) scale(1);
+  }
+  20% {
+    transform: translateX(-2px) rotate(-4deg) scale(0.98);
+  }
+  50% {
+    transform: translateX(8px) rotate(6deg) scale(1.08);
+  }
+  80% {
+    transform: translateX(-1px) rotate(-1deg) scale(1);
+  }
+}
+
 // ===== ANIMATION UTILITY CLASSES =====
 // Easy-to-use classes for applying animations
+
+.animate-copy {
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.animate-move {
+  animation: move-slide 3s ease-in-out infinite;
+}
 
 .animate-spin {
   animation: spin 1s linear infinite;

@@ -124,7 +124,7 @@
             [selectedRemote]="remote"
             [remoteSettings]="selectedRemoteSettings()"
             [actionInProgress]="actionInProgress()[remote.name]"
-            (syncOperationChange)="onSyncOperationChange($event)"
+            (selectedSyncOperationChange)="onSyncOperationChange($event)"
             (openRemoteConfigModal)="
               openRemoteConfigModal(
                 $event.editTarget,

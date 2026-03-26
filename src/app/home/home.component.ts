@@ -1,14 +1,13 @@
 import {
   Component,
   OnInit,
+  OnDestroy,
   effect,
   inject,
   signal,
   computed,
   DestroyRef,
-  OnDestroy,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDrawerMode, MatSidenavModule } from '@angular/material/sidenav';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
@@ -20,9 +19,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { catchError, EMPTY, Observable } from 'rxjs';
 
-// App Types
 import {
   JobInfo,
   PrimaryActionType,
@@ -33,18 +30,14 @@ import {
 } from '@app/types';
 
 import { RemoteFacadeService } from '../services/facade/remote-facade.service';
-
-// App Components
 import { SidebarComponent } from '../layout/sidebar/sidebar.component';
 import { GeneralDetailComponent } from '../features/components/dashboard/general-detail/general-detail.component';
 import { GeneralOverviewComponent } from '../features/components/dashboard/general-overview/general-overview.component';
 import { AppDetailComponent } from '../features/components/dashboard/app-detail/app-detail.component';
 import { AppOverviewComponent } from '../features/components/dashboard/app-overview/app-overview.component';
-
-// App Services
-import { IconService } from '@app/services';
-import { NotificationService } from '@app/services';
 import {
+  IconService,
+  NotificationService,
   EventListenersService,
   UiStateService,
   SystemInfoService,
@@ -72,7 +65,6 @@ import {
     GeneralDetailComponent,
     GeneralOverviewComponent,
     AppDetailComponent,
-    AppDetailComponent,
     AppOverviewComponent,
     TranslateModule,
   ],
@@ -80,9 +72,6 @@ import {
   styleUrls: ['./home.component.scss'],
 })
 export class HomeComponent implements OnInit, OnDestroy {
-  // ============================================================================
-  // PROPERTIES - SERVICES
-  // ============================================================================
   private readonly modalService = inject(ModalService);
   private readonly uiStateService = inject(UiStateService);
   private readonly notificationService = inject(NotificationService);
@@ -96,103 +85,74 @@ export class HomeComponent implements OnInit, OnDestroy {
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
 
-  /** Current active backend name */
   readonly activeBackend = this.backendService.activeBackend;
 
-  /** Get status class for the active backend */
-  readonly backendStatusClass = computed(() => {
-    const status = this.rcloneStatusService.rcloneStatus();
-    return status === 'active' ? 'connected' : 'disconnected';
-  });
+  readonly backendStatusClass = computed(() =>
+    this.rcloneStatusService.rcloneStatus() === 'active' ? 'connected' : 'disconnected'
+  );
 
-  // ============================================================================
-  // PROPERTIES - DATA & UI STATE
-  // ============================================================================
-  currentTab = this.uiStateService.currentTab;
+  readonly currentTab = this.uiStateService.currentTab;
 
-  // Source of truth for SELECTION (from service)
   private readonly _selectedRemoteSource = this.uiStateService.selectedRemote;
-
-  // Facade provides unified and enriched data
   readonly remotes = this.remoteFacadeService.activeRemotes;
-
-  // Expose raw signals from facade for template usage
   readonly jobs = this.remoteFacadeService.jobs;
   readonly mountedRemotes = this.remoteFacadeService.mountedRemotes;
   readonly runningServes = this.remoteFacadeService.runningServes;
+  readonly actionInProgress = this.remoteFacadeService.actionInProgress;
 
-  // Computed Source of truth for the OBJECT (merging selection with fresh data)
   readonly selectedRemote = computed(() => {
     const source = this._selectedRemoteSource();
-    const allRemotes = this.remotes();
-
     if (!source) return null;
-
-    // Find the up-to-date object in the list using the name from the selection
-    // If not found (e.g. during loading), fallback to the source object
-    return allRemotes.find(r => r.name === source.name) || source;
+    return this.remotes().find(r => r.name === source.name) ?? source;
   });
 
-  selectedRemoteSettings = computed(() => {
+  readonly selectedRemoteSettings = computed(() => {
     const remote = this.selectedRemote();
     if (!remote) return {};
     return this.remoteFacadeService.getRemoteSettings(remote.name);
   });
 
-  // Local UI state
   isSidebarOpen = signal(false);
   sidebarMode = signal<MatDrawerMode>('side');
   selectedSyncOperation = signal<SyncOperationType>('sync');
   isLoading = signal(false);
 
-  actionInProgress = this.remoteFacadeService.actionInProgress;
-  // ============================================================================
-  // PROPERTIES - LIFECYCLE
-  // ============================================================================
   private resizeObserver?: ResizeObserver;
 
   constructor() {
-    // Reactive side effects for when service data changes
-    // Note: mountedRemotes and runningServes effects are now handled by RemoteFacadeService enrichment
-
+    // Restore saved sync operation when remote changes
     effect(() => {
       const remote = this.selectedRemote();
       if (remote) {
         const settings = this.selectedRemoteSettings();
-        // Only set this if it differs to avoid loops, though signal set() handles equality check
-        const currentOp = this.selectedSyncOperation();
-        const savedOp = (settings['selectedSyncOperation'] as SyncOperationType) || 'sync';
-        if (currentOp !== savedOp) {
+        const savedOp = (settings['selectedSyncOperation'] as SyncOperationType) ?? 'sync';
+        if (this.selectedSyncOperation() !== savedOp) {
           this.selectedSyncOperation.set(savedOp);
         }
       }
     });
   }
 
-  // ============================================================================
-  // LIFECYCLE HOOKS
-  // ============================================================================
   async ngOnInit(): Promise<void> {
     try {
       this.setupResponsiveLayout();
       await this.loadInitialData();
-      this.setupTauriListeners();
     } catch (error) {
       this.handleError(this.translate.instant('home.errors.configFailed'), error);
     }
   }
 
   ngOnDestroy(): void {
-    this.cleanup();
+    this.resizeObserver?.disconnect();
+    this.uiStateService.resetSelectedRemote();
   }
-
-  // ============================================================================
-  // HELPER METHODS
-  // ============================================================================
 
   private setupResponsiveLayout(): void {
     this.updateSidebarMode();
-    this.setupResizeObserver();
+    if (typeof window !== 'undefined') {
+      this.resizeObserver = new ResizeObserver(() => this.updateSidebarMode());
+      this.resizeObserver.observe(document.body);
+    }
   }
 
   private updateSidebarMode(): void {
@@ -202,20 +162,10 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   }
 
-  private setupResizeObserver(): void {
-    if (typeof window !== 'undefined') {
-      this.resizeObserver = new ResizeObserver(() => this.updateSidebarMode());
-      this.resizeObserver.observe(document.body);
-    }
-  }
-
-  // ============================================================================
-  // DATA INITIALIZATION
-  // ============================================================================
   private async loadInitialData(): Promise<void> {
     this.isLoading.set(true);
     try {
-      await this.refreshData();
+      await this.remoteFacadeService.refreshAll();
     } catch (error) {
       this.handleError(this.translate.instant('home.errors.initialLoadFailed'), error);
     } finally {
@@ -223,48 +173,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   }
 
-  private async refreshData(): Promise<void> {
-    await this.remoteFacadeService.refreshAll();
-  }
-
-  // ============================================================================
-  // TAURI EVENT LISTENERS
-  // ============================================================================
-  private setupTauriListeners(): void {
-    // Engine ready - full refresh needed
-    this.setupEventListener(
-      () => this.eventListenersService.listenToRcloneEngineReady(),
-      async () => {
-        await this.refreshData();
-      },
-      'RcloneEngine'
-    );
-  }
-
-  private setupEventListener(
-    eventFn: () => Observable<unknown>,
-    handler: () => Promise<unknown>,
-    context: string
-  ): void {
-    eventFn()
-      .pipe(
-        takeUntilDestroyed(this.destroyRef),
-        catchError(error => (console.error(`Event listener error (${context}):`, error), EMPTY))
-      )
-      .subscribe({
-        next: async () => {
-          try {
-            await handler();
-          } catch (error) {
-            this.handleError(`Error handling ${context} event`, error);
-          }
-        },
-      });
-  }
-
-  // ============================================================================
-  // REMOTE SELECTION & STATE
-  // ============================================================================
   selectRemote(remote: Remote): void {
     this.uiStateService.setSelectedRemote(remote);
   }
@@ -273,7 +181,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.selectedSyncOperation.set(operation);
     const remote = this.selectedRemote();
     if (remote?.name) {
-      this.saveRemoteSettings(remote.name, { selectedSyncOperation: operation });
+      void this.saveRemoteSettings(remote.name, { selectedSyncOperation: operation });
     }
   }
 
@@ -281,22 +189,18 @@ export class HomeComponent implements OnInit, OnDestroy {
     const remote = this.selectedRemote();
     if (!remote) return;
 
-    const remoteName = remote.name;
-    const currentActions = remote.primaryActions || [];
+    const currentActions = remote.primaryActions ?? [];
     const newActions = currentActions.includes(type)
       ? currentActions.filter(action => action !== type)
       : [...currentActions, type];
 
     try {
-      await this.saveRemoteSettings(remoteName, { primaryActions: newActions });
+      await this.saveRemoteSettings(remote.name, { primaryActions: newActions });
     } catch (error) {
       this.handleError(this.translate.instant('home.errors.updateActionsFailed'), error);
     }
   }
 
-  // ============================================================================
-  // REMOTE & JOB OPERATIONS
-  // ============================================================================
   async startJob(
     operationType: PrimaryActionType,
     remoteName: string,
@@ -331,7 +235,10 @@ export class HomeComponent implements OnInit, OnDestroy {
     if (!remoteName) return;
     try {
       await this.remoteFacadeService.deleteRemote(remoteName);
-      this.handleRemoteDeletion(remoteName);
+      this.remoteFacadeService.loadRemotes();
+      if (this.selectedRemote()?.name === remoteName) {
+        this.uiStateService.resetSelectedRemote();
+      }
     } catch (error) {
       console.error('Delete remote failed:', error);
     }
@@ -364,9 +271,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ============================================================================
-  // MODAL DIALOGS
-  // ============================================================================
   openQuickAddRemoteModal(): void {
     this.modalService.openQuickAddRemote();
   }
@@ -412,10 +316,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.modalService.openBackend();
   }
 
-  // ============================================================================
-  // SETTINGS MANAGEMENT
-  // ============================================================================
-
   loadRemoteSettings(remoteName: string): RemoteSettings {
     return this.remoteFacadeService.getRemoteSettings(remoteName);
   }
@@ -425,10 +325,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   async saveRemoteSettings(remoteName: string, settings: Partial<RemoteSettings>): Promise<void> {
-    const currentSettings = this.loadRemoteSettings(remoteName);
-    const mergedSettings = { ...currentSettings, ...settings };
-
-    await this.appSettingsService.saveRemoteSettings(remoteName, mergedSettings);
+    const merged = { ...this.loadRemoteSettings(remoteName), ...settings };
+    await this.appSettingsService.saveRemoteSettings(remoteName, merged);
     await this.remoteFacadeService.loadRemotes();
   }
 
@@ -468,10 +366,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     );
   }
 
-  // ============================================================================
-  // UTILITY & HELPER METHODS
-  // ============================================================================
-
   isActionInProgress(remoteName: string, action: RemoteAction, profileName?: string): boolean {
     return this.remoteFacadeService.isActionInProgress(remoteName, action, profileName);
   }
@@ -480,24 +374,9 @@ export class HomeComponent implements OnInit, OnDestroy {
     return this.jobs().filter(j => j.remote_name === remoteName);
   }
 
-  private handleRemoteDeletion(remoteName: string): void {
-    // Facade will handle the data update when the event comes in, or we trigger a reload.
-    // Trigger reload to be responsive.
-    this.remoteFacadeService.loadRemotes();
-
-    if (this.selectedRemote()?.name === remoteName) {
-      this.uiStateService.resetSelectedRemote();
-    }
-  }
-
   private handleError(message: string, error: unknown): void {
     console.error(`${message}:`, error);
     const backendMessage = error instanceof Error ? error.message : String(error);
     this.notificationService.showError(`${message}: ${backendMessage}`);
-  }
-
-  private cleanup(): void {
-    this.resizeObserver?.disconnect();
-    this.uiStateService.resetSelectedRemote();
   }
 }

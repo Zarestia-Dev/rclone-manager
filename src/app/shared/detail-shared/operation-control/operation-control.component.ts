@@ -49,8 +49,8 @@ import { TranslateModule } from '@ngx-translate/core';
   template: `
     <mat-expansion-panel
       class="operation-panel"
-      (opened)="isExpanded = true"
-      (closed)="isExpanded = false"
+      (opened)="isExpanded.set(true)"
+      (closed)="isExpanded.set(false)"
     >
       <mat-expansion-panel-header>
         <mat-panel-title>
@@ -62,7 +62,7 @@ import { TranslateModule } from '@ngx-translate/core';
         </mat-panel-title>
 
         <mat-panel-description>
-          <div class="quick-action-wrapper" [class.hidden]="isExpanded">
+          <div class="quick-action-wrapper" [class.hidden]="isExpanded()">
             <button
               mat-icon-button
               class="quick-action"
@@ -214,12 +214,12 @@ export class OperationControlComponent {
 
   private readonly systemInfo = inject(SystemInfoService);
 
-  // Track expansion state for animation
-  isExpanded = false;
+  readonly isExpanded = signal(false);
+  readonly diskUsage = signal<LocalDiskUsage | null>(null);
 
-  diskUsage = signal<LocalDiskUsage | null>(null);
-  readonly mountDestination = computed(() => this.config().pathConfig.destination || '');
-  readonly shouldPollDiskUsage = computed(() => {
+  private readonly mountDestination = computed(() => this.config().pathConfig.destination ?? '');
+
+  private readonly shouldPollDiskUsage = computed(() => {
     const cfg = this.config();
     const destination = this.mountDestination();
     return (
@@ -240,15 +240,13 @@ export class OperationControlComponent {
           try {
             const usage = await this.systemInfo.getLocalDiskUsage(destination);
             this.diskUsage.set(usage);
-          } catch (error) {
-            console.error('Failed to fetch disk usage:', error);
+          } catch {
             this.diskUsage.set(null);
           }
         };
 
         void fetchDiskUsage();
         const interval = setInterval(() => void fetchDiskUsage(), 5000);
-
         onCleanup(() => clearInterval(interval));
       } else {
         this.diskUsage.set(null);
@@ -273,7 +271,6 @@ export class OperationControlComponent {
     return 'primary';
   }
 
-  // Operation icon configuration
   private readonly OPERATION_ICONS: Record<PrimaryActionType, string> = {
     mount: 'mount',
     sync: 'refresh',
@@ -284,12 +281,12 @@ export class OperationControlComponent {
   };
 
   readonly operationIcon = computed(
-    () => this.OPERATION_ICONS[this.config().operationType] || 'refresh'
+    () => this.OPERATION_ICONS[this.config().operationType] ?? 'refresh'
   );
 
   readonly statusBadgeConfig = computed((): StatusBadgeConfig => {
     const config = this.config();
-    // Define status labels for each operation type
+
     const statusLabels: Record<PrimaryActionType, { active: string; inactive: string }> = {
       mount: { active: 'detailShared.status.mounted', inactive: 'detailShared.status.notMounted' },
       sync: { active: 'detailShared.status.syncing', inactive: 'detailShared.status.stopped' },
@@ -299,7 +296,6 @@ export class OperationControlComponent {
       serve: { active: 'detailShared.status.serving', inactive: 'detailShared.status.stopped' },
     };
 
-    // Determine the current state
     let state: 'active' | 'inactive' | 'error';
     if (config.isError) {
       state = 'error';
@@ -309,24 +305,14 @@ export class OperationControlComponent {
       state = 'inactive';
     }
 
-    // Resolve the badge class per operation and state
     let resolvedBadgeClass: string;
     if (state === 'error') {
       resolvedBadgeClass = 'error';
     } else if (state === 'active') {
-      // Active operation: use mounted for mount, otherwise active-<op>
-      if (config.operationType === 'mount') {
-        resolvedBadgeClass = 'mounted';
-      } else {
-        resolvedBadgeClass = `active-${config.operationType}`;
-      }
+      resolvedBadgeClass =
+        config.operationType === 'mount' ? 'mounted' : `active-${config.operationType}`;
     } else {
-      // Inactive: use unmounted for mount, otherwise generic inactive
-      if (config.operationType === 'mount') {
-        resolvedBadgeClass = 'unmounted';
-      } else {
-        resolvedBadgeClass = 'inactive';
-      }
+      resolvedBadgeClass = config.operationType === 'mount' ? 'unmounted' : 'inactive';
     }
 
     return {
@@ -342,8 +328,6 @@ export class OperationControlComponent {
 
   readonly buttonClass = computed(() => {
     const config = this.config();
-    // When active, always use the warn class to emphasize stopping an active op.
-    if (config?.isActive) return 'warn';
-    return config?.cssClass || '';
+    return config?.isActive ? 'warn' : (config?.cssClass ?? '');
   });
 }
