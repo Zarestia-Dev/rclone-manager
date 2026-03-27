@@ -34,12 +34,12 @@
       [style.--selected-col]="selectedSyncOpCol()"
       [style.--selected-row]="selectedSyncOpRow()"
     >
-      @for (operation of syncOperations; track operation.type) {
+      @for (operation of syncOperations(); track operation.type) {
         <button
           type="button"
           class="operation-toggle"
           [class.is-selected]="selectedSyncOperation() === operation.type"
-          [class.is-running]="isOperationActive(operation.type)"
+          [class.is-running]="operation.isActive"
           (click)="onSyncOperationChange(operation.type)"
           [matTooltip]="operation.description | translate"
           matTooltipPosition="below"

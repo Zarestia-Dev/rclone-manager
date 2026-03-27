@@ -21,6 +21,8 @@
   padding: var(--panel-padding);
 
   .overview-content {
+    display: flex;
+    flex-direction: column;
     gap: var(--panel-padding);
     max-width: 1200px;
     margin: 0 auto;
@@ -175,13 +177,6 @@
         }
       }
     }
-
-    .no-jobs-message {
-      @include flex-center;
-      gap: 12px;
-      padding: 16px;
-      border-radius: 8px;
-    }
   }
 }
 
@@ -190,14 +185,6 @@
 // =============================================
 
 .scheduled-tasks-panel {
-  .no-tasks-message {
-    @include flex-center;
-    gap: 12px;
-    padding: 24px;
-    color: var(--dim-color);
-    text-align: center;
-  }
-
   .tasks-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -290,7 +277,7 @@
             font-weight: 700;
             letter-spacing: 0.5px;
 
-            @each $status, $color in ("enabled", primary-color), ("disabled", --dim-color),
+            @each $status, $color in ("enabled", primary-color), ("disabled", dim-color),
               ("running", accent-color), ("failed", warn-color), ("stopping", orange)
             {
               &.#{$status} {
@@ -389,7 +376,7 @@
         }
 
         .cron-expression {
-          font-family: monospace;
+          font-family: var(--font-mono);
           font-size: 11px;
           color: var(--window-fg-color);
           overflow: hidden;
@@ -454,14 +441,6 @@
 // =============================================
 
 .serves-panel {
-  .no-serves-message {
-    @include flex-center;
-    gap: 12px;
-    padding: 24px;
-    color: var(--dim-color);
-    text-align: center;
-  }
-
   .serves-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -539,9 +518,11 @@
     color: var(--window-fg-color);
   }
 
+  // FIX: added gap — the label and slide-toggle were touching with no spacing.
   .visibility-toggle {
     display: flex;
     align-items: center;
+    gap: var(--space-xs);
 
     mat-slide-toggle {
       transform: scale(0.8);
@@ -593,7 +574,7 @@
 }
 
 // =============================================
-// SHARED/UTILITY STYLES
+// SHARED / UTILITY STYLES
 // =============================================
 
 .panel-title-content {
@@ -684,6 +665,18 @@
   border-radius: 16px;
   font-size: clamp(10px, 2vw, 12px);
   font-weight: 600;
+}
+
+.empty-state-message {
+  @include flex-center;
+  gap: 12px;
+  padding: 24px;
+  color: var(--dim-color);
+  text-align: center;
+}
+
+.no-jobs-message {
+  padding: 16px;
 }
 
 .layout-actions {

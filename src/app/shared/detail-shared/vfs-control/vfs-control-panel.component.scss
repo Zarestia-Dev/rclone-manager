@@ -64,7 +64,7 @@
         background: rgba(var(--window-fg-color-rgb), 0.1);
         padding: 2px 6px;
         border-radius: 4px;
-        font-family: monospace;
+        font-family: var(--font-mono);
       }
     }
 
@@ -188,7 +188,7 @@
       .mat-column-size {
         min-width: 120px;
         .size-badge {
-          font-family: monospace;
+          font-family: var(--font-mono);
           background: var(--hover-bg-color);
           padding: 2px 6px;
           border-radius: 4px;
@@ -197,7 +197,7 @@
       }
 
       td.mat-cell .size-badge {
-        font-family: monospace;
+        font-family: var(--font-mono);
         background: var(--hover-bg-color);
         padding: 2px 6px;
         border-radius: 4px;
@@ -237,7 +237,7 @@
 
   .queue-item {
     .size-badge {
-      font-family: monospace;
+      font-family: var(--font-mono);
       background: var(--hover-bg-color);
       padding: 2px 6px;
       border-radius: 4px;
@@ -423,7 +423,7 @@ mat-card-actions {
         }
 
         .config-value {
-          font-family: "Consolas", "Monaco", "Courier New", monospace;
+          font-family: var(--font-mono);
           font-size: 0.8125rem;
           color: var(--accent-color);
           word-break: break-word;

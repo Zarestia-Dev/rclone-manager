@@ -125,7 +125,7 @@
   white-space: nowrap;
 
   &.code-font {
-    font-family: monospace;
+    font-family: var(--font-mono);
     font-size: var(--font-size-md);
     background: rgba(var(--window-fg-color-rgb), 0.05);
     padding: 2px 6px;
@@ -152,7 +152,7 @@
 
 .hash-chip {
   font-size: var(--font-size-sm);
-  font-family: monospace;
+  font-family: var(--font-mono);
 }
 
 .empty-text {
@@ -253,6 +253,6 @@
   background: var(--hover-bg-color);
   padding: 2px 6px;
   border-radius: var(--radius-sm);
-  font-family: monospace;
+  font-family: var(--font-mono);
   font-size: var(--font-size-sm);
 }

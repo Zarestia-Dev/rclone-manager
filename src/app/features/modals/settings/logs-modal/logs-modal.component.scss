@@ -79,7 +79,7 @@
 // Log Entry
 .log-entry {
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  font-family: monospace;
+  font-family: var(--font-mono);
   font-size: var(--font-size-sm);
   line-height: 1.5;
 

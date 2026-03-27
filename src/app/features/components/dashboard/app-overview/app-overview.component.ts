@@ -3,7 +3,13 @@ import { Component, computed, input, output, inject } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { AppTab, PrimaryActionType, Remote, RemoteActionProgress, ServeListItem } from '@app/types';
+import {
+  OperationTab,
+  PrimaryActionType,
+  Remote,
+  RemoteActionProgress,
+  ServeListItem,
+} from '@app/types';
 import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
 import { StatusOverviewPanelComponent } from '../../../../shared/overviews-shared/status-overview-panel/status-overview-panel.component';
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
@@ -24,7 +30,7 @@ interface ModeConfig {
   inactiveTitle: string;
 }
 
-const MODE_CONFIG: Record<AppTab, ModeConfig> = {
+const MODE_CONFIG: Record<OperationTab, ModeConfig> = {
   mount: {
     label: 'appOverview.labels.mount',
     icon: 'mount',
@@ -43,15 +49,7 @@ const MODE_CONFIG: Record<AppTab, ModeConfig> = {
     activeTitle: 'appOverview.panelTitles.activeServes',
     inactiveTitle: 'appOverview.panelTitles.availableRemotes',
   },
-  general: {
-    label: 'appOverview.labels.start',
-    icon: 'circle-check',
-    activeTitle: 'appOverview.panelTitles.activeRemotes',
-    inactiveTitle: 'appOverview.panelTitles.inactiveRemotes',
-  },
 };
-
-const FALLBACK_CONFIG: ModeConfig = MODE_CONFIG.general;
 
 @Component({
   selector: 'app-app-overview',
@@ -71,7 +69,7 @@ export class AppOverviewComponent {
   private readonly translate = inject(TranslateService);
 
   // Inputs
-  readonly mode = input<AppTab>('mount');
+  readonly mode = input<OperationTab>('mount');
   readonly remotes = input<Remote[]>([]);
   readonly selectedRemote = input<Remote | null>(null);
   readonly actionInProgress = input<RemoteActionProgress>({});
@@ -87,7 +85,8 @@ export class AppOverviewComponent {
   // ---------------------------------------------------------------------------
   // Derived state
   // ---------------------------------------------------------------------------
-  private readonly modeConfig = computed(() => MODE_CONFIG[this.mode()] ?? FALLBACK_CONFIG);
+
+  private readonly modeConfig = computed(() => MODE_CONFIG[this.mode()]);
 
   readonly activeRemotes = computed(() => this.remotes().filter(r => this.isRemoteActive(r)));
   readonly inactiveRemotes = computed(() => this.remotes().filter(r => !this.isRemoteActive(r)));
@@ -102,6 +101,7 @@ export class AppOverviewComponent {
   // ---------------------------------------------------------------------------
   // Private helpers
   // ---------------------------------------------------------------------------
+
   private isRemoteActive(remote: Remote): boolean {
     switch (this.mode()) {
       case 'mount':
@@ -115,8 +115,6 @@ export class AppOverviewComponent {
         );
       case 'serve':
         return remote.status.serve.active;
-      default:
-        return false;
     }
   }
 
@@ -127,6 +125,7 @@ export class AppOverviewComponent {
   // ---------------------------------------------------------------------------
   // Event handlers
   // ---------------------------------------------------------------------------
+
   selectRemote(remote: Remote): void {
     this.remoteSelected.emit(remote);
   }

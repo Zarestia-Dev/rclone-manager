@@ -474,6 +474,8 @@ $dark-theme: (
 // App-specific semantic colors and design system tokens.
 
 :root {
+  --font-mono: "JetBrains Mono", "Fira Code", var(--font-mono);
+
   // ===== SEMANTIC COLOR ALIASES =====
   // These map to the GNOME palette for app-specific semantic meaning
 
@@ -1224,7 +1226,7 @@ mat-accordion {
     padding: 0.2em 0.4em;
     margin: 0;
     font-size: 85%;
-    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-family: var(--font-mono);
     background-color: rgba(var(--window-fg-color-rgb), 0.1);
     border-radius: 6px;
   }

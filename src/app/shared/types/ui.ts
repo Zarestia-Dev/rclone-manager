@@ -1,4 +1,28 @@
+// =============================================================================
+// NAVIGATION / UI TYPES
+// =============================================================================
+
+// ---------------------------------------------------------------------------
+// Tab navigation
+// ---------------------------------------------------------------------------
+
+/**
+ * The four top-level navigation tabs in the dashboard.
+ *
+ * Three of these (`mount`, `sync`, `serve`) correspond directly to a
+ * PrimaryActionType and are used to drive both tab display and operation
+ * dispatch. `general` is a pure overview tab with no associated operation.
+ *
+ * Use `OperationTab` when you need a type that excludes `general` — i.e.
+ * wherever a tab value is guaranteed to map to a runnable operation.
+ */
 export type AppTab = 'mount' | 'sync' | 'serve' | 'general';
+
+/**
+ * A subset of AppTab that always corresponds to a runnable PrimaryActionType.
+ * Use this for component inputs that should never receive `'general'`.
+ */
+export type OperationTab = Exclude<AppTab, 'general'>; // 'mount' | 'sync' | 'serve'
 
 export interface ModalSize {
   width: string;

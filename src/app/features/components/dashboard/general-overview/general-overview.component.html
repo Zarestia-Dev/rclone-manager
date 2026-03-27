@@ -1,9 +1,7 @@
 <div class="general-overview" animate.enter="fade-in-out-enter" animate.leave="fade-in-out-leave">
   <div class="overview-header" role="banner">
-    <div class="header-content">
-      <app-overview-header [mode]="'general'" (openBackendModal)="openBackendModal.emit()">
-      </app-overview-header>
-    </div>
+    <app-overview-header [mode]="'general'" (openBackendModal)="openBackendModal.emit()">
+    </app-overview-header>
   </div>
 
   <div class="overview-content" role="main">
@@ -53,7 +51,6 @@
               >
                 @switch (panel.id) {
                   @case ('remotes') {
-                    <!-- Quick Remote Access Panel -->
                     <app-remotes-panel
                       [title]="'generalOverview.panels.remotes' | translate"
                       [icon]="'cloud'"
@@ -62,8 +59,8 @@
                       [actionInProgress]="actionInProgress()"
                       [primaryActionLabel]="'actions.mount' | translate"
                       [activeIcon]="'mount'"
-                      (remoteSelected)="onRemoteSelectedFromPanel($event)"
-                      (openInFiles)="onOpenInFilesFromPanel($event)"
+                      (remoteSelected)="selectRemote.emit($event)"
+                      (openInFiles)="browseRemote.emit($event)"
                       (startJob)="
                         startJob.emit({ type: $event.type, remoteName: $event.remoteName })
                       "
@@ -75,7 +72,7 @@
                         })
                       "
                       role="region"
-                      aria-labelledby="remotes-panel-title"
+                      [attr.aria-label]="'generalOverview.panels.remotes' | translate"
                     >
                     </app-remotes-panel>
                   }
@@ -133,7 +130,7 @@
                           <span>{{ bandwidth?.error }}</span>
                           <button
                             matIconButton
-                            (click)="rcloneStatusService.loadBandwidthLimit()"
+                            (click)="loadBandwidthLimit()"
                             [matTooltip]="'generalOverview.bandwidth.retry' | translate"
                             [aria-label]="'generalOverview.bandwidth.retry' | translate"
                           >
@@ -237,16 +234,15 @@
                               'generalOverview.system.memoryUsage' | translate
                             }}</span>
                             <span class="value" role="gridcell">{{
-                              rcloneStatusService.memoryUsage() | formatMemoryUsage
+                              memoryUsage() | formatMemoryUsage
                             }}</span>
                           </div>
                           <div class="info-item" role="row">
                             <span class="label" role="gridcell">{{
                               'generalOverview.system.uptime' | translate
                             }}</span>
-                            <span class="value" role="gridcell">{{
-                              rcloneStatusService.uptime() | formatTime
-                            }}</span>
+                            <!-- FIX: same — use the exposed uptime signal. -->
+                            <span class="value" role="gridcell">{{ uptime() | formatTime }}</span>
                           </div>
                         </div>
                       }
@@ -365,7 +361,7 @@
                           }
 
                           @if (activeJobs === 0) {
-                            <div class="no-jobs-message" role="status">
+                            <div class="no-jobs-message empty-state-message" role="status">
                               <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
                               <span>{{ 'generalOverview.jobs.noRunning' | translate }}</span>
                             </div>
@@ -419,7 +415,7 @@
                       } @else {
                         <div class="scheduled-tasks-content">
                           @if (totalScheduledTasksCount() === 0) {
-                            <div class="no-tasks-message" role="status">
+                            <div class="no-tasks-message empty-state-message" role="status">
                               <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
                               <span>{{ 'generalOverview.tasks.noConfigured' | translate }}</span>
                             </div>
@@ -598,7 +594,7 @@
                       </mat-expansion-panel-header>
 
                       @if (serves.length === 0) {
-                        <div class="no-serves-message" role="status">
+                        <div class="no-serves-message empty-state-message" role="status">
                           <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
                           <span>{{ 'generalOverview.serves.noRunning' | translate }}</span>
                         </div>

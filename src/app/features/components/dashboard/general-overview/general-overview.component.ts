@@ -111,22 +111,22 @@ const ALL_PANELS: PanelConfig[] = [
   styleUrls: ['./general-overview.component.scss'],
 })
 export class GeneralOverviewComponent implements OnInit {
-  // Services
-  private snackBar = inject(MatSnackBar);
-  private schedulerService = inject(SchedulerService);
-  private uiStateService = inject(UiStateService);
-  private appSettingsService = inject(AppSettingsService);
-  public rcloneStatusService = inject(RcloneStatusService);
-  public iconService = inject(IconService);
+  // --- Services ---
+  private readonly snackBar = inject(MatSnackBar);
+  private readonly schedulerService = inject(SchedulerService);
+  private readonly uiStateService = inject(UiStateService);
+  private readonly appSettingsService = inject(AppSettingsService);
+  private readonly rcloneStatusService = inject(RcloneStatusService);
+  readonly iconService = inject(IconService);
   readonly backendService = inject(BackendService);
-  private translate = inject(TranslateService);
+  private readonly translate = inject(TranslateService);
 
-  // Inputs
+  // --- Inputs ---
   remotes = input<Remote[]>([]);
   jobs = input<JobInfo[]>([]);
   actionInProgress = input<RemoteActionProgress>({});
 
-  // Outputs
+  // --- Outputs ---
   selectRemote = output<Remote>();
   startJob = output<{ type: PrimaryActionType; remoteName: string }>();
   stopJob = output<{
@@ -138,16 +138,19 @@ export class GeneralOverviewComponent implements OnInit {
   browseRemote = output<string>();
   openBackendModal = output<void>();
 
-  // State signals
+  // --- State ---
   isEditingLayout = signal(false);
+
+  // FIX: removed dead 'remotes: true' entry — the remotes panel is not a
+  // mat-expansion-panel, so getPanelOpenState('remotes') is never called.
   panelOpenStates = signal<Record<string, boolean>>({
-    remotes: true,
     bandwidth: false,
     system: false,
     jobs: false,
     tasks: false,
     serves: false,
   });
+
   scheduledTasks = this.schedulerService.scheduledTasks;
   isLoadingScheduledTasks = signal(false);
 
@@ -155,17 +158,21 @@ export class GeneralOverviewComponent implements OnInit {
     ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible }))
   );
 
-  // Status service signals exposed for the template
+  // --- Status service signals re-exposed for template ---
   readonly rcloneStatus = this.rcloneStatusService.rcloneStatus;
   readonly jobStats = this.rcloneStatusService.jobStats;
   readonly bandwidthLimit = this.rcloneStatusService.bandwidthLimit;
   readonly isLoadingStats = this.rcloneStatusService.isLoading;
+  readonly memoryUsage = this.rcloneStatusService.memoryUsage;
+  readonly uptime = this.rcloneStatusService.uptime;
+  readonly loadBandwidthLimit = (): Promise<void> => this.rcloneStatusService.loadBandwidthLimit();
 
-  // Computed values
-  readonly totalRemotes = computed(() => this.remotes()?.length ?? 0);
+  // --- Computed ---
+
+  readonly totalRemotes = computed(() => this.remotes().length);
 
   readonly activeJobsCount = computed(
-    () => this.jobs()?.filter(job => job.status === 'Running').length ?? 0
+    () => this.jobs().filter(job => job.status === 'Running').length
   );
 
   readonly allRunningServes = computed(() =>
@@ -188,7 +195,6 @@ export class GeneralOverviewComponent implements OnInit {
 
   readonly totalScheduledTasksCount = computed(() => this.scheduledTasks().length);
 
-  // Stable computed arrays — avoids allocating new object arrays on every template render
   readonly bandwidthDetails = computed((): BandwidthDetailItem[] => {
     const limit = this.bandwidthLimit();
     return [
@@ -212,15 +218,16 @@ export class GeneralOverviewComponent implements OnInit {
     ];
   });
 
-  // Lookup tables — no reason for these to be methods
-  private readonly TASK_META: Record<string, TaskMeta> = {
+  // --- Static lookup tables ---
+
+  private static readonly TASK_META: Record<string, TaskMeta> = {
     sync: { icon: 'sync', colorClass: 'sync-color' },
     copy: { icon: 'copy', colorClass: 'copy-color' },
     move: { icon: 'move', colorClass: 'move-color' },
     bisync: { icon: 'right-left', colorClass: 'bisync-color' },
   };
 
-  private readonly TOGGLE_ICONS: Record<string, string> = {
+  private static readonly TOGGLE_ICONS: Record<string, string> = {
     enabled: 'pause',
     running: 'pause',
     disabled: 'play',
@@ -228,15 +235,21 @@ export class GeneralOverviewComponent implements OnInit {
     stopping: 'stop',
   };
 
-  constructor() {
-    this.loadLayoutSettings();
-  }
+  private static readonly TOGGLE_KEYS: Record<string, string> = {
+    enabled: 'disable',
+    running: 'disable',
+    disabled: 'enable',
+    failed: 'enable',
+    stopping: 'stopping',
+  };
 
   ngOnInit(): void {
+    this.loadLayoutSettings();
     this.loadScheduledTasks();
   }
 
-  // Layout management
+  // --- Layout management ---
+
   toggleEditLayout(): void {
     this.isEditingLayout.update(v => !v);
   }
@@ -270,24 +283,16 @@ export class GeneralOverviewComponent implements OnInit {
     this.appSettingsService.saveSetting('runtime', 'dashboard_layout', idsToSave);
   }
 
-  setPanelOpenState(id: string, isOpen: boolean): void {
+  protected setPanelOpenState(id: string, isOpen: boolean): void {
     this.panelOpenStates.update(states => ({ ...states, [id]: isOpen }));
   }
 
-  getPanelOpenState(id: string): boolean {
+  protected getPanelOpenState(id: string): boolean {
     return this.panelOpenStates()[id] ?? false;
   }
 
-  // Remote actions
-  onRemoteSelectedFromPanel(remote: Remote): void {
-    this.selectRemote.emit(remote);
-  }
+  // --- Serve actions ---
 
-  onOpenInFilesFromPanel(remoteName: string): void {
-    this.browseRemote.emit(remoteName);
-  }
-
-  // Serve actions
   async stopServe(serve: ServeListItem): Promise<void> {
     const remoteName = getRemoteNameFromFs(serve.params?.fs);
     if (!remoteName) return;
@@ -305,7 +310,8 @@ export class GeneralOverviewComponent implements OnInit {
     }
   }
 
-  // Task actions
+  // --- Task actions ---
+
   async toggleScheduledTask(taskId: string): Promise<void> {
     try {
       await this.schedulerService.toggleScheduledTask(taskId);
@@ -338,7 +344,8 @@ export class GeneralOverviewComponent implements OnInit {
     );
   }
 
-  // Task utilities
+  // --- Task utilities ---
+
   getFormattedNextRun(task: ScheduledTask): string {
     if (task.status === 'disabled') return this.translate.instant('task.nextRun.disabled');
     if (task.status === 'stopping') return this.translate.instant('task.nextRun.stopping');
@@ -352,23 +359,20 @@ export class GeneralOverviewComponent implements OnInit {
       : this.translate.instant('task.lastRun.never');
   }
 
-  // Returns icon + colorClass in one call — avoids two separate template method calls per task card
   getTaskMeta(taskType: string): TaskMeta {
-    return this.TASK_META[taskType] ?? { icon: 'circle-info', colorClass: '' };
+    return GeneralOverviewComponent.TASK_META[taskType] ?? { icon: 'circle-info', colorClass: '' };
   }
 
-  // Returns the translation key suffix — pipe applied in template, no double-translate
   getToggleKey(status: string): string {
-    if (status === 'enabled' || status === 'running') return 'disable';
-    if (status === 'stopping') return 'stopping';
-    return 'enable';
+    return GeneralOverviewComponent.TOGGLE_KEYS[status] ?? 'enable';
   }
 
   getToggleIcon(status: string): string {
-    return this.TOGGLE_ICONS[status] ?? 'help';
+    return GeneralOverviewComponent.TOGGLE_ICONS[status] ?? 'help';
   }
 
-  // Private helpers
+  // --- Private helpers ---
+
   private async loadLayoutSettings(): Promise<void> {
     try {
       const savedIds = await this.appSettingsService.getSettingValue<string[]>(

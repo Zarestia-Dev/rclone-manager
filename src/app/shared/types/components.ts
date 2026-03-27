@@ -60,7 +60,7 @@ export interface PathDisplayConfig {
 // Jobs Panel
 export interface JobsPanelConfig {
   jobs: JobInfo[];
-  displayedColumns: string[];
+  displayedColumns: readonly string[];
 }
 
 // Profile option for selectors

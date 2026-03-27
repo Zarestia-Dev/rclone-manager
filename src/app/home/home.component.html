@@ -19,17 +19,16 @@
     </div>
 
     <!-- Remote Options Menu -->
-    @for (remote of [selectedRemote()]; track remote?.name) {
-      @if (remote) {
-        <button
-          matIconButton
-          class="ellipsis-button"
-          [cdkMenuTriggerFor]="remoteOptionsMenu"
-          [cdkMenuTriggerData]="{ remote: remote }"
-        >
-          <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
-        </button>
-      }
+    @let remote = selectedRemote();
+    @if (remote) {
+      <button
+        matIconButton
+        class="ellipsis-button"
+        [cdkMenuTriggerFor]="remoteOptionsMenu"
+        [cdkMenuTriggerData]="{ remote: remote }"
+      >
+        <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
+      </button>
     }
 
     <!-- Empty State -->
@@ -68,7 +67,7 @@
     }
 
     <!-- Overview Components -->
-    @if (remotes().length > 0 && !selectedRemote() && !isLoading()) {
+    @if (remotes().length > 0 && !remote && !isLoading()) {
       @switch (currentTab()) {
         @case ('general') {
           <app-general-overview
@@ -85,7 +84,7 @@
         }
         @default {
           <app-app-overview
-            [mode]="currentTab()"
+            [mode]="mainOperationType()"
             [remotes]="remotes()"
             [runningServes]="runningServes()"
             [actionInProgress]="actionInProgress()"
@@ -101,7 +100,7 @@
     }
 
     <!-- Remote Detail View -->
-    @if (selectedRemote(); as remote) {
+    @if (remote) {
       @switch (currentTab()) {
         @case ('general') {
           <app-general-detail
@@ -119,7 +118,7 @@
         }
         @default {
           <app-app-detail
-            [mainOperationType]="$any(currentTab())"
+            [mainOperationType]="mainOperationType()"
             [selectedSyncOperation]="selectedSyncOperation()"
             [selectedRemote]="remote"
             [remoteSettings]="selectedRemoteSettings()"

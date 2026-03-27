@@ -1,4 +1,13 @@
-import { Component, inject, input, signal, computed, output, effect } from '@angular/core';
+import {
+  Component,
+  inject,
+  input,
+  signal,
+  computed,
+  output,
+  effect,
+  untracked,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
@@ -40,9 +49,9 @@ interface ActionViewModel {
   position: number;
   /** False when max actions are selected and this action is not one of them. */
   canInteract: boolean;
-  /** Already a translation key, apply | translate in template. */
+  /** Already a translation key — apply | translate in template. */
   tooltip: string;
-  /** Already translated, do NOT apply | translate in template. */
+  /** Already translated — do NOT apply | translate in template. */
   ariaLabel: string;
 }
 
@@ -107,14 +116,15 @@ const ACTION_CONFIGS: ActionConfig[] = [
     JobsPanelComponent,
     TranslateModule,
   ],
+  providers: [DatePipe],
   templateUrl: './general-detail.component.html',
   styleUrl: './general-detail.component.scss',
 })
 export class GeneralDetailComponent {
-  // Protected so template can access it without exposing it as public API
   protected readonly iconService = inject(IconService);
   private readonly schedulerService = inject(SchedulerService);
   private readonly translate = inject(TranslateService);
+  private readonly datePipe = inject(DatePipe);
 
   // Inputs
   readonly selectedRemote = input.required<Remote>();
@@ -138,18 +148,17 @@ export class GeneralDetailComponent {
   private readonly allScheduledTasks = this.schedulerService.scheduledTasks;
   readonly currentTaskCardIndex = signal(0);
 
-  // Static config — protected so template can read them
   protected readonly maxPrimaryActions = 3;
-  protected readonly displayedColumns: string[] = [
+
+  private static readonly DISPLAYED_COLUMNS = [
     'type',
     'profile',
     'status',
     'progress',
     'startTime',
     'actions',
-  ];
+  ] as const;
 
-  // Static lookup tables — no reason to allocate per-instance
   private static readonly TASK_TYPE_ICONS: Record<string, string> = {
     sync: 'sync',
     copy: 'copy',
@@ -195,10 +204,6 @@ export class GeneralDetailComponent {
     () => this.remoteScheduledTasks()[this.currentTaskCardIndex()] ?? null
   );
 
-  readonly canSelectMoreActions = computed(
-    () => (this.selectedRemote().primaryActions?.length ?? 0) < this.maxPrimaryActions
-  );
-
   readonly viewActionConfigs = computed<ActionViewModel[]>(() => {
     const remote = this.selectedRemote();
     const selectedActions = remote.primaryActions ?? [];
@@ -228,7 +233,6 @@ export class GeneralDetailComponent {
     });
   });
 
-  // Computed panel configurations
   readonly remoteConfigurationPanelConfig = computed<SettingsPanelConfig>(() => ({
     section: {
       key: 'remote-config',
@@ -244,19 +248,21 @@ export class GeneralDetailComponent {
 
   readonly jobsPanelConfig = computed<JobsPanelConfig>(() => ({
     jobs: this.jobs(),
-    displayedColumns: this.displayedColumns,
+    displayedColumns: GeneralDetailComponent.DISPLAYED_COLUMNS,
   }));
 
   constructor() {
-    this.schedulerService
+    void this.schedulerService
       .getScheduledTasks()
       .catch(err => console.error('Error loading scheduled tasks:', err));
 
     effect(() => {
       this.selectedRemote();
-      this.currentTaskCardIndex.set(0);
+      untracked(() => this.currentTaskCardIndex.set(0));
     });
   }
+
+  // --- Actions ---
 
   onToggleAction(actionKey: PrimaryActionType): void {
     const config = this.viewActionConfigs().find(c => c.key === actionKey);
@@ -272,16 +278,18 @@ export class GeneralDetailComponent {
     });
   }
 
+  // --- Scheduled Task Helpers ---
+
   getFormattedNextRun(task: ScheduledTask): string {
     if (task.status === 'disabled') return this.translate.instant('task.nextRun.disabled');
     if (task.status === 'stopping') return this.translate.instant('task.nextRun.stopping');
     if (!task.nextRun) return this.translate.instant('task.nextRun.notScheduled');
-    return new Date(task.nextRun).toLocaleString();
+    return this.datePipe.transform(task.nextRun, 'medium') ?? '';
   }
 
   getFormattedLastRun(task: ScheduledTask): string {
     if (!task.lastRun) return this.translate.instant('task.lastRun.never');
-    return new Date(task.lastRun).toLocaleString();
+    return this.datePipe.transform(task.lastRun, 'medium') ?? '';
   }
 
   async toggleScheduledTask(taskId: string): Promise<void> {
@@ -291,6 +299,8 @@ export class GeneralDetailComponent {
       console.error('Error toggling scheduled task:', error);
     }
   }
+
+  // --- Carousel ---
 
   nextTaskCard(): void {
     this.currentTaskCardIndex.update(i => (i < this.remoteScheduledTasks().length - 1 ? i + 1 : i));
@@ -303,6 +313,8 @@ export class GeneralDetailComponent {
   goToTaskCard(index: number): void {
     this.currentTaskCardIndex.set(index);
   }
+
+  // --- Static Lookups ---
 
   getTaskTypeIcon(taskType: string): string {
     return GeneralDetailComponent.TASK_TYPE_ICONS[taskType] ?? 'circle-info';

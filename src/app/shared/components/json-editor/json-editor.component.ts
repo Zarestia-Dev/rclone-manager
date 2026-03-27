@@ -289,7 +289,7 @@ export class JsonEditorComponent {
       ...(isDark ? [oneDark] : []),
       EditorView.baseTheme({
         '&': {
-          fontFamily: 'var(--font-mono, "JetBrains Mono", "Fira Code", monospace)',
+          fontFamily: 'var(--font-mono)',
           fontSize: '13px',
           borderRadius: 'var(--radius-md, 6px)',
           height: '100%',

@@ -1,8 +1,6 @@
 import { NgClass, TitleCasePipe } from '@angular/common';
 import {
   Component,
-  EventEmitter,
-  Output,
   inject,
   signal,
   computed,
@@ -10,9 +8,10 @@ import {
   input,
   untracked,
   model,
+  output,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { TranslateService, TranslateModule, LangChangeEvent } from '@ngx-translate/core';
+import { TranslateService, TranslateModule } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
@@ -40,7 +39,7 @@ import {
   ServeListItem,
   SettingsPanelConfig,
   StatsPanelConfig,
-  SyncOperation,
+  SyncOperationViewModel,
   SyncOperationType,
   TransferActivityPanelConfig,
   TransferFile,
@@ -101,20 +100,20 @@ export class AppDetailComponent {
   actionInProgress = input<ActionState[] | null | undefined>(null);
 
   // --- Outputs ---
-  @Output() openRemoteConfigModal = new EventEmitter<{
+  openRemoteConfigModal = output<{
     editTarget?: string;
     existingConfig?: RemoteSettings;
     initialSection?: string;
     targetProfile?: string;
     remoteType?: string;
   }>();
-  @Output() openInFiles = new EventEmitter<{ remoteName: string; path: string }>();
-  @Output() startJob = new EventEmitter<{
+  openInFiles = output<{ remoteName: string; path: string }>();
+  startJob = output<{
     type: PrimaryActionType;
     remoteName: string;
     profileName?: string;
   }>();
-  @Output() stopJob = new EventEmitter<{
+  stopJob = output<{
     type: PrimaryActionType;
     remoteName: string;
     profileName?: string;
@@ -130,7 +129,6 @@ export class AppDetailComponent {
   private readonly systemInfoService = inject(SystemInfoService);
 
   private readonly langChange = toSignal(this.translate.onLangChange, { initialValue: null });
-  private readonly trackLang = (): LangChangeEvent | null => this.langChange();
 
   // --- State ---
   private readonly groupStats = signal<GlobalStats | null>(null);
@@ -142,7 +140,7 @@ export class AppDetailComponent {
 
   private lastTransferCount = 0;
 
-  private readonly POLL_INTERVAL_MS = 1000;
+  private static readonly POLL_INTERVAL_MS = 1000;
 
   private static readonly ANIMATION_CLASSES: Partial<
     Record<SyncOperationType | PrimaryActionType, string>
@@ -155,11 +153,16 @@ export class AppDetailComponent {
     mount: 'animate-breathing',
   };
 
-  readonly syncOperations: SyncOperation[] = (['sync', 'bisync', 'move', 'copy'] as const).map(
-    type => ({ type, ...OPERATION_METADATA[type] })
+  readonly syncOperations = computed<SyncOperationViewModel[]>(() =>
+    (['sync', 'bisync', 'move', 'copy'] as const).map(type => ({
+      type,
+      ...OPERATION_METADATA[type],
+      isActive: this.isOperationActive(type),
+    }))
   );
+
   readonly selectedSyncOpIndex = computed(() =>
-    this.syncOperations.findIndex(op => op.type === this.selectedSyncOperation())
+    this.syncOperations().findIndex(op => op.type === this.selectedSyncOperation())
   );
   readonly selectedSyncOpCol = computed(() => this.selectedSyncOpIndex() % 2);
   readonly selectedSyncOpRow = computed(() => Math.floor(this.selectedSyncOpIndex() / 2));
@@ -169,7 +172,10 @@ export class AppDetailComponent {
       const groupName = this.currentGroupName();
       untracked(() => this.resetTransfers());
       if (this.isSyncType() && this.operationActiveState() && groupName) {
-        const timer = setInterval(() => void this.fetchGroupData(groupName), this.POLL_INTERVAL_MS);
+        const timer = setInterval(
+          () => void this.fetchGroupData(groupName),
+          AppDetailComponent.POLL_INTERVAL_MS
+        );
         onCleanup(() => clearInterval(timer));
       }
     });
@@ -189,7 +195,7 @@ export class AppDetailComponent {
   // --- Computed: Profiles ---
 
   readonly profiles = computed<{ name: string; label: string }[]>(() => {
-    this.trackLang();
+    this.langChange();
     const settings = this.remoteSettings();
     const opType = this.currentOpType();
     const configKey = REMOTE_CONFIG_KEYS[opType as keyof typeof REMOTE_CONFIG_KEYS];
@@ -280,7 +286,7 @@ export class AppDetailComponent {
   // --- Computed: Settings Sections ---
 
   readonly operationSettingsSections = computed<RemoteSettingsSection[]>(() => {
-    this.trackLang();
+    this.langChange();
     const sections: RemoteSettingsSection[] = [];
     const metadata = this.currentOpMetadata();
     const type = this.currentOpType();
@@ -569,10 +575,13 @@ export class AppDetailComponent {
     type: SyncOperationType | 'mount' | 'serve'
   ): RemoteOperationState | RemoteServeState | null {
     const remote = this.selectedRemote();
-    return remote.status[type as keyof Omit<RemoteStatus, 'diskUsage'>];
+    return remote.status[type as keyof Omit<RemoteStatus, 'diskUsage'>] as
+      | RemoteOperationState
+      | RemoteServeState
+      | null;
   }
 
-  isOperationActive(type: string, profileName?: string): boolean {
+  private isOperationActive(type: string, profileName?: string): boolean {
     const state = this.getOperationState(type as SyncOperationType | 'mount' | 'serve');
     if (!state) return false;
 
@@ -633,13 +642,14 @@ export class AppDetailComponent {
     const configKey = REMOTE_CONFIG_KEYS[
       key as keyof typeof REMOTE_CONFIG_KEYS
     ] as keyof RemoteSettings;
-    const profiles = settings[configKey] as Record<string, any> | undefined;
+    const profiles = settings[configKey] as Record<string, unknown> | undefined;
 
-    let specificSettings: Record<string, any>;
+    let specificSettings: Record<string, unknown>;
     if (profileName) {
-      specificSettings = profiles?.[profileName] ?? {};
+      specificSettings = (profiles?.[profileName] as Record<string, unknown>) ?? {};
     } else if (profiles && (['sync', 'bisync', 'move', 'copy'] as string[]).includes(key)) {
-      specificSettings = profiles['default'] ?? Object.values(profiles)[0] ?? {};
+      specificSettings =
+        (profiles['default'] as Record<string, unknown>) || Object.values(profiles)[0] || {};
     } else {
       specificSettings = profiles ?? {};
     }
@@ -754,7 +764,7 @@ export class AppDetailComponent {
     this.groupStats.set({ ...stats, transferring });
   }
 
-  private processTransfers(files: any[] = []): TransferFile[] {
+  private processTransfers(files: TransferFile[] = []): TransferFile[] {
     return files.map(f => ({
       ...f,
       percentage: f.size > 0 ? Math.min(100, Math.round((f.bytes / f.size) * 100)) : 0,
@@ -831,11 +841,11 @@ export class AppDetailComponent {
       : this.formatFileSize.transform(bytes);
   }
 
-  formatSpeed(speed: number): string {
+  private formatSpeed(speed: number): string {
     return `${this.formatFileSize.transform(speed)}/s`;
   }
 
-  calculateProgress(): number {
+  private calculateProgress(): number {
     const { bytes, totalBytes } = this.jobStats();
     return totalBytes > 0 ? Math.min(100, (bytes / totalBytes) * 100) : 0;
   }

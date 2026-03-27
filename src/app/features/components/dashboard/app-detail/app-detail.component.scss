@@ -287,7 +287,7 @@
   font-weight: 500;
   color: var(--dim-color);
   padding: 2px 8px;
-  background: color-mix(in srgb, var(--window-fg-color) 8%, transparent);
+  background: var(--selected-bg-color);
   border-radius: 10px;
 }
 
@@ -339,7 +339,7 @@
     }
 
     &.is-selected {
-      background: color-mix(in srgb, var(--op-color) 10%, var(--card-bg-color));
+      background: var(--selected-bg-color);
     }
   }
 
@@ -350,13 +350,8 @@
       color: var(--orange);
     }
 
-    &:not(.is-selected) {
-      box-shadow: 0 0 0 1px var(--orange);
-    }
-
     &.is-selected {
       background: color-mix(in srgb, var(--orange) 10%, var(--card-bg-color));
-      box-shadow: 0 0 0 1px var(--orange);
     }
   }
 }

@@ -463,7 +463,7 @@
             background: rgba(var(--accent-color-rgb), 0.1);
             box-shadow: 0 0 0 1px var(--card-shade-color);
             color: var(--accent-color);
-            font-family: monospace;
+            font-family: var(--font-mono);
           }
         }
 
@@ -489,7 +489,7 @@
               color: var(--window-fg-color);
             }
             .cron-expression {
-              font-family: monospace;
+              font-family: var(--font-mono);
               background: rgba(var(--window-fg-color-rgb), 0.1);
               padding: 6px 10px;
               border-radius: 6px;
@@ -554,7 +554,7 @@
               letter-spacing: 0.5px;
             }
             .path-value {
-              font-family: monospace;
+              font-family: var(--font-mono);
               font-size: 13px;
               background: rgba(var(--window-fg-color-rgb), 0.1);
               padding: 8px 12px;
