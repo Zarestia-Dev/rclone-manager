@@ -45,9 +45,9 @@ use crate::{
 
 // CONDITIONAL IMPORTS: Desktop Tray
 // =============================================================================
-#[cfg(all(desktop, not(feature = "web-server")))]
+#[cfg(all(desktop, feature = "tray", not(feature = "web-server")))]
 use crate::core::tray::actions::handle_browse_remote;
-#[cfg(desktop)]
+#[cfg(all(desktop, feature = "tray"))]
 use crate::core::tray::{
     actions::{
         handle_bisync_profile, handle_copy_profile, handle_mount_profile, handle_move_profile,
@@ -58,9 +58,6 @@ use crate::core::tray::{
     },
     tray_action::TrayAction,
 };
-
-#[cfg(all(desktop, not(feature = "web-server")))]
-use crate::utils::app::builder::create_app_window;
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 use crate::utils::io::network::monitor_network_changes;
@@ -191,9 +188,9 @@ pub fn run() {
     }
 
     // -------------------------------------------------------------------------
-    // Updater Plugin (Desktop + Updater feature)
+    // Updater Plugin (Desktop)
     // -------------------------------------------------------------------------
-    #[cfg(all(desktop, feature = "updater"))]
+    #[cfg(desktop)]
     {
         builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
     }
@@ -208,15 +205,24 @@ pub fn run() {
                 let app_handle = window.app_handle();
 
                 // Read settings from AppSettingsManager which caches internally
-                let (tray_enabled, destroy_on_close) = app_handle
+                let destroy_on_close = app_handle
                     .try_state::<core::settings::AppSettingsManager>()
                     .and_then(|manager| {
                         manager
                             .get_all()
                             .ok()
-                            .map(|s| (s.general.tray_enabled, s.developer.destroy_window_on_close))
+                            .map(|s| s.developer.destroy_window_on_close)
                     })
-                    .unwrap_or((false, false));
+                    .unwrap_or(false);
+
+                #[cfg(feature = "tray")]
+                let tray_enabled = app_handle
+                    .try_state::<core::settings::AppSettingsManager>()
+                    .and_then(|manager| manager.get_all().ok().map(|s| s.general.tray_enabled))
+                    .unwrap_or(false);
+
+                #[cfg(not(feature = "tray"))]
+                let tray_enabled = false;
 
                 if tray_enabled {
                     if destroy_on_close {
@@ -283,9 +289,9 @@ pub fn run() {
     builder = builder.setup(move |app| setup_app(app, cli_args.clone()));
 
     // -------------------------------------------------------------------------
-    // Tray Menu Events (Desktop)
+    // Tray Menu Events (Desktop + Tray)
     // -------------------------------------------------------------------------
-    #[cfg(desktop)]
+    #[cfg(all(desktop, feature = "tray"))]
     {
         builder = builder.on_menu_event(handle_tray_menu_event);
     }
@@ -531,15 +537,19 @@ fn setup_app(
     let app_handle_clone = app_handle.clone();
     tauri::async_runtime::spawn(async move {
         initialization(app_handle_clone.clone()).await;
-        let force_tray = cli_args.general.tray;
-        if settings.general.tray_enabled || force_tray {
-            if force_tray {
-                debug!("🧊 Setting up tray (forced by --tray argument)");
-            } else {
-                debug!("🧊 Setting up tray (enabled in settings)");
-            }
-            if let Err(e) = utils::app::builder::setup_tray(app_handle_clone.clone()).await {
-                error!("Failed to setup tray: {e}");
+
+        #[cfg(feature = "tray")]
+        {
+            let force_tray = cli_args.general.tray;
+            if settings.general.tray_enabled || force_tray {
+                if force_tray {
+                    debug!("🧊 Setting up tray (forced by --tray argument)");
+                } else {
+                    debug!("🧊 Setting up tray (enabled in settings)");
+                }
+                if let Err(e) = utils::app::builder::setup_tray(app_handle_clone.clone()).await {
+                    error!("Failed to setup tray: {e}");
+                }
             }
         }
 
@@ -589,10 +599,10 @@ fn setup_app(
     // -------------------------------------------------------------------------
     // Window Creation (Desktop, non-web-server)
     // -------------------------------------------------------------------------
-    #[cfg(all(desktop, not(feature = "web-server")))]
+    #[cfg(all(desktop, not(feature = "web-server"), feature = "tray"))]
     if !cli_args.general.tray {
         debug!("Creating main window");
-        create_app_window(app.handle().clone(), None);
+        utils::app::builder::create_app_window(app.handle().clone(), None);
     }
 
     Ok(())
@@ -602,7 +612,7 @@ fn setup_app(
 // TRAY MENU EVENT HANDLER
 // =============================================================================
 
-#[cfg(desktop)]
+#[cfg(all(desktop, feature = "tray"))]
 fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent) {
     use crate::rclone::commands::mount::unmount_all_remotes;
 

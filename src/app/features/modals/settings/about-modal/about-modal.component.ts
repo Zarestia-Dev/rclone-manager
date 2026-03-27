@@ -178,8 +178,8 @@ export class AboutModalComponent implements OnInit {
   // Platform / fscache
   // ---------------------------------------------------------------------------
 
-  readonly buildType = signal<string | null>(null);
-  readonly updatesDisabled = signal(false);
+  // Sourced from the service — already resolved during service init.
+  readonly buildType = computed(() => this.appUpdaterService.buildType());
   readonly fsCacheEntries = signal(0);
   readonly clearingFsCache = signal(false);
 
@@ -260,8 +260,6 @@ export class AboutModalComponent implements OnInit {
   // ---------------------------------------------------------------------------
 
   ngOnInit(): void {
-    // Fire-and-forget; each loader handles its own errors internally.
-    this.loadPlatformInfo();
     this.loadFsCacheEntries();
 
     this.destroyRef.onDestroy(() => {
@@ -431,16 +429,54 @@ export class AboutModalComponent implements OnInit {
   // Platform / engine actions
   // ---------------------------------------------------------------------------
 
-  private async loadPlatformInfo(): Promise<void> {
-    try {
-      const [type, disabled] = await Promise.all([
-        this.systemInfoService.getBuildType(),
-        this.systemInfoService.areUpdatesDisabled(),
-      ]);
-      this.buildType.set(type);
-      this.updatesDisabled.set(disabled);
-    } catch (error) {
-      console.error('Failed to load platform info:', error);
+  getUpdateInstructions(): {
+    command?: string;
+    links: { label: string; url: string; primary?: boolean }[];
+  } | null {
+    const website = 'https://hakanismail.info/zarestia/rclone-manager/downloads';
+
+    switch (this.buildType()) {
+      case 'flatpak':
+        return {
+          command: 'flatpak update io.github.zarestia_dev.rclone-manager',
+          links: [
+            {
+              label: 'modals.about.openFlathub',
+              url: 'https://flathub.org/apps/io.github.zarestia_dev.rclone-manager',
+              primary: true,
+            },
+          ],
+        };
+      case 'arch':
+        return {
+          command: 'yay -Syu rclone-manager',
+          links: [
+            {
+              label: 'modals.about.downloadPage',
+              url: 'https://aur.archlinux.org/packages/rclone-manager',
+              primary: true,
+            },
+          ],
+        };
+      case 'deb':
+        return {
+          links: [{ label: 'modals.about.downloadPage', url: website, primary: true }],
+        };
+      case 'rpm':
+        return {
+          links: [{ label: 'modals.about.downloadPage', url: website, primary: true }],
+        };
+      case 'portable':
+        return {
+          links: [{ label: 'modals.about.downloadPage', url: website, primary: true }],
+        };
+      case 'container':
+        return {
+          command: 'docker pull ghcr.io/zarestia-dev/rclone-manager:latest',
+          links: [{ label: 'modals.about.downloadPage', url: website, primary: true }],
+        };
+      default:
+        return null;
     }
   }
 

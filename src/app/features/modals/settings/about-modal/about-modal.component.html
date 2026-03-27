@@ -57,19 +57,17 @@
         </button>
       }
 
-      @if (!updatesDisabled()) {
-        <button
-          matButton
-          class="about-item"
-          role="tab"
-          [attr.aria-selected]="currentView().id === 'updates'"
-          (click)="navigateTo('updates')"
-          [matBadge]="appUpdateAvailable() || appRestartRequired() ? '!' : null"
-        >
-          <span>{{ 'modals.about.updates' | translate }}</span>
-          <mat-icon svgIcon="chevron-right"></mat-icon>
-        </button>
-      }
+      <button
+        matButton
+        class="about-item"
+        role="tab"
+        [attr.aria-selected]="currentView().id === 'updates'"
+        (click)="navigateTo('updates')"
+        [matBadge]="appUpdateAvailable() || appRestartRequired() ? '!' : null"
+      >
+        <span>{{ 'modals.about.updates' | translate }}</span>
+        <mat-icon svgIcon="chevron-right"></mat-icon>
+      </button>
 
       <div class="stacked-buttons" role="tablist">
         @for (item of bottomNavItems; track item.viewId; let last = $last) {
@@ -222,31 +220,70 @@
                   </div>
                 }
 
-                <div class="update-buttons">
-                  <button
-                    mat-flat-button
-                    (click)="installUpdate()"
-                    [disabled]="appUpdateInProgress() || appDownloadInProgress()"
-                  >
-                    @if (appUpdateInProgress() || appDownloadInProgress()) {
-                      <mat-spinner diameter="16"></mat-spinner>
-                      {{
-                        appDownloadInProgress()
-                          ? ('modals.about.downloading' | translate)
-                          : ('modals.about.installing' | translate)
-                      }}
-                    } @else {
-                      {{ 'modals.about.installUpdate' | translate }}
+                @if (buildType()) {
+                  @let instructions = getUpdateInstructions();
+                  <div class="managed-update-notice">
+                    <div class="managed-info">
+                      <mat-icon svgIcon="circle-info"></mat-icon>
+                      <p>{{ 'modals.about.managedBuildNotice' | translate }}</p>
+                    </div>
+                    @if (instructions?.command) {
+                      <button
+                        class="command-block"
+                        (click)="copyToClipboard(instructions!.command!)"
+                        [matTooltip]="'modals.common.copy' | translate"
+                        matTooltipPosition="above"
+                      >
+                        <code>{{ instructions!.command }}</code>
+                        <mat-icon svgIcon="copy"></mat-icon>
+                      </button>
                     }
-                  </button>
-                  <button
-                    mat-stroked-button
-                    (click)="skipUpdate()"
-                    [disabled]="appDownloadInProgress()"
-                  >
-                    {{ 'modals.about.skipVersion' | translate }}
-                  </button>
-                </div>
+                  </div>
+                  <div class="update-buttons">
+                    @for (link of instructions!.links; track link.url) {
+                      <a
+                        mat-flat-button
+                        [attr.mat-flat-button]="link.primary ? '' : null"
+                        [attr.mat-stroked-button]="!link.primary ? '' : null"
+                        [href]="link.url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <mat-icon svgIcon="open-link"></mat-icon>
+                        {{ link.label | translate }}
+                      </a>
+                    }
+                    <button mat-stroked-button (click)="skipUpdate()">
+                      {{ 'modals.about.skipVersion' | translate }}
+                    </button>
+                  </div>
+                } @else {
+                  <div class="update-buttons">
+                    <button
+                      mat-flat-button
+                      (click)="installUpdate()"
+                      [disabled]="appUpdateInProgress() || appDownloadInProgress()"
+                    >
+                      @if (appUpdateInProgress() || appDownloadInProgress()) {
+                        <mat-spinner diameter="16"></mat-spinner>
+                        {{
+                          appDownloadInProgress()
+                            ? ('modals.about.downloading' | translate)
+                            : ('modals.about.installing' | translate)
+                        }}
+                      } @else {
+                        {{ 'modals.about.installUpdate' | translate }}
+                      }
+                    </button>
+                    <button
+                      mat-stroked-button
+                      (click)="skipUpdate()"
+                      [disabled]="appDownloadInProgress()"
+                    >
+                      {{ 'modals.about.skipVersion' | translate }}
+                    </button>
+                  </div>
+                }
               </div>
             } @else {
               <ng-container

@@ -30,7 +30,6 @@ macro_rules! generate_invoke_handler {
             // PLATFORM
             // =================================================================
             $crate::utils::app::platform::get_build_type,
-            $crate::utils::app::platform::are_updates_disabled,
             $crate::utils::app::platform::relaunch_app,
             // =================================================================
             // RCLONE OPERATIONS
@@ -267,15 +266,15 @@ macro_rules! generate_invoke_handler {
             $crate::core::security::change_config_password,
             $crate::core::security::set_config_password_env,
             // =================================================================
-            // UPDATER (Desktop + Updater feature only)
+            // UPDATER (Desktop only)
             // =================================================================
-            #[cfg(all(desktop, feature = "updater"))]
+            #[cfg(desktop)]
             $crate::utils::app::updater::app_updates::fetch_update,
-            #[cfg(all(desktop, feature = "updater"))]
+            #[cfg(desktop)]
             $crate::utils::app::updater::app_updates::get_download_status,
-            #[cfg(all(desktop, feature = "updater"))]
+            #[cfg(desktop)]
             $crate::utils::app::updater::app_updates::install_update,
-            #[cfg(all(desktop, feature = "updater"))]
+            #[cfg(desktop)]
             $crate::utils::app::updater::app_updates::apply_app_update,
             // =================================================================
             // DEBUG TOOLS

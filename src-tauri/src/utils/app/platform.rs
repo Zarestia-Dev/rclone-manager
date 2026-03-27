@@ -8,15 +8,13 @@ pub fn get_build_type() -> Option<&'static str> {
         Some("rpm")
     } else if cfg!(feature = "arch") {
         Some("arch")
+    } else if cfg!(feature = "container") {
+        Some("container")
+    } else if cfg!(feature = "portable") {
+        Some("portable")
     } else {
         None
     }
-}
-
-/// Check if updates are disabled for this build
-#[tauri::command]
-pub fn are_updates_disabled() -> bool {
-    get_build_type().is_some()
 }
 
 #[tauri::command]

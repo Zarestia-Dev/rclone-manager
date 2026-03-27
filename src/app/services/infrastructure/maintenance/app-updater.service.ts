@@ -38,7 +38,6 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
 
   // Update state signals
   private readonly _buildType = signal<string | null>(null);
-  private readonly _updatesDisabled = signal<boolean>(false);
   private readonly _hasUpdates = signal<boolean>(false);
   private readonly _updateInProgress = signal<boolean>(false);
 
@@ -53,7 +52,6 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
 
   // Public readonly signals
   public readonly buildType = this._buildType.asReadonly();
-  public readonly updatesDisabled = this._updatesDisabled.asReadonly();
   public readonly hasUpdates = this._hasUpdates.asReadonly();
   public readonly updateInProgress = this._updateInProgress.asReadonly();
   public readonly updateAvailable = this._updateAvailable.asReadonly();
@@ -81,11 +79,6 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
 
       this._updateInProgress.set(false);
       this.resetDownloadStatus();
-
-      if (this.areUpdatesDisabled()) {
-        console.debug('Updates are disabled for this build type');
-        return null;
-      }
 
       const result = await this.invokeCommand<UpdateMetadata | null>('fetch_update', {
         channel: this.updateChannel(),
@@ -274,7 +267,7 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
   }
 
   isUpdateInProgress(): boolean {
-    return this._updateInProgress() && !this._updatesDisabled();
+    return this._updateInProgress();
   }
 
   override async skipVersion(version: string): Promise<void> {
@@ -315,9 +308,9 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
       await this.initBaseSettings();
 
       this._buildType.set(await this.getBuildType());
-      this._updatesDisabled.set(await this.checkIfUpdatesDisabled());
+      console.debug('AppUpdaterService initialized with build type:', this._buildType());
 
-      if (!this._updatesDisabled() && this.autoCheckEnabled()) {
+      if (this.autoCheckEnabled()) {
         const cachedUpdate = await this.invokeCommand<UpdateMetadata | null>('fetch_update', {
           channel: this.updateChannel(),
         });
@@ -338,22 +331,8 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
       console.error('Failed to initialize updater service:', error);
       this._skippedVersions.set([]);
       this._updateChannel.set('stable');
-      this._updatesDisabled.set(false);
       this._buildType.set(null);
     }
-  }
-
-  private async checkIfUpdatesDisabled(): Promise<boolean> {
-    try {
-      return await this.invokeCommand<boolean>('are_updates_disabled');
-    } catch (error) {
-      console.error('Failed to check if updates are disabled:', error);
-      return false; // Default to allowing updates if check fails
-    }
-  }
-
-  public areUpdatesDisabled(): boolean {
-    return this._updatesDisabled();
   }
 
   ngOnDestroy(): void {

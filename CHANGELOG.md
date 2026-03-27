@@ -16,10 +16,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Nautilus**: Replaced Angular CDK drag-and-drop with native HTML5 Drag and Drop API for file and folder operations. This provides a more responsive, system-native feel. (Note: CDK remains active for tab reordering).
 - **Nautilus**: Improved split view drag UX. The active pane now automatically switches when hovering over the other panel during a drag operation.
 - Small design changes across the app.
+- Package-manager builds (Flatpak, deb, rpm, Arch, portable, container) no longer hide the Updates tab. The app still checks for new versions and notifies you.
+
 
 ### Fixed
 - **Nautilus**: Prevented invalid drag-and-drop operations, such as dropping a file into its current directory or dropping a folder onto itself.
 - **Nautilus**: Prevented spring-opening a folder that is currently being dragged.
+- **Tray**: Fully feature-gated tray implementation; `tray` code is excluded. Preventing tray-related imports/logic in Docker builds where tray is not needed.
+- Buggy and non-performant AppImage release files are fixed. Now they works properly on all Linux distributions.
 
 
 ## [v0.2.3] - 2026-03-17

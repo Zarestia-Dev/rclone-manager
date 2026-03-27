@@ -1,4 +1,4 @@
-name: 'Release Headless'
+name: "Release Headless"
 
 on:
   workflow_dispatch:
@@ -11,26 +11,26 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'ubuntu-22.04'
-            args: '--target x86_64-unknown-linux-gnu'
-            arch: 'x86_64'
-            type: 'x86_64'
-            assetPattern: '[name]_[ver]_[arch][ext]'
-          - platform: 'ubuntu-22.04-arm'
-            args: '--target aarch64-unknown-linux-gnu'
-            arch: 'aarch64'
-            type: 'aarch64'
-            assetPattern: '[name]_[ver]_[arch][ext]'
-          - platform: 'windows-latest'
-            args: '--target x86_64-pc-windows-msvc'
-            arch: 'x86_64'
-            type: 'x86_64'
-            assetPattern: '[name]_[ver]_[arch][ext]'
-          - platform: 'windows-latest'
-            args: '--target aarch64-pc-windows-msvc'
-            arch: 'aarch64'
-            type: 'aarch64'
-            assetPattern: '[name]_[ver]_[arch][ext]'
+          - platform: "ubuntu-22.04"
+            args: "--target x86_64-unknown-linux-gnu"
+            arch: "x86_64"
+            type: "x86_64"
+            assetPattern: "[name]_[ver]_[arch][ext]"
+          - platform: "ubuntu-22.04-arm"
+            args: "--target aarch64-unknown-linux-gnu"
+            arch: "aarch64"
+            type: "aarch64"
+            assetPattern: "[name]_[ver]_[arch][ext]"
+          - platform: "windows-latest"
+            args: "--target x86_64-pc-windows-msvc"
+            arch: "x86_64"
+            type: "x86_64"
+            assetPattern: "[name]_[ver]_[arch][ext]"
+          - platform: "windows-latest"
+            args: "--target aarch64-pc-windows-msvc"
+            arch: "aarch64"
+            type: "aarch64"
+            assetPattern: "[name]_[ver]_[arch][ext]"
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -46,7 +46,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install Rust stable (windows only)
         uses: dtolnay/rust-toolchain@stable
@@ -63,7 +63,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: "./src-tauri -> target"
           key: headless-${{ runner.os }}-${{ matrix.arch }}
 
       - name: Install frontend dependencies
@@ -77,11 +77,11 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: headless-v__VERSION__
-          releaseName: 'RClone Manager Headless v__VERSION__'
-          releaseBody: 'RClone Manager Headless v__VERSION__'
+          releaseName: "RClone Manager Headless v__VERSION__"
+          releaseBody: "RClone Manager Headless v__VERSION__"
           releaseDraft: true
           prerelease: false
           args: >-
             --config src-tauri/tauri.conf.headless.json
-            --features web-server,updater
+            --features web-server,updater,tray
             ${{ matrix.args }}

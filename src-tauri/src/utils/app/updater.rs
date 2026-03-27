@@ -1,4 +1,4 @@
-#[cfg(all(desktop, feature = "updater"))]
+#[cfg(desktop)]
 pub mod app_updates {
     use crate::core::lifecycle::shutdown::shutdown_app;
     use crate::utils::app::platform::relaunch_app;

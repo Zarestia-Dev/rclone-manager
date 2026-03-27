@@ -128,6 +128,10 @@
   }
 
   .platform-badge {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xxs);
+
     mat-icon {
       font-size: var(--font-size-base);
       width: var(--font-size-base);
@@ -659,6 +663,85 @@
       gap: var(--space-md);
       padding: var(--space-xl);
       color: var(--dim-color);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Managed (package-manager) build update notice
+// ---------------------------------------------------------------------------
+
+.managed-update-notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+
+  .managed-info {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-sm);
+
+    mat-icon {
+      flex-shrink: 0;
+      color: var(--dim-color);
+      margin-top: 1px;
+    }
+
+    p {
+      margin: 0;
+      font-size: 0.85rem;
+      color: var(--dim-color);
+      line-height: 1.55;
+    }
+  }
+
+  .command-block {
+    all: unset;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--view-bg-color) 60%, transparent);
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+    cursor: pointer;
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease;
+    width: 100%;
+    box-sizing: border-box;
+
+    code {
+      font-family: var(--font-mono, "JetBrains Mono", "Fira Code", monospace);
+      font-size: 0.78rem;
+      color: var(--accent-color);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      letter-spacing: 0.01em;
+    }
+
+    mat-icon {
+      flex-shrink: 0;
+      font-size: 1rem;
+      width: 1rem;
+      height: 1rem;
+      color: var(--dim-color);
+      transition: color 0.15s ease;
+    }
+
+    &:hover {
+      background: color-mix(in srgb, var(--accent-color) 6%, var(--view-bg-color));
+      border-color: rgba(var(--accent-color-rgb), 0.3);
+
+      mat-icon {
+        color: var(--accent-color);
+      }
+    }
+
+    &:active {
+      background: color-mix(in srgb, var(--accent-color) 10%, var(--view-bg-color));
     }
   }
 }

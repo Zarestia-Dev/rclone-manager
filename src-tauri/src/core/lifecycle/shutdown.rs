@@ -47,7 +47,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     stop_serve_watcher();
 
     info!("🛑 Stopping auto updater...");
-    #[cfg(all(desktop, feature = "updater"))]
+    #[cfg(desktop)]
     crate::core::lifecycle::auto_updater::stop_auto_updater();
 
     info!("⏰ Stopping cron scheduler...");
@@ -139,7 +139,7 @@ pub async fn shutdown_app(app: AppHandle) -> Result<(), String> {
 }
 
 async fn apply_pending_updates_on_shutdown(app_handle: &AppHandle) {
-    #[cfg(all(desktop, feature = "updater"))]
+    #[cfg(desktop)]
     {
         use crate::utils::types::updater::AppUpdaterState;
 

@@ -35,6 +35,7 @@ pub struct GeneralSettings {
         label = "settings.general.tray_enabled.label",
         description = "settings.general.tray_enabled.description"
     )]
+    #[cfg(feature = "tray")]
     pub tray_enabled: bool,
 
     #[setting(
@@ -67,6 +68,7 @@ impl Default for GeneralSettings {
         };
 
         Self {
+            #[cfg(feature = "tray")]
             tray_enabled: true,
             language,
             start_on_startup: false,
@@ -87,6 +89,7 @@ pub struct CoreSettings {
         max = 40,
         step = 1
     )]
+    #[cfg(feature = "tray")]
     pub max_tray_items: usize,
 
     #[setting(
@@ -140,6 +143,7 @@ pub struct CoreSettings {
 impl Default for CoreSettings {
     fn default() -> Self {
         Self {
+            #[cfg(feature = "tray")]
             max_tray_items: 5,
             connection_check_urls: vec![
                 "https://www.google.com".to_string(),

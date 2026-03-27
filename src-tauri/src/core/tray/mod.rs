@@ -1,4 +1,4 @@
-#![cfg(desktop)]
+#![cfg(all(desktop, feature = "tray"))]
 
 pub mod actions;
 pub mod core;

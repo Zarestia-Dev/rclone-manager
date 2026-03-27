@@ -1,4 +1,4 @@
-use crate::{core::settings::AppSettingsManager, utils::types::events::MOUNT_STATE_CHANGED};
+use crate::core::settings::AppSettingsManager;
 use log::{debug, error, info};
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Listener, Manager};
@@ -15,29 +15,11 @@ use crate::{
             core::RcloneState,
             events::{
                 JOB_CACHE_CHANGED, RCLONE_PASSWORD_STORED, REMOTE_CACHE_CHANGED,
-                SERVE_STATE_CHANGED, SYSTEM_SETTINGS_CHANGED, SettingsChangeEvent,
-                UPDATE_TRAY_MENU,
+                SYSTEM_SETTINGS_CHANGED, SettingsChangeEvent,
             },
         },
     },
 };
-
-// ============================================================================
-// Platform-specific stubs
-// ============================================================================
-
-#[cfg(desktop)]
-use crate::{core::tray::core::update_tray_menu, utils::app::builder::setup_tray};
-
-#[cfg(not(desktop))]
-async fn update_tray_menu(_app: AppHandle) -> Result<(), String> {
-    Ok(())
-}
-
-#[cfg(not(desktop))]
-async fn setup_tray(_app: AppHandle, _max_items: usize) -> tauri::Result<()> {
-    Ok(())
-}
 
 // ============================================================================
 // Helpers
@@ -125,7 +107,8 @@ fn handle_remote_presence_changed(app: &AppHandle) {
                 error!("❌ Failed to reload scheduled tasks after remote change: {e}");
             }
 
-            if let Err(e) = update_tray_menu(app_clone.clone()).await {
+            #[cfg(feature = "tray")]
+            if let Err(e) = crate::core::tray::core::update_tray_menu(app_clone.clone()).await {
                 error!("Failed to update tray menu: {e}");
             }
         });
@@ -156,6 +139,7 @@ fn handle_settings_changed(app: &AppHandle) {
                             handle_autostart_change(&app, startup);
                         }
                     }
+                    #[cfg(feature = "tray")]
                     ("general", "tray_enabled") => {
                         if let Some(enabled) = change.value.as_bool() {
                             handle_tray_visibility_change(&app, enabled);
@@ -186,6 +170,7 @@ fn handle_settings_changed(app: &AppHandle) {
                             handle_rclone_flags_change(&app, flags);
                         }
                     }
+                    #[cfg(feature = "tray")]
                     ("core", "max_tray_items") => {
                         if let Some(max) = change.value.as_u64() {
                             handle_max_tray_items_change(&app, max);
@@ -246,26 +231,6 @@ fn handle_autostart_change(_app: &AppHandle, enabled: bool) {
     }
 }
 
-fn handle_tray_visibility_change(app: &AppHandle, enabled: bool) {
-    #[cfg(desktop)]
-    {
-        let app_clone = app.clone();
-        tauri::async_runtime::spawn(async move {
-            debug!("🛠️ Tray visibility changed to: {enabled}");
-            if let Some(tray) = app_clone.tray_by_id("main-tray") {
-                let _ = tray.set_visible(enabled);
-            } else {
-                let app = app_clone.clone();
-                tauri::async_runtime::spawn(async move {
-                    if let Err(e) = setup_tray(app).await {
-                        error!("Failed to set up tray: {e}");
-                    }
-                });
-            }
-        });
-    }
-}
-
 fn handle_restrict_mode_change(app: &AppHandle, enabled: bool) {
     debug!("🔒 Restrict mode changed to: {enabled}");
     if let Err(e) = app.emit(REMOTE_CACHE_CHANGED, "restrict_mode_changed") {
@@ -287,11 +252,14 @@ fn handle_language_change(app: &AppHandle, lang: &str) {
         error!("❌ Failed to emit language change event: {e}");
     }
 
-    #[cfg(desktop)]
+    #[cfg(feature = "tray")]
     {
-        if let Err(e) = app.emit(UPDATE_TRAY_MENU, ()) {
-            error!("❌ Failed to emit tray menu update event: {e}");
-        }
+        let app_clone = app.clone();
+        tauri::async_runtime::spawn(async move {
+            if let Err(e) = super::tray::core::update_tray_menu(app_clone).await {
+                error!("Failed to update tray menu: {e}");
+            }
+        });
     }
 }
 
@@ -342,16 +310,6 @@ fn handle_rclone_flags_change(app: &AppHandle, flags: &Vec<Value>) {
     }
 }
 
-fn handle_max_tray_items_change(app: &AppHandle, max: u64) {
-    debug!("🗂️ Max tray items changed to: {max}");
-    let app = app.clone();
-    tauri::async_runtime::spawn(async move {
-        if let Err(e) = update_tray_menu(app).await {
-            error!("Failed to update tray menu: {e}");
-        }
-    });
-}
-
 fn handle_global_reset(app: &AppHandle) {
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
@@ -363,25 +321,12 @@ fn handle_global_reset(app: &AppHandle) {
         crate::utils::i18n::set_language("en");
 
         // 3. Update Tray
-        if let Err(e) = update_tray_menu(app_clone.clone()).await {
-            error!("Failed to update tray menu during reset: {e}");
-        }
-    });
-}
-
-// ============================================================================
-// Other Handlers
-// ============================================================================
-
-fn tray_menu_updated(app: &AppHandle) {
-    let app_clone = app.clone();
-    app.listen(UPDATE_TRAY_MENU, move |_| {
-        let app = app_clone.clone();
-        tauri::async_runtime::spawn(async move {
-            if let Err(e) = update_tray_menu(app).await {
-                error!("Failed to update tray menu: {e}");
+        #[cfg(feature = "tray")]
+        {
+            if let Err(e) = super::tray::core::update_tray_menu(app_clone.clone()).await {
+                error!("Failed to update tray menu during reset: {e}");
             }
-        });
+        }
     });
 }
 
@@ -403,39 +348,95 @@ fn handle_job_cache_changed(app: &AppHandle) {
                     return;
                 }
             }
-            if let Err(e) = update_tray_menu(app).await {
+            #[cfg(feature = "tray")]
+            if let Err(e) = super::tray::core::update_tray_menu(app).await {
                 error!("Failed to update tray menu: {e}");
             }
         });
     });
 }
 
+// ============================================================================
+// Other Handlers
+// ============================================================================
+
+#[cfg(feature = "tray")]
+fn tray_menu_updated(app: &AppHandle) {
+    let app_clone = app.clone();
+    app.listen(crate::utils::types::events::UPDATE_TRAY_MENU, move |_| {
+        let app = app_clone.clone();
+        tauri::async_runtime::spawn(async move {
+            if let Err(e) = super::tray::core::update_tray_menu(app).await {
+                error!("Failed to update tray menu: {e}");
+            }
+        });
+    });
+}
+
+#[cfg(feature = "tray")]
+fn handle_max_tray_items_change(app: &AppHandle, max: u64) {
+    debug!("🗂️ Max tray items changed to: {max}");
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        if let Err(e) = super::tray::core::update_tray_menu(app).await {
+            error!("Failed to update tray menu: {e}");
+        }
+    });
+}
+
+#[cfg(feature = "tray")]
+fn handle_tray_visibility_change(app: &AppHandle, enabled: bool) {
+    let app_clone = app.clone();
+    tauri::async_runtime::spawn(async move {
+        debug!("🛠️ Tray visibility changed to: {enabled}");
+        if let Some(tray) = app_clone.tray_by_id("main-tray") {
+            let _ = tray.set_visible(enabled);
+        } else {
+            let app = app_clone.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = crate::utils::app::builder::setup_tray(app).await {
+                    error!("Failed to set up tray: {e}");
+                }
+            });
+        }
+    });
+}
+
+#[cfg(feature = "tray")]
 fn handle_serve_state_changed(app: &AppHandle) {
     let app_clone = app.clone();
-    app.listen(SERVE_STATE_CHANGED, move |event| {
-        let app = app_clone.clone();
-        tauri::async_runtime::spawn(async move {
-            debug!("🔄 Serve state changed! Raw payload: {:?}", event.payload());
-            if let Err(e) = update_tray_menu(app.clone()).await {
-                error!("Failed to update tray menu after serve change: {e}");
-            }
-        });
-    });
+    app.listen(
+        crate::utils::types::events::SERVE_STATE_CHANGED,
+        move |event| {
+            let app = app_clone.clone();
+            tauri::async_runtime::spawn(async move {
+                debug!("🔄 Serve state changed! Raw payload: {:?}", event.payload());
+                if let Err(e) = super::tray::core::update_tray_menu(app.clone()).await {
+                    error!("Failed to update tray menu after serve change: {e}");
+                }
+            });
+        },
+    );
 }
 
+#[cfg(feature = "tray")]
 fn handle_mount_state_changed(app: &AppHandle) {
     let app_clone = app.clone();
-    app.listen(MOUNT_STATE_CHANGED, move |event| {
-        let app = app_clone.clone();
-        tauri::async_runtime::spawn(async move {
-            debug!("🔄 Mount state changed! Raw payload: {:?}", event.payload());
-            if let Err(e) = update_tray_menu(app.clone()).await {
-                error!("Failed to update tray menu after mount change: {e}");
-            }
-        });
-    });
+    app.listen(
+        crate::utils::types::events::MOUNT_STATE_CHANGED,
+        move |event| {
+            let app = app_clone.clone();
+            tauri::async_runtime::spawn(async move {
+                debug!("🔄 Mount state changed! Raw payload: {:?}", event.payload());
+                if let Err(e) = crate::core::tray::core::update_tray_menu(app.clone()).await {
+                    error!("Failed to update tray menu after mount change: {e}");
+                }
+            });
+        },
+    );
 }
 
+#[cfg(feature = "tray")]
 fn handle_backend_switched(app: &AppHandle) {
     let app_clone = app.clone();
     use crate::utils::types::events::BACKEND_SWITCHED;
@@ -444,39 +445,45 @@ fn handle_backend_switched(app: &AppHandle) {
         let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
             // Update tray menu to reflect potentially new remotes
-            if let Err(e) = update_tray_menu(app.clone()).await {
+            if let Err(e) = crate::core::tray::core::update_tray_menu(app.clone()).await {
                 error!("Failed to update tray menu: {e}");
             }
         });
     });
 }
 
+#[cfg(feature = "tray")]
 fn handle_remote_settings_changed(app: &AppHandle) {
     let app_clone = app.clone();
-    use crate::utils::types::events::REMOTE_SETTINGS_CHANGED;
-    app.listen(REMOTE_SETTINGS_CHANGED, move |event| {
-        debug!("🔄 Remote settings changed! Payload: {:?}", event.payload());
-        let app = app_clone.clone();
-        tauri::async_runtime::spawn(async move {
-            // Update tray menu since showOnTray or other display settings may have changed
-            if let Err(e) = update_tray_menu(app).await {
-                error!("Failed to update tray menu after remote settings change: {e}");
-            }
-        });
-    });
+    app.listen(
+        crate::utils::types::events::REMOTE_SETTINGS_CHANGED,
+        move |event| {
+            debug!("🔄 Remote settings changed! Payload: {:?}", event.payload());
+            let app = app_clone.clone();
+            tauri::async_runtime::spawn(async move {
+                // Update tray menu since showOnTray or other display settings may have changed
+                if let Err(e) = crate::core::tray::core::update_tray_menu(app).await {
+                    error!("Failed to update tray menu after remote settings change: {e}");
+                }
+            });
+        },
+    );
 }
 
 pub fn setup_event_listener(app: &AppHandle) {
-    handle_ctrl_c(app);
+    #[cfg(feature = "tray")]
+    {
+        handle_serve_state_changed(app);
+        handle_mount_state_changed(app);
+        handle_backend_switched(app);
+        handle_remote_settings_changed(app);
+        tray_menu_updated(app);
+    }
 
+    handle_ctrl_c(app);
     handle_rclone_password_stored(app);
-    handle_serve_state_changed(app);
-    handle_mount_state_changed(app);
     handle_remote_presence_changed(app);
     handle_settings_changed(app);
-    handle_remote_settings_changed(app);
-    tray_menu_updated(app);
     handle_job_cache_changed(app);
-    handle_backend_switched(app);
     debug!("✅ Event listeners set up");
 }

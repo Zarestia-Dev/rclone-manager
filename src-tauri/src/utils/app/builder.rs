@@ -1,16 +1,14 @@
 #![cfg(desktop)]
 
-use tauri::{AppHandle, Emitter, tray::TrayIconBuilder};
+use tauri::AppHandle;
 
-use crate::core::tray::menu::create_tray_menu;
-use crate::utils::types::events::UPDATE_TRAY_MENU;
-
+#[cfg(feature = "tray")]
 pub async fn setup_tray(app: AppHandle) -> tauri::Result<()> {
     let app_clone = app.clone();
-    let tray_menu = create_tray_menu(&app_clone).await?;
+    let tray_menu = crate::core::tray::menu::create_tray_menu(&app_clone).await?;
 
     #[allow(unused_mut)]
-    let mut tray = TrayIconBuilder::with_id("main-tray")
+    let mut tray = tauri::tray::TrayIconBuilder::with_id("main-tray")
         .icon(crate::core::tray::icon::get_icon(false)?)
         .tooltip(crate::t!("tray.tooltipDefault"))
         .menu(&tray_menu);
@@ -32,7 +30,7 @@ pub async fn setup_tray(app: AppHandle) -> tauri::Result<()> {
 
     tray.build(&app_clone)?;
 
-    app.emit(UPDATE_TRAY_MENU, ())?;
+    tauri::Emitter::emit(&app, crate::utils::types::events::UPDATE_TRAY_MENU, ())?;
     Ok(())
 }
 

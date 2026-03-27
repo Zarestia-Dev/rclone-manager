@@ -167,10 +167,6 @@ fn system_routes() -> Router<WebServerState> {
         )
         .route("/install-update", post(handlers::install_update_handler))
         .route("/relaunch-app", post(handlers::relaunch_app_handler))
-        .route(
-            "/are-updates-disabled",
-            get(handlers::are_updates_disabled_handler),
-        )
         .route("/get-build-type", get(handlers::get_build_type_handler))
         .route(
             "/quit-rclone-engine",

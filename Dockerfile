@@ -30,7 +30,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         curl \
         fuse3 \
-        libayatana-appindicator3-dev \
         libdbus-1-dev \
         libgtk-3-dev \
         libjavascriptcoregtk-4.1-dev \
@@ -77,7 +76,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         dbus-x11 \
         fuse3 \
         gosu \
-        libayatana-appindicator3-1 \
         libgtk-3-0 \
         libwebkit2gtk-4.1-0 \
         openssl \

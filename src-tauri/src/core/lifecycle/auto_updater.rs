@@ -52,7 +52,7 @@ async fn run_update_checks(app: &AppHandle) {
 
     // Check App Updates
     if config.runtime.app_auto_check_updates {
-        #[cfg(all(desktop, feature = "updater"))]
+        #[cfg(desktop)]
         {
             let channel = &config.runtime.app_update_channel;
             info!("🔍 Checking for App updates (channel: {})...", channel);
@@ -78,7 +78,7 @@ async fn run_update_checks(app: &AppHandle) {
     }
 }
 
-#[cfg(all(desktop, feature = "updater"))]
+#[cfg(desktop)]
 async fn check_app_update(app: &AppHandle, channel: &str) -> Result<(), String> {
     use crate::utils::app::updater::app_updates::fetch_update;
 
