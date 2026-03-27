@@ -61,7 +61,10 @@
 
                   <div
                     class="status-dot sync-operations"
-                    [class.active]="statusService.isAnySyncOperationActive(remote)"
+                    [class.sync]="statusService.getActiveSyncOperationType(remote) === 'sync'"
+                    [class.copy]="statusService.getActiveSyncOperationType(remote) === 'copy'"
+                    [class.move]="statusService.getActiveSyncOperationType(remote) === 'move'"
+                    [class.bisync]="statusService.getActiveSyncOperationType(remote) === 'bisync'"
                     [matTooltip]="statusService.getSyncOperationsTooltip(remote)"
                     matTooltipShowDelay="500"
                     [attr.aria-label]="'sidebar.aria.syncStatus' | translate"

@@ -739,6 +739,7 @@
         "tries": "try",
         "statusText": {
           "uploading": "Uploading now",
+          "delayed": "Delayed",
           "ready": "Ready ({{seconds}}s overdue)",
           "waiting": "Waiting ({{seconds}}s)"
         },
@@ -1376,13 +1377,7 @@
       "configuration": "Configuration",
       "selectedProfile": "Selected Profile",
       "profilesCount": "{{count}} profiles",
-      "moveWarningTitle": "Move Operation Warning",
-      "moveWarningText1": "Files will be <strong>deleted</strong> from the source after successful transfer to destination.",
-      "moveWarningText2": "Ensure you have backups before proceeding with move operations.",
-      "bisyncInfoTitle": "BiSync Information",
-      "bisyncInfoText1": "Bidirectional synchronization keeps both locations synchronized.",
-      "bisyncInfoText2": "Changes made to either location will be reflected in the other.",
-      "bisyncInfoText3": "First run may take longer as it establishes the sync baseline.",
+      "addProfile": "Add Profile",
       "activeServes": "Active Serves",
       "sharedSettings": "Shared Settings",
       "sharedSettingsDesc": "Applies to all operations, regardless of sync or mount mode.",
@@ -1986,6 +1981,7 @@
           "auth": "Authentication",
           "advanced": "Advanced"
         },
+        "sharedProfiles": "Shared",
         "profiles": "{{type}} Profiles"
       },
       "errors": {

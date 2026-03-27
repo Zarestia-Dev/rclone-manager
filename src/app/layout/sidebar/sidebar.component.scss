@@ -189,7 +189,7 @@
 
         // Sync Operations Status
         &.sync-operations {
-          &.active {
+          &.sync.active {
             background: rgba(var(--primary-color-rgb), 0.12);
             border-color: rgba(var(--primary-color-rgb), 0.4);
             box-shadow: 0 0 0 1px rgba(var(--primary-color-rgb), 0.15);
@@ -201,11 +201,47 @@
             .count-badge {
               background: var(--primary-color);
             }
+          }
 
-            &:hover {
-              background: rgba(var(--primary-color-rgb), 0.18);
-              box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.25);
-              transform: scale(1.12);
+          &.copy.active {
+            background: rgba(var(--yellow-rgb), 0.12);
+            border-color: rgba(var(--yellow-rgb), 0.4);
+            box-shadow: 0 0 0 1px rgba(var(--yellow-rgb), 0.15);
+
+            mat-icon {
+              color: var(--yellow);
+            }
+
+            .count-badge {
+              background: var(--yellow);
+            }
+          }
+
+          &.move.active {
+            background: rgba(var(--orange-rgb), 0.12);
+            border-color: rgba(var(--orange-rgb), 0.4);
+            box-shadow: 0 0 0 1px rgba(var(--orange-rgb), 0.15);
+
+            mat-icon {
+              color: var(--orange);
+            }
+
+            .count-badge {
+              background: var(--orange);
+            }
+          }
+
+          &.bisync.active {
+            background: rgba(var(--purple-rgb), 0.12);
+            border-color: rgba(var(--purple-rgb), 0.4);
+            box-shadow: 0 0 0 1px rgba(var(--purple-rgb), 0.15);
+
+            mat-icon {
+              color: var(--purple);
+            }
+
+            .count-badge {
+              background: var(--purple);
             }
           }
         }

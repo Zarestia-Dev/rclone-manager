@@ -288,42 +288,34 @@ export class VfsControlPanelComponent {
   }
 
   private async loadPollIntervals(): Promise<void> {
-    const instances = this.vfsInstances();
-    // Helper to check if a VFS name is indexed
-    const isIndexed = (name: string): boolean => /:\[\d+\]$/.test(name);
-
-    // Skip if remote doesn't support ChangeNotify
     if (!this.changeNotify()) return;
 
-    // Run side-effect to fetch intervals, then update signal once
-    await Promise.all(
-      instances.map(async inst => {
-        // Skip indexed VFS entries - they're not supported by rclone's API
-        if (isIndexed(inst.name)) return;
+    const isIndexed = (name: string): boolean => /:\[\d+\]$/.test(name);
+    const instances = this.vfsInstances();
 
+    const updated = await Promise.all(
+      instances.map(async inst => {
+        if (isIndexed(inst.name)) return inst;
         try {
           const res = await this.vfsService.getPollInterval(inst.name);
-          if (res?.interval?.string) inst.pollInterval = res.interval.string;
+          return res?.interval?.string ? { ...inst, pollInterval: res.interval.string } : inst;
         } catch {
           console.warn(`Failed to load poll interval for ${inst.name}`);
+          return inst;
         }
       })
     );
-    this.vfsInstances.set([...instances]);
 
-    // Force update selectedVfs to trigger UI refresh
+    this.vfsInstances.set(updated);
+
     const selected = this.selectedVfs();
     if (selected) {
-      const updated = instances.find(i => i.name === selected.name);
-      if (updated) {
-        this.selectedVfs.set({ ...updated });
-      }
+      const found = updated.find(i => i.name === selected.name);
+      if (found) this.selectedVfs.set(found);
     }
   }
 
-  compareVfs(o1: VfsInstance, o2: VfsInstance): boolean {
-    return o1?.name === o2?.name;
-  }
+  readonly compareVfs = (o1: VfsInstance, o2: VfsInstance): boolean => o1?.name === o2?.name;
 
   async prioritizeUpload(item: VfsQueueItem): Promise<void> {
     await this.updateExpiry(
@@ -339,7 +331,9 @@ export class VfsControlPanelComponent {
     await this.updateExpiry(
       item,
       DELAY_EXPIRY,
-      this.translate.instant('shared.vfsControl.actions.messages.delayed', { name: item.name })
+      this.translate.instant('shared.vfsControl.actions.messages.delayedSeconds', {
+        seconds: DELAY_EXPIRY,
+      })
     );
   }
 
@@ -443,6 +437,13 @@ export class VfsControlPanelComponent {
     if (item.uploading) {
       return this.translate.instant('shared.vfsControl.queue.statusText.uploading');
     }
+    // Check magic sentinel values before displaying raw expiry
+    if (item.expiry >= DELAY_EXPIRY - 1000) {
+      return this.translate.instant('shared.vfsControl.queue.statusText.delayed');
+    }
+    if (item.expiry <= PRIORITY_EXPIRY + 1000) {
+      return this.translate.instant('shared.vfsControl.queue.statusText.ready');
+    }
     return item.expiry < 0
       ? this.translate.instant('shared.vfsControl.queue.statusText.ready', {
           seconds: Math.abs(item.expiry).toFixed(1),
@@ -457,9 +458,6 @@ export class VfsControlPanelComponent {
     this.delaySliderValue.set(DELAY_SLIDER_DEFAULT);
   }
 
-  canDelayUpload(item: VfsQueueItem): boolean {
-    return !item.uploading;
-  }
   trackByFn(_: number, item: VfsQueueItem): number {
     return item.id;
   }

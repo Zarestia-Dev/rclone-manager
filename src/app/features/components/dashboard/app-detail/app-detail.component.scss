@@ -99,6 +99,8 @@
   isolation: isolate;
   height: 48px;
   margin: 0 var(--space-sm) var(--space-sm);
+  align-self: center;
+  max-width: min(1000px, 100%);
   padding: 6px;
   border-radius: var(--radius-md);
   background: var(--sidebar-bg-color);
@@ -352,6 +354,20 @@
 
     &.is-selected {
       background: color-mix(in srgb, var(--orange) 10%, var(--card-bg-color));
+    }
+  }
+
+  &.add-pill {
+    color: var(--dim-color);
+
+    &:hover {
+      border: none;
+      color: var(--op-color);
+      background: color-mix(in srgb, var(--op-color) 8%, transparent);
+    }
+
+    &:active {
+      background: color-mix(in srgb, var(--op-color) 14%, transparent);
     }
   }
 }

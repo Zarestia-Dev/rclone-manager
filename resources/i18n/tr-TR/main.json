@@ -739,6 +739,7 @@
         "tries": "deneme",
         "statusText": {
           "uploading": "Şimdi yükleniyor",
+          "delayed": "Ertelenmiş",
           "ready": "Hazır ({{seconds}}sn gecikmiş)",
           "waiting": "Bekliyor ({{seconds}}sn)"
         },
@@ -1374,13 +1375,7 @@
       "configuration": "Yapılandırma",
       "selectedProfile": "Seçili Profil",
       "profilesCount": "{{count}} profil",
-      "moveWarningTitle": "Taşıma İşlemi Uyarısı",
-      "moveWarningText1": "Dosyalar hedefe başarıyla aktarıldıktan sonra kaynaktan <strong>silinecektir</strong>.",
-      "moveWarningText2": "Taşıma işlemine devam etmeden önce yedeklerinizin olduğundan emin olun.",
-      "bisyncInfoTitle": "BiSync Bilgisi",
-      "bisyncInfoText1": "Çift yönlü senkronizasyon her iki konumu da senkronize tutar.",
-      "bisyncInfoText2": "Her iki konumda yapılan değişiklikler diğerine yansıtılır.",
-      "bisyncInfoText3": "İlk çalıştırma senkronizasyon temelini oluşturduğu için daha uzun sürebilir.",
+      "addProfile": "Profil Ekle",
       "activeServes": "Aktif Sunucular",
       "sharedSettings": "Paylaşılan Ayarlar",
       "sharedSettingsDesc": "Senkronizasyon veya bağlama modundan bağımsız olarak tüm işlemler için geçerlidir.",
@@ -1984,6 +1979,7 @@
           "auth": "Kimlik Doğrulama",
           "advanced": "Gelişmiş"
         },
+        "sharedProfiles": "Paylaşılan",
         "profiles": "{{type}} Profilleri"
       },
       "errors": {

@@ -48,15 +48,6 @@ export class RemoteStatusService {
   // SYNC OPERATIONS STATUS
   // ============================================================================
 
-  isAnySyncOperationActive(remote: Remote): boolean {
-    return (
-      remote.status.sync.active ||
-      remote.status.copy.active ||
-      remote.status.move.active ||
-      remote.status.bisync.active
-    );
-  }
-
   getSyncProfileCount(remote: Remote): number {
     let count = 0;
     count += Object.keys(remote.status.sync.activeProfiles || {}).length;
@@ -115,6 +106,14 @@ export class RemoteStatusService {
   ): RemoteOperationState | undefined {
     if (!remote) return undefined;
     return remote.status[type as keyof RemoteStatus] as RemoteOperationState;
+  }
+
+  getActiveSyncOperationType(remote: Remote): 'sync' | 'copy' | 'move' | 'bisync' | null {
+    if (remote.status.sync.active) return 'sync';
+    if (remote.status.copy.active) return 'copy';
+    if (remote.status.move.active) return 'move';
+    if (remote.status.bisync.active) return 'bisync';
+    return null;
   }
 
   // ============================================================================
@@ -180,7 +179,7 @@ export class RemoteStatusService {
       );
     }
 
-    if (this.isAnySyncOperationActive(remote)) {
+    if (this.getActiveSyncOperationType(remote)) {
       summary.push(
         this.translate.instant('sync.syncSummary', { count: this.getSyncProfileCount(remote) })
       );
@@ -197,7 +196,7 @@ export class RemoteStatusService {
 
   hasActiveOperations(remote: Remote): boolean {
     return (
-      this.isMounted(remote) || this.isAnySyncOperationActive(remote) || this.isServing(remote)
+      this.isMounted(remote) || !!this.getActiveSyncOperationType(remote) || this.isServing(remote)
     );
   }
 }

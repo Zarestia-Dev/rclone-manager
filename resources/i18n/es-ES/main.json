@@ -733,6 +733,7 @@
         "tries": "intentar",
         "statusText": {
           "uploading": "Subiendo ahora",
+          "delayed": "Retrasado",
           "ready": "Listo ({{seconds}}s vencido)",
           "waiting": "Esperando ({{seconds}}s)"
         },
@@ -1338,13 +1339,7 @@
       "configuration": "Configuración",
       "selectedProfile": "Perfil seleccionado",
       "profilesCount": "{{count}} perfiles",
-      "moveWarningTitle": "Advertencia de operación de movimiento",
-      "moveWarningText1": "Los archivos serán <strong>eliminados</strong> de la fuente después de la transferencia exitosa al destino.",
-      "moveWarningText2": "Asegúrese de tener copias de seguridad antes de continuar con las operaciones de movimiento.",
-      "bisyncInfoTitle": "Información de BiSync",
-      "bisyncInfoText1": "La sincronización bidireccional mantiene ambas ubicaciones sincronizadas.",
-      "bisyncInfoText2": "Los cambios realizados en cualquier ubicación se reflejarán en la otra.",
-      "bisyncInfoText3": "La primera ejecución puede tardar más, ya que establece la línea de base de sincronización.",
+      "addProfile": "Agregar perfil",
       "activeServes": "Servidores activos",
       "sharedSettings": "Configuración compartida",
       "sharedSettingsDesc": "Se aplica a todas las operaciones, independientemente del modo de sincronización o montaje.",
@@ -1942,6 +1937,7 @@
           "auth": "Autenticación",
           "advanced": "Avanzado"
         },
+        "sharedProfiles": "Compartido",
         "profiles": "Perfiles de {{type}}"
       },
       "errors": {

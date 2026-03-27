@@ -106,6 +106,14 @@
             </div>
           } @else {
             <!-- Profile selector for flag edit mode -->
+            @if (sharedReturnTarget()) {
+              <div class="sidebar-header sidebar-header--back">
+                <button mat-button (click)="returnFromShared()">
+                  <mat-icon svgIcon="left-arrow"></mat-icon>
+                  {{ sharedReturnTarget() | titlecase }}
+                </button>
+              </div>
+            }
             <div class="sidebar-header">
               <span class="header-label">{{
                 'modals.remoteConfig.editMode.profiles'
@@ -132,6 +140,30 @@
                   </button>
                 }
               </mat-nav-list>
+
+              @if (sharedSidebarTypes().length > 0) {
+                <mat-divider></mat-divider>
+                <div class="sidebar-header">
+                  <span class="header-label">{{
+                    'modals.remoteConfig.editMode.sharedProfiles' | translate
+                  }}</span>
+                </div>
+                <mat-nav-list class="step-indicator">
+                  @for (item of sharedSidebarTypes(); track item.type) {
+                    <button
+                      mat-list-item
+                      (click)="navigateToShared(item.type)"
+                      [activated]="editTarget() === item.type"
+                    >
+                      <mat-icon matListItemIcon [svgIcon]="item.icon"></mat-icon>
+                      <span matListItemTitle>{{ item.label | translate }}</span>
+                      <span matListItemMeta class="sidebar-profile-count">{{
+                        getProfiles(item.type).length
+                      }}</span>
+                    </button>
+                  }
+                </mat-nav-list>
+              }
             </div>
           }
         </aside>
@@ -227,15 +259,14 @@
                   (click)="saveProfile(flagType)"
                   [attr.title]="'modals.remoteConfig.profile.save' | translate"
                 >
-                  <mat-icon svgIcon="circle-check"></mat-icon>
+                  <mat-icon svgIcon="circle-check" class="primary"></mat-icon>
                 </button>
                 <button
                   mat-icon-button
-                  class="warn"
                   (click)="cancelProfileEdit(flagType)"
                   [attr.title]="'modals.remoteConfig.profile.cancel' | translate"
                 >
-                  <mat-icon svgIcon="circle-xmark"></mat-icon>
+                  <mat-icon svgIcon="circle-xmark" class="warn"></mat-icon>
                 </button>
               </div>
             }

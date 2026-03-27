@@ -103,6 +103,15 @@
                   {{ profile.label }}
                 </button>
               }
+              <button
+                class="profile-pill add-pill"
+                (click)="onAddProfile()"
+                [matTooltip]="'dashboard.appDetail.addProfile' | translate"
+                matTooltipShowDelay="400"
+                matTooltipPosition="below"
+              >
+                <mat-icon svgIcon="plus"></mat-icon>
+              </button>
             </div>
           </div>
         }
@@ -203,40 +212,6 @@
       </ng-template>
 
       <div class="configuration-content">
-        @if (isSyncType()) {
-          @switch (selectedSyncOperation()) {
-            @case ('move') {
-              <mat-card class="operation-warning">
-                <mat-card-header>
-                  <mat-card-title>
-                    <mat-icon svgIcon="warning" class="warn"></mat-icon
-                    >{{ 'dashboard.appDetail.moveWarningTitle' | translate }}
-                  </mat-card-title>
-                </mat-card-header>
-                <mat-card-content>
-                  <p [innerHTML]="'dashboard.appDetail.moveWarningText1' | translate"></p>
-                  <p [innerHTML]="'dashboard.appDetail.moveWarningText2' | translate"></p>
-                </mat-card-content>
-              </mat-card>
-            }
-            @case ('bisync') {
-              <mat-card class="operation-info">
-                <mat-card-header>
-                  <mat-card-title>
-                    <mat-icon svgIcon="info"></mat-icon
-                    >{{ 'dashboard.appDetail.bisyncInfoTitle' | translate }}
-                  </mat-card-title>
-                </mat-card-header>
-                <mat-card-content>
-                  <p>{{ 'dashboard.appDetail.bisyncInfoText1' | translate }}</p>
-                  <p>{{ 'dashboard.appDetail.bisyncInfoText2' | translate }}</p>
-                  <p>{{ 'dashboard.appDetail.bisyncInfoText3' | translate }}</p>
-                </mat-card-content>
-              </mat-card>
-            }
-          }
-        }
-
         <div class="settings-layout">
           <section class="settings-group operation-settings">
             <header class="group-header">

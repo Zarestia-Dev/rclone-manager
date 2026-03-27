@@ -106,6 +106,7 @@ export class AppDetailComponent {
     initialSection?: string;
     targetProfile?: string;
     remoteType?: string;
+    autoAddProfile?: boolean;
   }>();
   openInFiles = output<{ remoteName: string; path: string }>();
   startJob = output<{
@@ -234,6 +235,14 @@ export class AppDetailComponent {
   });
 
   readonly showProfileSelector = computed(() => this.profiles().length > 1);
+
+  onAddProfile(): void {
+    this.openRemoteConfigModal.emit({
+      editTarget: this.currentOpType(),
+      existingConfig: this.remoteSettings(),
+      autoAddProfile: true,
+    });
+  }
 
   // --- Computed: Operation State ---
 
@@ -552,7 +561,7 @@ export class AppDetailComponent {
       editTarget: type,
       existingConfig: this.remoteSettings(),
       targetProfile: profileName,
-      remoteType: type === 'runtimeRemote' ? this.selectedRemote().type : undefined,
+      remoteType: this.selectedRemote().type,
     });
   }
 

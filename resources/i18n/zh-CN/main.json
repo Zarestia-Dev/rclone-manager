@@ -739,6 +739,7 @@
         "tries": "尝试次数",
         "statusText": {
           "uploading": "正在上传",
+          "delayed": "延迟",
           "ready": "就绪（已逾期 {{seconds}} 秒）",
           "waiting": "等待中（{{seconds}} 秒）"
         },
@@ -1376,13 +1377,7 @@
       "configuration": "配置",
       "selectedProfile": "已选配置文件",
       "profilesCount": "{{count}} 个配置文件",
-      "moveWarningTitle": "移动操作警告",
-      "moveWarningText1": "文件成功传输到目标后，源文件将被<strong>删除</strong>。",
-      "moveWarningText2": "执行移动操作前请确保已备份。",
-      "bisyncInfoTitle": "双向同步说明",
-      "bisyncInfoText1": "双向同步会保持两端数据一致。",
-      "bisyncInfoText2": "任意一端的修改都会同步到另一端。",
-      "bisyncInfoText3": "首次运行可能耗时较长，用于建立同步基准。",
+      "addProfile": "添加配置文件",
       "activeServes": "正在运行的服务",
       "sharedSettings": "共享设置",
       "sharedSettingsDesc": "适用于所有操作，无论同步或挂载模式。",
@@ -1986,6 +1981,7 @@
           "auth": "身份验证",
           "advanced": "高级"
         },
+        "sharedProfiles": "共享",
         "profiles": "{{type}} 配置文件"
       },
       "errors": {

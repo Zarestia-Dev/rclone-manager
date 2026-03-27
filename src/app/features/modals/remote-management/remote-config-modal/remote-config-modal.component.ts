@@ -97,8 +97,9 @@ interface DialogData {
   cloneTarget?: boolean;
   existingConfig?: RemoteConfigSections;
   name?: string;
-  remoteType?: string;
+  remoteType: string;
   targetProfile?: string;
+  autoAddProfile?: boolean;
 }
 
 interface PendingRemoteData {
@@ -254,6 +255,22 @@ export class RemoteConfigModalComponent implements OnInit {
 
   editTarget = signal<EditTarget>(null);
   cloneTarget = signal(false);
+  sharedReturnTarget = signal<EditTarget>(null);
+
+  sharedSidebarTypes = computed((): { type: EditTarget; icon: string; label: string }[] => {
+    const target = this.editTarget();
+    if (!target || target === 'remote') return [];
+    const vfsEligible: EditTarget[] = ['mount', 'serve', 'filter', 'backend'];
+    const candidates: { type: EditTarget; icon: string; label: string }[] = [
+      { type: 'vfs', icon: 'vfs', label: 'modals.remoteConfig.steps.vfs' },
+      { type: 'filter', icon: 'filter', label: 'modals.remoteConfig.steps.filter' },
+      { type: 'backend', icon: 'database', label: 'modals.remoteConfig.steps.backend' },
+      { type: 'runtimeRemote', icon: 'gear', label: 'modals.remoteConfig.steps.runtimeRemote' },
+    ];
+    return candidates
+      .filter(item => item.type !== target)
+      .filter(item => item.type !== 'vfs' || vfsEligible.includes(target));
+  });
   commandOptions = signal<CommandOption[]>(INITIAL_COMMAND_OPTIONS);
   showAdvancedOptions = signal(false);
   isRemoteConfigLoading = signal(false);
@@ -380,6 +397,14 @@ export class RemoteConfigModalComponent implements OnInit {
 
     this.profiles.set(newProfiles);
     this.selectedProfileName.set(newSelectedNames);
+
+    // Auto-enter "add profile" mode when triggered from app detail.
+    if (this.dialogData?.autoAddProfile && this.editTarget()) {
+      const type = this.editTarget() as SharedProfileType;
+      if (PROFILE_TYPES.includes(type)) {
+        this.startAddProfile(type);
+      }
+    }
   }
 
   // ── Data loading ──────────────────────────────────────────────────────────────
@@ -727,6 +752,11 @@ export class RemoteConfigModalComponent implements OnInit {
         await Promise.all(clonePromises);
       }
     } else if (this.editTarget()) {
+      if (this.dialogData?.remoteType) {
+        this.remoteForm.get('type')?.setValue(this.dialogData.remoteType, { emitEvent: false });
+        await this.syncRuntimeRemoteType();
+      }
+
       const type = this.editTarget() as SharedProfileType;
       const profileName = this.selectedProfileName()[type];
       const profile = this.profiles()[type]?.[profileName] as Record<string, unknown>;
@@ -1186,6 +1216,10 @@ export class RemoteConfigModalComponent implements OnInit {
       this.cascadeProfileRename(t, oldName, newName);
     }
     this.setProfileMode(t, 'view');
+
+    if (state.mode === 'add' && this.sharedReturnTarget()) {
+      this.returnFromShared();
+    }
   }
 
   deleteProfile(type: string, name: string): void {
@@ -1224,7 +1258,8 @@ export class RemoteConfigModalComponent implements OnInit {
     }
   }
 
-  selectProfile(type: string, name: string): void {
+  selectProfile(type: EditTarget, name: string): void {
+    if (!type) return;
     const t = type as SharedProfileType;
     if (!this.profiles()[t]?.[name]) return;
     this.saveCurrentProfile(t);
@@ -1232,7 +1267,8 @@ export class RemoteConfigModalComponent implements OnInit {
     void this.populateProfileForm(t, this.profiles()[t][name] as Record<string, unknown>);
   }
 
-  saveCurrentProfile(type: string): void {
+  saveCurrentProfile(type: EditTarget): void {
+    if (!type) return;
     const t = type as SharedProfileType;
     const currentName = this.selectedProfileName()[t];
     if (!this.profiles()[t]?.[currentName]) return;
@@ -1251,15 +1287,35 @@ export class RemoteConfigModalComponent implements OnInit {
     }));
   }
 
-  getProfiles(type: string): { name: string; [key: string]: unknown }[] {
+  getProfiles(type: EditTarget): { name: string; [key: string]: unknown }[] {
+    if (!type) return [];
     return Object.entries(this.profiles()[type as SharedProfileType] ?? {}).map(([name, data]) => ({
       name,
       ...data,
     }));
   }
 
-  getSelectedProfile(type: string): string {
+  getSelectedProfile(type: EditTarget): string {
+    if (!type) return DEFAULT_PROFILE_NAME;
     return this.selectedProfileName()[type as SharedProfileType];
+  }
+
+  navigateToShared(type: EditTarget): void {
+    if (!this.sharedReturnTarget()) {
+      this.sharedReturnTarget.set(this.editTarget());
+    }
+    this.editTarget.set(type);
+    const idx = this.stepConfigs().findIndex(s => s.type === type);
+    if (idx !== -1) this.currentStep.set(idx + 1);
+  }
+
+  returnFromShared(): void {
+    const target = this.sharedReturnTarget();
+    if (!target) return;
+    this.sharedReturnTarget.set(null);
+    this.editTarget.set(target);
+    const idx = this.stepConfigs().findIndex(s => s.type === target);
+    if (idx !== -1) this.currentStep.set(idx + 1);
   }
 
   private static readonly PROFILE_ICONS: Partial<Record<SharedProfileType, string>> = {
@@ -1269,7 +1325,7 @@ export class RemoteConfigModalComponent implements OnInit {
     move: 'move',
     bisync: 'right-left',
     serve: 'server',
-    vfs: 'folder-tree',
+    vfs: 'vfs',
     filter: 'filter',
     backend: 'database',
     runtimeRemote: 'gear',
@@ -1665,11 +1721,13 @@ export class RemoteConfigModalComponent implements OnInit {
     this.profileState.update(state => ({ ...state, [type]: { mode, tempName } }));
   }
 
-  public getProfileState(type: string): { mode: 'view' | 'edit' | 'add'; tempName: string } {
+  public getProfileState(type: EditTarget): { mode: 'view' | 'edit' | 'add'; tempName: string } {
+    if (!type) return { mode: 'view', tempName: '' };
     return this.profileState()[type as SharedProfileType] ?? { mode: 'view', tempName: '' };
   }
 
-  public setProfileTempName(type: string, name: string): void {
+  public setProfileTempName(type: EditTarget, name: string): void {
+    if (!type) return;
     const key = type as SharedProfileType;
     this.profileState.update(state => ({ ...state, [key]: { ...state[key], tempName: name } }));
   }

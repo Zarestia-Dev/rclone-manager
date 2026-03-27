@@ -335,7 +335,8 @@ export class HomeComponent {
     existingConfig?: RemoteSettings,
     initialSection?: string,
     targetProfile?: string,
-    remoteType?: string
+    remoteType?: string,
+    autoAddProfile?: boolean
   ): void {
     this.modalService.openRemoteConfig({
       remoteName: this.selectedRemote()?.name,
@@ -344,6 +345,7 @@ export class HomeComponent {
       existingConfig,
       initialSection,
       targetProfile,
+      autoAddProfile,
     });
   }
 

@@ -27,6 +27,7 @@ export interface RemoteConfigModalOptions {
   initialSection?: string;
   targetProfile?: string;
   cloneTarget?: boolean;
+  autoAddProfile?: boolean;
 }
 
 export interface ExportModalOptions {
@@ -74,6 +75,7 @@ export class ModalService {
         initialSection: options.initialSection,
         targetProfile: options.targetProfile,
         cloneTarget: options.cloneTarget,
+        autoAddProfile: options.autoAddProfile,
       },
     });
   }

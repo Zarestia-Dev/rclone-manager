@@ -209,25 +209,22 @@
                               [matTooltip]="
                                 'shared.vfsControl.queue.tooltips.uploadNext' | translate
                               "
-                              class="primary"
                             >
-                              <mat-icon svgIcon="file-arrow-up"></mat-icon>
+                              <mat-icon svgIcon="file-arrow-up" class="primary"></mat-icon>
                             </button>
                           }
-                          @if (canDelayUpload(item)) {
+                          @if (!item.uploading) {
                             <button
                               mat-icon-button
                               (click)="delayUpload(item); $event.stopPropagation()"
                               [matTooltip]="
                                 'shared.vfsControl.queue.tooltips.delayLong' | translate
                               "
-                              class="warn"
                             >
-                              <mat-icon svgIcon="stop"></mat-icon>
+                              <mat-icon svgIcon="stop" class="warn"></mat-icon>
                             </button>
                             <button
                               mat-icon-button
-                              class="accent"
                               (click)="toggleDelaySlider(item); $event.stopPropagation()"
                               [matTooltip]="
                                 showDelaySlider() === item.id
@@ -236,7 +233,7 @@
                               "
                               [class]="showDelaySlider() === item.id ? 'primary' : undefined"
                             >
-                              <mat-icon svgIcon="clock"></mat-icon>
+                              <mat-icon svgIcon="clock" class="accent"></mat-icon>
                             </button>
                           }
                         </div>
@@ -247,44 +244,42 @@
                   <ng-container matColumnDef="expandedDetail">
                     <td mat-cell *matCellDef="let item" [attr.colspan]="displayedColumns.length">
                       <div class="element-detail">
-                        @if (showDelaySlider() === item.id) {
-                          <div class="delay-slider-container">
-                            <div class="slider-header">
-                              <mat-icon svgIcon="clock"></mat-icon>
-                              <span>{{ 'shared.vfsControl.queue.slider.title' | translate }}</span>
-                            </div>
-                            <div class="slider-content">
-                              <mat-slider
-                                [min]="10"
-                                [max]="86400"
-                                [step]="10"
-                                [displayWith]="formatSliderLabel"
-                                discrete
-                              >
-                                <input
-                                  matSliderThumb
-                                  [ngModel]="delaySliderValue()"
-                                  (ngModelChange)="delaySliderValue.set($event)"
-                                />
-                              </mat-slider>
-                              <div class="slider-value">
-                                {{ formatSliderLabel(delaySliderValue()) }}
-                              </div>
-                            </div>
-                            <div class="slider-actions">
-                              <button mat-button (click)="showDelaySlider.set(null)">
-                                {{ 'shared.vfsControl.queue.slider.cancel' | translate }}
-                              </button>
-                              <button
-                                mat-raised-button
-                                class="primary"
-                                (click)="setCustomDelay(item)"
-                              >
-                                {{ 'shared.vfsControl.queue.slider.apply' | translate }}
-                              </button>
+                        <div class="delay-slider-container">
+                          <div class="slider-header">
+                            <mat-icon svgIcon="clock"></mat-icon>
+                            <span>{{ 'shared.vfsControl.queue.slider.title' | translate }}</span>
+                          </div>
+                          <div class="slider-content">
+                            <mat-slider
+                              [min]="10"
+                              [max]="86400"
+                              [step]="10"
+                              [displayWith]="formatSliderLabel"
+                              discrete
+                            >
+                              <input
+                                matSliderThumb
+                                [ngModel]="delaySliderValue()"
+                                (ngModelChange)="delaySliderValue.set($event)"
+                              />
+                            </mat-slider>
+                            <div class="slider-value">
+                              {{ formatSliderLabel(delaySliderValue()) }}
                             </div>
                           </div>
-                        }
+                          <div class="slider-actions">
+                            <button mat-button (click)="showDelaySlider.set(null)">
+                              {{ 'shared.vfsControl.queue.slider.cancel' | translate }}
+                            </button>
+                            <button
+                              mat-raised-button
+                              class="primary"
+                              (click)="setCustomDelay(item)"
+                            >
+                              {{ 'shared.vfsControl.queue.slider.apply' | translate }}
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </td>
                   </ng-container>
