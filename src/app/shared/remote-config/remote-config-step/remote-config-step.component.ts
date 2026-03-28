@@ -63,7 +63,7 @@ export const INITIAL_COMMAND_OPTIONS: CommandOption[] = _obscureOption
 })
 export class RemoteConfigStepComponent {
   private readonly remoteManagementService = inject(RemoteManagementService);
-  readonly iconService = inject(IconService);
+  private readonly iconService = inject(IconService);
 
   readonly separatorKeysCodes = [ENTER, COMMA] as const;
 
@@ -126,13 +126,24 @@ export class RemoteConfigStepComponent {
   readonly newOptionType = signal<'boolean' | 'string' | 'number' | 'array'>('boolean');
   readonly randomIcon = signal('cloud');
   readonly animTrigger = signal(0);
-  readonly suggestedRemotes = signal<RemoteType[]>([]);
+  readonly suggestedRemotes = signal<{ label: string; value: string; icon: string }[]>([]);
 
-  // ── Computed ──────────────────────────────────────────────────────────────
+  // ── Computed View Models ──────────────────────────────────────────────────
+
+  readonly remoteTypeIcon = computed(() =>
+    this.iconService.getIconName(this.remoteTypeValue() || 'hard-drive')
+  );
+  readonly currentProviderIcon = computed(() =>
+    this.iconService.getIconName(this.selectedProvider() || 'hard-drive')
+  );
+
+  readonly remoteTypesWithIcons = computed(() =>
+    this.remoteTypes().map(r => ({ ...r, icon: this.iconService.getIconName(r.value) }))
+  );
 
   readonly filteredRemotes = computed(() => {
     const term = (this.remoteSearchTerm() ?? '').toLowerCase();
-    return this.remoteTypes().filter(
+    return this.remoteTypesWithIcons().filter(
       r => r.label.toLowerCase().includes(term) || r.value.toLowerCase().includes(term)
     );
   });
@@ -145,13 +156,16 @@ export class RemoteConfigStepComponent {
     return fields.find(f => f.Examples?.length) ?? null;
   });
 
-  readonly filteredProviders = computed(() => {
+  readonly filteredProvidersView = computed(() => {
     const field = this.providerField();
     if (!field?.Examples) return [];
     const term = (this.providerSearchTerm() ?? '').toLowerCase();
     return field.Examples.filter(
       o => o.Value?.toLowerCase().includes(term) || o.Help?.toLowerCase().includes(term)
-    );
+    ).map(o => ({
+      ...o,
+      icon: this.iconService.getIconName(o.Value || 'hard-drive'),
+    }));
   });
 
   readonly basicFields = computed(() => this.getFieldsByAdvanced(false));
@@ -168,12 +182,25 @@ export class RemoteConfigStepComponent {
     return PREDEFINED_OPTIONS.filter(p => !active.has(p.key));
   });
 
-  getOptionType(value: CommandOption['value']): 'boolean' | 'string' | 'number' | 'array' {
-    if (Array.isArray(value)) return 'array';
-    const type = typeof value;
-    if (type === 'boolean' || type === 'number') return type;
-    return 'string';
-  }
+  readonly commandOptionsView = computed(() => {
+    return this.commandOptions().map(opt => {
+      const isArray = Array.isArray(opt.value);
+      const typeOfVal = typeof opt.value;
+      const type = isArray
+        ? 'array'
+        : typeOfVal === 'boolean' || typeOfVal === 'number'
+          ? typeOfVal
+          : 'string';
+
+      return {
+        ...opt,
+        type,
+        booleanValue: type === 'boolean' ? (opt.value as boolean) : false,
+        stringValue: type === 'string' || type === 'number' ? String(opt.value) : '',
+        arrayValue: isArray ? (opt.value as string[]) : [],
+      };
+    });
+  });
 
   // ── Effects ───────────────────────────────────────────────────────────────
 
@@ -241,7 +268,7 @@ export class RemoteConfigStepComponent {
     });
 
     effect(() => {
-      const types = this.remoteTypes();
+      const types = this.remoteTypesWithIcons();
       if (types.length > 0 && untracked(this.suggestedRemotes).length === 0) {
         this.suggestedRemotes.set(this.shuffleSample(types));
       }
@@ -265,16 +292,15 @@ export class RemoteConfigStepComponent {
 
     effect(onCleanup => {
       if (this.showTypeField() && !this.remoteTypeValue() && !this.isLoading()) {
-        const types = this.remoteTypes();
+        const types = this.remoteTypesWithIcons();
         if (types.length === 0) return;
 
-        const icons = types.map(t => this.iconService.getIconName(t.value));
         const pickNextIcon = (): string => {
-          if (icons.length === 1) return icons[0];
+          if (types.length === 1) return types[0].icon;
           const current = this.randomIcon();
           let nextIcon: string;
           do {
-            nextIcon = icons[Math.floor(Math.random() * icons.length)];
+            nextIcon = types[Math.floor(Math.random() * types.length)].icon;
           } while (nextIcon === current);
           return nextIcon;
         };
@@ -350,7 +376,7 @@ export class RemoteConfigStepComponent {
     return !(match && !this.matchesProviderRule(match.Provider, provider));
   }
 
-  private shuffleSample(list: RemoteType[], count = 5): RemoteType[] {
+  private shuffleSample<T>(list: T[], count = 5): T[] {
     const copy = [...list];
     for (let i = copy.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -468,21 +494,7 @@ export class RemoteConfigStepComponent {
     );
   }
 
-  // ── Template type helpers ─────────────────────────────────────────────────
-
-  asStringArray(value: CommandOption['value']): string[] {
-    return Array.isArray(value) ? value : [];
-  }
-
-  asString(value: CommandOption['value']): string {
-    return typeof value === 'string' ? value : String(value);
-  }
-
-  asBoolean(value: CommandOption['value']): boolean {
-    return typeof value === 'boolean' ? value : false;
-  }
-
   reshuffleSuggestions(): void {
-    this.suggestedRemotes.set(this.shuffleSample(this.remoteTypes()));
+    this.suggestedRemotes.set(this.shuffleSample(this.remoteTypesWithIcons()));
   }
 }

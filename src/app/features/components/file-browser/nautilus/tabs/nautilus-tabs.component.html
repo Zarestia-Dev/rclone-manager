@@ -17,19 +17,19 @@
           [class.file-drag-over]="isDragging() && hoveredTabIndex() === $index"
           role="button"
           tabindex="0"
-          (click)="onTabClick($index)"
-          (keydown.enter)="onTabClick($index)"
-          (keydown.space)="$event.preventDefault(); onTabClick($index)"
+          (click)="switchTab.emit($index)"
+          (keydown.enter)="switchTab.emit($index)"
+          (keydown.space)="$event.preventDefault(); switchTab.emit($index)"
           (mousedown)="onTabMiddleClick($event, $index)"
           [cdkContextMenuTriggerFor]="tabContextMenu"
           [cdkContextMenuTriggerData]="{ $implicit: $index }"
-          [matTooltip]="(t.remote ? (t.remote.label | translate) + ':' : '') + t.path"
-          matTooltipShowDelay="800"
+          [matTooltip]="getTabTooltip(t)"
+          [matTooltipShowDelay]="800"
         >
           <span class="tab-title">{{ t.title | translate }}</span>
           <button
             class="close-tab"
-            (click)="onCloseTab($event, $index)"
+            (click)="$event.stopPropagation(); closeTab.emit($index)"
             [attr.aria-label]="'common.close' | translate"
           >
             <mat-icon svgIcon="close"></mat-icon>

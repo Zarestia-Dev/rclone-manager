@@ -65,23 +65,28 @@
                   @let stepNum = $index + 1;
                   @let isCompleted = currentStep() > stepNum;
                   @let isCurrent = currentStep() === stepNum;
+                  @let stepDisabled =
+                    isAuthInProgress() ||
+                    (!editTarget() && stepNum > 1 && remoteFormStatus() === 'INVALID');
 
-                  <a
+                  <button
                     mat-list-item
                     [activated]="isCurrent"
-                    [disabled]="isStepDisabled(stepNum)"
+                    [disabled]="stepDisabled"
                     (click)="goToStep(stepNum)"
                     [class.completed]="isCompleted"
                     [attr.aria-selected]="isCurrent"
                     (keydown.enter)="goToStep(stepNum)"
                     (keydown.space)="goToStep(stepNum)"
+                    [matTooltip]="config.label | translate"
+                    matTooltipPosition="right"
                   >
                     <mat-icon
                       matListItemIcon
                       [svgIcon]="isCompleted ? 'circle-check' : config.icon"
                     ></mat-icon>
                     <span matListItemTitle>{{ config.label | translate }}</span>
-                  </a>
+                  </button>
                 }
               </mat-nav-list>
             </div>
@@ -93,10 +98,18 @@
               }}</span>
             </div>
             <div class="step-indicator-container hide-scrollbar">
-              <mat-nav-list class="step-indicator">
+              <mat-nav-list
+                class="step-indicator"
+                [attr.aria-label]="'modals.remoteConfig.editMode.sections.label' | translate"
+              >
                 @for (category of remoteEditCategories; track category.id) {
                   @if (visibleSections().has(category.id)) {
-                    <button mat-list-item (click)="scrollToSection(category.id)">
+                    <button
+                      mat-list-item
+                      (click)="scrollToSection(category.id)"
+                      [matTooltip]="category.label | translate"
+                      matTooltipPosition="right"
+                    >
                       <mat-icon matListItemIcon [svgIcon]="category.icon"></mat-icon>
                       <span matListItemTitle>{{ category.label | translate }}</span>
                     </button>
@@ -105,15 +118,6 @@
               </mat-nav-list>
             </div>
           } @else {
-            <!-- Profile selector for flag edit mode -->
-            @if (sharedReturnTarget()) {
-              <div class="sidebar-header sidebar-header--back">
-                <button mat-button (click)="returnFromShared()">
-                  <mat-icon svgIcon="left-arrow"></mat-icon>
-                  {{ sharedReturnTarget() | titlecase }}
-                </button>
-              </div>
-            }
             <div class="sidebar-header">
               <span class="header-label">{{
                 'modals.remoteConfig.editMode.profiles'
@@ -121,27 +125,51 @@
               }}</span>
             </div>
             <div class="step-indicator-container hide-scrollbar">
-              <mat-nav-list class="step-indicator">
-                @let targetType = editTarget()!;
-                @for (profile of getProfiles(targetType); track profile.name) {
-                  @let isActive = getSelectedProfile(targetType) === profile.name;
+              @if (sharedReturnTarget()) {
+                <mat-nav-list class="step-indicator">
                   <button
                     mat-list-item
-                    [activated]="isActive"
-                    (click)="selectProfile(targetType, profile.name)"
-                    [attr.aria-selected]="isActive"
+                    (click)="returnFromShared()"
+                    [attr.aria-label]="sharedReturnTarget() | titlecase"
+                    [matTooltip]="sharedReturnTarget() | titlecase"
+                    matTooltipPosition="right"
                   >
-                    <mat-icon
-                      matListItemIcon
-                      [svgIcon]="getProfileIcon(targetType)"
-                      [class.primary]="isActive"
-                    ></mat-icon>
-                    <span matListItemTitle>{{ profile.name }}</span>
+                    <mat-icon matListItemIcon svgIcon="left-arrow"></mat-icon>
+                    <span matListItemTitle>{{ sharedReturnTarget() | titlecase }}</span>
                   </button>
+                </mat-nav-list>
+                <mat-divider></mat-divider>
+              }
+              <mat-nav-list
+                class="step-indicator"
+                [attr.aria-label]="
+                  'modals.remoteConfig.editMode.profiles'
+                    | translate: { type: editTarget() | titlecase }
+                "
+              >
+                @let targetType = activeProfileType();
+                @if (targetType) {
+                  @for (profile of profileLists()[targetType]; track profile.name) {
+                    @let isActive = selectedProfileName()[targetType] === profile.name;
+                    <button
+                      mat-list-item
+                      [activated]="isActive"
+                      (click)="selectProfile(targetType, profile.name)"
+                      [attr.aria-selected]="isActive"
+                      [matTooltip]="profile.name"
+                      matTooltipPosition="right"
+                    >
+                      <mat-icon
+                        matListItemIcon
+                        [svgIcon]="PROFILE_ICONS[targetType] || 'circle-info'"
+                        [class.primary]="isActive"
+                      ></mat-icon>
+                      <span matListItemTitle>{{ profile.name }}</span>
+                    </button>
+                  }
                 }
               </mat-nav-list>
-
-              @if (sharedSidebarTypes().length > 0) {
+              @if (sharedSidebarTypes().length > 0 && editStack().length === 0) {
                 <mat-divider></mat-divider>
                 <div class="sidebar-header">
                   <span class="header-label">{{
@@ -154,11 +182,13 @@
                       mat-list-item
                       (click)="navigateToShared(item.type)"
                       [activated]="editTarget() === item.type"
+                      [matTooltip]="item.label | translate"
+                      matTooltipPosition="right"
                     >
                       <mat-icon matListItemIcon [svgIcon]="item.icon"></mat-icon>
                       <span matListItemTitle>{{ item.label | translate }}</span>
                       <span matListItemMeta class="sidebar-profile-count">{{
-                        getProfiles(item.type).length
+                        profileLists()[item.type].length
                       }}</span>
                     </button>
                   }
@@ -191,15 +221,19 @@
 
         <!-- Profile header template (shared across all flag steps) -->
         <ng-template #profileHeader let-flagType="type">
+          @let pState = getProfileState(flagType);
+          @let selProfile = getSelectedProfileName(flagType);
+          @let pList = getProfileList(flagType);
+
           <div class="profile-header">
-            @if (getProfileState(flagType).mode === 'view') {
+            @if (pState.mode === 'view') {
               <mat-form-field subscriptSizing="dynamic" class="profile-select">
                 <mat-label>{{ 'modals.remoteConfig.profile.label' | translate }}</mat-label>
                 <mat-select
-                  [value]="getSelectedProfile(flagType)"
+                  [value]="selProfile"
                   (selectionChange)="selectProfile(flagType, $event.value)"
                 >
-                  @for (profile of getProfiles(flagType); track profile.name) {
+                  @for (profile of pList; track profile.name) {
                     <mat-option [value]="profile.name">{{ profile.name }}</mat-option>
                   }
                 </mat-select>
@@ -217,19 +251,16 @@
                   mat-icon-button
                   (click)="startEditProfile(flagType)"
                   [attr.title]="'modals.remoteConfig.profile.rename' | translate"
-                  [disabled]="getSelectedProfile(flagType).toLowerCase() === 'default'"
+                  [disabled]="selProfile.toLowerCase() === 'default'"
                 >
                   <mat-icon svgIcon="pen"></mat-icon>
                 </button>
                 <button
                   mat-icon-button
                   class="warn"
-                  (click)="deleteProfile(flagType, getSelectedProfile(flagType))"
+                  (click)="deleteProfile(flagType, selProfile)"
                   [attr.title]="'modals.remoteConfig.profile.delete' | translate"
-                  [disabled]="
-                    getProfiles(flagType).length <= 1 ||
-                    getSelectedProfile(flagType).toLowerCase() === 'default'
-                  "
+                  [disabled]="pList.length <= 1 || selProfile.toLowerCase() === 'default'"
                 >
                   <mat-icon svgIcon="trash"></mat-icon>
                 </button>
@@ -237,14 +268,14 @@
             } @else {
               <mat-form-field subscriptSizing="dynamic" class="profile-input">
                 <mat-label>{{
-                  (getProfileState(flagType).mode === 'add'
+                  (pState.mode === 'add'
                     ? 'modals.remoteConfig.profile.new'
                     : 'modals.remoteConfig.profile.rename'
                   ) | translate
                 }}</mat-label>
                 <input
                   matInput
-                  [ngModel]="getProfileState(flagType).tempName"
+                  [ngModel]="pState.tempName"
                   (ngModelChange)="setProfileTempName(flagType, $event)"
                   [ngModelOptions]="{ standalone: true }"
                   (keyup.enter)="saveProfile(flagType)"
@@ -304,7 +335,7 @@
                     'modals.remoteConfig.advancedProfiles.vfs' | translate
                   }}</mat-label>
                   <mat-select [formControl]="formControl(configPath + '.vfsProfile')">
-                    @for (opt of getProfileOptions('vfs'); track opt) {
+                    @for (opt of profileOptions().vfs; track opt) {
                       <mat-option [value]="opt">{{ opt }}</mat-option>
                     }
                   </mat-select>
@@ -316,7 +347,7 @@
                   'modals.remoteConfig.advancedProfiles.filter' | translate
                 }}</mat-label>
                 <mat-select [formControl]="formControl(configPath + '.filterProfile')">
-                  @for (opt of getProfileOptions('filter'); track opt) {
+                  @for (opt of profileOptions().filter; track opt) {
                     <mat-option [value]="opt">{{ opt }}</mat-option>
                   }
                 </mat-select>
@@ -327,7 +358,7 @@
                   'modals.remoteConfig.advancedProfiles.backend' | translate
                 }}</mat-label>
                 <mat-select [formControl]="formControl(configPath + '.backendProfile')">
-                  @for (opt of getProfileOptions('backend'); track opt) {
+                  @for (opt of profileOptions().backend; track opt) {
                     <mat-option [value]="opt">{{ opt }}</mat-option>
                   }
                 </mat-select>
@@ -339,7 +370,7 @@
                     'modals.remoteConfig.advancedProfiles.runtimeRemote' | translate
                   }}</mat-label>
                   <mat-select [formControl]="formControl(configPath + '.runtimeRemoteProfile')">
-                    @for (opt of getProfileOptions('runtimeRemote'); track opt) {
+                    @for (opt of profileOptions().runtimeRemote; track opt) {
                       <mat-option [value]="opt">{{ opt }}</mat-option>
                     }
                   </mat-select>
@@ -379,8 +410,7 @@
                   <ng-container
                     *ngTemplateOutlet="profileHeader; context: { type: flagType }"
                   ></ng-container>
-
-                  @if (['mount', 'serve', 'sync', 'copy', 'move', 'bisync'].includes(flagType)) {
+                  @if (LINKED_PROFILE_TYPES.has(flagType)) {
                     <ng-container
                       *ngTemplateOutlet="
                         linkedProfiles;
@@ -402,9 +432,9 @@
                       flagType === 'serve' ? dynamicServeFields() : dynamicFlagFields()[flagType]
                     "
                     [mountTypes]="mountTypes()"
-                    [currentRemoteName]="getRemoteName()"
+                    [currentRemoteName]="currentRemoteName()"
                     [isNewRemote]="!editTarget()"
-                    [getControlKey]="getUniqueControlKey.bind(this)"
+                    [getControlKey]="getUniqueControlKey"
                     [availableServeTypes]="availableServeTypes()"
                     [isLoadingServeFields]="isLoadingServeFields()"
                     [searchQuery]="searchQuery()"
@@ -493,7 +523,6 @@
         [disabled]="isSaveDisabled()"
         animate.enter="fade-in-out-enter"
         animate.leave="fade-in-out-leave"
-        aria-live="polite"
         [attr.aria-label]="saveButtonLabel() | translate"
         [attr.title]="saveButtonLabel() | translate"
       >
@@ -520,10 +549,10 @@
         [class.loading]="flow.isProcessing || isAuthCancelled()"
         animate.enter="fade-in-out-enter"
         animate.leave="fade-in-out-leave"
-        aria-live="polite"
         [attr.aria-label]="continueLabel"
         [attr.title]="continueLabel"
       >
+        <!-- [FIX T4] aria-live removed — same rationale as the save button above -->
         @if (flow.isProcessing && !isAuthCancelled()) {
           <div class="saving-overlay" aria-hidden="true">
             <mat-spinner diameter="16"></mat-spinner>

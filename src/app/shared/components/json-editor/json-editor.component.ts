@@ -19,6 +19,7 @@ import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { switchMap, startWith, map } from 'rxjs';
 
 import { RcConfigOption, SENSITIVE_KEYS } from '@app/types';
+import { RcloneOptionTranslatePipe } from '../../pipes/rclone-option-translate.pipe';
 import { RcloneValueMapperService, matchesConfigSearch, AppSettingsService } from '@app/services';
 
 import {
@@ -153,7 +154,7 @@ function buildRcloneCompletionSource(getFieldDefs: () => RcConfigOption[]) {
 
 @Component({
   selector: 'app-json-editor',
-  imports: [MatIconModule, MatTooltipModule, TranslateModule],
+  imports: [MatIconModule, MatTooltipModule, TranslateModule, RcloneOptionTranslatePipe],
   templateUrl: './json-editor.component.html',
   styleUrl: './json-editor.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -161,6 +162,7 @@ function buildRcloneCompletionSource(getFieldDefs: () => RcConfigOption[]) {
 export class JsonEditorComponent {
   readonly formGroup = input.required<FormGroup>();
   readonly fieldDefs = input<RcConfigOption[]>([]);
+  readonly provider = input<string | null>(null);
   readonly searchQuery = input('');
   readonly keyPrefix = input('');
   readonly excludeKeys = input<string[]>([]);

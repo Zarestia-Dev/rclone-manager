@@ -4,11 +4,7 @@
     @if (showTypeField()) {
       <mat-form-field appearance="fill" class="remote-type-field anim-field">
         <mat-label>{{ 'wizards.remoteConfig.remoteType' | translate }}</mat-label>
-        <mat-icon
-          matPrefix
-          [svgIcon]="iconService.getIconName(remoteType)"
-          class="field-icon"
-        ></mat-icon>
+        <mat-icon matPrefix [svgIcon]="remoteTypeIcon()" class="field-icon"></mat-icon>
         <input
           type="text"
           matInput
@@ -34,10 +30,7 @@
         >
           @for (remote of filteredRemotes(); track remote.value) {
             <mat-option [value]="remote.value">
-              <mat-icon
-                class="field-icon"
-                [svgIcon]="iconService.getIconName(remote.value)"
-              ></mat-icon>
+              <mat-icon class="field-icon" [svgIcon]="remote.icon"></mat-icon>
               <div class="option-content">
                 <span class="option-label">{{ remote.label }}</span>
                 <small class="option-description">{{ remote.value }}</small>
@@ -74,10 +67,7 @@
           <div class="empty-state-pills">
             @for (remote of suggestedRemotes(); track remote.value) {
               <button type="button" class="empty-pill" (click)="onTypeSelected(remote.value)">
-                <mat-icon
-                  [svgIcon]="iconService.getIconName(remote.value)"
-                  class="pill-icon"
-                ></mat-icon>
+                <mat-icon [svgIcon]="remote.icon" class="pill-icon"></mat-icon>
                 <span>{{ remote.label }}</span>
               </button>
             }
@@ -124,15 +114,12 @@
     }
 
     @if (providerField(); as pField) {
+      @let pCtrl = form().get(pField.Name);
       <mat-form-field appearance="fill" id="section-auth" class="anim-field">
         <mat-label>{{
           pField.Help || ('wizards.remoteConfig.authenticationMethod' | translate)
         }}</mat-label>
-        <mat-icon
-          matPrefix
-          [svgIcon]="iconService.getIconName(form().get(pField.Name)?.value || 'hard-drive')"
-          class="field-icon"
-        ></mat-icon>
+        <mat-icon matPrefix [svgIcon]="currentProviderIcon()" class="field-icon"></mat-icon>
         <input
           type="text"
           matInput
@@ -145,9 +132,9 @@
           [displayWith]="displayProvider"
           (optionSelected)="onProviderSelected($event.option.value)"
         >
-          @for (option of filteredProviders(); track option.Value) {
+          @for (option of filteredProvidersView(); track option.Value) {
             <mat-option [value]="option.Value">
-              <mat-icon [svgIcon]="iconService.getIconName(option.Value)"></mat-icon>
+              <mat-icon [svgIcon]="option.icon"></mat-icon>
               <div class="option-content">
                 <span class="option-label">{{ option.Help }}</span>
                 <small class="option-description">{{ option.Value }}</small>
@@ -155,54 +142,40 @@
             </mat-option>
           }
         </mat-autocomplete>
-        @if (form().get(pField.Name)?.hasError('required')) {
+        @if (pCtrl?.hasError('required')) {
           <mat-error>{{ 'wizards.remoteConfig.providerRequired' | translate }}</mat-error>
         }
       </mat-form-field>
     }
 
     @if (providerReady()) {
+      @let basicLen = basicFields().length;
+      @let advLen = advancedFields().length;
+      @let showAdvOpts = showAdvancedOptions();
+      @let showJson = showJsonMode();
+
       <div class="fields-mode-header anim-fade">
         <div class="fields-count-badge">
-          @if (basicFields().length > 0) {
-            <span class="fields-count-num fields-count-num--basic">{{ basicFields().length }}</span>
+          @if (basicLen > 0) {
+            <span class="fields-count-num fields-count-num--basic">{{ basicLen }}</span>
           }
-          @if (basicFields().length > 0 && showAdvancedOptions() && advancedFields().length > 0) {
+          @if ((basicLen > 0 && showAdvOpts && advLen > 0) || showJson) {
             <span class="fields-count-separator">+</span>
           }
-          @if (showAdvancedOptions() && advancedFields().length > 0) {
-            <span class="fields-count-num fields-count-num--advanced">{{
-              advancedFields().length
-            }}</span>
+          @if ((showAdvOpts && advLen > 0) || showJson) {
+            <span class="fields-count-num fields-count-num--advanced">{{ advLen }}</span>
           }
-          @if (basicFields().length > 0 || (showAdvancedOptions() && advancedFields().length > 0)) {
+          @if (basicLen > 0 || (showAdvOpts && advLen > 0)) {
             <span class="fields-count-label">{{ 'wizards.remoteConfig.fields' | translate }}</span>
           }
         </div>
         <div class="mode-actions">
-          @if (showCommandField()) {
-            @let cmdLabel =
-              (showCommandOptions()
-                ? 'wizards.remoteConfig.hideCommandOptions'
-                : 'wizards.remoteConfig.showCommandOptions'
-              ) | translate;
-            <button
-              type="button"
-              mat-icon-button
-              class="cmd-options-btn"
-              [class.active]="showCommandOptions()"
-              (click)="toggleCommandOptions()"
-              [matTooltip]="cmdLabel"
-              [attr.aria-label]="cmdLabel"
-              [attr.aria-pressed]="showCommandOptions()"
-            >
-              <mat-icon svgIcon="gear" />
-            </button>
-          }
-
-          @if (showAdvancedToggle()) {
+          <div
+            class="contextual-action-wrapper"
+            [class.visible]="showAdvancedToggle() && !showJson"
+          >
             @let advLabel =
-              (showAdvancedOptions()
+              (showAdvOpts
                 ? 'wizards.remoteConfig.hideAdvanced'
                 : 'wizards.remoteConfig.showAdvanced'
               ) | translate;
@@ -210,30 +183,48 @@
               type="button"
               mat-icon-button
               class="advanced-toggle-btn"
-              [class.active]="showAdvancedOptions()"
+              [class.active]="showAdvOpts"
               (click)="toggleAdvancedOptions()"
               [matTooltip]="advLabel"
               [attr.aria-label]="advLabel"
-              [attr.aria-pressed]="showAdvancedOptions()"
+              [attr.aria-pressed]="showAdvOpts"
             >
               <mat-icon svgIcon="tune" />
+            </button>
+          </div>
+          @if (showCommandField()) {
+            @let showCmdOpts = showCommandOptions();
+            @let cmdLabel =
+              (showCmdOpts
+                ? 'wizards.remoteConfig.hideCommandOptions'
+                : 'wizards.remoteConfig.showCommandOptions'
+              ) | translate;
+            <button
+              type="button"
+              mat-icon-button
+              class="cmd-options-btn"
+              [class.active]="showCmdOpts"
+              (click)="toggleCommandOptions()"
+              [matTooltip]="cmdLabel"
+              [attr.aria-label]="cmdLabel"
+              [attr.aria-pressed]="showCmdOpts"
+            >
+              <mat-icon svgIcon="gear" />
             </button>
           }
 
           @let jsonLabel =
-            (showJsonMode()
-              ? 'wizards.remoteConfig.switchToForm'
-              : 'wizards.remoteConfig.switchToJson'
-            ) | translate;
+            (showJson ? 'wizards.remoteConfig.switchToForm' : 'wizards.remoteConfig.switchToJson')
+              | translate;
           <button
             type="button"
             mat-icon-button
             class="json-toggle-btn"
-            [class.active]="showJsonMode()"
+            [class.active]="showJson"
             (click)="toggleJsonMode()"
             [matTooltip]="jsonLabel"
             [attr.aria-label]="jsonLabel"
-            [attr.aria-pressed]="showJsonMode()"
+            [attr.aria-pressed]="showJson"
           >
             <mat-icon svgIcon="code" />
           </button>
@@ -276,22 +267,21 @@
           </div>
         }
 
-        @if (commandOptions().length > 0) {
+        @if (commandOptionsView().length > 0) {
           <div class="active-options">
-            @for (opt of commandOptions(); track opt.key; let i = $index) {
-              @let optType = getOptionType(opt.value);
+            @for (opt of commandOptionsView(); track opt.key; let i = $index) {
               <div class="option-row" [style.--row-index]="i">
                 <div class="option-key-container">
                   <span class="option-key" [matTooltip]="opt.description | translate">{{
                     opt.key
                   }}</span>
-                  <span class="option-type-badge" [attr.data-type]="optType">{{ optType }}</span>
+                  <span class="option-type-badge" [attr.data-type]="opt.type">{{ opt.type }}</span>
                 </div>
                 <div class="option-controls">
-                  @switch (optType) {
+                  @switch (opt.type) {
                     @case ('boolean') {
                       <mat-slide-toggle
-                        [checked]="asBoolean(opt.value)"
+                        [checked]="opt.booleanValue"
                         (change)="updateOption(opt.key, $event.checked)"
                       ></mat-slide-toggle>
                     }
@@ -299,7 +289,7 @@
                       <mat-form-field appearance="fill" class="option-value-field no-subscript">
                         <input
                           matInput
-                          [value]="asString(opt.value)"
+                          [value]="opt.stringValue"
                           (input)="updateOption(opt.key, $any($event.target).value)"
                           placeholder="value"
                         />
@@ -310,7 +300,7 @@
                         <input
                           matInput
                           type="number"
-                          [value]="asString(opt.value)"
+                          [value]="opt.stringValue"
                           (input)="updateNumberOption(opt.key, $any($event.target).value)"
                           placeholder="0"
                         />
@@ -322,7 +312,7 @@
                         class="option-value-field option-chip-field no-subscript"
                       >
                         <mat-chip-grid #chipGrid>
-                          @for (chip of asStringArray(opt.value); track chip; let ci = $index) {
+                          @for (chip of opt.arrayValue; track chip; let ci = $index) {
                             <mat-chip-row (removed)="removeArrayChip(opt.key, ci)">
                               {{ chip }}
                               <button matChipRemove [attr.aria-label]="'remove ' + chip">
@@ -397,6 +387,7 @@
         <app-json-editor
           [formGroup]="form()"
           [fieldDefs]="remoteFields()"
+          [provider]="remoteType"
           [searchQuery]="searchQuery()"
           [excludeKeys]="jsonExcludeKeys()"
         />

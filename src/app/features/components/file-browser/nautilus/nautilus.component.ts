@@ -11,14 +11,13 @@ import {
   effect,
   untracked,
   DestroyRef,
-  Signal,
   WritableSignal,
   output,
 } from '@angular/core';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { combineLatest, firstValueFrom, from, of } from 'rxjs';
-import { catchError, finalize, map } from 'rxjs/operators';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { combineLatest, EMPTY, firstValueFrom, from, fromEvent, of } from 'rxjs';
+import { catchError, map, startWith, switchMap } from 'rxjs/operators';
 
 import { MatIconModule } from '@angular/material/icon';
 import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
@@ -98,6 +97,27 @@ interface UndoEntry {
   }[];
 }
 
+/** Signals for a specific pane, resolved by index. */
+interface PaneRef {
+  remote: WritableSignal<ExplorerRoot | null>;
+  path: WritableSignal<string>;
+  selection: WritableSignal<Set<string>>;
+  rawFiles: WritableSignal<FileBrowserItem[]>;
+  loading: WritableSignal<boolean>;
+  error: WritableSignal<string | null>;
+  refreshTrigger: WritableSignal<number>;
+}
+
+/** View-model snapshot passed to each <app-nautilus-view-pane>. */
+export interface PaneViewModel {
+  index: 0 | 1;
+  files: FileBrowserItem[];
+  selection: Set<string>;
+  loading: boolean;
+  error: string | null;
+  starredMode: boolean;
+}
+
 /** Payload for native HTML5 Drag & Drop inter-component communication. */
 export interface NautilusDragPayload {
   items: FileBrowserItem[];
@@ -163,11 +183,20 @@ export class NautilusComponent implements OnInit {
   @ViewChild('sidenav') sidenav!: MatSidenav;
 
   // --- UI State ---
-  public readonly isMobile = signal(window.innerWidth < 680);
-  public readonly isSidenavOpen = signal(true);
+  private readonly _windowWidth = toSignal(
+    fromEvent(window, 'resize').pipe(
+      map(() => window.innerWidth),
+      startWith(window.innerWidth)
+    ),
+    { initialValue: window.innerWidth }
+  );
+  public readonly isMobile = computed(() => this._windowWidth() < 680);
+  public readonly isSidenavOpen = signal(!this.isMobile());
   public readonly isDragging = signal(false);
   public readonly sidenavMode = computed(() => (this.isMobile() ? 'over' : 'side'));
   private readonly initialLocationApplied = signal(false);
+
+  private readonly _langChange = toSignal(this.translate.onLangChange.pipe(startWith(null)));
 
   // --- Picker State ---
   private readonly filePickerState = this.nautilusService.filePickerState;
@@ -196,8 +225,6 @@ export class NautilusComponent implements OnInit {
   public readonly layout = signal<'grid' | 'list'>('grid');
   public readonly showHidden = signal(false);
 
-  // Sort is encoded as two clean internal signals; sortKey/sortDirection are computed
-  // for backward compatibility with child component inputs.
   private readonly _sortColumn = signal<'name' | 'size' | 'modified'>('name');
   private readonly _sortAscending = signal(true);
   public readonly sortKey = computed(
@@ -235,7 +262,7 @@ export class NautilusComponent implements OnInit {
   private _hoverOpenKey = '';
   private _draggedItems: FileBrowserItem[] = [];
 
-  // --- Navigation State ---
+  // --- Navigation State (Left Pane / Primary) ---
   public readonly nautilusRemote = signal<ExplorerRoot | null>(null);
   public readonly currentPath = signal<string>('');
   private readonly refreshTrigger = signal(0);
@@ -243,13 +270,25 @@ export class NautilusComponent implements OnInit {
   public readonly errorState = signal<string | null>(null);
   public readonly isLoading = signal(false);
 
+  // --- Navigation State (Right Pane / Split) ---
+  public readonly nautilusRemoteRight = signal<ExplorerRoot | null>(null);
+  public readonly currentPathRight = signal<string>('');
+  private readonly refreshTriggerRight = signal(0);
+  public readonly isLoadingRight = signal(false);
+  public readonly errorStateRight = signal<string | null>(null);
+  public readonly rawFilesRight = signal<FileBrowserItem[]>([]);
+
+  // --- Selection ---
+  public readonly selectedItems = signal<Set<string>>(new Set());
+  public readonly selectedItemsRight = signal<Set<string>>(new Set());
+  private lastSelectedIndex: number | null = null;
+
   // --- Clipboard ---
   public readonly clipboardItems = signal<
     { remote: string; path: string; name: string; isDir: boolean }[]
   >([]);
   public readonly clipboardMode = signal<'copy' | 'cut' | null>(null);
   public readonly hasClipboard = computed(() => this.clipboardItems().length > 0);
-
   public readonly cutItemPaths = computed(() => {
     if (this.clipboardMode() !== 'cut') return new Set<string>();
     return new Set(this.clipboardItems().map(item => `${item.remote}:${item.path}`));
@@ -329,16 +368,9 @@ export class NautilusComponent implements OnInit {
   public readonly splitDividerPos = signal(50);
   public readonly isSplitEnabled = computed(() => !!this.tabs()[this.activeTabIndex()]?.right);
 
-  // --- Right Pane State ---
-  public readonly nautilusRemoteRight = signal<ExplorerRoot | null>(null);
-  public readonly currentPathRight = signal<string>('');
-  private readonly refreshTriggerRight = signal(0);
-  public readonly isLoadingRight = signal(false);
-  public readonly errorStateRight = signal<string | null>(null);
-  public readonly selectedItems = signal<Set<string>>(new Set());
-  public readonly selectedItemsRight = signal<Set<string>>(new Set());
-  public readonly rawFilesRight = signal<FileBrowserItem[]>([]);
-  private lastSelectedIndex: number | null = null;
+  public readonly splitGridColumns = computed(() =>
+    this.isSplitEnabled() ? `${this.splitDividerPos()}% 0.5rem 1fr` : '1fr'
+  );
 
   // --- Data ---
   public readonly bookmarks = this.nautilusService.bookmarks;
@@ -442,7 +474,7 @@ export class NautilusComponent implements OnInit {
     const sort = this._sortColumn();
     const multiplier = this._sortAscending() ? 1 : -1;
 
-    // Cache date parsing within each sort run
+    // Cache date parsing within each sort run to avoid repeated Date construction.
     const timeCache = new Map<string, number>();
     const getTime = (modTime: string): number => {
       let t = timeCache.get(modTime);
@@ -475,6 +507,29 @@ export class NautilusComponent implements OnInit {
     });
   }
 
+  public readonly visiblePanes = computed((): PaneViewModel[] => {
+    const left: PaneViewModel = {
+      index: 0,
+      files: this.files(),
+      selection: this.selectedItems(),
+      loading: this.isLoading(),
+      error: this.errorState(),
+      starredMode: this.starredMode(),
+    };
+    if (!this.isSplitEnabled()) return [left];
+    return [
+      left,
+      {
+        index: 1,
+        files: this.filesRight(),
+        selection: this.selectedItemsRight(),
+        loading: this.isLoadingRight(),
+        error: this.errorStateRight(),
+        starredMode: this.starredModeRight(),
+      },
+    ];
+  });
+
   // --- Context Menu & Sort Options ---
   public readonly contextMenuItem = signal<FileBrowserItem | null>(null);
 
@@ -488,12 +543,12 @@ export class NautilusComponent implements OnInit {
   ];
 
   /**
-   * Derived selection summary string.
-   * Note: translate.instant is not a signal — language changes won't re-trigger this.
-   * If reactivity to language changes is needed, add toSignal(translate.onLangChange)
-   * as a tracked dependency.
+   * Reactive selection summary. Tracks `_langChange` so this re-evaluates
+   * whenever the active language switches (translate.instant is not observable).
    */
   public readonly selectionSummary = computed(() => {
+    this._langChange(); // reactive dependency — re-run on language change
+
     const selectedPaths = this.selectedItems();
     const count = selectedPaths.size;
     if (count === 0) return '';
@@ -542,57 +597,56 @@ export class NautilusComponent implements OnInit {
   constructor() {
     this.setupEffects();
     this.subscribeToSettings();
-
-    this.loadFilesForPane(
-      0,
-      this.nautilusRemote,
-      this.currentPath,
-      this.refreshTrigger,
-      this.rawFiles,
-      this.isLoading,
-      this.errorState
-    );
-
-    this.loadFilesForPane(
-      1,
-      this.nautilusRemoteRight,
-      this.currentPathRight,
-      this.refreshTriggerRight,
-      this.rawFilesRight,
-      this.isLoadingRight,
-      this.errorStateRight
-    );
+    this.loadFilesForPane(0);
+    this.loadFilesForPane(1);
   }
 
-  private loadFilesForPane(
-    paneIndex: 0 | 1,
-    remote: Signal<ExplorerRoot | null>,
-    path: Signal<string>,
-    trigger: Signal<number>,
-    rawFiles: WritableSignal<FileBrowserItem[]>,
-    loading: WritableSignal<boolean>,
-    error: WritableSignal<string | null>
-  ): void {
-    effect(() => {
-      const r = remote();
-      const p = path();
-      trigger();
+  // ---------------------------------------------------------------------------
+  // Pane signal accessor helper
+  // ---------------------------------------------------------------------------
 
-      const targetTabId = untracked(() => this.tabs())[this.activeTabIndex()]?.id;
-      untracked(() => {
-        if (!r) {
-          rawFiles.set([]);
-          return;
-        }
-        loading.set(true);
-        error.set(null);
+  private getPaneRef(paneIndex: 0 | 1): PaneRef {
+    const isLeft = paneIndex === 0;
+    return {
+      remote: isLeft ? this.nautilusRemote : this.nautilusRemoteRight,
+      path: isLeft ? this.currentPath : this.currentPathRight,
+      selection: isLeft ? this.selectedItems : this.selectedItemsRight,
+      rawFiles: isLeft ? this.rawFiles : this.rawFilesRight,
+      loading: isLeft ? this.isLoading : this.isLoadingRight,
+      error: isLeft ? this.errorState : this.errorStateRight,
+      refreshTrigger: isLeft ? this.refreshTrigger : this.refreshTriggerRight,
+    };
+  }
 
-        const fsName = r.isLocal
-          ? r.name
-          : this.pathSelectionService.normalizeRemoteForRclone(r.name);
+  // ---------------------------------------------------------------------------
+  // File loading — proper zoneless pattern
+  // ---------------------------------------------------------------------------
 
-        from(this.remoteOps.getRemotePaths(fsName, p, {}, 'nautilus'))
-          .pipe(
+  private loadFilesForPane(paneIndex: 0 | 1): void {
+    const ref = this.getPaneRef(paneIndex);
+
+    const loadParams = computed(() => ({
+      remote: ref.remote(),
+      path: ref.path(),
+      _trigger: ref.refreshTrigger(), // included only to track refresh
+    }));
+
+    toObservable(loadParams)
+      .pipe(
+        switchMap(({ remote, path }) => {
+          if (!remote) {
+            ref.rawFiles.set([]);
+            return EMPTY;
+          }
+
+          ref.loading.set(true);
+          ref.error.set(null);
+
+          const fsName = remote.isLocal
+            ? remote.name
+            : this.pathSelectionService.normalizeRemoteForRclone(remote.name);
+
+          return from(this.remoteOps.getRemotePaths(fsName, path, {}, 'nautilus')).pipe(
             map(res =>
               (res.list || []).map(
                 f =>
@@ -600,38 +654,41 @@ export class NautilusComponent implements OnInit {
                     entry: f,
                     meta: {
                       remote: this.pathSelectionService.normalizeRemoteName(fsName),
-                      isLocal: r.isLocal,
-                      remoteType: r.type,
+                      isLocal: remote.isLocal,
+                      remoteType: remote.type,
                     },
                   }) as FileBrowserItem
               )
             ),
             catchError(err => {
               console.error('Error fetching files:', err);
-              error.set(err || this.translate.instant('nautilus.errors.loadFailed'));
-              this.notificationService.showError(
-                this.translate.instant('nautilus.errors.loadFailed')
-              );
+              const msg = this.translate.instant('nautilus.errors.loadFailed');
+              ref.error.set(err?.message ?? msg);
+              this.notificationService.showError(msg);
+              ref.loading.set(false);
               return of([]);
-            }),
-            finalize(() => loading.set(false)),
-            takeUntilDestroyed(this.destroyRef)
-          )
-          .subscribe(files => {
-            rawFiles.set(files);
-            // Sync back to tab state so switching tabs restores last loaded state
-            const t = this.tabs().find(tab => tab.id === targetTabId);
-            if (t) {
-              const pane = paneIndex === 0 ? t.left : t.right;
-              if (pane) {
-                pane.rawFiles.set(files);
-                pane.error.set(error());
-                pane.isLoading.set(loading());
-              }
-            }
-          });
+            })
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(files => {
+        ref.loading.set(false);
+        ref.rawFiles.set(files);
+
+        // Sync back into the active tab's PaneState so switching tabs restores
+        // the last loaded state without a redundant network request.
+        const activeTabId = this.tabs()[this.activeTabIndex()]?.id;
+        const tab = this.tabs().find(t => t.id === activeTabId);
+        if (tab) {
+          const pane = paneIndex === 0 ? tab.left : tab.right;
+          if (pane) {
+            pane.rawFiles.set(files);
+            pane.error.set(ref.error());
+            pane.isLoading.set(false);
+          }
+        }
       });
-    });
   }
 
   async ngOnInit(): Promise<void> {
@@ -639,7 +696,11 @@ export class NautilusComponent implements OnInit {
   }
 
   private setupEffects(): void {
-    // Fallback: apply initialLocation if data wasn't ready during setupInitialTab
+    effect(() => {
+      this.isSidenavOpen.set(!this.isMobile());
+    });
+
+    // Fallback: apply initialLocation if remote data wasn't ready during setupInitialTab.
     effect(() => {
       const open = this.isPickerMode();
       const applied = this.initialLocationApplied();
@@ -656,7 +717,7 @@ export class NautilusComponent implements OnInit {
       if (!open && applied) this.initialLocationApplied.set(false);
     });
 
-    // Handle dynamic remote selection (e.g. from Tray or external actions)
+    // Handle dynamic remote selection (e.g. from Tray or external actions).
     effect(() => {
       const selectedMap = this.nautilusService.selectedNautilusRemote();
       if (selectedMap) {
@@ -670,7 +731,7 @@ export class NautilusComponent implements OnInit {
       }
     });
 
-    // Handle dynamic path navigation (e.g. from Debug menu)
+    // Handle dynamic path navigation (e.g. from Debug menu).
     effect(() => {
       const targetPath = this.nautilusService.targetPath();
       if (targetPath) {
@@ -889,10 +950,10 @@ export class NautilusComponent implements OnInit {
     const items = payload.items;
     if (!items.length) return;
 
-    // Prevent dropping a folder onto itself
+    // Prevent dropping a folder onto itself.
     if (items.some(item => item.entry.IsDir && item.entry.Path === target.path)) return;
 
-    // Prevent dropping into the same directory
+    // Prevent dropping into the same directory.
     const sourceParentPath = items[0].entry.Path.substring(
       0,
       items[0].entry.Path.lastIndexOf(items[0].entry.Name)
@@ -950,7 +1011,8 @@ export class NautilusComponent implements OnInit {
   }
 
   async onDropToCurrentDirectory(event: DragEvent, paneIndex: number): Promise<void> {
-    const targetRemote = paneIndex === 0 ? this.nautilusRemote() : this.nautilusRemoteRight();
+    const pIdx = paneIndex as 0 | 1;
+    const targetRemote = this.getPaneRef(pIdx).remote();
     if (!targetRemote) return;
 
     const resolved = this._resolveDropHit({ x: event.clientX, y: event.clientY });
@@ -972,19 +1034,19 @@ export class NautilusComponent implements OnInit {
     } else if (segIdx !== null) {
       targetPath = segIdx < 0 ? '' : (this.pathSegments()[segIdx]?.path ?? '');
     } else {
-      targetPath = paneIndex === 0 ? this.currentPath() : this.currentPathRight();
+      targetPath = this.getPaneRef(pIdx).path();
     }
 
     await this.processDrop(event, { remote: targetRemote, path: targetPath });
   }
 
   async onDropToSegment(event: DragEvent, segIdx: number): Promise<void> {
-    const paneIndex = this.activePaneIndex();
-    const targetRemote = paneIndex === 0 ? this.nautilusRemote() : this.nautilusRemoteRight();
+    const pIdx = this.activePaneIndex();
+    const targetRemote = this.getPaneRef(pIdx).remote();
     if (!targetRemote) return;
 
     const targetPath = segIdx < 0 ? '' : (this.pathSegments()[segIdx]?.path ?? '');
-    const currentPath = paneIndex === 0 ? this.currentPath() : this.currentPathRight();
+    const currentPath = this.getPaneRef(pIdx).path();
     if (targetPath === currentPath) return;
 
     await this.processDrop(event, { remote: targetRemote, path: targetPath });
@@ -1038,7 +1100,7 @@ export class NautilusComponent implements OnInit {
       return;
     }
 
-    // Fallback: treat as relative path from current location
+    // Fallback: treat as relative path from current location.
     const normalized = rawInput.replace(/\\/g, '/');
     const currentPath = this.activePath();
     this.updatePath(currentPath ? `${currentPath}/${normalized}` : normalized);
@@ -1105,13 +1167,10 @@ export class NautilusComponent implements OnInit {
       })
     );
 
-    const targetRemote = pIdx === 0 ? this.nautilusRemote : this.nautilusRemoteRight;
-    const targetPath = pIdx === 0 ? this.currentPath : this.currentPathRight;
-    const targetSelection = pIdx === 0 ? this.selectedItems : this.selectedItemsRight;
-
-    targetRemote.set(remote);
-    targetPath.set(path);
-    targetSelection.set(new Set<string>());
+    const ref = this.getPaneRef(pIdx);
+    ref.remote.set(remote);
+    ref.path.set(path);
+    ref.selection.set(new Set<string>());
   }
 
   private createPaneState(remote: ExplorerRoot | null, path = ''): PaneState {
@@ -1170,6 +1229,7 @@ export class NautilusComponent implements OnInit {
     const tab = this.tabs()[idx];
     if (!tab) return;
 
+    // Use explicit property exclusion instead of delete on a cast type.
     this.tabs.update(list =>
       list.map((t, i) => {
         if (i !== idx) return t;
@@ -1178,10 +1238,7 @@ export class NautilusComponent implements OnInit {
           delete (rest as Partial<Tab>).right;
           return rest as Tab;
         }
-        return {
-          ...t,
-          right: this.createPaneState(t.left.remote, t.left.path),
-        };
+        return { ...t, right: this.createPaneState(t.left.remote, t.left.path) };
       })
     );
 
@@ -1193,14 +1250,14 @@ export class NautilusComponent implements OnInit {
     }
   }
 
-  private syncPaneSignals(paneIndex: number, state: PaneState): void {
-    const isLeft = paneIndex === 0;
-    (isLeft ? this.nautilusRemote : this.nautilusRemoteRight).set(state.remote);
-    (isLeft ? this.currentPath : this.currentPathRight).set(state.path);
-    (isLeft ? this.selectedItems : this.selectedItemsRight).set(state.selection);
-    (isLeft ? this.rawFiles : this.rawFilesRight).set(state.rawFiles());
-    (isLeft ? this.isLoading : this.isLoadingRight).set(state.isLoading());
-    (isLeft ? this.errorState : this.errorStateRight).set(state.error());
+  private syncPaneSignals(paneIndex: 0 | 1, state: PaneState): void {
+    const ref = this.getPaneRef(paneIndex);
+    ref.remote.set(state.remote);
+    ref.path.set(state.path);
+    ref.selection.set(state.selection);
+    ref.rawFiles.set(state.rawFiles());
+    ref.loading.set(state.isLoading());
+    ref.error.set(state.error());
   }
 
   public switchPane(index: 0 | 1): void {
@@ -1307,11 +1364,7 @@ export class NautilusComponent implements OnInit {
 
   // --- Interactions ---
   refresh(): void {
-    if (this.activePaneIndex() === 0) {
-      this.refreshTrigger.update(v => v + 1);
-    } else {
-      this.refreshTriggerRight.update(v => v + 1);
-    }
+    this.getPaneRef(this.activePaneIndex()).refreshTrigger.update(v => v + 1);
   }
 
   onItemClick(item: FileBrowserItem, event: Event, index: number): void {
@@ -1941,7 +1994,6 @@ export class NautilusComponent implements OnInit {
       currentRemote?.isLocal ??
       isLocalPath(actualRemoteName);
 
-    // Cache the files() call — used twice below
     const currentFiles = this.files();
     const idx = currentFiles.findIndex(f => f.entry.Path === item.entry.Path);
     this.fileViewerService.open(
@@ -2001,11 +2053,7 @@ export class NautilusComponent implements OnInit {
 
   private syncSelection(newSelection: Set<string>): void {
     const pIdx = this.activePaneIndex();
-    if (pIdx === 0) {
-      this.selectedItems.set(newSelection);
-    } else {
-      this.selectedItemsRight.set(newSelection);
-    }
+    this.getPaneRef(pIdx).selection.set(newSelection);
 
     this.tabs.update(tabs =>
       tabs.map((tab, i) => {
@@ -2084,7 +2132,7 @@ export class NautilusComponent implements OnInit {
     }
   }
 
-  /** Sets sort from an encoded string (e.g. 'name-asc') without saving to settings. */
+  /** Applies a sort from an encoded string key (e.g. 'name-asc') without persisting. */
   private _applySort(key: string): void {
     const [col, dir] = key.split('-');
     this._sortColumn.set(col as 'name' | 'size' | 'modified');
@@ -2102,7 +2150,7 @@ export class NautilusComponent implements OnInit {
       this._sortAscending.update(v => !v);
     } else {
       this._sortColumn.set(col);
-      // Numeric columns default to descending (largest/most-recent first)
+      // Numeric columns default to descending (largest/most-recent first).
       this._sortAscending.set(col === 'name');
     }
     this.appSettingsService.saveSetting('nautilus', 'sort_key', this.sortKey());
@@ -2122,11 +2170,10 @@ export class NautilusComponent implements OnInit {
     this.syncSelection(new Set());
   }
 
-  cancelLoad(paneIndex = 0): void {
+  cancelLoad(paneIndex: 0 | 1 = 0): void {
     // Cancels the UI loading state. The in-flight request will still complete
     // but its result will be discarded once overwritten by the next load.
-    if (paneIndex === 0) this.isLoading.set(false);
-    else this.isLoadingRight.set(false);
+    this.getPaneRef(paneIndex).loading.set(false);
   }
 
   selectAll(): void {
@@ -2166,7 +2213,7 @@ export class NautilusComponent implements OnInit {
         if (listIconSize?.value) this.savedListIconSize.set(listIconSize.value);
         if (splitDividerPos?.value !== undefined) this.splitDividerPos.set(splitDividerPos.value);
 
-        // Restore icon size for the current layout
+        // Restore icon size for the current layout.
         const currentLayout = layout?.value ?? this.layout();
         const savedSize =
           currentLayout === 'grid' ? this.savedGridIconSize() : this.savedListIconSize();
@@ -2382,14 +2429,7 @@ export class NautilusComponent implements OnInit {
     return false;
   }
 
-  @HostListener('window:resize') onResize(): void {
-    const wasMobile = this.isMobile();
-    const nowMobile = window.innerWidth < 680;
-    this.isMobile.set(nowMobile);
-    if (wasMobile !== nowMobile) {
-      this.isSidenavOpen.set(!nowMobile);
-    }
-  }
+  // --- Drag Move & Hit Testing ---
 
   private _onDragMove(point: { x: number; y: number }): void {
     const hit = this._resolveDropHit(point);

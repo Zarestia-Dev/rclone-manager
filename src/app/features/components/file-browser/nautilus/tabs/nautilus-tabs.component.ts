@@ -7,7 +7,6 @@ import {
   ElementRef,
   ChangeDetectionStrategy,
   signal,
-  effect,
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -62,17 +61,10 @@ export class NautilusTabsComponent {
 
   constructor() {
     afterRenderEffect(() => {
-      this.scrollToActiveTab(this.activeTabIndex());
-    });
-
-    effect(() => {
       this.tabs();
-      setTimeout(() => this.updateScrollShadows(), 0);
+      this.scrollToActiveTab(this.activeTabIndex());
+      this.updateScrollShadows();
     });
-  }
-
-  protected onTabClick(index: number): void {
-    this.switchTab.emit(index);
   }
 
   protected onTabMiddleClick(event: MouseEvent, index: number): void {
@@ -80,11 +72,6 @@ export class NautilusTabsComponent {
       event.preventDefault();
       this.closeTab.emit(index);
     }
-  }
-
-  protected onCloseTab(event: MouseEvent, index: number): void {
-    event.stopPropagation();
-    this.closeTab.emit(index);
   }
 
   protected onDrop(event: CdkDragDrop<TabItem[]>): void {
@@ -103,6 +90,11 @@ export class NautilusTabsComponent {
 
   protected onScroll(): void {
     this.updateScrollShadows();
+  }
+
+  protected getTabTooltip(t: TabItem): string {
+    const prefix = t.remote ? `${t.remote.label}:` : '';
+    return `${prefix}${t.path}`;
   }
 
   private updateScrollShadows(): void {

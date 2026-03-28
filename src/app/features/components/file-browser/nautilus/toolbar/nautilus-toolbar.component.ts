@@ -7,7 +7,10 @@ import {
   output,
   effect,
   signal,
+  computed,
   TemplateRef,
+  Injector,
+  afterNextRender,
 } from '@angular/core';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
@@ -26,6 +29,7 @@ import { ExplorerRoot } from '@app/types';
 })
 export class NautilusToolbarComponent {
   protected readonly iconService = inject(IconService);
+  private readonly injector = inject(Injector);
 
   // --- Inputs ---
   public readonly isMobile = input.required<boolean>();
@@ -66,36 +70,48 @@ export class NautilusToolbarComponent {
   protected readonly _showLeftShadow = signal(false);
   protected readonly _showRightShadow = signal(false);
 
+  protected readonly oppositeLayout = computed((): 'grid' | 'list' =>
+    this.layout() === 'grid' ? 'list' : 'grid'
+  );
+
+  protected readonly layoutToggleIcon = computed(() =>
+    this.layout() === 'grid' ? 'list' : 'grid'
+  );
+
   constructor() {
-    // Scroll breadcrumb to the end whenever the path changes
     effect(() => {
       this.pathSegments();
       this.scrollToEnd();
     });
 
-    // Auto-focus and select the relevant input when entering edit or search mode.
-    // setTimeout(0) defers until after Angular has rendered the @if branch that
-    // conditionally renders the input element.
     effect(() => {
       if (this.isEditingPath()) {
-        setTimeout(() => this.pathInput()?.nativeElement.select(), 0);
+        afterNextRender(() => this.pathInput()?.nativeElement.select(), {
+          injector: this.injector,
+        });
       } else if (this.isSearchMode()) {
-        setTimeout(() => {
-          this.searchInput()?.nativeElement.focus();
-          this.searchInput()?.nativeElement.select();
-        }, 0);
+        afterNextRender(
+          () => {
+            const el = this.searchInput()?.nativeElement;
+            el?.focus();
+            el?.select();
+          },
+          { injector: this.injector }
+        );
       }
     });
   }
 
   private scrollToEnd(): void {
-    const el = this.pathScrollView()?.nativeElement;
-    if (!el) return;
-    // Defer one tick so the DOM reflects the new segments before we measure scrollWidth.
-    setTimeout(() => {
-      el.scrollTo({ left: el.scrollWidth, behavior: 'smooth' });
-      this.updateScrollShadows();
-    }, 0);
+    afterNextRender(
+      () => {
+        const el = this.pathScrollView()?.nativeElement;
+        if (!el) return;
+        el.scrollTo({ left: el.scrollWidth, behavior: 'smooth' });
+        this.updateScrollShadows();
+      },
+      { injector: this.injector }
+    );
   }
 
   /** Called by the template's (scroll) binding on the path scroll view. */
@@ -106,7 +122,6 @@ export class NautilusToolbarComponent {
   private updateScrollShadows(): void {
     const el = this.pathScrollView()?.nativeElement;
     if (!el) return;
-    // 4 px threshold prevents shadow flicker at near-zero scroll positions.
     this._showLeftShadow.set(el.scrollLeft > 4);
     this._showRightShadow.set(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
   }
@@ -119,7 +134,6 @@ export class NautilusToolbarComponent {
   }
 
   protected onSearchEscape(inputElement: HTMLInputElement, event: Event): void {
-    // Stop propagation so the path-container keydown.escape handler doesn't double-fire.
     event.stopPropagation();
     this.searchFilterChange.emit('');
     this.isSearchModeChange.emit(false);
@@ -133,15 +147,12 @@ export class NautilusToolbarComponent {
   }
 
   protected onPathContainerClick(): void {
-    // Guard: only enter edit mode when idle — not already editing or searching.
     if (!this.isSearchMode() && !this.isEditingPath()) {
       this.isEditingPathChange.emit(true);
     }
   }
 
   protected onPathContainerEscape(event: Event): void {
-    // Only handle escape when the container itself is the event target,
-    // not when it bubbles up from a child input (those stop propagation themselves).
     if (event.target !== event.currentTarget) return;
     this.isEditingPathChange.emit(false);
     this.isSearchModeChange.emit(false);

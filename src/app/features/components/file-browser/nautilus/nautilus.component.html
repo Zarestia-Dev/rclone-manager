@@ -87,25 +87,25 @@
     }
 
     <div class="nautilus-content" [class.split-view]="isSplitEnabled()">
-      @if (isSplitEnabled()) {
-        <div
-          class="split-container"
-          [style.gridTemplateColumns]="splitDividerPos() + '% 0.5rem 1fr'"
-        >
+      <div class="split-container" [style.gridTemplateColumns]="splitGridColumns()">
+        @for (pane of visiblePanes(); track pane.index) {
+          @if (!$first) {
+            <div class="split-divider" (mousedown)="onSplitDividerDrag($event)"></div>
+          }
           <app-nautilus-view-pane
-            [files]="files()"
-            [selection]="selectedItems()"
-            [paneIndex]="0"
+            [files]="pane.files"
+            [selection]="pane.selection"
+            [paneIndex]="pane.index"
             [isSplitEnabled]="isSplitEnabled()"
-            [loading]="isLoading()"
-            [error]="errorState()"
+            [loading]="pane.loading"
+            [error]="pane.error"
             [layout]="layout()"
             [iconSize]="iconSize()"
             [listRowHeight]="listRowHeight()"
             [isDragging]="isDragging()"
             [hoveredFolder]="hoveredFolder()"
             [cutItemPaths]="cutItemPaths()"
-            [starredMode]="starredMode()"
+            [starredMode]="pane.starredMode"
             [sortKey]="sortKey()"
             [sortDirection]="sortDirection()"
             [activePaneIndex]="activePaneIndex()"
@@ -124,76 +124,8 @@
             (refresh)="refresh()"
             (cancelLoad)="cancelLoad($event)"
           ></app-nautilus-view-pane>
-
-          <div class="split-divider" (mousedown)="onSplitDividerDrag($event)"></div>
-
-          <app-nautilus-view-pane
-            [files]="filesRight()"
-            [selection]="selectedItemsRight()"
-            [paneIndex]="1"
-            [isSplitEnabled]="isSplitEnabled()"
-            [loading]="isLoadingRight()"
-            [error]="errorStateRight()"
-            [layout]="layout()"
-            [iconSize]="iconSize()"
-            [listRowHeight]="listRowHeight()"
-            [isDragging]="isDragging()"
-            [hoveredFolder]="hoveredFolder()"
-            [cutItemPaths]="cutItemPaths()"
-            [starredMode]="starredModeRight()"
-            [sortKey]="sortKey()"
-            [sortDirection]="sortDirection()"
-            [activePaneIndex]="activePaneIndex()"
-            [isItemSelectable]="isItemSelectable"
-            [fileMenu]="fileMenu"
-            (switchPane)="switchPane($event)"
-            (clearSelection)="clearSelection()"
-            (setContextItem)="setContextItem($event)"
-            (dropToCurrentDirectory)="onDropToCurrentDirectory($event.event, $event.paneIndex)"
-            (dragStarted)="onDragStarted($event.event, $event.item)"
-            (dragEnded)="onDragEnded()"
-            (itemClick)="onItemClick($event.item, $event.event, $event.index)"
-            (navigateTo)="navigateTo($event)"
-            (toggleStar)="toggleStar($event)"
-            (toggleSort)="toggleSort($event)"
-            (refresh)="refresh()"
-            (cancelLoad)="cancelLoad($event)"
-          ></app-nautilus-view-pane>
-        </div>
-      } @else {
-        <app-nautilus-view-pane
-          [files]="files()"
-          [selection]="selectedItems()"
-          [paneIndex]="0"
-          [isSplitEnabled]="isSplitEnabled()"
-          [loading]="isLoading()"
-          [error]="errorState()"
-          [layout]="layout()"
-          [iconSize]="iconSize()"
-          [listRowHeight]="listRowHeight()"
-          [isDragging]="isDragging()"
-          [hoveredFolder]="hoveredFolder()"
-          [cutItemPaths]="cutItemPaths()"
-          [starredMode]="starredMode()"
-          [sortKey]="sortKey()"
-          [sortDirection]="sortDirection()"
-          [activePaneIndex]="activePaneIndex()"
-          [isItemSelectable]="isItemSelectable"
-          [fileMenu]="fileMenu"
-          (switchPane)="switchPane($event)"
-          (clearSelection)="clearSelection()"
-          (setContextItem)="setContextItem($event)"
-          (dropToCurrentDirectory)="onDropToCurrentDirectory($event.event, $event.paneIndex)"
-          (dragStarted)="onDragStarted($event.event, $event.item)"
-          (dragEnded)="onDragEnded()"
-          (itemClick)="onItemClick($event.item, $event.event, $event.index)"
-          (navigateTo)="navigateTo($event)"
-          (toggleStar)="toggleStar($event)"
-          (toggleSort)="toggleSort($event)"
-          (refresh)="refresh()"
-          (cancelLoad)="cancelLoad($event)"
-        ></app-nautilus-view-pane>
-      }
+        }
+      </div>
     </div>
 
     @if (isMobile()) {

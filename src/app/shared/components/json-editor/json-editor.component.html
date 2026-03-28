@@ -11,7 +11,13 @@
       [class.active]="chip.isActive"
       [class.changed]="chip.isChanged"
       [class.inactive]="!chip.isActive"
-      [matTooltip]="chip.field.Help || chip.displayKey + ': ' + chip.fullValue"
+      [matTooltip]="
+        chip.field.Name
+          | rcloneOptionTranslate
+            : 'help'
+            : chip.field.Help || chip.displayKey + ': ' + chip.fullValue
+            : provider() || chip.field.Provider
+      "
       matTooltipShowDelay="700"
       matTooltipPosition="above"
       (click)="toggleChip(chip)"

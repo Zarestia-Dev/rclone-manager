@@ -26,11 +26,7 @@
       />
     } @else if (!isEditingPath()) {
       @if (starredMode()) {
-        <div
-          class="path-scroll-view hide-scrollbar"
-          [class.show-left-shadow]="_showLeftShadow()"
-          [class.show-right-shadow]="_showRightShadow()"
-        >
+        <div class="path-scroll-view hide-scrollbar">
           <button class="path-segment">
             <mat-icon svgIcon="star"></mat-icon>
             {{ 'nautilus.titles.starred' | translate }}
@@ -60,7 +56,7 @@
                   : iconService.getIconName(activeRemote()?.type || '')
               "
             ></mat-icon>
-            {{ (activeRemote()?.label | translate) || ('nautilus.titles.local' | translate) }}
+            {{ (activeRemote()?.label ?? '' | translate) || ('nautilus.titles.local' | translate) }}
           </button>
 
           @for (segment of pathSegments(); track segment.path) {
@@ -100,8 +96,8 @@
 
   <div class="right-section">
     @if (!isMobile()) {
-      <button class="nav-button" (click)="layoutChange.emit(layout() === 'grid' ? 'list' : 'grid')">
-        <mat-icon [svgIcon]="layout() === 'grid' ? 'list' : 'grid'"></mat-icon>
+      <button class="nav-button" (click)="layoutChange.emit(oppositeLayout())">
+        <mat-icon [svgIcon]="layoutToggleIcon()"></mat-icon>
       </button>
 
       <button

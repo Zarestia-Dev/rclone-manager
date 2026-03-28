@@ -19,8 +19,8 @@
   </div>
 
   <div class="bar-right">
-    <button class="nav-button" (click)="toggleLayout()" title="Toggle Layout">
-      <mat-icon [svgIcon]="layout() === 'grid' ? 'list' : 'grid'"></mat-icon>
+    <button class="nav-button" (click)="setLayout.emit(oppositeLayout())" title="Toggle Layout">
+      <mat-icon [svgIcon]="oppositeLayout()"></mat-icon>
     </button>
     <button
       class="nav-button"

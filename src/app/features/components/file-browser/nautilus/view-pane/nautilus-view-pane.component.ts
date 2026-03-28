@@ -1,4 +1,4 @@
-import { Component, input, output, inject, TemplateRef } from '@angular/core';
+import { Component, input, output, inject, TemplateRef, computed } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -59,7 +59,6 @@ export class NautilusViewPaneComponent {
   public readonly setContextItem = output<FileBrowserItem | null>();
   public readonly dropToCurrentDirectory = output<{ event: DragEvent; paneIndex: 0 | 1 }>();
   public readonly dragStarted = output<{ event: DragEvent; item: FileBrowserItem }>();
-  // Emits void — the parent's onDragEnded() takes no arguments.
   public readonly dragEnded = output<void>();
   public readonly itemClick = output<{ item: FileBrowserItem; event: Event; index: number }>();
   public readonly navigateTo = output<FileBrowserItem>();
@@ -68,20 +67,14 @@ export class NautilusViewPaneComponent {
   public readonly refresh = output<void>();
   public readonly cancelLoad = output<0 | 1>();
 
-  // Stable column order for list view — declared as const so the reference never changes.
-  protected readonly displayedColumns = ['name', 'size', 'modified', 'star'] as const;
+  protected readonly gridColumns = computed(() => `repeat(auto-fill, ${this.iconSize() + 40}px)`);
+
+  protected readonly displayedColumns = computed((): string[] =>
+    this.starredMode() ? ['name', 'size', 'modified', 'star'] : ['name', 'size', 'modified']
+  );
 
   isStarred(item: FileBrowserItem): boolean {
-    return this.nautilusService.isSaved(
-      'starred',
-      item.meta.remote || '',
-      item.entry.Path,
-      item.meta.isLocal
-    );
-  }
-
-  onDragStart(event: DragEvent, item: FileBrowserItem): void {
-    this.dragStarted.emit({ event, item });
+    return this.nautilusService.isSaved('starred', item.meta.remote || '', item.entry.Path);
   }
 
   getItemKey(item: FileBrowserItem): string {

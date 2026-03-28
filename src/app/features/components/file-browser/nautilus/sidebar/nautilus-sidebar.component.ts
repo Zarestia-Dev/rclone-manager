@@ -1,12 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-  input,
-  output,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
@@ -18,12 +10,14 @@ import { CdkMenuModule } from '@angular/cdk/menu';
 import { IconService, PathSelectionService, RemoteFacadeService } from '@app/services';
 import { ExplorerRoot, FileBrowserItem } from '@app/types';
 import { OperationsPanelComponent } from '../../operations-panel/operations-panel.component';
+import { NgTemplateOutlet } from '@angular/common';
 
 @Component({
   selector: 'app-nautilus-sidebar',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    NgTemplateOutlet,
     TranslateModule,
     MatListModule,
     MatIconModule,
@@ -32,7 +26,6 @@ import { OperationsPanelComponent } from '../../operations-panel/operations-pane
     CdkMenuModule,
     OperationsPanelComponent,
   ],
-
   templateUrl: './nautilus-sidebar.component.html',
   styleUrl: './nautilus-sidebar.component.scss',
 })
@@ -54,6 +47,7 @@ export class NautilusSidebarComponent {
   public readonly currentPath = input<string>('');
   public readonly isPickerMode = input(false);
   public readonly hoveredSidebarItem = input<string | null>(null);
+  public readonly isSearchMode = input(false);
 
   // --- Outputs ---
   public readonly remoteSelected = output<ExplorerRoot>();
@@ -72,17 +66,8 @@ export class NautilusSidebarComponent {
   // Drag & Drop events
   public readonly droppedToStarred = output<DragEvent>();
   public readonly droppedToLocal = output<DragEvent>();
-  public readonly droppedToBookmark = output<{
-    event: DragEvent;
-    target: FileBrowserItem;
-  }>();
-  public readonly droppedToRemote = output<{
-    event: DragEvent;
-    target: ExplorerRoot;
-  }>();
-
-  // --- UI State ---
-  public readonly isSearchMode = signal(false);
+  public readonly droppedToBookmark = output<{ event: DragEvent; target: FileBrowserItem }>();
+  public readonly droppedToRemote = output<{ event: DragEvent; target: ExplorerRoot }>();
 
   /**
    * The active navigation key derived from the current remote + path.
@@ -105,8 +90,7 @@ export class NautilusSidebarComponent {
 
   // --- Methods ---
 
-  toggleSearchMode(): void {
-    this.isSearchMode.update(v => !v);
+  onToggleSearch(): void {
     this.toggleSearch.emit();
   }
 
@@ -128,14 +112,6 @@ export class NautilusSidebarComponent {
   supportsCleanup(remote: ExplorerRoot | null): boolean {
     if (!remote) return false;
     return this.remoteFacadeService.featuresSignal(remote.name)().hasCleanUp;
-  }
-
-  trackByRemote(_index: number, remote: ExplorerRoot): string {
-    return remote.name;
-  }
-
-  trackByBookmark(_index: number, item: FileBrowserItem): string {
-    return `${item.meta.remote}:${item.entry.Path}`;
   }
 
   private _bookmarkKey(bm: FileBrowserItem): string {

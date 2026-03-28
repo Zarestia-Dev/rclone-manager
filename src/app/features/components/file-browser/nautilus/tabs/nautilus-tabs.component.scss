@@ -56,8 +56,7 @@
     align-items: center;
     justify-content: center;
     gap: var(--space-xs);
-    padding: var(--space-xs) var(--space-sm);
-    padding-right: 44px;
+    padding: var(--space-xs) 44px var(--space-xs) var(--space-sm);
     border-radius: var(--radius-xs);
     flex: 1 1 100px;
     min-width: 100px;
@@ -163,8 +162,7 @@
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-xs);
-  padding: var(--space-xs) var(--space-sm);
-  padding-right: 44px;
+  padding: var(--space-xs) 44px var(--space-xs) var(--space-sm);
   box-sizing: border-box;
 
   .tab-title {

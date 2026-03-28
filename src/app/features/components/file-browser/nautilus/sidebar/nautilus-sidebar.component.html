@@ -2,7 +2,7 @@
   <div class="nautilus-header">
     <mat-toolbar data-tauri-drag-region>
       <div class="header-start">
-        <button class="nav-button" (click)="toggleSearchMode()" [class.active]="isSearchMode()">
+        <button class="nav-button" (click)="onToggleSearch()" [class.active]="isSearchMode()">
           <mat-icon svgIcon="search"></mat-icon>
         </button>
       </div>
@@ -63,7 +63,7 @@
           <span>{{ 'nautilus.titles.bookmarks' | translate }}</span>
         </div>
 
-        @for (bm of bookmarks(); track trackByBookmark($index, bm)) {
+        @for (bm of bookmarks(); track bm.meta.remote + ':' + bm.entry.Path) {
           <mat-list-item
             class="remote-list-item"
             [attr.data-sidebar-bookmark-path]="bm.entry.Path"
@@ -101,34 +101,17 @@
           <span>{{ 'nautilus.titles.local' | translate }}</span>
         </div>
 
-        @for (drive of localDrives(); track trackByRemote($index, drive)) {
-          <mat-list-item
-            class="remote-list-item"
-            [attr.data-sidebar-remote-name]="drive.name"
-            [class.sidebar-drag-over]="
-              isDragging() && hoveredSidebarItem() === 'remote:' + drive.name
-            "
-            (click)="onSelectRemote(drive)"
-            [class.selected]="
-              nautilusRemote()?.name === drive.name && !starredMode() && !anyBookmarkSelected()
-            "
-            (dragover)="$event.preventDefault()"
-            (drop)="droppedToRemote.emit({ event: $event, target: drive })"
-            [cdkContextMenuTriggerFor]="sidebarRemoteMenu"
-            [cdkContextMenuTriggerData]="{ $implicit: drive }"
-          >
-            <span class="remote-info">
-              <span class="remote-icon">
-                <mat-icon svgIcon="hard-drive"></mat-icon>
-                <p matLine>
-                  {{ drive.label | translate }}
-                  @if (drive.showName) {
-                    ({{ drive.name }})
-                  }
-                </p>
-              </span>
-            </span>
-          </mat-list-item>
+        @for (drive of localDrives(); track drive.name) {
+          <ng-container
+            [ngTemplateOutlet]="remoteListItem"
+            [ngTemplateOutletContext]="{
+              remote: drive,
+              icon: 'hard-drive',
+              label: drive.label,
+              showName: drive.showName ? '(' + drive.name + ')' : null,
+              isLocal: true,
+            }"
+          ></ng-container>
         }
       }
 
@@ -138,29 +121,17 @@
           <span>{{ 'nautilus.titles.cloud' | translate }}</span>
         </div>
 
-        @for (remote of cloudRemotes(); track trackByRemote($index, remote)) {
-          <mat-list-item
-            class="remote-list-item"
-            [attr.data-sidebar-remote-name]="remote.name"
-            [class.sidebar-drag-over]="
-              isDragging() && hoveredSidebarItem() === 'remote:' + remote.name
-            "
-            (click)="onSelectRemote(remote)"
-            [class.selected]="
-              nautilusRemote()?.name === remote.name && !starredMode() && !anyBookmarkSelected()
-            "
-            (dragover)="$event.preventDefault()"
-            (drop)="droppedToRemote.emit({ event: $event, target: remote })"
-            [cdkContextMenuTriggerFor]="sidebarRemoteMenu"
-            [cdkContextMenuTriggerData]="{ $implicit: remote }"
-          >
-            <span class="remote-info">
-              <span class="remote-icon">
-                <mat-icon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
-                <p matLine>{{ remote.label }}</p>
-              </span>
-            </span>
-          </mat-list-item>
+        @for (remote of cloudRemotes(); track remote.name) {
+          <ng-container
+            [ngTemplateOutlet]="remoteListItem"
+            [ngTemplateOutletContext]="{
+              remote: remote,
+              icon: iconService.getIconName(remote.type),
+              label: remote.label,
+              showName: null,
+              isLocal: false,
+            }"
+          ></ng-container>
         }
       }
     </mat-nav-list>
@@ -168,6 +139,40 @@
 
   <app-operations-panel></app-operations-panel>
 </div>
+
+<ng-template
+  #remoteListItem
+  let-remote="remote"
+  let-icon="icon"
+  let-label="label"
+  let-showName="showName"
+>
+  <mat-list-item
+    class="remote-list-item"
+    [attr.data-sidebar-remote-name]="remote.name"
+    [class.sidebar-drag-over]="isDragging() && hoveredSidebarItem() === 'remote:' + remote.name"
+    [class.selected]="
+      nautilusRemote()?.name === remote.name && !starredMode() && !anyBookmarkSelected()
+    "
+    (click)="onSelectRemote(remote)"
+    (dragover)="$event.preventDefault()"
+    (drop)="droppedToRemote.emit({ event: $event, target: remote })"
+    [cdkContextMenuTriggerFor]="sidebarRemoteMenu"
+    [cdkContextMenuTriggerData]="{ $implicit: remote }"
+  >
+    <span class="remote-info">
+      <span class="remote-icon">
+        <mat-icon [svgIcon]="icon"></mat-icon>
+        <p matLine>
+          {{ label | translate }}
+          @if (showName) {
+            {{ showName }}
+          }
+        </p>
+      </span>
+    </span>
+  </mat-list-item>
+</ng-template>
 
 <!-- Context Menus -->
 <ng-template #sidebarStarredMenu>

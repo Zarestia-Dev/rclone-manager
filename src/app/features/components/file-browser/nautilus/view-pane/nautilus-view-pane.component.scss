@@ -108,7 +108,6 @@
   border-radius: var(--card-border-radius);
   transition: var(--transition-fast);
   background: none;
-  padding: 0;
 
   &:hover {
     background: var(--bg-elevated);
@@ -124,6 +123,7 @@
     word-break: break-all;
     display: -webkit-box;
     -webkit-line-clamp: 3;
+    line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
@@ -133,15 +133,27 @@
   }
 }
 
-/* Drag-hover highlight on folder targets */
+/* ==========================================================================
+   4. Drag-hover highlight — shared between grid items and list rows
+   ========================================================================== */
+
+:is(.grid-item, tr).folder-drag-over {
+  outline: 2px solid var(--accent-color);
+  outline-offset: -2px;
+}
+
 .grid-item.folder-drag-over .folder-card {
   background: rgba(var(--accent-color-rgb), 0.15) !important;
   box-shadow: inset 0 0 0 2px var(--accent-color) !important;
   border-radius: var(--border-radius);
 }
 
+tr.folder-drag-over {
+  background: rgba(var(--accent-color-rgb), 0.15) !important;
+}
+
 /* ==========================================================================
-   4. List View
+   5. List View
    ========================================================================== */
 
 .nautilus-list-container {
@@ -250,14 +262,8 @@
   }
 }
 
-tr.folder-drag-over {
-  background: rgba(var(--accent-color-rgb), 0.15) !important;
-  outline: 2px solid var(--accent-color);
-  outline-offset: -2px;
-}
-
 /* ==========================================================================
-   5. Cut Item Icon
+   6. Cut Item Icon
    ========================================================================== */
 
 .cut-icon {
@@ -274,7 +280,7 @@ tr.folder-drag-over {
 }
 
 /* ==========================================================================
-   6. Overlays — Loading & Empty State
+   7. Overlays — Loading & Empty State
    ========================================================================== */
 
 .loading-overlay {

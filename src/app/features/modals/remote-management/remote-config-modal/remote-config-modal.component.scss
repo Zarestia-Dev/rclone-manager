@@ -1,3 +1,8 @@
+:host {
+  --sidebar-width: 280px;
+  --sidebar-icon-width: 56px;
+}
+
 .modal-container {
   display: flex;
   flex-direction: column;
@@ -34,7 +39,7 @@
     overflow: hidden;
 
     &__sidebar {
-      width: 280px;
+      width: var(--sidebar-width);
       flex-shrink: 0;
       background: var(--sidebar-bg-color);
       box-shadow:
@@ -91,7 +96,7 @@
   // SIDEBAR
   // =============================================
   .modal-sidebar {
-    width: 280px;
+    width: var(--sidebar-width);
     background: var(--sidebar-bg-color);
     box-shadow:
       inset -1px 0 0 0 var(--border-color),
@@ -99,32 +104,18 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    transition: width var(--transition-qubic);
+    transition: width var(--transition-cubic);
     animation: fadeInUp 0.2s ease-out both;
 
     .sidebar-header {
-      padding: var(--space-sm) var(--space-lg);
+      padding: var(--space-sm) var(--space-md) 0;
 
       .header-label {
         font-size: 11px;
         font-weight: 700;
-        text-transform: uppercase;
         letter-spacing: 0.05em;
         color: var(--dim-color);
         opacity: 0.8;
-      }
-    }
-
-    .sidebar-header--back {
-      border-bottom: 1px solid var(--border-color);
-      padding: var(--space-xs) var(--space-sm);
-
-      button {
-        width: 100%;
-        justify-content: flex-start;
-        font-size: 12px;
-        color: var(--primary-color);
-        padding: 0 var(--space-sm);
       }
     }
 
@@ -140,10 +131,9 @@
     .step-indicator-container {
       flex: 1;
       overflow-y: auto;
-      padding: var(--space-xs) 0;
 
       .step-indicator {
-        padding: 0 var(--space-xs);
+        padding: var(--space-xs);
 
         ::ng-deep .mat-mdc-list-item {
           border-radius: var(--radius-sm);
@@ -157,28 +147,38 @@
 
           &.mdc-list-item--disabled {
             opacity: 0.5;
+            background: transparent !important;
           }
 
-          &.completed:not(.mat-mdc-list-item--activated) {
+          &.completed:not(.mdc-list-item--activated) {
             .mat-mdc-list-item-icon {
               color: var(--primary-color) !important;
-            }
-            .mat-mdc-list-item-title {
-              text-decoration: line-through;
               opacity: 0.6;
+            }
+
+            .mat-mdc-list-item-title {
+              opacity: 0.55;
             }
           }
 
+          // ── Icon ─────────────────────────────────────────────────────
           .mat-mdc-list-item-icon {
             font-size: var(--icon-size-sm);
             width: var(--icon-size-sm);
             height: var(--icon-size-sm);
             color: var(--dim-color);
+            transition:
+              color 0.2s ease,
+              opacity 0.2s ease;
           }
 
+          // ── Label ────────────────────────────────────────────────────
           .mat-mdc-list-item-title {
             font-size: var(--font-size-md);
             font-weight: 500;
+            transition:
+              color 0.2s ease,
+              opacity 0.2s ease;
           }
         }
       }
@@ -295,26 +295,41 @@
   // =============================================
   @media (max-width: 800px) and (min-width: 641px) {
     .modal-sidebar {
-      width: 64px;
+      width: var(--sidebar-icon-width);
 
       .sidebar-header {
         display: none;
       }
 
+      .step-indicator-container {
+        .step-indicator {
+          padding: var(--radius-xxs);
+        }
+      }
+
       ::ng-deep .mat-mdc-list-item {
-        justify-content: center;
         padding-left: 0 !important;
         padding-right: 0 !important;
 
         .mdc-list-item__content {
-          justify-content: center;
-          display: flex;
+          display: none !important;
+        }
+
+        // Hide count badges too
+        .mdc-list-item__end {
+          display: none !important;
+        }
+
+        // Center the icon in the now-full-width row
+        .mdc-list-item__start {
+          margin-left: auto;
+          margin-right: auto;
         }
       }
     }
 
     .init-skeleton__sidebar {
-      width: 64px;
+      width: var(--sidebar-icon-width);
     }
   }
 
@@ -322,12 +337,15 @@
     .modal-body {
       flex-direction: column;
     }
+
     .step-container:not(.interactive) {
       padding: var(--space-md) !important;
     }
+
     .modal-sidebar {
       display: none;
     }
+
     .mobile-step-indicator {
       display: inline-block !important;
     }

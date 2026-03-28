@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, input, output, TemplateRef } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  input,
+  output,
+  TemplateRef,
+} from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { CdkMenuModule } from '@angular/cdk/menu';
@@ -24,7 +31,7 @@ export class NautilusBottomBarComponent {
   public readonly confirmSelection = output<void>();
   public readonly toggleSidebar = output<void>();
 
-  toggleLayout(): void {
-    this.setLayout.emit(this.layout() === 'grid' ? 'list' : 'grid');
-  }
+  protected readonly oppositeLayout = computed((): 'grid' | 'list' =>
+    this.layout() === 'grid' ? 'list' : 'grid'
+  );
 }
