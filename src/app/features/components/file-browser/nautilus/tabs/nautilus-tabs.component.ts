@@ -7,13 +7,14 @@ import {
   ElementRef,
   ChangeDetectionStrategy,
   signal,
+  inject,
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 export interface TabItem {
   id: number;
@@ -38,6 +39,8 @@ export interface TabItem {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NautilusTabsComponent {
+  // Injected services
+  private readonly translate = inject(TranslateService);
   // --- Inputs ---
   readonly tabs = input.required<TabItem[]>();
   readonly activeTabIndex = input.required<number>();
@@ -93,7 +96,7 @@ export class NautilusTabsComponent {
   }
 
   protected getTabTooltip(t: TabItem): string {
-    const prefix = t.remote ? `${t.remote.label}:` : '';
+    const prefix = t.remote ? `${this.translate.instant(t.remote.label)}:` : '';
     return `${prefix}${t.path}`;
   }
 

@@ -120,7 +120,7 @@
     text-align: center;
     white-space: normal;
     overflow-wrap: break-word;
-    word-break: break-all;
+    word-break: break-word;
     display: -webkit-box;
     -webkit-line-clamp: 3;
     line-clamp: 3;
@@ -299,7 +299,7 @@ tr.folder-drag-over {
 
 .empty-folder-container {
   position: absolute;
-  top: 45%;
+  top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   display: flex;

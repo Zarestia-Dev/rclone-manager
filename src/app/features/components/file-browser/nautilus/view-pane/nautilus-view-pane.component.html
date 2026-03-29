@@ -1,4 +1,5 @@
 <div
+  #paneWrapper
   class="pane-wrapper"
   [attr.data-pane-index]="paneIndex()"
   [class.focused]="activePaneIndex() === paneIndex()"
@@ -18,13 +19,15 @@
       (drop)="dropToCurrentDirectory.emit({ event: $event, paneIndex: paneIndex() })"
     >
       <div class="grid" [style.gridTemplateColumns]="gridColumns()">
-        @for (item of files(); track item.entry.ID || item.entry.Path) {
-          @let isCut = cutItemPaths().has(getItemKey(item));
+        @for (item of files(); track getItemKey(item)) {
+          @let key = getItemKey(item);
+          @let isCut = cutItemPaths().has(key);
           <div
             class="grid-item"
             draggable="true"
-            (dragstart)="dragStarted.emit({ event: $event, item })"
-            (dragend)="dragEnded.emit()"
+            [attr.data-item-key]="key"
+            (dragstart)="onDragStart($event, item)"
+            (dragend)="onDragEnd()"
             (click)="itemClick.emit({ item, event: $event, index: $index })"
             (keydown.enter)="itemClick.emit({ item, event: $event, index: $index })"
             (dblclick)="navigateTo.emit(item)"
@@ -32,13 +35,15 @@
             [cdkContextMenuTriggerData]="{ $implicit: item }"
             (cdkContextMenuOpened)="setContextItem.emit(item)"
             tabindex="0"
-            [class.selected]="selection().has(getItemKey(item))"
+            [class.selected]="selection().has(key)"
             [class.unselectable]="!isItemSelectable()(item.entry)"
             [class.cut-item]="isCut"
             [attr.data-folder-path]="item.entry.IsDir ? item.entry.Path : null"
             [class.item-drop-target]="item.entry.IsDir"
             [class.folder-drag-over]="
-              isDragging() && hoveredFolder()?.entry?.Path === item.entry.Path
+              isDragging() &&
+              hoveredFolder()?.entry?.Path === item.entry.Path &&
+              _draggedItemPath() !== item.entry.Path
             "
           >
             @if (starredMode()) {
@@ -167,8 +172,9 @@
           mat-row
           *matRowDef="let item; columns: displayedColumns(); let i = index"
           draggable="true"
-          (dragstart)="dragStarted.emit({ event: $event, item })"
-          (dragend)="dragEnded.emit()"
+          [attr.data-item-key]="getItemKey(item)"
+          (dragstart)="onDragStart($event, item)"
+          (dragend)="onDragEnd()"
           (click)="itemClick.emit({ item, event: $event, index: i })"
           (keydown.enter)="itemClick.emit({ item, event: $event, index: i })"
           (dblclick)="navigateTo.emit(item)"
@@ -181,7 +187,9 @@
           [attr.data-folder-path]="item.entry.IsDir ? item.entry.Path : null"
           [class.item-drop-target]="item.entry.IsDir"
           [class.folder-drag-over]="
-            isDragging() && hoveredFolder()?.entry?.Path === item.entry.Path
+            isDragging() &&
+            hoveredFolder()?.entry?.Path === item.entry.Path &&
+            _draggedItemPath() !== item.entry.Path
           "
         ></tr>
       </table>
@@ -218,13 +226,7 @@
   }
 </div>
 
-<ng-template
-  #fileEntryIcon
-  let-item="item"
-  let-isCut="isCut"
-  let-sizeBinding="sizeBinding"
-  let-extraClass="extraClass"
->
+<ng-template #fileEntryIcon let-item="item" let-isCut="isCut" let-sizeBinding="sizeBinding">
   @if (isCut) {
     <mat-icon
       class="cut-icon"

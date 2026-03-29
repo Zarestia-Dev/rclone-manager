@@ -229,13 +229,13 @@
 @media (max-width: 768px) {
   .remote-details {
     padding: var(--header-gap);
-    gap: var(--header-gap);
+    gap: var(--space-xs);
   }
 
   .remote-info-section {
     flex-direction: column;
     text-align: center;
-    gap: var(--header-gap);
+    gap: var(--space-xs);
   }
 
   .remote-text-info {

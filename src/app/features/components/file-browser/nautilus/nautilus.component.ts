@@ -157,7 +157,7 @@ const DEFAULT_PICKER_OPTIONS: FilePickerConfig = {
 })
 export class NautilusComponent implements OnInit {
   // --- Constants ---
-  private static readonly HOVER_OPEN_DELAY_MS = 800;
+  private static readonly HOVER_OPEN_DELAY_MS = 1000;
   private static readonly MAX_UNDO_STACK = 20;
   private readonly LIST_ICON_SIZES = [16, 24, 32, 48];
   private readonly GRID_ICON_SIZES = [48, 64, 96, 128, 160, 256];
@@ -1145,8 +1145,9 @@ export class NautilusComponent implements OnInit {
     }
 
     const currentStarredMode = pIdx === 0 ? this.starredMode() : this.starredModeRight();
+    const targetStarredMode = !remote && path === '';
     const computedTitle =
-      currentStarredMode && !remote
+      targetStarredMode || (currentStarredMode && !remote)
         ? this.translate.instant('nautilus.titles.starred')
         : path.split('/').pop() || remote?.label || this.translate.instant('nautilus.titles.files');
 
@@ -1194,7 +1195,23 @@ export class NautilusComponent implements OnInit {
       path.split('/').pop() ||
       remote?.label ||
       this.translate.instant(!remote ? 'nautilus.titles.starred' : 'nautilus.titles.files');
-    const t: Tab = { id, title, left: this.createPaneState(remote, path) };
+
+    const paneState = this.createPaneState(remote, path);
+
+    // For Ctrl+T / duplicate-location tab, preserve the active pane listing to avoid empty content.
+    const activeRemote = this.activeRemote();
+    const activePath = this.activePath();
+    if (remote && activeRemote && remote.name === activeRemote.name && path === activePath) {
+      const activeFiles = this.activePaneIndex() === 0 ? this.rawFiles() : this.rawFilesRight();
+      const activeLoading = this.activePaneIndex() === 0 ? this.isLoading() : this.isLoadingRight();
+      const activeError = this.activePaneIndex() === 0 ? this.errorState() : this.errorStateRight();
+
+      paneState.rawFiles.set(activeFiles);
+      paneState.isLoading.set(activeLoading);
+      paneState.error.set(activeError);
+    }
+
+    const t: Tab = { id, title, left: paneState };
     this.tabs.update(list => [...list, t]);
     this.switchTab(this.tabs().length - 1);
   }
@@ -2225,6 +2242,10 @@ export class NautilusComponent implements OnInit {
   // --- Keyboard Shortcuts ---
   @HostListener('window:keydown', ['$event'])
   public async handleKeyDown(event: KeyboardEvent): Promise<void> {
+    if (this.dialog.openDialogs.length > 0) {
+      return;
+    }
+
     if (this.isInputFocused(event)) {
       if (event.key === 'Escape') (event.target as HTMLElement).blur();
       return;

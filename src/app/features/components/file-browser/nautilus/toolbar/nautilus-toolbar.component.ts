@@ -11,6 +11,7 @@ import {
   TemplateRef,
   Injector,
   afterNextRender,
+  afterRenderEffect,
 } from '@angular/core';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
@@ -66,22 +67,21 @@ export class NautilusToolbarComponent {
   protected readonly searchInput = viewChild<ElementRef<HTMLInputElement>>('searchInput');
   protected readonly pathInput = viewChild<ElementRef<HTMLInputElement>>('pathInput');
 
-  // --- Scroll Shadow State ---
+  // --- State ---
   protected readonly _showLeftShadow = signal(false);
   protected readonly _showRightShadow = signal(false);
 
-  protected readonly oppositeLayout = computed((): 'grid' | 'list' =>
-    this.layout() === 'grid' ? 'list' : 'grid'
-  );
-
-  protected readonly layoutToggleIcon = computed(() =>
+  protected readonly toggledLayout = computed((): 'grid' | 'list' =>
     this.layout() === 'grid' ? 'list' : 'grid'
   );
 
   constructor() {
-    effect(() => {
-      this.pathSegments();
-      this.scrollToEnd();
+    afterRenderEffect(() => {
+      this.pathSegments(); // tracked dependency
+      const el = this.pathScrollView()?.nativeElement;
+      if (!el) return;
+      el.scrollTo({ left: el.scrollWidth, behavior: 'smooth' });
+      this.updateScrollShadows();
     });
 
     effect(() => {
@@ -100,18 +100,6 @@ export class NautilusToolbarComponent {
         );
       }
     });
-  }
-
-  private scrollToEnd(): void {
-    afterNextRender(
-      () => {
-        const el = this.pathScrollView()?.nativeElement;
-        if (!el) return;
-        el.scrollTo({ left: el.scrollWidth, behavior: 'smooth' });
-        this.updateScrollShadows();
-      },
-      { injector: this.injector }
-    );
   }
 
   /** Called by the template's (scroll) binding on the path scroll view. */

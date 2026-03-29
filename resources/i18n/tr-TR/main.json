@@ -1915,7 +1915,7 @@
         }
       },
       "buttons": {
-        "create": "Uzak Sunucu Oluştur",
+        "create": "Uzak Sunucu Ekle",
         "creating": "Uzak Sunucu Ekleniyor...",
         "processing": "İşleniyor...",
         "continue": "Devam Et"

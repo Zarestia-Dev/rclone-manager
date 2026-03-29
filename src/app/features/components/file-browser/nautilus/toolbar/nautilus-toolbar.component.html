@@ -96,8 +96,8 @@
 
   <div class="right-section">
     @if (!isMobile()) {
-      <button class="nav-button" (click)="layoutChange.emit(oppositeLayout())">
-        <mat-icon [svgIcon]="layoutToggleIcon()"></mat-icon>
+      <button class="nav-button" (click)="layoutChange.emit(toggledLayout())">
+        <mat-icon [svgIcon]="toggledLayout()"></mat-icon>
       </button>
 
       <button

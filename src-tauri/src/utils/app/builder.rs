@@ -61,8 +61,9 @@ pub fn create_app_window(app_handle: AppHandle, browse_remote: Option<&str>) {
     #[cfg(target_os = "windows")]
     {
         use tauri::webview::ScrollBarStyle;
-        main_window = main_window.scroll_bar_style(ScrollBarStyle::FluentOverlay);
-        main_window = main_window.disable_drag_drop_handler();
+        main_window = main_window
+            .scroll_bar_style(ScrollBarStyle::FluentOverlay)
+            .disable_drag_drop_handler();
     }
 
     #[cfg(not(target_os = "macos"))]

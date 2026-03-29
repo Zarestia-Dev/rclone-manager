@@ -11,7 +11,7 @@
   flex-direction: column;
   align-items: center;
   gap: var(--header-gap);
-  margin-bottom: var(--container-gap);
+  margin-bottom: var(--space-md);
 
   .remote-info-section {
     display: flex;
@@ -135,7 +135,7 @@
     border-radius: calc(var(--radius-md) - 6px);
     color: var(--dim-color);
     font-size: var(--font-size-sm);
-    font-weight: 500;
+    font-weight: 600;
     font-family: inherit;
     border: none;
     background: transparent;
@@ -164,8 +164,6 @@
     }
 
     &.is-selected {
-      font-weight: 600;
-
       &:nth-child(1) {
         color: var(--primary-color);
       }
@@ -444,7 +442,7 @@
 
 // ─── Responsive ───────────────────────────────────────────────────────────────
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .detail-header {
     .remote-info-section {
       flex-direction: column;

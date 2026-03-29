@@ -67,13 +67,6 @@
 @media (max-width: 768px) {
   .path-section {
     flex-direction: column;
-    gap: var(--header-gap);
-
-    .path-item {
-      min-width: 0;
-      .path-value {
-        width: 44vw;
-      }
-    }
+    gap: var(--space-md);
   }
 }
