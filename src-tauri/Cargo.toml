@@ -16,11 +16,12 @@ name = "rclone_manager_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-build = "2"
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = "2"
 tauri-plugin-opener = "2"
+tauri-plugin-updater = { version = "2", features = ["rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1.50.0", features = ["full", "process"] }
@@ -45,6 +46,7 @@ sevenz-rust2 = "0.20.2"
 clap = { version = "4.5", features = ["derive", "env"] }
 id3 = "1.16.4"
 base64 = "0.22"
+url = "2.5"
 
 tauri-plugin-shell = { version = "2", optional = true }
 tauri-plugin-window-state = { version = "2", optional = true }
@@ -81,8 +83,6 @@ shellexpand = "3.1.2"
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-autostart = "2"
 tauri-plugin-single-instance = "2"
-tauri-plugin-updater = { version = "2", features = ["rustls-tls"] }
-url = "2.5"
 
 [features]
 web-server = ["axum", "tower-http", "async-stream", "axum-server", "rustls", "anyhow"]
