@@ -29,18 +29,19 @@
         <p>{{ 'fileBrowser.properties.loading' | translate }}</p>
       </div>
     } @else {
+      @let currentItem = item();
       <div class="item-overview">
         <div class="item-icon">
-          <mat-icon [svgIcon]="getIcon(item())"></mat-icon>
+          <mat-icon [svgIcon]="getIcon(currentItem)"></mat-icon>
         </div>
         <div class="item-details">
-          <h3 class="item-name" [title]="item() ? item()!.Name : displayLocation()">
-            {{ item() ? item()!.Name : displayLocation() }}
+          <h3 class="item-name" [title]="currentItem?.Name ?? displayLocation">
+            {{ currentItem?.Name ?? displayLocation }}
           </h3>
           <span class="item-type">
             {{
-              item()?.MimeType ||
-                ((item()?.IsDir ?? true)
+              currentItem?.MimeType ||
+                ((currentItem?.IsDir ?? true)
                   ? ('fileBrowser.properties.directory' | translate)
                   : ('fileBrowser.properties.file' | translate))
             }}
@@ -53,23 +54,23 @@
       <div class="properties-group">
         <div class="prop-row">
           <span class="label">{{ 'fileBrowser.properties.location' | translate }}</span>
-          <span class="value path" [title]="displayLocation()">{{ displayLocation() }}</span>
+          <span class="value path" [title]="displayLocation">{{ displayLocation }}</span>
         </div>
-        @if (item()?.ModTime) {
+        @if (currentItem?.ModTime) {
           <div class="prop-row">
             <span class="label">{{ 'fileBrowser.properties.modified' | translate }}</span>
-            <span class="value">{{ item()!.ModTime | date: 'medium' }}</span>
+            <span class="value">{{ currentItem!.ModTime | date: 'medium' }}</span>
           </div>
         }
-        @if (item() && !item()!.IsDir) {
+        @if (currentItem && !currentItem.IsDir) {
           <div class="prop-row">
             <span class="label">{{ 'fileBrowser.properties.size' | translate }}</span>
-            <span class="value">{{ item()!.Size | formatFileSize }}</span>
+            <span class="value">{{ currentItem.Size | formatFileSize }}</span>
           </div>
         }
       </div>
 
-      @if (item()?.IsDir ?? true) {
+      @if (currentItem?.IsDir ?? true) {
         <mat-divider></mat-divider>
         <div class="properties-group">
           <h4 class="group-title">{{ 'fileBrowser.properties.contentStats' | translate }}</h4>
@@ -105,15 +106,15 @@
           <div class="usage-bars">
             <div class="prop-row">
               <span class="label">{{ 'fileBrowser.properties.used' | translate }}</span>
-              <span class="value">{{ diskUsage()!.used ?? 0 | formatFileSize }}</span>
+              <span class="value">{{ diskUsage()?.used ?? 0 | formatFileSize }}</span>
             </div>
             <div class="prop-row">
               <span class="label">{{ 'fileBrowser.properties.free' | translate }}</span>
-              <span class="value">{{ diskUsage()!.free ?? 0 | formatFileSize }}</span>
+              <span class="value">{{ diskUsage()?.free ?? 0 | formatFileSize }}</span>
             </div>
             <div class="prop-row">
               <span class="label">{{ 'fileBrowser.properties.totalCapacity' | translate }}</span>
-              <span class="value">{{ diskUsage()!.total ?? 0 | formatFileSize }}</span>
+              <span class="value">{{ diskUsage()?.total ?? 0 | formatFileSize }}</span>
             </div>
           </div>
         }
@@ -199,9 +200,7 @@
                         (click)="copyBulkHash()"
                         [matTooltip]="'fileBrowser.properties.copyToClipboard' | translate"
                       >
-                        <mat-icon
-                          [svgIcon]="copiedHash() === 'bulk' ? 'circle-check' : 'copy'"
-                        ></mat-icon>
+                        <mat-icon [svgIcon]="copiedBulkHash() ? 'circle-check' : 'copy'"></mat-icon>
                       </button>
                     </div>
                   </div>
@@ -224,7 +223,7 @@
                   </div>
                 }
 
-                <div class="hash-chips bulk-chips">
+                <div class="hash-chips">
                   @for (hashType of supportedHashes(); track hashType) {
                     <button
                       class="hash-chip"
@@ -269,7 +268,8 @@
             <div class="link-display">
               <div class="link-url-container">
                 <span class="link-url" [title]="publicLinkUrl()">{{ publicLinkUrl() }}</span>
-                <mat-icon
+                <button
+                  mat-icon-button
                   (click)="copyPublicLink()"
                   [matTooltip]="
                     (copiedLink()
@@ -277,8 +277,9 @@
                       : 'fileBrowser.properties.copyToClipboard'
                     ) | translate
                   "
-                  [svgIcon]="copiedLink() ? 'circle-check' : 'copy'"
-                ></mat-icon>
+                >
+                  <mat-icon [svgIcon]="copiedLink() ? 'circle-check' : 'copy'"></mat-icon>
+                </button>
               </div>
               <button mat-stroked-button class="remove-link-btn" (click)="removePublicLink()">
                 {{ 'fileBrowser.properties.removeLink' | translate }}
@@ -290,8 +291,8 @@
               <mat-form-field class="no-subscript">
                 <mat-label>{{ 'fileBrowser.properties.expires' | translate }}</mat-label>
                 <mat-select
-                  [ngModel]="selectedExpiry()"
-                  (ngModelChange)="selectedExpiry.set($event)"
+                  [value]="selectedExpiry()"
+                  (selectionChange)="selectedExpiry.set($event.value)"
                 >
                   @for (option of expiryOptions; track option.value) {
                     <mat-option [value]="option.value">{{ option.label | translate }}</mat-option>

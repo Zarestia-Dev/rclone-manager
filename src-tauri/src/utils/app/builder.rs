@@ -104,7 +104,7 @@ pub fn create_nautilus_window(
     remote_name: Option<&str>,
     path: Option<&str>,
 ) {
-    // Deterministic label based on remote identity (not a random UUID)
+    // Deterministic label based on remote identity
     let label = remote_name
         .map(|name| {
             let slug: String = name
@@ -119,15 +119,24 @@ pub fn create_nautilus_window(
                 .collect();
             format!("nautilus-{slug}")
         })
-        .unwrap_or_else(|| "nautilus-root".to_string());
+        .unwrap_or_else(|| "nautilus".to_string());
 
     if let Some(existing) = tauri::Manager::get_webview_window(&app_handle, &label) {
         let _ = existing.unminimize();
         let _ = existing.set_focus();
 
         use crate::utils::types::events::BROWSE;
-        let p = path.unwrap_or(remote_name.unwrap_or(""));
-        let _ = tauri::Emitter::emit(&existing, BROWSE, p);
+        let full_path = match (remote_name, path) {
+            (Some(r), Some(p)) => {
+                let is_local = r.starts_with('/') || (r.len() > 1 && r.as_bytes()[1] == b':');
+                let sep = if is_local { "/" } else { ":" };
+                format!("{}{}{}", r, sep, p.trim_start_matches('/'))
+            }
+            (Some(r), None) => r.to_string(),
+            (None, Some(p)) => p.to_string(),
+            _ => "".to_string(),
+        };
+        let _ = tauri::Emitter::emit(&existing, BROWSE, full_path);
         return;
     }
 

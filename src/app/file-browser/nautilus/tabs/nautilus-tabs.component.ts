@@ -163,8 +163,7 @@ export class NautilusTabsComponent {
       event.dataTransfer.setData('application/x-nautilus-tab', String(index));
       event.dataTransfer.effectAllowed = 'copyMove';
 
-      const { width, height } = ghost.getBoundingClientRect();
-      event.dataTransfer.setDragImage(ghost, width / 2, height / 2);
+      event.dataTransfer.setDragImage(ghost, 0, 0);
     }
 
     requestAnimationFrame(() => ghost.remove());

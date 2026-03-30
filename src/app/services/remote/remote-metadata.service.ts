@@ -17,12 +17,19 @@ export class RemoteMetadataService extends TauriBaseService {
    */
   async getFsInfo(remoteName: string, source: Origin = 'dashboard'): Promise<FsInfo> {
     const normalizedKey = remoteName.endsWith(':') ? remoteName.slice(0, -1) : remoteName;
-    const fsName = `${normalizedKey}:`;
+
+    // Determine the proper fs name for rclone backend.
+    // Local paths (starting with / or a Windows drive letter) shouldn't always have a colon appended.
+    const isLocal =
+      normalizedKey.startsWith('/') ||
+      /^[a-zA-Z]:[/\\]/.test(normalizedKey) ||
+      /^[a-zA-Z]:$/.test(normalizedKey);
+
+    const fsName = isLocal ? normalizedKey : `${normalizedKey}:`;
 
     if (this.metadataCache.has(normalizedKey)) {
       const cached = this.metadataCache.get(normalizedKey);
       if (cached) return cached;
-      throw new Error(`Metadata not found for ${normalizedKey}`);
     }
 
     try {
@@ -58,7 +65,7 @@ export class RemoteMetadataService extends TauriBaseService {
         changeNotify: !!info.Features?.['ChangeNotify'],
         hashes: info.Hashes ?? [],
       };
-      this.featuresCache.set(remoteName, features);
+      this.featuresCache.set(normalizedKey, features);
       return features;
     } catch (error) {
       // Fallback for failed feature detection

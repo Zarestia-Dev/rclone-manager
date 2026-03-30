@@ -2057,6 +2057,11 @@ export class NautilusComponent implements OnInit {
     }
   }
 
+  protected onUpdateSelection(selection: Set<string>, paneIndex: 0 | 1): void {
+    const ref = this.getPaneRef(paneIndex);
+    ref.selection.set(selection);
+  }
+
   protected clearClipboard(): void {
     this.clipboardItems.set([]);
     this.clipboardMode.set(null);
