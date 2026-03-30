@@ -5,11 +5,11 @@
 .nautilus-overlay-pane {
   width: 100vw;
   height: 100vh;
-  --sidenav-width: clamp(180px, 20vw, 240px);
+  --sidebar-width: clamp(180px, 20vw, 240px);
 }
 
 .nautilus-sidenav {
-  width: var(--sidenav-width);
+  width: var(--sidebar-width);
   background-color: var(--sidebar-bg-color);
   border-radius: 0 !important;
 }

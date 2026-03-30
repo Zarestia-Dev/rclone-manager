@@ -602,7 +602,7 @@ fn setup_app(
     #[cfg(all(desktop, not(feature = "web-server"), feature = "tray"))]
     if !cli_args.general.tray {
         debug!("Creating main window");
-        utils::app::builder::create_app_window(app.handle().clone(), None);
+        utils::app::builder::create_app_window(app.handle().clone());
     }
 
     Ok(())
@@ -660,7 +660,7 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent)
             }
             TrayAction::BrowseInApp(remote) => {
                 #[cfg(not(feature = "web-server"))]
-                core::tray::actions::handle_browse_in_app(app, &remote);
+                core::tray::actions::handle_browse_in_app(app, Some(&remote));
                 #[cfg(feature = "web-server")]
                 {
                     let args = app.state::<crate::core::cli::CliArgs>();
@@ -674,9 +674,9 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent)
                     } else {
                         "http"
                     };
-                    // Encode the remote name for the query parameter
+                    // Use clean path for browsing: /nautilus/Remote
                     let url = format!(
-                        "{}://{}:{}?browse={}",
+                        "{}://{}:{}/nautilus/{}",
                         protocol,
                         host,
                         args.headless.port,
@@ -700,6 +700,31 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent)
             }
             TrayAction::StopAllJobs => handle_stop_all_jobs(app.clone()),
             TrayAction::StopAllServes => handle_stop_all_serves(app.clone()),
+            TrayAction::OpenFileBrowser => {
+                #[cfg(not(feature = "web-server"))]
+                core::tray::actions::handle_browse_in_app(app, None);
+                #[cfg(feature = "web-server")]
+                {
+                    // No-op or open web root browser (same logic as show app in web server mode)
+                    let args = app.state::<crate::core::cli::CliArgs>();
+                    let host = if args.headless.host == "0.0.0.0" {
+                        "127.0.0.1"
+                    } else {
+                        &args.headless.host
+                    };
+                    let protocol = if args.headless.tls_cert.is_some() {
+                        "https"
+                    } else {
+                        "http"
+                    };
+                    let url = format!("{}://{}:{}/nautilus", protocol, host, args.headless.port);
+
+                    use tauri_plugin_opener::OpenerExt;
+                    if let Err(e) = app.opener().open_url(&url, None::<&str>) {
+                        log::error!("Failed to open web UI for file browser: {}", e);
+                    }
+                }
+            }
         }
         return;
     }

@@ -17,19 +17,26 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslateModule } from '@ngx-translate/core';
 import { CdkMenuModule } from '@angular/cdk/menu';
-
-import { IconService } from '@app/services';
+import { IconService, NautilusService } from '@app/services';
+import { WindowControlsComponent } from '@app/shared/components';
 import { ExplorerRoot } from '@app/types';
 
 @Component({
   selector: 'app-nautilus-toolbar',
   standalone: true,
-  imports: [MatToolbarModule, MatIconModule, TranslateModule, CdkMenuModule],
+  imports: [
+    MatToolbarModule,
+    MatIconModule,
+    TranslateModule,
+    CdkMenuModule,
+    WindowControlsComponent,
+  ],
   templateUrl: './nautilus-toolbar.component.html',
   styleUrl: './nautilus-toolbar.component.scss',
 })
 export class NautilusToolbarComponent {
   protected readonly iconService = inject(IconService);
+  protected readonly nautilusService = inject(NautilusService);
   private readonly injector = inject(Injector);
 
   // --- Inputs ---

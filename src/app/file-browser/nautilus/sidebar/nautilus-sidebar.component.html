@@ -175,10 +175,49 @@
 </ng-template>
 
 <!-- Context Menus -->
+<!-- Context Menus -->
+<ng-template #openSubMenu let-data>
+  <div class="material-context-menu" cdkMenu>
+    @if (data.type === 'remote') {
+      <button class="menu-item" cdkMenuItem (click)="onSelectRemote(data.item)">
+        <span class="item-label">{{ 'nautilus.contextMenu.open' | translate }}</span>
+      </button>
+      <button class="menu-item" cdkMenuItem (click)="onOpenRemoteInNewTab(data.item)">
+        <span class="item-label">{{ 'nautilus.contextMenu.openNewTab' | translate }}</span>
+      </button>
+      <button class="menu-item" cdkMenuItem (click)="onOpenRemoteInNewWindow(data.item)">
+        <span class="item-label">{{ 'nautilus.contextMenu.openNewWindow' | translate }}</span>
+      </button>
+    } @else if (data.type === 'bookmark') {
+      <button class="menu-item" cdkMenuItem (click)="onOpenBookmark(data.item)">
+        <span class="item-label">{{ 'nautilus.contextMenu.open' | translate }}</span>
+      </button>
+      <button class="menu-item" cdkMenuItem (click)="onOpenBookmarkInNewTab(data.item)">
+        <span class="item-label">{{ 'nautilus.contextMenu.openNewTab' | translate }}</span>
+      </button>
+      <button class="menu-item" cdkMenuItem (click)="onOpenBookmarkInNewWindow(data.item)">
+        <span class="item-label">{{ 'nautilus.contextMenu.openNewWindow' | translate }}</span>
+      </button>
+    } @else if (data.type === 'starred') {
+      <button class="menu-item" cdkMenuItem (click)="starredSelected.emit()">
+        <span class="item-label">{{ 'nautilus.contextMenu.open' | translate }}</span>
+      </button>
+    }
+  </div>
+</ng-template>
+
 <ng-template #sidebarStarredMenu>
   <div class="material-context-menu" cdkMenu>
-    <button class="menu-item" cdkMenuItem (click)="starredSelected.emit()">
-      <span>{{ 'nautilus.contextMenu.open' | translate }}</span>
+    <button
+      class="menu-item"
+      cdkMenuItem
+      [cdkMenuTriggerFor]="openSubMenu"
+      [cdkMenuTriggerData]="{ $implicit: { type: 'starred' } }"
+    >
+      <span class="item-label">
+        <span>{{ 'nautilus.contextMenu.open' | translate }}</span>
+      </span>
+      <mat-icon svgIcon="chevron-right"></mat-icon>
     </button>
   </div>
 </ng-template>
@@ -193,9 +232,18 @@
 
 <ng-template #sidebarRemoteMenu let-remote>
   <div class="material-context-menu" cdkMenu>
-    <button class="menu-item" cdkMenuItem (click)="onSelectRemote(remote)">
-      <span>{{ 'nautilus.contextMenu.open' | translate }}</span>
+    <button
+      class="menu-item"
+      cdkMenuItem
+      [cdkMenuTriggerFor]="openSubMenu"
+      [cdkMenuTriggerData]="{ $implicit: { type: 'remote', item: remote } }"
+    >
+      <span class="item-label">
+        <span>{{ 'nautilus.contextMenu.open' | translate }}</span>
+      </span>
+      <mat-icon svgIcon="chevron-right"></mat-icon>
     </button>
+    <mat-divider></mat-divider>
     <button class="menu-item" cdkMenuItem (click)="requestAbout.emit(remote)">
       <span>{{ 'nautilus.contextMenu.about' | translate }}</span>
     </button>
@@ -209,9 +257,18 @@
 
 <ng-template #sidebarBookmarkMenu let-bookmark>
   <div class="material-context-menu" cdkMenu>
-    <button class="menu-item" cdkMenuItem (click)="onOpenBookmark(bookmark)">
-      <span>{{ 'nautilus.contextMenu.open' | translate }}</span>
+    <button
+      class="menu-item"
+      cdkMenuItem
+      [cdkMenuTriggerFor]="openSubMenu"
+      [cdkMenuTriggerData]="{ $implicit: { type: 'bookmark', item: bookmark } }"
+    >
+      <span class="item-label">
+        <span>{{ 'nautilus.contextMenu.open' | translate }}</span>
+      </span>
+      <mat-icon svgIcon="chevron-right"></mat-icon>
     </button>
+    <mat-divider></mat-divider>
     <button class="menu-item" cdkMenuItem (click)="requestProperties.emit(bookmark)">
       <span>{{ 'nautilus.contextMenu.properties' | translate }}</span>
     </button>

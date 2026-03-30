@@ -6,11 +6,4 @@
   overflow: hidden;
   box-sizing: border-box;
   background-color: var(--window-bg-color);
-
-  app-home {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
 }

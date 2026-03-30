@@ -175,7 +175,7 @@ pub async fn check_rclone_update_handler(
     let result = check_rclone_update(state.app_handle.clone(), query.channel)
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(result)))
+    Ok(Json(ApiResponse::success(serde_json::to_value(result)?)))
 }
 
 pub async fn get_rclone_update_info_handler(
@@ -185,7 +185,9 @@ pub async fn get_rclone_update_info_handler(
     let result = get_rclone_update_info(state.app_handle.clone())
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(result)))
+    Ok(Json(ApiResponse::success(
+        result.map(serde_json::to_value).transpose()?,
+    )))
 }
 
 #[derive(Deserialize)]
@@ -318,12 +320,6 @@ pub async fn fetch_update_handler(
     Ok(Json(ApiResponse::success(json_result)))
 }
 
-pub async fn fetch_update_handler(
-    State(_state): State<WebServerState>,
-) -> Result<Json<ApiResponse<Option<serde_json::Value>>>, AppError> {
-    Ok(Json(ApiResponse::success(None)))
-}
-
 pub async fn get_download_status_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
@@ -332,12 +328,6 @@ pub async fn get_download_status_handler(
         .map_err(anyhow::Error::msg)?;
     let json_status = serde_json::to_value(status)?;
     Ok(Json(ApiResponse::success(json_status)))
-}
-
-pub async fn get_download_status_handler(
-    State(_state): State<WebServerState>,
-) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    Ok(Json(ApiResponse::success(serde_json::json!({}))))
 }
 
 pub async fn install_update_handler(
@@ -349,12 +339,6 @@ pub async fn install_update_handler(
     Ok(Json(ApiResponse::success(crate::localized_success!(
         "backendSuccess.system.updateInstalled"
     ))))
-}
-
-pub async fn install_update_handler(
-    State(_state): State<WebServerState>,
-) -> Result<Json<ApiResponse<String>>, AppError> {
-    Ok(Json(ApiResponse::success("Updates disabled".to_string())))
 }
 
 pub async fn relaunch_app_handler(

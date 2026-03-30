@@ -2092,6 +2092,7 @@
     "contextMenu": {
       "open": "Abrir",
       "openNewTab": "Abrir en nueva pestaña",
+      "openNewWindow": "Abrir en nueva ventana",
       "toggleSelect": "Alternar selección",
       "copyPath": "Copiar ruta",
       "newFolder": "Nueva carpeta",
@@ -2102,6 +2103,11 @@
       "copyLocation": "Copiar ubicación",
       "selectAll": "Seleccionar todo",
       "removeBookmark": "Eliminar marcador",
+      "detachTab": "Separar pestaña",
+      "duplicateTab": "Duplicar pestaña",
+      "closeTab": "Cerrar pestaña",
+      "closeOtherTabs": "Cerrar otras pestañas",
+      "closeTabsToRight": "Cerrar pestañas a la derecha",
       "about": "Acerca de",
       "emptyTrash": "Vaciar papelera"
     },
@@ -2558,6 +2564,7 @@
   "tray": {
     "openWebUI": "Abrir UI web",
     "showApp": "Mostrar aplicación",
+    "openFileBrowser": "Abrir explorador de archivos",
     "unmountAll": "Desmontar todo",
     "stopAllJobs": "Detener todos los trabajos",
     "stopAllServes": "Detener todos los servicios",

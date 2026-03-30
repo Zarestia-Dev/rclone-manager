@@ -1,19 +1,17 @@
 <div class="app-wrapper" appShortcutHandler>
   @if (!initializing()) {
-    @if (!completedOnboarding()) {
+    @if (nautilusService.isStandaloneWindow()) {
+      <app-nautilus></app-nautilus>
+    } @else if (!completedOnboarding()) {
       @defer {
-        <app-onboarding class="onboarding" (completed)="finishOnboarding()"></app-onboarding>
+        <app-onboarding (completed)="finishOnboarding()"></app-onboarding>
       }
     } @else {
       @defer {
-        <app-titlebar> </app-titlebar>
+        <app-titlebar data-tauri-drag-region></app-titlebar>
         <app-banner></app-banner>
         <app-home></app-home>
-        <app-tabs
-          data-tauri-drag-region
-          [currentTab]="currentTab()"
-          (tabSelected)="setTab($event)"
-        ></app-tabs>
+        <app-tabs data-tauri-drag-region></app-tabs>
       }
     }
   }

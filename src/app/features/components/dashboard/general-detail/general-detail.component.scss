@@ -252,18 +252,6 @@
     gap: 8px;
   }
 
-  .status-chip {
-    min-width: fit-content;
-
-    .status-label {
-      display: none;
-    }
-
-    .status-dot {
-      margin: 0;
-    }
-  }
-
   .detail-content {
     gap: var(--header-gap);
   }

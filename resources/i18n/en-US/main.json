@@ -2169,6 +2169,7 @@
       "copyLocation": "Copy Location",
       "selectAll": "Select All",
       "removeBookmark": "Remove Bookmark",
+      "detachTab": "Detach Tab",
       "duplicateTab": "Duplicate Tab",
       "closeOtherTabs": "Close Other Tabs",
       "closeTabsToRight": "Close Tabs to the Right",
@@ -2180,6 +2181,7 @@
       "cut": "Cut",
       "rename": "Rename",
       "paste": "Paste",
+      "openNewWindow": "Open in New Window",
       "focusPath": "Focus Path",
       "newTab": "New Tab",
       "closeTab": "Close Tab",
@@ -2652,6 +2654,7 @@
   "tray": {
     "openWebUI": "Open Web UI",
     "showApp": "Show App",
+    "openFileBrowser": "Open File Manager",
     "unmountAll": "Unmount All",
     "stopAllJobs": "Stop All Jobs",
     "stopAllServes": "Stop All Serves",

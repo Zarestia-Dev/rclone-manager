@@ -2169,6 +2169,7 @@
       "copyLocation": "复制位置",
       "selectAll": "全选",
       "removeBookmark": "移除书签",
+      "detachTab": "分离标签页",
       "duplicateTab": "复制标签页",
       "closeOtherTabs": "关闭其他标签页",
       "closeTabsToRight": "关闭右侧标签页",
@@ -2652,6 +2653,7 @@
   "tray": {
     "openWebUI": "打开网页管理界面",
     "showApp": "显示主界面",
+    "openFileBrowser": "打开文件浏览器",
     "unmountAll": "卸载全部",
     "stopAllJobs": "停止所有任务",
     "stopAllServes": "停止所有服务",

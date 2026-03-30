@@ -25,6 +25,7 @@ pub enum TrayAction {
     UnmountAll,
     StopAllJobs,
     StopAllServes,
+    OpenFileBrowser,
 }
 
 impl TrayAction {
@@ -67,6 +68,7 @@ impl TrayAction {
             Self::UnmountAll => "unmount_all".to_string(),
             Self::StopAllJobs => "stop_all_jobs".to_string(),
             Self::StopAllServes => "stop_all_serves".to_string(),
+            Self::OpenFileBrowser => "open_file_browser".to_string(),
         }
     }
 
@@ -78,6 +80,7 @@ impl TrayAction {
             "unmount_all" => return Some(Self::UnmountAll),
             "stop_all_jobs" => return Some(Self::StopAllJobs),
             "stop_all_serves" => return Some(Self::StopAllServes),
+            "open_file_browser" => return Some(Self::OpenFileBrowser),
             "show_app" | "open_web_ui" | "quit" => return None, // Handled separately in lib.rs
             _ => {}
         }

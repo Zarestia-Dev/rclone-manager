@@ -1,19 +1,19 @@
-.title-bar {
+:host {
   display: flex;
   justify-content: space-between;
   align-items: center;
   height: var(--titlebar-height);
   padding: var(--space-xxs) var(--title-bar-padding);
+}
 
-  .left-section {
-    display: flex;
-    gap: var(--space-xs);
-  }
+.left-section {
+  display: flex;
+  gap: var(--space-xs);
+}
 
-  .right-section {
-    display: flex;
-    gap: var(--space-xxs);
-  }
+.right-section {
+  display: flex;
+  gap: var(--space-xxs);
 }
 
 .shortcut {

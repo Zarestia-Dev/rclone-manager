@@ -21,6 +21,7 @@ import {
   ConnectionService,
 } from '@app/services';
 import { Theme } from '@app/types';
+import { WindowControlsComponent } from '@app/shared/components';
 
 @Component({
   selector: 'app-titlebar',
@@ -34,6 +35,7 @@ import { Theme } from '@app/types';
     MatProgressSpinnerModule,
     MatBadgeModule,
     TranslateModule,
+    WindowControlsComponent,
   ],
   templateUrl: './titlebar.component.html',
   styleUrls: ['./titlebar.component.scss'],
@@ -50,8 +52,6 @@ export class TitlebarComponent implements OnInit {
 
   readonly uiStateService = inject(UiStateService);
   readonly connectionService = inject(ConnectionService);
-
-  windowButtons = true;
 
   // Signals for update states
   readonly updateAvailable = this.appUpdaterService.updateAvailable;
@@ -86,27 +86,6 @@ export class TitlebarComponent implements OnInit {
     { id: 'light', icon: 'circle-check', label: 'titlebar.menu.light', class: 'light' },
     { id: 'dark', icon: 'circle-check', label: 'titlebar.menu.dark', class: 'dark' },
   ];
-
-  private readonly isMaximized = this.windowService.isMaximized;
-
-  readonly windowControls = computed(() => [
-    {
-      icon: 'minimize',
-      label: 'titlebar.minimize',
-      action: (): Promise<void> => this.windowService.minimize(),
-    },
-    {
-      icon: this.isMaximized() ? 'collapse' : 'expand',
-      label: 'titlebar.maximize',
-      action: (): Promise<void> => this.windowService.maximize(),
-    },
-    {
-      icon: 'close',
-      label: 'titlebar.close',
-      action: (): Promise<void> => this.windowService.close(),
-      class: 'close-button',
-    },
-  ]);
 
   readonly addRemoteMenuItems = [
     {
@@ -165,12 +144,6 @@ export class TitlebarComponent implements OnInit {
     if (this.updateAvailable() || this.rcloneUpdateAvailable()) return '!';
     return '';
   });
-
-  constructor() {
-    if (this.uiStateService.platform === 'macos' || this.uiStateService.platform === 'web') {
-      this.windowButtons = false;
-    }
-  }
 
   async ngOnInit(): Promise<void> {
     try {

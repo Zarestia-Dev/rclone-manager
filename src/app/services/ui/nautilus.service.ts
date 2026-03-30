@@ -7,11 +7,12 @@ import {
   computed,
   WritableSignal,
 } from '@angular/core';
+import { Title } from '@angular/platform-browser';
 import { Subject } from 'rxjs';
 import { Overlay, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { take } from 'rxjs/operators';
-import { NautilusComponent } from 'src/app/features/components/file-browser/nautilus/nautilus.component';
+import { NautilusComponent } from 'src/app/file-browser/nautilus/nautilus.component';
 import {
   AppSettingsService,
   EventListenersService,
@@ -32,61 +33,84 @@ import {
   providedIn: 'root',
 })
 export class NautilusService extends TauriBaseService {
-  private overlay = inject(Overlay);
-  private appSettingsService = inject(AppSettingsService);
-  private remoteManagement = inject(RemoteManagementService);
-  private pathSelectionService = inject(PathSelectionService);
-  private eventListenersService = inject(EventListenersService);
-  private destroyRef = inject(DestroyRef);
+  private readonly overlay = inject(Overlay);
+  private readonly appSettingsService = inject(AppSettingsService);
+  private readonly remoteManagement = inject(RemoteManagementService);
+  private readonly pathSelectionService = inject(PathSelectionService);
+  private readonly eventListenersService = inject(EventListenersService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly titleService = inject(Title);
 
-  // Nautilus / Browser overlay
-  private readonly _isNautilusOverlayOpen = signal<boolean>(false);
-  public readonly isNautilusOverlayOpen = this._isNautilusOverlayOpen.asReadonly();
+  // --- Nautilus overlay ---
+  private readonly _isNautilusOverlayOpen = signal(false);
+  readonly isNautilusOverlayOpen = this._isNautilusOverlayOpen.asReadonly();
 
-  // File Picker state
-  private readonly _filePickerState = signal<{
-    isOpen: boolean;
-    options?: FilePickerConfig;
-  }>({ isOpen: false });
-  public readonly filePickerState = this._filePickerState.asReadonly();
-  private _filePickerResult = new Subject<FilePickerResult>();
-  public filePickerResult$ = this._filePickerResult.asObservable();
+  // --- File Picker ---
+  private readonly _filePickerState = signal<{ isOpen: boolean; options?: FilePickerConfig }>({
+    isOpen: false,
+  });
+  readonly filePickerState = this._filePickerState.asReadonly();
 
-  // Public Signals (Read by UI)
-  public readonly starredItems = signal<FileBrowserItem[]>([]);
-  public readonly bookmarks = signal<FileBrowserItem[]>([]);
+  private readonly _filePickerResult = new Subject<FilePickerResult>();
+  readonly filePickerResult$ = this._filePickerResult.asObservable();
 
-  // Selected remote signal (for initial navigation or direct selection)
-  public readonly selectedNautilusRemote = signal<string | null>(null);
+  // --- Public signals (read by UI) ---
+  readonly starredItems = signal<FileBrowserItem[]>([]);
+  readonly bookmarks = signal<FileBrowserItem[]>([]);
+  readonly selectedNautilusRemote = signal<string | null>(null);
+  readonly targetPath = signal<string | null>(null);
+  readonly isStandaloneWindow = signal(false);
 
-  // Target path for opening specific folders (e.g. from debug menu)
-  public readonly targetPath = signal<string | null>(null);
+  // --- Remote / Drive state ---
+  readonly localDrives = signal<ExplorerRoot[]>([]);
+  readonly cloudRemotes = signal<ExplorerRoot[]>([]);
+  readonly allRemotesLookup = computed(() => [...this.localDrives(), ...this.cloudRemotes()]);
 
-  // ========== REMOTE/DRIVE STATE ==========
+  // --- Overlay refs ---
+  private browserOverlayRef: OverlayRef | null = null;
+  private browserComponentRef: ComponentRef<NautilusComponent> | null = null;
+  private pickerOverlayRef: OverlayRef | null = null;
+  private pickerComponentRef: ComponentRef<NautilusComponent> | null = null;
 
-  // Simple writable signals for drives and remotes
-  public readonly localDrives = signal<ExplorerRoot[]>([]);
-  public readonly cloudRemotes = signal<ExplorerRoot[]>([]);
+  private readonly collectionConfig: Record<
+    CollectionType,
+    {
+      category: string;
+      key: string;
+      signal: WritableSignal<FileBrowserItem[]>;
+      allowFiles: boolean;
+    }
+  > = {
+    starred: { category: 'nautilus', key: 'starred', signal: this.starredItems, allowFiles: true },
+    bookmarks: {
+      category: 'nautilus',
+      key: 'bookmarks',
+      signal: this.bookmarks,
+      allowFiles: false,
+    },
+  };
 
-  // Combined lookup
-  public readonly allRemotesLookup = computed(() => [
-    ...this.localDrives(),
-    ...this.cloudRemotes(),
-  ]);
+  constructor() {
+    super();
+    (Object.keys(this.collectionConfig) as CollectionType[]).forEach(type =>
+      this.loadCollection(type)
+    );
+    this.setupBrowseListener();
+  }
 
-  // Load data when Nautilus opens
-  public async loadRemoteData(): Promise<void> {
+  // ========== REMOTE DATA ==========
+
+  async loadRemoteData(): Promise<void> {
     try {
       const [remoteNames, drives, configs] = await Promise.all([
         this.remoteManagement.getRemotes(),
         this.remoteManagement.getLocalDrives(),
         this.remoteManagement.getAllRemoteConfigs().catch(e => {
           console.error('[NautilusService] Failed to load remote configs:', e);
-          return {};
+          return {} as Record<string, { type?: string; Type?: string }>;
         }),
       ]);
 
-      // Set local drives
       this.localDrives.set(
         drives.map(drive => ({
           name: drive.name,
@@ -97,7 +121,6 @@ export class NautilusService extends TauriBaseService {
         }))
       );
 
-      // Set cloud remotes
       this.cloudRemotes.set(
         remoteNames.map(name => {
           const config = (configs as Record<string, { type?: string; Type?: string } | undefined>)[
@@ -106,7 +129,7 @@ export class NautilusService extends TauriBaseService {
           return {
             name,
             label: name,
-            type: config?.type || config?.Type || 'cloud',
+            type: config?.type ?? config?.Type ?? 'cloud',
             isLocal: false,
           };
         })
@@ -116,48 +139,84 @@ export class NautilusService extends TauriBaseService {
     }
   }
 
-  // ========== COLLECTIONS CONFIG ==========
+  // ========== STANDALONE WINDOW / DEEP LINK ==========
 
-  private readonly collections: Record<
-    CollectionType,
-    {
-      category: string;
-      key: string;
-      signal: WritableSignal<FileBrowserItem[]>;
-      allowFiles: boolean;
+  openFromBrowseQueryParam(): void {
+    const urlParams = new URLSearchParams(window.location.search);
+    const pathName = window.location.pathname;
+    const hash = window.location.hash;
+
+    const tauriWin = this.getCurrentTauriWindow();
+    const isStandalone =
+      urlParams.get('standalone') === 'nautilus' ||
+      (tauriWin?.label?.startsWith('nautilus') ?? false);
+
+    this.isStandaloneWindow.set(isStandalone);
+
+    const { remoteName, remotePath } = this.parseNautilusLocation(urlParams, pathName, hash);
+
+    if (remoteName) {
+      if (remotePath) {
+        const isLocal = remoteName.startsWith('/') || remoteName[1] === ':';
+        this.targetPath.set(`${remoteName}${isLocal ? '/' : ':'}${remotePath}`);
+      } else {
+        this.selectedNautilusRemote.set(remoteName);
+      }
+
+      if (!isStandalone) {
+        this._isNautilusOverlayOpen.set(true);
+        this.createBrowserOverlay(false);
+      }
+      return;
     }
-  > = {
-    starred: {
-      category: 'nautilus',
-      key: 'starred',
-      signal: this.starredItems,
-      allowFiles: true,
-    },
-    bookmarks: {
-      category: 'nautilus',
-      key: 'bookmarks',
-      signal: this.bookmarks,
-      allowFiles: false,
-    },
-  };
 
-  // Browser overlay (full-screen file browser)
-  private browserOverlayRef: OverlayRef | null = null;
-  private browserComponentRef: ComponentRef<NautilusComponent> | null = null;
+    const isNautilusRoute =
+      pathName.includes('/nautilus') || hash.startsWith('#/nautilus') || urlParams.has('browse');
 
-  // Picker overlay (modal dialog for file/folder selection)
-  private pickerOverlayRef: OverlayRef | null = null;
-  private pickerComponentRef: ComponentRef<NautilusComponent> | null = null;
-
-  constructor() {
-    super();
-    // Load all collections dynamically
-    (Object.keys(this.collections) as CollectionType[]).forEach(type => {
-      this.loadCollection(type);
-    });
-
-    this.setupBrowseListener();
+    if (isNautilusRoute && !isStandalone && !this._isNautilusOverlayOpen()) {
+      this._isNautilusOverlayOpen.set(true);
+      this.createBrowserOverlay(false);
+    }
   }
+
+  // ========== WINDOW CONTROL ==========
+
+  setWindowTitle(title: string): void {
+    // Defer so callers don't need to worry about timing relative to Tauri state.
+    setTimeout(async () => {
+      if (this.isTauriEnvironment) {
+        await this.getCurrentTauriWindow()?.setTitle(title);
+      }
+      this.titleService.setTitle(title);
+    }, 0);
+  }
+
+  // ========== TAB DETACHMENT & URL HELPERS ==========
+
+  getNautilusUrl(remote: string | null, path: string | null): string {
+    let url = `${window.location.origin}/nautilus`;
+    if (remote) {
+      url += `/${encodeURIComponent(remote)}`;
+      if (path) {
+        const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+        url += `/${encodeURIComponent(cleanPath)}`;
+      }
+    }
+    return url;
+  }
+
+  async detachTab(remote: string | null, path: string | null): Promise<void> {
+    if (this.isTauriEnvironment) {
+      await this.invokeCommand('detach_nautilus_window', {
+        remote: remote ?? null,
+        path: path ?? null,
+      });
+    } else {
+      window.open(this.getNautilusUrl(remote, path), '_blank');
+    }
+  }
+
+  // ========== BROWSER & PICKER CONTROL ==========
 
   toggleNautilusOverlay(): void {
     if (this._isNautilusOverlayOpen()) {
@@ -168,238 +227,160 @@ export class NautilusService extends TauriBaseService {
     }
   }
 
-  /**
-   * Check for ?browse=remoteName URL parameter and open in-app browser
-   * This is triggered from the tray menu when "Browse (In App)" is clicked
-   */
-  openFromBrowseQueryParam(): void {
-    const urlParams = new URLSearchParams(window.location.search);
-    const browseRemote = urlParams.get('browse');
-
-    if (!browseRemote) {
-      return;
-    }
-
-    const cleanUrl = window.location.pathname;
-    window.history.replaceState({}, '', cleanUrl);
-    // Skip entrance animation when opening via deep link
-    this.openForRemote(browseRemote, false);
-  }
-
-  /**
-   * Opens the file browser and navigates to a specific remote.
-   * If already open, just navigates without reinitializing.
-   * @param showAnimation - If true, shows the entrance animation (useful for deep links)
-   */
   openForRemote(remoteName: string, showAnimation = true): void {
     this.selectedNautilusRemote.set(remoteName);
-
-    if (this.browserOverlayRef) {
-      return;
-    }
-
-    // Not open - create the overlay
+    if (this.browserOverlayRef) return;
     this._isNautilusOverlayOpen.set(true);
     this.createBrowserOverlay(showAnimation);
   }
 
-  /**
-   * Opens the file browser and navigates to a specific absolute path.
-   * Use this for opening specific folders (logs, config, etc.)
-   */
   openPath(path: string, showAnimation = true): void {
     this.targetPath.set(path);
-
-    if (this.browserOverlayRef) {
-      // If already open, the effect in NautilusComponent should handle the signal change
-      // But we can double check logic there.
-      return;
-    }
-
-    // Not open - create the overlay
+    if (this.browserOverlayRef) return;
     this._isNautilusOverlayOpen.set(true);
     this.createBrowserOverlay(showAnimation);
   }
 
-  /**
-   * Opens the file picker as a modal dialog.
-   * Can be opened even when Nautilus browser is already open.
-   */
   openFilePicker(options: FilePickerConfig): void {
-    // Already has a picker open
     if (this.pickerOverlayRef) return;
-    const requestId = options.requestId ?? this.createRequestId();
-    const optionsWithId: FilePickerConfig = { ...options, requestId };
-
-    this._filePickerState.set({ isOpen: true, options: optionsWithId });
+    this._filePickerState.set({
+      isOpen: true,
+      options: { ...options, requestId: options.requestId ?? crypto.randomUUID() },
+    });
     this.createPickerOverlay();
   }
 
-  /**
-   * Closes the file picker and returns the result.
-   */
   closeFilePicker(result: FileBrowserItem[] | null): void {
     const requestId = this._filePickerState().options?.requestId;
     const items = result ?? [];
 
-    const config: FilePickerResult = {
+    this._filePickerResult.next({
       cancelled: result === null,
-      items: items,
+      items,
       paths: items.map(i => {
-        const prefix = !i.meta.isLocal
-          ? this.pathSelectionService.normalizeRemoteForRclone(i.meta.remote ?? '')
-          : i.meta.remote;
-        if (i.meta.isLocal) {
-          const sep = prefix?.endsWith('/') ? '' : '/';
-          return `${prefix}${sep}${i.entry.Path}`;
-        }
-        return `${prefix}${i.entry.Path}`;
+        const prefix = i.meta.isLocal
+          ? i.meta.remote
+          : this.pathSelectionService.normalizeRemoteForRclone(i.meta.remote ?? '');
+        const sep = prefix?.endsWith('/') ? '' : '/';
+        return i.meta.isLocal ? `${prefix}${sep}${i.entry.Path}` : `${prefix}${i.entry.Path}`;
       }),
       requestId,
-    };
-    this._filePickerResult.next(config);
+    });
+
     this._filePickerState.set({ isOpen: false });
-
-    const compRef = this.pickerComponentRef;
-    const overlayRef = this.pickerOverlayRef;
-
+    this.animateAndDisposeOverlay(this.pickerComponentRef, this.pickerOverlayRef);
     this.pickerComponentRef = null;
     this.pickerOverlayRef = null;
-
-    if (compRef) {
-      compRef.location.nativeElement.classList.add('slide-overlay-leave');
-    }
-    if (overlayRef) {
-      setTimeout(() => {
-        overlayRef.dispose();
-      }, 200);
-    }
   }
 
   closeBrowser(): void {
+    if (this.isStandaloneWindow()) {
+      this.getCurrentTauriWindow()?.close();
+      return;
+    }
     this._isNautilusOverlayOpen.set(false);
-
-    const compRef = this.browserComponentRef;
-    const overlayRef = this.browserOverlayRef;
-
+    this.animateAndDisposeOverlay(this.browserComponentRef, this.browserOverlayRef);
     this.browserComponentRef = null;
     this.browserOverlayRef = null;
-
-    if (compRef) {
-      compRef.location.nativeElement.classList.add('slide-overlay-leave');
-    }
-    if (overlayRef) {
-      setTimeout(() => {
-        overlayRef.dispose();
-      }, 200);
-    }
   }
 
-  private setupBrowseListener(): void {
-    this.eventListenersService
-      .listenToOpenInternalRoute()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (remoteName: string) => {
-          console.debug(`📂 Browse event received for remote: ${remoteName}`);
-          this.openForRemote(remoteName);
-        },
-        error: error => console.error('Browse in app event error:', error),
-      });
-  }
+  // ========== COLLECTIONS ==========
 
-  private createRequestId(): string {
-    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-      return crypto.randomUUID();
-    }
-    const suffix = Math.random().toString(36).slice(2, 10);
-    return `picker_${Date.now()}_${suffix}`;
-  }
-
-  // --- Generic Public Methods ---
-
-  /**
-   * Checks if an item exists in a specific collection.
-   */
-  public isSaved(type: CollectionType, remote: string, path: string, isLocal = false): boolean {
-    const list = this.collections[type].signal();
-    // Normalize remote string using centralized service
+  isSaved(type: CollectionType, remote: string, path: string, isLocal = false): boolean {
     const cleanRemote = this.pathSelectionService.normalizeRemoteName(remote, isLocal);
-    return list.some(
-      i =>
-        this.pathSelectionService.normalizeRemoteName(i.meta?.remote, i.meta?.isLocal) ===
-          cleanRemote && i.entry.Path === path
-    );
+    return this.collectionConfig[type]
+      .signal()
+      .some(
+        i =>
+          this.pathSelectionService.normalizeRemoteName(i.meta?.remote, i.meta?.isLocal) ===
+            cleanRemote && i.entry.Path === path
+      );
   }
 
-  /**
-   * Toggles an item in a collection.
-   * Handles Add/Remove automatically.
-   */
-  public toggleItem(type: CollectionType, item: FileBrowserItem): void {
-    const config = this.collections[type];
+  toggleItem(type: CollectionType, item: FileBrowserItem): void {
+    const config = this.collectionConfig[type];
 
-    // 1. Validation: Check folder restriction
     if (!config.allowFiles && !item.entry.IsDir) {
-      console.warn(`Cannot add file to ${type} collection`);
+      console.warn(`Cannot add a file to the ${type} collection`);
       return;
     }
 
-    // 2. FUTURE-PROOFING: Normalize the remote name here (single source of truth)
-    // Ensure the incoming item's meta.remote is normalized correctly.
-    if (item?.meta?.remote && typeof item.meta.remote === 'string') {
-      item.meta.remote = this.pathSelectionService.normalizeRemoteName(
-        item.meta.remote,
-        item.meta.isLocal
-      );
-    }
-
+    const normalizedRemote = this.pathSelectionService.normalizeRemoteName(
+      item.meta?.remote ?? '',
+      item.meta?.isLocal
+    );
     const list = config.signal();
-    const isPresent = this.isSaved(type, item.meta.remote, item.entry.Path, item.meta.isLocal);
-    let newList: FileBrowserItem[];
+    const isPresent = this.isSaved(type, normalizedRemote, item.entry.Path, item.meta?.isLocal);
 
-    if (isPresent) {
-      // Remove matching items. Compare normalized remote names using centralized logic.
-      newList = list.filter(
-        i =>
-          !(
-            this.pathSelectionService.normalizeRemoteName(i.meta?.remote, i.meta?.isLocal) ===
-              this.pathSelectionService.normalizeRemoteName(
-                item.meta?.remote,
-                item.meta?.isLocal
-              ) && i.entry.Path === item.entry.Path
-          )
-      );
-    } else {
-      // Add: store a normalized copy to guarantee consistency in persisted data.
-      const itemToSave: FileBrowserItem = {
-        ...item,
-        meta: {
-          ...(item.meta || {}),
-          remote: this.pathSelectionService.normalizeRemoteName(
-            item.meta?.remote || '',
-            item.meta?.isLocal
-          ),
-        },
-      };
-      newList = [...list, itemToSave];
-    }
+    const newList = isPresent
+      ? list.filter(
+          i =>
+            !(
+              this.pathSelectionService.normalizeRemoteName(i.meta?.remote, i.meta?.isLocal) ===
+                normalizedRemote && i.entry.Path === item.entry.Path
+            )
+        )
+      : [...list, { ...item, meta: { ...item.meta, remote: normalizedRemote } }];
 
-    // Update State & Persist
     config.signal.set(newList);
     this.saveCollection(type, newList);
   }
 
-  // --- Internal Helpers ---
+  // ========== PRIVATE HELPERS ==========
+
+  private parseNautilusLocation(
+    urlParams: URLSearchParams,
+    pathName: string,
+    hash: string
+  ): { remoteName: string | null; remotePath: string | null } {
+    const fromSegments = (input: string) => {
+      const [first, ...rest] = input.split('/').filter(Boolean);
+      return {
+        remoteName: first ? decodeURIComponent(first) : null,
+        remotePath: rest.length ? decodeURIComponent(rest.join('/')) : null,
+      };
+    };
+
+    if (pathName.includes('/nautilus')) {
+      const result = fromSegments(
+        pathName.slice(pathName.indexOf('/nautilus') + '/nautilus'.length)
+      );
+      if (result.remoteName) return result;
+    }
+
+    if (hash.startsWith('#/nautilus')) {
+      const result = fromSegments(hash.slice('#/nautilus'.length));
+      if (result.remoteName) return result;
+    }
+
+    const browseRemote = urlParams.get('browse');
+    if (browseRemote) {
+      return { remoteName: browseRemote, remotePath: urlParams.get('path') };
+    }
+
+    return { remoteName: null, remotePath: null };
+  }
+
+  private setupBrowseListener(): void {
+    this.eventListenersService
+      .listenToBrowse()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (path: string) => {
+          console.log('Browse in app event:', path);
+          if (path) this.targetPath.set(path);
+        },
+        error: (error: unknown) => console.error('Browse in app event error:', error),
+      });
+  }
 
   private async loadCollection(type: CollectionType): Promise<void> {
-    const config = this.collections[type];
+    const config = this.collectionConfig[type];
     try {
       const fullKey = `${config.category}.${config.key}`;
       let rawItems = (await this.appSettingsService.getSettingValue<unknown[]>(fullKey)) ?? [];
-      if (!Array.isArray(rawItems)) {
-        rawItems = [];
-      }
+      if (!Array.isArray(rawItems)) rawItems = [];
+
       const items: FileBrowserItem[] = rawItems.map((item: unknown) => {
         const rec = item as Record<string, unknown>;
         if (rec && 'remote' in rec && 'entry' in rec) {
@@ -412,80 +393,65 @@ export class NautilusService extends TauriBaseService {
             },
           };
         }
-        // Otherwise assume item is already in the new composed FileBrowserItem format
         return rec as unknown as FileBrowserItem;
       });
-      // Simple validation to ensure data integrity
-      const validItems = items.filter(i => i.meta?.remote && i.entry?.Path);
-      config.signal.set(validItems);
+
+      config.signal.set(items.filter(i => i.meta?.remote && i.entry?.Path));
     } catch (e) {
       console.warn(`Failed to load ${type}`, e);
     }
   }
 
   private saveCollection(type: CollectionType, items: FileBrowserItem[]): void {
-    const config = this.collections[type];
-    this.appSettingsService.saveSetting(config.category, config.key, items);
+    const { category, key } = this.collectionConfig[type];
+    this.appSettingsService.saveSetting(category, key, items);
   }
 
-  /**
-   * Creates the full-screen Nautilus browser overlay.
-   */
-  private createBrowserOverlay(showAnimation = true): void {
-    this.browserOverlayRef = this.overlay.create({
+  private createNautilusOverlay(
+    onClose: () => void,
+    showAnimation = true
+  ): { overlayRef: OverlayRef; componentRef: ComponentRef<NautilusComponent> } {
+    const overlayRef = this.overlay.create({
       positionStrategy: this.overlay.position().global().centerHorizontally().centerVertically(),
       scrollStrategy: this.overlay.scrollStrategies.block(),
     });
 
-    const portal = new ComponentPortal(NautilusComponent);
-    const componentRef: ComponentRef<NautilusComponent> = this.browserOverlayRef.attach(portal);
-    this.browserComponentRef = componentRef;
+    const componentRef = overlayRef.attach(new ComponentPortal(NautilusComponent));
 
-    // Skip entrance animation for deep links / URL parameters
     if (showAnimation) {
       componentRef.location.nativeElement.classList.add('slide-overlay-enter');
     }
 
-    outputToObservable(componentRef.instance.closeOverlay)
-      .pipe(take(1))
-      .subscribe(() => {
-        this.closeBrowser();
-      });
+    outputToObservable(componentRef.instance.closeOverlay).pipe(take(1)).subscribe(onClose);
+    overlayRef.backdropClick().pipe(take(1)).subscribe(onClose);
 
-    this.browserOverlayRef
-      .backdropClick()
-      .pipe(take(1))
-      .subscribe(() => {
-        this.closeBrowser();
-      });
+    return { overlayRef, componentRef };
   }
 
-  /**
-   * Creates the file picker modal overlay (can be opened over the browser).
-   */
+  private createBrowserOverlay(showAnimation = true): void {
+    const { overlayRef, componentRef } = this.createNautilusOverlay(
+      () => this.closeBrowser(),
+      showAnimation
+    );
+    this.browserOverlayRef = overlayRef;
+    this.browserComponentRef = componentRef;
+  }
+
   private createPickerOverlay(): void {
-    this.pickerOverlayRef = this.overlay.create({
-      positionStrategy: this.overlay.position().global().centerHorizontally().centerVertically(),
-      scrollStrategy: this.overlay.scrollStrategies.block(),
-    });
-
-    const portal = new ComponentPortal(NautilusComponent);
-    const componentRef: ComponentRef<NautilusComponent> = this.pickerOverlayRef.attach(portal);
+    const { overlayRef, componentRef } = this.createNautilusOverlay(() =>
+      this.closeFilePicker(null)
+    );
+    this.pickerOverlayRef = overlayRef;
     this.pickerComponentRef = componentRef;
+  }
 
-    componentRef.location.nativeElement.classList.add('slide-overlay-enter');
-
-    outputToObservable(componentRef.instance.closeOverlay)
-      .pipe(take(1))
-      .subscribe(() => {
-        this.closeFilePicker(null);
-      });
-
-    this.pickerOverlayRef
-      .backdropClick()
-      .pipe(take(1))
-      .subscribe(() => {
-        this.closeFilePicker(null);
-      });
+  private animateAndDisposeOverlay(
+    componentRef: ComponentRef<unknown> | null,
+    overlayRef: OverlayRef | null
+  ): void {
+    componentRef?.location.nativeElement.classList.add('slide-overlay-leave');
+    if (overlayRef) {
+      setTimeout(() => overlayRef.dispose(), 200);
+    }
   }
 }

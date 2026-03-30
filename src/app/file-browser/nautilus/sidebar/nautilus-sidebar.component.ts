@@ -52,6 +52,10 @@ export class NautilusSidebarComponent {
   // --- Outputs ---
   public readonly remoteSelected = output<ExplorerRoot>();
   public readonly bookmarkOpened = output<FileBrowserItem>();
+  public readonly remoteOpenedInNewTab = output<ExplorerRoot>();
+  public readonly remoteOpenedInNewWindow = output<ExplorerRoot>();
+  public readonly bookmarkOpenedInNewTab = output<FileBrowserItem>();
+  public readonly bookmarkOpenedInNewWindow = output<FileBrowserItem>();
   public readonly starredSelected = output<void>();
   public readonly toggleSearch = output<void>();
   public readonly requestShortcuts = output<void>();
@@ -101,6 +105,26 @@ export class NautilusSidebarComponent {
 
   onOpenBookmark(bm: FileBrowserItem): void {
     this.bookmarkOpened.emit(bm);
+    this._closeSidenavOnMobile();
+  }
+
+  onOpenRemoteInNewTab(remote: ExplorerRoot): void {
+    this.remoteOpenedInNewTab.emit(remote);
+    this._closeSidenavOnMobile();
+  }
+
+  onOpenRemoteInNewWindow(remote: ExplorerRoot): void {
+    this.remoteOpenedInNewWindow.emit(remote);
+    this._closeSidenavOnMobile();
+  }
+
+  onOpenBookmarkInNewTab(bm: FileBrowserItem): void {
+    this.bookmarkOpenedInNewTab.emit(bm);
+    this._closeSidenavOnMobile();
+  }
+
+  onOpenBookmarkInNewWindow(bm: FileBrowserItem): void {
+    this.bookmarkOpenedInNewWindow.emit(bm);
     this._closeSidenavOnMobile();
   }
 

@@ -40,7 +40,7 @@ pub const SCHEDULED_TASKS_CACHE_CHANGED: &str = "scheduled_tasks_cache_changed";
 
 // Application events
 pub const APP_EVENT: &str = "app_event";
-pub const OPEN_INTERNAL_ROUTE: &str = "open_internal_route";
+pub const BROWSE: &str = "browse";
 
 /// List of all events that should be forwarded to SSE clients in headless mode
 pub const SSE_FORWARD_EVENTS: &[&str] = &[
@@ -66,7 +66,7 @@ pub const SSE_FORWARD_EVENTS: &[&str] = &[
     NETWORK_STATUS_CHANGED,
     SCHEDULED_TASKS_CACHE_CHANGED,
     APP_EVENT,
-    OPEN_INTERNAL_ROUTE,
+    BROWSE,
 ];
 
 /// Strongly typed payload for settings change events

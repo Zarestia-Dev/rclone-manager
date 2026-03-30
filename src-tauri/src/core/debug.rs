@@ -49,13 +49,8 @@ pub fn get_debug_info(app: AppHandle) -> Result<DebugInfo, String> {
 /// Open WebView developer tools
 #[tauri::command]
 #[cfg(not(feature = "web-server"))]
-pub fn open_devtools(app: AppHandle) -> Result<String, String> {
-    use tauri::Manager;
-    if let Some(window) = app.get_webview_window("main") {
-        window.open_devtools();
-        log::debug!("🔧 Opened DevTools");
-        Ok("DevTools opened".to_string())
-    } else {
-        Err("Main window not found".to_string())
-    }
+pub fn open_devtools(window: tauri::WebviewWindow) -> Result<String, String> {
+    window.open_devtools();
+    log::debug!("🔧 Opened DevTools for window: {}", window.label());
+    Ok("DevTools opened".to_string())
 }

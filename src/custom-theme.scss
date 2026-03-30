@@ -1060,9 +1060,9 @@ mat-accordion {
 .material-context-menu {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xxs);
-  min-width: 200px;
-  max-width: 300px;
+  gap: 2px;
+  min-width: 220px;
+  max-width: 320px;
   overflow-y: auto;
 
   background: var(--popover-bg-color);
@@ -1075,13 +1075,15 @@ mat-accordion {
     all: unset;
     display: flex;
     align-items: center;
-    gap: var(--space-xxs);
+    justify-content: space-between;
+    gap: var(--space-sm);
     box-sizing: border-box;
     overflow: hidden;
     text-overflow: ellipsis;
 
-    width: 100%;
-    min-height: 34px;
+    width: calc(100% - 4px);
+    margin: 0 2px;
+    min-height: 32px;
     padding: var(--space-xxs) var(--space-sm);
 
     font-size: var(--font-size-md);
@@ -1089,14 +1091,42 @@ mat-accordion {
     font-weight: 500;
     color: var(--window-fg-color);
 
-    border-radius: var(--radius-xs);
-    transition: var(--transition-instant);
+    border-radius: 6px;
+    transition: background-color 0.1s ease;
+
+    .item-label {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .shortcut {
+      font-size: var(--font-size-sm);
+      color: var(--dim-color);
+      margin-left: auto;
+    }
+
+    mat-icon {
+      width: 16px;
+      height: 16px;
+      font-size: 16px;
+      color: var(--dim-color);
+      margin-right: -4px;
+    }
 
     &:hover,
     &:focus,
-    &:focus-visible {
+    &:focus-visible,
+    &.cdk-menu-item-highlighted {
       background-color: var(--hover-bg-color);
       outline: none;
+
+      .shortcut {
+        color: var(--window-fg-color);
+      }
     }
 
     &:active {
@@ -1107,6 +1137,11 @@ mat-accordion {
       opacity: 0.4;
       background: transparent;
     }
+  }
+
+  mat-divider {
+    margin: 4px 6px;
+    opacity: 0.5;
   }
 }
 

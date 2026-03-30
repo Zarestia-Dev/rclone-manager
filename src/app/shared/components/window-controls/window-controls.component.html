@@ -1,0 +1,13 @@
+@if (windowButtons()) {
+  @for (control of controls(); track control.label) {
+    <button
+      matIconButton
+      (click)="control.action()"
+      [attr.aria-label]="control.label | translate"
+      [class]="control.class ?? null"
+      data-tauri-drag-region="false"
+    >
+      <mat-icon [svgIcon]="control.icon" aria-hidden="true"></mat-icon>
+    </button>
+  }
+}

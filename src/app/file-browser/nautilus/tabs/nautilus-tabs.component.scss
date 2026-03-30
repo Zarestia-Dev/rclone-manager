@@ -62,9 +62,15 @@
     min-width: 100px;
     margin: 0 2px;
     position: relative;
-    background: transparent;
+    background: rgba(0, 0, 0, 0.01);
     cursor: pointer;
-    transition: var(--transition-fast);
+    user-select: none;
+    -webkit-user-drag: element;
+    transition:
+      var(--transition-fast),
+      transform 150ms ease,
+      flex 200ms ease,
+      min-width 200ms ease;
 
     &::before {
       content: "";
@@ -78,14 +84,12 @@
       transition: opacity 0.15s ease;
     }
 
-    &:first-child::before,
-    &.cdk-drag-placeholder::before {
+    &:first-child::before {
       display: none;
     }
 
     &.active::before,
-    &:hover::before,
-    &.cdk-drag-placeholder + .tab::before {
+    &:hover::before {
       opacity: 0 !important;
     }
 
@@ -107,6 +111,23 @@
       background: rgba(var(--accent-color-rgb), 0.15);
       outline: 2px solid var(--accent-color);
       color: var(--accent-color);
+    }
+
+    &.is-dragging {
+      opacity: 0.35;
+      transition:
+        opacity 120ms ease,
+        transform 150ms ease;
+
+      &.is-outside {
+        opacity: 0;
+        transform: scale(0.5);
+        flex: 0 0 0 !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        pointer-events: none;
+      }
     }
 
     .tab-title {
@@ -150,35 +171,4 @@
       }
     }
   }
-
-  &.cdk-drop-list-dragging .tab:not(.cdk-drag-placeholder) {
-    transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
-  }
-}
-
-.cdk-drag-preview {
-  background: var(--selected-bg-color);
-  display: flex !important;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-xs);
-  padding: var(--space-xs) 44px var(--space-xs) var(--space-sm);
-  box-sizing: border-box;
-
-  .tab-title {
-    color: var(--window-fg-color);
-    font-weight: 600;
-    text-align: center;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .close-tab {
-    display: none !important;
-  }
-}
-
-.cdk-drag-animating {
-  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
 }

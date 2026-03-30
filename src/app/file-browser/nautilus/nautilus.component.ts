@@ -1,4 +1,3 @@
-// This file is responsible for the main file browsing interface, acting as a real file explorer.
 // It handles tabs, split-view navigation, and rich file operations.
 import {
   Component,
@@ -55,9 +54,9 @@ import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
 import { isLocalPath } from 'src/app/services/remote/utils/remote-config.utils';
 
 import { InputModalComponent } from 'src/app/shared/modals/input-modal/input-modal.component';
-import { RemoteAboutModalComponent } from '../../../modals/remote/remote-about-modal.component';
-import { PropertiesModalComponent } from '../../../modals/properties/properties-modal.component';
-import { KeyboardShortcutsModalComponent } from '../../../modals/settings/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component';
+import { RemoteAboutModalComponent } from '../../features/modals/remote/remote-about-modal.component';
+import { PropertiesModalComponent } from '../../features/modals/properties/properties-modal.component';
+import { KeyboardShortcutsModalComponent } from '../../features/modals/settings/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component';
 import { NautilusSidebarComponent } from './sidebar/nautilus-sidebar.component';
 import { NautilusToolbarComponent } from './toolbar/nautilus-toolbar.component';
 import { NautilusTabsComponent } from './tabs/nautilus-tabs.component';
@@ -65,7 +64,6 @@ import { NautilusViewPaneComponent } from './view-pane/nautilus-view-pane.compon
 import { NautilusBottomBarComponent } from './bottom-bar/nautilus-bottom-bar.component';
 import { TabItem } from './tabs/nautilus-tabs.component';
 
-// --- Interfaces ---
 interface PaneState {
   remote: ExplorerRoot | null;
   path: string;
@@ -156,16 +154,14 @@ const DEFAULT_PICKER_OPTIONS: FilePickerConfig = {
   styleUrl: './nautilus.component.scss',
 })
 export class NautilusComponent implements OnInit {
-  // --- Constants ---
   private static readonly HOVER_OPEN_DELAY_MS = 1000;
   private static readonly MAX_UNDO_STACK = 20;
   private readonly LIST_ICON_SIZES = [16, 24, 32, 48];
   private readonly GRID_ICON_SIZES = [48, 64, 96, 128, 160, 256];
 
-  // --- Services ---
   private readonly destroyRef = inject(DestroyRef);
   private readonly translate = inject(TranslateService);
-  public readonly iconService = inject(IconService);
+  protected readonly iconService = inject(IconService);
   private readonly notificationService = inject(NotificationService);
   private readonly nautilusService = inject(NautilusService);
   private readonly remoteOps = inject(RemoteFileOperationsService);
@@ -176,13 +172,10 @@ export class NautilusComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly formatFileSizePipe = inject(FormatFileSizePipe);
 
-  // --- Outputs ---
   public readonly closeOverlay = output<void>();
 
-  // --- View Children ---
   @ViewChild('sidenav') sidenav!: MatSidenav;
 
-  // --- UI State ---
   private readonly _windowWidth = toSignal(
     fromEvent(window, 'resize').pipe(
       map(() => window.innerWidth),
@@ -190,21 +183,20 @@ export class NautilusComponent implements OnInit {
     ),
     { initialValue: window.innerWidth }
   );
-  public readonly isMobile = computed(() => this._windowWidth() < 680);
-  public readonly isSidenavOpen = signal(!this.isMobile());
-  public readonly isDragging = signal(false);
-  public readonly sidenavMode = computed(() => (this.isMobile() ? 'over' : 'side'));
+  protected readonly isMobile = computed(() => this._windowWidth() < 680);
+  protected readonly isSidenavOpen = signal(!this.isMobile());
+  protected readonly isDragging = signal(false);
+  protected readonly sidenavMode = computed(() => (this.isMobile() ? 'over' : 'side'));
   private readonly initialLocationApplied = signal(false);
 
   private readonly _langChange = toSignal(this.translate.onLangChange.pipe(startWith(null)));
 
-  // --- Picker State ---
   private readonly filePickerState = this.nautilusService.filePickerState;
-  public readonly isPickerMode = computed(() => this.filePickerState().isOpen);
-  public readonly pickerOptions = computed(
+  protected readonly isPickerMode = computed(() => this.filePickerState().isOpen);
+  protected readonly pickerOptions = computed(
     (): FilePickerConfig => this.filePickerState().options ?? DEFAULT_PICKER_OPTIONS
   );
-  public readonly isConfirmDisabled = computed(() => {
+  protected readonly isConfirmDisabled = computed(() => {
     if (!this.isPickerMode()) return false;
     const opts = this.pickerOptions();
     const count = this.selectedItems().size;
@@ -212,7 +204,7 @@ export class NautilusComponent implements OnInit {
     return count < (opts.minSelection ?? 0);
   });
 
-  public readonly title = computed(() => {
+  protected readonly title = computed(() => {
     const state = this.filePickerState();
     if (!state.isOpen) return 'nautilus.titles.files';
     const sel = state.options?.selection;
@@ -221,87 +213,80 @@ export class NautilusComponent implements OnInit {
     return 'nautilus.titles.selectItems';
   });
 
-  // --- View Configuration ---
-  public readonly layout = signal<'grid' | 'list'>('grid');
-  public readonly showHidden = signal(false);
+  protected readonly layout = signal<'grid' | 'list'>('grid');
+  protected readonly showHidden = signal(false);
 
   private readonly _sortColumn = signal<'name' | 'size' | 'modified'>('name');
   private readonly _sortAscending = signal(true);
-  public readonly sortKey = computed(
+  protected readonly sortKey = computed(
     () => `${this._sortColumn()}-${this._sortAscending() ? 'asc' : 'desc'}`
   );
-  public readonly sortDirection = computed(() => (this._sortAscending() ? 'asc' : 'desc'));
+  protected readonly sortDirection = computed(() => (this._sortAscending() ? 'asc' : 'desc'));
 
-  public readonly starredMode = computed(
+  protected readonly starredMode = computed(
     () => this.nautilusRemote() === null && this.currentPath() === ''
   );
-  public readonly starredModeRight = computed(
+  protected readonly starredModeRight = computed(
     () => this.nautilusRemoteRight() === null && this.currentPathRight() === ''
   );
-  public readonly activeStarredMode = computed(() =>
+  protected readonly activeStarredMode = computed(() =>
     this.activePaneIndex() === 0 ? this.starredMode() : this.starredModeRight()
   );
 
   private readonly savedGridIconSize = signal<number | null>(null);
   private readonly savedListIconSize = signal<number | null>(null);
-  public readonly iconSize = signal(96);
+  protected readonly iconSize = signal(96);
 
   private readonly currentIconSizes = computed(() =>
     this.layout() === 'list' ? this.LIST_ICON_SIZES : this.GRID_ICON_SIZES
   );
 
-  public readonly listRowHeight = computed(() => this.iconSize() + 16);
+  protected readonly listRowHeight = computed(() => this.iconSize() + 16);
 
-  // --- Drag State ---
-  public readonly hoveredTabIndex = signal<number | null>(null);
-  public readonly hoveredSidebarItem = signal<string | null>(null);
-  public readonly hoveredFolder = signal<FileBrowserItem | null>(null);
-  public readonly hoveredSegmentIndex = signal<number | null>(null);
+  protected readonly hoveredTabIndex = signal<number | null>(null);
+  protected readonly hoveredSidebarItem = signal<string | null>(null);
+  protected readonly hoveredFolder = signal<FileBrowserItem | null>(null);
+  protected readonly hoveredSegmentIndex = signal<number | null>(null);
   private _lastDragHitKey = '';
+  private _dragCounter = 0;
   private _hoverOpenTimer: ReturnType<typeof setTimeout> | null = null;
   private _hoverOpenKey = '';
   private _draggedItems: FileBrowserItem[] = [];
 
-  // --- Navigation State (Left Pane / Primary) ---
-  public readonly nautilusRemote = signal<ExplorerRoot | null>(null);
-  public readonly currentPath = signal<string>('');
+  protected readonly nautilusRemote = signal<ExplorerRoot | null>(null);
+  protected readonly currentPath = signal<string>('');
   private readonly refreshTrigger = signal(0);
-  public readonly rawFiles = signal<FileBrowserItem[]>([]);
-  public readonly errorState = signal<string | null>(null);
-  public readonly isLoading = signal(false);
+  protected readonly rawFiles = signal<FileBrowserItem[]>([]);
+  protected readonly errorState = signal<string | null>(null);
+  protected readonly isLoading = signal(false);
 
-  // --- Navigation State (Right Pane / Split) ---
-  public readonly nautilusRemoteRight = signal<ExplorerRoot | null>(null);
-  public readonly currentPathRight = signal<string>('');
+  protected readonly nautilusRemoteRight = signal<ExplorerRoot | null>(null);
+  protected readonly currentPathRight = signal<string>('');
   private readonly refreshTriggerRight = signal(0);
-  public readonly isLoadingRight = signal(false);
-  public readonly errorStateRight = signal<string | null>(null);
-  public readonly rawFilesRight = signal<FileBrowserItem[]>([]);
+  protected readonly isLoadingRight = signal(false);
+  protected readonly errorStateRight = signal<string | null>(null);
+  protected readonly rawFilesRight = signal<FileBrowserItem[]>([]);
 
-  // --- Selection ---
-  public readonly selectedItems = signal<Set<string>>(new Set());
-  public readonly selectedItemsRight = signal<Set<string>>(new Set());
+  protected readonly selectedItems = signal<Set<string>>(new Set());
+  protected readonly selectedItemsRight = signal<Set<string>>(new Set());
   private lastSelectedIndex: number | null = null;
 
-  // --- Clipboard ---
-  public readonly clipboardItems = signal<
+  protected readonly clipboardItems = signal<
     { remote: string; path: string; name: string; isDir: boolean }[]
   >([]);
-  public readonly clipboardMode = signal<'copy' | 'cut' | null>(null);
-  public readonly hasClipboard = computed(() => this.clipboardItems().length > 0);
-  public readonly cutItemPaths = computed(() => {
+  protected readonly clipboardMode = signal<'copy' | 'cut' | null>(null);
+  protected readonly hasClipboard = computed(() => this.clipboardItems().length > 0);
+  protected readonly cutItemPaths = computed(() => {
     if (this.clipboardMode() !== 'cut') return new Set<string>();
     return new Set(this.clipboardItems().map(item => `${item.remote}:${item.path}`));
   });
 
-  // --- Undo / Redo ---
   private readonly _undoStack = signal<UndoEntry[]>([]);
   private readonly _redoStack = signal<UndoEntry[]>([]);
-  public readonly canUndo = computed(() => this._undoStack().length > 0);
-  public readonly canRedo = computed(() => this._redoStack().length > 0);
+  protected readonly canUndo = computed(() => this._undoStack().length > 0);
+  protected readonly canRedo = computed(() => this._redoStack().length > 0);
 
-  // --- Path Segments ---
-  public readonly pathSegments = computed(() => {
+  protected readonly pathSegments = computed(() => {
     const path = this.activePath();
     if (!path) return [];
     const parts = path.split('/').filter(Boolean);
@@ -311,71 +296,67 @@ export class NautilusComponent implements OnInit {
     }));
   });
 
-  public readonly isEditingPath = signal(false);
-  public readonly isSearchMode = signal(false);
-  public readonly searchFilter = signal('');
+  protected readonly isEditingPath = signal(false);
+  protected readonly isSearchMode = signal(false);
+  protected readonly searchFilter = signal('');
 
-  // --- Tabs ---
   private interfaceTabCounter = 0;
-  public readonly tabs = signal<Tab[]>([]);
-  public readonly activeTabIndex = signal(0);
+  protected readonly tabs = signal<Tab[]>([]);
+  protected readonly activeTabIndex = signal(0);
 
-  public readonly mappedTabs = computed((): TabItem[] =>
+  protected readonly mappedTabs = computed((): TabItem[] =>
     this.tabs().map(tab => ({
       id: tab.id,
       title: tab.title,
       path: tab.left.path,
-      remote: tab.left.remote ? { label: tab.left.remote.label } : null,
+      remote: tab.left.remote ? { name: tab.left.remote.name, label: tab.left.remote.label } : null,
     }))
   );
 
-  // --- Active Pane Computeds ---
-  public readonly activePaneIndex = signal<0 | 1>(0);
-  public readonly activeRemote = computed(() =>
+  protected readonly activePaneIndex = signal<0 | 1>(0);
+  protected readonly activeRemote = computed(() =>
     this.activePaneIndex() === 0 ? this.nautilusRemote() : this.nautilusRemoteRight()
   );
-  public readonly activePath = computed(() =>
+  protected readonly activePath = computed(() =>
     this.activePaneIndex() === 0 ? this.currentPath() : this.currentPathRight()
   );
-  public readonly activeFiles = computed(() =>
+  protected readonly activeFiles = computed(() =>
     this.activePaneIndex() === 0 ? this.files() : this.filesRight()
   );
-  public readonly activeIsLoading = computed(() =>
+  protected readonly activeIsLoading = computed(() =>
     this.activePaneIndex() === 0 ? this.isLoading() : this.isLoadingRight()
   );
-  public readonly activeErrorState = computed(() =>
+  protected readonly activeErrorState = computed(() =>
     this.activePaneIndex() === 0 ? this.errorState() : this.errorStateRight()
   );
 
-  public readonly bottomBarOffset = computed(() =>
+  protected readonly bottomBarOffset = computed(() =>
     this.isMobile() || this.isPickerMode() ? '64px' : '4px'
   );
 
-  public readonly canGoBack = computed(() => {
+  protected readonly canGoBack = computed(() => {
     const tab = this.tabs()[this.activeTabIndex()];
     if (!tab) return false;
     const pane = this.activePaneIndex() === 0 ? tab.left : tab.right;
     return pane ? pane.historyIndex > 0 : false;
   });
-  public readonly canGoForward = computed(() => {
+  protected readonly canGoForward = computed(() => {
     const tab = this.tabs()[this.activeTabIndex()];
     if (!tab) return false;
     const pane = this.activePaneIndex() === 0 ? tab.left : tab.right;
     return pane ? pane.historyIndex < pane.history.length - 1 : false;
   });
 
-  // --- Split System ---
-  public readonly splitDividerPos = signal(50);
-  public readonly isSplitEnabled = computed(() => !!this.tabs()[this.activeTabIndex()]?.right);
+  protected readonly splitDividerPos = signal(50);
+  protected readonly isSplitEnabled = computed(() => !!this.tabs()[this.activeTabIndex()]?.right);
 
-  public readonly splitGridColumns = computed(() =>
+  protected readonly splitGridColumns = computed(() =>
     this.isSplitEnabled() ? `${this.splitDividerPos()}% 0.5rem 1fr` : '1fr'
   );
 
-  // --- Data ---
-  public readonly bookmarks = this.nautilusService.bookmarks;
+  protected readonly bookmarks = this.nautilusService.bookmarks;
 
-  public readonly filteredBookmarks = computed(() => {
+  protected readonly filteredBookmarks = computed(() => {
     const marks = this.bookmarks();
     if (!this.isPickerMode()) return marks;
     const cfg = this.pickerOptions();
@@ -391,13 +372,13 @@ export class NautilusComponent implements OnInit {
     });
   });
 
-  public readonly localDrives = computed<ExplorerRoot[]>(() => {
+  protected readonly localDrives = computed<ExplorerRoot[]>(() => {
     const drives = this.nautilusService.localDrives();
     if (this.isPickerMode() && this.pickerOptions().mode === 'remote') return [];
     return drives;
   });
 
-  public readonly cloudRemotes = computed<ExplorerRoot[]>(() => {
+  protected readonly cloudRemotes = computed<ExplorerRoot[]>(() => {
     let list = this.nautilusService.cloudRemotes();
     if (this.isPickerMode() && this.pickerOptions().mode === 'local') return [];
     const allowed = this.pickerOptions().allowedRemotes;
@@ -407,12 +388,12 @@ export class NautilusComponent implements OnInit {
     return list;
   });
 
-  public readonly allRemotesLookup = computed(() => [
+  protected readonly allRemotesLookup = computed(() => [
     ...this.localDrives(),
     ...this.cloudRemotes(),
   ]);
 
-  public readonly fullPathInput = computed(() => {
+  protected readonly fullPathInput = computed(() => {
     if (this.activeStarredMode()) return '';
     const remote = this.activeRemote();
     const path = this.activePath();
@@ -425,8 +406,6 @@ export class NautilusComponent implements OnInit {
     const cleanPath = path.startsWith('/') ? path.substring(1) : path;
     return path ? `${prefix}${cleanPath}` : prefix;
   });
-
-  // --- File Data Pipeline ---
 
   private getPaneFiles(paneIndex: number): FileBrowserItem[] {
     const isStarred = paneIndex === 0 ? this.starredMode() : this.starredModeRight();
@@ -466,8 +445,8 @@ export class NautilusComponent implements OnInit {
     return this.sortFiles(files);
   }
 
-  public readonly files = computed(() => this.getPaneFiles(0));
-  public readonly filesRight = computed(() => this.getPaneFiles(1));
+  protected readonly files = computed(() => this.getPaneFiles(0));
+  protected readonly filesRight = computed(() => this.getPaneFiles(1));
 
   private sortFiles(files: FileBrowserItem[]): FileBrowserItem[] {
     const list = [...files];
@@ -507,7 +486,7 @@ export class NautilusComponent implements OnInit {
     });
   }
 
-  public readonly visiblePanes = computed((): PaneViewModel[] => {
+  protected readonly visiblePanes = computed((): PaneViewModel[] => {
     const left: PaneViewModel = {
       index: 0,
       files: this.files(),
@@ -530,10 +509,9 @@ export class NautilusComponent implements OnInit {
     ];
   });
 
-  // --- Context Menu & Sort Options ---
-  public readonly contextMenuItem = signal<FileBrowserItem | null>(null);
+  protected readonly contextMenuItem = signal<FileBrowserItem | null>(null);
 
-  public readonly sortOptions = [
+  protected readonly sortOptions = [
     { key: 'name-asc', label: 'nautilus.sort.az' },
     { key: 'name-desc', label: 'nautilus.sort.za' },
     { key: 'modified-desc', label: 'nautilus.sort.lastModified' },
@@ -546,7 +524,7 @@ export class NautilusComponent implements OnInit {
    * Reactive selection summary. Tracks `_langChange` so this re-evaluates
    * whenever the active language switches (translate.instant is not observable).
    */
-  public readonly selectionSummary = computed(() => {
+  protected readonly selectionSummary = computed(() => {
     this._langChange(); // reactive dependency — re-run on language change
 
     const selectedPaths = this.selectedItems();
@@ -599,6 +577,10 @@ export class NautilusComponent implements OnInit {
     this.subscribeToSettings();
     this.loadFilesForPane(0);
     this.loadFilesForPane(1);
+
+    this.destroyRef.onDestroy(() => {
+      this.nautilusService.setWindowTitle('RClone Manager');
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -744,6 +726,74 @@ export class NautilusComponent implements OnInit {
         });
       }
     });
+
+    // URL Sync Effect (Sync navigate to URL path for Neat URLs)
+    effect(() => {
+      if (this.isPickerMode()) return;
+
+      const remote = this.activeRemote();
+      const path = this.activePath();
+      const isOpen = this.nautilusService.isNautilusOverlayOpen();
+      const isStandalone = this.nautilusService.isStandaloneWindow();
+
+      untracked(() => {
+        let newPath = '/';
+
+        // Only set nautilus path if we are actually in nautilus (overlay open or standalone window)
+        if (isOpen || isStandalone) {
+          if (remote) {
+            const encodedRemote = encodeURIComponent(remote.name);
+            const segmentPath = path ? `/${path}` : '';
+            newPath = `/nautilus/${encodedRemote}${segmentPath}`;
+          } else {
+            newPath = '/nautilus';
+          }
+        }
+
+        // Only update if it actually changed
+        const currentPath = window.location.pathname;
+        if (currentPath !== newPath) {
+          const newUrl = newPath + window.location.search;
+          window.history.replaceState(null, '', newUrl);
+        }
+      });
+    });
+
+    // Window Title Effect: Updates the window title (browser or Tauri) based on active location.
+    effect(() => {
+      const isPicker = this.isPickerMode();
+      const remote = this.activeRemote();
+      const path = this.activePath();
+      const starred = this.activeStarredMode();
+
+      // Explicitly react to language changes.
+      this._langChange();
+
+      const appSuffix = 'RClone Browser';
+      let segment: string;
+
+      if (isPicker) {
+        segment = this.translate.instant(this.title());
+      } else if (starred) {
+        segment = this.translate.instant('nautilus.titles.starred');
+      } else if (remote) {
+        const remoteLabel = this.translate.instant(remote.label || remote.name);
+        if (path) {
+          const lastSegment = path.split('/').filter(Boolean).pop() || path;
+          segment = lastSegment;
+        } else {
+          segment = remoteLabel;
+        }
+      } else {
+        // If at root level with no remote selected
+        segment = this.translate.instant('nautilus.titles.files');
+      }
+
+      // Always manage the title if we have a segment.
+      const fullTitle = segment ? `${segment} - ${appSuffix}` : appSuffix;
+
+      this.nautilusService.setWindowTitle(fullTitle);
+    });
   }
 
   private async setupInitialTab(): Promise<void> {
@@ -826,7 +876,7 @@ export class NautilusComponent implements OnInit {
     );
     if (driveMatch) {
       const remaining = normalized.substring(driveMatch.name.length);
-      const cleanPath = remaining.startsWith('/') ? remaining.substring(1) : remaining;
+      const cleanPath = remaining.replace(/^[/:]+/, '');
       return { remote: driveMatch, path: cleanPath };
     }
 
@@ -850,6 +900,12 @@ export class NautilusComponent implements OnInit {
     if (normalized.startsWith('/')) {
       const root = known.find(r => r.name === '/');
       if (root) return { remote: root, path: normalized.substring(1) };
+    }
+
+    // Bare Remote Name Match (fallback)
+    const exactRemoteMatch = known.find(r => r.name === normalized || r.name === rawInput);
+    if (exactRemoteMatch) {
+      return { remote: exactRemoteMatch, path: '' };
     }
 
     return null;
@@ -898,8 +954,6 @@ export class NautilusComponent implements OnInit {
     return true;
   }
 
-  // --- Drag & Drop ---
-
   private getItemsToProcess(draggedItem: FileBrowserItem): FileBrowserItem[] {
     const currentSelected = this.selectedItems();
     if (currentSelected.has(this.getItemKey(draggedItem))) {
@@ -924,6 +978,7 @@ export class NautilusComponent implements OnInit {
 
   onDragEnded(): void {
     this.isDragging.set(false);
+    this._dragCounter = 0;
     this._lastDragHitKey = '';
     this._clearHoverOpenTimer();
     this._draggedItems = [];
@@ -933,9 +988,39 @@ export class NautilusComponent implements OnInit {
   }
 
   onDragOver(event: DragEvent): void {
+    if (event.dataTransfer?.types.includes('application/x-nautilus-tab')) {
+      return;
+    }
+
     event.preventDefault();
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
     this._onDragMove({ x: event.clientX, y: event.clientY });
+  }
+
+  onContainerDragEnter(_event: DragEvent): void {
+    this._dragCounter++;
+    if (this._dragCounter === 1) {
+      if (!this.isDragging()) {
+        this.isDragging.set(true);
+      }
+    }
+  }
+
+  onContainerDragLeave(_event: DragEvent): void {
+    this._dragCounter--;
+    if (this._dragCounter <= 0) {
+      this._dragCounter = 0;
+      if (this._draggedItems.length === 0) {
+        this.onDragEnded();
+      }
+    }
+  }
+
+  onContainerDrop(_event: DragEvent): void {
+    this._dragCounter = 0;
+    if (this._draggedItems.length === 0) {
+      this.onDragEnded();
+    }
   }
 
   private async processDrop(
@@ -1052,7 +1137,6 @@ export class NautilusComponent implements OnInit {
     await this.processDrop(event, { remote: targetRemote, path: targetPath });
   }
 
-  // --- Bookmarks ---
   toggleBookmark(item: FileBrowserItem): void {
     this.nautilusService.toggleItem('bookmarks', item);
   }
@@ -1076,7 +1160,6 @@ export class NautilusComponent implements OnInit {
     if (this.isMobile()) this.sidenav.close();
   }
 
-  // --- Navigation ---
   selectRemote(remote: ExplorerRoot | null): void {
     if (!remote) return;
     this._navigate(remote, '', true);
@@ -1106,7 +1189,7 @@ export class NautilusComponent implements OnInit {
     this.updatePath(currentPath ? `${currentPath}/${normalized}` : normalized);
   }
 
-  public navigateTo(item: FileBrowserItem, isNewTab = false): void {
+  protected navigateTo(item: FileBrowserItem, isNewTab = false): void {
     const idx = this.activeTabIndex();
     const tab = this.tabs()[idx];
     if (!tab) return;
@@ -1188,7 +1271,6 @@ export class NautilusComponent implements OnInit {
     };
   }
 
-  // --- Tab Management ---
   createTab(remote: ExplorerRoot | null, path = ''): void {
     const id = ++this.interfaceTabCounter;
     const title =
@@ -1241,7 +1323,7 @@ export class NautilusComponent implements OnInit {
     }
   }
 
-  public toggleSplit(): void {
+  protected toggleSplit(): void {
     const idx = this.activeTabIndex();
     const tab = this.tabs()[idx];
     if (!tab) return;
@@ -1277,7 +1359,7 @@ export class NautilusComponent implements OnInit {
     ref.error.set(state.error());
   }
 
-  public switchPane(index: 0 | 1): void {
+  protected switchPane(index: 0 | 1): void {
     if (!this.isSplitEnabled() && index === 1) return;
     this.activePaneIndex.set(index);
   }
@@ -1311,27 +1393,27 @@ export class NautilusComponent implements OnInit {
     document.body.style.userSelect = 'none';
   }
 
-  public closeOtherTabs(index: number): void {
+  protected closeOtherTabs(index: number): void {
     const list = this.tabs();
     if (index < 0 || index >= list.length) return;
     this.tabs.set([list[index]]);
     this.switchTab(0);
   }
 
-  public closeTabsToRight(index: number): void {
+  protected closeTabsToRight(index: number): void {
     const list = this.tabs();
     if (index < 0 || index >= list.length) return;
     this.tabs.set(list.slice(0, index + 1));
     if (this.activeTabIndex() > index) this.switchTab(index);
   }
 
-  public duplicateTab(index: number): void {
+  protected duplicateTab(index: number): void {
     const tab = this.tabs()[index];
     if (!tab) return;
     this.createTab(tab.left.remote, tab.left.path);
   }
 
-  public moveTab(previousIndex: number, currentIndex: number): void {
+  protected moveTab(previousIndex: number, currentIndex: number): void {
     this.tabs.update(list => {
       const newList = [...list];
       const [item] = newList.splice(previousIndex, 1);
@@ -1379,7 +1461,6 @@ export class NautilusComponent implements OnInit {
     this.traverseHistory(1);
   }
 
-  // --- Interactions ---
   refresh(): void {
     this.getPaneRef(this.activePaneIndex()).refreshTrigger.update(v => v + 1);
   }
@@ -1452,6 +1533,12 @@ export class NautilusComponent implements OnInit {
       console.warn('Could not resolve ExplorerRoot for item', item);
       this.notificationService.showError(this.translate.instant('fileBrowser.resolveRemoteFailed'));
     }
+  }
+
+  openContextMenuOpenInNewWindow(): void {
+    const item = this.contextMenuItem();
+    if (!item?.entry.IsDir) return;
+    this.nautilusService.detachTab(item.meta.remote, item.entry.Path);
   }
 
   openContextMenuCopyPath(): void {
@@ -1626,7 +1713,49 @@ export class NautilusComponent implements OnInit {
     }
   }
 
-  public openShortcutsModal(): void {
+  openRemoteInNewTab(remote: ExplorerRoot): void {
+    this.createTab(remote, '');
+  }
+
+  openRemoteInNewWindow(remote: ExplorerRoot): void {
+    this.nautilusService.detachTab(remote.name, '');
+  }
+
+  openBookmarkInNewTab(bookmark: FileBrowserItem): void {
+    const remoteDetails = this.allRemotesLookup().find(
+      r =>
+        this.pathSelectionService.normalizeRemoteName(r.name) ===
+        this.pathSelectionService.normalizeRemoteName(bookmark.meta.remote)
+    );
+    if (!remoteDetails) {
+      this.notificationService.showError(
+        this.translate.instant('nautilus.errors.bookmarkRemoteNotFound', {
+          remote: bookmark.meta.remote,
+        })
+      );
+      return;
+    }
+    this.createTab(remoteDetails, bookmark.entry.Path);
+  }
+
+  openBookmarkInNewWindow(bookmark: FileBrowserItem): void {
+    const remoteDetails = this.allRemotesLookup().find(
+      r =>
+        this.pathSelectionService.normalizeRemoteName(r.name) ===
+        this.pathSelectionService.normalizeRemoteName(bookmark.meta.remote)
+    );
+    if (!remoteDetails) {
+      this.notificationService.showError(
+        this.translate.instant('nautilus.errors.bookmarkRemoteNotFound', {
+          remote: bookmark.meta.remote,
+        })
+      );
+      return;
+    }
+    this.nautilusService.detachTab(remoteDetails.name, bookmark.entry.Path);
+  }
+
+  protected openShortcutsModal(): void {
     this.dialog.open(KeyboardShortcutsModalComponent, {
       ...STANDARD_MODAL_SIZE,
       data: { nautilus: true },
@@ -1698,7 +1827,6 @@ export class NautilusComponent implements OnInit {
     this.refresh();
   }
 
-  // --- Clipboard Operations ---
   private prepareClipboardItems(mode: 'copy' | 'cut'): void {
     const selected = this.getSelectedItemsList();
     if (selected.length === 0) return;
@@ -1713,15 +1841,15 @@ export class NautilusComponent implements OnInit {
     this.clipboardMode.set(mode);
   }
 
-  public copyItems(): void {
+  protected copyItems(): void {
     this.prepareClipboardItems('copy');
   }
 
-  public cutItems(): void {
+  protected cutItems(): void {
     this.prepareClipboardItems('cut');
   }
 
-  public async pasteItems(): Promise<void> {
+  protected async pasteItems(): Promise<void> {
     const clipboardData = this.clipboardItems();
     const mode = this.clipboardMode();
     const dstRemote = this.activeRemote();
@@ -1845,7 +1973,6 @@ export class NautilusComponent implements OnInit {
     }
   }
 
-  // --- Undo / Redo ---
   async undoLastOperation(): Promise<void> {
     const stack = this._undoStack();
     if (stack.length === 0) return;
@@ -1930,7 +2057,7 @@ export class NautilusComponent implements OnInit {
     }
   }
 
-  public clearClipboard(): void {
+  protected clearClipboard(): void {
     this.clipboardItems.set([]);
     this.clipboardMode.set(null);
   }
@@ -1978,7 +2105,6 @@ export class NautilusComponent implements OnInit {
     this.refresh();
   }
 
-  // --- Utilities ---
   formatRelativeDate(dateString: string): string {
     if (!dateString) return '';
     return new Date(dateString).toLocaleDateString(undefined, {
@@ -1990,7 +2116,7 @@ export class NautilusComponent implements OnInit {
     });
   }
 
-  public getItemKey = (item: FileBrowserItem | null): string => {
+  protected getItemKey = (item: FileBrowserItem | null): string => {
     if (!item) return '';
     return `${item.meta.remote}:${item.entry.Path}`;
   };
@@ -2098,7 +2224,6 @@ export class NautilusComponent implements OnInit {
     return true;
   };
 
-  // --- Icon Size ---
   increaseIconSize(): void {
     this.changeIconSize(1);
   }
@@ -2119,10 +2244,10 @@ export class NautilusComponent implements OnInit {
     this.saveIconSize();
   }
 
-  public readonly increaseIconDisabled = computed(
+  protected readonly increaseIconDisabled = computed(
     () => this.iconSize() >= this.currentIconSizes().at(-1)!
   );
-  public readonly decreaseIconDisabled = computed(
+  protected readonly decreaseIconDisabled = computed(
     () => this.iconSize() <= this.currentIconSizes()[0]
   );
 
@@ -2239,7 +2364,6 @@ export class NautilusComponent implements OnInit {
       });
   }
 
-  // --- Keyboard Shortcuts ---
   @HostListener('window:keydown', ['$event'])
   public async handleKeyDown(event: KeyboardEvent): Promise<void> {
     if (this.dialog.openDialogs.length > 0) {
@@ -2332,11 +2456,21 @@ export class NautilusComponent implements OnInit {
       return true;
     }
 
-    if (event.key === 'Enter' && !isAlt && !isCtrl) {
+    if (event.key === 'Enter' && !isAlt) {
       const selected = this.getSelectedItemsList();
       if (selected.length === 1) {
         event.preventDefault();
-        this.navigateTo(selected[0]);
+        const item = selected[0];
+
+        if (isCtrl) {
+          this.setContextItem(item);
+          this.openContextMenuOpenInNewTab();
+        } else if (isShift) {
+          this.setContextItem(item);
+          this.openContextMenuOpenInNewWindow();
+        } else {
+          this.navigateTo(item);
+        }
         return true;
       }
     }
@@ -2449,8 +2583,6 @@ export class NautilusComponent implements OnInit {
 
     return false;
   }
-
-  // --- Drag Move & Hit Testing ---
 
   private _onDragMove(point: { x: number; y: number }): void {
     const hit = this._resolveDropHit(point);

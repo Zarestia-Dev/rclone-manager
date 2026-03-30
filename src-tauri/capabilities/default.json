@@ -2,11 +2,12 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the main window",
-  "windows": ["main"],
+  "windows": ["main", "nautilus", "nautilus-*"],
   "permissions": [
     "core:event:allow-listen",
     "core:event:allow-unlisten",
     "core:window:default",
+    "core:window:allow-set-title",
     "core:window:allow-start-dragging",
     "core:window:allow-close",
     "core:window:allow-minimize",

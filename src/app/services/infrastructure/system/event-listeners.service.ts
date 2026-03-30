@@ -19,7 +19,7 @@ import {
   RCLONE_ENGINE_PATH_ERROR,
   RCLONE_ENGINE_UPDATING,
   RCLONE_PASSWORD_STORED,
-  OPEN_INTERNAL_ROUTE,
+  BROWSE,
   SYSTEM_SETTINGS_CHANGED,
   SCHEDULED_TASKS_CACHE_CHANGED,
   REMOTE_SETTINGS_CHANGED,
@@ -151,8 +151,10 @@ export class EventListenersService extends TauriBaseService {
   /**
    * Listen to open internal route events from tray menu
    */
-  listenToOpenInternalRoute(): Observable<string> {
-    return this.listenToEvent<string>(OPEN_INTERNAL_ROUTE);
+  listenToBrowse(): Observable<string> {
+    const asd = this.listenToEvent<string>(BROWSE);
+    console.log('asd', asd);
+    return asd;
   }
 
   /**

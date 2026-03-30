@@ -38,7 +38,7 @@ export const SCHEDULED_TASKS_CACHE_CHANGED = 'scheduled_tasks_cache_changed';
 
 // Application events
 export const APP_EVENT = 'app_event';
-export const OPEN_INTERNAL_ROUTE = 'open_internal_route';
+export const BROWSE = 'browse';
 
 /**
  * Strongly typed payload for settings change events

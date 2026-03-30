@@ -36,7 +36,7 @@ pub fn show_main_window(app: AppHandle) {
     } else {
         use crate::utils::app::builder::create_app_window;
         info!("⚠️ Main window not found. Building...");
-        create_app_window(app, None);
+        create_app_window(app);
     }
 }
 
@@ -470,22 +470,13 @@ pub fn handle_browse_remote(app: &AppHandle, remote_name: &str) {
 }
 
 #[cfg(not(feature = "web-server"))]
-pub fn handle_browse_in_app(app: &AppHandle, remote_name: &str) {
-    info!("📂 Opening in-app browser for {}", remote_name);
-    if let Some(window) = app.get_webview_window("main") {
-        window.show().unwrap_or_else(|e| {
-            error!("🚨 Failed to show main window: {e}");
-        });
-        if let Err(e) = tauri::Emitter::emit(
-            app,
-            crate::utils::types::events::OPEN_INTERNAL_ROUTE,
-            remote_name,
-        ) {
-            error!("🚨 Failed to emit browse event: {e}");
-        }
+pub fn handle_browse_in_app(app: &AppHandle, remote_name: Option<&str>) {
+    if let Some(name) = remote_name {
+        info!("📂 Opening standalone in-app browser window for {}", name);
     } else {
-        crate::utils::app::builder::create_app_window(app.clone(), Some(remote_name));
+        info!("📂 Opening standalone in-app browser window");
     }
+    crate::utils::app::builder::create_nautilus_window(app.clone(), remote_name, None);
 }
 
 pub fn handle_stop_all_serves(app: AppHandle) {

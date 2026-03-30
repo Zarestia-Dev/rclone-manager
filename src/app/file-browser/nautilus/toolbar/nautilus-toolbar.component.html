@@ -111,8 +111,12 @@
       </button>
     }
 
-    <button class="nav-button" (click)="closeOverlay.emit()">
-      <mat-icon svgIcon="circle-xmark"></mat-icon>
-    </button>
+    @if (nautilusService.isStandaloneWindow()) {
+      <app-window-controls></app-window-controls>
+    } @else {
+      <button class="nav-button" (click)="closeOverlay.emit()">
+        <mat-icon svgIcon="circle-xmark"></mat-icon>
+      </button>
+    }
   </div>
 </mat-toolbar>

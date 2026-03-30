@@ -17,7 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Nautilus**: Improved split view drag UX. The active pane now automatically switches when hovering over the other panel during a drag operation.
 - Small design changes across the app.
 - Package-manager builds (Flatpak, deb, rpm, Arch, portable, container) no longer hide the Updates tab. The app still checks for new versions and notifies you.
-
+- **Nautilus**: Nautilus file browser now supports multiple windows. You can open multiple Nautilus windows for different remotes or paths. Each window is independent and has its own state but they share the same app instance and configuration. You can open a new Nautilus window from the tray menu, right-clicking a folder or remote to open on new window, or dragging a tab to the desktop to open it in a new window.
 
 ### Fixed
 - **Nautilus**: Prevented invalid drag-and-drop operations, such as dropping a file into its current directory or dropping a folder onto itself.
