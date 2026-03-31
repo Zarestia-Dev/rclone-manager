@@ -97,12 +97,12 @@ export class ServeManagementService extends TauriBaseService {
     try {
       await this.refreshServesFromCache();
     } catch (cacheErr) {
-      console.debug('Cache failed, falling back to API:', cacheErr);
+      console.debug('[ServeManagementService] Cache failed, falling back to API:', cacheErr);
       try {
         const response = await this.listServes();
         this._runningServes.set(this.normalizeServeList(response?.list ?? []));
       } catch (apiErr) {
-        console.error('Both cache and API failed:', apiErr);
+        console.error('[ServeManagementService] Both cache and API failed:', apiErr);
       }
     }
   }

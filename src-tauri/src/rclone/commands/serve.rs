@@ -13,7 +13,6 @@ use crate::{
         },
         logging::log::log_operation,
         rclone::endpoints::serve,
-        rclone::util::{extract_remote_name_from_fs, normalize_remote_name},
         types::{core::RcloneState, logs::LogLevel, remotes::ProfileParams},
     },
 };
@@ -135,35 +134,6 @@ pub async fn start_serve(
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
-    // Check for duplicates
-    let serves = backend_manager.remote_cache.get_serves().await;
-    let requested_remote = normalize_remote_name(&params.remote_name);
-    if serves.iter().any(|s| {
-        let fs_match = match s.params.get("fs") {
-            Some(Value::String(fs)) => extract_remote_name_from_fs(fs) == requested_remote,
-            Some(Value::Object(fs)) => fs
-                .get("_name")
-                .and_then(|v| v.as_str())
-                .map(normalize_remote_name)
-                .is_some_and(|name| name == requested_remote),
-            _ => false,
-        };
-        let profile_match = s.profile == params.profile;
-        fs_match && profile_match
-    }) {
-        let profile_msg = params
-            .profile
-            .clone()
-            .map(|p| format!(" (Profile: '{}')", p))
-            .unwrap_or_default();
-        let msg = format!(
-            "Serve is already running for '{}'{}",
-            params.remote_name, profile_msg
-        );
-        warn!("🚫 {}", msg);
-        return Err(msg);
-    }
-
     let serve_type = params
         .serve_options
         .as_ref()
@@ -253,8 +223,9 @@ pub async fn start_serve(
     cache
         .store_serve_profile(&serve_id, params.profile.clone())
         .await;
-    refresh_serves_safely(&app).await;
-
+    if let Err(e) = force_check_serves(app.clone()).await {
+        warn!("Failed to refresh serves: {e}");
+    }
     info!(
         "✅ Serve {} started: ID={}, Address={}",
         params.remote_name, serve_response.id, serve_response.addr
@@ -343,8 +314,9 @@ pub async fn stop_serve(
         None,
     );
 
-    refresh_serves_safely(&app).await;
-
+    if let Err(e) = force_check_serves(app.clone()).await {
+        warn!("Failed to refresh serves: {e}");
+    }
     info!("✅ Serve {server_id} stopped successfully");
 
     send_notification_typed(
@@ -375,8 +347,9 @@ pub async fn stop_all_serves(app: AppHandle, context: String) -> Result<String, 
     if !should_emit_stop_all_serves_notification(serves.len(), &context) {
         debug!("No active serves to stop — skipping STOPALL");
         if context != "shutdown" {
-            refresh_serves_safely(&app).await;
-            // Inform the user there's nothing to stop
+            if let Err(e) = force_check_serves(app.clone()).await {
+                warn!("Failed to refresh serves: {e}");
+            }
             send_notification_typed(
                 &app,
                 Notification::localized(
@@ -413,8 +386,10 @@ pub async fn stop_all_serves(app: AppHandle, context: String) -> Result<String, 
             localized
         })?;
 
-    if context != "shutdown" {
-        refresh_serves_safely(&app).await;
+    if context != "shutdown"
+        && let Err(e) = force_check_serves(app.clone()).await
+    {
+        warn!("Failed to refresh serves: {e}");
     }
 
     info!("✅ All serves stopped successfully");
@@ -432,12 +407,6 @@ pub async fn stop_all_serves(app: AppHandle, context: String) -> Result<String, 
     );
 
     Ok(crate::localized_success!("backendSuccess.serve.stopped"))
-}
-
-async fn refresh_serves_safely(app: &AppHandle) {
-    if let Err(e) = force_check_serves(app.clone()).await {
-        warn!("Failed to refresh serves: {e}");
-    }
 }
 
 // Small helper to encapsulate the no-op policy for stopping all serves.

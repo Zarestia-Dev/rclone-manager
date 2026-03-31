@@ -36,7 +36,7 @@
    2. Toolbar Shell
    ========================================================================== */
 
-.nautilus-toolbar {
+:host {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -47,15 +47,14 @@
   top: 0;
   z-index: 30;
   gap: var(--space-xs);
-
-  .left-section,
-  .right-section {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-  }
 }
 
+.left-section,
+.right-section {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
 /* ==========================================================================
    3. Path Container
    ========================================================================== */

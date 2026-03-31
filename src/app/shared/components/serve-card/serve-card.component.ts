@@ -57,13 +57,10 @@ export class ServeCardComponent {
   });
 
   serveUrl = computed<string | null>(() => {
-    const {
-      params: { type, addr },
-    } = this.serve() as unknown as {
-      params: { type: string; addr: string } & ServeListItem['params'];
-    };
-    const normalizedType = type.toLowerCase();
-    return URL_BASED_PROTOCOLS.has(normalizedType) ? `${normalizedType}://${addr}` : null;
+    const type = this.serve().params.type.toLowerCase();
+    const addr = this.serve().addr;
+
+    return URL_BASED_PROTOCOLS.has(type) ? `${type}://${addr}` : null;
   });
 
   optionsData = computed<{ keys: string[]; tooltip: string }>(() => {

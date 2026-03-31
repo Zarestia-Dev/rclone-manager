@@ -1,122 +1,121 @@
-<mat-toolbar class="nautilus-toolbar" data-tauri-drag-region>
-  <div class="left-section">
-    <button (click)="goBack.emit()" [disabled]="!canGoBack()" class="nav-button">
-      <mat-icon svgIcon="chevron-left"></mat-icon>
-    </button>
-    <button (click)="goForward.emit()" [disabled]="!canGoForward()" class="nav-button">
-      <mat-icon svgIcon="chevron-right"></mat-icon>
-    </button>
-  </div>
+<div class="left-section" data-tauri-drag-region>
+  <button (click)="goBack.emit()" [disabled]="!canGoBack()" class="nav-button">
+    <mat-icon svgIcon="chevron-left"></mat-icon>
+  </button>
+  <button (click)="goForward.emit()" [disabled]="!canGoForward()" class="nav-button">
+    <mat-icon svgIcon="chevron-right"></mat-icon>
+  </button>
+</div>
 
-  <div
-    class="path-container"
-    (click)="onPathContainerClick()"
-    (keydown.escape)="onPathContainerEscape($event)"
-    tabindex="0"
-  >
-    @if (isSearchMode()) {
-      <input
-        #searchInput
-        class="path-input"
-        [placeholder]="'nautilus.titles.searchPlaceholder' | translate"
-        [value]="searchFilter()"
-        (input)="searchFilterChange.emit(searchInput.value)"
-        (keydown.escape)="onSearchEscape(searchInput, $event)"
-        (blur)="onSearchBlur()"
-      />
-    } @else if (!isEditingPath()) {
-      @if (starredMode()) {
-        <div class="path-scroll-view hide-scrollbar">
-          <button class="path-segment">
-            <mat-icon svgIcon="star"></mat-icon>
-            {{ 'nautilus.titles.starred' | translate }}
-          </button>
-        </div>
-      } @else {
-        <div
-          class="path-scroll-view hide-scrollbar"
-          #pathScrollView
-          [class.show-left-shadow]="_showLeftShadow()"
-          [class.show-right-shadow]="_showRightShadow()"
-          (scroll)="onScrollViewScroll()"
-          (wheel)="onPathScroll($event)"
+<div
+  class="path-container"
+  (click)="onPathContainerClick()"
+  (keydown.escape)="onPathContainerEscape($event)"
+  tabindex="0"
+  data-tauri-drag-region
+>
+  @if (isSearchMode()) {
+    <input
+      #searchInput
+      class="path-input"
+      [placeholder]="'nautilus.titles.searchPlaceholder' | translate"
+      [value]="searchFilter()"
+      (input)="searchFilterChange.emit(searchInput.value)"
+      (keydown.escape)="onSearchEscape(searchInput, $event)"
+      (blur)="onSearchBlur()"
+    />
+  } @else if (!isEditingPath()) {
+    @if (starredMode()) {
+      <div class="path-scroll-view hide-scrollbar">
+        <button class="path-segment">
+          <mat-icon svgIcon="star"></mat-icon>
+          {{ 'nautilus.titles.starred' | translate }}
+        </button>
+      </div>
+    } @else {
+      <div
+        class="path-scroll-view hide-scrollbar"
+        #pathScrollView
+        [class.show-left-shadow]="_showLeftShadow()"
+        [class.show-right-shadow]="_showRightShadow()"
+        (scroll)="onScrollViewScroll()"
+        (wheel)="onPathScroll($event)"
+      >
+        <button
+          class="path-segment"
+          data-segment-index="-1"
+          [class.segment-drag-over]="isDragging() && hoveredSegmentIndex() === -1"
+          (dragover)="$event.preventDefault()"
+          (drop)="droppedOnSegment.emit({ event: $event, segmentIndex: -1 })"
+          (click)="$event.stopPropagation(); updatePath.emit('')"
         >
+          <mat-icon
+            [svgIcon]="
+              activeRemote()?.isLocal
+                ? 'hard-drive'
+                : iconService.getIconName(activeRemote()?.type || '')
+            "
+          ></mat-icon>
+          {{ (activeRemote()?.label ?? '' | translate) || ('nautilus.titles.local' | translate) }}
+        </button>
+
+        @for (segment of pathSegments(); track segment.path) {
+          <span class="path-separator">/</span>
           <button
             class="path-segment"
-            data-segment-index="-1"
-            [class.segment-drag-over]="isDragging() && hoveredSegmentIndex() === -1"
+            [attr.data-segment-index]="$index"
+            [class.active]="$index === pathSegments().length - 1"
+            [class.segment-drag-over]="isDragging() && hoveredSegmentIndex() === $index"
             (dragover)="$event.preventDefault()"
-            (drop)="droppedOnSegment.emit({ event: $event, segmentIndex: -1 })"
-            (click)="$event.stopPropagation(); updatePath.emit('')"
+            (drop)="droppedOnSegment.emit({ event: $event, segmentIndex: $index })"
+            (click)="$event.stopPropagation(); navigateToSegment.emit($index)"
           >
-            <mat-icon
-              [svgIcon]="
-                activeRemote()?.isLocal
-                  ? 'hard-drive'
-                  : iconService.getIconName(activeRemote()?.type || '')
-              "
-            ></mat-icon>
-            {{ (activeRemote()?.label ?? '' | translate) || ('nautilus.titles.local' | translate) }}
+            {{ segment.name }}
           </button>
-
-          @for (segment of pathSegments(); track segment.path) {
-            <span class="path-separator">/</span>
-            <button
-              class="path-segment"
-              [attr.data-segment-index]="$index"
-              [class.active]="$index === pathSegments().length - 1"
-              [class.segment-drag-over]="isDragging() && hoveredSegmentIndex() === $index"
-              (dragover)="$event.preventDefault()"
-              (drop)="droppedOnSegment.emit({ event: $event, segmentIndex: $index })"
-              (click)="$event.stopPropagation(); navigateToSegment.emit($index)"
-            >
-              {{ segment.name }}
-            </button>
-          }
-        </div>
-      }
-
-      <button
-        class="nav-button nav-button--flush"
-        (click)="$event.stopPropagation()"
-        [cdkMenuTriggerFor]="pathOptionsMenu()"
-      >
-        <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
-      </button>
-    } @else {
-      <input
-        #pathInput
-        class="path-input"
-        [value]="fullPathInput()"
-        (keydown.enter)="navigateToPath.emit(pathInput.value); pathInput.blur()"
-        (blur)="isEditingPathChange.emit(false)"
-      />
-    }
-  </div>
-
-  <div class="right-section">
-    @if (!isMobile()) {
-      <button class="nav-button" (click)="layoutChange.emit(toggledLayout())">
-        <mat-icon [svgIcon]="toggledLayout()"></mat-icon>
-      </button>
-
-      <button
-        class="nav-button"
-        [cdkMenuTriggerFor]="viewMenu()"
-        [cdkMenuPosition]="[
-          { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
-        ]"
-      >
-        <mat-icon svgIcon="chevron-down"></mat-icon>
-      </button>
+        }
+      </div>
     }
 
-    @if (nautilusService.isStandaloneWindow()) {
-      <app-window-controls></app-window-controls>
-    } @else {
-      <button class="nav-button" (click)="closeOverlay.emit()">
-        <mat-icon svgIcon="circle-xmark"></mat-icon>
-      </button>
-    }
-  </div>
-</mat-toolbar>
+    <button
+      class="nav-button nav-button--flush"
+      (click)="$event.stopPropagation()"
+      [cdkMenuTriggerFor]="pathOptionsMenu()"
+    >
+      <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
+    </button>
+  } @else {
+    <input
+      #pathInput
+      class="path-input"
+      [value]="fullPathInput()"
+      (keydown.enter)="navigateToPath.emit(pathInput.value); pathInput.blur()"
+      (blur)="isEditingPathChange.emit(false)"
+    />
+  }
+</div>
+
+<div class="right-section" data-tauri-drag-region>
+  @if (!isMobile()) {
+    <button class="nav-button" (click)="layoutChange.emit(toggledLayout())">
+      <mat-icon [svgIcon]="toggledLayout()"></mat-icon>
+    </button>
+
+    <button
+      class="nav-button"
+      [cdkMenuTriggerFor]="viewMenu()"
+      [cdkMenuPosition]="[
+        { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
+      ]"
+    >
+      <mat-icon svgIcon="chevron-down"></mat-icon>
+    </button>
+  }
+
+  @if (nautilusService.isStandaloneWindow()) {
+    <app-window-controls></app-window-controls>
+  } @else {
+    <button class="nav-button" (click)="closeOverlay.emit()">
+      <mat-icon svgIcon="circle-xmark"></mat-icon>
+    </button>
+  }
+</div>

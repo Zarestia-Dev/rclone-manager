@@ -160,8 +160,7 @@
             <span class="fields-count-num fields-count-num--basic">{{ basicLen }}</span>
           }
           @if (
-            (basicLen > 0 && showAdvOpts && advLen > 0) ||
-            (showJson && basicLen > 0 && showAdvOpts && advLen > 0)
+            (basicLen > 0 && showAdvOpts && advLen > 0) || (showJson && basicLen > 0 && advLen > 0)
           ) {
             <span class="fields-count-separator">+</span>
           }

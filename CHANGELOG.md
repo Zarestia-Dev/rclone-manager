@@ -24,6 +24,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Nautilus**: Prevented spring-opening a folder that is currently being dragged.
 - **Tray**: Fully feature-gated tray implementation; `tray` code is excluded. Preventing tray-related imports/logic in Docker builds where tray is not needed.
 - Buggy and non-performant AppImage release files are fixed. Now they works properly on all Linux distributions.
+- **Mount**: Fixed a bug that prevented mounting multiple profiles or instances of the same remote at different mount points.
+- **Serve**: Fixed a UI issue where the listening address appeared as "undefined" for default profiles.
+- **Core**: Removed restrictive duplicate checks in mount and serve operations to allow running multiple instances with unique configurations (e.g., different profiles or ports).
 
 
 ## [v0.2.3] - 2026-03-17

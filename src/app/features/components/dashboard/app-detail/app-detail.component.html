@@ -52,14 +52,12 @@
   }
 
   <mat-tab-group class="operation-tabs" animationDuration="300ms">
-    <!-- Monitoring Tab -->
     <mat-tab>
       <ng-template mat-tab-label>
         <span>{{ 'dashboard.appDetail.monitoring' | translate }}</span>
       </ng-template>
 
       <div class="operation-monitor">
-        <!-- Profile Selector (when multiple profiles exist) -->
         @if (showProfileSelector()) {
           <div
             class="profile-selector-container"
@@ -116,7 +114,6 @@
           </div>
         }
 
-        <!-- Operation Control Panel (filtered by selected profile) -->
         @for (
           opConfig of filteredControlConfigs();
           track opConfig.profileName || opConfig.operationType
@@ -143,7 +140,6 @@
           </app-operation-control>
         }
 
-        <!-- Job Information Panel -->
         @if (isSyncType()) {
           @if (hasCronSchedule()) {
             @let schedule = selectedCronSchedule();
@@ -176,7 +172,6 @@
           ></app-transfer-activity-panel>
         }
 
-        <!-- Active Serves List -->
         @if (mainOperationType() === 'serve' && filteredRunningServes().length > 0) {
           <div class="active-serves-list">
             <h3>{{ 'dashboard.appDetail.activeServes' | translate }}</h3>
@@ -197,7 +192,6 @@
           </div>
         }
 
-        <!-- VFS Control Panel -->
         @if (currentOpMetadata().supportsVfs) {
           <mat-divider></mat-divider>
           <app-vfs-control-panel [remoteName]="selectedRemote().name"></app-vfs-control-panel>
@@ -205,7 +199,6 @@
       </div>
     </mat-tab>
 
-    <!-- Configuration Tab -->
     <mat-tab>
       <ng-template mat-tab-label>
         <span>{{ 'dashboard.appDetail.configuration' | translate }}</span>
