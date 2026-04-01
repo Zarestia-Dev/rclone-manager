@@ -15,7 +15,13 @@
       @let target = editTarget();
       {{
         target
-          ? ('modals.remoteConfig.title.edit' | translate: { target: target | titlecase })
+          ? ('modals.remoteConfig.title.edit'
+            | translate
+              : {
+                  target:
+                    ('modals.remoteConfig.steps.' + (target === 'remote' ? 'remoteConfig' : target)
+                    | translate),
+                })
           : ('modals.remoteConfig.title.add' | translate)
       }}
       @if (!flow.isActive && !editTarget()) {
@@ -121,21 +127,31 @@
             <div class="sidebar-header">
               <span class="header-label">{{
                 'modals.remoteConfig.editMode.profiles'
-                  | translate: { type: editTarget() | titlecase }
+                  | translate
+                    : {
+                        type:
+                          ('modals.remoteConfig.steps.' +
+                            (editTarget() === 'remote' ? 'remoteConfig' : editTarget())
+                          | translate),
+                      }
               }}</span>
             </div>
             <div class="step-indicator-container hide-scrollbar">
-              @if (sharedReturnTarget()) {
+              @let prevTarget = sharedReturnTarget();
+              @if (prevTarget) {
+                @let translatedPrevTarget =
+                  'modals.remoteConfig.steps.' +
+                    (prevTarget === 'remote' ? 'remoteConfig' : prevTarget) | translate;
                 <mat-nav-list class="step-indicator">
                   <button
                     mat-list-item
                     (click)="returnFromShared()"
-                    [attr.aria-label]="sharedReturnTarget() | titlecase"
-                    [matTooltip]="sharedReturnTarget() | titlecase"
+                    [attr.aria-label]="translatedPrevTarget"
+                    [matTooltip]="translatedPrevTarget"
                     matTooltipPosition="right"
                   >
                     <mat-icon matListItemIcon svgIcon="left-arrow"></mat-icon>
-                    <span matListItemTitle>{{ sharedReturnTarget() | titlecase }}</span>
+                    <span matListItemTitle>{{ translatedPrevTarget }}</span>
                   </button>
                 </mat-nav-list>
                 <mat-divider></mat-divider>
@@ -144,7 +160,13 @@
                 class="step-indicator"
                 [attr.aria-label]="
                   'modals.remoteConfig.editMode.profiles'
-                    | translate: { type: editTarget() | titlecase }
+                    | translate
+                      : {
+                          type:
+                            ('modals.remoteConfig.steps.' +
+                              (editTarget() === 'remote' ? 'remoteConfig' : editTarget())
+                            | translate),
+                        }
                 "
               >
                 @let targetType = activeProfileType();

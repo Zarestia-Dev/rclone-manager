@@ -3,7 +3,14 @@
     <div class="header-section">
       <mat-slide-toggle formControlName="autoStart" class="operation-enable">
         {{
-          'wizards.appOperation.enableAutoStart' | translate: { type: operationType() | titlecase }
+          'wizards.appOperation.enableAutoStart'
+            | translate
+              : {
+                  type:
+                    ('modals.remoteConfig.steps.' +
+                      (operationType() === 'remote' ? 'remoteConfig' : operationType())
+                    | translate),
+                }
         }}
       </mat-slide-toggle>
       <p class="section-description">{{ description() }}</p>
@@ -14,7 +21,14 @@
     <div class="header-section">
       <mat-slide-toggle formControlName="cronEnabled" class="cron-enable">
         {{
-          'wizards.appOperation.enableScheduled' | translate: { type: operationType() | titlecase }
+          'wizards.appOperation.enableScheduled'
+            | translate
+              : {
+                  type:
+                    ('modals.remoteConfig.steps.' +
+                      (operationType() === 'remote' ? 'remoteConfig' : operationType())
+                    | translate),
+                }
         }}
       </mat-slide-toggle>
       <p

@@ -366,10 +366,13 @@ export class AppDetailComponent {
   readonly operationSettingsHeading = computed(() => {
     const metadata = this.currentOpMetadata();
     if (!metadata) return '';
-    const opLabel = this.translate.instant(metadata.label);
+    const type = this.currentOpType();
+    const opLabel = this.translate.instant('modals.remoteConfig.steps.' + type);
     return this.operationSettingsSections().length > 1
       ? this.translate.instant('dashboard.appDetail.profilesLabel', { op: opLabel })
-      : opLabel;
+      : opLabel +
+          ' ' +
+          this.translate.instant('dashboard.appDetail.settingsLabel', { op: '' }).trim();
   });
 
   readonly operationSettingsDescription = computed(() => {

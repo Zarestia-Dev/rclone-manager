@@ -1935,17 +1935,17 @@
         "edit": "{{target}} Ayarlarını Düzenle"
       },
       "steps": {
-        "remoteConfig": "Uzak Bağlantı Yapılandırması",
+        "remoteConfig": "Uzak Bağlantı",
         "mount": "Bağlama",
         "serve": "Sunma",
         "sync": "Senkronizasyon",
-        "bisync": "Çift Yönlü Senk.",
-        "move": "Taşı",
-        "copy": "Kopyala",
-        "filter": "Filtre",
+        "bisync": "Çift Yönlü Senkronizasyon",
+        "move": "Taşıma",
+        "copy": "Kopyalama",
+        "filter": "Filtreleme",
         "vfs": "VFS",
         "backend": "Arka Uç",
-        "runtimeRemote": "Çalışma Zamanı Uzak"
+        "runtimeRemote": "Çalışma Zamanı"
       },
       "advancedProfiles": {
         "title": "Gelişmiş Profiller",
@@ -1969,8 +1969,8 @@
         "back": "Geri",
         "cancel": "İptal",
         "save": "Kaydet",
-        "saveConfig": "Yapılandırmayı kaydet ve uzak bağlantı oluştur",
-        "saveChanges": "Değişiklikleri kaydet",
+        "saveConfig": "Yapılandırmayı Kaydet ve Uzak Bağlantı Oluştur",
+        "saveChanges": "Değişiklikleri Kaydet",
         "next": "İleri",
         "cleanup": "Temizleniyor",
         "processing": "İşleniyor...",
