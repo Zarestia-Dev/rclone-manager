@@ -519,6 +519,7 @@ pub async fn get_remote_paths_handler(
 pub struct StreamRemoteFileQuery {
     pub remote: String,
     pub path: String,
+    pub download: Option<bool>,
 }
 
 pub async fn stream_remote_file_handler(
@@ -557,8 +558,21 @@ pub async fn stream_remote_file_handler(
 
     let body = axum::body::Body::from_stream(response.bytes_stream());
 
-    Ok(axum::response::Response::builder()
-        .header(header::CONTENT_TYPE, content_type)
+    let mut builder =
+        axum::response::Response::builder().header(header::CONTENT_TYPE, content_type);
+
+    if query.download.unwrap_or(false) {
+        let filename = query.path.split('/').last().unwrap_or("file").replace(
+            |c: char| !c.is_alphanumeric() && c != '.' && c != '-' && c != '_',
+            "_",
+        );
+        builder = builder.header(
+            header::CONTENT_DISPOSITION,
+            format!("attachment; filename=\"{}\"", filename),
+        );
+    }
+
+    Ok(builder
         .body(body)
         .map_err(|e| AppError::InternalServerError(anyhow::Error::msg(e.to_string())))?)
 }
@@ -566,6 +580,7 @@ pub async fn stream_remote_file_handler(
 #[derive(Deserialize)]
 pub struct ConvertFileSrcQuery {
     pub path: String,
+    pub download: Option<bool>,
 }
 
 pub async fn stream_file_handler(
@@ -584,8 +599,25 @@ pub async fn stream_file_handler(
 
     let mime_type = mime_guess::from_path(&path).first_or_octet_stream();
 
-    axum::response::Response::builder()
-        .header(header::CONTENT_TYPE, mime_type.as_ref())
+    let mut builder =
+        axum::response::Response::builder().header(header::CONTENT_TYPE, mime_type.as_ref());
+
+    if query.download.unwrap_or(false) {
+        let filename = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("file")
+            .replace(
+                |c: char| !c.is_alphanumeric() && c != '.' && c != '-' && c != '_',
+                "_",
+            );
+        builder = builder.header(
+            header::CONTENT_DISPOSITION,
+            format!("attachment; filename=\"{}\"", filename),
+        );
+    }
+
+    builder
         .body(body)
         .map_err(|e| AppError::InternalServerError(anyhow::Error::msg(e.to_string())))
 }

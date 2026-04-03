@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 ### Added
+- **Tray**: Enabled "Open File Browser" menu item in headless/web-server mode.
 - **Language**: Added Simplified Chinese language support. (Thanks to @why25!)
 - **Nautilus**: Added "spring-loaded folder" behavior. Dragging an item and hovering over a folder, breadcrumb, tab, or sidebar item for 1sec will automatically open/navigate to it.
 - Readd the Json Editor for rclone fields. (Now it is optional with toggle button. Not like before v0.1.5). This one more user friendly. Now you can add or edit the custom flags from there too.
@@ -27,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Mount**: Fixed a bug that prevented mounting multiple profiles or instances of the same remote at different mount points.
 - **Serve**: Fixed a UI issue where the listening address appeared as "undefined" for default profiles.
 - **Core**: Removed restrictive duplicate checks in mount and serve operations to allow running multiple instances with unique configurations (e.g., different profiles or ports).
+- **File Viewer**: Fixed the download functionality in headless web mode by implementing browser-native downloads. Remote files can now be downloaded to the local computer in both desktop and web environments.
 
 
 ## [v0.2.3] - 2026-03-17

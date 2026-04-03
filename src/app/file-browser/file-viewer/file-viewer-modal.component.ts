@@ -57,6 +57,7 @@ import { Entry } from '@app/types';
 
 import { FormsModule } from '@angular/forms';
 import { MatTooltip } from '@angular/material/tooltip';
+import { ApiClientService } from 'src/app/services/infrastructure/platform/api-client.service';
 
 // ── GNOME / Adwaita Light Syntax Highlighting ──
 // Colors inspired by GNOME Builder's light theme and Adwaita palette
@@ -135,6 +136,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   private readonly jobManagementService = inject(JobManagementService);
   private readonly fileSystemService = inject(FileSystemService);
   private readonly uiStateService = inject(UiStateService);
+  private readonly apiClient = inject(ApiClientService);
 
   public currentUrl = signal<string>('');
 
@@ -649,6 +651,30 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
    */
   async download(): Promise<void> {
     if (this.isDownloading()) return;
+
+    if (this.apiClient.isHeadless()) {
+      try {
+        const url = new URL(this.rawUrl());
+        url.searchParams.set('download', 'true');
+
+        const link = document.createElement('a');
+        link.href = url.toString();
+        link.download = this.fileName();
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        this.notificationService.showInfo(
+          this.translate.instant('fileBrowser.fileViewer.downloading', { name: this.fileName() })
+        );
+      } catch (err) {
+        console.error('Failed to trigger browser download:', err);
+        this.notificationService.showError(
+          this.translate.instant('fileBrowser.fileViewer.errorDownload')
+        );
+      }
+      return;
+    }
 
     this.isDownloading.set(true);
 
