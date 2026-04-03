@@ -1,4 +1,3 @@
-import { TitleCasePipe } from '@angular/common';
 import {
   Component,
   ChangeDetectionStrategy,
@@ -51,7 +50,6 @@ type PathGroup = 'source' | 'dest';
     MatExpansionModule,
     MatDividerModule,
     CdkMenuModule,
-    TitleCasePipe,
     CronInputComponent,
     MatProgressSpinner,
     MatTooltipModule,

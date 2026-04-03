@@ -14,7 +14,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { startWith } from 'rxjs';
-import { NgTemplateOutlet, TitleCasePipe } from '@angular/common';
+import { NgTemplateOutlet } from '@angular/common';
 import {
   FormBuilder,
   FormGroup,
@@ -135,7 +135,6 @@ function profileRecord<T>(factory: () => T): Record<SharedProfileType, T> {
   selector: 'app-remote-config-modal',
   standalone: true,
   imports: [
-    TitleCasePipe,
     NgTemplateOutlet,
     FormsModule,
     ReactiveFormsModule,
