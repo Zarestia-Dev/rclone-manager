@@ -63,6 +63,7 @@ import { NautilusTabsComponent } from './tabs/nautilus-tabs.component';
 import { NautilusViewPaneComponent } from './view-pane/nautilus-view-pane.component';
 import { NautilusBottomBarComponent } from './bottom-bar/nautilus-bottom-bar.component';
 import { TabItem } from './tabs/nautilus-tabs.component';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 
 interface PaneState {
   remote: ExplorerRoot | null;
@@ -123,6 +124,15 @@ export interface NautilusDragPayload {
 }
 
 export const NAUTILUS_DRAG_MIME_TYPE = 'application/nautilus-files';
+
+interface ExternalDropFile {
+  file: File;
+  relativePath: string;
+}
+
+const isTauriRuntime = (): boolean =>
+  typeof window !== 'undefined' &&
+  !!(window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
 
 const DEFAULT_PICKER_OPTIONS: FilePickerConfig = {
   mode: 'both',
@@ -252,6 +262,7 @@ export class NautilusComponent implements OnInit {
   private _hoverOpenTimer: ReturnType<typeof setTimeout> | null = null;
   private _hoverOpenKey = '';
   private _draggedItems: FileBrowserItem[] = [];
+  private desktopDropUnlisten: (() => void) | null = null;
 
   protected readonly nautilusRemote = signal<ExplorerRoot | null>(null);
   protected readonly currentPath = signal<string>('');
@@ -577,8 +588,11 @@ export class NautilusComponent implements OnInit {
     this.subscribeToSettings();
     this.loadFilesForPane(0);
     this.loadFilesForPane(1);
+    void this.setupDesktopNativeDropListener();
 
     this.destroyRef.onDestroy(() => {
+      this.desktopDropUnlisten?.();
+      this.desktopDropUnlisten = null;
       this.nautilusService.setWindowTitle('RClone Manager');
     });
   }
@@ -1016,7 +1030,14 @@ export class NautilusComponent implements OnInit {
     }
   }
 
-  onContainerDrop(_event: DragEvent): void {
+  onContainerDrop(event: DragEvent): void {
+    event.preventDefault();
+
+    const activeRemote = this.activeRemote();
+    if (activeRemote && this.hasExternalDropFiles(event)) {
+      void this.processExternalDrop(event, { remote: activeRemote, path: this.activePath() });
+    }
+
     this._dragCounter = 0;
     if (this._draggedItems.length === 0) {
       this.onDragEnded();
@@ -1028,6 +1049,12 @@ export class NautilusComponent implements OnInit {
     target: { remote: ExplorerRoot | null; path: string }
   ): Promise<void> {
     event.preventDefault();
+
+    if (target.remote && this.hasExternalDropFiles(event)) {
+      await this.processExternalDrop(event, target);
+      return;
+    }
+
     const data = event.dataTransfer?.getData(NAUTILUS_DRAG_MIME_TYPE);
     if (!data || !target.remote) return;
 
@@ -1057,6 +1084,240 @@ export class NautilusComponent implements OnInit {
       target.path,
       isSameRemote ? 'move' : 'copy'
     );
+  }
+
+  private hasExternalDropFiles(event: DragEvent): boolean {
+    const dt = event.dataTransfer;
+    if (!dt) return false;
+
+    if (dt.files.length > 0) return true;
+
+    return Array.from(dt.items).some(item => item.kind === 'file');
+  }
+
+  private async setupDesktopNativeDropListener(): Promise<void> {
+    if (!isTauriRuntime()) return;
+
+    try {
+      this.desktopDropUnlisten = await getCurrentWindow().onDragDropEvent(async event => {
+        if (event.payload.type !== 'drop') return;
+
+        const target = this.resolveDropTargetFromPoint(
+          event.payload.position.x,
+          event.payload.position.y
+        );
+        if (!target.remote || event.payload.paths.length === 0) return;
+
+        const normalizedRemote = this.getNormalizedRemoteName(target.remote);
+        const result = await this.remoteOps.uploadLocalDropPaths(
+          normalizedRemote,
+          target.path,
+          event.payload.paths,
+          'nautilus'
+        );
+
+        if (result.uploaded > 0) {
+          this.refresh();
+          this.notificationService.showSuccess(`Uploaded ${result.uploaded} file(s).`);
+        }
+
+        if (result.failed.length > 0) {
+          this.notificationService.showError(
+            `Failed to upload ${result.failed.length} dropped path(s).`
+          );
+        }
+      });
+    } catch (error) {
+      console.warn('Desktop drag-drop listener setup failed', error);
+    }
+  }
+
+  private resolveDropTargetFromPoint(
+    x: number,
+    y: number
+  ): { remote: ExplorerRoot | null; path: string } {
+    const resolved = this._resolveDropHit({ x, y });
+    const folder = resolved.folder ?? this.hoveredFolder();
+    const segIdx = resolved.segmentIndex ?? this.hoveredSegmentIndex();
+    const tabIdx = resolved.tabIndex ?? this.hoveredTabIndex();
+
+    if (tabIdx !== null) {
+      const tab = this.tabs()[tabIdx];
+      if (tab?.left.remote) {
+        return { remote: tab.left.remote, path: tab.left.path };
+      }
+    }
+
+    const paneIndex = (resolved.paneIndex as 0 | 1 | null) ?? this.activePaneIndex();
+    const paneRef = this.getPaneRef(paneIndex);
+    const paneRemote = paneRef.remote();
+
+    if (!paneRemote) return { remote: null, path: '' };
+
+    if (folder?.entry.IsDir) {
+      const folderRemote = this.allRemotesLookup().find(
+        r =>
+          this.pathSelectionService.normalizeRemoteName(r.name) ===
+          this.pathSelectionService.normalizeRemoteName(folder.meta.remote)
+      );
+      return { remote: folderRemote ?? paneRemote, path: folder.entry.Path };
+    }
+
+    if (segIdx !== null) {
+      return {
+        remote: paneRemote,
+        path: segIdx < 0 ? '' : (this.pathSegments()[segIdx]?.path ?? ''),
+      };
+    }
+
+    return { remote: paneRemote, path: paneRef.path() };
+  }
+
+  private async processExternalDrop(
+    event: DragEvent,
+    target: { remote: ExplorerRoot | null; path: string }
+  ): Promise<void> {
+    if (!target.remote) return;
+
+    const droppedFiles = await this.extractExternalDropFiles(event);
+    if (!droppedFiles.length) return;
+
+    const normalizedRemote = this.getNormalizedRemoteName(target.remote);
+    const createdDirectories = new Set<string>();
+
+    let uploadedCount = 0;
+    const failedUploads: string[] = [];
+
+    for (const droppedFile of droppedFiles) {
+      try {
+        const destination = this.joinRemotePath(target.path, droppedFile.relativePath);
+        const { directory, filename } = this.splitDirectoryAndFilename(destination);
+
+        if (directory && !createdDirectories.has(directory)) {
+          await this.remoteOps.makeDirectory(normalizedRemote, directory, 'nautilus', true);
+          createdDirectories.add(directory);
+        }
+
+        const bytes = new Uint8Array(await droppedFile.file.arrayBuffer());
+        await this.remoteOps.uploadFileBytes(
+          normalizedRemote,
+          directory,
+          filename,
+          bytes,
+          'nautilus'
+        );
+        uploadedCount += 1;
+      } catch (error) {
+        console.error('External drop upload failed', error);
+        failedUploads.push(droppedFile.relativePath || droppedFile.file.name);
+      }
+    }
+
+    if (uploadedCount > 0) {
+      this.refresh();
+      this.notificationService.showSuccess(`Uploaded ${uploadedCount} file(s).`);
+    }
+
+    if (failedUploads.length > 0) {
+      this.notificationService.showError(
+        `Failed to upload ${failedUploads.length} file(s): ${failedUploads.slice(0, 3).join(', ')}`
+      );
+    }
+  }
+
+  private async extractExternalDropFiles(event: DragEvent): Promise<ExternalDropFile[]> {
+    const dt = event.dataTransfer;
+    if (!dt) return [];
+
+    const fromEntries = await this.extractExternalFilesFromEntries(dt.items);
+    if (fromEntries.length > 0) {
+      return fromEntries;
+    }
+
+    return Array.from(dt.files)
+      .filter(file => file.size >= 0)
+      .map(file => ({ file, relativePath: file.webkitRelativePath || file.name }));
+  }
+
+  private async extractExternalFilesFromEntries(
+    items: DataTransferItemList
+  ): Promise<ExternalDropFile[]> {
+    const results: ExternalDropFile[] = [];
+
+    for (const item of Array.from(items)) {
+      if (item.kind !== 'file') continue;
+      const entry = item.webkitGetAsEntry?.();
+      if (!entry) continue;
+      await this.collectEntryFiles(entry, '', results);
+    }
+
+    return results;
+  }
+
+  private async collectEntryFiles(
+    entry: FileSystemEntry,
+    prefix: string,
+    results: ExternalDropFile[]
+  ): Promise<void> {
+    if (entry.isFile) {
+      const file = await this.readFileEntry(entry as FileSystemFileEntry);
+      const relativePath = prefix ? `${prefix}/${file.name}` : file.name;
+      results.push({ file, relativePath });
+      return;
+    }
+
+    if (entry.isDirectory) {
+      const dirEntry = entry as FileSystemDirectoryEntry;
+      const nextPrefix = prefix ? `${prefix}/${entry.name}` : entry.name;
+      const children = await this.readDirectoryEntries(dirEntry);
+      for (const child of children) {
+        await this.collectEntryFiles(child, nextPrefix, results);
+      }
+    }
+  }
+
+  private readFileEntry(entry: FileSystemFileEntry): Promise<File> {
+    return new Promise((resolve, reject) => {
+      entry.file(resolve, reject);
+    });
+  }
+
+  private readDirectoryEntries(entry: FileSystemDirectoryEntry): Promise<FileSystemEntry[]> {
+    const reader = entry.createReader();
+    const entries: FileSystemEntry[] = [];
+
+    return new Promise((resolve, reject) => {
+      const readBatch = (): void => {
+        reader.readEntries(batch => {
+          if (!batch.length) {
+            resolve(entries);
+            return;
+          }
+          entries.push(...batch);
+          readBatch();
+        }, reject);
+      };
+
+      readBatch();
+    });
+  }
+
+  private joinRemotePath(basePath: string, relativePath: string): string {
+    const cleanedBase = basePath.replace(/^\/+|\/+$/g, '');
+    const cleanedRelative = relativePath.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+
+    if (!cleanedBase) return cleanedRelative;
+    if (!cleanedRelative) return cleanedBase;
+    return `${cleanedBase}/${cleanedRelative}`;
+  }
+
+  private splitDirectoryAndFilename(path: string): { directory: string; filename: string } {
+    const parts = path.split('/').filter(Boolean);
+    const filename = parts.pop() ?? '';
+    return {
+      directory: parts.join('/'),
+      filename,
+    };
   }
 
   onDropToStarred(event: DragEvent): void {

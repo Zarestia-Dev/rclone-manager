@@ -2,6 +2,11 @@ import { Injectable } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { Entry, FsInfo, Origin } from '@app/types';
 
+export interface LocalDropUploadResult {
+  uploaded: number;
+  failed: string[];
+}
+
 /**
  * Service for remote file system operations
  * Handles browsing, metadata, and active file operations (copy, move, delete, etc.)
@@ -258,6 +263,42 @@ export class RemoteFileOperationsService extends TauriBaseService {
       path,
       filename,
       content,
+      source,
+    });
+  }
+
+  /**
+   * Upload raw file bytes to a remote file.
+   */
+  async uploadFileBytes(
+    remote: string,
+    path: string,
+    filename: string,
+    content: Uint8Array,
+    source?: Origin
+  ): Promise<string> {
+    return this.invokeCommand<string>('upload_file_bytes', {
+      remote,
+      path,
+      filename,
+      content: Array.from(content),
+      source,
+    });
+  }
+
+  /**
+   * Upload local filesystem paths (desktop native drag-drop) to target remote path.
+   */
+  async uploadLocalDropPaths(
+    remote: string,
+    path: string,
+    localPaths: string[],
+    source?: Origin
+  ): Promise<LocalDropUploadResult> {
+    return this.invokeCommand<LocalDropUploadResult>('upload_local_drop_paths', {
+      remote,
+      path,
+      localPaths,
       source,
     });
   }

@@ -6,7 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 ### Added
-- **Tray**: Enabled "Open File Browser" menu item in headless/web-server mode.
+- **Nautilus**: Added external OS drag-into-app file upload support. Users can now drag files and folders from their OS file manager directly into the Nautilus file browser. Folder structure is preserved with recursive directory creation. Supports both Tauri desktop and headless HTTP modes.
+- **Tray**: Added "Open File Browser" menu item in tray. It will open the file browser in a new window.
 - **Language**: Added Simplified Chinese language support. (Thanks to @why25!)
 - **Nautilus**: Added "spring-loaded folder" behavior. Dragging an item and hovering over a folder, breadcrumb, tab, or sidebar item for 1sec will automatically open/navigate to it.
 - Readd the Json Editor for rclone fields. (Now it is optional with toggle button. Not like before v0.1.5). This one more user friendly. Now you can add or edit the custom flags from there too.

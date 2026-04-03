@@ -227,6 +227,10 @@ fn file_operations_routes() -> Router<WebServerState> {
         )
         .route("/fs/audio/cover", get(handlers::get_audio_cover_handler))
         .route("/upload-file", post(handlers::upload_file_handler))
+        .route(
+            "/upload-file-bytes",
+            post(handlers::upload_file_bytes_handler),
+        )
 }
 
 fn settings_routes() -> Router<WebServerState> {

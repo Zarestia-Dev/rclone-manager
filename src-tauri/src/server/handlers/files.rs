@@ -649,6 +649,32 @@ pub async fn upload_file_handler(
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UploadFileBytesBody {
+    pub remote: String,
+    pub path: String,
+    pub filename: String,
+    pub content: Vec<u8>,
+}
+
+pub async fn upload_file_bytes_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<UploadFileBytesBody>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::rclone::commands::filesystem::upload_file_bytes;
+    let result = upload_file_bytes(
+        state.app_handle.clone(),
+        body.remote,
+        body.path,
+        body.filename,
+        body.content,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(result)))
+}
+
+#[derive(Deserialize)]
 pub struct AudioCoverQuery {
     pub remote: String,
     pub path: String,
