@@ -75,6 +75,8 @@ export const BASE_ICONS: Record<string, string> = {
   'power-off': 'assets/icons/actions/power-off.svg',
   broom: 'assets/icons/actions/broom.svg',
   'floppy-disk': 'assets/icons/actions/floppy-disk.svg',
+  compress: 'assets/icons/actions/compress.svg',
+  detailed: 'assets/icons/actions/detailed.svg',
 
   // ------------------- Device Icons -------------------
   'hard-drive': 'assets/icons/devices/hard-drive.svg',

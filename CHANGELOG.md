@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 ### Added
+- Detailed Remote Card variant added. Its can be enabled from layout editor.
 - **Nautilus**: Added external OS drag-into-app file upload support. Users can now drag files and folders from their OS file manager directly into the Nautilus file browser. Folder structure is preserved with recursive directory creation. Supports both Tauri desktop and headless HTTP modes.
 - **Tray**: Added "Open File Browser" menu item in tray. It will open the file browser in a new window.
 - **Language**: Added Simplified Chinese language support. (Thanks to @why25!)

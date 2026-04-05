@@ -343,6 +343,14 @@
       "dashboard_layout": {
         "label": "Dashboard Layout",
         "description": "Custom layout configuration for the dashboard."
+      },
+      "dashboard_card_variant": {
+        "label": "Remote Card Display Mode",
+        "description": "Default display variant for remote cards in overview panels.",
+        "options": {
+          "compact": "Compact",
+          "detailed": "Detailed"
+        }
       }
     },
     "nautilus": {
@@ -2299,7 +2307,9 @@
       "save": "Save Layout",
       "reset": "Reset Layout",
       "resetSuccess": "Layout reset to default",
-      "toggleTaskFailed": "Failed to toggle scheduled task"
+      "toggleTaskFailed": "Failed to toggle scheduled task",
+      "showDetailed": "Show Detailed Cards",
+      "showCompact": "Show Compact Cards"
     },
     "bandwidth": {
       "aria": {

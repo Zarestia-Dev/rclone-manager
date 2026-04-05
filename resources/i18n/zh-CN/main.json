@@ -1119,6 +1119,12 @@
       }
     }
   },
+  "generalOverview": {
+    "layout": {
+      "showDetailed": "显示详细卡片",
+      "showCompact": "显示紧凑卡片"
+    }
+  },
   "backup": {
     "analyzeFailed": "备份文件解析失败",
     "restore": {
@@ -1459,6 +1465,18 @@
     "saveSuccess": "已保存：{{field}}",
     "resetSuccess": "已恢复默认：{{field}}",
     "saveFailed": "保存 {{option}} 失败：{{error}}"
+  },
+  "settings": {
+    "runtime": {
+      "dashboard_card_variant": {
+        "label": "卡片显示模式",
+        "description": "以紧凑或详细模式显示仪表板卡片",
+        "options": {
+          "compact": "紧凑",
+          "detailed": "详细"
+        }
+      }
+    }
   },
   "shortcuts": {
     "quitFailed": "退出应用失败：{{error}}",

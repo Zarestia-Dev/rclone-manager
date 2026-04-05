@@ -74,9 +74,9 @@
             [remotes]="remotes()"
             [jobs]="jobs()"
             [actionInProgress]="actionInProgress()"
-            (startJob)="startJob($event.type, $event.remoteName)"
+            (startJob)="startJob($event.type, $event.remoteName, $event.profileName)"
             (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId, $event.profileName)"
-            (browseRemote)="openRemoteInFiles($event, 'mount')"
+            (browseRemote)="openRemoteInFiles($event.remoteName, $event.path ?? 'mount')"
             (selectRemote)="selectRemote($event)"
             (openBackendModal)="openBackendModal()"
           >
@@ -89,8 +89,8 @@
             [runningServes]="runningServes()"
             [actionInProgress]="actionInProgress()"
             (remoteSelected)="selectRemote($event)"
-            (openInFiles)="openRemoteInFiles($event, currentTab())"
-            (startJob)="startJob($event.type, $event.remoteName)"
+            (openInFiles)="openRemoteInFiles($event.remoteName, $event.path ?? currentTab())"
+            (startJob)="startJob($event.type, $event.remoteName, $event.profileName)"
             (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId, $event.profileName)"
             (openBackendModal)="openBackendModal()"
           >

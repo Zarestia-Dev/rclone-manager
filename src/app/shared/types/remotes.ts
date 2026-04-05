@@ -1,8 +1,8 @@
 import { PrimaryActionType } from './operations';
 import { ServeListItem } from './serve';
-// ============================================================================
-// REMOTE CONFIGURATION & SPECS
-// ============================================================================
+
+// ── Remote configuration ────────────────────────────────────────────────────
+
 export interface RemoteConfig {
   name: string;
   type: string;
@@ -30,9 +30,8 @@ export interface MountedRemote {
   profile?: string;
 }
 
-// ============================================================================
-// REMOTE STATE & OPERATIONS
-// ============================================================================
+// ── Remote runtime state ────────────────────────────────────────────────────
+
 export interface DiskUsage {
   total_space?: number;
   used_space?: number;
@@ -47,6 +46,8 @@ export interface RemoteOperationState {
   active: boolean;
   jobId?: number;
   activeProfiles?: Record<string, number | string>;
+  configuredProfiles?: string[];
+  profileBrowsePaths?: Record<string, string>;
 }
 
 export interface RemoteServeState {
@@ -54,6 +55,8 @@ export interface RemoteServeState {
   count: number;
   serves: ServeListItem[];
   activeProfiles?: Record<string, string>;
+  configuredProfiles?: string[];
+  profileBrowsePaths?: Record<string, string>;
 }
 
 export interface RemoteStatus {

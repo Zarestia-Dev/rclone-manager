@@ -1,9 +1,8 @@
 import { NgClass } from '@angular/common';
-import { Component, computed, input, output, inject } from '@angular/core';
+import { Component, computed, input, output, inject, signal, OnInit } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
-import { MatCardModule } from '@angular/material/card';
-import { MatIconModule } from '@angular/material/icon';
 import {
+  CardDisplayMode,
   OperationTab,
   PrimaryActionType,
   Remote,
@@ -13,8 +12,7 @@ import {
 import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
 import { StatusOverviewPanelComponent } from '../../../../shared/overviews-shared/status-overview-panel/status-overview-panel.component';
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
-import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
-import { getRemoteNameFromFs } from '@app/services';
+import { AppSettingsService } from '@app/services';
 
 interface StopJobEvent {
   type: PrimaryActionType;
@@ -53,39 +51,36 @@ const MODE_CONFIG: Record<OperationTab, ModeConfig> = {
 
 @Component({
   selector: 'app-app-overview',
-  imports: [
-    NgClass,
-    MatCardModule,
-    MatIconModule,
-    OverviewHeaderComponent,
-    StatusOverviewPanelComponent,
-    RemotesPanelComponent,
-    ServeCardComponent,
-  ],
+  imports: [NgClass, OverviewHeaderComponent, StatusOverviewPanelComponent, RemotesPanelComponent],
   templateUrl: './app-overview.component.html',
   styleUrl: './app-overview.component.scss',
 })
-export class AppOverviewComponent {
+export class AppOverviewComponent implements OnInit {
   private readonly translate = inject(TranslateService);
+  private readonly appSettingsService = inject(AppSettingsService);
 
-  // Inputs
+  // --- Inputs ---
   readonly mode = input<OperationTab>('mount');
   readonly remotes = input<Remote[]>([]);
   readonly selectedRemote = input<Remote | null>(null);
   readonly actionInProgress = input<RemoteActionProgress>({});
   readonly runningServes = input<ServeListItem[]>([]);
 
-  // Outputs
+  // --- Outputs ---
   readonly remoteSelected = output<Remote>();
-  readonly openInFiles = output<string>();
-  readonly startJob = output<{ type: PrimaryActionType; remoteName: string }>();
+  readonly openInFiles = output<{ remoteName: string; path?: string }>();
+  readonly startJob = output<{
+    type: PrimaryActionType;
+    remoteName: string;
+    profileName?: string;
+  }>();
   readonly stopJob = output<StopJobEvent>();
   readonly openBackendModal = output<void>();
 
-  // ---------------------------------------------------------------------------
-  // Derived state
-  // ---------------------------------------------------------------------------
+  // Card display mode is local UI state, not derived from inputs
+  readonly cardDisplayMode = signal<CardDisplayMode>('detailed');
 
+  // --- Derived state ---
   private readonly modeConfig = computed(() => MODE_CONFIG[this.mode()]);
 
   readonly activeRemotes = computed(() => this.remotes().filter(r => this.isRemoteActive(r)));
@@ -98,9 +93,28 @@ export class AppOverviewComponent {
   readonly activeTitle = computed(() => this.translate.instant(this.modeConfig().activeTitle));
   readonly inactiveTitle = computed(() => this.translate.instant(this.modeConfig().inactiveTitle));
 
-  // ---------------------------------------------------------------------------
-  // Private helpers
-  // ---------------------------------------------------------------------------
+  async ngOnInit(): Promise<void> {
+    try {
+      const saved = await this.appSettingsService.getSettingValue<CardDisplayMode>(
+        'runtime.dashboard_card_variant'
+      );
+      if (saved) this.cardDisplayMode.set(saved);
+    } catch {
+      console.debug('[AppOverview] Failed to load dashboard card variant, using fallback.');
+    }
+  }
+
+  // --- Event handlers ---
+
+  selectRemote(remote: Remote): void {
+    this.remoteSelected.emit(remote);
+  }
+
+  triggerOpenInFiles(event: { remoteName: string; path?: string }): void {
+    if (event?.remoteName) this.openInFiles.emit(event);
+  }
+
+  // --- Private helpers ---
 
   private isRemoteActive(remote: Remote): boolean {
     switch (this.mode()) {
@@ -116,38 +130,5 @@ export class AppOverviewComponent {
       case 'serve':
         return remote.status.serve.active;
     }
-  }
-
-  private getServeRemoteName(serve: ServeListItem): string {
-    return getRemoteNameFromFs(serve.params?.fs);
-  }
-
-  // ---------------------------------------------------------------------------
-  // Event handlers
-  // ---------------------------------------------------------------------------
-
-  selectRemote(remote: Remote): void {
-    this.remoteSelected.emit(remote);
-  }
-
-  triggerOpenInFiles(remoteName: string): void {
-    if (remoteName) {
-      this.openInFiles.emit(remoteName);
-    }
-  }
-
-  handleServeCardClick(serve: ServeListItem): void {
-    const remoteName = this.getServeRemoteName(serve);
-    if (!remoteName) return;
-    const remote = this.remotes().find(r => r.name === remoteName);
-    if (remote) this.selectRemote(remote);
-  }
-
-  buildServeStopEvent(serve: ServeListItem): StopJobEvent {
-    return {
-      type: 'serve',
-      serveId: serve.id,
-      remoteName: this.getServeRemoteName(serve),
-    };
   }
 }

@@ -117,11 +117,18 @@ export class ServeManagementService extends TauriBaseService {
       'start_serve_profile',
       { params },
       {
-        successKey: 'serve.successStart',
-        successParams: { remote: remoteName, profile: profileName },
+        showSuccess: false,
         errorKey: 'serve.failedStart',
         errorParams: { remote: remoteName },
       }
+    );
+
+    this.notificationService.showSuccess(
+      this.translate.instant('serve.successStart', {
+        remote: remoteName,
+        profile: profileName,
+        addr: response.addr,
+      })
     );
 
     await this.refreshServes();

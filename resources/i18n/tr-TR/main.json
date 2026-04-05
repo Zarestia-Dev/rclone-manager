@@ -1119,6 +1119,12 @@
       }
     }
   },
+  "generalOverview": {
+    "layout": {
+      "showDetailed": "Ayrıntılı Kartları Göster",
+      "showCompact": "Kompakt Kartları Göster"
+    }
+  },
   "backup": {
     "analyzeFailed": "Yedekleme dosyası analiz edilemedi",
     "restore": {
@@ -1457,6 +1463,18 @@
     "saveSuccess": "Kaydedildi: {{field}}",
     "resetSuccess": "Varsayılana sıfırlandı: {{field}}",
     "saveFailed": "{{option}} kaydedilemedi: {{error}}"
+  },
+  "settings": {
+    "runtime": {
+      "dashboard_card_variant": {
+        "label": "Kart Görüntüleme Modu",
+        "description": "Pano kartlarını kompakt veya ayrıntılı modda göster",
+        "options": {
+          "compact": "Kompakt",
+          "detailed": "Ayrıntılı"
+        }
+      }
+    }
   },
   "shortcuts": {
     "quitFailed": "Uygulama kapatılamadı: {{error}}",

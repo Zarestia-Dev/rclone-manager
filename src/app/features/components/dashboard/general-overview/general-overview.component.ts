@@ -19,6 +19,7 @@ import {
   RemoteActionProgress,
   ScheduledTask,
   ServeListItem,
+  CardDisplayMode,
 } from '@app/types';
 
 import { FormatTimePipe } from '../../../../shared/pipes/format-time.pipe';
@@ -27,7 +28,6 @@ import { FormatMemoryUsagePipe } from '../../../../shared/pipes/format-memory-us
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
-
 import {
   SchedulerService,
   UiStateService,
@@ -40,7 +40,31 @@ import {
 import { FormatRateValuePipe } from '../../../../shared/pipes/format-rate-value.pipe';
 import { FormatBytes } from '../../../../shared/pipes/format-bytes.pipe';
 
-const SCROLL_DELAY = 60;
+// Module-level constants
+const SCROLL_DELAY_MS = 60;
+
+const TASK_META: Record<string, { icon: string; colorClass: string }> = {
+  sync: { icon: 'sync', colorClass: 'sync-color' },
+  copy: { icon: 'copy', colorClass: 'copy-color' },
+  move: { icon: 'move', colorClass: 'move-color' },
+  bisync: { icon: 'right-left', colorClass: 'bisync-color' },
+};
+
+const TOGGLE_ICON: Record<string, string> = {
+  enabled: 'pause',
+  running: 'pause',
+  disabled: 'play',
+  failed: 'play',
+  stopping: 'stop',
+};
+
+const TOGGLE_KEY: Record<string, string> = {
+  enabled: 'disable',
+  running: 'disable',
+  disabled: 'enable',
+  failed: 'enable',
+  stopping: 'stopping',
+};
 
 export type PanelId = 'remotes' | 'bandwidth' | 'system' | 'jobs' | 'tasks' | 'serves';
 
@@ -52,11 +76,6 @@ interface PanelConfig {
 
 export interface DashboardPanel extends PanelConfig {
   visible: boolean;
-}
-
-interface TaskMeta {
-  icon: string;
-  colorClass: string;
 }
 
 interface BandwidthDetailItem {
@@ -111,72 +130,69 @@ const ALL_PANELS: PanelConfig[] = [
   styleUrls: ['./general-overview.component.scss'],
 })
 export class GeneralOverviewComponent implements OnInit {
-  // --- Services ---
   private readonly snackBar = inject(MatSnackBar);
   private readonly schedulerService = inject(SchedulerService);
   private readonly uiStateService = inject(UiStateService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly rcloneStatusService = inject(RcloneStatusService);
-  readonly iconService = inject(IconService);
-  readonly backendService = inject(BackendService);
   private readonly translate = inject(TranslateService);
 
+  readonly iconService = inject(IconService);
+  readonly backendService = inject(BackendService);
+
   // --- Inputs ---
-  remotes = input<Remote[]>([]);
-  jobs = input<JobInfo[]>([]);
-  actionInProgress = input<RemoteActionProgress>({});
+  readonly remotes = input<Remote[]>([]);
+  readonly jobs = input<JobInfo[]>([]);
+  readonly actionInProgress = input<RemoteActionProgress>({});
 
   // --- Outputs ---
-  selectRemote = output<Remote>();
-  startJob = output<{ type: PrimaryActionType; remoteName: string }>();
-  stopJob = output<{
+  readonly selectRemote = output<Remote>();
+  readonly startJob = output<{
+    type: PrimaryActionType;
+    remoteName: string;
+    profileName?: string;
+  }>();
+  readonly stopJob = output<{
     type: PrimaryActionType;
     remoteName: string;
     serveId?: string;
     profileName?: string;
   }>();
-  browseRemote = output<string>();
-  openBackendModal = output<void>();
+  readonly browseRemote = output<{ remoteName: string; path?: string }>();
+  readonly openBackendModal = output<void>();
 
   // --- State ---
-  isEditingLayout = signal(false);
-
-  // FIX: removed dead 'remotes: true' entry — the remotes panel is not a
-  // mat-expansion-panel, so getPanelOpenState('remotes') is never called.
-  panelOpenStates = signal<Record<string, boolean>>({
+  readonly isEditingLayout = signal(false);
+  readonly cardDisplayMode = signal<CardDisplayMode>('compact');
+  readonly panelOpenStates = signal<Record<string, boolean>>({
     bandwidth: false,
     system: false,
     jobs: false,
     tasks: false,
     serves: false,
   });
-
-  scheduledTasks = this.schedulerService.scheduledTasks;
-  isLoadingScheduledTasks = signal(false);
-
-  dashboardPanels = signal<DashboardPanel[]>(
+  readonly dashboardPanels = signal<DashboardPanel[]>(
     ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible }))
   );
+  readonly isLoadingScheduledTasks = signal(false);
 
-  // --- Status service signals re-exposed for template ---
+  readonly scheduledTasks = this.schedulerService.scheduledTasks;
+
+  // --- Service signals re-exposed for the template ---
   readonly rcloneStatus = this.rcloneStatusService.rcloneStatus;
   readonly jobStats = this.rcloneStatusService.jobStats;
   readonly bandwidthLimit = this.rcloneStatusService.bandwidthLimit;
   readonly isLoadingStats = this.rcloneStatusService.isLoading;
   readonly memoryUsage = this.rcloneStatusService.memoryUsage;
   readonly uptime = this.rcloneStatusService.uptime;
-  readonly loadBandwidthLimit = (): Promise<void> => this.rcloneStatusService.loadBandwidthLimit();
 
   // --- Computed ---
-
   readonly totalRemotes = computed(() => this.remotes().length);
 
-  readonly activeJobsCount = computed(
-    () => this.jobs().filter(job => job.status === 'Running').length
-  );
+  readonly activeJobsCount = computed(() => this.jobs().filter(j => j.status === 'Running').length);
 
   readonly allRunningServes = computed(() =>
-    this.remotes().flatMap(remote => remote.status.serve?.serves ?? [])
+    this.remotes().flatMap(r => r.status.serve?.serves ?? [])
   );
 
   readonly jobCompletionPercentage = computed(() => {
@@ -218,34 +234,9 @@ export class GeneralOverviewComponent implements OnInit {
     ];
   });
 
-  // --- Static lookup tables ---
-
-  private static readonly TASK_META: Record<string, TaskMeta> = {
-    sync: { icon: 'sync', colorClass: 'sync-color' },
-    copy: { icon: 'copy', colorClass: 'copy-color' },
-    move: { icon: 'move', colorClass: 'move-color' },
-    bisync: { icon: 'right-left', colorClass: 'bisync-color' },
-  };
-
-  private static readonly TOGGLE_ICONS: Record<string, string> = {
-    enabled: 'pause',
-    running: 'pause',
-    disabled: 'play',
-    failed: 'play',
-    stopping: 'stop',
-  };
-
-  private static readonly TOGGLE_KEYS: Record<string, string> = {
-    enabled: 'disable',
-    running: 'disable',
-    disabled: 'enable',
-    failed: 'enable',
-    stopping: 'stopping',
-  };
-
   ngOnInit(): void {
-    this.loadLayoutSettings();
-    this.loadScheduledTasks();
+    void this.loadLayoutSettings();
+    void this.loadScheduledTasks();
   }
 
   // --- Layout management ---
@@ -254,9 +245,16 @@ export class GeneralOverviewComponent implements OnInit {
     this.isEditingLayout.update(v => !v);
   }
 
+  toggleCardDisplayMode(): void {
+    this.cardDisplayMode.update(m => (m === 'compact' ? 'detailed' : 'compact'));
+    this.persistLayout();
+  }
+
   resetLayout(): void {
     this.appSettingsService.saveSetting('runtime', 'dashboard_layout', []);
+    this.appSettingsService.saveSetting('runtime', 'dashboard_card_variant', 'compact');
     this.dashboardPanels.set(ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible })));
+    this.cardDisplayMode.set('compact');
     this.showSnackbar(this.translate.instant('generalOverview.layout.resetSuccess'));
   }
 
@@ -276,11 +274,8 @@ export class GeneralOverviewComponent implements OnInit {
     this.persistLayout();
   }
 
-  private persistLayout(): void {
-    const idsToSave = this.dashboardPanels()
-      .filter(p => p.visible)
-      .map(p => p.id);
-    this.appSettingsService.saveSetting('runtime', 'dashboard_layout', idsToSave);
+  loadBandwidthLimit(): Promise<void> {
+    return this.rcloneStatusService.loadBandwidthLimit();
   }
 
   protected setPanelOpenState(id: string, isOpen: boolean): void {
@@ -291,12 +286,23 @@ export class GeneralOverviewComponent implements OnInit {
     return this.panelOpenStates()[id] ?? false;
   }
 
+  private persistLayout(): void {
+    const ids = this.dashboardPanels()
+      .filter(p => p.visible)
+      .map(p => p.id);
+    this.appSettingsService.saveSetting('runtime', 'dashboard_layout', ids);
+    this.appSettingsService.saveSetting(
+      'runtime',
+      'dashboard_card_variant',
+      this.cardDisplayMode()
+    );
+  }
+
   // --- Serve actions ---
 
-  async stopServe(serve: ServeListItem): Promise<void> {
+  stopServe(serve: ServeListItem): void {
     const remoteName = getRemoteNameFromFs(serve.params?.fs);
-    if (!remoteName) return;
-    this.stopJob.emit({ type: 'serve', remoteName, serveId: serve.id });
+    if (remoteName) this.stopJob.emit({ type: 'serve', remoteName, serveId: serve.id });
   }
 
   handleServeCardClick(serve: ServeListItem): void {
@@ -306,7 +312,7 @@ export class GeneralOverviewComponent implements OnInit {
     if (remote) {
       this.uiStateService.setTab('serve');
       this.uiStateService.setSelectedRemote(remote);
-      setTimeout(() => this.scrollToTop(), SCROLL_DELAY);
+      setTimeout(() => this.scrollToTop(), SCROLL_DELAY_MS);
     }
   }
 
@@ -319,6 +325,12 @@ export class GeneralOverviewComponent implements OnInit {
       console.error('Failed to toggle scheduled task:', error);
       this.showSnackbar(this.translate.instant('generalOverview.layout.toggleTaskFailed'));
     }
+  }
+
+  /** Handles the toggle button inside a task card — stops the card's own click handler. */
+  onToggleTaskClick(taskId: string, event: Event): void {
+    event.stopPropagation();
+    void this.toggleScheduledTask(taskId);
   }
 
   onTaskClick(task: ScheduledTask): void {
@@ -336,21 +348,21 @@ export class GeneralOverviewComponent implements OnInit {
     }
   }
 
-  async copyError(error: string): Promise<void> {
-    this.copyToClipboard(
-      error,
-      this.translate.instant('common.errorCopied'),
-      this.translate.instant('common.copyErrorFailed')
-    );
+  copyError(error: string): void {
+    void navigator.clipboard
+      .writeText(error)
+      .then(() => this.showSnackbar(this.translate.instant('common.errorCopied')))
+      .catch(() => this.showSnackbar(this.translate.instant('common.copyErrorFailed')));
   }
 
-  // --- Task utilities ---
+  // --- Task display utilities ---
 
   getFormattedNextRun(task: ScheduledTask): string {
     if (task.status === 'disabled') return this.translate.instant('task.nextRun.disabled');
     if (task.status === 'stopping') return this.translate.instant('task.nextRun.stopping');
-    if (!task.nextRun) return this.translate.instant('task.nextRun.notScheduled');
-    return new Date(task.nextRun).toLocaleString();
+    return task.nextRun
+      ? new Date(task.nextRun).toLocaleString()
+      : this.translate.instant('task.nextRun.notScheduled');
   }
 
   getFormattedLastRun(task: ScheduledTask): string {
@@ -359,41 +371,41 @@ export class GeneralOverviewComponent implements OnInit {
       : this.translate.instant('task.lastRun.never');
   }
 
-  getTaskMeta(taskType: string): TaskMeta {
-    return GeneralOverviewComponent.TASK_META[taskType] ?? { icon: 'circle-info', colorClass: '' };
+  getTaskMeta(taskType: string): { icon: string; colorClass: string } {
+    return TASK_META[taskType] ?? { icon: 'circle-info', colorClass: '' };
   }
 
   getToggleKey(status: string): string {
-    return GeneralOverviewComponent.TOGGLE_KEYS[status] ?? 'enable';
+    return TOGGLE_KEY[status] ?? 'enable';
   }
 
   getToggleIcon(status: string): string {
-    return GeneralOverviewComponent.TOGGLE_ICONS[status] ?? 'help';
+    return TOGGLE_ICON[status] ?? 'help';
   }
 
   // --- Private helpers ---
 
   private async loadLayoutSettings(): Promise<void> {
     try {
-      const savedIds = await this.appSettingsService.getSettingValue<string[]>(
-        'runtime.dashboard_layout'
-      );
+      const [savedIds, savedVariant] = await Promise.all([
+        this.appSettingsService.getSettingValue<string[]>('runtime.dashboard_layout'),
+        this.appSettingsService.getSettingValue<CardDisplayMode>('runtime.dashboard_card_variant'),
+      ]);
 
       if (savedIds && savedIds.length > 0) {
-        const orderedPanels: DashboardPanel[] = savedIds
+        const visibleIds = new Set(savedIds);
+        const ordered = savedIds
           .map(id => ALL_PANELS.find(p => p.id === id))
           .filter((p): p is PanelConfig => !!p)
           .map(p => ({ ...p, visible: true }));
-
-        const visibleIds = new Set(savedIds);
-        const hiddenPanels: DashboardPanel[] = ALL_PANELS.filter(p => !visibleIds.has(p.id)).map(
-          p => ({ ...p, visible: false })
-        );
-
-        this.dashboardPanels.set([...orderedPanels, ...hiddenPanels]);
-      } else {
-        this.dashboardPanels.set(ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible })));
+        const hidden = ALL_PANELS.filter(p => !visibleIds.has(p.id)).map(p => ({
+          ...p,
+          visible: false,
+        }));
+        this.dashboardPanels.set([...ordered, ...hidden]);
       }
+
+      if (savedVariant) this.cardDisplayMode.set(savedVariant);
     } catch {
       console.debug('Failed to load layout settings, using defaults');
     }
@@ -414,27 +426,13 @@ export class GeneralOverviewComponent implements OnInit {
     const el = document.querySelector('.main-content') as HTMLElement | null;
     const target = el ?? document.scrollingElement ?? document.documentElement;
     try {
-      target.scrollTo({ top: 0, behavior: 'smooth' } as ScrollToOptions);
+      target.scrollTo({ top: 0, behavior: 'smooth' });
     } catch {
       (target as HTMLElement).scrollTop = 0;
     }
   }
 
-  private async copyToClipboard(
-    text: string,
-    successMessage: string,
-    errorMessage = 'Failed to copy to clipboard'
-  ): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(text);
-      this.showSnackbar(successMessage);
-    } catch (error) {
-      console.error('Error copying to clipboard:', error);
-      this.showSnackbar(errorMessage);
-    }
-  }
-
-  private showSnackbar(message: string, action?: string, duration = 2000): void {
-    this.snackBar.open(message, action ?? this.translate.instant('common.close'), { duration });
+  private showSnackbar(message: string, duration = 2000): void {
+    this.snackBar.open(message, this.translate.instant('common.close'), { duration });
   }
 }

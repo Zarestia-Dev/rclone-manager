@@ -1111,6 +1111,12 @@
       }
     }
   },
+  "generalOverview": {
+    "layout": {
+      "showDetailed": "Mostrar tarjetas detalladas",
+      "showCompact": "Mostrar tarjetas compactas"
+    }
+  },
   "backup": {
     "analyzeFailed": "No se pudo analizar el archivo de copia de seguridad",
     "restore": {
@@ -1421,6 +1427,18 @@
     "saveSuccess": "Guardado: {{field}}",
     "resetSuccess": "Restablecer a predeterminado: {{field}}",
     "saveFailed": "Error al guardar {{option}}: {{error}}"
+  },
+  "settings": {
+    "runtime": {
+      "dashboard_card_variant": {
+        "label": "Variante de tarjeta",
+        "description": "Mostrar tarjetas del panel de control en modo compacto o detallado",
+        "options": {
+          "compact": "Compacto",
+          "detailed": "Detallado"
+        }
+      }
+    }
   },
   "shortcuts": {
     "quitFailed": "Error al salir de la aplicación: {{error}}",

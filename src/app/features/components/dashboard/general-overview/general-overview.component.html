@@ -29,6 +29,24 @@
                   </div>
                   <span class="panel-label">{{ panel.title | translate }}</span>
 
+                  @if (panel.id === 'remotes') {
+                    <button
+                      matIconButton
+                      class="card-layout-toggle"
+                      (click)="toggleCardDisplayMode()"
+                      [matTooltip]="
+                        cardDisplayMode() === 'compact'
+                          ? ('generalOverview.layout.showDetailed' | translate)
+                          : ('generalOverview.layout.showCompact' | translate)
+                      "
+                      matTooltipPosition="left"
+                      matTooltipShowDelay="500"
+                    >
+                      <mat-icon
+                        [svgIcon]="cardDisplayMode() === 'compact' ? 'detailed' : 'compress'"
+                      ></mat-icon>
+                    </button>
+                  }
                   <div class="visibility-toggle">
                     <span class="toggle-label">{{
                       panel.visible
@@ -56,13 +74,18 @@
                       [icon]="'cloud'"
                       [remotes]="remotes()"
                       [mode]="'general'"
+                      [displayMode]="cardDisplayMode()"
                       [actionInProgress]="actionInProgress()"
                       [primaryActionLabel]="'actions.mount' | translate"
                       [activeIcon]="'mount'"
                       (remoteSelected)="selectRemote.emit($event)"
                       (openInFiles)="browseRemote.emit($event)"
                       (startJob)="
-                        startJob.emit({ type: $event.type, remoteName: $event.remoteName })
+                        startJob.emit({
+                          type: $event.type,
+                          remoteName: $event.remoteName,
+                          profileName: $event.profileName,
+                        })
                       "
                       (stopJob)="
                         stopJob.emit({
@@ -474,10 +497,8 @@
                                       </div>
                                     </div>
                                     <button
-                                      mat-icon-button
-                                      (click)="
-                                        toggleScheduledTask(task.id); $event.stopPropagation()
-                                      "
+                                      matIconButton
+                                      (click)="onToggleTaskClick(task.id, $event)"
                                       [matTooltip]="
                                         'task.toggle.' + getToggleKey(task.status) | translate
                                       "
@@ -622,7 +643,7 @@
 
     <div class="layout-actions">
       <button
-        mat-icon-button
+        matIconButton
         (click)="toggleEditLayout()"
         matTooltipPosition="left"
         matTooltipShowDelay="500"
@@ -640,7 +661,7 @@
 
       @if (isEditingLayout()) {
         <button
-          mat-icon-button
+          matIconButton
           (click)="resetLayout()"
           matTooltipPosition="left"
           matTooltipShowDelay="500"

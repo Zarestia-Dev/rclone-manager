@@ -1,5 +1,5 @@
 <mat-card class="remote-card" [ngClass]="remoteCardClasses()" (click)="onRemoteClick()">
-  <mat-card-header class="remote-header">
+  <mat-card-header class="remote-header" [ngClass]="'display-' + displayMode()">
     <div class="remote-info">
       <div class="icon-container">
         <mat-icon
@@ -15,88 +15,160 @@
       </div>
     </div>
 
-    <!-- Status indicators showing actual remote states -->
-    <div class="remote-status-indicators" aria-hidden="true">
-      @if (remote().status.mount.active) {
-        <div
-          class="status-badge mounted"
-          [matTooltip]="getProfileTooltip('mount')"
-          matTooltipShowDelay="500"
-        >
-          <mat-icon
-            svgIcon="mount"
-            [attr.aria-label]="'detailShared.status.mounted' | translate"
-          ></mat-icon>
-        </div>
-      }
-      @if (remote().status.sync.active) {
-        <div
-          class="status-badge syncing"
-          [matTooltip]="getProfileTooltip('sync')"
-          matTooltipShowDelay="500"
-        >
-          <mat-icon
-            svgIcon="refresh"
-            [attr.aria-label]="'detailShared.status.syncing' | translate"
-          ></mat-icon>
-        </div>
-      }
-      @if (remote().status.copy.active) {
-        <div
-          class="status-badge copying"
-          [matTooltip]="getProfileTooltip('copy')"
-          matTooltipShowDelay="500"
-        >
-          <mat-icon
-            svgIcon="copy"
-            [attr.aria-label]="'detailShared.status.copying' | translate"
-          ></mat-icon>
-        </div>
-      }
-      @if (remote().status.move.active) {
-        <div
-          class="status-badge moving"
-          [matTooltip]="getProfileTooltip('move')"
-          matTooltipShowDelay="500"
-        >
-          <mat-icon
-            svgIcon="move"
-            [attr.aria-label]="'detailShared.status.moving' | translate"
-          ></mat-icon>
-        </div>
-      }
-      @if (remote().status.bisync.active) {
-        <div
-          class="status-badge bisyncing"
-          [matTooltip]="getProfileTooltip('bisync')"
-          matTooltipShowDelay="500"
-        >
-          <mat-icon
-            svgIcon="right-left"
-            [attr.aria-label]="'detailShared.status.bisyncing' | translate"
-          ></mat-icon>
-        </div>
-      }
-      @if (remote().status.serve.active) {
-        <div
-          class="status-badge serving"
-          [matTooltip]="getProfileTooltip('serve')"
-          matTooltipShowDelay="500"
-        >
-          <mat-icon
-            svgIcon="satellite-dish"
-            [attr.aria-label]="'detailShared.status.serving' | translate"
-          ></mat-icon>
-        </div>
-      }
-    </div>
+    <!-- Status indicators showing actual remote states (Only compact mode) -->
+    @if (displayMode() === 'compact') {
+      <div class="remote-status-indicators" aria-hidden="true">
+        @if (remote().status.mount.active) {
+          <div
+            class="status-badge mounted"
+            [matTooltip]="getProfileTooltip('mount')"
+            matTooltipShowDelay="500"
+          >
+            <mat-icon
+              svgIcon="mount"
+              [attr.aria-label]="'detailShared.status.mounted' | translate"
+            ></mat-icon>
+          </div>
+        }
+        @if (remote().status.sync.active) {
+          <div
+            class="status-badge syncing"
+            [matTooltip]="getProfileTooltip('sync')"
+            matTooltipShowDelay="500"
+          >
+            <mat-icon
+              svgIcon="refresh"
+              [attr.aria-label]="'detailShared.status.syncing' | translate"
+            ></mat-icon>
+          </div>
+        }
+        @if (remote().status.copy.active) {
+          <div
+            class="status-badge copying"
+            [matTooltip]="getProfileTooltip('copy')"
+            matTooltipShowDelay="500"
+          >
+            <mat-icon
+              svgIcon="copy"
+              [attr.aria-label]="'detailShared.status.copying' | translate"
+            ></mat-icon>
+          </div>
+        }
+        @if (remote().status.move.active) {
+          <div
+            class="status-badge moving"
+            [matTooltip]="getProfileTooltip('move')"
+            matTooltipShowDelay="500"
+          >
+            <mat-icon
+              svgIcon="move"
+              [attr.aria-label]="'detailShared.status.moving' | translate"
+            ></mat-icon>
+          </div>
+        }
+        @if (remote().status.bisync.active) {
+          <div
+            class="status-badge bisyncing"
+            [matTooltip]="getProfileTooltip('bisync')"
+            matTooltipShowDelay="500"
+          >
+            <mat-icon
+              svgIcon="right-left"
+              [attr.aria-label]="'detailShared.status.bisyncing' | translate"
+            ></mat-icon>
+          </div>
+        }
+        @if (remote().status.serve.active) {
+          <div
+            class="status-badge serving"
+            [matTooltip]="getProfileTooltip('serve')"
+            matTooltipShowDelay="500"
+          >
+            <mat-icon
+              svgIcon="satellite-dish"
+              [attr.aria-label]="'detailShared.status.serving' | translate"
+            ></mat-icon>
+          </div>
+        }
+      </div>
+    }
   </mat-card-header>
 
-  <mat-card-content class="remote-content">
-    <app-quick-action-buttons
-      [buttons]="actionButtons()"
-      (buttonClick)="onActionButtonClick($event)"
-    >
-    </app-quick-action-buttons>
-  </mat-card-content>
+  <!-- Detailed profile sections (only shown in detailed mode when operations are active) -->
+  @if (displayMode() === 'detailed') {
+    <div class="profile-details-section">
+      @for (operation of getActiveOperations(); track operation) {
+        @let profiles = getConfiguredProfiles(operation);
+        @if (profiles.length > 0) {
+          <div class="profile-group" [ngClass]="getOperationCssClass(operation)">
+            <div class="profile-group-header">
+              <span class="operation-label">
+                <mat-icon
+                  class="operation-icon"
+                  [svgIcon]="getOperationLabelIcon(operation)"
+                ></mat-icon>
+                {{ operation | titlecase }}
+              </span>
+              <span class="profile-count">{{ profiles.length }}</span>
+            </div>
+            <div class="profile-pills">
+              @for (profile of profiles; track profile) {
+                <div class="profile-item" [class.can-open]="canOpenProfilePath(operation, profile)">
+                  <button
+                    type="button"
+                    class="profile-pill"
+                    [class.is-selected]="isProfileActive(operation, profile)"
+                    [class.is-running]="isProfileChipLoading(operation, profile)"
+                    [disabled]="isProfileChipDisabled(operation, profile)"
+                    [matTooltip]="getProfileChipTooltip(operation, profile)"
+                    matTooltipShowDelay="500"
+                    (click)="onProfileChipClick(operation, profile, $event)"
+                  >
+                    <span class="pill-content">
+                      @if (isProfileChipLoading(operation, profile)) {
+                        <mat-spinner class="profile-spinner" diameter="13"></mat-spinner>
+                      } @else if (isProfileActive(operation, profile)) {
+                        <mat-icon
+                          class="profile-icon"
+                          [svgIcon]="operation === 'mount' ? 'eject' : 'stop'"
+                        ></mat-icon>
+                      }
+                      <span class="profile-name-text">{{ profile }}</span>
+                    </span>
+                  </button>
+
+                  @if (canOpenProfilePath(operation, profile)) {
+                    <button
+                      type="button"
+                      class="profile-open-btn"
+                      [disabled]="actionState() === 'open'"
+                      [matTooltip]="getProfileOpenTooltip(profile)"
+                      matTooltipShowDelay="500"
+                      (click)="onProfileOpenInFiles(operation, profile, $event)"
+                    >
+                      @if (actionState() === 'open') {
+                        <mat-spinner class="profile-open-spinner" diameter="14"></mat-spinner>
+                      } @else {
+                        <mat-icon svgIcon="folder"></mat-icon>
+                      }
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        }
+      }
+    </div>
+  }
+
+  @if (displayMode() === 'compact') {
+    <mat-card-content class="remote-content">
+      <app-quick-action-buttons
+        [buttons]="actionButtons()"
+        (buttonClick)="onActionButtonClick($event)"
+      >
+      </app-quick-action-buttons>
+    </mat-card-content>
+  }
 </mat-card>

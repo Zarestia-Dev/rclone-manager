@@ -237,6 +237,13 @@ pub struct RuntimeSettings {
         description = "settings.runtime.dashboard_layout.description"
     )]
     pub dashboard_layout: Vec<String>,
+
+    #[setting(
+        label = "settings.runtime.dashboard_card_variant.label",
+        description = "settings.runtime.dashboard_card_variant.description",
+        options(("compact", "settings.runtime.dashboard_card_variant.options.compact"), ("detailed", "settings.runtime.dashboard_card_variant.options.detailed"))
+    )]
+    pub dashboard_card_variant: String,
 }
 
 impl Default for RuntimeSettings {
@@ -251,6 +258,7 @@ impl Default for RuntimeSettings {
             rclone_update_channel: "stable".to_string(),
             flatpak_warn: true,
             dashboard_layout: vec![],
+            dashboard_card_variant: "compact".to_string(),
         }
     }
 }

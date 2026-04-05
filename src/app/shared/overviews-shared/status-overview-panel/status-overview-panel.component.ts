@@ -25,6 +25,7 @@ export class StatusOverviewPanelComponent {
   readonly totalCount = input(0);
   readonly activeCount = input(0);
   readonly inactiveCount = input(0);
+  readonly summaryIcon = 'chart';
 
   readonly title = computed(() => `overviews.status.titles.${this.mode()}`);
 

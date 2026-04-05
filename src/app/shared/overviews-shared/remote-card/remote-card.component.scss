@@ -241,6 +241,205 @@
   .remote-content {
     padding: var(--space-sm) var(--space-md) var(--space-md) var(--space-md);
   }
+  // ── Detailed Variant: Profile Details Section ──────────────────────────────
+  .profile-details-section {
+    padding: var(--space-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+
+  .profile-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+
+    --op-color: var(--primary-color);
+    --op-color-rgb: var(--primary-color-rgb);
+
+    &.accent {
+      --op-color: var(--accent-color);
+      --op-color-rgb: var(--accent-color-rgb);
+    }
+
+    &.primary {
+      --op-color: var(--primary-color);
+      --op-color-rgb: var(--primary-color-rgb);
+    }
+
+    &.yellow {
+      --op-color: var(--yellow);
+      --op-color-rgb: var(--yellow-rgb);
+    }
+
+    &.orange {
+      --op-color: var(--orange);
+      --op-color-rgb: var(--orange-rgb);
+    }
+
+    &.purple {
+      --op-color: var(--purple);
+      --op-color-rgb: var(--purple-rgb);
+    }
+  }
+
+  .profile-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: var(--space-xxs);
+    border-bottom: 1px solid rgba(var(--window-fg-color-rgb), 0.08);
+
+    .operation-label {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xxs);
+      font-size: var(--font-size-sm);
+      font-weight: 600;
+      color: var(--op-color);
+
+      .operation-icon {
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
+      }
+    }
+
+    .profile-count {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--op-color);
+      background: rgba(var(--op-color-rgb), 0.14);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+  }
+
+  .profile-chips,
+  .profile-pills {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  // Container for the pill and the potential folder button
+  .profile-item {
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    // The Main Button (Pill)
+    .profile-pill {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      box-sizing: border-box;
+      cursor: pointer;
+      padding: 6px var(--space-sm);
+      border-radius: var(--radius-md);
+      background: var(--op-color);
+      color: var(--view-bg-color);
+      font-size: var(--font-size-md);
+      font-weight: 500;
+      border: none;
+      transition:
+        background 0.2s ease,
+        transform 0.1s ease,
+        box-shadow 0.2s ease;
+
+      .pill-content {
+        display: flex;
+        align-items: center;
+        gap: var(--space-xxs);
+        color: white;
+      }
+
+      // When the profile is active (e.g., Mount is running), change to "Stop" color
+      &.is-selected {
+        background: var(--warn-color);
+      }
+
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+
+      .profile-icon {
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
+      }
+    }
+
+    // The "Folder" Button (Pop-out)
+    .profile-open-btn {
+      position: relative;
+      z-index: 1;
+      margin-left: 6px; // Space for the wire
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 10px;
+      border-radius: var(--radius-md);
+      background: var(--op-color);
+      color: white;
+      cursor: pointer;
+
+      animation: applePopOut 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      transform-origin: left center;
+
+      // The "Wire" connecting the pill to the folder
+      &::before {
+        content: "";
+        position: absolute;
+        right: 100%;
+        top: 50%;
+        width: 10px;
+        height: 4px;
+        background: var(--op-color);
+        opacity: 0.6;
+        transform: translateY(-50%);
+      }
+
+      mat-icon {
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
+      }
+
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+
+      .profile-open-spinner {
+        display: block;
+      }
+    }
+  }
+
+  // ── Animations ──────────────────────────────────────────────────────────────
+
+  @keyframes applePopOut {
+    0% {
+      opacity: 0;
+      transform: scale(0.4) translateX(-50px);
+    }
+    70% {
+      transform: scale(1.05) translateX(0);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1) translateX(0);
+    }
+  }
+
+  // ── Responsive styles for detailed variant ──────────────────────────────────
+  &.display-detailed .remote-header {
+    padding-bottom: var(--space-xs);
+  }
 }
 
 // Tablet (max-width: 768px)

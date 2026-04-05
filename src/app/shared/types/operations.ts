@@ -1,33 +1,21 @@
-// =============================================================================
-// OPERATION TYPES
-// =============================================================================
+// Operation type hierarchy:
 //
-// Type hierarchy:
+//   SyncOperationType ('sync' | 'copy' | 'move' | 'bisync')  ┐
+//   'mount'                                                    ├──▶ PrimaryActionType
+//   'serve'                                                    ┘
 //
-//    SyncOperationType ─────────────────────┐
-//    ('sync' | 'copy' | 'move' | 'bisync')  │
-//                                           ├──▶ PrimaryActionType
-//   'mount'  ───────────────────────────────┤    (everything a remote can "do")
-//   'serve'  ───────────────────────────────┘
-//
-// Note: 'sync' as a PrimaryActionType means "enter the sync family tab" —
-// the specific sub-operation (copy / move / bisync) is tracked separately via
-// SyncOperationType. They intentionally share the string value 'sync' so that
-// tab routing and operation dispatch align without translation.
-//
-// =============================================================================
+// Note: 'sync' appears in both SyncOperationType and PrimaryActionType.
+// As a PrimaryActionType it means "enter the sync tab"; the active sub-operation
+// (copy / move / bisync) is tracked separately via SyncOperationType.
+// They share the string 'sync' intentionally so tab routing and dispatch align.
 
-// ---------------------------------------------------------------------------
-// Core operation discriminants
-// ---------------------------------------------------------------------------
+// ── Core operation discriminants ────────────────────────────────────────────
 
 export type SyncOperationType = 'sync' | 'copy' | 'move' | 'bisync';
 
 export type PrimaryActionType = SyncOperationType | 'mount' | 'serve';
 
-// ---------------------------------------------------------------------------
-// Job-level types (rclone job layer)
-// ---------------------------------------------------------------------------
+// ── Job-level types ─────────────────────────────────────────────────────────
 
 export type JobType = 'sync' | 'copy' | 'move' | 'bisync' | 'check' | 'serve';
 
@@ -61,50 +49,42 @@ export type FileOperationType =
   | 'stat'
   | 'hash';
 
-/** Single source of truth for JobInfo.job_type */
+/** Single source of truth for `JobInfo.job_type`. */
 export type JobActionType = PrimaryActionType | FileOperationType;
 
-// ---------------------------------------------------------------------------
-// Runtime action state
-// ---------------------------------------------------------------------------
+// ── Runtime action state ────────────────────────────────────────────────────
 
 export interface ActionState {
   type: RemoteAction;
   profileName?: string;
+  operationType?: PrimaryActionType;
 }
 
 export type RemoteActionProgress = Record<string, ActionState[]>;
 
-// ---------------------------------------------------------------------------
-// Operation metadata — STATIC config only, no runtime state
-//
-// Use SyncOperationViewModel (below) when you also need to carry isActive.
-// ---------------------------------------------------------------------------
+// ── Static operation metadata ───────────────────────────────────────────────
+// No runtime state here — use SyncOperationViewModel when you need isActive.
 
 export interface SyncOperationConfig {
   type: SyncOperationType;
-  /** i18n key */
+  /** i18n key for the full label. */
   label: string;
-  /** i18n key for short type label shown on toggle buttons */
+  /** i18n key for the short label on toggle buttons. */
   typeLabel?: string;
-  /** i18n key for descriptive tooltip */
+  /** i18n key for a descriptive tooltip. */
   description?: string;
   icon: string;
   cssClass: string;
 }
 
-// ---------------------------------------------------------------------------
-// View model — static config + runtime state, used inside components
-// ---------------------------------------------------------------------------
+// ── View model ──────────────────────────────────────────────────────────────
 
 export interface SyncOperationViewModel extends SyncOperationConfig {
   /** True when this specific operation is currently running on the remote. */
   isActive: boolean;
 }
 
-// ---------------------------------------------------------------------------
-// Misc UI helpers
-// ---------------------------------------------------------------------------
+// ── Misc UI helpers ─────────────────────────────────────────────────────────
 
 export interface QuickActionButton {
   id: string;

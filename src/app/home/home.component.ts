@@ -98,19 +98,15 @@ export class HomeComponent {
 
   readonly selectedRemoteSettings = computed(() => {
     const remote = this.selectedRemote();
-    if (!remote) return {};
-    return this.remoteFacadeService.getRemoteSettings(remote.name);
+    return remote ? this.remoteFacadeService.getRemoteSettings(remote.name) : {};
   });
 
-  /**
-   * The current tab narrowed to OperationTab (excludes 'general').
-   * Only consumed when currentTab() !== 'general' — the template guards this
-   * with @switch / @case so app-detail and app-overview never see 'general'.
-   */
+  // Narrows currentTab to OperationTab — 'general' is excluded by the template's @switch/@case
   readonly mainOperationType = computed<OperationTab>(() => {
     const tab = this.currentTab();
     return tab === 'general' ? 'mount' : tab;
   });
+
   readonly isSidebarOpen = signal(false);
   readonly sidebarMode = signal<MatDrawerMode>('side');
   readonly selectedSyncOperation = signal<SyncOperationType>('sync');
@@ -119,25 +115,19 @@ export class HomeComponent {
   private resizeObserver?: ResizeObserver;
 
   constructor() {
-    // Restore the saved sync operation whenever the selected remote changes.
+    // Restore saved sync operation when selected remote changes
     effect(() => {
-      const remote = this.selectedRemote();
-      if (remote) {
-        const savedOp =
-          (this.selectedRemoteSettings()['selectedSyncOperation'] as SyncOperationType) ?? 'sync';
-        untracked(() => this.selectedSyncOperation.set(savedOp));
+      const settings = this.selectedRemoteSettings();
+      if (this.selectedRemote()) {
+        const saved = (settings['selectedSyncOperation'] as SyncOperationType) ?? 'sync';
+        untracked(() => this.selectedSyncOperation.set(saved));
       }
     });
 
-    // DOM-dependent setup runs after the first render
-    afterNextRender(() => {
-      this.setupResponsiveLayout();
-    });
+    afterNextRender(() => this.setupResponsiveLayout());
 
-    // Kick off the initial data load as early as possible
     void this.loadInitialData();
 
-    // Cleanup via DestroyRef instead of ngOnDestroy
     this.destroyRef.onDestroy(() => {
       this.resizeObserver?.disconnect();
       this.uiStateService.resetSelectedRemote();
@@ -154,9 +144,7 @@ export class HomeComponent {
 
   private updateSidebarMode(): void {
     const next: MatDrawerMode = window.innerWidth < 900 ? 'over' : 'side';
-    if (next !== this.sidebarMode()) {
-      this.sidebarMode.set(next);
-    }
+    if (next !== this.sidebarMode()) this.sidebarMode.set(next);
   }
 
   // --- Data ---
@@ -280,19 +268,15 @@ export class HomeComponent {
 
   // --- Settings ---
 
-  loadRemoteSettings(remoteName: string): RemoteSettings {
-    return this.remoteFacadeService.getRemoteSettings(remoteName);
-  }
-
   getRemoteSettingValue(
     remoteName: string,
     key: keyof RemoteSettings
   ): RemoteSettings[keyof RemoteSettings] {
-    return this.loadRemoteSettings(remoteName)?.[key];
+    return this.remoteFacadeService.getRemoteSettings(remoteName)?.[key];
   }
 
   async saveRemoteSettings(remoteName: string, settings: Partial<RemoteSettings>): Promise<void> {
-    const merged = { ...this.loadRemoteSettings(remoteName), ...settings };
+    const merged = { ...this.remoteFacadeService.getRemoteSettings(remoteName), ...settings };
     await this.appSettingsService.saveRemoteSettings(remoteName, merged);
     await this.remoteFacadeService.loadRemotes();
   }
@@ -312,13 +296,12 @@ export class HomeComponent {
           confirmButtonColor: 'warn',
         }
       );
-      if (confirmed) {
-        await this.appSettingsService.resetRemoteSettings(remoteName);
-        await this.remoteFacadeService.loadRemotes();
-        this.notificationService.showSuccess(
-          this.translate.instant('home.notifications.settingsReset', { name: remoteName })
-        );
-      }
+      if (!confirmed) return;
+      await this.appSettingsService.resetRemoteSettings(remoteName);
+      await this.remoteFacadeService.loadRemotes();
+      this.notificationService.showSuccess(
+        this.translate.instant('home.notifications.settingsReset', { name: remoteName })
+      );
     } catch (error) {
       this.handleError(this.translate.instant('home.errors.resetSettingsFailed'), error);
     }
@@ -356,7 +339,6 @@ export class HomeComponent {
   async cloneRemote(remoteName: string): Promise<void> {
     const config = await this.remoteFacadeService.cloneRemote(remoteName);
     if (!config) return;
-
     const remoteConfig = config as RemoteSettings & { name?: string };
     this.modalService.openRemoteConfig({
       remoteName: remoteConfig['name'],
