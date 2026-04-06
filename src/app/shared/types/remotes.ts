@@ -47,7 +47,7 @@ export interface RemoteOperationState {
   jobId?: number;
   activeProfiles?: Record<string, number | string>;
   configuredProfiles?: string[];
-  profileBrowsePaths?: Record<string, string>;
+  profileBrowsePaths?: Record<string, string[]>;
 }
 
 export interface RemoteServeState {
@@ -56,7 +56,7 @@ export interface RemoteServeState {
   serves: ServeListItem[];
   activeProfiles?: Record<string, string>;
   configuredProfiles?: string[];
-  profileBrowsePaths?: Record<string, string>;
+  profileBrowsePaths?: Record<string, string[]>;
 }
 
 export interface RemoteStatus {

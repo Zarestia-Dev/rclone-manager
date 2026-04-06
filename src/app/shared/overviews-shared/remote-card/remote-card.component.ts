@@ -6,7 +6,6 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { QuickActionButtonsComponent } from '../../../shared/components';
 import {
   ActionState,
   AppTab,
@@ -33,6 +32,16 @@ interface OperationMeta {
   startTooltip: string;
   stopTooltip: string;
   cssClass: string;
+}
+
+export interface OpenableFolder {
+  operation: PrimaryActionType;
+  profile: string;
+  cssClass: string;
+  tooltip: string;
+  path: string;
+  isLocal: boolean;
+  icon: string;
 }
 
 const OPERATION_META: Record<PrimaryActionType, OperationMeta> = {
@@ -81,6 +90,7 @@ const OPERATION_META: Record<PrimaryActionType, OperationMeta> = {
 };
 
 const SYNC_TYPES: PrimaryActionType[] = ['sync', 'copy', 'move', 'bisync'];
+const BROWSABLE_OPS: PrimaryActionType[] = ['mount', 'sync', 'copy', 'move', 'bisync'];
 
 const MODE_DEFAULTS: Record<AppTab, PrimaryActionType[]> = {
   general: ['mount', 'sync', 'bisync'],
@@ -100,7 +110,6 @@ const MODE_DEFAULTS: Record<AppTab, PrimaryActionType[]> = {
     MatButtonModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
-    QuickActionButtonsComponent,
     TranslateModule,
   ],
   templateUrl: './remote-card.component.html',
@@ -109,6 +118,7 @@ const MODE_DEFAULTS: Record<AppTab, PrimaryActionType[]> = {
 export class RemoteCardComponent {
   private readonly translate = inject(TranslateService);
   readonly iconService = inject(IconService);
+  readonly isLocalPath = isLocalPath;
 
   readonly remote = input.required<Remote>();
   readonly mode = input<AppTab>('general');
@@ -140,8 +150,7 @@ export class RemoteCardComponent {
   private readonly anySyncActive = computed(() => SYNC_TYPES.some(op => this.isOpActive(op)));
 
   readonly cardVariant = computed<RemoteCardVariant>(() => {
-    const mode = this.mode();
-    switch (mode) {
+    switch (this.mode()) {
       case 'mount':
         return this.isOpActive('mount') ? 'active' : 'inactive';
       case 'sync':
@@ -169,8 +178,7 @@ export class RemoteCardComponent {
   });
 
   readonly actionButtons = computed<QuickActionButton[]>(() => {
-    const mode = this.mode();
-    switch (mode) {
+    switch (this.mode()) {
       case 'general':
         return this.buildGeneralButtons();
       case 'mount':
@@ -186,42 +194,47 @@ export class RemoteCardComponent {
     }
   });
 
+  /** Active operations with at least one locally-openable path. Drives the compact blossom cluster. */
+  readonly openableFolders = computed<OpenableFolder[]>(() => {
+    const folders: OpenableFolder[] = [];
+    for (const op of BROWSABLE_OPS) {
+      if (!this.isOpActive(op)) continue;
+      const activeProfiles = this.getActiveProfiles(op);
+      if (!activeProfiles) continue;
+      for (const profile of Object.keys(activeProfiles)) {
+        const paths = this.getProfileOpenPaths(op, profile);
+        for (const path of paths) {
+          const isLocal = isLocalPath(path);
+          const icon = isLocal ? 'folder' : 'folder-open';
+          const profileSuffix = profile === 'default' ? '' : ` · ${profile}`;
+          const typeSuffix = isLocal ? 'Local' : 'Remote';
+          folders.push({
+            operation: op,
+            profile,
+            path,
+            isLocal,
+            icon,
+            cssClass: OPERATION_META[op].cssClass,
+            tooltip: `${this.translate.instant('overviews.remoteCard.browse')} ${typeSuffix} (${op}${profileSuffix})`,
+          });
+        }
+      }
+    }
+    return folders;
+  });
+
   // ── Button builders ────────────────────────────────────────────────────────
 
   private buildGeneralButtons(): QuickActionButton[] {
-    const actionState = this.actionState();
-    const buttons = this.primaryActionsFor(this.maxGeneralButtons())
+    return this.primaryActionsFor(this.maxGeneralButtons())
       .map(type => this.buildOpButton(type))
       .filter((b): b is QuickActionButton => !!b);
-
-    buttons.push({
-      id: 'browse',
-      icon: 'folder',
-      tooltip: this.translate.instant('overviews.remoteCard.browse'),
-      isLoading: actionState === 'open',
-      isDisabled: !this.remote().status.mount.active || actionState === 'open',
-      cssClass: 'accent',
-    });
-
-    return buttons;
   }
 
   private buildMountButtons(): QuickActionButton[] {
-    const buttons = this.primaryActionsFor(this.maxMountButtons())
+    return this.primaryActionsFor(this.maxMountButtons())
       .map(type => this.buildOpButton(type))
       .filter((b): b is QuickActionButton => !!b);
-
-    if (this.cardVariant() === 'active') {
-      buttons.push({
-        id: 'open',
-        icon: 'folder',
-        tooltip: this.translate.instant('overviews.remoteCard.browse'),
-        isLoading: this.actionState() === 'open',
-        isDisabled: this.actionState() === 'open',
-        cssClass: 'accent',
-      });
-    }
-    return buttons;
   }
 
   private buildSyncButtons(): QuickActionButton[] {
@@ -255,20 +268,18 @@ export class RemoteCardComponent {
     const actionState = this.actionState();
     const isActive = !startOnly && this.isOpActive(type);
     const inProgress = actionState === type || (!startOnly && actionState === 'stop');
-
     const isLoading = startOnly
       ? actionState === type
       : type === 'mount' || type === 'serve'
         ? inProgress
         : inProgress && isActive;
 
-    const activeProfileName = this.getFirstActiveProfile(type);
-
+    const activeProfile = this.getFirstActiveProfile(type);
     return {
       id: type,
       icon: isActive ? meta.stopIcon : meta.startIcon,
       tooltip: isActive
-        ? `${this.translate.instant(meta.stopTooltip)} (${activeProfileName})`
+        ? `${this.translate.instant(meta.stopTooltip)} (${activeProfile})`
         : this.translate.instant(meta.startTooltip),
       isLoading,
       isDisabled: inProgress,
@@ -276,15 +287,12 @@ export class RemoteCardComponent {
     };
   }
 
-  // ── Primary action list builder ────────────────────────────────────────────
-
   private primaryActionsFor(limit: number, includeMount = true): PrimaryActionType[] {
-    const mode = this.mode();
     const userActions = this.primaryActions();
     const source =
-      mode === 'general' && userActions.length > 0
+      this.mode() === 'general' && userActions.length > 0
         ? userActions
-        : (MODE_DEFAULTS[mode] ?? ['mount', 'bisync']);
+        : (MODE_DEFAULTS[this.mode()] ?? ['mount', 'bisync']);
 
     const result: PrimaryActionType[] = [];
     for (const a of source) {
@@ -303,16 +311,9 @@ export class RemoteCardComponent {
 
   onActionButtonClick(action: { id: string; event: Event }): void {
     action.event.stopPropagation();
-    const remoteName = this.remote().name;
-
-    if (action.id === 'open' || action.id === 'browse') {
-      this.openInFiles.emit({ remoteName });
-      return;
-    }
-
     const type = action.id as PrimaryActionType;
     if (!OPERATION_META[type]) return;
-
+    const remoteName = this.remote().name;
     if (this.isOpActive(type)) {
       this.stopJob.emit({ type, remoteName, profileName: this.getFirstActiveProfile(type) });
     } else {
@@ -320,10 +321,20 @@ export class RemoteCardComponent {
     }
   }
 
-  onProfileOpenInFiles(operationType: PrimaryActionType, profileName: string, event: Event): void {
+  onProfileOpenInFiles(
+    operationType: PrimaryActionType,
+    profileName: string,
+    path: string,
+    event: Event
+  ): void {
     event.stopPropagation();
-    const path = this.getProfileOpenPath(operationType, profileName);
-    if (path) this.openInFiles.emit({ remoteName: this.remote().name, path });
+    this.openInFiles.emit({ remoteName: this.remote().name, path });
+  }
+
+  onOpenFolderClick(folder: OpenableFolder, event: Event): void {
+    this.onProfileOpenInFiles(folder.operation, folder.profile, folder.path, event);
+    // Close the blossom after selection — works for both mouse and touch.
+    (event.currentTarget as HTMLElement)?.blur();
   }
 
   onProfileChipClick(operationType: PrimaryActionType, profileName: string, event: Event): void {
@@ -354,14 +365,20 @@ export class RemoteCardComponent {
     });
   }
 
+  isFolderOpening(): boolean {
+    return this.actionStates().some(a => a.type === 'open') || this.actionState() === 'open';
+  }
+
   getProfileChipTooltip(op: PrimaryActionType, profile: string): string {
-    const meta = OPERATION_META[op];
-    const key = this.isProfileActive(op, profile) ? meta.stopTooltip : meta.startTooltip;
+    const key = this.isProfileActive(op, profile)
+      ? OPERATION_META[op].stopTooltip
+      : OPERATION_META[op].startTooltip;
     return `${this.translate.instant(key)} (${profile})`;
   }
 
-  getProfileOpenTooltip(profileName: string): string {
-    return `${this.translate.instant('overviews.remoteCard.browse')} (${profileName})`;
+  getProfileOpenTooltip(profileName: string, path: string): string {
+    const type = isLocalPath(path) ? 'Local' : 'Remote';
+    return `${this.translate.instant('overviews.remoteCard.browse')} ${type} (${profileName})`;
   }
 
   getOperationLabelIcon(op: PrimaryActionType): string {
@@ -396,8 +413,7 @@ export class RemoteCardComponent {
   }
 
   getProfileTooltip(op: PrimaryActionType): string {
-    const profiles = this.getActiveProfiles(op);
-    const names = Object.keys(profiles ?? {});
+    const names = Object.keys(this.getActiveProfiles(op) ?? {});
     if (names.length === 0) return op;
     if (names.length === 1) return `${op} (${names[0]})`;
     return `${op} (${names.join(', ')})`;
@@ -420,33 +436,43 @@ export class RemoteCardComponent {
   }
 
   canOpenProfilePath(op: PrimaryActionType, profile: string): boolean {
-    return !!this.getProfileOpenPath(op, profile);
+    return this.getProfileOpenPaths(op, profile).length > 0;
   }
 
-  private getProfileOpenPath(op: PrimaryActionType, profile: string): string | null {
+  getProfileOpenPaths(op: PrimaryActionType, profile: string): string[] {
+    const paths: string[] = [];
+
     if (op === 'mount') {
-      const path = this.getActiveProfiles('mount')?.[profile];
-      return typeof path === 'string' && isLocalPath(path) ? path : null;
+      const active = this.getActiveProfiles('mount')?.[profile];
+      if (typeof active === 'string') paths.push(active);
     }
 
-    if (SYNC_TYPES.includes(op) && !this.isProfileActive(op, profile)) return null;
+    if (SYNC_TYPES.includes(op) && !this.isProfileActive(op, profile)) {
+      return paths;
+    }
 
     const browsePaths = (
       this.remote().status[op as keyof Omit<RemoteStatus, 'diskUsage'>] as RemoteOperationState
     )?.profileBrowsePaths;
-    const configured = browsePaths?.[profile];
-    if (typeof configured === 'string' && isLocalPath(configured)) return configured;
 
-    const active = this.getActiveProfiles(op)?.[profile];
-    if (typeof active === 'string' && isLocalPath(active)) return active;
+    const configuredPaths = browsePaths?.[profile];
+    if (Array.isArray(configuredPaths)) {
+      paths.push(...configuredPaths);
+    } else if (typeof configuredPaths === 'string') {
+      paths.push(configuredPaths);
+    }
 
-    return null;
+    const activeProfileValue = this.getActiveProfiles(op)?.[profile];
+    if (typeof activeProfileValue === 'string' && !paths.includes(activeProfileValue)) {
+      paths.push(activeProfileValue);
+    }
+
+    return [...new Set(paths)];
   }
 
   getActiveOperations(): PrimaryActionType[] {
-    const mode = this.mode();
     let candidates: PrimaryActionType[];
-    switch (mode) {
+    switch (this.mode()) {
       case 'general':
         candidates = this.primaryActionsFor(this.maxGeneralButtons());
         break;

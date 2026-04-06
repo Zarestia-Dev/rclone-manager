@@ -23,14 +23,16 @@ import { isLocalPath } from 'src/app/services/remote/utils/remote-config.utils';
     <div class="path-section">
       <div class="path-item">
         <div class="path-icon-container">
-          @if (config.showOpenButtons && isLocalPath(config.source)) {
+          @if (config.showOpenButtons && config.hasSource) {
             <button
               matIconButton
               class="folder-button"
               (click)="onOpenPath(config.source)"
               [matTooltip]="'detailShared.pathDisplay.openInExplorer' | translate"
             >
-              <mat-icon svgIcon="folder"></mat-icon>
+              <mat-icon
+                [svgIcon]="isLocalPath(config.source) ? 'folder' : 'folder-open'"
+              ></mat-icon>
             </button>
           } @else {
             <mat-icon svgIcon="cloud-arrow-up" class="path-icon"></mat-icon>
@@ -49,7 +51,7 @@ import { isLocalPath } from 'src/app/services/remote/utils/remote-config.utils';
       </div>
       <div class="path-item destination-path">
         <div class="path-icon-container">
-          @if (config.showOpenButtons && isLocalPath(config.destination)) {
+          @if (config.showOpenButtons && config.hasDestination) {
             <button
               matIconButton
               class="folder-button"
@@ -62,7 +64,9 @@ import { isLocalPath } from 'src/app/services/remote/utils/remote-config.utils';
               @if (config.actionInProgress === 'open') {
                 <mat-spinner diameter="24"></mat-spinner>
               } @else {
-                <mat-icon svgIcon="folder"></mat-icon>
+                <mat-icon
+                  [svgIcon]="isLocalPath(config.destination) ? 'folder' : 'folder-open'"
+                ></mat-icon>
               }
             </button>
           } @else {

@@ -58,6 +58,8 @@ export interface PathDisplayConfig {
   operationColor?: OperationColor;
   isDestinationActive?: boolean;
   actionInProgress?: RemoteAction;
+  hasSource?: boolean;
+  hasDestination?: boolean;
 }
 
 // ── Jobs Panel ──────────────────────────────────────────────────────────────

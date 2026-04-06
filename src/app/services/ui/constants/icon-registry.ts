@@ -41,6 +41,7 @@ export const BASE_ICONS: Record<string, string> = {
   // ------------------- File & Folder Icons -------------------
   file: 'assets/icons/files/file.svg',
   folder: 'assets/icons/files/folder.svg',
+  'folder-open': 'assets/icons/files/folder-open.svg',
   'file-lines': 'assets/icons/files/file-lines.svg',
   'file-arrow-up': 'assets/icons/files/file-arrow-up.svg',
   database: 'assets/icons/files/database.svg',

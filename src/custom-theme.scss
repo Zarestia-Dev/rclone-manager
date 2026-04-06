@@ -742,42 +742,21 @@ body {
     )
   );
 
-  @include mat.chips-overrides(
-    (
-      outline-color: var(--border-color),
-      focus-outline-color: var(--border-color),
-    )
-  );
-
-  @include mat.menu-overrides(
-    (
-      container-shape: var(--radius-sm),
-      container-color: var(--popover-bg-color),
-      divider-color: var(--border-color),
-      divider-top-spacing: var(--space-xs),
-      divider-bottom-spacing: var(--space-xs),
-      item-label-text-color: var(--window-fg-color),
-    )
-  );
-
   @include mat.card-overrides(
     (
-      // Container styling - use libadwaita colors
       elevated-container-color: var(--view-bg-color),
       filled-container-color: var(--view-bg-color),
       outlined-container-color: var(--view-bg-color),
-      // Border radius
       elevated-container-shape: var(--card-border-radius),
       filled-container-shape: var(--card-border-radius),
       outlined-container-shape: var(--card-border-radius),
-      elevated-container-elevation: var(--shadow-gnome)
+      elevated-container-elevation: var(--shadow-gnome),
     )
   );
 
   @include mat.expansion-overrides(
     (
       container-shape: var(--card-border-radius),
-      // Use libadwaita-style outline shadow instead of heavy drop shadow
       container-elevation-shadow: var(--shadow-gnome),
     )
   );

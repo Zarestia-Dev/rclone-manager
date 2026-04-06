@@ -620,6 +620,8 @@ export class AppDetailComponent {
             operationColor: metadata.cssClass as OperationColor,
             isDestinationActive: type === 'mount' ? isActive : true,
             actionInProgress: (actionType as RemoteAction) ?? undefined,
+            hasSource: !!config.source,
+            hasDestination: !!(config.dest ?? config.destination),
           };
 
     return {

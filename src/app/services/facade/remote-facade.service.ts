@@ -18,6 +18,7 @@ import { RemoteFileOperationsService } from '../remote/remote-file-operations.se
 import { RemoteMetadataService } from '../remote/remote-metadata.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
+import { NautilusService } from '../ui/nautilus.service';
 import { isLocalPath, getRemoteNameFromFs } from '../remote/utils/remote-config.utils';
 import {
   Remote,
@@ -50,6 +51,7 @@ export class RemoteFacadeService extends TauriBaseService {
   private readonly metadataService = inject(RemoteMetadataService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly eventListeners = inject(EventListenersService);
+  private readonly nautilusService = inject(NautilusService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly jobs = this.jobService.jobs;
@@ -461,7 +463,21 @@ export class RemoteFacadeService extends TauriBaseService {
       const profiles = settings[configKey as keyof RemoteSettings] as ProfileConfigMap | undefined;
       path = ((profiles ? Object.values(profiles)[0]?.['dest'] : undefined) as string) ?? '';
     }
-    await this.executeAction(remoteName, 'open', () => this.mountService.openInFiles(path));
+
+    if (isLocalPath(path)) {
+      await this.executeAction(remoteName, 'open', () => this.mountService.openInFiles(path));
+    } else {
+      await this.executeAction(remoteName, 'open', async () => {
+        const colonIdx = path.indexOf(':');
+        const targetRemoteName = colonIdx > -1 ? path.substring(0, colonIdx) : remoteName;
+        const relativePath =
+          colonIdx > -1
+            ? path.substring(colonIdx + 1).replace(/^\/+/, '')
+            : path.replace(/^\/+/, '');
+
+        await this.nautilusService.detachTab(targetRemoteName, relativePath);
+      });
+    }
   }
 
   generateUniqueRemoteName(baseName: string): string {
@@ -674,13 +690,16 @@ function groupBy<T, K extends PropertyKey>(array: T[], keyGetter: (item: T) => K
   );
 }
 
-function buildProfileBrowsePaths(profileMap: ProfileConfigMap): Record<string, string> {
-  const result: Record<string, string> = {};
+function buildProfileBrowsePaths(profileMap: ProfileConfigMap): Record<string, string[]> {
+  const result: Record<string, string[]> = {};
   for (const [name, config] of Object.entries(profileMap)) {
-    const path = [config['dest'], config['source'], config['path']].find(
-      v => typeof v === 'string' && isLocalPath(v as string)
-    ) as string | undefined;
-    if (path) result[name] = path;
+    const paths = [config['dest'], config['path']].filter(
+      v => typeof v === 'string' && v.length > 0
+    ) as string[];
+
+    if (paths.length > 0) {
+      result[name] = Array.from(new Set(paths));
+    }
   }
   return result;
 }
