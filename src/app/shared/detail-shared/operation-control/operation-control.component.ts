@@ -8,7 +8,6 @@ import {
   signal,
   effect,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -33,7 +32,6 @@ import { TranslateModule } from '@ngx-translate/core';
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule,
     MatCardModule,
     MatIconModule,
     MatButtonModule,
@@ -54,7 +52,7 @@ import { TranslateModule } from '@ngx-translate/core';
     >
       <mat-expansion-panel-header>
         <mat-panel-title>
-          <mat-icon [svgIcon]="operationIcon()" class="panel-icon"></mat-icon>
+          <mat-icon [svgIcon]="operationIcon()" style="color: var(--op-color)"></mat-icon>
           <div class="profile-info">
             <span class="profile-name">{{ config().profileName || 'default' }}</span>
             <app-status-badge [config]="statusBadgeConfig()"></app-status-badge>
@@ -66,7 +64,7 @@ import { TranslateModule } from '@ngx-translate/core';
             <button
               mat-icon-button
               class="quick-action"
-              [ngClass]="buttonClass()"
+              [class]="buttonClass()"
               (click)="handleQuickAction($event)"
               [disabled]="config().isLoading"
               [matTooltip]="
@@ -119,7 +117,7 @@ import { TranslateModule } from '@ngx-translate/core';
         <div class="panel-actions">
           <button
             mat-flat-button
-            [ngClass]="buttonClass()"
+            [class]="buttonClass()"
             (click)="
               config().isActive
                 ? stopJob.emit(config().operationType)
@@ -207,10 +205,10 @@ import { TranslateModule } from '@ngx-translate/core';
   ],
 })
 export class OperationControlComponent {
-  config = input.required<OperationControlConfig>();
-  startJob = output<PrimaryActionType>();
-  stopJob = output<PrimaryActionType>();
-  openPath = output<string>();
+  readonly config = input.required<OperationControlConfig>();
+  readonly startJob = output<PrimaryActionType>();
+  readonly stopJob = output<PrimaryActionType>();
+  readonly openPath = output<string>();
 
   private readonly systemInfo = inject(SystemInfoService);
 
@@ -220,11 +218,11 @@ export class OperationControlComponent {
   private readonly mountDestination = computed(() => this.config().pathConfig.destination ?? '');
 
   private readonly shouldPollDiskUsage = computed(() => {
-    const cfg = this.config();
-    const destination = this.mountDestination();
+    const { operationType, isActive, pathConfig } = this.config();
+    const destination = pathConfig.destination ?? '';
     return (
-      cfg.operationType === 'mount' &&
-      cfg.isActive &&
+      operationType === 'mount' &&
+      isActive &&
       !!destination &&
       !destination.includes('Not configured')
     );
@@ -232,36 +230,34 @@ export class OperationControlComponent {
 
   constructor() {
     effect(onCleanup => {
-      const shouldPoll = this.shouldPollDiskUsage();
-      const destination = this.mountDestination();
-
-      if (shouldPoll) {
-        const fetchDiskUsage = async (): Promise<void> => {
-          try {
-            const usage = await this.systemInfo.getLocalDiskUsage(destination);
-            this.diskUsage.set(usage);
-          } catch {
-            this.diskUsage.set(null);
-          }
-        };
-
-        void fetchDiskUsage();
-        const interval = setInterval(() => void fetchDiskUsage(), 5000);
-        onCleanup(() => clearInterval(interval));
-      } else {
+      if (!this.shouldPollDiskUsage()) {
         this.diskUsage.set(null);
+        return;
       }
+
+      const destination = this.mountDestination();
+      const fetchDiskUsage = async (): Promise<void> => {
+        try {
+          this.diskUsage.set(await this.systemInfo.getLocalDiskUsage(destination));
+        } catch {
+          this.diskUsage.set(null);
+        }
+      };
+
+      void fetchDiskUsage();
+      const interval = setInterval(() => void fetchDiskUsage(), 5000);
+      onCleanup(() => clearInterval(interval));
     });
   }
 
   handleQuickAction(event: Event): void {
     event.preventDefault();
     event.stopPropagation();
-
-    if (this.config().isActive) {
-      this.stopJob.emit(this.config().operationType);
+    const { isActive, operationType } = this.config();
+    if (isActive) {
+      this.stopJob.emit(operationType);
     } else {
-      this.startJob.emit(this.config().operationType);
+      this.startJob.emit(operationType);
     }
   }
 
@@ -271,7 +267,7 @@ export class OperationControlComponent {
     return 'primary';
   }
 
-  private readonly OPERATION_ICONS: Record<PrimaryActionType, string> = {
+  private static readonly OPERATION_ICONS: Record<PrimaryActionType, string> = {
     mount: 'mount',
     sync: 'refresh',
     bisync: 'right-left',
@@ -281,7 +277,7 @@ export class OperationControlComponent {
   };
 
   readonly operationIcon = computed(
-    () => this.OPERATION_ICONS[this.config().operationType] ?? 'refresh'
+    () => OperationControlComponent.OPERATION_ICONS[this.config().operationType] ?? 'refresh'
   );
 
   readonly statusBadgeConfig = computed((): StatusBadgeConfig => {
@@ -296,14 +292,7 @@ export class OperationControlComponent {
       serve: { active: 'detailShared.status.serving', inactive: 'detailShared.status.stopped' },
     };
 
-    let state: 'active' | 'inactive' | 'error';
-    if (config.isError) {
-      state = 'error';
-    } else if (config.isActive) {
-      state = 'active';
-    } else {
-      state = 'inactive';
-    }
+    const state = config.isError ? 'error' : config.isActive ? 'active' : 'inactive';
 
     let resolvedBadgeClass: string;
     if (state === 'error') {
@@ -327,7 +316,7 @@ export class OperationControlComponent {
   });
 
   readonly buttonClass = computed(() => {
-    const config = this.config();
-    return config?.isActive ? 'warn' : (config?.cssClass ?? '');
+    const { isActive, cssClass } = this.config();
+    return isActive ? 'warn' : (cssClass ?? '');
   });
 }

@@ -5,6 +5,11 @@
   overflow: hidden;
 }
 
+mat-sidenav-container {
+  height: 100%;
+  width: 100%;
+}
+
 mat-sidenav {
   width: var(--sidebar-width);
   border-radius: 0 !important;
@@ -12,6 +17,7 @@ mat-sidenav {
 
 mat-sidenav-content {
   flex: 1;
+  height: 100%;
 
   .sidebar-button {
     position: absolute;

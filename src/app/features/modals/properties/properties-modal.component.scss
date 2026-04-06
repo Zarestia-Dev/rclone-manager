@@ -210,7 +210,7 @@
     letter-spacing: 0.3px;
     background: rgba(var(--primary-color-rgb), 0.1);
     color: var(--primary-color);
-    box-shadow: 0 0 0 1px var(--card-shade-color);
+    box-shadow: var(--box-shadow);
     border-radius: var(--radius-lg);
     transition: all 0.2s ease;
 

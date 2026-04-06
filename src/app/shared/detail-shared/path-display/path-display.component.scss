@@ -17,8 +17,8 @@
     .path-icon-container {
       .folder-button {
         &.active {
-          background: rgba(var(--accent-color-rgb), var(--active-opacity));
-          color: var(--accent-color);
+          background: color-mix(in srgb, var(--op-color, var(--accent-color)) 18%, transparent);
+          color: var(--op-color, var(--accent-color));
         }
 
         &.inactive {

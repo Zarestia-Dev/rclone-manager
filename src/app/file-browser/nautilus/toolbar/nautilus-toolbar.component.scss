@@ -63,7 +63,7 @@
   display: flex;
   align-items: center;
   background: var(--sidebar-bg-color);
-  box-shadow: 0 0 0 1px var(--card-shade-color);
+  box-shadow: var(--box-shadow);
   border-radius: var(--border-radius);
   width: 100%;
   max-width: 800px;

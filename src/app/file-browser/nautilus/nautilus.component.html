@@ -200,6 +200,12 @@
               <span class="shortcut">Alt+Return</span>
             </button>
           }
+          @if (!item) {
+            <button class="menu-item" cdkMenuItem (click)="refresh()">
+              <span class="item-label">{{ 'nautilus.contextMenu.refresh' | translate }}</span>
+              <span class="shortcut">F5</span>
+            </button>
+          }
           @if (!item && !activeStarredMode()) {
             <button class="menu-item" cdkMenuItem (click)="openContextMenuNewFolder()">
               <span class="item-label">{{ 'nautilus.contextMenu.newFolder' | translate }}</span>
@@ -211,11 +217,6 @@
                 <span class="shortcut">Ctrl+V</span>
               </button>
             }
-            <mat-divider></mat-divider>
-            <button class="menu-item" cdkMenuItem (click)="refresh()">
-              <span class="item-label">{{ 'nautilus.contextMenu.refresh' | translate }}</span>
-              <span class="shortcut">F5</span>
-            </button>
             <mat-divider></mat-divider>
             <button class="menu-item" cdkMenuItem (click)="openPropertiesDialog('contextMenu')">
               <span class="item-label">{{ 'nautilus.contextMenu.properties' | translate }}</span>

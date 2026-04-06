@@ -19,15 +19,15 @@
   &.error {
     background: rgba(var(--warn-color-rgb), var(--active-opacity));
     color: var(--warn-color);
-    box-shadow: 0 0 0 1px var(--card-shade-color);
-
+    box-shadow: var(--box-shadow);
     .status-dot {
       background: var(--warn-color);
     }
   }
 
+  &.unmounted,
   &.inactive {
-    background: rgba(var(--window-fg-color-rgb), var(--inactive-opacity));
+    background: var(--border-color);
     color: var(--dim-color);
 
     .status-dot {
@@ -39,8 +39,7 @@
   &.active-sync {
     background: rgba(var(--primary-color-rgb), var(--active-opacity));
     color: var(--primary-color);
-    box-shadow: 0 0 0 1px var(--card-shade-color);
-
+    box-shadow: var(--box-shadow);
     .status-dot {
       background: var(--primary-color);
     }
@@ -49,8 +48,7 @@
   &.active-copy {
     background: rgba(var(--yellow-rgb), var(--active-opacity));
     color: var(--yellow);
-    box-shadow: 0 0 0 1px var(--card-shade-color);
-
+    box-shadow: var(--box-shadow);
     .status-dot {
       background: var(--yellow);
     }
@@ -59,8 +57,7 @@
   &.active-move {
     background: rgba(var(--light-orange-rgb), var(--active-opacity));
     color: var(--light-orange);
-    box-shadow: 0 0 0 1px var(--card-shade-color);
-
+    box-shadow: var(--box-shadow);
     .status-dot {
       background: var(--light-orange);
     }
@@ -69,8 +66,7 @@
   &.active-bisync {
     background: rgba(var(--purple-rgb), var(--active-opacity));
     color: var(--purple);
-    box-shadow: 0 0 0 1px var(--card-shade-color);
-
+    box-shadow: var(--box-shadow);
     .status-dot {
       background: var(--purple);
     }
@@ -80,19 +76,9 @@
   &.mounted {
     background: rgba(var(--accent-color-rgb), var(--active-opacity));
     color: var(--accent-color);
-    box-shadow: 0 0 0 1px var(--card-shade-color);
-
+    box-shadow: var(--box-shadow);
     .status-dot {
       background: var(--accent-color);
-    }
-  }
-
-  &.unmounted {
-    background: rgba(var(--window-fg-color-rgb), var(--inactive-opacity));
-    color: var(--dim-color);
-
-    .status-dot {
-      background: var(--dim-color);
     }
   }
 }

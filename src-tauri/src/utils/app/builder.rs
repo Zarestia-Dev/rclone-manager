@@ -158,6 +158,6 @@ pub fn create_nautilus_window(
 
 #[cfg(not(feature = "web-server"))]
 #[tauri::command]
-pub fn detach_nautilus_window(app_handle: AppHandle, remote: Option<String>, path: Option<String>) {
+pub fn new_nautilus_window(app_handle: AppHandle, remote: Option<String>, path: Option<String>) {
     create_nautilus_window(app_handle, remote.as_deref(), path.as_deref());
 }

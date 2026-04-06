@@ -1988,6 +1988,7 @@
       "buttons": {
         "back": "上一步",
         "cancel": "取消",
+        "create": "创建",
         "save": "保存",
         "saveConfig": "保存配置并创建远程存储",
         "saveChanges": "保存更改",
@@ -2665,7 +2666,11 @@
         "stopServe": "停止服务"
       },
       "browse": "浏览文件",
-      "browseDest": "浏览目标"
+      "browseDest": "浏览目标",
+      "emptyState": {
+        "title": "未配置任何配置文件",
+        "message": "此远程存储没有可显示的操作配置文件。"
+      }
     }
   },
   "tray": {

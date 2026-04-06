@@ -248,6 +248,21 @@ export class ValidatorRegistryService {
     };
   }
 
+  requiredIfCronEnabled(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const opGroup = control.parent;
+      if (!opGroup) return null;
+
+      const cronEnabled = opGroup.get('cronEnabled')?.value;
+
+      if (cronEnabled && !control.value) {
+        return { required: true };
+      }
+
+      return null;
+    };
+  }
+
   /**
    * Create a remote name validator with existing names and regex pattern
    */

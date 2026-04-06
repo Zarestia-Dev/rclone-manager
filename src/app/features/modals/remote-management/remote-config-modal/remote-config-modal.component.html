@@ -12,16 +12,10 @@
       <mat-icon svgIcon="search"></mat-icon>
     </button>
     <p data-tauri-drag-region>
-      @let target = editTarget();
+      @let stepKey = editTargetStepKey();
       {{
-        target
-          ? ('modals.remoteConfig.title.edit'
-            | translate
-              : {
-                  target:
-                    ('modals.remoteConfig.steps.' + (target === 'remote' ? 'remoteConfig' : target)
-                    | translate),
-                })
+        stepKey
+          ? ('modals.remoteConfig.title.edit' | translate: { target: stepKey | translate })
           : ('modals.remoteConfig.title.add' | translate)
       }}
       @if (!flow.isActive && !editTarget()) {
@@ -127,13 +121,7 @@
             <div class="sidebar-header">
               <span class="header-label">{{
                 'modals.remoteConfig.editMode.profiles'
-                  | translate
-                    : {
-                        type:
-                          ('modals.remoteConfig.steps.' +
-                            (editTarget() === 'remote' ? 'remoteConfig' : editTarget())
-                          | translate),
-                      }
+                  | translate: { type: editTargetStepKey() | translate }
               }}</span>
             </div>
             <div class="step-indicator-container hide-scrollbar">
@@ -160,13 +148,7 @@
                 class="step-indicator"
                 [attr.aria-label]="
                   'modals.remoteConfig.editMode.profiles'
-                    | translate
-                      : {
-                          type:
-                            ('modals.remoteConfig.steps.' +
-                              (editTarget() === 'remote' ? 'remoteConfig' : editTarget())
-                            | translate),
-                        }
+                    | translate: { type: editTargetStepKey() | translate }
                 "
               >
                 @let targetType = activeProfileType();
@@ -243,9 +225,9 @@
 
         <!-- Profile header template (shared across all flag steps) -->
         <ng-template #profileHeader let-flagType="type">
-          @let pState = getProfileState(flagType);
-          @let selProfile = getSelectedProfileName(flagType);
-          @let pList = getProfileList(flagType);
+          @let pState = $any(profileState())[flagType];
+          @let selProfile = $any(selectedProfileName())[flagType];
+          @let pList = $any(profileLists())[flagType];
 
           <div class="profile-header">
             @if (pState.mode === 'view') {

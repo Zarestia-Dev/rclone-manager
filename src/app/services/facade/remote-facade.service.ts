@@ -475,7 +475,7 @@ export class RemoteFacadeService extends TauriBaseService {
             ? path.substring(colonIdx + 1).replace(/^\/+/, '')
             : path.replace(/^\/+/, '');
 
-        await this.nautilusService.detachTab(targetRemoteName, relativePath);
+        await this.nautilusService.newNautilusWindow(targetRemoteName, relativePath);
       });
     }
   }

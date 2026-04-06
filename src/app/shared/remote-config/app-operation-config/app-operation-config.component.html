@@ -152,11 +152,11 @@
 
                 <mat-option value="local">
                   <mat-icon svgIcon="folder" class="purple"></mat-icon>
-                  {{ 'wizards.appOperation.localPath' | translate }}
+                  <span>{{ 'wizards.appOperation.localPath' | translate }}</span>
                 </mat-option>
                 <mat-option value="currentRemote">
                   <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-                  {{ currentRemoteName() }}:
+                  <span>{{ currentRemoteName() }}:</span>
                 </mat-option>
 
                 @if (otherRemotes().length) {
@@ -164,7 +164,7 @@
                     @for (remote of otherRemotes(); track remote) {
                       <mat-option [value]="'otherRemote:' + remote">
                         <mat-icon class="accent" svgIcon="cloud"></mat-icon>
-                        {{ remote }}:
+                        <span>{{ remote }}:</span>
                       </mat-option>
                     }
                   </mat-optgroup>
@@ -268,11 +268,11 @@
 
                 <mat-option value="local">
                   <mat-icon svgIcon="folder" class="purple"></mat-icon>
-                  {{ 'wizards.appOperation.localPath' | translate }}
+                  <span>{{ 'wizards.appOperation.localPath' | translate }}</span>
                 </mat-option>
                 <mat-option value="currentRemote">
                   <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-                  {{ currentRemoteName() }}:
+                  <span>{{ currentRemoteName() }}:</span>
                 </mat-option>
 
                 @if (otherRemotes().length) {
@@ -280,7 +280,7 @@
                     @for (remote of otherRemotes(); track remote) {
                       <mat-option [value]="'otherRemote:' + remote">
                         <mat-icon class="accent" svgIcon="cloud"></mat-icon>
-                        {{ remote }}:
+                        <span>{{ remote }}:</span>
                       </mat-option>
                     }
                   </mat-optgroup>

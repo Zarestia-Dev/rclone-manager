@@ -87,13 +87,13 @@
     &.info {
       color: var(--accent-color);
       background: rgba(var(--accent-color-rgb), 0.1);
-      box-shadow: 0 0 0 1px var(--card-shade-color);
+      box-shadow: var(--box-shadow);
     }
 
     &.warning {
       color: var(--warn-color);
       background: rgba(var(--warn-color-rgb), 0.1);
-      box-shadow: 0 0 0 1px var(--card-shade-color);
+      box-shadow: var(--box-shadow);
     }
   }
 }

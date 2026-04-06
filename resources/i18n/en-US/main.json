@@ -1978,6 +1978,7 @@
       "buttons": {
         "back": "Back",
         "cancel": "Cancel",
+        "create": "Create",
         "save": "Save",
         "saveConfig": "Save configuration and create remote",
         "saveChanges": "Save changes",
@@ -2658,7 +2659,11 @@
         "stopServe": "Stop Serve"
       },
       "browse": "Browse Files",
-      "browseDest": "Browse Destination"
+      "browseDest": "Browse Destination",
+      "emptyState": {
+        "title": "No profiles configured",
+        "message": "This remote has no operation profiles to show."
+      }
     }
   },
   "tray": {

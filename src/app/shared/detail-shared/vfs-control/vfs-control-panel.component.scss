@@ -37,7 +37,7 @@
   gap: var(--space-md);
   padding: var(--space-md);
   background: rgba(var(--orange-rgb), 0.1);
-  box-shadow: 0 0 0 1px var(--card-shade-color);
+  box-shadow: var(--box-shadow);
   border-radius: var(--card-border-radius);
   margin-bottom: var(--space-md);
 

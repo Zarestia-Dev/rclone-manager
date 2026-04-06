@@ -194,7 +194,31 @@ export class RemoteCardComponent {
     }
   });
 
-  /** Active operations with at least one locally-openable path. Drives the compact blossom cluster. */
+  readonly detailedOperations = computed<PrimaryActionType[]>(() => {
+    let candidates: PrimaryActionType[];
+    switch (this.mode()) {
+      case 'general':
+        candidates = this.primaryActionsFor(this.maxGeneralButtons());
+        break;
+      case 'mount':
+        candidates = ['mount'];
+        break;
+      case 'sync':
+        candidates = this.primaryActionsFor(this.maxSyncButtons(), false);
+        break;
+      case 'serve':
+        candidates = ['serve'];
+        break;
+      default:
+        candidates = [];
+    }
+    return candidates.filter(op => this.getConfiguredProfiles(op).length > 0);
+  });
+
+  readonly isFolderOpening = computed<boolean>(
+    () => this.actionStates().some(a => a.type === 'open') || this.actionState() === 'open'
+  );
+
   readonly openableFolders = computed<OpenableFolder[]>(() => {
     const folders: OpenableFolder[] = [];
     for (const op of BROWSABLE_OPS) {
@@ -202,20 +226,17 @@ export class RemoteCardComponent {
       const activeProfiles = this.getActiveProfiles(op);
       if (!activeProfiles) continue;
       for (const profile of Object.keys(activeProfiles)) {
-        const paths = this.getProfileOpenPaths(op, profile);
-        for (const path of paths) {
+        for (const path of this.getProfileOpenPaths(op, profile)) {
           const isLocal = isLocalPath(path);
-          const icon = isLocal ? 'folder' : 'folder-open';
           const profileSuffix = profile === 'default' ? '' : ` · ${profile}`;
-          const typeSuffix = isLocal ? 'Local' : 'Remote';
           folders.push({
             operation: op,
             profile,
             path,
             isLocal,
-            icon,
+            icon: isLocal ? 'folder' : 'folder-open',
             cssClass: OPERATION_META[op].cssClass,
-            tooltip: `${this.translate.instant('overviews.remoteCard.browse')} ${typeSuffix} (${op}${profileSuffix})`,
+            tooltip: `${this.translate.instant('overviews.remoteCard.browse')} ${isLocal ? 'Local' : 'Remote'} (${op}${profileSuffix})`,
           });
         }
       }
@@ -332,8 +353,8 @@ export class RemoteCardComponent {
   }
 
   onOpenFolderClick(folder: OpenableFolder, event: Event): void {
-    this.onProfileOpenInFiles(folder.operation, folder.profile, folder.path, event);
-    // Close the blossom after selection — works for both mouse and touch.
+    event.stopPropagation();
+    this.openInFiles.emit({ remoteName: this.remote().name, path: folder.path });
     (event.currentTarget as HTMLElement)?.blur();
   }
 
@@ -350,23 +371,12 @@ export class RemoteCardComponent {
 
   // ── Profile chip helpers ───────────────────────────────────────────────────
 
-  isProfileChipDisabled(op: PrimaryActionType, profile: string): boolean {
-    return this.isProfileActionInProgress(op, profile);
-  }
-
-  isProfileChipLoading(op: PrimaryActionType, profile: string): boolean {
-    return this.isProfileActionInProgress(op, profile);
-  }
-
-  private isProfileActionInProgress(op: PrimaryActionType, profile: string): boolean {
+  // Exposed publicly — used by the template for both [disabled] and [class.is-running]
+  isProfileActionInProgress(op: PrimaryActionType, profile: string): boolean {
     return this.actionStates().some(a => {
       if (a.profileName && a.profileName !== profile) return false;
       return a.type === 'stop' ? a.operationType === op : a.type === op;
     });
-  }
-
-  isFolderOpening(): boolean {
-    return this.actionStates().some(a => a.type === 'open') || this.actionState() === 'open';
   }
 
   getProfileChipTooltip(op: PrimaryActionType, profile: string): string {
@@ -377,8 +387,7 @@ export class RemoteCardComponent {
   }
 
   getProfileOpenTooltip(profileName: string, path: string): string {
-    const type = isLocalPath(path) ? 'Local' : 'Remote';
-    return `${this.translate.instant('overviews.remoteCard.browse')} ${type} (${profileName})`;
+    return `${this.translate.instant('overviews.remoteCard.browse')} ${isLocalPath(path) ? 'Local' : 'Remote'} (${profileName})`;
   }
 
   getOperationLabelIcon(op: PrimaryActionType): string {
@@ -440,22 +449,23 @@ export class RemoteCardComponent {
   }
 
   getProfileOpenPaths(op: PrimaryActionType, profile: string): string[] {
+    if (op === 'serve') return [];
+
     const paths: string[] = [];
 
     if (op === 'mount') {
+      if (!this.isProfileActive(op, profile)) return paths;
       const active = this.getActiveProfiles('mount')?.[profile];
       if (typeof active === 'string') paths.push(active);
     }
 
-    if (SYNC_TYPES.includes(op) && !this.isProfileActive(op, profile)) {
-      return paths;
-    }
+    if (SYNC_TYPES.includes(op) && !this.isProfileActive(op, profile)) return paths;
 
     const browsePaths = (
       this.remote().status[op as keyof Omit<RemoteStatus, 'diskUsage'>] as RemoteOperationState
     )?.profileBrowsePaths;
-
     const configuredPaths = browsePaths?.[profile];
+
     if (Array.isArray(configuredPaths)) {
       paths.push(...configuredPaths);
     } else if (typeof configuredPaths === 'string') {
@@ -468,26 +478,5 @@ export class RemoteCardComponent {
     }
 
     return [...new Set(paths)];
-  }
-
-  getActiveOperations(): PrimaryActionType[] {
-    let candidates: PrimaryActionType[];
-    switch (this.mode()) {
-      case 'general':
-        candidates = this.primaryActionsFor(this.maxGeneralButtons());
-        break;
-      case 'mount':
-        candidates = ['mount'];
-        break;
-      case 'sync':
-        candidates = this.primaryActionsFor(this.maxSyncButtons(), false);
-        break;
-      case 'serve':
-        candidates = ['serve'];
-        break;
-      default:
-        candidates = [];
-    }
-    return candidates.filter(op => this.getConfiguredProfiles(op).length > 0);
   }
 }

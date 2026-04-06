@@ -156,7 +156,7 @@
   padding: var(--space-xs) var(--space-sm);
   background: rgba(var(--window-fg-color-rgb), 0.03);
   border-radius: var(--radius-xs);
-  box-shadow: 0 0 0 1px var(--card-shade-color);
+  box-shadow: var(--box-shadow);
 }
 
 .meta-item {

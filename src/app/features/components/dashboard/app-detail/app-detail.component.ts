@@ -60,7 +60,6 @@ import { toString as cronstrue } from 'cronstrue';
 import { VfsControlPanelComponent } from '../../../../shared/detail-shared/vfs-control/vfs-control-panel.component';
 import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
 
-// Module-level constants — no need to inflate the class
 const POLL_INTERVAL_MS = 1000;
 
 const ANIMATION_CLASS: Partial<Record<PrimaryActionType, string>> = {
@@ -70,6 +69,16 @@ const ANIMATION_CLASS: Partial<Record<PrimaryActionType, string>> = {
   bisync: 'animate-breathing',
   serve: 'animate-breathing',
   mount: 'animate-breathing',
+};
+
+// Lookup for operation color → CSS variable; keeps computed() clean
+const OPERATION_COLOR_VAR: Record<OperationColor, string> = {
+  primary: 'var(--primary-color)',
+  accent: 'var(--accent-color)',
+  yellow: 'var(--yellow)',
+  orange: 'var(--orange)',
+  purple: 'var(--purple)',
+  warn: 'var(--warn-color)',
 };
 
 interface ProfileConfig {
@@ -168,6 +177,10 @@ export class AppDetailComponent {
 
   readonly operationColor = computed<OperationColor>(
     () => (this.currentOpMetadata()?.cssClass as OperationColor) ?? 'primary'
+  );
+
+  readonly operationColorCssVar = computed(
+    () => OPERATION_COLOR_VAR[this.operationColor()] ?? OPERATION_COLOR_VAR.warn
   );
 
   readonly iconAnimationClass = computed(() =>
@@ -337,7 +350,6 @@ export class AppDetailComponent {
     return desc ? this.translate.instant(desc) : '';
   });
 
-  // Pre-compute panel configs into a Map so child panels don't reset open/closed state on every CD cycle
   private readonly settingsPanelConfigMap = computed(() => {
     const settings = this.remoteSettings();
     const allSections = [...this.operationSettingsSections(), ...this.sharedSettingsSections()];
@@ -546,15 +558,14 @@ export class AppDetailComponent {
   ): RemoteSettingsSection[] {
     const profiles = this.getProfileConfigMap(type);
     const names = profiles ? Object.keys(profiles) : [];
-    if (names.length > 0) {
-      return names.map(name => ({
-        key: `${type}:${name}`,
-        title: `${titlePrefix} (${name})`,
-        icon,
-        group,
-      }));
-    }
-    return [{ key: type, title: titlePrefix, icon, group }];
+    return names.length > 0
+      ? names.map(name => ({
+          key: `${type}:${name}`,
+          title: `${titlePrefix} (${name})`,
+          icon,
+          group,
+        }))
+      : [{ key: type, title: titlePrefix, icon, group }];
   }
 
   private buildPanelConfig(
@@ -604,11 +615,13 @@ export class AppDetailComponent {
     const pathConfig: PathDisplayConfig =
       type === 'serve'
         ? {
-            source: config.source ?? `${this.selectedRemote().name}:`,
+            source: config.source ?? t('dashboard.appDetail.notConfigured'),
             destination: `${((config.options?.type as string) ?? 'http').toUpperCase()} at ${config.options?.addr ?? t('dashboard.appDetail.default')}`,
             sourceLabel: t('dashboard.appDetail.serving'),
             destinationLabel: t('dashboard.appDetail.accessibleVia'),
-            showOpenButtons: false,
+            showOpenButtons: true,
+            hasSource: !!config.source,
+            hasDestination: false,
             operationColor: metadata.cssClass as OperationColor,
             isDestinationActive: isActive,
           }
@@ -674,12 +687,15 @@ export class AppDetailComponent {
 
   private applyStats(stats: GlobalStats): void {
     this.trackCompletedFiles(stats);
-    const active = (stats.transferring ?? []).map(f => ({
-      ...f,
-      percentage: f.size > 0 ? Math.min(100, Math.round((f.bytes / f.size) * 100)) : 0,
-      isError: f.bytes < f.size && f.percentage === 100,
-      isCompleted: false,
-    }));
+    const active = (stats.transferring ?? []).map(f => {
+      const percentage = f.size > 0 ? Math.min(100, Math.round((f.bytes / f.size) * 100)) : 0;
+      return {
+        ...f,
+        percentage,
+        isError: f.bytes < f.size && percentage === 100,
+        isCompleted: false,
+      };
+    });
     this.activeTransfers.set(active);
     this.groupStats.set({ ...stats, transferring: active });
   }

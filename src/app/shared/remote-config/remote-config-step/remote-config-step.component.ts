@@ -8,10 +8,12 @@ import {
   untracked,
   inject,
   ChangeDetectionStrategy,
+  DestroyRef,
 } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { toSignal, toObservable } from '@angular/core/rxjs-interop';
-import { startWith, switchMap } from 'rxjs';
+import { skip, startWith, switchMap } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -64,6 +66,7 @@ export const INITIAL_COMMAND_OPTIONS: CommandOption[] = _obscureOption
 export class RemoteConfigStepComponent {
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly iconService = inject(IconService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly separatorKeysCodes = [ENTER, COMMA] as const;
 
@@ -101,9 +104,10 @@ export class RemoteConfigStepComponent {
 
   readonly remoteTypeValue = toSignal(
     toObservable(this.form).pipe(
-      switchMap(f =>
-        (f.get('type')?.valueChanges ?? f.valueChanges).pipe(startWith(f.get('type')?.value ?? ''))
-      )
+      switchMap(form => {
+        const typeCtrl = form?.get('type');
+        return typeCtrl ? typeCtrl.valueChanges.pipe(startWith(typeCtrl.value as string)) : [];
+      })
     ),
     { initialValue: '' }
   );
@@ -204,14 +208,10 @@ export class RemoteConfigStepComponent {
 
   // ── Effects ───────────────────────────────────────────────────────────────
 
-  private _cmdOptsReady = false;
-
   constructor() {
-    effect(() => {
-      const opts = this.commandOptions();
-      if (this._cmdOptsReady) this.commandOptionsChanged.emit(opts);
-      else this._cmdOptsReady = true;
-    });
+    toObservable(this.commandOptions)
+      .pipe(skip(1), takeUntilDestroyed(this.destroyRef))
+      .subscribe(opts => this.commandOptionsChanged.emit(opts));
 
     effect(() => {
       const initial = this.initialCommandOptions();

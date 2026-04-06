@@ -101,7 +101,6 @@ export class HomeComponent {
     return remote ? this.remoteFacadeService.getRemoteSettings(remote.name) : {};
   });
 
-  // Narrows currentTab to OperationTab — 'general' is excluded by the template's @switch/@case
   readonly mainOperationType = computed<OperationTab>(() => {
     const tab = this.currentTab();
     return tab === 'general' ? 'mount' : tab;
@@ -110,12 +109,13 @@ export class HomeComponent {
   readonly isSidebarOpen = signal(false);
   readonly sidebarMode = signal<MatDrawerMode>('side');
   readonly selectedSyncOperation = signal<SyncOperationType>('sync');
-  readonly isLoading = signal(false);
+
+  private readonly _isLoading = signal(false);
+  readonly isLoading = this._isLoading.asReadonly();
 
   private resizeObserver?: ResizeObserver;
 
   constructor() {
-    // Restore saved sync operation when selected remote changes
     effect(() => {
       const settings = this.selectedRemoteSettings();
       if (this.selectedRemote()) {
@@ -150,13 +150,13 @@ export class HomeComponent {
   // --- Data ---
 
   private async loadInitialData(): Promise<void> {
-    this.isLoading.set(true);
+    this._isLoading.set(true);
     try {
       await this.remoteFacadeService.refreshAll();
     } catch (error) {
       this.handleError(this.translate.instant('home.errors.initialLoadFailed'), error);
     } finally {
-      this.isLoading.set(false);
+      this._isLoading.set(false);
     }
   }
 

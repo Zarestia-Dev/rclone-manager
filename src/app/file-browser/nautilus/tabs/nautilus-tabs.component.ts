@@ -250,7 +250,7 @@ export class NautilusTabsComponent {
     const tab = this.tabs()[index];
     if (!tab) return;
     try {
-      await this.nautilusService.detachTab(tab.remote?.name ?? null, tab.path ?? null);
+      await this.nautilusService.newNautilusWindow(tab.remote?.name ?? null, tab.path ?? null);
       this.closeTab.emit(index);
     } catch (err) {
       console.error('Failed to detach tab:', err);

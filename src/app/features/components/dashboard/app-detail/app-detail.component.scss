@@ -307,33 +307,21 @@
 .profile-pill {
   display: flex;
   align-items: center;
-  box-sizing: border-box;
+  gap: var(--space-xxs);
   cursor: pointer;
-  padding: 6px var(--space-sm);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--window-fg-color) 4%, transparent);
-  color: var(--dim-color);
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  font-family: inherit;
-  gap: var(--space-xs);
-  transition:
-    background 0.15s ease,
-    color 0.15s ease;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-md);
+  background: rgba(var(--op-color-rgb), var(--active-opacity));
+  font-size: var(--font-size-md);
+  box-shadow: var(--box-shadow);
+  font-weight: 600;
+  color: var(--op-color);
+  transition: background 0.2s ease;
 
   mat-icon {
-    width: 16px;
-    height: 16px;
-    font-size: 16px;
-  }
-
-  &:hover:not(.is-selected) {
-    background: var(--hover-bg-color);
-    color: var(--window-fg-color);
-  }
-
-  &:active {
-    transform: scale(0.95);
+    width: var(--icon-size-sm);
+    height: var(--icon-size-sm);
+    font-size: var(--icon-size-sm);
   }
 
   &.is-selected {
@@ -348,7 +336,7 @@
   &.is-running {
     &:not(.is-selected) {
       color: var(--op-color);
-      background: color-mix(in srgb, var(--op-color) 12%, transparent);
+      background: rgba(var(--op-color-rgb), var(--active-opacity));
 
       mat-icon {
         color: var(--op-color);
@@ -359,7 +347,7 @@
   &.is-scheduled {
     &:not(.is-selected) {
       color: var(--orange);
-      background: color-mix(in srgb, var(--orange) 12%, transparent);
+      background: rgba(var(--orange-rgb), var(--active-opacity));
 
       mat-icon {
         color: var(--orange);
@@ -372,7 +360,7 @@
 
     &:hover {
       color: var(--op-color);
-      background: color-mix(in srgb, var(--op-color) 12%, transparent);
+      background: rgba(var(--op-color-rgb), var(--active-opacity));
     }
   }
 }

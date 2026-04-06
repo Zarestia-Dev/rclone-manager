@@ -71,8 +71,7 @@
       &.running {
         background: rgba(var(--primary-color-rgb), var(--active-opacity));
         color: var(--primary-color);
-        box-shadow: 0 0 0 1px var(--card-shade-color);
-
+        box-shadow: var(--box-shadow);
         .status-dot {
           background: var(--primary-color);
         }
@@ -81,8 +80,7 @@
       &.completed {
         background: rgba(var(--accent-color-rgb), var(--active-opacity));
         color: var(--accent-color);
-        box-shadow: 0 0 0 1px var(--card-shade-color);
-
+        box-shadow: var(--box-shadow);
         .status-dot {
           background: var(--accent-color);
         }
@@ -91,8 +89,7 @@
       &.failed {
         background: rgba(var(--warn-color-rgb), var(--active-opacity));
         color: var(--warn-color);
-        box-shadow: 0 0 0 1px var(--card-shade-color);
-
+        box-shadow: var(--box-shadow);
         .status-dot {
           background: var(--warn-color);
         }
@@ -101,8 +98,7 @@
       &.stopped {
         background: rgba(var(--orange-rgb), var(--active-opacity));
         color: var(--orange);
-        box-shadow: 0 0 0 1px var(--card-shade-color);
-
+        box-shadow: var(--box-shadow);
         .status-dot {
           background: var(--orange);
         }

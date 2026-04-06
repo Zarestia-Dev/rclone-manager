@@ -1799,7 +1799,7 @@ export class NautilusComponent implements OnInit {
   openContextMenuOpenInNewWindow(): void {
     const item = this.contextMenuItem();
     if (!item?.entry.IsDir) return;
-    this.nautilusService.detachTab(item.meta.remote, item.entry.Path);
+    this.nautilusService.newNautilusWindow(item.meta.remote, item.entry.Path);
   }
 
   openContextMenuCopyPath(): void {
@@ -1979,7 +1979,7 @@ export class NautilusComponent implements OnInit {
   }
 
   openRemoteInNewWindow(remote: ExplorerRoot): void {
-    this.nautilusService.detachTab(remote.name, '');
+    this.nautilusService.newNautilusWindow(remote.name, '');
   }
 
   openBookmarkInNewTab(bookmark: FileBrowserItem): void {
@@ -2013,7 +2013,7 @@ export class NautilusComponent implements OnInit {
       );
       return;
     }
-    this.nautilusService.detachTab(remoteDetails.name, bookmark.entry.Path);
+    this.nautilusService.newNautilusWindow(remoteDetails.name, bookmark.entry.Path);
   }
 
   protected openShortcutsModal(): void {

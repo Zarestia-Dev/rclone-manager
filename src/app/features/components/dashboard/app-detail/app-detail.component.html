@@ -120,6 +120,7 @@
         ) {
           <app-operation-control
             [config]="opConfig"
+            [style.--op-color]="operationColorCssVar()"
             (startJob)="
               startJob.emit({
                 type: $event,

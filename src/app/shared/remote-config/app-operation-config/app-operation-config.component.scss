@@ -5,9 +5,9 @@
 .header-section {
   margin-bottom: var(--space-md);
   padding: var(--space-sm);
-  box-shadow: 0 0 0 2px var(--primary-color);
+  box-shadow: var(--shadow-gnome);
   border-radius: var(--radius-md);
-  background: rgba(var(--primary-color-rgb), 0.05);
+  background: var(--view-bg-color);
 
   .operation-enable,
   .cron-enable {

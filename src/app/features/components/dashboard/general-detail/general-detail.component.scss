@@ -119,8 +119,7 @@
     // Type-specific active states
     &.serve,
     &.mount {
-      background: rgba(var(--accent-color-rgb), 0.08);
-      box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.15);
+      background: rgba(var(--accent-color-rgb), var(--active-opacity));
       .status-dot {
         background: var(--accent-color);
       }
@@ -129,8 +128,7 @@
       }
     }
     &.sync {
-      background: rgba(var(--primary-color-rgb), 0.08);
-      box-shadow: 0 0 0 1px rgba(var(--primary-color-rgb), 0.15);
+      background: rgba(var(--primary-color-rgb), var(--active-opacity));
       .status-dot {
         background: var(--primary-color);
       }
@@ -139,8 +137,7 @@
       }
     }
     &.copy {
-      background: rgba(var(--yellow-rgb), 0.08);
-      box-shadow: 0 0 0 1px rgba(var(--yellow-rgb), 0.15);
+      background: rgba(var(--yellow-rgb), var(--active-opacity));
       .status-dot {
         background: var(--yellow);
       }
@@ -149,8 +146,7 @@
       }
     }
     &.move {
-      background: rgba(var(--orange-rgb), 0.08);
-      box-shadow: 0 0 0 1px rgba(var(--orange-rgb), 0.15);
+      background: rgba(var(--orange-rgb), var(--active-opacity));
       .status-dot {
         background: var(--orange);
       }
@@ -159,8 +155,7 @@
       }
     }
     &.bisync {
-      background: rgba(var(--purple-rgb), 0.08);
-      box-shadow: 0 0 0 1px rgba(var(--purple-rgb), 0.15);
+      background: rgba(var(--purple-rgb), var(--active-opacity));
       .status-dot {
         background: var(--purple);
       }
@@ -441,7 +436,7 @@
         &.error-section {
           .error-message {
             background: rgba(var(--warn-color-rgb), 0.1);
-            box-shadow: 0 0 0 1px var(--card-shade-color);
+            box-shadow: var(--box-shadow);
             color: var(--warn-color);
           }
         }
@@ -449,7 +444,7 @@
         &.running-section {
           .running-info {
             background: rgba(var(--accent-color-rgb), 0.1);
-            box-shadow: 0 0 0 1px var(--card-shade-color);
+            box-shadow: var(--box-shadow);
             color: var(--accent-color);
             font-family: var(--font-mono);
           }

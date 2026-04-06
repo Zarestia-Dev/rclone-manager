@@ -1944,6 +1944,7 @@
       "buttons": {
         "back": "Atrás",
         "cancel": "Cancelar",
+        "create": "Crear",
         "save": "Guardar",
         "saveConfig": "Guardar configuración y crear remoto",
         "saveChanges": "Guardar cambios",
@@ -2576,7 +2577,11 @@
         "stopServe": "Detener servicio"
       },
       "browse": "Explorar archivos",
-      "browseDest": "Explorar destino"
+      "browseDest": "Explorar destino",
+      "emptyState": {
+        "title": "No hay perfiles configurados",
+        "message": "Este remoto no tiene perfiles de operación para mostrar."
+      }
     }
   },
   "tray": {

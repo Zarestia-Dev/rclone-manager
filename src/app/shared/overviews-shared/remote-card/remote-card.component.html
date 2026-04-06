@@ -96,7 +96,6 @@
   @if (displayMode() === 'compact') {
     <mat-card-content class="remote-content">
       <div class="quick-actions">
-        <!-- Operation buttons — default profile only; multi-profile handled by detailed card -->
         @for (button of actionButtons(); track button.id) {
           <button
             mat-mini-fab
@@ -114,7 +113,6 @@
           </button>
         }
 
-        <!-- Folder button(s): single colored button or blossom cluster -->
         @if (openableFolders().length === 1) {
           <button
             mat-mini-fab
@@ -134,7 +132,6 @@
 
         @if (openableFolders().length > 1) {
           <div class="folder-cluster">
-            <!-- Blossom panel — opens above on hover and on tap (focus-within) -->
             <div class="folder-blossom" role="menu">
               @for (
                 folder of openableFolders();
@@ -162,7 +159,6 @@
               }
             </div>
 
-            <!-- Trigger: click/tap opens blossom via focus-within on touch -->
             <button
               mat-mini-fab
               class="folder-trigger"
@@ -186,70 +182,88 @@
 
   @if (displayMode() === 'detailed') {
     <div class="profile-details-section">
-      @for (operation of getActiveOperations(); track operation) {
-        @let profiles = getConfiguredProfiles(operation);
-        @if (profiles.length > 0) {
-          <div class="profile-group" [ngClass]="getOperationCssClass(operation)">
-            <div class="profile-group-header">
-              <span class="operation-label">
-                <mat-icon
-                  class="operation-icon"
-                  [svgIcon]="getOperationLabelIcon(operation)"
-                ></mat-icon>
-                {{ operation | titlecase }}
-              </span>
-              <span class="profile-count">{{ profiles.length }}</span>
-            </div>
-            <div class="profile-pills">
-              @for (profile of profiles; track profile) {
-                <div class="profile-item" [class.can-open]="canOpenProfilePath(operation, profile)">
-                  <button
-                    type="button"
-                    class="profile-pill"
-                    [class.is-selected]="isProfileActive(operation, profile)"
-                    [class.is-running]="isProfileChipLoading(operation, profile)"
-                    [disabled]="isProfileChipDisabled(operation, profile)"
-                    [matTooltip]="getProfileChipTooltip(operation, profile)"
-                    matTooltipShowDelay="500"
-                    (click)="onProfileChipClick(operation, profile, $event)"
+      @if (detailedOperations().length === 0) {
+        <div class="profile-empty-state">
+          <mat-icon svgIcon="folder-off" class="profile-empty-icon"></mat-icon>
+          <div class="profile-empty-text">
+            <span class="profile-empty-title">
+              {{ 'overviews.remoteCard.emptyState.title' | translate }}
+            </span>
+            <span class="profile-empty-subtitle">
+              {{ 'overviews.remoteCard.emptyState.message' | translate }}
+            </span>
+          </div>
+        </div>
+      } @else {
+        @for (operation of detailedOperations(); track operation) {
+          @let profiles = getConfiguredProfiles(operation);
+          @if (profiles.length > 0) {
+            <div class="profile-group" [ngClass]="getOperationCssClass(operation)">
+              <div class="profile-group-header">
+                <span class="operation-label">
+                  <mat-icon
+                    class="operation-icon"
+                    [svgIcon]="getOperationLabelIcon(operation)"
+                  ></mat-icon>
+                  {{ operation | titlecase }}
+                </span>
+                <span class="profile-count">{{ profiles.length }}</span>
+              </div>
+              <div class="profile-pills">
+                @for (profile of profiles; track profile) {
+                  @let isBusy = isProfileActionInProgress(operation, profile);
+                  <div
+                    class="profile-item"
+                    [class.can-open]="canOpenProfilePath(operation, profile)"
                   >
-                    <span class="pill-content">
-                      @if (isProfileChipLoading(operation, profile)) {
-                        <mat-spinner class="profile-spinner" diameter="13"></mat-spinner>
-                      } @else if (isProfileActive(operation, profile)) {
-                        <mat-icon
-                          class="profile-icon"
-                          [svgIcon]="operation === 'mount' ? 'eject' : 'stop'"
-                        ></mat-icon>
-                      }
-                      <span class="profile-name-text">{{ profile }}</span>
-                    </span>
-                  </button>
-
-                  @if (canOpenProfilePath(operation, profile)) {
-                    @for (path of getProfileOpenPaths(operation, profile); track path) {
-                      <button
-                        type="button"
-                        class="profile-open-btn"
-                        [disabled]="isFolderOpening()"
-                        [matTooltip]="getProfileOpenTooltip(profile, path)"
-                        matTooltipShowDelay="500"
-                        (click)="onProfileOpenInFiles(operation, profile, path, $event)"
-                      >
-                        @if (isFolderOpening()) {
-                          <mat-spinner class="profile-open-spinner" diameter="14"></mat-spinner>
-                        } @else {
+                    <button
+                      type="button"
+                      class="profile-pill"
+                      [class.is-selected]="isProfileActive(operation, profile)"
+                      [class.is-running]="isBusy"
+                      [disabled]="isBusy"
+                      [matTooltip]="getProfileChipTooltip(operation, profile)"
+                      matTooltipShowDelay="500"
+                      (click)="onProfileChipClick(operation, profile, $event)"
+                    >
+                      <span class="pill-content">
+                        @if (isBusy) {
+                          <mat-spinner class="profile-spinner" diameter="13"></mat-spinner>
+                        } @else if (isProfileActive(operation, profile)) {
                           <mat-icon
-                            [svgIcon]="isLocalPath(path) ? 'folder' : 'folder-open'"
+                            class="profile-icon"
+                            [svgIcon]="operation === 'mount' ? 'eject' : 'stop'"
                           ></mat-icon>
                         }
-                      </button>
+                        <span class="profile-name-text">{{ profile }}</span>
+                      </span>
+                    </button>
+
+                    @if (canOpenProfilePath(operation, profile)) {
+                      @for (path of getProfileOpenPaths(operation, profile); track path) {
+                        <button
+                          type="button"
+                          class="profile-open-btn"
+                          [disabled]="isFolderOpening()"
+                          [matTooltip]="getProfileOpenTooltip(profile, path)"
+                          matTooltipShowDelay="500"
+                          (click)="onProfileOpenInFiles(operation, profile, path, $event)"
+                        >
+                          @if (isFolderOpening()) {
+                            <mat-spinner class="profile-open-spinner" diameter="14"></mat-spinner>
+                          } @else {
+                            <mat-icon
+                              [svgIcon]="isLocalPath(path) ? 'folder' : 'folder-open'"
+                            ></mat-icon>
+                          }
+                        </button>
+                      }
                     }
-                  }
-                </div>
-              }
+                  </div>
+                }
+              </div>
             </div>
-          </div>
+          }
         }
       }
     </div>

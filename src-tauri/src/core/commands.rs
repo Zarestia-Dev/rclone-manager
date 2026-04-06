@@ -283,7 +283,7 @@ macro_rules! generate_invoke_handler {
             // =================================================================
             $crate::core::debug::get_debug_info,
             $crate::core::debug::open_devtools,
-            $crate::utils::app::builder::detach_nautilus_window,
+            $crate::utils::app::builder::new_nautilus_window,
         ]
     };
 }

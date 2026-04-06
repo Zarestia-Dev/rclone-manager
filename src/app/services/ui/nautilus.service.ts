@@ -205,9 +205,9 @@ export class NautilusService extends TauriBaseService {
     return url;
   }
 
-  async detachTab(remote: string | null, path: string | null): Promise<void> {
+  async newNautilusWindow(remote: string | null, path: string | null): Promise<void> {
     if (this.isTauriEnvironment) {
-      await this.invokeCommand('detach_nautilus_window', {
+      await this.invokeCommand('new_nautilus_window', {
         remote: remote ?? null,
         path: path ?? null,
       });

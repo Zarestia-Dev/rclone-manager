@@ -27,21 +27,6 @@
       (keydown.space)="toggleChip(chip); $event.preventDefault()"
     >
       <span class="chip-key">{{ chip.displayKey }}</span>
-
-      @if (chip.isActive) {
-        <span class="chip-sep">:</span>
-        <span class="chip-value">{{ chip.displayValue }}</span>
-        <button
-          type="button"
-          class="chip-remove"
-          (click)="$event.stopPropagation(); resetChip(chip)"
-          [attr.aria-label]="('shared.jsonEditor.resetField' | translate) + ' ' + chip.displayKey"
-          [matTooltip]="'shared.jsonEditor.resetField' | translate"
-          matTooltipPosition="above"
-        >
-          <mat-icon svgIcon="circle-xmark" />
-        </button>
-      }
     </div>
   }
 </div>

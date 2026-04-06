@@ -1986,6 +1986,7 @@
       "buttons": {
         "back": "Geri",
         "cancel": "İptal",
+        "create": "Oluştur",
         "save": "Kaydet",
         "saveConfig": "Yapılandırmayı Kaydet ve Uzak Bağlantı Oluştur",
         "saveChanges": "Değişiklikleri Kaydet",
@@ -2660,7 +2661,11 @@
         "stopServe": "Sunucuyu Durdur"
       },
       "browse": "Dosyalara Gözat",
-      "browseDest": "Hedefe Gözat"
+      "browseDest": "Hedefe Gözat",
+      "emptyState": {
+        "title": "Profil yapılandırılmamış",
+        "message": "Bu uzak bağlantı için gösterilecek işlem profili yok."
+      }
     }
   },
   "tray": {

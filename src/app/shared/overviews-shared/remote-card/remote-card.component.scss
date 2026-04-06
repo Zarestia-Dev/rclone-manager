@@ -343,6 +343,39 @@
     gap: var(--space-md);
   }
 
+  .profile-empty-state {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    color: var(--dim-color);
+
+    .profile-empty-icon {
+      width: var(--icon-size-md);
+      height: var(--icon-size-md);
+      font-size: var(--icon-size-md);
+      opacity: 0.8;
+    }
+
+    .profile-empty-text {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xxs);
+      min-width: 0;
+    }
+
+    .profile-empty-title {
+      font-size: var(--font-size-sm);
+      font-weight: 600;
+      color: var(--window-fg-color);
+    }
+
+    .profile-empty-subtitle {
+      font-size: var(--font-size-xs);
+      line-height: 1.4;
+      color: var(--dim-color);
+    }
+  }
+
   .profile-group {
     display: flex;
     flex-direction: column;
@@ -425,27 +458,26 @@
       display: flex;
       align-items: center;
       cursor: pointer;
-      padding: 6px var(--space-sm);
+      padding: var(--space-xs) var(--space-sm);
       border-radius: var(--radius-md);
-      background: var(--op-color);
+      background: rgba(var(--op-color-rgb), var(--active-opacity));
       font-size: var(--font-size-md);
-      font-weight: 500;
-      border: none;
-      transition:
-        background 0.2s ease,
-        transform 0.1s ease,
-        box-shadow 0.2s ease;
+      box-shadow: var(--box-shadow);
+      font-weight: 600;
+      color: var(--op-color);
+      transition: background 0.2s ease;
 
       .pill-content {
         display: flex;
         align-items: center;
         gap: var(--space-xxs);
-        color: #fff;
       }
 
       &.is-selected {
-        background: var(--warn-color);
+        background: rgba(var(--warn-color-rgb), var(--active-opacity));
+        color: var(--warn-color);
       }
+
       &:disabled {
         cursor: not-allowed;
         opacity: 0.55;
@@ -467,8 +499,9 @@
       justify-content: center;
       padding: 6px 10px;
       border-radius: var(--radius-md);
-      background: var(--op-color);
-      color: #fff;
+      background: rgba(var(--op-color-rgb), var(--active-opacity));
+      box-shadow: var(--box-shadow);
+      color: var(--op-color);
       cursor: pointer;
       animation: applePopOut 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
       transform-origin: left center;
@@ -478,10 +511,10 @@
         position: absolute;
         right: 100%;
         top: 50%;
-        width: 10px;
+        width: 6px;
         height: 4px;
-        background: var(--op-color);
-        opacity: 0.6;
+        background: linear-gradient(135deg, var(--warn-color), var(--op-color));
+        opacity: var(--active-opacity);
         transform: translateY(-50%);
       }
 

@@ -155,9 +155,7 @@ form {
     padding: var(--space-md);
     background: rgba(var(--accent-color-rgb), 0.05);
     border-radius: var(--radius-md);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.06),
-      0 1px 3px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--box-shadow);
   }
 
   .section-heading {
@@ -201,25 +199,23 @@ form {
   gap: var(--space-md);
   padding: 40px var(--space-lg) 32px;
   background: rgba(var(--accent-color-rgb), 0.03);
-  border: 1px dashed rgba(var(--accent-color-rgb), 0.2);
   border-radius: var(--radius-md);
+  box-shadow: var(--box-shadow);
   overflow: hidden;
 
   &-icon-ring {
-    position: relative;
-    z-index: 1;
-    width: 72px;
-    height: 72px;
-    border-radius: var(--radius-md);
-    background: linear-gradient(
-      135deg,
-      rgba(var(--accent-color-rgb), 0.14) 0%,
-      rgba(var(--primary-color-rgb), 0.08) 100%
-    );
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    width: var(--icon-container-size);
+    height: var(--icon-container-size);
+    border-radius: var(--icon-radius);
+    background: linear-gradient(
+      135deg,
+      rgba(var(--primary-color-rgb), var(--active-opacity)) 0%,
+      rgba(var(--accent-color-rgb), var(--active-opacity)) 100%
+    );
+    box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.5);
   }
 
   &-icon {
@@ -324,7 +320,7 @@ form {
   gap: var(--space-sm);
   padding: 6px 10px 6px 12px;
   background: rgba(var(--accent-color-rgb), 0.04);
-  border: 1px solid rgba(var(--accent-color-rgb), 0.1);
+  box-shadow: var(--box-shadow);
   border-radius: var(--radius-sm);
 
   .fields-count-badge {
@@ -384,11 +380,7 @@ form {
   padding: var(--space-md);
   background: var(--view-bg-color);
   border-radius: var(--radius-md);
-  border: 1px solid rgba(var(--accent-color-rgb), 0.12);
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.06),
-    0 1px 2px rgba(0, 0, 0, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: var(--shadow-gnome);
 
   // ── Quick-add predefined flags ─────────────────────────────────────────────
 
@@ -419,20 +411,15 @@ form {
   .predefined-chip {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 4px 10px 4px 6px;
+    gap: var(--space-xxs);
+    padding: var(--space-xxs) var(--space-xs);
     border-radius: 99px;
-    border: 1px dashed rgba(var(--accent-color-rgb), 0.3);
-    background: transparent;
+    background: var(--selected-bg-color);
     color: var(--dim-color);
-    font-size: var(--font-size-xs);
+    font-size: var(--font-size-sm);
     font-weight: 500;
     cursor: pointer;
-    transition:
-      border-color 0.15s ease,
-      color 0.15s ease,
-      background 0.15s ease,
-      transform 0.12s ease;
+    transition: background 0.15s ease;
 
     mat-icon {
       font-size: 14px;
@@ -441,15 +428,7 @@ form {
     }
 
     &:hover {
-      border-color: var(--primary-color);
-      border-style: solid;
-      color: var(--primary-color);
-      background: rgba(var(--primary-color-rgb), 0.06);
-    }
-
-    &:active {
-      transform: translateY(0);
-      background: rgba(var(--primary-color-rgb), 0.12);
+      background: var(--active-bg-color);
     }
   }
 
@@ -573,9 +552,9 @@ form {
     align-items: flex-end;
     gap: var(--space-md);
     padding: var(--space-sm) var(--space-md);
-    background: rgba(var(--accent-color-rgb), 0.03);
+    background: rgba(var(--accent-color-rgb), 0.04);
+    box-shadow: var(--box-shadow);
     border-radius: var(--radius-sm);
-    border: 1px dashed rgba(var(--accent-color-rgb), 0.18);
     margin-top: var(--space-xs);
 
     .custom-key-field {

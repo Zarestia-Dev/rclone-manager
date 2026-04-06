@@ -154,20 +154,20 @@
       @let showAdvOpts = showAdvancedOptions();
       @let showJson = showJsonMode();
 
+      @let showAdv = (showAdvOpts || showJson) && advLen > 0;
+
       <div class="fields-mode-header anim-fade">
         <div class="fields-count-badge">
           @if (basicLen > 0) {
             <span class="fields-count-num fields-count-num--basic">{{ basicLen }}</span>
           }
-          @if (
-            (basicLen > 0 && showAdvOpts && advLen > 0) || (showJson && basicLen > 0 && advLen > 0)
-          ) {
+          @if (basicLen > 0 && showAdv) {
             <span class="fields-count-separator">+</span>
           }
-          @if ((showAdvOpts && advLen > 0) || (showJson && advLen > 0)) {
+          @if (showAdv) {
             <span class="fields-count-num fields-count-num--advanced">{{ advLen }}</span>
           }
-          @if (basicLen > 0 || (showAdvOpts && advLen > 0)) {
+          @if (basicLen > 0 || showAdv) {
             <span class="fields-count-label">{{ 'wizards.remoteConfig.fields' | translate }}</span>
           }
         </div>
