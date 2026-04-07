@@ -360,6 +360,11 @@ export class RemoteConfigModalComponent implements OnInit {
   readonly isLoadingRuntimeRemoteFields = signal(false);
   readonly isAuthInProgress = this.authStateService.isAuthInProgress;
   readonly isAuthCancelled = this.authStateService.isAuthCancelled;
+  readonly oauthUrl = this.authStateService.oauthUrl;
+  readonly oauthHelperUrl = computed(() =>
+    this.isAuthInProgress() && !this.isAuthCancelled() ? this.oauthUrl() : null
+  );
+  readonly shouldShowRemoteOAuthFallback = this.authStateService.shouldShowRemoteOAuthFallback;
   readonly currentStep = signal(1);
   readonly interactiveFlowState = signal<InteractiveFlowState>(createInitialInteractiveFlowState());
 
@@ -1160,7 +1165,9 @@ export class RemoteConfigModalComponent implements OnInit {
     } catch (error) {
       console.error('Submission error:', error);
     } finally {
-      this.authStateService.resetAuthState();
+      if (!this.interactiveFlowState().isActive) {
+        this.authStateService.resetAuthState();
+      }
     }
   }
 
@@ -1265,8 +1272,8 @@ export class RemoteConfigModalComponent implements OnInit {
   });
 
   readonly saveButtonLabel = computed(() => {
-    if (this.editTarget() === 'remote') return 'modals.remoteConfig.buttons.saveRemote';
-    if (this.editTarget()) return 'modals.remoteConfig.buttons.saveProfile';
+    if (this.editTarget() === 'remote') return 'modals.remoteConfig.buttons.save';
+    if (this.editTarget()) return 'modals.remoteConfig.buttons.save';
     return 'modals.remoteConfig.buttons.create';
   });
 
@@ -1743,6 +1750,10 @@ export class RemoteConfigModalComponent implements OnInit {
   async cancelAuth(): Promise<void> {
     await this.authStateService.cancelAuth();
     this.interactiveFlowState.set(createInitialInteractiveFlowState());
+  }
+
+  async copyOAuthUrl(): Promise<void> {
+    await this.authStateService.copyOAuthUrl();
   }
 
   // ── Utilities ─────────────────────────────────────────────────────────────────

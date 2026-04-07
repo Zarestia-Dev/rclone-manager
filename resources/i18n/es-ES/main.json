@@ -1902,6 +1902,12 @@
         "nameTaken": "Ese nombre ya está en uso"
       }
     },
+    "oauth": {
+      "manualOpenPrompt": "Si el navegador no se abrió automáticamente, use este enlace de autenticación:",
+      "openLink": "Abrir enlace",
+      "copyLink": "Copiar enlace",
+      "remoteFallback": "El enlace OAuth manual no está disponible aquí para backends remotos. Revise los logs/salida del backend remoto."
+    },
     "remoteConfig": {
       "aria": {
         "stepIndicator": "Pasos de configuración"

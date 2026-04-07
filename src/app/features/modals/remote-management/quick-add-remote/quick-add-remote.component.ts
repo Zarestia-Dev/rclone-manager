@@ -57,6 +57,7 @@ import {
   convertBoolAnswerToString,
   updateInteractiveAnswer,
 } from '../../../../services/remote/utils/remote-config.utils';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 type WizardStep = 'setup' | 'operations' | 'interactive';
 type OperationType = 'mount' | 'sync' | 'copy' | 'bisync' | 'move';
@@ -74,6 +75,7 @@ type OperationType = 'mount' | 'sync' | 'copy' | 'bisync' | 'move';
     RemoteConfigStepComponent,
     OperationConfigComponent,
     TranslateModule,
+    MatTooltipModule,
   ],
   templateUrl: './quick-add-remote.component.html',
   styleUrls: ['./quick-add-remote.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -170,6 +172,11 @@ export class QuickAddRemoteComponent {
 
   readonly isAuthInProgress = this.authStateService.isAuthInProgress;
   readonly isAuthCancelled = this.authStateService.isAuthCancelled;
+  readonly oauthUrl = this.authStateService.oauthUrl;
+  readonly oauthHelperUrl = computed(() =>
+    this.isAuthInProgress() && !this.isAuthCancelled() ? this.oauthUrl() : null
+  );
+  readonly shouldShowRemoteOAuthFallback = this.authStateService.shouldShowRemoteOAuthFallback;
 
   // ── Computed ─────────────────────────────────────────────────────────────
 
@@ -590,6 +597,10 @@ export class QuickAddRemoteComponent {
     await this.authStateService.cancelAuth();
     this.currentStep.set('operations');
     this.interactiveFlowState.set(createInitialInteractiveFlowState());
+  }
+
+  async copyOAuthUrl(): Promise<void> {
+    await this.authStateService.copyOAuthUrl();
   }
 
   close(): void {

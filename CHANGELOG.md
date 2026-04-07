@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Readd the Json Editor for rclone fields. (Now it is optional with toggle button. Not like before v0.1.5). This one more user friendly. Now you can add or edit the custom flags from there too.
 - Legacy config directories for docker users.
 - Added `RCLONE_MANAGER_FUSE_COMPAT` environment variable for docker users. This will enable the fuse compatibility mode for rclone.
+ - **Remote Config**: Show direct OAuth URL in remote creation/editing flows with a compact copy button; preserve the OAuth helper URL during remote configuration so users can open or copy the link.
 
 ### Changed
 - **Nautilus**: Replaced Angular CDK drag-and-drop with native HTML5 Drag and Drop API for file and folder operations. This provides a more responsive, system-native feel. (Note: CDK remains active for tab reordering).

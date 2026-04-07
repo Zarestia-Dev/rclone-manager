@@ -408,29 +408,47 @@
                                       </div>
                                     </div>
 
-                                    <div class="running-job-meta">
-                                      <span>{{ job.stats.bytes | formatBytes }}</span>
-                                      <span class="dot-separator">•</span>
-                                      @if (job.stats.speed > 0) {
-                                        <span>{{ job.stats.speed | formatRateValue }}</span>
-                                      } @else {
+                                    @if (job.stats; as stats) {
+                                      <div class="running-job-meta">
+                                        <span>{{ stats.bytes | formatBytes }}</span>
+                                        <span class="dot-separator">•</span>
+                                        @if (stats.speed > 0) {
+                                          <span>{{ stats.speed | formatRateValue }}</span>
+                                        } @else {
+                                          <span>{{
+                                            'generalOverview.jobs.starting' | translate
+                                          }}</span>
+                                        }
+                                        <span class="dot-separator">•</span>
+                                        <span>{{ stats.eta | formatEta }}</span>
+                                      </div>
+
+                                      <mat-progress-bar
+                                        mode="determinate"
+                                        [value]="
+                                          stats.totalBytes > 0
+                                            ? (stats.bytes / stats.totalBytes) * 100
+                                            : 0
+                                        "
+                                        class="running-job-progress"
+                                      ></mat-progress-bar>
+                                    } @else {
+                                      <div class="running-job-meta">
+                                        <span>{{ 0 | formatBytes }}</span>
+                                        <span class="dot-separator">•</span>
                                         <span>{{
                                           'generalOverview.jobs.starting' | translate
                                         }}</span>
-                                      }
-                                      <span class="dot-separator">•</span>
-                                      <span>{{ job.stats.eta | formatEta }}</span>
-                                    </div>
+                                        <span class="dot-separator">•</span>
+                                        <span>{{ 0 | formatEta }}</span>
+                                      </div>
 
-                                    <mat-progress-bar
-                                      mode="determinate"
-                                      [value]="
-                                        job.stats.totalBytes > 0
-                                          ? (job.stats.bytes / job.stats.totalBytes) * 100
-                                          : 0
-                                      "
-                                      class="running-job-progress"
-                                    ></mat-progress-bar>
+                                      <mat-progress-bar
+                                        mode="determinate"
+                                        [value]="0"
+                                        class="running-job-progress"
+                                      ></mat-progress-bar>
+                                    }
                                   </div>
                                 }
                               </div>

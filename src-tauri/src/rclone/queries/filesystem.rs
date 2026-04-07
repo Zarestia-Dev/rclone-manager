@@ -1,5 +1,5 @@
 use log::debug;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tauri::State;
 
@@ -109,6 +109,12 @@ pub struct LocalDrive {
     show_name: bool,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct PublicLinkParams {
+    pub unlink: Option<bool>,
+    pub expire: Option<String>,
+}
+
 #[tauri::command]
 pub async fn get_fs_info(
     app: AppHandle,
@@ -172,7 +178,6 @@ pub async fn get_remote_paths(
     origin: Option<String>,
     group: Option<String>,
     no_cache: Option<bool>,
-    _state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
     debug!("📂 Listing remote paths for remote: {remote}, path: {path:?}");
     let mut params = create_fs_params(remote.clone(), path.clone());
@@ -470,7 +475,6 @@ pub async fn get_hashsum(
     origin: Option<String>,
     group: Option<String>,
     no_cache: Option<bool>,
-    _state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
     debug!("🔐 Getting hashsum for remote: {remote}, path: {path}, hash_type: {hash_type}");
 
@@ -518,7 +522,6 @@ pub async fn get_hashsum_file(
     origin: Option<String>,
     group: Option<String>,
     no_cache: Option<bool>,
-    _state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
     debug!("🔐 Getting hashsum file for remote: {remote}, path: {path}, hash_type: {hash_type}");
 
@@ -553,25 +556,22 @@ pub async fn get_public_link(
     app: AppHandle,
     remote: String,
     path: String,
-    unlink: Option<bool>,
-    expire: Option<String>,
+    options: Option<PublicLinkParams>,
     origin: Option<String>,
     group: Option<String>,
     no_cache: Option<bool>,
-    _state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    debug!(
-        "🔗 Getting public link for remote: {remote}, path: {path}, expire: {expire:?}, unlink: {unlink:?}"
-    );
+    debug!("🔗 Getting public link for remote: {remote}, path: {path}, options: {options:?}",);
 
     let mut params = create_fs_params(remote.clone(), Some(path.clone()));
 
-    if let Some(should_unlink) = unlink {
-        params.insert("unlink".to_string(), json!(should_unlink));
-    }
-
-    if let Some(expire) = expire {
-        params.insert("expire".to_string(), json!(expire));
+    if let Some(opts) = options {
+        if let Some(should_unlink) = opts.unlink {
+            params.insert("unlink".to_string(), json!(should_unlink));
+        }
+        if let Some(expire) = opts.expire {
+            params.insert("expire".to_string(), json!(expire));
+        }
     }
 
     run_fs_command_as_job(

@@ -78,6 +78,40 @@
     </div>
 
     <div class="message-area" aria-live="polite">
+      @if (oauthHelperUrl(); as oauthUrlValue) {
+        <section class="oauth-helper oauth-helper--actions" aria-live="polite">
+          <div class="oauth-helper-text">
+            <mat-icon svgIcon="globe"></mat-icon>
+            <span>{{ 'modals.oauth.manualOpenPrompt' | translate }}</span>
+          </div>
+          <div class="oauth-helper-actions">
+            <a
+              class="oauth-direct-link"
+              [href]="oauthUrlValue"
+              target="_blank"
+              rel="noopener noreferrer"
+              [matTooltip]="'modals.oauth.openLink' | translate"
+            >
+              {{ oauthUrlValue }}
+            </a>
+
+            <button
+              mat-icon-button
+              (click)="copyOAuthUrl()"
+              [attr.aria-label]="'modals.oauth.copyLink' | translate"
+              [matTooltip]="'modals.oauth.copyLink' | translate"
+            >
+              <mat-icon svgIcon="copy" class="accent"></mat-icon>
+            </button>
+          </div>
+        </section>
+      }
+      @if (shouldShowRemoteOAuthFallback()) {
+        <div class="message info oauth-helper">
+          <mat-icon svgIcon="info"></mat-icon>
+          <span>{{ 'modals.oauth.remoteFallback' | translate }}</span>
+        </div>
+      }
       @if (currentStep() === 'interactive' && !isAuthCancelled()) {
         <div class="message info">
           <mat-icon svgIcon="info"></mat-icon>

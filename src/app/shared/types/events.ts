@@ -14,6 +14,7 @@ export const RCLONE_PASSWORD_STORED = 'rclone_password_stored';
 // Remote management events
 // Remote management events
 export const REMOTE_CACHE_CHANGED = 'remote_cache_changed';
+export const RCLONE_OAUTH_URL = 'rclone_oauth_url';
 
 // System and settings events
 export const REMOTE_SETTINGS_CHANGED = 'remote_settings_changed';
@@ -48,4 +49,8 @@ export interface SettingsChangeEvent {
   category: string;
   key: string;
   value: unknown;
+}
+
+export interface OAuthUrlEvent {
+  url: string;
 }

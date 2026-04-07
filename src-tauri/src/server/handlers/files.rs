@@ -132,13 +132,11 @@ pub async fn get_hashsum_handler(
     Query(query): Query<GetHashsumQuery>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::queries::filesystem::get_hashsum;
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
     let result = get_hashsum(
         state.app_handle.clone(),
         query.remote,
         query.path,
         query.hash_type,
-        rclone_state,
     )
     .await
     .map_err(anyhow::Error::msg)?;
@@ -150,13 +148,11 @@ pub async fn get_hashsum_file_handler(
     Query(query): Query<GetHashsumQuery>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::queries::filesystem::get_hashsum_file;
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
     let result = get_hashsum_file(
         state.app_handle.clone(),
         query.remote,
         query.path,
         query.hash_type,
-        rclone_state,
     )
     .await
     .map_err(anyhow::Error::msg)?;
@@ -179,18 +175,19 @@ pub async fn get_public_link_handler(
     Query(query): Query<GetPublicLinkQuery>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::queries::filesystem::get_public_link;
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
     let expire = query.expire.filter(|s| !s.is_empty());
+    let options = Some(crate::rclone::queries::filesystem::PublicLinkParams {
+        unlink: query.unlink,
+        expire,
+    });
     let result = get_public_link(
         state.app_handle.clone(),
         query.remote,
         query.path,
-        query.unlink,
-        expire,
+        options,
         query.origin,
         query.group,
         query.no_cache,
-        rclone_state,
     )
     .await
     .map_err(anyhow::Error::msg)?;
@@ -502,22 +499,15 @@ pub async fn get_remote_paths_handler(
     Json(body): Json<RemotePathsBody>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::queries::get_remote_paths;
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
     let options = body.options.map(|v| {
         serde_json::from_value::<ListOptions>(v).unwrap_or(ListOptions {
             extra: std::collections::HashMap::new(),
         })
     });
-    let value = get_remote_paths(
-        state.app_handle.clone(),
-        body.remote,
-        body.path,
-        options,
-        rclone_state,
-    )
-    .await
-    .map_err(anyhow::Error::msg)
-    .map_err(AppError::BadRequest)?;
+    let value = get_remote_paths(state.app_handle.clone(), body.remote, body.path, options)
+        .await
+        .map_err(anyhow::Error::msg)
+        .map_err(AppError::BadRequest)?;
     Ok(Json(ApiResponse::success(value)))
 }
 

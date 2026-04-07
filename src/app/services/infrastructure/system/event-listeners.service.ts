@@ -24,6 +24,8 @@ import {
   SCHEDULED_TASKS_CACHE_CHANGED,
   REMOTE_SETTINGS_CHANGED,
   SettingsChangeEvent,
+  RCLONE_OAUTH_URL,
+  OAuthUrlEvent,
 } from '@app/types';
 /**
  * Service for listening to backend events and exposing them as observables
@@ -176,5 +178,12 @@ export class EventListenersService extends TauriBaseService {
    */
   listenToRemoteSettingsChanged(): Observable<unknown> {
     return this.listenToEvent<unknown>(REMOTE_SETTINGS_CHANGED);
+  }
+
+  /**
+   * Listen to OAuth URL events emitted while rclone oauth process is running
+   */
+  listenToOAuthUrl(): Observable<OAuthUrlEvent> {
+    return this.listenToEvent<OAuthUrlEvent>(RCLONE_OAUTH_URL);
   }
 }

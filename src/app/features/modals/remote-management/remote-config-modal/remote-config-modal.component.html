@@ -212,6 +212,42 @@
           [ariaLabel]="'shared.search.ariaLabel'"
         ></app-search-container>
 
+        @if (oauthHelperUrl(); as oauthUrlValue) {
+          <section class="oauth-helper oauth-helper--actions" aria-live="polite">
+            <div class="oauth-helper-text">
+              <mat-icon svgIcon="globe"></mat-icon>
+              <span>{{ 'modals.oauth.manualOpenPrompt' | translate }}</span>
+            </div>
+            <div class="oauth-helper-actions">
+              <a
+                class="oauth-direct-link"
+                [href]="oauthUrlValue"
+                target="_blank"
+                rel="noopener noreferrer"
+                [matTooltip]="'modals.oauth.openLink' | translate"
+              >
+                {{ oauthUrlValue }}
+              </a>
+
+              <button
+                mat-icon-button
+                (click)="copyOAuthUrl()"
+                [attr.aria-label]="'modals.oauth.copyLink' | translate"
+                [matTooltip]="'modals.oauth.copyLink' | translate"
+              >
+                <mat-icon svgIcon="copy" class="accent"></mat-icon>
+              </button>
+            </div>
+          </section>
+        }
+
+        @if (shouldShowRemoteOAuthFallback()) {
+          <section class="oauth-helper" aria-live="polite">
+            <mat-icon svgIcon="info"></mat-icon>
+            <span>{{ 'modals.oauth.remoteFallback' | translate }}</span>
+          </section>
+        }
+
         @if (flow.isActive && flow.question) {
           <section class="step-container interactive" aria-live="polite" aria-busy="true">
             <app-interactive-config-step

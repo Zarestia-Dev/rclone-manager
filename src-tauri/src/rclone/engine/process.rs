@@ -26,7 +26,7 @@ impl RcApiEngine {
 
         // create_rclone_command now returns EngineError directly
         // No need for string matching - just pattern match on the error variant!
-        let engine_app = match create_rclone_command(app, "main_engine").await {
+        let engine_app = match create_rclone_command(app).await {
             Ok(cmd) => cmd,
             Err(e) => {
                 error!("❌ Failed to create engine command: {e}");

@@ -1936,6 +1936,12 @@
         "nameTaken": "That name is already taken"
       }
     },
+    "oauth": {
+      "manualOpenPrompt": "If the browser did not open automatically, use this authentication link:",
+      "openLink": "Open Link",
+      "copyLink": "Copy Link",
+      "remoteFallback": "Manual OAuth link is not available for remote backends here. Check remote backend logs/output."
+    },
     "remoteConfig": {
       "aria": {
         "stepIndicator": "Configuration Steps"

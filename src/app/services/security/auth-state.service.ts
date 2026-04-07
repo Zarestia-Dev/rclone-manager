@@ -1,7 +1,8 @@
-import { inject, Injectable, signal } from '@angular/core';
-import { filter, firstValueFrom, take } from 'rxjs';
-import { toObservable } from '@angular/core/rxjs-interop';
+import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RemoteManagementService } from '../../services/remote/remote-management.service';
+import { EventListenersService } from '../infrastructure/system/event-listeners.service';
+import { BackendService } from '../infrastructure/system/backend.service';
 
 /**
  * Service for managing OAuth authentication state
@@ -11,7 +12,10 @@ import { RemoteManagementService } from '../../services/remote/remote-management
   providedIn: 'root',
 })
 export class AuthStateService {
+  private readonly destroyRef = inject(DestroyRef);
   private readonly remoteManagementService = inject(RemoteManagementService);
+  private readonly eventListenersService = inject(EventListenersService);
+  private readonly backendService = inject(BackendService);
 
   // Authentication state
   private readonly _isAuthInProgress = signal<boolean>(false);
@@ -19,31 +23,46 @@ export class AuthStateService {
   private readonly _isAuthCancelled = signal<boolean>(false);
   private readonly _isEditMode = signal<boolean>(false);
   private readonly _cleanupInProgress = signal<boolean>(false);
+  private readonly _oauthUrl = signal<string | null>(null);
 
   // Public readonly signals
   public readonly isAuthInProgress = this._isAuthInProgress.asReadonly();
   public readonly isAuthCancelled = this._isAuthCancelled.asReadonly();
-  public readonly currentRemoteName = this._currentRemoteName.asReadonly();
-  public readonly cleanupInProgress = this._cleanupInProgress.asReadonly();
+  public readonly oauthUrl = this._oauthUrl.asReadonly();
+  public readonly isActiveBackendLocal = computed(() => {
+    const activeBackend = this.backendService.activeBackend();
+    if (activeBackend === 'Local') return true;
+    return (
+      this.backendService.backends().find(backend => backend.name === activeBackend)?.isLocal ??
+      true
+    );
+  });
+  public readonly shouldShowRemoteOAuthFallback = computed(
+    () => this._isAuthInProgress() && !this.isActiveBackendLocal() && !this._oauthUrl()
+  );
+
+  constructor() {
+    this.eventListenersService
+      .listenToOAuthUrl()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(payload => {
+        if (payload?.url) {
+          this._oauthUrl.set(payload.url);
+        }
+      });
+  }
 
   /**
    * Start authentication process
    */
   async startAuth(remoteName: string, isEditMode: boolean): Promise<void> {
-    if (this._cleanupInProgress()) {
-      console.debug('Waiting for previous cleanup to complete');
-      await firstValueFrom(
-        toObservable(this._cleanupInProgress).pipe(
-          filter(inProgress => !inProgress),
-          take(1)
-        )
-      );
-    }
+    if (this._cleanupInProgress()) return;
 
     this._isAuthInProgress.set(true);
     this._currentRemoteName.set(remoteName);
     this._isAuthCancelled.set(false);
     this._isEditMode.set(isEditMode);
+    this._oauthUrl.set(null);
 
     console.debug('Starting auth for remote:', remoteName, 'in edit mode:', isEditMode);
   }
@@ -66,7 +85,13 @@ export class AuthStateService {
 
       console.debug('Cancelling auth for remote:', remoteName, 'in edit mode:', isEditMode);
 
-      await this.remoteManagementService.quitOAuth();
+      if (this.isActiveBackendLocal()) {
+        try {
+          await this.remoteManagementService.quitOAuth();
+        } catch (error) {
+          console.warn('Error quitting local OAuth process:', error);
+        }
+      }
 
       // Delete remote if it's not in edit mode
       if (remoteName && !isEditMode) {
@@ -91,25 +116,18 @@ export class AuthStateService {
     this._currentRemoteName.set(null);
     this._isAuthCancelled.set(false);
     this._isEditMode.set(false);
+    this._oauthUrl.set(null);
     console.debug('Auth state reset');
   }
 
-  /**
-   * Get current authentication values
-   */
-  getCurrentAuthState(): {
-    isInProgress: boolean;
-    remoteName: string | null;
-    isCancelled: boolean;
-    isEditMode: boolean;
-    cleanupInProgress: boolean;
-  } {
-    return {
-      isInProgress: this._isAuthInProgress(),
-      remoteName: this._currentRemoteName(),
-      isCancelled: this._isAuthCancelled(),
-      isEditMode: this._isEditMode(),
-      cleanupInProgress: this._cleanupInProgress(),
-    };
+  async copyOAuthUrl(): Promise<void> {
+    const url = this._oauthUrl();
+    if (!url || !navigator?.clipboard?.writeText) return;
+
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch (error) {
+      console.warn('Failed to copy OAuth URL to clipboard:', error);
+    }
   }
 }

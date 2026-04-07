@@ -15,6 +15,7 @@ pub const BACKEND_SWITCHED: &str = "backend_switched";
 
 // Remote management events
 pub const REMOTE_CACHE_CHANGED: &str = "remote_cache_changed";
+pub const RCLONE_OAUTH_URL: &str = "rclone_oauth_url";
 
 // System and settings events
 pub const REMOTE_SETTINGS_CHANGED: &str = "remote_settings_changed";
@@ -53,6 +54,7 @@ pub const SSE_FORWARD_EVENTS: &[&str] = &[
     RCLONE_PASSWORD_STORED,
     BACKEND_SWITCHED,
     REMOTE_CACHE_CHANGED,
+    RCLONE_OAUTH_URL,
     REMOTE_SETTINGS_CHANGED,
     SYSTEM_SETTINGS_CHANGED,
     BANDWIDTH_LIMIT_CHANGED,

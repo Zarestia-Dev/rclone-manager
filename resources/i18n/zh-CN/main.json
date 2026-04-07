@@ -1946,6 +1946,12 @@
         "nameTaken": "该名称已被占用"
       }
     },
+    "oauth": {
+      "manualOpenPrompt": "如果浏览器没有自动打开，请使用此认证链接：",
+      "openLink": "打开链接",
+      "copyLink": "复制链接",
+      "remoteFallback": "此处无法为远程后端提供手动 OAuth 链接。请检查远程后端日志/输出。"
+    },
     "remoteConfig": {
       "aria": {
         "stepIndicator": "配置步骤"

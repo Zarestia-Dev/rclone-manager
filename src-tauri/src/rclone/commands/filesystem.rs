@@ -681,8 +681,7 @@ fn build_upload_stats(
     completed_transfers: usize,
     total_transfers: usize,
     elapsed_secs: f64,
-    current_name: Option<&str>,
-    current_size: usize,
+    current: Option<(&str, usize)>,
     remote: &str,
 ) -> serde_json::Value {
     let safe_elapsed = elapsed_secs.max(0.001);
@@ -698,16 +697,16 @@ fn build_upload_stats(
         0.0
     };
 
-    let transferring = current_name.map(|name| {
+    let transferring = current.map(|(name, size)| {
         json!([
             {
-                "bytes": current_size,
+                "bytes": size,
                 "dstFs": remote,
                 "eta": eta,
                 "group": format!("upload/{}", remote.trim_end_matches(':').trim_end_matches('/')),
                 "name": name,
                 "percentage": 100.0,
-                "size": current_size,
+                "size": size,
                 "speed": speed,
                 "speedAvg": speed,
                 "srcFs": "local",
@@ -770,7 +769,7 @@ async fn create_upload_job(
         .trim_end_matches(':')
         .trim_end_matches('/')
         .to_string();
-    let stats = build_upload_stats(0, total_bytes, 0, total_transfers, 0.0, None, 0, remote);
+    let stats = build_upload_stats(0, total_bytes, 0, total_transfers, 0.0, None, remote);
 
     job_cache
         .add_job(
@@ -838,9 +837,11 @@ async fn upload_local_drop_entries(
     let mut transferred_bytes = 0usize;
 
     for entry in entries {
-        if job_cache.get_job(jobid).await.map_or(false, |job| {
-            job.status == crate::utils::types::jobs::JobStatus::Stopped
-        }) {
+        if job_cache
+            .get_job(jobid)
+            .await
+            .is_some_and(|job| job.status == crate::utils::types::jobs::JobStatus::Stopped)
+        {
             return Ok(LocalDropUploadResult { uploaded, failed });
         }
 
@@ -901,8 +902,7 @@ async fn upload_local_drop_entries(
                 uploaded,
                 total_transfers,
                 elapsed,
-                Some(&entry.filename),
-                entry.size,
+                Some((entry.filename.as_str(), entry.size)),
                 &remote,
             );
             let uploaded_file = destination.clone();
