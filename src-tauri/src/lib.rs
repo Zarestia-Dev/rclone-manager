@@ -7,7 +7,9 @@
 // =============================================================================
 use crate::core::settings::schema::AppSettings;
 use log::{debug, error, info};
+use serde_json::json;
 use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, Mutex};
 use tauri::Manager;
 
 use clap::Parser;
@@ -38,6 +40,7 @@ use crate::{
     },
     utils::types::{
         core::{RcApiEngine, RcloneState},
+        events::SYSTEM_SETTINGS_CHANGED,
         logs::LogCache,
         updater::{AppUpdaterState, RcloneUpdaterState},
     },
@@ -352,7 +355,7 @@ fn setup_app(
     // -------------------------------------------------------------------------
     // Initialize rcman Settings Manager
     // -------------------------------------------------------------------------
-    let rcman_manager =
+    let rcman_manager = Arc::new(
         rcman::SettingsManager::builder(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
             .with_config_dir(&config_dir)
             .with_credentials()
@@ -463,8 +466,9 @@ fn setup_app(
                         value
                     }),
             )
-            .build()
-            .map_err(|e| format!("Failed to create rcman settings manager: {e}"))?;
+                .build()
+                .map_err(|e| format!("Failed to create rcman settings manager: {e}"))?,
+            );
 
     // -------------------------------------------------------------------------
     // Initialize Backend Manager (Core Dependency)
@@ -504,8 +508,43 @@ fn setup_app(
     // Manage App State
     // -------------------------------------------------------------------------
     app.manage(tokio::sync::Mutex::new(RcApiEngine::default()));
-    app.manage(rcman_manager);
+    app.manage(Arc::clone(&rcman_manager));
     app.manage(env_manager);
+
+    use tauri::Emitter;
+
+    let app_for_reload = app.handle().clone();
+    let manager_for_reload = Arc::clone(&rcman_manager);
+
+    let hot_reload_runtime = rcman::HotReloadRuntime::start(
+        manager_for_reload,
+        rcman::HotReloadConfig::default(),
+        move |event| match event {
+            rcman::HotReloadEvent::Reloaded { path } => {
+                info!("🔄 Settings hot-reloaded from {}", path.display());
+                if let Err(e) = app_for_reload.emit(
+                    SYSTEM_SETTINGS_CHANGED,
+                    crate::utils::types::events::SettingsChangeEvent {
+                        category: "*".to_string(),
+                        key: "hot_reload".to_string(),
+                        value: json!({ "path": path }),
+                    },
+                ) {
+                    error!("Failed to emit hot-reload settings event: {e}");
+                }
+            }
+            rcman::HotReloadEvent::ReloadFailed { path, reason } => {
+                error!("❌ Hot reload failed for {}: {}", path.display(), reason);
+            }
+            rcman::HotReloadEvent::WatchError { reason } => {
+                error!("❌ Hot reload watcher error: {}", reason);
+            }
+        },
+    )
+    .map_err(|e| format!("Failed to start hot-reload runtime: {e}"))?;
+
+    // Keep runtime alive for app lifetime.
+    app.manage(Mutex::new(Some(hot_reload_runtime)));
 
     // Note: Settings like tray_enabled, notifications_enabled, restrict_mode,
     // rclone_path are now read from AppSettingsManager

@@ -195,6 +195,13 @@ fn handle_settings_changed(app: &AppHandle) {
                         info!("🔄 Global settings reset detected, re-initializing core components");
                         handle_global_reset(&app);
                     }
+                    ("*", "hot_reload") => {
+                        if let Some(path) = change.value.get("path").and_then(|p| p.as_str()) {
+                            info!("🔄 Hot reload applied from {path}");
+                        } else {
+                            info!("🔄 Hot reload applied");
+                        }
+                    }
 
                     _ => debug!(
                         "Unhandled setting change: {}.{}",
