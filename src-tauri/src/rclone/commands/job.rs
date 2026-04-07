@@ -308,6 +308,7 @@ async fn add_job_to_cache(
                 status: JobStatus::Running,
                 error: None,
                 stats: None,
+                uploaded_files: Vec::new(),
                 group: metadata.group_name(),
                 profile: metadata.profile.clone(),
                 origin: metadata.origin.clone(),

@@ -25,6 +25,7 @@ import {
   CompletedTransfer,
   GlobalStats,
   DEFAULT_JOB_STATS,
+  JobInfo,
   JobInfoConfig,
   OperationColor,
   OperationControlConfig,
@@ -156,6 +157,8 @@ export class AppDetailComponent {
 
   // --- Internal State ---
   private readonly groupStats = signal<GlobalStats | null>(null);
+  private readonly watcherActivatedAt = signal<number | null>(null);
+  private readonly errorHistory = signal<string[]>([]);
   readonly jobStats = computed(() => this.groupStats() ?? DEFAULT_JOB_STATS);
   readonly activeTransfers = signal<TransferFile[]>([]);
   readonly completedTransfers = signal<CompletedTransfer[]>([]);
@@ -255,6 +258,45 @@ export class AppDetailComponent {
     return profile
       ? `${this.currentOpType()}/${name}/${profile}`
       : `${this.currentOpType()}/${name}`;
+  });
+
+  readonly activeGroupJob = computed<JobInfo | null>(() => {
+    const remoteName = this.selectedRemote().name;
+    const profile = this.selectedProfile() ?? undefined;
+    const groupName = this.currentGroupName();
+    const jobs = this.jobService.getActiveJobsForRemote(remoteName, profile);
+
+    return (
+      jobs.find(job => job.group === groupName) ??
+      jobs.find(job => job.job_type === this.currentOpType()) ??
+      jobs[0] ??
+      null
+    );
+  });
+
+  readonly resolvedStartTime = computed<Date | undefined>(() => {
+    const statsStart = this.parseDateValue(this.jobStats().startTime);
+    if (statsStart) return statsStart;
+
+    const jobStart = this.parseDateValue(this.activeGroupJob()?.start_time);
+    if (jobStart) return jobStart;
+
+    const activatedAt = this.watcherActivatedAt();
+    return activatedAt ? new Date(activatedAt) : undefined;
+  });
+
+  readonly resolvedElapsedSeconds = computed<number>(() => {
+    const elapsed = this.jobStats().elapsedTime;
+    if (elapsed > 0) {
+      return elapsed;
+    }
+
+    const startTime = this.resolvedStartTime();
+    if (!startTime) {
+      return 0;
+    }
+
+    return Math.max(0, Math.floor((Date.now() - startTime.getTime()) / 1000));
   });
 
   // --- Derived: Cron Schedules ---
@@ -390,9 +432,7 @@ export class AppDetailComponent {
       ? this.selectedSyncOperation()
       : (this.mainOperationType() ?? 'mount'),
     jobId: this.jobId() ? Number(this.jobId()) : undefined,
-    startTime: this.jobStats().startTime
-      ? new Date(this.jobStats().startTime as string)
-      : undefined,
+    startTime: this.resolvedStartTime(),
     profiles: this.profiles(),
     selectedProfile: this.selectedProfile() ?? undefined,
     showProfileSelector: this.showProfileSelector(),
@@ -436,10 +476,10 @@ export class AppDetailComponent {
           value: s.errors || 0,
           label: t('dashboard.appDetail.errors'),
           hasError: (s.errors || 0) > 0,
-          tooltip: s.lastError,
+          tooltip: this.errorHistory().length > 0 ? this.errorHistory().join('\n') : s.lastError,
         },
         {
-          value: this.formatTime.transform(s.elapsedTime),
+          value: this.formatTime.transform(this.resolvedElapsedSeconds()),
           label: t('dashboard.appDetail.duration'),
         },
       ],
@@ -459,11 +499,22 @@ export class AppDetailComponent {
     // Polling: start/stop based on active sync operation
     effect(onCleanup => {
       const groupName = this.currentGroupName();
-      untracked(() => this.resetTransfers());
-      if (this.isSyncType() && this.operationActiveState() && groupName) {
-        const timer = setInterval(() => void this.fetchGroupData(groupName), POLL_INTERVAL_MS);
-        onCleanup(() => clearInterval(timer));
+      const shouldPoll = this.isSyncType() && this.operationActiveState() && !!groupName;
+
+      if (!shouldPoll || !groupName) {
+        untracked(() => this.resetTransfers());
+        return;
       }
+
+      untracked(() => {
+        if (this.watcherActivatedAt() === null) {
+          this.watcherActivatedAt.set(Date.now());
+        }
+        void this.fetchGroupData(groupName);
+      });
+
+      const timer = setInterval(() => void this.fetchGroupData(groupName), POLL_INTERVAL_MS);
+      onCleanup(() => clearInterval(timer));
     });
 
     // Auto-select profile when list changes and current selection is invalid
@@ -489,6 +540,7 @@ export class AppDetailComponent {
       editTarget: this.currentOpType(),
       existingConfig: this.remoteSettings(),
       autoAddProfile: true,
+      remoteType: this.selectedRemote().type,
     });
   }
 
@@ -686,6 +738,14 @@ export class AppDetailComponent {
   }
 
   private applyStats(stats: GlobalStats): void {
+    const lastError = (stats.lastError ?? '').trim();
+    if (lastError) {
+      this.errorHistory.update(prev => {
+        if (prev.includes(lastError)) return prev;
+        return [lastError, ...prev].slice(0, 20);
+      });
+    }
+
     this.trackCompletedFiles(stats);
     const active = (stats.transferring ?? []).map(f => {
       const percentage = f.size > 0 ? Math.min(100, Math.round((f.bytes / f.size) * 100)) : 0;
@@ -754,8 +814,19 @@ export class AppDetailComponent {
   private resetTransfers(): void {
     this.activeTransfers.set([]);
     this.completedTransfers.set([]);
+    this.errorHistory.set([]);
+    this.watcherActivatedAt.set(null);
     this.lastTransferCount = 0;
     this.groupStats.set(null);
+  }
+
+  private parseDateValue(value?: string | null): Date | undefined {
+    if (!value) {
+      return undefined;
+    }
+
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
   }
 
   private formatProgress(): string {

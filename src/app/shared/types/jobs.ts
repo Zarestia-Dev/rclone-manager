@@ -80,6 +80,7 @@ export interface JobInfo {
   error?: string;
   remote_name: string;
   stats: GlobalStats;
+  uploaded_files?: string[];
   group?: string;
   profile?: string;
   /** Source UI that started this job (e.g., "nautilus", "dashboard", "scheduled") */

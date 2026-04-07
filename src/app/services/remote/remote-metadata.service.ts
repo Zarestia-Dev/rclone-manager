@@ -15,7 +15,11 @@ export class RemoteMetadataService extends TauriBaseService {
   /**
    * Get and cache filesystem info for a remote
    */
-  async getFsInfo(remoteName: string, source: Origin = 'dashboard'): Promise<FsInfo> {
+  async getFsInfo(
+    remoteName: string,
+    source: Origin = 'dashboard',
+    group?: string
+  ): Promise<FsInfo> {
     const normalizedKey = remoteName.endsWith(':') ? remoteName.slice(0, -1) : remoteName;
 
     // Determine the proper fs name for rclone backend.
@@ -33,7 +37,7 @@ export class RemoteMetadataService extends TauriBaseService {
     }
 
     try {
-      const info = await this.remoteOpsService.getFsInfo(fsName, source);
+      const info = await this.remoteOpsService.getFsInfo(fsName, source, group);
       this.metadataCache.set(normalizedKey, info);
       return info;
     } catch (error) {
@@ -45,7 +49,11 @@ export class RemoteMetadataService extends TauriBaseService {
   /**
    * Extract and cache features for a remote
    */
-  async getFeatures(remoteName: string, source: Origin = 'dashboard'): Promise<RemoteFeatures> {
+  async getFeatures(
+    remoteName: string,
+    source: Origin = 'dashboard',
+    group?: string
+  ): Promise<RemoteFeatures> {
     const normalizedKey = remoteName.endsWith(':') ? remoteName.slice(0, -1) : remoteName;
 
     if (this.featuresCache.has(normalizedKey)) {
@@ -55,7 +63,7 @@ export class RemoteMetadataService extends TauriBaseService {
     }
 
     try {
-      const info = await this.getFsInfo(remoteName, source);
+      const info = await this.getFsInfo(remoteName, source, group);
       const features: RemoteFeatures = {
         isLocal: info.Features?.IsLocal ?? false,
         hasAbout: info.Features?.['About'] !== false, // Default to true unless explicitly false

@@ -4,6 +4,7 @@ import {
   Component,
   HostListener,
   OnInit,
+  OnDestroy,
   computed,
   inject,
   signal,
@@ -25,6 +26,7 @@ import {
   RemoteFacadeService,
   RemoteFileOperationsService,
   RemoteMetadataService,
+  JobManagementService,
 } from 'src/app/services';
 import { FormatFileSizePipe } from 'src/app/shared/pipes';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -56,7 +58,7 @@ interface RemoteAboutData {
   styleUrls: ['./remote-about-modal.component.scss', '../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class RemoteAboutModalComponent implements OnInit {
+export class RemoteAboutModalComponent implements OnInit, OnDestroy {
   private readonly dialogRef = inject(MatDialogRef<RemoteAboutModalComponent>);
   private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly remoteFacadeService = inject(RemoteFacadeService);
@@ -64,8 +66,10 @@ export class RemoteAboutModalComponent implements OnInit {
   private readonly translate = inject(TranslateService);
   private readonly modalService = inject(ModalService);
   private readonly mapper = inject(RcloneValueMapperService);
+  private readonly jobManagementService = inject(JobManagementService);
   public readonly iconService = inject(IconService);
   public readonly data: RemoteAboutData = inject(MAT_DIALOG_DATA);
+  private readonly readJobGroup = `ui/remote-about/${this.data.remote.displayName}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   // Plain properties — no need for a signal when value never changes
   readonly displayName = this.data.remote.displayName;
@@ -150,7 +154,11 @@ export class RemoteAboutModalComponent implements OnInit {
 
     // 1. Fetch FsInfo (fast) - allows the modal content to appear
     try {
-      const fsInfo = await this.metadataService.getFsInfo(this.normalizedName, 'ui');
+      const fsInfo = await this.metadataService.getFsInfo(
+        this.normalizedName,
+        'ui',
+        this.readJobGroup
+      );
       this.aboutInfo.set(fsInfo);
     } catch (error) {
       console.error('Error loading fs info:', error);
@@ -166,7 +174,12 @@ export class RemoteAboutModalComponent implements OnInit {
 
   private async loadSizeInBackground(): Promise<void> {
     try {
-      const sizeData = await this.remoteOps.getSize(this.normalizedName, undefined, 'ui');
+      const sizeData = await this.remoteOps.getSize(
+        this.normalizedName,
+        undefined,
+        'ui',
+        this.readJobGroup
+      );
       this.sizeInfo.set(sizeData);
     } catch (error) {
       console.warn('Size check failed:', error);
@@ -180,12 +193,26 @@ export class RemoteAboutModalComponent implements OnInit {
       this.displayName,
       this.normalizedName,
       'ui',
+      this.readJobGroup,
       forceRefresh
     );
   }
 
+  ngOnDestroy(): void {
+    void this.stopReadJobs();
+  }
+
+  private async stopReadJobs(): Promise<void> {
+    try {
+      await this.jobManagementService.stopJobsByGroup(this.readJobGroup);
+    } catch (err) {
+      console.debug('Failed to stop remote about read jobs:', err);
+    }
+  }
+
   @HostListener('document:keydown.escape')
   close(): void {
+    void this.stopReadJobs();
     this.modalService.animatedClose(this.dialogRef);
   }
 }

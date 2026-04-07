@@ -1,5 +1,5 @@
 use log::debug;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tauri::{AppHandle, Manager};
 
@@ -629,6 +629,26 @@ pub struct LocalDropUploadResult {
     pub failed: Vec<String>,
 }
 
+#[allow(dead_code)]
+#[derive(Debug, Clone, Deserialize)]
+pub struct LocalDropUploadFile {
+    pub relative_path: String,
+    pub filename: String,
+    pub content: Vec<u8>,
+}
+
+enum LocalDropUploadEntrySource {
+    Bytes(Vec<u8>),
+    Path(std::path::PathBuf),
+}
+
+struct LocalDropUploadEntry {
+    relative_path: String,
+    filename: String,
+    size: usize,
+    source: LocalDropUploadEntrySource,
+}
+
 fn join_remote_path(base: &str, relative: &str) -> String {
     let base = base.trim_matches('/');
     let relative = relative.trim_matches('/');
@@ -655,17 +675,148 @@ fn relative_unix_path(path: &std::path::Path) -> String {
         .join("/")
 }
 
-#[tauri::command]
-pub async fn upload_local_drop_paths(
-    app: AppHandle,
+fn build_upload_stats(
+    transferred_bytes: usize,
+    total_bytes: usize,
+    completed_transfers: usize,
+    total_transfers: usize,
+    elapsed_secs: f64,
+    current_name: Option<&str>,
+    current_size: usize,
+    remote: &str,
+) -> serde_json::Value {
+    let safe_elapsed = elapsed_secs.max(0.001);
+    let speed = if transferred_bytes > 0 {
+        transferred_bytes as f64 / safe_elapsed
+    } else {
+        0.0
+    };
+    let remaining_bytes = total_bytes.saturating_sub(transferred_bytes);
+    let eta = if speed > 0.0 {
+        (remaining_bytes as f64 / speed).ceil()
+    } else {
+        0.0
+    };
+
+    let transferring = current_name.map(|name| {
+        json!([
+            {
+                "bytes": current_size,
+                "dstFs": remote,
+                "eta": eta,
+                "group": format!("upload/{}", remote.trim_end_matches(':').trim_end_matches('/')),
+                "name": name,
+                "percentage": 100.0,
+                "size": current_size,
+                "speed": speed,
+                "speedAvg": speed,
+                "srcFs": "local",
+            }
+        ])
+    });
+
+    json!({
+        "bytes": transferred_bytes,
+        "checks": 0,
+        "deletedDirs": 0,
+        "deletes": 0,
+        "elapsedTime": elapsed_secs,
+        "errors": 0,
+        "eta": eta,
+        "fatalError": false,
+        "lastError": "",
+        "renames": 0,
+        "retryError": false,
+        "serverSideCopies": 0,
+        "serverSideCopyBytes": 0,
+        "serverSideMoveBytes": 0,
+        "serverSideMoves": 0,
+        "speed": speed,
+        "totalBytes": total_bytes,
+        "totalChecks": 0,
+        "totalTransfers": total_transfers,
+        "transferTime": elapsed_secs,
+        "transferring": transferring.unwrap_or_else(|| json!([])),
+        "transfers": completed_transfers,
+    })
+}
+
+async fn next_upload_job_id(job_cache: &crate::utils::types::jobs::JobCache) -> u64 {
+    job_cache
+        .get_jobs()
+        .await
+        .into_iter()
+        .map(|job| job.jobid)
+        .max()
+        .unwrap_or(0)
+        .saturating_add(1)
+}
+
+async fn create_upload_job(
+    app: &AppHandle,
+    remote: &str,
+    path: &str,
+    source: Option<String>,
+    total_bytes: usize,
+    total_transfers: usize,
+) -> Result<u64, String> {
+    use chrono::Utc;
+
+    let backend_manager = app.state::<BackendManager>();
+    let job_cache = &backend_manager.job_cache;
+    let jobid = next_upload_job_id(job_cache).await;
+    let remote_root = build_full_path(remote, path);
+    let remote_name = remote
+        .trim_end_matches(':')
+        .trim_end_matches('/')
+        .to_string();
+    let stats = build_upload_stats(0, total_bytes, 0, total_transfers, 0.0, None, 0, remote);
+
+    job_cache
+        .add_job(
+            crate::utils::types::jobs::JobInfo {
+                jobid,
+                job_type: crate::utils::types::jobs::JobType::Upload,
+                remote_name: remote.to_string(),
+                source: remote_root.clone(),
+                destination: "Upload batch".to_string(),
+                start_time: Utc::now(),
+                status: crate::utils::types::jobs::JobStatus::Running,
+                error: None,
+                stats: Some(stats),
+                uploaded_files: Vec::new(),
+                group: format!("upload/{remote_name}"),
+                profile: None,
+                execute_id: None,
+                origin: source
+                    .as_deref()
+                    .map(crate::utils::types::origin::Origin::parse),
+                backend_name: Some(backend_manager.get_active().await.name.clone()),
+            },
+            Some(app),
+        )
+        .await;
+
+    Ok(jobid)
+}
+
+fn split_remote_directory(path: &str) -> (String, String) {
+    match path.rsplit_once('/') {
+        Some((dir, name)) => (dir.to_string(), name.to_string()),
+        None => (String::new(), path.to_string()),
+    }
+}
+
+async fn upload_local_drop_entries(
+    app: &AppHandle,
     remote: String,
     path: String,
-    local_paths: Vec<String>,
+    entries: Vec<LocalDropUploadEntry>,
+    source: Option<String>,
 ) -> Result<LocalDropUploadResult, String> {
     use reqwest::multipart;
     use std::collections::HashSet;
-    use std::path::PathBuf;
-    use walkdir::WalkDir;
+    use std::time::Instant;
 
     let state = app.state::<RcloneState>();
     let backend_manager = app.state::<BackendManager>();
@@ -673,130 +824,56 @@ pub async fn upload_local_drop_paths(
 
     let upload_url = backend.url_for(operations::UPLOADFILE);
     let mkdir_url = backend.url_for(operations::MKDIR);
+    let job_cache = &backend_manager.job_cache;
+
+    let total_bytes = entries.iter().map(|entry| entry.size).sum::<usize>();
+    let total_transfers = entries.len();
+    let jobid =
+        create_upload_job(app, &remote, &path, source, total_bytes, total_transfers).await?;
+    let start = Instant::now();
 
     let mut created_directories = HashSet::new();
     let mut uploaded = 0usize;
     let mut failed = Vec::new();
+    let mut transferred_bytes = 0usize;
 
-    for raw_path in local_paths {
-        let root = PathBuf::from(&raw_path);
-        if !root.exists() {
-            failed.push(raw_path);
-            continue;
+    for entry in entries {
+        if job_cache.get_job(jobid).await.map_or(false, |job| {
+            job.status == crate::utils::types::jobs::JobStatus::Stopped
+        }) {
+            return Ok(LocalDropUploadResult { uploaded, failed });
         }
 
-        let base_parent = root.parent().map(|p| p.to_path_buf());
+        let destination = join_remote_path(&path, &entry.relative_path);
+        let (directory, filename) = split_remote_directory(&destination);
 
-        if root.is_dir() {
-            for entry in WalkDir::new(&root).into_iter().filter_map(Result::ok) {
-                let current = entry.path();
-                let rel_path = if let Some(parent) = &base_parent {
-                    current.strip_prefix(parent).unwrap_or(current)
-                } else {
-                    current
-                };
-                let rel = relative_unix_path(rel_path);
-                if rel.is_empty() {
-                    continue;
-                }
+        if !directory.is_empty() && !created_directories.contains(&directory) {
+            let mkdir_response = backend
+                .inject_auth(state.client.post(&mkdir_url))
+                .json(&json!({ "fs": remote.clone(), "remote": directory }))
+                .send()
+                .await
+                .map_err(|e| format!("Failed to create directory: {}", e))?;
 
-                if entry.file_type().is_dir() {
-                    let remote_dir = join_remote_path(&path, &rel);
-                    if remote_dir.is_empty() || created_directories.contains(&remote_dir) {
-                        continue;
-                    }
-
-                    let response = backend
-                        .inject_auth(state.client.post(&mkdir_url))
-                        .json(&json!({ "fs": remote.clone(), "remote": remote_dir }))
-                        .send()
-                        .await
-                        .map_err(|e| format!("Failed to create directory: {}", e))?;
-
-                    if response.status().is_success() {
-                        created_directories.insert(remote_dir);
-                    }
-                    continue;
-                }
-
-                let target_full = join_remote_path(&path, &rel);
-                let (remote_dir, filename) = match target_full.rsplit_once('/') {
-                    Some((dir, name)) => (dir.to_string(), name.to_string()),
-                    None => (String::new(), target_full),
-                };
-
-                if filename.trim().is_empty() {
-                    failed.push(current.display().to_string());
-                    continue;
-                }
-
-                if !remote_dir.is_empty() && !created_directories.contains(&remote_dir) {
-                    let mkdir_response = backend
-                        .inject_auth(state.client.post(&mkdir_url))
-                        .json(&json!({ "fs": remote.clone(), "remote": remote_dir }))
-                        .send()
-                        .await
-                        .map_err(|e| format!("Failed to create directory: {}", e))?;
-
-                    if mkdir_response.status().is_success() {
-                        created_directories.insert(remote_dir.clone());
-                    }
-                }
-
-                let bytes = match tokio::fs::read(current).await {
-                    Ok(content) => content,
-                    Err(_) => {
-                        failed.push(current.display().to_string());
-                        continue;
-                    }
-                };
-
-                let part = multipart::Part::bytes(bytes)
-                    .file_name(filename)
-                    .mime_str("application/octet-stream")
-                    .map_err(|e| e.to_string())?;
-                let form = multipart::Form::new().part("file", part);
-
-                let response = backend
-                    .inject_auth(
-                        state
-                            .client
-                            .post(&upload_url)
-                            .query(&[("fs", &remote), ("remote", &remote_dir)]),
-                    )
-                    .multipart(form)
-                    .send()
-                    .await
-                    .map_err(|e| format!("Failed to send upload request: {}", e))?;
-
-                if response.status().is_success() {
-                    uploaded += 1;
-                } else {
-                    failed.push(current.display().to_string());
-                }
+            if mkdir_response.status().is_success() {
+                created_directories.insert(directory.clone());
             }
-            continue;
         }
 
-        let file_name = root
-            .file_name()
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_default();
-        if file_name.trim().is_empty() {
-            failed.push(root.display().to_string());
-            continue;
-        }
-
-        let bytes = match tokio::fs::read(&root).await {
-            Ok(content) => content,
-            Err(_) => {
-                failed.push(root.display().to_string());
-                continue;
-            }
+        let bytes = match entry.source {
+            LocalDropUploadEntrySource::Bytes(content) => content,
+            LocalDropUploadEntrySource::Path(ref path_buf) => match tokio::fs::read(path_buf).await
+            {
+                Ok(content) => content,
+                Err(_) => {
+                    failed.push(path_buf.display().to_string());
+                    continue;
+                }
+            },
         };
 
         let part = multipart::Part::bytes(bytes)
-            .file_name(file_name)
+            .file_name(filename.clone())
             .mime_str("application/octet-stream")
             .map_err(|e| e.to_string())?;
         let form = multipart::Form::new().part("file", part);
@@ -806,7 +883,7 @@ pub async fn upload_local_drop_paths(
                 state
                     .client
                     .post(&upload_url)
-                    .query(&[("fs", &remote), ("remote", &path)]),
+                    .query(&[("fs", &remote), ("remote", &directory)]),
             )
             .multipart(form)
             .send()
@@ -815,12 +892,153 @@ pub async fn upload_local_drop_paths(
 
         if response.status().is_success() {
             uploaded += 1;
+            transferred_bytes += entry.size;
+
+            let elapsed = start.elapsed().as_secs_f64();
+            let stats = build_upload_stats(
+                transferred_bytes,
+                total_bytes,
+                uploaded,
+                total_transfers,
+                elapsed,
+                Some(&entry.filename),
+                entry.size,
+                &remote,
+            );
+            let uploaded_file = destination.clone();
+
+            let _ = job_cache
+                .update_job(
+                    jobid,
+                    |job| {
+                        job.stats = Some(stats);
+                        job.uploaded_files.push(uploaded_file);
+                    },
+                    Some(app),
+                )
+                .await;
         } else {
-            failed.push(root.display().to_string());
+            failed.push(entry.relative_path.clone());
         }
     }
 
+    let success = failed.is_empty();
+    let final_error = if success {
+        None
+    } else {
+        Some(format!("{} file(s) failed to upload", failed.len()))
+    };
+
+    let _ = job_cache
+        .complete_job(jobid, success, final_error.clone(), Some(app))
+        .await;
+
     Ok(LocalDropUploadResult { uploaded, failed })
+}
+
+async fn collect_upload_entries_from_paths(
+    local_paths: Vec<String>,
+) -> Result<Vec<LocalDropUploadEntry>, String> {
+    use std::path::PathBuf;
+    use walkdir::WalkDir;
+
+    let mut entries = Vec::new();
+
+    for raw_path in local_paths {
+        let root = PathBuf::from(&raw_path);
+        if !root.exists() {
+            continue;
+        }
+
+        let base_parent = root.parent().map(|p| p.to_path_buf());
+
+        if root.is_dir() {
+            for entry in WalkDir::new(&root).into_iter().filter_map(Result::ok) {
+                if !entry.file_type().is_file() {
+                    continue;
+                }
+
+                let current = entry.path();
+                let rel_path = if let Some(parent) = &base_parent {
+                    current.strip_prefix(parent).unwrap_or(current)
+                } else {
+                    current
+                };
+                let relative_path = relative_unix_path(rel_path);
+                if relative_path.is_empty() {
+                    continue;
+                }
+
+                let filename = current
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                if filename.trim().is_empty() {
+                    continue;
+                }
+
+                let size = entry.metadata().map_err(|e| e.to_string())?.len() as usize;
+                entries.push(LocalDropUploadEntry {
+                    relative_path,
+                    filename,
+                    size,
+                    source: LocalDropUploadEntrySource::Path(current.to_path_buf()),
+                });
+            }
+            continue;
+        }
+
+        let filename = root
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+        if filename.trim().is_empty() {
+            continue;
+        }
+
+        let size = root.metadata().map_err(|e| e.to_string())?.len() as usize;
+        entries.push(LocalDropUploadEntry {
+            relative_path: filename.clone(),
+            filename,
+            size,
+            source: LocalDropUploadEntrySource::Path(root),
+        });
+    }
+
+    Ok(entries)
+}
+
+#[tauri::command]
+pub async fn upload_local_drop_paths(
+    app: AppHandle,
+    remote: String,
+    path: String,
+    local_paths: Vec<String>,
+    source: Option<String>,
+) -> Result<LocalDropUploadResult, String> {
+    let entries = collect_upload_entries_from_paths(local_paths).await?;
+    upload_local_drop_entries(&app, remote, path, entries, source).await
+}
+
+#[tauri::command]
+pub async fn upload_local_drop_files(
+    app: AppHandle,
+    remote: String,
+    path: String,
+    files: Vec<LocalDropUploadFile>,
+    source: Option<String>,
+) -> Result<LocalDropUploadResult, String> {
+    let entries = files
+        .into_iter()
+        .map(|file| LocalDropUploadEntry {
+            relative_path: file.relative_path,
+            filename: file.filename,
+            size: file.content.len(),
+            source: LocalDropUploadEntrySource::Bytes(file.content),
+        })
+        .collect();
+
+    upload_local_drop_entries(&app, remote, path, entries, source).await
 }
 
 #[tauri::command]

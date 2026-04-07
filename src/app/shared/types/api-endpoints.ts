@@ -164,6 +164,8 @@ export const POST_COMMANDS = new Set([
   'remove_empty_dirs',
   'upload_file',
   'upload_file_bytes',
+  'upload_local_drop_files',
+  'upload_local_drop_paths',
   'rename_file',
   'rename_dir',
   // Backend Commands

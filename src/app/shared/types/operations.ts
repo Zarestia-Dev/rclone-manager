@@ -39,6 +39,7 @@ export type FileOperationType =
   | 'move_file'
   | 'rename_file'
   | 'rename_dir'
+  | 'upload'
   | 'copy_url'
   | 'cleanup'
   | 'rmdirs'

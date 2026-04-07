@@ -169,6 +169,9 @@ pub struct GetPublicLinkQuery {
     pub path: String,
     pub unlink: Option<bool>,
     pub expire: Option<String>,
+    pub origin: Option<String>,
+    pub group: Option<String>,
+    pub no_cache: Option<bool>,
 }
 
 pub async fn get_public_link_handler(
@@ -184,6 +187,9 @@ pub async fn get_public_link_handler(
         query.path,
         query.unlink,
         expire,
+        query.origin,
+        query.group,
+        query.no_cache,
         rclone_state,
     )
     .await

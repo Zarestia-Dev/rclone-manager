@@ -259,12 +259,12 @@ form {
   display: inline-flex;
   align-items: center;
   gap: var(--space-xxs);
-  padding: var(--space-xxs) var(--space-sm);
-  border-radius: var(--space-md);
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
   background: rgba(var(--accent-color-rgb), 0.06);
   color: var(--dim-color);
-  font-size: var(--font-size-xs);
-  font-weight: 500;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
   cursor: pointer;
   animation: slideInFromBottomIn 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
   transition:
@@ -397,7 +397,6 @@ form {
       white-space: nowrap;
       flex-shrink: 0;
       padding-top: 5px;
-      text-transform: uppercase;
       letter-spacing: 0.06em;
     }
 
@@ -409,17 +408,18 @@ form {
   }
 
   .predefined-chip {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: var(--space-xxs);
-    padding: var(--space-xxs) var(--space-xs);
-    border-radius: 99px;
-    background: var(--selected-bg-color);
-    color: var(--dim-color);
-    font-size: var(--font-size-sm);
-    font-weight: 500;
     cursor: pointer;
-    transition: background 0.15s ease;
+    padding: 6px 10px;
+    border-radius: var(--radius-md);
+    background: var(--selected-bg-color);
+    font-size: var(--font-size-sm);
+    box-shadow: var(--box-shadow);
+    font-weight: 600;
+    color: var(--dim-color);
+    transition: background 0.2s ease;
 
     mat-icon {
       font-size: 14px;
@@ -484,7 +484,6 @@ form {
       .option-type-badge {
         font-size: 10px;
         font-weight: 700;
-        text-transform: uppercase;
         letter-spacing: 0.05em;
         padding: 2px 6px;
         border-radius: 99px;

@@ -137,6 +137,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   private readonly fileSystemService = inject(FileSystemService);
   private readonly uiStateService = inject(UiStateService);
   private readonly apiClient = inject(ApiClientService);
+  private readonly readJobGroup = `ui/file-viewer/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   public currentUrl = signal<string>('');
 
@@ -194,6 +195,15 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.destroy$.next();
     this.destroy$.complete();
     this.cancelCurrentRequest$.complete();
+    void this.stopReadJobs();
+  }
+
+  private async stopReadJobs(): Promise<void> {
+    try {
+      await this.jobManagementService.stopJobsByGroup(this.readJobGroup);
+    } catch (err) {
+      console.debug('Failed to stop file viewer read jobs:', err);
+    }
   }
 
   /**
@@ -466,6 +476,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   }
 
   async updateData(): Promise<void> {
+    await this.stopReadJobs();
+
     const item = this.currentItem();
 
     // 1. Immediately reset state entirely, clear URLs so media elements unmount.
@@ -510,7 +522,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
         // For local: fsName is "C:" or "/", path is "path/to/dir"
         // For remote: fsName is "gdrive:", path is "path/to/dir"
         await this.remoteOps
-          .getSize(fsName, item.Path)
+          .getSize(fsName, item.Path, 'ui', this.readJobGroup)
           .then((size: { count: number; bytes: number }) => {
             this.folderSize.set(size);
           })

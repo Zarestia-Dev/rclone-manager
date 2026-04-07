@@ -36,6 +36,7 @@ import {
   PathSelectionService,
   RemoteFileOperationsService,
   RemoteFacadeService,
+  JobManagementService,
   IconService,
   NotificationService,
   getRemoteNameFromFs,
@@ -168,6 +169,10 @@ export class NautilusComponent implements OnInit {
   private static readonly MAX_UNDO_STACK = 20;
   private readonly LIST_ICON_SIZES = [16, 24, 32, 48];
   private readonly GRID_ICON_SIZES = [48, 64, 96, 128, 160, 256];
+  private readonly listReadGroups: Record<0 | 1, string> = {
+    0: `ui/nautilus/list-left-${Date.now().toString(36)}`,
+    1: `ui/nautilus/list-right-${Date.now().toString(36)}`,
+  };
 
   private readonly destroyRef = inject(DestroyRef);
   private readonly translate = inject(TranslateService);
@@ -175,6 +180,7 @@ export class NautilusComponent implements OnInit {
   private readonly notificationService = inject(NotificationService);
   private readonly nautilusService = inject(NautilusService);
   private readonly remoteOps = inject(RemoteFileOperationsService);
+  private readonly jobManagementService = inject(JobManagementService);
   private readonly pathSelectionService = inject(PathSelectionService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly fileViewerService = inject(FileViewerService);
@@ -594,7 +600,23 @@ export class NautilusComponent implements OnInit {
       this.desktopDropUnlisten?.();
       this.desktopDropUnlisten = null;
       this.nautilusService.setWindowTitle('RClone Manager');
+      void this.stopListReadJobs();
     });
+  }
+
+  private async stopListReadJobs(): Promise<void> {
+    await Promise.all([
+      this.stopListReadGroup(this.listReadGroups[0]),
+      this.stopListReadGroup(this.listReadGroups[1]),
+    ]);
+  }
+
+  private async stopListReadGroup(group: string): Promise<void> {
+    try {
+      await this.jobManagementService.stopJobsByGroup(group);
+    } catch (err) {
+      console.debug('Failed to stop list read group:', err);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -641,8 +663,12 @@ export class NautilusComponent implements OnInit {
           const fsName = remote.isLocal
             ? remote.name
             : this.pathSelectionService.normalizeRemoteForRclone(remote.name);
+          const readGroup = this.listReadGroups[paneIndex];
 
-          return from(this.remoteOps.getRemotePaths(fsName, path, {}, 'nautilus')).pipe(
+          return from(this.stopListReadGroup(readGroup)).pipe(
+            switchMap(() =>
+              from(this.remoteOps.getRemotePaths(fsName, path, {}, 'nautilus', readGroup))
+            ),
             map(res =>
               (res.list || []).map(
                 f =>
@@ -657,6 +683,16 @@ export class NautilusComponent implements OnInit {
               )
             ),
             catchError(err => {
+              const errorMessage = (err?.message ?? err ?? '').toString();
+              const isCancelled = /operation cancelled|operation canceled|cancelled|canceled/i.test(
+                errorMessage
+              );
+
+              if (isCancelled) {
+                ref.loading.set(false);
+                return EMPTY;
+              }
+
               console.error('Error fetching files:', err);
               const msg = this.translate.instant('nautilus.errors.loadFailed');
               ref.error.set(err?.message ?? msg);
@@ -1183,35 +1219,59 @@ export class NautilusComponent implements OnInit {
     if (!droppedFiles.length) return;
 
     const normalizedRemote = this.getNormalizedRemoteName(target.remote);
-    const createdDirectories = new Set<string>();
+    const fileResults = await Promise.allSettled(
+      droppedFiles.map(async droppedFile => {
+        const bytes = new Uint8Array(await droppedFile.file.arrayBuffer());
+        return {
+          relativePath: droppedFile.relativePath,
+          filename: droppedFile.file.name,
+          content: Array.from(bytes),
+        };
+      })
+    );
+
+    const files: { relativePath: string; filename: string; content: number[] }[] = [];
+    const fileReadFailures: string[] = [];
+
+    fileResults.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        files.push(result.value);
+        return;
+      }
+
+      const droppedFile = droppedFiles[index];
+      if (droppedFile) {
+        fileReadFailures.push(droppedFile.relativePath || droppedFile.file.name);
+      }
+    });
+
+    if (!files.length) {
+      if (fileReadFailures.length > 0) {
+        this.notificationService.showError(
+          `Failed to read ${fileReadFailures.length} dropped file(s).`
+        );
+      }
+      return;
+    }
 
     let uploadedCount = 0;
     const failedUploads: string[] = [];
 
-    for (const droppedFile of droppedFiles) {
-      try {
-        const destination = this.joinRemotePath(target.path, droppedFile.relativePath);
-        const { directory, filename } = this.splitDirectoryAndFilename(destination);
-
-        if (directory && !createdDirectories.has(directory)) {
-          await this.remoteOps.makeDirectory(normalizedRemote, directory, 'nautilus', true);
-          createdDirectories.add(directory);
-        }
-
-        const bytes = new Uint8Array(await droppedFile.file.arrayBuffer());
-        await this.remoteOps.uploadFileBytes(
-          normalizedRemote,
-          directory,
-          filename,
-          bytes,
-          'nautilus'
-        );
-        uploadedCount += 1;
-      } catch (error) {
-        console.error('External drop upload failed', error);
-        failedUploads.push(droppedFile.relativePath || droppedFile.file.name);
-      }
+    try {
+      const result = await this.remoteOps.uploadLocalDropFiles(
+        normalizedRemote,
+        target.path,
+        files,
+        'nautilus'
+      );
+      uploadedCount = result.uploaded;
+      failedUploads.push(...result.failed);
+    } catch (error) {
+      console.error('External drop upload failed', error);
+      failedUploads.push(...files.map(file => file.relativePath || file.filename));
     }
+
+    failedUploads.push(...fileReadFailures);
 
     if (uploadedCount > 0) {
       this.refresh();
@@ -2579,9 +2639,11 @@ export class NautilusComponent implements OnInit {
   }
 
   cancelLoad(paneIndex: 0 | 1 = 0): void {
-    // Cancels the UI loading state. The in-flight request will still complete
-    // but its result will be discarded once overwritten by the next load.
-    this.getPaneRef(paneIndex).loading.set(false);
+    const pane = this.getPaneRef(paneIndex);
+    pane.loading.set(false);
+
+    // Stop the active list job group for this pane so the request is actually cancelled.
+    void this.stopListReadGroup(this.listReadGroups[paneIndex]);
   }
 
   selectAll(): void {

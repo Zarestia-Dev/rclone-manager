@@ -936,15 +936,15 @@
       "addOption": "Seçenek Ekle",
       "predefinedOptions": {
         "obscure": {
-          "label": "Obscure (Gizle)",
+          "label": "Gizle",
           "description": "Parolaları düz metin olarak işle ve yapılandırmaya kaydetmeden önce gizle"
         },
         "noObscure": {
-          "label": "Gizleme",
+          "label": "Gizleme Yok",
           "description": "Parolalar zaten gizlenmiş; gizleme adımını atla"
         },
         "nonInteractive": {
-          "label": "Etkileşimli Değil",
+          "label": "Etkileşimsiz",
           "description": "Sormak yerine bir JSON soru bloğu döndür; uygulama odaklı yapılandırma akışları için"
         },
         "all": {

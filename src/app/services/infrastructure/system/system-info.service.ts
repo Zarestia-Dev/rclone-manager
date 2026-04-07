@@ -69,7 +69,7 @@ export class SystemInfoService extends TauriBaseService {
    * Get core statistics
    */
   async getStats(groupName?: string): Promise<GlobalStats> {
-    return this.invokeCommand('get_stats', { groupName });
+    return this.invokeCommand('get_stats', { group: groupName });
   }
 
   /**

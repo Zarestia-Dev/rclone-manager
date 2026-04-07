@@ -154,6 +154,106 @@
       gap: 16px;
     }
 
+    .running-jobs-section {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      background: rgba(var(--view-bg-color-rgb, var(--view-bg-color)), 0.02);
+      border: 1px solid rgba(var(--window-fg-color-rgb), 0.06);
+
+      .section-heading {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--dim-color);
+
+        mat-icon {
+          width: 16px;
+          height: 16px;
+          font-size: 16px;
+        }
+      }
+
+      .running-jobs-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .running-job-row {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        background: rgba(var(--window-bg-color-rgb), 0.7);
+        border: 1px solid rgba(var(--window-fg-color-rgb), 0.05);
+      }
+
+      .running-job-main {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .running-job-icon {
+        width: 16px;
+        height: 16px;
+        font-size: 16px;
+        color: var(--primary-color);
+        flex-shrink: 0;
+      }
+
+      .running-job-text {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        flex: 1;
+      }
+
+      .running-job-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--window-fg-color);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .running-job-path,
+      .running-job-meta {
+        font-size: 11px;
+        color: var(--dim-color);
+      }
+
+      .running-job-path {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .running-job-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .dot-separator {
+        opacity: 0.5;
+      }
+
+      .running-job-progress {
+        height: 4px;
+        border-radius: 999px;
+      }
+    }
+
     .error-section {
       margin-top: 8px;
       padding: 12px;

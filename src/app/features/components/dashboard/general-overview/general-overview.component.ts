@@ -50,6 +50,23 @@ const TASK_META: Record<string, { icon: string; colorClass: string }> = {
   bisync: { icon: 'right-left', colorClass: 'bisync-color' },
 };
 
+const JOB_ICON_MAP: Record<string, string> = {
+  sync: 'refresh',
+  copy: 'copy',
+  move: 'move',
+  bisync: 'right-left',
+  copy_url: 'copy',
+  copy_file: 'copy',
+  move_file: 'move',
+  rename_file: 'pen',
+  rename_dir: 'pen',
+  delete_file: 'trash',
+  purge: 'trash',
+  cleanup: 'broom',
+  rmdirs: 'broom',
+  upload: 'file-arrow-up',
+};
+
 const TOGGLE_ICON: Record<string, string> = {
   enabled: 'pause',
   running: 'pause',
@@ -190,6 +207,7 @@ export class GeneralOverviewComponent implements OnInit {
   readonly totalRemotes = computed(() => this.remotes().length);
 
   readonly activeJobsCount = computed(() => this.jobs().filter(j => j.status === 'Running').length);
+  readonly runningJobs = computed(() => this.jobs().filter(j => j.status === 'Running'));
 
   readonly allRunningServes = computed(() =>
     this.remotes().flatMap(r => r.status.serve?.serves ?? [])
@@ -381,6 +399,16 @@ export class GeneralOverviewComponent implements OnInit {
 
   getToggleIcon(status: string): string {
     return TOGGLE_ICON[status] ?? 'help';
+  }
+
+  getJobTypeIcon(job: JobInfo): string {
+    return JOB_ICON_MAP[job.job_type] ?? 'folder';
+  }
+
+  getJobLabel(job: JobInfo): string {
+    const key = `fileBrowser.operations.types.${job.job_type}`;
+    const translated = this.translate.instant(key);
+    return translated === key ? job.job_type.replace(/_/g, ' ') : translated;
   }
 
   // --- Private helpers ---

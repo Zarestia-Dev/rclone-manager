@@ -219,6 +219,7 @@ mod tests {
             status: JobStatus::Running,
             error: None,
             stats: None,
+            uploaded_files: Vec::new(),
             group: format!("job/{}", jobid),
             origin: None,
             backend_name: Some("Local".to_string()),

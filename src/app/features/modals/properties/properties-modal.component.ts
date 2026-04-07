@@ -2,6 +2,7 @@ import {
   Component,
   HostListener,
   OnInit,
+  OnDestroy,
   computed,
   inject,
   signal,
@@ -26,6 +27,7 @@ import {
   IconService,
   RemoteMetadataService,
   PathSelectionService,
+  JobManagementService,
 } from '@app/services';
 import { Entry, FileBrowserItem, RemoteFeatures } from '@app/types';
 import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
@@ -58,7 +60,7 @@ interface ExpiryOption {
   styleUrls: ['./properties-modal.component.scss', '../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PropertiesModalComponent implements OnInit {
+export class PropertiesModalComponent implements OnInit, OnDestroy {
   private dialogRef = inject(MatDialogRef<PropertiesModalComponent>);
   public data: {
     remoteName: string;
@@ -80,6 +82,8 @@ export class PropertiesModalComponent implements OnInit {
   private readonly notificationService = inject(NotificationService);
   private readonly remoteMetadata = inject(RemoteMetadataService);
   private readonly pathSelectionService = inject(PathSelectionService);
+  private readonly jobManagementService = inject(JobManagementService);
+  private readonly readJobGroup = `ui/properties/${this.data.remoteName}/${this.data.path || '/'}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   // Derived properties (pure data derivations)
   readonly displayLocation: string = this.data.isLocal
@@ -181,7 +185,7 @@ export class PropertiesModalComponent implements OnInit {
     if (targetIsDir) {
       this.loadingSize.set(true);
       this.remoteOps
-        .getSize(remoteName, path, 'ui')
+        .getSize(remoteName, path, 'ui', this.readJobGroup)
         .then(size => {
           this.size.set(size);
           this.loadingSize.set(false);
@@ -216,7 +220,8 @@ export class PropertiesModalComponent implements OnInit {
         const diskUsage = await this.remoteFacadeService.getCachedOrFetchDiskUsage(
           remoteName,
           remoteName.endsWith(':') ? remoteName : `${remoteName}:`,
-          'ui'
+          'ui',
+          this.readJobGroup
         );
 
         if (diskUsage) {
@@ -244,7 +249,12 @@ export class PropertiesModalComponent implements OnInit {
         diskUsagePath = '';
       }
 
-      const diskUsage = await this.remoteOps.getDiskUsage(diskUsageRemote, diskUsagePath, 'ui');
+      const diskUsage = await this.remoteOps.getDiskUsage(
+        diskUsageRemote,
+        diskUsagePath,
+        'ui',
+        this.readJobGroup
+      );
       this.diskUsage.set(diskUsage);
     } catch (err) {
       console.error('Failed to load disk usage', err);
@@ -322,7 +332,8 @@ export class PropertiesModalComponent implements OnInit {
         this.fsRemote,
         this.hashPath,
         hashType,
-        'ui'
+        'ui',
+        this.readJobGroup
       );
 
       if (result.hash) {
@@ -379,7 +390,8 @@ export class PropertiesModalComponent implements OnInit {
         this.data.path,
         false,
         this.selectedExpiry() || undefined,
-        'ui'
+        'ui',
+        this.readJobGroup
       );
 
       if (result.url) {
@@ -406,7 +418,14 @@ export class PropertiesModalComponent implements OnInit {
     this.publicLinkError.set(null);
 
     try {
-      await this.remoteOps.getPublicLink(this.fsRemote, this.data.path, true, undefined, 'ui'); // unlink = true
+      await this.remoteOps.getPublicLink(
+        this.fsRemote,
+        this.data.path,
+        true,
+        undefined,
+        'ui',
+        this.readJobGroup
+      ); // unlink = true
       this.publicLinkUrl.set(null);
     } catch (err) {
       console.error('Failed to remove public link:', err);
@@ -466,8 +485,21 @@ export class PropertiesModalComponent implements OnInit {
     );
   }
 
+  ngOnDestroy(): void {
+    void this.stopReadJobs();
+  }
+
+  private async stopReadJobs(): Promise<void> {
+    try {
+      await this.jobManagementService.stopJobsByGroup(this.readJobGroup);
+    } catch (err) {
+      console.debug('Failed to stop properties read jobs:', err);
+    }
+  }
+
   @HostListener('keydown.escape')
   close(): void {
+    void this.stopReadJobs();
     this.modalService.animatedClose(this.dialogRef);
   }
 
@@ -505,7 +537,13 @@ export class PropertiesModalComponent implements OnInit {
       }
 
       // For directories, we use getHashsum (bulk)
-      const result = await this.remoteOps.getHashsum(fsRemote, hashPath, hashType, 'ui');
+      const result = await this.remoteOps.getHashsum(
+        fsRemote,
+        hashPath,
+        hashType,
+        'ui',
+        this.readJobGroup
+      );
 
       if (result.hashsum && Array.isArray(result.hashsum)) {
         this.bulkHashResult.set(result.hashsum.join('\n'));

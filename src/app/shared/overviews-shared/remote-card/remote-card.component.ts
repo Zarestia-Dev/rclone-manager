@@ -221,7 +221,21 @@ export class RemoteCardComponent {
 
   readonly openableFolders = computed<OpenableFolder[]>(() => {
     const folders: OpenableFolder[] = [];
-    for (const op of BROWSABLE_OPS) {
+    const currentMode = this.mode();
+
+    // Determine which operations are relevant for browsing in the current mode
+    let relevantOps: PrimaryActionType[];
+    if (currentMode === 'general') {
+      relevantOps = BROWSABLE_OPS;
+    } else if (currentMode === 'sync') {
+      relevantOps = SYNC_TYPES;
+    } else if (currentMode === 'mount') {
+      relevantOps = ['mount'];
+    } else {
+      relevantOps = [];
+    }
+
+    for (const op of relevantOps) {
       if (!this.isOpActive(op)) continue;
       const activeProfiles = this.getActiveProfiles(op);
       if (!activeProfiles) continue;
@@ -244,6 +258,28 @@ export class RemoteCardComponent {
     return folders;
   });
 
+  readonly folderBlossomStyle = computed(() => {
+    const folders = this.openableFolders();
+    if (folders.length <= 1) return null;
+
+    const uniqueClasses = [...new Set(folders.map(f => f.cssClass))];
+    if (uniqueClasses.length <= 1) return null;
+
+    const classToVar: Record<string, string> = {
+      accent: 'var(--accent-color)',
+      primary: 'var(--primary-color)',
+      yellow: 'var(--yellow)',
+      orange: 'var(--orange)',
+      purple: 'var(--purple)',
+    };
+
+    const colors = uniqueClasses.map(c => classToVar[c] || 'var(--primary-color)');
+    return {
+      color: 'white',
+      background: `linear-gradient(135deg, ${colors.join(', ')})`,
+    };
+  });
+
   // ── Button builders ────────────────────────────────────────────────────────
 
   private buildGeneralButtons(): QuickActionButton[] {
@@ -259,26 +295,8 @@ export class RemoteCardComponent {
   }
 
   private buildSyncButtons(): QuickActionButton[] {
-    const actionState = this.actionState();
-    if (this.cardVariant() === 'active') {
-      return SYNC_TYPES.filter(
-        type =>
-          (
-            this.remote().status[
-              type as keyof Omit<RemoteStatus, 'diskUsage'>
-            ] as RemoteOperationState
-          ).active
-      ).map(type => ({
-        id: type,
-        icon: 'stop',
-        tooltip: this.translate.instant(OPERATION_META[type].stopTooltip),
-        isLoading: actionState === 'stop',
-        isDisabled: actionState === 'stop',
-        cssClass: 'warn',
-      }));
-    }
     return this.primaryActionsFor(this.maxSyncButtons(), false)
-      .map(type => this.buildOpButton(type, true))
+      .map(type => this.buildOpButton(type))
       .filter((b): b is QuickActionButton => !!b);
   }
 

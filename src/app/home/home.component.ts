@@ -262,6 +262,7 @@ export class HomeComponent {
       remoteName,
       undefined,
       'dashboard',
+      undefined,
       true
     );
   }

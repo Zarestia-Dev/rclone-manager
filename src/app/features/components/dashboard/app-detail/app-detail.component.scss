@@ -11,7 +11,7 @@
   flex-direction: column;
   align-items: center;
   gap: var(--header-gap);
-  margin-bottom: var(--space-md);
+  margin-bottom: var(--panel-gap);
 
   .remote-info-section {
     display: flex;
@@ -309,10 +309,10 @@
   align-items: center;
   gap: var(--space-xxs);
   cursor: pointer;
-  padding: var(--space-xs) var(--space-sm);
+  padding: 6px 10px;
   border-radius: var(--radius-md);
   background: rgba(var(--op-color-rgb), var(--active-opacity));
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-sm);
   box-shadow: var(--box-shadow);
   font-weight: 600;
   color: var(--op-color);
@@ -440,7 +440,7 @@
   .detail-header {
     .remote-info-section {
       flex-direction: column;
-      gap: var(--space-xs);
+      gap: var(--space-md);
     }
 
     .remote-text-info {

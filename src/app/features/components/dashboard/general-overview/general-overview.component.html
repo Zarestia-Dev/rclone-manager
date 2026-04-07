@@ -383,6 +383,60 @@
                             </div>
                           }
 
+                          @if (runningJobs().length > 0) {
+                            <div class="running-jobs-section">
+                              <div class="section-heading">
+                                <mat-icon svgIcon="download" aria-hidden="true"></mat-icon>
+                                <span>{{ 'generalOverview.jobs.runningJobs' | translate }}</span>
+                              </div>
+
+                              <div class="running-jobs-list">
+                                @for (job of runningJobs(); track job.jobid) {
+                                  <div class="running-job-row">
+                                    <div class="running-job-main">
+                                      <mat-icon
+                                        [svgIcon]="getJobTypeIcon(job)"
+                                        class="running-job-icon"
+                                      ></mat-icon>
+                                      <div class="running-job-text">
+                                        <span class="running-job-title">
+                                          {{ getJobLabel(job) }}
+                                        </span>
+                                        <span class="running-job-path">
+                                          {{ job.destination || job.source }}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <div class="running-job-meta">
+                                      <span>{{ job.stats.bytes | formatBytes }}</span>
+                                      <span class="dot-separator">•</span>
+                                      @if (job.stats.speed > 0) {
+                                        <span>{{ job.stats.speed | formatRateValue }}</span>
+                                      } @else {
+                                        <span>{{
+                                          'generalOverview.jobs.starting' | translate
+                                        }}</span>
+                                      }
+                                      <span class="dot-separator">•</span>
+                                      <span>{{ job.stats.eta | formatEta }}</span>
+                                    </div>
+
+                                    <mat-progress-bar
+                                      mode="determinate"
+                                      [value]="
+                                        job.stats.totalBytes > 0
+                                          ? (job.stats.bytes / job.stats.totalBytes) * 100
+                                          : 0
+                                      "
+                                      class="running-job-progress"
+                                    ></mat-progress-bar>
+                                  </div>
+                                }
+                              </div>
+                            </div>
+                          }
+
                           @if (activeJobs === 0) {
                             <div class="no-jobs-message empty-state-message" role="status">
                               <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>

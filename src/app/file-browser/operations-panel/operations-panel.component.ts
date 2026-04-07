@@ -95,6 +95,10 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
   }
 
   getFileName(job: JobInfo): string {
+    if (job.job_type === 'upload') {
+      return this.getJobTypeLabel(job);
+    }
+
     const path = job.destination || job.source || '';
     return this.uiStateService.extractFilename(path);
   }
@@ -112,6 +116,8 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
       case 'copy_file':
       case 'copy_url':
         return 'copy';
+      case 'upload':
+        return 'file-arrow-up';
       case 'move':
       case 'move_file':
         return 'move';

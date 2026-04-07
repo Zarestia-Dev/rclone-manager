@@ -7,6 +7,12 @@ export interface LocalDropUploadResult {
   failed: string[];
 }
 
+export interface LocalDropUploadFile {
+  relativePath: string;
+  filename: string;
+  content: number[];
+}
+
 /**
  * Service for remote file system operations
  * Handles browsing, metadata, and active file operations (copy, move, delete, etc.)
@@ -18,9 +24,9 @@ export class RemoteFileOperationsService extends TauriBaseService {
   /**
    * Get filesystem info for a remote
    */
-  async getFsInfo(remote: string, source?: Origin): Promise<FsInfo> {
+  async getFsInfo(remote: string, source?: Origin, group?: string): Promise<FsInfo> {
     try {
-      return this.invokeCommand<FsInfo>('get_fs_info', { remote, origin: source });
+      return this.invokeCommand<FsInfo>('get_fs_info', { remote, origin: source, group });
     } catch (error) {
       console.error('Error getting filesystem info:', error);
       throw error;
@@ -33,13 +39,14 @@ export class RemoteFileOperationsService extends TauriBaseService {
   async getDiskUsage(
     remote: string,
     path?: string,
-    source?: Origin
+    source?: Origin,
+    group?: string
   ): Promise<{
     total: number;
     used: number;
     free: number;
   }> {
-    return this.invokeCommand('get_disk_usage', { remote, path, origin: source });
+    return this.invokeCommand('get_disk_usage', { remote, path, origin: source, group });
   }
 
   /**
@@ -48,19 +55,25 @@ export class RemoteFileOperationsService extends TauriBaseService {
   async getSize(
     remote: string,
     path?: string,
-    source?: Origin
+    source?: Origin,
+    group?: string
   ): Promise<{
     count: number;
     bytes: number;
   }> {
-    return this.invokeCommand('get_size', { remote, path, origin: source });
+    return this.invokeCommand('get_size', { remote, path, origin: source, group });
   }
 
   /**
    * Get stats for a single path
    */
-  async getStat(remote: string, path: string, source?: Origin): Promise<{ item: Entry }> {
-    return this.invokeCommand('get_stat', { remote, path, origin: source });
+  async getStat(
+    remote: string,
+    path: string,
+    source?: Origin,
+    group?: string
+  ): Promise<{ item: Entry }> {
+    return this.invokeCommand('get_stat', { remote, path, origin: source, group });
   }
 
   /**
@@ -70,9 +83,10 @@ export class RemoteFileOperationsService extends TauriBaseService {
     remote: string,
     path: string,
     hashType: string,
-    source?: Origin
+    source?: Origin,
+    group?: string
   ): Promise<{ hashsum: string[]; hashType: string }> {
-    return this.invokeCommand('get_hashsum', { remote, path, hashType, origin: source });
+    return this.invokeCommand('get_hashsum', { remote, path, hashType, origin: source, group });
   }
 
   /**
@@ -82,9 +96,16 @@ export class RemoteFileOperationsService extends TauriBaseService {
     remote: string,
     path: string,
     hashType: string,
-    source?: Origin
+    source?: Origin,
+    group?: string
   ): Promise<{ hash: string; hashType: string }> {
-    return this.invokeCommand('get_hashsum_file', { remote, path, hashType, origin: source });
+    return this.invokeCommand('get_hashsum_file', {
+      remote,
+      path,
+      hashType,
+      origin: source,
+      group,
+    });
   }
 
   /**
@@ -95,9 +116,17 @@ export class RemoteFileOperationsService extends TauriBaseService {
     path: string,
     unlink?: boolean,
     expire?: string,
-    source?: Origin
+    source?: Origin,
+    group?: string
   ): Promise<{ url: string }> {
-    return this.invokeCommand('get_public_link', { remote, path, unlink, expire, origin: source });
+    return this.invokeCommand('get_public_link', {
+      remote,
+      path,
+      unlink,
+      expire,
+      origin: source,
+      group,
+    });
   }
 
   /**
@@ -107,13 +136,15 @@ export class RemoteFileOperationsService extends TauriBaseService {
     remote: string,
     path: string,
     options: Record<string, unknown>,
-    source?: Origin
+    source?: Origin,
+    group?: string
   ): Promise<{ list: Entry[] }> {
     return this.invokeCommand<{ list: Entry[] }>('get_remote_paths', {
       remote,
       path,
       options,
       origin: source,
+      group,
     });
   }
 
@@ -299,6 +330,23 @@ export class RemoteFileOperationsService extends TauriBaseService {
       remote,
       path,
       localPaths,
+      source,
+    });
+  }
+
+  /**
+   * Upload browser-dropped files to a remote path as one tracked batch.
+   */
+  async uploadLocalDropFiles(
+    remote: string,
+    path: string,
+    files: LocalDropUploadFile[],
+    source?: Origin
+  ): Promise<LocalDropUploadResult> {
+    return this.invokeCommand<LocalDropUploadResult>('upload_local_drop_files', {
+      remote,
+      path,
+      files,
       source,
     });
   }

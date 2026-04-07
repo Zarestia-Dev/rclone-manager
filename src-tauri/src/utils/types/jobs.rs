@@ -41,6 +41,7 @@ pub enum JobType {
     RenameFile,
     #[serde(rename = "rename_dir")]
     RenameDir,
+    Upload,
     Unknown(String),
 }
 
@@ -71,6 +72,7 @@ impl JobType {
                 | JobType::MoveDir
                 | JobType::RenameFile
                 | JobType::RenameDir
+                | JobType::Upload
         )
     }
 
@@ -104,6 +106,7 @@ impl JobType {
             JobType::MoveDir => "move_dir",
             JobType::RenameFile => "rename_file",
             JobType::RenameDir => "rename_dir",
+            JobType::Upload => "upload",
             JobType::Unknown(s) => s,
         }
     }
@@ -136,6 +139,7 @@ impl From<String> for JobType {
             "move_dir" => JobType::MoveDir,
             "rename_file" => JobType::RenameFile,
             "rename_dir" => JobType::RenameDir,
+            "upload" => JobType::Upload,
             _ => JobType::Unknown(s),
         }
     }
@@ -153,6 +157,8 @@ pub struct JobInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
     pub stats: Option<Value>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub uploaded_files: Vec<String>,
     pub group: String, // Add this field to track the job group
     pub profile: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

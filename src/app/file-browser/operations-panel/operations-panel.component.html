@@ -91,10 +91,6 @@
                   'fileBrowser.operations.completed' | translate
                 }}</span>
               } @else if (job.status === 'Failed') {
-                <span class="stats-text error">{{
-                  'fileBrowser.operations.failed' | translate
-                }}</span>
-              } @else if (job.status === 'Stopped') {
                 <span class="stats-text">{{ 'fileBrowser.operations.cancelled' | translate }}</span>
               }
             </div>
@@ -106,6 +102,53 @@
                   <span class="detail-title">{{ job.status }} - {{ getJobTypeLabel(job) }}</span>
                 </div>
                 <mat-divider></mat-divider>
+
+                @if (job.status === 'Running' && job.stats) {
+                  <div class="detail-grid upload-stats-grid">
+                    <div class="detail-item">
+                      <span class="detail-label">Progress</span>
+                      <span class="value"
+                        >{{ job.stats.bytes | formatFileSize }} /
+                        {{ job.stats.totalBytes | formatFileSize }}</span
+                      >
+                    </div>
+
+                    <div class="detail-item">
+                      <span class="detail-label">Files</span>
+                      <span class="value"
+                        >{{ job.stats.transfers }} / {{ job.stats.totalTransfers }}</span
+                      >
+                    </div>
+
+                    <div class="detail-item">
+                      <span class="detail-label">Speed</span>
+                      <span class="value">{{ job.stats.speed | formatRateValue }}</span>
+                    </div>
+
+                    <div class="detail-item">
+                      <span class="detail-label">ETA</span>
+                      <span class="value">{{ job.stats.eta | formatEta }}</span>
+                    </div>
+
+                    @if (job.stats.transferring.length > 0) {
+                      <div class="detail-item upload-current-file">
+                        <span class="detail-label">Current file</span>
+                        <span class="value">{{ job.stats.transferring[0].name }}</span>
+                      </div>
+                    }
+                  </div>
+                }
+
+                @if (job.uploaded_files?.length) {
+                  <div class="detail-item uploaded-files-section">
+                    <span class="detail-label">Uploaded files</span>
+                    <div class="uploaded-files-list">
+                      @for (file of job.uploaded_files; track $index) {
+                        <span class="value uploaded-file-entry">{{ file }}</span>
+                      }
+                    </div>
+                  </div>
+                }
 
                 @if (job.source) {
                   <div class="detail-item">
@@ -132,31 +175,6 @@
                     }}</span>
                     <span class="value">{{ job.start_time | date: 'shortTime' }}</span>
                   </div>
-
-                  @if (job.stats && job.status === 'Running') {
-                    <div class="detail-item">
-                      <span class="detail-label">{{
-                        'fileBrowser.operations.details.speed' | translate
-                      }}</span>
-                      <span class="value">{{ job.stats.speed | formatRateValue }}</span>
-                    </div>
-
-                    <div class="detail-item">
-                      <span class="detail-label">{{
-                        'fileBrowser.operations.details.eta' | translate
-                      }}</span>
-                      <span class="value">{{ job.stats.eta | formatEta }}</span>
-                    </div>
-
-                    <div class="detail-item">
-                      <span class="detail-label">{{
-                        'fileBrowser.operations.details.transfers' | translate
-                      }}</span>
-                      <span class="value"
-                        >{{ job.stats.transfers }} / {{ job.stats.totalTransfers }}</span
-                      >
-                    </div>
-                  }
 
                   @if (job.status === 'Failed' && job.error) {
                     <div class="detail-item error-item">

@@ -130,6 +130,7 @@ export class RemoteFacadeService extends TauriBaseService {
     remoteName: string,
     normalizedName?: string,
     source: Origin = 'dashboard',
+    group?: string,
     forceRefresh = false
   ): Promise<DiskUsage | null> {
     const features = await this.metadataService.getFeatures(remoteName, source);
@@ -156,7 +157,7 @@ export class RemoteFacadeService extends TauriBaseService {
     this.updateDiskUsage(remoteName, { loading: true, error: false, total_space: undefined });
 
     try {
-      const usage = await this.remoteOpsService.getDiskUsage(fsName, undefined, source);
+      const usage = await this.remoteOpsService.getDiskUsage(fsName, undefined, source, group);
       const result: DiskUsage = {
         total_space: usage.total ?? -1,
         used_space: usage.used ?? -1,

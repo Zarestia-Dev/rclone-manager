@@ -31,7 +31,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-xxs);
-  padding: var(--space-xs) var(--space-sm);
+  padding: 6px 10px;
   background: var(--selected-bg-color);
   box-shadow: var(--box-shadow);
   border-radius: 20px;
@@ -70,8 +70,6 @@
   }
 
   &.inactive {
-    opacity: 0.55;
-
     .chip-key {
       color: var(--dim-color);
     }

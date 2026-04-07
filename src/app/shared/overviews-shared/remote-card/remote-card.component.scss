@@ -246,14 +246,6 @@
       pointer-events: auto;
     }
 
-    .folder-trigger {
-      position: relative;
-
-      &:hover {
-        background: rgba(var(--window-fg-color-rgb), 0.2) !important;
-      }
-    }
-
     .folder-badge {
       position: absolute;
       top: var(--space-xxs);
@@ -458,10 +450,10 @@
       display: flex;
       align-items: center;
       cursor: pointer;
-      padding: var(--space-xs) var(--space-sm);
+      padding: 6px 10px;
       border-radius: var(--radius-md);
       background: rgba(var(--op-color-rgb), var(--active-opacity));
-      font-size: var(--font-size-md);
+      font-size: var(--font-size-sm);
       box-shadow: var(--box-shadow);
       font-weight: 600;
       color: var(--op-color);

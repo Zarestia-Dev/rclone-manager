@@ -112,14 +112,14 @@
       .stats-text {
         font-size: 11px;
         color: var(--dim-color);
+      }
 
-        &.success {
-          color: var(--primary-color);
-        }
+      .stats-text.success {
+        color: var(--primary-color);
+      }
 
-        &.error {
-          color: var(--warn-color);
-        }
+      .stats-text.error {
+        color: var(--warn-color);
       }
     }
   }
@@ -241,5 +241,34 @@
     background: rgba(var(--window-fg-color-rgb), 0.03);
     border-radius: var(--radius-md);
     border: 1px solid rgba(var(--window-fg-color-rgb), 0.05);
+  }
+
+  .upload-stats-grid {
+    margin-bottom: var(--space-xs);
+  }
+
+  .upload-current-file {
+    grid-column: 1 / -1;
+  }
+
+  .uploaded-files-section {
+    margin-top: var(--space-xs);
+  }
+
+  .uploaded-files-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 180px;
+    overflow: auto;
+    padding-right: 4px;
+  }
+
+  .uploaded-file-entry {
+    display: block;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: rgba(var(--window-fg-color-rgb), 0.04);
+    word-break: break-word;
   }
 }

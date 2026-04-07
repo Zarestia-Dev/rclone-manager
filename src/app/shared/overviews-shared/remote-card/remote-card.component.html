@@ -161,7 +161,8 @@
 
             <button
               mat-mini-fab
-              class="folder-trigger"
+              [class]="folderBlossomStyle() ? 'mixed' : openableFolders()[0].cssClass || 'primary'"
+              [style]="folderBlossomStyle()"
               [matTooltip]="'overviews.remoteCard.browse' | translate"
               matTooltipShowDelay="500"
               [disabled]="isFolderOpening()"
