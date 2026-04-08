@@ -271,6 +271,10 @@
         "label": "Additional Rclone Flags",
         "description": "Add extra flags to the rclone process (e.g., --cache-dir=/path/to/cache). Some flags are reserved."
       },
+      "rclone_env_vars": {
+        "label": "Rclone Environment Variables",
+        "description": "Add custom environment variables to rclone processes. Format: KEY=VALUE (e.g., RCLONE_NO_UPDATE_MODTIME=true)."
+      },
       "bandwidth_limit": {
         "label": "Bandwidth Limit",
         "description": "Limit the bandwidth used by Rclone transfers. Format: 'upload:download'",

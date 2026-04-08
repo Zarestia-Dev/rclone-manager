@@ -271,6 +271,10 @@
         "label": "额外 Rclone 参数",
         "description": "为 rclone 进程添加额外参数（如 --cache-dir=/path/to/cache），部分参数为保留项"
       },
+      "rclone_env_vars": {
+        "label": "Rclone 环境变量",
+        "description": "为 rclone 进程添加自定义环境变量。格式：KEY=VALUE（例如 RCLONE_NO_UPDATE_MODTIME=true）。"
+      },
       "bandwidth_limit": {
         "label": "带宽限制",
         "description": "限制 Rclone 传输速度，格式：上传:下载",

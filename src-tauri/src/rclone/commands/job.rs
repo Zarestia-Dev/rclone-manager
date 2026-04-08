@@ -405,12 +405,25 @@ pub async fn monitor_job(
     loop {
         // Stop if removed or explicitly stopped in cache (SKIP check if no_cache is true)
         if !metadata.no_cache {
-            if let Some(job) = job_cache.get_job(jobid).await {
-                if job.status == JobStatus::Stopped {
-                    return Ok(json!({}));
-                }
+            let should_exit = if let Some(job) = job_cache.get_job(jobid).await {
+                job.status == JobStatus::Stopped
             } else {
-                return Ok(json!({}));
+                true // Job not found in cache
+            };
+
+            if should_exit {
+                info!(
+                    "Monitoring for job {jobid} stopped because job was manually removed or marked as stopped in cache."
+                );
+                return handle_job_completion(
+                    jobid,
+                    &metadata,
+                    json!({"finished": true, "success": false, "error": "Job explicitly stopped or removed from cache"}),
+                    &app,
+                    job_cache,
+                    scheduled_tasks_cache,
+                )
+                .await;
             }
         }
 

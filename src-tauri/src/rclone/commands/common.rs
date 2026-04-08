@@ -290,16 +290,10 @@ pub fn redact_sensitive_values(params: &HashMap<String, Value>, app: &AppHandle)
         .and_then(|manager| manager.inner().get("general.restrict").ok())
         .unwrap_or(false);
 
-    let sensitive_keys = crate::utils::types::core::SENSITIVE_KEYS;
-
     params
         .iter()
         .map(|(k, v)| {
-            let value = if restrict_enabled
-                && sensitive_keys
-                    .iter()
-                    .any(|sk| k.to_lowercase().contains(sk))
-            {
+            let value = if restrict_enabled && crate::utils::types::core::is_sensitive_field(k) {
                 json!("[RESTRICTED]")
             } else {
                 v.clone()

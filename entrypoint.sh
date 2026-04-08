@@ -81,17 +81,7 @@ RCLONE_DIR=$(dirname "$RCLONE_BIN")
 export PATH="${RCLONE_DIR}:${PATH}"
 
 # =============================================================================
-# 4. FUSE Compatibility / Unraid Fix (#157)
-# =============================================================================
-# If enabled, export RCLONE_NO_UPDATE_MODTIME to skip 'chtimes' calls that
-# fail on FUSE-based filesystems like Unraid User Shares.
-if [ "$RCLONE_MANAGER_FUSE_COMPAT" = "true" ]; then
-    echo "🚀 FUSE Compatibility enabled: suppress modification time updates."
-    export RCLONE_NO_UPDATE_MODTIME=true
-fi
-
-# =============================================================================
-# 5. Virtual Display Initialization
+# 4. Virtual Display Initialization
 # =============================================================================
 # Tauri heavily relies on GTK. Since we are in a headless environment container,
 # we simulate a display environment using Xvfb (X virtual framebuffer) and dbus.

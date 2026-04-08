@@ -1,14 +1,13 @@
-use crate::core::settings::AppSettingsManager;
+use crate::core::{
+    scheduler::commands::reload_scheduled_tasks_from_configs, settings::AppSettingsManager,
+};
 use log::{debug, error, info};
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Listener, Manager};
 
 use crate::{
     core::{lifecycle::shutdown::shutdown_app, scheduler::engine::CronScheduler},
-    rclone::{
-        commands::system::set_bandwidth_limit,
-        state::scheduled_tasks::{ScheduledTasksCache, reload_scheduled_tasks_from_configs},
-    },
+    rclone::{commands::system::set_bandwidth_limit, state::scheduled_tasks::ScheduledTasksCache},
     utils::{
         logging::log::update_log_level,
         types::{

@@ -291,7 +291,7 @@
   font-size: var(--font-size-xs);
   font-weight: 500;
   color: var(--dim-color);
-  padding: 2px 8px;
+  padding: 4px 8px;
   background: var(--selected-bg-color);
   border-radius: 10px;
 }
@@ -311,12 +311,14 @@
   cursor: pointer;
   padding: 6px 10px;
   border-radius: var(--radius-md);
-  background: rgba(var(--op-color-rgb), var(--active-opacity));
+  background: var(--selected-bg-color);
   font-size: var(--font-size-sm);
   box-shadow: var(--box-shadow);
   font-weight: 600;
-  color: var(--op-color);
-  transition: background 0.2s ease;
+  color: var(--dim-color);
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
 
   mat-icon {
     width: var(--icon-size-sm);
@@ -355,13 +357,9 @@
     }
   }
 
-  &.add-pill {
-    color: var(--dim-color);
-
-    &:hover {
-      color: var(--op-color);
-      background: rgba(var(--op-color-rgb), var(--active-opacity));
-    }
+  &:hover:not(.is-selected) {
+    color: var(--op-color);
+    background: var(--hover-bg-color);
   }
 }
 

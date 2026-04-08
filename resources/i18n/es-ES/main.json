@@ -267,6 +267,10 @@
         "label": "Indicadores adicionales de Rclone",
         "description": "Agregar indicadores adicionales al proceso de rclone (por ejemplo, --cache-dir=/path/to/cache). Algunos indicadores están reservados."
       },
+      "rclone_env_vars": {
+        "label": "Variables de entorno de Rclone",
+        "description": "Añada variables de entorno personalizadas a los procesos de rclone. Formato: CLAVE=VALOR (por ejemplo, RCLONE_NO_UPDATE_MODTIME=true)."
+      },
       "bandwidth_limit": {
         "label": "Límite de ancho de banda",
         "description": "Limitar el ancho de banda utilizado por las transferencias de Rclone. Formato: 'carga:descarga'",

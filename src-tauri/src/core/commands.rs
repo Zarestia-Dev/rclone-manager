@@ -244,7 +244,7 @@ macro_rules! generate_invoke_handler {
             $crate::core::scheduler::commands::toggle_scheduled_task,
             $crate::core::scheduler::commands::validate_cron,
             $crate::core::scheduler::commands::reload_scheduled_tasks,
-            $crate::rclone::state::scheduled_tasks::reload_scheduled_tasks_from_configs,
+            $crate::core::scheduler::commands::reload_scheduled_tasks_from_configs,
             $crate::core::scheduler::commands::clear_all_scheduled_tasks,
             // =================================================================
             // WATCHERS

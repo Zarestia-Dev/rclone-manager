@@ -2,10 +2,10 @@ use log::{debug, error, info};
 use std::time::Duration;
 use tauri::{AppHandle, Manager};
 
-use crate::utils::types::core::RcApiEngine;
+use crate::utils::types::core::{ProcessKind, RcApiEngine};
 use crate::utils::{
     process::process_manager::kill_processes_on_port,
-    rclone::{endpoints::core, process_common::create_rclone_command},
+    rclone::{endpoints::core, process_common::build_rclone_process_command},
 };
 
 use super::error::{EngineError, EngineResult};
@@ -26,7 +26,7 @@ impl RcApiEngine {
 
         // create_rclone_command now returns EngineError directly
         // No need for string matching - just pattern match on the error variant!
-        let engine_app = match create_rclone_command(app).await {
+        let engine_app = match build_rclone_process_command(app, ProcessKind::Engine).await {
             Ok(cmd) => cmd,
             Err(e) => {
                 error!("❌ Failed to create engine command: {e}");

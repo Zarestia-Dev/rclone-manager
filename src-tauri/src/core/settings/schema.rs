@@ -134,6 +134,13 @@ pub struct CoreSettings {
     pub bandwidth_limit: String,
 
     #[setting(
+        label = "settings.core.rclone_env_vars.label",
+        description = "settings.core.rclone_env_vars.description",
+        engine_restart = true
+    )]
+    pub rclone_env_vars: Vec<String>,
+
+    #[setting(
         label = "settings.core.completed_onboarding.label",
         description = "settings.core.completed_onboarding.description"
     )]
@@ -153,6 +160,7 @@ impl Default for CoreSettings {
             bandwidth_limit: String::new(),
             rclone_path: String::new(),
             rclone_additional_flags: vec![],
+            rclone_env_vars: vec![],
             completed_onboarding: false,
         }
     }

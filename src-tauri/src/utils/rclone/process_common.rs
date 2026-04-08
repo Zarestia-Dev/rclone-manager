@@ -5,11 +5,11 @@ use crate::core::check_binaries::build_rclone_command;
 use crate::core::security::SafeEnvironmentManager;
 use crate::core::settings::AppSettingsManager;
 use crate::core::settings::schema::CoreSettings;
+use crate::utils::types::core::{ProcessKind, is_sensitive_field};
 use rcman::SettingsSchema;
 
-/// Setup environment variables for rclone processes (main engine or OAuth).
-/// Password is retrieved from SafeEnvironmentManager (single source of truth).
-pub async fn setup_rclone_environment(
+/// Apply environment variables to the rclone command.
+async fn apply_rclone_environment(
     app: &AppHandle,
     mut command: crate::utils::process::command::Command,
 ) -> Result<crate::utils::process::command::Command, crate::rclone::engine::error::EngineError> {
@@ -23,6 +23,29 @@ pub async fn setup_rclone_environment(
                 command = command.env(&key, &value);
             }
             password_found = true;
+        }
+    }
+
+    // Apply user-defined environment variables from settings.
+    let settings_manager = app.state::<AppSettingsManager>();
+    if let Ok(settings) = settings_manager.get_all() {
+        let extra_envs = &settings.core.rclone_env_vars;
+        for env_str in extra_envs {
+            if let Some((key, value)) = env_str.split_once('=') {
+                let key = key.trim();
+                let value = value.trim();
+                if !key.is_empty() {
+                    info!(
+                        "🚀 Applying user rclone env: {key}={}",
+                        if is_sensitive_field(key) {
+                            "***"
+                        } else {
+                            value
+                        }
+                    );
+                    command = command.env(key, value);
+                }
+            }
         }
     }
 
@@ -41,25 +64,6 @@ pub async fn setup_rclone_environment(
         }
     }
 
-    Ok(command)
-}
-
-/// Set up environment variables onto the shared command wrapper.
-async fn apply_rclone_environment(
-    app: &AppHandle,
-    mut command: crate::utils::process::command::Command,
-) -> Result<crate::utils::process::command::Command, crate::rclone::engine::error::EngineError> {
-    if let Some(env_manager) = app.try_state::<SafeEnvironmentManager>() {
-        let env_vars = env_manager.get_env_vars();
-        if env_vars.contains_key("RCLONE_CONFIG_PASS") {
-            info!("🔑 Using environment manager password for rclone process");
-            for (key, value) in env_vars {
-                command = command.env(&key, &value);
-            }
-        }
-    }
-
-    // OAuth processes never need the password check — they don't touch the encrypted config.
     Ok(command)
 }
 
@@ -140,13 +144,14 @@ fn append_auth_args(args: &mut Vec<String>, username: Option<String>, password: 
     }
 }
 
-/// Create the main-engine rclone command using the custom Command wrapper.
-/// Writes to a log file and uses the full settings/auth pipeline.
-pub async fn create_rclone_command(
+/// Unified rclone command builder for both the main engine and the OAuth process.
+pub async fn build_rclone_process_command(
     app: &AppHandle,
+    kind: ProcessKind,
 ) -> Result<crate::utils::process::command::Command, crate::rclone::engine::error::EngineError> {
     use crate::rclone::backend::BackendManager;
     use std::path::PathBuf;
+
     let backend_manager_state = app.state::<BackendManager>();
 
     let config_path = backend_manager_state
@@ -154,74 +159,40 @@ pub async fn create_rclone_command(
         .await
         .unwrap_or(None);
 
-    let command = build_rclone_command(app, None, config_path.as_deref(), None);
-
     let backend = backend_manager_state.get_active().await;
 
-    let mut args = build_rclone_base_args(&backend.host, backend.port);
-
-    // Keep engine logs out of watched source directories (e.g., src-tauri)
-    // to avoid dev rebuild loops when logs are appended.
-    let log_file_path = crate::core::paths::AppPaths::from_app_handle(app)
-        .map(|paths| paths.get_rclone_log_dir().join("main_engine.log"))
-        .unwrap_or_else(|_| PathBuf::from("main_engine.log"));
-
-    // Log file only for the main engine — OAuth output is consumed via stderr pipe.
-    args.extend([
-        "--log-file".to_string(),
-        log_file_path.to_string_lossy().to_string(),
-        "--log-file-max-size".to_string(),
-        "5M".to_string(),
-        "--log-file-max-backups".to_string(),
-        "5".to_string(),
-    ]);
-
-    append_user_flags_from_app(app, &mut args)?;
-
-    let auth_args = if backend.has_valid_auth() {
-        Some((
-            backend.username.clone().unwrap(),
-            backend.password.clone().unwrap_or_default(),
-        ))
-    } else {
-        None
+    // Resolve the port — OAuth requires its own port to be configured.
+    let port = match kind {
+        ProcessKind::Engine => backend.port,
+        ProcessKind::OAuth => backend.oauth_port.ok_or_else(|| {
+            crate::rclone::engine::error::EngineError::SpawnFailed(crate::localized_error!(
+                "backendErrors.system.oauthNotConfigured"
+            ))
+        })?,
     };
 
-    append_auth_args(
-        &mut args,
-        auth_args.as_ref().map(|(u, _)| u.clone()),
-        auth_args.map(|(_, p)| p),
-    );
-
-    let command = command.args(args);
-    let command = setup_rclone_environment(app, command).await?;
-
-    Ok(command)
-}
-
-pub async fn create_oauth_tokio_command(
-    app: &AppHandle,
-) -> Result<crate::utils::process::command::Command, crate::rclone::engine::error::EngineError> {
-    use crate::rclone::backend::BackendManager;
-    let backend_manager_state = app.state::<BackendManager>();
-
-    let config_path = backend_manager_state
-        .get_local_config_path()
-        .await
-        .unwrap_or(None);
-
-    let backend = backend_manager_state.get_active().await;
-
-    let port = backend.oauth_port.ok_or_else(|| {
-        crate::rclone::engine::error::EngineError::SpawnFailed(crate::localized_error!(
-            "backendErrors.system.oauthNotConfigured"
-        ))
-    })?;
-
     let command = build_rclone_command(app, None, config_path.as_deref(), None);
-
     let mut args = build_rclone_base_args(&backend.host, port);
 
+    // Engine-only: log file + user-defined extra flags.
+    // OAuth output is consumed directly via stderr pipe, so no log file is written.
+    if let ProcessKind::Engine = kind {
+        let log_file_path = crate::core::paths::AppPaths::from_app_handle(app)
+            .map(|paths| paths.get_rclone_log_dir().join("main_engine.log"))
+            .unwrap_or_else(|_| PathBuf::from("main_engine.log"));
+
+        args.extend([
+            "--log-file".to_string(),
+            log_file_path.to_string_lossy().to_string(),
+            "--log-file-max-size".to_string(),
+            "5M".to_string(),
+            "--log-file-max-backups".to_string(),
+            "5".to_string(),
+        ]);
+
+        append_user_flags_from_app(app, &mut args)?;
+    }
+
     let auth_args = if backend.has_valid_auth() {
         Some((
             backend.username.clone().unwrap(),
@@ -238,6 +209,8 @@ pub async fn create_oauth_tokio_command(
     );
 
     let command = command.args(args);
+
+    // Engine checks for password; OAuth skips it.
     let command = apply_rclone_environment(app, command).await?;
 
     Ok(command)

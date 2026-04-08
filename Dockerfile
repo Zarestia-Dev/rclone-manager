@@ -13,7 +13,6 @@
 #   RCLONE_MANAGER_USER   — Basic auth username
 #   RCLONE_MANAGER_PASS   — Basic auth password
 #   RCLONE_MANAGER_TLS_CERT / RCLONE_MANAGER_TLS_KEY — TLS certificate paths
-#   RCLONE_MANAGER_FUSE_COMPAT — Enable to skip modification time updates (for Unraid/FUSE)
 #
 # Volumes:
 #   /data                 — Persistent storage (rclone binary, app data)

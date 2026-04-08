@@ -4,7 +4,6 @@ use std::collections::HashMap;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::{
-    core::scheduler::engine::CronScheduler,
     rclone::{
         backend::BackendManager,
         commands::{
@@ -290,7 +289,6 @@ pub async fn delete_remote(
     app: AppHandle,
     name: String,
     cache: State<'_, ScheduledTasksCache>,
-    scheduler: State<'_, CronScheduler>,
 ) -> Result<(), String> {
     info!("🗑️ Deleting remote: {name}");
 
@@ -311,7 +309,7 @@ pub async fn delete_remote(
         })?;
 
     match cache
-        .remove_tasks_for_remote(&backend.name, &name, scheduler, Some(&app))
+        .remove_tasks_for_remote(&backend.name, &name, Some(&app))
         .await
     {
         Ok(ids) if !ids.is_empty() => {

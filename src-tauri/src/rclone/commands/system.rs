@@ -11,10 +11,10 @@ use crate::{
     utils::{
         rclone::{
             endpoints::{config, core, fscache},
-            process_common::create_oauth_tokio_command,
+            process_common::build_rclone_process_command,
         },
         types::{
-            core::{BandwidthLimitResponse, RcloneState},
+            core::{BandwidthLimitResponse, ProcessKind, RcloneState},
             events::{BANDWIDTH_LIMIT_CHANGED, RCLONE_CONFIG_UNLOCKED, RCLONE_OAUTH_URL},
         },
     },
@@ -136,7 +136,7 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
 
     // Build a tokio::process::Command with stderr piped.
     // This does NOT write a log file — output is consumed directly below.
-    let cmd = create_oauth_tokio_command(app)
+    let cmd = build_rclone_process_command(app, ProcessKind::OAuth)
         .await
         .map_err(|e| RcloneError::OAuthError(format!("Failed to build OAuth command: {e}")))?;
 

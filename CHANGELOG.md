@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Nautilus**: Added "spring-loaded folder" behavior. Dragging an item and hovering over a folder, breadcrumb, tab, or sidebar item for 1sec will automatically open/navigate to it.
 - Readd the Json Editor for rclone fields. (Now it is optional with toggle button. Not like before v0.1.5). This one more user friendly. Now you can add or edit the custom flags from there too.
 - Legacy config directories for docker users.
-- Added `RCLONE_MANAGER_FUSE_COMPAT` environment variable for docker users. This will enable the fuse compatibility mode for rclone.
+- **Core**: Added support for generic Rclone Environment Variables. Users can now specify arbitrary environment variables (e.g., `RCLONE_NO_UPDATE_MODTIME=true`) directly in the UI. This provides a flexible solution for FUSE compatibility and other rclone-specific configurations.
  - **Remote Config**: Show direct OAuth URL in remote creation/editing flows with a compact copy button; preserve the OAuth helper URL during remote configuration so users can open or copy the link.
 
 ### Changed
@@ -32,6 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Serve**: Fixed a UI issue where the listening address appeared as "undefined" for default profiles.
 - **Core**: Removed restrictive duplicate checks in mount and serve operations to allow running multiple instances with unique configurations (e.g., different profiles or ports).
 - **File Viewer**: Fixed the download functionality in headless web mode by implementing browser-native downloads. Remote files can now be downloaded to the local computer in both desktop and web environments.
+- **Core**: Bunch of scheduler tasks fixes.
 
 
 ## [v0.2.3] - 2026-03-17

@@ -118,10 +118,21 @@ pub const SENSITIVE_KEYS: &[&str] = &[
     "drive_id",
 ];
 
+/// Check if a configuration key is considered sensitive.
+pub fn is_sensitive_field(key: &str) -> bool {
+    let key = key.to_lowercase();
+    SENSITIVE_KEYS.iter().any(|sk| key.contains(sk))
+}
+
 pub struct LinkChecker {
     pub client: reqwest::Client,
     pub max_retries: usize,
     pub retry_delay: std::time::Duration,
+}
+
+pub enum ProcessKind {
+    Engine,
+    OAuth,
 }
 
 pub struct DynamicLogger;
