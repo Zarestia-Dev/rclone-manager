@@ -117,7 +117,7 @@
     width: calc((100% - (var(--pad) * 2) - (var(--space-xxs) * 3)) / 4);
     height: calc(100% - (var(--pad) * 2));
     background: var(--card-bg-color);
-    border-radius: calc(var(--radius-md) - var(--pad));
+    border-radius: 12px;
     box-shadow:
       0 2px 4px rgba(0, 0, 0, 0.08),
       0 1px 2px rgba(0, 0, 0, 0.04),
@@ -313,7 +313,6 @@
   border-radius: var(--radius-md);
   background: var(--selected-bg-color);
   font-size: var(--font-size-sm);
-  box-shadow: var(--box-shadow);
   font-weight: 600;
   color: var(--dim-color);
   transition:

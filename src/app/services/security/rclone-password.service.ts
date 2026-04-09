@@ -14,12 +14,7 @@ export class RclonePasswordService extends TauriBaseService {
    * Check if password is stored
    */
   async hasStoredPassword(): Promise<boolean> {
-    try {
-      return await this.invokeCommand<boolean>('has_stored_password');
-    } catch (error) {
-      console.error('Failed to check stored password:', error);
-      return false;
-    }
+    return await this.invokeCommand<boolean>('has_stored_password');
   }
 
   /**
@@ -62,13 +57,8 @@ export class RclonePasswordService extends TauriBaseService {
    * Set password environment variable for current session (deprecated)
    */
   async setConfigPasswordEnv(password: string): Promise<boolean> {
-    try {
-      await this.invokeCommand('set_config_password_env', { password });
-      return true;
-    } catch (error) {
-      console.error('Failed to set config password env:', error);
-      return false;
-    }
+    await this.invokeCommand('set_config_password_env', { password });
+    return true;
   }
 
   /**
@@ -89,13 +79,7 @@ export class RclonePasswordService extends TauriBaseService {
    * Is config encrypted?
    */
   async isConfigEncrypted(): Promise<boolean> {
-    try {
-      const result = await this.invokeCommand<boolean>('is_config_encrypted');
-      return result;
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
+    return await this.invokeCommand<boolean>('is_config_encrypted');
   }
 
   /**

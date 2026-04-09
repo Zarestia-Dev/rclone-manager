@@ -1,6 +1,10 @@
 use serde_json::{Map, Value, json};
 use std::error::Error;
+use std::time::{Duration, Instant};
+
+use once_cell::sync::Lazy;
 use tauri::command;
+use tokio::sync::RwLock;
 use tokio::try_join;
 
 use crate::{
@@ -9,6 +13,17 @@ use crate::{
 };
 use tauri::AppHandle;
 use tauri::Manager;
+
+const OPTIONS_CACHE_TTL: Duration = Duration::from_secs(300);
+
+#[derive(Clone)]
+struct OptionsCacheEntry {
+    backend_name: String,
+    cached_at: Instant,
+    payload: Value,
+}
+
+static OPTIONS_CACHE: Lazy<RwLock<Option<OptionsCacheEntry>>> = Lazy::new(|| RwLock::new(None));
 
 // --- PRIVATE HELPERS ---
 // These functions perform the raw API calls and are the foundation.
@@ -157,10 +172,21 @@ fn group_options(merged_info: &Value) -> Value {
 
 // --- MASTER DATA COMMANDS ---
 
-#[command]
 pub async fn get_all_options_with_values(app: AppHandle) -> Result<Value, String> {
     let backend_manager = app.state::<BackendManager>();
     let state = app.state::<RcloneState>();
+
+    let active_backend_name = backend_manager.get_active().await.name.clone();
+    {
+        let cache = OPTIONS_CACHE.read().await;
+        if let Some(entry) = cache.as_ref()
+            && entry.backend_name == active_backend_name
+            && entry.cached_at.elapsed() < OPTIONS_CACHE_TTL
+        {
+            return Ok(entry.payload.clone());
+        }
+    }
+
     let (mut options_info, current_options) = try_join!(
         fetch_all_options_info(&state.client, &backend_manager),
         fetch_current_options(&state.client, &backend_manager)
@@ -168,6 +194,16 @@ pub async fn get_all_options_with_values(app: AppHandle) -> Result<Value, String
     .map_err(|e| e.to_string())?;
 
     merge_options(&mut options_info, &current_options);
+
+    {
+        let mut cache = OPTIONS_CACHE.write().await;
+        *cache = Some(OptionsCacheEntry {
+            backend_name: active_backend_name,
+            cached_at: Instant::now(),
+            payload: options_info.clone(),
+        });
+    }
+
     Ok(options_info)
 }
 

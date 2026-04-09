@@ -211,16 +211,16 @@
   },
   "rcloneUpdate": {
     "success": "Rclone 更新成功（{{channel}} 通道）",
-    "failed": "更新失败",
+    "failed": "更新失败：{{error}}",
     "channelChanged": "Rclone 更新通道已切换为 {{channel}}",
-    "channelSaveFailed": "保存 Rclone 更新通道失败",
+    "channelSaveFailed": "保存 Rclone 更新通道失败：{{error}}",
     "skipped": "已跳过 Rclone 版本 {{version}}",
-    "skipFailed": "跳过 Rclone 更新失败",
+    "skipFailed": "跳过 Rclone 更新失败：{{error}}",
     "restored": "已恢复 Rclone 版本 {{version}}",
-    "restoreFailed": "恢复 Rclone 失败",
+    "restoreFailed": "恢复 Rclone 失败：{{error}}",
     "autoCheckEnabled": "已启用 Rclone 自动检查更新",
     "autoCheckDisabled": "已禁用 Rclone 自动检查更新",
-    "settingsSaveFailed": "保存 Rclone 更新设置失败"
+    "settingsSaveFailed": "保存 Rclone 更新设置失败：{{error}}"
   },
   "settings": {
     "resetToDefault": "恢复默认",
@@ -303,6 +303,14 @@
       }
     },
     "runtime": {
+      "dashboard_card_variant": {
+        "label": "卡片显示模式",
+        "description": "以紧凑或详细模式显示仪表板卡片",
+        "options": {
+          "compact": "紧凑",
+          "detailed": "详细"
+        }
+      },
       "theme": {
         "label": "应用主题",
         "options": {
@@ -1123,12 +1131,6 @@
       }
     }
   },
-  "generalOverview": {
-    "layout": {
-      "showDetailed": "显示详细卡片",
-      "showCompact": "显示紧凑卡片"
-    }
-  },
   "backup": {
     "analyzeFailed": "备份文件解析失败",
     "restore": {
@@ -1200,13 +1202,13 @@
   },
   "updates": {
     "installSuccess": "更新已安装，请重启应用",
-    "checkFailed": "检查更新失败",
-    "installFailed": "安装更新失败",
-    "restartFailed": "重启应用失败",
-    "skipFailed": "跳过更新失败",
-    "unskipFailed": "取消跳过更新失败",
-    "saveSettingsFailed": "保存更新设置失败",
-    "saveChannelFailed": "保存更新通道失败",
+    "checkFailed": "检查更新失败：{{error}}",
+    "installFailed": "安装更新失败：{{error}}",
+    "restartFailed": "重启应用失败：{{error}}",
+    "skipFailed": "跳过更新失败：{{error}}",
+    "unskipFailed": "取消跳过更新失败：{{error}}",
+    "saveSettingsFailed": "保存更新设置失败：{{error}}",
+    "saveChannelFailed": "保存更新通道失败：{{error}}",
     "availableNotification": "有可用更新：{{version}}，打开关于页面安装",
     "noUpdateAvailable": "暂无更新",
     "skipVersion": "将跳过更新 {{version}}",
@@ -1469,18 +1471,6 @@
     "saveSuccess": "已保存：{{field}}",
     "resetSuccess": "已恢复默认：{{field}}",
     "saveFailed": "保存 {{option}} 失败：{{error}}"
-  },
-  "settings": {
-    "runtime": {
-      "dashboard_card_variant": {
-        "label": "卡片显示模式",
-        "description": "以紧凑或详细模式显示仪表板卡片",
-        "options": {
-          "compact": "紧凑",
-          "detailed": "详细"
-        }
-      }
-    }
   },
   "shortcuts": {
     "quitFailed": "退出应用失败：{{error}}",
@@ -2321,6 +2311,8 @@
       "serves": "运行中的服务"
     },
     "layout": {
+      "showDetailed": "显示详细卡片",
+      "showCompact": "显示紧凑卡片",
       "visible": "显示",
       "hidden": "隐藏",
       "edit": "编辑布局",
@@ -2450,7 +2442,7 @@
       "portInUse": "端口 {{port}} 已被占用"
     },
     "unmount": {
-      "failed": "卸载 {{mountPoint}} 失败"
+      "failed": "卸载 {{mountPoint}} 失败：{{error}}"
     },
     "request": {
       "failed": "请求失败：{{error}}"
@@ -2721,39 +2713,39 @@
   "notification": {
     "title": {
       "mountSuccess": "挂载成功",
-      "mountFailed": "挂载失败",
+      "mountFailed": "挂载失败: {{error}}",
       "unmountSuccess": "卸载成功",
-      "unmountFailed": "卸载失败",
+      "unmountFailed": "卸载失败: {{error}}",
       "syncStarted": "同步已开始",
       "syncComplete": "同步完成",
-      "syncFailed": "同步失败",
+      "syncFailed": "同步失败: {{error}}",
       "syncStopped": "同步已停止",
       "copyStarted": "复制已开始",
       "copyComplete": "复制完成",
-      "copyFailed": "复制失败",
+      "copyFailed": "复制失败: {{error}}",
       "copyStopped": "复制已停止",
       "moveStarted": "移动已开始",
       "moveComplete": "移动完成",
-      "moveFailed": "移动失败",
+      "moveFailed": "移动失败: {{error}}",
       "moveStopped": "移动已停止",
       "nothingToDo": "无操作可执行",
       "bisyncStarted": "双向同步已开始",
       "bisyncComplete": "双向同步完成",
-      "bisyncFailed": "双向同步失败",
+      "bisyncFailed": "双向同步失败: {{error}}",
       "bisyncStopped": "双向同步已停止",
       "serveStarted": "服务已启动",
-      "serveFailed": "服务启动失败",
+      "serveFailed": "服务启动失败: {{error}}",
       "serveStopped": "服务已停止",
-      "stopServeFailed": "停止服务失败",
+      "stopServeFailed": "停止服务失败: {{error}}",
       "allJobsStopped": "所有任务已停止",
       "allServesStopped": "所有服务已停止",
-      "stopAllServesFailed": "停止所有服务失败",
-      "operationFailed": "{{operation}} 失败",
+      "stopAllServesFailed": "停止所有服务失败: {{error}}",
+      "operationFailed": "{{operation}} 失败: {{error}}",
       "operationComplete": "{{operation}} 完成",
       "operationStarted": "{{operation}} 已开始",
       "operationStopped": "{{operation}} 已停止",
       "updateComplete": "更新完成",
-      "updateFailed": "更新失败",
+      "updateFailed": "更新失败: {{error}}",
       "updateFound": "发现更新",
       "updateStarted": "更新已开始",
       "engineError": "引擎错误",
@@ -2766,7 +2758,7 @@
       "rcloneUpdateFound": "发现 Rclone 更新",
       "rcloneUpdateStarted": "Rclone 更新已开始",
       "rcloneUpdateComplete": "Rclone 更新已下载",
-      "rcloneUpdateFailed": "Rclone 更新失败",
+      "rcloneUpdateFailed": "Rclone 更新失败: {{error}}",
       "rcloneUpdateInstalled": "Rclone 更新已安装"
     },
     "body": {

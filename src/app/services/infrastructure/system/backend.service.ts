@@ -37,12 +37,7 @@ export class BackendService extends TauriBaseService {
    * Get the backend settings schema for UI generation
    */
   async getBackendSchema(): Promise<Record<string, BackendSettingMetadata>> {
-    try {
-      return await this.invokeCommand<Record<string, BackendSettingMetadata>>('get_backend_schema');
-    } catch (error) {
-      console.error('[BackendService] Failed to get backend schema:', error);
-      throw error;
-    }
+    return await this.invokeCommand<Record<string, BackendSettingMetadata>>('get_backend_schema');
   }
 
   /**
@@ -59,9 +54,6 @@ export class BackendService extends TauriBaseService {
       if (active) {
         this.activeBackend.set(active.name);
       }
-    } catch (error) {
-      console.error('[BackendService] Failed to load backends:', error);
-      throw error;
     } finally {
       this.isLoading.set(false);
     }
@@ -71,39 +63,25 @@ export class BackendService extends TauriBaseService {
    * Load backends and perform startup connectivity checks in the background
    */
   async runStartupChecks(): Promise<void> {
-    try {
-      await this.loadBackends();
-      await this.checkStartupConnectivity();
-      await this.checkAllBackends();
-    } catch (error) {
-      console.error('[BackendService] Failed to run startup checks:', error);
-    }
+    await this.loadBackends();
+    await this.checkStartupConnectivity();
+    await this.checkAllBackends();
   }
 
   /**
    * Get the currently active backend name
    */
   async getActiveBackend(): Promise<string> {
-    try {
-      const name = await this.invokeCommand<string>('get_active_backend');
-      this.activeBackend.set(name);
-      return name;
-    } catch (error) {
-      console.error('Failed to get active backend:', error);
-      throw error;
-    }
+    const name = await this.invokeCommand<string>('get_active_backend');
+    this.activeBackend.set(name);
+    return name;
   }
 
   /**
    * Get the active config file path
    */
   async getActiveConfigPathFromBackend(): Promise<string> {
-    try {
-      return await this.invokeCommand<string>('get_rclone_config_file');
-    } catch (error) {
-      console.error('Failed to get active config path:', error);
-      throw error;
-    }
+    return await this.invokeCommand<string>('get_rclone_config_file');
   }
 
   /**

@@ -198,9 +198,9 @@ form {
   justify-content: center;
   gap: var(--space-md);
   padding: 40px var(--space-lg) 32px;
-  background: rgba(var(--accent-color-rgb), 0.03);
+  background: var(--view-bg-color);
   border-radius: var(--radius-md);
-  box-shadow: var(--box-shadow);
+  box-shadow: var(--shadow-gnome);
   overflow: hidden;
 
   &-icon-ring {
@@ -261,7 +261,7 @@ form {
   gap: var(--space-xxs);
   padding: 6px 10px;
   border-radius: var(--radius-md);
-  background: rgba(var(--accent-color-rgb), 0.06);
+  background: var(--selected-bg-color);
   color: var(--dim-color);
   font-size: var(--font-size-sm);
   font-weight: 600;
@@ -292,7 +292,7 @@ form {
 
   &:hover {
     color: var(--primary-color);
-    background: rgba(var(--primary-color-rgb), 0.08);
+    background: rgba(var(--primary-color-rgb), var(--active-opacity));
   }
 
   &:active {
@@ -416,7 +416,6 @@ form {
     border-radius: var(--radius-md);
     background: var(--selected-bg-color);
     font-size: var(--font-size-sm);
-    box-shadow: var(--box-shadow);
     font-weight: 600;
     color: var(--dim-color);
     transition: background 0.2s ease;

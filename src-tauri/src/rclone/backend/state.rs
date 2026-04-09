@@ -22,7 +22,7 @@ pub async fn save_backend_state(
     name: &str,
     task_cache: Option<&crate::rclone::state::scheduled_tasks::ScheduledTasksCache>,
 ) {
-    let jobs = manager.job_cache.get_all_jobs().await;
+    let jobs = manager.job_cache.get_jobs().await;
     let context = manager.remote_cache.get_context().await;
 
     // Get tasks for this backend

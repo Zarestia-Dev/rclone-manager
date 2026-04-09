@@ -106,7 +106,7 @@
       @switch (currentFileType()) {
         @case ('image') {
           <img
-            [src]="safeResourceUrl()"
+            [src]="currentUrl()"
             [alt]="fileName()"
             class="preview-content"
             (load)="onLoadComplete()"
@@ -115,7 +115,7 @@
         }
         @case ('video') {
           <video
-            [src]="safeResourceUrl()"
+            [src]="currentUrl()"
             controls
             class="preview-content"
             (loadeddata)="onLoadComplete()"
@@ -140,7 +140,7 @@
               }
             </div>
             <audio
-              [src]="safeResourceUrl()"
+              [src]="currentUrl()"
               controls
               (loadeddata)="onLoadComplete()"
               (error)="onLoadError()"
@@ -152,7 +152,7 @@
         }
         @case ('pdf') {
           <object
-            [data]="safeResourceUrl()"
+            [data]="safePdfUrl()"
             type="application/pdf"
             class="pdf-viewer"
             (load)="onLoadComplete()"

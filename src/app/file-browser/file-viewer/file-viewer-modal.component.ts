@@ -141,7 +141,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
   public currentUrl = signal<string>('');
 
-  safeResourceUrl = computed(() => {
+  safePdfUrl = computed(() => {
     const url = this.currentUrl();
     if (!url) return null;
     return this.sanitizer.bypassSecurityTrustResourceUrl(url);

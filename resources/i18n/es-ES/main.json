@@ -207,16 +207,16 @@
   },
   "rcloneUpdate": {
     "success": "Rclone se actualizó correctamente (canal {{channel}})",
-    "failed": "Error al actualizar",
+    "failed": "Error al actualizar: {{error}}",
     "channelChanged": "Canal de actualización de Rclone cambiado a {{channel}}",
-    "channelSaveFailed": "Error al guardar el canal de actualización de rclone",
+    "channelSaveFailed": "Error al guardar el canal de actualización de rclone: {{error}}",
     "skipped": "Versión de Rclone {{version}} omitida",
-    "skipFailed": "Error al omitir la actualización de rclone",
+    "skipFailed": "Error al omitir la actualización de rclone: {{error}}",
     "restored": "Versión de Rclone {{version}} restaurada",
-    "restoreFailed": "Error al restaurar la actualización de rclone",
+    "restoreFailed": "Error al restaurar la actualización de rclone: {{error}}",
     "autoCheckEnabled": "La verificación automática de actualizaciones de Rclone está habilitada",
     "autoCheckDisabled": "La verificación automática de actualizaciones de Rclone está deshabilitada",
-    "settingsSaveFailed": "Error al guardar la configuración de actualización de rclone"
+    "settingsSaveFailed": "Error al guardar la configuración de actualización de rclone: {{error}}"
   },
   "settings": {
     "resetToDefault": "Restablecer a los valores predeterminados",
@@ -299,6 +299,14 @@
       }
     },
     "runtime": {
+      "dashboard_card_variant": {
+        "label": "Variante de tarjeta",
+        "description": "Mostrar tarjetas del panel de control en modo compacto o detallado",
+        "options": {
+          "compact": "Compacto",
+          "detailed": "Detallado"
+        }
+      },
       "theme": {
         "label": "Tema de la aplicación",
         "options": {
@@ -1115,12 +1123,6 @@
       }
     }
   },
-  "generalOverview": {
-    "layout": {
-      "showDetailed": "Mostrar tarjetas detalladas",
-      "showCompact": "Mostrar tarjetas compactas"
-    }
-  },
   "backup": {
     "analyzeFailed": "No se pudo analizar el archivo de copia de seguridad",
     "restore": {
@@ -1193,13 +1195,13 @@
   },
   "updates": {
     "installSuccess": "Actualización instalada. Reinicia la aplicación.",
-    "checkFailed": "Error al buscar actualizaciones",
-    "installFailed": "Error al instalar la actualización",
-    "restartFailed": "Error al reiniciar la aplicación",
-    "skipFailed": "Error al omitir la actualización",
-    "unskipFailed": "Error al deshacer la omisión de la actualización",
-    "saveSettingsFailed": "Error al guardar la configuración de la actualización",
-    "saveChannelFailed": "Error al guardar el canal de actualización",
+    "checkFailed": "Error al buscar actualizaciones: {{error}}",
+    "installFailed": "Error al instalar la actualización: {{error}}",
+    "restartFailed": "Error al reiniciar la aplicación: {{error}}",
+    "skipFailed": "Error al omitir la actualización: {{error}}",
+    "unskipFailed": "Error al deshacer la omisión de la actualización: {{error}}",
+    "saveSettingsFailed": "Error al guardar la configuración de la actualización: {{error}}",
+    "saveChannelFailed": "Error al guardar el canal de actualización: {{error}}",
     "availableNotification": "Actualización disponible: {{version}}. Abre Acerca de para instalarla.",
     "noUpdateAvailable": "No hay actualizaciones disponibles",
     "skipVersion": "Se omitirá la actualización {{version}}",
@@ -1431,18 +1433,6 @@
     "saveSuccess": "Guardado: {{field}}",
     "resetSuccess": "Restablecer a predeterminado: {{field}}",
     "saveFailed": "Error al guardar {{option}}: {{error}}"
-  },
-  "settings": {
-    "runtime": {
-      "dashboard_card_variant": {
-        "label": "Variante de tarjeta",
-        "description": "Mostrar tarjetas del panel de control en modo compacto o detallado",
-        "options": {
-          "compact": "Compacto",
-          "detailed": "Detallado"
-        }
-      }
-    }
   },
   "shortcuts": {
     "quitFailed": "Error al salir de la aplicación: {{error}}",
@@ -2239,7 +2229,9 @@
       "resetSuccess": "Diseño restablecido a los valores predeterminados",
       "toggleTaskFailed": "Error al alternar tarea programada",
       "copyErrorFailed": "Error al copiar el error",
-      "errorCopied": "Error copiado al portapapeles"
+      "errorCopied": "Error copiado al portapapeles",
+      "showDetailed": "Mostrar tarjetas detalladas",
+      "showCompact": "Mostrar tarjetas compactas"
     },
     "bandwidth": {
       "aria": {
@@ -2361,7 +2353,7 @@
       "portInUse": "El puerto {{port}} ya está en uso"
     },
     "unmount": {
-      "failed": "Error al desmontar {{mountPoint}}"
+      "failed": "Error al desmontar {{mountPoint}}: {{error}}"
     },
     "request": {
       "failed": "Solicitud fallida: {{error}}"
@@ -2632,38 +2624,38 @@
   "notification": {
     "title": {
       "mountSuccess": "Montaje exitoso",
-      "mountFailed": "Montaje fallido",
+      "mountFailed": "Montaje fallido: {{error}}",
       "unmountSuccess": "Desmontaje exitoso",
-      "unmountFailed": "Desmontaje fallido",
+      "unmountFailed": "Desmontaje fallido: {{error}}",
       "syncStarted": "Sincronización iniciada",
       "syncComplete": "Sincronización completada",
-      "syncFailed": "Sincronización fallida",
+      "syncFailed": "Sincronización fallida: {{error}}",
       "syncStopped": "Sincronización detenida",
       "copyStarted": "Copia iniciada",
       "copyComplete": "Copia completada",
-      "copyFailed": "Copia fallida",
+      "copyFailed": "Copia fallida: {{error}}",
       "copyStopped": "Copia detenida",
       "moveStarted": "Movimiento iniciado",
       "moveComplete": "Movimiento completado",
-      "moveFailed": "Movimiento fallido",
+      "moveFailed": "Movimiento fallido: {{error}}",
       "moveStopped": "Movimiento detenido",
       "bisyncStarted": "BiSync iniciada",
       "bisyncComplete": "BiSync completada",
-      "bisyncFailed": "BiSync fallida",
+      "bisyncFailed": "BiSync fallida: {{error}}",
       "bisyncStopped": "BiSync detenida",
       "serveStarted": "Servicio iniciado",
-      "serveFailed": "Servicio fallido",
+      "serveFailed": "Servicio fallido: {{error}}",
       "serveStopped": "Servicio detenido",
-      "stopServeFailed": "Detener servicio fallido",
+      "stopServeFailed": "Detener servicio fallido: {{error}}",
       "allJobsStopped": "Todos los trabajos detenidos",
       "allServesStopped": "Todos los servicios detenidos",
-      "stopAllServesFailed": "Detener todos los servicios fallido",
-      "operationFailed": "{{operation}} fallido",
+      "stopAllServesFailed": "Detener todos los servicios fallido: {{error}}",
+      "operationFailed": "{{operation}} fallido: {{error}}",
       "operationComplete": "{{operation}} completado",
       "operationStarted": "{{operation}} iniciado",
       "operationStopped": "{{operation}} detenido",
       "updateComplete": "Actualización completada",
-      "updateFailed": "Actualización fallida",
+      "updateFailed": "Actualización fallida: {{error}}",
       "updateFound": "Actualización encontrada",
       "updateStarted": "Actualización iniciada",
       "engineError": "Error del motor",
@@ -2676,7 +2668,7 @@
       "rcloneUpdateFound": "Actualización de Rclone encontrada",
       "rcloneUpdateStarted": "Actualización de Rclone iniciada",
       "rcloneUpdateComplete": "Actualización de Rclone descargada",
-      "rcloneUpdateFailed": "Actualización de Rclone fallida",
+      "rcloneUpdateFailed": "Actualización de Rclone fallida: {{error}}",
       "rcloneUpdateInstalled": "Actualización de Rclone instalada"
     },
     "body": {

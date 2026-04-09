@@ -454,7 +454,6 @@
       border-radius: var(--radius-md);
       background: rgba(var(--op-color-rgb), var(--active-opacity));
       font-size: var(--font-size-sm);
-      box-shadow: var(--box-shadow);
       font-weight: 600;
       color: var(--op-color);
       transition: background 0.2s ease;
@@ -492,7 +491,6 @@
       padding: 6px 10px;
       border-radius: var(--radius-md);
       background: rgba(var(--op-color-rgb), var(--active-opacity));
-      box-shadow: var(--box-shadow);
       color: var(--op-color);
       cursor: pointer;
       animation: applePopOut 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;

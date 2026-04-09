@@ -16,11 +16,6 @@ impl JobCache {
         }
     }
 
-    /// Get all jobs (for state snapshot)
-    pub async fn get_all_jobs(&self) -> Vec<JobInfo> {
-        self.jobs.read().await.values().cloned().collect()
-    }
-
     /// Set all jobs (for state restore)
     pub async fn set_all_jobs(&self, jobs: Vec<JobInfo>) {
         let mut current = self.jobs.write().await;
