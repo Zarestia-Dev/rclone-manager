@@ -1381,6 +1381,7 @@ export class NautilusComponent implements OnInit {
   }
 
   onDropToStarred(event: DragEvent): void {
+    event.stopPropagation();
     const data = event.dataTransfer?.getData(NAUTILUS_DRAG_MIME_TYPE);
     if (!data) return;
     const payload: NautilusDragPayload = JSON.parse(data);
@@ -1388,6 +1389,7 @@ export class NautilusComponent implements OnInit {
   }
 
   onDropToLocal(event: DragEvent): void {
+    event.stopPropagation();
     const data = event.dataTransfer?.getData(NAUTILUS_DRAG_MIME_TYPE);
     if (!data) return;
     const payload: NautilusDragPayload = JSON.parse(data);
@@ -1395,6 +1397,7 @@ export class NautilusComponent implements OnInit {
   }
 
   async onDropToBookmark(event: DragEvent, bookmark: FileBrowserItem): Promise<void> {
+    event.stopPropagation();
     const targetRemote = this.allRemotesLookup().find(
       r =>
         this.pathSelectionService.normalizeRemoteName(r.name) ===
@@ -1404,10 +1407,12 @@ export class NautilusComponent implements OnInit {
   }
 
   async onDropToRemote(event: DragEvent, targetRemote: ExplorerRoot): Promise<void> {
+    event.stopPropagation();
     await this.processDrop(event, { remote: targetRemote, path: '' });
   }
 
   async onDropToFolder(event: DragEvent, targetFolder: FileBrowserItem): Promise<void> {
+    event.stopPropagation();
     const targetRemote = this.allRemotesLookup().find(
       r =>
         this.pathSelectionService.normalizeRemoteName(r.name) ===
@@ -1417,6 +1422,7 @@ export class NautilusComponent implements OnInit {
   }
 
   async onDropToCurrentDirectory(event: DragEvent, paneIndex: number): Promise<void> {
+    event.stopPropagation();
     const pIdx = paneIndex as 0 | 1;
     const targetRemote = this.getPaneRef(pIdx).remote();
     if (!targetRemote) return;
@@ -1447,6 +1453,7 @@ export class NautilusComponent implements OnInit {
   }
 
   async onDropToSegment(event: DragEvent, segIdx: number): Promise<void> {
+    event.stopPropagation();
     const pIdx = this.activePaneIndex();
     const targetRemote = this.getPaneRef(pIdx).remote();
     if (!targetRemote) return;

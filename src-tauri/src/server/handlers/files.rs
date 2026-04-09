@@ -5,7 +5,7 @@ use axum::{
     extract::{Query, State},
     response::{IntoResponse, Json},
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tauri::Manager;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
@@ -19,6 +19,9 @@ use crate::utils::types::remotes::ListOptions;
 pub struct FsInfoQuery {
     pub remote: String,
     pub path: Option<String>,
+    pub origin: Option<String>,
+    pub group: Option<String>,
+    pub no_cache: Option<bool>,
 }
 
 pub async fn get_fs_info_handler(
@@ -31,6 +34,9 @@ pub async fn get_fs_info_handler(
         state.app_handle.clone(),
         query.remote,
         query.path,
+        query.origin,
+        query.group,
+        query.no_cache,
         rclone_state,
     )
     .await
@@ -42,6 +48,9 @@ pub async fn get_fs_info_handler(
 pub struct DiskUsageQuery {
     pub remote: String,
     pub path: Option<String>,
+    pub origin: Option<String>,
+    pub group: Option<String>,
+    pub no_cache: Option<bool>,
 }
 
 pub async fn get_disk_usage_handler(
@@ -54,6 +63,9 @@ pub async fn get_disk_usage_handler(
         state.app_handle.clone(),
         query.remote,
         query.path,
+        query.origin,
+        query.group,
+        query.no_cache,
         rclone_state,
     )
     .await
@@ -77,6 +89,9 @@ pub async fn get_local_drives_handler(
 pub struct GetSizeQuery {
     pub remote: String,
     pub path: Option<String>,
+    pub origin: Option<String>,
+    pub group: Option<String>,
+    pub no_cache: Option<bool>,
 }
 
 pub async fn get_size_handler(
@@ -89,6 +104,9 @@ pub async fn get_size_handler(
         state.app_handle.clone(),
         query.remote,
         query.path,
+        query.origin,
+        query.group,
+        query.no_cache,
         rclone_state,
     )
     .await
@@ -100,6 +118,9 @@ pub async fn get_size_handler(
 pub struct GetStatQuery {
     pub remote: String,
     pub path: String,
+    pub origin: Option<String>,
+    pub group: Option<String>,
+    pub no_cache: Option<bool>,
 }
 
 pub async fn get_stat_handler(
@@ -112,6 +133,9 @@ pub async fn get_stat_handler(
         state.app_handle.clone(),
         query.remote,
         query.path,
+        query.origin,
+        query.group,
+        query.no_cache,
         rclone_state,
     )
     .await
@@ -125,6 +149,9 @@ pub struct GetHashsumQuery {
     pub remote: String,
     pub path: String,
     pub hash_type: String,
+    pub origin: Option<String>,
+    pub group: Option<String>,
+    pub no_cache: Option<bool>,
 }
 
 pub async fn get_hashsum_handler(
@@ -137,6 +164,9 @@ pub async fn get_hashsum_handler(
         query.remote,
         query.path,
         query.hash_type,
+        query.origin,
+        query.group,
+        query.no_cache,
     )
     .await
     .map_err(anyhow::Error::msg)?;
@@ -153,6 +183,9 @@ pub async fn get_hashsum_file_handler(
         query.remote,
         query.path,
         query.hash_type,
+        query.origin.clone(),
+        query.group.clone(),
+        query.no_cache,
     )
     .await
     .map_err(anyhow::Error::msg)?;
@@ -492,6 +525,9 @@ pub struct RemotePathsBody {
     pub remote: String,
     pub path: Option<String>,
     pub options: Option<serde_json::Value>,
+    pub origin: Option<String>,
+    pub group: Option<String>,
+    pub no_cache: Option<bool>,
 }
 
 pub async fn get_remote_paths_handler(
@@ -504,10 +540,18 @@ pub async fn get_remote_paths_handler(
             extra: std::collections::HashMap::new(),
         })
     });
-    let value = get_remote_paths(state.app_handle.clone(), body.remote, body.path, options)
-        .await
-        .map_err(anyhow::Error::msg)
-        .map_err(AppError::BadRequest)?;
+    let value = get_remote_paths(
+        state.app_handle.clone(),
+        body.remote,
+        body.path,
+        options,
+        body.origin,
+        body.group,
+        body.no_cache,
+    )
+    .await
+    .map_err(anyhow::Error::msg)
+    .map_err(AppError::BadRequest)?;
     Ok(Json(ApiResponse::success(value)))
 }
 
@@ -691,4 +735,122 @@ pub async fn get_audio_cover_handler(
     .await
     .map_err(|e| AppError::InternalServerError(anyhow::Error::msg(e)))?;
     Ok(Json(ApiResponse::success(cover)))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UploadLocalDropFilesBody {
+    pub remote: String,
+    pub path: String,
+    pub files: Vec<crate::rclone::commands::filesystem::LocalDropUploadFile>,
+    pub source: Option<String>,
+}
+
+pub async fn upload_local_drop_files_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<UploadLocalDropFilesBody>,
+) -> Result<Json<ApiResponse<crate::rclone::commands::filesystem::LocalDropUploadResult>>, AppError>
+{
+    use crate::rclone::commands::filesystem::upload_local_drop_files;
+    let result = upload_local_drop_files(
+        state.app_handle.clone(),
+        body.remote,
+        body.path,
+        body.files,
+        body.source,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(result)))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UploadLocalDropPathsBody {
+    pub remote: String,
+    pub path: String,
+    pub local_paths: Vec<String>,
+    pub source: Option<String>,
+}
+
+pub async fn upload_local_drop_paths_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<UploadLocalDropPathsBody>,
+) -> Result<Json<ApiResponse<crate::rclone::commands::filesystem::LocalDropUploadResult>>, AppError>
+{
+    use crate::rclone::commands::filesystem::upload_local_drop_paths;
+    let result = upload_local_drop_paths(
+        state.app_handle.clone(),
+        body.remote,
+        body.path,
+        body.local_paths,
+        body.source,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(result)))
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalDropUploadEntryDTO {
+    pub relative_path: String,
+    pub filename: String,
+    pub size: usize,
+    pub content: Option<Vec<u8>>,
+    pub local_path: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UploadLocalDropEntriesBody {
+    pub remote: String,
+    pub path: String,
+    pub entries: Vec<LocalDropUploadEntryDTO>,
+    pub source: Option<String>,
+}
+
+pub async fn upload_local_drop_entries_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<UploadLocalDropEntriesBody>,
+) -> Result<Json<ApiResponse<crate::rclone::commands::filesystem::LocalDropUploadResult>>, AppError>
+{
+    use crate::rclone::commands::filesystem::{
+        LocalDropUploadEntry, LocalDropUploadEntrySource, upload_local_drop_entries,
+    };
+    use std::path::PathBuf;
+
+    let entries: Vec<LocalDropUploadEntry> = body
+        .entries
+        .into_iter()
+        .map(|dto| {
+            let source = if let Some(content) = dto.content {
+                LocalDropUploadEntrySource::Bytes(content)
+            } else if let Some(local_path) = dto.local_path {
+                LocalDropUploadEntrySource::Path(PathBuf::from(local_path))
+            } else {
+                // Default to empty bytes if nothing provided
+                LocalDropUploadEntrySource::Bytes(Vec::new())
+            };
+
+            LocalDropUploadEntry {
+                relative_path: dto.relative_path,
+                filename: dto.filename,
+                size: dto.size,
+                source,
+            }
+        })
+        .collect();
+
+    let result = upload_local_drop_entries(
+        &state.app_handle,
+        body.remote,
+        body.path,
+        entries,
+        body.source,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
+
+    Ok(Json(ApiResponse::success(result)))
 }

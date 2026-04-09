@@ -206,6 +206,18 @@ pub async fn update_rclone_handler(
     Ok(Json(ApiResponse::success(result)))
 }
 
+pub async fn apply_rclone_update_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::utils::rclone::updater::apply_rclone_update;
+    apply_rclone_update(state.app_handle.clone())
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(
+        "Rclone update applied successfully. Engine restarting...".to_string(),
+    )))
+}
+
 pub async fn get_configs_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {

@@ -623,30 +623,33 @@ pub async fn upload_file_bytes(
     Ok("Upload successful".to_string())
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LocalDropUploadResult {
     pub uploaded: usize,
     pub failed: Vec<String>,
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LocalDropUploadFile {
     pub relative_path: String,
     pub filename: String,
     pub content: Vec<u8>,
 }
 
-enum LocalDropUploadEntrySource {
+#[derive(Debug, Clone)]
+pub enum LocalDropUploadEntrySource {
     Bytes(Vec<u8>),
     Path(std::path::PathBuf),
 }
 
-struct LocalDropUploadEntry {
-    relative_path: String,
-    filename: String,
-    size: usize,
-    source: LocalDropUploadEntrySource,
+pub struct LocalDropUploadEntry {
+    pub relative_path: String,
+    pub filename: String,
+    pub size: usize,
+    pub source: LocalDropUploadEntrySource,
 }
 
 fn join_remote_path(base: &str, relative: &str) -> String {
@@ -806,7 +809,7 @@ fn split_remote_directory(path: &str) -> (String, String) {
     }
 }
 
-async fn upload_local_drop_entries(
+pub async fn upload_local_drop_entries(
     app: &AppHandle,
     remote: String,
     path: String,

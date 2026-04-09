@@ -7,7 +7,6 @@ use axum::{
 use serde::Deserialize;
 use tauri::Manager;
 
-use crate::core::scheduler::engine::CronScheduler;
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
 
@@ -104,13 +103,11 @@ pub async fn save_remote_settings_handler(
     use crate::core::settings::remote::manager::save_remote_settings;
     let manager: tauri::State<crate::core::settings::AppSettingsManager> = state.app_handle.state();
     let task_cache = state.app_handle.state::<ScheduledTasksCache>();
-    let cron_cache = state.app_handle.state::<CronScheduler>();
     save_remote_settings(
         body.remote_name,
         body.settings,
         manager,
         task_cache,
-        cron_cache,
         state.app_handle.clone(),
     )
     .await

@@ -8,7 +8,6 @@ use log::info;
 use serde::Deserialize;
 use tauri::Manager;
 
-use crate::core::scheduler::engine::CronScheduler;
 use crate::rclone::commands::remote::create_remote;
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
@@ -201,8 +200,7 @@ pub async fn delete_remote_handler(
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::rclone::commands::remote::delete_remote;
     let cache = state.app_handle.state::<ScheduledTasksCache>();
-    let scheduler = state.app_handle.state::<CronScheduler>();
-    delete_remote(state.app_handle.clone(), body.name, cache, scheduler)
+    delete_remote(state.app_handle.clone(), body.name, cache)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(crate::localized_success!(

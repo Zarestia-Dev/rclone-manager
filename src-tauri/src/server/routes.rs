@@ -231,6 +231,18 @@ fn file_operations_routes() -> Router<WebServerState> {
             "/upload-file-bytes",
             post(handlers::upload_file_bytes_handler),
         )
+        .route(
+            "/upload-local-drop-files",
+            post(handlers::upload_local_drop_files_handler),
+        )
+        .route(
+            "/upload-local-drop-paths",
+            post(handlers::upload_local_drop_paths_handler),
+        )
+        .route(
+            "/upload-local-drop-entries",
+            post(handlers::upload_local_drop_entries_handler),
+        )
 }
 
 fn settings_routes() -> Router<WebServerState> {
@@ -262,6 +274,10 @@ fn settings_routes() -> Router<WebServerState> {
             get(handlers::get_rclone_update_info_handler),
         )
         .route("/update-rclone", get(handlers::update_rclone_handler))
+        .route(
+            "/apply-rclone-update",
+            get(handlers::apply_rclone_update_handler),
+        )
 }
 
 fn mount_serve_routes() -> Router<WebServerState> {

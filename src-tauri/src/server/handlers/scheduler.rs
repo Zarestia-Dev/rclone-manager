@@ -38,7 +38,7 @@ pub async fn reload_scheduled_tasks_from_configs_handler(
     State(state): State<WebServerState>,
     Json(body): Json<ReloadScheduledTasksBody>,
 ) -> Result<Json<ApiResponse<usize>>, AppError> {
-    use crate::rclone::state::scheduled_tasks::reload_scheduled_tasks_from_configs;
+    use crate::core::scheduler::commands::reload_scheduled_tasks_from_configs;
     let cache = state.app_handle.state::<ScheduledTasksCache>();
     let scheduler = state.app_handle.state::<CronScheduler>();
     let count = reload_scheduled_tasks_from_configs(

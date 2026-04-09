@@ -33,6 +33,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Core**: Removed restrictive duplicate checks in mount and serve operations to allow running multiple instances with unique configurations (e.g., different profiles or ports).
 - **File Viewer**: Fixed the download functionality in headless web mode by implementing browser-native downloads. Remote files can now be downloaded to the local computer in both desktop and web environments.
 - **Core**: Bunch of scheduler tasks fixes.
+- **Core**: Fixed the issue where the app was not able to update rclone on headless mode.
 
 
 ## [v0.2.3] - 2026-03-17
