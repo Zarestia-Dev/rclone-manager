@@ -55,16 +55,20 @@ export class BackupRestoreService extends TauriBaseService {
     userNote: string | null,
     includeProfiles?: string[]
   ): Promise<void> {
-    await this.invokeWithNotification('backup_settings', {
-      backupDir: selectedPath,
-      exportType: selectedOption,
-      password,
-      remoteName,
-      userNote,
-      includeProfiles,
-    }, {
-      successKey: 'backup.backupSuccess'
-    });
+    await this.invokeWithNotification(
+      'backup_settings',
+      {
+        backupDir: selectedPath,
+        exportType: selectedOption,
+        password,
+        remoteName,
+        userNote,
+        includeProfiles,
+      },
+      {
+        successKey: 'backup.backupSuccess',
+      }
+    );
   }
 
   /**
@@ -77,14 +81,18 @@ export class BackupRestoreService extends TauriBaseService {
     restoreProfile?: string,
     restoreProfileAs?: string
   ): Promise<void> {
-    await this.invokeWithNotification('restore_settings', {
-      backupPath: path,
-      password,
-      restoreProfile,
-      restoreProfileAs,
-    }, {
-      successKey: 'backup.restoreSuccess'
-    });
+    await this.invokeWithNotification(
+      'restore_settings',
+      {
+        backupPath: path,
+        password,
+        restoreProfile,
+        restoreProfileAs,
+      },
+      {
+        successKey: 'backup.restoreSuccess',
+      }
+    );
   }
 
   /**

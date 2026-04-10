@@ -122,8 +122,6 @@ pub async fn get_fs_info(
     path: Option<String>,
     origin: Option<String>,
     group: Option<String>,
-    no_cache: Option<bool>,
-    _state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
     debug!("ℹ️ Getting fs info for remote: {remote}, path: {path:?}");
 
@@ -140,11 +138,9 @@ pub async fn get_fs_info(
             source: build_full_path(&remote, path.as_deref().unwrap_or("")),
             destination: String::new(),
             profile: None,
-            origin: origin
-                .as_deref()
-                .map(crate::utils::types::origin::Origin::parse),
+            origin: parse_origin(&origin),
             group,
-            no_cache: no_cache.unwrap_or(false),
+            no_cache: true,
         },
     )
     .await;
@@ -177,7 +173,6 @@ pub async fn get_remote_paths(
     options: Option<ListOptions>,
     origin: Option<String>,
     group: Option<String>,
-    no_cache: Option<bool>,
 ) -> Result<serde_json::Value, String> {
     debug!("📂 Listing remote paths for remote: {remote}, path: {path:?}");
     let mut params = create_fs_params(remote.clone(), path.clone());
@@ -201,11 +196,9 @@ pub async fn get_remote_paths(
             source: build_full_path(&remote, path.as_deref().unwrap_or("")),
             destination: String::new(),
             profile: None,
-            origin: origin
-                .as_deref()
-                .map(crate::utils::types::origin::Origin::parse),
+            origin: parse_origin(&origin),
             group,
-            no_cache: no_cache.unwrap_or(false),
+            no_cache: true,
         },
     )
     .await
@@ -245,27 +238,22 @@ pub async fn get_local_drives(
 
             let app_clone = app.clone();
             let state_client = state.client.clone();
-            let drive_name_clone = drive_name.clone();
 
             futures.push(async move {
                 let params = create_fs_params(drive_path, None);
-                let res = run_fs_command(app_clone, state_client, operations::ABOUT, params).await;
-                if res.is_ok() {
-                    Some(LocalDrive {
-                        name: drive_name_clone,
+                match run_fs_command(app_clone, state_client, operations::ABOUT, params).await {
+                    Ok(_) => Some(LocalDrive {
+                        name: drive_name,
                         label: "nautilus.titles.localDisk".to_string(),
                         show_name: true,
-                    })
-                } else {
-                    None
+                    }),
+                    Err(_) => None,
                 }
             });
         }
 
         let results = join_all(futures).await;
-        for res in results.into_iter().flatten() {
-            drives.push(res);
-        }
+        drives.extend(results.into_iter().flatten());
 
         // Fallback if somehow none are detected
         if drives.is_empty() {
@@ -310,20 +298,9 @@ pub async fn get_disk_usage(
     path: Option<String>,
     origin: Option<String>,
     group: Option<String>,
-    no_cache: Option<bool>,
-    _state: State<'_, RcloneState>,
 ) -> Result<DiskUsage, String> {
     // Delegate to get_about_remote (which is now async)
-    let json = get_about_remote(
-        app,
-        remote.clone(),
-        path.clone(),
-        origin,
-        group,
-        no_cache,
-        _state,
-    )
-    .await?;
+    let json = get_about_remote(app, remote.clone(), path.clone(), origin, group).await?;
 
     // Extract usage information
     let total = json["total"].as_i64().unwrap_or(0);
@@ -331,12 +308,20 @@ pub async fn get_disk_usage(
     let free = json["free"].as_i64().unwrap_or(0);
 
     // Compute fs_path string for logging
-    let fs_path = if remote.is_empty() {
-        path.unwrap_or_else(|| "/".to_string())
-    } else {
-        match path {
-            Some(p) if !p.is_empty() => format!("{remote}{p}"),
-            _ => remote,
+    let fs_path = match path.as_deref() {
+        Some(p) if !p.is_empty() => {
+            if remote.is_empty() {
+                p.to_string()
+            } else {
+                format!("{remote}{p}")
+            }
+        }
+        _ => {
+            if remote.is_empty() {
+                "/".to_string()
+            } else {
+                remote
+            }
         }
     };
 
@@ -353,8 +338,6 @@ pub async fn get_about_remote(
     path: Option<String>,
     origin: Option<String>,
     group: Option<String>,
-    no_cache: Option<bool>,
-    _state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
     debug!("ℹ️ Getting about info for remote: {remote}, path: {path:?}");
 
@@ -371,14 +354,19 @@ pub async fn get_about_remote(
             source: build_full_path(&remote, path.as_deref().unwrap_or("")),
             destination: String::new(),
             profile: None,
-            origin: origin
-                .as_deref()
-                .map(crate::utils::types::origin::Origin::parse),
+            origin: parse_origin(&origin),
             group,
-            no_cache: no_cache.unwrap_or(false),
+            no_cache: true,
         },
     )
     .await
+}
+
+// Small helper to avoid repeating the `as_deref().map(Origin::parse)` pattern
+fn parse_origin(origin: &Option<String>) -> Option<crate::utils::types::origin::Origin> {
+    origin
+        .as_deref()
+        .map(crate::utils::types::origin::Origin::parse)
 }
 
 #[tauri::command]
@@ -388,8 +376,6 @@ pub async fn get_size(
     path: Option<String>,
     origin: Option<String>,
     group: Option<String>,
-    no_cache: Option<bool>,
-    _state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
     debug!("📏 Getting size for remote: {remote}, path: {path:?}");
 
@@ -418,11 +404,9 @@ pub async fn get_size(
             source: fs_with_path,
             destination: String::new(),
             profile: None,
-            origin: origin
-                .as_deref()
-                .map(crate::utils::types::origin::Origin::parse),
+            origin: parse_origin(&origin),
             group,
-            no_cache: no_cache.unwrap_or(false),
+            no_cache: true,
         },
     )
     .await
@@ -435,8 +419,6 @@ pub async fn get_stat(
     path: String,
     origin: Option<String>,
     group: Option<String>,
-    no_cache: Option<bool>,
-    _state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
     debug!("📊 Getting stats for remote: {remote}, path: {path}");
 
@@ -454,11 +436,9 @@ pub async fn get_stat(
             source: build_full_path(&remote, &path),
             destination: String::new(),
             profile: None,
-            origin: origin
-                .as_deref()
-                .map(crate::utils::types::origin::Origin::parse),
+            origin: parse_origin(&origin),
             group,
-            no_cache: no_cache.unwrap_or(false),
+            no_cache: true,
         },
     )
     .await
@@ -474,7 +454,6 @@ pub async fn get_hashsum(
     hash_type: String,
     origin: Option<String>,
     group: Option<String>,
-    no_cache: Option<bool>,
 ) -> Result<serde_json::Value, String> {
     debug!("🔐 Getting hashsum for remote: {remote}, path: {path}, hash_type: {hash_type}");
 
@@ -501,11 +480,9 @@ pub async fn get_hashsum(
             source: fs_with_path,
             destination: String::new(),
             profile: None,
-            origin: origin
-                .as_deref()
-                .map(crate::utils::types::origin::Origin::parse),
+            origin: parse_origin(&origin),
             group,
-            no_cache: no_cache.unwrap_or(false),
+            no_cache: true,
         },
     )
     .await
@@ -521,7 +498,6 @@ pub async fn get_hashsum_file(
     hash_type: String,
     origin: Option<String>,
     group: Option<String>,
-    no_cache: Option<bool>,
 ) -> Result<serde_json::Value, String> {
     debug!("🔐 Getting hashsum file for remote: {remote}, path: {path}, hash_type: {hash_type}");
 
@@ -539,11 +515,9 @@ pub async fn get_hashsum_file(
             source: build_full_path(&remote, &path),
             destination: String::new(),
             profile: None,
-            origin: origin
-                .as_deref()
-                .map(crate::utils::types::origin::Origin::parse),
+            origin: parse_origin(&origin),
             group,
-            no_cache: no_cache.unwrap_or(false),
+            no_cache: true,
         },
     )
     .await
@@ -559,7 +533,6 @@ pub async fn get_public_link(
     options: Option<PublicLinkParams>,
     origin: Option<String>,
     group: Option<String>,
-    no_cache: Option<bool>,
 ) -> Result<serde_json::Value, String> {
     debug!("🔗 Getting public link for remote: {remote}, path: {path}, options: {options:?}",);
 
@@ -589,7 +562,7 @@ pub async fn get_public_link(
                 .as_deref()
                 .map(crate::utils::types::origin::Origin::parse),
             group,
-            no_cache: no_cache.unwrap_or(false),
+            no_cache: true,
         },
     )
     .await

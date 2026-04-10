@@ -1,5 +1,5 @@
 import { Component, ChangeDetectionStrategy, input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { DatePipe, TitleCasePipe } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -8,54 +8,69 @@ import { JobInfoConfig } from '../../types';
 @Component({
   selector: 'app-job-info-panel',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatIconModule, TranslateModule],
+  imports: [DatePipe, TitleCasePipe, MatCardModule, MatIconModule, TranslateModule],
   styleUrls: ['./job-info-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <mat-card>
       <mat-card-header>
         <mat-card-title>
-          <mat-icon svgIcon="info"></mat-icon>
+          <mat-icon svgIcon="info" style="color: var(--op-color);"></mat-icon>
           <span>{{ 'detailShared.jobInfo.title' | translate }}</span>
         </mat-card-title>
       </mat-card-header>
 
       <mat-card-content>
-        @if (config().jobId) {
-          <div class="job-details-grid">
-            <div class="job-detail-item">
-              <div class="detail-label">{{ 'detailShared.jobInfo.type' | translate }}</div>
-              <div class="detail-value">{{ config().operationType | titlecase }}</div>
-            </div>
+        <div class="job-details-grid">
+          <div class="job-detail-item">
+            <div class="detail-label">{{ 'detailShared.jobInfo.type' | translate }}</div>
+            <div class="detail-value">{{ config().operationType | titlecase }}</div>
+          </div>
 
+          @if (config().jobId) {
             <div class="job-detail-item">
               <div class="detail-label">{{ 'detailShared.jobInfo.id' | translate }}</div>
-              <div class="detail-value">{{ config().jobId }}</div>
+              <div class="detail-value"># {{ config().jobId }}</div>
             </div>
+          }
 
-            @if (config().startTime) {
-              <div class="job-detail-item">
-                <div class="detail-label">{{ 'detailShared.jobInfo.started' | translate }}</div>
-                <div class="detail-value">{{ config().startTime | date: 'medium' }}</div>
-              </div>
-            }
-
+          @if (config().status) {
             <div class="job-detail-item">
-              <div class="detail-label">{{ 'detailShared.jobInfo.lastOperation' | translate }}</div>
-              <div class="detail-value">{{ config().lastOperationTime || 'N/A' }}</div>
+              <div class="detail-label">{{ 'detailShared.jobInfo.status' | translate }}</div>
+              <div
+                class="detail-value status-value"
+                [class]="'status-' + config().status?.toLowerCase()"
+              >
+                {{ config().status | titlecase }}
+              </div>
             </div>
-          </div>
-        } @else {
-          <div class="empty-state">
-            <mat-icon svgIcon="info"></mat-icon>
-            <span>{{ 'detailShared.jobInfo.emptyTitle' | translate }}</span>
-            <p>{{ 'detailShared.jobInfo.emptyMessage' | translate }}</p>
-          </div>
-        }
+          }
+
+          @if (config().startTime) {
+            <div class="job-detail-item">
+              <div class="detail-label">{{ 'detailShared.jobInfo.started' | translate }}</div>
+              <div class="detail-value">{{ config().startTime | date: 'medium' }}</div>
+            </div>
+          }
+
+          @if (config().endTime) {
+            <div class="job-detail-item">
+              <div class="detail-label">{{ 'detailShared.jobInfo.finished' | translate }}</div>
+              <div class="detail-value">{{ config().endTime | date: 'medium' }}</div>
+            </div>
+          }
+
+          @if (config().duration) {
+            <div class="job-detail-item">
+              <div class="detail-label">{{ 'detailShared.jobInfo.duration' | translate }}</div>
+              <div class="detail-value">{{ config().duration }}</div>
+            </div>
+          }
+        </div>
       </mat-card-content>
     </mat-card>
   `,
 })
 export class JobInfoPanelComponent {
-  config = input.required<JobInfoConfig>();
+  readonly config = input.required<JobInfoConfig>();
 }

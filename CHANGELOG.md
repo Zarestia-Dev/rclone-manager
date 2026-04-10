@@ -35,6 +35,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Core**: Bunch of scheduler tasks fixes.
 - **Core**: Fixed the issue where the app was not able to update rclone on headless mode.
 
+### Know Issues
+- Tauri asset protocols has a bug that causes media streaming to not work properly on linux webview2gtk. So this mean videos and music files not gonna work on linux systems. But it works on headless systems. Track https://github.com/tauri-apps/tauri/issues/3725 for updates on this issue. 
+
 
 ## [v0.2.3] - 2026-03-17
 

@@ -145,6 +145,8 @@
       "type": "İş Türü",
       "id": "İş Kimliği",
       "started": "Başlangıç",
+      "finished": "Bitiş",
+      "duration": "Süre",
       "lastOperation": "Son İşlem",
       "emptyTitle": "Aktif iş yok",
       "emptyMessage": "Bir işlem başladığında iş detayları burada görünecektir"

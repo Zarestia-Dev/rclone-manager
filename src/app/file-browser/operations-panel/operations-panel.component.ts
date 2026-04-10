@@ -177,10 +177,12 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
     }
   }
 
-  async copyError(error: string): Promise<void> {
-    if (!error) return;
+  async copyError(errors: string | string[] | undefined): Promise<void> {
+    if (!errors) return;
+    const text = Array.isArray(errors) ? errors.join('\n') : errors;
+    if (!text) return;
     try {
-      await navigator.clipboard.writeText(error);
+      await navigator.clipboard.writeText(text);
       this.notificationService.showSuccess(this.translate.instant('common.errorCopied'));
     } catch (err) {
       console.error('Failed to copy error:', err);

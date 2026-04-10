@@ -18,10 +18,8 @@ pub fn mark_startup_complete() {
 const API_READY_TIMEOUT_SECS: u64 = 10;
 const MONITORING_INTERVAL_SECS: u64 = if cfg!(test) { 1 } else { 5 };
 
-use crate::utils::types::logs::LogLevel;
-use crate::utils::types::origin::Origin;
 use crate::utils::{
-    app::notification::{Notification, send_notification_typed},
+    app::notification::{NotificationEvent, notify},
     types::{
         core::{RcApiEngine, RcloneState},
         events::{
@@ -210,32 +208,17 @@ fn handle_start_failure(engine: &mut RcApiEngine, app: &AppHandle, e: String) {
         if let Err(err) = app.emit(RCLONE_ENGINE_PATH_ERROR, ()) {
             error!("Failed to emit path_error event: {err}");
         }
-        send_notification_typed(
-            app,
-            Notification::localized(
-                "notification.title.engineError",
-                "notification.body.enginePathError",
-                None,
-                None,
-                Some(LogLevel::Error),
-            ),
-            Some(Origin::System),
-        );
+        notify(app, NotificationEvent::EngineBinaryNotFound);
     } else if engine.password_error {
         debug!("🔑 Emitting RCLONE_ENGINE_PASSWORD_ERROR");
         if let Err(err) = app.emit(RCLONE_ENGINE_PASSWORD_ERROR, ()) {
             error!("Failed to emit password_error event: {err}");
         }
-        send_notification_typed(
+        notify(
             app,
-            Notification::localized(
-                "notification.title.engineError",
-                "notification.body.enginePasswordError",
-                None,
-                None,
-                Some(LogLevel::Error),
-            ),
-            Some(Origin::System),
+            NotificationEvent::EnginePasswordRequired {
+                remote: String::new(),
+            },
         );
     } else {
         debug!("⚠️ Emitting generic RCLONE_ENGINE_ERROR (this should be rare!)");
@@ -323,16 +306,11 @@ pub fn restart_for_config_change(
                     error!("Failed to emit engine restart success event: {e}");
                 }
 
-                send_notification_typed(
+                notify(
                     &app_handle,
-                    Notification::localized(
-                        "notification.title.engineRestarted",
-                        "notification.body.engineRestartedSuccess",
-                        Some(vec![("reason", &change_type)]),
-                        None,
-                        Some(LogLevel::Info),
-                    ),
-                    Some(Origin::System),
+                    NotificationEvent::EngineRestarted {
+                        reason: change_type.clone(),
+                    },
                 );
             }
             Err(e) => {
@@ -343,16 +321,11 @@ pub fn restart_for_config_change(
                     error!("Failed to emit engine restart failure event: {emit_err}");
                 }
 
-                send_notification_typed(
+                notify(
                     &app_handle,
-                    Notification::localized(
-                        "notification.title.engineError",
-                        "notification.body.engineRestartedFailed",
-                        Some(vec![("reason", &change_type)]),
-                        None,
-                        Some(LogLevel::Error),
-                    ),
-                    Some(Origin::System),
+                    NotificationEvent::EngineRestartFailed {
+                        reason: change_type.clone(),
+                    },
                 );
             }
         }

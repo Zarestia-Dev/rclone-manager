@@ -1,5 +1,5 @@
-import { Component, Input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, ChangeDetectionStrategy, computed, input } from '@angular/core';
+import { NgClass } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -10,8 +10,9 @@ import { StatsPanelConfig } from '../../types';
 @Component({
   selector: 'app-stats-panel',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule,
+    NgClass,
     MatCardModule,
     MatIconModule,
     MatProgressBarModule,
@@ -23,20 +24,20 @@ import { StatsPanelConfig } from '../../types';
     <mat-card>
       <mat-card-header>
         <mat-card-title>
-          <mat-icon [svgIcon]="config.icon"></mat-icon>
-          <span>{{ config.title }}</span>
+          <mat-icon [svgIcon]="config().icon" style="color: var(--op-color);"></mat-icon>
+          <span>{{ config().title }}</span>
         </mat-card-title>
       </mat-card-header>
 
       <mat-card-content>
         @if (hasActiveStats()) {
-          <div class="stats-grid" [ngClass]="config.operationClass">
-            @for (stat of config.stats; track stat.label) {
+          <div class="stats-grid" [ngClass]="config().operationClass">
+            @for (stat of config().stats; track stat.label) {
               <div
                 class="stat-item"
                 [class.primary]="stat.isPrimary"
                 [class.has-error]="stat.hasError"
-                [matTooltip]="stat.tooltip"
+                [matTooltip]="stat.tooltip ?? ''"
                 [matTooltipDisabled]="!stat.tooltip"
               >
                 @if (stat.isPrimary) {
@@ -49,8 +50,7 @@ import { StatsPanelConfig } from '../../types';
                       mode="determinate"
                       [value]="stat.progress"
                       class="stat-progress"
-                    >
-                    </mat-progress-bar>
+                    ></mat-progress-bar>
                   }
                 } @else {
                   <div class="stat-value">{{ stat.value }}</div>
@@ -61,7 +61,7 @@ import { StatsPanelConfig } from '../../types';
           </div>
         } @else {
           <div class="empty-state">
-            <mat-icon [svgIcon]="config.icon"></mat-icon>
+            <mat-icon [svgIcon]="config().icon"></mat-icon>
             <span>{{ 'detailShared.stats.emptyTitle' | translate }}</span>
             <p>{{ 'detailShared.stats.emptyMessage' | translate }}</p>
           </div>
@@ -71,32 +71,18 @@ import { StatsPanelConfig } from '../../types';
   `,
 })
 export class StatsPanelComponent {
-  @Input() config!: StatsPanelConfig;
+  readonly config = input.required<StatsPanelConfig>();
 
-  /**
-   * Check if there are any meaningful stats to display.
-   * Returns true if any stat has a non-zero/non-default value.
-   */
-  hasActiveStats(): boolean {
-    if (!this.config?.stats?.length) return false;
+  readonly hasActiveStats = computed(() => {
+    const stats = this.config().stats;
+    if (!stats?.length) return false;
 
-    // Check if any stat has a meaningful value (not 0, not "0 B", not "0/0", etc.)
-    return this.config.stats.some(stat => {
-      const value = stat.value?.toString() || '';
-      // Consider it "active" if it has progress, errors, or non-zero values
-      if (stat.progress && stat.progress > 0) return true;
+    const ZERO_VALUES = new Set(['0', '0 B', '0/0', '-', '0 B / 0 B', '']);
+
+    return stats.some(stat => {
       if (stat.hasError) return true;
-      // Skip if value looks like a zero/empty state
-      if (
-        value === '0' ||
-        value === '0 B' ||
-        value === '0/0' ||
-        value === '-' ||
-        value === '0 B / 0 B'
-      ) {
-        return false;
-      }
-      return true;
+      if (stat.progress && stat.progress > 0) return true;
+      return !ZERO_VALUES.has(String(stat.value ?? ''));
     });
-  }
+  });
 }

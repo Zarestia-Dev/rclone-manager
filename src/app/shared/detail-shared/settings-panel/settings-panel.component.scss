@@ -3,7 +3,7 @@ mat-expansion-panel {
   .settings-count {
     font-size: var(--font-size-xs);
     color: var(--dim-color);
-    background: rgba(var(--primary-color-rgb), 0.1);
+    background: color-mix(in srgb, var(--op-color, var(--primary-color)) 15%, transparent);
     padding: var(--space-xxs) var(--space-xs);
     border-radius: var(--radius-md);
   }

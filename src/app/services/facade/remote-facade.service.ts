@@ -429,7 +429,6 @@ export class RemoteFacadeService extends TauriBaseService {
       ? `${type}/${remoteName}/${profileName}`
       : `${type}/${remoteName}`;
     await this.jobService.stopJobsByGroup(groupName);
-    await this.jobService.deleteStatsGroup(groupName);
   }
 
   async unmountRemote(remoteName: string): Promise<void> {
@@ -663,11 +662,25 @@ export class RemoteFacadeService extends TauriBaseService {
     const profiles = (settings[configKey] as ProfileConfigMap) ?? {};
     const profileNames = Object.keys(profiles);
 
+    // Find the latest job for each profile to show last run data
+    const latestJob = (profile?: string) => {
+      const filtered = jobs.filter(
+        j => j.job_type === type && (profile ? j.profile === profile : true)
+      );
+      return filtered.sort((a, b) => b.jobid - a.jobid)[0];
+    };
+
     return {
       active: running.length > 0,
-      jobId: running[0]?.jobid,
+      jobId: running[0]?.jobid ?? latestJob()?.jobid,
       activeProfiles: buildActiveProfiles(
         running,
+        profileNames,
+        j => j.profile,
+        j => j.jobid
+      ),
+      lastRunProfiles: buildActiveProfiles(
+        jobs.filter(j => j.job_type === type),
         profileNames,
         j => j.profile,
         j => j.jobid

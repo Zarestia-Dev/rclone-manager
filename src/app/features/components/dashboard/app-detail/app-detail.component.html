@@ -51,7 +51,11 @@
     </div>
   }
 
-  <mat-tab-group class="operation-tabs" animationDuration="300ms">
+  <mat-tab-group
+    class="operation-tabs"
+    animationDuration="300ms"
+    [style.--mat-sys-primary]="operationColorCssVar()"
+  >
     <mat-tab>
       <ng-template mat-tab-label>
         <span>{{ 'dashboard.appDetail.monitoring' | translate }}</span>
@@ -162,13 +166,25 @@
             }
           }
 
-          <app-job-info-panel [config]="jobInfoConfig()" class="info-panel"></app-job-info-panel>
+          <app-job-info-panel
+            [config]="jobInfoConfig()"
+            [style.--op-color]="operationColorCssVar()"
+            [style.--mat-sys-primary]="operationColorCssVar()"
+            class="info-panel"
+          ></app-job-info-panel>
 
-          <app-stats-panel [config]="statsConfig()" class="stats-panel"></app-stats-panel>
+          <app-stats-panel
+            [config]="statsConfig()"
+            [style.--op-color]="operationColorCssVar()"
+            [style.--mat-sys-primary]="operationColorCssVar()"
+            class="stats-panel"
+          ></app-stats-panel>
 
           <app-transfer-activity-panel
             [config]="transferActivityConfig()"
+            [style.--op-color]="operationColorCssVar()"
             (resetStats)="onResetStats()"
+            [style.--mat-sys-primary]="operationColorCssVar()"
             class="activity-panel"
           ></app-transfer-activity-panel>
         }
@@ -195,7 +211,10 @@
 
         @if (currentOpMetadata().supportsVfs) {
           <mat-divider></mat-divider>
-          <app-vfs-control-panel [remoteName]="selectedRemote().name"></app-vfs-control-panel>
+          <app-vfs-control-panel
+            [remoteName]="selectedRemote().name"
+            [style.--op-color]="operationColorCssVar()"
+          ></app-vfs-control-panel>
         }
       </div>
     </mat-tab>
@@ -217,7 +236,7 @@
                 <app-settings-panel
                   [config]="getSettingsPanelConfig(section)"
                   (editSettings)="onEditSettings($event)"
-                  [class]="'settings-section ' + operationClass()"
+                  [style.--op-color]="operationColorCssVar()"
                 ></app-settings-panel>
               }
             </div>
@@ -237,7 +256,7 @@
                 <app-settings-panel
                   [config]="getSettingsPanelConfig(section)"
                   (editSettings)="onEditSettings($event)"
-                  [class]="'settings-section ' + operationClass()"
+                  [style.--op-color]="operationColorCssVar()"
                 ></app-settings-panel>
               }
             </div>

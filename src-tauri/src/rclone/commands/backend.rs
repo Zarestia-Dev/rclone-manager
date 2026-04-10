@@ -73,7 +73,7 @@ pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> 
     let backend = backend_manager
         .get(&name)
         .await
-        .ok_or_else(|| format!("Backend '{}' not found", name))?;
+        .ok_or_else(|| format!("Backend '{name}' not found"))?;
 
     // 1. Test connection (Remote only)
     test_remote_connection(&backend, &backend_manager, &state.client).await?;
@@ -542,24 +542,6 @@ async fn revert_to_local(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[tokio::test]
-    #[ignore] // Ignored: requires AppHandle injection
-    async fn test_list_backends() {
-        // let backends = list_backends().await.unwrap();
-        // assert!(!backends.is_empty());
-        //
-        // let local = backends.iter().find(|b| b.name == "Local");
-        // assert!(local.is_some());
-        // assert!(local.unwrap().is_active);
-    }
-
-    #[tokio::test]
-    #[ignore] // Ignored: requires AppHandle injection
-    async fn test_get_active_backend() {
-        // let active = get_active_backend().await.unwrap();
-        // assert_eq!(active, "Local");
-    }
 
     #[test]
     fn test_connection_result() {

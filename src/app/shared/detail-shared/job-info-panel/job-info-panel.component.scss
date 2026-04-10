@@ -1,15 +1,3 @@
-.job-info-panel {
-  background: var(--view-bg-color);
-  border-radius: var(--panel-radius);
-  box-shadow: var(--box-shadow);
-  overflow: hidden;
-  transition: var(--transition-standard);
-
-  &:hover {
-    box-shadow: 0 8px 32px rgba(var(--window-fg-color-rgb), var(--panel-hover-opacity));
-  }
-}
-
 .job-details-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -29,7 +17,6 @@
   font-size: var(--font-size-sm);
   color: var(--dim-color);
   font-weight: 500;
-  text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 4px;
 }
@@ -39,6 +26,23 @@
   color: var(--window-fg-color);
   font-weight: 400;
   word-break: break-word;
+
+  // Job status colour hints
+  &.status-running {
+    color: var(--op-color, var(--primary-color));
+    font-weight: 600;
+  }
+  &.status-stopped {
+    color: var(--dim-color);
+  }
+  &.status-failed {
+    color: var(--warn-color);
+    font-weight: 600;
+  }
+  &.status-completed {
+    color: var(--accent-color);
+    font-weight: 600;
+  }
 }
 
 @media (max-width: 768px) {

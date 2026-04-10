@@ -322,6 +322,12 @@ pub async fn delete_remote(
         _ => {}
     }
 
+    // Clean up all associated job results for this remote
+    app.state::<BackendManager>()
+        .job_cache
+        .delete_jobs_by_remote(&name, Some(&app))
+        .await;
+
     app.emit(REMOTE_CACHE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 

@@ -21,7 +21,6 @@ pub struct FsInfoQuery {
     pub path: Option<String>,
     pub origin: Option<String>,
     pub group: Option<String>,
-    pub no_cache: Option<bool>,
 }
 
 pub async fn get_fs_info_handler(
@@ -29,15 +28,12 @@ pub async fn get_fs_info_handler(
     Query(query): Query<FsInfoQuery>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::queries::get_fs_info;
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
     let info = get_fs_info(
         state.app_handle.clone(),
         query.remote,
         query.path,
         query.origin,
         query.group,
-        query.no_cache,
-        rclone_state,
     )
     .await
     .map_err(anyhow::Error::msg)?;
@@ -50,7 +46,6 @@ pub struct DiskUsageQuery {
     pub path: Option<String>,
     pub origin: Option<String>,
     pub group: Option<String>,
-    pub no_cache: Option<bool>,
 }
 
 pub async fn get_disk_usage_handler(
@@ -58,15 +53,12 @@ pub async fn get_disk_usage_handler(
     Query(query): Query<DiskUsageQuery>,
 ) -> Result<Json<ApiResponse<DiskUsage>>, AppError> {
     use crate::rclone::queries::get_disk_usage;
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
     let usage = get_disk_usage(
         state.app_handle.clone(),
         query.remote,
         query.path,
         query.origin,
         query.group,
-        query.no_cache,
-        rclone_state,
     )
     .await
     .map_err(anyhow::Error::msg)?;
@@ -91,7 +83,6 @@ pub struct GetSizeQuery {
     pub path: Option<String>,
     pub origin: Option<String>,
     pub group: Option<String>,
-    pub no_cache: Option<bool>,
 }
 
 pub async fn get_size_handler(
@@ -99,15 +90,12 @@ pub async fn get_size_handler(
     Query(query): Query<GetSizeQuery>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::queries::filesystem::get_size;
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
     let result = get_size(
         state.app_handle.clone(),
         query.remote,
         query.path,
         query.origin,
         query.group,
-        query.no_cache,
-        rclone_state,
     )
     .await
     .map_err(anyhow::Error::msg)?;
@@ -120,7 +108,6 @@ pub struct GetStatQuery {
     pub path: String,
     pub origin: Option<String>,
     pub group: Option<String>,
-    pub no_cache: Option<bool>,
 }
 
 pub async fn get_stat_handler(
@@ -128,15 +115,12 @@ pub async fn get_stat_handler(
     Query(query): Query<GetStatQuery>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     use crate::rclone::queries::filesystem::get_stat;
-    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
     let result = get_stat(
         state.app_handle.clone(),
         query.remote,
         query.path,
         query.origin,
         query.group,
-        query.no_cache,
-        rclone_state,
     )
     .await
     .map_err(anyhow::Error::msg)?;
@@ -151,7 +135,6 @@ pub struct GetHashsumQuery {
     pub hash_type: String,
     pub origin: Option<String>,
     pub group: Option<String>,
-    pub no_cache: Option<bool>,
 }
 
 pub async fn get_hashsum_handler(
@@ -166,7 +149,6 @@ pub async fn get_hashsum_handler(
         query.hash_type,
         query.origin,
         query.group,
-        query.no_cache,
     )
     .await
     .map_err(anyhow::Error::msg)?;
@@ -185,7 +167,6 @@ pub async fn get_hashsum_file_handler(
         query.hash_type,
         query.origin.clone(),
         query.group.clone(),
-        query.no_cache,
     )
     .await
     .map_err(anyhow::Error::msg)?;
@@ -200,7 +181,6 @@ pub struct GetPublicLinkQuery {
     pub expire: Option<String>,
     pub origin: Option<String>,
     pub group: Option<String>,
-    pub no_cache: Option<bool>,
 }
 
 pub async fn get_public_link_handler(
@@ -220,7 +200,6 @@ pub async fn get_public_link_handler(
         options,
         query.origin,
         query.group,
-        query.no_cache,
     )
     .await
     .map_err(anyhow::Error::msg)?;
@@ -233,7 +212,7 @@ pub struct MkdirBody {
     pub remote: String,
     pub path: String,
     pub source: Option<String>,
-    pub no_cache: Option<bool>,
+    pub group: Option<String>,
 }
 
 pub async fn mkdir_handler(
@@ -246,7 +225,7 @@ pub async fn mkdir_handler(
         body.remote,
         body.path,
         body.source,
-        body.no_cache,
+        body.group,
     )
     .await
     .map_err(anyhow::Error::msg)?;
@@ -259,7 +238,7 @@ pub struct CleanupBody {
     pub remote: String,
     pub path: Option<String>,
     pub source: Option<String>,
-    pub no_cache: Option<bool>,
+    pub group: Option<String>,
 }
 
 pub async fn cleanup_handler(
@@ -272,7 +251,7 @@ pub async fn cleanup_handler(
         body.remote,
         body.path,
         body.source,
-        body.no_cache,
+        body.group,
     )
     .await
     .map_err(anyhow::Error::msg)?;
@@ -287,26 +266,26 @@ pub struct CopyUrlBody {
     pub url_to_copy: String,
     pub auto_filename: bool,
     pub source: Option<String>,
-    pub no_cache: Option<bool>,
+    pub group: Option<String>,
 }
 
 pub async fn copy_url_handler(
     State(state): State<WebServerState>,
     Json(body): Json<CopyUrlBody>,
-) -> Result<Json<ApiResponse<u64>>, AppError> {
+) -> Result<Json<ApiResponse<()>>, AppError> {
     use crate::rclone::commands::filesystem::copy_url;
-    let jobid = copy_url(
+    copy_url(
         state.app_handle.clone(),
         body.remote,
         body.path,
         body.url_to_copy,
         body.auto_filename,
         body.source,
-        body.no_cache,
+        body.group,
     )
     .await
     .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(jobid)))
+    Ok(Json(ApiResponse::success(())))
 }
 
 #[derive(Deserialize)]
@@ -315,24 +294,24 @@ pub struct DeleteFileBody {
     pub remote: String,
     pub path: String,
     pub source: Option<String>,
-    pub no_cache: Option<bool>,
+    pub group: Option<String>,
 }
 
 pub async fn delete_file_handler(
     State(state): State<WebServerState>,
     Json(body): Json<DeleteFileBody>,
-) -> Result<Json<ApiResponse<u64>>, AppError> {
+) -> Result<Json<ApiResponse<()>>, AppError> {
     use crate::rclone::commands::filesystem::delete_file;
-    let jobid = delete_file(
+    delete_file(
         state.app_handle.clone(),
         body.remote,
         body.path,
         body.source,
-        body.no_cache,
+        body.group,
     )
     .await
     .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(jobid)))
+    Ok(Json(ApiResponse::success(())))
 }
 
 #[derive(Deserialize)]
@@ -341,24 +320,24 @@ pub struct PurgeDirectoryBody {
     pub remote: String,
     pub path: String,
     pub source: Option<String>,
-    pub no_cache: Option<bool>,
+    pub group: Option<String>,
 }
 
 pub async fn purge_directory_handler(
     State(state): State<WebServerState>,
     Json(body): Json<PurgeDirectoryBody>,
-) -> Result<Json<ApiResponse<u64>>, AppError> {
+) -> Result<Json<ApiResponse<()>>, AppError> {
     use crate::rclone::commands::filesystem::purge_directory;
-    let jobid = purge_directory(
+    purge_directory(
         state.app_handle.clone(),
         body.remote,
         body.path,
         body.source,
-        body.no_cache,
+        body.group,
     )
     .await
     .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(jobid)))
+    Ok(Json(ApiResponse::success(())))
 }
 
 #[derive(Deserialize)]
@@ -367,24 +346,24 @@ pub struct RemoveEmptyDirsBody {
     pub remote: String,
     pub path: String,
     pub source: Option<String>,
-    pub no_cache: Option<bool>,
+    pub group: Option<String>,
 }
 
 pub async fn remove_empty_dirs_handler(
     State(state): State<WebServerState>,
     Json(body): Json<RemoveEmptyDirsBody>,
-) -> Result<Json<ApiResponse<u64>>, AppError> {
+) -> Result<Json<ApiResponse<()>>, AppError> {
     use crate::rclone::commands::filesystem::remove_empty_dirs;
-    let jobid = remove_empty_dirs(
+    remove_empty_dirs(
         state.app_handle.clone(),
         body.remote,
         body.path,
         body.source,
-        body.no_cache,
+        body.group,
     )
     .await
     .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(jobid)))
+    Ok(Json(ApiResponse::success(())))
 }
 
 #[derive(Deserialize)]
@@ -481,43 +460,43 @@ pub struct RenameBody {
     pub src_path: String,
     pub dst_path: String,
     pub source: Option<String>,
-    pub no_cache: Option<bool>,
+    pub group: Option<String>,
 }
 
 pub async fn rename_file_handler(
     State(state): State<WebServerState>,
     Json(body): Json<RenameBody>,
-) -> Result<Json<ApiResponse<u64>>, AppError> {
+) -> Result<Json<ApiResponse<()>>, AppError> {
     use crate::rclone::commands::filesystem::rename_file;
-    let jobid = rename_file(
+    rename_file(
         state.app_handle.clone(),
         body.remote,
         body.src_path,
         body.dst_path,
         body.source,
-        body.no_cache,
+        body.group,
     )
     .await
     .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(jobid)))
+    Ok(Json(ApiResponse::success(())))
 }
 
 pub async fn rename_dir_handler(
     State(state): State<WebServerState>,
     Json(body): Json<RenameBody>,
-) -> Result<Json<ApiResponse<u64>>, AppError> {
+) -> Result<Json<ApiResponse<()>>, AppError> {
     use crate::rclone::commands::filesystem::rename_dir;
-    let jobid = rename_dir(
+    rename_dir(
         state.app_handle.clone(),
         body.remote,
         body.src_path,
         body.dst_path,
         body.source,
-        body.no_cache,
+        body.group,
     )
     .await
     .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(jobid)))
+    Ok(Json(ApiResponse::success(())))
 }
 
 #[derive(Deserialize)]
@@ -527,7 +506,6 @@ pub struct RemotePathsBody {
     pub options: Option<serde_json::Value>,
     pub origin: Option<String>,
     pub group: Option<String>,
-    pub no_cache: Option<bool>,
 }
 
 pub async fn get_remote_paths_handler(
@@ -547,7 +525,6 @@ pub async fn get_remote_paths_handler(
         options,
         body.origin,
         body.group,
-        body.no_cache,
     )
     .await
     .map_err(anyhow::Error::msg)

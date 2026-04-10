@@ -1,0 +1,176 @@
+<div class="modal-container job-detail-modal">
+  <!-- Header -->
+  <header class="modal-header" data-tauri-drag-region>
+    <mat-icon svgIcon="jobs" class="job-icon"></mat-icon>
+    <p>
+      {{ 'modals.jobDetail.title' | translate: { id: data.jobid } }}
+    </p>
+    <button mat-icon-button (click)="close()" class="close-button">
+      <mat-icon svgIcon="circle-xmark"></mat-icon>
+    </button>
+  </header>
+
+  <div class="modal-body custom-scrollbar">
+    <!-- Section 1: Job Information Grid -->
+    <section class="detail-section">
+      <h3 class="section-title">
+        <mat-icon svgIcon="info"></mat-icon>
+        {{ 'modals.jobDetail.sections.overview' | translate }}
+      </h3>
+      <div class="stats-grid overview-grid">
+        <div class="stat-card">
+          <span class="stat-label">{{ 'detailShared.jobInfo.status' | translate }}</span>
+          <span class="stat-value">{{ getJobStatus(data) | titlecase }}</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">{{ 'modals.jobDetail.fields.type' | translate }}</span>
+          <span class="stat-value">{{ data.job_type | titlecase }}</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">{{ 'modals.jobDetail.fields.profile' | translate }}</span>
+          <span class="stat-value">{{ data.profile || 'default' }}</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">{{ 'modals.jobDetail.fields.started' | translate }}</span>
+          <span class="stat-value">{{ data.start_time | date: 'medium' }}</span>
+        </div>
+        @if (data.end_time) {
+          <div class="stat-card">
+            <span class="stat-label">{{ 'modals.jobDetail.fields.finished' | translate }}</span>
+            <span class="stat-value">{{ data.end_time | date: 'medium' }}</span>
+          </div>
+        }
+        <div class="stat-card">
+          <span class="stat-label">{{ 'modals.jobDetail.fields.duration' | translate }}</span>
+          <span class="stat-value">{{ getJobDurationSeconds(data) | formatTime }}</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Paths -->
+    <section class="detail-section">
+      <h3 class="section-title">
+        <mat-icon svgIcon="folder-open"></mat-icon>
+        {{ 'modals.jobDetail.sections.paths' | translate }}
+      </h3>
+      <div class="path-display-container">
+        <div class="path-item">
+          <span class="path-label">{{ 'modals.jobDetail.fields.source' | translate }}</span>
+          <div class="path-box">
+            <code>{{ data.source }}</code>
+          </div>
+        </div>
+        <div class="path-item">
+          <span class="path-label">{{ 'modals.jobDetail.fields.destination' | translate }}</span>
+          <div class="path-box">
+            <code>{{ data.destination }}</code>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Statistics Grid -->
+    <section class="detail-section">
+      <h3 class="section-title">
+        <mat-icon svgIcon="chart"></mat-icon>
+        {{ 'modals.jobDetail.sections.statistics' | translate }}
+      </h3>
+      @if (data.job_type !== 'mount') {
+        <div class="progress-container">
+          <mat-progress-bar
+            mode="determinate"
+            [value]="getProgress(data)"
+            [color]="getJobStatus(data) === 'running' ? 'primary' : ''"
+          ></mat-progress-bar>
+          <div class="progress-labels">
+            <span class="percentage">{{ getProgress(data) | number: '1.0-1' }}%</span>
+            <span class="bytes">
+              {{ data.stats.bytes | formatFileSize }} / {{ data.stats.totalBytes | formatFileSize }}
+            </span>
+          </div>
+        </div>
+      }
+
+      <div class="stats-grid">
+        <div class="stat-card highlight">
+          <span class="stat-label">{{ 'modals.jobDetail.fields.speed' | translate }}</span>
+          <span class="stat-value">{{ data.stats.speed | formatFileSize }}/s</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">{{ 'modals.jobDetail.fields.eta' | translate }}</span>
+          <span class="stat-value">{{ data.stats.eta | formatEta }}</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">{{ 'modals.jobDetail.fields.files' | translate }}</span>
+          <span class="stat-value"
+            >{{ data.stats.transfers }} / {{ data.stats.totalTransfers }}</span
+          >
+        </div>
+        <div class="stat-card" [class.error]="data.stats.errors > 0">
+          <span class="stat-label">{{ 'modals.jobDetail.fields.errorsCount' | translate }}</span>
+          <span class="stat-value">{{ data.stats.errors }}</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Transfer Activity -->
+    @if (hasActivity) {
+      <section class="detail-section">
+        <h3 class="section-title">
+          <mat-icon svgIcon="transfer-activity"></mat-icon>
+          {{ 'modals.jobDetail.sections.activity' | translate }}
+        </h3>
+        <div class="activity-list">
+          <!-- Active Transfers -->
+          @for (transfer of data.stats.transferring; track transfer.name) {
+            <div class="activity-item active">
+              <div class="item-header">
+                <span class="file-name" [matTooltip]="transfer.name">{{ transfer.name }}</span>
+                <span class="file-speed">{{ transfer.speed | formatFileSize }}/s</span>
+              </div>
+              <mat-progress-bar mode="determinate" [value]="transfer.percentage"></mat-progress-bar>
+            </div>
+          }
+          <!-- Completed Transfers -->
+          @for (transfer of completedTransfers; track transfer.name) {
+            <div class="activity-item completed" [class.failed]="transfer.error">
+              <div class="item-header">
+                <div class="name-section">
+                  @if (transfer.error) {
+                    <mat-icon svgIcon="circle-xmark" class="success-icon error-icon"></mat-icon>
+                  } @else {
+                    <mat-icon svgIcon="circle-check" class="success-icon"></mat-icon>
+                  }
+                  <span class="file-name" [matTooltip]="transfer.name">{{ transfer.name }}</span>
+                </div>
+                <span class="file-size">{{ transfer.size | formatFileSize }}</span>
+              </div>
+              @if (transfer.error) {
+                <div class="error-info">
+                  <span class="error-label">{{ 'common.error' | translate }}</span>
+                  <span class="error-text">{{ transfer.error }}</span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </section>
+    }
+
+    <!-- Section 5: Errors Log -->
+    @if (data.error) {
+      <section class="detail-section">
+        <h3 class="section-title error">
+          <mat-icon svgIcon="circle-exclamation"></mat-icon>
+          {{ 'modals.jobDetail.sections.errors' | translate }}
+        </h3>
+        <div class="error-log">
+          <div class="error-entry">
+            <mat-icon svgIcon="circle-xmark"></mat-icon>
+            <span>{{ data.error }}</span>
+          </div>
+        </div>
+      </section>
+    }
+  </div>
+</div>

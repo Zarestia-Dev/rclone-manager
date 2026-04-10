@@ -16,12 +16,16 @@
           min-height: 24px;
           font-weight: 600;
 
+          // Active transfers — tinted with the current operation colour
           &.active {
-            background: rgba(var(--primary-color-rgb), var(--active-opacity));
+            background: color-mix(in srgb, var(--op-color, var(--primary-color)) 15%, transparent);
+            color: var(--op-color, var(--primary-color));
           }
 
+          // Completed transfers — always accent (positive outcome)
           &.completed {
-            background: rgba(var(--accent-color-rgb), var(--active-opacity));
+            background: color-mix(in srgb, var(--accent-color) 15%, transparent);
+            color: var(--accent-color);
           }
 
           .chip-label {
@@ -48,7 +52,6 @@
       }
     }
 
-    // 2. Single View (No Tabs)
     .single-view-content {
       max-height: 40vh;
       overflow: hidden;

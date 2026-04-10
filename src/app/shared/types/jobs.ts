@@ -15,6 +15,7 @@ export interface TransferFile {
   srcFs: string;
   isError?: boolean;
   isCompleted?: boolean;
+  error?: string;
 }
 
 export interface GlobalStats {
@@ -76,6 +77,7 @@ export interface JobInfo {
   source: string;
   destination: string;
   start_time: string;
+  end_time?: string;
   status: JobStatus;
   error?: string;
   remote_name: string;

@@ -78,11 +78,14 @@ export interface ProfileOption {
 export interface JobInfoConfig {
   operationType: string;
   jobId?: number;
+  status?: string;
   startTime?: Date;
-  lastOperationTime?: string;
+  endTime?: Date;
+  duration?: string;
   profiles?: ProfileOption[];
   selectedProfile?: string;
   showProfileSelector?: boolean;
+  errors?: string[];
 }
 
 // ── Operation Control ───────────────────────────────────────────────────────

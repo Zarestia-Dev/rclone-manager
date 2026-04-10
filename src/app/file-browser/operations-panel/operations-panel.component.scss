@@ -203,15 +203,30 @@
         .error-text {
           display: flex;
           flex-direction: column;
+          flex: 1;
 
           .detail-label {
             color: var(--error-color);
+            margin-bottom: 4px;
           }
 
-          .value {
-            color: var(--error-color);
-            word-break: break-all;
-            margin-top: 4px;
+          .errors-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-height: 120px;
+            overflow-y: auto;
+            padding-right: 4px;
+
+            .error-entry {
+              color: var(--error-color);
+              word-break: break-all;
+              padding: 6px 8px;
+              border-radius: 6px;
+              background: rgba(var(--window-fg-color-rgb), 0.04);
+              font-size: 12px;
+              line-height: 1.4;
+            }
           }
         }
 

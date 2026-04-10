@@ -12,7 +12,7 @@ export class PathService {
     const normalized = p.replace(/\\/g, '/');
     const parts = normalized.split('/');
     const stack: string[] = [];
-    
+
     for (const part of parts) {
       if (part === '' || part === '.') continue;
       if (part === '..') {
@@ -21,7 +21,7 @@ export class PathService {
         stack.push(part);
       }
     }
-    
+
     return (normalized.startsWith('/') ? '/' : '') + stack.join('/');
   }
 

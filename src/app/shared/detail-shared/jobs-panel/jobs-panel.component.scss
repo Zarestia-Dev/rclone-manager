@@ -29,6 +29,8 @@
 
     .job-row {
       border-bottom: 1px solid rgba(var(--window-fg-color-rgb), var(--border-opacity));
+      cursor: pointer;
+      transition: var(--transition-fast);
 
       &:hover {
         background: rgba(var(--primary-color-rgb), var(--background-opacity));
@@ -139,6 +141,15 @@
 
       .action-button {
         transition: var(--transition-fast);
+
+        &.info-button {
+          color: var(--primary-color);
+          background: rgba(var(--primary-color-rgb), var(--active-opacity));
+
+          &:hover {
+            background: rgba(var(--primary-color-rgb), 0.2);
+          }
+        }
 
         &.stop-button {
           color: var(--warn-color);

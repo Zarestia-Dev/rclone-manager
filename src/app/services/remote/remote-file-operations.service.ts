@@ -151,17 +151,12 @@ export class RemoteFileOperationsService extends TauriBaseService {
   /**
    * Delete a single file
    */
-  async deleteFile(
-    remote: string,
-    path: string,
-    source?: Origin,
-    noCache?: boolean
-  ): Promise<number> {
-    return this.invokeCommand<number>('delete_file', {
+  async deleteFile(remote: string, path: string, source?: Origin, group?: string): Promise<void> {
+    return this.invokeCommand<void>('delete_file', {
       remote,
       path,
       source,
-      noCache,
+      group,
     });
   }
 
@@ -172,13 +167,13 @@ export class RemoteFileOperationsService extends TauriBaseService {
     remote: string,
     path: string,
     source?: Origin,
-    noCache?: boolean
-  ): Promise<number> {
-    return this.invokeCommand<number>('purge_directory', {
+    group?: string
+  ): Promise<void> {
+    return this.invokeCommand<void>('purge_directory', {
       remote,
       path,
       source,
-      noCache,
+      group,
     });
   }
 
@@ -189,13 +184,13 @@ export class RemoteFileOperationsService extends TauriBaseService {
     remote: string,
     path: string,
     source?: Origin,
-    noCache?: boolean
-  ): Promise<number> {
-    return this.invokeCommand<number>('remove_empty_dirs', {
+    group?: string
+  ): Promise<void> {
+    return this.invokeCommand<void>('remove_empty_dirs', {
       remote,
       path,
       source,
-      noCache,
+      group,
     });
   }
 
@@ -249,14 +244,14 @@ export class RemoteFileOperationsService extends TauriBaseService {
     srcPath: string,
     dstPath: string,
     source?: Origin,
-    noCache?: boolean
-  ): Promise<number> {
-    return this.invokeCommand<number>('rename_file', {
+    group?: string
+  ): Promise<void> {
+    return this.invokeCommand<void>('rename_file', {
       remote,
       srcPath,
       dstPath,
       source,
-      noCache,
+      group,
     });
   }
 
@@ -268,14 +263,14 @@ export class RemoteFileOperationsService extends TauriBaseService {
     srcPath: string,
     dstPath: string,
     source?: Origin,
-    noCache?: boolean
-  ): Promise<number> {
-    return this.invokeCommand<number>('rename_dir', {
+    group?: string
+  ): Promise<void> {
+    return this.invokeCommand<void>('rename_dir', {
       remote,
       srcPath,
       dstPath,
       source,
-      noCache,
+      group,
     });
   }
 
@@ -400,25 +395,20 @@ export class RemoteFileOperationsService extends TauriBaseService {
     remote: string,
     path: string,
     source?: Origin,
-    noCache?: boolean
-  ): Promise<number> {
-    return this.invokeCommand<number>('mkdir', {
+    group?: string
+  ): Promise<void> {
+    return this.invokeCommand<void>('mkdir', {
       remote,
       path,
       source,
-      noCache,
+      group,
     });
   }
 
   /**
    * Cleanup trashed files on the remote (optional path)
    */
-  async cleanup(
-    remote: string,
-    path?: string,
-    source?: Origin,
-    noCache?: boolean
-  ): Promise<number> {
-    return this.invokeCommand<number>('cleanup', { remote, path, source, noCache });
+  async cleanup(remote: string, path?: string, source?: Origin, group?: string): Promise<void> {
+    return this.invokeCommand<void>('cleanup', { remote, path, source, group });
   }
 }

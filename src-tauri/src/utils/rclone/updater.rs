@@ -13,12 +13,10 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::core::check_binaries::{build_rclone_command, get_rclone_binary_path, read_rclone_path};
 use crate::core::settings::operations::core::save_setting;
 use crate::rclone::queries::get_rclone_info;
-use crate::utils::app::notification::{Notification, send_notification_typed};
+use crate::utils::app::notification::{NotificationEvent, notify};
 use crate::utils::github_client;
 use crate::utils::types::core::EngineState;
 use crate::utils::types::events::RCLONE_ENGINE_UPDATING;
-use crate::utils::types::logs::LogLevel;
-use crate::utils::types::origin::Origin;
 use crate::utils::types::updater::RcloneUpdateMetadata;
 
 // ============================================================================
@@ -124,16 +122,11 @@ pub async fn check_rclone_update(
             log::warn!("Failed to emit rclone update event: {}", e);
         }
 
-        send_notification_typed(
+        notify(
             &app_handle,
-            Notification::localized(
-                "notification.title.rcloneUpdateFound",
-                "notification.body.rcloneUpdateFound",
-                Some(vec![("version", result.latest_version.as_str())]),
-                None,
-                Some(LogLevel::Info),
-            ),
-            Some(Origin::System),
+            NotificationEvent::RcloneUpdateAvailable {
+                version: result.latest_version.clone(),
+            },
         );
     }
 
@@ -265,16 +258,11 @@ pub async fn update_rclone(
         .emit(RCLONE_ENGINE_UPDATING, ())
         .map_err(|e| format!("Failed to emit update event: {e}"))?;
 
-    send_notification_typed(
+    notify(
         &app_handle,
-        Notification::localized(
-            "notification.title.rcloneUpdateStarted",
-            "notification.body.rcloneUpdateStarted",
-            Some(vec![("version", latest_version.as_str())]),
-            None,
-            Some(LogLevel::Info),
-        ),
-        Some(Origin::System),
+        NotificationEvent::RcloneUpdateStarted {
+            version: latest_version.to_string(),
+        },
     );
 
     let update_result = match determine_update_strategy(&current_path, &app_handle).await {
@@ -284,31 +272,21 @@ pub async fn update_rclone(
 
     if let Ok(res) = &update_result {
         if res["success"].as_bool().unwrap_or(false) {
-            send_notification_typed(
+            notify(
                 &app_handle,
-                Notification::localized(
-                    "notification.title.rcloneUpdateComplete",
-                    "notification.body.rcloneUpdateComplete",
-                    Some(vec![("version", latest_version.as_str())]),
-                    None,
-                    Some(LogLevel::Info),
-                ),
-                Some(Origin::System),
+                NotificationEvent::RcloneUpdateComplete {
+                    version: latest_version.to_string(),
+                },
             );
             // The pending_update state is already filled by `check_rclone_update` above;
             // the actual binary swap will occur when the frontend calls `apply_rclone_update`.
         }
     } else if let Err(error_msg) = &update_result {
-        send_notification_typed(
+        notify(
             &app_handle,
-            Notification::localized(
-                "notification.title.rcloneUpdateFailed",
-                "notification.body.rcloneUpdateFailed",
-                Some(vec![("error", error_msg.as_str())]),
-                None,
-                Some(LogLevel::Error),
-            ),
-            Some(Origin::System),
+            NotificationEvent::RcloneUpdateFailed {
+                error: error_msg.clone(),
+            },
         );
     }
 
@@ -322,16 +300,11 @@ pub async fn apply_rclone_update(app_handle: tauri::AppHandle) -> Result<(), Str
     let pending_version = activate_pending_rclone_update(&app_handle).await?;
 
     // send a notification that the update has actually been installed
-    send_notification_typed(
+    notify(
         &app_handle,
-        Notification::localized(
-            "notification.title.rcloneUpdateInstalled",
-            "notification.body.rcloneUpdateInstalled",
-            Some(vec![("version", pending_version.as_str())]),
-            None,
-            Some(LogLevel::Info),
-        ),
-        Some(Origin::System),
+        NotificationEvent::RcloneUpdateInstalled {
+            version: pending_version.to_string(),
+        },
     );
 
     crate::rclone::engine::lifecycle::restart_for_config_change(

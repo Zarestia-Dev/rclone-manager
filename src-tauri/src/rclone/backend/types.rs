@@ -48,8 +48,12 @@ pub struct Backend {
 
 impl Default for Backend {
     fn default() -> Self {
-        Self::new_local("Local")
+        Self::new_local(default_backend_name())
     }
+}
+
+pub fn default_backend_name() -> String {
+    "Local".to_string()
 }
 
 impl Backend {

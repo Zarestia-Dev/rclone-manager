@@ -311,6 +311,13 @@ impl Default for CronScheduler {
 // ============================================================================
 
 pub fn validate_cron_expression(cron_expr: &str) -> Result<(), String> {
+    // Reject six-field expressions from the user — we expect five fields
+    // (minute hour day month weekday). The scheduler adds a seconds field.
+    if cron_expr.split_whitespace().count() == 6 {
+        return Err(
+            crate::localized_error!("backendErrors.scheduler.invalidCron", "error" => "unexpected number of fields"),
+        );
+    }
     croner::parser::CronParser::new().parse(cron_expr).map_err(
         |e| crate::localized_error!("backendErrors.scheduler.invalidCron", "error" => e),
     )?;

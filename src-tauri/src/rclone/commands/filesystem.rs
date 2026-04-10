@@ -15,8 +15,8 @@ pub async fn mkdir(
     remote: String,
     path: String,
     source: Option<String>,
-    no_cache: Option<bool>,
-) -> Result<u64, String> {
+    group: Option<String>,
+) -> Result<(), String> {
     let state = app.state::<RcloneState>();
     debug!("📁 Creating directory: remote={} path={}", remote, path);
 
@@ -29,8 +29,7 @@ pub async fn mkdir(
         "remote": path.clone(),
         "_async": true,
     });
-
-    let (jobid, _, _) = submit_job(
+    let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
         state.client.clone(),
         backend.inject_auth(state.client.clone().post(&url)),
@@ -45,13 +44,16 @@ pub async fn mkdir(
             origin: source
                 .as_deref()
                 .map(crate::utils::types::origin::Origin::parse),
-            group: None,
-            no_cache: no_cache.unwrap_or(false),
+            group,
+            no_cache: true,
+        },
+        crate::rclone::commands::job::SubmitJobOptions {
+            wait_for_completion: true,
         },
     )
     .await?;
 
-    Ok(jobid)
+    Ok(())
 }
 
 #[tauri::command]
@@ -60,8 +62,8 @@ pub async fn cleanup(
     remote: String,
     path: Option<String>,
     source: Option<String>,
-    no_cache: Option<bool>,
-) -> Result<u64, String> {
+    group: Option<String>,
+) -> Result<(), String> {
     let state = app.state::<RcloneState>();
     let path_val = path.as_deref().unwrap_or("");
     debug!(
@@ -81,7 +83,7 @@ pub async fn cleanup(
     }
     payload.insert("_async".to_string(), json!(true));
 
-    let (jobid, _, _) = submit_job(
+    let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
         state.client.clone(),
         backend.inject_auth(state.client.clone().post(&url)),
@@ -96,13 +98,16 @@ pub async fn cleanup(
             origin: source
                 .as_deref()
                 .map(crate::utils::types::origin::Origin::parse),
-            group: None,
-            no_cache: no_cache.unwrap_or(false),
+            group,
+            no_cache: true,
+        },
+        crate::rclone::commands::job::SubmitJobOptions {
+            wait_for_completion: true,
         },
     )
     .await?;
 
-    Ok(jobid)
+    Ok(())
 }
 
 //This command also supports to download files inside remote to. Useful for downloading URLs directly to remote storage.
@@ -114,8 +119,8 @@ pub async fn copy_url(
     url_to_copy: String,
     auto_filename: bool,
     source: Option<String>,
-    no_cache: Option<bool>,
-) -> Result<u64, String> {
+    group: Option<String>,
+) -> Result<(), String> {
     let state = app.state::<RcloneState>();
     debug!(
         "🔗 Copying URL: remote={}, path={}, url={}, auto_filename={}",
@@ -133,8 +138,7 @@ pub async fn copy_url(
         "autoFilename": auto_filename,
         "_async": true,
     });
-
-    let (jobid, _, _) = submit_job(
+    let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
         state.client.clone(),
         backend.inject_auth(state.client.clone().post(&url)),
@@ -149,13 +153,16 @@ pub async fn copy_url(
             origin: source
                 .as_deref()
                 .map(crate::utils::types::origin::Origin::parse),
-            group: None,
-            no_cache: no_cache.unwrap_or(false),
+            group,
+            no_cache: true,
+        },
+        crate::rclone::commands::job::SubmitJobOptions {
+            wait_for_completion: true,
         },
     )
     .await?;
 
-    Ok(jobid)
+    Ok(())
 }
 
 #[tauri::command]
@@ -164,8 +171,8 @@ pub async fn delete_file(
     remote: String,
     path: String,
     source: Option<String>,
-    no_cache: Option<bool>,
-) -> Result<u64, String> {
+    group: Option<String>,
+) -> Result<(), String> {
     let state = app.state::<RcloneState>();
     debug!("🗑️ Deleting file: remote={} path={}", remote, path);
 
@@ -179,7 +186,7 @@ pub async fn delete_file(
         "_async": true,
     });
 
-    let (jobid, _, _) = submit_job(
+    let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
         state.client.clone(),
         backend.inject_auth(state.client.clone().post(&url)),
@@ -194,13 +201,16 @@ pub async fn delete_file(
             origin: source
                 .as_deref()
                 .map(crate::utils::types::origin::Origin::parse),
-            group: None,
-            no_cache: no_cache.unwrap_or(false),
+            group,
+            no_cache: true,
+        },
+        crate::rclone::commands::job::SubmitJobOptions {
+            wait_for_completion: true,
         },
     )
     .await?;
 
-    Ok(jobid)
+    Ok(())
 }
 
 #[tauri::command]
@@ -209,8 +219,8 @@ pub async fn purge_directory(
     remote: String,
     path: String,
     source: Option<String>,
-    no_cache: Option<bool>,
-) -> Result<u64, String> {
+    group: Option<String>,
+) -> Result<(), String> {
     let state = app.state::<RcloneState>();
     debug!("🗑️ Purging directory: remote={} path={}", remote, path);
 
@@ -224,7 +234,7 @@ pub async fn purge_directory(
         "_async": true,
     });
 
-    let (jobid, _, _) = submit_job(
+    let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
         state.client.clone(),
         backend.inject_auth(state.client.clone().post(&url)),
@@ -239,13 +249,16 @@ pub async fn purge_directory(
             origin: source
                 .as_deref()
                 .map(crate::utils::types::origin::Origin::parse),
-            group: None,
-            no_cache: no_cache.unwrap_or(false),
+            group,
+            no_cache: true,
+        },
+        crate::rclone::commands::job::SubmitJobOptions {
+            wait_for_completion: true,
         },
     )
     .await?;
 
-    Ok(jobid)
+    Ok(())
 }
 
 #[tauri::command]
@@ -254,8 +267,8 @@ pub async fn remove_empty_dirs(
     remote: String,
     path: String,
     source: Option<String>,
-    no_cache: Option<bool>,
-) -> Result<u64, String> {
+    group: Option<String>,
+) -> Result<(), String> {
     let state = app.state::<RcloneState>();
     debug!(
         "🧹 Removing empty directories: remote={} path={}",
@@ -273,7 +286,7 @@ pub async fn remove_empty_dirs(
         "_async": true,
     });
 
-    let (jobid, _, _) = submit_job(
+    let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
         state.client.clone(),
         backend.inject_auth(state.client.clone().post(&url)),
@@ -288,13 +301,16 @@ pub async fn remove_empty_dirs(
             origin: source
                 .as_deref()
                 .map(crate::utils::types::origin::Origin::parse),
-            group: None,
-            no_cache: no_cache.unwrap_or(false),
+            group,
+            no_cache: true,
+        },
+        crate::rclone::commands::job::SubmitJobOptions {
+            wait_for_completion: true,
         },
     )
     .await?;
 
-    Ok(jobid)
+    Ok(())
 }
 
 #[tauri::command]
@@ -783,6 +799,7 @@ async fn create_upload_job(
                 source: remote_root.clone(),
                 destination: "Upload batch".to_string(),
                 start_time: Utc::now(),
+                end_time: None,
                 status: crate::utils::types::jobs::JobStatus::Running,
                 error: None,
                 stats: Some(stats),
@@ -793,7 +810,7 @@ async fn create_upload_job(
                 origin: source
                     .as_deref()
                     .map(crate::utils::types::origin::Origin::parse),
-                backend_name: Some(backend_manager.get_active().await.name.clone()),
+                backend_name: backend_manager.get_active().await.name.clone(),
             },
             Some(app),
         )
@@ -1051,8 +1068,8 @@ pub async fn rename_file(
     src_path: String,
     dst_path: String,
     source: Option<String>,
-    no_cache: Option<bool>,
-) -> Result<u64, String> {
+    group: Option<String>,
+) -> Result<(), String> {
     let state = app.state::<RcloneState>();
     debug!(
         "🖊️ Renaming file: remote={} src_path={} dst_path={}",
@@ -1074,7 +1091,7 @@ pub async fn rename_file(
         "_async": true,
     });
 
-    let (jobid, _, _) = submit_job(
+    let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
         state.client.clone(),
         backend.inject_auth(state.client.clone().post(&url)),
@@ -1089,13 +1106,16 @@ pub async fn rename_file(
             origin: source
                 .as_deref()
                 .map(crate::utils::types::origin::Origin::parse),
-            group: None,
-            no_cache: no_cache.unwrap_or(false),
+            group,
+            no_cache: true,
+        },
+        crate::rclone::commands::job::SubmitJobOptions {
+            wait_for_completion: true,
         },
     )
     .await?;
 
-    Ok(jobid)
+    Ok(())
 }
 
 #[tauri::command]
@@ -1105,8 +1125,8 @@ pub async fn rename_dir(
     src_path: String,
     dst_path: String,
     source: Option<String>,
-    no_cache: Option<bool>,
-) -> Result<u64, String> {
+    group: Option<String>,
+) -> Result<(), String> {
     let state = app.state::<RcloneState>();
     debug!(
         "🖊️ Renaming directory: remote={} src_path={} dst_path={}",
@@ -1129,7 +1149,7 @@ pub async fn rename_dir(
         "_async": true,
     });
 
-    let (jobid, _, _) = submit_job(
+    let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
         state.client.clone(),
         backend.inject_auth(state.client.clone().post(&url)),
@@ -1144,11 +1164,14 @@ pub async fn rename_dir(
             origin: source
                 .as_deref()
                 .map(crate::utils::types::origin::Origin::parse),
-            group: None,
-            no_cache: no_cache.unwrap_or(false),
+            group,
+            no_cache: true,
+        },
+        crate::rclone::commands::job::SubmitJobOptions {
+            wait_for_completion: true,
         },
     )
     .await?;
 
-    Ok(jobid)
+    Ok(())
 }

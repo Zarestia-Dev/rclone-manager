@@ -1,5 +1,4 @@
 use serde_json::{Map, Value, json};
-use std::error::Error;
 use std::time::{Duration, Instant};
 
 use once_cell::sync::Lazy;
@@ -31,7 +30,7 @@ static OPTIONS_CACHE: Lazy<RwLock<Option<OptionsCacheEntry>>> = Lazy::new(|| RwL
 async fn fetch_all_options_info(
     client: &reqwest::Client,
     backend_manager: &BackendManager,
-) -> Result<Value, Box<dyn Error + Send + Sync>> {
+) -> Result<Value, String> {
     let backend = backend_manager.get_active().await;
     let json = backend
         .post_json(client, options::INFO, Some(&json!({})))
@@ -43,7 +42,7 @@ async fn fetch_all_options_info(
 async fn fetch_current_options(
     client: &reqwest::Client,
     backend_manager: &BackendManager,
-) -> Result<Value, Box<dyn Error + Send + Sync>> {
+) -> Result<Value, String> {
     let backend = backend_manager.get_active().await;
     let json = backend
         .post_json(client, options::GET, Some(&json!({})))
@@ -55,7 +54,7 @@ async fn fetch_current_options(
 async fn fetch_option_blocks(
     client: &reqwest::Client,
     backend_manager: &BackendManager,
-) -> Result<Value, Box<dyn Error + Send + Sync>> {
+) -> Result<Value, String> {
     let backend = backend_manager.get_active().await;
     let json = backend
         .post_json(client, options::BLOCKS, Some(&json!({})))
@@ -66,15 +65,13 @@ async fn fetch_option_blocks(
 
 // --- DATA TRANSFORMATION LOGIC ---
 fn merge_options(options_info: &mut Value, current_options: &Value) {
-    let info_map = match options_info.as_object_mut() {
-        Some(map) => map,
-        None => return,
+    let Some(info_map) = options_info.as_object_mut() else {
+        return;
     };
 
     for (block_name, options_array) in info_map {
-        let options = match options_array.as_array_mut() {
-            Some(opts) => opts,
-            None => continue,
+        let Some(options) = options_array.as_array_mut() else {
+            continue;
         };
 
         for option in options {
@@ -117,9 +114,8 @@ fn merge_options(options_info: &mut Value, current_options: &Value) {
 fn group_options(merged_info: &Value) -> Value {
     let mut final_grouped_data = Map::new();
 
-    let info_map = match merged_info.as_object() {
-        Some(map) => map,
-        None => return Value::Object(final_grouped_data),
+    let Some(info_map) = merged_info.as_object() else {
+        return Value::Object(final_grouped_data);
     };
 
     for (block_name, options_array) in info_map {
@@ -156,12 +152,12 @@ fn group_options(merged_info: &Value) -> Value {
             }
 
             // Add to the appropriate group within this block
-            block_groups
+            let entry = block_groups
                 .entry(group_name)
-                .or_insert_with(|| Value::Array(vec![]))
-                .as_array_mut()
-                .unwrap()
-                .push(new_option);
+                .or_insert_with(|| Value::Array(vec![]));
+            if let Some(arr) = entry.as_array_mut() {
+                arr.push(new_option);
+            }
         }
 
         // Insert the grouped options for this block
@@ -190,8 +186,7 @@ pub async fn get_all_options_with_values(app: AppHandle) -> Result<Value, String
     let (mut options_info, current_options) = try_join!(
         fetch_all_options_info(&state.client, &backend_manager),
         fetch_current_options(&state.client, &backend_manager)
-    )
-    .map_err(|e| e.to_string())?;
+    )?;
 
     merge_options(&mut options_info, &current_options);
 
@@ -218,9 +213,7 @@ pub async fn get_grouped_options_with_values(app: AppHandle) -> Result<Value, St
 #[command]
 pub async fn get_option_blocks(app: AppHandle) -> Result<Value, String> {
     let backend_manager = app.state::<BackendManager>();
-    fetch_option_blocks(&app.state::<RcloneState>().client, &backend_manager)
-        .await
-        .map_err(|e| e.to_string())
+    fetch_option_blocks(&app.state::<RcloneState>().client, &backend_manager).await
 }
 
 fn get_flags_by_category_internal(

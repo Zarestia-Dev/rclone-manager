@@ -14,17 +14,25 @@
     transition: var(--transition-standard);
 
     &.primary {
-      background: rgba(var(--primary-color-rgb), var(--background-opacity));
-      border-color: rgba(var(--primary-color-rgb), var(--active-opacity));
+      background: color-mix(in srgb, var(--op-color, var(--primary-color)) 10%, transparent);
 
       .stat-value {
-        color: var(--primary-color);
+        color: var(--op-color, var(--primary-color));
+      }
+
+      // Colour the MDC progress bar track to match the operation
+      mat-progress-bar {
+        --mdc-linear-progress-active-indicator-color: var(--op-color, var(--primary-color));
+        --mdc-linear-progress-track-color: color-mix(
+          in srgb,
+          var(--op-color, var(--primary-color)) 20%,
+          transparent
+        );
       }
     }
 
     &.has-error {
-      background: rgba(var(--warn-color-rgb), var(--background-opacity));
-      border-color: rgba(var(--warn-color-rgb), var(--active-opacity));
+      background: color-mix(in srgb, var(--warn-color) 10%, transparent);
 
       .stat-value {
         color: var(--warn-color);

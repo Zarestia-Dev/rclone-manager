@@ -35,7 +35,10 @@ interface SettingEntry {
     <mat-expansion-panel>
       <mat-expansion-panel-header>
         <mat-panel-title>
-          <mat-icon [svgIcon]="cfg.section.icon" class="panel-icon"></mat-icon>
+          <mat-icon
+            [svgIcon]="cfg.section.icon"
+            style="color: var(--op-color, var(--primary-color));"
+          ></mat-icon>
           <span>{{ cfg.section.title | translate }}</span>
         </mat-panel-title>
         <mat-panel-description>

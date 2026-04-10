@@ -1,286 +1,878 @@
-use serde_json::Value;
+//! Typed notification system.
+//!
+//! # Usage
+//!
+//! ```rust,ignore
+//! notify(&app, NotificationEvent::JobCompleted {
+//!     remote: "gdrive:".into(),
+//!     profile: Some("backup".into()),
+//!     origin: Origin::Ui,
+//! });
+//! ```
+//!
+//! # Design
+//!
+//! The single entry point is [`notify`]. Suppression policy, i18n translation,
+//! log emission, and OS delivery are all handled internally.
+//!
+//! **Suppression is derived from the event variant**, not from the caller.
+//! This means a [`NotificationEvent::EnginePasswordRequired`] can never be
+//! silenced by a careless `origin` argument, and a scheduler-triggered job
+//! completion is always surfaced to the user even if the app is focused.
+//!
+//! | Event family                      | Suppressed when focused? |
+//! |-----------------------------------|--------------------------|
+//! | Engine errors                     | Never                    |
+//! | Job / mount **failures**          | Never                    |
+//! | App / rclone updates              | Never                    |
+//! | Scheduler-triggered completions   | Never                    |
+//! | User-initiated op completions     | Yes — user is watching   |
+//! | System-triggered op completions   | Never                    |
+
+use log::{debug, error, info, trace, warn};
 use tauri::Manager;
 use tauri_plugin_notification::NotificationExt;
 
-use crate::utils::types::logs::LogLevel;
-use crate::utils::types::origin::Origin;
+use crate::utils::types::{logs::LogLevel, origin::Origin};
 
-/// Small, typed notification model to replace the old stringly API.
-/// Keep this minimal and explicit so callers cannot accidentally pass JSON strings.
-#[derive(Debug, Clone)]
-pub enum Text {
-    Localized {
-        key: String,
-        params: Option<std::collections::HashMap<String, String>>,
+// ---------------------------------------------------------------------------
+// Public event type
+// ---------------------------------------------------------------------------
+
+/// Every OS notification the application can emit.
+///
+/// Each variant is self-contained: it carries all the data needed to render
+/// the notification text and determine whether to suppress the toast.
+/// Add a new variant here to extend the system — suppression policy and
+/// i18n keys are defined alongside the variant in the `impl` block below.
+#[derive(Debug)]
+pub enum NotificationEvent {
+    // -- Job lifecycle -------------------------------------------------------
+    /// A transfer/operation job completed successfully.
+    JobCompleted {
+        remote: String,
+        profile: Option<String>,
+        /// Where the job was initiated. Drives suppression: UI-initiated
+        /// completions are suppressed while the app is focused.
+        origin: Origin,
     },
-    Raw(String),
+
+    /// A transfer/operation job started.
+    JobStarted {
+        remote: String,
+        profile: Option<String>,
+        operation: String,
+        origin: Origin,
+    },
+
+    /// A job ended with an error.
+    /// Always shown — errors are never suppressed regardless of origin.
+    JobFailed {
+        remote: String,
+        profile: Option<String>,
+        error: String,
+        /// Kept for auditing / log context, does not affect suppression.
+        origin: Origin,
+    },
+
+    /// The user manually stopped a running job.
+    JobStopped {
+        remote: String,
+        profile: Option<String>,
+        origin: Origin,
+    },
+
+    // -- Serve lifecycle -----------------------------------------------------
+    /// A serve instance started successfully.
+    ServeStarted {
+        remote: String,
+        profile: Option<String>,
+        addr: String,
+        origin: Origin,
+    },
+
+    /// A serve operation failed to start. Always shown.
+    ServeFailed {
+        remote: String,
+        profile: Option<String>,
+        error: String,
+        origin: Origin,
+    },
+
+    /// A serve instance stopped successfully.
+    ServeStopped {
+        remote: String,
+        profile: Option<String>,
+        origin: Origin,
+    },
+
+    /// `stop_all_serves` was called but there were no active serves.
+    NothingToDoServes,
+
+    /// `stop_all_serves` completed and there were active serves.
+    AllServesStopped,
+
+    /// `stop_all_serves` failed.
+    StopAllServesFailed {
+        error: String,
+    },
+
+    // -- Mount lifecycle -----------------------------------------------------
+    MountSucceeded {
+        remote: String,
+        profile: Option<String>,
+        mount_point: String,
+        origin: Origin,
+    },
+
+    /// Mount failed. Always shown — the user needs to know.
+    MountFailed {
+        mount_point: String,
+        error: String,
+    },
+
+    UnmountSucceeded {
+        remote: String,
+        /// Empty string if no named profile was used.
+        profile: String,
+        origin: Origin,
+    },
+
+    /// `unmount_all` completed and there were mounted remotes.
+    AllUnmounted,
+
+    /// `unmount_all` was called but nothing was mounted.
+    NothingToUnmount,
+
+    /// `stop_all_jobs` was called but there were no active jobs.
+    NothingToDoJobs,
+
+    /// `stop_all_jobs` completed and many jobs were stopped.
+    AllJobsStopped {
+        count: String,
+    },
+
+    // -- Engine / connectivity issues ----------------------------------------
+    // These are always critical: never suppress.
+    /// The remote requires a password that has not been supplied.
+    EnginePasswordRequired {
+        remote: String,
+    },
+
+    /// The rclone binary was not found on the system.
+    EngineBinaryNotFound,
+
+    /// The rclone daemon could not be reached or failed to start.
+    EngineConnectionFailed {
+        reason: String,
+    },
+    /// The engine was restarted due to a configuration change.
+    EngineRestarted {
+        reason: String,
+    },
+
+    /// Engine restart failed.
+    EngineRestartFailed {
+        reason: String,
+    },
+
+    // -- Update alerts -------------------------------------------------------
+    AppUpdateAvailable {
+        version: String,
+    },
+    AppUpdateStarted {
+        version: String,
+    },
+    AppUpdateComplete {
+        version: String,
+    },
+    AppUpdateFailed {
+        error: String,
+    },
+    AppUpdateInstalled {
+        version: String,
+    },
+    RcloneUpdateAvailable {
+        version: String,
+    },
+    RcloneUpdateStarted {
+        version: String,
+    },
+    RcloneUpdateComplete {
+        version: String,
+    },
+    RcloneUpdateFailed {
+        error: String,
+    },
+    RcloneUpdateInstalled {
+        version: String,
+    },
+    /// Another instance attempted to run while this one is active.
+    AlreadyRunning,
+
+    // -- Scheduled tasks (always background-triggered) -----------------------
+    ScheduledTaskCompleted {
+        task_name: String,
+    },
+    ScheduledTaskFailed {
+        task_name: String,
+        error: String,
+    },
 }
 
-#[derive(Debug, Clone)]
-pub struct Notification {
-    pub title: Text,
-    pub body: Text,
-    pub level: Option<LogLevel>,
-    pub meta: Option<Value>,
+// ---------------------------------------------------------------------------
+// Suppression policy (internal)
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Suppression {
+    /// Always deliver the OS toast.
+    Never,
+    /// Omit the OS toast while the main window is focused.
+    /// The user is already watching — a popup would be noise.
+    WhenFocused,
 }
 
-impl Notification {
-    /// Helper to create a localized notification from small param tuples.
-    /// Keep calling sites readable without reintroducing string heuristics.
-    pub fn localized(
-        title_key: &str,
-        body_key: &str,
-        params: Option<Vec<(&str, &str)>>,
-        meta: Option<Value>,
-        level: Option<LogLevel>,
-    ) -> Self {
-        let map = params.map(|v| {
-            v.into_iter()
-                .map(|(k, val)| (k.to_string(), val.to_string()))
-                .collect()
-        });
-        Notification {
-            title: Text::Localized {
-                key: title_key.to_string(),
-                params: map.clone(),
-            },
-            body: Text::Localized {
-                key: body_key.to_string(),
-                params: map,
-            },
-            level,
-            meta,
-        }
-    }
+impl NotificationEvent {
+    fn suppression(&self) -> Suppression {
+        match self {
+            // Critical — never silent.
+            Self::EnginePasswordRequired { .. }
+            | Self::EngineBinaryNotFound
+            | Self::EngineConnectionFailed { .. } => Suppression::Never,
 
-    pub fn raw(title: &str, body: &str) -> Self {
-        Notification {
-            title: Text::Raw(title.to_string()),
-            body: Text::Raw(body.to_string()),
-            level: None,
-            meta: None,
-        }
-    }
-}
+            // Failures are always surfaced regardless of who triggered the job.
+            Self::JobFailed { .. }
+            | Self::MountFailed { .. }
+            | Self::ServeFailed { .. }
+            | Self::StopAllServesFailed { .. }
+            | Self::EngineRestarted { .. }
+            | Self::EngineRestartFailed { .. } => Suppression::Never,
 
-/// Translate a `Text` value into a display string.
-fn translate_text_value(text: &Text) -> String {
-    match text {
-        Text::Raw(s) => s.clone(),
-        Text::Localized { key, params } => {
-            if let Some(map) = params {
-                // Convert HashMap<String,String> -> Vec<(&str,&str)>
-                let param_refs: Vec<(&str, &str)> =
-                    map.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
-                let translated = crate::utils::i18n::t_with_params(key, &param_refs);
-                if translated != *key {
-                    log::debug!("🔔 Translated '{}' with params to '{}'", key, translated);
-                    return translated;
-                }
-            } else {
-                let translated = crate::utils::i18n::t(key);
-                if translated != *key {
-                    log::debug!("🔔 Translated key '{}' => '{}'", key, translated);
-                    return translated;
+            // Updates: always surface; the in-app indicator may be easy to miss.
+            Self::AppUpdateAvailable { .. }
+            | Self::AppUpdateStarted { .. }
+            | Self::AppUpdateComplete { .. }
+            | Self::AppUpdateFailed { .. }
+            | Self::AppUpdateInstalled { .. }
+            | Self::RcloneUpdateAvailable { .. }
+            | Self::RcloneUpdateStarted { .. }
+            | Self::RcloneUpdateComplete { .. }
+            | Self::RcloneUpdateFailed { .. }
+            | Self::RcloneUpdateInstalled { .. } => Suppression::Never,
+
+            // Scheduled tasks are purely background events — the user had no
+            // visual indication the task was running, so always show the result.
+            Self::ScheduledTaskCompleted { .. } | Self::ScheduledTaskFailed { .. } => {
+                Suppression::Never
+            }
+
+            // User-initiated ops: if the user clicked something and stayed in
+            // the app, they can see the result. If they walked away, show the
+            // toast. Scheduler/System origins bypass the suppression entirely.
+            Self::JobCompleted { origin, .. }
+            | Self::JobStarted { origin, .. }
+            | Self::JobStopped { origin, .. }
+            | Self::MountSucceeded { origin, .. }
+            | Self::UnmountSucceeded { origin, .. }
+            | Self::ServeStarted { origin, .. }
+            | Self::ServeStopped { origin, .. } => {
+                if origin.is_user_facing() {
+                    Suppression::WhenFocused
+                } else {
+                    Suppression::Never
                 }
             }
-            // Fallback to key if translation not found
-            key.clone()
+
+            // Bulk-unmount / stop-serves feedback: suppress only when focused
+            // (the user just clicked the button and can see the result in the UI).
+            Self::AllUnmounted
+            | Self::NothingToUnmount
+            | Self::AllServesStopped
+            | Self::NothingToDoServes
+            | Self::AllJobsStopped { .. }
+            | Self::NothingToDoJobs
+            | Self::AlreadyRunning => Suppression::WhenFocused,
         }
     }
 }
 
-/// Origins that should be suppressed when the app is focused.
-/// Centralized so the list is easy to update / test.
-fn origin_is_suppressible(origin: Option<&Origin>) -> bool {
-    matches!(
-        origin,
-        Some(Origin::Ui)
-            | Some(Origin::Internal)
-            | Some(Origin::Dashboard)
-            | Some(Origin::Nautilus)
-    )
+// ---------------------------------------------------------------------------
+// Rendering: i18n translation + log level
+// ---------------------------------------------------------------------------
+
+struct RenderedContent {
+    title: String,
+    body: String,
+    level: LogLevel,
 }
 
-/// Pure helper: returns true when a notification should be suppressed given
-/// whether the app is focused and the notification origin. Extracted to make
-/// suppression logic testable without requiring an `AppHandle`.
-pub(crate) fn should_suppress(is_focused: bool, origin: Option<&Origin>) -> bool {
-    is_focused && origin_is_suppressible(origin)
+impl NotificationEvent {
+    /// Translate the event into display strings and determine the log level.
+    fn render(&self) -> RenderedContent {
+        use crate::utils::i18n::{t, t_with_params};
+
+        match self {
+            Self::JobCompleted {
+                remote, profile, ..
+            } => RenderedContent {
+                title: t("notification.title.jobCompleted"),
+                body: t_with_params(
+                    "notification.body.jobCompleted",
+                    &[
+                        ("remote", remote),
+                        ("profile", profile.as_deref().unwrap_or("")),
+                    ],
+                ),
+                level: LogLevel::Info,
+            },
+
+            Self::JobStarted {
+                remote,
+                profile,
+                operation,
+                ..
+            } => RenderedContent {
+                title: t("notification.title.operationStarted"),
+                body: t_with_params(
+                    "notification.body.started",
+                    &[
+                        ("operation", operation),
+                        ("remote", remote),
+                        ("profile", profile.as_deref().unwrap_or("")),
+                    ],
+                ),
+                level: LogLevel::Info,
+            },
+
+            Self::JobFailed {
+                remote,
+                profile,
+                error,
+                ..
+            } => RenderedContent {
+                title: t("notification.title.jobFailed"),
+                body: t_with_params(
+                    "notification.body.jobFailed",
+                    &[
+                        ("remote", remote),
+                        ("profile", profile.as_deref().unwrap_or("")),
+                        ("error", error),
+                    ],
+                ),
+                level: LogLevel::Error,
+            },
+
+            Self::JobStopped {
+                remote, profile, ..
+            } => RenderedContent {
+                title: t("notification.title.jobStopped"),
+                body: t_with_params(
+                    "notification.body.jobStopped",
+                    &[
+                        ("remote", remote),
+                        ("profile", profile.as_deref().unwrap_or("")),
+                    ],
+                ),
+                level: LogLevel::Info,
+            },
+
+            Self::ServeStarted {
+                remote,
+                profile,
+                addr,
+                ..
+            } => RenderedContent {
+                title: t("notification.title.serveStarted"),
+                body: t_with_params(
+                    "notification.body.serveStarted",
+                    &[
+                        ("remote", remote),
+                        ("profile", profile.as_deref().unwrap_or("")),
+                        ("addr", addr),
+                    ],
+                ),
+                level: LogLevel::Info,
+            },
+
+            Self::ServeFailed {
+                remote,
+                profile,
+                error,
+                ..
+            } => RenderedContent {
+                title: t("notification.title.serveFailed"),
+                body: t_with_params(
+                    "notification.body.serveFailed",
+                    &[
+                        ("remote", remote),
+                        ("profile", profile.as_deref().unwrap_or("")),
+                        ("error", error),
+                    ],
+                ),
+                level: LogLevel::Error,
+            },
+
+            Self::ServeStopped {
+                remote, profile, ..
+            } => RenderedContent {
+                title: t("notification.title.serveStopped"),
+                body: t_with_params(
+                    "notification.body.serveStopped",
+                    &[
+                        ("remote", remote),
+                        ("profile", profile.as_deref().unwrap_or("")),
+                    ],
+                ),
+                level: LogLevel::Info,
+            },
+
+            Self::MountSucceeded {
+                remote,
+                profile,
+                mount_point,
+                ..
+            } => RenderedContent {
+                title: t("notification.title.mountSuccess"),
+                body: t_with_params(
+                    "notification.body.mounted",
+                    &[
+                        ("remote", remote),
+                        ("profile", profile.as_deref().unwrap_or("")),
+                        ("mountPoint", mount_point),
+                    ],
+                ),
+                level: LogLevel::Info,
+            },
+
+            Self::MountFailed { mount_point, error } => RenderedContent {
+                title: t("notification.title.mountFailed"),
+                body: t_with_params(
+                    "notification.body.mountFailed",
+                    &[("mountPoint", mount_point), ("error", error)],
+                ),
+                level: LogLevel::Error,
+            },
+
+            Self::UnmountSucceeded {
+                remote, profile, ..
+            } => RenderedContent {
+                title: t("notification.title.unmountSuccess"),
+                body: t_with_params(
+                    "notification.body.unmounted",
+                    &[("remote", remote), ("profile", profile)],
+                ),
+                level: LogLevel::Info,
+            },
+
+            Self::AllUnmounted => RenderedContent {
+                title: t("notification.title.unmountSuccess"),
+                body: t("notification.body.allRemotesUnmounted"),
+                level: LogLevel::Info,
+            },
+
+            Self::AllServesStopped => RenderedContent {
+                title: t("notification.title.allServesStopped"),
+                body: t("notification.body.allServesStopped"),
+                level: LogLevel::Info,
+            },
+
+            Self::AlreadyRunning => RenderedContent {
+                title: t("notification.title.alreadyRunning"),
+                body: t("notification.body.alreadyRunning"),
+                level: LogLevel::Info,
+            },
+
+            Self::NothingToUnmount => RenderedContent {
+                title: t("notification.title.nothingToDo"),
+                body: t("notification.body.nothingToDoMounts"),
+                level: LogLevel::Info,
+            },
+
+            Self::NothingToDoServes => RenderedContent {
+                title: t("notification.title.nothingToDo"),
+                body: t("notification.body.nothingToDoServes"),
+                level: LogLevel::Info,
+            },
+            Self::NothingToDoJobs => RenderedContent {
+                title: t("notification.title.nothingToDo"),
+                body: t("notification.body.nothingToDoJobs"),
+                level: LogLevel::Info,
+            },
+            Self::AllJobsStopped { count } => RenderedContent {
+                title: t("notification.title.allJobsStopped"),
+                body: t_with_params("notification.body.allJobsStopped", &[("count", count)]),
+                level: LogLevel::Info,
+            },
+
+            Self::EnginePasswordRequired { remote } => RenderedContent {
+                title: t("notification.title.engineError"),
+                body: t_with_params("notification.body.passwordRequired", &[("remote", remote)]),
+                level: LogLevel::Error,
+            },
+
+            Self::EngineBinaryNotFound => RenderedContent {
+                title: t("notification.title.engineError"),
+                body: t("notification.body.binaryNotFound"),
+                level: LogLevel::Error,
+            },
+
+            Self::EngineConnectionFailed { reason } => RenderedContent {
+                title: t("notification.title.engineError"),
+                body: t_with_params("notification.body.connectionFailed", &[("reason", reason)]),
+                level: LogLevel::Error,
+            },
+
+            Self::EngineRestarted { reason } => RenderedContent {
+                title: t("notification.title.engineRestarted"),
+                body: t_with_params(
+                    "notification.body.engineRestartedSuccess",
+                    &[("reason", reason)],
+                ),
+                level: LogLevel::Info,
+            },
+
+            Self::EngineRestartFailed { reason } => RenderedContent {
+                title: t("notification.title.engineError"),
+                body: t_with_params(
+                    "notification.body.engineRestartedFailed",
+                    &[("reason", reason)],
+                ),
+                level: LogLevel::Error,
+            },
+
+            Self::StopAllServesFailed { error } => RenderedContent {
+                title: t("notification.title.stopAllServesFailed"),
+                body: t_with_params("notification.body.stopAllServesFailed", &[("error", error)]),
+                level: LogLevel::Error,
+            },
+
+            Self::AppUpdateAvailable { version } => RenderedContent {
+                title: t("notification.title.appUpdate"),
+                body: t_with_params("notification.body.appUpdate", &[("version", version)]),
+                level: LogLevel::Info,
+            },
+
+            Self::AppUpdateStarted { version } => RenderedContent {
+                title: t("notification.title.updateStarted"),
+                body: t_with_params("notification.body.updateStarted", &[("version", version)]),
+                level: LogLevel::Info,
+            },
+
+            Self::AppUpdateComplete { version } => RenderedContent {
+                title: t("notification.title.updateComplete"),
+                body: t_with_params("notification.body.updateComplete", &[("version", version)]),
+                level: LogLevel::Info,
+            },
+
+            Self::AppUpdateFailed { error } => RenderedContent {
+                title: t("notification.title.updateFailed"),
+                body: t_with_params("notification.body.updateFailed", &[("error", error)]),
+                level: LogLevel::Error,
+            },
+
+            Self::AppUpdateInstalled { version } => RenderedContent {
+                title: t("notification.title.updateInstalled"),
+                body: t_with_params("notification.body.updateInstalled", &[("version", version)]),
+                level: LogLevel::Info,
+            },
+
+            Self::RcloneUpdateAvailable { version } => RenderedContent {
+                title: t("notification.title.rcloneUpdate"),
+                body: t_with_params("notification.body.rcloneUpdate", &[("version", version)]),
+                level: LogLevel::Info,
+            },
+
+            Self::RcloneUpdateStarted { version } => RenderedContent {
+                title: t("notification.title.rcloneUpdateStarted"),
+                body: t_with_params(
+                    "notification.body.rcloneUpdateStarted",
+                    &[("version", version)],
+                ),
+                level: LogLevel::Info,
+            },
+
+            Self::RcloneUpdateComplete { version } => RenderedContent {
+                title: t("notification.title.rcloneUpdateComplete"),
+                body: t_with_params(
+                    "notification.body.rcloneUpdateComplete",
+                    &[("version", version)],
+                ),
+                level: LogLevel::Info,
+            },
+
+            Self::RcloneUpdateFailed { error } => RenderedContent {
+                title: t("notification.title.rcloneUpdateFailed"),
+                body: t_with_params("notification.body.rcloneUpdateFailed", &[("error", error)]),
+                level: LogLevel::Error,
+            },
+
+            Self::RcloneUpdateInstalled { version } => RenderedContent {
+                title: t("notification.title.rcloneUpdateInstalled"),
+                body: t_with_params(
+                    "notification.body.rcloneUpdateInstalled",
+                    &[("version", version)],
+                ),
+                level: LogLevel::Info,
+            },
+
+            Self::ScheduledTaskCompleted { task_name } => RenderedContent {
+                title: t("notification.title.scheduledTaskCompleted"),
+                body: t_with_params(
+                    "notification.body.scheduledTaskCompleted",
+                    &[("task", task_name)],
+                ),
+                level: LogLevel::Info,
+            },
+
+            Self::ScheduledTaskFailed { task_name, error } => RenderedContent {
+                title: t("notification.title.scheduledTaskFailed"),
+                body: t_with_params(
+                    "notification.body.scheduledTaskFailed",
+                    &[("task", task_name), ("error", error)],
+                ),
+                level: LogLevel::Error,
+            },
+        }
+    }
 }
 
-/// Send a typed notification with automatic translation and suppression rules.
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/// Emit a notification.
 ///
-/// Replaces the old string-based API; callers must pass `Notification`.
-pub fn send_notification_typed(
-    app: &tauri::AppHandle,
-    notification: Notification,
-    origin: Option<Origin>,
-) {
+/// Translates the event, emits a structured log entry, checks suppression,
+/// and delivers the OS toast if appropriate. This is the only notification
+/// function call sites should use — the old `send_notification_typed` is gone.
+pub fn notify(app: &tauri::AppHandle, event: NotificationEvent) {
     let enabled: bool = app
         .try_state::<crate::core::settings::AppSettingsManager>()
-        .and_then(|manager| manager.inner().get("general.notifications").ok())
+        .and_then(|m| m.inner().get("general.notifications").ok())
         .unwrap_or(false);
 
-    // Suppress if app is focused and the origin is a UI-like origin
-    #[cfg(not(target_os = "windows"))]
-    let is_focused = app
-        .webview_windows()
-        .values()
-        .any(|w| w.is_focused().unwrap_or(false));
+    let is_focused = window_is_focused(app);
+    let suppressed = event.suppression() == Suppression::WhenFocused && is_focused;
 
-    #[cfg(target_os = "windows")]
-    let is_focused = {
-        use windows_sys::Win32::UI::WindowsAndMessaging::{
-            GetForegroundWindow, GetWindowThreadProcessId,
-        };
-        unsafe {
-            let hwnd = GetForegroundWindow();
-            if hwnd.is_null() {
-                false
-            } else {
-                let mut process_id: u32 = 0;
-                GetWindowThreadProcessId(hwnd, &mut process_id);
-                process_id == std::process::id()
-            }
-        }
-    };
+    let RenderedContent { title, body, level } = event.render();
 
-    let should_suppress = should_suppress(is_focused, origin.as_ref());
+    // Always emit a log regardless of OS notification state.
+    emit_log(level, &title, &body);
 
-    let translated_title = translate_text_value(&notification.title);
-    let mut translated_body = translate_text_value(&notification.body);
+    debug!("🔔 suppressed={suppressed} focused={is_focused} — {title}",);
 
-    // Fallback: if body contains an error field (legacy error-payloads)
-    if translated_body.starts_with('{')
-        && let Ok(parsed) = serde_json::from_str::<Value>(&translated_body)
-        && let Some(err) = parsed
-            .get("params")
-            .and_then(|p| p.get("error"))
-            .and_then(|e| e.as_str())
+    if !enabled {
+        debug!("🔕 notifications disabled in settings");
+        return;
+    }
+
+    if suppressed {
+        debug!("🔕 suppressed: app is focused and operation was user-initiated");
+        return;
+    }
+
+    if let Err(e) = app
+        .notification()
+        .builder()
+        .title(&title)
+        .body(&body)
+        .auto_cancel()
+        .show()
     {
-        translated_body = format!("Error: {}", err);
-        log::warn!(
-            "🔔 Notification translation fallback used: {}",
-            translated_body
-        );
-    }
-
-    // If the Notification carries an explicit level, also emit a log at that level
-    if let Some(level) = &notification.level {
-        match level {
-            LogLevel::Error => log::error!("🔔 {} - {}", translated_title, translated_body),
-            LogLevel::Warn => log::warn!("🔔 {} - {}", translated_title, translated_body),
-            LogLevel::Info => log::info!("🔔 {} - {}", translated_title, translated_body),
-            LogLevel::Debug => log::debug!("🔔 {} - {}", translated_title, translated_body),
-            LogLevel::Trace => log::trace!("🔔 {} - {}", translated_title, translated_body),
-        }
-    }
-
-    log::debug!(
-        "🔔 Notification: {} - {} (origin={:?}, focused={}, suppressed={})",
-        translated_title,
-        translated_body,
-        origin,
-        is_focused,
-        should_suppress
-    );
-
-    if enabled && !should_suppress {
-        if let Err(e) = app
-            .notification()
-            .builder()
-            .title(&translated_title)
-            .body(&translated_body)
-            .auto_cancel()
-            .show()
-        {
-            log::error!("Failed to show notification: {e}");
-        }
-    } else if enabled && should_suppress {
-        log::debug!("🔕 Notification suppressed (app is focused and origin is UI)");
-    } else {
-        log::debug!("🔕 Notifications disabled");
+        error!("failed to show OS notification: {e}");
     }
 }
 
-// Backward shims removed — all call sites migrated to the typed `Notification` API.
-// The old stringly-parsing heuristics were fragile and have been intentionally deleted.
+/// Public test/helper: decide whether a completion notification originating
+/// from `origin` would be suppressed when the app is focused.
+///
+/// This mirrors the suppression logic used by `notify` but exposes a
+/// small, easy-to-test function for other modules and unit tests.
+pub fn should_suppress(is_focused: bool, origin: Option<&Origin>) -> bool {
+    let origin_val = origin.cloned().unwrap_or(Origin::System);
+    let event = NotificationEvent::JobCompleted {
+        remote: String::new(),
+        profile: None,
+        origin: origin_val,
+    };
+    event.suppression() == Suppression::WhenFocused && is_focused
+}
+
+// ---------------------------------------------------------------------------
+// Private helpers
+// ---------------------------------------------------------------------------
+
+fn emit_log(level: LogLevel, title: &str, body: &str) {
+    match level {
+        LogLevel::Error => error!("🔔 {title} — {body}"),
+        LogLevel::Warn => warn!("🔔 {title} — {body}"),
+        LogLevel::Info => info!("🔔 {title} — {body}"),
+        LogLevel::Debug => debug!("🔔 {title} — {body}"),
+        LogLevel::Trace => trace!("🔔 {title} — {body}"),
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn window_is_focused(app: &tauri::AppHandle) -> bool {
+    app.webview_windows()
+        .values()
+        .any(|w| w.is_focused().unwrap_or(false))
+}
+
+#[cfg(target_os = "windows")]
+fn window_is_focused(_app: &tauri::AppHandle) -> bool {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        GetForegroundWindow, GetWindowThreadProcessId,
+    };
+    unsafe {
+        let hwnd = GetForegroundWindow();
+        if hwnd.is_null() {
+            return false;
+        }
+        let mut pid: u32 = 0;
+        GetWindowThreadProcessId(hwnd, &mut pid);
+        pid == std::process::id()
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::types::logs::LogLevel;
 
     #[test]
-    fn text_raw_returns_raw() {
-        let t = Text::Raw("plain text".to_string());
-        assert_eq!(translate_text_value(&t), "plain text".to_string());
+    fn engine_errors_are_never_suppressed() {
+        let cases = [
+            NotificationEvent::EnginePasswordRequired {
+                remote: "gdrive:".into(),
+            },
+            NotificationEvent::EngineBinaryNotFound,
+            NotificationEvent::EngineConnectionFailed {
+                reason: "timeout".into(),
+            },
+        ];
+        for event in cases {
+            assert_eq!(event.suppression(), Suppression::Never, "{event:?}");
+        }
     }
 
     #[test]
-    fn localized_fallback_returns_key_when_missing() {
-        // Expect the i18n helper to return the key unchanged when translation missing
-        let key = "nonexistent.i18n.key";
-        let t = Text::Localized {
-            key: key.to_string(),
-            params: None,
+    fn failures_are_never_suppressed_regardless_of_origin() {
+        // Even a UI-initiated job failure must always surface.
+        let e = NotificationEvent::JobFailed {
+            remote: "s3:".into(),
+            profile: None,
+            error: "permission denied".into(),
+            origin: Origin::Ui,
         };
-        assert_eq!(translate_text_value(&t), key.to_string());
+        assert_eq!(e.suppression(), Suppression::Never);
+
+        let e = NotificationEvent::MountFailed {
+            mount_point: "/mnt/r".into(),
+            error: "fuse not available".into(),
+        };
+        assert_eq!(e.suppression(), Suppression::Never);
     }
 
     #[test]
-    fn notification_localized_builder_includes_params() {
-        let n = Notification::localized(
-            "notification.title.test",
-            "notification.body.test",
-            Some(vec![("op", "Sync"), ("remote", "gdrive")]),
-            None,
-            Some(LogLevel::Info),
+    fn ui_initiated_completion_suppressed_when_focused() {
+        let e = NotificationEvent::JobCompleted {
+            remote: "gdrive:".into(),
+            profile: Some("backup".into()),
+            origin: Origin::Ui,
+        };
+        assert_eq!(e.suppression(), Suppression::WhenFocused);
+    }
+
+    #[test]
+    fn scheduler_completion_always_shown() {
+        let e = NotificationEvent::JobCompleted {
+            remote: "gdrive:".into(),
+            profile: None,
+            origin: Origin::Scheduler,
+        };
+        assert_eq!(e.suppression(), Suppression::Never);
+    }
+
+    #[test]
+    fn system_completion_always_shown() {
+        let e = NotificationEvent::MountSucceeded {
+            remote: "gdrive:".into(),
+            profile: None,
+            mount_point: "/mnt/g".into(),
+            origin: Origin::System,
+        };
+        assert_eq!(e.suppression(), Suppression::Never);
+    }
+
+    #[test]
+    fn all_user_facing_origins_suppress_completions() {
+        let make_completion = |origin| NotificationEvent::MountSucceeded {
+            remote: "r:".into(),
+            profile: None,
+            mount_point: "/mnt/r".into(),
+            origin,
+        };
+        assert_eq!(
+            make_completion(Origin::Ui).suppression(),
+            Suppression::WhenFocused
         );
-
-        match n.title {
-            Text::Localized { key, params } => {
-                assert_eq!(key, "notification.title.test");
-                let map = params.expect("params present");
-                assert_eq!(map.get("op").map(|s| s.as_str()), Some("Sync"));
-            }
-            _ => panic!("expected localized title"),
-        }
-
-        match n.body {
-            Text::Localized { key, params } => {
-                assert_eq!(key, "notification.body.test");
-                let map = params.expect("params present");
-                assert_eq!(map.get("remote").map(|s| s.as_str()), Some("gdrive"));
-            }
-            _ => panic!("expected localized body"),
-        }
-
-        assert_eq!(n.level, Some(LogLevel::Info));
+        assert_eq!(
+            make_completion(Origin::Dashboard).suppression(),
+            Suppression::WhenFocused
+        );
+        assert_eq!(
+            make_completion(Origin::FileManager).suppression(),
+            Suppression::WhenFocused
+        );
+        assert_eq!(
+            make_completion(Origin::Scheduler).suppression(),
+            Suppression::Never
+        );
+        assert_eq!(
+            make_completion(Origin::System).suppression(),
+            Suppression::Never
+        );
     }
 
     #[test]
-    fn suppression_includes_dashboard_and_nautilus() {
-        use crate::utils::types::origin::Origin;
-        // Dashboard / Nautilus should be treated like other UI-origin sources
-        assert!(origin_is_suppressible(Some(&Origin::Dashboard)));
-        assert!(origin_is_suppressible(Some(&Origin::Nautilus)));
-        // existing suppressed origins should still be suppressible
-        assert!(origin_is_suppressible(Some(&Origin::Ui)));
-        // non-UI/background origins should NOT be suppressible by default
-        assert!(!origin_is_suppressible(Some(&Origin::Scheduled)));
-        assert!(!origin_is_suppressible(Some(&Origin::System)));
+    fn scheduled_task_events_always_shown() {
+        assert_eq!(
+            NotificationEvent::ScheduledTaskCompleted {
+                task_name: "nightly-backup".into()
+            }
+            .suppression(),
+            Suppression::Never,
+        );
+        assert_eq!(
+            NotificationEvent::ScheduledTaskFailed {
+                task_name: "nightly-backup".into(),
+                error: "disk full".into(),
+            }
+            .suppression(),
+            Suppression::Never,
+        );
     }
 
     #[test]
-    fn test_should_suppress_respects_focus_and_origin() {
-        use crate::utils::types::origin::Origin;
-        // Suppress only when app is focused AND origin is UI-like
-        assert!(should_suppress(true, Some(&Origin::Dashboard)));
-        assert!(should_suppress(true, Some(&Origin::Nautilus)));
-        assert!(should_suppress(true, Some(&Origin::Ui)));
-        assert!(!should_suppress(true, Some(&Origin::Scheduled)));
-        assert!(!should_suppress(false, Some(&Origin::Dashboard)));
+    fn updates_always_shown() {
+        assert_eq!(
+            NotificationEvent::AppUpdateAvailable {
+                version: "2.0.0".into()
+            }
+            .suppression(),
+            Suppression::Never,
+        );
+        assert_eq!(
+            NotificationEvent::RcloneUpdateAvailable {
+                version: "1.67".into()
+            }
+            .suppression(),
+            Suppression::Never,
+        );
     }
 }

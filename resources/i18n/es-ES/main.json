@@ -142,6 +142,8 @@
       "type": "Tipo de trabajo",
       "id": "ID del trabajo",
       "started": "Iniciado",
+      "finished": "Finalizado",
+      "duration": "Duración",
       "lastOperation": "Última operación",
       "emptyTitle": "No hay trabajo activo",
       "emptyMessage": "Los detalles del trabajo aparecerán aquí cuando comience una operación"

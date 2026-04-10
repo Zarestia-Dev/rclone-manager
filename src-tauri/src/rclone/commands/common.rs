@@ -220,10 +220,7 @@ pub fn parse_common_config(
     let source = get_string(config, &["source"]);
     let dest = get_string(config, &["dest"]);
 
-    if source.is_empty() {
-        return None;
-    }
-    if dest.is_empty() {
+    if source.is_empty() || dest.is_empty() {
         return None;
     }
 
@@ -289,8 +286,7 @@ pub fn redact_sensitive_values(params: &HashMap<String, Value>, app: &AppHandle)
         .try_state::<AppSettingsManager>()
         .and_then(|manager| manager.inner().get("general.restrict").ok())
         .unwrap_or(false);
-
-    params
+    let map: serde_json::Map<String, Value> = params
         .iter()
         .map(|(k, v)| {
             let value = if restrict_enabled && crate::utils::types::core::is_sensitive_field(k) {
@@ -300,5 +296,7 @@ pub fn redact_sensitive_values(params: &HashMap<String, Value>, app: &AppHandle)
             };
             (k.clone(), value)
         })
-        .collect()
+        .collect();
+
+    Value::Object(map)
 }

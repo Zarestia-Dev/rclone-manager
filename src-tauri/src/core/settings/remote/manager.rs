@@ -54,10 +54,44 @@ pub async fn save_remote_settings(
 
     info!("✅ Remote settings saved for '{remote_name}'");
 
+    // Detect deleted profiles to clean up associated job records
+    if let Ok(existing) = remotes.get_value(&remote_name) {
+        let config_keys = [
+            "syncConfigs",
+            "copyConfigs",
+            "moveConfigs",
+            "bisyncConfigs",
+            "mountConfigs",
+            "serveConfigs",
+        ];
+
+        for key in config_keys {
+            if let Some(old_configs) = existing.get(key).and_then(|v| v.as_object()) {
+                let new_configs = settings.get(key).and_then(|v| v.as_object());
+                for profile_name in old_configs.keys() {
+                    let was_deleted = match new_configs {
+                        Some(new) => !new.contains_key(profile_name),
+                        None => true,
+                    };
+
+                    if was_deleted {
+                        info!(
+                            "🗑️ Profile '{profile_name}' deleted for remote '{remote_name}', cleaning up jobs..."
+                        );
+                        app_handle
+                            .state::<crate::rclone::backend::BackendManager>()
+                            .job_cache
+                            .delete_jobs_by_profile(&remote_name, profile_name, Some(&app_handle))
+                            .await;
+                    }
+                }
+            }
+        }
+    }
+
     // Sync the cache and scheduler together.
     // BackendManager tells us which backend is currently active.
-    use crate::rclone::backend::BackendManager;
-    let backend_manager = app_handle.state::<BackendManager>();
+    let backend_manager = app_handle.state::<crate::rclone::backend::BackendManager>();
     let backend_name = backend_manager.get_active_name().await;
 
     match cache

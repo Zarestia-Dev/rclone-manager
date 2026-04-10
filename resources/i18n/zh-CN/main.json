@@ -145,6 +145,8 @@
       "type": "任务类型",
       "id": "任务 ID",
       "started": "开始时间",
+      "finished": "完成时间",
+      "duration": "持续时间",
       "lastOperation": "上次操作",
       "emptyTitle": "无正在运行的任务",
       "emptyMessage": "操作开始后，任务详情将显示在此处"

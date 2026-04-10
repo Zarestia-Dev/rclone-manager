@@ -507,11 +507,7 @@ impl ScheduledTasksCache {
                         task.next_run = get_next_run(&task.cron_expression).ok();
                         TaskStatus::Enabled
                     }
-                    TaskStatus::Running => {
-                        task.next_run = None;
-                        TaskStatus::Stopping
-                    }
-                    TaskStatus::Stopping => task.status.clone(),
+                    TaskStatus::Running | TaskStatus::Stopping => task.status.clone(),
                 };
             },
             app,

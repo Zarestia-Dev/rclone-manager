@@ -96,6 +96,36 @@ export class JobManagementService extends TauriBaseService {
     return this._jobs().filter(job => job.remote_name === remoteName);
   }
 
+  /**
+   * Get the latest job (regardless of status) for a specific remote and profile
+   */
+  getLatestJobForRemote(
+    remoteName: string,
+    profile?: string,
+    operationType?: string
+  ): JobInfo | null {
+    let jobs = this._jobs().filter(job => job.remote_name === remoteName);
+
+    if (operationType) {
+      jobs = jobs.filter(j => (j as any).job_type === operationType);
+    }
+    if (profile) {
+      jobs = jobs.filter(j => (j as any).profile === profile);
+    }
+
+    if (jobs.length === 0) return null;
+
+    // Prefer most-recent by start_time; fall back to jobid when timestamps are missing
+    jobs = jobs.sort((a, b) => {
+      const ta = a.start_time ? new Date(a.start_time).getTime() : 0;
+      const tb = b.start_time ? new Date(b.start_time).getTime() : 0;
+      if (tb !== ta) return tb - ta;
+      return b.jobid - a.jobid;
+    });
+
+    return jobs[0] ?? null;
+  }
+
   // ============================================================================
   // JOB STATE MANAGEMENT
   // ============================================================================
@@ -223,7 +253,7 @@ export class JobManagementService extends TauriBaseService {
     url: string,
     autoFilename: boolean,
     source?: Origin,
-    noCache?: boolean
+    group?: string
   ): Promise<void> {
     await this.invokeCommand('copy_url', {
       remote,
@@ -231,9 +261,8 @@ export class JobManagementService extends TauriBaseService {
       urlToCopy: url,
       autoFilename,
       source,
-      noCache,
+      group,
     });
-    this.refreshNautilusJobs();
   }
 
   // ============================================================================

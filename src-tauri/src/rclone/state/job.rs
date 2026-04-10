@@ -75,7 +75,6 @@ impl JobCache {
     }
 
     pub async fn update_job_stats(&self, jobid: u64, stats: Value) -> Result<(), String> {
-        // Stats updates are frequent, don't emit individually
         let mut jobs = self.jobs.write().await;
         if let Some(job) = jobs.get_mut(&jobid) {
             job.stats = Some(stats);
@@ -95,13 +94,16 @@ impl JobCache {
         self.update_job(
             jobid,
             |job| {
-                if success {
+                if job.status == JobStatus::Stopped {
+                    // Already stopped manually, don't overwrite with Completed/Failed
+                } else if success {
                     job.status = JobStatus::Completed;
                     job.error = None;
                 } else {
                     job.status = JobStatus::Failed;
                     job.error = error;
                 }
+                job.end_time = Some(chrono::Utc::now());
             },
             app,
         )
@@ -113,6 +115,7 @@ impl JobCache {
             jobid,
             |job| {
                 job.status = JobStatus::Stopped;
+                job.end_time = Some(chrono::Utc::now());
             },
             app,
         )
@@ -151,6 +154,7 @@ impl JobCache {
                 && job.profile.as_deref() == profile
         })
     }
+
     /// Get jobs filtered by source
     pub async fn get_jobs_by_source(&self, source: &str) -> Vec<JobInfo> {
         self.jobs
@@ -190,6 +194,47 @@ impl JobCache {
 
         updated_count
     }
+
+    /// Delete all jobs associated with a specific remote
+    pub async fn delete_jobs_by_remote(&self, remote_name: &str, app: Option<&AppHandle>) {
+        let mut jobs = self.jobs.write().await;
+        let keys_to_remove: Vec<u64> = jobs
+            .values()
+            .filter(|j| j.remote_name == remote_name)
+            .map(|j| j.jobid)
+            .collect();
+
+        for key in keys_to_remove {
+            jobs.remove(&key);
+            if let Some(app) = app {
+                let _ = app.emit(JOB_CACHE_CHANGED, key);
+            }
+        }
+        info!("📡 All jobs for remote {remote_name} deleted");
+    }
+
+    /// Delete all jobs associated with a specific profile on a remote
+    pub async fn delete_jobs_by_profile(
+        &self,
+        remote_name: &str,
+        profile_name: &str,
+        app: Option<&AppHandle>,
+    ) {
+        let mut jobs = self.jobs.write().await;
+        let keys_to_remove: Vec<u64> = jobs
+            .values()
+            .filter(|j| j.remote_name == remote_name && j.profile.as_deref() == Some(profile_name))
+            .map(|j| j.jobid)
+            .collect();
+
+        for key in keys_to_remove {
+            jobs.remove(&key);
+            if let Some(app) = app {
+                let _ = app.emit(JOB_CACHE_CHANGED, key);
+            }
+        }
+        info!("📡 All jobs for profile {profile_name} on remote {remote_name} deleted");
+    }
 }
 
 impl Default for JobCache {
@@ -200,6 +245,8 @@ impl Default for JobCache {
 
 #[cfg(test)]
 mod tests {
+    use crate::rclone::backend::types::default_backend_name;
+
     use super::*;
 
     fn mock_job(jobid: u64, remote: &str, job_type: JobType, profile: Option<&str>) -> JobInfo {
@@ -210,6 +257,7 @@ mod tests {
             source: format!("{}path", remote),
             destination: "/local/path".to_string(),
             start_time: chrono::Utc::now(),
+            end_time: None,
             profile: profile.map(|s| s.to_string()),
             status: JobStatus::Running,
             error: None,
@@ -217,7 +265,7 @@ mod tests {
             uploaded_files: Vec::new(),
             group: format!("job/{}", jobid),
             origin: None,
-            backend_name: Some("Local".to_string()),
+            backend_name: default_backend_name(),
             execute_id: None,
         }
     }

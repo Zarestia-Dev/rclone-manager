@@ -2,11 +2,9 @@
 pub mod app_updates {
     use crate::core::lifecycle::shutdown::shutdown_app;
     use crate::utils::app::platform::relaunch_app;
-    use crate::utils::types::logs::LogLevel;
-    use crate::utils::types::origin::Origin;
     use crate::utils::types::updater::AppUpdaterState;
     use crate::utils::{
-        app::notification::{Notification, send_notification_typed},
+        app::notification::{NotificationEvent, notify},
         github_client,
         types::core::RcloneState,
     };
@@ -273,16 +271,11 @@ pub mod app_updates {
                 log::warn!("Failed to emit app update event: {}", e);
             }
 
-            send_notification_typed(
+            notify(
                 &app,
-                Notification::localized(
-                    "notification.title.updateFound",
-                    "notification.body.updateFound",
-                    Some(vec![("version", &metadata.version)]),
-                    None,
-                    Some(LogLevel::Info),
-                ),
-                Some(Origin::Internal),
+                NotificationEvent::AppUpdateAvailable {
+                    version: metadata.version.clone(),
+                },
             );
         }
 
@@ -381,16 +374,11 @@ pub mod app_updates {
         info!("Preparing to download update from: {}", update.download_url);
         debug!("Update signature: {}", update.signature);
 
-        send_notification_typed(
+        notify(
             &app,
-            Notification::localized(
-                "notification.title.updateStarted",
-                "notification.body.updateStarted",
-                Some(vec![("version", &update.version)]),
-                None,
-                Some(LogLevel::Info),
-            ),
-            Some(Origin::Internal),
+            NotificationEvent::AppUpdateStarted {
+                version: update.version.clone(),
+            },
         );
 
         // Set update in progress flag
@@ -464,16 +452,11 @@ pub mod app_updates {
                 state.is_update_in_progress.store(false, Ordering::Relaxed);
                 state.is_restart_required.store(true, Ordering::Relaxed);
 
-                send_notification_typed(
+                notify(
                     &app,
-                    Notification::localized(
-                        "notification.title.updateComplete",
-                        "notification.body.updateComplete",
-                        None,
-                        None,
-                        Some(LogLevel::Info),
-                    ),
-                    Some(Origin::Internal),
+                    NotificationEvent::AppUpdateComplete {
+                        version: update.version.clone(),
+                    },
                 );
 
                 // Save update back to pending action for installation later
@@ -510,16 +493,11 @@ pub mod app_updates {
                     .is_update_in_progress
                     .store(false, Ordering::Relaxed);
 
-                send_notification_typed(
+                notify(
                     &app,
-                    Notification::localized(
-                        "notification.title.updateFailed",
-                        "notification.body.updateFailed",
-                        Some(vec![("error", &e.to_string())]),
-                        None,
-                        Some(LogLevel::Error),
-                    ),
-                    Some(Origin::Internal),
+                    NotificationEvent::AppUpdateFailed {
+                        error: e.to_string(),
+                    },
                 );
 
                 Err(Error::Updater(e))

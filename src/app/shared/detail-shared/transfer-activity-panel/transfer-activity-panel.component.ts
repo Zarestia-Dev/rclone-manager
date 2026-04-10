@@ -31,7 +31,7 @@ import { TransferActivityPanelConfig } from '../../types';
     <mat-card class="detail-panel transfer-activity-panel" [ngClass]="config().operationClass">
       <mat-card-header class="panel-header">
         <mat-card-title class="panel-title-content">
-          <mat-icon svgIcon="download" class="panel-icon"></mat-icon>
+          <mat-icon svgIcon="download" style="color: var(--op-color);"></mat-icon>
           <span>{{ 'shared.transferActivity.title' | translate }}</span>
           <div class="transfer-summary">
             <mat-chip [class]="'summary-chip active ' + config().operationColor">

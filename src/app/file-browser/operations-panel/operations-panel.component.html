@@ -176,14 +176,16 @@
                     <span class="value">{{ job.start_time | date: 'shortTime' }}</span>
                   </div>
 
-                  @if (job.status === 'Failed' && job.error) {
+                  @if ((job.status === 'Failed' || job.status === 'Running') && job.error) {
                     <div class="detail-item error-item">
                       <div class="error-container">
                         <div class="error-text">
                           <span class="detail-label">{{
                             'fileBrowser.operations.failed' | translate
                           }}</span>
-                          <span class="value">{{ job.error }}</span>
+                          <div class="errors-list">
+                            <span class="value error-entry">{{ job.error }}</span>
+                          </div>
                         </div>
                         <button
                           mat-icon-button

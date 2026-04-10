@@ -144,8 +144,12 @@
       "title": "Job Information",
       "type": "Job Type",
       "id": "Job ID",
+      "status": "Job Status",
       "started": "Started",
+      "finished": "Finished",
+      "duration": "Duration",
       "lastOperation": "Last Operation",
+      "errors": "Recent Errors",
       "emptyTitle": "No active job",
       "emptyMessage": "Job details will appear here when an operation starts"
     },
@@ -1544,6 +1548,31 @@
     "delete": "Delete Job"
   },
   "modals": {
+    "jobDetail": {
+      "title": "Job Details #{{id}}",
+      "sections": {
+        "overview": "Job Information",
+        "statistics": "Sync Settings Statistics",
+        "paths": "Paths",
+        "activity": "Transfer Activity",
+        "errors": "Errors"
+      },
+      "fields": {
+        "type": "Job Type",
+        "id": "Job ID",
+        "status": "Status",
+        "started": "Started",
+        "finished": "Finished",
+        "duration": "Duration",
+        "progress": "Progress",
+        "speed": "Speed",
+        "eta": "ETA",
+        "files": "Files",
+        "errorsCount": "Errors",
+        "source": "Source",
+        "destination": "Destination"
+      }
+    },
     "about": {
       "title": "About",
       "keepClicking": "Keep clicking...",

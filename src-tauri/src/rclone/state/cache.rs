@@ -31,14 +31,10 @@ impl RemoteCache {
     /// Clear ALL cache data (remotes, configs, mounts, serves)
     /// Used when switching backends to ensure no stale data remains
     pub async fn clear_all(&self) {
-        let mut remotes = self.remotes.write().await;
-        remotes.clear();
-        let mut configs = self.configs.write().await;
-        *configs = json!({});
-        let mut mounted = self.mounted.write().await;
-        mounted.clear();
-        let mut serves = self.serves.write().await;
-        serves.clear();
+        self.remotes.write().await.clear();
+        *self.configs.write().await = json!({});
+        self.mounted.write().await.clear();
+        self.serves.write().await.clear();
         // Do NOT clear profiles here, they are part of the Context which is managed separately
     }
 
@@ -211,13 +207,12 @@ impl RemoteCache {
     /// Store a mount profile mapping (call this when mounting)
     pub async fn store_mount_profile(&self, mount_point: &str, profile: Option<String>) {
         if let Some(profile_name) = profile {
-            let mut profiles = self.mount_profiles.write().await;
-            profiles.insert(mount_point.to_string(), profile_name);
             debug!(
                 "📌 Stored mount profile: {} -> {}",
-                mount_point,
-                profiles.get(mount_point).unwrap_or(&"?".to_string())
+                mount_point, profile_name
             );
+            let mut profiles = self.mount_profiles.write().await;
+            profiles.insert(mount_point.to_string(), profile_name);
         }
     }
 
@@ -227,29 +222,24 @@ impl RemoteCache {
         client: &reqwest::Client,
         backend: &Backend,
     ) -> Result<(), String> {
-        let (res1, res2, res3, res4): (
-            Result<(), String>,
-            Result<(), String>,
-            Result<(), String>,
-            Result<(), String>,
-        ) = tokio::join!(
+        let (r1, r2, r3, r4) = tokio::join!(
             self.refresh_remote_list(client, backend),
             self.refresh_remote_configs(client, backend),
             self.refresh_mounted_remotes(client, backend),
             self.refresh_serves(client, backend),
         );
 
-        if let Err(e) = res1 {
-            error!("Failed to refresh remote list: {e}");
-        }
-        if let Err(e) = res2 {
-            error!("Failed to refresh remote configs: {e}");
-        }
-        if let Err(e) = res3 {
-            error!("Failed to refresh mounted remotes: {e}");
-        }
-        if let Err(e) = res4 {
-            error!("Failed to refresh serves: {e}");
+        let results = vec![
+            ("remote list", r1),
+            ("remote configs", r2),
+            ("mounted remotes", r3),
+            ("serves", r4),
+        ];
+
+        for (label, res) in results {
+            if let Err(e) = res {
+                error!("Failed to refresh {}: {e}", label);
+            }
         }
 
         Ok(())
@@ -306,20 +296,14 @@ impl RemoteCache {
     /// Store a serve profile mapping (call this when starting serve)
     pub async fn store_serve_profile(&self, serve_id: &str, profile: Option<String>) {
         if let Some(profile_name) = profile {
+            debug!("📌 Stored serve profile: {} -> {}", serve_id, profile_name);
             let mut profiles = self.serve_profiles.write().await;
             profiles.insert(serve_id.to_string(), profile_name);
-            debug!(
-                "📌 Stored serve profile: {} -> {}",
-                serve_id,
-                profiles.get(serve_id).unwrap_or(&"?".to_string())
-            );
         }
     }
 
     pub async fn get_remotes(&self) -> Vec<String> {
-        let guard = self.remotes.read().await;
-        let v: Vec<String> = guard.clone();
-        v
+        self.remotes.read().await.clone()
     }
 
     pub async fn get_configs(&self) -> serde_json::Value {

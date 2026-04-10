@@ -1949,7 +1949,7 @@ export class NautilusComponent implements OnInit {
       const current = this.activePath();
       const sep = remote.isLocal && (current === '' || current.endsWith('/')) ? '' : '/';
       const newPath = current ? `${current}${sep}${folderName}` : folderName;
-      await this.remoteOps.makeDirectory(normalized, newPath, 'nautilus', true);
+      await this.remoteOps.makeDirectory(normalized, newPath, 'nautilus');
       this.refresh();
     } catch {
       this.notificationService.showError(
