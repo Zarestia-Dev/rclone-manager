@@ -22,26 +22,22 @@
 }
 
 .detail-value {
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-md);
   color: var(--window-fg-color);
-  font-weight: 400;
-  word-break: break-word;
+  font-weight: 600;
 
   // Job status colour hints
   &.status-running {
-    color: var(--op-color, var(--primary-color));
-    font-weight: 600;
+    color: var(--mat-sys-primary);
   }
   &.status-stopped {
-    color: var(--dim-color);
+    color: var(--orange);
   }
   &.status-failed {
     color: var(--warn-color);
-    font-weight: 600;
   }
   &.status-completed {
     color: var(--accent-color);
-    font-weight: 600;
   }
 }
 

@@ -486,10 +486,12 @@ impl ScheduledTasksCache {
         Ok(removed)
     }
 
-    /// Toggle a task between `Enabled` and `Disabled`.
+    /// Toggle a task status.
     ///
-    /// `Running` and `Stopping` tasks are a no-op — cancel the underlying
-    /// rclone job first, then toggle.
+    /// - `Enabled` -> `Disabled`
+    /// - `Disabled`/`Failed` -> `Enabled`
+    /// - `Running` -> `Stopping` (let the current run finish, then disable)
+    /// - `Stopping` -> no-op
     pub async fn toggle_task_status(
         &self,
         task_id: &str,
@@ -507,7 +509,8 @@ impl ScheduledTasksCache {
                         task.next_run = get_next_run(&task.cron_expression).ok();
                         TaskStatus::Enabled
                     }
-                    TaskStatus::Running | TaskStatus::Stopping => task.status.clone(),
+                    TaskStatus::Running => TaskStatus::Stopping,
+                    TaskStatus::Stopping => TaskStatus::Stopping,
                 };
             },
             app,
@@ -1070,7 +1073,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_toggle_running_is_noop() {
+    async fn test_toggle_running_to_stopping() {
         let cache = make_cache();
         let mut task = base_task();
         task.status = TaskStatus::Running;
@@ -1080,8 +1083,8 @@ mod tests {
         let result = cache.toggle_task_status(&id, None).await.unwrap();
         assert_eq!(
             result.status,
-            TaskStatus::Running,
-            "toggling a Running task must be a no-op"
+            TaskStatus::Stopping,
+            "toggling a Running task must transition to Stopping"
         );
     }
 

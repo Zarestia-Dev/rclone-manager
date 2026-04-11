@@ -112,27 +112,32 @@ export class ServeManagementService extends TauriBaseService {
    * Backend resolves all options (serve, vfs, filter, backend) from cached settings
    */
   async startServeProfile(remoteName: string, profileName: string): Promise<ServeStartResponse> {
-    const params = { remote_name: remoteName, profile_name: profileName };
-    const response = await this.invokeWithNotification<ServeStartResponse>(
-      'start_serve_profile',
-      { params },
-      {
-        showSuccess: false,
-        errorKey: 'serve.failedStart',
-        errorParams: { remote: remoteName },
-      }
-    );
+    try {
+      const params = { remote_name: remoteName, profile_name: profileName };
+      const response = await this.invokeCommand<ServeStartResponse>('start_serve_profile', {
+        params,
+      });
 
-    this.notificationService.showSuccess(
-      this.translate.instant('serve.successStart', {
-        remote: remoteName,
-        profile: profileName,
-        addr: response.addr,
-      })
-    );
+      this.notificationService.showSuccess(
+        this.translate.instant('serve.successStart', {
+          remote: remoteName,
+          profile: profileName,
+          addr: response.addr,
+        })
+      );
 
-    await this.refreshServes();
-    return response;
+      await this.refreshServes();
+      return response;
+    } catch (error) {
+      console.error(
+        `[ServeManagementService] Failed to start serve for remote "${remoteName}" with profile "${profileName}":`,
+        error
+      );
+      this.notificationService.showError(
+        this.translate.instant('serve.failedStart', { remote: remoteName })
+      );
+      throw error;
+    }
   }
 
   /**

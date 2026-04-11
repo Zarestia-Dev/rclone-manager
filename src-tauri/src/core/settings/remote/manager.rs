@@ -122,10 +122,10 @@ pub async fn save_remote_settings(
 /// **Delete remote settings**
 #[tauri::command]
 pub async fn delete_remote_settings(
-    remote_name: String,
-    manager: State<'_, AppSettingsManager>,
     app_handle: tauri::AppHandle,
+    remote_name: String,
 ) -> Result<(), String> {
+    let manager = app_handle.state::<AppSettingsManager>();
     let remotes = manager.inner().sub_settings("remotes").map_err(
         |e| crate::localized_error!("backendErrors.settings.subSettingsFailed", "error" => e),
     )?;

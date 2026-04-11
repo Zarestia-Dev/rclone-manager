@@ -14,18 +14,18 @@
     transition: var(--transition-standard);
 
     &.primary {
-      background: color-mix(in srgb, var(--op-color, var(--primary-color)) 10%, transparent);
+      background: color-mix(in srgb, var(--mat-sys-primary) 10%, transparent);
 
       .stat-value {
-        color: var(--op-color, var(--primary-color));
+        color: var(--mat-sys-primary);
       }
 
       // Colour the MDC progress bar track to match the operation
       mat-progress-bar {
-        --mdc-linear-progress-active-indicator-color: var(--op-color, var(--primary-color));
+        --mdc-linear-progress-active-indicator-color: var(--mat-sys-primary);
         --mdc-linear-progress-track-color: color-mix(
           in srgb,
-          var(--op-color, var(--primary-color)) 20%,
+          var(--mat-sys-primary) 20%,
           transparent
         );
       }

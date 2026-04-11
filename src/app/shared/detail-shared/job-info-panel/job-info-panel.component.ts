@@ -15,7 +15,7 @@ import { JobInfoConfig } from '../../types';
     <mat-card>
       <mat-card-header>
         <mat-card-title>
-          <mat-icon svgIcon="info" style="color: var(--op-color);"></mat-icon>
+          <mat-icon svgIcon="info" style="color: var(--mat-sys-primary);"></mat-icon>
           <span>{{ 'detailShared.jobInfo.title' | translate }}</span>
         </mat-card-title>
       </mat-card-header>

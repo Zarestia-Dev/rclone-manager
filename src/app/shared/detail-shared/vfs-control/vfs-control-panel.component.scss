@@ -107,7 +107,7 @@
     .value {
       font-size: 1.2rem;
       font-weight: 600;
-      color: var(--op-color);
+      color: var(--mat-sys-primary);
     }
 
     &.error .value {
@@ -365,7 +365,7 @@ mat-card-actions {
       text-transform: uppercase;
       letter-spacing: 0.5px;
       opacity: 0.8;
-      color: var(--op-color);
+      color: var(--mat-sys-primary);
 
       mat-icon {
         font-size: var(--icon-size-sm);

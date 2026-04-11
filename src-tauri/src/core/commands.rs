@@ -211,7 +211,6 @@ macro_rules! generate_invoke_handler {
             // =================================================================
             $crate::rclone::commands::job::get_jobs,
             $crate::rclone::commands::job::get_active_jobs,
-            $crate::rclone::commands::job::get_jobs_by_source,
             $crate::rclone::commands::job::get_job_status,
             $crate::rclone::commands::job::stop_job,
             $crate::rclone::commands::job::delete_job,

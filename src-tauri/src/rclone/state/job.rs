@@ -155,17 +155,6 @@ impl JobCache {
         })
     }
 
-    /// Get jobs filtered by source
-    pub async fn get_jobs_by_source(&self, source: &str) -> Vec<JobInfo> {
-        self.jobs
-            .read()
-            .await
-            .values()
-            .filter(|job| job.origin.as_ref().map(|o| o.as_str()) == Some(source))
-            .cloned()
-            .collect()
-    }
-
     /// Rename a profile in all matching running jobs
     /// Returns the number of jobs updated
     /// Rename a profile in all matching jobs and emit `JOB_CACHE_CHANGED` for each update.

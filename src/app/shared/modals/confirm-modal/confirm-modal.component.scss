@@ -33,12 +33,17 @@
         font-size: var(--icon-size-lg);
       }
 
-      &.destructive {
+      &.warn {
         background: rgba(var(--warn-color-rgb), 0.15);
         animation: iconPulseRed 2s ease-in-out infinite;
       }
 
-      &.info {
+      &.accent {
+        background: rgba(var(--accent-color-rgb), 0.15);
+        animation: iconPulseBlue 2s ease-in-out infinite;
+      }
+
+      &.primary {
         background: rgba(var(--primary-color-rgb), 0.15);
         animation: iconPulseGreen 2s ease-in-out infinite;
       }

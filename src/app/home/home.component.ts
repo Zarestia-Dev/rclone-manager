@@ -236,11 +236,25 @@ export class HomeComponent {
   async deleteRemote(remoteName: string): Promise<void> {
     if (!remoteName) return;
     try {
-      await this.remoteFacadeService.deleteRemote(remoteName);
-      this.remoteFacadeService.loadRemotes();
-      if (this.selectedRemote()?.name === remoteName) {
-        this.uiStateService.resetSelectedRemote();
-      }
+      this.notificationService
+        .confirmModal(
+          this.translate.instant('home.deleteRemote.title'),
+          this.translate.instant('home.deleteRemote.message', { name: remoteName }),
+          this.translate.instant('common.delete'),
+          this.translate.instant('common.cancel'),
+          {
+            icon: 'trash',
+            color: 'warn',
+          }
+        )
+        .then(async confirmed => {
+          if (!confirmed) return;
+          await this.remoteFacadeService.deleteRemote(remoteName);
+          this.remoteFacadeService.loadRemotes();
+          if (this.selectedRemote()?.name === remoteName) {
+            this.uiStateService.resetSelectedRemote();
+          }
+        });
     } catch (error) {
       console.error('Delete remote failed:', error);
     }
@@ -292,9 +306,7 @@ export class HomeComponent {
         undefined,
         {
           icon: 'rotate-right',
-          iconColor: 'warn',
-          iconClass: 'destructive',
-          confirmButtonColor: 'warn',
+          color: 'warn',
         }
       );
       if (!confirmed) return;
@@ -311,7 +323,14 @@ export class HomeComponent {
   // --- Modals ---
 
   openQuickAddRemoteModal(): void {
-    this.modalService.openQuickAddRemote();
+    this.modalService
+      .openQuickAddRemote()
+      .afterClosed()
+      .subscribe(saved => {
+        if (saved) {
+          void this.remoteFacadeService.refreshAll();
+        }
+      });
   }
 
   openRemoteConfigModal(
@@ -322,15 +341,22 @@ export class HomeComponent {
     remoteType?: string,
     autoAddProfile?: boolean
   ): void {
-    this.modalService.openRemoteConfig({
-      remoteName: this.selectedRemote()?.name,
-      remoteType,
-      editTarget,
-      existingConfig,
-      initialSection,
-      targetProfile,
-      autoAddProfile,
-    });
+    this.modalService
+      .openRemoteConfig({
+        remoteName: this.selectedRemote()?.name,
+        remoteType,
+        editTarget,
+        existingConfig,
+        initialSection,
+        targetProfile,
+        autoAddProfile,
+      })
+      .afterClosed()
+      .subscribe(saved => {
+        if (saved) {
+          void this.remoteFacadeService.refreshAll();
+        }
+      });
   }
 
   openLogsModal(remoteName: string): void {
@@ -341,11 +367,18 @@ export class HomeComponent {
     const config = await this.remoteFacadeService.cloneRemote(remoteName);
     if (!config) return;
     const remoteConfig = config as RemoteSettings & { name?: string };
-    this.modalService.openRemoteConfig({
-      remoteName: remoteConfig['name'],
-      cloneTarget: true,
-      existingConfig: remoteConfig,
-    });
+    this.modalService
+      .openRemoteConfig({
+        remoteName: remoteConfig['name'],
+        cloneTarget: true,
+        existingConfig: remoteConfig,
+      })
+      .afterClosed()
+      .subscribe(saved => {
+        if (saved) {
+          void this.remoteFacadeService.refreshAll();
+        }
+      });
   }
 
   openExportModal(remoteName: string): void {

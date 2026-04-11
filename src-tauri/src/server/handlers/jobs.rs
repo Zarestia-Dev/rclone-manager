@@ -35,20 +35,6 @@ pub struct JobsBySourceQuery {
     pub source: String,
 }
 
-pub async fn get_jobs_by_source_handler(
-    State(state): State<WebServerState>,
-    Query(query): Query<JobsBySourceQuery>,
-) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::rclone::backend::BackendManager;
-    let backend_manager = state.app_handle.state::<BackendManager>();
-    let jobs = backend_manager
-        .job_cache
-        .get_jobs_by_source(&query.source)
-        .await;
-    let json_jobs = serde_json::to_value(jobs).map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(json_jobs)))
-}
-
 #[derive(Deserialize)]
 pub struct JobStatusQuery {
     pub jobid: u64,

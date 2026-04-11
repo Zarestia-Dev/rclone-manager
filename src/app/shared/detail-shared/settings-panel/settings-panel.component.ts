@@ -1,6 +1,5 @@
 import { Component, input, output, inject, computed } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { NgClass } from '@angular/common';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
 import { map } from 'rxjs';
 
@@ -20,14 +19,7 @@ interface SettingEntry {
 @Component({
   selector: 'app-settings-panel',
   standalone: true,
-  imports: [
-    NgClass,
-    MatIconModule,
-    MatButtonModule,
-    MatTooltipModule,
-    MatExpansionModule,
-    TranslateModule,
-  ],
+  imports: [MatIconModule, MatButtonModule, MatTooltipModule, MatExpansionModule, TranslateModule],
   styleUrls: ['./settings-panel.component.scss'],
   template: `
     @let cfg = config();
@@ -35,10 +27,7 @@ interface SettingEntry {
     <mat-expansion-panel>
       <mat-expansion-panel-header>
         <mat-panel-title>
-          <mat-icon
-            [svgIcon]="cfg.section.icon"
-            style="color: var(--op-color, var(--primary-color));"
-          ></mat-icon>
+          <mat-icon [svgIcon]="cfg.section.icon" style="color: var(--mat-sys-primary);"></mat-icon>
           <span>{{ cfg.section.title | translate }}</span>
         </mat-panel-title>
         <mat-panel-description>
@@ -74,7 +63,7 @@ interface SettingEntry {
         }
 
         <div class="panel-actions">
-          <button matButton="filled" [ngClass]="editButtonClass()" (click)="onEditSettings()">
+          <button matButton="filled" (click)="onEditSettings()">
             <mat-icon svgIcon="pen"></mat-icon>
             <span>{{ editButtonLabel() | translate }}</span>
           </button>
@@ -84,8 +73,6 @@ interface SettingEntry {
   `,
 })
 export class SettingsPanelComponent {
-  private static readonly TRUNCATE_LENGTH = 15;
-
   private readonly translate = inject(TranslateService);
   private readonly appSettingsService = inject(AppSettingsService);
 
@@ -121,47 +108,31 @@ export class SettingsPanelComponent {
     () => this.config().buttonLabel ?? 'detailShared.settings.edit'
   );
 
-  readonly editButtonClass = computed(() => ['edit-settings-button', this.config().buttonColor]);
-
-  private formatEntry(key: string, value: unknown, restrictedLabel: string): SettingEntry {
-    const isSensitive =
-      this.restrictMode() && SENSITIVE_KEYS.some(s => key.toLowerCase().includes(s));
-
-    return {
-      key,
-      display: isSensitive ? restrictedLabel : this.truncateValue(value),
-      tooltip: isSensitive ? `[${restrictedLabel}]` : this.valueToString(value),
-    };
-  }
-
-  private truncateValue(value: unknown): string {
-    if (value === null || value === undefined) return '';
-    let str: string;
-    if (typeof value === 'object') {
-      try {
-        str = JSON.stringify(value);
-      } catch {
-        return this.translate.instant('detailShared.settings.invalidJson');
-      }
-    } else {
-      str = String(value);
-    }
-    const limit = SettingsPanelComponent.TRUNCATE_LENGTH;
-    return str.length > limit ? `${str.slice(0, limit)}...` : str;
-  }
-
-  private valueToString(value: unknown): string {
-    try {
-      return typeof value === 'object' ? JSON.stringify(value) : String(value);
-    } catch {
-      return this.translate.instant('detailShared.settings.invalidJson');
-    }
-  }
-
   onEditSettings(): void {
     this.editSettings.emit({
       section: this.config().section.key,
       settings: this.config().settings,
     });
+  }
+
+  private formatEntry(key: string, value: unknown, restrictedLabel: string): SettingEntry {
+    const isSensitive =
+      this.restrictMode() && SENSITIVE_KEYS.some(s => key.toLowerCase().includes(s));
+    const valueText = this.valueToString(value);
+
+    return {
+      key,
+      display: isSensitive ? restrictedLabel : valueText,
+      tooltip: isSensitive ? `[${restrictedLabel}]` : valueText,
+    };
+  }
+
+  private valueToString(value: unknown): string {
+    if (value === null || value === undefined) return '';
+    try {
+      return typeof value === 'object' ? JSON.stringify(value) : String(value);
+    } catch {
+      return this.translate.instant('detailShared.settings.invalidJson');
+    }
   }
 }

@@ -1857,8 +1857,7 @@
       },
       "delete": {
         "title": "删除后端",
-        "message": "确定要移除后端 \"{{name}}\" 吗？",
-        "confirm": "删除"
+        "message": "确定要移除后端 \"{{name}}\" 吗？"
       },
       "security": {
         "encrypted": "已加密",

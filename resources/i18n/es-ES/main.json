@@ -1813,8 +1813,7 @@
       },
       "delete": {
         "title": "Eliminar backend",
-        "message": "¿Está seguro de que desea eliminar el backend \"{{name}}\"?",
-        "confirm": "Eliminar"
+        "message": "¿Está seguro de que desea eliminar el backend \"{{name}}\"?"
       },
       "security": {
         "encrypted": "Cifrado",

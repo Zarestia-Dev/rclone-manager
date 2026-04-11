@@ -135,9 +135,7 @@ export class AppSettingsService extends TauriBaseService {
       undefined,
       {
         icon: 'rotate-right',
-        iconColor: 'warn',
-        iconClass: 'destructive',
-        confirmButtonColor: 'warn',
+        color: 'warn',
       }
     );
 

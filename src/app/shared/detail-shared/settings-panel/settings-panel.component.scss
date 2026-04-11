@@ -3,7 +3,7 @@ mat-expansion-panel {
   .settings-count {
     font-size: var(--font-size-xs);
     color: var(--dim-color);
-    background: color-mix(in srgb, var(--op-color, var(--primary-color)) 15%, transparent);
+    background: color-mix(in srgb, var(--mat-sys-primary) 15%, transparent);
     padding: var(--space-xxs) var(--space-xs);
     border-radius: var(--radius-md);
   }
@@ -52,7 +52,9 @@ mat-expansion-panel {
     font-size: var(--font-size-sm);
     color: var(--window-fg-color);
     font-weight: 400;
-    word-break: break-all;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 

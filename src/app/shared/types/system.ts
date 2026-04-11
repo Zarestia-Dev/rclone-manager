@@ -98,7 +98,7 @@ export interface RcloneUpdateInfo {
   current_version_clean: string;
   latest_version_clean: string;
   channel: string;
-  release_notes?: string; // Add release notes support
+  release_notes?: string;
   release_date?: string;
   release_url?: string;
   update_in_progress?: boolean;

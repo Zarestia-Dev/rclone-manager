@@ -93,19 +93,7 @@ export class RemoteManagementService extends TauriBaseService {
   }
 
   async deleteRemote(name: string): Promise<void> {
-    await this.invokeWithNotification(
-      'delete_remote',
-      { name },
-      {
-        successKey: 'backendSuccess.remote.deleted',
-        successParams: { name },
-        errorKey: 'backendErrors.remote.deleteFailed',
-      }
-    );
-
-    await this.invokeCommand('delete_remote_settings', { remoteName: name }).catch(() => {
-      this.notificationService.showError(this.translate.instant('remotes.deleteSettingsError'));
-    });
+    await this.invokeCommand('delete_remote', { name });
   }
 
   async quitOAuth(): Promise<void> {

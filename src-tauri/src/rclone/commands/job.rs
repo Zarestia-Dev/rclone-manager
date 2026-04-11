@@ -334,16 +334,6 @@ pub async fn get_active_jobs(app: AppHandle) -> Result<Vec<JobInfo>, String> {
 
 #[cfg(not(feature = "web-server"))]
 #[tauri::command]
-pub async fn get_jobs_by_source(app: AppHandle, source: String) -> Result<Vec<JobInfo>, String> {
-    Ok(app
-        .state::<BackendManager>()
-        .job_cache
-        .get_jobs_by_source(&source)
-        .await)
-}
-
-#[cfg(not(feature = "web-server"))]
-#[tauri::command]
 pub async fn rename_profile_in_cache(
     app: AppHandle,
     remote_name: String,

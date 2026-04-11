@@ -41,7 +41,7 @@
       // Active
       &.active {
         border-left: 3px solid var(--primary-color);
-        background: color-mix(in srgb, var(--op-color, var(--primary-color)) 5%, transparent);
+        background: color-mix(in srgb, var(--mat-sys-primary) 5%, transparent);
       }
 
       // Completed / Success
@@ -152,7 +152,7 @@
           background-color: var(--accent-color);
         }
         &.speed-medium {
-          background-color: var(--op-color);
+          background-color: var(--mat-sys-primary);
         }
         &.speed-slow {
           background-color: var(--warn-color);
@@ -188,8 +188,8 @@
         font-size: 10px;
         padding: 1px 6px;
         border-radius: 4px;
-        background: rgba(var(--primary-color-rgb), 0.1);
-        color: var(--primary-color);
+        background: rgba(var(--mat-sys-primary-rgb), 0.1);
+        color: var(--mat-sys-primary);
         width: fit-content;
         font-weight: 600;
       }

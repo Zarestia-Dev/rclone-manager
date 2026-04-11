@@ -240,7 +240,6 @@ export class GeneralDetailComponent {
       icon: 'wrench',
     },
     settings: this.selectedRemote().config,
-    buttonColor: 'primary',
     buttonLabel: 'dashboard.generalDetail.editConfiguration',
   }));
 

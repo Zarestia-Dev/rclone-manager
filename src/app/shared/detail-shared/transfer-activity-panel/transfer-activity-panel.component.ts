@@ -1,5 +1,4 @@
 import { Component, input, output } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -16,7 +15,6 @@ import { TransferActivityPanelConfig } from '../../types';
   selector: 'app-transfer-activity-panel',
   standalone: true,
   imports: [
-    CommonModule,
     MatCardModule,
     MatIconModule,
     MatTabsModule,
@@ -28,18 +26,18 @@ import { TransferActivityPanelConfig } from '../../types';
     CompletedTransfersTableComponent,
   ],
   template: `
-    <mat-card class="detail-panel transfer-activity-panel" [ngClass]="config().operationClass">
+    <mat-card class="detail-panel transfer-activity-panel">
       <mat-card-header class="panel-header">
         <mat-card-title class="panel-title-content">
-          <mat-icon svgIcon="download" style="color: var(--op-color);"></mat-icon>
+          <mat-icon svgIcon="download" style="color: var(--mat-sys-primary);"></mat-icon>
           <span>{{ 'shared.transferActivity.title' | translate }}</span>
           <div class="transfer-summary">
-            <mat-chip [class]="'summary-chip active ' + config().operationColor">
+            <mat-chip class="summary-chip active">
               <span class="chip-label">{{ 'shared.transferActivity.active' | translate }}</span>
               <span class="chip-value">{{ config().activeTransfers.length }}</span>
             </mat-chip>
             @if (config().showHistory) {
-              <mat-chip [class]="'summary-chip completed ' + config().operationColor">
+              <mat-chip class="summary-chip completed">
                 <span class="chip-label">{{ 'shared.transferActivity.recent' | translate }}</span>
                 <span class="chip-value">{{ config().completedTransfers.length }}</span>
               </mat-chip>
@@ -48,7 +46,6 @@ import { TransferActivityPanelConfig } from '../../types';
           @if (config().showHistory) {
             <button
               mat-icon-button
-              class="warn"
               (click)="resetStats.emit()"
               [matTooltip]="'shared.transferActivity.resetStats' | translate"
             >
@@ -71,7 +68,6 @@ import { TransferActivityPanelConfig } from '../../types';
               <div class="tab-content">
                 <app-active-transfers-table
                   [transfers]="config().activeTransfers"
-                  [operationClass]="config().operationClass"
                 ></app-active-transfers-table>
               </div>
             </mat-tab>
@@ -85,7 +81,6 @@ import { TransferActivityPanelConfig } from '../../types';
               <div class="tab-content">
                 <app-completed-transfers-table
                   [transfers]="config().completedTransfers"
-                  [operationClass]="config().operationClass"
                 ></app-completed-transfers-table>
               </div>
             </mat-tab>
@@ -94,7 +89,6 @@ import { TransferActivityPanelConfig } from '../../types';
           <div class="single-view-content">
             <app-active-transfers-table
               [transfers]="config().activeTransfers"
-              [operationClass]="config().operationClass"
             ></app-active-transfers-table>
           </div>
         }
@@ -104,6 +98,6 @@ import { TransferActivityPanelConfig } from '../../types';
   styleUrls: ['./transfer-activity-panel.component.scss'],
 })
 export class TransferActivityPanelComponent {
-  config = input.required<TransferActivityPanelConfig>();
-  resetStats = output<void>();
+  readonly config = input.required<TransferActivityPanelConfig>();
+  readonly resetStats = output<void>();
 }

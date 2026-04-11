@@ -36,7 +36,6 @@ fn jobs_routes() -> Router<WebServerState> {
     Router::new()
         .route("/", get(handlers::get_jobs_handler))
         .route("/active", get(handlers::get_active_jobs_handler))
-        .route("/by-source", get(handlers::get_jobs_by_source_handler))
         .route("/stop", post(handlers::stop_job_handler))
         .route("/delete", post(handlers::delete_job_handler))
         .route(

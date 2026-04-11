@@ -48,17 +48,7 @@ export class ConfirmModalComponent {
   }
 
   // Get the appropriate color for the modal icon
-  getModalIconColor(): string {
-    return this.data.iconColor || 'primary';
-  }
-
-  // Get the appropriate color for the confirm button
-  getConfirmButtonColor(): string {
-    return this.data.confirmButtonColor || 'primary';
-  }
-
-  // Get the appropriate CSS class for the modal icon
-  getModalIconClass(): string {
-    return this.data.iconClass || 'info';
+  getModalColor(): string {
+    return this.data.color || 'primary';
   }
 }

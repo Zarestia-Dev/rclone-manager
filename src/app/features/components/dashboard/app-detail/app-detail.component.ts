@@ -72,7 +72,6 @@ const ANIMATION_CLASS: Partial<Record<PrimaryActionType, string>> = {
   mount: 'animate-breathing',
 };
 
-// Lookup for operation color → CSS variable; keeps computed() clean
 const OPERATION_COLOR_VAR: Record<OperationColor, string> = {
   primary: 'var(--primary-color)',
   accent: 'var(--accent-color)',
@@ -81,6 +80,23 @@ const OPERATION_COLOR_VAR: Record<OperationColor, string> = {
   purple: 'var(--purple)',
   warn: 'var(--warn-color)',
 };
+
+interface JobStatsWithCompleted extends GlobalStats {
+  completed?: RawTransfer[];
+}
+
+interface RawTransfer {
+  name?: string;
+  size?: number;
+  bytes?: number;
+  checked?: boolean;
+  error?: string;
+  group?: string;
+  started_at?: string;
+  completed_at?: string;
+  srcFs?: string;
+  dstFs?: string;
+}
 
 interface ProfileConfig {
   source?: string;
@@ -152,72 +168,28 @@ export class AppDetailComponent {
   private readonly formatTime = inject(FormatTimePipe);
   private readonly systemInfoService = inject(SystemInfoService);
 
-  // Reactive i18n: recomputed signals depend on this to stay in sync with language changes
-  private readonly langChange = toSignal(this.translate.onLangChange, { initialValue: null });
+  // Reactive i18n: force recomputation of translate.instant() calls on lang change.
+  private readonly _lang = toSignal(this.translate.onLangChange, { initialValue: null });
 
   // --- Internal State ---
-  private readonly watcherActivatedAt = signal<number | null>(null);
-  private readonly errorHistory = signal<string[]>([]);
   private readonly liveGroupStats = signal<GlobalStats | null>(null);
   private readonly liveActiveTransfers = signal<TransferFile[]>([]);
   private readonly liveCompletedTransfers = signal<CompletedTransfer[]>([]);
-
-  readonly shouldPoll = computed(() => {
-    const groupName = this.currentGroupName();
-    const activeJob = this.activeGroupJob();
-    return (
-      this.isSyncType() &&
-      this.operationActiveState() &&
-      !!groupName &&
-      activeJob?.status === 'Running'
-    );
-  });
-
-  readonly jobStats = computed(() => {
-    const activeJob = this.activeGroupJob();
-    // Prefer live stats if polling, otherwise use cached job stats
-    if (this.shouldPoll() && this.liveGroupStats()) {
-      return this.liveGroupStats()!;
-    }
-    if (activeJob && activeJob.stats) {
-      return activeJob.stats as unknown as GlobalStats;
-    }
-    return DEFAULT_JOB_STATS;
-  });
-
-  readonly activeTransfers = computed(() => {
-    if (this.shouldPoll()) {
-      return this.liveActiveTransfers();
-    }
-    const stats = this.activeGroupJob()?.stats as any;
-    return stats?.transferring ?? [];
-  });
-
-  readonly completedTransfers = computed(() => {
-    if (this.shouldPoll()) {
-      return this.liveCompletedTransfers();
-    }
-    const stats = this.activeGroupJob()?.stats as any;
-    if (!stats?.completed) return [];
-    // The merged backend data contains the raw 'transferred' objects
-    return stats.completed.map((t: any) => this.mapTransfer(t));
-  });
-  readonly selectedProfile = signal<string | null>(null);
+  private readonly errorHistory = signal<string[]>([]);
   private lastTransferCount = 0;
-  private readonly lastFetchedGroup = signal<string | null>(null);
+
+  readonly selectedProfile = signal<string | null>(null);
 
   // --- Derived: Operation Type ---
   readonly isSyncType = computed(() => this.mainOperationType() === 'sync');
+
   readonly currentOpType = computed<PrimaryActionType>(() =>
     this.isSyncType() ? this.selectedSyncOperation() : this.mainOperationType()
   );
-  readonly currentOpMetadata = computed(() => OPERATION_METADATA[this.currentOpType()]);
-  readonly operationActiveState = computed(() => this.isOperationActive(this.currentOpType()));
 
-  readonly operationClass = computed(() => {
-    const type = this.currentOpType();
-    return this.isSyncType() ? `sync-${type}-operation` : `${type}-operation`;
-  });
+  readonly currentOpMetadata = computed(() => OPERATION_METADATA[this.currentOpType()]);
+
+  readonly operationActiveState = computed(() => this.isOperationActive(this.currentOpType()));
 
   readonly operationColor = computed<OperationColor>(
     () => (this.currentOpMetadata()?.cssClass as OperationColor) ?? 'primary'
@@ -248,7 +220,7 @@ export class AppDetailComponent {
 
   // --- Derived: Profiles ---
   readonly profiles = computed<{ name: string; label: string }[]>(() => {
-    this.langChange(); // reactive i18n dependency
+    this._lang(); // reactive i18n dependency
     const configKey = REMOTE_CONFIG_KEYS[this.currentOpType() as keyof typeof REMOTE_CONFIG_KEYS];
     if (!configKey) {
       return [{ name: 'default', label: this.translate.instant('dashboard.appDetail.default') }];
@@ -291,59 +263,71 @@ export class AppDetailComponent {
     if (!this.isSyncType()) return undefined;
     const state = this.getOpState(this.selectedSyncOperation()) as RemoteOperationState;
     if (!state) return undefined;
-
     const profile = this.selectedProfile() ?? 'default';
     return state.activeProfiles?.[profile] ?? state.lastRunProfiles?.[profile];
   });
 
   readonly currentGroupName = computed(() => {
-    const name = this.selectedRemote().name;
-    // Fall back to 'default' so the group string always matches the
-    // server-side format: "opType/remoteName/profile"
     const profile = this.selectedProfile() ?? 'default';
-    return `${this.currentOpType()}/${name}/${profile}`;
+    return `${this.currentOpType()}/${this.selectedRemote().name}/${profile}`;
   });
 
-  readonly activeGroupJob = computed<JobInfo | null>(() => {
-    const remoteName = this.selectedRemote().name;
-    const profile = this.selectedProfile() ?? 'default';
-    const opType = this.currentOpType();
+  readonly activeGroupJob = computed<JobInfo | null>(() =>
+    this.jobService.getLatestJobForRemote(
+      this.selectedRemote().name,
+      this.selectedProfile() ?? 'default',
+      this.currentOpType()
+    )
+  );
 
-    // Use service-level filtering when available to avoid cross-operation
-    // job leakage (e.g. a mount job showing up on the sync tab).
-    return this.jobService.getLatestJobForRemote(remoteName, profile, opType);
+  readonly shouldPoll = computed(() => {
+    const groupName = this.currentGroupName();
+    const activeJob = this.activeGroupJob();
+    return (
+      this.isSyncType() &&
+      this.operationActiveState() &&
+      !!groupName &&
+      activeJob?.status === 'Running'
+    );
   });
 
+  readonly jobStats = computed<GlobalStats>(() => {
+    if (this.shouldPoll() && this.liveGroupStats()) return this.liveGroupStats()!;
+    const stats = this.activeGroupJob()?.stats as GlobalStats | undefined;
+    return stats ?? DEFAULT_JOB_STATS;
+  });
+
+  readonly activeTransfers = computed<TransferFile[]>(() => {
+    if (this.shouldPoll()) return this.liveActiveTransfers();
+    return (this.activeGroupJob()?.stats as JobStatsWithCompleted | undefined)?.transferring ?? [];
+  });
+
+  readonly completedTransfers = computed<CompletedTransfer[]>(() => {
+    if (this.shouldPoll()) return this.liveCompletedTransfers();
+    const completed = (this.activeGroupJob()?.stats as JobStatsWithCompleted | undefined)
+      ?.completed;
+    return Array.isArray(completed) ? completed.map(t => this.mapTransfer(t)) : [];
+  });
+
+  // --- Derived: Timing ---
   readonly resolvedStartTime = computed<Date | undefined>(() => {
-    const statsStart = this.parseDateValue(this.jobStats().startTime);
-    const jobStart = this.parseDateValue(this.activeGroupJob()?.start_time);
-
+    const statsStart = parseDateValue(this.jobStats().startTime);
+    const jobStart = parseDateValue(this.activeGroupJob()?.start_time);
     if (statsStart && jobStart) {
-      return statsStart.getTime() >= jobStart.getTime() ? statsStart : jobStart;
+      return statsStart >= jobStart ? statsStart : jobStart;
     }
-    if (statsStart) return statsStart;
-    if (jobStart) return jobStart;
-
-    const activatedAt = this.watcherActivatedAt();
-    return activatedAt ? new Date(activatedAt) : undefined;
+    return statsStart ?? jobStart;
   });
 
-  readonly resolvedEndTime = computed<Date | undefined>(() => {
-    const jobEnd = this.parseDateValue(this.activeGroupJob()?.end_time);
-    return jobEnd;
-  });
+  readonly resolvedEndTime = computed<Date | undefined>(() =>
+    parseDateValue(this.activeGroupJob()?.end_time)
+  );
 
   readonly resolvedElapsedSeconds = computed<number>(() => {
     const elapsed = this.jobStats().elapsedTime;
-    if (elapsed > 0) {
-      return elapsed;
-    }
-
+    if (elapsed > 0) return elapsed;
     const startTime = this.resolvedStartTime();
-    if (!startTime) {
-      return 0;
-    }
-
+    if (!startTime) return 0;
     const endTime = this.resolvedEndTime() ?? new Date();
     return Math.max(0, Math.floor((endTime.getTime() - startTime.getTime()) / 1000));
   });
@@ -387,7 +371,7 @@ export class AppDetailComponent {
 
   // --- Derived: Settings Sections ---
   readonly operationSettingsSections = computed<RemoteSettingsSection[]>(() => {
-    this.langChange();
+    this._lang();
     const metadata = this.currentOpMetadata();
     if (!metadata) return [];
     return this.buildSettingsSections(
@@ -451,8 +435,8 @@ export class AppDetailComponent {
     return this.settingsPanelConfigMap().get(section.key)!;
   }
 
-  // --- Derived: Control Configs ---
-  readonly unifiedControlConfigs = computed<OperationControlConfig[]>(() => {
+  // --- Derived: Control Configs (unified + filtered in one computed) ---
+  readonly controlConfigs = computed<OperationControlConfig[]>(() => {
     const type = this.currentOpType();
     const metadata = this.currentOpMetadata();
     const configKey = REMOTE_CONFIG_KEYS[type as keyof typeof REMOTE_CONFIG_KEYS];
@@ -463,16 +447,14 @@ export class AppDetailComponent {
       | undefined;
     const entries = profiles ? Object.entries(profiles) : [];
 
-    return entries.length > 0
-      ? entries.map(([name, cfg]) => this.buildControlConfig(type, cfg, name))
-      : [this.buildControlConfig(type, {}, undefined)];
-  });
+    const all =
+      entries.length > 0
+        ? entries.map(([name, cfg]) => this.buildControlConfig(type, cfg, name))
+        : [this.buildControlConfig(type, {}, undefined)];
 
-  readonly filteredControlConfigs = computed(() => {
-    const configs = this.unifiedControlConfigs();
     const selected = this.selectedProfile();
-    if (!this.showProfileSelector() || configs.length <= 1) return configs;
-    return configs.filter(c => c.profileName === selected);
+    if (!this.showProfileSelector() || all.length <= 1) return all;
+    return all.filter(c => c.profileName === selected);
   });
 
   // --- Derived: Stats & Transfer Panels ---
@@ -480,24 +462,17 @@ export class AppDetailComponent {
     const startTime = this.resolvedStartTime();
     const endTime = this.resolvedEndTime();
     let duration: string | undefined;
-
     if (startTime && endTime) {
       const diffMs = endTime.getTime() - startTime.getTime();
       duration = this.formatTime.transform(Math.max(0, Math.floor(diffMs / 1000)));
     }
-
     return {
-      operationType: this.isSyncType()
-        ? this.selectedSyncOperation()
-        : (this.mainOperationType() ?? 'mount'),
+      operationType: this.isSyncType() ? this.selectedSyncOperation() : this.mainOperationType(),
       jobId: this.jobId() ? Number(this.jobId()) : undefined,
       status: this.activeGroupJob()?.status,
       startTime,
       endTime,
       duration,
-      profiles: this.profiles(),
-      selectedProfile: this.selectedProfile() ?? undefined,
-      showProfileSelector: this.showProfileSelector(),
     };
   });
 
@@ -512,7 +487,6 @@ export class AppDetailComponent {
     return {
       title: t('dashboard.appDetail.transferStatistics', { op: meta ? t(meta.label) : 'Transfer' }),
       icon: meta?.icon ?? 'bar_chart',
-      operationClass: this.operationClass(),
       operationColor: this.operationColor(),
       stats: [
         {
@@ -548,41 +522,19 @@ export class AppDetailComponent {
   readonly transferActivityConfig = computed<TransferActivityPanelConfig>(() => ({
     activeTransfers: this.activeTransfers(),
     completedTransfers: this.completedTransfers(),
-    operationClass: this.operationClass(),
     operationColor: this.operationColor(),
     remoteName: this.selectedRemote().name,
     showHistory: this.completedTransfers().length > 0,
   }));
 
   constructor() {
-    effect(onCleanup => {
-      const groupName = this.currentGroupName();
-      const shouldPoll = this.shouldPoll();
-
-      // Reset when context changes (different group/profile)
-      untracked(() => {
-        if (groupName !== this.lastFetchedGroup()) {
-          this.resetTransfers();
-          this.lastFetchedGroup.set(groupName);
-        }
-      });
-
-      if (!shouldPoll || !groupName) {
-        return;
-      }
-
-      untracked(() => {
-        if (this.watcherActivatedAt() === null) {
-          this.watcherActivatedAt.set(Date.now());
-        }
-        void this.fetchGroupData(groupName);
-      });
-
-      const timer = setInterval(() => void this.fetchGroupData(groupName), POLL_INTERVAL_MS);
-      onCleanup(() => clearInterval(timer));
+    // Reset live state when the group context changes (operation type, profile, or remote).
+    effect(() => {
+      this.currentGroupName();
+      untracked(() => this.resetTransfers());
     });
 
-    // Auto-select profile when list changes and current selection is invalid
+    // Auto-select first valid profile when the list changes.
     effect(() => {
       const profiles = this.profiles();
       const current = this.selectedProfile();
@@ -592,13 +544,19 @@ export class AppDetailComponent {
         }
       });
     });
+
+    // Polling effect: runs while the current job is active.
+    effect(onCleanup => {
+      if (!this.shouldPoll()) return;
+      const groupName = this.currentGroupName();
+
+      untracked(() => void this.fetchGroupData(groupName));
+      const timer = setInterval(() => void this.fetchGroupData(groupName), POLL_INTERVAL_MS);
+      onCleanup(() => clearInterval(timer));
+    });
   }
 
   // --- Public Methods ---
-
-  onSyncOperationChange(operation: SyncOperationType): void {
-    this.selectedSyncOperation.set(operation);
-  }
 
   onAddProfile(): void {
     this.openRemoteConfigModal.emit({
@@ -649,7 +607,6 @@ export class AppDetailComponent {
   private isOperationActive(type: string, profileName?: string): boolean {
     const state = this.getOpState(type as SyncOperationType | 'mount' | 'serve');
     if (!state) return false;
-
     if (type === 'serve') {
       const s = state as RemoteServeState;
       return profileName ? (s.serves?.some(sv => sv.profile === profileName) ?? false) : !!s.active;
@@ -705,7 +662,7 @@ export class AppDetailComponent {
       specificSettings = (profiles as Record<string, unknown>) ?? {};
     }
 
-    return { section, settings: specificSettings, buttonColor: this.operationColor() };
+    return { section, settings: specificSettings };
   }
 
   private buildControlConfig(
@@ -724,7 +681,6 @@ export class AppDetailComponent {
     );
     const actionType = actionMatch?.type;
     const isLoading = !!actionType;
-
     const t = (key: string, params?: object) => this.translate.instant(key, params);
     const opLabel = t(metadata.typeLabel || metadata.label);
     const isMount = type === 'mount';
@@ -739,7 +695,6 @@ export class AppDetailComponent {
             showOpenButtons: true,
             hasSource: !!config.source,
             hasDestination: false,
-            operationColor: metadata.cssClass as OperationColor,
             isDestinationActive: isActive,
           }
         : {
@@ -747,7 +702,6 @@ export class AppDetailComponent {
             destination:
               config.dest ?? config.destination ?? t('dashboard.appDetail.notConfigured'),
             showOpenButtons: true,
-            operationColor: metadata.cssClass as OperationColor,
             isDestinationActive: type === 'mount' ? isActive : true,
             actionInProgress: (actionType as RemoteAction) ?? undefined,
             hasSource: !!config.source,
@@ -781,14 +735,10 @@ export class AppDetailComponent {
   private async fetchGroupData(groupName: string): Promise<void> {
     try {
       const groupStats = (await this.systemInfoService.getStats(groupName)) as GlobalStats | null;
-      if (groupStats) {
-        this.applyStats(groupStats);
-      }
+      if (groupStats) this.applyStats(groupStats);
 
       const completedTransfers = await this.loadCompletedTransfers(groupName);
-      if (completedTransfers) {
-        this.liveCompletedTransfers.set(completedTransfers);
-      }
+      if (completedTransfers) this.liveCompletedTransfers.set(completedTransfers);
     } catch (error) {
       console.error('Error fetching group stats:', error);
     }
@@ -796,10 +746,13 @@ export class AppDetailComponent {
 
   private async loadCompletedTransfers(group: string): Promise<CompletedTransfer[] | null> {
     try {
-      const response: any = await this.jobService.getCompletedTransfers(group);
-      const transfers = response?.transferred ?? response;
+      const response = (await this.jobService.getCompletedTransfers(group)) as
+        | { transferred?: RawTransfer[] }
+        | RawTransfer[]
+        | null;
+      const transfers = (response as { transferred?: RawTransfer[] })?.transferred ?? response;
       if (!Array.isArray(transfers)) return null;
-      return transfers.map((t: any) => this.mapTransfer(t));
+      return (transfers as RawTransfer[]).map(t => this.mapTransfer(t));
     } catch {
       return null;
     }
@@ -808,13 +761,13 @@ export class AppDetailComponent {
   private applyStats(stats: GlobalStats): void {
     const lastError = (stats.lastError ?? '').trim();
     if (lastError) {
-      this.errorHistory.update(prev => {
-        if (prev.includes(lastError)) return prev;
-        return [lastError, ...prev].slice(0, 20);
-      });
+      this.errorHistory.update(prev =>
+        prev.includes(lastError) ? prev : [lastError, ...prev].slice(0, 20)
+      );
     }
 
     this.trackCompletedFiles(stats);
+
     const active = (stats.transferring ?? []).map(f => {
       const percentage = f.size > 0 ? Math.min(100, Math.round((f.bytes / f.size) * 100)) : 0;
       return {
@@ -832,12 +785,10 @@ export class AppDetailComponent {
     const currentCount = stats.transfers ?? 0;
     if (currentCount <= this.lastTransferCount) return;
 
-    const activeNames = new Set(stats.transferring?.map((f: TransferFile) => f.name) ?? []);
+    const activeNames = new Set(stats.transferring?.map(f => f.name) ?? []);
     const newCompletions: CompletedTransfer[] = this.activeTransfers()
-      .filter(
-        (f: TransferFile) => !activeNames.has(f.name) && f.percentage > 0 && f.percentage < 100
-      )
-      .map((file: TransferFile) => ({
+      .filter(f => !activeNames.has(f.name) && f.percentage > 0 && f.percentage < 100)
+      .map(file => ({
         ...file,
         checked: false,
         error: '',
@@ -848,25 +799,24 @@ export class AppDetailComponent {
         srcFs: undefined,
         dstFs: undefined,
         group: undefined,
-        action: 'copy', // Default or derived
+        action: 'copy',
       }));
 
     if (newCompletions.length > 0) {
-      this.liveCompletedTransfers.update((prev: CompletedTransfer[]) => {
-        const unique = newCompletions.filter(
-          nc => !prev.some((p: CompletedTransfer) => p.name === nc.name)
-        );
+      this.liveCompletedTransfers.update(prev => {
+        const unique = newCompletions.filter(nc => !prev.some(p => p.name === nc.name));
         return [...unique, ...prev].slice(0, 50);
       });
     }
     this.lastTransferCount = currentCount;
   }
 
-  private mapTransfer(t: any): CompletedTransfer {
+  private mapTransfer(t: RawTransfer): CompletedTransfer {
     let status: CompletedTransfer['status'] = 'completed';
     if (t.error) status = 'failed';
     else if (t.checked) status = 'checked';
-    else if (t.bytes > 0 && t.bytes < t.size) status = 'partial';
+    else if (t.bytes != null && t.size != null && t.bytes > 0 && t.bytes < t.size)
+      status = 'partial';
 
     return {
       name: t.name ?? '',
@@ -888,18 +838,8 @@ export class AppDetailComponent {
     this.liveActiveTransfers.set([]);
     this.liveCompletedTransfers.set([]);
     this.errorHistory.set([]);
-    this.watcherActivatedAt.set(null);
     this.lastTransferCount = 0;
     this.liveGroupStats.set(null);
-  }
-
-  private parseDateValue(value?: string | null): Date | undefined {
-    if (!value) {
-      return undefined;
-    }
-
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
   }
 
   private formatProgress(): string {
@@ -908,4 +848,10 @@ export class AppDetailComponent {
       ? `${this.formatFileSize.transform(bytes)} / ${this.formatFileSize.transform(totalBytes)}`
       : this.formatFileSize.transform(bytes);
   }
+}
+
+function parseDateValue(value?: string | null): Date | undefined {
+  if (!value) return undefined;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 }

@@ -14,20 +14,7 @@ export interface SettingsSection {
 export interface SettingsPanelConfig {
   section: SettingsSection;
   settings: Record<string, unknown>;
-  buttonColor?: OperationColor;
   buttonLabel?: string;
-}
-
-// ── Status Badge ────────────────────────────────────────────────────────────
-export interface StatusBadgeConfig {
-  isActive: boolean;
-  isError?: boolean;
-  isLoading?: boolean;
-  activeLabel: string;
-  inactiveLabel: string;
-  errorLabel?: string;
-  loadingLabel?: string;
-  badgeClass?: string;
 }
 
 // ── Stats Panel ─────────────────────────────────────────────────────────────
@@ -44,8 +31,6 @@ export interface StatsPanelConfig {
   title: string;
   icon: string;
   stats: StatItem[];
-  operationClass?: string;
-  operationColor?: OperationColor;
 }
 
 // ── Path Display ────────────────────────────────────────────────────────────
@@ -55,7 +40,6 @@ export interface PathDisplayConfig {
   sourceLabel?: string;
   destinationLabel?: string;
   showOpenButtons?: boolean;
-  operationColor?: OperationColor;
   isDestinationActive?: boolean;
   actionInProgress?: RemoteAction;
   hasSource?: boolean;
@@ -124,8 +108,6 @@ export interface CompletedTransfer {
 export interface TransferActivityPanelConfig {
   activeTransfers: TransferFile[];
   completedTransfers: CompletedTransfer[];
-  operationClass: string;
-  operationColor: OperationColor;
   remoteName: string;
   showHistory: boolean;
 }

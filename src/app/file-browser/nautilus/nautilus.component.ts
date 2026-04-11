@@ -48,6 +48,7 @@ import {
   FileBrowserItem,
   FilePickerConfig,
   RemoteFeatures,
+  ORIGINS,
 } from '@app/types';
 
 import { FormatFileSizePipe } from '@app/pipes';
@@ -667,7 +668,7 @@ export class NautilusComponent implements OnInit {
 
           return from(this.stopListReadGroup(readGroup)).pipe(
             switchMap(() =>
-              from(this.remoteOps.getRemotePaths(fsName, path, {}, 'nautilus', readGroup))
+              from(this.remoteOps.getRemotePaths(fsName, path, {}, ORIGINS.FILEMANAGER, readGroup))
             ),
             map(res =>
               (res.list || []).map(
@@ -1149,7 +1150,7 @@ export class NautilusComponent implements OnInit {
           normalizedRemote,
           target.path,
           event.payload.paths,
-          'nautilus'
+          ORIGINS.FILEMANAGER
         );
 
         if (result.uploaded > 0) {
@@ -1262,7 +1263,7 @@ export class NautilusComponent implements OnInit {
         normalizedRemote,
         target.path,
         files,
-        'nautilus'
+        ORIGINS.FILEMANAGER
       );
       uploadedCount = result.uploaded;
       failedUploads.push(...result.failed);
@@ -1949,7 +1950,7 @@ export class NautilusComponent implements OnInit {
       const current = this.activePath();
       const sep = remote.isLocal && (current === '' || current.endsWith('/')) ? '' : '/';
       const newPath = current ? `${current}${sep}${folderName}` : folderName;
-      await this.remoteOps.makeDirectory(normalized, newPath, 'nautilus');
+      await this.remoteOps.makeDirectory(normalized, newPath, ORIGINS.FILEMANAGER);
       this.refresh();
     } catch {
       this.notificationService.showError(
@@ -1988,9 +1989,19 @@ export class NautilusComponent implements OnInit {
       const newPath = pathParts.join('/');
 
       if (item.entry.IsDir) {
-        await this.remoteOps.renameDir(normalizedRemote, item.entry.Path, newPath, 'nautilus');
+        await this.remoteOps.renameDir(
+          normalizedRemote,
+          item.entry.Path,
+          newPath,
+          ORIGINS.FILEMANAGER
+        );
       } else {
-        await this.remoteOps.renameFile(normalizedRemote, item.entry.Path, newPath, 'nautilus');
+        await this.remoteOps.renameFile(
+          normalizedRemote,
+          item.entry.Path,
+          newPath,
+          ORIGINS.FILEMANAGER
+        );
       }
 
       this.notificationService.showSuccess(
@@ -2023,14 +2034,14 @@ export class NautilusComponent implements OnInit {
       this.translate.instant('nautilus.modals.emptyTrash.message', { remote: r.name }),
       undefined,
       undefined,
-      { icon: 'trash', iconColor: 'warn', iconClass: 'destructive', confirmButtonColor: 'warn' }
+      { icon: 'trash', color: 'warn' }
     );
     if (!confirmed) return;
     try {
       const normalized = r.isLocal
         ? r.name
         : this.pathSelectionService.normalizeRemoteForRclone(r.name);
-      await this.remoteOps.cleanup(normalized, undefined, 'nautilus');
+      await this.remoteOps.cleanup(normalized, undefined, ORIGINS.FILEMANAGER);
       this.notificationService.showInfo(
         this.translate.instant('nautilus.notifications.trashEmptied')
       );
@@ -2117,7 +2128,7 @@ export class NautilusComponent implements OnInit {
       message,
       undefined,
       undefined,
-      { icon: 'trash', iconColor: 'warn' }
+      { icon: 'trash', color: 'warn' }
     );
     if (!confirmed) return;
 
@@ -2133,9 +2144,13 @@ export class NautilusComponent implements OnInit {
     for (const item of itemsToDelete) {
       try {
         if (item.entry.IsDir) {
-          await this.remoteOps.purgeDirectory(normalizedRemote, item.entry.Path, 'nautilus');
+          await this.remoteOps.purgeDirectory(
+            normalizedRemote,
+            item.entry.Path,
+            ORIGINS.FILEMANAGER
+          );
         } else {
-          await this.remoteOps.deleteFile(normalizedRemote, item.entry.Path, 'nautilus');
+          await this.remoteOps.deleteFile(normalizedRemote, item.entry.Path, ORIGINS.FILEMANAGER);
         }
       } catch (e) {
         console.error('Delete failed for', item.entry.Path, e);
@@ -2218,12 +2233,26 @@ export class NautilusComponent implements OnInit {
   ): Promise<void> {
     if (mode === 'copy') {
       if (isDir)
-        await this.remoteOps.copyDirectory(srcRemote, srcPath, dstRemote, dstPath, 'nautilus');
-      else await this.remoteOps.copyFile(srcRemote, srcPath, dstRemote, dstPath, 'nautilus');
+        await this.remoteOps.copyDirectory(
+          srcRemote,
+          srcPath,
+          dstRemote,
+          dstPath,
+          ORIGINS.FILEMANAGER
+        );
+      else
+        await this.remoteOps.copyFile(srcRemote, srcPath, dstRemote, dstPath, ORIGINS.FILEMANAGER);
     } else {
       if (isDir)
-        await this.remoteOps.moveDirectory(srcRemote, srcPath, dstRemote, dstPath, 'nautilus');
-      else await this.remoteOps.moveFile(srcRemote, srcPath, dstRemote, dstPath, 'nautilus');
+        await this.remoteOps.moveDirectory(
+          srcRemote,
+          srcPath,
+          dstRemote,
+          dstPath,
+          ORIGINS.FILEMANAGER
+        );
+      else
+        await this.remoteOps.moveFile(srcRemote, srcPath, dstRemote, dstPath, ORIGINS.FILEMANAGER);
     }
   }
 
@@ -2313,9 +2342,13 @@ export class NautilusComponent implements OnInit {
       try {
         if (entry.mode === 'copy') {
           if (item.isDir) {
-            await this.remoteOps.purgeDirectory(item.dstRemote, item.dstFullPath, 'nautilus');
+            await this.remoteOps.purgeDirectory(
+              item.dstRemote,
+              item.dstFullPath,
+              ORIGINS.FILEMANAGER
+            );
           } else {
-            await this.remoteOps.deleteFile(item.dstRemote, item.dstFullPath, 'nautilus');
+            await this.remoteOps.deleteFile(item.dstRemote, item.dstFullPath, ORIGINS.FILEMANAGER);
           }
         } else {
           await this.dispatchFileOp(
@@ -2415,13 +2448,13 @@ export class NautilusComponent implements OnInit {
       this.translate.instant('nautilus.modals.rmdirs.message', { name: item.entry.Name }),
       this.translate.instant('nautilus.modals.rmdirs.confirm'),
       undefined,
-      { icon: 'broom', iconColor: 'accent' }
+      { icon: 'broom', color: 'accent' }
     );
     if (!confirmed) return;
 
     const normalizedRemote = this.pathSelectionService.normalizeRemoteForRclone(remote.name);
     try {
-      await this.remoteOps.removeEmptyDirs(normalizedRemote, item.entry.Path, 'nautilus');
+      await this.remoteOps.removeEmptyDirs(normalizedRemote, item.entry.Path, ORIGINS.FILEMANAGER);
       this.notificationService.showInfo(
         this.translate.instant('nautilus.notifications.rmdirsStarted', { name: item.entry.Name })
       );

@@ -48,8 +48,7 @@ export class FileSystemService extends TauriBaseService {
         undefined,
         {
           icon: 'circle-exclamation',
-          iconColor: 'warn',
-          iconClass: 'destructive',
+          color: 'warn',
         }
       );
       throw error;
@@ -101,8 +100,7 @@ export class FileSystemService extends TauriBaseService {
         undefined,
         {
           icon: 'circle-exclamation',
-          iconColor: 'warn',
-          iconClass: 'destructive',
+          color: 'warn',
         }
       );
       throw error;

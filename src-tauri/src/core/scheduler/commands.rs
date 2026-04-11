@@ -4,7 +4,10 @@ use crate::utils::types::scheduled_task::{CronValidationResponse, ScheduledTask,
 use log::{error, info, warn};
 use tauri::{AppHandle, Manager, State};
 
-/// Toggle task enabled/disabled
+/// Toggle task scheduling state.
+///
+/// If the task is currently running, it transitions to `Stopping` and will be
+/// disabled after the current run completes.
 #[tauri::command]
 pub async fn toggle_scheduled_task(
     cache: State<'_, ScheduledTasksCache>,

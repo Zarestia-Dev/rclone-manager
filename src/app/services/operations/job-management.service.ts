@@ -2,7 +2,7 @@ import { DestroyRef, inject, Injectable, signal, computed } from '@angular/core'
 import { merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { JobInfo, Origin } from '@app/types';
+import { JobInfo, Origin, ORIGINS } from '@app/types';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 
 /**
@@ -136,16 +136,8 @@ export class JobManagementService extends TauriBaseService {
    */
   async refreshJobs(): Promise<JobInfo[]> {
     const jobs = await this.invokeCommand<JobInfo[]>('get_jobs');
+    console.debug('[JobManagementService] Refreshed jobs:', jobs);
     this._jobs.set(jobs);
-    console.debug(
-      '[JobManagementService] Jobs refreshed:',
-      jobs.map(j => ({
-        jobid: j.jobid,
-        remote_name: j.remote_name,
-        status: j.status,
-        profile: j.profile,
-      }))
-    );
     return jobs;
   }
 
@@ -313,22 +305,14 @@ export class JobManagementService extends TauriBaseService {
   // ============================================================================
 
   /**
-   * Get jobs filtered by source UI
-   * @param source The source UI identifier (e.g., 'nautilus', 'dashboard', 'scheduled')
-   */
-  async getJobsBySource(source: Origin): Promise<JobInfo[]> {
-    return this.invokeCommand<JobInfo[]>('get_jobs_by_source', { source });
-  }
-
-  /**
-   * Refresh the nautilus jobs stream
+   * Refresh the file-manager jobs stream (used by the file-manager integration)
    */
   async refreshNautilusJobs(): Promise<void> {
     try {
-      const jobs = await this.getJobsBySource('nautilus');
-      this._nautilusJobs.set(jobs);
+      const jobs = await this.refreshJobs();
+      this._nautilusJobs.set(jobs.filter(job => job.origin === ORIGINS.FILEMANAGER));
     } catch (err) {
-      console.error('Failed to refresh nautilus jobs:', err);
+      console.error('Failed to refresh filemanager jobs:', err);
     }
   }
 

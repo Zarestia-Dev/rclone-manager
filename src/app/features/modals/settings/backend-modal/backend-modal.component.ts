@@ -19,8 +19,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { ConfirmModalComponent } from 'src/app/shared/modals/confirm-modal/confirm-modal.component';
-import { firstValueFrom, map } from 'rxjs';
+import { map } from 'rxjs';
 import { BackendSecurityComponent } from './backend-security/backend-security.component';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
@@ -355,23 +354,29 @@ export class BackendModalComponent {
   async removeBackend(name: string): Promise<void> {
     if (name === 'Local') return;
 
-    const dialogRef = this.dialog.open(ConfirmModalComponent, {
-      data: {
-        title: this.translate.instant('modals.backend.delete.title'),
-        message: this.translate.instant('modals.backend.delete.message', { name }),
-        confirmText: this.translate.instant('modals.backend.delete.confirm'),
-        cancelText: this.translate.instant('common.cancel'),
-      },
-    });
+    this.notificationService
+      .confirmModal(
+        this.translate.instant('modals.backend.delete.title'),
+        this.translate.instant('modals.backend.delete.message', { name }),
+        this.translate.instant('common.delete'),
+        this.translate.instant('common.cancel'),
+        { icon: 'warning', color: 'warn' }
+      )
+      .then(async confirmed => {
+        if (!confirmed) return;
 
-    const confirmed = await firstValueFrom(dialogRef.afterClosed());
-    if (!confirmed) return;
-
-    try {
-      await this.backendService.removeBackend(name);
-    } catch (error) {
-      console.error('Failed to remove backend:', error);
-    }
+        try {
+          await this.backendService.removeBackend(name);
+          this.notificationService.showSuccess(
+            this.translate.instant('modals.backend.notifications.deleted')
+          );
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          this.notificationService.showError(
+            this.translate.instant('modals.backend.notifications.deleteFailed', { message })
+          );
+        }
+      });
   }
 
   togglePasswordVisibility(): void {

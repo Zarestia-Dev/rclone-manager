@@ -127,8 +127,7 @@ export class BackupRestoreService extends TauriBaseService {
         undefined,
         {
           icon: 'circle-exclamation',
-          iconColor: 'warn',
-          iconClass: 'destructive',
+          color: 'warn',
         }
       );
       throw error;

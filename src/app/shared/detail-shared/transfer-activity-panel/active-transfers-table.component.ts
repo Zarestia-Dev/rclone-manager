@@ -1,5 +1,5 @@
 import { Component, input, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatIconModule } from '@angular/material/icon';
@@ -14,7 +14,7 @@ import { TransferFile } from '@app/types';
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule,
+    NgClass,
     MatTableModule,
     MatProgressBarModule,
     MatIconModule,
@@ -128,8 +128,7 @@ import { TransferFile } from '@app/types';
   styleUrls: ['./transfer-tables.scss'],
 })
 export class ActiveTransfersTableComponent {
-  transfers = input.required<TransferFile[]>();
-  operationClass = input('');
+  readonly transfers = input.required<TransferFile[]>();
 
   readonly displayedColumns = ['name', 'progress', 'speed', 'eta'];
 

@@ -65,6 +65,9 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
           this.jobManagementService.refreshNautilusJobs();
         }
       });
+
+    console.log('[OperationsPanel] Initialized, subscribed to job stream');
+    console.log('[OperationsPanel] Current jobs:', this.jobs());
   }
 
   ngOnDestroy(): void {

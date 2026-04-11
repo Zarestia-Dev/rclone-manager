@@ -4,10 +4,14 @@ use std::collections::HashMap;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::{
+    core::settings::remote::manager::delete_remote_settings,
     rclone::{
         backend::BackendManager,
         commands::{
             common::redact_sensitive_values,
+            job::stop_job,
+            mount::unmount_remote,
+            serve::stop_serve,
             system::{ensure_oauth_process, get_fscache_entries},
         },
         state::scheduled_tasks::ScheduledTasksCache,
@@ -295,19 +299,6 @@ pub async fn delete_remote(
     let state = app.state::<RcloneState>();
     let backend = app.state::<BackendManager>().get_active().await;
 
-    backend
-        .post_json(
-            &state.client,
-            config::DELETE,
-            Some(&json!({ "name": name })),
-        )
-        .await
-        .map_err(|e| {
-            let msg = format!("Failed to delete remote: {e}");
-            error!("❌ {msg}");
-            msg
-        })?;
-
     match cache
         .remove_tasks_for_remote(&backend.name, &name, Some(&app))
         .await
@@ -322,11 +313,66 @@ pub async fn delete_remote(
         _ => {}
     }
 
+    // --- Cleanup logic moved from frontend ---
+    let backend_manager = app.state::<BackendManager>();
+    let remote_prefix = format!("{}:", name);
+
+    // 1. Unmount all associated mounts
+    let mounted = backend_manager.remote_cache.get_mounted_remotes().await;
+    for m in mounted {
+        if m.fs.starts_with(&remote_prefix) {
+            info!("  - Unmounting: {} at {}", m.fs, m.mount_point);
+            let _ = unmount_remote(app.clone(), m.mount_point, name.clone()).await;
+        }
+    }
+
+    // 2. Stop all associated serves
+    let serves = backend_manager.remote_cache.get_serves().await;
+    for s in serves {
+        if let Some(fs) = s.params.get("fs").and_then(|v| v.as_str())
+            && fs.starts_with(&remote_prefix)
+        {
+            info!("  - Stopping serve: {}", s.id);
+            let _ = stop_serve(app.clone(), s.id, name.clone()).await;
+        }
+    }
+
+    // 3. Stop all associated active jobs
+    let jobs = backend_manager.job_cache.get_active_jobs().await;
+    for j in jobs {
+        if j.remote_name == name {
+            info!("  - Stopping job: {}", j.jobid);
+            let _ = stop_job(app.clone(), cache.clone(), j.jobid, name.clone()).await;
+        }
+    }
+
     // Clean up all associated job results for this remote
     app.state::<BackendManager>()
         .job_cache
         .delete_jobs_by_remote(&name, Some(&app))
         .await;
+
+    match delete_remote_settings(app.clone(), name.clone()).await {
+        Ok(_) => {
+            info!("✅ Settings for remote '{name}' deleted successfully");
+        }
+        Err(e) => {
+            warn!("⚠️  Failed to delete settings for remote '{name}': {e}");
+        }
+    }
+
+    backend
+        .post_json(
+            &state.client,
+            config::DELETE,
+            Some(&json!({ "name": name })),
+        )
+        .await
+        .map_err(|e| {
+            let msg = format!("Failed to delete remote: {e}");
+            error!("❌ {msg}");
+            msg
+        })?;
 
     app.emit(REMOTE_CACHE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;

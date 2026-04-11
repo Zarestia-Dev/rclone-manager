@@ -18,8 +18,8 @@
 
           // Active transfers — tinted with the current operation colour
           &.active {
-            background: color-mix(in srgb, var(--op-color, var(--primary-color)) 15%, transparent);
-            color: var(--op-color, var(--primary-color));
+            background: color-mix(in srgb, var(--mat-sys-primary) 15%, transparent);
+            color: var(--mat-sys-primary);
           }
 
           // Completed transfers — always accent (positive outcome)

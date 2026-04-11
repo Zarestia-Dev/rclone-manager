@@ -128,8 +128,6 @@
 ::ng-deep .job-details-menu {
   max-width: 400px;
   background: rgba(var(--window-bg-color-rgb), 0.7) !important;
-  backdrop-filter: blur(12px) saturate(180%);
-  border: 1px solid rgba(var(--window-fg-color-rgb), 0.08) !important;
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.12),
     var(--shadow-lg) !important;

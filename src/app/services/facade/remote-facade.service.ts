@@ -441,17 +441,11 @@ export class RemoteFacadeService extends TauriBaseService {
 
   async deleteRemote(remoteName: string): Promise<void> {
     await this.executeAction(remoteName, 'delete', async () => {
-      const mounts = this.mountedRemotes().filter(m => getRemoteNameFromFs(m.fs) === remoteName);
-      for (const m of mounts) await this.mountService.unmountRemote(m.mount_point, remoteName);
-
-      const serves = this.serveService.getServesForRemoteProfile(remoteName);
-      for (const s of serves) await this.serveService.stopServe(s.id, remoteName);
-
-      const jobs = this.jobService.getActiveJobsForRemote(remoteName);
-      for (const j of jobs) await this.jobService.stopJob(j.jobid, remoteName);
-
       await this.remoteService.deleteRemote(remoteName);
       await this.refreshAll();
+      this.notificationService.showSuccess(
+        this.translate.instant('backendSuccess.remote.deleted', { name: remoteName })
+      );
     });
   }
 
@@ -663,7 +657,7 @@ export class RemoteFacadeService extends TauriBaseService {
     const profileNames = Object.keys(profiles);
 
     // Find the latest job for each profile to show last run data
-    const latestJob = (profile?: string) => {
+    const latestJob = (profile?: string): JobInfo | undefined => {
       const filtered = jobs.filter(
         j => j.job_type === type && (profile ? j.profile === profile : true)
       );

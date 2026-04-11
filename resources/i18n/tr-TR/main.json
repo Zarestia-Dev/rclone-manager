@@ -1855,8 +1855,7 @@
       },
       "delete": {
         "title": "Arka Uç Sil",
-        "message": "\"{{name}}\" arka ucunu kaldırmak istediğinizden emin misiniz?",
-        "confirm": "Sil"
+        "message": "\"{{name}}\" arka ucunu kaldırmak istediğinizden emin misiniz?"
       },
       "security": {
         "encrypted": "Şifrelenmiş",

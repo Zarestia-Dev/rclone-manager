@@ -53,7 +53,7 @@ import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
 import { IconService } from '@app/services';
 import { NotificationService } from '@app/services';
 import { FormatFileSizePipe } from '@app/pipes';
-import { Entry } from '@app/types';
+import { Entry, ORIGINS } from '@app/types';
 
 import { FormsModule } from '@angular/forms';
 import { MatTooltip } from '@angular/material/tooltip';
@@ -115,7 +115,7 @@ const gnomeLightHighlighting = HighlightStyle.define([
   styleUrls: ['./file-viewer-modal.component.scss'],
 })
 export class FileViewerModalComponent implements OnInit, OnDestroy {
-  private static readonly FILE_OPERATION_ORIGIN = 'nautilus';
+  private static readonly FILE_OPERATION_ORIGIN = ORIGINS.FILEMANAGER;
 
   public data!: {
     items: Entry[];

@@ -26,7 +26,6 @@ export const EXPLICIT_ENDPOINTS: Record<string, string> = {
   get_jobs: '/jobs',
   get_active_jobs: '/jobs/active',
   get_job_status: '/jobs/:id/status',
-  get_jobs_by_source: '/jobs/by-source',
   stop_job: '/jobs/stop',
   delete_job: '/jobs/delete',
   stop_jobs_by_group: '/jobs/stop-by-group',
