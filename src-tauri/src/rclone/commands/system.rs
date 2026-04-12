@@ -163,12 +163,7 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
         while let Ok(Some(line)) = lines.next_line().await {
             debug!("[oauth] {}", line);
 
-            if line.contains("If your browser doesn't open automatically")
-                && let Some(url) = line.split_whitespace().find(|token| {
-                    (token.starts_with("http://") || token.starts_with("https://"))
-                        && token.contains("/auth?")
-                })
-            {
+            if let Some(url) = extract_oauth_auth_url(&line) {
                 info!("🔗 OAuth URL ready: {url}");
                 if let Err(e) = app_clone.emit(RCLONE_OAUTH_URL, json!({ "url": url })) {
                     warn!("Failed to emit OAuth URL event: {e}");
@@ -200,6 +195,22 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
         "Timeout waiting for OAuth process to start on port {:?}",
         backend.oauth_port
     )))
+}
+
+fn extract_oauth_auth_url(line: &str) -> Option<String> {
+    line.split_whitespace().find_map(|token| {
+        let candidate = token.trim_matches(|c: char| {
+            c == '"' || c == '\'' || c == '(' || c == ')' || c == '[' || c == ']'
+        });
+
+        if (candidate.starts_with("http://") || candidate.starts_with("https://"))
+            && candidate.contains("/auth?")
+        {
+            Some(candidate.to_string())
+        } else {
+            None
+        }
+    })
 }
 
 /// Quit the main rclone engine via API (works for both local and remote backends).

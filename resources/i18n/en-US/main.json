@@ -2011,7 +2011,12 @@
         "new": "New Profile Name",
         "save": "Save",
         "cancel": "Cancel",
-        "inUseWarning": "Cannot delete profile \"{{name}}\" - it is in use by {{count}} active {{type}}(s)"
+        "inUseWarning": "Cannot delete profile \"{{name}}\" - it is in use by {{count}} active {{type}}(s)",
+        "disabledReason": {
+          "defaultProtected": "Default profile cannot be renamed or deleted",
+          "lastProfile": "At least one profile must remain",
+          "inUse": "Profile is in use by a running {{operation}}. Stop it first."
+        }
       },
       "buttons": {
         "back": "Back",

@@ -321,6 +321,7 @@ export class RepairSheetComponent {
         await this.backendService.updateBackend({
           name: 'Local',
           host: localBackend.host,
+          oauthHost: localBackend.oauthHost,
           port: localBackend.port,
           isLocal: true,
           username: localBackend.username,

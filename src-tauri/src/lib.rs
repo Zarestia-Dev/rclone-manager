@@ -6,7 +6,6 @@
 // STANDARD LIBRARY & EXTERNAL CRATES
 // =============================================================================
 use crate::core::settings::schema::AppSettings;
-use log::{debug, error, info};
 use std::sync::atomic::AtomicBool;
 use tauri::Manager;
 
@@ -30,12 +29,7 @@ mod server;
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 use crate::utils::logging::log::init_logging;
 use crate::{
-    core::{
-        initialization::initialization,
-        lifecycle::{shutdown::shutdown_app, startup::handle_startup},
-        paths::AppPaths,
-        scheduler::engine::CronScheduler,
-    },
+    core::{initialization::initialization, paths::AppPaths, scheduler::engine::CronScheduler},
     utils::types::{
         core::{RcApiEngine, RcloneState},
         logs::LogCache,
@@ -120,18 +114,18 @@ pub fn run() {
                     .dbus_id("io.github.zarestia_dev.rclone-manager")
                     .callback(|_app: &tauri::AppHandle, _, _| {
                         #[cfg(feature = "web-server")]
-                        info!("Another instance attempted to run.");
+                        log::info!("Another instance attempted to run.");
 
                         #[cfg(not(feature = "web-server"))]
                         {
                             // Only show window if it exists, don't try to create
                             // Creating from single instance callback can cause crashes
                             if let Some(window) = _app.get_webview_window("main") {
-                                info!("📢 Second instance detected, showing existing window");
+                                log::info!("📢 Second instance detected, showing existing window");
                                 let _ = window.show();
                                 let _ = window.set_focus();
                             } else {
-                                info!("📢 Second instance detected, but window was destroyed. Use tray to reopen.");
+                                log::info!("📢 Second instance detected, but window was destroyed. Use tray to reopen.");
                                 crate::utils::app::notification::notify(
                                     _app,
                                     crate::utils::app::notification::NotificationEvent::AlreadyRunning,
@@ -149,18 +143,18 @@ pub fn run() {
                 tauri_plugin_single_instance::Builder::new()
                     .callback(|_app: &tauri::AppHandle, _, _| {
                         #[cfg(feature = "web-server")]
-                        info!("Another instance attempted to run.");
+                        log::info!("Another instance attempted to run.");
 
                         #[cfg(not(feature = "web-server"))]
                         {
                             // Only show window if it exists, don't try to create
                             // Creating from single instance callback can cause crashes
                             if let Some(window) = _app.get_webview_window("main") {
-                                info!("📢 Second instance detected, showing existing window");
+                                log::info!("📢 Second instance detected, showing existing window");
                                 let _ = window.show();
                                 let _ = window.set_focus();
                             } else {
-                                info!("📢 Second instance detected, but window was destroyed. Use tray to reopen.");
+                                log::info!("📢 Second instance detected, but window was destroyed. Use tray to reopen.");
                                 crate::utils::app::notification::notify(
                                     _app,
                                     crate::utils::app::notification::NotificationEvent::AlreadyRunning,
@@ -212,11 +206,11 @@ pub fn run() {
 
                 if tray_enabled {
                     if destroy_on_close {
-                        debug!("♻️ Optimization Enabled: Destroying window to free RAM");
+                        log::debug!("♻️ Optimization Enabled: Destroying window to free RAM");
                     } else {
                         #[cfg(desktop)]
                         if let Err(e) = window.hide() {
-                            error!("Failed to hide window: {e}");
+                            log::error!("Failed to hide window: {e}");
                         }
                         api.prevent_close();
                     }
@@ -228,7 +222,9 @@ pub fn run() {
                             .app_handle()
                             .state::<RcloneState>()
                             .set_shutting_down();
-                        let _ = shutdown_app(window_.app_handle().clone()).await;
+                        let _ =
+                            core::lifecycle::shutdown::shutdown_app(window_.app_handle().clone())
+                                .await;
                     });
                 }
             }
@@ -237,7 +233,7 @@ pub fn run() {
                 if let Some(win) = window.app_handle().get_webview_window("main")
                     && let Err(e) = win.show()
                 {
-                    error!("Failed to show window: {e}");
+                    log::error!("Failed to show window: {e}");
                 }
             }
             _ => {}
@@ -299,7 +295,7 @@ pub fn run() {
 
     #[cfg(feature = "web-server")]
     {
-        info!("🎯 Tauri event loop starting (Web Server Mode)");
+        log::info!("🎯 Tauri event loop starting (Web Server Mode)");
         app.run(|_app_handle, _event| {});
     }
 
@@ -335,13 +331,11 @@ fn setup_app(
     let app_paths = AppPaths::setup(app_handle)?;
     let config_dir = app_paths.config_dir;
 
-    // -------------------------------------------------------------------------
-    // Initialize rcman Settings Manager
-    // -------------------------------------------------------------------------
+    // Initialize rcman Settings Manager with automated credentials (via ENV or Path)
     let rcman_manager =
         rcman::SettingsManager::builder(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
             .with_config_dir(&config_dir)
-            .with_credentials()
+            .with_env_credentials()
             .with_schema::<AppSettings>()
             .with_migrator(|mut value: serde_json::Value| {
                 if let Some(root) = value.as_object_mut()
@@ -473,7 +467,7 @@ fn setup_app(
     let env_manager = SafeEnvironmentManager::new();
 
     if let Err(e) = env_manager.init_with_stored_credentials(&rcman_manager) {
-        error!("Failed to initialize environment manager with stored credentials: {e}");
+        log::error!("Failed to initialize environment manager with stored credentials: {e}");
     }
 
     // -------------------------------------------------------------------------
@@ -529,17 +523,17 @@ fn setup_app(
             let force_tray = cli_args.general.tray;
             if settings.general.tray_enabled || force_tray {
                 if force_tray {
-                    debug!("🧊 Setting up tray (forced by --tray argument)");
+                    log::debug!("🧊 Setting up tray (forced by --tray argument)");
                 } else {
-                    debug!("🧊 Setting up tray (enabled in settings)");
+                    log::debug!("🧊 Setting up tray (enabled in settings)");
                 }
                 if let Err(e) = utils::app::builder::setup_tray(app_handle_clone.clone()).await {
-                    error!("Failed to setup tray: {e}");
+                    log::error!("Failed to setup tray: {e}");
                 }
             }
         }
 
-        handle_startup(app_handle_clone.clone()).await;
+        core::lifecycle::startup::handle_startup(app_handle_clone.clone()).await;
 
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         monitor_network_changes(app_handle_clone).await;
@@ -555,15 +549,16 @@ fn setup_app(
         let web_handle = app.handle().clone();
         let args = cli_args;
 
-        info!(
+        log::info!(
             "🚀 Initializing Web Server on {}:{}...",
-            args.headless.host, args.headless.port
+            args.headless.host,
+            args.headless.port
         );
         if args.headless.user.is_some() {
-            info!("🔐 Basic authentication enabled");
+            log::info!("🔐 Basic authentication enabled");
         }
         if args.headless.tls_cert.is_some() && args.headless.tls_key.is_some() {
-            info!("🔒 TLS/HTTPS enabled");
+            log::info!("🔒 TLS/HTTPS enabled");
         }
 
         tauri::async_runtime::spawn(async move {
@@ -577,7 +572,7 @@ fn setup_app(
             )
             .await
             {
-                error!("❌ Web server failed to start: {e}");
+                log::error!("❌ Web server failed to start: {e}");
             }
         });
     }
@@ -587,7 +582,7 @@ fn setup_app(
     // -------------------------------------------------------------------------
     #[cfg(all(desktop, not(feature = "web-server"), feature = "tray"))]
     if !cli_args.general.tray {
-        debug!("Creating main window");
+        log::debug!("Creating main window");
         utils::app::builder::create_app_window(app.handle().clone());
     }
 
@@ -680,7 +675,7 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent)
                 tauri::async_runtime::spawn(async move {
                     if let Err(e) = unmount_all_remotes(app_clone.clone(), "menu".to_string()).await
                     {
-                        error!("Failed to unmount all remotes: {e}");
+                        log::error!("Failed to unmount all remotes: {e}");
                     }
                 });
             }
@@ -742,7 +737,7 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent)
             let app_clone = app.clone();
             tauri::async_runtime::spawn(async move {
                 app_clone.state::<RcloneState>().set_shutting_down();
-                let _ = shutdown_app(app_clone).await;
+                let _ = core::lifecycle::shutdown::shutdown_app(app_clone).await;
             });
         }
         _ => {}

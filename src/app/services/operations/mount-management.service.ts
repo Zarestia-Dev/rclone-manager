@@ -127,11 +127,17 @@ export class MountManagementService extends TauriBaseService {
     oldName: string,
     newName: string
   ): Promise<number> {
-    return this.invokeCommand<number>('rename_mount_profile_in_cache', {
+    const updated = await this.invokeCommand<number>('rename_mount_profile_in_cache', {
       remoteName,
       oldName,
       newName,
     });
+
+    if (updated > 0) {
+      await this.getMountedRemotes();
+    }
+
+    return updated;
   }
 
   /**

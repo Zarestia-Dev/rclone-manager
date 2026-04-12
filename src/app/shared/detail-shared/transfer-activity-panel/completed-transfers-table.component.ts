@@ -3,7 +3,6 @@ import { NgClass } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatChipsModule } from '@angular/material/chips';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 import { CompletedTransfer } from '@app/types';
@@ -17,7 +16,6 @@ import { CompletedTransfer } from '@app/types';
     MatTableModule,
     MatIconModule,
     MatTooltipModule,
-    MatChipsModule,
     TranslateModule,
     FormatFileSizePipe,
   ],
@@ -46,36 +44,36 @@ import { CompletedTransfer } from '@app/types';
             <td mat-cell *matCellDef="let transfer" class="status-cell">
               @switch (transfer.status) {
                 @case ('failed') {
-                  <mat-chip class="status-chip error" [matTooltip]="transfer.error">
+                  <span class="status-chip error" [matTooltip]="transfer.error">
                     <span>
                       <mat-icon svgIcon="circle-exclamation" class="chip-icon"></mat-icon>
                       {{ 'shared.transferActivity.status.failed' | translate }}
                     </span>
-                  </mat-chip>
+                  </span>
                 }
                 @case ('checked') {
-                  <mat-chip class="status-chip checked" [matTooltip]="transfer.error">
+                  <span class="status-chip checked" [matTooltip]="transfer.error">
                     <span>
                       <mat-icon svgIcon="circle-check" class="chip-icon accent"></mat-icon>
                       {{ 'shared.transferActivity.status.checked' | translate }}
                     </span>
-                  </mat-chip>
+                  </span>
                 }
                 @case ('partial') {
-                  <mat-chip class="status-chip partial" [matTooltip]="transfer.error">
+                  <span class="status-chip partial" [matTooltip]="transfer.error">
                     <span>
                       <mat-icon svgIcon="circle-exclamation" class="chip-icon warn"></mat-icon>
                       {{ 'shared.transferActivity.status.partial' | translate }}
                     </span>
-                  </mat-chip>
+                  </span>
                 }
                 @default {
-                  <mat-chip class="status-chip success" [matTooltip]="transfer.error">
+                  <span class="status-chip success" [matTooltip]="transfer.error">
                     <span>
                       <mat-icon svgIcon="circle-check" class="chip-icon accent"></mat-icon>
                       {{ 'shared.transferActivity.status.completed' | translate }}
                     </span>
-                  </mat-chip>
+                  </span>
                 }
               }
             </td>

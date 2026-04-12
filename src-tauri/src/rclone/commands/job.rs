@@ -332,21 +332,6 @@ pub async fn get_active_jobs(app: AppHandle) -> Result<Vec<JobInfo>, String> {
         .await)
 }
 
-#[cfg(not(feature = "web-server"))]
-#[tauri::command]
-pub async fn rename_profile_in_cache(
-    app: AppHandle,
-    remote_name: String,
-    old_name: String,
-    new_name: String,
-) -> Result<usize, String> {
-    Ok(app
-        .state::<BackendManager>()
-        .job_cache
-        .rename_profile(&remote_name, &old_name, &new_name, Some(&app))
-        .await)
-}
-
 pub async fn monitor_job(
     backend_name: String,
     metadata: JobMetadata,

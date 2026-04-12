@@ -767,11 +767,24 @@
 .active-serves-indicator {
   display: flex;
   align-items: center;
-  box-shadow: 0 0 0 1px var(--primary-color);
   color: var(--primary-color);
-  padding: 3px 12px;
-  border-radius: 16px;
-  font-size: clamp(10px, 2vw, 12px);
+  background: rgba(var(--primary-color-rgb), var(--active-opacity));
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.disabled-jobs-indicator,
+.disabled-tasks-indicator,
+.disabled-serves-indicator {
+  display: flex;
+  align-items: center;
+  color: var(--dim-color);
+  background: rgba(var(--dim-color-rgb), var(--active-opacity));
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
   font-weight: 600;
 }
 

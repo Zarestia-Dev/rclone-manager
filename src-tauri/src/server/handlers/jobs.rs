@@ -31,11 +31,6 @@ pub async fn get_active_jobs_handler(
 }
 
 #[derive(Deserialize)]
-pub struct JobsBySourceQuery {
-    pub source: String,
-}
-
-#[derive(Deserialize)]
 pub struct JobStatusQuery {
     pub jobid: u64,
 }
@@ -181,32 +176,6 @@ pub async fn start_bisync_profile_handler(
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(jobid)))
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RenameProfileBody {
-    pub remote_name: String,
-    pub old_name: String,
-    pub new_name: String,
-}
-
-pub async fn rename_job_profile_handler(
-    State(state): State<WebServerState>,
-    Json(body): Json<RenameProfileBody>,
-) -> Result<Json<ApiResponse<usize>>, AppError> {
-    use crate::rclone::backend::BackendManager;
-    let backend_manager = state.app_handle.state::<BackendManager>();
-    let count = backend_manager
-        .job_cache
-        .rename_profile(
-            &body.remote_name,
-            &body.old_name,
-            &body.new_name,
-            Some(&state.app_handle),
-        )
-        .await;
-    Ok(Json(ApiResponse::success(count)))
 }
 
 #[derive(Deserialize)]

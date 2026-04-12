@@ -417,9 +417,9 @@ export class RemoteFacadeService extends TauriBaseService {
 
     if (type === 'mount') {
       const mounts = this.mountedRemotes().filter(m => getRemoteNameFromFs(m.fs) === remoteName);
-      const mountPoint = profileName
-        ? mounts.find(m => m.profile === profileName)?.mount_point
-        : mounts[0]?.mount_point;
+      const mountPoint =
+        mounts.find(m => (profileName ? m.profile === profileName : true))?.mount_point ??
+        mounts[0]?.mount_point;
       if (!mountPoint) throw new Error(`Active mount not found for ${remoteName}`);
       await this.mountService.unmountRemote(mountPoint, remoteName);
       return;
@@ -721,8 +721,8 @@ function buildActiveProfiles<T, V>(
   const result: Record<string, V> = {};
   const fallback = profileNames[0] ?? 'default';
   for (const item of items) {
-    const p = getProfile(item);
-    const target = p && profileNames.includes(p) ? p : fallback;
+    const profile = getProfile(item)?.trim();
+    const target = profile && profile.length > 0 ? profile : fallback;
     if (!(target in result)) result[target] = getValue(item);
   }
   return result;

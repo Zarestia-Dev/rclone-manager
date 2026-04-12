@@ -10,7 +10,6 @@ use tauri::Manager;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
 
-use crate::RcloneState;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
 use crate::utils::types::core::DiskUsage;
 use crate::utils::types::remotes::ListOptions;

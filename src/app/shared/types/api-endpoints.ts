@@ -177,7 +177,6 @@ export const POST_COMMANDS = new Set([
   'save_rclone_backend_options',
   'reset_rclone_backend_options',
   // Rename commands
-  'rename_profile_in_cache',
   'rename_mount_profile_in_cache',
   'rename_serve_profile_in_cache',
   // Debug Commands

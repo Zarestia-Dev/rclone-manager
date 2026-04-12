@@ -5,6 +5,7 @@ export interface BackendInfo {
   name: string;
   isLocal: boolean;
   host: string;
+  oauthHost?: string;
   port: number;
   isActive: boolean;
   hasAuth: boolean;
@@ -31,6 +32,7 @@ export interface TestConnectionResult {
 export interface AddBackendConfig {
   name: string;
   host: string;
+  oauthHost?: string;
   port: number;
   isLocal: boolean;
   username?: string;

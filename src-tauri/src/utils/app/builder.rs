@@ -1,9 +1,7 @@
 #![cfg(desktop)]
 
-use tauri::AppHandle;
-
 #[cfg(feature = "tray")]
-pub async fn setup_tray(app: AppHandle) -> tauri::Result<()> {
+pub async fn setup_tray(app: tauri::AppHandle) -> tauri::Result<()> {
     let app_clone = app.clone();
     let tray_menu = crate::core::tray::menu::create_tray_menu(&app_clone).await?;
 
@@ -51,8 +49,8 @@ fn build_nautilus_url(remote_name: Option<&str>, path: Option<&str>) -> String {
 
 #[cfg(not(feature = "web-server"))]
 fn apply_platform_config<'a>(
-    builder: tauri::WebviewWindowBuilder<'a, tauri::Wry, AppHandle>,
-) -> tauri::WebviewWindowBuilder<'a, tauri::Wry, AppHandle> {
+    builder: tauri::WebviewWindowBuilder<'a, tauri::Wry, tauri::AppHandle>,
+) -> tauri::WebviewWindowBuilder<'a, tauri::Wry, tauri::AppHandle> {
     #[allow(unused_mut)]
     let mut b = builder
         .inner_size(800.0, 630.0)
@@ -84,7 +82,7 @@ fn apply_platform_config<'a>(
 }
 
 #[cfg(not(feature = "web-server"))]
-pub fn create_app_window(app_handle: AppHandle) {
+pub fn create_app_window(app_handle: tauri::AppHandle) {
     let builder =
         tauri::WebviewWindowBuilder::new(&app_handle, "main", tauri::WebviewUrl::default())
             .title("RClone Manager");
@@ -100,7 +98,7 @@ pub fn create_app_window(app_handle: AppHandle) {
 
 #[cfg(not(feature = "web-server"))]
 pub fn create_nautilus_window(
-    app_handle: AppHandle,
+    app_handle: tauri::AppHandle,
     remote_name: Option<&str>,
     path: Option<&str>,
 ) {
@@ -158,6 +156,10 @@ pub fn create_nautilus_window(
 
 #[cfg(not(feature = "web-server"))]
 #[tauri::command]
-pub fn new_nautilus_window(app_handle: AppHandle, remote: Option<String>, path: Option<String>) {
+pub fn new_nautilus_window(
+    app_handle: tauri::AppHandle,
+    remote: Option<String>,
+    path: Option<String>,
+) {
     create_nautilus_window(app_handle, remote.as_deref(), path.as_deref());
 }

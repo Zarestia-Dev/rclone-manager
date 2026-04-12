@@ -521,8 +521,80 @@ form {
       }
 
       .option-chip-field {
-        .mat-mdc-form-field-infix {
-          min-height: 40px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--space-xs);
+        min-height: 40px;
+        padding: 6px 10px;
+        border-radius: var(--radius-md);
+        background: var(--selected-bg-color);
+        border: 1px solid rgba(var(--accent-color-rgb), 0.14);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      }
+
+      .option-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-xxs);
+        padding: 5px 8px;
+        border-radius: var(--radius-md);
+        background: rgba(var(--primary-color-rgb), 0.08);
+        color: var(--window-fg-color);
+        font-size: var(--font-size-sm);
+        font-weight: 600;
+        white-space: nowrap;
+      }
+
+      .option-chip__label {
+        max-width: 220px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .option-chip__remove {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+        opacity: 0.55;
+        transition:
+          opacity 0.15s ease,
+          color 0.15s ease,
+          background 0.15s ease;
+
+        mat-icon {
+          width: 13px;
+          height: 13px;
+          font-size: 13px;
+        }
+
+        &:hover {
+          opacity: 1;
+          color: var(--warn-color);
+          background: rgba(var(--warn-color-rgb), 0.1);
+        }
+      }
+
+      .option-chip-input {
+        flex: 1 1 140px;
+        min-width: 120px;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        color: var(--window-fg-color);
+        font: inherit;
+        padding: 4px 2px;
+
+        &::placeholder {
+          color: var(--dim-color);
+          opacity: 0.75;
         }
       }
 
@@ -653,6 +725,15 @@ form {
       .add-custom-btn {
         width: 100%;
         justify-content: center;
+      }
+
+      .option-chip-field {
+        min-height: 44px;
+      }
+
+      .option-chip-input {
+        width: 100%;
+        min-width: 0;
       }
     }
   }

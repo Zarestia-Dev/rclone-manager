@@ -55,10 +55,6 @@ fn jobs_routes() -> Router<WebServerState> {
             post(handlers::start_bisync_profile_handler),
         )
         .route("/{id}/status", get(handlers::get_job_status_handler))
-        .route(
-            "/rename-profile-in-cache",
-            post(handlers::rename_job_profile_handler),
-        )
         .route("/stop-by-group", post(handlers::stop_jobs_by_group_handler))
 }
 

@@ -334,22 +334,6 @@ export class JobManagementService extends TauriBaseService {
     return this.invokeCommand('get_completed_transfers', params);
   }
 
-  /**
-   * Rename a profile in all cached running jobs
-   * Returns the number of jobs updated
-   */
-  async renameProfileInCache(
-    remoteName: string,
-    oldName: string,
-    newName: string
-  ): Promise<number> {
-    return this.invokeCommand<number>('rename_profile_in_cache', {
-      remoteName,
-      oldName,
-      newName,
-    });
-  }
-
   // ============================================================================
   // GROUP MANAGEMENT
   // ============================================================================

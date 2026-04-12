@@ -2,7 +2,6 @@ import { Component, input, output } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTabsModule } from '@angular/material/tabs';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
@@ -18,7 +17,6 @@ import { TransferActivityPanelConfig } from '../../types';
     MatCardModule,
     MatIconModule,
     MatTabsModule,
-    MatChipsModule,
     MatButtonModule,
     MatTooltipModule,
     TranslateModule,
@@ -32,15 +30,15 @@ import { TransferActivityPanelConfig } from '../../types';
           <mat-icon svgIcon="download" style="color: var(--mat-sys-primary);"></mat-icon>
           <span>{{ 'shared.transferActivity.title' | translate }}</span>
           <div class="transfer-summary">
-            <mat-chip class="summary-chip active">
+            <span class="summary-chip active">
               <span class="chip-label">{{ 'shared.transferActivity.active' | translate }}</span>
               <span class="chip-value">{{ config().activeTransfers.length }}</span>
-            </mat-chip>
+            </span>
             @if (config().showHistory) {
-              <mat-chip class="summary-chip completed">
+              <span class="summary-chip completed">
                 <span class="chip-label">{{ 'shared.transferActivity.recent' | translate }}</span>
                 <span class="chip-value">{{ config().completedTransfers.length }}</span>
-              </mat-chip>
+              </span>
             }
           </div>
           @if (config().showHistory) {
@@ -49,7 +47,7 @@ import { TransferActivityPanelConfig } from '../../types';
               (click)="resetStats.emit()"
               [matTooltip]="'shared.transferActivity.resetStats' | translate"
             >
-              <mat-icon svgIcon="broom"></mat-icon>
+              <mat-icon svgIcon="broom" style="color: var(--mat-sys-primary);"></mat-icon>
             </button>
           }
         </mat-card-title>

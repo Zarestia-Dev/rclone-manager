@@ -112,32 +112,21 @@ export class ServeManagementService extends TauriBaseService {
    * Backend resolves all options (serve, vfs, filter, backend) from cached settings
    */
   async startServeProfile(remoteName: string, profileName: string): Promise<ServeStartResponse> {
-    try {
-      const params = { remote_name: remoteName, profile_name: profileName };
-      const response = await this.invokeCommand<ServeStartResponse>('start_serve_profile', {
-        params,
-      });
+    const params = { remote_name: remoteName, profile_name: profileName };
+    const response = await this.invokeCommand<ServeStartResponse>('start_serve_profile', {
+      params,
+    });
 
-      this.notificationService.showSuccess(
-        this.translate.instant('serve.successStart', {
-          remote: remoteName,
-          profile: profileName,
-          addr: response.addr,
-        })
-      );
+    this.notificationService.showSuccess(
+      this.translate.instant('serve.successStart', {
+        remote: remoteName,
+        profile: profileName,
+        addr: response.addr,
+      })
+    );
 
-      await this.refreshServes();
-      return response;
-    } catch (error) {
-      console.error(
-        `[ServeManagementService] Failed to start serve for remote "${remoteName}" with profile "${profileName}":`,
-        error
-      );
-      this.notificationService.showError(
-        this.translate.instant('serve.failedStart', { remote: remoteName })
-      );
-      throw error;
-    }
+    await this.refreshServes();
+    return response;
   }
 
   /**
@@ -221,11 +210,17 @@ export class ServeManagementService extends TauriBaseService {
     oldName: string,
     newName: string
   ): Promise<number> {
-    return this.invokeCommand<number>('rename_serve_profile_in_cache', {
+    const updated = await this.invokeCommand<number>('rename_serve_profile_in_cache', {
       remoteName,
       oldName,
       newName,
     });
+
+    if (updated > 0) {
+      await this.refreshServesFromCache();
+    }
+
+    return updated;
   }
 
   /**

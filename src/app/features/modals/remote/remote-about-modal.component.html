@@ -120,11 +120,9 @@
                 </div>
                 <div class="chip-container">
                   @if (hashes().length > 0) {
-                    <mat-chip-set>
-                      @for (hash of hashes(); track hash) {
-                        <mat-chip class="hash-chip">{{ hash }}</mat-chip>
-                      }
-                    </mat-chip-set>
+                    @for (hash of hashes(); track hash) {
+                      <span class="hash-chip">{{ hash }}</span>
+                    }
                   } @else {
                     <span class="empty-text">{{
                       'fileBrowser.remoteAbout.noneSupported' | translate

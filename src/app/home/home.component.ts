@@ -202,7 +202,7 @@ export class HomeComponent {
     try {
       await this.remoteFacadeService.startJob(remoteName, operationType, profileName, 'dashboard');
     } catch (error) {
-      console.error('Start job failed:', error);
+      this.handleError('Start job failed', error);
     }
   }
 

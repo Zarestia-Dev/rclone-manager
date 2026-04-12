@@ -328,16 +328,35 @@ impl RemoteCache {
         old_name: &str,
         new_name: &str,
     ) -> usize {
+        let new_name_owned = new_name.to_string();
         let mut mounts = self.mounted.write().await;
         let mut count = 0;
+        let mut updated_mount_points: Vec<String> = Vec::new();
+
         for mount in mounts.iter_mut() {
             if mount.fs.starts_with(remote_name)
                 && mount.profile.as_ref().is_some_and(|p| p == old_name)
             {
-                mount.profile = Some(new_name.to_string());
+                mount.profile = Some(new_name_owned.clone());
                 count += 1;
+                updated_mount_points.push(mount.mount_point.clone());
             }
         }
+
+        drop(mounts);
+
+        if count > 0 {
+            let mut profiles = self.mount_profiles.write().await;
+            for mount_point in updated_mount_points {
+                if profiles
+                    .get(&mount_point)
+                    .is_some_and(|profile| profile == old_name)
+                {
+                    profiles.insert(mount_point, new_name_owned.clone());
+                }
+            }
+        }
+
         count
     }
 
@@ -349,8 +368,11 @@ impl RemoteCache {
         old_name: &str,
         new_name: &str,
     ) -> usize {
+        let new_name_owned = new_name.to_string();
         let mut serves = self.serves.write().await;
         let mut count = 0;
+        let mut updated_serve_ids: Vec<String> = Vec::new();
+
         for serve in serves.iter_mut() {
             let fs_matches = serve
                 .params
@@ -358,10 +380,26 @@ impl RemoteCache {
                 .and_then(|v| v.as_str())
                 .is_some_and(|fs| fs.starts_with(remote_name));
             if fs_matches && serve.profile.as_ref().is_some_and(|p| p == old_name) {
-                serve.profile = Some(new_name.to_string());
+                serve.profile = Some(new_name_owned.clone());
                 count += 1;
+                updated_serve_ids.push(serve.id.clone());
             }
         }
+
+        drop(serves);
+
+        if count > 0 {
+            let mut profiles = self.serve_profiles.write().await;
+            for serve_id in updated_serve_ids {
+                if profiles
+                    .get(&serve_id)
+                    .is_some_and(|profile| profile == old_name)
+                {
+                    profiles.insert(serve_id, new_name_owned.clone());
+                }
+            }
+        }
+
         count
     }
 }
@@ -449,11 +487,17 @@ pub async fn rename_mount_profile_in_cache<R: Runtime>(
     new_name: String,
 ) -> Result<usize, String> {
     use crate::rclone::backend::BackendManager;
-    Ok(app
+    let updated = app
         .state::<BackendManager>()
         .remote_cache
         .rename_profile_in_mounts(&remote_name, &old_name, &new_name)
-        .await)
+        .await;
+
+    if updated > 0 {
+        let _ = app.emit(MOUNT_STATE_CHANGED, "cache_updated");
+    }
+
+    Ok(updated)
 }
 
 /// Rename a profile in all cached serves
@@ -466,11 +510,17 @@ pub async fn rename_serve_profile_in_cache<R: Runtime>(
     new_name: String,
 ) -> Result<usize, String> {
     use crate::rclone::backend::BackendManager;
-    Ok(app
+    let updated = app
         .state::<BackendManager>()
         .remote_cache
         .rename_profile_in_serves(&remote_name, &old_name, &new_name)
-        .await)
+        .await;
+
+    if updated > 0 {
+        let _ = app.emit(SERVE_STATE_CHANGED, "cache_updated");
+    }
+
+    Ok(updated)
 }
 
 impl Default for RemoteCache {

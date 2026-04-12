@@ -22,9 +22,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIcon } from '@angular/material/icon';
-import { MatChipsModule, MatChipInputEvent } from '@angular/material/chips';
 import { MatSelectModule } from '@angular/material/select';
-import { COMMA, ENTER } from '@angular/cdk/keycodes';
 import { TranslateModule } from '@ngx-translate/core';
 import {
   RcConfigOption,
@@ -52,7 +50,6 @@ export const INITIAL_COMMAND_OPTIONS: CommandOption[] = _obscureOption
     MatAutocompleteModule,
     MatButtonModule,
     MatTooltipModule,
-    MatChipsModule,
     MatSelectModule,
     SettingControlComponent,
     JsonEditorComponent,
@@ -67,8 +64,6 @@ export class RemoteConfigStepComponent {
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly iconService = inject(IconService);
   private readonly destroyRef = inject(DestroyRef);
-
-  readonly separatorKeysCodes = [ENTER, COMMA] as const;
 
   // ── Inputs ────────────────────────────────────────────────────────────────
 
@@ -477,13 +472,19 @@ export class RemoteConfigStepComponent {
     if (!isNaN(num)) this.updateOption(key, num);
   }
 
-  addArrayChip(key: string, event: MatChipInputEvent): void {
-    const val = event.value.trim();
+  addArrayChip(key: string, value: string, input: HTMLInputElement): void {
+    const val = value.trim();
     if (!val) return;
     this.commandOptions.update(opts =>
       opts.map(o => (o.key === key ? { ...o, value: [...(o.value as string[]), val] } : o))
     );
-    event.chipInput.clear();
+    input.value = '';
+  }
+
+  handleArrayChipKeydown(key: string, event: KeyboardEvent, input: HTMLInputElement): void {
+    if (event.key !== 'Enter' && event.key !== ',') return;
+    event.preventDefault();
+    this.addArrayChip(key, input.value, input);
   }
 
   removeArrayChip(key: string, index: number): void {

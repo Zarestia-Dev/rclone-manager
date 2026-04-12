@@ -65,9 +65,7 @@
                   @let stepNum = $index + 1;
                   @let isCompleted = currentStep() > stepNum;
                   @let isCurrent = currentStep() === stepNum;
-                  @let stepDisabled =
-                    isAuthInProgress() ||
-                    (!editTarget() && stepNum > 1 && remoteFormStatus() === 'INVALID');
+                  @let stepDisabled = isStepDisabled(stepNum);
 
                   <button
                     mat-list-item
@@ -264,6 +262,10 @@
           @let pState = $any(profileState())[flagType];
           @let selProfile = $any(selectedProfileName())[flagType];
           @let pList = $any(profileLists())[flagType];
+          @let renameDisabled = isRenameProfileDisabled(flagType, selProfile);
+          @let deleteDisabled = isDeleteProfileDisabled(flagType, selProfile);
+          @let renameDisabledReason = getRenameProfileDisabledReason(flagType, selProfile);
+          @let deleteDisabledReason = getDeleteProfileDisabledReason(flagType, selProfile);
 
           <div class="profile-header">
             @if (pState.mode === 'view') {
@@ -287,23 +289,35 @@
                 >
                   <mat-icon svgIcon="plus"></mat-icon>
                 </button>
-                <button
-                  mat-icon-button
-                  (click)="startEditProfile(flagType)"
-                  [attr.title]="'modals.remoteConfig.profile.rename' | translate"
-                  [disabled]="selProfile.toLowerCase() === 'default'"
+                <span
+                  class="action-tooltip-anchor"
+                  [matTooltip]="renameDisabledReason"
+                  [matTooltipDisabled]="!renameDisabledReason"
                 >
-                  <mat-icon svgIcon="pen"></mat-icon>
-                </button>
-                <button
-                  mat-icon-button
-                  class="warn"
-                  (click)="deleteProfile(flagType, selProfile)"
-                  [attr.title]="'modals.remoteConfig.profile.delete' | translate"
-                  [disabled]="pList.length <= 1 || selProfile.toLowerCase() === 'default'"
+                  <button
+                    mat-icon-button
+                    (click)="startEditProfile(flagType)"
+                    [attr.title]="'modals.remoteConfig.profile.rename' | translate"
+                    [disabled]="renameDisabled"
+                  >
+                    <mat-icon svgIcon="pen"></mat-icon>
+                  </button>
+                </span>
+                <span
+                  class="action-tooltip-anchor"
+                  [matTooltip]="deleteDisabledReason"
+                  [matTooltipDisabled]="!deleteDisabledReason"
                 >
-                  <mat-icon svgIcon="trash"></mat-icon>
-                </button>
+                  <button
+                    mat-icon-button
+                    class="warn"
+                    (click)="deleteProfile(flagType, selProfile)"
+                    [attr.title]="'modals.remoteConfig.profile.delete' | translate"
+                    [disabled]="deleteDisabled"
+                  >
+                    <mat-icon svgIcon="trash"></mat-icon>
+                  </button>
+                </span>
               </div>
             } @else {
               <mat-form-field subscriptSizing="dynamic" class="profile-input">

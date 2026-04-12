@@ -199,7 +199,7 @@ export class LogsModalComponent implements OnInit {
       });
     } catch (error) {
       console.error('Failed to copy log to clipboard:', error);
-      this.snackBar.open(this.translate.instant('modals.common.errorCopied'), undefined, {
+      this.snackBar.open(this.translate.instant('common.errorCopied'), undefined, {
         duration: 2000,
       });
     }

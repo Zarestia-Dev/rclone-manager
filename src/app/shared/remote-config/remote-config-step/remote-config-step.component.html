@@ -309,27 +309,28 @@
                       </mat-form-field>
                     }
                     @case ('array') {
-                      <mat-form-field
-                        appearance="fill"
-                        class="option-value-field option-chip-field no-subscript"
-                      >
-                        <mat-chip-grid #chipGrid>
-                          @for (chip of opt.arrayValue; track chip; let ci = $index) {
-                            <mat-chip-row (removed)="removeArrayChip(opt.key, ci)">
-                              {{ chip }}
-                              <button matChipRemove [attr.aria-label]="'remove ' + chip">
-                                <mat-icon svgIcon="close" />
-                              </button>
-                            </mat-chip-row>
-                          }
-                          <input
-                            [matChipInputFor]="chipGrid"
-                            [matChipInputSeparatorKeyCodes]="separatorKeysCodes"
-                            (matChipInputTokenEnd)="addArrayChip(opt.key, $event)"
-                            placeholder="{{ 'wizards.remoteConfig.addValue' | translate }}"
-                          />
-                        </mat-chip-grid>
-                      </mat-form-field>
+                      <div class="option-chip-field no-subscript">
+                        @for (chip of opt.arrayValue; track chip; let ci = $index) {
+                          <span class="option-chip">
+                            <span class="option-chip__label">{{ chip }}</span>
+                            <button
+                              type="button"
+                              class="option-chip__remove"
+                              (click)="removeArrayChip(opt.key, ci)"
+                              [attr.aria-label]="'remove ' + chip"
+                            >
+                              <mat-icon svgIcon="close" />
+                            </button>
+                          </span>
+                        }
+                        <input
+                          #arrayInput
+                          class="option-chip-input"
+                          type="text"
+                          [placeholder]="'wizards.remoteConfig.addValue' | translate"
+                          (keydown)="handleArrayChipKeydown(opt.key, $event, arrayInput)"
+                        />
+                      </div>
                     }
                   }
                   <button

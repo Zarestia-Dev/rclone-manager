@@ -128,8 +128,7 @@ pub async fn delete_remote_settings_handler(
     Json(body): Json<DeleteRemoteSettingsBody>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
     use crate::core::settings::remote::manager::delete_remote_settings;
-    let manager: tauri::State<crate::core::settings::AppSettingsManager> = state.app_handle.state();
-    delete_remote_settings(body.remote_name, manager, state.app_handle.clone())
+    delete_remote_settings(state.app_handle.clone(), body.remote_name)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(crate::localized_success!(

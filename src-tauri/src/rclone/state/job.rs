@@ -155,35 +155,6 @@ impl JobCache {
         })
     }
 
-    /// Rename a profile in all matching running jobs
-    /// Returns the number of jobs updated
-    /// Rename a profile in all matching jobs and emit `JOB_CACHE_CHANGED` for each update.
-    /// Returns the number of jobs updated.
-    pub async fn rename_profile(
-        &self,
-        remote_name: &str,
-        old_name: &str,
-        new_name: &str,
-        app: Option<&AppHandle>,
-    ) -> usize {
-        let mut jobs = self.jobs.write().await;
-        let mut updated_count = 0;
-
-        for job in jobs.values_mut() {
-            if job.remote_name == remote_name && job.profile.as_deref() == Some(old_name) {
-                job.profile = Some(new_name.to_string());
-                updated_count += 1;
-
-                // Emit change per-job so UI/clients can react to the rename immediately.
-                if let Some(app) = app {
-                    let _ = app.emit(JOB_CACHE_CHANGED, job.jobid);
-                }
-            }
-        }
-
-        updated_count
-    }
-
     /// Delete all jobs associated with a specific remote
     pub async fn delete_jobs_by_remote(&self, remote_name: &str, app: Option<&AppHandle>) {
         let mut jobs = self.jobs.write().await;
@@ -394,37 +365,5 @@ mod tests {
                 .is_job_running("gdrive:", JobType::Sync, Some("default"))
                 .await
         );
-    }
-
-    #[tokio::test]
-    async fn test_rename_profile() {
-        let cache = JobCache::new();
-        cache
-            .add_job(
-                mock_job(1, "gdrive:", JobType::Sync, Some("old_profile")),
-                None,
-            )
-            .await;
-        cache
-            .add_job(
-                mock_job(2, "gdrive:", JobType::Copy, Some("old_profile")),
-                None,
-            )
-            .await;
-        cache
-            .add_job(mock_job(3, "s3:", JobType::Sync, Some("old_profile")), None)
-            .await; // Different remote
-
-        let updated = cache
-            .rename_profile("gdrive:", "old_profile", "new_profile", None)
-            .await;
-        assert_eq!(updated, 2); // Only gdrive jobs renamed
-
-        // Verify
-        let job1 = cache.get_job(1).await.unwrap();
-        assert_eq!(job1.profile, Some("new_profile".to_string()));
-
-        let job3 = cache.get_job(3).await.unwrap();
-        assert_eq!(job3.profile, Some("old_profile".to_string())); // Unchanged
     }
 }

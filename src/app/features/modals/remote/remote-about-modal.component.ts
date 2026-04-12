@@ -12,7 +12,6 @@ import {
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
@@ -46,7 +45,6 @@ interface RemoteAboutData {
     MatIconModule,
     MatButtonModule,
     MatTabsModule,
-    MatChipsModule,
     MatExpansionModule,
     MatTooltipModule,
     MatProgressSpinnerModule,

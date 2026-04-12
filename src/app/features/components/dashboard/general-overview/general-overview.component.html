@@ -287,7 +287,11 @@
                         </mat-panel-title>
                         <mat-panel-description>
                           @let activeJobs = activeJobsCount();
-                          <span [ngClass]="{ 'active-jobs-indicator': activeJobs > 0 }">
+                          <span
+                            [ngClass]="
+                              activeJobs > 0 ? 'active-jobs-indicator' : 'disabled-jobs-indicator'
+                            "
+                          >
                             {{
                               activeJobs > 0
                                 ? ('generalOverview.jobs.activeCount'
@@ -481,9 +485,11 @@
                         </mat-panel-title>
                         <mat-panel-description>
                           <span
-                            [ngClass]="{
-                              'active-tasks-indicator': activeScheduledTasksCount() > 0,
-                            }"
+                            [ngClass]="
+                              activeScheduledTasksCount() > 0
+                                ? 'active-tasks-indicator'
+                                : 'disabled-tasks-indicator'
+                            "
                           >
                             {{
                               totalScheduledTasksCount() > 0
@@ -668,9 +674,11 @@
                         </mat-panel-title>
                         <mat-panel-description>
                           <span
-                            [ngClass]="{
-                              'active-serves-indicator': serves.length > 0,
-                            }"
+                            [ngClass]="
+                              serves.length > 0
+                                ? 'active-serves-indicator'
+                                : 'disabled-serves-indicator'
+                            "
                           >
                             {{
                               serves.length > 0

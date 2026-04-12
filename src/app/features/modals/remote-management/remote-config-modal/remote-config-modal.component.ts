@@ -372,6 +372,10 @@ export class RemoteConfigModalComponent implements OnInit {
   readonly searchQuery = signal('');
   readonly isInitializing = signal(true);
 
+  readonly isStepNavigationLocked = computed(
+    () => this.isAuthInProgress() || this.isRemoteConfigLoading()
+  );
+
   readonly currentRemoteName = computed(() => this.dialogData?.name ?? this.remoteNameSignal());
 
   readonly remoteEditCategories = [
@@ -1054,14 +1058,15 @@ export class RemoteConfigModalComponent implements OnInit {
   });
 
   goToStep(step: number): void {
-    if (
-      this.isAuthInProgress() ||
-      (!this.editTarget() && step > 1 && this.remoteFormStatus() === 'INVALID')
-    )
-      return;
+    if (this.isStepDisabled(step)) return;
     this.saveCurrentStepProfile();
     this.currentStep.set(step);
     this.scrollToTop();
+  }
+
+  isStepDisabled(step: number): boolean {
+    if (this.isStepNavigationLocked()) return true;
+    return !this.editTarget() && step > 1 && this.remoteFormStatus() === 'INVALID';
   }
 
   nextStep(): void {
@@ -1310,6 +1315,77 @@ export class RemoteConfigModalComponent implements OnInit {
         ? editTargetValue
         : this.stepConfigs()[this.currentStep() - 1]?.type;
     if (type && type !== 'remote') this.saveCurrentProfile(type as SharedProfileType);
+  }
+
+  isRenameProfileDisabled(type: string, profileName: string): boolean {
+    const t = type as SharedProfileType;
+    if (!profileName || profileName.toLowerCase() === DEFAULT_PROFILE_NAME) return true;
+    if (!JOB_TYPES.has(t)) return false;
+
+    const remoteName = this.currentRemoteName();
+    if (!remoteName) return false;
+
+    return this.getProfileUsage(t, remoteName, profileName).inUse;
+  }
+
+  isDeleteProfileDisabled(type: string, profileName: string): boolean {
+    const t = type as SharedProfileType;
+    const profileList = this.profileLists()[t] ?? [];
+
+    if (!profileName || profileName.toLowerCase() === DEFAULT_PROFILE_NAME) return true;
+    if (profileList.length <= 1) return true;
+
+    if (!JOB_TYPES.has(t) && t !== 'mount' && t !== 'serve') return false;
+
+    const remoteName = this.currentRemoteName();
+    if (!remoteName) return false;
+
+    return this.getProfileUsage(t, remoteName, profileName).inUse;
+  }
+
+  getRenameProfileDisabledReason(type: string, profileName: string): string {
+    const t = type as SharedProfileType;
+
+    if (!profileName || profileName.toLowerCase() === DEFAULT_PROFILE_NAME) {
+      return this.translate.instant('modals.remoteConfig.profile.disabledReason.defaultProtected');
+    }
+
+    if (!JOB_TYPES.has(t)) return '';
+
+    const remoteName = this.currentRemoteName();
+    if (!remoteName) return '';
+
+    const usage = this.getProfileUsage(t, remoteName, profileName);
+    if (!usage.inUse) return '';
+
+    return this.translate.instant('modals.remoteConfig.profile.disabledReason.inUse', {
+      operation: this.getProfileUsageOperationLabel(t),
+    });
+  }
+
+  getDeleteProfileDisabledReason(type: string, profileName: string): string {
+    const t = type as SharedProfileType;
+    const profileList = this.profileLists()[t] ?? [];
+
+    if (!profileName || profileName.toLowerCase() === DEFAULT_PROFILE_NAME) {
+      return this.translate.instant('modals.remoteConfig.profile.disabledReason.defaultProtected');
+    }
+
+    if (profileList.length <= 1) {
+      return this.translate.instant('modals.remoteConfig.profile.disabledReason.lastProfile');
+    }
+
+    if (!JOB_TYPES.has(t) && t !== 'mount' && t !== 'serve') return '';
+
+    const remoteName = this.currentRemoteName();
+    if (!remoteName) return '';
+
+    const usage = this.getProfileUsage(t, remoteName, profileName);
+    if (!usage.inUse) return '';
+
+    return this.translate.instant('modals.remoteConfig.profile.disabledReason.inUse', {
+      operation: this.getProfileUsageOperationLabel(t),
+    });
   }
 
   startAddProfile(type: string): void {
@@ -1768,14 +1844,6 @@ export class RemoteConfigModalComponent implements OnInit {
     const onError = (err: unknown): void =>
       console.warn(`Failed to update ${type}s with new profile name:`, err);
 
-    if (JOB_TYPES.has(type)) {
-      this.jobManagementService
-        .renameProfileInCache(remoteName, oldName, newName)
-        .then(onResult)
-        .catch(onError);
-      return;
-    }
-
     const handlers: Partial<Record<string, () => Promise<number>>> = {
       mount: () =>
         this.mountManagementService.renameProfileInMountCache(remoteName, oldName, newName),
@@ -1809,6 +1877,13 @@ export class RemoteConfigModalComponent implements OnInit {
       return { inUse: activeServes.length > 0, count: activeServes.length, opType: 'serve' };
     }
     return { inUse: false, count: 0, opType: '' };
+  }
+
+  private getProfileUsageOperationLabel(type: SharedProfileType): string {
+    if (JOB_TYPES.has(type)) return `${type} job`;
+    if (type === 'mount') return 'mount';
+    if (type === 'serve') return 'serve';
+    return type;
   }
 
   private setProfileMode(

@@ -12,6 +12,9 @@
 #   RCLONE_MANAGER_PORT   — Listen port (default: 8080)
 #   RCLONE_MANAGER_USER   — Basic auth username
 #   RCLONE_MANAGER_PASS   — Basic auth password
+#   RCLONE_MANAGER_SECRET — Master password for rcman encrypted credentials
+#   RCLONE_MANAGER_SECRET_PATH — If file exists and SECRET is unset, treat as password file (Docker secret). Otherwise, custom path for encrypted credential store.
+#   RCLONE_MANAGER_SECRET_FILE — Explicit password file path for rcman encrypted credentials
 #   RCLONE_MANAGER_TLS_CERT / RCLONE_MANAGER_TLS_KEY — TLS certificate paths
 #
 # Volumes:
@@ -50,11 +53,12 @@ RUN npm ci
 
 # Copy project source and build headless binary
 COPY . .
+RUN rm -rf src-tauri/capabilities || true
 RUN npm run tauri build -- \
     --config src-tauri/tauri.conf.headless.json \
     --config '{"bundle":{"createUpdaterArtifacts":false}}' \
-    --features web-server,updater \
-    --no-bundle
+    --features container \
+    --no-bundle -- --no-default-features
 
 # -----------------------------------------------------------------------------
 # Stage 2: Runtime
@@ -139,8 +143,10 @@ ENV DISPLAY=:99 \
     XDG_DATA_HOME=/home/rclone-manager/.local/share \
     XDG_CONFIG_HOME=/home/rclone-manager/.config \
     RCLONE_CONFIG=/config/rclone.conf \
-    RCLONE_MANAGER_DATA_DIR=/data \
-    RCLONE_MANAGER_CACHE_DIR=/data/cache
+    RCLONE_MANAGER_LOG_DIR=/data/logs \
+    RCLONE_MANAGER_CACHE_DIR=/data/cache \
+    RCLONE_MANAGER_SECRET=${RCLONE_MANAGER_SECRET:-} \
+    RCLONE_MANAGER_SECRET_PATH=${RCLONE_MANAGER_SECRET_PATH:-}
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD []
