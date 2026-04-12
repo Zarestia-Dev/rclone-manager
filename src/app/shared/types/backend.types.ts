@@ -29,10 +29,9 @@ export interface TestConnectionResult {
   config_path?: string;
 }
 
-export interface AddBackendConfig {
+export interface addBackendArgs {
   name: string;
   host: string;
-  oauthHost?: string;
   port: number;
   isLocal: boolean;
   username?: string;
@@ -40,6 +39,9 @@ export interface AddBackendConfig {
   configPassword?: string;
   configPath?: string;
   oauthPort?: number;
+  oauthHost?: string;
+  copyBackendFrom?: string | null;
+  copyRemotesFrom?: string | null;
 }
 
 export interface SettingOption {

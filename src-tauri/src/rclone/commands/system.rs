@@ -114,28 +114,20 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
         return Ok(());
     }
 
-    if backend.oauth_port.is_none() {
-        return Err(RcloneError::ConfigError("OAuth not configured".to_string()));
-    }
-
     // Already tracked in memory — process is up, URL was already emitted.
     if guard.is_some() {
         return Ok(());
     }
 
     // Port already open from a previous run not tracked in memory.
-    if let Some(addr) = backend.oauth_addr()
-        && TcpStream::connect(&addr).await.is_ok()
-    {
+    if TcpStream::connect(backend.oauth_addr()).await.is_ok() {
         warn!(
             "OAuth process already running on port {} (not tracked in memory)",
-            backend.oauth_port.unwrap()
+            backend.oauth_port
         );
         return Ok(());
     }
 
-    // Build a tokio::process::Command with stderr piped.
-    // This does NOT write a log file — output is consumed directly below.
     let cmd = build_rclone_process_command(app, ProcessKind::OAuth)
         .await
         .map_err(|e| RcloneError::OAuthError(format!("Failed to build OAuth command: {e}")))?;
@@ -161,7 +153,7 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
     tokio::spawn(async move {
         let mut lines = BufReader::new(stderr).lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            debug!("[oauth] {}", line);
+            debug!("[oauth] {line}");
 
             if let Some(url) = extract_oauth_auth_url(&line) {
                 info!("🔗 OAuth URL ready: {url}");
@@ -177,14 +169,13 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
     // Wait until the rc port is open (process is accepting connections).
     let start = Instant::now();
     let timeout = Duration::from_secs(5);
+    let addr = backend.oauth_addr();
 
     while start.elapsed() < timeout {
-        if let Some(addr) = backend.oauth_addr()
-            && TcpStream::connect(&addr).await.is_ok()
-        {
+        if TcpStream::connect(&addr).await.is_ok() {
             info!(
                 "✅ Rclone OAuth process ready on port {}",
-                backend.oauth_port.unwrap()
+                backend.oauth_port
             );
             return Ok(());
         }
@@ -192,7 +183,7 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
     }
 
     Err(RcloneError::OAuthError(format!(
-        "Timeout waiting for OAuth process to start on port {:?}",
+        "Timeout waiting for OAuth process to start on port {}",
         backend.oauth_port
     )))
 }
@@ -256,21 +247,8 @@ pub async fn quit_rclone_oauth(app: AppHandle) -> Result<(), String> {
         return Ok(());
     }
 
-    if backend.oauth_port.is_none() {
-        return Err(crate::localized_error!(
-            "backendErrors.system.oauthNotConfigured"
-        ));
-    }
-
-    let found_process = guard.is_some() || {
-        backend
-            .oauth_addr()
-            .map(|addr| {
-                // Using a sync check here is fine — this is a command handler, not a hot path.
-                std::net::TcpStream::connect(&addr).is_ok()
-            })
-            .unwrap_or(false)
-    };
+    let found_process =
+        guard.is_some() || std::net::TcpStream::connect(backend.oauth_addr()).is_ok();
 
     if !found_process {
         warn!("⚠️ No active OAuth process found (not in memory, port not open)");
@@ -278,8 +256,11 @@ pub async fn quit_rclone_oauth(app: AppHandle) -> Result<(), String> {
     }
 
     // Ask rclone to quit gracefully first.
-    if let Some(url) = backend.oauth_url_for(core::QUIT)
-        && let Err(e) = backend.inject_auth(state.client.post(&url)).send().await
+    let quit_url = backend.oauth_url_for(core::QUIT);
+    if let Err(e) = backend
+        .inject_auth(state.client.post(&quit_url))
+        .send()
+        .await
     {
         warn!("⚠️ Failed to send OAuth quit request: {e}");
     }
@@ -308,11 +289,9 @@ pub async fn set_bandwidth_limit(
     app: AppHandle,
     rate: Option<String>,
 ) -> Result<BandwidthLimitResponse, String> {
-    let rate_value = match rate {
-        Some(ref s) if s.trim().is_empty() => "off".to_string(),
-        Some(s) => s,
-        _ => "off".to_string(),
-    };
+    let rate_value = rate
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| "off".to_string());
 
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
@@ -391,13 +370,10 @@ pub async fn get_fscache_entries(app: AppHandle) -> Result<usize, String> {
         .await
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
-    let entries = json
-        .get("entries")
+    json.get("entries")
         .and_then(|v| v.as_u64())
         .map(|v| v as usize)
-        .ok_or_else(|| "Failed to parse entries count".to_string())?;
-
-    Ok(entries)
+        .ok_or_else(|| "Failed to parse entries count".to_string())
 }
 
 /// Clear the filesystem cache.
@@ -438,7 +414,7 @@ pub async fn get_stats_groups(app: AppHandle) -> Result<Vec<String>, String> {
         .and_then(|v| v.as_array())
         .map(|arr| {
             arr.iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .filter_map(|v| v.as_str().map(str::to_string))
                 .collect()
         })
         .unwrap_or_default();

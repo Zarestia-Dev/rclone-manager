@@ -1880,6 +1880,8 @@
         "updated": "Backend updated successfully",
         "added": "Backend added successfully",
         "saveFailed": "Failed to save backend: {{message}}",
+        "deleted": "Backend deleted successfully",
+        "deleteFailed": "Failed to delete backend: {{message}}",
         "onlyActiveBackend": "Please switch to this backend to change its configuration file."
       },
       "delete": {

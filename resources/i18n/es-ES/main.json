@@ -1809,6 +1809,8 @@
         "updated": "Backend actualizado correctamente",
         "added": "Backend agregado correctamente",
         "saveFailed": "Error al guardar el backend: {{message}}",
+        "deleted": "Backend eliminado correctamente",
+        "deleteFailed": "Error al eliminar el backend: {{message}}",
         "onlyActiveBackend": "Por favor, cambie a este backend para cambiar su archivo de configuración."
       },
       "delete": {

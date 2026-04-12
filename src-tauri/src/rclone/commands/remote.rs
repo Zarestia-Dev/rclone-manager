@@ -30,7 +30,7 @@ use crate::{
 async fn call_config(app: &AppHandle, endpoint: &str, body: Value) -> Result<Value, String> {
     let state = app.state::<RcloneState>();
     let backend = app.state::<BackendManager>().get_active().await;
-    let url = crate::rclone::commands::common::get_config_url(&backend, endpoint)?;
+    let url = crate::rclone::commands::common::get_config_url(&backend, endpoint);
 
     let response = backend
         .inject_auth(state.client.post(&url))
@@ -313,9 +313,8 @@ pub async fn delete_remote(
         _ => {}
     }
 
-    // --- Cleanup logic moved from frontend ---
     let backend_manager = app.state::<BackendManager>();
-    let remote_prefix = format!("{}:", name);
+    let remote_prefix = format!("{name}:");
 
     // 1. Unmount all associated mounts
     let mounted = backend_manager.remote_cache.get_mounted_remotes().await;

@@ -1851,6 +1851,8 @@
         "updated": "Arka uç başarıyla güncellendi",
         "added": "Arka uç başarıyla eklendi",
         "saveFailed": "Arka uç kaydedilemedi: {{message}}",
+        "deleted": "Arka uç başarıyla silindi",
+        "deleteFailed": "Arka uç silinemedi: {{message}}",
         "onlyActiveBackend": "Yapılandırma dosyasını değiştirmek için lütfen bu arka uca geçiş yapın."
       },
       "delete": {

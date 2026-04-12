@@ -22,14 +22,10 @@ pub async fn resolve_profile_settings(
     config_key: &str,
 ) -> Result<(Value, Value), String> {
     let backend_manager = app.state::<BackendManager>();
-
     let cache = &backend_manager.remote_cache;
-
     let manager = app.state::<AppSettingsManager>();
     let remote_names = cache.get_remotes().await;
 
-    // We use the sync version of retrieving all settings because rcman's inner implementation
-    // might block or be synchronous for this part, or at least that's how it was used in original code.
     let settings_map = crate::core::settings::remote::manager::get_all_remote_settings_sync(
         manager.inner(),
         &remote_names,
@@ -37,16 +33,16 @@ pub async fn resolve_profile_settings(
 
     let settings = settings_map
         .get(remote_name)
-        .ok_or_else(|| format!("Remote '{}' not found in settings", remote_name))?;
+        .ok_or_else(|| format!("Remote '{remote_name}' not found in settings"))?;
 
     let configs = settings
         .get(config_key)
         .and_then(|v| v.as_object())
-        .ok_or_else(|| format!("No {} found for '{}'", config_key, remote_name))?;
+        .ok_or_else(|| format!("No {config_key} found for '{remote_name}'"))?;
 
     let config = configs
         .get(profile_name)
-        .ok_or_else(|| format!("{} profile '{}' not found", config_key, profile_name))?;
+        .ok_or_else(|| format!("{config_key} profile '{profile_name}' not found"))?;
 
     Ok((config.clone(), settings.clone()))
 }
@@ -60,15 +56,15 @@ use crate::utils::json_helpers::{get_string, json_to_hashmap, resolve_profile_op
 use serde_json::{Map, json};
 use std::collections::HashMap;
 
-/// Helper to determine the correct URL for configuration operations
-/// Handles the difference between Local (uses OAuth port) and Remote (uses API port) backends
-pub fn get_config_url(backend: &Backend, operation: &str) -> Result<String, String> {
+/// Return the URL for a configuration operation on the given backend.
+///
+/// Local backends route config calls through the OAuth process port so that
+/// the OAuth flow can intercept them. Remote backends use the main API port.
+pub fn get_config_url(backend: &Backend, operation: &str) -> String {
     if backend.is_local {
-        backend
-            .oauth_url_for(operation)
-            .ok_or_else(|| crate::localized_error!("backendErrors.system.oauthNotConfigured"))
+        backend.oauth_url_for(operation)
     } else {
-        Ok(backend.url_for(operation))
+        backend.url_for(operation)
     }
 }
 
@@ -126,14 +122,14 @@ pub fn fs_value_with_runtime_overrides(
 
     let (lookup_keys, mut fs_obj) = match parsed_fs {
         ParsedFs::Named { remote_name, root } => (
-            vec![remote_name.clone(), format!("{}:", remote_name)],
+            vec![remote_name.clone(), format!("{remote_name}:")],
             Map::from_iter([
                 ("_name".to_string(), Value::String(remote_name)),
                 ("_root".to_string(), Value::String(root)),
             ]),
         ),
         ParsedFs::Backend { backend_type, root } => (
-            vec![format!(":{}", backend_type), backend_type.clone()],
+            vec![format!(":{backend_type}"), backend_type.clone()],
             Map::from_iter([
                 ("type".to_string(), Value::String(backend_type)),
                 ("_root".to_string(), Value::String(root)),
@@ -185,15 +181,13 @@ fn parse_fs(fs: &str) -> Option<ParsedFs> {
     // Backend style remote: :local:/tmp or :s3,region=us-east-1:/bucket
     if let Some(rest) = fs.strip_prefix(':') {
         let split_idx = rest.find(':')?;
-        let backend_with_opts = &rest[..split_idx];
-        let backend_type = backend_with_opts
+        let backend_type = rest[..split_idx]
             .split(',')
             .next()
             .map(str::trim)
             .filter(|s| !s.is_empty())?
             .to_string();
         let root = rest[split_idx + 1..].to_string();
-
         return Some(ParsedFs::Backend { backend_type, root });
     }
 
@@ -279,13 +273,14 @@ pub fn resolve_runtime_remote_options(
     }
 }
 
-/// Redact sensitive values from parameters for logging
-/// Reads restrict setting from AppSettingsManager internally
+/// Redact sensitive values from parameters for logging.
+/// Reads restrict setting from AppSettingsManager internally.
 pub fn redact_sensitive_values(params: &HashMap<String, Value>, app: &AppHandle) -> Value {
     let restrict_enabled: bool = app
         .try_state::<AppSettingsManager>()
         .and_then(|manager| manager.inner().get("general.restrict").ok())
         .unwrap_or(false);
+
     let map: serde_json::Map<String, Value> = params
         .iter()
         .map(|(k, v)| {

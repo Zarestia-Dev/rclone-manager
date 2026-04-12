@@ -1853,6 +1853,8 @@
         "updated": "后端更新成功",
         "added": "后端添加成功",
         "saveFailed": "保存后端失败：{{message}}",
+        "deleted": "后端删除成功",
+        "deleteFailed": "后端删除失败：{{message}}",
         "onlyActiveBackend": "请切换到此后端以修改其配置文件。"
       },
       "delete": {

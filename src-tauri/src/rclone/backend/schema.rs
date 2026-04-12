@@ -16,7 +16,7 @@ pub struct BackendConnectionSchema {
 
     #[setting(
         label = "Host",
-        description = "Hostname or IP address of the rclone instance",
+        description = "Hostname or IP address rclone binds to",
         placeholder = "e.g. 127.0.0.1 or my-nas.local",
         group = "connection",
         order = 10.0
@@ -52,13 +52,24 @@ pub struct BackendConnectionSchema {
 
     #[setting(
         label = "OAuth Port",
-        description = "Port used for OAuth callbacks (Local backend only)",
+        description = "Port the OAuth helper process listens on",
         min = 1.0,
         max = 65535.0,
         group = "oauth",
         order = 50.0
     )]
     pub oauth_port: u16,
+
+    #[setting(
+        label = "OAuth Host",
+        description = "Host to connect to for OAuth callbacks. \
+                       Must be a routable address — never a wildcard like 0.0.0.0. \
+                       In Docker, set this to the container's accessible hostname.",
+        placeholder = "127.0.0.1",
+        group = "oauth",
+        order = 51.0
+    )]
+    pub oauth_host: String,
 
     #[setting(
         label = "Config Password",
@@ -88,6 +99,7 @@ impl Default for BackendConnectionSchema {
             username: String::new(),
             password: String::new(),
             oauth_port: 51901,
+            oauth_host: "127.0.0.1".to_string(),
             config_password: String::new(),
             config_path: String::new(),
         }

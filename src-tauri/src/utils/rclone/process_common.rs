@@ -29,8 +29,7 @@ async fn apply_rclone_environment(
     // Apply user-defined environment variables from settings.
     let settings_manager = app.state::<AppSettingsManager>();
     if let Ok(settings) = settings_manager.get_all() {
-        let extra_envs = &settings.core.rclone_env_vars;
-        for env_str in extra_envs {
+        for env_str in &settings.core.rclone_env_vars {
             if let Some((key, value)) = env_str.split_once('=') {
                 let key = key.trim();
                 let value = value.trim();
@@ -72,7 +71,7 @@ fn build_rclone_base_args(host: &str, port: u16) -> Vec<String> {
     vec![
         "rcd".to_string(),
         "--rc-serve".to_string(),
-        format!("--rc-addr={}:{}", host, port),
+        format!("--rc-addr={host}:{port}"),
         "--rc-allow-origin".to_string(),
         "*".to_string(),
     ]
@@ -85,45 +84,43 @@ fn append_user_flags_from_app(
 ) -> Result<(), crate::rclone::engine::error::EngineError> {
     let settings_manager = app.state::<AppSettingsManager>();
 
-    if let Ok(settings) = settings_manager.get_all() {
-        let extra_flags = &settings.core.rclone_additional_flags;
-
-        if extra_flags.is_empty() {
-            return Ok(());
-        }
-
-        let metadata = CoreSettings::get_metadata();
-        if let Some(meta) = metadata.get("core.rclone_additional_flags") {
-            let flags_value = serde_json::to_value(extra_flags).map_err(|e| {
-                crate::rclone::engine::error::EngineError::ConfigValidationFailed(e.to_string())
-            })?;
-
-            if let Err(e) = meta.validate(&flags_value) {
-                info!("❌ Blocked reserved/invalid flags: {}", e);
-                return Err(
-                    crate::rclone::engine::error::EngineError::ConfigValidationFailed(
-                        crate::localized_error!(
-                            "backendErrors.rclone.invalidFlags",
-                            "error" => e
-                        ),
-                    ),
-                );
-            }
-        }
-
-        info!("🚩 Appending user-defined flags: {:?}", extra_flags);
-
-        for flag in extra_flags {
-            // Allow "key value" pairs — split only on the first space so values can contain spaces.
-            if let Some((key, value)) = flag.split_once(' ') {
-                args.push(key.to_string());
-                args.push(value.to_string());
-            } else {
-                args.push(flag.clone());
-            }
-        }
-    } else {
+    let Ok(settings) = settings_manager.get_all() else {
         info!("⚠️ Could not load settings to check for additional flags");
+        return Ok(());
+    };
+
+    let extra_flags = &settings.core.rclone_additional_flags;
+
+    if extra_flags.is_empty() {
+        return Ok(());
+    }
+
+    let metadata = CoreSettings::get_metadata();
+    if let Some(meta) = metadata.get("core.rclone_additional_flags") {
+        let flags_value = serde_json::to_value(extra_flags).map_err(|e| {
+            crate::rclone::engine::error::EngineError::ConfigValidationFailed(e.to_string())
+        })?;
+
+        if let Err(e) = meta.validate(&flags_value) {
+            info!("❌ Blocked reserved/invalid flags: {e}");
+            return Err(
+                crate::rclone::engine::error::EngineError::ConfigValidationFailed(
+                    crate::localized_error!("backendErrors.rclone.invalidFlags", "error" => e),
+                ),
+            );
+        }
+    }
+
+    info!("🚩 Appending user-defined flags: {extra_flags:?}");
+
+    for flag in extra_flags {
+        // Allow "key value" pairs — split only on the first space so values can contain spaces.
+        if let Some((key, value)) = flag.split_once(' ') {
+            args.push(key.to_string());
+            args.push(value.to_string());
+        } else {
+            args.push(flag.clone());
+        }
     }
 
     Ok(())
@@ -134,8 +131,8 @@ fn append_auth_args(args: &mut Vec<String>, username: Option<String>, password: 
     match (username, password) {
         (Some(user), Some(pass)) if !user.is_empty() => {
             info!("🔐 Starting rclone with authentication enabled");
-            args.push(format!("--rc-user={}", user));
-            args.push(format!("--rc-pass={}", pass));
+            args.push(format!("--rc-user={user}"));
+            args.push(format!("--rc-pass={pass}"));
         }
         _ => {
             info!("🔓 Starting rclone with NO authentication");
@@ -161,14 +158,11 @@ pub async fn build_rclone_process_command(
 
     let backend = backend_manager_state.get_active().await;
 
-    // Resolve the port — OAuth requires its own port to be configured.
+    // Resolve the port — OAuth requires its own dedicated port.
+    // Both are always present: `oauth_port` is a required field with a default.
     let port = match kind {
         ProcessKind::Engine => backend.port,
-        ProcessKind::OAuth => backend.oauth_port.ok_or_else(|| {
-            crate::rclone::engine::error::EngineError::SpawnFailed(crate::localized_error!(
-                "backendErrors.system.oauthNotConfigured"
-            ))
-        })?,
+        ProcessKind::OAuth => backend.oauth_port,
     };
 
     let command = build_rclone_command(app, None, config_path.as_deref(), None);
@@ -211,7 +205,5 @@ pub async fn build_rclone_process_command(
     let command = command.args(args);
 
     // Engine checks for password; OAuth skips it.
-    let command = apply_rclone_environment(app, command).await?;
-
-    Ok(command)
+    apply_rclone_environment(app, command).await
 }

@@ -26,10 +26,7 @@ pub fn build_api_router(state: WebServerState) -> Router {
         .nest("/jobs", jobs_router)
         .route("/events", get(handlers::sse_handler))
         .with_state(state.clone())
-        .layer(axum::middleware::from_fn_with_state(
-            state.clone(),
-            auth_middleware,
-        ))
+        .layer(axum::middleware::from_fn_with_state(state, auth_middleware))
 }
 
 fn jobs_routes() -> Router<WebServerState> {
@@ -173,7 +170,6 @@ fn system_routes() -> Router<WebServerState> {
             get(handlers::get_fscache_entries_handler),
         )
         .route("/clear-fscache", post(handlers::clear_fscache_handler))
-        // Stats Group Management
         .route("/stats-groups", get(handlers::get_stats_groups_handler))
         .route(
             "/reset-group-stats",

@@ -2,10 +2,10 @@ import { computed, Injectable, signal } from '@angular/core';
 import { TauriBaseService } from '../platform/tauri-base.service';
 
 import {
-  AddBackendConfig,
   BackendInfo,
   TestConnectionResult,
   BackendSettingMetadata,
+  addBackendArgs,
 } from 'src/app/shared/types/backend.types';
 
 /**
@@ -117,7 +117,7 @@ export class BackendService extends TauriBaseService {
    * Add a new backend with optional copying from existing backends
    */
   async addBackend(
-    config: AddBackendConfig,
+    config: addBackendArgs,
     copyBackendFrom?: string,
     copyRemotesFrom?: string
   ): Promise<void> {
@@ -126,17 +126,20 @@ export class BackendService extends TauriBaseService {
       await this.invokeWithNotification(
         'add_backend',
         {
-          name: config.name,
-          host: config.host,
-          port: config.port,
-          isLocal: config.isLocal,
-          username: config.username,
-          password: config.password,
-          configPassword: config.configPassword,
-          configPath: config.configPath,
-          oauthPort: config.oauthPort,
-          copyBackendFrom: copyBackendFrom ?? null,
-          copyRemotesFrom: copyRemotesFrom ?? null,
+          params: {
+            name: config.name,
+            host: config.host,
+            port: config.port,
+            isLocal: config.isLocal,
+            username: config.username,
+            password: config.password,
+            configPassword: config.configPassword,
+            configPath: config.configPath,
+            oauthPort: config.oauthPort,
+            oauthHost: config.oauthHost,
+            copyBackendFrom: copyBackendFrom || null,
+            copyRemotesFrom: copyRemotesFrom || null,
+          },
         },
         {
           successKey: 'backendSuccess.backend.added',
@@ -154,20 +157,23 @@ export class BackendService extends TauriBaseService {
   /**
    * Update an existing backend
    */
-  async updateBackend(config: AddBackendConfig): Promise<void> {
+  async updateBackend(config: addBackendArgs): Promise<void> {
     try {
       this.isLoading.set(true);
       await this.invokeWithNotification(
         'update_backend',
         {
-          name: config.name,
-          host: config.host,
-          port: config.port,
-          username: config.username,
-          password: config.password,
-          configPassword: config.configPassword,
-          configPath: config.configPath,
-          oauthPort: config.oauthPort,
+          params: {
+            name: config.name,
+            host: config.host,
+            port: config.port,
+            username: config.username,
+            password: config.password,
+            configPassword: config.configPassword,
+            configPath: config.configPath,
+            oauthPort: config.oauthPort,
+            oauthHost: config.oauthHost,
+          },
         },
         {
           successKey: 'backendSuccess.backend.updated',
@@ -300,7 +306,7 @@ export class BackendService extends TauriBaseService {
   /**
    * Helper to map form values to AddBackendConfig
    */
-  mapFormToConfig(formValue: any, isEditingLocal: boolean): AddBackendConfig {
+  mapFormToConfig(formValue: any, isEditingLocal: boolean): addBackendArgs {
     return {
       name: formValue.name,
       host: formValue.host,

@@ -10,7 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import type {
-  AddBackendConfig,
+  addBackendArgs,
   BackendInfo,
   BackendSettingMetadata,
 } from 'src/app/shared/types/backend.types';
@@ -322,7 +322,7 @@ export class BackendModalComponent {
     const formValue = this.backendForm.getRawValue();
     const state = this.formState();
     const isEditingLocal = state.mode === 'edit' && state.editingName === 'Local';
-    const backendData: AddBackendConfig = this.backendService.mapFormToConfig(
+    const backendData: addBackendArgs = this.backendService.mapFormToConfig(
       formValue,
       isEditingLocal
     );
