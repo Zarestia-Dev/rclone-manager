@@ -39,6 +39,7 @@ import {
   JobManagementService,
   IconService,
   NotificationService,
+  ApiClientService,
   getRemoteNameFromFs,
 } from '@app/services';
 import {
@@ -188,6 +189,7 @@ export class NautilusComponent implements OnInit {
   private readonly remoteFacadeService = inject(RemoteFacadeService);
   private readonly dialog = inject(MatDialog);
   private readonly formatFileSizePipe = inject(FormatFileSizePipe);
+  protected readonly apiClient = inject(ApiClientService);
 
   public readonly closeOverlay = output<void>();
 
@@ -1071,8 +1073,14 @@ export class NautilusComponent implements OnInit {
     event.preventDefault();
 
     const activeRemote = this.activeRemote();
-    if (activeRemote && this.hasExternalDropFiles(event)) {
-      void this.processExternalDrop(event, { remote: activeRemote, path: this.activePath() });
+    const dt = event.dataTransfer;
+    if (activeRemote && dt && this.hasExternalDropFiles(event)) {
+      const fsEntries = this.snapshotEntries(dt.items);
+      void this.processExternalDrop(
+        event,
+        { remote: activeRemote, path: this.activePath() },
+        fsEntries
+      );
     }
 
     this._dragCounter = 0;
@@ -1081,14 +1089,98 @@ export class NautilusComponent implements OnInit {
     }
   }
 
+  private async handleHeadlessDrop(
+    event: DragEvent,
+    target: { remote: ExplorerRoot | null; path: string },
+    providedFsEntries?: FileSystemEntry[]
+  ): Promise<void> {
+    const dt = event.dataTransfer;
+    if (!dt) return;
+
+    // Snapshot early if not provided
+    const fsEntries = providedFsEntries || this.snapshotEntries(dt.items);
+    if (!fsEntries.length) return;
+
+    // Recursive collection
+    const fileEntries: { entry: FileSystemFileEntry; relativePath: string }[] = [];
+    for (const fsEntry of fsEntries) {
+      fileEntries.push(...(await this.collectFileEntries(fsEntry)));
+    }
+
+    // Get Limit from settings (convert MB to bytes)
+    const limitMb =
+      (await this.appSettingsService.getSettingValue<number>('core.max_upload_batch_size')) || 500;
+    const limitBytes = limitMb * 1024 * 1024;
+
+    // Convert and check size
+    let totalSize = 0;
+    const entries = [];
+
+    for (const { entry, relativePath } of fileEntries) {
+      const file = await this.readFileEntry(entry);
+      totalSize += file.size;
+
+      if (totalSize > limitBytes) {
+        this.notificationService.showError(
+          this.translate.instant('nautilus.errors.uploadTooLarge', {
+            limit: this.formatFileSizePipe.transform(limitBytes),
+          })
+        );
+        return;
+      }
+
+      const buffer = await file.arrayBuffer();
+      entries.push({
+        relativePath,
+        filename: entry.name,
+        size: file.size,
+        content: Array.from(new Uint8Array(buffer)),
+        localPath: null,
+      });
+    }
+
+    const normalizedRemote = this.getNormalizedRemoteName(target.remote!);
+    try {
+      const result = await this.remoteOps.uploadLocalDropEntries(
+        normalizedRemote,
+        target.path,
+        entries,
+        ORIGINS.FILEMANAGER
+      );
+
+      if (result.uploaded > 0) {
+        this.refresh();
+        this.notificationService.showSuccess(
+          this.translate.instant('nautilus.notifications.uploadSuccess', {
+            count: result.uploaded,
+          })
+        );
+      }
+
+      if (result.failed.length > 0) {
+        this.notificationService.showError(
+          this.translate.instant('nautilus.notifications.uploadFailed', {
+            count: result.failed.length,
+          })
+        );
+      }
+    } catch (error) {
+      console.error('[Nautilus] Headless drop upload failed', error);
+      this.notificationService.showError(
+        this.translate.instant('nautilus.errors.externalDropFailed')
+      );
+    }
+  }
+
   private async processDrop(
     event: DragEvent,
-    target: { remote: ExplorerRoot | null; path: string }
+    target: { remote: ExplorerRoot | null; path: string },
+    providedFsEntries?: FileSystemEntry[]
   ): Promise<void> {
     event.preventDefault();
 
     if (target.remote && this.hasExternalDropFiles(event)) {
-      await this.processExternalDrop(event, target);
+      await this.processExternalDrop(event, target, providedFsEntries);
       return;
     }
 
@@ -1212,11 +1304,17 @@ export class NautilusComponent implements OnInit {
 
   private async processExternalDrop(
     event: DragEvent,
-    target: { remote: ExplorerRoot | null; path: string }
+    target: { remote: ExplorerRoot | null; path: string },
+    providedFsEntries?: FileSystemEntry[]
   ): Promise<void> {
     if (!target.remote) return;
 
-    const droppedFiles = await this.extractExternalDropFiles(event);
+    if (this.apiClient.isHeadless()) {
+      await this.handleHeadlessDrop(event, target, providedFsEntries);
+      return;
+    }
+
+    const droppedFiles = await this.extractExternalDropFiles(event.dataTransfer, providedFsEntries);
     if (!droppedFiles.length) return;
 
     const normalizedRemote = this.getNormalizedRemoteName(target.remote);
@@ -1286,11 +1384,14 @@ export class NautilusComponent implements OnInit {
     }
   }
 
-  private async extractExternalDropFiles(event: DragEvent): Promise<ExternalDropFile[]> {
-    const dt = event.dataTransfer;
+  private async extractExternalDropFiles(
+    dt: DataTransfer | null,
+    fsEntries?: FileSystemEntry[]
+  ): Promise<ExternalDropFile[]> {
     if (!dt) return [];
 
-    const fromEntries = await this.extractExternalFilesFromEntries(dt.items);
+    const entries = fsEntries || this.snapshotEntries(dt.items);
+    const fromEntries = await this.extractExternalFilesFromEntries(entries);
     if (fromEntries.length > 0) {
       return fromEntries;
     }
@@ -1301,14 +1402,10 @@ export class NautilusComponent implements OnInit {
   }
 
   private async extractExternalFilesFromEntries(
-    items: DataTransferItemList
+    fsEntries: FileSystemEntry[]
   ): Promise<ExternalDropFile[]> {
     const results: ExternalDropFile[] = [];
-
-    for (const item of Array.from(items)) {
-      if (item.kind !== 'file') continue;
-      const entry = item.webkitGetAsEntry?.();
-      if (!entry) continue;
+    for (const entry of fsEntries) {
       await this.collectEntryFiles(entry, '', results);
     }
 
@@ -1363,22 +1460,54 @@ export class NautilusComponent implements OnInit {
     });
   }
 
-  private joinRemotePath(basePath: string, relativePath: string): string {
-    const cleanedBase = basePath.replace(/^\/+|\/+$/g, '');
-    const cleanedRelative = relativePath.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
-
-    if (!cleanedBase) return cleanedRelative;
-    if (!cleanedRelative) return cleanedBase;
-    return `${cleanedBase}/${cleanedRelative}`;
+  private snapshotEntries(items: DataTransferItemList): FileSystemEntry[] {
+    const entries: FileSystemEntry[] = [];
+    for (const item of items) {
+      const entry = item.webkitGetAsEntry?.();
+      if (entry) entries.push(entry);
+    }
+    return entries;
   }
 
-  private splitDirectoryAndFilename(path: string): { directory: string; filename: string } {
-    const parts = path.split('/').filter(Boolean);
-    const filename = parts.pop() ?? '';
-    return {
-      directory: parts.join('/'),
-      filename,
-    };
+  private async readAllEntries(reader: FileSystemDirectoryReader): Promise<FileSystemEntry[]> {
+    const all: FileSystemEntry[] = [];
+    while (true) {
+      const batch = await new Promise<FileSystemEntry[]>((res, rej) =>
+        reader.readEntries(res, rej)
+      );
+      if (batch.length === 0) break;
+      all.push(...batch);
+    }
+    return all;
+  }
+
+  private async collectFileEntries(
+    entry: FileSystemEntry,
+    prefix = ''
+  ): Promise<{ entry: FileSystemFileEntry; relativePath: string }[]> {
+    const results: { entry: FileSystemFileEntry; relativePath: string }[] = [];
+    const currentPath = prefix ? `${prefix}/${entry.name}` : entry.name;
+
+    if (entry.isFile) {
+      results.push({ entry: entry as FileSystemFileEntry, relativePath: currentPath });
+    } else if (entry.isDirectory) {
+      const reader = (entry as FileSystemDirectoryEntry).createReader();
+      const children = await this.readAllEntries(reader);
+
+      // Handle empty directories in headless mode by adding a dummy entry if needed?
+      // Actually, the backend handles empty directories if we send an entry with source::Directory.
+      // But for now, let's just collect files.
+      if (children.length === 0 && this.apiClient.isHeadless()) {
+        // Special case for empty directory detection if we want to preserve them.
+        // We'll see if the backend needs this.
+      }
+
+      for (const child of children) {
+        results.push(...(await this.collectFileEntries(child, currentPath)));
+      }
+    }
+
+    return results;
   }
 
   onDropToStarred(event: DragEvent): void {
@@ -1404,12 +1533,18 @@ export class NautilusComponent implements OnInit {
         this.pathSelectionService.normalizeRemoteName(r.name) ===
         this.pathSelectionService.normalizeRemoteName(bookmark.meta.remote)
     );
-    await this.processDrop(event, { remote: targetRemote ?? null, path: bookmark.entry.Path });
+    const fsEntries = event.dataTransfer ? this.snapshotEntries(event.dataTransfer.items) : [];
+    await this.processDrop(
+      event,
+      { remote: targetRemote ?? null, path: bookmark.entry.Path },
+      fsEntries
+    );
   }
 
   async onDropToRemote(event: DragEvent, targetRemote: ExplorerRoot): Promise<void> {
     event.stopPropagation();
-    await this.processDrop(event, { remote: targetRemote, path: '' });
+    const fsEntries = event.dataTransfer ? this.snapshotEntries(event.dataTransfer.items) : [];
+    await this.processDrop(event, { remote: targetRemote, path: '' }, fsEntries);
   }
 
   async onDropToFolder(event: DragEvent, targetFolder: FileBrowserItem): Promise<void> {
@@ -1419,7 +1554,12 @@ export class NautilusComponent implements OnInit {
         this.pathSelectionService.normalizeRemoteName(r.name) ===
         this.pathSelectionService.normalizeRemoteName(targetFolder.meta.remote)
     );
-    await this.processDrop(event, { remote: targetRemote ?? null, path: targetFolder.entry.Path });
+    const fsEntries = event.dataTransfer ? this.snapshotEntries(event.dataTransfer.items) : [];
+    await this.processDrop(
+      event,
+      { remote: targetRemote ?? null, path: targetFolder.entry.Path },
+      fsEntries
+    );
   }
 
   async onDropToCurrentDirectory(event: DragEvent, paneIndex: number): Promise<void> {
@@ -1433,10 +1573,11 @@ export class NautilusComponent implements OnInit {
     const segIdx = resolved.segmentIndex ?? this.hoveredSegmentIndex();
     const tabIdx = resolved.tabIndex ?? this.hoveredTabIndex();
 
+    const fsEntries = event.dataTransfer ? this.snapshotEntries(event.dataTransfer.items) : [];
     if (tabIdx !== null) {
       const tab = this.tabs()[tabIdx];
       if (tab?.left.remote) {
-        await this.processDrop(event, { remote: tab.left.remote, path: tab.left.path });
+        await this.processDrop(event, { remote: tab.left.remote, path: tab.left.path }, fsEntries);
       }
       return;
     }
@@ -1450,7 +1591,7 @@ export class NautilusComponent implements OnInit {
       targetPath = this.getPaneRef(pIdx).path();
     }
 
-    await this.processDrop(event, { remote: targetRemote, path: targetPath });
+    await this.processDrop(event, { remote: targetRemote, path: targetPath }, fsEntries);
   }
 
   async onDropToSegment(event: DragEvent, segIdx: number): Promise<void> {
@@ -1463,7 +1604,8 @@ export class NautilusComponent implements OnInit {
     const currentPath = this.getPaneRef(pIdx).path();
     if (targetPath === currentPath) return;
 
-    await this.processDrop(event, { remote: targetRemote, path: targetPath });
+    const fsEntries = event.dataTransfer ? this.snapshotEntries(event.dataTransfer.items) : [];
+    await this.processDrop(event, { remote: targetRemote, path: targetPath }, fsEntries);
   }
 
   toggleBookmark(item: FileBrowserItem): void {

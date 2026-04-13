@@ -150,7 +150,7 @@
       "duration": "Duration",
       "lastOperation": "Last Operation",
       "errors": "Recent Errors",
-      "emptyTitle": "No active job",
+      "emptyTitle": "No jobs",
       "emptyMessage": "Job details will appear here when an operation starts"
     },
     "diskUsage": {
@@ -182,7 +182,7 @@
       "openInExplorer": "Open in file explorer"
     },
     "jobs": {
-      "activeJobs": "Active Jobs",
+      "title": "Jobs",
       "columns": {
         "type": "Type",
         "profile": "Profile",
@@ -202,7 +202,7 @@
         "stop": "Stop Job",
         "delete": "Delete Job"
       },
-      "empty": "No active jobs"
+      "empty": "No jobs found"
     },
     "settings": {
       "metrics": "{{count}} settings",
@@ -286,7 +286,11 @@
       },
       "completed_onboarding": {
         "label": "Completed Onboarding",
-        "description": "Indicates if the onboarding process is completed."
+        "description": "Whether the user has completed the onboarding process"
+      },
+      "max_upload_batch_size": {
+        "label": "Maximum Upload Batch Size (MB)",
+        "description": "The maximum size of a batch of files uploaded from the local computer in one request."
       }
     },
     "developer": {
@@ -1552,7 +1556,7 @@
       "title": "Job Details #{{id}}",
       "sections": {
         "overview": "Job Information",
-        "statistics": "Sync Settings Statistics",
+        "statistics": "Statistics",
         "paths": "Paths",
         "activity": "Transfer Activity",
         "errors": "Errors"
@@ -1568,9 +1572,16 @@
         "speed": "Speed",
         "eta": "ETA",
         "files": "Files",
+        "checks": "Checks",
+        "deleted": "Deleted",
+        "renamed": "Renamed",
+        "listed": "Listed",
         "errorsCount": "Errors",
         "source": "Source",
-        "destination": "Destination"
+        "destination": "Destination",
+        "remoteSource": "Remote Source",
+        "mountPoint": "Mount Point",
+        "lastError": "Last Error"
       }
     },
     "about": {
@@ -2200,6 +2211,7 @@
       "remoteNotFound": "Remote '{{remote}}' not found",
       "bookmarkRemoteNotFound": "Remote '{{remote}}' for bookmark not found",
       "loadFailed": "Failed to load directory",
+      "uploadTooLarge": "Upload batch is too large (Total size: {{limit}}). Please reduce the number of files or increase the limit in Settings.",
       "deleteFailed": "Failed to delete {{count}} items",
       "copyFailed": "Failed to copy {{count}} items",
       "moveFailed": "Failed to move {{count}} items",

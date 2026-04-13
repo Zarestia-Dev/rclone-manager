@@ -50,18 +50,30 @@
     <!-- Section 2: Paths -->
     <section class="detail-section">
       <h3 class="section-title">
-        <mat-icon svgIcon="folder-open"></mat-icon>
+        <mat-icon [svgIcon]="isMount ? 'mount' : 'folder-open'"></mat-icon>
         {{ 'modals.jobDetail.sections.paths' | translate }}
       </h3>
       <div class="path-display-container">
         <div class="path-item">
-          <span class="path-label">{{ 'modals.jobDetail.fields.source' | translate }}</span>
+          <span class="path-label">
+            {{
+              (isMount ? 'modals.jobDetail.fields.remoteSource' : 'modals.jobDetail.fields.source')
+                | translate
+            }}
+          </span>
           <div class="path-box">
             <code>{{ data.source }}</code>
           </div>
         </div>
         <div class="path-item">
-          <span class="path-label">{{ 'modals.jobDetail.fields.destination' | translate }}</span>
+          <span class="path-label">
+            {{
+              (isMount
+                ? 'modals.jobDetail.fields.mountPoint'
+                : 'modals.jobDetail.fields.destination'
+              ) | translate
+            }}
+          </span>
           <div class="path-box">
             <code>{{ data.destination }}</code>
           </div>
@@ -69,13 +81,29 @@
       </div>
     </section>
 
+    <!-- Section 2.5: Mount Error (if any) -->
+    @if (isMount && lastError) {
+      <section class="detail-section">
+        <h3 class="section-title error">
+          <mat-icon svgIcon="circle-exclamation"></mat-icon>
+          {{ 'modals.jobDetail.fields.lastError' | translate }}
+        </h3>
+        <div class="error-log">
+          <div class="error-entry">
+            <mat-icon svgIcon="circle-xmark"></mat-icon>
+            <span>{{ lastError }}</span>
+          </div>
+        </div>
+      </section>
+    }
+
     <!-- Section 3: Statistics Grid -->
-    <section class="detail-section">
-      <h3 class="section-title">
-        <mat-icon svgIcon="chart"></mat-icon>
-        {{ 'modals.jobDetail.sections.statistics' | translate }}
-      </h3>
-      @if (data.job_type !== 'mount') {
+    @if (showStatistics) {
+      <section class="detail-section">
+        <h3 class="section-title">
+          <mat-icon svgIcon="chart"></mat-icon>
+          {{ statisticsTitle | translate: { op: (data.job_type | titlecase) } }}
+        </h3>
         <div class="progress-container">
           <mat-progress-bar
             mode="determinate"
@@ -89,29 +117,56 @@
             </span>
           </div>
         </div>
-      }
 
-      <div class="stats-grid">
-        <div class="stat-card highlight">
-          <span class="stat-label">{{ 'modals.jobDetail.fields.speed' | translate }}</span>
-          <span class="stat-value">{{ data.stats.speed | formatFileSize }}/s</span>
+        <div class="stats-grid">
+          <div class="stat-card highlight">
+            <span class="stat-label">{{ 'modals.jobDetail.fields.speed' | translate }}</span>
+            <span class="stat-value">{{ data.stats.speed | formatFileSize }}/s</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">{{ 'modals.jobDetail.fields.eta' | translate }}</span>
+            <span class="stat-value">{{ data.stats.eta | formatEta }}</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">{{ 'modals.jobDetail.fields.files' | translate }}</span>
+            <span class="stat-value"
+              >{{ data.stats.transfers }} / {{ data.stats.totalTransfers }}</span
+            >
+          </div>
+
+          <!-- Extra Stats -->
+          @if (data.stats.checks > 0 || data.stats.totalChecks > 0) {
+            <div class="stat-card">
+              <span class="stat-label">{{ 'modals.jobDetail.fields.checks' | translate }}</span>
+              <span class="stat-value">{{ data.stats.checks }} / {{ data.stats.totalChecks }}</span>
+            </div>
+          }
+          @if (data.stats.deletedDirs > 0 || data.stats.deletes > 0) {
+            <div class="stat-card">
+              <span class="stat-label">{{ 'modals.jobDetail.fields.deleted' | translate }}</span>
+              <span class="stat-value">{{ data.stats.deletes + data.stats.deletedDirs }}</span>
+            </div>
+          }
+          @if (data.stats.renames > 0) {
+            <div class="stat-card">
+              <span class="stat-label">{{ 'modals.jobDetail.fields.renamed' | translate }}</span>
+              <span class="stat-value">{{ data.stats.renames }}</span>
+            </div>
+          }
+          @if (data.stats.listed > 0) {
+            <div class="stat-card">
+              <span class="stat-label">{{ 'modals.jobDetail.fields.listed' | translate }}</span>
+              <span class="stat-value">{{ data.stats.listed }}</span>
+            </div>
+          }
+
+          <div class="stat-card" [class.error]="data.stats.errors > 0">
+            <span class="stat-label">{{ 'modals.jobDetail.fields.errorsCount' | translate }}</span>
+            <span class="stat-value">{{ data.stats.errors }}</span>
+          </div>
         </div>
-        <div class="stat-card">
-          <span class="stat-label">{{ 'modals.jobDetail.fields.eta' | translate }}</span>
-          <span class="stat-value">{{ data.stats.eta | formatEta }}</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-label">{{ 'modals.jobDetail.fields.files' | translate }}</span>
-          <span class="stat-value"
-            >{{ data.stats.transfers }} / {{ data.stats.totalTransfers }}</span
-          >
-        </div>
-        <div class="stat-card" [class.error]="data.stats.errors > 0">
-          <span class="stat-label">{{ 'modals.jobDetail.fields.errorsCount' | translate }}</span>
-          <span class="stat-value">{{ data.stats.errors }}</span>
-        </div>
-      </div>
-    </section>
+      </section>
+    }
 
     <!-- Section 4: Transfer Activity -->
     @if (hasActivity) {

@@ -53,7 +53,7 @@ tauri-plugin-window-state = { version = "2", optional = true }
 tauri-plugin-dialog = { version = "2", optional = true }
 
 # rcman - Rust Config Manager library
-rcman = { path = "../../rcman", version = "0.1.7", features = ["backup", "derive", "profiles", "keychain", "encrypted-file"] }
+rcman = { version = "0.1.7", features = ["backup", "derive", "profiles", "keychain", "encrypted-file"] }
 
 urlencoding = "2.1"
 futures = { version = "0.3" }

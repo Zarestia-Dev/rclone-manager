@@ -145,7 +145,7 @@
       "finished": "Finalizado",
       "duration": "Duración",
       "lastOperation": "Última operación",
-      "emptyTitle": "No hay trabajo activo",
+      "emptyTitle": "Sin trabajos",
       "emptyMessage": "Los detalles del trabajo aparecerán aquí cuando comience una operación"
     },
     "diskUsage": {
@@ -176,7 +176,7 @@
       "openInExplorer": "Abrir en el explorador de archivos"
     },
     "jobs": {
-      "activeJobs": "Trabajos activos",
+      "title": "Trabajos",
       "columns": {
         "type": "Tipo",
         "profile": "Perfil",
@@ -196,7 +196,7 @@
         "stop": "Detener trabajo",
         "delete": "Borrar trabajo"
       },
-      "empty": "No hay trabajos activos"
+      "empty": "No se han encontrado trabajos"
     },
     "settings": {
       "metrics": "{{count}} ajustes",
@@ -281,6 +281,10 @@
       "completed_onboarding": {
         "label": "Incorporación completada",
         "description": "Indica si el proceso de incorporación se ha completado."
+      },
+      "max_upload_batch_size": {
+        "label": "Tamaño Máximo de Lote de Carga (MB)",
+        "description": "El tamaño máximo de un lote de archivos cargados desde la computadora local en una solicitud."
       }
     },
     "developer": {
@@ -1504,6 +1508,38 @@
     "delete": "Eliminar trabajo"
   },
   "modals": {
+    "jobDetail": {
+      "title": "Detalles del trabajo #{{id}}",
+      "sections": {
+        "overview": "Información del trabajo",
+        "statistics": "Estadísticas",
+        "paths": "Rutas",
+        "activity": "Actividad de transferencia",
+        "errors": "Errores"
+      },
+      "fields": {
+        "type": "Tipo de trabajo",
+        "id": "ID de trabajo",
+        "status": "Estado",
+        "started": "Iniciado",
+        "finished": "Finalizado",
+        "duration": "Duración",
+        "progress": "Progreso",
+        "speed": "Velocidad",
+        "eta": "ETA",
+        "files": "Archivos",
+        "checks": "Comprobaciones",
+        "deleted": "Eliminados",
+        "renamed": "Renombrados",
+        "listed": "Listados",
+        "errorsCount": "Errores",
+        "source": "Origen",
+        "destination": "Destino",
+        "remoteSource": "Origen remoto",
+        "mountPoint": "Punto de montaje",
+        "lastError": "Último error"
+      }
+    },
     "about": {
       "title": "Acerca de",
       "keepClicking": "Siga haciendo clic...",
@@ -2105,6 +2141,7 @@
       "remoteNotFound": "Remoto '{{remote}}' no encontrado",
       "bookmarkRemoteNotFound": "Remoto '{{remote}}' para marcador no encontrado",
       "loadFailed": "Error al cargar el directorio",
+      "uploadTooLarge": "El lote de carga es demasiado grande (tamaño total: {{limit}}). Por favor, reduzca el número de archivos o aumente el límite en la Configuración.",
       "createFolderFailed": "Error al crear la carpeta",
       "renameFailed": "Error al renombrar '{{name}}': {{error}}",
       "emptyTrashFailed": "Error al vaciar la papelera: {{error}}",

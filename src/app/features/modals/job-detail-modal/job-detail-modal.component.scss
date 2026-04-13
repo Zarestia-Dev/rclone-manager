@@ -16,6 +16,7 @@
     flex-direction: column;
     gap: var(--space-lg);
     overflow-y: auto;
+    overflow-x: hidden;
   }
 
   .detail-section {

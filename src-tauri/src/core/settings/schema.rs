@@ -145,6 +145,16 @@ pub struct CoreSettings {
         description = "settings.core.completed_onboarding.description"
     )]
     pub completed_onboarding: bool,
+
+    #[setting(
+        label = "settings.core.max_upload_batch_size.label",
+        description = "settings.core.max_upload_batch_size.description",
+        min = 10,
+        max = 5120,
+        step = 10
+    )]
+    #[cfg(feature = "web-server")]
+    pub max_upload_batch_size: usize,
 }
 
 impl Default for CoreSettings {
@@ -162,6 +172,8 @@ impl Default for CoreSettings {
             rclone_additional_flags: vec![],
             rclone_env_vars: vec![],
             completed_onboarding: false,
+            #[cfg(feature = "web-server")]
+            max_upload_batch_size: 500,
         }
     }
 }

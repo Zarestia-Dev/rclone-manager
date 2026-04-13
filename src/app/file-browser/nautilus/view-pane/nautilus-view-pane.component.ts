@@ -312,15 +312,15 @@ export class NautilusViewPaneComponent implements OnDestroy {
     this.lassoActive.set(true);
     this.lassoRect.set({ left: this._lassoStart.x, top: this._lassoStart.y, width: 0, height: 0 });
 
-    const moveHandler = (e: MouseEvent) => {
+    const moveHandler = (e: MouseEvent): void => {
       this._lastMoveEvent = e;
       this._onMouseMove(e);
     };
-    const scrollHandler = () => {
+    const scrollHandler = (): void => {
       if (this._lastMoveEvent) this._onMouseMove(this._lastMoveEvent);
       else this._updateLassoSelection();
     };
-    const upHandler = () => {
+    const upHandler = (): void => {
       this._onMouseUp();
       window.removeEventListener('mousemove', moveHandler);
       window.removeEventListener('mouseup', upHandler);

@@ -32,8 +32,8 @@ export class FileSystemService extends TauriBaseService {
       if (result.cancelled || (result.items.length === 0 && result.paths.length === 0)) {
         throw new Error('Folder selection cancelled');
       }
-      // Prefer structured item path, fallback to flat string
-      return result.items.length > 0 ? result.items[0].entry.Path : result.paths[0];
+      // Return full path constructed by Nautilus
+      return result.paths[0];
     }
 
     // In Tauri mode, use native dialog
@@ -88,8 +88,8 @@ export class FileSystemService extends TauriBaseService {
       if (result.cancelled || (result.items.length === 0 && result.paths.length === 0)) {
         throw new Error('File selection cancelled');
       }
-      // Prefer structured item path, fallback to flat string
-      return result.items.length > 0 ? result.items[0].entry.Path : result.paths[0];
+      // Return full path constructed by Nautilus
+      return result.paths[0];
     }
 
     // In Tauri mode, use native dialog

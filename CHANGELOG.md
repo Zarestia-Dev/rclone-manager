@@ -15,6 +15,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Legacy config directories for docker users.
 - **Core**: Added support for generic Rclone Environment Variables. Users can now specify arbitrary environment variables (e.g., `RCLONE_NO_UPDATE_MODTIME=true`) directly in the UI. This provides a flexible solution for FUSE compatibility and other rclone-specific configurations.
  - **Remote Config**: Show direct OAuth URL in remote creation/editing flows with a compact copy button; preserve the OAuth helper URL during remote configuration so users can open or copy the link.
+- **Security**: Added support for `RCLONE_MANAGER_SECRET`, `RCLONE_MANAGER_SECRET_PATH`, and `RCLONE_MANAGER_SECRET_FILE` environment variables for managing `rcman` encrypted credentials. These serve as fallbacks when the OS keyring is unavailable or malfunctioning. If no secret is provided via environment variables and the keyring is inaccessible, credentials will be stored in-memory and lost upon application restart.
+- **Job Detail**: Introduced a job detail view modal, allowing users to inspect granular operation details directly by selecting a job from the list in the General tab.
+- **Settings**: Added `max_upload_batch_size` setting to the General tab. This setting controls the maximum size of a batch of files uploaded from the local computer in a single request. Only available on headless mode.
 
 ### Changed
 - **Nautilus**: Replaced Angular CDK drag-and-drop with native HTML5 Drag and Drop API for file and folder operations. This provides a more responsive, system-native feel. (Note: CDK remains active for tab reordering).
@@ -34,6 +37,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **File Viewer**: Fixed the download functionality in headless web mode by implementing browser-native downloads. Remote files can now be downloaded to the local computer in both desktop and web environments.
 - **Core**: Bunch of scheduler tasks fixes.
 - **Core**: Fixed the issue where the app was not able to update rclone on headless mode.
+- **FileSystem**: Fixed a bug in headless mode where selecting a local directory or file would return a relative path instead of an absolute one.
 
 ### Know Issues
 - Tauri asset protocols has a bug that causes media streaming to not work properly on linux webview2gtk. So this mean videos and music files not gonna work on linux systems. But it works on headless systems. Track https://github.com/tauri-apps/tauri/issues/3725 for updates on this issue. 

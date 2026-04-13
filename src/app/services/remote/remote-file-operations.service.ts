@@ -13,6 +13,14 @@ export interface LocalDropUploadFile {
   content: number[];
 }
 
+export interface LocalDropUploadEntry {
+  relativePath: string;
+  filename: string;
+  size: number;
+  content?: number[];
+  localPath?: string | null;
+}
+
 /**
  * Service for remote file system operations
  * Handles browsing, metadata, and active file operations (copy, move, delete, etc.)
@@ -342,6 +350,23 @@ export class RemoteFileOperationsService extends TauriBaseService {
       remote,
       path,
       files,
+      source,
+    });
+  }
+
+  /**
+   * Upload browser-dropped entries (files and directories) to a remote path.
+   */
+  async uploadLocalDropEntries(
+    remote: string,
+    path: string,
+    entries: LocalDropUploadEntry[],
+    source?: Origin
+  ): Promise<LocalDropUploadResult> {
+    return this.invokeCommand<LocalDropUploadResult>('upload_local_drop_entries', {
+      remote,
+      path,
+      entries,
       source,
     });
   }

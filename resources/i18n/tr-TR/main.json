@@ -148,7 +148,7 @@
       "finished": "Bitiş",
       "duration": "Süre",
       "lastOperation": "Son İşlem",
-      "emptyTitle": "Aktif iş yok",
+      "emptyTitle": "İş yok",
       "emptyMessage": "Bir işlem başladığında iş detayları burada görünecektir"
     },
     "diskUsage": {
@@ -180,7 +180,7 @@
       "openInExplorer": "Dosya gezgininde aç"
     },
     "jobs": {
-      "activeJobs": "Aktif Görevler",
+      "title": "Görevler",
       "columns": {
         "type": "Tür",
         "profile": "Profil",
@@ -200,7 +200,7 @@
         "stop": "Görevi Durdur",
         "delete": "Görevi Sil"
       },
-      "empty": "Aktif görev yok"
+      "empty": "Görev bulunamadı"
     },
     "settings": {
       "metrics": "{{count}} ayar",
@@ -285,6 +285,10 @@
       "completed_onboarding": {
         "label": "Tanıtım Tamamlandı",
         "description": "Tanıtım sürecinin tamamlanıp tamamlanmadığını belirtir."
+      },
+      "max_upload_batch_size": {
+        "label": "Maksimum Yükleme Paketi Boyutu (MB)",
+        "description": "Yerel bilgisayardan bir seferde yüklenecek maksimum dosya paketi boyutu."
       }
     },
     "developer": {
@@ -1544,6 +1548,38 @@
     "delete": "İşi Sil"
   },
   "modals": {
+    "jobDetail": {
+      "title": "İş Detayları #{{id}}",
+      "sections": {
+        "overview": "İş Bilgileri",
+        "statistics": "İstatistikler",
+        "paths": "Yollar",
+        "activity": "Transfer Aktifliği",
+        "errors": "Hatalar"
+      },
+      "fields": {
+        "type": "İş Türü",
+        "id": "İş Kimliği",
+        "status": "Durum",
+        "started": "Başlangıç",
+        "finished": "Bitiş",
+        "duration": "Süre",
+        "progress": "İlerleme",
+        "speed": "Hız",
+        "eta": "Tahmini Süre",
+        "files": "Dosyalar",
+        "checks": "Kontroller",
+        "deleted": "Silinenler",
+        "renamed": "Yeniden Adlandırılanlar",
+        "listed": "Listelenenler",
+        "errorsCount": "Hatalar",
+        "source": "Kaynak",
+        "destination": "Hedef",
+        "remoteSource": "Uzak Kaynak",
+        "mountPoint": "Bağlama Noktası",
+        "lastError": "Son Hata"
+      }
+    },
     "about": {
       "title": "Hakkında",
       "keepClicking": "Tıklamaya devam et...",
@@ -2166,6 +2202,7 @@
       "remoteNotFound": "Uzak sunucu '{{remote}}' bulunamadı",
       "bookmarkRemoteNotFound": "Yer imi için uzak sunucu '{{remote}}' bulunamadı",
       "loadFailed": "Dizin yüklenemedi",
+      "uploadTooLarge": "Yükleme paketi çok büyük (Toplam boyut: {{limit}}). Lütfen dosya sayısını azaltın veya Ayarlar'dan sınırı artırın.",
       "deleteFailed": "{{count}} öge silinemedi",
       "copyFailed": "{{count}} öge kopyalanamadı",
       "moveFailed": "{{count}} öge taşınamadı",

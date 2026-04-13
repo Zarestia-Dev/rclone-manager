@@ -1,6 +1,8 @@
+use crate::core::settings::AppSettingsManager;
 use axum::{
-    extract::State,
-    http::{StatusCode, header::AUTHORIZATION},
+    body::Body,
+    extract::{DefaultBodyLimit, State},
+    http::{Request, StatusCode, header::AUTHORIZATION},
     middleware::Next,
     response::{IntoResponse, Json},
 };
@@ -123,4 +125,28 @@ pub async fn auth_middleware(
         .header("WWW-Authenticate", "Basic realm=\"RClone Manager\"")
         .body(axum::body::Body::from("Unauthorized"))
         .unwrap())
+}
+
+/// Dynamic body limit middleware that reads settings from state
+pub async fn dynamic_body_limit_middleware(
+    State(state): State<WebServerState>,
+    mut request: Request<Body>,
+    next: Next,
+) -> axum::response::Response {
+    use tauri::Manager;
+    let limit_mb = state
+        .app_handle
+        .state::<AppSettingsManager>()
+        .get_all()
+        .map(|s| s.core.max_upload_batch_size)
+        .unwrap_or(500);
+
+    let limit_bytes = limit_mb * 1024 * 1024;
+
+    // Inject the limit into the request extensions for extractors
+    request
+        .extensions_mut()
+        .insert(DefaultBodyLimit::max(limit_bytes));
+
+    next.run(request).await
 }

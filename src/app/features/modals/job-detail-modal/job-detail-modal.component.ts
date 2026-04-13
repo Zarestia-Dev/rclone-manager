@@ -84,7 +84,29 @@ export class JobDetailModalComponent {
   }
 
   get hasActivity(): boolean {
-    return (this.data.stats.transferring?.length || 0) > 0 || this.completedTransfers.length > 0;
+    return (this.data.stats?.transferring?.length || 0) > 0 || this.completedTransfers.length > 0;
+  }
+
+  get showStatistics(): boolean {
+    return this.data.job_type !== 'mount';
+  }
+
+  get statisticsTitle(): string {
+    if (this.data.job_type === 'mount') {
+      return 'modals.jobDetail.sections.statistics'; // Fallback or "Mount Status"
+    }
+
+    // Use current job type to form a dynamic title like "Sync Statistics"
+    // Using dashboard.appDetail.transferStatistics key which is "{{op}} Statistics"
+    return 'dashboard.appDetail.transferStatistics';
+  }
+
+  get isMount(): boolean {
+    return this.data.job_type === 'mount';
+  }
+
+  get lastError(): string | null {
+    return (this.data.stats as any)?.lastError || this.data.error || null;
   }
 
   @HostListener('keydown.escape')

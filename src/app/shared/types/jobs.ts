@@ -41,6 +41,7 @@ export interface GlobalStats {
   transferTime: number;
   transferring: TransferFile[];
   transfers: number;
+  listed: number;
   startTime?: string;
 }
 
@@ -67,6 +68,7 @@ export const DEFAULT_JOB_STATS: GlobalStats = {
   serverSideMoveBytes: 0,
   transferTime: 0,
   transferring: [],
+  listed: 0,
 };
 
 import { Origin } from './origin';

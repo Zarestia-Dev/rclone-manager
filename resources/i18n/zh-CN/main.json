@@ -148,7 +148,7 @@
       "finished": "完成时间",
       "duration": "持续时间",
       "lastOperation": "上次操作",
-      "emptyTitle": "无正在运行的任务",
+      "emptyTitle": "暂无任务",
       "emptyMessage": "操作开始后，任务详情将显示在此处"
     },
     "diskUsage": {
@@ -180,7 +180,7 @@
       "openInExplorer": "在文件管理器中打开"
     },
     "jobs": {
-      "activeJobs": "正在运行的任务",
+      "title": "任务",
       "columns": {
         "type": "类型",
         "profile": "配置文件",
@@ -200,7 +200,7 @@
         "stop": "停止任务",
         "delete": "删除任务"
       },
-      "empty": "无正在运行的任务"
+      "empty": "未找到任务"
     },
     "settings": {
       "metrics": "{{count}} 项设置",
@@ -285,6 +285,10 @@
       "completed_onboarding": {
         "label": "已完成引导",
         "description": "标记是否已完成初始化引导"
+      },
+      "max_upload_batch_size": {
+        "label": "最大上传批次大小 (MB)",
+        "description": "从本地计算机一次上传的文件批次的最大大小。"
       }
     },
     "developer": {
@@ -1546,6 +1550,38 @@
     "delete": "删除任务"
   },
   "modals": {
+    "jobDetail": {
+      "title": "任务详情 #{{id}}",
+      "sections": {
+        "overview": "任务详情",
+        "statistics": "统计数据",
+        "paths": "路径",
+        "activity": "传输活动",
+        "errors": "错误"
+      },
+      "fields": {
+        "type": "任务类型",
+        "id": "任务 ID",
+        "status": "状态",
+        "started": "开始时间",
+        "finished": "完成时间",
+        "duration": "耗时",
+        "progress": "进度",
+        "speed": "速度",
+        "eta": "预计剩余时间",
+        "files": "文件",
+        "checks": "检查",
+        "deleted": "已删除",
+        "renamed": "已重命名",
+        "listed": "已列锚",
+        "errorsCount": "错误",
+        "source": "源",
+        "destination": "目标",
+        "remoteSource": "远程源",
+        "mountPoint": "挂载点",
+        "lastError": "最近错误"
+      }
+    },
     "about": {
       "title": "关于",
       "keepClicking": "继续点击...",
@@ -2168,6 +2204,7 @@
       "remoteNotFound": "未找到远程存储 '{{remote}}'",
       "bookmarkRemoteNotFound": "未找到书签对应的远程存储 '{{remote}}'",
       "loadFailed": "加载目录失败",
+      "uploadTooLarge": "上传批次过大（总大小：{{limit}}）。请减少文件数量或在“设置”中调高限制。",
       "deleteFailed": "{{count}} 项删除失败",
       "copyFailed": "{{count}} 项复制失败",
       "moveFailed": "{{count}} 项移动失败",

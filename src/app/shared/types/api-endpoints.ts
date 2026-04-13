@@ -165,6 +165,7 @@ export const POST_COMMANDS = new Set([
   'upload_file_bytes',
   'upload_local_drop_files',
   'upload_local_drop_paths',
+  'upload_local_drop_entries',
   'rename_file',
   'rename_dir',
   // Backend Commands

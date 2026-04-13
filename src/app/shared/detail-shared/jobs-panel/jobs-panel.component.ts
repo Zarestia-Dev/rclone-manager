@@ -48,7 +48,7 @@ import { ModalService } from '@app/services';
       <mat-card-header>
         <mat-card-title>
           <mat-icon svgIcon="jobs" style="color: var(--op-color, var(--primary-color));"></mat-icon>
-          <span>{{ 'detailShared.jobs.activeJobs' | translate }}</span>
+          <span>{{ 'detailShared.jobs.title' | translate }}</span>
           <span class="count">{{ cfg.jobs.length }}</span>
         </mat-card-title>
       </mat-card-header>
