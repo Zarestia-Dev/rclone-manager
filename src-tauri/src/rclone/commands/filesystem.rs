@@ -659,6 +659,7 @@ pub struct LocalDropUploadFile {
 pub enum LocalDropUploadEntrySource {
     Bytes(Vec<u8>),
     Path(std::path::PathBuf),
+    Directory,
 }
 
 pub struct LocalDropUploadEntry {
@@ -866,6 +867,48 @@ pub async fn upload_local_drop_entries(
         }
 
         let destination = join_remote_path(&path, &entry.relative_path);
+
+        if matches!(entry.source, LocalDropUploadEntrySource::Directory) {
+            if !destination.is_empty() && !created_directories.contains(&destination) {
+                let mkdir_response = backend
+                    .inject_auth(state.client.post(&mkdir_url))
+                    .json(&json!({ "fs": remote.clone(), "remote": destination }))
+                    .send()
+                    .await
+                    .map_err(|e| format!("Failed to create directory: {}", e))?;
+
+                if mkdir_response.status().is_success() {
+                    created_directories.insert(destination.clone());
+                    uploaded += 1;
+
+                    let elapsed = start.elapsed().as_secs_f64();
+                    let stats = build_upload_stats(
+                        transferred_bytes,
+                        total_bytes,
+                        uploaded,
+                        total_transfers,
+                        elapsed,
+                        Some((&entry.relative_path, 0)),
+                        &remote,
+                    );
+
+                    let _ = job_cache
+                        .update_job(
+                            jobid,
+                            |job| {
+                                job.stats = Some(stats);
+                                job.uploaded_files.push(destination);
+                            },
+                            Some(app),
+                        )
+                        .await;
+                } else {
+                    failed.push(entry.relative_path.clone());
+                }
+            }
+            continue;
+        }
+
         let (directory, filename) = split_remote_directory(&destination);
 
         if !directory.is_empty() && !created_directories.contains(&directory) {
@@ -891,6 +934,7 @@ pub async fn upload_local_drop_entries(
                     continue;
                 }
             },
+            LocalDropUploadEntrySource::Directory => unreachable!(),
         };
 
         let part = multipart::Part::bytes(bytes)
@@ -974,10 +1018,6 @@ async fn collect_upload_entries_from_paths(
 
         if root.is_dir() {
             for entry in WalkDir::new(&root).into_iter().filter_map(Result::ok) {
-                if !entry.file_type().is_file() {
-                    continue;
-                }
-
                 let current = entry.path();
                 let rel_path = if let Some(parent) = &base_parent {
                     current.strip_prefix(parent).unwrap_or(current)
@@ -985,6 +1025,27 @@ async fn collect_upload_entries_from_paths(
                     current
                 };
                 let relative_path = relative_unix_path(rel_path);
+
+                if entry.file_type().is_dir() {
+                    let is_empty = std::fs::read_dir(current)
+                        .map(|mut i| i.next().is_none())
+                        .unwrap_or(false);
+
+                    if is_empty && !relative_path.is_empty() {
+                        entries.push(LocalDropUploadEntry {
+                            relative_path,
+                            filename: String::new(),
+                            size: 0,
+                            source: LocalDropUploadEntrySource::Directory,
+                        });
+                    }
+                    continue;
+                }
+
+                if !entry.file_type().is_file() {
+                    continue;
+                }
+
                 if relative_path.is_empty() {
                     continue;
                 }

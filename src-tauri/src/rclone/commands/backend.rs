@@ -22,27 +22,23 @@ use crate::{
 use rcman::{SettingMetadata, SettingsSchema};
 use std::collections::HashMap;
 
-/// Get the backend settings schema for UI generation
 #[tauri::command]
 pub async fn get_backend_schema() -> Result<HashMap<String, SettingMetadata>, String> {
     Ok(BackendConnectionSchema::get_metadata())
 }
 
-/// List all backends with their status
 #[tauri::command]
 pub async fn list_backends(app: AppHandle) -> Result<Vec<BackendInfo>, String> {
     let backend_manager = app.state::<BackendManager>();
     Ok(backend_manager.list_all().await)
 }
 
-/// Get the name of the currently active backend
 #[tauri::command]
 pub async fn get_active_backend(app: AppHandle) -> Result<String, String> {
     let backend_manager = app.state::<BackendManager>();
     Ok(backend_manager.get_active_name().await)
 }
 
-/// Get list of available backend profiles
 #[tauri::command]
 pub async fn get_backend_profiles(
     manager: State<'_, AppSettingsManager>,
@@ -51,16 +47,13 @@ pub async fn get_backend_profiles(
         .sub_settings("remotes")
         .map_err(|e| format!("Failed to access remotes sub-settings: {e}"))?;
 
-    let profiles = remotes
+    remotes
         .profiles()
         .map_err(|_| "Profiles not enabled for remotes".to_string())?
         .list()
-        .map_err(|e| format!("Failed to list profiles: {e}"))?;
-
-    Ok(profiles)
+        .map_err(|e| format!("Failed to list profiles: {e}"))
 }
 
-/// Switch to a different backend
 #[tauri::command]
 pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> {
     info!("🔄 Switching to backend: {name}");
@@ -74,16 +67,12 @@ pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> 
         .await
         .ok_or_else(|| format!("Backend '{name}' not found"))?;
 
-    // 1. Test connection (Remote only)
     test_remote_connection(&backend, &backend_manager, &state.client).await?;
 
-    // 2. Perform Switch
     backend_manager
-        .switch_to(settings_manager.inner(), &name, None, None)
+        .switch_to(settings_manager.inner(), &name)
         .await?;
 
-    // 3. Start Local engine if switching to Local (it may never have been started
-    //    when the app launched with a remote backend active).
     if backend.is_local {
         use crate::utils::types::core::EngineState;
         let engine_state = app.state::<EngineState>();
@@ -94,10 +83,8 @@ pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> 
         }
     }
 
-    // 4. Configure (Set path, Auth)
     configure_remote_backend(&app, &backend, &state.client).await;
 
-    // 5. Refresh Cache & Verify Stability
     refresh_and_verify_cache(
         &app,
         &backend_manager,
@@ -107,13 +94,7 @@ pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> 
     )
     .await?;
 
-    // 6. Persist active backend selection
-    if let Err(e) = crate::rclone::backend::BackendManager::save_active_to_settings(
-        settings_manager.inner(),
-        &name,
-    ) {
-        warn!("Failed to persist active backend: {e}");
-    }
+    BackendManager::save_active_to_settings(settings_manager.inner(), &name);
 
     info!("✅ Switched to backend: {name}");
     Ok(())
@@ -121,6 +102,7 @@ pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> 
 
 /// Parameters for adding a new backend connection.
 #[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AddBackendParams {
     pub name: String,
     pub host: String,
@@ -136,7 +118,6 @@ pub struct AddBackendParams {
     pub copy_remotes_from: Option<String>,
 }
 
-/// Add a new backend
 #[tauri::command]
 pub async fn add_backend(app: AppHandle, params: AddBackendParams) -> Result<(), String> {
     info!(
@@ -166,7 +147,6 @@ pub async fn add_backend(app: AppHandle, params: AddBackendParams) -> Result<(),
     if let Some(port) = params.oauth_port {
         backend.oauth_port = port;
     }
-    // oauth_host must be routable — reject empty strings and fall back to default.
     if let Some(host) = params.oauth_host.filter(|h| !h.is_empty()) {
         backend.oauth_host = host;
     }
@@ -204,6 +184,7 @@ pub async fn add_backend(app: AppHandle, params: AddBackendParams) -> Result<(),
 
 /// Parameters for updating an existing backend connection.
 #[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateBackendParams {
     pub name: String,
     pub host: String,
@@ -216,12 +197,13 @@ pub struct UpdateBackendParams {
     pub oauth_host: Option<String>,
 }
 
-/// Update an existing backend
 #[tauri::command]
 pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Result<(), String> {
     info!("🔄 Updating backend: {}", params.name);
 
     let backend_manager = app.state::<BackendManager>();
+    let settings_manager = app.state::<AppSettingsManager>();
+
     let existing = backend_manager
         .get(&params.name)
         .await
@@ -243,31 +225,47 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
         config_path: params.config_path,
     };
 
-    let settings_manager = app.state::<AppSettingsManager>();
-
-    // Handle auth
+    // Credential update rules:
+    //   (None, None)         → client did not send credentials → preserve existing
+    //   (Some(u), Some(p))
+    //     both non-empty     → user set new credentials → update
+    //   anything else        → partial or explicitly cleared → clear both
     match (params.username.as_deref(), params.password.as_deref()) {
+        (None, None) => {
+            backend.username = existing.username.clone();
+            backend.password = existing.password.clone();
+        }
         (Some(u), Some(p)) if !u.is_empty() && !p.is_empty() => {
             backend.username = Some(u.to_string());
             backend.password = Some(p.to_string());
         }
-        (Some(_), _) | (_, Some(_)) => {
-            // Clear from rcman sub-settings secret storage
-            backend.password = Some(String::new());
+        _ => {
+            backend.username = None;
+            backend.password = None;
         }
-        _ => {}
     }
 
-    // Handle config password
+    // Config-password update rules (same pattern):
+    //   None         → not sent → preserve existing
+    //   Some("")     → explicitly cleared
+    //   Some(value)  → update
     match params.config_password.as_deref() {
+        None => { /* preserve existing.config_password already set above */ }
         Some(cp) if !cp.is_empty() => {
             backend.config_password = Some(cp.to_string());
         }
         Some(_) => {
-            backend.config_password = Some(String::new());
+            backend.config_password = None;
         }
-        None => {}
     }
+
+    // Only restart the Local engine when connection-relevant fields actually changed.
+    // Saving identical settings must be a no-op for the running process.
+    let needs_engine_restart = params.name == "Local"
+        && (existing.host != backend.host
+            || existing.port != backend.port
+            || existing.config_path != backend.config_path
+            || existing.config_password != backend.config_password);
 
     backend_manager
         .update(settings_manager.inner(), &params.name, backend.clone())
@@ -275,9 +273,8 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
 
     save_backend_to_settings(settings_manager.inner(), &backend)?;
 
-    // Restart engine if Local backend AND configuration changed
-    if params.name == "Local" {
-        info!("🔄 Restarting engine for Local backend update");
+    if needs_engine_restart {
+        info!("🔄 Restarting Local engine — connection settings changed");
         if let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
             &app,
             "backend_settings",
@@ -292,7 +289,6 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
     Ok(())
 }
 
-/// Remove a backend
 #[tauri::command]
 pub async fn remove_backend(
     app: AppHandle,
@@ -327,7 +323,6 @@ pub async fn remove_backend(
     Ok(())
 }
 
-/// Test connection to a backend
 #[tauri::command]
 pub async fn test_backend_connection(
     app: AppHandle,
@@ -380,7 +375,7 @@ pub struct TestConnectionResult {
 }
 
 // =============================================================================
-// Persistence Helpers
+// Persistence helpers
 // =============================================================================
 
 fn save_backend_to_settings(manager: &AppSettingsManager, backend: &Backend) -> Result<(), String> {
@@ -476,10 +471,12 @@ async fn refresh_and_verify_cache(
     client: &reqwest::Client,
     name: &str,
 ) -> Result<(), String> {
-    let refresh_future =
-        crate::rclone::backend::cache::refresh_active_backend(backend_manager, client);
-
-    match tokio::time::timeout(std::time::Duration::from_secs(15), refresh_future).await {
+    match tokio::time::timeout(
+        std::time::Duration::from_secs(15),
+        crate::rclone::backend::cache::refresh_active_backend(backend_manager, client),
+    )
+    .await
+    {
         Ok(Ok(_)) => {
             info!("✅ Cache refreshed for backend '{name}'");
             use crate::utils::types::events::{BACKEND_SWITCHED, REMOTE_CACHE_CHANGED};
@@ -518,10 +515,7 @@ async fn revert_to_local(
 ) {
     if current_name != "Local" {
         info!("↩️ Reverting to previous backend due to failure");
-        if let Err(e) = backend_manager
-            .switch_to(settings_manager, "Local", None, None)
-            .await
-        {
+        if let Err(e) = backend_manager.switch_to(settings_manager, "Local").await {
             warn!("Failed to revert to Local backend: {e}");
         }
     }
@@ -532,14 +526,77 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_connection_result() {
-        let result = TestConnectionResult {
-            success: true,
-            message: "OK".to_string(),
-            version: Some("1.65.0".to_string()),
-            os: Some("linux".to_string()),
-            config_path: None,
-        };
-        assert!(result.success);
+    fn test_params_deserialize_camelcase() {
+        let json = r#"{
+            "name": "Local",
+            "host": "0.0.0.0",
+            "port": 51900,
+            "oauthPort": 53682,
+            "oauthHost": "my-server.local",
+            "configPassword": "secret",
+            "configPath": "/config/rclone.conf"
+        }"#;
+
+        let params: UpdateBackendParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.oauth_port, Some(53682));
+        assert_eq!(params.oauth_host.as_deref(), Some("my-server.local"));
+        assert_eq!(params.config_password.as_deref(), Some("secret"));
+        assert_eq!(params.config_path.as_deref(), Some("/config/rclone.conf"));
+    }
+
+    #[test]
+    fn test_add_params_deserialize_camelcase() {
+        let json = r#"{
+            "name": "MyRemote",
+            "host": "192.168.1.100",
+            "port": 51900,
+            "isLocal": false,
+            "oauthPort": 53682,
+            "oauthHost": "192.168.1.100"
+        }"#;
+
+        let params: AddBackendParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.oauth_port, Some(53682));
+        assert_eq!(params.oauth_host.as_deref(), Some("192.168.1.100"));
+        assert!(!params.is_local);
+    }
+
+    #[test]
+    fn test_missing_optional_fields_use_none() {
+        // Fields absent from JS (not sent) should deserialize as None,
+        // triggering the preserve-existing fallback in update_backend.
+        let json = r#"{"name":"Local","host":"0.0.0.0","port":51900}"#;
+        let params: UpdateBackendParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.oauth_port, None);
+        assert_eq!(params.oauth_host, None);
+        assert_eq!(params.username, None);
+        assert_eq!(params.password, None);
+    }
+
+    #[test]
+    fn test_credential_update_rules() {
+        // Verify the credential match arms handle all cases correctly.
+        // (None, None) should be handled differently from (Some(""), Some(""))
+        let json_absent = r#"{"name":"NAS","host":"10.0.0.1","port":51900}"#;
+        let json_cleared =
+            r#"{"name":"NAS","host":"10.0.0.1","port":51900,"username":"","password":""}"#;
+        let json_set = r#"{"name":"NAS","host":"10.0.0.1","port":51900,"username":"admin","password":"secret"}"#;
+
+        let absent: UpdateBackendParams = serde_json::from_str(json_absent).unwrap();
+        let cleared: UpdateBackendParams = serde_json::from_str(json_cleared).unwrap();
+        let set: UpdateBackendParams = serde_json::from_str(json_set).unwrap();
+
+        assert!(matches!(
+            (absent.username.as_deref(), absent.password.as_deref()),
+            (None, None)
+        ));
+        assert!(matches!(
+            (cleared.username.as_deref(), cleared.password.as_deref()),
+            (Some(""), Some(""))
+        ));
+        assert!(matches!(
+            (set.username.as_deref(), set.password.as_deref()),
+            (Some("admin"), Some("secret"))
+        ));
     }
 }

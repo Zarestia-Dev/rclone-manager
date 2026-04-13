@@ -180,6 +180,10 @@
       "username": {
         "title": "Kullanıcı Adı",
         "help": "Kullanıcı adı (genellikle bir e-posta adresi)\n\nŞunları kullanıyorsanız bunu ayarlayın:\n- Kullanıcı adı ve parolası olan kullanıcı\n"
+      },
+      "connection_string": {
+        "title": "Bağlantı Dizisi",
+        "help": "Depolama Bağlantı Dizisi.\n\nDepolama için bağlantı dizisi. Diğer kimlik doğrulama yöntemlerini kullanıyorsanız boş bırakın.\n"
       }
     },
     "azurefiles": {
@@ -290,6 +294,10 @@
       "username": {
         "title": "Kullanıcı Adı",
         "help": "Kullanıcı adı (genellikle bir e-posta adresi)\n\nŞunları kullanıyorsanız bunu ayarlayın:\n- Kullanıcı adı ve parolası olan kullanıcı\n"
+      },
+      "use_emulator": {
+        "title": "Öykünücü Kullan",
+        "help": "Yerel depolama öykünücüsünü kullanır, 'true' olarak sağlanırsa.\n\nGerçek azure depolama uç noktasını kullanıyorsanız boş bırakın."
       }
     },
     "b2": {
@@ -938,6 +946,10 @@
       "v2_download_min_size": {
         "title": "V2 İndirme Minimum Boyutu",
         "help": "Nesneler daha büyükse, indirmek için drive v2 API'sini kullanın."
+      },
+      "metadata_enforce_expansive_access": {
+        "title": "Metadata Genişletici Erişim Kurallarını Uygulamalı",
+        "help": "İstek, genişletici erişim kurallarını uygulamalı mı?\n\n2026 Şubat'tan itibaren bu bayrak varsayılan olarak ayarlanacak, bu nedenle bu bayrak o zamana kadar test için kullanılabilir.\n\nBakınız: https://developers.google.com/workspace/drive/api/guides/limited-expansive-access\n"
       }
     },
     "dropbox": {
@@ -1102,6 +1114,14 @@
       "key": {
         "title": "Anahtar",
         "help": "Hesabım sayfasından alabileceğiniz FileLu rclone anahtarınız."
+      },
+      "upload_cutoff": {
+        "title": "Yükleme Kesme",
+        "help": "Parçalı yüklemeye geçiş için kesme noktası. Bu boyuttan daha büyük herhangi bir dosya, chunk_size boyutunda parçalar halinde yüklenecektir."
+      },
+      "chunk_size": {
+        "title": "Parça Boyutu",
+        "help": "Parçalı yüklemeler için kullanılacak parça boyutu."
       }
     },
     "filescom": {
@@ -1964,6 +1984,10 @@
       "description": {
         "title": "Açıklama",
         "help": "Uzak bağlantı açıklaması."
+      },
+      "discard": {
+        "title": "Yoksay",
+        "help": "Ayarlanırsa tüm yazma işlemleri yoksayılacak ve okuma işlemleri hata döndürecektir.\n\nAyarlanırsa, dosyalar yüklendiğinde içerikleri kaydedilmez. Dosyalar yüklenmiş gibi görünür ancak okuma sırasında hata verirler. Dosyaların yükleme sırasında MD5 sağlama toplamları hesaplanır; bu işlem çok az işlemci süresi alır ve aktarımların kontrol edilmesine olanak tanır.\n\nBu, performans testi yapmak için yararlı olabilir.\n\nMuhtemelen en kolay şekilde bağlantı dizgisi sözdizimi kullanılarak kullanılabilir:\n\n    :memory,discard:bucket\n\n"
       }
     },
     "netstorage": {
@@ -2838,6 +2862,22 @@
       "versions": {
         "title": "Sürümler",
         "help": "Dizin listelemelerine eski sürümleri dahil et."
+      },
+      "role_arn": {
+        "title": "Rol ARN",
+        "help": "Üstlenilecek (assume) IAM rolünün ARN'si.\n\nRol üstlenme kullanılmıyorsa boş bırakın."
+      },
+      "role_session_name": {
+        "title": "Rol Oturum Adı",
+        "help": "Üstlenilen rol için oturum adı.\n\nBoş bırakılırsa otomatik olarak bir oturum adı oluşturulur."
+      },
+      "role_session_duration": {
+        "title": "Rol Oturum Süresi",
+        "help": "Üstlenilen rol için oturum süresi.\n\nBoş bırakılırsa varsayılan oturum süresi kullanılır."
+      },
+      "role_external_id": {
+        "title": "Rol Harici Kimliği (External ID)",
+        "help": "Üstlenilen rol için harici kimlik (external ID).\n\nHarici kimlik kullanılmıyorsa boş bırakın."
       }
     },
     "seafile": {
@@ -3328,7 +3368,6 @@
         "help": "True ise başarısızlık durumunda yüklemeyi iptal etme (abort upload) çağrısı yapmaktan kaçın.\n\nFarklı oturumlar arasında yüklemelere devam etmek için true olarak ayarlanmalıdır."
       },
       "no_chunk": {
-        "title": "Parçalama Yapma",
         "help": "Akışla yükleme (streaming upload) sırasında dosyaları parçalama.\n\nAkışla yükleme yaparken (örn. `rcat` veya `--vfs-cache-mode off` ile `mount` kullanarak) bu bayrağı ayarlamak, swift arka ucunun parçalanmış dosyalar yüklememesine neden olur.\n\nBu, akışla yüklenen maksimum boyutu 5 GiB ile sınırlayacaktır. Bu yararlıdır çünkü parçalanmamış dosyalarla çalışmak daha kolaydır ve bir MD5SUM değerine sahiptirler.\n\nrclone, normal kopyalama işlemleri yaparken `chunk_size` değerinden büyük dosyaları yine de parçalayacaktır."
       },
       "no_large_objects": {
@@ -3624,6 +3663,162 @@
       "upload_cutoff": {
         "title": "Yükleme Sınırı",
         "help": "Büyük dosya yükleme API'sine geçiş sınırı (>= 10 MiB)."
+      }
+    },
+    "filen": {
+      "email": {
+        "title": "E-posta",
+        "help": "Filen hesabınızın e-postası"
+      },
+      "password": {
+        "title": "Parola",
+        "help": "Filen hesabınızın parolası"
+      },
+      "api_key": {
+        "title": "API Anahtarı",
+        "help": "Filen hesabınız için API Anahtarı \n\nBunu Filen CLI export-api-key komutunu kullanarak alabilirsiniz.\nFilen CLI'yı https://github.com/FilenCloudDienste/filen-cli adresinden indirebilirsiniz."
+      },
+      "upload_concurrency": {
+        "title": "Yükleme Eşzamanlılığı",
+        "help": "Parçalı yüklemeler için eşzamanlılık.\n\nBu, aynı dosya için eşzamanlı olarak çalışan transfer sayısının üst sınırıdır.\nBunu 1'den küçük bir değere ayarlamak yüklemelerin kilitlenmesine (deadlock) neden olur.\n\nYüksek hızlı bağlantılar üzerinden az sayıda büyük dosya yüklüyorsanız ve bu yüklemeler bant genişliğinizi tam olarak kullanmıyorsa, bunu artırmak transferleri hızlandırmaya yardımcı olabilir."
+      },
+      "encoding": {
+        "title": "Kodlama",
+        "help": "Arka uç için kodlama.\n\nDaha fazla bilgi için [genel bakıştaki kodlama bölümüne](/overview/#encoding) bakın."
+      },
+      "master_keys": {
+        "title": "Ana Anahtarlar",
+        "help": "Ana Anahtarlar (sadece dahili kullanım)"
+      },
+      "private_key": {
+        "title": "Özel Anahtar",
+        "help": "Özel RSA Anahtarı (sadece dahili kullanım)"
+      },
+      "public_key": {
+        "title": "Genel Anahtar",
+        "help": "Genel RSA Anahtarı (sadece dahili kullanım)"
+      },
+      "auth_version": {
+        "title": "Kimlik Doğrulama Sürümü",
+        "help": "Kimlik Doğrulama Sürümü (sadece dahili kullanım)"
+      },
+      "base_folder_uuid": {
+        "title": "Temel Klasör UUID'si",
+        "help": "Hesap Kök Dizini UUID'si (sadece dahili kullanım)"
+      },
+      "description": {
+        "title": "Açıklama",
+        "help": "Uzak bağlantı açıklaması."
+      }
+    },
+    "drime": {
+      "access_token": {
+        "title": "Erişim Jetonu",
+        "help": "API Erişim jetonu\n\nBunu web kontrol panelinden alabilirsiniz."
+      },
+      "root_folder_id": {
+        "title": "Kök Klasör Kimliği",
+        "help": "Kök klasörün kimliği\n\nNormalde bunu boş bırakın, rclone otomatik olarak dolduracaktır.\n\nrclone'un belirli bir klasörle sınırlandırılmasını istiyorsanız burayı doldurabilirsiniz - daha fazla bilgi için belgelere bakın.\n"
+      },
+      "workspace_id": {
+        "title": "Çalışma Alanı Kimliği",
+        "help": "Hesap Kimliği\n\nBir Çalışma Alanı Kimliği (Workspace ID) belirtmek istemediğiniz sürece normalde bunu boş bırakın.\n"
+      },
+      "list_chunk": {
+        "title": "Listeleme Parçası",
+        "help": "Her çağrıda listelenecek öğe sayısı"
+      },
+      "hard_delete": {
+        "title": "Kalıcı Olarak Sil",
+        "help": "Dosyaları çöp kutusuna atmak yerine kalıcı olarak sil."
+      },
+      "upload_cutoff": {
+        "title": "Yükleme Sınırı",
+        "help": "Parçalı yüklemeye geçiş sınırı.\n\nBundan büyük olan tüm dosyalar chunk_size boyutunda parçalar halinde yüklenecektir.\nMinimum 0 ve maksimum 5 GiB'dir."
+      },
+      "chunk_size": {
+        "title": "Parça Boyutu",
+        "help": "Yükleme için kullanılacak parça boyutu.\n\nupload_cutoff değerinden büyük dosyalar veya boyutu bilinmeyen dosyalar (\"rclone rcat\"tan gelen veya \"rclone mount\" ya da google photos veya google docs ile yükleyenler gibi), bu parça boyutu kullanılarak parçalı yükleme (multipart upload) olarak yüklenecektir.\n\nTransfer başına bu boyutta \"--drime-upload-concurrency\" kadar parçanın bellekte tamponlandığını unutmayın.\n\nYüksek hızlı bağlantılar üzerinden büyük dosyalar transfer ediyorsanız ve yeterli belleğiniz varsa, bunu artırmak transferleri hızlandıracaktır.\n\nrclone, bilinen boyuttaki büyük bir dosyayı yüklerken 10.000 parça sınırının altında kalmak için parça boyutunu otomatik olarak artıracaktır.\n\nBilinmeyen boyuttaki dosyalar yapılandırılmış chunk_size ile yüklenir. Varsayılan parça boyutu 5 MiB olduğundan ve en fazla 10.000 parça olabildiğinden, bu, varsayılan olarak akışla yükleyebileceğiniz bir dosyanın maksimum boyutunun 48 GiB olduğu anlamına gelir. Daha büyük dosyaları akışla yüklemek istiyorsanız chunk_size değerini artırmanız gerekecektir.\n"
+      },
+      "upload_concurrency": {
+        "title": "Yükleme Eşzamanlılığı",
+        "help": "Parçalı yüklemeler ve kopyalamalar için eşzamanlılık.\n\nBu, parçalı yüklemeler ve kopyalamalar için aynı dosyanın eşzamanlı olarak yüklenen parça sayısıdır.\n\nYüksek hızlı bağlantılar üzerinden az sayıda büyük dosya yüklüyorsanız ve bu yüklemeler bant genişliğinizi tam olarak kullanmıyorsa, bunu artırmak transferleri hızlandırmaya yardımcı olabilir."
+      },
+      "encoding": {
+        "title": "Kodlama",
+        "help": "Arka uç için kodlama.\n\nDaha fazla bilgi için [genel bakıştaki kodlama bölümüne](/overview/#encoding) bakın."
+      },
+      "description": {
+        "title": "Açıklama",
+        "help": "Uzak bağlantı açıklaması."
+      }
+    },
+    "shade": {
+      "drive_id": {
+        "title": "Sürücü Kimliği",
+        "help": "Sürücünüzün kimliği, bunu sürücü ayarlarında görebilirsiniz. Her sürücü için ayrı rclone yapılandırması yapılmalıdır."
+      },
+      "api_key": {
+        "title": "API Anahtarı",
+        "help": "Hesabınız için bir API anahtarı."
+      },
+      "endpoint": {
+        "title": "Uç Nokta",
+        "help": "Servis için uç nokta.\n\nNormalde boş bırakın."
+      },
+      "chunk_size": {
+        "title": "Parça Boyutu",
+        "help": "Yükleme için kullanılacak parça boyutu.\n\nBundan büyük tüm dosyalar bu boyuttaki parçalar halinde yüklenecektir.\n\nBunun transfer başına bellekte saklandığını, bu nedenle artırmanın bellek kullanımını artıracağını unutmayın.\n\nMinimum 5MB, maksimum 5GB'dir."
+      },
+      "upload_concurrency": {
+        "title": "Yükleme Eşzamanlılığı",
+        "help": "Parçalı yüklemeler ve kopyalamalar için eşzamanlılık. Bu, parçalı yüklemeler ve kopyalamalar için aynı dosyanın eşzamanlı olarak yüklenen parça sayısıdır."
+      },
+      "max_upload_parts": {
+        "title": "Maksimum Yükleme Parçası",
+        "help": "Bir parçalı yüklemedeki maksimum parça miktarı."
+      },
+      "token": {
+        "title": "Jeton",
+        "help": "Shade FS işlemlerini gerçekleştirmek için JWT Jetonu. Bu değeri ayarlamayın - rclone otomatik olarak ayarlayacaktır"
+      },
+      "token_expiry": {
+        "title": "Jeton Sona Erme Süresi",
+        "help": "JWT Jetonu son kullanma süresi. Bu değeri ayarlamayın - rclone otomatik olarak ayarlayacaktır"
+      },
+      "encoding": {
+        "title": "Kodlama",
+        "help": "Arka uç için kodlama.\n\nDaha fazla bilgi için [genel bakıştaki kodlama bölümüne](/overview/#encoding) bakın."
+      },
+      "description": {
+        "title": "Açıklama",
+        "help": "Uzak bağlantı açıklaması."
+      }
+    },
+    "internxt": {
+      "email": {
+        "title": "E-posta",
+        "help": "Internxt hesabınızın e-postası."
+      },
+      "pass": {
+        "title": "Parola",
+        "help": "Parola."
+      },
+      "mnemonic": {
+        "title": "Anımsatıcı (Mnemonic)",
+        "help": "Anımsatıcı (sadece dahili kullanım)"
+      },
+      "skip_hash_validation": {
+        "title": "Özet Doğrulamasını Atla",
+        "help": "Dosyaları indirirken özet (hash) doğrulamasını atla.\n\nVarsayılan olarak özet doğrulaması devre dışıdır. Doğrulamayı etkinleştirmek için bunu false olarak ayarlayın."
+      },
+      "encoding": {
+        "title": "Kodlama",
+        "help": "Arka uç için kodlama.\n\nDaha fazla bilgi için [genel bakıştaki kodlama bölümüne](/overview/#encoding) bakın."
+      },
+      "description": {
+        "title": "Açıklama",
+        "help": "Uzak bağlantı açıklaması."
       }
     }
   }

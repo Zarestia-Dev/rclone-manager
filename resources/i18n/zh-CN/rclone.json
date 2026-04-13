@@ -1146,5 +1146,9 @@
   "backup_dir2": {
     "title": "备份目录2",
     "help": "Path2对应的--backup-dir参数。"
+  },
+  "disable_zip": {
+    "title": "禁用 Zip 下载",
+    "help": "禁用目录的 zip 下载。"
   }
 }

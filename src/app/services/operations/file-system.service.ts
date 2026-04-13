@@ -73,14 +73,16 @@ export class FileSystemService extends TauriBaseService {
 
   /**
    * Select a file
+   * @param initialPath - Optional initial path to open the picker to
    */
-  async selectFile(): Promise<string> {
+  async selectFile(initialPath?: string): Promise<string> {
     // In headless mode, use Nautilus file browser
     if (this.apiClient.isHeadless()) {
       const config: FilePickerConfig = {
         mode: 'local',
         selection: 'files',
         multi: false,
+        initialLocation: initialPath,
       };
       const result = await this.selectPathWithNautilus(config);
       if (result.cancelled || (result.items.length === 0 && result.paths.length === 0)) {
@@ -92,7 +94,7 @@ export class FileSystemService extends TauriBaseService {
 
     // In Tauri mode, use native dialog
     try {
-      return await this.invokeCommand<string>('get_file_location');
+      return await this.invokeCommand<string>('get_file_location', { initialPath });
     } catch (error) {
       this.notificationService.alertModal(
         this.translate.instant('common.error'),

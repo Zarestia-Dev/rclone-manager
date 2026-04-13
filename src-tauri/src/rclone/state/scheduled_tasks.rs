@@ -543,27 +543,6 @@ impl ScheduledTasksCache {
         stats
     }
 
-    /// Replace all tasks for a backend with a new set. Returns the evicted
-    /// tasks so the caller can unschedule their jobs.
-    pub async fn replace_tasks_for_backend(
-        &self,
-        backend_name: &str,
-        new_tasks: HashMap<String, ScheduledTask>,
-    ) -> Vec<ScheduledTask> {
-        let mut tasks = self.tasks.write().await;
-        let mut removed = Vec::new();
-        tasks.retain(|_, t| {
-            if t.backend_name == backend_name {
-                removed.push(t.clone());
-                false
-            } else {
-                true
-            }
-        });
-        tasks.extend(new_tasks);
-        removed
-    }
-
     /// Remove all tasks for a backend. Returns the evicted tasks so the
     /// caller can unschedule their jobs.
     pub async fn clear_backend_tasks(&self, backend_name: &str) -> Vec<ScheduledTask> {
@@ -989,7 +968,7 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // clear_backend_tasks / replace_tasks_for_backend
+    // clear_backend_tasks
     // -----------------------------------------------------------------------
 
     #[tokio::test]
@@ -1016,31 +995,6 @@ mod tests {
             "job id must survive eviction"
         );
         assert_eq!(cache.get_all_tasks().await.len(), 1, "b2 task must remain");
-    }
-
-    #[tokio::test]
-    async fn test_replace_tasks_for_backend_returns_evicted() {
-        let cache = make_cache();
-
-        let mut old = base_task();
-        old.id = "b1:r-sync-old".to_string();
-        old.backend_name = "b1".to_string();
-        old.scheduler_job_id = Some("550e8400-e29b-41d4-a716-446655440001".to_string());
-        cache.add_task(old.clone(), None).await.unwrap();
-
-        let mut new_task = base_task();
-        new_task.id = "b1:r-sync-new".to_string();
-        new_task.backend_name = "b1".to_string();
-
-        let evicted = cache
-            .replace_tasks_for_backend("b1", HashMap::from([(new_task.id.clone(), new_task)]))
-            .await;
-
-        assert_eq!(evicted.len(), 1);
-        assert_eq!(evicted[0].id, "b1:r-sync-old");
-        assert!(evicted[0].scheduler_job_id.is_some());
-        assert!(cache.get_task("b1:r-sync-new").await.is_some());
-        assert!(cache.get_task("b1:r-sync-old").await.is_none());
     }
 
     // -----------------------------------------------------------------------

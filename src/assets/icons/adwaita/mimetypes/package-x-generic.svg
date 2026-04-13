@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg height="128px" viewBox="0 0 128 128" width="128px" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-    <filter id="a" height="100%" width="100%" x="0%" y="0%">
+    <filter id="package_x_generic_a" height="100%" width="100%" x="0%" y="0%">
         <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0"/>
     </filter>
-    <mask id="b">
-        <g filter="url(#a)">
+    <mask id="package_x_generic_b">
+        <g filter="url(#package_x_generic_a)">
             <rect fill-opacity="0.1" height="128" width="128"/>
         </g>
     </mask>
-    <clipPath id="c">
+    <clipPath id="package_x_generic_c">
         <rect height="152" width="192"/>
     </clipPath>
     <path d="m 28 8 h 50 l 30.042969 29.917969 v 74.058593 c 0 4.433594 -3.609375 8.023438 -8.042969 8.023438 h -72 c -4.433594 0 -8 -3.566406 -8 -8 v -96 c 0 -4.433594 3.566406 -8 8 -8 z m 0 0" fill="#ded4ca"/>
     <path d="m 78 8 v 22 c 0 4.433594 3.609375 7.921875 8.042969 7.921875 l 22 -0.003906 z m 0 0" fill="#c9b8a7"/>
     <path d="m 60 60 v 4 h 4 v -2 h 4 v -2 z m 4 4 v 2 h -4 v 4 h 4 v -2 h 4 v -4 z m 0 6 v 2 h -4 v 4 h 4 v -2 h 4 v -4 z m 0 6 v 2 h -4 v 4 h 4 v -2 h 4 v -4 z m 0 6 v 2 h -4 v 4 h 4 v -2 h 4 v -4 z m 0 6 v 2 h -4 v 4 h 4 v -2 h 4 v -4 z m 0 6 v 2 h -4 v 4 h 4 v -2 h 4 v -4 z m 0 6 v 2 h -4 v 4 h 4 v -2 h 4 v -4 z m 0 6 v 2 h -4 v 4 h 4 v -2 h 4 v -4 z m 0 6 v 2 h -4 v 4 h 4 v -2 h 4 v -4 z m 0 0" fill="#ffffff"/>
-    <g clip-path="url(#c)" mask="url(#b)" transform="matrix(1 0 0 1 -8 -16)">
+    <g clip-path="url(#package_x_generic_c)" mask="url(#package_x_generic_b)" transform="matrix(1 0 0 1 -8 -16)">
         <path d="m 68 67 c -2.214844 0 -4 1.785156 -4 4 v 10 c 0 2.214844 1.785156 4 4 4 v 8 c 0 1.109375 0.890625 2 2 2 h 4 c 1.109375 0 2 -0.890625 2 -2 v -8 c 2.214844 0 4 -1.785156 4 -4 v -10 c 0 -2.214844 -1.785156 -4 -4 -4 z m 2 22 h 4 v 4 h -4 z m 0 0"/>
     </g>
     <path d="m 60 62 v 4 h 4 v -2 h 4 v -2 z m 4 4 v 2 h -4 v 4 h 4 v -2 h 4 v -4 z m 0 6 v 2 h -4 v 4 h 4 v -2 h 4 v -4 z m 0 6 v 2 h -4 v 4 h 4 v -2 h 4 v -4 z m 0 6 v 2 h -4 v 4 h 4 v -2 h 4 v -4 z m 0 6 v 2 h -4 v 4 h 4 v -2 h 4 v -4 z m 0 6 v 2 h -4 v 4 h 4 v -2 h 4 v -4 z m 0 6 v 2 h -4 v 4 h 4 v -2 h 4 v -4 z m 0 6 v 2 h -4 v 4 h 4 v -2 h 4 v -4 z m 0 6 v 2 h -4 v 4 h 4 v -2 h 4 v -4 z m 0 0" fill="#c0bfbc"/>

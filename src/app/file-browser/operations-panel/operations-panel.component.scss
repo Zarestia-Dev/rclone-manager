@@ -127,17 +127,14 @@
 
 ::ng-deep .job-details-menu {
   max-width: 400px;
-  background: rgba(var(--window-bg-color-rgb), 0.7) !important;
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.12),
-    var(--shadow-lg) !important;
-  border-radius: var(--radius-lg) !important;
-  overflow: hidden;
+  background: var(--window-bg-color);
+  box-shadow: var(--shadow-popover);
+  border-radius: var(--radius-md);
+  overflow: auto;
   padding: var(--space-md);
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
-  outline: none;
 
   .detail-header {
     display: flex;
@@ -156,8 +153,6 @@
       font-weight: 700;
       font-size: 14px;
       color: var(--window-fg-color);
-      letter-spacing: -0.2px;
-      text-transform: capitalize;
     }
   }
 

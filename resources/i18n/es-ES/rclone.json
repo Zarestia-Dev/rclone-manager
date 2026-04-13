@@ -195,7 +195,7 @@
     "title": "Edad Máxima del Archivo de registro",
     "help": "Duración máxima para conservar archivos de registro antiguos (ej. \"7d\")"
   },
-  "log_file_comcompress": {
+  "log_file_compress": {
     "title": "Compresión del Archivo de registro",
     "help": "Si está habilitado, comprime los archivos de registro rotados usando gzip"
   },
@@ -263,17 +263,17 @@
     "title": "Ligas",
     "help": "Traducir ligas simbólicas de archivos regulares con extensión '.rclonelink'."
   },
-  "contime" : {
-    "title": "Tiempo de Conexión",
-    "help": "Tiempo de espera para la conexión"
+  "contimeout": {
+    "title": "Contimeout",
+    "help": "Connect timeout"
   },
   "timeout": {
     "title": "Tiempo de Espera",
     "help": "Tiempo de espera idle de IO"
   },
-  "expect_continue" : {
-    "title": "Tiempo de Expect Continue",
-    "help": "Tiempo de espera al usar expect / 100-continue en HTTP"
+  "expect_continue_timeout": {
+    "title": "Expect Continue Timeout",
+    "help": "Timeout when using expect / 100-continue in HTTP"
   },
   "no_check_certificate": {
     "title": "No Verificar Certificado",
@@ -354,7 +354,7 @@
   "check_first": {
     "title": "Verificar Primero",
     "help": "Realizar todas las verificaciones antes de iniciar las transferencias"
- ,
+  },
   "no_check_dest": {
     "title": "No Verificar Destino",
     "help": "No verificar el destino, copiar de todos modos"
@@ -383,7 +383,7 @@
     "title": "Directorio de respaldo",
     "help": "Realizar respaldos en jerarquía basada en DIR"
   },
- "suffix": {
+  "suffix": {
     "title": "Sufijo",
     "help": "Sufijo para añadir a los archivos modificados"
   },
@@ -403,7 +403,7 @@
     "title": "Límite de tps",
     "help": "Limitar las transacciones HTTP por segundo a este valor"
   },
-  "tmtpslimit_burst": {
+  "tpslimit_burst": {
     "title": "Explosión de límite de tps",
     "help": "Máxima ráfaga de transacciones para --tpslimit"
   },
@@ -439,9 +439,9 @@
     "title": "Límite de ancho de banda",
     "help": "Límite de ancho de banda en KiB/s, o usar sufijo B|K|M|G|T|P o una tabla completa"
   },
-  " bandwidth_file": {
-    "title": "Archivo de límite de ancho de banda",
-    "help": "Límite de ancho de band por archivo en KiB/s, o usar sufijo B|K|M|G|T|P o una tabla completa"
+  "bwlimit_file": {
+    "title": "Bandwidth Limit File",
+    "help": "Bandwidth limit per file in KiB/s, or use suffix B|K|M|G|T|P or a full timetable"
   },
   "buffer_size": {
     "title": "Tamaño de cache",
@@ -483,9 +483,9 @@
     "title": "Fecha en estadísticas de una línea",
     "help": "Activar --stats-one-line y añadir prefijo de fecha/hora actual"
   },
-  " states_one_line_date_format": {
-    "title": "Formato de fecha en estadísticas de una línea",
-    "help": "Activar --stats-one-line-date y usar una fecha formateada: enciéren la cadena de fecha entre comillas dobles (\"), ver https://golang.org/pkg/time/#Time.Format"
+  "stats_one_line_date_format": {
+    "title": "Statistics One Line Date Format",
+    "help": "Enable --stats-one-line-date and use custom formatted date: Enclose date string in double quotes (\"), see https://golang.org/pkg/time/#Time.Format"
   },
   "error_on_no_transfer": {
     "title": "Error sin transferencia",
@@ -495,7 +495,7 @@
     "title": "Progreso",
     "help": "Mostrar el progreso durante la transferencia"
   },
-  " progress_terminal_title": {
+  "progress_terminal_title": {
     "title": "Título de terminal de progreso",
     "help": "Mostrar el progreso en el título de la terminal (requiere -P/--progress)"
   },
@@ -525,626 +525,630 @@
   },
   "client_pass": {
     "title": "Contraseña del cliente",
-    "see": "Password for client SSL private key (PEM) for mutual TLS auth (obscured)"}	
+    "help": "Password for client SSL private key (PEM) for mutual TLS auth (obscured)"
   },
-"multi_thread_cutoff": {
-"title": "Límite multihilo",
-"help": "Usar descargas multihilo para archivos de tamaño superior"
-},
-"multi_thread_streams": {
-"title": "Flujos multihilo",
-"help": "Número de flujos para descargas multihilo"
-},
-"multi_thread_write_buffer_size": {
-"title": "Tamaño de cache de escritura multihilo",
-"help": "Tamaño de cache en memoria para escritura en modo multihilo"
-},
-"multi_thread_chunk_size": {
-"title": "Tamaño del fragmento multihilo",
-"help": "Tamaño del fragmento para descargas/subidas multihilo, si no está configurado por el sistema de archivos"
-},
-"use_json_log": {
-"title": "Usar registro JSON",
-"help": "Usar formato de registro JSON"
-},
-"order_by": {
-"title": "Ordenar por",
-"help": "Instrucciones para ordenar las transferencias, p. ej., 'size,descending'"
-},
-"refresh_times": {
-"title": "Tiempos de actualización",
-"help": "Actualizar el tiempo de modificación de los archivos remotos"
-},
-"no_console": {
-"title": "Sin consola",
-"help": "Ocultar la ventana de la consola (solo compatible con Windows)"
-},
-"fs_cache_expire_duration": {
-"title": "Duración de expiración de la cache de Fs",
-"help": "Almacenar en cache los archivos remotos durante este tiempo (0 para deshabilitar el almacenamiento en cache)"
-},
-"fs_cache_expire_interval": {
-"title": "Intervalo de expiración de la cache de Fs",
-"help": "Intervalo para comprobar los archivos remotos caducados"
-},
-"disable_http2": {
-"title": "Desactivar HTTP2",
-"help": "Desactivar HTTP/2 en el transporte global"
-},
-"human_readable": {
-"title": "Legible para humanos",
-"help": "Imprimir números en formato legible para humanos, tamaños con sufijo Ki|Mi|Gi|Ti|Pi"
-},
-"kv_lock_time": {
-"title": "Tiempo de bloqueo de Kv",
-"help": "Tiempo máximo para mantener bloqueada la base de datos clave-valor por proceso"
-},
-"disable_http_keep_alives": {
-"title": "Desactivar las conexiones HTTP persistentes",
-"help": "Desactivar las conexiones HTTP persistentes y usar cada conexión una sola vez."
-},
-"metadata": {
-"title": "Metadatos",
-"help": "Si se configura, conservar los metadatos al copiar objetos"
-},
-"server_side_across_configs": {
-"title": "Servidor en todas las configuraciones",
-"help": "Permitir que las operaciones del servidor (p. ej., copiar) funcionen en diferentes configuraciones"
-},
-"color": {
-"title": "Color",
-"help": "Cuándo mostrar los colores (y otros códigos ANSI) AUTO|NUNCA|SIEMPRE"
-},
-"default_time": {
-"title": "Hora predeterminada",
-"help": "Hora para mostrar si se desconoce la hora de modificación para archivos y directorios"
-},
-"inplace": {
-"title": "In situ",
-"help": "Descargar directamente al archivo de destino en lugar de la descarga atómica a temporal/renombrar"
-},
-"metadata_mapper": {
-"title": "Asignador de metadatos",
-"help": "Programar para Ejecutar para transformar metadatos antes de subir"
-},
-"partial_suffix": {
-"title": "Sufijo parcial",
-"help": "Añadir sufijo parcial al nombre del archivo temporal cuando no se usa --inplace"
-},
-"max_connections": {
-"title": "Conexiones máximas",
-"help": "Número máximo de conexiones simultáneas a la API de backend, 0 para un número ilimitado."
-},
-"name_transform": {
-"title": "Transformación de nombre",
-"help": "Transformar rutas durante el proceso de copia."
-},
-"http_proxy": {
-"title": "Proxy HTTP",
-"help": "URL del proxy HTTP."
-},
-"debug_fuse": {
-"title": "Depurar Fuse",
-"help": "Depurar los componentes internos de FUSE - requiere -v"
-},
-"attr_timeout": {
-"title": "Tiempo de espera de atributo",
-"help": "Tiempo durante el cual se almacenan en cache los atributos de archivo/directorio"
-},
-"option": {
-"title": "Opción",
-"help": "Opción para libfuse/WinFsp (repetir si es necesario)"
-},
-"fuse_flag": {
-"title": "Bandera de Fuse",
-"help": "Banderas o argumentos que se pasarán directamente a libfuse/WinFsp (repetir si es necesario)"
-},
-"daemon": {
-"title": "Daemon",
-"help": "Ejecutar mount en segundo plano y salir del proceso principal (ya que se suprime la salida en segundo plano, usar --log-file con --log-format=pid,... para supervisar) (no compatible con Windows)"
-},
-"daemon_timeout": {
-"title": "Tiempo de espera del daemon",
-"help": "Límite de tiempo para que rclone responda al kernel (no compatible con Windows)"
-},
-"default_permissions": {
-"title": "Permisos predeterminados",
-"help": "Hace que el kernel aplique el control de acceso según el modo de archivo (no compatible con Windows)"
-},
-"allow_non_empty": {
-"title": "Permitir no vacío",
-"help": "Permitir montaje sobre un directorio no vacío (no compatible con Windows)"
-},
-"allow_root": {
-"title": "Permitir root",
-"help": "Permitir acceso al usuario root (no compatible con Windows)"
-},
-"allow_other": {
-"title": "Permitir otros",
-"help": "Permitir acceso a otros usuarios (no compatible con Windows)"
-},
-"async_read": {
-"title": "Lectura asíncrona",
-"help": "Usar lecturas asíncronas (no compatible con Windows)"
-},
-"max_read_ahead": {
-"title": "Lectura anticipada máxima",
-"help": "El número de bytes que se pueden precargar para lecturas secuenciales (no compatible con Windows)"
-},
-"write_back_cache": {
-"title": "Cache de reescritura",
-"help": "Realiza escrituras en cache del nucreo antes de enviarlas a rclone (sin esto, se utiliza la cache de escritura directa) (no compatible con Windows)"
-},
-"devname": {
-"title": "Nombre del dispositivo",
-"help": "Establecer el nombre del dispositivo; el valor predeterminado es remoto:ruta"
-},
-"mount_case_insensitive": {
-"title": "Montaje sin distinción entre mayúsculas y minúsculas",
-"help": "Indicar al sistema operativo que el montaje no distingue entre mayúsculas y minúsculas (true) o sí (false) independientemente del backend (automático)"
-},
-"direct_io": {
-"title": "E/S directa",
-"help": "Usar E/S directa, deshabilita el almacenamiento en cache de datos"
-},
-"volname": {
-"title": "Nombre del volumen",
-"help": "Establecer el nombre del volumen (solo compatible con Windows y OS X)"
-},
-"noappledouble": {
-"title": "Noappledouble",
-"help": "Ignorar archivos Apple Double (._) y .DS_Store (solo compatible con OS X)"
-},
-"noapplexattr": {
-"title": "Noapplexattr",
-"help": "Ignorar todos los atributos extendidos \"com.apple.*\" (solo compatible con OSX)"
-},
-"network_mode": {
-"title": "Modo de red",
-"help": "Montar como unidad de red remota, en lugar de unidad de disco fija (solo compatible con Windows)"
-},
-"daemon_wait": {
-"title": "Espera del demonio",
-"help": "Tiempo de espera para el montaje listo desde el demonio (tiempo máximo en Linux, tiempo de suspensión constante en OSX/BSD) (no compatible con Windows)"
-},
-"nfs_cache_handle_limit": {
-"title": "Límite de identificadores de cache NFS",
-"help": "Máximo de identificadores de archivos almacenados en cache simultáneamente (mín. 5)"
-},
-"nfs_cache_type": {
-"title": "Tipo de cache NFS",
-"help": "Tipo de cache de identificadores NFS que se utilizará"
-},
-"nfs_cache_dir": {
-"title": "Directorio de cache NFS",
-"help": "El directorio que usará la cache del controlador NFS si se configura"
-},
-"auth_proxy": {
-"title": "Proxy de autenticación",
-"help": "Un programa para crear el backend desde la autenticación"
-},
-"rc": {
-"title": "Control remoto",
-"help": "Activar el servidor de control remoto"
-},
-"rc_files": {
-"title": "Archivos de control remoto",
-"help": "Ruta a los archivos locales que se servirán en el servidor HTTP"
-},
-"rc_serve": {
-"title": "Servidor de control remoto",
-"help": "Activar el servicio de objetos remotos"
-},
-"rc_serve_no_modtime": {
-"title": "Hora de modificación sin servicio de control remoto",
-"help": "No leer la hora de modificación (puede acelerar el proceso)"
-},
-"rc_no_auth": {
-"title": "Control remoto no autorizado",
-"help": "No se requiere autenticación para ciertos métodos"
-},
-"rc_web_gui": {
-"title": "Control remoto de la GUI web",
-"help": "Iniciar la GUI web en el host local"
-},
-"rc_web_gui_update": {
-"title": "Actualización de la GUI web de control remoto",
-"help": "Comprobar y actualizar a la última versión de la GUI web"
-},
-"rc_web_gui_force_update": {
-"title": "Forzar actualización de la GUI web de control remoto",
-"help": "Forzar actualización a la última versión de la GUI web"
-},
-"rc_web_gui_no_open_browser": {
-"title": "Control remoto de la GUI web sin navegador abierto",
-"help": "No abrir el navegador automáticamente"
-},
-"rc_web_fetch_url": {
-"title": "URL de obtención de la GUI web de control remoto",
-"help": "URL para obtener las versiones de la GUI web"
-},
-"rc_enable_metrics": {
-"title": "Activar métricas de control remoto",
-"help": "Activar la ruta de métricas de Prometheus en el servidor de control remoto"
-},
-"rc_job_expire_duration": {
-"title": "Duración de vencimiento del trabajo de control remoto",
-"help": "Caducar los trabajos asíncronos finalizados anteriores a este valor"
-},
-"rc_job_expire_interval": {
-"title": "Intervalo de vencimiento del trabajo de control remoto",
-"help": "Intervalo para comprobar si hay trabajos asíncronos caducados"
-},
-"metrics_addr": {
-"title": "Dirección de métricas",
-"help": "Dirección IP:Puerto o :Puerto al que vincular el servidor"
-},
-"rc_addr": {
-"title": "Dirección de control remoto",
-"help": "Dirección IP:Puerto o :Puerto al que vincular el servidor"
-},
-"rc_server_read_timeout": {
-"title": "Tiempo de espera de lectura del servidor de control remoto",
-"help": "Tiempo de espera para la lectura de datos del servidor"
-},
-"rc_server_write_timeout": {
-"title": "Tiempo de espera de escritura del servidor de control remoto",
-"help": "Tiempo de espera para la escritura de datos del servidor"
-},
-"rc_max_header_bytes": {
-"title": "Bytes máximos del encabezado de control remoto",
-"help": "Tamaño máximo del encabezado de la solicitud"
-},
-"rc_cert": {
-"title": "Certificado de control remoto",
-"help": "Clave TLS PEM (concatenación de certificado y certificado de CA)"
-},
-"rc_key": {
-"title": "Clave de control remoto",
-"help": "Clave privada TLS PEM"
-},
-"rc_client_ca": {
-"title": "CA de cliente de control remoto",
-"help": "Autoridad de certificación del cliente con la que verificar clientes"
-},
-"rc_baseurl": {
-"title": "Remoto Control Baseurl",
-"help": "Prefijo para URL - dejar en blanco para root"
-},
-"rc_min_tls_version": {
-"title": "Versión mínima de TLS de control remoto",
-"help": "Versión mínima de TLS aceptable"
-},
-"rc_allow_origin": {
-"title": "Origen permitido de control remoto",
-"help": "Origen desde el que se puede ejecutar la solicitud entre dominios (CORS)"
-},
-"rc_htpasswd": {
-"title": "HTTPasswd de control remoto",
-"help": "Un archivo HTTPasswd - si no se proporciona, no se realiza la autenticación"
-},
-"rc_realm": {
-"title": "Dominio de control remoto",
-"help": "Dominio para la autenticación"
-},
-"rc_user": {
-"title": "Usuario de control remoto",
-"help": "Nombre de usuario para autenticación"
-},
-"rc_pass": {
-"title": "Contraseña de control remoto",
-"help": "Contraseña para autenticación"
-},
-"rc_salt": {
-"title": "Sal de control remoto",
-"help": "Sal de hash de contraseña"
-},
-"rc_user_from_header": {
-"title": "Usuario de control remoto desde encabezado",
-"help": "Nombre de usuario de un encabezado HTTP definido"
-},
-"rc_template": {
-"title": "Plantilla de control remoto",
-"help": "Plantilla especificada por el usuario"
-},
-"metrics_server_read_timeout": {
-"title": "Tiempo de espera de lectura del servidor de métricas",
-"help": "Tiempo de espera para la lectura de datos del servidor"
-},
-"metrics_server_write_timeout": {
-"title": "Tiempo de espera de escritura del servidor de métricas",
-"help": "Tiempo de espera para la escritura de datos del servidor"
-},
-"metrics_max_header_bytes": {
-"title": "Bytes máximos del encabezado de métricas",
-"help": "Tamaño máximo del encabezado de la solicitud"
-},
-"metrics_cert": {
-"title": "Certificado de métricas",
-"help": "Clave TLS PEM (concatenación de certificado y certificado de CA)"
-},
-"metrics_key": {
-"title": "Clave de métricas",
-"help": "Clave privada TLS PEM"
-},
-"metrics_client_ca": {
-"title": "Autoridad de certificación del cliente de métricas",
-"help": "Autoridad de certificación del cliente con la que se verificarán los clientes"
-},
-"metrics_baseurl": {
-"title": "URL base de métricas",
-"help": "Prefijo para URL: dejar en blanco para la raíz"
-},
-"metrics_min_tls_version": {
-"title": "Versión mínima de TLS de métricas",
-"help": "Versión mínima de TLS aceptable"
-},
-"metrics_allow_origin": {
-"title": "Origen permitido de métricas",
-"help": "Origen desde el que se puede ejecutar la solicitud entre dominios (CORS)"
-},
-"metrics_htpasswd": {
-"title": "Htpasswd de métricas",
-"help": "Un archivo htpasswd; si no se proporciona, no se realiza la autenticación"
-},
-"metrics_realm": {
-"title": "Dominio de métricas",
-"help": "Dominio para la autenticación"
-},
-"metrics_user": {
-"title": "Usuario de métricas",
-"help": "Nombre de usuario para la autenticación"
-},
-"metrics_pass": {
-"title": "Contraseña de métricas",
-"help": "Contraseña para la autenticación"
-},
-"metrics_salt": {
-"title": "Sal de métricas",
-"help": "Sal de hash de contraseña"
-},
-"metrics_user_from_header": {
-"title": "Usuario de métricas desde encabezado",
-"help": "Nombre de usuario de un encabezado HTTP definido"
-},
-"metrics_template": {
-"title": "Plantilla de métricas",
-"help": "Plantilla especificada por el usuario"
-},
-"stdio": {
-"title": "Stdio",
-"help": "Ejecutar un servidor SFTP en la entrada/salida estándar"
-},
-"append_only": {
-"title": "Solo anexar",
-"help": "Desactivar la eliminación de datos del repositorio"
-},
-"private_repos": {
-"title": "Repositorios privados",
-"help": "Los usuarios solo pueden acceder a su repositorio privado"
-},
-"cache_objects": {
-"title": "Objetos en cache",
-"help": "Objetos listados en cache"
-},
-"force_path_style": {
-"title": "Forzar estilo de ruta",
-"help": "Si es verdadero, usar el estilo de acceso de ruta; si es falso, usar el estilo de hospedaje virtual"
-},
-"etag_hash": {
-"title": "Hash de ETag",
-"help": "¿Qué hash usar para la ETag? ¿Automático o en blanco para desactivarlo?"
-},
-"auth_key": {
-"title": "Clave de autenticación",
-"help": "Establecer par de claves para la autorización v4: access_key_id,secret_access_key"
-},
-"no_cleanup": {
-"title": "Sin limpieza",
-"help": "No limpiar la carpeta vacía después de eliminar el objeto"
-},
-"authorized_keys": {
-"title": "Claves autorizadas",
-"help": "Archivo de claves autorizadas"
-},
-"no_auth": {
-"title": "Sin autenticación",
-"help": "Permitir conexiones sin autenticación si está configurado"
-},
-"no_modtime": {
-"title": "Sin hora de modificación",
-"help": "No leer/escribir la hora de modificación (puede acelerar el proceso)"
-},
-"no_checksum": {
-"title": "Sin suma de comprobación",
-"help": "No comparar sumas de comprobación al cargar/descargar"
-},
-"no_seek": {
-"title": "Sin búsqueda",
-"help": "No permitir búsquedas en archivos"
-},
-"dir_cache_time": {
-"title": "Tiempo de cache de directorio",
-"help": "Tiempo para almacenar en cache las entradas del directorio"
-},
-"vfs_refresh": {
-"title": "Actualización de VFS",
-"help": "Actualiza la cache del directorio recursivamente en segundo plano al iniciar"
-},
-"poll_interval": {
-"title": "Intervalo de sondeo",
-"help": "Tiempo de espera entre sondeos de cambios; debe ser menor que dir-cache-time y solo en servidores remotos compatibles (establecer 0 para deshabilitar)"
-},
-"read_only": {
-"title": "Solo lectura",
-"help": "Permitir solo acceso de solo lectura"
-},
-"vfs_links": {
-"title": "Ligas VFS",
-"help": "Traducir ligas simbólicas de archivos normales con la extensión '.rclonelink' en VFS"
-},  
-"vfs_cache_mode": {
-"title": "Modo de cache VFS",
-"help": "Modo de cache desactivado|mínimo|escrituras|completo"
-},
-"vfs_cache_poll_interval": {
-"title": "Intervalo de sondeo de cache VFS",
-"help": "Intervalo para sondear la cache"
-},
-"vfs_cache_max_age": {
-"title": "Antigüedad máxima de cache VFS",
-"help": "Tiempo máximo desde el último acceso a los objetos en la cache"
-},
-"vfs_cache_max_size": {
-"title": "Tamaño máximo de cache VFS",
-"help": "Tamaño total máximo de objetos en la cache"
-},
-"vfs_cache_min_free_space": {
-"title": "Espacio libre mínimo de cache VFS",
-"help": "Espacio libre mínimo objetivo en el disco que contiene la cache"
-},
-"vfs_read_chunk_size": {
-"title": "Tamaño del fragmento de lectura de VFS",
-"help": "Leer los objetos de origen en fragmentos"
-},
-"vfs_read_chunk_size_limit": {
-"title": "Límite del tamaño del fragmento de lectura de VFS",
-"help": "Si es mayor que --vfs-read-chunk-size, duplicar el tamaño del fragmento después de cada lectura, hasta alcanzar el límite ('off' es ilimitado)"
-},
-"vfs_read_chunk_streams": {
-"title": "Flujos de fragmentos de lectura de VFS",
-"help": "Número de flujos paralelos que se leerán simultáneamente"
-},
-"dir_perms": {
-"title": "Permisos de directorio",
-"help": "Permisos de directorio"
-},
-"file_perms": {
-"title": "Permisos de archivo",
-"help": "Permisos de archivo"
-},
-"link_perms": {
-"title": "Permisos de ligas",
-"help": "Permisos de ligas"
-},
-"vfs_case_insensitive": {
-"title": "VFS no distingue entre mayúsculas y minúsculas",
-"help": "Si no se encuentra un nombre de archivo, buscar una coincidencia que no distinga entre mayúsculas y minúsculas"
-},
-"vfs_block_norm_dupes": {
-"title": "Dudosos de la norma de bloques VFS",
-"help": "Si existen nombres de archivo duplicados en el mismo directorio (después de la normalización), registrar un error y ocultar los duplicados (puede afectar el rendimiento)"
-},
-"vfs_write_wait": {
-"title": "Espera de escritura VFS",
-"help": "Tiempo de espera para la escritura en secuencia antes de generar un error"
-},
-"vfs_read_wait": {
-"title": "Espera de lectura VFS",
-"help": "Tiempo de espera para la lectura en secuencia antes de buscar"
-},
-"vfs_write_back": {
-"title": "Escritura diferida VFS",
-"help": "Tiempo para Archivos de reescritura después del último uso al usar la cache"
-},
-"vfs_read_ahead": {
-"title": "Lectura anticipada de VFS",
-"help": "Lectura anticipada adicional sobre --buffer-size al usar el modo cache completo"
-},
-"vfs_used_is_size": {
-"title": "Tamaño usado de VFS",
-"help": "Usar el algoritmo `rclone size` para el tamaño usado"
-},
-"vfs_fast_fingerprint": {
-"title": "Huella digital rápida de VFS",
-"help": "Usar huellas digitales rápidas (menos precisas) para la detección de cambios"
-},
-"vfs_disk_space_total_size": {
-"title": "Tamaño total del espacio en disco de VFS",
-"help": "Especificar el espacio total del disco"
-},
-"umask": {
-"title": "Umask",
-"help": "Anular los bits de permiso establecidos por el sistema de archivos (no compatible con Windows)"
-},
-"uid": {
-"title": "Uid",
-"help": "Anular el campo uid establecido por el sistema de archivos (no compatible con Windows)"
-},
-"gid": {
-"title": "Gid",
-"help": "Anular el campo gid establecido por el sistema de archivos (no compatible con Windows)"
-},
-"vfs_metadata_extension": {
-"title": "Extensión de metadatos VFS",
-"help": "Establecer la extensión de la que se leerán los metadatos."
-},
-"disable_dir_list": {
-"title": "Desactivar lista de directorios",
-"help": "Desactivar la lista de directorios HTML en la solicitud GET de un directorio"
-},
-"create_empty_src_dirs": {
-"title": "Crear directorios de origen vacíos",
-"help": "Crear directorios de origen vacíos en el destino después de mover."
-},
-"delete_empty_src_dirs": {
-"title": "Eliminar directorios de origen vacíos",
-"help": "Eliminar directorios de origen vacíos después de mover."
-},
-"dryRun": {
-"title": "Simulacro",
-"help": "Realizar un simulacro."
-},
-"resync": {
-"title": "Resincronizar",
-"help": "Realiza la resincronización."
-},
-"checkAccess": {
-"title": "Comprobar acceso",
-"help": "Cancelar si no se encuentran los archivos RCLONE_TEST en ambos sistemas de archivos."
-},
-"checkFilename": {
-"title": "Comprobar nombre de archivo",
-"help": "Nombre de archivo para --check-access."
-},
-"maxDelete": {
-"title": "Eliminación máxima",
-"help": "Cancelar la sincronización si el porcentaje de archivos eliminados supera este umbral."
-},
-"force": {
-"title": "Forzar",
-"help": "Omitir la comprobación de seguridad de --max-delete y ejecutar la sincronización."
-},
-"checkSync": {
-"title": "Comprobar sincronización",
-"help": "Controla la comparación de los listados finales."
-},
-"remove_empty_dirs": {
-"title": "Eliminar directorios vacíos",
-"help": "Eliminar directorios vacíos en el paso final de limpieza."
-},
-"filters_file": {
-"title": "Archivo de filtros",
-"help": "Leer patrones de filtrado de un archivo."
-},
-"ignore_listing_checksum": {
-"title": "Ignorar la suma de comprobación del listado",
-"help": "No usar sumas de comprobación para los listados."
-},
-"resilient": {
-"title": "Resiliente",
-"help": "Permitir que las ejecuciones futuras se reintenten después de ciertos errores menos graves."
-    },
-"work_dir": {
-"title": "Directorio de trabajo",
-"help": "Directorio del servidor para historial de archivos."
-},
-"backup_dir1": {
-"title": "Directorio de respaldo 1",
-"help": "Ruta 1: --backup-dir"
-},
-"backup_dir2": {
-"title": "Directorio de respaldo 2",
-"help": "Ruta 2: --backup-dir" 
-    }
+  "multi_thread_cutoff": {
+    "title": "Límite multihilo",
+    "help": "Usar descargas multihilo para archivos de tamaño superior"
+  },
+  "multi_thread_streams": {
+    "title": "Flujos multihilo",
+    "help": "Número de flujos para descargas multihilo"
+  },
+  "multi_thread_write_buffer_size": {
+    "title": "Tamaño de cache de escritura multihilo",
+    "help": "Tamaño de cache en memoria para escritura en modo multihilo"
+  },
+  "multi_thread_chunk_size": {
+    "title": "Tamaño del fragmento multihilo",
+    "help": "Tamaño del fragmento para descargas/subidas multihilo, si no está configurado por el sistema de archivos"
+  },
+  "use_json_log": {
+    "title": "Usar registro JSON",
+    "help": "Usar formato de registro JSON"
+  },
+  "order_by": {
+    "title": "Ordenar por",
+    "help": "Instrucciones para ordenar las transferencias, p. ej., 'size,descending'"
+  },
+  "refresh_times": {
+    "title": "Tiempos de actualización",
+    "help": "Actualizar el tiempo de modificación de los archivos remotos"
+  },
+  "no_console": {
+    "title": "Sin consola",
+    "help": "Ocultar la ventana de la consola (solo compatible con Windows)"
+  },
+  "fs_cache_expire_duration": {
+    "title": "Duración de expiración de la cache de Fs",
+    "help": "Almacenar en cache los archivos remotos durante este tiempo (0 para deshabilitar el almacenamiento en cache)"
+  },
+  "fs_cache_expire_interval": {
+    "title": "Intervalo de expiración de la cache de Fs",
+    "help": "Intervalo para comprobar los archivos remotos caducados"
+  },
+  "disable_http2": {
+    "title": "Desactivar HTTP2",
+    "help": "Desactivar HTTP/2 en el transporte global"
+  },
+  "human_readable": {
+    "title": "Legible para humanos",
+    "help": "Imprimir números en formato legible para humanos, tamaños con sufijo Ki|Mi|Gi|Ti|Pi"
+  },
+  "kv_lock_time": {
+    "title": "Tiempo de bloqueo de Kv",
+    "help": "Tiempo máximo para mantener bloqueada la base de datos clave-valor por proceso"
+  },
+  "disable_http_keep_alives": {
+    "title": "Desactivar las conexiones HTTP persistentes",
+    "help": "Desactivar las conexiones HTTP persistentes y usar cada conexión una sola vez."
+  },
+  "metadata": {
+    "title": "Metadatos",
+    "help": "Si se configura, conservar los metadatos al copiar objetos"
+  },
+  "server_side_across_configs": {
+    "title": "Servidor en todas las configuraciones",
+    "help": "Permitir que las operaciones del servidor (p. ej., copiar) funcionen en diferentes configuraciones"
+  },
+  "color": {
+    "title": "Color",
+    "help": "Cuándo mostrar los colores (y otros códigos ANSI) AUTO|NUNCA|SIEMPRE"
+  },
+  "default_time": {
+    "title": "Hora predeterminada",
+    "help": "Hora para mostrar si se desconoce la hora de modificación para archivos y directorios"
+  },
+  "inplace": {
+    "title": "In situ",
+    "help": "Descargar directamente al archivo de destino en lugar de la descarga atómica a temporal/renombrar"
+  },
+  "metadata_mapper": {
+    "title": "Asignador de metadatos",
+    "help": "Programar para Ejecutar para transformar metadatos antes de subir"
+  },
+  "partial_suffix": {
+    "title": "Sufijo parcial",
+    "help": "Añadir sufijo parcial al nombre del archivo temporal cuando no se usa --inplace"
+  },
+  "max_connections": {
+    "title": "Conexiones máximas",
+    "help": "Número máximo de conexiones simultáneas a la API de backend, 0 para un número ilimitado."
+  },
+  "name_transform": {
+    "title": "Transformación de nombre",
+    "help": "Transformar rutas durante el proceso de copia."
+  },
+  "http_proxy": {
+    "title": "Proxy HTTP",
+    "help": "URL del proxy HTTP."
+  },
+  "debug_fuse": {
+    "title": "Depurar Fuse",
+    "help": "Depurar los componentes internos de FUSE - requiere -v"
+  },
+  "attr_timeout": {
+    "title": "Tiempo de espera de atributo",
+    "help": "Tiempo durante el cual se almacenan en cache los atributos de archivo/directorio"
+  },
+  "option": {
+    "title": "Opción",
+    "help": "Opción para libfuse/WinFsp (repetir si es necesario)"
+  },
+  "fuse_flag": {
+    "title": "Bandera de Fuse",
+    "help": "Banderas o argumentos que se pasarán directamente a libfuse/WinFsp (repetir si es necesario)"
+  },
+  "daemon": {
+    "title": "Daemon",
+    "help": "Ejecutar mount en segundo plano y salir del proceso principal (ya que se suprime la salida en segundo plano, usar --log-file con --log-format=pid,... para supervisar) (no compatible con Windows)"
+  },
+  "daemon_timeout": {
+    "title": "Tiempo de espera del daemon",
+    "help": "Límite de tiempo para que rclone responda al kernel (no compatible con Windows)"
+  },
+  "default_permissions": {
+    "title": "Permisos predeterminados",
+    "help": "Hace que el kernel aplique el control de acceso según el modo de archivo (no compatible con Windows)"
+  },
+  "allow_non_empty": {
+    "title": "Permitir no vacío",
+    "help": "Permitir montaje sobre un directorio no vacío (no compatible con Windows)"
+  },
+  "allow_root": {
+    "title": "Permitir root",
+    "help": "Permitir acceso al usuario root (no compatible con Windows)"
+  },
+  "allow_other": {
+    "title": "Permitir otros",
+    "help": "Permitir acceso a otros usuarios (no compatible con Windows)"
+  },
+  "async_read": {
+    "title": "Lectura asíncrona",
+    "help": "Usar lecturas asíncronas (no compatible con Windows)"
+  },
+  "max_read_ahead": {
+    "title": "Lectura anticipada máxima",
+    "help": "El número de bytes que se pueden precargar para lecturas secuenciales (no compatible con Windows)"
+  },
+  "write_back_cache": {
+    "title": "Cache de reescritura",
+    "help": "Realiza escrituras en cache del nucreo antes de enviarlas a rclone (sin esto, se utiliza la cache de escritura directa) (no compatible con Windows)"
+  },
+  "devname": {
+    "title": "Nombre del dispositivo",
+    "help": "Establecer el nombre del dispositivo; el valor predeterminado es remoto:ruta"
+  },
+  "mount_case_insensitive": {
+    "title": "Montaje sin distinción entre mayúsculas y minúsculas",
+    "help": "Indicar al sistema operativo que el montaje no distingue entre mayúsculas y minúsculas (true) o sí (false) independientemente del backend (automático)"
+  },
+  "direct_io": {
+    "title": "E/S directa",
+    "help": "Usar E/S directa, deshabilita el almacenamiento en cache de datos"
+  },
+  "volname": {
+    "title": "Nombre del volumen",
+    "help": "Establecer el nombre del volumen (solo compatible con Windows y OS X)"
+  },
+  "noappledouble": {
+    "title": "Noappledouble",
+    "help": "Ignorar archivos Apple Double (._) y .DS_Store (solo compatible con OS X)"
+  },
+  "noapplexattr": {
+    "title": "Noapplexattr",
+    "help": "Ignorar todos los atributos extendidos \"com.apple.*\" (solo compatible con OSX)"
+  },
+  "network_mode": {
+    "title": "Modo de red",
+    "help": "Montar como unidad de red remota, en lugar de unidad de disco fija (solo compatible con Windows)"
+  },
+  "daemon_wait": {
+    "title": "Espera del demonio",
+    "help": "Tiempo de espera para el montaje listo desde el demonio (tiempo máximo en Linux, tiempo de suspensión constante en OSX/BSD) (no compatible con Windows)"
+  },
+  "nfs_cache_handle_limit": {
+    "title": "Límite de identificadores de cache NFS",
+    "help": "Máximo de identificadores de archivos almacenados en cache simultáneamente (mín. 5)"
+  },
+  "nfs_cache_type": {
+    "title": "Tipo de cache NFS",
+    "help": "Tipo de cache de identificadores NFS que se utilizará"
+  },
+  "nfs_cache_dir": {
+    "title": "Directorio de cache NFS",
+    "help": "El directorio que usará la cache del controlador NFS si se configura"
+  },
+  "auth_proxy": {
+    "title": "Proxy de autenticación",
+    "help": "Un programa para crear el backend desde la autenticación"
+  },
+  "rc": {
+    "title": "Control remoto",
+    "help": "Activar el servidor de control remoto"
+  },
+  "rc_files": {
+    "title": "Archivos de control remoto",
+    "help": "Ruta a los archivos locales que se servirán en el servidor HTTP"
+  },
+  "rc_serve": {
+    "title": "Servidor de control remoto",
+    "help": "Activar el servicio de objetos remotos"
+  },
+  "rc_serve_no_modtime": {
+    "title": "Hora de modificación sin servicio de control remoto",
+    "help": "No leer la hora de modificación (puede acelerar el proceso)"
+  },
+  "rc_no_auth": {
+    "title": "Control remoto no autorizado",
+    "help": "No se requiere autenticación para ciertos métodos"
+  },
+  "rc_web_gui": {
+    "title": "Control remoto de la GUI web",
+    "help": "Iniciar la GUI web en el host local"
+  },
+  "rc_web_gui_update": {
+    "title": "Actualización de la GUI web de control remoto",
+    "help": "Comprobar y actualizar a la última versión de la GUI web"
+  },
+  "rc_web_gui_force_update": {
+    "title": "Forzar actualización de la GUI web de control remoto",
+    "help": "Forzar actualización a la última versión de la GUI web"
+  },
+  "rc_web_gui_no_open_browser": {
+    "title": "Control remoto de la GUI web sin navegador abierto",
+    "help": "No abrir el navegador automáticamente"
+  },
+  "rc_web_fetch_url": {
+    "title": "URL de obtención de la GUI web de control remoto",
+    "help": "URL para obtener las versiones de la GUI web"
+  },
+  "rc_enable_metrics": {
+    "title": "Activar métricas de control remoto",
+    "help": "Activar la ruta de métricas de Prometheus en el servidor de control remoto"
+  },
+  "rc_job_expire_duration": {
+    "title": "Duración de vencimiento del trabajo de control remoto",
+    "help": "Caducar los trabajos asíncronos finalizados anteriores a este valor"
+  },
+  "rc_job_expire_interval": {
+    "title": "Intervalo de vencimiento del trabajo de control remoto",
+    "help": "Intervalo para comprobar si hay trabajos asíncronos caducados"
+  },
+  "metrics_addr": {
+    "title": "Dirección de métricas",
+    "help": "Dirección IP:Puerto o :Puerto al que vincular el servidor"
+  },
+  "rc_addr": {
+    "title": "Dirección de control remoto",
+    "help": "Dirección IP:Puerto o :Puerto al que vincular el servidor"
+  },
+  "rc_server_read_timeout": {
+    "title": "Tiempo de espera de lectura del servidor de control remoto",
+    "help": "Tiempo de espera para la lectura de datos del servidor"
+  },
+  "rc_server_write_timeout": {
+    "title": "Tiempo de espera de escritura del servidor de control remoto",
+    "help": "Tiempo de espera para la escritura de datos del servidor"
+  },
+  "rc_max_header_bytes": {
+    "title": "Bytes máximos del encabezado de control remoto",
+    "help": "Tamaño máximo del encabezado de la solicitud"
+  },
+  "rc_cert": {
+    "title": "Certificado de control remoto",
+    "help": "Clave TLS PEM (concatenación de certificado y certificado de CA)"
+  },
+  "rc_key": {
+    "title": "Clave de control remoto",
+    "help": "Clave privada TLS PEM"
+  },
+  "rc_client_ca": {
+    "title": "CA de cliente de control remoto",
+    "help": "Autoridad de certificación del cliente con la que verificar clientes"
+  },
+  "rc_baseurl": {
+    "title": "Remoto Control Baseurl",
+    "help": "Prefijo para URL - dejar en blanco para root"
+  },
+  "rc_min_tls_version": {
+    "title": "Versión mínima de TLS de control remoto",
+    "help": "Versión mínima de TLS aceptable"
+  },
+  "rc_allow_origin": {
+    "title": "Origen permitido de control remoto",
+    "help": "Origen desde el que se puede ejecutar la solicitud entre dominios (CORS)"
+  },
+  "rc_htpasswd": {
+    "title": "HTTPasswd de control remoto",
+    "help": "Un archivo HTTPasswd - si no se proporciona, no se realiza la autenticación"
+  },
+  "rc_realm": {
+    "title": "Dominio de control remoto",
+    "help": "Dominio para la autenticación"
+  },
+  "rc_user": {
+    "title": "Usuario de control remoto",
+    "help": "Nombre de usuario para autenticación"
+  },
+  "rc_pass": {
+    "title": "Contraseña de control remoto",
+    "help": "Contraseña para autenticación"
+  },
+  "rc_salt": {
+    "title": "Sal de control remoto",
+    "help": "Sal de hash de contraseña"
+  },
+  "rc_user_from_header": {
+    "title": "Usuario de control remoto desde encabezado",
+    "help": "Nombre de usuario de un encabezado HTTP definido"
+  },
+  "rc_template": {
+    "title": "Plantilla de control remoto",
+    "help": "Plantilla especificada por el usuario"
+  },
+  "metrics_server_read_timeout": {
+    "title": "Tiempo de espera de lectura del servidor de métricas",
+    "help": "Tiempo de espera para la lectura de datos del servidor"
+  },
+  "metrics_server_write_timeout": {
+    "title": "Tiempo de espera de escritura del servidor de métricas",
+    "help": "Tiempo de espera para la escritura de datos del servidor"
+  },
+  "metrics_max_header_bytes": {
+    "title": "Bytes máximos del encabezado de métricas",
+    "help": "Tamaño máximo del encabezado de la solicitud"
+  },
+  "metrics_cert": {
+    "title": "Certificado de métricas",
+    "help": "Clave TLS PEM (concatenación de certificado y certificado de CA)"
+  },
+  "metrics_key": {
+    "title": "Clave de métricas",
+    "help": "Clave privada TLS PEM"
+  },
+  "metrics_client_ca": {
+    "title": "Autoridad de certificación del cliente de métricas",
+    "help": "Autoridad de certificación del cliente con la que se verificarán los clientes"
+  },
+  "metrics_baseurl": {
+    "title": "URL base de métricas",
+    "help": "Prefijo para URL: dejar en blanco para la raíz"
+  },
+  "metrics_min_tls_version": {
+    "title": "Versión mínima de TLS de métricas",
+    "help": "Versión mínima de TLS aceptable"
+  },
+  "metrics_allow_origin": {
+    "title": "Origen permitido de métricas",
+    "help": "Origen desde el que se puede ejecutar la solicitud entre dominios (CORS)"
+  },
+  "metrics_htpasswd": {
+    "title": "Htpasswd de métricas",
+    "help": "Un archivo htpasswd; si no se proporciona, no se realiza la autenticación"
+  },
+  "metrics_realm": {
+    "title": "Dominio de métricas",
+    "help": "Dominio para la autenticación"
+  },
+  "metrics_user": {
+    "title": "Usuario de métricas",
+    "help": "Nombre de usuario para la autenticación"
+  },
+  "metrics_pass": {
+    "title": "Contraseña de métricas",
+    "help": "Contraseña para la autenticación"
+  },
+  "metrics_salt": {
+    "title": "Sal de métricas",
+    "help": "Sal de hash de contraseña"
+  },
+  "metrics_user_from_header": {
+    "title": "Usuario de métricas desde encabezado",
+    "help": "Nombre de usuario de un encabezado HTTP definido"
+  },
+  "metrics_template": {
+    "title": "Plantilla de métricas",
+    "help": "Plantilla especificada por el usuario"
+  },
+  "stdio": {
+    "title": "Stdio",
+    "help": "Ejecutar un servidor SFTP en la entrada/salida estándar"
+  },
+  "append_only": {
+    "title": "Solo anexar",
+    "help": "Desactivar la eliminación de datos del repositorio"
+  },
+  "private_repos": {
+    "title": "Repositorios privados",
+    "help": "Los usuarios solo pueden acceder a su repositorio privado"
+  },
+  "cache_objects": {
+    "title": "Objetos en cache",
+    "help": "Objetos listados en cache"
+  },
+  "force_path_style": {
+    "title": "Forzar estilo de ruta",
+    "help": "Si es verdadero, usar el estilo de acceso de ruta; si es falso, usar el estilo de hospedaje virtual"
+  },
+  "etag_hash": {
+    "title": "Hash de ETag",
+    "help": "¿Qué hash usar para la ETag? ¿Automático o en blanco para desactivarlo?"
+  },
+  "auth_key": {
+    "title": "Clave de autenticación",
+    "help": "Establecer par de claves para la autorización v4: access_key_id,secret_access_key"
+  },
+  "no_cleanup": {
+    "title": "Sin limpieza",
+    "help": "No limpiar la carpeta vacía después de eliminar el objeto"
+  },
+  "authorized_keys": {
+    "title": "Claves autorizadas",
+    "help": "Archivo de claves autorizadas"
+  },
+  "no_auth": {
+    "title": "Sin autenticación",
+    "help": "Permitir conexiones sin autenticación si está configurado"
+  },
+  "no_modtime": {
+    "title": "Sin hora de modificación",
+    "help": "No leer/escribir la hora de modificación (puede acelerar el proceso)"
+  },
+  "no_checksum": {
+    "title": "Sin suma de comprobación",
+    "help": "No comparar sumas de comprobación al cargar/descargar"
+  },
+  "no_seek": {
+    "title": "Sin búsqueda",
+    "help": "No permitir búsquedas en archivos"
+  },
+  "dir_cache_time": {
+    "title": "Tiempo de cache de directorio",
+    "help": "Tiempo para almacenar en cache las entradas del directorio"
+  },
+  "vfs_refresh": {
+    "title": "Actualización de VFS",
+    "help": "Actualiza la cache del directorio recursivamente en segundo plano al iniciar"
+  },
+  "poll_interval": {
+    "title": "Intervalo de sondeo",
+    "help": "Tiempo de espera entre sondeos de cambios; debe ser menor que dir-cache-time y solo en servidores remotos compatibles (establecer 0 para deshabilitar)"
+  },
+  "read_only": {
+    "title": "Solo lectura",
+    "help": "Permitir solo acceso de solo lectura"
+  },
+  "vfs_links": {
+    "title": "Ligas VFS",
+    "help": "Traducir ligas simbólicas de archivos normales con la extensión '.rclonelink' en VFS"
+  },
+  "vfs_cache_mode": {
+    "title": "Modo de cache VFS",
+    "help": "Modo de cache desactivado|mínimo|escrituras|completo"
+  },
+  "vfs_cache_poll_interval": {
+    "title": "Intervalo de sondeo de cache VFS",
+    "help": "Intervalo para sondear la cache"
+  },
+  "vfs_cache_max_age": {
+    "title": "Antigüedad máxima de cache VFS",
+    "help": "Tiempo máximo desde el último acceso a los objetos en la cache"
+  },
+  "vfs_cache_max_size": {
+    "title": "Tamaño máximo de cache VFS",
+    "help": "Tamaño total máximo de objetos en la cache"
+  },
+  "vfs_cache_min_free_space": {
+    "title": "Espacio libre mínimo de cache VFS",
+    "help": "Espacio libre mínimo objetivo en el disco que contiene la cache"
+  },
+  "vfs_read_chunk_size": {
+    "title": "Tamaño del fragmento de lectura de VFS",
+    "help": "Leer los objetos de origen en fragmentos"
+  },
+  "vfs_read_chunk_size_limit": {
+    "title": "Límite del tamaño del fragmento de lectura de VFS",
+    "help": "Si es mayor que --vfs-read-chunk-size, duplicar el tamaño del fragmento después de cada lectura, hasta alcanzar el límite ('off' es ilimitado)"
+  },
+  "vfs_read_chunk_streams": {
+    "title": "Flujos de fragmentos de lectura de VFS",
+    "help": "Número de flujos paralelos que se leerán simultáneamente"
+  },
+  "dir_perms": {
+    "title": "Permisos de directorio",
+    "help": "Permisos de directorio"
+  },
+  "file_perms": {
+    "title": "Permisos de archivo",
+    "help": "Permisos de archivo"
+  },
+  "link_perms": {
+    "title": "Permisos de ligas",
+    "help": "Permisos de ligas"
+  },
+  "vfs_case_insensitive": {
+    "title": "VFS no distingue entre mayúsculas y minúsculas",
+    "help": "Si no se encuentra un nombre de archivo, buscar una coincidencia que no distinga entre mayúsculas y minúsculas"
+  },
+  "vfs_block_norm_dupes": {
+    "title": "Dudosos de la norma de bloques VFS",
+    "help": "Si existen nombres de archivo duplicados en el mismo directorio (después de la normalización), registrar un error y ocultar los duplicados (puede afectar el rendimiento)"
+  },
+  "vfs_write_wait": {
+    "title": "Espera de escritura VFS",
+    "help": "Tiempo de espera para la escritura en secuencia antes de generar un error"
+  },
+  "vfs_read_wait": {
+    "title": "Espera de lectura VFS",
+    "help": "Tiempo de espera para la lectura en secuencia antes de buscar"
+  },
+  "vfs_write_back": {
+    "title": "Escritura diferida VFS",
+    "help": "Tiempo para Archivos de reescritura después del último uso al usar la cache"
+  },
+  "vfs_read_ahead": {
+    "title": "Lectura anticipada de VFS",
+    "help": "Lectura anticipada adicional sobre --buffer-size al usar el modo cache completo"
+  },
+  "vfs_used_is_size": {
+    "title": "Tamaño usado de VFS",
+    "help": "Usar el algoritmo `rclone size` para el tamaño usado"
+  },
+  "vfs_fast_fingerprint": {
+    "title": "Huella digital rápida de VFS",
+    "help": "Usar huellas digitales rápidas (menos precisas) para la detección de cambios"
+  },
+  "vfs_disk_space_total_size": {
+    "title": "Tamaño total del espacio en disco de VFS",
+    "help": "Especificar el espacio total del disco"
+  },
+  "umask": {
+    "title": "Umask",
+    "help": "Anular los bits de permiso establecidos por el sistema de archivos (no compatible con Windows)"
+  },
+  "uid": {
+    "title": "Uid",
+    "help": "Anular el campo uid establecido por el sistema de archivos (no compatible con Windows)"
+  },
+  "gid": {
+    "title": "Gid",
+    "help": "Anular el campo gid establecido por el sistema de archivos (no compatible con Windows)"
+  },
+  "vfs_metadata_extension": {
+    "title": "Extensión de metadatos VFS",
+    "help": "Establecer la extensión de la que se leerán los metadatos."
+  },
+  "disable_dir_list": {
+    "title": "Desactivar lista de directorios",
+    "help": "Desactivar la lista de directorios HTML en la solicitud GET de un directorio"
+  },
+  "create_empty_src_dirs": {
+    "title": "Crear directorios de origen vacíos",
+    "help": "Crear directorios de origen vacíos en el destino después de mover."
+  },
+  "delete_empty_src_dirs": {
+    "title": "Eliminar directorios de origen vacíos",
+    "help": "Eliminar directorios de origen vacíos después de mover."
+  },
+  "dryRun": {
+    "title": "Simulacro",
+    "help": "Realizar un simulacro."
+  },
+  "resync": {
+    "title": "Resincronizar",
+    "help": "Realiza la resincronización."
+  },
+  "checkAccess": {
+    "title": "Comprobar acceso",
+    "help": "Cancelar si no se encuentran los archivos RCLONE_TEST en ambos sistemas de archivos."
+  },
+  "checkFilename": {
+    "title": "Comprobar nombre de archivo",
+    "help": "Nombre de archivo para --check-access."
+  },
+  "maxDelete": {
+    "title": "Eliminación máxima",
+    "help": "Cancelar la sincronización si el porcentaje de archivos eliminados supera este umbral."
+  },
+  "force": {
+    "title": "Forzar",
+    "help": "Omitir la comprobación de seguridad de --max-delete y ejecutar la sincronización."
+  },
+  "checkSync": {
+    "title": "Comprobar sincronización",
+    "help": "Controla la comparación de los listados finales."
+  },
+  "remove_empty_dirs": {
+    "title": "Eliminar directorios vacíos",
+    "help": "Eliminar directorios vacíos en el paso final de limpieza."
+  },
+  "filters_file": {
+    "title": "Archivo de filtros",
+    "help": "Leer patrones de filtrado de un archivo."
+  },
+  "ignore_listing_checksum": {
+    "title": "Ignorar la suma de comprobación del listado",
+    "help": "No usar sumas de comprobación para los listados."
+  },
+  "resilient": {
+    "title": "Resiliente",
+    "help": "Permitir que las ejecuciones futuras se reintenten después de ciertos errores menos graves."
+  },
+  "work_dir": {
+    "title": "Directorio de trabajo",
+    "help": "Directorio del servidor para historial de archivos."
+  },
+  "backup_dir1": {
+    "title": "Directorio de respaldo 1",
+    "help": "Ruta 1: --backup-dir"
+  },
+  "backup_dir2": {
+    "title": "Directorio de respaldo 2",
+    "help": "Ruta 2: --backup-dir"
+  },
+  "disable_zip": {
+    "title": "Disable Zip",
+    "help": "Disable zip download of directories"
+  }
 }

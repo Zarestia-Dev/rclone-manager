@@ -52,18 +52,21 @@
               matInput
               formControlName="keychainPassword"
               type="password"
-              (keyup.enter)="submitKeychainStore()"
+              (keyup.enter)="
+                $event.preventDefault(); $event.stopPropagation(); submitKeychainStore()
+              "
             />
             @if (securityForm.get('keychainPassword')?.hasError('required')) {
               <mat-error>{{ 'common.required' | translate }}</mat-error>
             }
           </mat-form-field>
           <div class="form-actions">
-            <button mat-button (click)="cancelKeychainStore()">
+            <button mat-button type="button" (click)="cancelKeychainStore()">
               {{ 'common.cancel' | translate }}
             </button>
             <button
               mat-flat-button
+              type="button"
               (click)="submitKeychainStore()"
               [disabled]="encryptionLoading() || securityForm.get('keychainPassword')?.invalid"
             >
@@ -144,6 +147,7 @@
         <div class="form-actions">
           <button
             mat-flat-button
+            type="button"
             (click)="submitChangePassword()"
             [disabled]="encryptionLoading() || isFormInvalidForChangePassword()"
           >
@@ -196,6 +200,7 @@
         <div class="form-actions">
           <button
             mat-flat-button
+            type="button"
             class="warn"
             (click)="submitDecrypt()"
             [disabled]="encryptionLoading() || securityForm.get('currentPassword')?.invalid"
@@ -257,6 +262,7 @@
         <div class="form-actions">
           <button
             mat-flat-button
+            type="button"
             (click)="submitEncrypt()"
             [disabled]="encryptionLoading() || isFormInvalidForEncrypt()"
           >

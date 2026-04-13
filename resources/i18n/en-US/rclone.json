@@ -1146,5 +1146,9 @@
   "backup_dir2": {
     "title": "Backup Dir 2",
     "help": "--backup-dir for Path2."
+  },
+  "disable_zip": {
+    "title": "Disable Zip",
+    "help": "Disable zip download of directories"
   }
 }
