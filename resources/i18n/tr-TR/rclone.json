@@ -1146,5 +1146,9 @@
   "backup_dir2": {
     "title": "Yedek Dizini 2",
     "help": "Yol2 için --backup-dir."
+  },
+  "disable_zip": {
+    "title": "Zip İndirmeyi Devre Dışı Bırak",
+    "help": "Dizinlerin zip olarak indirilmesini devre dışı bırak."
   }
 }

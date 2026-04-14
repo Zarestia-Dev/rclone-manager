@@ -41,6 +41,7 @@ pub enum JobType {
     RenameFile,
     #[serde(rename = "rename_dir")]
     RenameDir,
+    Upload,
     Unknown(String),
 }
 
@@ -71,11 +72,8 @@ impl JobType {
                 | JobType::MoveDir
                 | JobType::RenameFile
                 | JobType::RenameDir
+                | JobType::Upload
         )
-    }
-
-    pub fn can_track(&self) -> bool {
-        !matches!(self, JobType::Mount | JobType::Serve)
     }
 
     pub fn as_str(&self) -> &str {
@@ -104,6 +102,7 @@ impl JobType {
             JobType::MoveDir => "move_dir",
             JobType::RenameFile => "rename_file",
             JobType::RenameDir => "rename_dir",
+            JobType::Upload => "upload",
             JobType::Unknown(s) => s,
         }
     }
@@ -136,6 +135,7 @@ impl From<String> for JobType {
             "move_dir" => JobType::MoveDir,
             "rename_file" => JobType::RenameFile,
             "rename_dir" => JobType::RenameDir,
+            "upload" => JobType::Upload,
             _ => JobType::Unknown(s),
         }
     }
@@ -149,19 +149,22 @@ pub struct JobInfo {
     pub source: String,
     pub destination: String,
     pub start_time: DateTime<Utc>,
-    pub status: JobStatus, // "running", "completed", "failed", "stopped"
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub end_time: Option<DateTime<Utc>>,
+    pub status: JobStatus,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
     pub stats: Option<Value>,
-    pub group: String, // Add this field to track the job group
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub uploaded_files: Vec<String>,
+    pub group: String,
     pub profile: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub execute_id: Option<String>, // Rclone async execute ID
+    pub execute_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub origin: Option<Origin>,
-    /// The backend instance this job belongs to (e.g., "Local", "NAS")
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub backend_name: Option<String>,
+    #[serde(default = "crate::rclone::backend::types::default_backend_name")]
+    pub backend_name: String,
 }
 
 impl JobInfo {

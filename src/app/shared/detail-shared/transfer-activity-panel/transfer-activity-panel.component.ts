@@ -1,57 +1,53 @@
-import { Component, Output, EventEmitter, input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, input, output } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTabsModule } from '@angular/material/tabs';
-import { MatChipsModule } from '@angular/material/chips';
-import { ActiveTransfersTableComponent } from './active-transfers-table.component';
-import { CompletedTransfersTableComponent } from './completed-transfers-table.component';
-import { TranslateModule } from '@ngx-translate/core';
-import { CompletedTransfer, TransferActivityPanelConfig, TransferFile } from '../../types';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { TranslateModule } from '@ngx-translate/core';
+
+import { ActiveTransfersTableComponent } from './active-transfers-table.component';
+import { CompletedTransfersTableComponent } from './completed-transfers-table.component';
+import { TransferActivityPanelConfig } from '../../types';
 
 @Component({
   selector: 'app-transfer-activity-panel',
   standalone: true,
   imports: [
-    CommonModule,
     MatCardModule,
     MatIconModule,
     MatTabsModule,
-    MatChipsModule,
-    ActiveTransfersTableComponent,
-    CompletedTransfersTableComponent,
     MatButtonModule,
     MatTooltipModule,
     TranslateModule,
+    ActiveTransfersTableComponent,
+    CompletedTransfersTableComponent,
   ],
   template: `
-    <mat-card class="detail-panel transfer-activity-panel" [ngClass]="config().operationClass">
+    <mat-card class="detail-panel transfer-activity-panel">
       <mat-card-header class="panel-header">
         <mat-card-title class="panel-title-content">
-          <mat-icon svgIcon="download" class="panel-icon"></mat-icon>
+          <mat-icon svgIcon="download" style="color: var(--mat-sys-primary);"></mat-icon>
           <span>{{ 'shared.transferActivity.title' | translate }}</span>
           <div class="transfer-summary">
-            <mat-chip [class]="'summary-chip active' + ' ' + config().operationColor">
+            <span class="summary-chip active">
               <span class="chip-label">{{ 'shared.transferActivity.active' | translate }}</span>
               <span class="chip-value">{{ config().activeTransfers.length }}</span>
-            </mat-chip>
+            </span>
             @if (config().showHistory) {
-              <mat-chip [class]="'summary-chip completed' + ' ' + config().operationColor">
+              <span class="summary-chip completed">
                 <span class="chip-label">{{ 'shared.transferActivity.recent' | translate }}</span>
                 <span class="chip-value">{{ config().completedTransfers.length }}</span>
-              </mat-chip>
+              </span>
             }
           </div>
           @if (config().showHistory) {
             <button
               mat-icon-button
-              class="warn"
               (click)="resetStats.emit()"
               [matTooltip]="'shared.transferActivity.resetStats' | translate"
             >
-              <mat-icon svgIcon="broom"></mat-icon>
+              <mat-icon svgIcon="broom" style="color: var(--mat-sys-primary);"></mat-icon>
             </button>
           }
         </mat-card-title>
@@ -60,7 +56,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
       <mat-card-content class="panel-content">
         @if (config().showHistory && config().completedTransfers.length > 0) {
           <mat-tab-group class="transfer-tabs" animationDuration="200ms">
-            <!-- Active Transfers Tab -->
             <mat-tab>
               <ng-template mat-tab-label>
                 <span>{{
@@ -71,13 +66,9 @@ import { MatTooltipModule } from '@angular/material/tooltip';
               <div class="tab-content">
                 <app-active-transfers-table
                   [transfers]="config().activeTransfers"
-                  [operationClass]="config().operationClass"
-                  [trackBy]="trackByActiveTransfer"
                 ></app-active-transfers-table>
               </div>
             </mat-tab>
-
-            <!-- Completed Transfers Tab -->
             <mat-tab>
               <ng-template mat-tab-label>
                 <span>{{
@@ -88,19 +79,14 @@ import { MatTooltipModule } from '@angular/material/tooltip';
               <div class="tab-content">
                 <app-completed-transfers-table
                   [transfers]="config().completedTransfers"
-                  [operationClass]="config().operationClass"
-                  [trackBy]="trackByCompletedTransfer"
                 ></app-completed-transfers-table>
               </div>
             </mat-tab>
           </mat-tab-group>
         } @else {
-          <!-- Show only active transfers when no history -->
           <div class="single-view-content">
             <app-active-transfers-table
               [transfers]="config().activeTransfers"
-              [operationClass]="config().operationClass"
-              [trackBy]="trackByActiveTransfer"
             ></app-active-transfers-table>
           </div>
         }
@@ -110,15 +96,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
   styleUrls: ['./transfer-activity-panel.component.scss'],
 })
 export class TransferActivityPanelComponent {
-  config = input.required<TransferActivityPanelConfig>();
-  @Output() refreshTransfers = new EventEmitter<void>();
-  @Output() resetStats = new EventEmitter<void>();
-
-  trackByActiveTransfer(index: number, transfer: TransferFile): string {
-    return transfer.name;
-  }
-
-  trackByCompletedTransfer(index: number, transfer: CompletedTransfer): string {
-    return transfer.name + transfer.completedAt;
-  }
+  readonly config = input.required<TransferActivityPanelConfig>();
+  readonly resetStats = output<void>();
 }

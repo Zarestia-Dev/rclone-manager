@@ -1,0 +1,182 @@
+/* ==========================================================================
+   1. Main Container & Sidenav
+   ========================================================================== */
+
+.nautilus-overlay-pane {
+  width: 100vw;
+  height: 100vh;
+  --sidebar-width: clamp(180px, 20vw, 240px);
+}
+
+.nautilus-sidenav {
+  width: var(--sidebar-width);
+  background-color: var(--sidebar-bg-color);
+  border-radius: 0 !important;
+}
+
+.nautilus-sidenav mat-toolbar {
+  display: flex;
+  justify-content: space-between;
+  background-color: var(--sidebar-bg-color) !important;
+  padding-inline: var(--space-sm);
+  height: var(--titlebar-height);
+}
+
+/* ==========================================================================
+   2. Main Content Area
+   ========================================================================== */
+
+.nautilus-main-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.nautilus-content {
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ==========================================================================
+   3. Split View
+   ========================================================================== */
+
+.split-container {
+  display: grid;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.split-divider {
+  width: 0.5rem;
+  background: var(--sidebar-bg-color);
+  cursor: col-resize;
+  position: relative;
+  transition: var(--transition-fast);
+  z-index: 20;
+
+  &:hover,
+  &:active {
+    background: var(--accent-color);
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 3px;
+    right: 3px;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 40px;
+    border-left: 1px solid var(--dim-color);
+    border-right: 1px solid var(--dim-color);
+    opacity: 0.5;
+  }
+}
+
+/* ==========================================================================
+   4. View Menu Popups
+   ========================================================================== */
+
+.icon-size-control {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-xxs) var(--space-xs);
+
+  span {
+    font-weight: 500;
+  }
+
+  .buttons {
+    display: flex;
+    overflow: hidden;
+
+    button {
+      height: 28px;
+      width: 28px;
+      border-radius: var(--radius-xs);
+
+      mat-icon {
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
+        border-radius: var(--radius-xxs);
+        background: var(--window-bg-color) !important;
+      }
+
+      &:hover {
+        background: var(--hover-bg-color);
+      }
+    }
+  }
+}
+
+.sort-radio-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.sort-options {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+
+  .sort-label {
+    font-size: var(--font-size-md);
+    font-weight: 700;
+    color: var(--dim-color);
+  }
+}
+
+.menu-item-wrapper {
+  padding: var(--space-xxs) var(--space-xs);
+  display: flex;
+  align-items: center;
+
+  mat-checkbox {
+    width: 100%;
+  }
+}
+
+/* ==========================================================================
+   5. Selection Info Bar
+   ========================================================================== */
+
+.selection-info-container {
+  position: absolute;
+  bottom: var(--bottom-bar-offset);
+  right: var(--space-xxs);
+  font-weight: 500;
+  background: var(--sidebar-bg-color);
+  padding: var(--space-xxs) var(--space-md);
+  border-radius: var(--radius-sm);
+  z-index: 5;
+}
+
+.selection-info {
+  font-size: var(--font-size-md);
+  color: var(--window-fg-color);
+}
+
+/* ==========================================================================
+   6. File Picker Actions
+   ========================================================================== */
+
+.picker-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-md);
+
+  &.desktop-picker {
+    box-shadow: inset 0 1px 0 var(--card-shade-color);
+    padding-bottom: var(--space-sm);
+  }
+}

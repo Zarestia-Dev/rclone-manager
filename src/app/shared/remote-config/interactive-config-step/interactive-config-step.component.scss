@@ -19,7 +19,6 @@
     rgba(var(--primary-color-rgb), 0.08) 0%,
     rgba(var(--accent-color-rgb), 0.05) 100%
   );
-  box-shadow: 0 0 0 1px var(--card-shade-color);
   border-radius: var(--card-border-radius);
   padding: var(--space-lg);
   box-shadow: var(--shadow-gnome);

@@ -1,6 +1,8 @@
+use crate::core::settings::AppSettingsManager;
 use axum::{
-    extract::State,
-    http::{StatusCode, header::AUTHORIZATION},
+    body::Body,
+    extract::{DefaultBodyLimit, State},
+    http::{Request, StatusCode, header::AUTHORIZATION},
     middleware::Next,
     response::{IntoResponse, Json},
 };
@@ -28,7 +30,9 @@ pub struct TauriEvent {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ApiResponse<T> {
     pub success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<T>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 }
 
@@ -69,7 +73,7 @@ where
 
 impl IntoResponse for AppError {
     fn into_response(self) -> axum::response::Response {
-        let (status, error) = match self {
+        let (status, message) = match self {
             AppError::BadRequest(e) => (StatusCode::BAD_REQUEST, e.to_string()),
             AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             AppError::InternalServerError(e) => {
@@ -78,8 +82,7 @@ impl IntoResponse for AppError {
             }
         };
 
-        let body = Json(ApiResponse::<String>::error(error));
-        (status, body).into_response()
+        (status, Json(ApiResponse::<()>::error(message))).into_response()
     }
 }
 
@@ -89,17 +92,16 @@ pub async fn auth_middleware(
     request: axum::http::Request<axum::body::Body>,
     next: Next,
 ) -> Result<axum::response::Response, StatusCode> {
-    if state.auth_credentials.is_none() {
+    // No credentials configured — allow all requests through.
+    let Some((_, expected_creds)) = &state.auth_credentials else {
         return Ok(next.run(request).await);
-    }
-
-    let (_username, expected_creds) = state.auth_credentials.as_ref().unwrap();
+    };
 
     // Check Authorization header (Basic Auth)
     if let Some(auth_header) = request.headers().get(AUTHORIZATION)
         && let Ok(auth_str) = auth_header.to_str()
         && let Some(creds) = auth_str.strip_prefix("Basic ")
-        && creds == expected_creds
+        && creds == expected_creds.as_str()
     {
         return Ok(next.run(request).await);
     }
@@ -111,21 +113,40 @@ pub async fn auth_middleware(
         for param in decoded.split('&') {
             if let Some((key, value)) = param.split_once('=')
                 && key == "auth"
-                && value == expected_creds
+                && value == expected_creds.as_str()
             {
                 return Ok(next.run(request).await);
             }
         }
     }
 
-    let response = axum::http::Response::builder()
+    Ok(axum::http::Response::builder()
         .status(StatusCode::UNAUTHORIZED)
-        .header(
-            "WWW-Authenticate",
-            "Basic realm=\"RClone Manager\"".to_string(),
-        )
+        .header("WWW-Authenticate", "Basic realm=\"RClone Manager\"")
         .body(axum::body::Body::from("Unauthorized"))
-        .unwrap();
+        .unwrap())
+}
 
-    Ok(response)
+/// Dynamic body limit middleware that reads settings from state
+pub async fn dynamic_body_limit_middleware(
+    State(state): State<WebServerState>,
+    mut request: Request<Body>,
+    next: Next,
+) -> axum::response::Response {
+    use tauri::Manager;
+    let limit_mb = state
+        .app_handle
+        .state::<AppSettingsManager>()
+        .get_all()
+        .map(|s| s.core.max_upload_batch_size)
+        .unwrap_or(500);
+
+    let limit_bytes = limit_mb * 1024 * 1024;
+
+    // Inject the limit into the request extensions for extractors
+    request
+        .extensions_mut()
+        .insert(DefaultBodyLimit::max(limit_bytes));
+
+    next.run(request).await
 }

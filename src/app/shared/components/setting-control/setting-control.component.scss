@@ -26,6 +26,11 @@
       font-size: var(--font-size-base);
       margin-bottom: var(--space-xs);
       color: var(--window-fg-color);
+
+      .required-asterisk {
+        color: var(--warn-color);
+        margin-left: 2px;
+      }
     }
 
     .help-text {
@@ -51,7 +56,7 @@
         background-color: rgba(0, 0, 0, 0.05);
         border-radius: 3px;
         padding: 2px 6px;
-        font-family: monospace;
+        font-family: var(--font-mono);
         font-size: var(--font-size-xs);
         color: var(--warn-color);
         word-break: break-word;
@@ -109,9 +114,9 @@
 
 .setting-item {
   background: var(--view-bg-color);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   padding: var(--space-lg);
-  box-shadow: var(--shadow-gnome);
+  box-shadow: var(--box-shadow);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -133,7 +138,7 @@
     .stepper-container {
       display: flex;
       align-items: center;
-      gap: var(--space-sm); // was hardcoded 8px
+      gap: var(--space-xs);
     }
 
     .stepper-input.mat-mdc-form-field {
@@ -142,10 +147,6 @@
 
       input {
         text-align: center;
-      }
-
-      ::ng-deep .mat-mdc-form-field-subscript-wrapper {
-        display: none;
       }
     }
 

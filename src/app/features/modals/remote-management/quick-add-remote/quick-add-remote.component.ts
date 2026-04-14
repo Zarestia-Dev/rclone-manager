@@ -1,12 +1,10 @@
 import {
   Component,
-  HostListener,
-  OnInit,
-  OnDestroy,
   inject,
   computed,
   signal,
   ChangeDetectionStrategy,
+  DestroyRef,
 } from '@angular/core';
 import {
   FormBuilder,
@@ -18,14 +16,15 @@ import {
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
-import { takeUntil, Subject } from 'rxjs';
+import { fromEvent, merge, startWith } from 'rxjs';
+import { filter } from 'rxjs/operators';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
 import { TranslateModule } from '@ngx-translate/core';
 
-// Services
-import { AuthStateService } from '@app/services';
 import {
+  AuthStateService,
   RemoteManagementService,
   JobManagementService,
   MountManagementService,
@@ -33,20 +32,23 @@ import {
   FileSystemService,
   NautilusService,
   ModalService,
+  ValidatorRegistryService,
+  IconService,
 } from '@app/services';
 import {
   RemoteType,
   RemoteConfigSections,
   InteractiveFlowState,
-  INTERACTIVE_REMOTES,
   DEFAULT_PROFILE_NAME,
   REMOTE_CONFIG_KEYS,
+  CommandOption,
 } from '@app/types';
 import { OperationConfigComponent } from '../../../../shared/remote-config/app-operation-config/app-operation-config.component';
-import { ValidatorRegistryService } from '@app/services';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
-import { RemoteConfigStepComponent } from 'src/app/shared/remote-config/remote-config-step/remote-config-step.component';
-import { IconService } from '@app/services';
+import {
+  RemoteConfigStepComponent,
+  INITIAL_COMMAND_OPTIONS,
+} from 'src/app/shared/remote-config/remote-config-step/remote-config-step.component';
 import {
   buildPathString,
   getDefaultAnswerFromQuestion,
@@ -55,8 +57,10 @@ import {
   convertBoolAnswerToString,
   updateInteractiveAnswer,
 } from '../../../../services/remote/utils/remote-config.utils';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 type WizardStep = 'setup' | 'operations' | 'interactive';
+type OperationType = 'mount' | 'sync' | 'copy' | 'bisync' | 'move';
 
 @Component({
   selector: 'app-quick-add-remote',
@@ -71,14 +75,16 @@ type WizardStep = 'setup' | 'operations' | 'interactive';
     RemoteConfigStepComponent,
     OperationConfigComponent,
     TranslateModule,
+    MatTooltipModule,
   ],
   templateUrl: './quick-add-remote.component.html',
   styleUrls: ['./quick-add-remote.component.scss', '../../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class QuickAddRemoteComponent implements OnInit, OnDestroy {
+export class QuickAddRemoteComponent {
   private readonly fb = inject(FormBuilder);
   private readonly dialogRef = inject(MatDialogRef<QuickAddRemoteComponent>);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly authStateService = inject(AuthStateService);
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly jobManagementService = inject(JobManagementService);
@@ -90,19 +96,92 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   private readonly nautilusService = inject(NautilusService);
   private readonly modalService = inject(ModalService);
 
-  readonly quickAddForm: FormGroup;
-  remoteTypes: RemoteType[] = [];
-  existingRemotes: string[] = [];
+  readonly operationTabs = [
+    {
+      type: 'mount' as OperationType,
+      label: 'modals.quickAdd.operations.mount.label',
+      description: 'modals.quickAdd.operations.mount.description',
+    },
+    {
+      type: 'sync' as OperationType,
+      label: 'modals.quickAdd.operations.sync.label',
+      description: 'modals.quickAdd.operations.sync.description',
+    },
+    {
+      type: 'copy' as OperationType,
+      label: 'modals.quickAdd.operations.copy.label',
+      description: 'modals.quickAdd.operations.copy.description',
+    },
+    {
+      type: 'bisync' as OperationType,
+      label: 'modals.quickAdd.operations.bisync.label',
+      description: 'modals.quickAdd.operations.bisync.description',
+    },
+    {
+      type: 'move' as OperationType,
+      label: 'modals.quickAdd.operations.move.label',
+      description: 'modals.quickAdd.operations.move.description',
+    },
+  ] as const;
 
-  // Auth state signals (from service)
-  readonly isAuthInProgress = this.authStateService.isAuthInProgress;
-  readonly isAuthCancelled = this.authStateService.isAuthCancelled;
+  private readonly operationNames = this.operationTabs.map(t => t.type);
 
-  // Component state signals
+  // ── Wizard state ─────────────────────────────────────────────────────────
   readonly currentStep = signal<WizardStep>('setup');
   readonly interactiveFlowState = signal<InteractiveFlowState>(createInitialInteractiveFlowState());
+  readonly commandOptions = signal<CommandOption[]>(INITIAL_COMMAND_OPTIONS);
+  readonly remoteTypes = signal<RemoteType[]>([]);
+  readonly existingRemotes = signal<string[]>([]);
 
-  // Computed signals
+  // ── Form ─────────────────────────────────────────────────────────────────
+  readonly quickAddForm = this.createQuickAddForm();
+
+  // Stable references — quickAddForm never changes after construction
+  readonly setupFormGroup = this.quickAddForm.get('setup') as FormGroup;
+
+  readonly operationFormGroups = new Map<OperationType, FormGroup>(
+    this.operationNames.map(name => [
+      name,
+      this.quickAddForm.get(`operations.${name}`) as FormGroup,
+    ])
+  );
+
+  // ── Signals derived from form ─────────────────────────────────────────────
+
+  readonly setupFormStatus = toSignal(
+    this.setupFormGroup.statusChanges.pipe(startWith(this.setupFormGroup.status))
+  );
+
+  readonly quickAddFormStatus = toSignal(
+    this.quickAddForm.statusChanges.pipe(startWith(this.quickAddForm.status))
+  );
+
+  readonly setupTypeValue = toSignal(
+    this.quickAddForm
+      .get('setup.type')!
+      .valueChanges.pipe(startWith(this.quickAddForm.get('setup.type')!.value as string))
+  );
+
+  readonly setupNameValue = toSignal(
+    this.quickAddForm
+      .get('setup.name')!
+      .valueChanges.pipe(startWith(this.quickAddForm.get('setup.name')!.value as string))
+  );
+
+  // ── Auth state ───────────────────────────────────────────────────────────
+
+  readonly isAuthInProgress = this.authStateService.isAuthInProgress;
+  readonly isAuthCancelled = this.authStateService.isAuthCancelled;
+  readonly oauthUrl = this.authStateService.oauthUrl;
+  readonly oauthHelperUrl = computed(() =>
+    this.isAuthInProgress() && !this.isAuthCancelled() ? this.oauthUrl() : null
+  );
+  readonly shouldShowRemoteOAuthFallback = this.authStateService.shouldShowRemoteOAuthFallback;
+
+  // ── Computed ─────────────────────────────────────────────────────────────
+
+  readonly isSetupStepValid = computed(() => this.setupFormStatus() === 'VALID');
+
   readonly submitButtonText = computed(() =>
     this.isAuthInProgress() && !this.isAuthCancelled()
       ? 'modals.quickAdd.buttons.creating'
@@ -113,79 +192,52 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     isInteractiveContinueDisabled(this.interactiveFlowState(), this.isAuthCancelled())
   );
 
-  // Operation tabs configuration for DRY template
-  readonly operationTabs = [
-    {
-      type: 'mount',
-      label: 'modals.quickAdd.operations.mount.label',
-      description: 'modals.quickAdd.operations.mount.description',
-    },
-    {
-      type: 'sync',
-      label: 'modals.quickAdd.operations.sync.label',
-      description: 'modals.quickAdd.operations.sync.description',
-    },
-    {
-      type: 'copy',
-      label: 'modals.quickAdd.operations.copy.label',
-      description: 'modals.quickAdd.operations.copy.description',
-    },
-    {
-      type: 'bisync',
-      label: 'modals.quickAdd.operations.bisync.label',
-      description: 'modals.quickAdd.operations.bisync.description',
-    },
-    {
-      type: 'move',
-      label: 'modals.quickAdd.operations.move.label',
-      description: 'modals.quickAdd.operations.move.description',
-    },
-  ] as const;
-
-  private readonly destroy$ = new Subject<void>();
   private pendingConfig: {
     remoteData: { name: string; type: string };
     finalConfig: RemoteConfigSections;
   } | null = null;
 
-  // Store cron expressions for each operation type
-  private cronExpressions: {
-    sync?: string | null;
-    copy?: string | null;
-    bisync?: string | null;
-    move?: string | null;
-  } = {};
-
   constructor() {
-    this.quickAddForm = this.createQuickAddForm();
     this.setupFormListeners();
-  }
 
-  ngOnInit(): void {
-    this.initializeComponent();
-  }
+    fromEvent<KeyboardEvent>(document, 'keydown')
+      .pipe(
+        filter(e => e.key === 'Escape'),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(() => {
+        if (!this.nautilusService.isNautilusOverlayOpen()) {
+          this.modalService.animatedClose(this.dialogRef);
+        }
+      });
 
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
-    this.authStateService.cancelAuth();
+    this.destroyRef.onDestroy(() => {
+      void this.authStateService.cancelAuth();
+    });
+
+    void this.initializeComponent();
   }
 
   private async initializeComponent(): Promise<void> {
     try {
-      const oauthSupportedRemotes = await this.remoteManagementService.getOAuthSupportedRemotes();
-      this.remoteTypes = oauthSupportedRemotes.map(remote => ({
-        value: remote.name,
-        label: remote.description,
-      }));
-      this.existingRemotes = await this.remoteManagementService.getRemotes();
+      const [oauthSupportedRemotes, existingRemotes] = await Promise.all([
+        this.remoteManagementService.getOAuthSupportedRemotes(),
+        this.remoteManagementService.getRemotes(),
+      ]);
 
-      // Update the remote name validator with the loaded remotes
+      this.remoteTypes.set(
+        oauthSupportedRemotes.map(remote => ({
+          value: remote.name,
+          label: remote.description,
+        }))
+      );
+      this.existingRemotes.set(existingRemotes);
+
       const remoteNameControl = this.quickAddForm.get('setup.name');
       if (remoteNameControl) {
         remoteNameControl.setValidators([
           Validators.required,
-          this.validatorRegistry.createRemoteNameValidator(this.existingRemotes),
+          this.validatorRegistry.createRemoteNameValidator(existingRemotes),
         ]);
         remoteNameControl.updateValueAndValidity();
       }
@@ -194,9 +246,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     }
   }
 
-  onInteractiveModeToggled(value: boolean): void {
-    this.quickAddForm.get('setup.useInteractiveMode')?.setValue(value);
-  }
+  // ── Form builders ─────────────────────────────────────────────────────────
 
   private createOperationPathGroup(
     defaultType: 'local' | 'currentRemote' | 'otherRemote'
@@ -208,7 +258,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     });
   }
 
-  private createOperationGroup(opType: 'mount' | 'sync' | 'copy' | 'bisync' | 'move'): FormGroup {
+  private createOperationGroup(opType: OperationType): FormGroup {
     if (opType === 'mount') {
       return this.fb.group({
         autoStart: new FormControl(false),
@@ -232,114 +282,72 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
           '',
           [
             Validators.required,
-            this.validatorRegistry.createRemoteNameValidator(this.existingRemotes),
+            this.validatorRegistry.createRemoteNameValidator(this.existingRemotes()),
           ],
         ],
         type: ['', Validators.required],
-        useInteractiveMode: [false],
       }),
-      operations: this.fb.group({
-        mount: this.createOperationGroup('mount'),
-        sync: this.createOperationGroup('sync'),
-        copy: this.createOperationGroup('copy'),
-        bisync: this.createOperationGroup('bisync'),
-        move: this.createOperationGroup('move'),
-      }),
+      operations: this.fb.group(
+        Object.fromEntries(this.operationNames.map(name => [name, this.createOperationGroup(name)]))
+      ),
     });
   }
 
+  // ── Listeners ─────────────────────────────────────────────────────────────
+
+  private static readonly SOURCE_DEST_OP_TYPES = new Set<OperationType>([
+    'sync',
+    'copy',
+    'bisync',
+    'move',
+  ]);
+
   private setupFormListeners(): void {
-    // Remote type change listener
-    this.quickAddForm
-      .get('setup.type')
-      ?.valueChanges.pipe(takeUntil(this.destroy$))
-      .subscribe(remoteType => {
-        if (remoteType) {
-          this.onRemoteTypeChange(remoteType);
-        }
-      });
-
-    // Auto-start validators
-    const operationNames: ('mount' | 'sync' | 'copy' | 'bisync' | 'move')[] = [
-      'mount',
-      'sync',
-      'copy',
-      'bisync',
-      'move',
-    ];
-
-    operationNames.forEach(opName => {
+    for (const opName of this.operationNames) {
       const opGroup = this.quickAddForm.get(`operations.${opName}`);
-      if (!opGroup) return;
+      if (!opGroup) continue;
 
       if (opName === 'mount') {
-        // Handle mount separately - its logic is simpler and its dest is always local
-        const autoStartControl = opGroup.get('autoStart');
         const destControl = opGroup.get('dest');
-        autoStartControl?.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(enabled => {
-          if (enabled) {
-            destControl?.setValidators(Validators.required);
-          } else {
-            destControl?.clearValidators();
-          }
-          destControl?.updateValueAndValidity();
-        });
-      } else {
-        // Handle other operations with the new custom validator
+        opGroup
+          .get('autoStart')
+          ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe(enabled => {
+            if (enabled) {
+              destControl?.setValidators(Validators.required);
+            } else {
+              destControl?.clearValidators();
+            }
+            destControl?.updateValueAndValidity();
+          });
+      } else if (QuickAddRemoteComponent.SOURCE_DEST_OP_TYPES.has(opName)) {
         const sourcePathControl = opGroup.get('source.path');
         const destPathControl = opGroup.get('dest.path');
 
-        // Apply the custom validator
         sourcePathControl?.setValidators(this.validatorRegistry.requiredIfLocal());
         destPathControl?.setValidators(this.validatorRegistry.requiredIfLocal());
 
-        // Listen for changes that affect validation and trigger an update
-        const autoStartControl = opGroup.get('autoStart');
-        const sourcePathTypeControl = opGroup.get('source.pathType');
-        const destPathTypeControl = opGroup.get('dest.pathType');
-
-        autoStartControl?.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => {
-          sourcePathControl?.updateValueAndValidity();
-          destPathControl?.updateValueAndValidity();
-        });
-
-        sourcePathTypeControl?.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => {
-          sourcePathControl?.updateValueAndValidity();
-        });
-
-        destPathTypeControl?.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => {
-          destPathControl?.updateValueAndValidity();
-        });
+        merge(
+          opGroup.get('autoStart')!.valueChanges,
+          opGroup.get('source.pathType')!.valueChanges,
+          opGroup.get('dest.pathType')!.valueChanges
+        )
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe(() => {
+            sourcePathControl?.updateValueAndValidity();
+            destPathControl?.updateValueAndValidity();
+          });
       }
-    });
+    }
   }
 
-  private onRemoteTypeChange(remoteType: string): void {
-    const shouldUseInteractive = INTERACTIVE_REMOTES.includes(remoteType.toLowerCase());
-    const control = this.quickAddForm.get('setup.useInteractiveMode');
-    if (control && !control.dirty) {
-      control.setValue(shouldUseInteractive);
-    }
-    this.generateRemoteName(remoteType);
-  }
-
-  private generateRemoteName(remoteType: string): void {
-    const baseName = remoteType.replace(/\s+/g, '');
-    let newName = baseName;
-    let counter = 1;
-    while (this.existingRemotes.includes(newName)) {
-      newName = `${baseName}-${counter}`;
-      counter++;
-    }
-    this.quickAddForm.get('setup')?.patchValue({ remoteName: newName });
-  }
+  // ── Wizard navigation ─────────────────────────────────────────────────────
 
   nextStep(): void {
-    if (this.currentStep() === 'setup') {
-      this.quickAddForm.get('setup')?.markAllAsTouched();
-      if (this.isSetupStepValid()) {
-        this.currentStep.set('operations');
-      }
+    if (this.currentStep() !== 'setup') return;
+    this.quickAddForm.get('setup')?.markAllAsTouched();
+    if (this.isSetupStepValid()) {
+      this.currentStep.set('operations');
     }
   }
 
@@ -349,42 +357,40 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     }
   }
 
-  isSetupStepValid(): boolean {
-    return !!this.quickAddForm.get('setup')?.valid;
-  }
+  // ── Folder selection ──────────────────────────────────────────────────────
 
   async selectFolder(opName: string, pathType: 'source' | 'dest'): Promise<void> {
     try {
-      // Only require an empty folder when selecting a mount destination.
-      // Other operations (sync/copy/etc.) do not need an empty local folder.
       const requireEmpty = opName === 'mount' && pathType === 'dest';
       const selectedPath = await this.fileSystemService.selectFolder(requireEmpty);
-      if (selectedPath) {
-        let controlPath: string;
-        if (opName === 'mount' && pathType === 'dest') {
-          controlPath = `operations.mount.dest`;
-        } else {
-          controlPath = `operations.${opName}.${pathType}.path`;
-        }
-        this.quickAddForm.get(controlPath)?.patchValue(selectedPath);
-      }
+      if (!selectedPath) return;
+
+      const controlPath =
+        opName === 'mount' && pathType === 'dest'
+          ? 'operations.mount.dest'
+          : `operations.${opName}.${pathType}.path`;
+      this.quickAddForm.get(controlPath)?.patchValue(selectedPath);
     } catch (error) {
       console.error('Error selecting folder:', error);
     }
   }
 
+  // ── Submit ────────────────────────────────────────────────────────────────
+
   async onSubmit(): Promise<void> {
     const setup = this.quickAddForm.get('setup')?.value;
     const operations = this.quickAddForm.get('operations')?.value;
 
-    if (this.quickAddForm.invalid || this.isAuthInProgress() || !setup || !operations) {
-      return;
-    }
+    if (this.quickAddForm.invalid || this.isAuthInProgress() || !setup || !operations) return;
 
     await this.authStateService.startAuth(setup.name, false);
 
+    const requiresInteractiveFlow = this.commandOptions().some(
+      o => o.key === 'nonInteractive' && o.value === true
+    );
+
     try {
-      if (setup.useInteractiveMode) {
+      if (requiresInteractiveFlow) {
         await this.handleInteractiveCreation(setup, operations);
       } else {
         await this.handleStandardCreation(setup, operations);
@@ -393,7 +399,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.error('Error in onSubmit:', error);
     } finally {
-      if (!setup.useInteractiveMode || !this.interactiveFlowState().isActive) {
+      if (!requiresInteractiveFlow || !this.interactiveFlowState().isActive) {
         this.authStateService.resetAuthState();
       }
     }
@@ -401,19 +407,19 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
 
   private async handleStandardCreation(setup: any, operations: any): Promise<void> {
     const finalConfig = this.buildFinalConfig(setup.name, operations);
-    await this.remoteManagementService.createRemote(setup.name, {
-      name: setup.name,
-      type: setup.type,
-    });
+    await this.remoteManagementService.createRemote(
+      setup.name,
+      { name: setup.name, type: setup.type },
+      this.remoteManagementService.buildOpt(this.commandOptions())
+    );
     await this.appSettingsService.saveRemoteSettings(setup.name, finalConfig);
     await this.triggerAutoStartOperations(setup.name, finalConfig);
   }
 
   private async handleInteractiveCreation(setup: any, operations: any): Promise<void> {
-    const finalConfig = this.buildFinalConfig(setup.name, operations);
     this.pendingConfig = {
       remoteData: { name: setup.name, type: setup.type },
-      finalConfig,
+      finalConfig: this.buildFinalConfig(setup.name, operations),
     };
     await this.startInteractiveRemoteConfig();
   }
@@ -422,14 +428,14 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     const createBaseOpConfig = (op: any) => ({
       source: buildPathString(op.source, remoteName),
       dest: buildPathString(op.dest, remoteName),
-      autoStart: op.autoStart || false,
-      cronEnabled: op.cronEnabled || false,
-      cronExpression: op.cronExpression || null,
+      autoStart: op.autoStart ?? false,
+      cronEnabled: op.cronEnabled ?? false,
+      cronExpression: op.cronExpression ?? null,
       filterProfile: DEFAULT_PROFILE_NAME,
       backendProfile: DEFAULT_PROFILE_NAME,
     });
 
-    const config: Partial<RemoteConfigSections> = {
+    return {
       [REMOTE_CONFIG_KEYS.mount]: {
         [DEFAULT_PROFILE_NAME]: {
           ...createBaseOpConfig(operations.mount),
@@ -457,10 +463,10 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
       },
       [REMOTE_CONFIG_KEYS.backend]: { [DEFAULT_PROFILE_NAME]: {} },
       showOnTray: true,
-    };
-
-    return config as RemoteConfigSections;
+    } as RemoteConfigSections;
   }
+
+  // ── Interactive OAuth flow ─────────────────────────────────────────────────
 
   private async startInteractiveRemoteConfig(): Promise<void> {
     if (!this.pendingConfig) return;
@@ -469,7 +475,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
         this.pendingConfig.remoteData.name,
         this.pendingConfig.remoteData.type,
         {},
-        { nonInteractive: true }
+        this.remoteManagementService.buildOpt(this.commandOptions())
       );
       if (!startResp || startResp.State === '') {
         await this.finalizeRemoteCreation();
@@ -501,20 +507,20 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
 
   private async submitRcAnswer(): Promise<void> {
     const state = this.interactiveFlowState();
-    if (!state.isActive || !state.question || !this.pendingConfig) {
-      return;
+    if (!state.isActive || !state.question || !this.pendingConfig) return;
+
+    let answer: unknown = state.answer;
+    if (state.question?.Option?.Type === 'bool') {
+      answer = convertBoolAnswerToString(answer);
     }
+
     try {
-      let answer: unknown = state.answer;
-      if (state.question?.Option?.Type === 'bool') {
-        answer = convertBoolAnswerToString(answer);
-      }
-      const resp = await this.remoteManagementService.continueRemoteConfigNonInteractive(
+      const resp = await this.remoteManagementService.continueRemoteConfigInteractive(
         this.pendingConfig.remoteData.name,
         state.question.State,
         answer,
         {},
-        { nonInteractive: true }
+        this.remoteManagementService.buildOpt(this.commandOptions())
       );
       if (!resp || resp.State === '') {
         this.interactiveFlowState.update(s => ({ ...s, isActive: false, question: null }));
@@ -538,13 +544,6 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     }
   }
 
-  onCronExpressionChange(
-    operationType: 'sync' | 'copy' | 'bisync' | 'move',
-    cronExpression: string | null
-  ): void {
-    this.cronExpressions[operationType] = cronExpression;
-  }
-
   private async finalizeRemoteCreation(): Promise<void> {
     if (!this.pendingConfig) return;
     const { remoteData, finalConfig } = this.pendingConfig;
@@ -558,40 +557,39 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     remoteName: string,
     finalConfig: RemoteConfigSections
   ): Promise<void> {
-    const mountConfigs = finalConfig[REMOTE_CONFIG_KEYS.mount];
-    const copyConfigs = finalConfig[REMOTE_CONFIG_KEYS.copy];
-    const syncConfigs = finalConfig[REMOTE_CONFIG_KEYS.sync];
-    const bisyncConfigs = finalConfig[REMOTE_CONFIG_KEYS.bisync];
-    const moveConfigs = finalConfig[REMOTE_CONFIG_KEYS.move];
-
-    // Get default profiles
-    const mountConfig = mountConfigs?.['default'] as any;
-    const copyConfig = copyConfigs?.['default'] as any;
-    const syncConfig = syncConfigs?.['default'] as any;
-    const bisyncConfig = bisyncConfigs?.['default'] as any;
-    const moveConfig = moveConfigs?.['default'] as any;
-
-    // Use profile-based methods - backend resolves options from saved config
-    // This is simpler and ensures consistency with tray actions
-
+    const mountConfig = finalConfig[REMOTE_CONFIG_KEYS.mount]?.[DEFAULT_PROFILE_NAME] as any;
     if (mountConfig?.autoStart && mountConfig?.dest) {
-      void this.mountManagementService.mountRemoteProfile(remoteName, 'default', 'ui');
+      void this.mountManagementService.mountRemoteProfile(remoteName, DEFAULT_PROFILE_NAME, 'ui');
     }
 
-    if (copyConfig?.autoStart && copyConfig?.source && copyConfig?.dest) {
-      void this.jobManagementService.startCopyProfile(remoteName, 'default', 'ui');
-    }
+    const jobOps = [
+      {
+        key: REMOTE_CONFIG_KEYS.copy,
+        start: (): Promise<number> =>
+          this.jobManagementService.startCopyProfile(remoteName, DEFAULT_PROFILE_NAME, 'ui'),
+      },
+      {
+        key: REMOTE_CONFIG_KEYS.sync,
+        start: (): Promise<number> =>
+          this.jobManagementService.startSyncProfile(remoteName, DEFAULT_PROFILE_NAME, 'ui'),
+      },
+      {
+        key: REMOTE_CONFIG_KEYS.bisync,
+        start: (): Promise<number> =>
+          this.jobManagementService.startBisyncProfile(remoteName, DEFAULT_PROFILE_NAME, 'ui'),
+      },
+      {
+        key: REMOTE_CONFIG_KEYS.move,
+        start: (): Promise<number> =>
+          this.jobManagementService.startMoveProfile(remoteName, DEFAULT_PROFILE_NAME, 'ui'),
+      },
+    ] as const;
 
-    if (syncConfig?.autoStart && syncConfig?.source && syncConfig?.dest) {
-      void this.jobManagementService.startSyncProfile(remoteName, 'default', 'ui');
-    }
-
-    if (bisyncConfig?.autoStart && bisyncConfig?.source && bisyncConfig?.dest) {
-      void this.jobManagementService.startBisyncProfile(remoteName, 'default', 'ui');
-    }
-
-    if (moveConfig?.autoStart && moveConfig?.source && moveConfig?.dest) {
-      void this.jobManagementService.startMoveProfile(remoteName, 'default', 'ui');
+    for (const { key, start } of jobOps) {
+      const cfg = finalConfig[key]?.[DEFAULT_PROFILE_NAME] as any;
+      if (cfg?.autoStart && cfg?.source && cfg?.dest) {
+        void start();
+      }
     }
   }
 
@@ -601,17 +599,12 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     this.interactiveFlowState.set(createInitialInteractiveFlowState());
   }
 
-  get selectedRemoteLabel(): string {
-    const remoteType = this.quickAddForm.get('setup.type')?.value;
-    const remote = this.remoteTypes.find(r => r.value === remoteType);
-    return remote ? remote.label : 'Select Remote Type';
+  async copyOAuthUrl(): Promise<void> {
+    await this.authStateService.copyOAuthUrl();
   }
 
-  @HostListener('document:keydown.escape')
   close(): void {
-    if (this.nautilusService.isNautilusOverlayOpen()) {
-      return;
-    }
+    if (this.nautilusService.isNautilusOverlayOpen()) return;
     this.modalService.animatedClose(this.dialogRef);
   }
 }

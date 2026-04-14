@@ -16,11 +16,6 @@ impl JobCache {
         }
     }
 
-    /// Get all jobs (for state snapshot)
-    pub async fn get_all_jobs(&self) -> Vec<JobInfo> {
-        self.jobs.read().await.values().cloned().collect()
-    }
-
     /// Set all jobs (for state restore)
     pub async fn set_all_jobs(&self, jobs: Vec<JobInfo>) {
         let mut current = self.jobs.write().await;
@@ -80,7 +75,6 @@ impl JobCache {
     }
 
     pub async fn update_job_stats(&self, jobid: u64, stats: Value) -> Result<(), String> {
-        // Stats updates are frequent, don't emit individually
         let mut jobs = self.jobs.write().await;
         if let Some(job) = jobs.get_mut(&jobid) {
             job.stats = Some(stats);
@@ -100,13 +94,16 @@ impl JobCache {
         self.update_job(
             jobid,
             |job| {
-                if success {
+                if job.status == JobStatus::Stopped {
+                    // Already stopped manually, don't overwrite with Completed/Failed
+                } else if success {
                     job.status = JobStatus::Completed;
                     job.error = None;
                 } else {
                     job.status = JobStatus::Failed;
                     job.error = error;
                 }
+                job.end_time = Some(chrono::Utc::now());
             },
             app,
         )
@@ -118,6 +115,7 @@ impl JobCache {
             jobid,
             |job| {
                 job.status = JobStatus::Stopped;
+                job.end_time = Some(chrono::Utc::now());
             },
             app,
         )
@@ -156,44 +154,46 @@ impl JobCache {
                 && job.profile.as_deref() == profile
         })
     }
-    /// Get jobs filtered by source
-    pub async fn get_jobs_by_source(&self, source: &str) -> Vec<JobInfo> {
-        self.jobs
-            .read()
-            .await
-            .values()
-            .filter(|job| job.origin.as_ref().map(|o| o.as_str()) == Some(source))
-            .cloned()
-            .collect()
-    }
 
-    /// Rename a profile in all matching running jobs
-    /// Returns the number of jobs updated
-    /// Rename a profile in all matching jobs and emit `JOB_CACHE_CHANGED` for each update.
-    /// Returns the number of jobs updated.
-    pub async fn rename_profile(
-        &self,
-        remote_name: &str,
-        old_name: &str,
-        new_name: &str,
-        app: Option<&AppHandle>,
-    ) -> usize {
+    /// Delete all jobs associated with a specific remote
+    pub async fn delete_jobs_by_remote(&self, remote_name: &str, app: Option<&AppHandle>) {
         let mut jobs = self.jobs.write().await;
-        let mut updated_count = 0;
+        let keys_to_remove: Vec<u64> = jobs
+            .values()
+            .filter(|j| j.remote_name == remote_name)
+            .map(|j| j.jobid)
+            .collect();
 
-        for job in jobs.values_mut() {
-            if job.remote_name == remote_name && job.profile.as_deref() == Some(old_name) {
-                job.profile = Some(new_name.to_string());
-                updated_count += 1;
-
-                // Emit change per-job so UI/clients can react to the rename immediately.
-                if let Some(app) = app {
-                    let _ = app.emit(JOB_CACHE_CHANGED, job.jobid);
-                }
+        for key in keys_to_remove {
+            jobs.remove(&key);
+            if let Some(app) = app {
+                let _ = app.emit(JOB_CACHE_CHANGED, key);
             }
         }
+        info!("📡 All jobs for remote {remote_name} deleted");
+    }
 
-        updated_count
+    /// Delete all jobs associated with a specific profile on a remote
+    pub async fn delete_jobs_by_profile(
+        &self,
+        remote_name: &str,
+        profile_name: &str,
+        app: Option<&AppHandle>,
+    ) {
+        let mut jobs = self.jobs.write().await;
+        let keys_to_remove: Vec<u64> = jobs
+            .values()
+            .filter(|j| j.remote_name == remote_name && j.profile.as_deref() == Some(profile_name))
+            .map(|j| j.jobid)
+            .collect();
+
+        for key in keys_to_remove {
+            jobs.remove(&key);
+            if let Some(app) = app {
+                let _ = app.emit(JOB_CACHE_CHANGED, key);
+            }
+        }
+        info!("📡 All jobs for profile {profile_name} on remote {remote_name} deleted");
     }
 }
 
@@ -205,6 +205,8 @@ impl Default for JobCache {
 
 #[cfg(test)]
 mod tests {
+    use crate::rclone::backend::types::default_backend_name;
+
     use super::*;
 
     fn mock_job(jobid: u64, remote: &str, job_type: JobType, profile: Option<&str>) -> JobInfo {
@@ -215,13 +217,15 @@ mod tests {
             source: format!("{}path", remote),
             destination: "/local/path".to_string(),
             start_time: chrono::Utc::now(),
+            end_time: None,
             profile: profile.map(|s| s.to_string()),
             status: JobStatus::Running,
             error: None,
             stats: None,
+            uploaded_files: Vec::new(),
             group: format!("job/{}", jobid),
             origin: None,
-            backend_name: Some("Local".to_string()),
+            backend_name: default_backend_name(),
             execute_id: None,
         }
     }
@@ -361,37 +365,5 @@ mod tests {
                 .is_job_running("gdrive:", JobType::Sync, Some("default"))
                 .await
         );
-    }
-
-    #[tokio::test]
-    async fn test_rename_profile() {
-        let cache = JobCache::new();
-        cache
-            .add_job(
-                mock_job(1, "gdrive:", JobType::Sync, Some("old_profile")),
-                None,
-            )
-            .await;
-        cache
-            .add_job(
-                mock_job(2, "gdrive:", JobType::Copy, Some("old_profile")),
-                None,
-            )
-            .await;
-        cache
-            .add_job(mock_job(3, "s3:", JobType::Sync, Some("old_profile")), None)
-            .await; // Different remote
-
-        let updated = cache
-            .rename_profile("gdrive:", "old_profile", "new_profile", None)
-            .await;
-        assert_eq!(updated, 2); // Only gdrive jobs renamed
-
-        // Verify
-        let job1 = cache.get_job(1).await.unwrap();
-        assert_eq!(job1.profile, Some("new_profile".to_string()));
-
-        let job3 = cache.get_job(3).await.unwrap();
-        assert_eq!(job3.profile, Some("old_profile".to_string())); // Unchanged
     }
 }

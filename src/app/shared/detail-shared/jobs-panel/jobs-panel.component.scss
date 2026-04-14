@@ -29,6 +29,8 @@
 
     .job-row {
       border-bottom: 1px solid rgba(var(--window-fg-color-rgb), var(--border-opacity));
+      cursor: pointer;
+      transition: var(--transition-fast);
 
       &:hover {
         background: rgba(var(--primary-color-rgb), var(--background-opacity));
@@ -71,8 +73,6 @@
       &.running {
         background: rgba(var(--primary-color-rgb), var(--active-opacity));
         color: var(--primary-color);
-        box-shadow: 0 0 0 1px var(--card-shade-color);
-
         .status-dot {
           background: var(--primary-color);
         }
@@ -81,8 +81,6 @@
       &.completed {
         background: rgba(var(--accent-color-rgb), var(--active-opacity));
         color: var(--accent-color);
-        box-shadow: 0 0 0 1px var(--card-shade-color);
-
         .status-dot {
           background: var(--accent-color);
         }
@@ -91,8 +89,6 @@
       &.failed {
         background: rgba(var(--warn-color-rgb), var(--active-opacity));
         color: var(--warn-color);
-        box-shadow: 0 0 0 1px var(--card-shade-color);
-
         .status-dot {
           background: var(--warn-color);
         }
@@ -101,8 +97,6 @@
       &.stopped {
         background: rgba(var(--orange-rgb), var(--active-opacity));
         color: var(--orange);
-        box-shadow: 0 0 0 1px var(--card-shade-color);
-
         .status-dot {
           background: var(--orange);
         }
@@ -147,6 +141,15 @@
 
       .action-button {
         transition: var(--transition-fast);
+
+        &.info-button {
+          color: var(--primary-color);
+          background: rgba(var(--primary-color-rgb), var(--active-opacity));
+
+          &:hover {
+            background: rgba(var(--primary-color-rgb), 0.2);
+          }
+        }
 
         &.stop-button {
           color: var(--warn-color);

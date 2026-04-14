@@ -4,6 +4,14 @@
 
 use serde::{Deserialize, Serialize};
 
+fn default_oauth_port() -> u16 {
+    51901
+}
+
+fn default_oauth_host() -> String {
+    "127.0.0.1".to_string()
+}
+
 /// Single flat backend configuration
 ///
 /// Represents a connection to an rclone RC API server.
@@ -19,7 +27,11 @@ pub struct Backend {
     #[serde(default)]
     pub is_local: bool,
 
-    /// Host address (e.g., "127.0.0.1")
+    /// Host address rclone binds to (e.g., "127.0.0.1", "0.0.0.0").
+    ///
+    /// Note: wildcard addresses like `0.0.0.0` or `::` cannot be used for
+    /// outgoing HTTP requests. Use [`Backend::request_host`] to get a
+    /// routable address for connections.
     pub host: String,
 
     /// RC API port (e.g., 51900)
@@ -33,9 +45,21 @@ pub struct Backend {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub password: Option<String>,
 
-    /// OAuth port for local backends (same host, different port)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub oauth_port: Option<u16>,
+    /// Port for the OAuth helper process.
+    ///
+    /// Always required — there is no valid configuration without an OAuth
+    /// port for local backends, and we keep a consistent default for remote
+    /// ones so the field is never absent.
+    #[serde(default = "default_oauth_port")]
+    pub oauth_port: u16,
+
+    /// Host the OAuth helper process listens on / that we connect to.
+    ///
+    /// Defaults to `127.0.0.1`. Must be a routable address (never a wildcard
+    /// like `0.0.0.0`), because we make outgoing HTTP requests to it.
+    /// In Docker environments set this to the container's accessible address.
+    #[serde(default = "default_oauth_host")]
+    pub oauth_host: String,
 
     /// Config password for encrypted remote configs - stored in keychain
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -48,8 +72,12 @@ pub struct Backend {
 
 impl Default for Backend {
     fn default() -> Self {
-        Self::new_local("Local")
+        Self::new_local(default_backend_name())
     }
+}
+
+pub fn default_backend_name() -> String {
+    "Local".to_string()
 }
 
 impl Backend {
@@ -62,7 +90,8 @@ impl Backend {
             port: 51900,
             username: None,
             password: None,
-            oauth_port: Some(51901),
+            oauth_port: 51901,
+            oauth_host: "127.0.0.1".to_string(),
             config_password: None,
             config_path: None,
         }
@@ -77,27 +106,56 @@ impl Backend {
             port,
             username: None,
             password: None,
-            oauth_port: None,
+            oauth_port: default_oauth_port(),
+            oauth_host: default_oauth_host(),
             config_password: None,
             config_path: None,
         }
     }
 
+    /// Resolve the host to a routable address for outgoing HTTP requests.
+    ///
+    /// Wildcard bind addresses (`0.0.0.0`, `::`) cannot be used as request
+    /// targets. This maps them to their loopback equivalents so we can
+    /// always connect to a locally-bound rclone process regardless of how
+    /// the user configured the bind address.
+    pub fn request_host(&self) -> &str {
+        match self.host.as_str() {
+            "0.0.0.0" => "127.0.0.1",
+            "::" | "::0" => "::1",
+            h => h,
+        }
+    }
+
+    /// Format a host string for use in HTTP URLs.
+    ///
+    /// IPv6 addresses must be wrapped in brackets per RFC 3986.
+    fn format_url_host(host: &str) -> String {
+        if host.contains(':') {
+            format!("[{host}]")
+        } else {
+            host.to_string()
+        }
+    }
+
     /// Get the full API URL for this backend
     pub fn api_url(&self) -> String {
-        format!("http://{}:{}", self.host, self.port)
+        let host = Self::format_url_host(self.request_host());
+        format!("http://{host}:{}", self.port)
     }
 
-    /// Get the OAuth HTTP URL for this backend (if oauth_port is configured)
-    pub fn oauth_url(&self) -> Option<String> {
-        self.oauth_port
-            .map(|port| format!("http://{}:{}", self.host, port))
+    /// Get the OAuth HTTP URL for this backend
+    pub fn oauth_url(&self) -> String {
+        let host = Self::format_url_host(&self.oauth_host);
+        format!("http://{host}:{}", self.oauth_port)
     }
 
-    /// Get the OAuth address (host:port) for TCP connection checks
-    pub fn oauth_addr(&self) -> Option<String> {
-        self.oauth_port
-            .map(|port| format!("{}:{}", self.host, port))
+    /// Get the OAuth address (host:port) for TCP connection checks.
+    ///
+    /// Rust's `TcpStream::connect` requires brackets for IPv6 addresses.
+    pub fn oauth_addr(&self) -> String {
+        let host = Self::format_url_host(&self.oauth_host);
+        format!("{host}:{}", self.oauth_port)
     }
 
     /// Check if RC API auth is properly configured
@@ -111,23 +169,25 @@ impl Backend {
     /// Inject Basic Authentication headers into a request builder
     pub fn inject_auth(&self, builder: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
         if self.has_valid_auth() {
-            let username = self.username.as_ref().unwrap();
-            let password = self.password.as_ref().unwrap();
-            return builder.basic_auth(username, Some(password));
+            builder.basic_auth(
+                self.username.as_deref().unwrap_or_default(),
+                self.password.as_deref(),
+            )
+        } else {
+            builder
         }
-        builder
     }
 
     /// Build a full URL for a specific endpoint
     pub fn url_for(&self, endpoint: &str) -> String {
-        format!("{}/{}", self.api_url().trim_end_matches('/'), endpoint)
+        format!("{}/{endpoint}", self.api_url().trim_end_matches('/'))
     }
 
     /// Build a full URL for a specific endpoint using the OAuth port
-    pub fn oauth_url_for(&self, endpoint: &str) -> Option<String> {
-        self.oauth_url()
-            .map(|base| format!("{}/{}", base.trim_end_matches('/'), endpoint))
+    pub fn oauth_url_for(&self, endpoint: &str) -> String {
+        format!("{}/{endpoint}", self.oauth_url().trim_end_matches('/'))
     }
+
     /// Make an authenticated request to a specific endpoint
     pub async fn make_request(
         &self,
@@ -143,7 +203,6 @@ impl Backend {
         if let Some(data) = payload {
             builder = builder.json(data);
         }
-
         if let Some(duration) = timeout {
             builder = builder.timeout(duration);
         }
@@ -151,35 +210,27 @@ impl Backend {
         let response = builder
             .send()
             .await
-            .map_err(|e| format!("Failed to send request to {}: {}", endpoint, e))?;
+            .map_err(|e| format!("Failed to send request to {endpoint}: {e}"))?;
 
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().await.unwrap_or_default();
-            // Try to extract error message from JSON if possible
-            let error_msg = if let Ok(json) = serde_json::from_str::<serde_json::Value>(&body) {
-                json.get("error")
-                    .and_then(|e| e.as_str())
-                    .map(|s| s.to_string())
-                    .unwrap_or(body)
-            } else {
-                body
-            };
-
-            return Err(format!("Request failed (HTTP {}): {}", status, error_msg));
+        if response.status().is_success() {
+            return Ok(response);
         }
 
-        Ok(response)
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        let error_msg = serde_json::from_str::<serde_json::Value>(&body)
+            .ok()
+            .and_then(|json| {
+                json.get("error")
+                    .and_then(|e| e.as_str())
+                    .map(str::to_string)
+            })
+            .unwrap_or(body);
+
+        Err(format!("Request failed (HTTP {status}): {error_msg}"))
     }
 
-    /// Helper for POST requests expecting JSON response
-    ///
-    /// This handles:
-    /// 1. URL construction
-    /// 2. Authentication injection
-    /// 3. Request sending
-    /// 4. Error status checking (extracting error message)
-    /// 5. JSON response parsing
+    /// Fetch runtime version and config-path information from the rclone API.
     pub async fn fetch_runtime_info(
         &self,
         client: &reqwest::Client,
@@ -190,9 +241,7 @@ impl Backend {
 
         let mut info = RuntimeInfo::new();
 
-        // Fetch core/version with timeout
-        let version_future = fetch_version_info(self, client);
-        match tokio::time::timeout(timeout, version_future).await {
+        match tokio::time::timeout(timeout, fetch_version_info(self, client)).await {
             Ok(Ok(version_data)) => {
                 log::debug!("Fetched version info for backend: {}", self.name);
                 info.version = Some(version_data.version);
@@ -201,7 +250,7 @@ impl Backend {
                 info.go_version = Some(version_data.go_version);
             }
             Ok(Err(e)) => {
-                log::warn!("Failed to fetch version for backend {}: {}", self.name, e);
+                log::warn!("Failed to fetch version for backend {}: {e}", self.name);
                 return RuntimeInfo::with_error(e);
             }
             Err(_) => {
@@ -210,23 +259,21 @@ impl Backend {
             }
         }
 
-        // Fetch config/paths (optional)
-        let paths_future = fetch_config_path(self, client);
-        match tokio::time::timeout(timeout, paths_future).await {
+        // Config path is non-critical — log and continue on failure.
+        match tokio::time::timeout(timeout, fetch_config_path(self, client)).await {
             Ok(Ok(path)) => {
                 log::debug!("Fetched config path for backend: {}", self.name);
                 info.config_path = Some(path);
             }
             Ok(Err(e)) => {
                 log::debug!(
-                    "Could not fetch paths for backend {} (non-critical): {}",
-                    self.name,
-                    e
+                    "Could not fetch config path for backend {} (non-critical): {e}",
+                    self.name
                 );
             }
             Err(_) => {
                 log::debug!(
-                    "Timeout fetching paths for backend {} (non-critical)",
+                    "Timeout fetching config path for backend {} (non-critical)",
                     self.name
                 );
             }
@@ -236,43 +283,39 @@ impl Backend {
         info
     }
 
-    /// Helper to construct URL and fetch a remote file stream with authentication
-    pub async fn fetch_file_stream(
-        &self,
-        client: &reqwest::Client,
-        remote: &str,
-        path: &str,
-    ) -> Result<reqwest::Response, String> {
+    /// Build the URL used to fetch a remote file over the rclone serve endpoint.
+    fn build_file_url(&self, remote: &str, path: &str) -> String {
         let r_name = if remote.contains(':') {
             remote.to_string()
         } else {
-            format!("{}:", remote)
+            format!("{remote}:")
         };
 
-        // Encode path segments to ensure valid URL
         let encoded_path = path
             .split('/')
             .map(urlencoding::encode)
             .collect::<Vec<_>>()
             .join("/");
 
-        let url = format!(
-            "{}/[{}]/{}",
+        format!(
+            "{}/[{r_name}]/{}",
             self.api_url().trim_end_matches('/'),
-            r_name,
             encoded_path.trim_start_matches('/')
-        );
-
-        let mut builder = client.get(&url);
-        builder = self.inject_auth(builder);
-
-        builder
-            .send()
-            .await
-            .map_err(|e| format!("Failed to fetch remote file: {}", e))
+        )
     }
 
-    /// Same as [`fetch_file_stream`] but adds an optional `Range` header.
+    /// Helper to construct URL and fetch a remote file stream with authentication.
+    pub async fn fetch_file_stream(
+        &self,
+        client: &reqwest::Client,
+        remote: &str,
+        path: &str,
+    ) -> Result<reqwest::Response, String> {
+        self.fetch_file_stream_with_range(client, remote, path, None)
+            .await
+    }
+
+    /// Like [`fetch_file_stream`] but forwards an optional HTTP `Range` header.
     ///
     /// The custom URI protocol handler uses this to forward browser range
     /// requests unchanged, allowing rclone to return partial content and avoid
@@ -284,28 +327,9 @@ impl Backend {
         path: &str,
         range: Option<&str>,
     ) -> Result<reqwest::Response, String> {
-        let r_name = if remote.contains(':') {
-            remote.to_string()
-        } else {
-            format!("{}:", remote)
-        };
+        let url = self.build_file_url(remote, path);
+        let mut builder = self.inject_auth(client.get(&url));
 
-        // Encode path segments to ensure valid URL
-        let encoded_path = path
-            .split('/')
-            .map(urlencoding::encode)
-            .collect::<Vec<_>>()
-            .join("/");
-
-        let url = format!(
-            "{}/[{}]/{}",
-            self.api_url().trim_end_matches('/'),
-            r_name,
-            encoded_path.trim_start_matches('/')
-        );
-
-        let mut builder = client.get(&url);
-        builder = self.inject_auth(builder);
         if let Some(r) = range {
             builder = builder.header(reqwest::header::RANGE, r);
         }
@@ -313,10 +337,10 @@ impl Backend {
         builder
             .send()
             .await
-            .map_err(|e| format!("Failed to fetch remote file: {}", e))
+            .map_err(|e| format!("Failed to fetch remote file: {e}"))
     }
 
-    /// Helper for POST requests expecting JSON response
+    /// Helper for POST requests expecting a JSON response.
     pub async fn post_json(
         &self,
         client: &reqwest::Client,
@@ -330,7 +354,7 @@ impl Backend {
         response
             .json()
             .await
-            .map_err(|e| format!("Failed to parse response: {}", e))
+            .map_err(|e| format!("Failed to parse response: {e}"))
     }
 }
 
@@ -347,8 +371,8 @@ pub struct BackendInfo {
     pub has_config_password: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub config_path: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub oauth_port: Option<u16>,
+    pub oauth_port: u16,
+    pub oauth_host: String,
     // Include auth fields for edit form
     #[serde(skip_serializing_if = "Option::is_none")]
     pub username: Option<String>,
@@ -379,12 +403,13 @@ impl BackendInfo {
             has_config_password: backend.config_password.is_some(),
             config_path: backend.config_path.clone(),
             oauth_port: backend.oauth_port,
+            oauth_host: backend.oauth_host.clone(),
             username: backend.username.clone(),
             password: backend.password.clone(),
-            version: None,             // Set from runtime cache
-            os: None,                  // Set from runtime cache
-            status: None,              // Set from runtime cache
-            runtime_config_path: None, // Set from runtime cache
+            version: None,
+            os: None,
+            status: None,
+            runtime_config_path: None,
         }
     }
 
@@ -416,7 +441,8 @@ mod tests {
         assert!(backend.is_local);
         assert_eq!(backend.host, "127.0.0.1");
         assert_eq!(backend.port, 51900);
-        assert_eq!(backend.oauth_port, Some(51901));
+        assert_eq!(backend.oauth_port, 51901);
+        assert_eq!(backend.oauth_host, "127.0.0.1");
     }
 
     #[test]
@@ -427,7 +453,7 @@ mod tests {
         assert!(!backend.is_local);
         assert_eq!(backend.host, "192.168.1.100");
         assert_eq!(backend.port, 51900);
-        assert!(backend.oauth_port.is_none());
+        assert_eq!(backend.oauth_port, 51901);
     }
 
     #[test]
@@ -437,6 +463,45 @@ mod tests {
 
         let remote = Backend::new_remote("NAS", "192.168.1.50", 8080);
         assert_eq!(remote.api_url(), "http://192.168.1.50:8080");
+    }
+
+    #[test]
+    fn test_request_host_wildcard_resolution() {
+        let mut b = Backend::new_local("test");
+
+        b.host = "0.0.0.0".to_string();
+        assert_eq!(b.request_host(), "127.0.0.1");
+        assert_eq!(b.api_url(), "http://127.0.0.1:51900");
+
+        b.host = "::".to_string();
+        assert_eq!(b.request_host(), "::1");
+        assert_eq!(b.api_url(), "http://[::1]:51900");
+
+        b.host = "192.168.1.10".to_string();
+        assert_eq!(b.request_host(), "192.168.1.10");
+        assert_eq!(b.api_url(), "http://192.168.1.10:51900");
+    }
+
+    #[test]
+    fn test_ipv6_url_formatting() {
+        let mut b = Backend::new_local("test");
+        b.host = "::1".to_string();
+        assert_eq!(b.api_url(), "http://[::1]:51900");
+
+        b.oauth_host = "::1".to_string();
+        assert_eq!(b.oauth_url(), "http://[::1]:51901");
+        assert_eq!(b.oauth_addr(), "[::1]:51901");
+    }
+
+    #[test]
+    fn test_oauth_url() {
+        let backend = Backend::new_local("Local");
+        assert_eq!(backend.oauth_url(), "http://127.0.0.1:51901");
+        assert_eq!(backend.oauth_addr(), "127.0.0.1:51901");
+        assert_eq!(
+            backend.oauth_url_for("core/quit"),
+            "http://127.0.0.1:51901/core/quit"
+        );
     }
 
     #[test]
@@ -451,7 +516,7 @@ mod tests {
         assert!(!backend.has_valid_auth()); // password empty
 
         backend.password = Some("pass".to_string());
-        assert!(backend.has_valid_auth()); // both set
+        assert!(backend.has_valid_auth());
     }
 
     #[test]
@@ -459,15 +524,17 @@ mod tests {
         let backend = Backend::new_local("Local");
         let json = serde_json::to_string(&backend).unwrap();
 
-        // name and password are skipped
+        // name is skipped, password is None so also skipped
         assert!(!json.contains("\"name\""));
-        assert!(!json.contains("\"password\""));
         assert!(json.contains("\"is_local\":true"));
         assert!(json.contains("\"host\":\"127.0.0.1\""));
+        assert!(json.contains("\"oauth_port\":51901"));
+        assert!(json.contains("\"oauth_host\":\"127.0.0.1\""));
     }
 
     #[test]
-    fn test_deserialization() {
+    fn test_deserialization_backward_compat() {
+        // Old configs without oauth_port or oauth_host should deserialize with defaults.
         let json = r#"{
             "is_local": false,
             "host": "10.0.0.1",
@@ -478,5 +545,7 @@ mod tests {
         assert_eq!(backend.name, ""); // skipped, set from key
         assert!(!backend.is_local);
         assert_eq!(backend.host, "10.0.0.1");
+        assert_eq!(backend.oauth_port, 51901); // default
+        assert_eq!(backend.oauth_host, "127.0.0.1"); // default
     }
 }

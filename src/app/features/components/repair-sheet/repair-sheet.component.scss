@@ -61,7 +61,7 @@
       padding: var(--space-lg);
       background: rgba(var(--warn-color-rgb), 0.04);
       border-radius: var(--card-border-radius);
-      box-shadow: 0 0 0 1px var(--card-shade-color);
+      box-shadow: var(--box-shadow);
       gap: var(--space-sm);
       display: flex;
       flex-direction: column;

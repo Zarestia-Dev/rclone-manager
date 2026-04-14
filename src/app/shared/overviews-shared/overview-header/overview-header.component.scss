@@ -3,105 +3,120 @@
 }
 
 .overview-header {
-  text-align: center;
-}
-
-.header-content {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  justify-content: center;
 }
 
-.title-section {
+.header-btn {
   display: flex;
   align-items: center;
   gap: var(--space-md);
-  padding: var(--space-xs) var(--space-md);
+  padding: var(--space-xs) var(--space-lg);
   border-radius: var(--radius-md);
   cursor: pointer;
   font-family: inherit;
-  transition: var(--transition-standard);
+  transition: background 0.15s ease;
 
   &:hover {
-    background-color: var(--hover-bg-color);
+    background: var(--hover-bg-color);
   }
 }
 
-.logo-container {
+// ── Logo / Icon ──────────────────────────────────────────────────────────────
+
+.logo-wrap {
   position: relative;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
+  justify-content: center;
 }
 
-.app-icon {
+.app-logo {
+  width: var(--icon-size-xl);
+  height: var(--icon-size-xl);
+  display: block;
+}
+
+.mode-logo {
   width: var(--icon-size-xl);
   height: var(--icon-size-xl);
   color: var(--mode-primary-color, var(--primary-color));
-  transition: var(--transition-standard);
+  transition: color 0.3s ease;
   will-change: color;
 }
 
 .status-dot {
   position: absolute;
-  bottom: 2px;
+  bottom: 0;
   right: -2px;
   width: 10px;
   height: 10px;
   border-radius: 50%;
   border: 2px solid var(--window-bg-color);
-  background-color: var(--dim-color);
-  transition: var(--transition-standard);
-  will-change: transform, opacity;
+  background: var(--dim-color);
+  transition:
+    background 0.25s ease,
+    box-shadow 0.25s ease;
 
   &.connected {
-    background-color: var(--primary-color);
-    box-shadow: 0 0 0 2px var(--window-bg-color);
+    background: var(--primary-color);
   }
 
   &.disconnected {
-    background-color: var(--warn-color);
+    background: var(--warn-color);
   }
 }
 
-.text-container {
+// ── Text ─────────────────────────────────────────────────────────────────────
+
+.header-text {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  text-align: left;
-
-  h2 {
-    margin: 0;
-    color: var(--window-fg-color);
-    font-size: var(--font-size-2xl);
-    font-weight: 300;
-    letter-spacing: -0.5px;
-    line-height: 1.2;
-  }
-
-  .backend-name {
-    color: var(--dim-color);
-    font-size: var(--font-size-sm);
-    font-weight: 400;
-  }
 }
 
-@media (max-width: 768px) {
-  .overview-header {
-    margin-bottom: var(--panel-padding-mobile);
-  }
+.header-title {
+  margin: 0;
+  font-size: var(--font-size-2xl);
+  font-weight: 300;
+  color: var(--window-fg-color);
+  letter-spacing: -0.4px;
+  line-height: 1.2;
+}
 
-  .app-icon {
+.backend-label {
+  font-size: var(--font-size-sm);
+  color: var(--dim-color);
+  font-weight: 500;
+  line-height: 1;
+}
+
+// ── Responsive ───────────────────────────────────────────────────────────────
+
+@media (max-width: 768px) {
+  .header-btn {
+    gap: var(--space-sm);
+    padding: var(--space-xs) var(--space-md);
+  }
+  .app-logo,
+  .mode-logo {
     width: var(--icon-size-lg);
     height: var(--icon-size-lg);
+  }
+
+  .header-title {
+    font-size: var(--font-size-xl);
   }
 }
 
 @media (max-width: 480px) {
-  .title-section {
-    gap: var(--space-sm);
+  .header-btn {
+    gap: var(--space-xs);
+    padding: var(--space-xxs) var(--space-sm);
   }
 
-  .text-container h2 {
-    font-size: var(--font-size-xl);
+  .header-title {
+    font-size: var(--font-size-lg);
   }
 }

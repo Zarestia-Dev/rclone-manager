@@ -1,7 +1,10 @@
 import type { JobInfo, TransferFile } from './jobs';
-import { PrimaryActionType } from './operations';
+import type { PrimaryActionType, RemoteAction } from './operations';
 
-// Settings Panel
+// ── Shared color tokens used across operation UI ───────────────────────────
+export type OperationColor = 'primary' | 'accent' | 'yellow' | 'orange' | 'purple' | 'warn';
+
+// ── Settings Panel ──────────────────────────────────────────────────────────
 export interface SettingsSection {
   key: string;
   title: string;
@@ -10,26 +13,11 @@ export interface SettingsSection {
 
 export interface SettingsPanelConfig {
   section: SettingsSection;
-  settings: any;
-  hasSettings: boolean;
-  buttonColor?: string;
+  settings: Record<string, unknown>;
   buttonLabel?: string;
-  sensitiveKeys?: string[];
 }
 
-// Status Badge
-export interface StatusBadgeConfig {
-  isActive: boolean;
-  isError?: boolean;
-  isLoading?: boolean;
-  activeLabel: string;
-  inactiveLabel: string;
-  errorLabel?: string;
-  loadingLabel?: string;
-  badgeClass?: string;
-}
-
-// Stats Panel
+// ── Stats Panel ─────────────────────────────────────────────────────────────
 export interface StatItem {
   value: string | number;
   label: string;
@@ -43,47 +31,48 @@ export interface StatsPanelConfig {
   title: string;
   icon: string;
   stats: StatItem[];
-  operationClass?: string;
-  operationColor?: string;
 }
 
-// Path Display
+// ── Path Display ────────────────────────────────────────────────────────────
 export interface PathDisplayConfig {
   source: string;
   destination: string;
   sourceLabel?: string;
   destinationLabel?: string;
   showOpenButtons?: boolean;
-  operationColor?: string;
   isDestinationActive?: boolean;
-  actionInProgress?: string;
+  actionInProgress?: RemoteAction;
+  hasSource?: boolean;
+  hasDestination?: boolean;
 }
 
-// Jobs Panel
+// ── Jobs Panel ──────────────────────────────────────────────────────────────
 export interface JobsPanelConfig {
   jobs: JobInfo[];
-  displayedColumns: string[];
+  displayedColumns: readonly string[];
 }
 
-// Profile option for selectors
+// ── Profile selector ────────────────────────────────────────────────────────
 export interface ProfileOption {
   name: string;
   label: string;
 }
 
-// Job Info Panel
+// ── Job Info Panel ──────────────────────────────────────────────────────────
 export interface JobInfoConfig {
   operationType: string;
   jobId?: number;
+  status?: string;
   startTime?: Date;
-  lastOperationTime?: string;
-  // Profile selection support
+  endTime?: Date;
+  duration?: string;
   profiles?: ProfileOption[];
   selectedProfile?: string;
   showProfileSelector?: boolean;
+  errors?: string[];
 }
 
-// Operation Control
+// ── Operation Control ───────────────────────────────────────────────────────
 export interface OperationControlConfig {
   operationType: PrimaryActionType;
   isActive: boolean;
@@ -95,12 +84,12 @@ export interface OperationControlConfig {
   primaryIcon: string;
   secondaryButtonLabel: string;
   secondaryIcon: string;
-  actionInProgress?: string;
+  actionInProgress?: RemoteAction;
   operationDescription?: string;
   profileName?: string;
 }
 
-// Transfer Activity Panel
+// ── Transfer Activity Panel ─────────────────────────────────────────────────
 export interface CompletedTransfer {
   name: string;
   size: number;
@@ -119,13 +108,11 @@ export interface CompletedTransfer {
 export interface TransferActivityPanelConfig {
   activeTransfers: TransferFile[];
   completedTransfers: CompletedTransfer[];
-  operationClass: string;
-  operationColor: string;
   remoteName: string;
   showHistory: boolean;
 }
 
-// Installation Options component
+// ── Installation wizard ─────────────────────────────────────────────────────
 export interface InstallationOptionsData {
   installLocation: 'default' | 'custom' | 'existing';
   customPath: string;
@@ -139,5 +126,6 @@ export interface InstallationTabOption {
   icon: string;
 }
 
-// Remote card variants used across overview components
+// ── Remote card display ─────────────────────────────────────────────────────
 export type RemoteCardVariant = 'active' | 'inactive' | 'error';
+export type CardDisplayMode = 'compact' | 'detailed';

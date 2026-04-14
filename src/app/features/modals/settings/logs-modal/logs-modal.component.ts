@@ -3,7 +3,9 @@ import {
   Component,
   ElementRef,
   HostListener,
+  Injector,
   OnInit,
+  afterNextRender,
   computed,
   inject,
   signal,
@@ -23,7 +25,7 @@ import { DatePipe, UpperCasePipe } from '@angular/common';
 import { LogContext, RemoteLogEntry, LOG_LEVELS, LogLevel } from '@app/types';
 import { LoggingService, BackendTranslationService, ModalService } from '@app/services';
 import { AnsiToHtmlPipe } from 'src/app/shared/pipes/ansi-to-html.pipe';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-logs-modal',
@@ -55,8 +57,9 @@ export class LogsModalComponent implements OnInit {
   private readonly loggingService = inject(LoggingService);
   private readonly backendTranslation = inject(BackendTranslationService);
   private readonly modalService = inject(ModalService);
+  private readonly translate = inject(TranslateService);
+  private readonly injector = inject(Injector);
 
-  // Expose log levels to the template
   public readonly logLevels = LOG_LEVELS;
 
   // --- State Signals ---
@@ -95,8 +98,10 @@ export class LogsModalComponent implements OnInit {
         this.data.remoteName
       )) as unknown as RemoteLogEntry[];
       this.logs.set(fetchedLogs);
-      // Auto-scroll to newest logs
-      setTimeout(() => this.scrollToBottom(), 100);
+      afterNextRender(() => this.scrollToBottom(), { injector: this.injector });
+    } catch {
+      const message = this.translate.instant('modals.logs.fetchError');
+      this.snackBar.open(message, undefined, { duration: 3000 });
     } finally {
       this.loading.set(false);
     }
@@ -107,15 +112,16 @@ export class LogsModalComponent implements OnInit {
     try {
       await this.loggingService.clearRemoteLogs(this.data.remoteName);
       this.logs.set([]);
+    } catch {
+      const message = this.translate.instant('modals.logs.clearError');
+      this.snackBar.open(message, undefined, { duration: 3000 });
     } finally {
       this.loading.set(false);
     }
   }
 
   // --- Log Parsing Helpers ---
-
   getLogId(log: RemoteLogEntry): string {
-    // Create unique ID for tracking UI state
     return `${log.timestamp}-${log.message.substring(0, 15)}`;
   }
 
@@ -124,6 +130,7 @@ export class LogsModalComponent implements OnInit {
   }
 
   toggleDetails(log: RemoteLogEntry): void {
+    if (!log.context) return;
     const id = this.getLogId(log);
     this.expandedLogs.update(current => {
       const next = new Set(current);
@@ -140,40 +147,25 @@ export class LogsModalComponent implements OnInit {
   getCommandOutput(log: RemoteLogEntry): string | null {
     if (!log.context) return null;
 
-    // 1. Check for Rclone Job Status structure (Bisync/Sync errors)
-    // The context often comes as a parsed JSON object where 'status' is a key
-    const contextAny = log.context as any;
-    if (contextAny?.status?.output?.output) {
-      return contextAny.status.output.output;
-    }
+    const ctx = log.context as any;
 
-    // 2. Check for direct output (common in simpler commands)
-    if (typeof contextAny?.output === 'string') {
-      return contextAny.output;
-    }
-
-    // 3. Fallback: If output is an object, try stringifying it
-    if (contextAny?.output && typeof contextAny.output === 'object') {
-      return JSON.stringify(contextAny.output, null, 2);
-    }
+    if (ctx?.status?.output?.output) return ctx.status.output.output;
+    if (typeof ctx?.output === 'string') return ctx.output;
+    if (ctx?.output && typeof ctx.output === 'object') return JSON.stringify(ctx.output, null, 2);
 
     return null;
   }
 
   formatContext(context: LogContext): string {
     try {
-      // Shallow clone to avoid mutating the actual log data
       const displayContext = { ...context } as any;
-
-      // If 'response' is a stringified JSON (common in HTTP logs), parse it
-      if (displayContext.response && typeof displayContext.response === 'string') {
+      if (typeof displayContext.response === 'string') {
         try {
           displayContext.response = JSON.parse(displayContext.response);
         } catch {
-          /* ignore */
+          /* not valid JSON, keep as-is */
         }
       }
-
       return JSON.stringify(displayContext, null, 2);
     } catch (e) {
       console.error('Error formatting log context:', e);
@@ -181,9 +173,6 @@ export class LogsModalComponent implements OnInit {
     }
   }
 
-  /**
-   * Translate log message if it's a backend error/success message
-   */
   translateLogMessage(message: string): string {
     return this.backendTranslation.translateBackendMessage(message);
   }
@@ -194,7 +183,6 @@ export class LogsModalComponent implements OnInit {
     let text = `[${log.timestamp}] [${log.level.toUpperCase()}] ${translatedMessage}`;
 
     if (output) {
-      // Strip ANSI codes for clipboard text
       // eslint-disable-next-line no-control-regex
       const cleanOutput = output.replace(/\u001b\[\d+;?\d*m/g, '');
       text += `\n\nOutput:\n${cleanOutput}`;
@@ -206,25 +194,26 @@ export class LogsModalComponent implements OnInit {
 
     try {
       await navigator.clipboard.writeText(text);
-      this.snackBar.open('Log copied to clipboard', undefined, { duration: 2000 });
+      this.snackBar.open(this.translate.instant('modals.logs.copiedToClipboard'), undefined, {
+        duration: 2000,
+      });
     } catch (error) {
       console.error('Failed to copy log to clipboard:', error);
-      this.snackBar.open('Failed to copy', undefined, { duration: 2000 });
+      this.snackBar.open(this.translate.instant('common.errorCopied'), undefined, {
+        duration: 2000,
+      });
     }
   }
 
   scrollToBottom(): void {
-    const el = this.terminalLogArea()?.nativeElement;
-    if (el) {
-      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-    }
+    this.terminalLogArea()?.nativeElement.scrollTo({
+      top: Number.MAX_SAFE_INTEGER,
+      behavior: 'smooth',
+    });
   }
 
   scrollToTop(): void {
-    const el = this.terminalLogArea()?.nativeElement;
-    if (el) {
-      el.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    this.terminalLogArea()?.nativeElement.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   @HostListener('document:keydown.escape')

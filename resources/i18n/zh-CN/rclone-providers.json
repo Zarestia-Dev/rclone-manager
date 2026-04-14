@@ -1,594 +1,601 @@
 {
   "providers": {
-
-  "alias": {
-    "description": {
-      "title": "描述",
-      "help": "远程存储的描述信息。"
+    "alias": {
+      "description": {
+        "title": "描述",
+        "help": "远程存储的描述信息。"
+      },
+      "remote": {
+        "title": "远程存储",
+        "help": "要创建别名的远程存储或路径。\n\n格式可为 \"myremote:path/to/dir\"、\"myremote:bucket\"、\"myremote:\" 或 \"/local/path\"。"
+      }
+    },
+    "archive": {
+      "description": {
+        "title": "描述",
+        "help": "远程存储的描述信息。"
+      },
+      "remote": {
+        "title": "远程存储",
+        "help": "用于读取归档文件的封装远程存储。\n\n通常应包含冒号和路径，例如 \"myremote:path/to/dir\"、\n\"myremote:bucket\" 或 \"myremote:\"。\n\n若留空，则归档后端会将根目录作为\n远程存储使用。\n\n这意味着你可以使用 :archive:remote:path，其效果等同于设置 remote=\"remote:path\"。\n"
+      }
+    },
+    "azureblob": {
+      "access_tier": {
+        "title": "访问层级",
+        "help": "Blob的访问层级：hot（热）、cool（冷）、cold（极冷）或archive（归档）。\n\n归档层级的Blob可通过将访问层级设置为hot、cool或cold来恢复。若打算使用账户级别的默认访问层级，留空即可。\n\n若未指定\"访问层级\"，rclone不会应用任何层级设置。\nrclone会在上传时对Blob执行\"设置层级\"操作，若对象未被修改，即使指定新的\"访问层级\"也不会生效。\n若远程端的Blob处于\"归档层级\"，则不允许从远程端执行数据传输操作。用户需先将Blob层级调整为\"Hot\"、\"Cool\"或\"Cold\"以恢复访问。"
+      },
+      "account": {
+        "title": "存储账户",
+        "help": "Azure存储账户名称。\n\n设置为当前使用的Azure存储账户名称。\n\n若使用SAS URL或模拟器则留空，否则必须设置。\n\n若此项留空且启用了env_auth，将尝试从环境变量`AZURE_STORAGE_ACCOUNT_NAME`读取。\n"
+      },
+      "archive_tier_delete": {
+        "title": "归档层级删除",
+        "help": "覆盖前删除归档层级的Blob。\n\n归档层级的Blob无法更新。因此若未设置此标志，尝试更新归档层级Blob时，rclone会抛出以下错误：\n\n    can't update archive tier blob without --azureblob-archive-tier-delete\n\n启用此标志后，rclone在尝试覆盖归档层级Blob前，会先删除现有Blob再上传替换文件。这可能导致上传失败时的数据丢失（与更新普通Blob不同），且提前删除归档层级Blob可能产生额外费用。\n"
+      },
+      "chunk_size": {
+        "title": "分块大小",
+        "help": "上传分块大小。\n\n注意：该数据会存储在内存中，同时存储的分块数量最多可达\"--transfers\" * \"--azureblob-upload-concurrency\"。"
+      },
+      "client_certificate_password": {
+        "title": "客户端证书密码",
+        "help": "证书文件的密码（可选）。\n\n若满足以下条件可选择性设置：\n- 使用带证书的服务主体\n\n且证书设有密码。\n"
+      },
+      "client_certificate_path": {
+        "title": "客户端证书路径",
+        "help": "包含私钥的PEM或PKCS12证书文件路径。\n\n满足以下条件时设置：\n- 使用带证书的服务主体\n"
+      },
+      "client_id": {
+        "title": "客户端ID",
+        "help": "当前使用的客户端ID。\n\n满足以下条件时设置：\n- 使用带客户端密钥的服务主体\n- 使用带证书的服务主体\n- 使用用户名密码登录的用户\n"
+      },
+      "client_secret": {
+        "title": "客户端密钥",
+        "help": "服务主体的客户端密钥之一\n\n满足以下条件时设置：\n- 使用带客户端密钥的服务主体\n"
+      },
+      "client_send_certificate_chain": {
+        "title": "发送客户端证书链",
+        "help": "使用证书认证时发送证书链。\n\n指定认证请求是否包含x5c头部，以支持基于主体名称/颁发者的认证。设为true时，认证请求会包含x5c头部。\n\n满足以下条件可选择性设置：\n- 使用带证书的服务主体\n"
+      },
+      "copy_concurrency": {
+        "title": "复制并发数",
+        "help": "分块复制的并发数。\n\n即同一文件的分块同时复制的数量。\n\n这些分块不会在内存中缓冲，Microsoft在azcopy文档中建议将此值设置为大于1000。\n\nhttps://learn.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-optimize#increase-concurrency\n\n测试表明，复制速度几乎随复制并发数线性增长。"
+      },
+      "copy_cutoff": {
+        "title": "复制阈值",
+        "help": "切换至分块复制的文件大小阈值。\n\n任何大于此值且需要服务端复制的文件，将通过put block list API以chunk_size大小的分块进行复制。\n\n小于此限制的文件将使用Copy Blob API复制。"
+      },
+      "delete_snapshots": {
+        "title": "删除快照",
+        "help": "设置删除Blob时如何处理快照。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "远程存储的描述信息。"
+      },
+      "directory_markers": {
+        "title": "目录标记",
+        "help": "创建新目录时上传一个带末尾斜杠的空对象\n\n基于存储桶的远程存储不支持空文件夹，此选项会创建一个以\"/\"结尾的空对象来保留文件夹。\n\n该对象还会设置元数据\"hdi_isfolder = true\"以符合Microsoft标准。\n "
+      },
+      "disable_checksum": {
+        "title": "禁用校验和",
+        "help": "不在对象元数据中存储MD5校验和。\n\n默认情况下，rclone会在上传前计算输入文件的MD5校验和，并添加到对象元数据中。这有助于数据完整性校验，但会导致大文件开始上传前出现较长延迟。"
+      },
+      "disable_instance_discovery": {
+        "title": "禁用实例发现",
+        "help": "跳过请求Microsoft Entra实例元数据\n\n仅在断开连接的云环境或私有云（如Azure Stack）中认证的应用程序需设为true。\n\n该选项决定rclone在认证前是否从`https://login.microsoft.com/`请求Microsoft Entra实例元数据。\n\n设为true将跳过此请求，需自行确保配置的授权机构有效且可信。\n"
+      },
+      "encoding": {
+        "title": "编码方式",
+        "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
+      },
+      "endpoint": {
+        "title": "接入点",
+        "help": "服务接入点。\n\n通常留空。"
+      },
+      "env_auth": {
+        "title": "环境认证",
+        "help": "从运行时读取凭据（环境变量、CLI或MSI）。\n\n详见[认证文档](/azureblob#authentication)。"
+      },
+      "key": {
+        "title": "访问密钥",
+        "help": "存储账户共享密钥。\n\n若使用SAS URL或模拟器则留空。"
+      },
+      "list_chunk": {
+        "title": "列表分块大小",
+        "help": "Blob列表的大小。\n\n设置每次列出操作请求的Blob数量。默认值为最大值5000。\"列出Blob\"请求允许每兆字节2分钟的完成时间。若操作平均耗时超过每兆字节2分钟，将超时（\n[来源](https://docs.microsoft.com/en-us/rest/api/storageservices/setting-timeouts-for-blob-service-operations#exceptions-to-default-timeout-interval)\n）。可通过此参数限制返回的Blob数量以避免超时。"
+      },
+      "memory_pool_flush_time": {
+        "title": "内存池刷新时间",
+        "help": "内部内存缓冲池的刷新频率。（已不再使用）"
+      },
+      "memory_pool_use_mmap": {
+        "title": "内存池使用mmap",
+        "help": "内部内存池是否使用mmap缓冲区。（已不再使用）"
+      },
+      "msi_client_id": {
+        "title": "MSI客户端ID",
+        "help": "要使用的用户分配MSI的对象ID（如有）。\n\n若指定了msi_object_id或msi_mi_res_id则留空。"
+      },
+      "msi_mi_res_id": {
+        "title": "MSI资源ID",
+        "help": "要使用的用户分配MSI的Azure资源ID（如有）。\n\n若指定了msi_client_id或msi_object_id则留空。"
+      },
+      "msi_object_id": {
+        "title": "MSI对象ID",
+        "help": "要使用的用户分配MSI的对象ID（如有）。\n\n若指定了msi_client_id或msi_mi_res_id则留空。"
+      },
+      "no_check_container": {
+        "title": "不检查容器",
+        "help": "若设置，不检查容器是否存在或创建容器。\n\n若确定容器已存在，此选项有助于减少rclone的事务数量。\n"
+      },
+      "no_head_object": {
+        "title": "不执行HEAD请求",
+        "help": "若设置，获取对象时不在GET前执行HEAD请求。"
+      },
+      "password": {
+        "title": "密码",
+        "help": "用户密码\n\n满足以下条件时设置：\n- 使用用户名密码登录的用户\n"
+      },
+      "public_access": {
+        "title": "公共访问级别",
+        "help": "容器的公共访问级别：blob（仅Blob）或container（容器级）。"
+      },
+      "sas_url": {
+        "title": "SAS URL",
+        "help": "仅容器级访问的SAS URL。\n\n若使用账户/密钥或模拟器则留空。"
+      },
+      "service_principal_file": {
+        "title": "服务主体文件",
+        "help": "包含服务主体凭据的文件路径。\n\n通常留空。仅当希望使用服务主体而非交互式登录时需要设置。\n\n    $ az ad sp create-for-rbac --name \"<name>\" \\\n      --role \"Storage Blob Data Owner\" \\\n      --scopes \"/subscriptions/<subscription>/resourceGroups/<resource-group>/providers/Microsoft.Storage/storageAccounts/<storage-account>/blobServices/default/containers/<container>\" \\\n      > azure-principal.json\n\n详见[\"创建Azure服务主体\"](https://docs.microsoft.com/en-us/cli/azure/create-an-azure-service-principal-azure-cli)和[\"分配Azure角色以访问Blob数据\"](https://docs.microsoft.com/en-us/azure/storage/common/storage-auth-aad-rbac-cli)文档。\n\n也可直接将凭据填写到rclone配置文件的`client_id`、`tenant`和`client_secret`字段，而非设置`service_principal_file`。\n"
+      },
+      "tenant": {
+        "title": "租户ID",
+        "help": "服务主体的租户ID，也称为目录ID。\n\n满足以下条件时设置：\n- 使用带客户端密钥的服务主体\n- 使用带证书的服务主体\n- 使用用户名密码登录的用户\n"
+      },
+      "upload_concurrency": {
+        "title": "上传并发数",
+        "help": "分块上传的并发数。\n\n即同一文件的分块同时上传的数量。\n\n若在高速链路上传少量大文件且未充分利用带宽，提高此值可能加快传输速度。\n\n测试表明，上传速度几乎随上传并发数线性增长。例如，要填满千兆网络链路可能需要将此值提高到64。注意这会占用更多内存。\n\n注意：分块存储在内存中，同时存储的分块数量最多可达\"--transfers\" * \"--azureblob-upload-concurrency\"。"
+      },
+      "upload_cutoff": {
+        "title": "上传阈值",
+        "help": "切换至分块上传的文件大小阈值（<= 256 MiB）（已废弃）。"
+      },
+      "use_az": {
+        "title": "使用Azure CLI",
+        "help": "使用Azure CLI工具az进行认证\n\n设为true时，仅使用[Azure CLI工具az](https://learn.microsoft.com/en-us/cli/azure/)进行认证。\n\n若希望在带有系统分配托管标识的主机上使用az CLI，但不想使用该标识时，此设置会很有用。\n\n请勿同时设置env_auth。\n"
+      },
+      "use_copy_blob": {
+        "title": "使用Copy Blob API",
+        "help": "复制到同一存储账户时是否使用Copy Blob API。\n\n若为true（默认值），即使文件大小超过copy_cutoff，rclone也会对同一存储账户的复制操作使用Copy Blob API。\n\nrclone假定同一存储账户意味着相同配置，不会检查不同配置中的同一存储账户。\n\n无需修改此值。"
+      },
+      "use_emulator": {
+        "title": "使用模拟器",
+        "help": "设为'true'时使用本地存储模拟器。\n\n若使用真实Azure存储接入点则留空。"
+      },
+      "use_msi": {
+        "title": "使用托管标识",
+        "help": "使用托管服务标识进行认证（仅在Azure环境中生效）。\n\n设为true时，使用[托管服务标识](https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/)\n而非SAS令牌或账户密钥认证Azure存储。\n\n若运行此程序的VM(SS)具有系统分配标识，将默认使用该标识。若资源无系统分配标识但仅有一个用户分配标识，\n将默认使用该用户分配标识。若资源有多个用户分配标识，必须通过msi_object_id、\nmsi_client_id或msi_mi_res_id参数明确指定要使用的标识。"
+      },
+      "username": {
+        "title": "用户名",
+        "help": "用户名（通常为电子邮件地址）\n\n满足以下条件时设置：\n- 使用用户名密码登录的用户\n"
+      },
+      "connection_string": {
+        "title": "连接字符串",
+        "help": "存储连接字符串。\n\n存储的连接字符串。如果使用其他认证方法，则留空。\n"
+      }
+    },
+    "azurefiles": {
+      "account": {
+        "title": "存储账户",
+        "help": "Azure存储账户名称。\n\n设置为当前使用的Azure存储账户名称。\n\n若使用SAS URL或连接字符串则留空，否则必须设置。\n\n若此项留空且启用了env_auth，将尝试从环境变量`AZURE_STORAGE_ACCOUNT_NAME`读取。\n"
+      },
+      "chunk_size": {
+        "title": "分块大小",
+        "help": "上传分块大小。\n\n注意：该数据会存储在内存中，同时存储的分块数量最多可达\"--transfers\" * \"--azurefile-upload-concurrency\"。"
+      },
+      "client_certificate_password": {
+        "title": "客户端证书密码",
+        "help": "证书文件的密码（可选）。\n\n若满足以下条件可选择性设置：\n- 使用带证书的服务主体\n\n且证书设有密码。\n"
+      },
+      "client_certificate_path": {
+        "title": "客户端证书路径",
+        "help": "包含私钥的PEM或PKCS12证书文件路径。\n\n满足以下条件时设置：\n- 使用带证书的服务主体\n"
+      },
+      "client_id": {
+        "title": "客户端ID",
+        "help": "当前使用的客户端ID。\n\n满足以下条件时设置：\n- 使用带客户端密钥的服务主体\n- 使用带证书的服务主体\n- 使用用户名密码登录的用户\n"
+      },
+      "client_secret": {
+        "title": "客户端密钥",
+        "help": "服务主体的客户端密钥之一\n\n满足以下条件时设置：\n- 使用带客户端密钥的服务主体\n"
+      },
+      "client_send_certificate_chain": {
+        "title": "发送客户端证书链",
+        "help": "使用证书认证时发送证书链。\n\n指定认证请求是否包含x5c头部，以支持基于主体名称/颁发者的认证。设为true时，认证请求会包含x5c头部。\n\n满足以下条件可选择性设置：\n- 使用带证书的服务主体\n"
+      },
+      "connection_string": {
+        "title": "连接字符串",
+        "help": "Azure Files连接字符串。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "远程存储的描述信息。"
+      },
+      "disable_instance_discovery": {
+        "title": "禁用实例发现",
+        "help": "跳过请求Microsoft Entra实例元数据\n仅在断开连接的云环境或私有云（如Azure Stack）中认证的应用程序需设为true。\n该选项决定rclone在认证前是否从`https://login.microsoft.com/`请求Microsoft Entra实例元数据。\n设为true将跳过此请求，需自行确保配置的授权机构有效且可信。\n"
+      },
+      "encoding": {
+        "title": "编码方式",
+        "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
+      },
+      "endpoint": {
+        "title": "接入点",
+        "help": "服务接入点。\n\n通常留空。"
+      },
+      "env_auth": {
+        "title": "环境认证",
+        "help": "从运行时读取凭据（环境变量、CLI或MSI）。\n\n详见[认证文档](/azurefiles#authentication)。"
+      },
+      "key": {
+        "title": "访问密钥",
+        "help": "存储账户共享密钥。\n\n若使用SAS URL或连接字符串则留空。"
+      },
+      "max_stream_size": {
+        "title": "最大流文件大小",
+        "help": "流式文件的最大大小。\n\nAzure Files需要提前知道文件大小。当rclone无法确定时，将使用此值替代。\n\n以下场景会使用此值：\n\n- 使用`--vfs-cache-mode off`参数通过`rclone mount`上传文件\n- 使用`rclone rcat`命令\n- 复制长度未知的文件\n\n共享目录中需要有足够的可用空间，因为文件会临时占用此大小的空间。\n"
+      },
+      "msi_client_id": {
+        "title": "MSI客户端ID",
+        "help": "要使用的用户分配MSI的对象ID（如有）。\n\n若指定了msi_object_id或msi_mi_res_id则留空。"
+      },
+      "msi_mi_res_id": {
+        "title": "MSI资源ID",
+        "help": "要使用的用户分配MSI的Azure资源ID（如有）。\n\n若指定了msi_client_id或msi_object_id则留空。"
+      },
+      "msi_object_id": {
+        "title": "MSI对象ID",
+        "help": "要使用的用户分配MSI的对象ID（如有）。\n\n若指定了msi_client_id或msi_mi_res_id则留空。"
+      },
+      "password": {
+        "title": "密码",
+        "help": "用户密码\n\n满足以下条件时设置：\n- 使用用户名密码登录的用户\n"
+      },
+      "sas_url": {
+        "title": "SAS URL",
+        "help": "SAS URL。\n\n若使用账户/密钥或连接字符串则留空。"
+      },
+      "service_principal_file": {
+        "title": "服务主体文件",
+        "help": "包含服务主体凭据的文件路径。\n\n通常留空。仅当希望使用服务主体而非交互式登录时需要设置。\n\n    $ az ad sp create-for-rbac --name \"<name>\" \\\n      --role \"Storage Files Data Owner\" \\\n      --scopes \"/subscriptions/<subscription>/resourceGroups/<resource-group>/providers/Microsoft.Storage/storageAccounts/<storage-account>/blobServices/default/containers/<container>\" \\\n      > azure-principal.json\n\n详见[\"创建Azure服务主体\"](https://docs.microsoft.com/en-us/cli/azure/create-an-azure-service-principal-azure-cli)和[\"分配Azure角色以访问文件数据\"](https://docs.microsoft.com/en-us/azure/storage/common/storage-auth-aad-rbac-cli)文档。\n\n**注意**：此部分内容需针对Azure Files更新 - 欢迎提交PR！\n\n也可直接将凭据填写到rclone配置文件的`client_id`、`tenant`和`client_secret`字段，而非设置`service_principal_file`。\n"
+      },
+      "share_name": {
+        "title": "共享名称",
+        "help": "Azure Files共享名称。\n\n此项为必填项，指定要访问的共享名称。\n"
+      },
+      "tenant": {
+        "title": "租户ID",
+        "help": "服务主体的租户ID，也称为目录ID。\n\n满足以下条件时设置：\n- 使用带客户端密钥的服务主体\n- 使用带证书的服务主体\n- 使用用户名密码登录的用户\n"
+      },
+      "upload_concurrency": {
+        "title": "上传并发数",
+        "help": "分块上传的并发数。\n\n即同一文件的分块同时上传的数量。\n\n若在高速链路上传少量大文件且未充分利用带宽，提高此值可能加快传输速度。\n\n注意：分块存储在内存中，同时存储的分块数量最多可达\"--transfers\" * \"--azurefile-upload-concurrency\"。"
+      },
+      "use_az": {
+        "title": "使用Azure CLI",
+        "help": "使用Azure CLI工具az进行认证\n设为true时，仅使用[Azure CLI工具az](https://learn.microsoft.com/en-us/cli/azure/)进行认证。\n若希望在带有系统分配托管标识的主机上使用az CLI，但不想使用该标识时，此设置会很有用。\n请勿同时设置env_auth。\n"
+      },
+      "use_msi": {
+        "title": "使用托管标识",
+        "help": "使用托管服务标识进行认证（仅在Azure环境中生效）。\n\n设为true时，使用[托管服务标识](https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/)\n而非SAS令牌或账户密钥认证Azure存储。\n\n若运行此程序的VM(SS)具有系统分配标识，将默认使用该标识。若资源无系统分配标识但仅有一个用户分配标识，\n将默认使用该用户分配标识。若资源有多个用户分配标识，必须通过msi_object_id、\nmsi_client_id或msi_mi_res_id参数明确指定要使用的标识。"
+      },
+      "username": {
+        "title": "用户名",
+        "help": "用户名（通常为电子邮件地址）\n\n满足以下条件时设置：\n- 使用用户名密码登录的用户\n"
+      },
+      "use_emulator": {
+        "title": "使用模拟器",
+        "help": "使用本地存储模拟器（如果提供）。\n\n如果使用真实的Azure存储端点，则留空。"
+      }
+    },
+    "b2": {
+      "account": {
+        "title": "账户ID",
+        "help": "账户ID或应用密钥ID。"
+      },
+      "chunk_size": {
+        "title": "分块大小",
+        "help": "上传分块大小。\n\n上传大文件时，会将文件拆分为此大小的分块。\n\n分块数据需存入内存，同时进行的分块最多可达\"--transfers\"个。\n\n最小值为5,000,000字节。"
+      },
+      "copy_cutoff": {
+        "title": "复制阈值",
+        "help": "切换至分块复制的文件大小阈值。\n\n任何大于此值且需要服务端复制的文件，将以此大小的分块进行复制。\n\n最小值为0，最大值为4.6 GiB。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "远程存储的描述信息。"
+      },
+      "disable_checksum": {
+        "title": "禁用校验和",
+        "help": "对大文件（>上传阈值）禁用校验和。\n\n默认情况下，rclone会在上传前计算输入文件的SHA1校验和，并添加到对象元数据中。这有助于数据完整性校验，但会导致大文件开始上传前出现较长延迟。"
+      },
+      "download_auth_duration": {
+        "title": "下载认证有效期",
+        "help": "公共链接授权令牌的过期时间，单位为秒或带后缀ms|s|m|h|d。\n\n此参数与\"rclone link\"配合使用，用于设置文件公共访问时下载授权令牌的有效期。\n\n最小值为1秒，最大值为一周。"
+      },
+      "download_url": {
+        "title": "自定义下载地址",
+        "help": "下载使用的自定义接入点。\n\n通常设置为Cloudflare CDN URL，因为Backblaze对通过Cloudflare网络下载的数据提供免费出口流量。\nrclone通过发送\"Authorization\"头部访问私有存储桶。\n若自定义接入点重写认证请求（如Cloudflare Workers），需正确处理此头部。\n若使用Backblaze提供的接入点，留空即可。\n\n此处提供的URL需包含协议，且不应包含末尾斜杠或/file/bucket子路径，因为rclone会以\"{download_url}/file/{bucket_name}/{path}\"格式请求文件。\n\n示例：\n> https://mysubdomain.mydomain.tld\n（无末尾\"/\"、\"file\"或\"bucket\"）"
+      },
+      "encoding": {
+        "title": "编码方式",
+        "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
+      },
+      "endpoint": {
+        "title": "接入点",
+        "help": "服务接入点。\n\n通常留空。"
+      },
+      "hard_delete": {
+        "title": "彻底删除",
+        "help": "删除远程文件时永久删除，否则仅隐藏文件。"
+      },
+      "key": {
+        "title": "应用密钥",
+        "help": "应用密钥。"
+      },
+      "lifecycle": {
+        "title": "生命周期天数",
+        "help": "创建存储桶时设置已删除文件的保留天数。\n\n创建存储桶时，此参数用于为整个存储桶创建生命周期规则。\n\n若lifecycle为0（默认值），则不创建生命周期规则，使用B2的默认行为：删除和覆盖文件时创建版本，并永久保留。\n\n若lifecycle>0，则创建一条规则，设置删除或覆盖的文件永久删除前的保留天数（对应b2文档中的daysFromHidingToDeleting）。\n\n此参数的最小值为1天。\n\n也可在配置中启用hard_delete，这将使删除操作不产生版本，但覆盖仍会创建版本。\n\n详见：[rclone backend lifecycle](#lifecycle) 了解存储桶创建后设置生命周期的方法。\n"
+      },
+      "memory_pool_flush_time": {
+        "title": "内存池刷新时间",
+        "help": "内部内存缓冲池的刷新频率。（已不再使用）"
+      },
+      "memory_pool_use_mmap": {
+        "title": "内存池使用mmap",
+        "help": "内部内存池是否使用mmap缓冲区。（已不再使用）"
+      },
+      "sse_customer_algorithm": {
+        "title": "SSE-C加密算法",
+        "help": "若使用SSE-C，指定在B2中存储对象时使用的服务端加密算法。"
+      },
+      "sse_customer_key": {
+        "title": "SSE-C加密密钥",
+        "help": "使用SSE-C时，可提供UTF-8兼容字符串编码的加密密钥来加密/解密数据\n\n也可提供--sse-customer-key-base64参数。"
+      },
+      "sse_customer_key_base64": {
+        "title": "SSE-C加密密钥（Base64）",
+        "help": "使用SSE-C时，可提供Base64编码的加密密钥来加密/解密数据\n\n也可提供--sse-customer-key参数。"
+      },
+      "sse_customer_key_md5": {
+        "title": "SSE-C密钥MD5校验和",
+        "help": "使用SSE-C时，可提供加密密钥的MD5校验和（可选）。\n\n若留空，将自动从提供的sse_customer_key计算。\n"
+      },
+      "test_mode": {
+        "title": "测试模式",
+        "help": "用于调试的X-Bz-Test-Mode头部标志字符串。\n\n仅用于调试。设置为以下字符串之一会导致b2返回特定错误：\n\n  * \"fail_some_uploads\"\n  * \"expire_some_account_authorization_tokens\"\n  * \"force_cap_exceeded\"\n\n这些值会设置在\"X-Bz-Test-Mode\"头部，相关文档见[b2集成清单](https://www.backblaze.com/docs/cloud-storage-integration-checklist)。"
+      },
+      "upload_concurrency": {
+        "title": "上传并发数",
+        "help": "分块上传的并发数。\n\n即同一文件的分块同时上传的数量。\n\n注意：分块存储在内存中，同时存储的分块数量最多可达\"--transfers\" * \"--b2-upload-concurrency\"。"
+      },
+      "upload_cutoff": {
+        "title": "上传阈值",
+        "help": "切换至分块上传的文件大小阈值。\n\n大于此值的文件将以\"--b2-chunk-size\"大小的分块上传。\n\n此值不应超过4.657 GiB（== 5 GB）。"
+      },
+      "version_at": {
+        "title": "指定时间版本",
+        "help": "显示指定时间点的文件版本。\n\n注意：启用此选项后不允许执行文件写入操作，无法上传或删除文件。"
+      },
+      "versions": {
+        "title": "显示版本",
+        "help": "目录列表中包含旧版本文件。\n\n注意：启用此选项后不允许执行文件写入操作，无法上传或删除文件。"
+      }
+    },
+    "box": {
+      "access_token": {
+        "title": "访问令牌",
+        "help": "Box应用主访问令牌\n\n通常留空。"
+      },
+      "auth_url": {
+        "title": "认证服务器地址",
+        "help": "认证服务器URL。\n\n留空使用服务商默认值。"
+      },
+      "box_config_file": {
+        "title": "Box配置文件",
+        "help": "Box应用config.json文件路径\n\n通常留空。\n\n文件名中的`~`会展开为用户主目录，环境变量如`${RCLONE_CONFIG_DIR}`也会展开。"
+      },
+      "box_sub_type": {
+        "title": "Box子类型",
+        "help": ""
+      },
+      "client_credentials": {
+        "title": "客户端凭据",
+        "help": "使用客户端凭据OAuth流程。\n\n此选项将使用RFC 6749中定义的OAUTH2客户端凭据流程。\n\n注意：并非所有后端都支持此选项。"
+      },
+      "client_id": {
+        "title": "客户端ID",
+        "help": "OAuth客户端ID。\n\n通常留空。"
+      },
+      "client_secret": {
+        "title": "客户端密钥",
+        "help": "OAuth客户端密钥。\n\n通常留空。"
+      },
+      "commit_retries": {
+        "title": "提交重试次数",
+        "help": "分块文件提交的最大重试次数。"
+      },
+      "config_credentials": {
+        "title": "配置凭据",
+        "help": "Box应用config.json内容。\n\n通常留空。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "远程存储的描述信息。"
+      },
+      "encoding": {
+        "title": "编码方式",
+        "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
+      },
+      "impersonate": {
+        "title": "模拟用户",
+        "help": "使用服务账户时模拟此用户ID。\n\n设置此标志后，rclone使用JWT服务账户时可通过设置as-user头部代表其他用户操作。\n\n用户ID是Box系统中的用户标识。管理员可通过GET /users端点获取所有用户的ID，也可通过已认证用户会话调用GET /users/me端点获取自身ID。\n\n详见：https://developer.box.com/guides/authentication/jwt/as-user/\n"
+      },
+      "list_chunk": {
+        "title": "列表分块大小",
+        "help": "列表分块大小，取值范围1-1000。"
+      },
+      "owned_by": {
+        "title": "所属用户",
+        "help": "仅显示指定登录账号（电子邮件）拥有的项目。"
+      },
+      "root_folder_id": {
+        "title": "根文件夹ID",
+        "help": "填写后rclone将以此非根文件夹作为起始路径。"
+      },
+      "token": {
+        "title": "令牌",
+        "help": "JSON格式的OAuth访问令牌。"
+      },
+      "token_url": {
+        "title": "令牌服务器地址",
+        "help": "令牌服务器URL。\n\n留空使用服务商默认值。"
+      },
+      "upload_cutoff": {
+        "title": "上传阈值",
+        "help": "切换至分块上传的文件大小阈值（>= 50 MiB）。"
+      }
+    },
+    "cache": {
+      "chunk_clean_interval": {
+        "title": "分块清理间隔",
+        "help": "缓存清理分块存储的频率。\n\n默认值适用于大多数场景。若发现缓存频繁超过\"cache-chunk-total-size\"限制，可降低此值以提高清理频率。"
+      },
+      "chunk_no_memory": {
+        "title": "禁用内存分块缓存",
+        "help": "禁用流式传输时存储分块的内存缓存。\n\n默认情况下，缓存会将流式传输中的文件数据同时保存在内存中，以最快速度提供给读取端。\n\n这些临时数据会在读取后立即淘汰，存储的分块数量不会超过工作线程数。但根据\"cache-chunk-size\"和\"cache-workers\"等其他设置，若存在并行流（多个文件同时读取），内存占用可能增加。\n\n若硬件允许，启用此功能可提升流式传输的整体性能；若本地机器内存不足，可禁用此功能。"
+      },
+      "chunk_path": {
+        "title": "分块存储路径",
+        "help": "缓存分块文件的目录。\n\n本地存储部分文件数据（分块）的路径，远程存储名称会附加到最终路径后。\n\n此配置与\"--cache-db-path\"保持一致。若指定了\"--cache-db-path\"的自定义路径但未指定\"--cache-chunk-path\"，则\"--cache-chunk-path\"将使用与\"--cache-db-path\"相同的路径。"
+      },
+      "chunk_size": {
+        "title": "分块大小",
+        "help": "分块（部分文件数据）的大小。\n\n低速网络可使用更小的值。若修改分块大小，已下载的分块将失效，需清空cache-chunk-path，否则会出现意外EOF错误。"
+      },
+      "chunk_total_size": {
+        "title": "分块总大小限制",
+        "help": "分块在本地磁盘上的总占用空间限制。\n\n若缓存超过此值，将开始删除最旧的分块，直至低于此限制。"
+      },
+      "db_path": {
+        "title": "数据库路径",
+        "help": "存储文件结构元数据数据库的目录。\n\n远程存储名称将用作数据库文件名。"
+      },
+      "db_purge": {
+        "title": "清空数据库",
+        "help": "启动时清空此远程存储的所有缓存数据。"
+      },
+      "db_wait_time": {
+        "title": "数据库等待时间",
+        "help": "等待数据库可用的时长 - 0表示无限制。\n\n同一时间仅一个进程可打开数据库，因此rclone会等待此时长直至数据库可用，超时则抛出错误。\n\n设为0将永久等待。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "远程存储的描述信息。"
+      },
+      "info_age": {
+        "title": "信息缓存时长",
+        "help": "文件结构信息（目录列表、文件大小、时间等）的缓存时长。\n若所有写入操作均通过缓存执行，可安全地将此值设置得很大，因为缓存存储会实时更新。"
+      },
+      "plex_insecure": {
+        "title": "Plex不安全连接",
+        "help": "连接Plex服务器时跳过所有证书验证。"
+      },
+      "plex_password": {
+        "title": "Plex密码",
+        "help": "Plex用户的密码。"
+      },
+      "plex_token": {
+        "title": "Plex令牌",
+        "help": "Plex认证令牌 - 通常自动设置。"
+      },
+      "plex_url": {
+        "title": "Plex服务器地址",
+        "help": "Plex服务器的URL。"
+      },
+      "plex_username": {
+        "title": "Plex用户名",
+        "help": "Plex用户的用户名。"
+      },
+      "read_retries": {
+        "title": "读取重试次数",
+        "help": "从缓存存储读取的重试次数。\n\n由于缓存流读取与文件数据下载相互独立，读取端可能遇到缓存中无更多数据的情况。多数情况下，这表明缓存无法提供文件数据，可能是网络连接问题。\n\n对于极慢的连接，可提高此值直至流能够提供数据，但体验可能会非常卡顿。"
+      },
+      "remote": {
+        "title": "远程存储",
+        "help": "要缓存的远程存储。\n\n通常应包含冒号和路径，例如 \"myremote:path/to/dir\"、\n\"myremote:bucket\" 或 \"myremote:\"（不推荐）。"
+      },
+      "rps": {
+        "title": "每秒请求数限制",
+        "help": "限制对源文件系统的每秒请求数（-1表示禁用）。\n\n此设置硬性限制缓存向云服务商远程存储发送的每秒请求数，并通过在读取之间设置等待时间来遵守此限制。\n\n若发现因缓存导致被云服务商封禁或限流，且知道较小的每秒请求数可正常工作，可使用此设置。\n\n若其他设置配置得当，此设置通常无需使用，但可用于特殊场景。\n\n**注意**：此设置仅限制流式传输期间的请求数，其他向云服务商的API调用（如目录列表）不受限制。"
+      },
+      "tmp_upload_path": {
+        "title": "临时上传路径",
+        "help": "临时存储待上传文件的目录。\n\n此路径是缓存用于临时存储需上传至云服务商的新文件的位置。\n\n指定值将启用此功能，未指定则完全禁用，文件将直接上传至云服务商。"
+      },
+      "tmp_wait_time": {
+        "title": "临时等待时间",
+        "help": "文件在本地缓存中存储多长时间后再上传。\n\n文件必须在临时路径_cache-tmp-upload-path_中等待此时长后，才会被选中进行上传。\n\n注意：同一时间仅上传一个文件，若形成上传队列，开始上传的时间可能会更长。"
+      },
+      "workers": {
+        "title": "工作线程数",
+        "help": "并行下载分块的工作线程数。\n\n值越高意味着并行处理能力越强（需要更好的CPU），且对云服务商的并发请求越多。这会影响多个方面：云服务商API限制、rclone运行硬件的负载，但也会使流更流畅，数据更快地提供给读取端。\n\n**注意**：若启用可选的Plex集成，此设置将根据读取类型自动调整，此处指定的值将作为最大工作线程数。"
+      },
+      "writes": {
+        "title": "写入缓存",
+        "help": "通过文件系统写入时缓存文件数据。\n\n若需要在通过缓存上传文件后立即读取，可启用此标志，使文件数据在上传时同时存储在缓存中。"
+      }
+    },
+    "chunker": {
+      "chunk_size": {
+        "title": "分块大小",
+        "help": "大于此大小的文件将被拆分为分块。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "远程存储的描述信息。"
+      },
+      "fail_hard": {
+        "title": "严格失败",
+        "help": "选择chunker处理缺失或无效分块文件的方式。"
+      },
+      "hash_type": {
+        "title": "哈希类型",
+        "help": "选择chunker处理哈希值的方式。\n\n除\"none\"外的所有模式都需要元数据。"
+      },
+      "meta_format": {
+        "title": "元数据格式",
+        "help": "元数据对象的格式或\"none\"（无）。\n\n默认值为\"simplejson\"。\n元数据是一个以复合文件命名的小型JSON文件。"
+      },
+      "name_format": {
+        "title": "名称格式",
+        "help": "分块文件名的字符串格式。\n\n包含两个占位符：基础文件名(*)和分块编号(#...)。\n必须且只能有一个星号，以及一个或多个连续的#号。\n若分块编号的位数少于#号数量，将在左侧补零。\n若编号位数多于#号数量，将原样保留。\n不符合指定格式的分块文件将被忽略。"
+      },
+      "remote": {
+        "title": "远程存储",
+        "help": "要分块/合并的远程存储。\n\n通常应包含冒号和路径，例如 \"myremote:path/to/dir\"、\n\"myremote:bucket\" 或 \"myremote:\"（不推荐）。"
+      },
+      "start_from": {
+        "title": "起始编号",
+        "help": "最小有效分块编号，通常为0或1。\n\n默认分块编号从1开始。"
+      },
+      "transactions": {
+        "title": "事务处理",
+        "help": "选择chunker在事务期间处理临时文件的方式。"
+      }
     },
-    "remote": {
-      "title": "远程存储",
-      "help": "要创建别名的远程存储或路径。\n\n格式可为 \"myremote:path/to/dir\"、\"myremote:bucket\"、\"myremote:\" 或 \"/local/path\"。"
-    }
-  },
-  "archive": {
-    "description": {
-      "title": "描述",
-      "help": "远程存储的描述信息。"
-    },
-    "remote": {
-      "title": "远程存储",
-      "help": "用于读取归档文件的封装远程存储。\n\n通常应包含冒号和路径，例如 \"myremote:path/to/dir\"、\n\"myremote:bucket\" 或 \"myremote:\"。\n\n若留空，则归档后端会将根目录作为\n远程存储使用。\n\n这意味着你可以使用 :archive:remote:path，其效果等同于设置 remote=\"remote:path\"。\n"
-    }
-  },
-  "azureblob": {
-    "access_tier": {
-      "title": "访问层级",
-      "help": "Blob的访问层级：hot（热）、cool（冷）、cold（极冷）或archive（归档）。\n\n归档层级的Blob可通过将访问层级设置为hot、cool或cold来恢复。若打算使用账户级别的默认访问层级，留空即可。\n\n若未指定\"访问层级\"，rclone不会应用任何层级设置。\nrclone会在上传时对Blob执行\"设置层级\"操作，若对象未被修改，即使指定新的\"访问层级\"也不会生效。\n若远程端的Blob处于\"归档层级\"，则不允许从远程端执行数据传输操作。用户需先将Blob层级调整为\"Hot\"、\"Cool\"或\"Cold\"以恢复访问。"
-    },
-    "account": {
-      "title": "存储账户",
-      "help": "Azure存储账户名称。\n\n设置为当前使用的Azure存储账户名称。\n\n若使用SAS URL或模拟器则留空，否则必须设置。\n\n若此项留空且启用了env_auth，将尝试从环境变量`AZURE_STORAGE_ACCOUNT_NAME`读取。\n"
-    },
-    "archive_tier_delete": {
-      "title": "归档层级删除",
-      "help": "覆盖前删除归档层级的Blob。\n\n归档层级的Blob无法更新。因此若未设置此标志，尝试更新归档层级Blob时，rclone会抛出以下错误：\n\n    can't update archive tier blob without --azureblob-archive-tier-delete\n\n启用此标志后，rclone在尝试覆盖归档层级Blob前，会先删除现有Blob再上传替换文件。这可能导致上传失败时的数据丢失（与更新普通Blob不同），且提前删除归档层级Blob可能产生额外费用。\n"
-    },
-    "chunk_size": {
-      "title": "分块大小",
-      "help": "上传分块大小。\n\n注意：该数据会存储在内存中，同时存储的分块数量最多可达\"--transfers\" * \"--azureblob-upload-concurrency\"。"
-    },
-    "client_certificate_password": {
-      "title": "客户端证书密码",
-      "help": "证书文件的密码（可选）。\n\n若满足以下条件可选择性设置：\n- 使用带证书的服务主体\n\n且证书设有密码。\n"
-    },
-    "client_certificate_path": {
-      "title": "客户端证书路径",
-      "help": "包含私钥的PEM或PKCS12证书文件路径。\n\n满足以下条件时设置：\n- 使用带证书的服务主体\n"
-    },
-    "client_id": {
-      "title": "客户端ID",
-      "help": "当前使用的客户端ID。\n\n满足以下条件时设置：\n- 使用带客户端密钥的服务主体\n- 使用带证书的服务主体\n- 使用用户名密码登录的用户\n"
-    },
-    "client_secret": {
-      "title": "客户端密钥",
-      "help": "服务主体的客户端密钥之一\n\n满足以下条件时设置：\n- 使用带客户端密钥的服务主体\n"
-    },
-    "client_send_certificate_chain": {
-      "title": "发送客户端证书链",
-      "help": "使用证书认证时发送证书链。\n\n指定认证请求是否包含x5c头部，以支持基于主体名称/颁发者的认证。设为true时，认证请求会包含x5c头部。\n\n满足以下条件可选择性设置：\n- 使用带证书的服务主体\n"
-    },
-    "copy_concurrency": {
-      "title": "复制并发数",
-      "help": "分块复制的并发数。\n\n即同一文件的分块同时复制的数量。\n\n这些分块不会在内存中缓冲，Microsoft在azcopy文档中建议将此值设置为大于1000。\n\nhttps://learn.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-optimize#increase-concurrency\n\n测试表明，复制速度几乎随复制并发数线性增长。"
-    },
-    "copy_cutoff": {
-      "title": "复制阈值",
-      "help": "切换至分块复制的文件大小阈值。\n\n任何大于此值且需要服务端复制的文件，将通过put block list API以chunk_size大小的分块进行复制。\n\n小于此限制的文件将使用Copy Blob API复制。"
-    },
-    "delete_snapshots": {
-      "title": "删除快照",
-      "help": "设置删除Blob时如何处理快照。"
-    },
-    "description": {
-      "title": "描述",
-      "help": "远程存储的描述信息。"
-    },
-    "directory_markers": {
-      "title": "目录标记",
-      "help": "创建新目录时上传一个带末尾斜杠的空对象\n\n基于存储桶的远程存储不支持空文件夹，此选项会创建一个以\"/\"结尾的空对象来保留文件夹。\n\n该对象还会设置元数据\"hdi_isfolder = true\"以符合Microsoft标准。\n "
-    },
-    "disable_checksum": {
-      "title": "禁用校验和",
-      "help": "不在对象元数据中存储MD5校验和。\n\n默认情况下，rclone会在上传前计算输入文件的MD5校验和，并添加到对象元数据中。这有助于数据完整性校验，但会导致大文件开始上传前出现较长延迟。"
-    },
-    "disable_instance_discovery": {
-      "title": "禁用实例发现",
-      "help": "跳过请求Microsoft Entra实例元数据\n\n仅在断开连接的云环境或私有云（如Azure Stack）中认证的应用程序需设为true。\n\n该选项决定rclone在认证前是否从`https://login.microsoft.com/`请求Microsoft Entra实例元数据。\n\n设为true将跳过此请求，需自行确保配置的授权机构有效且可信。\n"
-    },
-    "encoding": {
-      "title": "编码方式",
-      "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
-    },
-    "endpoint": {
-      "title": "接入点",
-      "help": "服务接入点。\n\n通常留空。"
-    },
-    "env_auth": {
-      "title": "环境认证",
-      "help": "从运行时读取凭据（环境变量、CLI或MSI）。\n\n详见[认证文档](/azureblob#authentication)。"
-    },
-    "key": {
-      "title": "访问密钥",
-      "help": "存储账户共享密钥。\n\n若使用SAS URL或模拟器则留空。"
-    },
-    "list_chunk": {
-      "title": "列表分块大小",
-      "help": "Blob列表的大小。\n\n设置每次列出操作请求的Blob数量。默认值为最大值5000。\"列出Blob\"请求允许每兆字节2分钟的完成时间。若操作平均耗时超过每兆字节2分钟，将超时（\n[来源](https://docs.microsoft.com/en-us/rest/api/storageservices/setting-timeouts-for-blob-service-operations#exceptions-to-default-timeout-interval)\n）。可通过此参数限制返回的Blob数量以避免超时。"
-    },
-    "memory_pool_flush_time": {
-      "title": "内存池刷新时间",
-      "help": "内部内存缓冲池的刷新频率。（已不再使用）"
-    },
-    "memory_pool_use_mmap": {
-      "title": "内存池使用mmap",
-      "help": "内部内存池是否使用mmap缓冲区。（已不再使用）"
-    },
-    "msi_client_id": {
-      "title": "MSI客户端ID",
-      "help": "要使用的用户分配MSI的对象ID（如有）。\n\n若指定了msi_object_id或msi_mi_res_id则留空。"
-    },
-    "msi_mi_res_id": {
-      "title": "MSI资源ID",
-      "help": "要使用的用户分配MSI的Azure资源ID（如有）。\n\n若指定了msi_client_id或msi_object_id则留空。"
-    },
-    "msi_object_id": {
-      "title": "MSI对象ID",
-      "help": "要使用的用户分配MSI的对象ID（如有）。\n\n若指定了msi_client_id或msi_mi_res_id则留空。"
-    },
-    "no_check_container": {
-      "title": "不检查容器",
-      "help": "若设置，不检查容器是否存在或创建容器。\n\n若确定容器已存在，此选项有助于减少rclone的事务数量。\n"
-    },
-    "no_head_object": {
-      "title": "不执行HEAD请求",
-      "help": "若设置，获取对象时不在GET前执行HEAD请求。"
-    },
-    "password": {
-      "title": "密码",
-      "help": "用户密码\n\n满足以下条件时设置：\n- 使用用户名密码登录的用户\n"
-    },
-    "public_access": {
-      "title": "公共访问级别",
-      "help": "容器的公共访问级别：blob（仅Blob）或container（容器级）。"
-    },
-    "sas_url": {
-      "title": "SAS URL",
-      "help": "仅容器级访问的SAS URL。\n\n若使用账户/密钥或模拟器则留空。"
-    },
-    "service_principal_file": {
-      "title": "服务主体文件",
-      "help": "包含服务主体凭据的文件路径。\n\n通常留空。仅当希望使用服务主体而非交互式登录时需要设置。\n\n    $ az ad sp create-for-rbac --name \"<name>\" \\\n      --role \"Storage Blob Data Owner\" \\\n      --scopes \"/subscriptions/<subscription>/resourceGroups/<resource-group>/providers/Microsoft.Storage/storageAccounts/<storage-account>/blobServices/default/containers/<container>\" \\\n      > azure-principal.json\n\n详见[\"创建Azure服务主体\"](https://docs.microsoft.com/en-us/cli/azure/create-an-azure-service-principal-azure-cli)和[\"分配Azure角色以访问Blob数据\"](https://docs.microsoft.com/en-us/azure/storage/common/storage-auth-aad-rbac-cli)文档。\n\n也可直接将凭据填写到rclone配置文件的`client_id`、`tenant`和`client_secret`字段，而非设置`service_principal_file`。\n"
-    },
-    "tenant": {
-      "title": "租户ID",
-      "help": "服务主体的租户ID，也称为目录ID。\n\n满足以下条件时设置：\n- 使用带客户端密钥的服务主体\n- 使用带证书的服务主体\n- 使用用户名密码登录的用户\n"
-    },
-    "upload_concurrency": {
-      "title": "上传并发数",
-      "help": "分块上传的并发数。\n\n即同一文件的分块同时上传的数量。\n\n若在高速链路上传少量大文件且未充分利用带宽，提高此值可能加快传输速度。\n\n测试表明，上传速度几乎随上传并发数线性增长。例如，要填满千兆网络链路可能需要将此值提高到64。注意这会占用更多内存。\n\n注意：分块存储在内存中，同时存储的分块数量最多可达\"--transfers\" * \"--azureblob-upload-concurrency\"。"
-    },
-    "upload_cutoff": {
-      "title": "上传阈值",
-      "help": "切换至分块上传的文件大小阈值（<= 256 MiB）（已废弃）。"
-    },
-    "use_az": {
-      "title": "使用Azure CLI",
-      "help": "使用Azure CLI工具az进行认证\n\n设为true时，仅使用[Azure CLI工具az](https://learn.microsoft.com/en-us/cli/azure/)进行认证。\n\n若希望在带有系统分配托管标识的主机上使用az CLI，但不想使用该标识时，此设置会很有用。\n\n请勿同时设置env_auth。\n"
-    },
-    "use_copy_blob": {
-      "title": "使用Copy Blob API",
-      "help": "复制到同一存储账户时是否使用Copy Blob API。\n\n若为true（默认值），即使文件大小超过copy_cutoff，rclone也会对同一存储账户的复制操作使用Copy Blob API。\n\nrclone假定同一存储账户意味着相同配置，不会检查不同配置中的同一存储账户。\n\n无需修改此值。"
-    },
-    "use_emulator": {
-      "title": "使用模拟器",
-      "help": "设为'true'时使用本地存储模拟器。\n\n若使用真实Azure存储接入点则留空。"
-    },
-    "use_msi": {
-      "title": "使用托管标识",
-      "help": "使用托管服务标识进行认证（仅在Azure环境中生效）。\n\n设为true时，使用[托管服务标识](https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/)\n而非SAS令牌或账户密钥认证Azure存储。\n\n若运行此程序的VM(SS)具有系统分配标识，将默认使用该标识。若资源无系统分配标识但仅有一个用户分配标识，\n将默认使用该用户分配标识。若资源有多个用户分配标识，必须通过msi_object_id、\nmsi_client_id或msi_mi_res_id参数明确指定要使用的标识。"
-    },
-    "username": {
-      "title": "用户名",
-      "help": "用户名（通常为电子邮件地址）\n\n满足以下条件时设置：\n- 使用用户名密码登录的用户\n"
-    }
-  },
-  "azurefiles": {
-    "account": {
-      "title": "存储账户",
-      "help": "Azure存储账户名称。\n\n设置为当前使用的Azure存储账户名称。\n\n若使用SAS URL或连接字符串则留空，否则必须设置。\n\n若此项留空且启用了env_auth，将尝试从环境变量`AZURE_STORAGE_ACCOUNT_NAME`读取。\n"
-    },
-    "chunk_size": {
-      "title": "分块大小",
-      "help": "上传分块大小。\n\n注意：该数据会存储在内存中，同时存储的分块数量最多可达\"--transfers\" * \"--azurefile-upload-concurrency\"。"
-    },
-    "client_certificate_password": {
-      "title": "客户端证书密码",
-      "help": "证书文件的密码（可选）。\n\n若满足以下条件可选择性设置：\n- 使用带证书的服务主体\n\n且证书设有密码。\n"
-    },
-    "client_certificate_path": {
-      "title": "客户端证书路径",
-      "help": "包含私钥的PEM或PKCS12证书文件路径。\n\n满足以下条件时设置：\n- 使用带证书的服务主体\n"
-    },
-    "client_id": {
-      "title": "客户端ID",
-      "help": "当前使用的客户端ID。\n\n满足以下条件时设置：\n- 使用带客户端密钥的服务主体\n- 使用带证书的服务主体\n- 使用用户名密码登录的用户\n"
-    },
-    "client_secret": {
-      "title": "客户端密钥",
-      "help": "服务主体的客户端密钥之一\n\n满足以下条件时设置：\n- 使用带客户端密钥的服务主体\n"
-    },
-    "client_send_certificate_chain": {
-      "title": "发送客户端证书链",
-      "help": "使用证书认证时发送证书链。\n\n指定认证请求是否包含x5c头部，以支持基于主体名称/颁发者的认证。设为true时，认证请求会包含x5c头部。\n\n满足以下条件可选择性设置：\n- 使用带证书的服务主体\n"
-    },
-    "connection_string": {
-      "title": "连接字符串",
-      "help": "Azure Files连接字符串。"
-    },
-    "description": {
-      "title": "描述",
-      "help": "远程存储的描述信息。"
-    },
-    "disable_instance_discovery": {
-      "title": "禁用实例发现",
-      "help": "跳过请求Microsoft Entra实例元数据\n仅在断开连接的云环境或私有云（如Azure Stack）中认证的应用程序需设为true。\n该选项决定rclone在认证前是否从`https://login.microsoft.com/`请求Microsoft Entra实例元数据。\n设为true将跳过此请求，需自行确保配置的授权机构有效且可信。\n"
-    },
-    "encoding": {
-      "title": "编码方式",
-      "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
-    },
-    "endpoint": {
-      "title": "接入点",
-      "help": "服务接入点。\n\n通常留空。"
-    },
-    "env_auth": {
-      "title": "环境认证",
-      "help": "从运行时读取凭据（环境变量、CLI或MSI）。\n\n详见[认证文档](/azurefiles#authentication)。"
-    },
-    "key": {
-      "title": "访问密钥",
-      "help": "存储账户共享密钥。\n\n若使用SAS URL或连接字符串则留空。"
-    },
-    "max_stream_size": {
-      "title": "最大流文件大小",
-      "help": "流式文件的最大大小。\n\nAzure Files需要提前知道文件大小。当rclone无法确定时，将使用此值替代。\n\n以下场景会使用此值：\n\n- 使用`--vfs-cache-mode off`参数通过`rclone mount`上传文件\n- 使用`rclone rcat`命令\n- 复制长度未知的文件\n\n共享目录中需要有足够的可用空间，因为文件会临时占用此大小的空间。\n"
-    },
-    "msi_client_id": {
-      "title": "MSI客户端ID",
-      "help": "要使用的用户分配MSI的对象ID（如有）。\n\n若指定了msi_object_id或msi_mi_res_id则留空。"
-    },
-    "msi_mi_res_id": {
-      "title": "MSI资源ID",
-      "help": "要使用的用户分配MSI的Azure资源ID（如有）。\n\n若指定了msi_client_id或msi_object_id则留空。"
-    },
-    "msi_object_id": {
-      "title": "MSI对象ID",
-      "help": "要使用的用户分配MSI的对象ID（如有）。\n\n若指定了msi_client_id或msi_mi_res_id则留空。"
-    },
-    "password": {
-      "title": "密码",
-      "help": "用户密码\n\n满足以下条件时设置：\n- 使用用户名密码登录的用户\n"
-    },
-    "sas_url": {
-      "title": "SAS URL",
-      "help": "SAS URL。\n\n若使用账户/密钥或连接字符串则留空。"
-    },
-    "service_principal_file": {
-      "title": "服务主体文件",
-      "help": "包含服务主体凭据的文件路径。\n\n通常留空。仅当希望使用服务主体而非交互式登录时需要设置。\n\n    $ az ad sp create-for-rbac --name \"<name>\" \\\n      --role \"Storage Files Data Owner\" \\\n      --scopes \"/subscriptions/<subscription>/resourceGroups/<resource-group>/providers/Microsoft.Storage/storageAccounts/<storage-account>/blobServices/default/containers/<container>\" \\\n      > azure-principal.json\n\n详见[\"创建Azure服务主体\"](https://docs.microsoft.com/en-us/cli/azure/create-an-azure-service-principal-azure-cli)和[\"分配Azure角色以访问文件数据\"](https://docs.microsoft.com/en-us/azure/storage/common/storage-auth-aad-rbac-cli)文档。\n\n**注意**：此部分内容需针对Azure Files更新 - 欢迎提交PR！\n\n也可直接将凭据填写到rclone配置文件的`client_id`、`tenant`和`client_secret`字段，而非设置`service_principal_file`。\n"
-    },
-    "share_name": {
-      "title": "共享名称",
-      "help": "Azure Files共享名称。\n\n此项为必填项，指定要访问的共享名称。\n"
-    },
-    "tenant": {
-      "title": "租户ID",
-      "help": "服务主体的租户ID，也称为目录ID。\n\n满足以下条件时设置：\n- 使用带客户端密钥的服务主体\n- 使用带证书的服务主体\n- 使用用户名密码登录的用户\n"
-    },
-    "upload_concurrency": {
-      "title": "上传并发数",
-      "help": "分块上传的并发数。\n\n即同一文件的分块同时上传的数量。\n\n若在高速链路上传少量大文件且未充分利用带宽，提高此值可能加快传输速度。\n\n注意：分块存储在内存中，同时存储的分块数量最多可达\"--transfers\" * \"--azurefile-upload-concurrency\"。"
-    },
-    "use_az": {
-      "title": "使用Azure CLI",
-      "help": "使用Azure CLI工具az进行认证\n设为true时，仅使用[Azure CLI工具az](https://learn.microsoft.com/en-us/cli/azure/)进行认证。\n若希望在带有系统分配托管标识的主机上使用az CLI，但不想使用该标识时，此设置会很有用。\n请勿同时设置env_auth。\n"
-    },
-    "use_msi": {
-      "title": "使用托管标识",
-      "help": "使用托管服务标识进行认证（仅在Azure环境中生效）。\n\n设为true时，使用[托管服务标识](https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/)\n而非SAS令牌或账户密钥认证Azure存储。\n\n若运行此程序的VM(SS)具有系统分配标识，将默认使用该标识。若资源无系统分配标识但仅有一个用户分配标识，\n将默认使用该用户分配标识。若资源有多个用户分配标识，必须通过msi_object_id、\nmsi_client_id或msi_mi_res_id参数明确指定要使用的标识。"
-    },
-    "username": {
-      "title": "用户名",
-      "help": "用户名（通常为电子邮件地址）\n\n满足以下条件时设置：\n- 使用用户名密码登录的用户\n"
-    }
-  },
-  "b2": {
-    "account": {
-      "title": "账户ID",
-      "help": "账户ID或应用密钥ID。"
-    },
-    "chunk_size": {
-      "title": "分块大小",
-      "help": "上传分块大小。\n\n上传大文件时，会将文件拆分为此大小的分块。\n\n分块数据需存入内存，同时进行的分块最多可达\"--transfers\"个。\n\n最小值为5,000,000字节。"
-    },
-    "copy_cutoff": {
-      "title": "复制阈值",
-      "help": "切换至分块复制的文件大小阈值。\n\n任何大于此值且需要服务端复制的文件，将以此大小的分块进行复制。\n\n最小值为0，最大值为4.6 GiB。"
-    },
-    "description": {
-      "title": "描述",
-      "help": "远程存储的描述信息。"
-    },
-    "disable_checksum": {
-      "title": "禁用校验和",
-      "help": "对大文件（>上传阈值）禁用校验和。\n\n默认情况下，rclone会在上传前计算输入文件的SHA1校验和，并添加到对象元数据中。这有助于数据完整性校验，但会导致大文件开始上传前出现较长延迟。"
-    },
-    "download_auth_duration": {
-      "title": "下载认证有效期",
-      "help": "公共链接授权令牌的过期时间，单位为秒或带后缀ms|s|m|h|d。\n\n此参数与\"rclone link\"配合使用，用于设置文件公共访问时下载授权令牌的有效期。\n\n最小值为1秒，最大值为一周。"
-    },
-    "download_url": {
-      "title": "自定义下载地址",
-      "help": "下载使用的自定义接入点。\n\n通常设置为Cloudflare CDN URL，因为Backblaze对通过Cloudflare网络下载的数据提供免费出口流量。\nrclone通过发送\"Authorization\"头部访问私有存储桶。\n若自定义接入点重写认证请求（如Cloudflare Workers），需正确处理此头部。\n若使用Backblaze提供的接入点，留空即可。\n\n此处提供的URL需包含协议，且不应包含末尾斜杠或/file/bucket子路径，因为rclone会以\"{download_url}/file/{bucket_name}/{path}\"格式请求文件。\n\n示例：\n> https://mysubdomain.mydomain.tld\n（无末尾\"/\"、\"file\"或\"bucket\"）"
-    },
-    "encoding": {
-      "title": "编码方式",
-      "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
-    },
-    "endpoint": {
-      "title": "接入点",
-      "help": "服务接入点。\n\n通常留空。"
-    },
-    "hard_delete": {
-      "title": "彻底删除",
-      "help": "删除远程文件时永久删除，否则仅隐藏文件。"
-    },
-    "key": {
-      "title": "应用密钥",
-      "help": "应用密钥。"
-    },
-    "lifecycle": {
-      "title": "生命周期天数",
-      "help": "创建存储桶时设置已删除文件的保留天数。\n\n创建存储桶时，此参数用于为整个存储桶创建生命周期规则。\n\n若lifecycle为0（默认值），则不创建生命周期规则，使用B2的默认行为：删除和覆盖文件时创建版本，并永久保留。\n\n若lifecycle>0，则创建一条规则，设置删除或覆盖的文件永久删除前的保留天数（对应b2文档中的daysFromHidingToDeleting）。\n\n此参数的最小值为1天。\n\n也可在配置中启用hard_delete，这将使删除操作不产生版本，但覆盖仍会创建版本。\n\n详见：[rclone backend lifecycle](#lifecycle) 了解存储桶创建后设置生命周期的方法。\n"
-    },
-    "memory_pool_flush_time": {
-      "title": "内存池刷新时间",
-      "help": "内部内存缓冲池的刷新频率。（已不再使用）"
-    },
-    "memory_pool_use_mmap": {
-      "title": "内存池使用mmap",
-      "help": "内部内存池是否使用mmap缓冲区。（已不再使用）"
-    },
-    "sse_customer_algorithm": {
-      "title": "SSE-C加密算法",
-      "help": "若使用SSE-C，指定在B2中存储对象时使用的服务端加密算法。"
-    },
-    "sse_customer_key": {
-      "title": "SSE-C加密密钥",
-      "help": "使用SSE-C时，可提供UTF-8兼容字符串编码的加密密钥来加密/解密数据\n\n也可提供--sse-customer-key-base64参数。"
-    },
-    "sse_customer_key_base64": {
-      "title": "SSE-C加密密钥（Base64）",
-      "help": "使用SSE-C时，可提供Base64编码的加密密钥来加密/解密数据\n\n也可提供--sse-customer-key参数。"
-    },
-    "sse_customer_key_md5": {
-      "title": "SSE-C密钥MD5校验和",
-      "help": "使用SSE-C时，可提供加密密钥的MD5校验和（可选）。\n\n若留空，将自动从提供的sse_customer_key计算。\n"
-    },
-    "test_mode": {
-      "title": "测试模式",
-      "help": "用于调试的X-Bz-Test-Mode头部标志字符串。\n\n仅用于调试。设置为以下字符串之一会导致b2返回特定错误：\n\n  * \"fail_some_uploads\"\n  * \"expire_some_account_authorization_tokens\"\n  * \"force_cap_exceeded\"\n\n这些值会设置在\"X-Bz-Test-Mode\"头部，相关文档见[b2集成清单](https://www.backblaze.com/docs/cloud-storage-integration-checklist)。"
-    },
-    "upload_concurrency": {
-      "title": "上传并发数",
-      "help": "分块上传的并发数。\n\n即同一文件的分块同时上传的数量。\n\n注意：分块存储在内存中，同时存储的分块数量最多可达\"--transfers\" * \"--b2-upload-concurrency\"。"
-    },
-    "upload_cutoff": {
-      "title": "上传阈值",
-      "help": "切换至分块上传的文件大小阈值。\n\n大于此值的文件将以\"--b2-chunk-size\"大小的分块上传。\n\n此值不应超过4.657 GiB（== 5 GB）。"
-    },
-    "version_at": {
-      "title": "指定时间版本",
-      "help": "显示指定时间点的文件版本。\n\n注意：启用此选项后不允许执行文件写入操作，无法上传或删除文件。"
-    },
-    "versions": {
-      "title": "显示版本",
-      "help": "目录列表中包含旧版本文件。\n\n注意：启用此选项后不允许执行文件写入操作，无法上传或删除文件。"
-    }
-  },
-  "box": {
-    "access_token": {
-      "title": "访问令牌",
-      "help": "Box应用主访问令牌\n\n通常留空。"
-    },
-    "auth_url": {
-      "title": "认证服务器地址",
-      "help": "认证服务器URL。\n\n留空使用服务商默认值。"
-    },
-    "box_config_file": {
-      "title": "Box配置文件",
-      "help": "Box应用config.json文件路径\n\n通常留空。\n\n文件名中的`~`会展开为用户主目录，环境变量如`${RCLONE_CONFIG_DIR}`也会展开。"
-    },
-    "box_sub_type": {
-      "title": "Box子类型",
-      "help": ""
-    },
-    "client_credentials": {
-      "title": "客户端凭据",
-      "help": "使用客户端凭据OAuth流程。\n\n此选项将使用RFC 6749中定义的OAUTH2客户端凭据流程。\n\n注意：并非所有后端都支持此选项。"
-    },
-    "client_id": {
-      "title": "客户端ID",
-      "help": "OAuth客户端ID。\n\n通常留空。"
-    },
-    "client_secret": {
-      "title": "客户端密钥",
-      "help": "OAuth客户端密钥。\n\n通常留空。"
-    },
-    "commit_retries": {
-      "title": "提交重试次数",
-      "help": "分块文件提交的最大重试次数。"
-    },
-    "config_credentials": {
-      "title": "配置凭据",
-      "help": "Box应用config.json内容。\n\n通常留空。"
-    },
-    "description": {
-      "title": "描述",
-      "help": "远程存储的描述信息。"
-    },
-    "encoding": {
-      "title": "编码方式",
-      "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
-    },
-    "impersonate": {
-      "title": "模拟用户",
-      "help": "使用服务账户时模拟此用户ID。\n\n设置此标志后，rclone使用JWT服务账户时可通过设置as-user头部代表其他用户操作。\n\n用户ID是Box系统中的用户标识。管理员可通过GET /users端点获取所有用户的ID，也可通过已认证用户会话调用GET /users/me端点获取自身ID。\n\n详见：https://developer.box.com/guides/authentication/jwt/as-user/\n"
-    },
-    "list_chunk": {
-      "title": "列表分块大小",
-      "help": "列表分块大小，取值范围1-1000。"
-    },
-    "owned_by": {
-      "title": "所属用户",
-      "help": "仅显示指定登录账号（电子邮件）拥有的项目。"
-    },
-    "root_folder_id": {
-      "title": "根文件夹ID",
-      "help": "填写后rclone将以此非根文件夹作为起始路径。"
-    },
-    "token": {
-      "title": "令牌",
-      "help": "JSON格式的OAuth访问令牌。"
-    },
-    "token_url": {
-      "title": "令牌服务器地址",
-      "help": "令牌服务器URL。\n\n留空使用服务商默认值。"
-    },
-    "upload_cutoff": {
-      "title": "上传阈值",
-      "help": "切换至分块上传的文件大小阈值（>= 50 MiB）。"
-    }
-  },
-  "cache": {
-    "chunk_clean_interval": {
-      "title": "分块清理间隔",
-      "help": "缓存清理分块存储的频率。\n\n默认值适用于大多数场景。若发现缓存频繁超过\"cache-chunk-total-size\"限制，可降低此值以提高清理频率。"
-    },
-    "chunk_no_memory": {
-      "title": "禁用内存分块缓存",
-      "help": "禁用流式传输时存储分块的内存缓存。\n\n默认情况下，缓存会将流式传输中的文件数据同时保存在内存中，以最快速度提供给读取端。\n\n这些临时数据会在读取后立即淘汰，存储的分块数量不会超过工作线程数。但根据\"cache-chunk-size\"和\"cache-workers\"等其他设置，若存在并行流（多个文件同时读取），内存占用可能增加。\n\n若硬件允许，启用此功能可提升流式传输的整体性能；若本地机器内存不足，可禁用此功能。"
-    },
-    "chunk_path": {
-      "title": "分块存储路径",
-      "help": "缓存分块文件的目录。\n\n本地存储部分文件数据（分块）的路径，远程存储名称会附加到最终路径后。\n\n此配置与\"--cache-db-path\"保持一致。若指定了\"--cache-db-path\"的自定义路径但未指定\"--cache-chunk-path\"，则\"--cache-chunk-path\"将使用与\"--cache-db-path\"相同的路径。"
-    },
-    "chunk_size": {
-      "title": "分块大小",
-      "help": "分块（部分文件数据）的大小。\n\n低速网络可使用更小的值。若修改分块大小，已下载的分块将失效，需清空cache-chunk-path，否则会出现意外EOF错误。"
-    },
-    "chunk_total_size": {
-      "title": "分块总大小限制",
-      "help": "分块在本地磁盘上的总占用空间限制。\n\n若缓存超过此值，将开始删除最旧的分块，直至低于此限制。"
-    },
-    "db_path": {
-      "title": "数据库路径",
-      "help": "存储文件结构元数据数据库的目录。\n\n远程存储名称将用作数据库文件名。"
-    },
-    "db_purge": {
-      "title": "清空数据库",
-      "help": "启动时清空此远程存储的所有缓存数据。"
-    },
-    "db_wait_time": {
-      "title": "数据库等待时间",
-      "help": "等待数据库可用的时长 - 0表示无限制。\n\n同一时间仅一个进程可打开数据库，因此rclone会等待此时长直至数据库可用，超时则抛出错误。\n\n设为0将永久等待。"
-    },
-    "description": {
-      "title": "描述",
-      "help": "远程存储的描述信息。"
-    },
-    "info_age": {
-      "title": "信息缓存时长",
-      "help": "文件结构信息（目录列表、文件大小、时间等）的缓存时长。\n若所有写入操作均通过缓存执行，可安全地将此值设置得很大，因为缓存存储会实时更新。"
-    },
-    "plex_insecure": {
-      "title": "Plex不安全连接",
-      "help": "连接Plex服务器时跳过所有证书验证。"
-    },
-    "plex_password": {
-      "title": "Plex密码",
-      "help": "Plex用户的密码。"
-    },
-    "plex_token": {
-      "title": "Plex令牌",
-      "help": "Plex认证令牌 - 通常自动设置。"
-    },
-    "plex_url": {
-      "title": "Plex服务器地址",
-      "help": "Plex服务器的URL。"
-    },
-    "plex_username": {
-      "title": "Plex用户名",
-      "help": "Plex用户的用户名。"
-    },
-    "read_retries": {
-      "title": "读取重试次数",
-      "help": "从缓存存储读取的重试次数。\n\n由于缓存流读取与文件数据下载相互独立，读取端可能遇到缓存中无更多数据的情况。多数情况下，这表明缓存无法提供文件数据，可能是网络连接问题。\n\n对于极慢的连接，可提高此值直至流能够提供数据，但体验可能会非常卡顿。"
-    },
-    "remote": {
-      "title": "远程存储",
-      "help": "要缓存的远程存储。\n\n通常应包含冒号和路径，例如 \"myremote:path/to/dir\"、\n\"myremote:bucket\" 或 \"myremote:\"（不推荐）。"
-    },
-    "rps": {
-      "title": "每秒请求数限制",
-      "help": "限制对源文件系统的每秒请求数（-1表示禁用）。\n\n此设置硬性限制缓存向云服务商远程存储发送的每秒请求数，并通过在读取之间设置等待时间来遵守此限制。\n\n若发现因缓存导致被云服务商封禁或限流，且知道较小的每秒请求数可正常工作，可使用此设置。\n\n若其他设置配置得当，此设置通常无需使用，但可用于特殊场景。\n\n**注意**：此设置仅限制流式传输期间的请求数，其他向云服务商的API调用（如目录列表）不受限制。"
-    },
-    "tmp_upload_path": {
-      "title": "临时上传路径",
-      "help": "临时存储待上传文件的目录。\n\n此路径是缓存用于临时存储需上传至云服务商的新文件的位置。\n\n指定值将启用此功能，未指定则完全禁用，文件将直接上传至云服务商。"
-    },
-    "tmp_wait_time": {
-      "title": "临时等待时间",
-      "help": "文件在本地缓存中存储多长时间后再上传。\n\n文件必须在临时路径_cache-tmp-upload-path_中等待此时长后，才会被选中进行上传。\n\n注意：同一时间仅上传一个文件，若形成上传队列，开始上传的时间可能会更长。"
-    },
-    "workers": {
-      "title": "工作线程数",
-      "help": "并行下载分块的工作线程数。\n\n值越高意味着并行处理能力越强（需要更好的CPU），且对云服务商的并发请求越多。这会影响多个方面：云服务商API限制、rclone运行硬件的负载，但也会使流更流畅，数据更快地提供给读取端。\n\n**注意**：若启用可选的Plex集成，此设置将根据读取类型自动调整，此处指定的值将作为最大工作线程数。"
-    },
-    "writes": {
-      "title": "写入缓存",
-      "help": "通过文件系统写入时缓存文件数据。\n\n若需要在通过缓存上传文件后立即读取，可启用此标志，使文件数据在上传时同时存储在缓存中。"
-    }
-  },
-  "chunker": {
-    "chunk_size": {
-      "title": "分块大小",
-      "help": "大于此大小的文件将被拆分为分块。"
-    },
-    "description": {
-      "title": "描述",
-      "help": "远程存储的描述信息。"
-    },
-    "fail_hard": {
-      "title": "严格失败",
-      "help": "选择chunker处理缺失或无效分块文件的方式。"
-    },
-    "hash_type": {
-      "title": "哈希类型",
-      "help": "选择chunker处理哈希值的方式。\n\n除\"none\"外的所有模式都需要元数据。"
-    },
-    "meta_format": {
-      "title": "元数据格式",
-      "help": "元数据对象的格式或\"none\"（无）。\n\n默认值为\"simplejson\"。\n元数据是一个以复合文件命名的小型JSON文件。"
-    },
-    "name_format": {
-      "title": "名称格式",
-      "help": "分块文件名的字符串格式。\n\n包含两个占位符：基础文件名(*)和分块编号(#...)。\n必须且只能有一个星号，以及一个或多个连续的#号。\n若分块编号的位数少于#号数量，将在左侧补零。\n若编号位数多于#号数量，将原样保留。\n不符合指定格式的分块文件将被忽略。"
-    },
-    "remote": {
-      "title": "远程存储",
-      "help": "要分块/合并的远程存储。\n\n通常应包含冒号和路径，例如 \"myremote:path/to/dir\"、\n\"myremote:bucket\" 或 \"myremote:\"（不推荐）。"
-    },
-    "start_from": {
-      "title": "起始编号",
-      "help": "最小有效分块编号，通常为0或1。\n\n默认分块编号从1开始。"
-    },
-    "transactions": {
-      "title": "事务处理",
-      "help": "选择chunker在事务期间处理临时文件的方式。"
-    }
-  },
     "cloudinary": {
       "adjust_media_files_extensions": {
         "title": "调整媒体文件扩展名",
@@ -939,6 +946,10 @@
       "v2_download_min_size": {
         "title": "V2下载最小大小",
         "help": "若文件大于此值，使用drive v2 API下载。"
+      },
+      "metadata_enforce_expansive_access": {
+        "title": "元数据强制扩展访问",
+        "help": "请求是否应强制执行扩展访问规则。\n\n从2026年2月起，此标志将默认设置，因此可以在此之前用于测试。\n\n参见：https://developers.google.com/workspace/drive/api/guides/limited-expansive-access\n"
       }
     },
     "dropbox": {
@@ -1103,6 +1114,14 @@
       "key": {
         "title": "密钥",
         "help": "从个人账户获取的FileLu Rclone密钥"
+      },
+      "upload_cutoff": {
+        "title": "上传阈值",
+        "help": "切换到分块上传的阈值。大于此值的任何文件都将以chunk_size的块上传。"
+      },
+      "chunk_size": {
+        "title": "分块大小",
+        "help": "分块大小。用于分块上传。"
       }
     },
     "filescom": {
@@ -1131,550 +1150,550 @@
         "help": "用于认证Files.com的用户名。"
       }
     },
-  "ftp": {
-    "allow_insecure_tls_ciphers": {
-      "title": "允许不安全的TLS加密套件",
-      "help": "允许使用不安全的TLS加密套件\n\n设置此标志后，除安全默认套件外，还允许使用以下TLS加密套件：\n\n- TLS_RSA_WITH_AES_128_GCM_SHA256\n"
+    "ftp": {
+      "allow_insecure_tls_ciphers": {
+        "title": "允许不安全的TLS加密套件",
+        "help": "允许使用不安全的TLS加密套件\n\n设置此标志后，除安全默认套件外，还允许使用以下TLS加密套件：\n\n- TLS_RSA_WITH_AES_128_GCM_SHA256\n"
+      },
+      "ask_password": {
+        "title": "询问密码",
+        "help": "允许在需要时询问FTP密码。\n\n若设置此项且未提供密码，rclone将提示输入密码\n"
+      },
+      "close_timeout": {
+        "title": "关闭超时",
+        "help": "等待关闭响应的最长时间。"
+      },
+      "concurrency": {
+        "title": "并发连接数",
+        "help": "FTP最大并发连接数，0表示无限制。\n\n注意：设置此值极有可能导致死锁，使用时需谨慎。\n\n执行同步或复制时，请确保并发数比`--transfers`与`--checkers`之和多1。\n\n若使用`--check-first`，只需比`--checkers`和`--transfers`中的最大值多1。\n\n例如`concurrency 3`可配合`--checkers 2 --transfers 2 --check-first`或`--checkers 1 --transfers 1`使用。\n\n"
+      },
+      "description": {
+        "title": "描述",
+        "help": "远程存储的描述信息。"
+      },
+      "disable_epsv": {
+        "title": "禁用EPSV",
+        "help": "即使服务器声明支持，也禁用EPSV模式。"
+      },
+      "disable_mlsd": {
+        "title": "禁用MLSD",
+        "help": "即使服务器声明支持，也禁用MLSD列表命令。"
+      },
+      "disable_tls13": {
+        "title": "禁用TLS 1.3",
+        "help": "禁用TLS 1.3（用于解决存在TLS问题的FTP服务器）"
+      },
+      "disable_utf8": {
+        "title": "禁用UTF-8",
+        "help": "即使服务器声明支持，也禁用UTF-8编码。"
+      },
+      "encoding": {
+        "title": "编码方式",
+        "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
+      },
+      "explicit_tls": {
+        "title": "显式TLS",
+        "help": "使用显式FTPS（基于TLS的FTP）。\n\n使用显式FTPS时，客户端会主动向服务器请求安全升级，将明文连接切换为加密连接。不可与隐式FTPS同时使用。"
+      },
+      "force_list_hidden": {
+        "title": "强制列出隐藏文件",
+        "help": "使用LIST -a强制列出隐藏文件和文件夹。这将禁用MLSD。"
+      },
+      "host": {
+        "title": "主机地址",
+        "help": "要连接的FTP主机。\n\n例如\"ftp.example.com\"。"
+      },
+      "http_proxy": {
+        "title": "HTTP代理",
+        "help": "HTTP CONNECT代理URL\n\n设置为支持HTTP CONNECT方法的HTTP代理地址。\n"
+      },
+      "idle_timeout": {
+        "title": "空闲超时",
+        "help": "关闭空闲连接前的最长时间。\n\n若在指定时间内没有连接返回连接池，rclone将清空连接池。\n\n设置为0表示永久保持连接。\n"
+      },
+      "no_check_certificate": {
+        "title": "不验证证书",
+        "help": "不验证服务器的TLS证书。"
+      },
+      "no_check_upload": {
+        "title": "不检查上传结果",
+        "help": "不检查上传是否成功\n\n正常情况下，rclone会在文件上传后检查文件是否存在，确认大小和修改时间是否符合预期。\n\n此标志会停止这些检查，允许上传到只写文件夹。\n\n上传到只写文件夹时，通常还需要配合--inplace标志使用。\n"
+      },
+      "pass": {
+        "title": "密码",
+        "help": "FTP密码。"
+      },
+      "port": {
+        "title": "端口",
+        "help": "FTP端口号。"
+      },
+      "shut_timeout": {
+        "title": "关闭超时",
+        "help": "等待数据连接关闭状态的最长时间。"
+      },
+      "socks_proxy": {
+        "title": "SOCKS代理",
+        "help": "SOCKS 5代理主机。\n\n支持格式：user:pass@host:port、user@host:port、host:port。\n\n示例：\n\n    myUser:myPass@localhost:9005\n"
+      },
+      "tls": {
+        "title": "隐式TLS",
+        "help": "使用隐式FTPS（基于TLS的FTP）。\n\n使用隐式FTPS时，客户端从一开始就使用TLS连接，这会破坏与不支持TLS的服务器的兼容性。通常使用990端口而非21端口。不可与显式FTPS同时使用。"
+      },
+      "tls_cache_size": {
+        "title": "TLS缓存大小",
+        "help": "所有控制连接和数据连接的TLS会话缓存大小。\n\nTLS缓存允许恢复TLS会话并在连接间复用预共享密钥。\n若默认大小不足导致TLS恢复错误，可增大此值。\n默认启用。设置为0禁用。"
+      },
+      "user": {
+        "title": "用户名",
+        "help": "FTP用户名。"
+      },
+      "writing_mdtm": {
+        "title": "使用MDTM修改时间",
+        "help": "使用MDTM命令设置修改时间（VsFtpd兼容模式）"
+      }
+    },
+    "gofile": {
+      "access_token": {
+        "title": "访问令牌",
+        "help": "API访问令牌\n\n可从网页控制面板获取。"
+      },
+      "account_id": {
+        "title": "账户ID",
+        "help": "账户ID\n\n通常留空，rclone会自动填写。\n"
+      },
+      "description": {
+        "title": "描述",
+        "help": "远程存储的描述信息。"
+      },
+      "encoding": {
+        "title": "编码方式",
+        "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
+      },
+      "list_chunk": {
+        "title": "列表分块数",
+        "help": "每次调用列出的项目数"
+      },
+      "root_folder_id": {
+        "title": "根文件夹ID",
+        "help": "根文件夹ID\n\n通常留空，rclone会自动填写。\n\n若需要限制rclone只能访问特定文件夹，可填写此值 - 详见文档。\n"
+      }
+    },
+    "google cloud storage": {
+      "access_token": {
+        "title": "访问令牌",
+        "help": "短期访问令牌。\n\n通常留空。\n仅在希望使用短期访问令牌而非交互式登录时需要。"
+      },
+      "anonymous": {
+        "title": "匿名访问",
+        "help": "无需凭据访问公共存储空间和对象。\n\n若仅需下载文件且不配置凭据，设置为'true'。"
+      },
+      "auth_url": {
+        "title": "认证服务器地址",
+        "help": "认证服务器URL。\n\n留空使用服务商默认值。"
+      },
+      "bucket_acl": {
+        "title": "存储空间ACL",
+        "help": "新建存储空间的访问控制列表。"
+      },
+      "bucket_policy_only": {
+        "title": "仅存储空间策略",
+        "help": "访问检查使用存储空间级别的IAM策略。\n\n若需要上传对象到开启了仅存储空间策略的存储空间，必须设置此项。\n\n设置后，rclone：\n\n- 忽略存储空间上设置的ACL\n- 忽略对象上设置的ACL\n- 创建开启仅存储空间策略的存储空间\n\n文档：https://cloud.google.com/storage/docs/bucket-policy-only\n"
+      },
+      "client_credentials": {
+        "title": "客户端凭据",
+        "help": "使用客户端凭据OAuth流程。\n\n此选项将使用RFC 6749中定义的OAUTH2客户端凭据流程。\n\n注意：并非所有后端都支持此选项。"
+      },
+      "client_id": {
+        "title": "客户端ID",
+        "help": "OAuth客户端ID。\n\n通常留空。"
+      },
+      "client_secret": {
+        "title": "客户端密钥",
+        "help": "OAuth客户端密钥。\n\n通常留空。"
+      },
+      "decompress": {
+        "title": "自动解压",
+        "help": "若设置，将自动解压gzip编码的对象。\n\n可以向GCS上传设置了\"Content-Encoding: gzip\"的对象。正常情况下，rclone会以压缩形式下载这些文件。\n\n若设置此标志，rclone在接收时会自动解压这些\"Content-Encoding: gzip\"文件。这意味着rclone无法校验大小和哈希，但文件内容会被解压。\n"
+      },
+      "description": {
+        "title": "描述",
+        "help": "远程存储的描述信息。"
+      },
+      "directory_markers": {
+        "title": "目录标记",
+        "help": "创建新目录时上传一个以斜杠结尾的空对象\n\n基于存储空间的远程存储不支持空文件夹，此选项会创建一个以\"/\"结尾的空对象来保留文件夹。\n"
+      },
+      "encoding": {
+        "title": "编码方式",
+        "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
+      },
+      "endpoint": {
+        "title": "接入点",
+        "help": "存储API自定义接入点。留空使用服务商默认值。\n\n使用包含子路径的自定义接入点（如example.org/custom/endpoint）时，由于底层Google API Go客户端库限制，上传操作会忽略子路径。\n下载和列表操作可正常使用完整接入点路径。\n若上传需要支持子路径，请避免在自定义接入点中使用子路径。"
+      },
+      "env_auth": {
+        "title": "环境认证",
+        "help": "从运行时获取GCP IAM凭据（环境变量，若无环境变量则从实例元数据获取）。\n\n仅在service_account_file和service_account_credentials均为空时生效。"
+      },
+      "location": {
+        "title": "区域",
+        "help": "新建存储空间的所在区域。"
+      },
+      "no_check_bucket": {
+        "title": "不检查存储空间",
+        "help": "若设置，不尝试检查存储空间是否存在或创建。\n\n若已知存储空间已存在，使用此选项可减少rclone的请求次数。\n"
+      },
+      "object_acl": {
+        "title": "对象ACL",
+        "help": "新建对象的访问控制列表。"
+      },
+      "project_number": {
+        "title": "项目编号",
+        "help": "项目编号。\n\n可选 - 仅在列出/创建/删除存储空间时需要 - 详见开发者控制台。"
+      },
+      "service_account_credentials": {
+        "title": "服务账户凭据",
+        "help": "服务账户凭据JSON数据。\n\n通常留空。\n仅在希望使用服务账户而非交互式登录时需要。"
+      },
+      "service_account_file": {
+        "title": "服务账户文件",
+        "help": "服务账户凭据JSON文件路径。\n\n通常留空。\n仅在希望使用服务账户而非交互式登录时需要。\n\n文件名中的`~`会展开为用户主目录，环境变量如`${RCLONE_CONFIG_DIR}`也会展开。"
+      },
+      "storage_class": {
+        "title": "存储类型",
+        "help": "在Google Cloud Storage中存储对象时使用的存储类型。"
+      },
+      "token": {
+        "title": "令牌",
+        "help": "JSON格式的OAuth访问令牌。"
+      },
+      "token_url": {
+        "title": "令牌服务器地址",
+        "help": "令牌服务器URL。\n\n留空使用服务商默认值。"
+      },
+      "user_project": {
+        "title": "用户项目",
+        "help": "用户项目。\n\n可选 - 仅在请求者付费模式下需要。"
+      }
+    },
+    "google photos": {
+      "auth_url": {
+        "title": "认证服务器地址",
+        "help": "认证服务器URL。\n\n留空使用服务商默认值。"
+      },
+      "batch_commit_timeout": {
+        "title": "批量提交超时",
+        "help": "等待批量提交完成的最长时间。（已不再使用）"
+      },
+      "batch_mode": {
+        "title": "批量模式",
+        "help": "文件上传批处理模式：sync|async|off。\n\n设置rclone使用的批量模式。\n\n有3个可选值\n\n- off - 禁用批处理\n- sync - 批量上传并检查完成状态（默认值）\n- async - 批量上传且不检查完成状态\n\nRclone退出时会关闭所有未完成的批处理，这可能导致退出时出现延迟。\n"
+      },
+      "batch_size": {
+        "title": "批量大小",
+        "help": "上传批次中的最大文件数。\n\n设置要上传的文件批大小，必须小于50。\n\n默认值为0，表示rclone会根据batch_mode的设置自动计算批大小。\n\n- batch_mode: async - 默认批大小为50\n- batch_mode: sync - 默认批大小与--transfers相同\n- batch_mode: off - 不生效\n\nRclone退出时会关闭所有未完成的批处理，这可能导致退出时出现延迟。\n\n上传大量小文件时设置此值可显著提升速度。可配合--transfers 32使用以最大化吞吐量。\n"
+      },
+      "batch_timeout": {
+        "title": "批量超时",
+        "help": "空闲上传批次等待上传的最长时间。\n\n若上传批次空闲超过此时长，将触发上传。\n\n默认值为0，表示rclone会根据使用的batch_mode选择合理的默认值。\n\n- batch_mode: async - 默认批量超时为10秒\n- batch_mode: sync - 默认批量超时为1秒\n- batch_mode: off - 不生效\n"
+      },
+      "client_credentials": {
+        "title": "客户端凭据",
+        "help": "使用客户端凭据OAuth流程。\n\n此选项将使用RFC 6749中定义的OAUTH2客户端凭据流程。\n\n注意：并非所有后端都支持此选项。"
+      },
+      "client_id": {
+        "title": "客户端ID",
+        "help": "OAuth客户端ID。\n\n通常留空。"
+      },
+      "client_secret": {
+        "title": "客户端密钥",
+        "help": "OAuth客户端密钥。\n\n通常留空。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "远程存储的描述信息。"
+      },
+      "encoding": {
+        "title": "编码方式",
+        "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
+      },
+      "include_archived": {
+        "title": "包含已归档内容",
+        "help": "同时查看和下载已归档的媒体。\n\n默认情况下，rclone不会请求已归档媒体。因此同步时，已归档媒体不会出现在目录列表中，也不会被传输。\n\n注意：相册中的媒体无论归档状态如何，始终可见并同步。\n\n设置此标志后，已归档媒体将始终显示在目录列表中并被传输。\n\n不设置此标志时，已归档媒体不会显示在目录列表中，也不会被传输。"
+      },
+      "proxy": {
+        "title": "代理",
+        "help": "使用gphotosdl代理下载全分辨率图片\n\nGoogle API返回的图片和视频可能不是全分辨率，或缺少EXIF信息。\n\n使用gphotosdl代理可下载原始、未修改的图片。\n\n此代理会在后台运行无头浏览器。\n\n从[gphotosdl](https://github.com/rclone/gphotosdl)下载软件\n\n首先运行\n\n    gphotosdl -login\n\n登录Google相册后关闭浏览器窗口，然后运行\n\n    gphotosdl\n\n设置参数`--gphotos-proxy \"http://localhost:8282\"`使rclone使用此代理。\n"
+      },
+      "read_only": {
+        "title": "只读模式",
+        "help": "设置Google相册后端为只读模式。\n\n选择只读模式后，rclone仅请求照片的只读权限，否则将请求完全访问权限。"
+      },
+      "read_size": {
+        "title": "读取大小",
+        "help": "设置读取媒体项目的大小。\n\n正常情况下，rclone不会读取媒体项目大小，因为这需要额外请求。同步时不需要此信息。\n但rclone挂载需要在读取前知道文件大小，因此使用rclone挂载并希望读取媒体时，建议设置此标志。"
+      },
+      "start_year": {
+        "title": "起始年份",
+        "help": "仅下载指定年份及之后上传的照片。"
+      },
+      "token": {
+        "title": "令牌",
+        "help": "JSON格式的OAuth访问令牌。"
+      },
+      "token_url": {
+        "title": "令牌服务器地址",
+        "help": "令牌服务器URL。\n\n留空使用服务商默认值。"
+      }
+    },
+    "hasher": {
+      "auto_size": {
+        "title": "自动更新大小",
+        "help": "自动更新小于此大小文件的校验和（默认禁用）。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "远程存储的描述信息。"
+      },
+      "hashes": {
+        "title": "哈希算法",
+        "help": "支持的校验和类型，逗号分隔列表。"
+      },
+      "max_age": {
+        "title": "缓存有效期",
+        "help": "校验和在缓存中的最长保存时间（0 = 不缓存，off = 永久缓存）。"
+      },
+      "remote": {
+        "title": "远程存储",
+        "help": "要缓存校验和的远程存储（例如myRemote:path）。"
+      }
+    },
+    "hdfs": {
+      "data_transfer_protection": {
+        "title": "数据传输保护",
+        "help": "Kerberos数据传输保护：authentication|integrity|privacy。\n\n指定与数据节点通信时是否需要认证、数据签名完整性检查和网络加密。可选值为'authentication'、'integrity'和'privacy'。仅在启用KERBEROS时使用。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "远程存储的描述信息。"
+      },
+      "encoding": {
+        "title": "编码方式",
+        "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
+      },
+      "namenode": {
+        "title": "名称节点",
+        "help": "Hadoop名称节点和端口。\n\n例如\"namenode-1:8020,namenode-2:8020,...\"连接到8020端口的主机名称节点。"
+      },
+      "service_principal_name": {
+        "title": "服务主体名称",
+        "help": "名称节点的Kerberos服务主体名称。\n\n启用KERBEROS认证。指定名称节点的服务主体名称（SERVICE/FQDN）。\n例如\"hdfs/namenode.hadoop.docker\"表示运行在'hdfs'服务、FQDN为'namenode.hadoop.docker'的名称节点。"
+      },
+      "username": {
+        "title": "用户名",
+        "help": "Hadoop用户名。"
+      }
+    },
+    "hidrive": {
+      "auth_url": {
+        "title": "认证服务器地址",
+        "help": "认证服务器URL。\n\n留空使用服务商默认值。"
+      },
+      "chunk_size": {
+        "title": "分块大小",
+        "help": "分块上传的块大小。\n\n大于配置阈值（或大小未知）的文件将以此大小分块上传。\n\n上限为2147483647字节（约2.000Gi）。\n这是单次上传操作支持的最大字节数。\n设置超过上限或负值会导致上传失败。\n\n增大此值可能提升上传速度，但会占用更多内存。\n减小此值可节省内存。"
+      },
+      "client_credentials": {
+        "title": "客户端凭据",
+        "help": "使用客户端凭据OAuth流程。\n\n此选项将使用RFC 6749中定义的OAUTH2客户端凭据流程。\n\n注意：并非所有后端都支持此选项。"
+      },
+      "client_id": {
+        "title": "客户端ID",
+        "help": "OAuth客户端ID。\n\n通常留空。"
+      },
+      "client_secret": {
+        "title": "客户端密钥",
+        "help": "OAuth客户端密钥。\n\n通常留空。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "远程存储的描述信息。"
+      },
+      "disable_fetching_member_count": {
+        "title": "禁用成员数获取",
+        "help": "除非绝对必要，否则不获取目录中的对象数量。\n\n不获取子目录中的对象数量可能会加快请求速度。"
+      },
+      "encoding": {
+        "title": "编码方式",
+        "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
+      },
+      "endpoint": {
+        "title": "服务接入点",
+        "help": "服务的接入点URL。\n\nAPI请求将发送到此URL。"
+      },
+      "root_prefix": {
+        "title": "根路径前缀",
+        "help": "所有路径的根/父文件夹。\n\n填写后，rclone会将指定文件夹作为所有路径的父目录。\n通过此方式可将任意文件夹设为rclone的起始目录。"
+      },
+      "scope_access": {
+        "title": "访问范围",
+        "help": "rclone向HiDrive请求访问时使用的权限。"
+      },
+      "scope_role": {
+        "title": "角色范围",
+        "help": "rclone向HiDrive请求访问时使用的用户级别。"
+      },
+      "token": {
+        "title": "令牌",
+        "help": "JSON格式的OAuth访问令牌。"
+      },
+      "token_url": {
+        "title": "令牌服务器地址",
+        "help": "令牌服务器URL。\n\n留空使用服务商默认值。"
+      },
+      "upload_concurrency": {
+        "title": "上传并发数",
+        "help": "分块上传的并发数。\n\n这是单个文件同时运行的传输任务上限。\n设置小于1的值会导致上传死锁。\n\n若在高速链路下上传少量大文件且带宽未被充分利用，增大此值可能提升传输速度。"
+      },
+      "upload_cutoff": {
+        "title": "上传阈值",
+        "help": "分块上传的阈值。\n\n大于此值的文件将按配置的分块大小分块上传。\n\n上限为2147483647字节（约2.000Gi）。\n这是单次上传操作支持的最大字节数。\n设置超过上限会导致上传失败。"
+      }
+    },
+    "http": {
+      "description": {
+        "title": "描述",
+        "help": "远程存储的描述信息。"
+      },
+      "headers": {
+        "title": "请求头",
+        "help": "为所有请求设置HTTP头。\n\n用于为所有请求设置额外的HTTP头。\n\n输入格式为逗号分隔的键值对列表。可使用标准[CSV编码](https://godoc.org/encoding/csv)。\n\n例如，设置Cookie使用'Cookie,name=value'或'\"Cookie\",\"name=value\"'。\n\n可设置多个头，如'\"Cookie\",\"name=value\",\"Authorization\",\"xxx\"'。"
+      },
+      "no_escape": {
+        "title": "禁用转义",
+        "help": "不对路径名中的URL元字符进行转义。"
+      },
+      "no_head": {
+        "title": "禁用HEAD请求",
+        "help": "不使用HEAD请求。\n\nHEAD请求主要用于在目录列表中获取文件大小。\n若目标站点加载缓慢，可尝试此选项。\n正常情况下，rclone会对目录列表中的每个潜在文件发送HEAD请求，目的是：\n\n- 获取文件大小\n- 检查文件是否存在\n- 检查是否为目录\n\n设置此选项后，rclone将不发送HEAD请求。这会使目录列表速度大幅提升，但rclone将无法获取文件的时间和大小信息，且列表中可能包含不存在的文件。\n"
+      },
+      "no_slash": {
+        "title": "禁用路径斜杠",
+        "help": "若站点的目录结尾不加/，请设置此项。\n\n若目标网站的目录结尾不使用/，需启用此选项。\n\nrclone通常通过路径结尾的/区分文件和目录。\n设置此标志后，rclone会将所有Content-Type为text/html的文件视为目录，并从中读取URL而非下载。\n\n注意：这可能导致rclone将真实的HTML文件误认为目录。\n"
+      },
+      "url": {
+        "title": "URL地址",
+        "help": "要连接的HTTP主机URL。\n\n例如\"https://example.com\"，或使用用户名密码的形式\"https://user:pass@example.com\"。"
+      }
+    },
+    "iclouddrive": {
+      "apple_id": {
+        "title": "Apple ID",
+        "help": "苹果账户ID。"
+      },
+      "client_id": {
+        "title": "客户端ID",
+        "help": "客户端标识"
+      },
+      "cookies": {
+        "title": "Cookie",
+        "help": "Cookie（仅内部使用）"
+      },
+      "description": {
+        "title": "描述",
+        "help": "远程存储的描述信息。"
+      },
+      "encoding": {
+        "title": "编码方式",
+        "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
+      },
+      "password": {
+        "title": "密码",
+        "help": "账户密码。"
+      },
+      "trust_token": {
+        "title": "信任令牌",
+        "help": "信任令牌（仅内部使用）"
+      }
+    },
+    "imagekit": {
+      "description": {
+        "title": "描述",
+        "help": "远程存储的描述信息。"
+      },
+      "encoding": {
+        "title": "编码方式",
+        "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
+      },
+      "endpoint": {
+        "title": "接入点",
+        "help": "可在[控制台](https://imagekit.io/dashboard/developer/api-keys)中找到ImageKit.io的URL接入点。"
+      },
+      "only_signed": {
+        "title": "仅签名链接",
+        "help": "若在控制台设置中配置了`Restrict unsigned image URLs`（限制未签名图片URL），请设为true。"
+      },
+      "private_key": {
+        "title": "私钥",
+        "help": "可在[控制台](https://imagekit.io/dashboard/developer/api-keys)中找到ImageKit.io的私钥。"
+      },
+      "public_key": {
+        "title": "公钥",
+        "help": "可在[控制台](https://imagekit.io/dashboard/developer/api-keys)中找到ImageKit.io的公钥。"
+      },
+      "upload_tags": {
+        "title": "上传标签",
+        "help": "添加到上传文件的标签，例如\"tag1,tag2\"。"
+      },
+      "versions": {
+        "title": "版本管理",
+        "help": "在目录列表中包含旧版本文件。"
+      }
+    },
+    "internetarchive": {
+      "access_key_id": {
+        "title": "访问密钥ID",
+        "help": "IAS3访问密钥。\n\n匿名访问留空。\n可在此获取：https://archive.org/account/s3.php"
+      },
+      "description": {
+        "title": "描述",
+        "help": "远程存储的描述信息。"
+      },
+      "disable_checksum": {
+        "title": "禁用校验和",
+        "help": "不要求服务器校验rclone计算的MD5校验和。\n正常情况下，rclone会在上传前计算输入文件的MD5校验和，以便请求服务器校验对象。\n这有助于数据完整性检查，但会导致大文件开始上传前出现长时间延迟。"
+      },
+      "encoding": {
+        "title": "编码方式",
+        "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
+      },
+      "endpoint": {
+        "title": "接入点",
+        "help": "IAS3接入点。\n\n留空使用默认值。"
+      },
+      "front_endpoint": {
+        "title": "前端接入点",
+        "help": "InternetArchive前端主机。\n\n留空使用默认值。"
+      },
+      "item_derive": {
+        "title": "项目派生",
+        "help": "是否触发IA项目的派生处理。设为false时，上传后IA不会对项目进行派生处理。\n派生过程会从上传文件生成多个辅助文件，使上传内容更适合网页展示。\n若上传的文件已是IA可展示的格式，或希望减轻IA基础设施负担，可设为false。"
+      },
+      "item_metadata": {
+        "title": "项目元数据",
+        "help": "要设置在IA项目上的元数据，与使用--metadata-set设置的文件级元数据不同。\n格式为key=value，系统会自动添加'x-archive-meta-'前缀。"
+      },
+      "secret_access_key": {
+        "title": "秘密访问密钥",
+        "help": "IAS3秘密密钥（密码）。\n\n匿名访问留空。"
+      },
+      "wait_archive": {
+        "title": "等待归档",
+        "help": "等待服务器处理任务（特别是归档和book_op）完成的超时时间。\n仅在需要确保写入操作后数据能立即同步可见时启用。\n设为0禁用等待。超时不会抛出错误。"
+      }
     },
-    "ask_password": {
-      "title": "询问密码",
-      "help": "允许在需要时询问FTP密码。\n\n若设置此项且未提供密码，rclone将提示输入密码\n"
-    },
-    "close_timeout": {
-      "title": "关闭超时",
-      "help": "等待关闭响应的最长时间。"
-    },
-    "concurrency": {
-      "title": "并发连接数",
-      "help": "FTP最大并发连接数，0表示无限制。\n\n注意：设置此值极有可能导致死锁，使用时需谨慎。\n\n执行同步或复制时，请确保并发数比`--transfers`与`--checkers`之和多1。\n\n若使用`--check-first`，只需比`--checkers`和`--transfers`中的最大值多1。\n\n例如`concurrency 3`可配合`--checkers 2 --transfers 2 --check-first`或`--checkers 1 --transfers 1`使用。\n\n"
-    },
-    "description": {
-      "title": "描述",
-      "help": "远程存储的描述信息。"
-    },
-    "disable_epsv": {
-      "title": "禁用EPSV",
-      "help": "即使服务器声明支持，也禁用EPSV模式。"
-    },
-    "disable_mlsd": {
-      "title": "禁用MLSD",
-      "help": "即使服务器声明支持，也禁用MLSD列表命令。"
-    },
-    "disable_tls13": {
-      "title": "禁用TLS 1.3",
-      "help": "禁用TLS 1.3（用于解决存在TLS问题的FTP服务器）"
-    },
-    "disable_utf8": {
-      "title": "禁用UTF-8",
-      "help": "即使服务器声明支持，也禁用UTF-8编码。"
-    },
-    "encoding": {
-      "title": "编码方式",
-      "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
-    },
-    "explicit_tls": {
-      "title": "显式TLS",
-      "help": "使用显式FTPS（基于TLS的FTP）。\n\n使用显式FTPS时，客户端会主动向服务器请求安全升级，将明文连接切换为加密连接。不可与隐式FTPS同时使用。"
-    },
-    "force_list_hidden": {
-      "title": "强制列出隐藏文件",
-      "help": "使用LIST -a强制列出隐藏文件和文件夹。这将禁用MLSD。"
-    },
-    "host": {
-      "title": "主机地址",
-      "help": "要连接的FTP主机。\n\n例如\"ftp.example.com\"。"
-    },
-    "http_proxy": {
-      "title": "HTTP代理",
-      "help": "HTTP CONNECT代理URL\n\n设置为支持HTTP CONNECT方法的HTTP代理地址。\n"
-    },
-    "idle_timeout": {
-      "title": "空闲超时",
-      "help": "关闭空闲连接前的最长时间。\n\n若在指定时间内没有连接返回连接池，rclone将清空连接池。\n\n设置为0表示永久保持连接。\n"
-    },
-    "no_check_certificate": {
-      "title": "不验证证书",
-      "help": "不验证服务器的TLS证书。"
-    },
-    "no_check_upload": {
-      "title": "不检查上传结果",
-      "help": "不检查上传是否成功\n\n正常情况下，rclone会在文件上传后检查文件是否存在，确认大小和修改时间是否符合预期。\n\n此标志会停止这些检查，允许上传到只写文件夹。\n\n上传到只写文件夹时，通常还需要配合--inplace标志使用。\n"
-    },
-    "pass": {
-      "title": "密码",
-      "help": "FTP密码。"
-    },
-    "port": {
-      "title": "端口",
-      "help": "FTP端口号。"
-    },
-    "shut_timeout": {
-      "title": "关闭超时",
-      "help": "等待数据连接关闭状态的最长时间。"
-    },
-    "socks_proxy": {
-      "title": "SOCKS代理",
-      "help": "SOCKS 5代理主机。\n\n支持格式：user:pass@host:port、user@host:port、host:port。\n\n示例：\n\n    myUser:myPass@localhost:9005\n"
-    },
-    "tls": {
-      "title": "隐式TLS",
-      "help": "使用隐式FTPS（基于TLS的FTP）。\n\n使用隐式FTPS时，客户端从一开始就使用TLS连接，这会破坏与不支持TLS的服务器的兼容性。通常使用990端口而非21端口。不可与显式FTPS同时使用。"
-    },
-    "tls_cache_size": {
-      "title": "TLS缓存大小",
-      "help": "所有控制连接和数据连接的TLS会话缓存大小。\n\nTLS缓存允许恢复TLS会话并在连接间复用预共享密钥。\n若默认大小不足导致TLS恢复错误，可增大此值。\n默认启用。设置为0禁用。"
-    },
-    "user": {
-      "title": "用户名",
-      "help": "FTP用户名。"
-    },
-    "writing_mdtm": {
-      "title": "使用MDTM修改时间",
-      "help": "使用MDTM命令设置修改时间（VsFtpd兼容模式）"
-    }
-  },
-  "gofile": {
-    "access_token": {
-      "title": "访问令牌",
-      "help": "API访问令牌\n\n可从网页控制面板获取。"
-    },
-    "account_id": {
-      "title": "账户ID",
-      "help": "账户ID\n\n通常留空，rclone会自动填写。\n"
-    },
-    "description": {
-      "title": "描述",
-      "help": "远程存储的描述信息。"
-    },
-    "encoding": {
-      "title": "编码方式",
-      "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
-    },
-    "list_chunk": {
-      "title": "列表分块数",
-      "help": "每次调用列出的项目数"
-    },
-    "root_folder_id": {
-      "title": "根文件夹ID",
-      "help": "根文件夹ID\n\n通常留空，rclone会自动填写。\n\n若需要限制rclone只能访问特定文件夹，可填写此值 - 详见文档。\n"
-    }
-  },
-  "google cloud storage": {
-    "access_token": {
-      "title": "访问令牌",
-      "help": "短期访问令牌。\n\n通常留空。\n仅在希望使用短期访问令牌而非交互式登录时需要。"
-    },
-    "anonymous": {
-      "title": "匿名访问",
-      "help": "无需凭据访问公共存储空间和对象。\n\n若仅需下载文件且不配置凭据，设置为'true'。"
-    },
-    "auth_url": {
-      "title": "认证服务器地址",
-      "help": "认证服务器URL。\n\n留空使用服务商默认值。"
-    },
-    "bucket_acl": {
-      "title": "存储空间ACL",
-      "help": "新建存储空间的访问控制列表。"
-    },
-    "bucket_policy_only": {
-      "title": "仅存储空间策略",
-      "help": "访问检查使用存储空间级别的IAM策略。\n\n若需要上传对象到开启了仅存储空间策略的存储空间，必须设置此项。\n\n设置后，rclone：\n\n- 忽略存储空间上设置的ACL\n- 忽略对象上设置的ACL\n- 创建开启仅存储空间策略的存储空间\n\n文档：https://cloud.google.com/storage/docs/bucket-policy-only\n"
-    },
-    "client_credentials": {
-      "title": "客户端凭据",
-      "help": "使用客户端凭据OAuth流程。\n\n此选项将使用RFC 6749中定义的OAUTH2客户端凭据流程。\n\n注意：并非所有后端都支持此选项。"
-    },
-    "client_id": {
-      "title": "客户端ID",
-      "help": "OAuth客户端ID。\n\n通常留空。"
-    },
-    "client_secret": {
-      "title": "客户端密钥",
-      "help": "OAuth客户端密钥。\n\n通常留空。"
-    },
-    "decompress": {
-      "title": "自动解压",
-      "help": "若设置，将自动解压gzip编码的对象。\n\n可以向GCS上传设置了\"Content-Encoding: gzip\"的对象。正常情况下，rclone会以压缩形式下载这些文件。\n\n若设置此标志，rclone在接收时会自动解压这些\"Content-Encoding: gzip\"文件。这意味着rclone无法校验大小和哈希，但文件内容会被解压。\n"
-    },
-    "description": {
-      "title": "描述",
-      "help": "远程存储的描述信息。"
-    },
-    "directory_markers": {
-      "title": "目录标记",
-      "help": "创建新目录时上传一个以斜杠结尾的空对象\n\n基于存储空间的远程存储不支持空文件夹，此选项会创建一个以\"/\"结尾的空对象来保留文件夹。\n"
-    },
-    "encoding": {
-      "title": "编码方式",
-      "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
-    },
-    "endpoint": {
-      "title": "接入点",
-      "help": "存储API自定义接入点。留空使用服务商默认值。\n\n使用包含子路径的自定义接入点（如example.org/custom/endpoint）时，由于底层Google API Go客户端库限制，上传操作会忽略子路径。\n下载和列表操作可正常使用完整接入点路径。\n若上传需要支持子路径，请避免在自定义接入点中使用子路径。"
-    },
-    "env_auth": {
-      "title": "环境认证",
-      "help": "从运行时获取GCP IAM凭据（环境变量，若无环境变量则从实例元数据获取）。\n\n仅在service_account_file和service_account_credentials均为空时生效。"
-    },
-    "location": {
-      "title": "区域",
-      "help": "新建存储空间的所在区域。"
-    },
-    "no_check_bucket": {
-      "title": "不检查存储空间",
-      "help": "若设置，不尝试检查存储空间是否存在或创建。\n\n若已知存储空间已存在，使用此选项可减少rclone的请求次数。\n"
-    },
-    "object_acl": {
-      "title": "对象ACL",
-      "help": "新建对象的访问控制列表。"
-    },
-    "project_number": {
-      "title": "项目编号",
-      "help": "项目编号。\n\n可选 - 仅在列出/创建/删除存储空间时需要 - 详见开发者控制台。"
-    },
-    "service_account_credentials": {
-      "title": "服务账户凭据",
-      "help": "服务账户凭据JSON数据。\n\n通常留空。\n仅在希望使用服务账户而非交互式登录时需要。"
-    },
-    "service_account_file": {
-      "title": "服务账户文件",
-      "help": "服务账户凭据JSON文件路径。\n\n通常留空。\n仅在希望使用服务账户而非交互式登录时需要。\n\n文件名中的`~`会展开为用户主目录，环境变量如`${RCLONE_CONFIG_DIR}`也会展开。"
-    },
-    "storage_class": {
-      "title": "存储类型",
-      "help": "在Google Cloud Storage中存储对象时使用的存储类型。"
-    },
-    "token": {
-      "title": "令牌",
-      "help": "JSON格式的OAuth访问令牌。"
-    },
-    "token_url": {
-      "title": "令牌服务器地址",
-      "help": "令牌服务器URL。\n\n留空使用服务商默认值。"
-    },
-    "user_project": {
-      "title": "用户项目",
-      "help": "用户项目。\n\n可选 - 仅在请求者付费模式下需要。"
-    }
-  },
-  "google photos": {
-    "auth_url": {
-      "title": "认证服务器地址",
-      "help": "认证服务器URL。\n\n留空使用服务商默认值。"
-    },
-    "batch_commit_timeout": {
-      "title": "批量提交超时",
-      "help": "等待批量提交完成的最长时间。（已不再使用）"
-    },
-    "batch_mode": {
-      "title": "批量模式",
-      "help": "文件上传批处理模式：sync|async|off。\n\n设置rclone使用的批量模式。\n\n有3个可选值\n\n- off - 禁用批处理\n- sync - 批量上传并检查完成状态（默认值）\n- async - 批量上传且不检查完成状态\n\nRclone退出时会关闭所有未完成的批处理，这可能导致退出时出现延迟。\n"
-    },
-    "batch_size": {
-      "title": "批量大小",
-      "help": "上传批次中的最大文件数。\n\n设置要上传的文件批大小，必须小于50。\n\n默认值为0，表示rclone会根据batch_mode的设置自动计算批大小。\n\n- batch_mode: async - 默认批大小为50\n- batch_mode: sync - 默认批大小与--transfers相同\n- batch_mode: off - 不生效\n\nRclone退出时会关闭所有未完成的批处理，这可能导致退出时出现延迟。\n\n上传大量小文件时设置此值可显著提升速度。可配合--transfers 32使用以最大化吞吐量。\n"
-    },
-    "batch_timeout": {
-      "title": "批量超时",
-      "help": "空闲上传批次等待上传的最长时间。\n\n若上传批次空闲超过此时长，将触发上传。\n\n默认值为0，表示rclone会根据使用的batch_mode选择合理的默认值。\n\n- batch_mode: async - 默认批量超时为10秒\n- batch_mode: sync - 默认批量超时为1秒\n- batch_mode: off - 不生效\n"
-    },
-    "client_credentials": {
-      "title": "客户端凭据",
-      "help": "使用客户端凭据OAuth流程。\n\n此选项将使用RFC 6749中定义的OAUTH2客户端凭据流程。\n\n注意：并非所有后端都支持此选项。"
-    },
-    "client_id": {
-      "title": "客户端ID",
-      "help": "OAuth客户端ID。\n\n通常留空。"
-    },
-    "client_secret": {
-      "title": "客户端密钥",
-      "help": "OAuth客户端密钥。\n\n通常留空。"
-    },
-    "description": {
-      "title": "描述",
-      "help": "远程存储的描述信息。"
-    },
-    "encoding": {
-      "title": "编码方式",
-      "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
-    },
-    "include_archived": {
-      "title": "包含已归档内容",
-      "help": "同时查看和下载已归档的媒体。\n\n默认情况下，rclone不会请求已归档媒体。因此同步时，已归档媒体不会出现在目录列表中，也不会被传输。\n\n注意：相册中的媒体无论归档状态如何，始终可见并同步。\n\n设置此标志后，已归档媒体将始终显示在目录列表中并被传输。\n\n不设置此标志时，已归档媒体不会显示在目录列表中，也不会被传输。"
-    },
-    "proxy": {
-      "title": "代理",
-      "help": "使用gphotosdl代理下载全分辨率图片\n\nGoogle API返回的图片和视频可能不是全分辨率，或缺少EXIF信息。\n\n使用gphotosdl代理可下载原始、未修改的图片。\n\n此代理会在后台运行无头浏览器。\n\n从[gphotosdl](https://github.com/rclone/gphotosdl)下载软件\n\n首先运行\n\n    gphotosdl -login\n\n登录Google相册后关闭浏览器窗口，然后运行\n\n    gphotosdl\n\n设置参数`--gphotos-proxy \"http://localhost:8282\"`使rclone使用此代理。\n"
-    },
-    "read_only": {
-      "title": "只读模式",
-      "help": "设置Google相册后端为只读模式。\n\n选择只读模式后，rclone仅请求照片的只读权限，否则将请求完全访问权限。"
-    },
-    "read_size": {
-      "title": "读取大小",
-      "help": "设置读取媒体项目的大小。\n\n正常情况下，rclone不会读取媒体项目大小，因为这需要额外请求。同步时不需要此信息。\n但rclone挂载需要在读取前知道文件大小，因此使用rclone挂载并希望读取媒体时，建议设置此标志。"
-    },
-    "start_year": {
-      "title": "起始年份",
-      "help": "仅下载指定年份及之后上传的照片。"
-    },
-    "token": {
-      "title": "令牌",
-      "help": "JSON格式的OAuth访问令牌。"
-    },
-    "token_url": {
-      "title": "令牌服务器地址",
-      "help": "令牌服务器URL。\n\n留空使用服务商默认值。"
-    }
-  },
-  "hasher": {
-    "auto_size": {
-      "title": "自动更新大小",
-      "help": "自动更新小于此大小文件的校验和（默认禁用）。"
-    },
-    "description": {
-      "title": "描述",
-      "help": "远程存储的描述信息。"
-    },
-    "hashes": {
-      "title": "哈希算法",
-      "help": "支持的校验和类型，逗号分隔列表。"
-    },
-    "max_age": {
-      "title": "缓存有效期",
-      "help": "校验和在缓存中的最长保存时间（0 = 不缓存，off = 永久缓存）。"
-    },
-    "remote": {
-      "title": "远程存储",
-      "help": "要缓存校验和的远程存储（例如myRemote:path）。"
-    }
-  },
-  "hdfs": {
-    "data_transfer_protection": {
-      "title": "数据传输保护",
-      "help": "Kerberos数据传输保护：authentication|integrity|privacy。\n\n指定与数据节点通信时是否需要认证、数据签名完整性检查和网络加密。可选值为'authentication'、'integrity'和'privacy'。仅在启用KERBEROS时使用。"
-    },
-    "description": {
-      "title": "描述",
-      "help": "远程存储的描述信息。"
-    },
-    "encoding": {
-      "title": "编码方式",
-      "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
-    },
-    "namenode": {
-      "title": "名称节点",
-      "help": "Hadoop名称节点和端口。\n\n例如\"namenode-1:8020,namenode-2:8020,...\"连接到8020端口的主机名称节点。"
-    },
-    "service_principal_name": {
-      "title": "服务主体名称",
-      "help": "名称节点的Kerberos服务主体名称。\n\n启用KERBEROS认证。指定名称节点的服务主体名称（SERVICE/FQDN）。\n例如\"hdfs/namenode.hadoop.docker\"表示运行在'hdfs'服务、FQDN为'namenode.hadoop.docker'的名称节点。"
-    },
-    "username": {
-      "title": "用户名",
-      "help": "Hadoop用户名。"
-    }
-  },
-  "hidrive": {
-    "auth_url": {
-      "title": "认证服务器地址",
-      "help": "认证服务器URL。\n\n留空使用服务商默认值。"
-    },
-    "chunk_size": {
-      "title": "分块大小",
-      "help": "分块上传的块大小。\n\n大于配置阈值（或大小未知）的文件将以此大小分块上传。\n\n上限为2147483647字节（约2.000Gi）。\n这是单次上传操作支持的最大字节数。\n设置超过上限或负值会导致上传失败。\n\n增大此值可能提升上传速度，但会占用更多内存。\n减小此值可节省内存。"
-    },
-    "client_credentials": {
-      "title": "客户端凭据",
-      "help": "使用客户端凭据OAuth流程。\n\n此选项将使用RFC 6749中定义的OAUTH2客户端凭据流程。\n\n注意：并非所有后端都支持此选项。"
-    },
-    "client_id": {
-      "title": "客户端ID",
-      "help": "OAuth客户端ID。\n\n通常留空。"
-    },
-    "client_secret": {
-      "title": "客户端密钥",
-      "help": "OAuth客户端密钥。\n\n通常留空。"
-    },
-    "description": {
-      "title": "描述",
-      "help": "远程存储的描述信息。"
-    },
-    "disable_fetching_member_count": {
-      "title": "禁用成员数获取",
-      "help": "除非绝对必要，否则不获取目录中的对象数量。\n\n不获取子目录中的对象数量可能会加快请求速度。"
-    },
-    "encoding": {
-      "title": "编码方式",
-      "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
-    },
-    "endpoint": {
-      "title": "服务接入点",
-      "help": "服务的接入点URL。\n\nAPI请求将发送到此URL。"
-    },
-    "root_prefix": {
-      "title": "根路径前缀",
-      "help": "所有路径的根/父文件夹。\n\n填写后，rclone会将指定文件夹作为所有路径的父目录。\n通过此方式可将任意文件夹设为rclone的起始目录。"
-    },
-    "scope_access": {
-      "title": "访问范围",
-      "help": "rclone向HiDrive请求访问时使用的权限。"
-    },
-    "scope_role": {
-      "title": "角色范围",
-      "help": "rclone向HiDrive请求访问时使用的用户级别。"
-    },
-    "token": {
-      "title": "令牌",
-      "help": "JSON格式的OAuth访问令牌。"
-    },
-    "token_url": {
-      "title": "令牌服务器地址",
-      "help": "令牌服务器URL。\n\n留空使用服务商默认值。"
-    },
-    "upload_concurrency": {
-      "title": "上传并发数",
-      "help": "分块上传的并发数。\n\n这是单个文件同时运行的传输任务上限。\n设置小于1的值会导致上传死锁。\n\n若在高速链路下上传少量大文件且带宽未被充分利用，增大此值可能提升传输速度。"
-    },
-    "upload_cutoff": {
-      "title": "上传阈值",
-      "help": "分块上传的阈值。\n\n大于此值的文件将按配置的分块大小分块上传。\n\n上限为2147483647字节（约2.000Gi）。\n这是单次上传操作支持的最大字节数。\n设置超过上限会导致上传失败。"
-    }
-  },
-  "http": {
-    "description": {
-      "title": "描述",
-      "help": "远程存储的描述信息。"
-    },
-    "headers": {
-      "title": "请求头",
-      "help": "为所有请求设置HTTP头。\n\n用于为所有请求设置额外的HTTP头。\n\n输入格式为逗号分隔的键值对列表。可使用标准[CSV编码](https://godoc.org/encoding/csv)。\n\n例如，设置Cookie使用'Cookie,name=value'或'\"Cookie\",\"name=value\"'。\n\n可设置多个头，如'\"Cookie\",\"name=value\",\"Authorization\",\"xxx\"'。"
-    },
-    "no_escape": {
-      "title": "禁用转义",
-      "help": "不对路径名中的URL元字符进行转义。"
-    },
-    "no_head": {
-      "title": "禁用HEAD请求",
-      "help": "不使用HEAD请求。\n\nHEAD请求主要用于在目录列表中获取文件大小。\n若目标站点加载缓慢，可尝试此选项。\n正常情况下，rclone会对目录列表中的每个潜在文件发送HEAD请求，目的是：\n\n- 获取文件大小\n- 检查文件是否存在\n- 检查是否为目录\n\n设置此选项后，rclone将不发送HEAD请求。这会使目录列表速度大幅提升，但rclone将无法获取文件的时间和大小信息，且列表中可能包含不存在的文件。\n"
-    },
-    "no_slash": {
-      "title": "禁用路径斜杠",
-      "help": "若站点的目录结尾不加/，请设置此项。\n\n若目标网站的目录结尾不使用/，需启用此选项。\n\nrclone通常通过路径结尾的/区分文件和目录。\n设置此标志后，rclone会将所有Content-Type为text/html的文件视为目录，并从中读取URL而非下载。\n\n注意：这可能导致rclone将真实的HTML文件误认为目录。\n"
-    },
-    "url": {
-      "title": "URL地址",
-      "help": "要连接的HTTP主机URL。\n\n例如\"https://example.com\"，或使用用户名密码的形式\"https://user:pass@example.com\"。"
-    }
-  },
-  "iclouddrive": {
-    "apple_id": {
-      "title": "Apple ID",
-      "help": "苹果账户ID。"
-    },
-    "client_id": {
-      "title": "客户端ID",
-      "help": "客户端标识"
-    },
-    "cookies": {
-      "title": "Cookie",
-      "help": "Cookie（仅内部使用）"
-    },
-    "description": {
-      "title": "描述",
-      "help": "远程存储的描述信息。"
-    },
-    "encoding": {
-      "title": "编码方式",
-      "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
-    },
-    "password": {
-      "title": "密码",
-      "help": "账户密码。"
-    },
-    "trust_token": {
-      "title": "信任令牌",
-      "help": "信任令牌（仅内部使用）"
-    }
-  },
-  "imagekit": {
-    "description": {
-      "title": "描述",
-      "help": "远程存储的描述信息。"
-    },
-    "encoding": {
-      "title": "编码方式",
-      "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
-    },
-    "endpoint": {
-      "title": "接入点",
-      "help": "可在[控制台](https://imagekit.io/dashboard/developer/api-keys)中找到ImageKit.io的URL接入点。"
-    },
-    "only_signed": {
-      "title": "仅签名链接",
-      "help": "若在控制台设置中配置了`Restrict unsigned image URLs`（限制未签名图片URL），请设为true。"
-    },
-    "private_key": {
-      "title": "私钥",
-      "help": "可在[控制台](https://imagekit.io/dashboard/developer/api-keys)中找到ImageKit.io的私钥。"
-    },
-    "public_key": {
-      "title": "公钥",
-      "help": "可在[控制台](https://imagekit.io/dashboard/developer/api-keys)中找到ImageKit.io的公钥。"
-    },
-    "upload_tags": {
-      "title": "上传标签",
-      "help": "添加到上传文件的标签，例如\"tag1,tag2\"。"
-    },
-    "versions": {
-      "title": "版本管理",
-      "help": "在目录列表中包含旧版本文件。"
-    }
-  },
-  "internetarchive": {
-    "access_key_id": {
-      "title": "访问密钥ID",
-      "help": "IAS3访问密钥。\n\n匿名访问留空。\n可在此获取：https://archive.org/account/s3.php"
-    },
-    "description": {
-      "title": "描述",
-      "help": "远程存储的描述信息。"
-    },
-    "disable_checksum": {
-      "title": "禁用校验和",
-      "help": "不要求服务器校验rclone计算的MD5校验和。\n正常情况下，rclone会在上传前计算输入文件的MD5校验和，以便请求服务器校验对象。\n这有助于数据完整性检查，但会导致大文件开始上传前出现长时间延迟。"
-    },
-    "encoding": {
-      "title": "编码方式",
-      "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
-    },
-    "endpoint": {
-      "title": "接入点",
-      "help": "IAS3接入点。\n\n留空使用默认值。"
-    },
-    "front_endpoint": {
-      "title": "前端接入点",
-      "help": "InternetArchive前端主机。\n\n留空使用默认值。"
-    },
-    "item_derive": {
-      "title": "项目派生",
-      "help": "是否触发IA项目的派生处理。设为false时，上传后IA不会对项目进行派生处理。\n派生过程会从上传文件生成多个辅助文件，使上传内容更适合网页展示。\n若上传的文件已是IA可展示的格式，或希望减轻IA基础设施负担，可设为false。"
-    },
-    "item_metadata": {
-      "title": "项目元数据",
-      "help": "要设置在IA项目上的元数据，与使用--metadata-set设置的文件级元数据不同。\n格式为key=value，系统会自动添加'x-archive-meta-'前缀。"
-    },
-    "secret_access_key": {
-      "title": "秘密访问密钥",
-      "help": "IAS3秘密密钥（密码）。\n\n匿名访问留空。"
-    },
-    "wait_archive": {
-      "title": "等待归档",
-      "help": "等待服务器处理任务（特别是归档和book_op）完成的超时时间。\n仅在需要确保写入操作后数据能立即同步可见时启用。\n设为0禁用等待。超时不会抛出错误。"
-    }
-  },
 
-"jottacloud": {
+    "jottacloud": {
       "auth_url": {
         "title": "认证地址",
         "help": "认证服务器 URL。\n\n留空使用服务商默认地址。"
@@ -1966,6 +1985,10 @@
       "description": {
         "title": "描述",
         "help": "远程存储描述。"
+      },
+      "discard": {
+        "title": "丢弃",
+        "help": "如果设置，所有写入操作将被丢弃，读取操作将返回错误\n\n如果设置，则在上传文件时，文件内容不会被保存。文件\n会显示已上传，但在读取时会报错。文件上传时会计算其 MD5\n校验和，这只需要很少的 CPU 时间，并允许检查传输。\n\n这对于测试性能很有用。\n\n最简单的使用方法是使用连接字符串语法：\n\n    :memory,discard:bucket\n\n"
       }
     },
     "netstorage": {
@@ -2287,7 +2310,7 @@
       }
     },
 
-"pikpak": {
+    "pikpak": {
       "chunk_size": {
         "title": "分块大小",
         "help": "分块上传的块大小。\n\t\n大文件将按此大小分块上传。\n\n注意：分块数据会存储在内存中，同一时间内存中可能会存储多达\n\"--transfers\" * \"--pikpak-upload-concurrency\" 数量的分块。\n\n如果你在高速网络下传输大文件，且内存充足，\n增大该值可加快传输速度。\n\nRclone 在上传已知大小的大文件时，会自动增大分块大小，\n确保分块数量不超过 10,000 块限制。\n\n增大分块大小会降低使用 \"-P\" 参数显示的进度统计精度。"
@@ -2841,10 +2864,26 @@
       "versions": {
         "title": "显示版本",
         "help": "目录列表中包含历史版本。"
+      },
+      "role_arn": {
+        "title": "角色 ARN",
+        "help": "要承担的 IAM 角色 ARN。\n\t\t\t\n如果不使用 assume role，则留空。"
+      },
+      "role_session_name": {
+        "title": "角色会话名称",
+        "help": "承担角色的会话名称。\n\t\t\t\n如果为空，将自动生成会话名称。"
+      },
+      "role_session_duration": {
+        "title": "角色会话时长",
+        "help": "承担角色的会话时长。\n\t\t\t\n如果为空，将使用默认会话时长。"
+      },
+      "role_external_id": {
+        "title": "角色外部 ID",
+        "help": "承担角色的外部 ID。\n\t\t\t\n如果不使用外部 ID，则留空。"
       }
     },
 
-"seafile": {
+    "seafile": {
       "2fa": {
         "title": "两步验证",
         "help": "两步验证（账户开启两步验证时设为 'true'）。"
@@ -3436,8 +3475,8 @@
         "help": "操作使用的用户主体名。"
       }
     },
-    
-"union": {
+
+    "union": {
       "action_policy": {
         "title": "操作策略",
         "help": "在 ACTION（操作）类别下选择上游存储的策略。"
@@ -3629,6 +3668,162 @@
       "upload_cutoff": {
         "title": "上传分块阈值",
         "help": "切换到大文件上传 API 的阈值（≥ 10 MiB）。"
+      }
+    },
+    "filen": {
+      "email": {
+        "title": "邮箱",
+        "help": "Filen 账户的邮箱"
+      },
+      "password": {
+        "title": "密码",
+        "help": "Filen 账户的密码"
+      },
+      "api_key": {
+        "title": "API 密钥",
+        "help": "Filen 账户的 API 密钥 \n\n使用 Filen CLI 的 export-api-key 命令获取\n你可以从 https://github.com/FilenCloudDienste/filen-cli 下载 Filen CLI"
+      },
+      "upload_concurrency": {
+        "title": "上传并发",
+        "help": "分块上传的并发数。\n\n这是同一文件正在运行的并发传输的最大数量。\n将其设置为小于 1 的值将导致上传死锁。\n\n如果你正在高带宽链路上上传少量大文件\n且这些上传未充分利用带宽，那么增加\n这个值可能会帮助加快传输速度。"
+      },
+      "encoding": {
+        "title": "编码方式",
+        "help": "后端存储使用的编码方式。\n\n更多信息请参阅概述中的【编码】章节（/overview/#encoding）。"
+      },
+      "master_keys": {
+        "title": "主密钥",
+        "help": "主密钥（仅供内部使用）"
+      },
+      "private_key": {
+        "title": "私钥",
+        "help": "私钥（仅供内部使用）"
+      },
+      "public_key": {
+        "title": "公钥",
+        "help": "公钥（仅供内部使用）"
+      },
+      "auth_version": {
+        "title": "认证版本",
+        "help": "认证版本（仅供内部使用）"
+      },
+      "base_folder_uuid": {
+        "title": "根目录 UUID",
+        "help": "账户根目录的 UUID（仅供内部使用）"
+      },
+      "description": {
+        "title": "描述",
+        "help": "远程连接的描述"
+      }
+    },
+    "drime": {
+      "access_token": {
+        "title": "访问令牌",
+        "help": "API 访问令牌\n\n你可以从 Web 控制面板获取此令牌。"
+      },
+      "root_folder_id": {
+        "title": "根文件夹 ID",
+        "help": "根文件夹的 ID\n\n通常留空，rclone 会自动填充。\n\n如果你希望 rclone 限制在特定文件夹，可以填写它 - 有关更多信息，请参阅文档。\n"
+      },
+      "workspace_id": {
+        "title": "工作区 ID",
+        "help": "账户 ID\n\n通常留空，除非你想指定工作区 ID。\n"
+      },
+      "list_chunk": {
+        "title": "列表分块",
+        "help": "每次调用的列表项数"
+      },
+      "hard_delete": {
+        "title": "永久删除",
+        "help": "永久删除文件而不是放入回收站。"
+      },
+      "upload_cutoff": {
+        "title": "上传阈值",
+        "help": "切换到分块上传的阈值。\n\n任何大于此大小的文件都将以 chunk_size 的块上传。\n最小值为 0，最大值为 5 GiB。"
+      },
+      "chunk_size": {
+        "title": "分块大小",
+        "help": "用于上传的分块大小。\n\n当上传大于 upload_cutoff 的文件或未知大小的文件（例如来自 \"rclone rcat\" 或使用 \"rclone mount\" 或 google\nphotos 或 google docs 上传的文件）时，它们将使用此分块大小作为分块上传。\n\n请注意，\"--drime-upload-concurrency\" 个此大小的块将在每个传输中缓冲在内存中。\n\n如果你正在高带宽链路上传输大文件并且有足够的内存，\n增加这个值可能会帮助加快传输速度。\n\nRclone 会在上传已知大小的大文件时自动增加分块大小，\n以保持在 10,000 个块的限制之下。\n\n未知大小的文件将使用配置的 chunk_size 上传。\n由于默认分块大小为 5 MiB，且最多只能有 10,000 个块，\n这意味着默认情况下，你可以流式上传的最大文件大小为 48 GiB。\n如果你希望流式上传更大的文件，则需要增加 chunk_size。\n"
+      },
+      "upload_concurrency": {
+        "title": "上传并发",
+        "help": "分块上传和复制的并发数。\n\n这是同一文件在分块上传和复制时并发上传的块数。\n\n如果你正在高带宽链路上上传少量大文件\n且这些上传未充分利用带宽，那么增加\n这个值可能会帮助加快传输速度。"
+      },
+      "encoding": {
+        "title": "编码方式",
+        "help": "后端存储使用的编码方式。\n\n更多信息请参阅概述中的【编码】章节（/overview/#encoding）。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "远程连接的描述"
+      }
+    },
+    "shade": {
+      "drive_id": {
+        "title": "驱动器 ID",
+        "help": "你的驱动器 ID，请在驱动器设置中查看。每个 rclone 配置必须针对每个驱动器单独创建。"
+      },
+      "api_key": {
+        "title": "API 密钥",
+        "help": "你的账户的 API 密钥"
+      },
+      "endpoint": {
+        "title": "端点",
+        "help": "服务的端点。\n\n通常留空。"
+      },
+      "chunk_size": {
+        "title": "分块大小",
+        "help": "用于上传的分块大小。\n\n任何大于此大小的文件都将以该大小的块上传。\n\n请注意，这会缓冲在每个传输的内存中，因此增加它会\n增加内存使用。\n\n最小值为 5MB，最大值为 5GB。"
+      },
+      "upload_concurrency": {
+        "title": "上传并发",
+        "help": "分块上传和复制的并发数。这是同一文件在分块上传和复制时并发上传的块数。"
+      },
+      "max_upload_parts": {
+        "title": "最大上传分块数",
+        "help": "分块上传的最大分块数。"
+      },
+      "token": {
+        "title": "令牌",
+        "help": "用于执行 Shade FS 操作的 JWT 令牌。不要设置此值 - rclone 会自动设置它"
+      },
+      "token_expiry": {
+        "title": "令牌过期时间",
+        "help": "JWT 令牌过期时间。不要设置此值 - rclone 会自动设置它"
+      },
+      "encoding": {
+        "title": "编码方式",
+        "help": "后端存储使用的编码方式。\n\n更多信息请参阅概述中的【编码】章节（/overview/#encoding）。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "远程连接的描述"
+      }
+    },
+    "internxt": {
+      "email": {
+        "title": "邮箱",
+        "help": "你的 Internxt 账户邮箱。"
+      },
+      "pass": {
+        "title": "密码",
+        "help": "密码。"
+      },
+      "mnemonic": {
+        "title": "助记词",
+        "help": "助记词（仅供内部使用）"
+      },
+      "skip_hash_validation": {
+        "title": "跳过哈希验证",
+        "help": "下载文件时跳过哈希验证。\n\n默认情况下禁用哈希验证。将其设置为 false 以启用验证。"
+      },
+      "encoding": {
+        "title": "编码方式",
+        "help": "后端存储使用的编码方式。\n\n更多信息请参阅概述中的【编码】章节（/overview/#encoding）。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "远程连接的描述"
       }
     }
   }

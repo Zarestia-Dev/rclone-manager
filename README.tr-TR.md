@@ -115,10 +115,10 @@ Favori paket yöneticinizden yükleyin veya doğrudan indirin.
 
 ### macOS
 
-| Depo                 | Sürüm                                                                                                                                                                              | Kurulum Komutu                                                                                                                                                        |
-| :------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Homebrew**         | ![Beklemede](https://img.shields.io/badge/Beklemede-gray?style=flat)                                                                                                               | _Yakında_                                                                                                                                                             |
-| **Doğrudan İndirme** | [![Son Sürüm](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | <a href="https://github.com/Zarestia-Dev/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/İndir-3584e4?style=flat&logo=github" alt="İndir"></a> |
+| Depo                 | Sürüm                                                                                                                                                                                     | Kurulum Komutu                                                             |
+| :------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------- |
+| **Homebrew**         | [![Brew](https://img.shields.io/badge/Brew-Zarestia--Dev-3584e4?style=flat&logo=homebrew)](https://github.com/Zarestia-Dev/homebrew-zarestia)                                             | `brew tap Zarestia-Dev/zarestia` <br> `brew install --cask rclone-manager` |
+| **Doğrudan İndirme** | [![Son Sürüm](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)      | [DMG İndir](https://github.com/Zarestia-Dev/rclone-manager/releases)       |
 
 > 📚 **Detaylı Kılavuz:** [Wiki: Kurulum - macOS](https://hakanismail.info/zarestia/rclone-manager/docs/installation-macos)  
 > _Önemli: "Uygulama Hasarlı" düzeltmesi ve macFUSE kurulumu için bunu okuyun._

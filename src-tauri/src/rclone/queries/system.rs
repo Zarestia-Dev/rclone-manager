@@ -98,10 +98,9 @@ pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {
     let state = app.state::<RcloneState>();
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-    match fetch_config_path(&backend, &state.client).await {
-        Ok(path) => Ok(PathBuf::from(path)),
-        Err(e) => Err(e),
-    }
+    fetch_config_path(&backend, &state.client)
+        .await
+        .map(PathBuf::from)
 }
 
 #[cfg(not(feature = "web-server"))]

@@ -180,6 +180,10 @@
       "username": {
         "title": "Username",
         "help": "User name (usually an email address)\n\nSet this if using\n- User with username and password\n"
+      },
+      "connection_string": {
+        "title": "Connection String",
+        "help": "Storage Connection String.\n\nConnection string for the storage. Leave blank if using other auth methods.\n"
       }
     },
     "azurefiles": {
@@ -290,6 +294,10 @@
       "username": {
         "title": "Username",
         "help": "User name (usually an email address)\n\nSet this if using\n- User with username and password\n"
+      },
+      "use_emulator": {
+        "title": "Use Emulator",
+        "help": "Uses local storage emulator if provided as 'true'.\n\nLeave blank if using real azure storage endpoint."
       }
     },
     "b2": {
@@ -938,6 +946,10 @@
       "v2_download_min_size": {
         "title": "V2 Download Min Size",
         "help": "If Object's are greater, use drive v2 API to download."
+      },
+      "metadata_enforce_expansive_access": {
+        "title": "Metadata Enforce Expansive Access",
+        "help": "Whether the request should enforce expansive access rules.\n\nFrom Feb 2026 this flag will be set by default so this flag can be used for\ntesting before then.\n\nSee: https://developers.google.com/workspace/drive/api/guides/limited-expansive-access\n"
       }
     },
     "dropbox": {
@@ -1102,6 +1114,14 @@
       "key": {
         "title": "Key",
         "help": "Your FileLu Rclone key from My Account"
+      },
+      "upload_cutoff": {
+        "title": "Upload Cutoff",
+        "help": "Cutoff for switching to chunked upload. Any files larger than this will be uploaded in chunks of chunk_size."
+      },
+      "chunk_size": {
+        "title": "Chunk Size",
+        "help": "Chunk size to use for uploading. Used for multipart uploads."
       }
     },
     "filescom": {
@@ -1964,6 +1984,10 @@
       "description": {
         "title": "Description",
         "help": "Description of the remote."
+      },
+      "discard": {
+        "title": "Discard",
+        "help": "If set all writes will be discarded and reads will return an error\n\nIf set then when files are uploaded the contents not be saved. The\nfiles will appear to have been uploaded but will give an error on\nread. Files will have their MD5 sum calculated on upload which takes\nvery little CPU time and allows the transfers to be checked.\n\nThis can be useful for testing performance.\n\nProbably most easily used by using the connection string syntax:\n\n    :memory,discard:bucket\n\n"
       }
     },
     "netstorage": {
@@ -2838,6 +2862,22 @@
       "versions": {
         "title": "Versions",
         "help": "Include old versions in directory listings."
+      },
+      "role_arn": {
+        "title": "Role Arn",
+        "help": "ARN of the IAM role to assume.\n\t\t\t\nLeave blank if not using assume role."
+      },
+      "role_session_name": {
+        "title": "Role Session Name",
+        "help": "Session name for assumed role.\n\t\t\t\nIf empty, a session name will be generated automatically."
+      },
+      "role_session_duration": {
+        "title": "Role Session Duration",
+        "help": "Session duration for assumed role.\n\t\t\t\nIf empty, the default session duration will be used."
+      },
+      "role_external_id": {
+        "title": "Role External Id",
+        "help": "External ID for assumed role.\n\t\t\t\nLeave blank if not using an external ID."
       }
     },
     "seafile": {
@@ -3624,6 +3664,162 @@
       "upload_cutoff": {
         "title": "Upload Cutoff",
         "help": "Cutoff for switching to large file upload api (>= 10 MiB)."
+      }
+    },
+    "filen": {
+      "email": {
+        "title": "Email",
+        "help": "Email of your Filen account"
+      },
+      "password": {
+        "title": "Password",
+        "help": "Password of your Filen account"
+      },
+      "api_key": {
+        "title": "Api Key",
+        "help": "API Key for your Filen account \n\nGet this using the Filen CLI export-api-key command\nYou can download the Filen CLI from https://github.com/FilenCloudDienste/filen-cli"
+      },
+      "upload_concurrency": {
+        "title": "Upload Concurrency",
+        "help": "Concurrency for chunked uploads.\n\nThis is the upper limit for how many transfers for the same file are running concurrently.\nSetting this above to a value smaller than 1 will cause uploads to deadlock.\n\nIf you are uploading small numbers of large files over high-speed links\nand these uploads do not fully utilize your bandwidth, then increasing\nthis may help to speed up the transfers."
+      },
+      "encoding": {
+        "title": "Encoding",
+        "help": "The encoding for the backend.\n\nSee the [encoding section in the overview](/overview/#encoding) for more info."
+      },
+      "master_keys": {
+        "title": "Master Keys",
+        "help": "Master Keys (internal use only)"
+      },
+      "private_key": {
+        "title": "Private Key",
+        "help": "Private RSA Key (internal use only)"
+      },
+      "public_key": {
+        "title": "Public Key",
+        "help": "Public RSA Key (internal use only)"
+      },
+      "auth_version": {
+        "title": "Auth Version",
+        "help": "Authentication Version (internal use only)"
+      },
+      "base_folder_uuid": {
+        "title": "Base Folder Uuid",
+        "help": "UUID of Account Root Directory (internal use only)"
+      },
+      "description": {
+        "title": "Description",
+        "help": "Description of the remote."
+      }
+    },
+    "drime": {
+      "access_token": {
+        "title": "Access Token",
+        "help": "API Access token\n\nYou can get this from the web control panel."
+      },
+      "root_folder_id": {
+        "title": "Root Folder Id",
+        "help": "ID of the root folder\n\nLeave this blank normally, rclone will fill it in automatically.\n\nIf you want rclone to be restricted to a particular folder you can\nfill it in - see the docs for more info.\n"
+      },
+      "workspace_id": {
+        "title": "Workspace Id",
+        "help": "Account ID\n\nLeave this blank normally unless you wish to specify a Workspace ID.\n"
+      },
+      "list_chunk": {
+        "title": "List Chunk",
+        "help": "Number of items to list in each call"
+      },
+      "hard_delete": {
+        "title": "Hard Delete",
+        "help": "Delete files permanently rather than putting them into the trash."
+      },
+      "upload_cutoff": {
+        "title": "Upload Cutoff",
+        "help": "Cutoff for switching to chunked upload.\n\nAny files larger than this will be uploaded in chunks of chunk_size.\nThe minimum is 0 and the maximum is 5 GiB."
+      },
+      "chunk_size": {
+        "title": "Chunk Size",
+        "help": "Chunk size to use for uploading.\n\nWhen uploading files larger than upload_cutoff or files with unknown\nsize (e.g. from \"rclone rcat\" or uploaded with \"rclone mount\" or google\nphotos or google docs) they will be uploaded as multipart uploads\nusing this chunk size.\n\nNote that \"--drime-upload-concurrency\" chunks of this size are buffered\nin memory per transfer.\n\nIf you are transferring large files over high-speed links and you have\nenough memory, then increasing this will speed up the transfers.\n\nRclone will automatically increase the chunk size when uploading a\nlarge file of known size to stay below the 10,000 chunks limit.\n\nFiles of unknown size are uploaded with the configured\nchunk_size. Since the default chunk size is 5 MiB and there can be at\nmost 10,000 chunks, this means that by default the maximum size of\na file you can stream upload is 48 GiB.  If you wish to stream upload\nlarger files then you will need to increase chunk_size.\n"
+      },
+      "upload_concurrency": {
+        "title": "Upload Concurrency",
+        "help": "Concurrency for multipart uploads and copies.\n\nThis is the number of chunks of the same file that are uploaded\nconcurrently for multipart uploads and copies.\n\nIf you are uploading small numbers of large files over high-speed links\nand these uploads do not fully utilize your bandwidth, then increasing\nthis may help to speed up the transfers."
+      },
+      "encoding": {
+        "title": "Encoding",
+        "help": "The encoding for the backend.\n\nSee the [encoding section in the overview](/overview/#encoding) for more info."
+      },
+      "description": {
+        "title": "Description",
+        "help": "Description of the remote."
+      }
+    },
+    "shade": {
+      "drive_id": {
+        "title": "Drive Id",
+        "help": "The ID of your drive, see this in the drive settings. Individual rclone configs must be made per drive."
+      },
+      "api_key": {
+        "title": "Api Key",
+        "help": "An API key for your account."
+      },
+      "endpoint": {
+        "title": "Endpoint",
+        "help": "Endpoint for the service.\n\nLeave blank normally."
+      },
+      "chunk_size": {
+        "title": "Chunk Size",
+        "help": "Chunk size to use for uploading.\n\nAny files larger than this will be uploaded in chunks of this size.\n\nNote that this is stored in memory per transfer, so increasing it will\nincrease memory usage.\n\nMinimum is 5MB, maximum is 5GB."
+      },
+      "upload_concurrency": {
+        "title": "Upload Concurrency",
+        "help": "Concurrency for multipart uploads and copies. This is the number of chunks of the same file that are uploaded concurrently for multipart uploads and copies."
+      },
+      "max_upload_parts": {
+        "title": "Max Upload Parts",
+        "help": "Maximum amount of parts in a multipart upload."
+      },
+      "token": {
+        "title": "Token",
+        "help": "JWT Token for performing Shade FS operations. Don't set this value - rclone will set it automatically"
+      },
+      "token_expiry": {
+        "title": "Token Expiry",
+        "help": "JWT Token Expiration time. Don't set this value - rclone will set it automatically"
+      },
+      "encoding": {
+        "title": "Encoding",
+        "help": "The encoding for the backend.\n\nSee the [encoding section in the overview](/overview/#encoding) for more info."
+      },
+      "description": {
+        "title": "Description",
+        "help": "Description of the remote."
+      }
+    },
+    "internxt": {
+      "email": {
+        "title": "Email",
+        "help": "Email of your Internxt account."
+      },
+      "pass": {
+        "title": "Pass",
+        "help": "Password."
+      },
+      "mnemonic": {
+        "title": "Mnemonic",
+        "help": "Mnemonic (internal use only)"
+      },
+      "skip_hash_validation": {
+        "title": "Skip Hash Validation",
+        "help": "Skip hash validation when downloading files.\n\nBy default, hash validation is disabled. Set this to false to enable validation."
+      },
+      "encoding": {
+        "title": "Encoding",
+        "help": "The encoding for the backend.\n\nSee the [encoding section in the overview](/overview/#encoding) for more info."
+      },
+      "description": {
+        "title": "Description",
+        "help": "Description of the remote."
       }
     }
   }

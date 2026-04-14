@@ -1,151 +1,155 @@
-.home-container {
+:host {
   flex: 1;
   display: flex;
+  flex-direction: column;
   overflow: hidden;
-  background: transparent;
+}
 
-  mat-sidenav {
-    width: var(--sidebar-width);
-    border-radius: 0 !important;
+mat-sidenav-container {
+  height: 100%;
+  width: 100%;
+}
+
+mat-sidenav {
+  width: var(--sidebar-width);
+  border-radius: 0 !important;
+}
+
+mat-sidenav-content {
+  flex: 1;
+  height: 100%;
+
+  .sidebar-button {
+    position: absolute;
+    left: 20px;
+    top: 10px;
+    z-index: 1;
   }
 
-  mat-sidenav-content {
-    flex: 1;
+  .ellipsis-button {
+    position: absolute;
+    right: 20px;
+    top: 10px;
+  }
 
-    .sidebar-button {
-      position: absolute;
-      left: 20px;
-      top: 10px;
-      z-index: 1;
-    }
+  .no-remotes {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
-    .ellipsis-button {
-      position: absolute;
-      right: 20px;
-      top: 10px;
-    }
-
-    .no-remotes {
-      height: 100%;
+    .no-remotes-content {
+      text-align: center;
       display: flex;
+      padding: 24px;
+      max-width: 500px;
+      flex-direction: column;
       align-items: center;
-      justify-content: center;
+      gap: 16px;
 
-      .no-remotes-content {
-        text-align: center;
+      h2,
+      p {
+        margin: 0;
+      }
+
+      // Interactive icon container for backend management
+      .icon-container {
         display: flex;
-        padding: 24px;
-        max-width: 500px;
-        flex-direction: column;
         align-items: center;
-        gap: 16px;
+        justify-content: center;
+        width: 200px;
+        height: 200px;
+        border-radius: 20px;
+        background: linear-gradient(
+          135deg,
+          rgba(var(--primary-color-rgb), 0.1) 0%,
+          rgba(var(--accent-color-rgb), 0.08) 100%
+        );
+        position: relative;
+        overflow: visible;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        border: none;
+        font-family: inherit;
 
-        h2,
-        p {
-          margin: 0;
+        &::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          border-radius: 20px;
+          padding: 2px;
+          background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+          mask:
+            linear-gradient(#fff 0 0) content-box,
+            linear-gradient(#fff 0 0);
+          mask-composite: exclude;
+          pointer-events: none;
+          transition: opacity 0.2s ease;
         }
 
-        // Interactive icon container for backend management
-        .icon-container {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 200px;
-          height: 200px;
-          border-radius: 20px;
-          background: linear-gradient(
-            135deg,
-            rgba(var(--primary-color-rgb), 0.1) 0%,
-            rgba(var(--accent-color-rgb), 0.08) 100%
-          );
-          position: relative;
-          overflow: visible;
-          transition: all 0.3s ease;
-          cursor: pointer;
-          border: none;
-          font-family: inherit;
+        &:hover {
+          transform: scale(1.02);
 
           &::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            border-radius: 20px;
-            padding: 2px;
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
-            mask:
-              linear-gradient(#fff 0 0) content-box,
-              linear-gradient(#fff 0 0);
-            mask-composite: exclude;
-            pointer-events: none;
-            transition: opacity 0.2s ease;
-          }
-
-          &:hover {
-            transform: scale(1.02);
-
-            &::before {
-              opacity: 0.8;
-            }
-          }
-
-          img {
-            width: 180px;
-            height: 180px;
-          }
-
-          .status-dot {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            border: 3px solid var(--window-bg-color);
-            background-color: var(--dim-color);
-            transition: background-color 0.3s ease;
-            z-index: 1;
-
-            &.connected {
-              background-color: var(--primary-color);
-              box-shadow: 0 0 8px rgba(var(--primary-color-rgb), 0.5);
-            }
-            &.disconnected {
-              background-color: var(--warn-color);
-            }
+            opacity: 0.8;
           }
         }
 
-        .backend-name {
-          font-size: var(--font-size-sm);
-          color: var(--dim-color);
-          font-weight: 500;
+        img {
+          width: 180px;
+          height: 180px;
         }
 
-        .no-remotes-actions {
-          width: 100%;
-          display: flex;
-          gap: 16px;
-          justify-content: center;
+        .status-dot {
+          position: absolute;
+          bottom: 10px;
+          right: 10px;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          border: 3px solid var(--window-bg-color);
+          background-color: var(--dim-color);
+          transition: background-color 0.3s ease;
+          z-index: 1;
+
+          &.connected {
+            background-color: var(--primary-color);
+            box-shadow: 0 0 8px rgba(var(--primary-color-rgb), 0.5);
+          }
+          &.disconnected {
+            background-color: var(--warn-color);
+          }
         }
+      }
+
+      .backend-name {
+        font-size: var(--font-size-sm);
+        color: var(--dim-color);
+        font-weight: 500;
+      }
+
+      .no-remotes-actions {
+        width: 100%;
+        display: flex;
+        gap: 16px;
+        justify-content: center;
       }
     }
   }
 }
 
 @media (max-width: 500px), (max-height: 500px) {
-  .home-container {
-    mat-sidenav-content {
-      .no-remotes {
-        align-items: flex-start !important;
+  mat-sidenav-content {
+    .no-remotes {
+      align-items: flex-start !important;
 
-        .no-remotes-content {
-          .no-remotes-actions {
-            flex-direction: column;
-            gap: 12px;
-          }
+      .no-remotes-content {
+        .no-remotes-actions {
+          flex-direction: column;
+          gap: 12px;
         }
       }
     }

@@ -62,9 +62,8 @@ pub async fn vfs_refresh(
 ) -> Result<Value, String> {
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-    let recursive_str = if recursive { "true" } else { "false" };
     let mut payload = json!({
-        "recursive": recursive_str
+        "recursive": recursive
     });
 
     if let Some(f) = fs {

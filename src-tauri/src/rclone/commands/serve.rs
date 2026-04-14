@@ -7,13 +7,12 @@ use crate::utils::types::origin::Origin;
 use crate::{
     rclone::{backend::BackendManager, state::watcher::force_check_serves},
     utils::{
-        app::notification::{Notification, send_notification_typed},
+        app::notification::{NotificationEvent, notify},
         json_helpers::{
             get_string, json_to_hashmap, resolve_profile_options, unwrap_nested_options,
         },
         logging::log::log_operation,
         rclone::endpoints::serve,
-        rclone::util::{extract_remote_name_from_fs, normalize_remote_name},
         types::{core::RcloneState, logs::LogLevel, remotes::ProfileParams},
     },
 };
@@ -135,35 +134,6 @@ pub async fn start_serve(
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
-    // Check for duplicates
-    let serves = backend_manager.remote_cache.get_serves().await;
-    let requested_remote = normalize_remote_name(&params.remote_name);
-    if serves.iter().any(|s| {
-        let fs_match = match s.params.get("fs") {
-            Some(Value::String(fs)) => extract_remote_name_from_fs(fs) == requested_remote,
-            Some(Value::Object(fs)) => fs
-                .get("_name")
-                .and_then(|v| v.as_str())
-                .map(normalize_remote_name)
-                .is_some_and(|name| name == requested_remote),
-            _ => false,
-        };
-        let profile_match = s.profile == params.profile;
-        fs_match && profile_match
-    }) {
-        let profile_msg = params
-            .profile
-            .clone()
-            .map(|p| format!(" (Profile: '{}')", p))
-            .unwrap_or_default();
-        let msg = format!(
-            "Serve is already running for '{}'{}",
-            params.remote_name, profile_msg
-        );
-        warn!("🚫 {}", msg);
-        return Err(msg);
-    }
-
     let serve_type = params
         .serve_options
         .as_ref()
@@ -201,20 +171,14 @@ pub async fn start_serve(
                 error.clone(),
                 None,
             );
-            send_notification_typed(
+            notify(
                 &app,
-                Notification::localized(
-                    "notification.title.serveFailed",
-                    "notification.body.serveFailed",
-                    Some(vec![
-                        ("remote", &params.remote_name),
-                        ("profile", params.profile.as_deref().unwrap_or("")),
-                        ("error", &e.to_string()),
-                    ]),
-                    None,
-                    Some(LogLevel::Error),
-                ),
-                Some(Origin::Internal),
+                NotificationEvent::ServeFailed {
+                    remote: params.remote_name.clone(),
+                    profile: params.profile.clone(),
+                    error: e.to_string(),
+                    origin: Origin::Ui,
+                },
             );
             error
         })?;
@@ -253,27 +217,22 @@ pub async fn start_serve(
     cache
         .store_serve_profile(&serve_id, params.profile.clone())
         .await;
-    refresh_serves_safely(&app).await;
-
+    if let Err(e) = force_check_serves(app.clone()).await {
+        warn!("Failed to refresh serves: {e}");
+    }
     info!(
         "✅ Serve {} started: ID={}, Address={}",
         params.remote_name, serve_response.id, serve_response.addr
     );
 
-    send_notification_typed(
+    notify(
         &app,
-        Notification::localized(
-            "notification.title.serveStarted",
-            "notification.body.serveStarted",
-            Some(vec![
-                ("remote", &params.remote_name),
-                ("profile", params.profile.as_deref().unwrap_or("")),
-                ("addr", &serve_response.addr),
-            ]),
-            None,
-            Some(LogLevel::Info),
-        ),
-        Some(Origin::Internal),
+        NotificationEvent::ServeStarted {
+            remote: params.remote_name.clone(),
+            profile: params.profile.clone(),
+            addr: serve_response.addr.clone(),
+            origin: Origin::Ui,
+        },
     );
 
     Ok(serve_response)
@@ -321,16 +280,14 @@ pub async fn stop_serve(
                 error.clone(),
                 None,
             );
-            send_notification_typed(
+            notify(
                 &app,
-                Notification::localized(
-                    "notification.title.stopServeFailed",
-                    "notification.body.stopServeFailed",
-                    Some(vec![("remote", &remote_name), ("error", &e.to_string())]),
-                    None,
-                    Some(LogLevel::Error),
-                ),
-                Some(Origin::Internal),
+                NotificationEvent::ServeFailed {
+                    remote: remote_name.clone(),
+                    profile: Some(profile.clone()),
+                    error: e.to_string(),
+                    origin: Origin::Ui,
+                },
             );
             error
         })?;
@@ -343,20 +300,18 @@ pub async fn stop_serve(
         None,
     );
 
-    refresh_serves_safely(&app).await;
-
+    if let Err(e) = force_check_serves(app.clone()).await {
+        warn!("Failed to refresh serves: {e}");
+    }
     info!("✅ Serve {server_id} stopped successfully");
 
-    send_notification_typed(
+    notify(
         &app,
-        Notification::localized(
-            "notification.title.serveStopped",
-            "notification.body.serveStopped",
-            Some(vec![("remote", &remote_name), ("profile", &profile)]),
-            None,
-            Some(LogLevel::Info),
-        ),
-        Some(Origin::Internal),
+        NotificationEvent::ServeStopped {
+            remote: remote_name.clone(),
+            profile: Some(profile),
+            origin: Origin::Ui,
+        },
     );
 
     Ok(crate::localized_success!("backendErrors.serve.stopSuccess", "serverId" => &server_id))
@@ -375,19 +330,10 @@ pub async fn stop_all_serves(app: AppHandle, context: String) -> Result<String, 
     if !should_emit_stop_all_serves_notification(serves.len(), &context) {
         debug!("No active serves to stop — skipping STOPALL");
         if context != "shutdown" {
-            refresh_serves_safely(&app).await;
-            // Inform the user there's nothing to stop
-            send_notification_typed(
-                &app,
-                Notification::localized(
-                    "notification.title.nothingToDo",
-                    "notification.body.nothingToDoServes",
-                    None,
-                    None,
-                    Some(LogLevel::Info),
-                ),
-                Some(Origin::Internal),
-            );
+            if let Err(e) = force_check_serves(app.clone()).await {
+                warn!("Failed to refresh serves: {e}");
+            }
+            notify(&app, NotificationEvent::NothingToDoServes);
         }
         // Silent no-op during shutdown
         return Ok(crate::localized_success!("backendSuccess.serve.stopped"));
@@ -399,45 +345,21 @@ pub async fn stop_all_serves(app: AppHandle, context: String) -> Result<String, 
         .map_err(|e| {
             let error = format!("Failed to stop all serves: {e}");
              let localized = crate::localized_error!("backendErrors.serve.failed", "operation" => "stop all", "error" => &error);
-             send_notification_typed(
-                &app,
-                Notification::localized(
-                    "notification.title.stopAllServesFailed",
-                    "notification.body.stopAllServesFailed",
-                    Some(vec![("error", &e.to_string())]),
-                    None,
-                    Some(LogLevel::Error),
-                ),
-                Some(Origin::Internal),
-            );
+             notify(&app, NotificationEvent::StopAllServesFailed { error: e.to_string() });
             localized
         })?;
 
-    if context != "shutdown" {
-        refresh_serves_safely(&app).await;
+    if context != "shutdown"
+        && let Err(e) = force_check_serves(app.clone()).await
+    {
+        warn!("Failed to refresh serves: {e}");
     }
 
     info!("✅ All serves stopped successfully");
 
-    send_notification_typed(
-        &app,
-        Notification::localized(
-            "notification.title.allServesStopped",
-            "notification.body.allServesStopped",
-            None,
-            None,
-            Some(LogLevel::Info),
-        ),
-        Some(Origin::Internal),
-    );
+    notify(&app, NotificationEvent::AllServesStopped);
 
     Ok(crate::localized_success!("backendSuccess.serve.stopped"))
-}
-
-async fn refresh_serves_safely(app: &AppHandle) {
-    if let Err(e) = force_check_serves(app.clone()).await {
-        warn!("Failed to refresh serves: {e}");
-    }
 }
 
 // Small helper to encapsulate the no-op policy for stopping all serves.

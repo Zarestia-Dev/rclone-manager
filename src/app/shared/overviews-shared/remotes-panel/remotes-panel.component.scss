@@ -1,111 +1,107 @@
 :host {
   display: block;
-  // Inherit mode colors from parent app-overview
-  --mode-primary-color: inherit;
-  --mode-primary-color-rgb: inherit;
-  --mode-light-color: inherit;
-  --mode-light-color-rgb: inherit;
 }
+
+// ── Panel Shell ──────────────────────────────────────────────────────────────
 
 .remotes-panel {
-  border-radius: var(--card-border-radius-large) !important;
-  box-shadow: var(--shadow-gnome);
-  max-height: 60vh;
+  border-radius: var(--card-border-radius-large);
   background: var(--view-bg-color);
+  box-shadow: var(--shadow-gnome);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
 
-  // Dynamic styling based on panel state
-  &.active-remotes-panel .panel-title-content {
-    .active-icon {
-      color: var(--mode-primary-color, var(--primary-color));
-    }
+// ── Panel Header ─────────────────────────────────────────────────────────────
 
-    .remote-count {
-      background: rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.1);
-      box-shadow: 0 0 0 1px var(--card-shade-color);
-    }
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xl);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex: 1;
+  min-width: 0;
+
+  .title-text {
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    color: var(--window-fg-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  &.inactive-remotes-panel .panel-title-content {
-    .inactive-icon {
-      color: var(--purple);
-    }
-
-    .remote-count {
-      background: rgba(var(--purple-rgb), 0.1);
-      box-shadow: 0 0 0 1px var(--card-shade-color);
-    }
-  }
-
-  // Remotes Panel Header
-  .remotes-header {
-    padding: var(--space-xl) var(--space-xl) var(--space-md) var(--space-xl);
-
-    .panel-title-content {
-      color: var(--window-fg-color);
-      font-size: var(--font-size-md);
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-      font-weight: 500;
-
-      .active-icon,
-      .inactive-icon {
-        transition: var(--transition-standard);
-        will-change: color;
-      }
-
-      .remote-count {
-        color: var(--dim-color);
-        font-size: var(--font-size-base);
-        font-weight: 400;
-        padding: var(--space-xxs) var(--space-xs);
-        border-radius: var(--radius-sm);
-        transition: var(--transition-standard);
-        will-change: background, border;
-      }
-    }
-  }
-
-  // Remotes Panel Content
-  .remotes-content {
-    padding: var(--panel-padding) var(--space-xl) var(--space-xl) var(--space-xl);
-    overflow-y: auto;
-
-    .remotes-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: var(--space-md);
-    }
+  mat-icon {
+    color: var(--dim-color);
   }
 }
+
+// Active panel: icon uses mode accent color
+.active-remotes-panel .panel-title mat-icon {
+  color: var(--mode-primary-color, var(--primary-color));
+}
+
+.panel-count {
+  flex-shrink: 0;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 var(--space-xs);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--dim-color);
+  background: rgba(var(--window-fg-color-rgb), 0.06);
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.active-remotes-panel .panel-count {
+  background: rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.1);
+  color: var(--mode-primary-color, var(--primary-color));
+}
+
+// ── Remotes Grid ─────────────────────────────────────────────────────────────
+
+.remotes-grid-wrap {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 58vh;
+  padding: var(--space-lg);
+}
+
+.remotes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-md);
+}
+
+// ── Responsive ───────────────────────────────────────────────────────────────
 
 @media (max-width: 768px) {
-  .remotes-panel {
-    .remotes-header {
-      padding: var(--panel-padding) var(--panel-padding) var(--space-sm) var(--panel-padding);
-    }
-
-    .remotes-content {
-      padding: var(--panel-padding-mobile) var(--panel-padding) var(--panel-padding)
-        var(--panel-padding);
-    }
-
-    .remotes-grid {
-      grid-template-columns: 1fr;
-      gap: var(--panel-padding-mobile);
-    }
+  .panel-header {
+    padding: var(--space-md);
   }
-}
 
-// Mobile (max-width: 480px)
-@media (max-width: 480px) {
-  .overview-content .remotes-panel {
-    .remotes-header {
-      padding: var(--space-lg) var(--space-lg) var(--space-sm) var(--space-lg);
-    }
+  .remotes-grid-wrap {
+    padding: var(--space-md);
+    max-height: none;
+  }
 
-    .remotes-content {
-      padding: var(--space-sm) var(--space-lg) var(--space-lg) var(--space-lg);
-    }
+  .remotes-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-sm);
   }
 }

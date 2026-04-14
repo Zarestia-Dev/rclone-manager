@@ -60,7 +60,7 @@ pub struct ScheduledTask {
 
     /// Backend this task belongs to (e.g., "Local", "NAS")
     /// Tasks only execute when their assigned backend is active
-    #[serde(default = "default_backend_name")]
+    #[serde(default = "crate::rclone::backend::types::default_backend_name")]
     pub backend_name: String,
 
     /// When the task was created
@@ -216,11 +216,6 @@ pub struct ScheduledTaskStats {
     pub total_runs: u64,
     pub successful_runs: u64,
     pub failed_runs: u64,
-}
-
-/// Default backend name for deserialization (backward compatibility)
-fn default_backend_name() -> String {
-    "Local".to_string()
 }
 
 #[cfg(test)]

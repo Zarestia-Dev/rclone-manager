@@ -4,17 +4,14 @@
   padding-top: var(--space-md);
 }
 
-// Header
-.detail-header {
-  text-align: center;
-  margin-bottom: var(--container-gap);
+// ─── Header ──────────────────────────────────────────────────────────────────
 
-  .header-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--header-gap);
-  }
+.detail-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--header-gap);
+  margin-bottom: var(--panel-gap);
 
   .remote-info-section {
     display: flex;
@@ -48,7 +45,8 @@
   }
 }
 
-// Icon container with operation states
+// ─── Icon container with operation states ────────────────────────────────────
+
 .icon-container {
   display: flex;
   align-items: center;
@@ -66,98 +64,164 @@
     transition: var(--transition-standard);
   }
 
-  // Mixin for operation states
-  @mixin operation-state($color-var, $color-rgb-var) {
+  @mixin operation-state($color-var) {
     .remote-type-icon {
       color: var($color-var);
     }
-    background: linear-gradient(
-      135deg,
-      rgba(var($color-rgb-var), 0.1) 0%,
-      rgba(var($color-rgb-var), 0.1) 100%
-    );
-    box-shadow: 0 0 0 2px rgba(var($color-rgb-var), 0.5);
+    background: color-mix(in srgb, var($color-var) 10%, var(--sidebar-bg-color));
+    box-shadow: 0 0 0 2px color-mix(in srgb, var($color-var) 50%, transparent);
   }
 
   &.sync {
-    @include operation-state(--primary-color, --primary-color-rgb);
+    @include operation-state(--primary-color);
   }
   &.copy {
-    @include operation-state(--yellow, --yellow-rgb);
+    @include operation-state(--yellow);
   }
   &.move {
-    @include operation-state(--orange, --orange-rgb);
+    @include operation-state(--orange);
   }
   &.bisync {
-    @include operation-state(--purple, --purple-rgb);
+    @include operation-state(--purple);
   }
   &.serve,
   &.mount {
-    @include operation-state(--accent-color, --accent-color-rgb);
+    @include operation-state(--accent-color);
   }
 }
 
-// Content area
-.detail-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--panel-gap);
-}
-
-// Operation mode selector
-.operation-mode-selector {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-md);
-  background: var(--sidebar-bg-color);
-
-  .selector-label {
-    font-size: var(--font-size-sm);
-    font-weight: 500;
-    color: var(--dim-color);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-}
+// ─── Operation mode selector ─────────────────────────────────────────────────
 
 .operation-toggle-group {
-  border-color: var(--border-color);
+  --pad: 6px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-xxs);
+  position: relative;
+  isolation: isolate;
+  padding: var(--pad);
+  margin: 0 var(--space-sm) var(--space-sm);
+  align-self: center;
+  max-width: min(1000px, 100%);
+  min-width: 60vw;
+  border-radius: var(--radius-md);
+  background: var(--sidebar-bg-color);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
 
-  .mat-button-toggle {
-    border-color: var(--border-color);
+  &::before {
+    content: "";
+    position: absolute;
+    top: var(--pad);
+    left: var(--pad);
+    z-index: 0;
+    width: calc((100% - (var(--pad) * 2) - (var(--space-xxs) * 3)) / 4);
+    height: calc(100% - (var(--pad) * 2));
+    background: var(--card-bg-color);
+    border-radius: 12px;
+    box-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.08),
+      0 1px 2px rgba(0, 0, 0, 0.04),
+      0 0 0 1px rgba(0, 0, 0, 0.02);
+    transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+    will-change: transform;
+    transform: translateX(
+      calc(var(--selected-index) * 100% + var(--selected-index) * var(--space-xxs))
+    );
+    pointer-events: none;
+  }
 
-    .mat-button-toggle-button {
-      display: flex;
-      align-items: center;
-      gap: var(--space-xs);
-      padding: var(--space-sm) var(--space-md);
-      font-weight: 500;
+  .operation-toggle {
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
+    padding: 0 var(--space-sm);
+    border-radius: calc(var(--radius-md) - var(--pad));
+    color: var(--dim-color);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    font-family: inherit;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    min-width: 0;
+    transition:
+      color 0.2s ease,
+      transform 0.1s ease;
+    -webkit-tap-highlight-color: transparent;
+
+    span {
+      display: block;
+      width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: center;
     }
 
-    // Selected states by operation type
-    &.mat-button-toggle-checked {
-      &.operation-sync {
-        background: var(--primary-color);
+    &:hover:not(.is-selected) {
+      color: var(--window-fg-color);
+      background: color-mix(in srgb, var(--window-fg-color) 4%, transparent);
+    }
+
+    &.is-selected {
+      &:nth-child(1) {
+        color: var(--primary-color);
+      }
+      &:nth-child(2) {
+        color: var(--purple);
+      }
+      &:nth-child(3) {
+        color: var(--orange);
+      }
+      &:nth-child(4) {
+        color: var(--yellow);
+      }
+    }
+
+    &.is-running {
+      position: relative;
+
+      &::after {
+        content: "";
+        position: absolute;
+        bottom: var(--space-xxs);
+        left: 50%;
+        width: var(--space-xxs);
+        height: var(--space-xxs);
+        border-radius: 50%;
+        background: currentColor;
+        transform: translateX(-50%);
+        transition:
+          opacity 0.3s ease,
+          background-color 0.3s ease;
       }
 
-      &.operation-copy {
-        background: var(--yellow);
-      }
+      &:not(.is-selected) {
+        &::after {
+          animation: pulse 2s infinite;
+        }
 
-      &.operation-move {
-        background: var(--orange);
-      }
-
-      &.operation-bisync {
-        background: var(--purple);
+        &:nth-child(1)::after {
+          background: var(--primary-color);
+        }
+        &:nth-child(2)::after {
+          background: var(--purple);
+        }
+        &:nth-child(3)::after {
+          background: var(--orange);
+        }
+        &:nth-child(4)::after {
+          background: var(--yellow);
+        }
       }
     }
   }
 }
 
-// Monitor and configuration sections
+// ─── Monitor / configuration shared layout ────────────────────────────────────
+
 .operation-monitor,
 .configuration-content {
   display: flex;
@@ -176,36 +240,37 @@
   }
 }
 
-// Profile Selector
+// ─── Operation color token ────────────────────────────────────────────────────
+.profile-selector-container,
+.cron-human-readable {
+  --op-color: var(--primary-color);
+
+  &.operation-bisync {
+    --op-color: var(--purple);
+  }
+  &.operation-move {
+    --op-color: var(--orange);
+  }
+  &.operation-copy {
+    --op-color: var(--yellow);
+  }
+  &.operation-mount,
+  &.operation-serve {
+    --op-color: var(--accent-color);
+  }
+}
+
+// ─── Profile selector container ───────────────────────────────────────────────
+
 .profile-selector-container {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
   padding: var(--space-md);
-  border-radius: var(--icon-radius);
+  border-radius: var(--radius-md);
+  background: var(--view-bg-color);
+  box-shadow: var(--shadow-gnome);
   transition: var(--transition-standard);
-
-  // Operation-specific colors
-  &.operation-sync {
-    background: rgba(var(--primary-color-rgb), 0.03);
-    box-shadow: 0 0 0 1px rgba(var(--primary-color-rgb), 0.15);
-
-    &:hover {
-      background: rgba(var(--primary-color-rgb), 0.05);
-      box-shadow: 0 0 0 1px rgba(var(--primary-color-rgb), 0.2);
-    }
-  }
-
-  &.operation-mount,
-  &.operation-serve {
-    background: rgba(var(--accent-color-rgb), 0.03);
-    box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.15);
-
-    &:hover {
-      background: rgba(var(--accent-color-rgb), 0.05);
-      box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.2);
-    }
-  }
 }
 
 .profile-selector-header {
@@ -218,8 +283,7 @@
 .profile-selector-label {
   font-size: var(--font-size-sm);
   font-weight: 600;
-  color: var(--window-fg-color);
-  text-transform: uppercase;
+  color: var(--dim-color);
   letter-spacing: 0.5px;
 }
 
@@ -227,84 +291,94 @@
   font-size: var(--font-size-xs);
   font-weight: 500;
   color: var(--dim-color);
-  padding: 2px 8px;
-  background: rgba(var(--window-fg-color-rgb), 0.08);
+  padding: 4px 8px;
+  background: var(--selected-bg-color);
   border-radius: 10px;
 }
 
-.profile-chips {
+// ─── Profile pills ────────────────────────────────────────────────────────────
+
+.profile-pills {
   display: flex;
   flex-wrap: wrap;
+  gap: var(--space-xs);
+}
 
-  mat-chip-option {
-    // Running state (not selected)
-    &.chip-running:not(.mat-mdc-chip-selected) {
-      --mdc-chip-label-text-color: var(--primary-color);
+.profile-pill {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xxs);
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  background: var(--selected-bg-color);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--dim-color);
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
+
+  mat-icon {
+    width: var(--icon-size-sm);
+    height: var(--icon-size-sm);
+    font-size: var(--icon-size-sm);
+  }
+
+  &.is-selected {
+    background: var(--op-color);
+    color: #ffffff;
+
+    mat-icon {
+      color: #ffffff;
     }
+  }
 
-    // Running state (selected)
-    &.chip-running.mat-mdc-chip-selected {
-      --mdc-chip-elevated-selected-container-color: var(--primary-color);
-      --mdc-chip-label-text-color: white;
+  &.is-running {
+    &:not(.is-selected) {
+      color: var(--op-color);
+      background: rgba(var(--op-color-rgb), var(--active-opacity));
 
-      .chip-icon {
-        color: white;
+      mat-icon {
+        color: var(--op-color);
       }
     }
+  }
 
-    // Scheduled state (not selected)
-    &.chip-scheduled:not(.mat-mdc-chip-selected) {
-      --mdc-chip-label-text-color: var(--orange);
-      box-shadow: 0 0 0 2px rgba(var(--orange-rgb), 0.5);
+  &.is-scheduled {
+    &:not(.is-selected) {
+      color: var(--orange);
+      background: rgba(var(--orange-rgb), var(--active-opacity));
 
-      .chip-icon {
+      mat-icon {
         color: var(--orange);
       }
     }
-
-    // Scheduled state (selected)
-    &.chip-scheduled.mat-mdc-chip-selected {
-      --mdc-chip-elevated-selected-container-color: var(--orange);
-      --mdc-chip-label-text-color: white;
-
-      .chip-icon {
-        color: white;
-      }
-    }
   }
 
-  .chip-icon {
-    width: var(--icon-size-sm);
-    height: var(--icon-size-sm);
+  &:hover:not(.is-selected) {
+    color: var(--op-color);
+    background: var(--hover-bg-color);
   }
 }
 
-.cron-schedules-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
+// ─── Cron schedule ────────────────────────────────────────────────────────────
 
 .cron-human-readable {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
   padding: var(--space-sm) var(--space-md);
-  background: rgba(var(--primary-color-rgb), 0.05);
-  box-shadow: 0 0 0 1px var(--card-shade-color);
-  border-radius: var(--icon-radius);
-  color: var(--primary-color);
+  background: color-mix(in srgb, var(--op-color) 8%, var(--sidebar-bg-color));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--op-color) 30%, transparent);
+  border-radius: var(--radius-sm);
+  color: var(--op-color);
   font-size: var(--font-size-md);
   font-weight: 500;
 
   .cron-icon {
-    color: var(--primary-color);
+    color: var(--op-color);
     flex-shrink: 0;
-  }
-
-  .cron-profile-name {
-    font-weight: 600;
-    white-space: nowrap;
   }
 
   .cron-schedule {
@@ -315,7 +389,8 @@
   }
 }
 
-// Settings layout
+// ─── Settings layout ──────────────────────────────────────────────────────────
+
 .settings-layout {
   display: grid;
   gap: var(--panel-gap);
@@ -328,7 +403,7 @@
   gap: var(--space-sm);
   padding: var(--space-sm);
   background: var(--sidebar-bg-color);
-  border-radius: var(--icon-radius, var(--radius-sm));
+  border-radius: var(--radius-sm);
 
   .group-header {
     display: flex;
@@ -356,22 +431,49 @@
   }
 }
 
-// Responsive design
+// ─── Responsive ───────────────────────────────────────────────────────────────
+
 @media (max-width: 768px) {
-  .remote-info-section {
-    flex-direction: column !important;
-    gap: var(--space-xs) !important;
+  .detail-header {
+    .remote-info-section {
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+
+    .remote-text-info {
+      align-items: center;
+
+      .remote-name {
+        max-width: calc(100vw - 120px);
+      }
+    }
   }
 
-  .settings-group {
-    padding: var(--space-sm);
+  .operation-toggle-group {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+
+    &::before {
+      width: calc((100% - (var(--pad) * 2) - var(--space-xxs)) / 2);
+      height: calc((100% - (var(--pad) * 2) - var(--space-xxs)) / 2);
+      transform: translate(
+        calc(var(--selected-col) * 100% + var(--selected-col) * var(--space-xxs)),
+        calc(var(--selected-row) * 100% + var(--selected-row) * var(--space-xxs))
+      );
+    }
   }
-  .serves-grid {
-    grid-template-columns: 1fr;
+
+  .operation-monitor,
+  .configuration-content {
+    padding: var(--space-sm);
   }
 
   .profile-selector-container {
     padding: var(--space-sm);
+  }
+
+  .serves-grid {
+    grid-template-columns: 1fr;
   }
 }
 

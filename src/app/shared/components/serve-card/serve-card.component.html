@@ -1,86 +1,90 @@
 <mat-card class="serve-card" (click)="onCardClick()">
-  <mat-card-header class="serve-card-header">
-    <div class="serve-info">
-      <div class="serve-icon-wrapper">
-        <mat-icon [svgIcon]="serveTypeInfo().icon" class="serve-icon"></mat-icon>
+  <!-- Card Body -->
+  <div class="serve-body">
+    <!-- Protocol icon + info -->
+    <div class="serve-identity">
+      <div class="serve-icon-wrap">
+        <mat-icon [svgIcon]="serveIcon()" class="serve-icon" aria-hidden="true"></mat-icon>
       </div>
+
       <div class="serve-details">
+        <!-- Title row: remote name + protocol badge + profile badge -->
         <div class="serve-title-row">
           @if (showRemoteName()) {
             <span class="serve-remote-name">{{ remoteName() }}</span>
           }
-          <span class="serve-protocol-badge">
-            {{ serve().params.type | uppercase }}
-          </span>
+          <span class="protocol-badge">{{ serve().params.type | uppercase }}</span>
           @if (serve().profile) {
-            <span class="serve-profile-badge">{{ serve().profile }}</span>
+            <span class="profile-badge">{{ serve().profile }}</span>
           }
         </div>
 
+        <!-- URL or address -->
         @if (serveUrl(); as url) {
-          <div class="serve-url-container">
-            <span
-              class="serve-url"
-              [matTooltip]="'shared.serveCard.tooltips.copyUrl' | translate"
-              matTooltipShowDelay="500"
-              (click)="
-                onCopyToClipboard(url, 'shared.serveCard.messages.urlCopied');
-                $event.stopPropagation()
-              "
-              role="button"
-              tabindex="0"
-            >
-              {{ url }}
-            </span>
-          </div>
+          <span
+            class="serve-url"
+            [matTooltip]="'shared.serveCard.tooltips.copyUrl' | translate"
+            [matTooltipShowDelay]="400"
+            (click)="
+              onCopyToClipboard(url, 'shared.serveCard.messages.urlCopied');
+              $event.stopPropagation()
+            "
+            role="button"
+            tabindex="0"
+            >{{ url }}</span
+          >
         } @else {
           <span class="serve-address">{{ serve().addr }}</span>
         }
+
+        <!-- Filesystem path -->
         <span class="serve-fs">{{ serve().params.fs }}</span>
       </div>
     </div>
+
+    <!-- Stop button -->
     <button
       mat-icon-button
-      class="warn"
+      class="stop-btn warn"
       (click)="onStopServe(); $event.stopPropagation()"
       [matTooltip]="'shared.serveCard.tooltips.stop' | translate"
-      matTooltipShowDelay="500"
+      [matTooltipShowDelay]="400"
     >
       <mat-icon svgIcon="stop"></mat-icon>
     </button>
-  </mat-card-header>
+  </div>
 
-  <mat-card-footer class="serve-metadata">
-    <div class="metadata-row">
-      <mat-icon svgIcon="fingerprint" class="metadata-icon"></mat-icon>
-      <span class="metadata-label">{{ 'shared.serveCard.labels.id' | translate }}</span>
+  <!-- Metadata Footer -->
+  <div class="serve-footer">
+    <div class="meta-item">
+      <mat-icon svgIcon="fingerprint" class="meta-icon" aria-hidden="true"></mat-icon>
+      <span class="meta-label">{{ 'shared.serveCard.labels.id' | translate }}</span>
       <span
-        class="metadata-value"
+        class="meta-value"
         [matTooltip]="'shared.serveCard.tooltips.copyId' | translate"
-        matTooltipShowDelay="500"
+        [matTooltipShowDelay]="400"
         (click)="
           onCopyToClipboard(serve().id, 'shared.serveCard.messages.idCopied');
           $event.stopPropagation()
         "
         role="button"
-        tabindex="1"
+        tabindex="0"
+        >{{ serve().id }}</span
       >
-        {{ serve().id }}
-      </span>
     </div>
 
-    @if (optionKeys().length > 0) {
-      <div class="metadata-row">
-        <mat-icon svgIcon="gear" class="metadata-icon"></mat-icon>
-        <span class="metadata-label">{{ 'shared.serveCard.labels.options' | translate }}</span>
+    @if (optionsData().keys.length > 0) {
+      <div class="meta-item">
+        <mat-icon svgIcon="gear" class="meta-icon" aria-hidden="true"></mat-icon>
+        <span class="meta-label">{{ 'shared.serveCard.labels.options' | translate }}</span>
         <span
-          class="metadata-value options-value"
-          [matTooltip]="optionsTooltip()"
-          matTooltipShowDelay="500"
+          class="meta-value options-value"
+          [matTooltip]="optionsData().tooltip"
+          [matTooltipShowDelay]="300"
         >
-          {{ optionKeys().length }} {{ 'shared.serveCard.labels.active' | translate }}
+          {{ optionsData().keys.length }}&thinsp;{{ 'shared.serveCard.labels.active' | translate }}
         </span>
       </div>
     }
-  </mat-card-footer>
+  </div>
 </mat-card>

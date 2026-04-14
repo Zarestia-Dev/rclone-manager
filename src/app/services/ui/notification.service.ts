@@ -84,7 +84,7 @@ export class NotificationService {
     message: string,
     confirmText?: string,
     cancelText?: string,
-    options?: Pick<ConfirmDialogData, 'icon' | 'iconColor' | 'iconClass' | 'confirmButtonColor'>
+    options?: Pick<ConfirmDialogData, 'icon' | 'color'>
   ): Promise<boolean> {
     const dialogData: ConfirmDialogData = {
       title,
@@ -115,7 +115,7 @@ export class NotificationService {
     title: string,
     message: string,
     buttonText?: string,
-    options?: Pick<ConfirmDialogData, 'icon' | 'iconColor' | 'iconClass'>
+    options?: Pick<ConfirmDialogData, 'icon' | 'color'>
   ): Promise<void> {
     const dialogData: ConfirmDialogData = {
       title,

@@ -21,32 +21,32 @@ export class RcloneUpdateService extends BaseUpdateService {
 
   readonly updateStatus = this._updateStatus.asReadonly();
 
-  protected override get skippedVersionsKey() { return 'runtime.rclone_skipped_updates'; }
-  protected override get updateChannelKey() { return 'runtime.rclone_update_channel'; }
-  protected override get autoCheckKey() { return 'runtime.rclone_auto_check_updates'; }
-
-  private initialized = false;
+  protected override get settingNamespace(): string {
+    return 'runtime';
+  }
+  protected override get skippedVersionsKey(): string {
+    return 'rclone_skipped_updates';
+  }
+  protected override get updateChannelKey(): string {
+    return 'rclone_update_channel';
+  }
+  protected override get autoCheckKey(): string {
+    return 'rclone_auto_check_updates';
+  }
 
   constructor() {
     super();
     this.setupEventListeners();
-  }
-
-  async initialize(): Promise<void> {
-    if (this.initialized) return;
-    try {
-      await this.initBaseSettings();
-      this.initialized = true;
-      if (this.autoCheckEnabled()) await this.restoreUpdateState();
-    } catch (error) {
-      console.error('Failed to initialize rclone update service:', error);
-    }
+    void this.initBaseSettings().then(() => {
+      if (this.autoCheckEnabled()) {
+        void this.restoreUpdateState();
+      }
+    });
   }
 
   async checkForUpdates(): Promise<RcloneUpdateInfo | null> {
     this.patchUpdateStatus({ checking: true, error: null });
     try {
-      await this.initialize();
       const updateInfo = await this.invokeCommand<RcloneUpdateInfo>('check_rclone_update', {
         channel: this.updateChannel(),
       });
@@ -57,7 +57,7 @@ export class RcloneUpdateService extends BaseUpdateService {
       this.patchUpdateStatus({
         checking: false,
         error: String(error),
-        lastCheck: new Date()
+        lastCheck: new Date(),
       });
       return null;
     }
@@ -66,12 +66,16 @@ export class RcloneUpdateService extends BaseUpdateService {
   async performUpdate(): Promise<boolean> {
     this.patchUpdateStatus({ downloading: true, error: null });
     try {
-      const result = await this.invokeWithNotification<UpdateResult>('update_rclone', {
-        channel: this.updateChannel(),
-      }, {
-        errorKey: 'rcloneUpdate.failed',
-        showSuccess: false
-      });
+      const result = await this.invokeWithNotification<UpdateResult>(
+        'update_rclone',
+        {
+          channel: this.updateChannel(),
+        },
+        {
+          errorKey: 'rcloneUpdate.failed',
+          showSuccess: false,
+        }
+      );
 
       if (result.success) {
         this.patchUpdateStatus({ downloading: false, available: false, readyToRestart: true });
@@ -91,7 +95,7 @@ export class RcloneUpdateService extends BaseUpdateService {
     try {
       await this.invokeWithNotification<void>('apply_rclone_update', undefined, {
         errorKey: 'rcloneUpdate.failed',
-        showSuccess: false
+        showSuccess: false,
       });
       this.patchUpdateStatus({ readyToRestart: false, updateInfo: null });
       return true;
@@ -102,16 +106,17 @@ export class RcloneUpdateService extends BaseUpdateService {
     }
   }
 
-
   override async setChannel(channel: string): Promise<void> {
-    await super.setChannel(channel, 'rcloneUpdate.channelChanged');
+    await super.setChannel(channel);
     this.patchUpdateStatus({ available: false, updateInfo: null, error: null, lastCheck: null });
+    this.notificationService.showInfo(
+      this.translate.instant('rcloneUpdate.channelChanged', { channel })
+    );
   }
 
-
-
   override async skipVersion(version: string): Promise<void> {
-    await super.skipVersion(version, 'rcloneUpdate.skipped');
+    await super.skipVersion(version);
+    this.notificationService.showInfo(this.translate.instant('rcloneUpdate.skipped', { version }));
     const info = this._updateStatus().updateInfo;
     if (info?.latest_version === version || info?.latest_version_clean === version) {
       this.patchUpdateStatus({
@@ -124,16 +129,15 @@ export class RcloneUpdateService extends BaseUpdateService {
   override async unskipVersion(version: string): Promise<void> {
     await super.unskipVersion(version);
     void this.checkForUpdates();
-    this.notificationService.showInfo(
-      this.translate.instant('rcloneUpdate.restored', { version })
-    );
+    this.notificationService.showInfo(this.translate.instant('rcloneUpdate.restored', { version }));
   }
 
-
   override async setAutoCheckEnabled(enabled: boolean): Promise<void> {
-    await super.setAutoCheckEnabled(
-      enabled,
-      enabled ? 'rcloneUpdate.autoCheckEnabled' : 'rcloneUpdate.autoCheckDisabled'
+    await super.setAutoCheckEnabled(enabled);
+    this.notificationService.showInfo(
+      this.translate.instant(
+        enabled ? 'rcloneUpdate.autoCheckEnabled' : 'rcloneUpdate.autoCheckDisabled'
+      )
     );
   }
 
@@ -166,27 +170,23 @@ export class RcloneUpdateService extends BaseUpdateService {
   private async restoreUpdateState(): Promise<void> {
     try {
       const cached = await this.invokeCommand<RcloneUpdateInfo | null>('get_rclone_update_info');
-      if (!cached?.update_available) return;
-
-      if (cached.ready_to_restart) {
-        this.patchUpdateStatus({
-          available: false,
-          readyToRestart: true,
-          updateInfo: cached,
-          lastCheck: new Date(),
-        });
-        return;
-      }
-
-      if (!this.isVersionSkipped(cached.latest_version_clean ?? cached.latest_version)) {
-        this.processUpdateResult(cached);
-      }
+      if (cached) this.processUpdateResult(cached);
     } catch (error) {
       console.error('Failed to restore rclone update state:', error);
     }
   }
 
   private processUpdateResult(updateInfo: RcloneUpdateInfo): void {
+    if (updateInfo.ready_to_restart) {
+      this.patchUpdateStatus({
+        available: false,
+        readyToRestart: true,
+        updateInfo,
+        lastCheck: new Date(),
+      });
+      return;
+    }
+
     const isSkipped =
       updateInfo.update_available &&
       this.isVersionSkipped(updateInfo.latest_version_clean ?? updateInfo.latest_version);

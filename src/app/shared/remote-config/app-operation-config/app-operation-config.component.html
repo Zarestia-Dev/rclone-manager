@@ -3,7 +3,14 @@
     <div class="header-section">
       <mat-slide-toggle formControlName="autoStart" class="operation-enable">
         {{
-          'wizards.appOperation.enableAutoStart' | translate: { type: operationType() | titlecase }
+          'wizards.appOperation.enableAutoStart'
+            | translate
+              : {
+                  type:
+                    ('modals.remoteConfig.steps.' +
+                      (operationType() === 'remote' ? 'remoteConfig' : operationType())
+                    | translate),
+                }
         }}
       </mat-slide-toggle>
       <p class="section-description">{{ description() }}</p>
@@ -14,7 +21,14 @@
     <div class="header-section">
       <mat-slide-toggle formControlName="cronEnabled" class="cron-enable">
         {{
-          'wizards.appOperation.enableScheduled' | translate: { type: operationType() | titlecase }
+          'wizards.appOperation.enableScheduled'
+            | translate
+              : {
+                  type:
+                    ('modals.remoteConfig.steps.' +
+                      (operationType() === 'remote' ? 'remoteConfig' : operationType())
+                    | translate),
+                }
         }}
       </mat-slide-toggle>
       <p
@@ -27,7 +41,7 @@
   @if (!isMount() && !isServe() && isCronEnabled() && showCronSection()) {
     <mat-expansion-panel class="cron-panel">
       <mat-expansion-panel-header>
-        <mat-panel-title> {{ 'wizards.appOperation.cronSchedule' | translate }} </mat-panel-title>
+        <mat-panel-title>{{ 'wizards.appOperation.cronSchedule' | translate }}</mat-panel-title>
         <mat-panel-description>
           <span [class.no-schedule]="!cronExpression()">
             {{ cronExpression() || ('wizards.appOperation.notConfigured' | translate) }}
@@ -71,7 +85,7 @@
                   ? ('wizards.appOperation.remotePathServe' | translate)
                   : ('wizards.appOperation.sourcePath' | translate)
               }}</mat-label>
-              <span matPrefix class="path-prefix mount-remote locked">
+              <span matPrefix class="path-prefix mount-remote">
                 <mat-icon svgIcon="hard-drive"></mat-icon>
                 <span>{{ currentRemoteName() }}:</span>
               </span>
@@ -89,16 +103,17 @@
                     : ('wizards.appOperation.sourcePath' | translate)
                 "
                 (input)="onInputChanged($event, 'source')"
-                [cdkMenuTriggerFor]="sourceAutocompleteMenu"
+                [cdkMenuTriggerFor]="isSourcePickerDisabled() ? null : sourceAutocompleteMenu"
               />
               <button
                 matIconButton
                 matSuffix
+                [disabled]="isSourcePickerDisabled()"
                 (click)="selectRemotePath('source'); $event.stopPropagation()"
                 type="button"
                 [attr.aria-label]="'wizards.appOperation.selectRemoteSource' | translate"
               >
-                <mat-icon svgIcon="folder" class="accent"></mat-icon>
+                <mat-icon svgIcon="folder" [class.accent]="!isSourcePickerDisabled()"></mat-icon>
               </button>
             </mat-form-field>
           </div>
@@ -137,11 +152,11 @@
 
                 <mat-option value="local">
                   <mat-icon svgIcon="folder" class="purple"></mat-icon>
-                  {{ 'wizards.appOperation.localPath' | translate }}
+                  <span>{{ 'wizards.appOperation.localPath' | translate }}</span>
                 </mat-option>
                 <mat-option value="currentRemote">
                   <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-                  {{ currentRemoteName() }}:
+                  <span>{{ currentRemoteName() }}:</span>
                 </mat-option>
 
                 @if (otherRemotes().length) {
@@ -149,7 +164,7 @@
                     @for (remote of otherRemotes(); track remote) {
                       <mat-option [value]="'otherRemote:' + remote">
                         <mat-icon class="accent" svgIcon="cloud"></mat-icon>
-                        {{ remote }}:
+                        <span>{{ remote }}:</span>
                       </mat-option>
                     }
                   </mat-optgroup>
@@ -163,21 +178,21 @@
                 [attr.aria-label]="'wizards.appOperation.sourcePath' | translate"
                 (click)="$event.stopPropagation()"
                 (input)="onInputChanged($event, 'source')"
-                [cdkMenuTriggerFor]="sourceAutocompleteMenu"
+                [cdkMenuTriggerFor]="isSourcePickerDisabled() ? null : sourceAutocompleteMenu"
               />
 
-              <!-- Picker Button -->
               <button
                 matIconButton
                 matSuffix
+                [disabled]="isSourcePickerDisabled()"
                 (click)="selectRemotePath('source'); $event.stopPropagation()"
                 type="button"
                 [attr.aria-label]="'wizards.appOperation.selectRemoteSource' | translate"
               >
                 <mat-icon
                   svgIcon="folder"
-                  [class.purple]="sourcePathType() === 'local'"
-                  [class.accent]="sourcePathType() !== 'local'"
+                  [class.purple]="sourcePathType() === 'local' && !isSourcePickerDisabled()"
+                  [class.accent]="sourcePathType() !== 'local' && !isSourcePickerDisabled()"
                 ></mat-icon>
               </button>
             </mat-form-field>
@@ -186,12 +201,12 @@
       </div>
 
       <!-- Destination Path Section -->
-      @if (isMount() && !isServe() && showDestPath()) {
+      @if (isMount() && showDestPath()) {
         <div class="path-section">
           <div class="path-input-wrapper">
             <mat-form-field appearance="fill">
               <mat-label>{{ 'wizards.appOperation.destPath' | translate }}</mat-label>
-              <span matPrefix class="path-prefix mount-local locked">
+              <span matPrefix class="path-prefix mount-local">
                 <mat-icon svgIcon="folder" class="purple"></mat-icon>
                 <span>{{ 'wizards.appOperation.localPath' | translate }}</span>
               </span>
@@ -203,7 +218,6 @@
                 (input)="onInputChanged($event, 'dest')"
                 [cdkMenuTriggerFor]="destAutocompleteMenu"
               />
-              <!-- Picker Button for Mount Dest (Local) -->
               <button
                 matIconButton
                 matSuffix
@@ -254,11 +268,11 @@
 
                 <mat-option value="local">
                   <mat-icon svgIcon="folder" class="purple"></mat-icon>
-                  {{ 'wizards.appOperation.localPath' | translate }}
+                  <span>{{ 'wizards.appOperation.localPath' | translate }}</span>
                 </mat-option>
                 <mat-option value="currentRemote">
                   <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-                  {{ currentRemoteName() }}:
+                  <span>{{ currentRemoteName() }}:</span>
                 </mat-option>
 
                 @if (otherRemotes().length) {
@@ -266,7 +280,7 @@
                     @for (remote of otherRemotes(); track remote) {
                       <mat-option [value]="'otherRemote:' + remote">
                         <mat-icon class="accent" svgIcon="cloud"></mat-icon>
-                        {{ remote }}:
+                        <span>{{ remote }}:</span>
                       </mat-option>
                     }
                   </mat-optgroup>
@@ -280,21 +294,21 @@
                 [attr.aria-label]="'wizards.appOperation.destPath' | translate"
                 (click)="$event.stopPropagation()"
                 (input)="onInputChanged($event, 'dest')"
-                [cdkMenuTriggerFor]="destAutocompleteMenu"
+                [cdkMenuTriggerFor]="isDestPickerDisabled() ? null : destAutocompleteMenu"
               />
 
-              <!-- Picker Button -->
               <button
                 matIconButton
                 matSuffix
+                [disabled]="isDestPickerDisabled()"
                 (click)="selectRemotePath('dest'); $event.stopPropagation()"
                 type="button"
                 [attr.aria-label]="'wizards.appOperation.selectDestFolder' | translate"
               >
                 <mat-icon
                   svgIcon="folder"
-                  [class.purple]="destPathType() === 'local'"
-                  [class.accent]="destPathType() !== 'local'"
+                  [class.purple]="destPathType() === 'local' && !isDestPickerDisabled()"
+                  [class.accent]="destPathType() !== 'local' && !isDestPickerDisabled()"
                 ></mat-icon>
               </button>
 
@@ -333,12 +347,12 @@
           </button>
           <mat-divider></mat-divider>
         }
-        @if (state.options.length === 0 && !state.isLoading) {
+        @if (state.options.length === 0) {
           <div class="empty-state">
             <span>{{ 'wizards.appOperation.noItemsFound' | translate }}</span>
           </div>
         }
-        @for (entry of state.options; track trackByEntry($index, entry)) {
+        @for (entry of state.options; track entry.Path) {
           <button
             cdkMenuItem
             class="menu-item"
@@ -371,12 +385,12 @@
           </button>
           <mat-divider></mat-divider>
         }
-        @if (state.options.length === 0 && !state.isLoading) {
+        @if (state.options.length === 0) {
           <div class="empty-state">
             <span>{{ 'wizards.appOperation.noItemsFound' | translate }}</span>
           </div>
         }
-        @for (entry of state.options; track trackByEntry($index, entry)) {
+        @for (entry of state.options; track entry.Path) {
           <button
             cdkMenuItem
             class="menu-item"

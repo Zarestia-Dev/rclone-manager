@@ -6,24 +6,6 @@
 }
 
 // ----------------------------------------------------------------------------
-// Mixins & Shared Styles
-// ----------------------------------------------------------------------------
-@mixin status-box($bg-color, $text-color) {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-md);
-  border-radius: var(--radius-md);
-  background: rgba($bg-color, 0.1); // Default opacity
-  color: $text-color;
-
-  // Specific overrides if needed
-  &.error {
-    background: rgba($bg-color, 0.08);
-  }
-}
-
-// ----------------------------------------------------------------------------
 // Main Modal Layout
 // ----------------------------------------------------------------------------
 .about-modal {
@@ -54,7 +36,6 @@
     box-shadow: 0 1px 3px 0 rgba(0, 0, 6, 0.2);
     color: var(--window-fg-color);
 
-    // Override ripple color for buttons in about-item
     ::ng-deep .mat-mdc-button-persistent-ripple::before {
       background-color: var(--dim-color) !important;
     }
@@ -79,6 +60,15 @@
 }
 
 // ----------------------------------------------------------------------------
+// Header spacer
+// ----------------------------------------------------------------------------
+.ghost-header-spacer {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+// ----------------------------------------------------------------------------
 // Shared Content & App Info
 // ----------------------------------------------------------------------------
 .modal-content {
@@ -89,11 +79,11 @@
   gap: var(--space-xs);
   flex-direction: column;
 
-  // App Header Info
   .app-icon {
     width: var(--icon-size);
     height: var(--icon-size);
     align-self: center;
+    cursor: pointer;
   }
 
   .app-name {
@@ -138,6 +128,10 @@
   }
 
   .platform-badge {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xxs);
+
     mat-icon {
       font-size: var(--font-size-base);
       width: var(--font-size-base);
@@ -177,10 +171,8 @@
   background: var(--window-bg-color);
   display: flex;
   flex-direction: column;
-  overflow: hidden; // Prevent overlay itself from scrolling
+  overflow: hidden;
 
-  // Ensure content inside overlay scrolls independently
-  // Excludes the header to prevent it from scrolling away
   > *:not(.modal-header) {
     flex: 1;
     overflow-y: auto;
@@ -194,14 +186,25 @@
 // ----------------------------------------------------------------------------
 .rclone-info {
   .loading {
-    @include status-box(var(--primary-color-rgb), var(--primary-color));
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+    border-radius: var(--radius-md);
+    background: rgba(var(--primary-color-rgb), 0.1);
+    color: var(--primary-color);
   }
 
   .error {
-    @include status-box(var(--warn-color-rgb), var(--warn-color));
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+    border-radius: var(--radius-md);
+    background: rgba(var(--warn-color-rgb), 0.08);
+    color: var(--warn-color);
   }
 
-  // GNOME-style hero: icon + name + version
   .rclone-hero {
     display: flex;
     align-items: center;
@@ -217,7 +220,7 @@
       display: flex;
       align-items: start;
       flex-direction: column;
-      gap: 4px;
+      gap: var(--space-xxs);
 
       .rclone-name {
         font-size: var(--font-size-xl);
@@ -402,8 +405,9 @@
           color: var(--warn-color);
         }
 
-        h4 {
-          color: var(--warn-color) !important;
+        // Raised specificity to avoid needing !important
+        .update-title h4 {
+          color: var(--warn-color);
         }
       }
     }
@@ -452,8 +456,6 @@
       padding: var(--space-lg);
       box-shadow: var(--shadow-gnome);
       transition: var(--transition-standard);
-      will-change: box-shadow;
-
       display: flex;
       flex-direction: column;
       gap: var(--space-sm);
@@ -477,10 +479,6 @@
       .setting-control {
         mat-form-field {
           max-width: 100px;
-
-          ::ng-deep .mat-mdc-form-field-subscript-wrapper {
-            display: none;
-          }
         }
       }
     }
@@ -514,7 +512,7 @@
 
       .version {
         font-weight: 500;
-        font-family: monospace;
+        font-family: var(--font-mono);
         color: var(--window-fg-color);
       }
 
@@ -592,7 +590,6 @@
 .whats-new-content {
   padding: var(--space-md) var(--space-xl);
 
-  // Release Header
   .release-header {
     display: flex;
     justify-content: space-between;
@@ -618,7 +615,6 @@
     }
   }
 
-  // Release Notes Content
   .release-notes {
     font-size: var(--font-size-md);
     line-height: 1.7;
@@ -667,6 +663,85 @@
       gap: var(--space-md);
       padding: var(--space-xl);
       color: var(--dim-color);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Managed (package-manager) build update notice
+// ---------------------------------------------------------------------------
+
+.managed-update-notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+
+  .managed-info {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-sm);
+
+    mat-icon {
+      flex-shrink: 0;
+      color: var(--dim-color);
+      margin-top: 1px;
+    }
+
+    p {
+      margin: 0;
+      font-size: 0.85rem;
+      color: var(--dim-color);
+      line-height: 1.55;
+    }
+  }
+
+  .command-block {
+    all: unset;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--view-bg-color) 60%, transparent);
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+    cursor: pointer;
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease;
+    width: 100%;
+    box-sizing: border-box;
+
+    code {
+      font-family: var(--font-mono, "JetBrains Mono", "Fira Code", monospace);
+      font-size: 0.78rem;
+      color: var(--accent-color);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      letter-spacing: 0.01em;
+    }
+
+    mat-icon {
+      flex-shrink: 0;
+      font-size: 1rem;
+      width: 1rem;
+      height: 1rem;
+      color: var(--dim-color);
+      transition: color 0.15s ease;
+    }
+
+    &:hover {
+      background: color-mix(in srgb, var(--accent-color) 6%, var(--view-bg-color));
+      border-color: rgba(var(--accent-color-rgb), 0.3);
+
+      mat-icon {
+        color: var(--accent-color);
+      }
+    }
+
+    &:active {
+      background: color-mix(in srgb, var(--accent-color) 10%, var(--view-bg-color));
     }
   }
 }

@@ -6,7 +6,6 @@
 // STANDARD LIBRARY & EXTERNAL CRATES
 // =============================================================================
 use crate::core::settings::schema::AppSettings;
-use log::{debug, error, info};
 use std::sync::atomic::AtomicBool;
 use tauri::Manager;
 
@@ -30,12 +29,7 @@ mod server;
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 use crate::utils::logging::log::init_logging;
 use crate::{
-    core::{
-        initialization::initialization,
-        lifecycle::{shutdown::shutdown_app, startup::handle_startup},
-        paths::AppPaths,
-        scheduler::engine::CronScheduler,
-    },
+    core::{initialization::initialization, paths::AppPaths, scheduler::engine::CronScheduler},
     utils::types::{
         core::{RcApiEngine, RcloneState},
         logs::LogCache,
@@ -43,11 +37,12 @@ use crate::{
     },
 };
 
+// =============================================================================
 // CONDITIONAL IMPORTS: Desktop Tray
 // =============================================================================
-#[cfg(all(desktop, not(feature = "web-server")))]
+#[cfg(all(desktop, feature = "tray", not(feature = "web-server")))]
 use crate::core::tray::actions::handle_browse_remote;
-#[cfg(desktop)]
+#[cfg(all(desktop, feature = "tray"))]
 use crate::core::tray::{
     actions::{
         handle_bisync_profile, handle_copy_profile, handle_mount_profile, handle_move_profile,
@@ -58,9 +53,6 @@ use crate::core::tray::{
     },
     tray_action::TrayAction,
 };
-
-#[cfg(all(desktop, not(feature = "web-server")))]
-use crate::utils::app::builder::create_app_window;
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 use crate::utils::io::network::monitor_network_changes;
@@ -76,23 +68,13 @@ pub fn run() {
     // -------------------------------------------------------------------------
     let cli_args: crate::core::cli::CliArgs = match crate::core::cli::CliArgs::try_parse() {
         Ok(args) => {
-            // Validate CLI args early - fail fast for logical inconsistencies
             if let Err(e) = args.validate() {
                 eprintln!("❌ Invalid CLI arguments: {}", e);
                 std::process::exit(1);
             }
             args
         }
-        Err(e) => {
-            // If it's a help or version request, clap handles it and exits.
-            // For other errors (like invalid flags):
-            // - On Headless: fail fast as it's likely a config error in Docker/Script.
-            // - On Desktop: we might want to be more lenient, but claps default
-            //               behavior is to print and exit.
-            // Given we use Flatten, invalid flags for one feature might trigger errors.
-            // For now, mirroring claps default behavior but allowing future flexibility.
-            e.exit();
-        }
+        Err(e) => e.exit(),
     };
 
     // -------------------------------------------------------------------------
@@ -100,7 +82,6 @@ pub fn run() {
     // -------------------------------------------------------------------------
     let mut builder = tauri::Builder::default();
 
-    // Manage CLI args state early so it's available for path resolution
     builder = builder.manage(cli_args.clone());
 
     // -------------------------------------------------------------------------
@@ -116,84 +97,45 @@ pub fn run() {
     // -------------------------------------------------------------------------
     #[cfg(desktop)]
     {
+        // The only platform difference is the D-Bus service ID required on Linux.
+        // The callback itself is identical — deduplicate with a cfg inside the builder.
+        let si_builder = tauri_plugin_single_instance::Builder::new();
+
         #[cfg(target_os = "linux")]
-        {
-            builder = builder.plugin(
-                tauri_plugin_single_instance::Builder::new()
-                    .dbus_id("io.github.zarestia_dev.rclone-manager")
-                    .callback(|_app: &tauri::AppHandle, _, _| {
-                        #[cfg(feature = "web-server")]
-                        info!("Another instance attempted to run.");
+        let si_builder = si_builder.dbus_id("io.github.zarestia_dev.rclone-manager");
 
-                        #[cfg(not(feature = "web-server"))]
-                        {
-                            // Only show window if it exists, don't try to create
-                            // Creating from single instance callback can cause crashes
-                            if let Some(window) = _app.get_webview_window("main") {
-                                info!("📢 Second instance detected, showing existing window");
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            } else {
-                                info!("📢 Second instance detected, but window was destroyed. Use tray to reopen.");
-                                crate::utils::app::notification::send_notification_typed(
-                                    _app,
-                                    crate::utils::app::notification::Notification::localized(
-                                        "notification.title.alreadyRunning",
-                                        "notification.body.alreadyRunning",
-                                        None,
-                                        None,
-                                        Some(crate::utils::types::logs::LogLevel::Info),
-                                    ),
-                                    Some(crate::utils::types::origin::Origin::Internal),
-                                );
-                            }
+        builder = builder.plugin(
+            si_builder
+                .callback(|_app: &tauri::AppHandle, _, _| {
+                    #[cfg(feature = "web-server")]
+                    log::info!("Another instance attempted to run.");
+
+                    #[cfg(not(feature = "web-server"))]
+                    {
+                        if let Some(window) = _app.get_webview_window("main") {
+                            log::info!("📢 Second instance detected, showing existing window");
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        } else {
+                            log::info!(
+                                "📢 Second instance detected, but window was destroyed. \
+                                 Use tray to reopen."
+                            );
+                            crate::utils::app::notification::notify(
+                                _app,
+                                crate::utils::app::notification::NotificationEvent::AlreadyRunning,
+                            );
                         }
-                    })
-                    .build(),
-            );
-        }
-
-        #[cfg(not(target_os = "linux"))]
-        {
-            builder = builder.plugin(
-                tauri_plugin_single_instance::Builder::new()
-                    .callback(|_app: &tauri::AppHandle, _, _| {
-                        #[cfg(feature = "web-server")]
-                        info!("Another instance attempted to run.");
-
-                        #[cfg(not(feature = "web-server"))]
-                        {
-                            // Only show window if it exists, don't try to create
-                            // Creating from single instance callback can cause crashes
-                            if let Some(window) = _app.get_webview_window("main") {
-                                info!("📢 Second instance detected, showing existing window");
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            } else {
-                                info!("📢 Second instance detected, but window was destroyed. Use tray to reopen.");
-                                crate::utils::app::notification::send_notification_typed(
-                                    _app,
-                                    crate::utils::app::notification::Notification::localized(
-                                        "notification.title.alreadyRunning",
-                                        "notification.body.alreadyRunning",
-                                        None,
-                                        None,
-                                        Some(crate::utils::types::logs::LogLevel::Info),
-                                    ),
-                                    Some(crate::utils::types::origin::Origin::Internal),
-                                );
-                            }
-                        }
-                    })
-                    .build(),
-            );
-        }
+                    }
+                })
+                .build(),
+        );
     }
 
     // -------------------------------------------------------------------------
-    // Updater Plugin (Desktop + Updater feature)
+    // Updater Plugin (Desktop)
     // -------------------------------------------------------------------------
-    #[cfg(all(desktop, feature = "updater"))]
+    #[cfg(desktop)]
     {
         builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
     }
@@ -207,24 +149,32 @@ pub fn run() {
             WindowEvent::CloseRequested { api, .. } => {
                 let app_handle = window.app_handle();
 
-                // Read settings from AppSettingsManager which caches internally
-                let (tray_enabled, destroy_on_close) = app_handle
+                let destroy_on_close = app_handle
                     .try_state::<core::settings::AppSettingsManager>()
                     .and_then(|manager| {
                         manager
                             .get_all()
                             .ok()
-                            .map(|s| (s.general.tray_enabled, s.developer.destroy_window_on_close))
+                            .map(|s| s.developer.destroy_window_on_close)
                     })
-                    .unwrap_or((false, false));
+                    .unwrap_or(false);
+
+                #[cfg(feature = "tray")]
+                let tray_enabled = app_handle
+                    .try_state::<core::settings::AppSettingsManager>()
+                    .and_then(|manager| manager.get_all().ok().map(|s| s.general.tray_enabled))
+                    .unwrap_or(false);
+
+                #[cfg(not(feature = "tray"))]
+                let tray_enabled = false;
 
                 if tray_enabled {
                     if destroy_on_close {
-                        debug!("♻️ Optimization Enabled: Destroying window to free RAM");
+                        log::debug!("♻️ Optimization Enabled: Destroying window to free RAM");
                     } else {
                         #[cfg(desktop)]
                         if let Err(e) = window.hide() {
-                            error!("Failed to hide window: {e}");
+                            log::error!("Failed to hide window: {e}");
                         }
                         api.prevent_close();
                     }
@@ -236,7 +186,9 @@ pub fn run() {
                             .app_handle()
                             .state::<RcloneState>()
                             .set_shutting_down();
-                        let _ = shutdown_app(window_.app_handle().clone()).await;
+                        let _ =
+                            core::lifecycle::shutdown::shutdown_app(window_.app_handle().clone())
+                                .await;
                     });
                 }
             }
@@ -245,7 +197,7 @@ pub fn run() {
                 if let Some(win) = window.app_handle().get_webview_window("main")
                     && let Err(e) = win.show()
                 {
-                    error!("Failed to show window: {e}");
+                    log::error!("Failed to show window: {e}");
                 }
             }
             _ => {}
@@ -271,7 +223,6 @@ pub fn run() {
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_opener::init());
 
-    // Desktop-only plugins (not needed in headless/web-server mode)
     #[cfg(feature = "desktop")]
     {
         builder = builder
@@ -283,9 +234,9 @@ pub fn run() {
     builder = builder.setup(move |app| setup_app(app, cli_args.clone()));
 
     // -------------------------------------------------------------------------
-    // Tray Menu Events (Desktop)
+    // Tray Menu Events (Desktop + Tray)
     // -------------------------------------------------------------------------
-    #[cfg(desktop)]
+    #[cfg(all(desktop, feature = "tray"))]
     {
         builder = builder.on_menu_event(handle_tray_menu_event);
     }
@@ -307,7 +258,7 @@ pub fn run() {
 
     #[cfg(feature = "web-server")]
     {
-        info!("🎯 Tauri event loop starting (Web Server Mode)");
+        log::info!("🎯 Tauri event loop starting (Web Server Mode)");
         app.run(|_app_handle, _event| {});
     }
 
@@ -343,26 +294,23 @@ fn setup_app(
     let app_paths = AppPaths::setup(app_handle)?;
     let config_dir = app_paths.config_dir;
 
-    // -------------------------------------------------------------------------
-    // Initialize rcman Settings Manager
-    // -------------------------------------------------------------------------
     let rcman_manager =
         rcman::SettingsManager::builder(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
             .with_config_dir(&config_dir)
-            .with_credentials()
+            .with_env_credentials()
             .with_schema::<AppSettings>()
             .with_migrator(|mut value: serde_json::Value| {
                 if let Some(root) = value.as_object_mut()
                     && let Some(app_settings) = root.remove("app_settings")
                 {
-                        log::info!("found legacy app_settings, flattening to root");
-                        if let Some(app_settings_obj) = app_settings.as_object() {
-                            for (k, v) in app_settings_obj {
-                                if !root.contains_key(k) {
-                                    root.insert(k.clone(), v.clone());
-                                }
+                    log::info!("found legacy app_settings, flattening to root");
+                    if let Some(app_settings_obj) = app_settings.as_object() {
+                        for (k, v) in app_settings_obj {
+                            if !root.contains_key(k) {
+                                root.insert(k.clone(), v.clone());
                             }
                         }
+                    }
                 }
                 value
             })
@@ -396,58 +344,79 @@ fn setup_app(
                 rcman::SubSettingsConfig::singlefile("connections")
                     .with_schema::<crate::rclone::backend::schema::BackendConnectionSchema>()
                     .with_migrator(|value: serde_json::Value| {
-                        // Secret Migration: Move keys from `backend:{name}:password` to `sub.connections.{name}.password`
+                        // Secret Migration: Move keys from `backend:{name}:password`
+                        // to `sub.connections.{name}.password`
                         #[cfg(desktop)]
                         {
                             use rcman::CredentialManager;
-                            // Use same service name as main app (env!("CARGO_PKG_NAME"))
                             let service_name = env!("CARGO_PKG_NAME");
-
-                            // We need a temporary CredentialManager to check legacy keys
-                            // Since we don't have the instance from outside, we create a new handle to the same service
                             let creds = CredentialManager::new(service_name);
 
                             if let Some(connections) = value.as_object() {
                                 for (name, _) in connections {
-                                    // 1. Password field
+                                    // Password field
                                     let legacy_pass_key = format!("backend:{}:password", name);
                                     let new_pass_key = format!("sub.connections.{}.password", name);
 
-                                    // Only migrate if legacy exists AND new one doesn't (don't overwrite new data)
                                     if creds.exists(&legacy_pass_key) {
                                         if !creds.exists(&new_pass_key) {
                                             if let Ok(Some(secret)) = creds.get(&legacy_pass_key) {
-                                                log::info!("🔐 Migrating legacy password for '{}'", name);
-                                                if let Err(e) = creds.store(&new_pass_key, &secret) {
-                                                    log::error!("Failed to migrate password for '{}': {}", name, e);
+                                                log::info!(
+                                                    "🔐 Migrating legacy password for '{}'",
+                                                    name
+                                                );
+                                                if let Err(e) = creds.store(&new_pass_key, &secret)
+                                                {
+                                                    log::error!(
+                                                        "Failed to migrate password for '{}': {}",
+                                                        name,
+                                                        e
+                                                    );
                                                 } else {
-                                                    // Only delete legacy if migration succeeded
                                                     let _ = creds.remove(&legacy_pass_key);
                                                 }
                                             }
                                         } else {
-                                            // New key exists, just clean up legacy
-                                            log::debug!("Cleaning up legacy password for '{}' (already migrated)", name);
+                                            log::debug!(
+                                                "Cleaning up legacy password for '{}' \
+                                                 (already migrated)",
+                                                name
+                                            );
                                             let _ = creds.remove(&legacy_pass_key);
                                         }
                                     }
 
-                                    // 2. Config Password field
-                                    let legacy_conf_key = format!("backend:{}:config_password", name);
-                                    let new_conf_key = format!("sub.connections.{}.config_password", name);
+                                    // Config Password field
+                                    let legacy_conf_key =
+                                        format!("backend:{}:config_password", name);
+                                    let new_conf_key =
+                                        format!("sub.connections.{}.config_password", name);
 
                                     if creds.exists(&legacy_conf_key) {
                                         if !creds.exists(&new_conf_key) {
                                             if let Ok(Some(secret)) = creds.get(&legacy_conf_key) {
-                                                log::info!("🔐 Migrating legacy config_password for '{}'", name);
-                                                if let Err(e) = creds.store(&new_conf_key, &secret) {
-                                                    log::error!("Failed to migrate config_password for '{}': {}", name, e);
+                                                log::info!(
+                                                    "🔐 Migrating legacy config_password for '{}'",
+                                                    name
+                                                );
+                                                if let Err(e) = creds.store(&new_conf_key, &secret)
+                                                {
+                                                    log::error!(
+                                                        "Failed to migrate config_password \
+                                                         for '{}': {}",
+                                                        name,
+                                                        e
+                                                    );
                                                 } else {
                                                     let _ = creds.remove(&legacy_conf_key);
                                                 }
                                             }
                                         } else {
-                                            log::debug!("Cleaning up legacy config_password for '{}' (already migrated)", name);
+                                            log::debug!(
+                                                "Cleaning up legacy config_password for '{}' \
+                                                 (already migrated)",
+                                                name
+                                            );
                                             let _ = creds.remove(&legacy_conf_key);
                                         }
                                     }
@@ -470,7 +439,6 @@ fn setup_app(
     // -------------------------------------------------------------------------
     // Load Settings & Initialize State
     // -------------------------------------------------------------------------
-
     app.manage(cli_args.clone());
 
     let settings = rcman_manager
@@ -481,7 +449,7 @@ fn setup_app(
     let env_manager = SafeEnvironmentManager::new();
 
     if let Err(e) = env_manager.init_with_stored_credentials(&rcman_manager) {
-        error!("Failed to initialize environment manager with stored credentials: {e}");
+        log::error!("Failed to initialize environment manager with stored credentials: {e}");
     }
 
     // -------------------------------------------------------------------------
@@ -489,7 +457,6 @@ fn setup_app(
     // -------------------------------------------------------------------------
     crate::utils::i18n::init(app_paths.resource_dir);
 
-    // Set initial language from settings
     if let Ok(lang) = rcman_manager.get::<String>("general.language") {
         crate::utils::i18n::set_language(&lang);
     }
@@ -501,8 +468,6 @@ fn setup_app(
     app.manage(rcman_manager);
     app.manage(env_manager);
 
-    // Note: Settings like tray_enabled, notifications_enabled, restrict_mode,
-    // rclone_path are now read from AppSettingsManager
     app.manage(RcloneState {
         client: reqwest::Client::new(),
         is_shutting_down: AtomicBool::new(false),
@@ -515,7 +480,6 @@ fn setup_app(
     app.manage(ScheduledTasksCache::new());
     app.manage(CronScheduler::new());
 
-    // Initialize Updater States
     app.manage(AppUpdaterState::default());
     app.manage(RcloneUpdaterState::default());
 
@@ -531,19 +495,23 @@ fn setup_app(
     let app_handle_clone = app_handle.clone();
     tauri::async_runtime::spawn(async move {
         initialization(app_handle_clone.clone()).await;
-        let force_tray = cli_args.general.tray;
-        if settings.general.tray_enabled || force_tray {
-            if force_tray {
-                debug!("🧊 Setting up tray (forced by --tray argument)");
-            } else {
-                debug!("🧊 Setting up tray (enabled in settings)");
-            }
-            if let Err(e) = utils::app::builder::setup_tray(app_handle_clone.clone()).await {
-                error!("Failed to setup tray: {e}");
+
+        #[cfg(feature = "tray")]
+        {
+            let force_tray = cli_args.general.tray;
+            if settings.general.tray_enabled || force_tray {
+                if force_tray {
+                    log::debug!("🧊 Setting up tray (forced by --tray argument)");
+                } else {
+                    log::debug!("🧊 Setting up tray (enabled in settings)");
+                }
+                if let Err(e) = utils::app::builder::setup_tray(app_handle_clone.clone()).await {
+                    log::error!("Failed to setup tray: {e}");
+                }
             }
         }
 
-        handle_startup(app_handle_clone.clone()).await;
+        core::lifecycle::startup::handle_startup(app_handle_clone.clone()).await;
 
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         monitor_network_changes(app_handle_clone).await;
@@ -559,20 +527,21 @@ fn setup_app(
         let web_handle = app.handle().clone();
         let args = cli_args;
 
-        info!(
+        log::info!(
             "🚀 Initializing Web Server on {}:{}...",
-            args.headless.host, args.headless.port
+            args.headless.host,
+            args.headless.port
         );
         if args.headless.user.is_some() {
-            info!("🔐 Basic authentication enabled");
+            log::info!("🔐 Basic authentication enabled");
         }
         if args.headless.tls_cert.is_some() && args.headless.tls_key.is_some() {
-            info!("🔒 TLS/HTTPS enabled");
+            log::info!("🔒 TLS/HTTPS enabled");
         }
 
         tauri::async_runtime::spawn(async move {
             if let Err(e) = start_web_server(
-                web_handle,
+                web_handle.clone(),
                 args.headless.host.clone(),
                 args.headless.port,
                 args.auth_credentials(),
@@ -581,7 +550,25 @@ fn setup_app(
             )
             .await
             {
-                error!("❌ Web server failed to start: {e}");
+                let msg = e.to_string();
+
+                // OS error 98 = Linux (EADDRINUSE), OS error 48 = macOS (EADDRINUSE)
+                if msg.contains("address already in use")
+                    || msg.contains("os error 98")
+                    || msg.contains("os error 48")
+                {
+                    log::error!(
+                        "❌ Port {} is already in use — another instance may be running. \
+                         Shutting down.",
+                        args.headless.port
+                    );
+                } else {
+                    log::error!("❌ Web server failed to start: {e:#}");
+                }
+
+                // In web-server mode the process is useless without the server.
+                // Exit cleanly so Tauri's shutdown hooks still run.
+                web_handle.exit(1);
             }
         });
     }
@@ -589,10 +576,10 @@ fn setup_app(
     // -------------------------------------------------------------------------
     // Window Creation (Desktop, non-web-server)
     // -------------------------------------------------------------------------
-    #[cfg(all(desktop, not(feature = "web-server")))]
+    #[cfg(all(desktop, not(feature = "web-server"), feature = "tray"))]
     if !cli_args.general.tray {
-        debug!("Creating main window");
-        create_app_window(app.handle().clone(), None);
+        log::debug!("Creating main window");
+        utils::app::builder::create_app_window(app.handle().clone());
     }
 
     Ok(())
@@ -602,7 +589,7 @@ fn setup_app(
 // TRAY MENU EVENT HANDLER
 // =============================================================================
 
-#[cfg(desktop)]
+#[cfg(all(desktop, feature = "tray"))]
 fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent) {
     use crate::rclone::commands::mount::unmount_all_remotes;
 
@@ -650,29 +637,12 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent)
             }
             TrayAction::BrowseInApp(remote) => {
                 #[cfg(not(feature = "web-server"))]
-                core::tray::actions::handle_browse_in_app(app, &remote);
+                core::tray::actions::handle_browse_in_app(app, Some(&remote));
+
                 #[cfg(feature = "web-server")]
                 {
-                    let args = app.state::<crate::core::cli::CliArgs>();
-                    let host = if args.headless.host == "0.0.0.0" {
-                        "127.0.0.1"
-                    } else {
-                        &args.headless.host
-                    };
-                    let protocol = if args.headless.tls_cert.is_some() {
-                        "https"
-                    } else {
-                        "http"
-                    };
-                    // Encode the remote name for the query parameter
-                    let url = format!(
-                        "{}://{}:{}?browse={}",
-                        protocol,
-                        host,
-                        args.headless.port,
-                        urlencoding::encode(&remote)
-                    );
-
+                    let url =
+                        web_ui_url(app, &format!("/nautilus/{}", urlencoding::encode(&remote)));
                     use tauri_plugin_opener::OpenerExt;
                     if let Err(e) = app.opener().open_url(&url, None::<&str>) {
                         log::error!("Failed to open web UI for browsing: {}", e);
@@ -684,12 +654,25 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent)
                 tauri::async_runtime::spawn(async move {
                     if let Err(e) = unmount_all_remotes(app_clone.clone(), "menu".to_string()).await
                     {
-                        error!("Failed to unmount all remotes: {e}");
+                        log::error!("Failed to unmount all remotes: {e}");
                     }
                 });
             }
             TrayAction::StopAllJobs => handle_stop_all_jobs(app.clone()),
             TrayAction::StopAllServes => handle_stop_all_serves(app.clone()),
+            TrayAction::OpenFileBrowser => {
+                #[cfg(not(feature = "web-server"))]
+                core::tray::actions::handle_browse_in_app(app, None);
+
+                #[cfg(feature = "web-server")]
+                {
+                    let url = web_ui_url(app, "/nautilus");
+                    use tauri_plugin_opener::OpenerExt;
+                    if let Err(e) = app.opener().open_url(&url, None::<&str>) {
+                        log::error!("Failed to open web UI for file browser: {}", e);
+                    }
+                }
+            }
         }
         return;
     }
@@ -697,33 +680,42 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent)
     match event.id.as_ref() {
         #[cfg(not(feature = "web-server"))]
         "show_app" => core::tray::actions::show_main_window(app.clone()),
+
         #[cfg(feature = "web-server")]
         "open_web_ui" => {
-            let args = app.state::<crate::core::cli::CliArgs>();
-            let host = if args.headless.host == "0.0.0.0" {
-                "127.0.0.1"
-            } else {
-                &args.headless.host
-            };
-            let protocol = if args.headless.tls_cert.is_some() {
-                "https"
-            } else {
-                "http"
-            };
-            let url = format!("{}://{}:{}", protocol, host, args.headless.port);
-
+            let url = web_ui_url(app, "");
             use tauri_plugin_opener::OpenerExt;
             if let Err(e) = app.opener().open_url(&url, None::<&str>) {
-                error!("Failed to open web UI: {}", e);
+                log::error!("Failed to open web UI: {}", e);
             }
         }
+
         "quit" => {
             let app_clone = app.clone();
             tauri::async_runtime::spawn(async move {
                 app_clone.state::<RcloneState>().set_shutting_down();
-                let _ = shutdown_app(app_clone).await;
+                let _ = core::lifecycle::shutdown::shutdown_app(app_clone).await;
             });
         }
         _ => {}
     }
+}
+
+/// Build the web UI URL for a given path, resolving 0.0.0.0 to loopback.
+///
+/// Used by tray actions to open the web interface in the system browser.
+#[cfg(feature = "web-server")]
+fn web_ui_url(app: &tauri::AppHandle, path: &str) -> String {
+    let args = app.state::<crate::core::cli::CliArgs>();
+    let host = if args.headless.host == "0.0.0.0" {
+        "127.0.0.1"
+    } else {
+        &args.headless.host
+    };
+    let scheme = if args.headless.tls_cert.is_some() {
+        "https"
+    } else {
+        "http"
+    };
+    format!("{scheme}://{host}:{}{path}", args.headless.port)
 }

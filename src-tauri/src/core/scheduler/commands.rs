@@ -2,9 +2,12 @@ use crate::core::scheduler::engine::{CronScheduler, get_next_run, validate_cron_
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 use crate::utils::types::scheduled_task::{CronValidationResponse, ScheduledTask, TaskStatus};
 use log::{error, info, warn};
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 
-/// Toggle task enabled/disabled
+/// Toggle task scheduling state.
+///
+/// If the task is currently running, it transitions to `Stopping` and will be
+/// disabled after the current run completes.
 #[tauri::command]
 pub async fn toggle_scheduled_task(
     cache: State<'_, ScheduledTasksCache>,
@@ -16,15 +19,15 @@ pub async fn toggle_scheduled_task(
 
     let task = cache.toggle_task_status(&task_id, Some(&app)).await?;
 
-    if let Err(e) = scheduler.reschedule_task(&task, cache).await {
+    if let Err(e) = scheduler.reschedule_task(&task, cache.clone()).await {
         error!("⚠️  Failed to reload tasks after toggle: {}", e);
     } else {
         info!(
             "✅ Task {} {}",
-            if task.status == TaskStatus::Enabled {
-                "enabled and scheduled"
-            } else {
-                "disabled and unscheduled"
+            match task.status {
+                TaskStatus::Enabled => "enabled and scheduled",
+                TaskStatus::Stopping => "disabling after current run",
+                _ => "disabled and unscheduled",
             },
             task.name
         );
@@ -92,4 +95,37 @@ pub async fn clear_all_scheduled_tasks(
 
     info!("✅ All scheduled tasks cleared");
     Ok(())
+}
+
+/// Reload scheduled tasks from remote configs, rescheduling only what changed.
+#[tauri::command]
+pub async fn reload_scheduled_tasks_from_configs(
+    cache: State<'_, ScheduledTasksCache>,
+    scheduler: State<'_, CronScheduler>,
+    all_settings: serde_json::Value,
+    app: AppHandle,
+) -> Result<usize, String> {
+    info!("🔄 Reloading scheduled tasks from configs...");
+
+    let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
+    let backend_name = backend_manager.get_active_name().await;
+
+    let result = cache
+        .load_from_remote_configs(&all_settings, &backend_name, Some(&app))
+        .await?;
+
+    let counts = (
+        result.added.len(),
+        result.updated.len(),
+        result.removed.len(),
+    );
+
+    scheduler.apply_cache_result(&result, cache.clone()).await?;
+
+    info!(
+        "📅 Reload complete: {} added, {} updated, {} removed",
+        counts.0, counts.1, counts.2,
+    );
+
+    Ok(counts.0)
 }

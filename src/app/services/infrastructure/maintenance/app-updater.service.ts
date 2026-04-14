@@ -38,7 +38,6 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
 
   // Update state signals
   private readonly _buildType = signal<string | null>(null);
-  private readonly _updatesDisabled = signal<boolean>(false);
   private readonly _hasUpdates = signal<boolean>(false);
   private readonly _updateInProgress = signal<boolean>(false);
 
@@ -53,33 +52,33 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
 
   // Public readonly signals
   public readonly buildType = this._buildType.asReadonly();
-  public readonly updatesDisabled = this._updatesDisabled.asReadonly();
   public readonly hasUpdates = this._hasUpdates.asReadonly();
   public readonly updateInProgress = this._updateInProgress.asReadonly();
   public readonly updateAvailable = this._updateAvailable.asReadonly();
   public readonly downloadStatus = this._downloadStatus.asReadonly();
   public readonly restartRequired = this._restartRequired.asReadonly();
 
-  protected override get skippedVersionsKey(): string { return 'runtime.app_skipped_updates'; }
-  protected override get updateChannelKey(): string { return 'runtime.app_update_channel'; }
-  protected override get autoCheckKey(): string { return 'runtime.app_auto_check_updates'; }
+  protected override get settingNamespace(): string {
+    return 'runtime';
+  }
+  protected override get skippedVersionsKey(): string {
+    return 'app_skipped_updates';
+  }
+  protected override get updateChannelKey(): string {
+    return 'app_update_channel';
+  }
+  protected override get autoCheckKey(): string {
+    return 'app_auto_check_updates';
+  }
 
   private statusPollingInterval = 500;
   private pollingSubscription: Subscription | null = null;
-  private initialized = false;
-
   async checkForUpdates(): Promise<UpdateMetadata | null> {
     try {
-      await this.ensureInitialized();
       console.debug('Checking for updates on channel:', this.updateChannel());
 
       this._updateInProgress.set(false);
       this.resetDownloadStatus();
-
-      if (this.areUpdatesDisabled()) {
-        console.debug('Updates are disabled for this build type');
-        return null;
-      }
 
       const result = await this.invokeCommand<UpdateMetadata | null>('fetch_update', {
         channel: this.updateChannel(),
@@ -253,7 +252,6 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
     });
   }
 
-
   private isStaleUpdateError(message: string): boolean {
     const normalized = message.toLowerCase();
     return (
@@ -269,12 +267,13 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
   }
 
   isUpdateInProgress(): boolean {
-    return this._updateInProgress() && !this._updatesDisabled();
+    return this._updateInProgress();
   }
 
   override async skipVersion(version: string): Promise<void> {
-    await super.skipVersion(version, 'updates.skipVersion');
+    await super.skipVersion(version);
     this._updateAvailable.set(null);
+    this.notificationService.showInfo(this.translate.instant('updates.skipVersion', { version }));
   }
 
   override async unskipVersion(version: string): Promise<void> {
@@ -287,7 +286,10 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
   }
 
   override async setChannel(channel: string): Promise<void> {
-    await super.setChannel(channel, 'updates.channelChanged');
+    await super.setChannel(channel);
+    this.notificationService.showInfo(
+      this.translate.instant('updates.channelChanged', { channel })
+    );
 
     // Clear update status when channel is changed
     this._updateAvailable.set(null);
@@ -295,69 +297,41 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
     this.resetDownloadStatus();
   }
 
-  async initialize(): Promise<void> {
-    return this.ensureInitialized();
+  constructor() {
+    super();
+    this.setupEventListeners();
+    void this.initialize();
   }
 
-  private async ensureInitialized(): Promise<void> {
-    if (this.initialized) return;
-
+  private async initialize(): Promise<void> {
     try {
-      // Initialize base settings
       await this.initBaseSettings();
 
       this._buildType.set(await this.getBuildType());
-      this._updatesDisabled.set(await this.checkIfUpdatesDisabled());
 
-      this.initialized = true;
-
-      if (!this._updatesDisabled()) {
-        // Attempt to pick up an update check on startup if auto-check is enabled
-        const autoCheck = this.autoCheckEnabled();
-        if (autoCheck) {
-          const cachedUpdate = await this.invokeCommand<UpdateMetadata | null>('fetch_update', {
-            channel: this.updateChannel(),
-          });
-          if (cachedUpdate && !this.isVersionSkipped(cachedUpdate.version)) {
-            if (cachedUpdate.restartRequired) {
-              this._restartRequired.set(true);
-            } else {
-              this._updateAvailable.set(cachedUpdate);
-              this._hasUpdates.set(true);
-              if (cachedUpdate.updateInProgress) {
-                this._updateInProgress.set(true);
-                this.startStatusPolling();
-              }
+      if (this.autoCheckEnabled()) {
+        const cachedUpdate = await this.invokeCommand<UpdateMetadata | null>('fetch_update', {
+          channel: this.updateChannel(),
+        });
+        if (cachedUpdate && !this.isVersionSkipped(cachedUpdate.version)) {
+          if (cachedUpdate.restartRequired) {
+            this._restartRequired.set(true);
+          } else {
+            this._updateAvailable.set(cachedUpdate);
+            this._hasUpdates.set(true);
+            if (cachedUpdate.updateInProgress) {
+              this._updateInProgress.set(true);
+              this.startStatusPolling();
             }
           }
         }
       }
     } catch (error) {
       console.error('Failed to initialize updater service:', error);
-      // Set defaults on error
       this._skippedVersions.set([]);
       this._updateChannel.set('stable');
-      this._updatesDisabled.set(false);
       this._buildType.set(null);
     }
-  }
-
-  private async checkIfUpdatesDisabled(): Promise<boolean> {
-    try {
-      return await this.invokeCommand<boolean>('are_updates_disabled');
-    } catch (error) {
-      console.error('Failed to check if updates are disabled:', error);
-      return false; // Default to allowing updates if check fails
-    }
-  }
-
-  public areUpdatesDisabled(): boolean {
-    return this._updatesDisabled();
-  }
-
-  constructor() {
-    super();
-    this.setupEventListeners();
   }
 
   ngOnDestroy(): void {

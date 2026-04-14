@@ -26,6 +26,7 @@ import {
   InstallationService,
   AppSettingsService,
 } from '@app/services';
+import { BackendService } from '../../../services/infrastructure/system/backend.service';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 type RepairMode = 'standard' | 'install' | 'config';
@@ -89,6 +90,7 @@ export class RepairSheetComponent {
   private readonly installationService = inject(InstallationService);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly backendService = inject(BackendService);
 
   // --- UI CONFIGURATION ---
   readonly configTabOptions = CONFIG_TAB_OPTIONS;
@@ -309,7 +311,25 @@ export class RepairSheetComponent {
     try {
       const { installLocation, customPath } = this.installationData();
       const configPath = installLocation === 'custom' ? customPath : '';
-      await this.appSettingsService.saveSetting('core', 'rclone_config_file', configPath);
+      // rclone_config_file is now stored as config_path on the Local backend.
+      // Ensure backends are loaded in case this runs before the backend modal initializes them.
+      if (this.backendService.backends().length === 0) {
+        await this.backendService.loadBackends();
+      }
+      const localBackend = this.backendService.backends().find(b => b.name === 'Local');
+      if (localBackend) {
+        await this.backendService.updateBackend({
+          name: 'Local',
+          host: localBackend.host,
+          oauthHost: localBackend.oauthHost,
+          port: localBackend.port,
+          isLocal: true,
+          username: localBackend.username,
+          password: localBackend.password,
+          configPath: configPath || undefined,
+          oauthPort: localBackend.oauthPort,
+        });
+      }
       this.dismissAfter('success', 1000);
     } catch (error) {
       console.error('Config repair failed:', error);

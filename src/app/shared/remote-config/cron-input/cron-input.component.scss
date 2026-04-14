@@ -33,7 +33,9 @@
   box-shadow: 0 0 0 2px var(--border-color);
   border-radius: 0.75rem;
   background: var(--window-bg-color);
-  transition: all 0.2s ease;
+  transition:
+    box-shadow 0.2s ease,
+    background 0.2s ease;
   text-align: center;
 
   &:hover:not(:disabled) {
@@ -169,7 +171,7 @@
   border-top: 1px solid rgba(var(--accent-color-rgb), 0.2);
 
   code {
-    font-family: "Consolas", "Monaco", monospace;
+    font-family: var(--font-mono);
     font-size: 0.813rem;
     color: var(--text-secondary);
     background: var(--shadow-color);

@@ -4,13 +4,13 @@
    viewBox="0 0 128 128"
    width="128px"
    version="1.1"
-   id="svg35"
+   id="application_x_firmware_svg35"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
   <defs
-     id="defs39">
+     id="application_x_firmware_defs39">
     <linearGradient
-       id="r"
+       id="application_x_firmware_r"
        gradientUnits="userSpaceOnUse"
        x1="37"
        y1="249"
@@ -20,26 +20,26 @@
       <stop
          offset="0"
          stop-color="#d5d1cc"
-         id="stop42" />
+         id="application_x_firmware_stop42" />
       <stop
          offset=".183"
          stop-color="#f6f5f4"
-         id="stop43" />
+         id="application_x_firmware_stop43" />
       <stop
          offset=".395"
          stop-color="#fff"
-         id="stop44" />
+         id="application_x_firmware_stop44" />
       <stop
          offset=".784"
          stop-color="#d7d3ce"
-         id="stop45" />
+         id="application_x_firmware_stop45" />
       <stop
          offset="1"
          stop-color="#c8c2bb"
-         id="stop46" />
+         id="application_x_firmware_stop46" />
     </linearGradient>
     <linearGradient
-       id="q"
+       id="application_x_firmware_q"
        gradientUnits="userSpaceOnUse"
        x1="37"
        y1="249"
@@ -49,26 +49,26 @@
       <stop
          offset="0"
          stop-color="#d5d1cc"
-         id="stop12-3" />
+         id="application_x_firmware_stop12-3" />
       <stop
          offset=".183"
          stop-color="#f6f5f4"
-         id="stop13" />
+         id="application_x_firmware_stop13" />
       <stop
          offset=".395"
          stop-color="#fff"
-         id="stop14-6" />
+         id="application_x_firmware_stop14-6" />
       <stop
          offset=".784"
          stop-color="#d7d3ce"
-         id="stop15" />
+         id="application_x_firmware_stop15" />
       <stop
          offset="1"
          stop-color="#c8c2bb"
-         id="stop16" />
+         id="application_x_firmware_stop16" />
     </linearGradient>
     <linearGradient
-       id="p"
+       id="application_x_firmware_p"
        gradientUnits="userSpaceOnUse"
        x1="37"
        y1="249"
@@ -78,26 +78,26 @@
       <stop
          offset="0"
          stop-color="#d5d1cc"
-         id="stop20" />
+         id="application_x_firmware_stop20" />
       <stop
          offset=".183"
          stop-color="#f6f5f4"
-         id="stop21" />
+         id="application_x_firmware_stop21" />
       <stop
          offset=".395"
          stop-color="#fff"
-         id="stop22" />
+         id="application_x_firmware_stop22" />
       <stop
          offset=".784"
          stop-color="#d7d3ce"
-         id="stop23" />
+         id="application_x_firmware_stop23" />
       <stop
          offset="1"
          stop-color="#c8c2bb"
-         id="stop24" />
+         id="application_x_firmware_stop24" />
     </linearGradient>
     <linearGradient
-       id="o"
+       id="application_x_firmware_o"
        gradientUnits="userSpaceOnUse"
        x1="17"
        y1="253"
@@ -107,18 +107,18 @@
       <stop
          offset="0"
          stop-color="#f9f06b"
-         id="stop25" />
+         id="application_x_firmware_stop25" />
       <stop
          offset=".512"
          stop-color="#fcf7ac"
-         id="stop26" />
+         id="application_x_firmware_stop26" />
       <stop
          offset="1"
          stop-color="#f9f06b"
-         id="stop27" />
+         id="application_x_firmware_stop27" />
     </linearGradient>
     <linearGradient
-       id="n"
+       id="application_x_firmware_n"
        gradientUnits="userSpaceOnUse"
        x1="17"
        y1="253"
@@ -128,18 +128,18 @@
       <stop
          offset="0"
          stop-color="#f9f06b"
-         id="stop30" />
+         id="application_x_firmware_stop30" />
       <stop
          offset=".512"
          stop-color="#fcf7ac"
-         id="stop31" />
+         id="application_x_firmware_stop31" />
       <stop
          offset="1"
          stop-color="#f9f06b"
-         id="stop32" />
+         id="application_x_firmware_stop32" />
     </linearGradient>
     <linearGradient
-       id="m"
+       id="application_x_firmware_m"
        gradientUnits="userSpaceOnUse"
        x1="17"
        y1="253"
@@ -149,18 +149,18 @@
       <stop
          offset="0"
          stop-color="#f9f06b"
-         id="stop33" />
+         id="application_x_firmware_stop33" />
       <stop
          offset=".512"
          stop-color="#fcf7ac"
-         id="stop34" />
+         id="application_x_firmware_stop34" />
       <stop
          offset="1"
          stop-color="#f9f06b"
-         id="stop35" />
+         id="application_x_firmware_stop35" />
     </linearGradient>
     <linearGradient
-       id="l"
+       id="application_x_firmware_l"
        gradientUnits="userSpaceOnUse"
        x1="17"
        y1="253"
@@ -170,18 +170,18 @@
       <stop
          offset="0"
          stop-color="#f9f06b"
-         id="stop36" />
+         id="application_x_firmware_stop36" />
       <stop
          offset=".512"
          stop-color="#fcf7ac"
-         id="stop37" />
+         id="application_x_firmware_stop37" />
       <stop
          offset="1"
          stop-color="#f9f06b"
-         id="stop38" />
+         id="application_x_firmware_stop38" />
     </linearGradient>
     <linearGradient
-       id="k"
+       id="application_x_firmware_k"
        gradientUnits="userSpaceOnUse"
        x1="17"
        y1="253"
@@ -191,18 +191,18 @@
       <stop
          offset="0"
          stop-color="#f9f06b"
-         id="stop39" />
+         id="application_x_firmware_stop39" />
       <stop
          offset=".512"
          stop-color="#fcf7ac"
-         id="stop40" />
+         id="application_x_firmware_stop40" />
       <stop
          offset="1"
          stop-color="#f9f06b"
-         id="stop41" />
+         id="application_x_firmware_stop41" />
     </linearGradient>
     <linearGradient
-       id="j"
+       id="application_x_firmware_j"
        gradientUnits="userSpaceOnUse"
        x1="37"
        y1="249"
@@ -212,26 +212,26 @@
       <stop
          offset="0"
          stop-color="#d5d1cc"
-         id="stop1" />
+         id="application_x_firmware_stop1" />
       <stop
          offset=".183"
          stop-color="#f6f5f4"
-         id="stop2-0" />
+         id="application_x_firmware_stop2-0" />
       <stop
          offset=".395"
          stop-color="#fff"
-         id="stop3" />
+         id="application_x_firmware_stop3" />
       <stop
          offset=".784"
          stop-color="#d7d3ce"
-         id="stop4-6" />
+         id="application_x_firmware_stop4-6" />
       <stop
          offset="1"
          stop-color="#c8c2bb"
-         id="stop5" />
+         id="application_x_firmware_stop5" />
     </linearGradient>
     <linearGradient
-       id="d"
+       id="application_x_firmware_d"
        gradientUnits="userSpaceOnUse"
        x1="94.021004"
        y1="194.21899"
@@ -241,26 +241,26 @@
       <stop
          offset="0"
          stop-color="#f9f06b"
-         id="stop17" />
+         id="application_x_firmware_stop17" />
       <stop
          offset=".512"
          stop-color="#fcf7ac"
-         id="stop18" />
+         id="application_x_firmware_stop18" />
       <stop
          offset="1"
          stop-color="#f9f06b"
-         id="stop19" />
+         id="application_x_firmware_stop19" />
     </linearGradient>
     <clipPath
        clipPathUnits="userSpaceOnUse"
-       id="clipPath1">
+       id="application_x_firmware_clipPath1">
       <path
          d="m -275,100 h 86 v 16 h -86 z m 0,0"
-         id="path3" />
+         id="application_x_firmware_path3" />
     </clipPath>
   </defs>
   <linearGradient
-     id="a"
+     id="application_x_firmware_a"
      gradientUnits="userSpaceOnUse"
      x1="36"
      x2="60"
@@ -269,14 +269,14 @@
     <stop
        offset="0"
        stop-color="#ed336c"
-       id="stop2" />
+       id="application_x_firmware_stop2" />
     <stop
        offset="1"
        stop-color="#ffa348"
-       id="stop4" />
+       id="application_x_firmware_stop4" />
   </linearGradient>
   <linearGradient
-     id="b"
+     id="application_x_firmware_b"
      gradientTransform="matrix(0 1 -1 0 144 -32)"
      gradientUnits="userSpaceOnUse"
      x1="72"
@@ -286,14 +286,14 @@
     <stop
        offset="0"
        stop-color="#404ce6"
-       id="stop7" />
+       id="application_x_firmware_stop7" />
     <stop
        offset="1"
        stop-color="#c061cb"
-       id="stop9" />
+       id="application_x_firmware_stop9" />
   </linearGradient>
   <linearGradient
-     id="c"
+     id="application_x_firmware_c"
      gradientUnits="userSpaceOnUse"
      x1="68.84919"
      x2="95.257637"
@@ -302,14 +302,14 @@
     <stop
        offset="0"
        stop-color="#33d1c6"
-       id="stop12" />
+       id="application_x_firmware_stop12" />
     <stop
        offset="1"
        stop-color="#1c25d8"
-       id="stop14" />
+       id="application_x_firmware_stop14" />
   </linearGradient>
   <path
-     id="path53"
+     id="application_x_firmware_path53"
      d="M 28.027344 8 C 23.582344 8 20 11.563281 20 15.988281 L 20 20 A 8 8 0 0 1 20 36 L 20 112.01172 C 20 116.43672 23.582344 120 28.027344 120 L 99.972656 120 C 104.41766 120 108 116.43672 108 112.01172 L 108 37.908203 L 77.978516 8 L 28.027344 8 z "
      style="fill:#2ec27e" />
   <path
@@ -317,11 +317,11 @@
      fill="none"
      stroke-width="1.9999"
      stroke="#f9f06b"
-     id="path54" />
+     id="application_x_firmware_path54" />
   <path
-     id="path55"
-     clip-path="url(#clipPath1)"
-     style="fill:url(#d)"
+     id="application_x_firmware_path55"
+     clip-path="url(#application_x_firmware_clipPath1)"
+     style="fill:url(#application_x_firmware_d)"
      d="m -272,100.87891 c -1.66,0 -3,1.33609 -3,2.99609 V 114 h 6 v -10.125 c 0,-1.66 -1.34,-2.99609 -3,-2.99609 z m 10,0 c -1.66,0 -3,1.33609 -3,2.99609 V 114 h 6 v -10.125 c 0,-1.66 -1.34,-2.99609 -3,-2.99609 z m 10,0 c -1.66,0 -3,1.33609 -3,2.99609 V 114 h 6 v -10.125 c 0,-1.66 -1.34,-2.99609 -3,-2.99609 z m 10,0 c -1.66,0 -3,1.33609 -3,2.99609 V 114 h 6 v -10.125 c 0,-1.66 -1.34,-2.99609 -3,-2.99609 z m 10,0 c -1.66,0 -3,1.33609 -3,2.99609 V 114 h 6 v -10.125 c 0,-1.66 -1.34,-2.99609 -3,-2.99609 z m 10,0 c -1.66,0 -3,1.33609 -3,2.99609 V 114 h 6 v -10.125 c 0,-1.66 -1.34,-2.99609 -3,-2.99609 z m 10,0 c -1.66,0 -3,1.33609 -3,2.99609 V 114 h 6 v -10.125 c 0,-1.66 -1.34,-2.99609 -3,-2.99609 z"
      transform="rotate(-90,-85.5,-79.5)" />
   <path
@@ -329,164 +329,164 @@
      fill="none"
      stroke-width="2"
      stroke="#f9f06b"
-     id="path61" />
+     id="application_x_firmware_path61" />
   <path
      d="M 48.012631,95 V 71 c 0,-1.656854 1.343146,-3 3,-3 L 69,68 c 1.656854,0 3,1.343146 3,3 v 24 c 0,1.656854 -1.343146,3 -3,3 l -17.987369,0 c -1.656854,0 -3,-1.343146 -3,-3 z"
      fill="#3d3846"
-     id="path62" />
+     id="application_x_firmware_path62" />
   <path
      d="M 33,85 V 74 l 3,-3 h 12"
      fill="none"
      stroke-width="2"
      stroke="#f9f06b"
-     id="path63" />
+     id="application_x_firmware_path63" />
   <path
      d="M 48,75 H 37 l -4,4 m 15,0 H 38 l -5,5 m 15,-1 h -7 l -2,2 v 11 m 9,-9 h -8 m 8,4 h -8"
      fill="none"
      stroke-width="2"
      stroke="#f9f06b"
-     id="path64" />
+     id="application_x_firmware_path64" />
   <path
      d="m 42.996,91 c 0,0.555 0.445,1 1,1 H 48 v -2 h -4.004 c -0.555,0 -1,0.445 -1,1 z m 0,-4 c 0,0.555 0.445,1 1,1 H 48 v -2 h -4.004 c -0.555,0 -1,0.445 -1,1 z m 0,-4 c 0,0.555 0.445,1 1,1 H 48 v -2 h -4.004 c -0.555,0 -1,0.445 -1,1 z m 0,-4 c 0,0.555 0.445,1 1,1 H 48 v -2 h -4.004 c -0.555,0 -1,0.445 -1,1 z m 0,-4 c 0,0.555 0.445,1 1,1 H 48 v -2 h -4.004 c -0.555,0 -1,0.445 -1,1 z m 0,-4 c 0,0.555 0.445,1 1,1 H 48 v -2 h -4.004 c -0.555,0 -1,0.445 -1,1 z m 0,0"
-     fill="url(#j)"
-     id="path65"
-     style="fill:url(#j)" />
+     fill="url(#application_x_firmware_j)"
+     id="application_x_firmware_path65"
+     style="fill:url(#application_x_firmware_j)" />
   <path
      d="m 72,71 h 7 L 93,57 h 4"
      fill="none"
      stroke-width="2"
      stroke="#f9f06b"
-     id="path67" />
+     id="application_x_firmware_path67" />
   <path
      d="m 73,51 c 2.666666,0 2.666666,4 0,4 -2.666666,0 -2.666666,-4 0,-4 z m 0,-8 c 2.666666,0 2.666666,4 0,4 -2.666666,0 -2.666666,-4 0,-4 z"
      fill="none"
      stroke-width="2"
      stroke="#f9f06b"
-     id="path69" />
+     id="application_x_firmware_path69" />
   <path
      d="m 66.895146,32.717374 c 2.666666,0 2.666666,4 0,4 -2.666666,0 -2.666666,-4 0,-4 z"
      style="fill:none;stroke:#f9f06b;stroke-width:2"
-     id="path1-3" />
+     id="application_x_firmware_path1-3" />
   <path
      d="m 75,53 h 2 l 6,-6 H 98 M 33,85 c 2.666666,0 2.666666,4 0,4 -2.666666,0 -2.666666,-4 0,-4 z m 6,11 c 2.666666,0 2.666666,4 0,4 -2.666666,0 -2.666666,-4 0,-4 z"
      fill="none"
      stroke-width="2"
      stroke="#f9f06b"
-     id="path70" />
+     id="application_x_firmware_path70" />
   <path
      d="m 74.870717,44.18281 1.732051,-1 0.732051,-2.73205 -4,-6.928204 -2.732051,-0.73205 -1.732051,1"
      style="fill:none;stroke:#f9f06b;stroke-width:2"
-     id="path1" />
+     id="application_x_firmware_path1" />
   <path
      d="m 74,116 v -8 h 6 v 8 z m 0,0"
-     fill="url(#k)"
-     id="path71"
-     style="fill:url(#k)" />
+     fill="url(#application_x_firmware_k)"
+     id="application_x_firmware_path71"
+     style="fill:url(#application_x_firmware_k)" />
   <path
      d="m 70,116 v -8 h 2 v 8 z m 0,0"
-     fill="url(#l)"
-     id="path72"
-     style="fill:url(#l)" />
+     fill="url(#application_x_firmware_l)"
+     id="application_x_firmware_path72"
+     style="fill:url(#application_x_firmware_l)" />
   <path
      d="m 58,108 v -8 h 2 v 8 z m 0,0"
-     fill="url(#m)"
-     id="path73"
-     style="fill:url(#m)" />
+     fill="url(#application_x_firmware_m)"
+     id="application_x_firmware_path73"
+     style="fill:url(#application_x_firmware_m)" />
   <path
      d="m 50,108 v -8 h 6 v 8 z m 0,0"
-     fill="url(#n)"
-     id="path74"
-     style="fill:url(#n)" />
+     fill="url(#application_x_firmware_n)"
+     id="application_x_firmware_path74"
+     style="fill:url(#application_x_firmware_n)" />
   <path
      d="m 46,108 v -8 h 2 v 8 z m 0,0"
-     fill="url(#o)"
-     id="path75"
-     style="fill:url(#o)" />
+     fill="url(#application_x_firmware_o)"
+     id="application_x_firmware_path75"
+     style="fill:url(#application_x_firmware_o)" />
   <path
      d="m 48.996,33 a 2,2 0 1 1 4,0 c 0,1.105 -0.894,2 -2,2 -1.105,0 -2,-0.895 -2,-2 z m 0,0 m -12,0 a 2,2 0 1 1 4,0 c 0,1.105 -0.894,2 -2,2 -1.105,0 -2,-0.895 -2,-2 z m 0,0 m 0,8 a 2,2 0 1 1 4,0 c 0,1.105 -0.894,2 -2,2 -1.105,0 -2,-0.895 -2,-2 z m 0,0"
      fill="none"
      stroke-width="2"
      stroke="#f9f06b"
-     id="path76" />
+     id="application_x_firmware_path76" />
   <path
      d="m 50.996,31 v -2 l -2,-2 h -8 l -2,2 v 2"
      fill="none"
      stroke-width="2"
      stroke="#f9f06b"
-     id="path77" />
+     id="application_x_firmware_path77" />
   <path
      d="M 52,54 V 44 c 0,-1.105 0.895,-2 2,-2 h 8 c 1.105,0 2,0.895 2,2 v 10 c 0,1.105 -0.895,2 -2,2 h -8 c -1.105,0 -2,-0.895 -2,-2 z"
      fill="#3d3846"
-     id="path78" />
+     id="application_x_firmware_path78" />
   <path
      d="m 63,52 h 3 c 0.555,0 1,-0.445 1,-1 0,-0.555 -0.445,-1 -1,-1 h -3 z m 0,-4 h 3 c 0.555,0 1,-0.445 1,-1 0,-0.555 -0.445,-1 -1,-1 h -3 z m 0,-4 h 3 c 0.555,0 1,-0.445 1,-1 0,-0.555 -0.445,-1 -1,-1 h -3 z m 0,0"
-     fill="url(#p)"
-     id="path79"
-     style="fill:url(#p)" />
+     fill="url(#application_x_firmware_p)"
+     id="application_x_firmware_path79"
+     style="fill:url(#application_x_firmware_p)" />
   <path
      d="m 53,52 h -3 c -0.555,0 -1,-0.445 -1,-1 0,-0.555 0.445,-1 1,-1 h 3 z m 0,-4 h -3 c -0.555,0 -1,-0.445 -1,-1 0,-0.555 0.445,-1 1,-1 h 3 z m 0,-4 h -3 c -0.555,0 -1,-0.445 -1,-1 0,-0.555 0.445,-1 1,-1 h 3 z m 0,0"
-     fill="url(#q)"
-     id="path80"
-     style="fill:url(#q)" />
+     fill="url(#application_x_firmware_q)"
+     id="application_x_firmware_path80"
+     style="fill:url(#application_x_firmware_q)" />
   <path
      d="M 52,52 V 42 c 0,-1.105 0.895,-2 2,-2 h 8 c 1.105,0 2,0.895 2,2 v 10 c 0,1.105 -0.895,2 -2,2 h -8 c -1.105,0 -2,-0.895 -2,-2 z m 0,0"
      fill="#5e5c64"
-     id="path81" />
+     id="application_x_firmware_path81" />
   <path
      d="m 54,52 v -8 h 2 v 8 z m 0,0 m 4,0 v -4 h 2 v 4 z m 0,0"
      fill="#77767b"
-     id="path82" />
+     id="application_x_firmware_path82" />
   <path
      d="m 32,60 h -8 v -4 h 8 z m 0,0"
      fill="#986a44"
-     id="path101" />
+     id="application_x_firmware_path101" />
   <path
      d="m 32,60 h -8 v -2 h 8 z m 0,0"
      fill="#b5835a"
-     id="path102" />
+     id="application_x_firmware_path102" />
   <path
      d="m 32,60 h -2 v -4 h 2 z m 0,0 m -6,0 h -2 v -4 h 2 z m 0,0"
      fill="#f6f5f4"
-     id="path103" />
+     id="application_x_firmware_path103" />
   <path
      d="m 32,48 h -8 v -4 h 8 z m 0,0"
      fill="#986a44"
-     id="path104" />
+     id="application_x_firmware_path104" />
   <path
      d="m 32,48 h -8 v -2 h 8 z m 0,0"
      fill="#b5835a"
-     id="path105" />
+     id="application_x_firmware_path105" />
   <path
      d="m 32,48 h -2 v -4 h 2 z m 0,0 m -6,0 h -2 v -4 h 2 z m 0,0"
      fill="#f6f5f4"
-     id="path106" />
+     id="application_x_firmware_path106" />
   <path
      d="m 32,54 h -8 v -4 h 8 z m 0,0"
      fill="#986a44"
-     id="path107" />
+     id="application_x_firmware_path107" />
   <path
      d="m 32,54 h -8 v -2 h 8 z m 0,0"
      fill="#b5835a"
-     id="path108" />
+     id="application_x_firmware_path108" />
   <path
      d="m 32,54 h -2 v -4 h 2 z m 0,0 m -6,0 h -2 v -4 h 2 z m 0,0"
      fill="#f6f5f4"
-     id="path109" />
+     id="application_x_firmware_path109" />
   <path
      d="m 71,92 h 4 c 0.555,0 1,-0.445 1,-1 0,-0.555 -0.445,-1 -1,-1 h -4 z m 0,-4 h 4 c 0.555,0 1,-0.445 1,-1 0,-0.555 -0.445,-1 -1,-1 h -4 z m 0,-4 h 4 c 0.555,0 1,-0.445 1,-1 0,-0.555 -0.445,-1 -1,-1 h -4 z m 0,-4 h 4 c 0.555,0 1,-0.445 1,-1 0,-0.555 -0.445,-1 -1,-1 h -4 z m 0,-4 h 4 c 0.555,0 1,-0.445 1,-1 0,-0.555 -0.445,-1 -1,-1 h -4 z m 0,-4 h 4 c 0.555,0 1,-0.445 1,-1 0,-0.555 -0.445,-1 -1,-1 h -4 z m 0,0"
-     fill="url(#r)"
-     id="path110"
-     style="fill:url(#r)" />
+     fill="url(#application_x_firmware_r)"
+     id="application_x_firmware_path110"
+     style="fill:url(#application_x_firmware_r)" />
   <path
      d="M 48,93 V 69 a 3,3 0 0 1 3,-3 h 18 a 3,3 0 0 1 3,3 v 24 a 3,3 0 0 1 -3,3 H 51 a 3,3 0 0 1 -3,-3 z m 0,0"
      fill="#5e5c64"
-     id="path66" />
+     id="application_x_firmware_path66" />
   <path
      d="M 54,92 V 77 h 2 v 15 z m 0,0 m 4,0 v -8 h 4 v 8 z m 0,0 m 0,-9 V 72 h 4 v 11 z m 0,0"
      fill="#77767b"
-     id="path68" />
+     id="application_x_firmware_path68" />
   <path
      style="display:inline;vector-effect:none;fill:#26a269;fill-opacity:1;stroke:none;stroke-width:0.125;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;enable-background:new"
      d="M 77.978074,8.0000006 V 30.000002 c 0,4.432 3.610527,7.923448 8.042527,7.923448 l 22.000369,-0.0055 z"
-     id="path4413" />
+     id="application_x_firmware_path4413" />
 </svg>

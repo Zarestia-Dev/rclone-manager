@@ -4,9 +4,10 @@ import { TranslateService, TranslateModule } from '@ngx-translate/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { QuickActionButtonsComponent } from '../../../shared/components';
 import {
+  ActionState,
   AppTab,
   PrimaryActionType,
   QuickActionButton,
@@ -16,23 +17,34 @@ import {
   RemoteServeState,
   RemoteAction,
   RemoteCardVariant,
+  CardDisplayMode,
 } from '@app/types';
-import { IconService } from '@app/services';
+import { IconService, isLocalPath } from '@app/services';
 
-/**
- * Centralized configuration for all operation types.
- * Eliminates repetitive switch statements by providing lookup-based metadata.
- */
-const OPERATION_CONFIG: Record<
-  PrimaryActionType,
-  {
-    startIcon: string;
-    stopIcon: string;
-    startTooltip: string;
-    stopTooltip: string;
-    cssClass: string;
-  }
-> = {
+interface OpenInFilesEvent {
+  remoteName: string;
+  path?: string;
+}
+
+interface OperationMeta {
+  startIcon: string;
+  stopIcon: string;
+  startTooltip: string;
+  stopTooltip: string;
+  cssClass: string;
+}
+
+export interface OpenableFolder {
+  operation: PrimaryActionType;
+  profile: string;
+  cssClass: string;
+  tooltip: string;
+  path: string;
+  isLocal: boolean;
+  icon: string;
+}
+
+const OPERATION_META: Record<PrimaryActionType, OperationMeta> = {
   mount: {
     startIcon: 'mount',
     stopIcon: 'eject',
@@ -73,11 +85,19 @@ const OPERATION_CONFIG: Record<
     stopIcon: 'stop',
     startTooltip: 'overviews.remoteCard.actions.startServe',
     stopTooltip: 'overviews.remoteCard.actions.stopServe',
-    cssClass: 'primary',
+    cssClass: 'accent',
   },
 };
 
-const SYNC_OPERATION_TYPES: PrimaryActionType[] = ['sync', 'copy', 'move', 'bisync'];
+const SYNC_TYPES: PrimaryActionType[] = ['sync', 'copy', 'move', 'bisync'];
+const BROWSABLE_OPS: PrimaryActionType[] = ['mount', 'sync', 'copy', 'move', 'bisync'];
+
+const MODE_DEFAULTS: Record<AppTab, PrimaryActionType[]> = {
+  general: ['mount', 'sync', 'bisync'],
+  sync: ['sync', 'bisync', 'copy', 'move'],
+  mount: ['mount'],
+  serve: ['serve'],
+};
 
 @Component({
   selector: 'app-remote-card',
@@ -88,8 +108,8 @@ const SYNC_OPERATION_TYPES: PrimaryActionType[] = ['sync', 'copy', 'move', 'bisy
     MatCardModule,
     MatIconModule,
     MatButtonModule,
+    MatProgressSpinnerModule,
     MatTooltipModule,
-    QuickActionButtonsComponent,
     TranslateModule,
   ],
   templateUrl: './remote-card.component.html',
@@ -98,239 +118,227 @@ const SYNC_OPERATION_TYPES: PrimaryActionType[] = ['sync', 'copy', 'move', 'bisy
 export class RemoteCardComponent {
   private readonly translate = inject(TranslateService);
   readonly iconService = inject(IconService);
+  readonly isLocalPath = isLocalPath;
 
-  remote = input.required<Remote>();
-  mode = input<AppTab>('general');
-  actionState = input<RemoteAction>(null);
-  primaryActionLabel = input('Start');
-  activeIcon = input('circle-check');
-  primaryActions = input<PrimaryActionType[]>([]);
-  maxGeneralButtons = input(3);
-  maxSyncButtons = input(4);
-  maxMountButtons = input(1);
+  readonly remote = input.required<Remote>();
+  readonly mode = input<AppTab>('general');
+  readonly displayMode = input<CardDisplayMode>('compact');
+  readonly actionState = input<RemoteAction>(null);
+  readonly actionStates = input<ActionState[]>([]);
+  readonly primaryActionLabel = input('Start');
+  readonly activeIcon = input('circle-check');
+  readonly primaryActions = input<PrimaryActionType[]>([]);
+  readonly maxGeneralButtons = input(3);
+  readonly maxSyncButtons = input(4);
+  readonly maxMountButtons = input(1);
 
-  remoteClick = output<Remote>();
-  openInFiles = output<string>();
-  startJob = output<{ type: PrimaryActionType; remoteName: string }>();
-  stopJob = output<{ type: PrimaryActionType; remoteName: string; profileName?: string }>();
+  readonly remoteClick = output<Remote>();
+  readonly openInFiles = output<OpenInFilesEvent>();
+  readonly startJob = output<{
+    type: PrimaryActionType;
+    remoteName: string;
+    profileName?: string;
+  }>();
+  readonly stopJob = output<{
+    type: PrimaryActionType;
+    remoteName: string;
+    profileName?: string;
+  }>();
 
   // ── Derived state ──────────────────────────────────────────────────────────
 
-  private readonly isAnySyncActive = computed(() =>
-    SYNC_OPERATION_TYPES.some(op => this.isOperationActive(op))
-  );
+  private readonly anySyncActive = computed(() => SYNC_TYPES.some(op => this.isOpActive(op)));
 
   readonly cardVariant = computed<RemoteCardVariant>(() => {
-    const mode = this.mode();
-
-    if (mode === 'general') {
-      return this.isOperationActive('mount') ||
-        this.isAnySyncActive() ||
-        this.isOperationActive('serve')
-        ? 'active'
-        : 'inactive';
+    switch (this.mode()) {
+      case 'mount':
+        return this.isOpActive('mount') ? 'active' : 'inactive';
+      case 'sync':
+        return this.anySyncActive() ? 'active' : 'inactive';
+      case 'serve':
+        return this.isOpActive('serve') ? 'active' : 'inactive';
+      default:
+        return this.isOpActive('mount') || this.anySyncActive() || this.isOpActive('serve')
+          ? 'active'
+          : 'inactive';
     }
-    if (mode === 'mount') return this.isOperationActive('mount') ? 'active' : 'inactive';
-    if (mode === 'sync') return this.isAnySyncActive() ? 'active' : 'inactive';
-    if (mode === 'serve') return this.isOperationActive('serve') ? 'active' : 'inactive';
-    return 'inactive';
   });
 
   readonly remoteCardClasses = computed(() => {
-    const remote = this.remote();
+    const s = this.remote().status;
     return {
       [`${this.cardVariant()}-remote`]: true,
-      mounted: !!remote.status.mount.active,
-      syncing: !!remote.status.sync.active,
-      copying: !!remote.status.copy.active,
-      moving: !!remote.status.move.active,
-      bisyncing: !!remote.status.bisync.active,
-      serving: !!remote.status.serve.active,
+      mounted: !!s.mount.active,
+      syncing: !!s.sync.active,
+      copying: !!s.copy.active,
+      moving: !!s.move.active,
+      bisyncing: !!s.bisync.active,
+      serving: !!s.serve.active,
     };
   });
 
   readonly actionButtons = computed<QuickActionButton[]>(() => {
-    const mode = this.mode();
-
-    if (mode === 'general') return this.getGeneralActionButtons();
-    if (mode === 'mount') return this.getMountActionButtons();
-    if (mode === 'sync') return this.getSyncModeActionButtons();
-    if (mode === 'serve') {
-      const button = this.createOperationButton('serve');
-      return button ? [button] : [];
-    }
-    return [];
-  });
-
-  // ── Action button builders ─────────────────────────────────────────────────
-
-  private getMountActionButtons(): QuickActionButton[] {
-    const buttons: QuickActionButton[] = [];
-
-    for (const a of this.buildPrimaryActions(this.maxMountButtons(), true)) {
-      const b = this.createOperationButton(a);
-      if (b) buttons.push(b);
-    }
-
-    // Browse button only shown in active state
-    if (this.cardVariant() === 'active') {
-      buttons.push(this.buildBrowseButton('overviews.remoteCard.browse'));
-    }
-
-    return buttons;
-  }
-
-  private getSyncModeActionButtons(): QuickActionButton[] {
-    const buttons: QuickActionButton[] = [];
-    const actionState = this.actionState();
-
-    if (this.cardVariant() === 'active') {
-      SYNC_OPERATION_TYPES.forEach(type => {
-        const state = this.remote().status[type as keyof Omit<RemoteStatus, 'diskUsage'>];
-        if ('active' in state && state.active) {
-          const config = OPERATION_CONFIG[type];
-          buttons.push({
-            id: type,
-            icon: 'stop',
-            tooltip: this.translate.instant(config.stopTooltip),
-            isLoading: actionState === 'stop',
-            isDisabled: actionState === 'stop',
-            cssClass: 'warn',
-          });
-        }
-      });
-    } else {
-      // Inactive — show start buttons only; no toggle behaviour needed
-      this.buildPrimaryActions(this.maxSyncButtons(), false).forEach(actionType => {
-        const button = this.createOperationButton(actionType, true);
-        if (button) buttons.push(button);
-      });
-    }
-
-    return buttons;
-  }
-
-  private getGeneralActionButtons(): QuickActionButton[] {
-    const buttons: QuickActionButton[] = [];
-    const actionState = this.actionState();
-    const remote = this.remote();
-
-    this.buildPrimaryActions(this.maxGeneralButtons(), true).forEach(actionType => {
-      const button = this.createOperationButton(actionType);
-      if (button) buttons.push(button);
-    });
-
-    buttons.push({
-      id: 'browse',
-      icon: 'folder',
-      tooltip: this.translate.instant('overviews.remoteCard.browse'),
-      isLoading: actionState === 'open',
-      isDisabled: !remote.status.mount.active || actionState === 'open',
-      cssClass: 'accent',
-    });
-
-    return buttons;
-  }
-
-  // ── Button factories ───────────────────────────────────────────────────────
-
-  /**
-   * Creates a toggle (start/stop) or start-only action button.
-   *
-   * @param actionType  The operation this button controls.
-   * @param startOnly   When true the button always shows the start state —
-   *                    used for sync-mode inactive cards where we never need
-   *                    to show a stop affordance inline.
-   */
-  private createOperationButton(
-    actionType: PrimaryActionType,
-    startOnly = false
-  ): QuickActionButton | null {
-    const config = OPERATION_CONFIG[actionType];
-    if (!config) return null;
-
-    const actionState = this.actionState();
-    const isActive = !startOnly && this.isOperationActive(actionType);
-    const isActionInProgress = actionState === actionType || (!startOnly && actionState === 'stop');
-
-    const isLoading = startOnly
-      ? actionState === actionType
-      : actionType === 'mount' || actionType === 'serve'
-        ? isActionInProgress
-        : isActionInProgress && isActive;
-
-    return {
-      id: actionType,
-      icon: isActive ? config.stopIcon : config.startIcon,
-      tooltip: isActive
-        ? `${this.translate.instant(config.stopTooltip)} (${this.getActiveProfileName(actionType)})`
-        : this.translate.instant(config.startTooltip),
-      isLoading,
-      isDisabled: isActionInProgress,
-      cssClass: isActive ? 'warn' : config.cssClass,
-    };
-  }
-
-  private buildBrowseButton(tooltipKey: string): QuickActionButton {
-    const actionState = this.actionState();
-    return {
-      id: 'open',
-      icon: 'folder',
-      tooltip: this.translate.instant(tooltipKey),
-      isLoading: actionState === 'open',
-      isDisabled: actionState === 'open',
-      cssClass: 'accent',
-    };
-  }
-
-  // ── Primary-actions resolver ───────────────────────────────────────────────
-
-  /**
-   * Returns the default ordered action list for the current mode.
-   * In general mode, user-supplied `primaryActions` take precedence.
-   */
-  private getDefaultPrimaryActions(): PrimaryActionType[] {
     switch (this.mode()) {
       case 'general':
-        return ['mount', 'sync', 'bisync'];
-      case 'sync':
-        return ['sync', 'bisync', 'copy', 'move'];
+        return this.buildGeneralButtons();
       case 'mount':
-        return ['mount'];
-      case 'serve':
-        return ['serve'];
+        return this.buildMountButtons();
+      case 'sync':
+        return this.buildSyncButtons();
+      case 'serve': {
+        const btn = this.buildOpButton('serve');
+        return btn ? [btn] : [];
+      }
       default:
-        return ['mount', 'bisync'];
+        return [];
     }
-  }
+  });
 
-  /**
-   * Builds an ordered, deduplicated list of primary actions up to `slotCount`.
-   * User-supplied actions are prioritised in general mode; defaults fill remaining slots.
-   */
-  private buildPrimaryActions(slotCount: number, includeMount = true): PrimaryActionType[] {
-    const mode = this.mode();
-    const userActions = this.primaryActions();
-    const defaults = this.getDefaultPrimaryActions();
-    const source = mode === 'general' && userActions.length > 0 ? userActions : defaults;
+  readonly detailedOperations = computed<PrimaryActionType[]>(() => {
+    let candidates: PrimaryActionType[];
+    switch (this.mode()) {
+      case 'general':
+        candidates = this.primaryActionsFor(this.maxGeneralButtons());
+        break;
+      case 'mount':
+        candidates = ['mount'];
+        break;
+      case 'sync':
+        candidates = this.primaryActionsFor(this.maxSyncButtons(), false);
+        break;
+      case 'serve':
+        candidates = ['serve'];
+        break;
+      default:
+        candidates = [];
+    }
+    return candidates.filter(op => this.getConfiguredProfiles(op).length > 0);
+  });
 
-    const seen = new Set<PrimaryActionType>();
-    const result: PrimaryActionType[] = [];
+  readonly isFolderOpening = computed<boolean>(
+    () => this.actionStates().some(a => a.type === 'open') || this.actionState() === 'open'
+  );
 
-    const fill = (list: PrimaryActionType[]) => {
-      for (const a of list) {
-        if (result.length >= slotCount) break;
-        if (!includeMount && a === 'mount') continue;
-        if (!seen.has(a)) {
-          seen.add(a);
-          result.push(a);
+  readonly openableFolders = computed<OpenableFolder[]>(() => {
+    const folders: OpenableFolder[] = [];
+    const currentMode = this.mode();
+
+    // Determine which operations are relevant for browsing in the current mode
+    let relevantOps: PrimaryActionType[];
+    if (currentMode === 'general') {
+      relevantOps = BROWSABLE_OPS;
+    } else if (currentMode === 'sync') {
+      relevantOps = SYNC_TYPES;
+    } else if (currentMode === 'mount') {
+      relevantOps = ['mount'];
+    } else {
+      relevantOps = [];
+    }
+
+    for (const op of relevantOps) {
+      if (!this.isOpActive(op)) continue;
+      const activeProfiles = this.getActiveProfiles(op);
+      if (!activeProfiles) continue;
+      for (const profile of Object.keys(activeProfiles)) {
+        for (const path of this.getProfileOpenPaths(op, profile)) {
+          const isLocal = isLocalPath(path);
+          const profileSuffix = profile === 'default' ? '' : ` · ${profile}`;
+          folders.push({
+            operation: op,
+            profile,
+            path,
+            isLocal,
+            icon: isLocal ? 'folder' : 'folder-open',
+            cssClass: OPERATION_META[op].cssClass,
+            tooltip: `${this.translate.instant('overviews.remoteCard.browse')} ${isLocal ? 'Local' : 'Remote'} (${op}${profileSuffix})`,
+          });
         }
       }
+    }
+    return folders;
+  });
+
+  readonly folderBlossomStyle = computed(() => {
+    const folders = this.openableFolders();
+    if (folders.length <= 1) return null;
+
+    const uniqueClasses = [...new Set(folders.map(f => f.cssClass))];
+    if (uniqueClasses.length <= 1) return null;
+
+    const classToVar: Record<string, string> = {
+      accent: 'var(--accent-color)',
+      primary: 'var(--primary-color)',
+      yellow: 'var(--yellow)',
+      orange: 'var(--orange)',
+      purple: 'var(--purple)',
     };
 
-    fill(source);
-    if (result.length < slotCount) fill(defaults);
+    const colors = uniqueClasses.map(c => classToVar[c] || 'var(--primary-color)');
+    return {
+      color: 'white',
+      background: `linear-gradient(135deg, ${colors.join(', ')})`,
+    };
+  });
 
+  // ── Button builders ────────────────────────────────────────────────────────
+
+  private buildGeneralButtons(): QuickActionButton[] {
+    return this.primaryActionsFor(this.maxGeneralButtons())
+      .map(type => this.buildOpButton(type))
+      .filter((b): b is QuickActionButton => !!b);
+  }
+
+  private buildMountButtons(): QuickActionButton[] {
+    return this.primaryActionsFor(this.maxMountButtons())
+      .map(type => this.buildOpButton(type))
+      .filter((b): b is QuickActionButton => !!b);
+  }
+
+  private buildSyncButtons(): QuickActionButton[] {
+    return this.primaryActionsFor(this.maxSyncButtons(), false)
+      .map(type => this.buildOpButton(type))
+      .filter((b): b is QuickActionButton => !!b);
+  }
+
+  private buildOpButton(type: PrimaryActionType, startOnly = false): QuickActionButton | null {
+    const meta = OPERATION_META[type];
+    if (!meta) return null;
+
+    const actionState = this.actionState();
+    const isActive = !startOnly && this.isOpActive(type);
+    const inProgress = actionState === type || (!startOnly && actionState === 'stop');
+    const isLoading = startOnly
+      ? actionState === type
+      : type === 'mount' || type === 'serve'
+        ? inProgress
+        : inProgress && isActive;
+
+    const activeProfile = this.getFirstActiveProfile(type);
+    return {
+      id: type,
+      icon: isActive ? meta.stopIcon : meta.startIcon,
+      tooltip: isActive
+        ? `${this.translate.instant(meta.stopTooltip)} (${activeProfile})`
+        : this.translate.instant(meta.startTooltip),
+      isLoading,
+      isDisabled: inProgress,
+      cssClass: isActive ? 'warn' : meta.cssClass,
+    };
+  }
+
+  private primaryActionsFor(limit: number, includeMount = true): PrimaryActionType[] {
+    const userActions = this.primaryActions();
+    const source =
+      this.mode() === 'general' && userActions.length > 0
+        ? userActions
+        : (MODE_DEFAULTS[this.mode()] ?? ['mount', 'bisync']);
+
+    const result: PrimaryActionType[] = [];
+    for (const a of source) {
+      if (result.length >= limit) break;
+      if (!includeMount && a === 'mount') continue;
+      if (!result.includes(a)) result.push(a);
+    }
     return result;
   }
 
@@ -342,54 +350,151 @@ export class RemoteCardComponent {
 
   onActionButtonClick(action: { id: string; event: Event }): void {
     action.event.stopPropagation();
-    const remoteName = this.remote().name;
-
-    if (action.id === 'open' || action.id === 'browse') {
-      this.openInFiles.emit(remoteName);
-      return;
-    }
-
     const type = action.id as PrimaryActionType;
-    if (!OPERATION_CONFIG[type]) return;
-
-    if (this.isOperationActive(type)) {
-      this.stopJob.emit({ type, remoteName, profileName: this.getActiveProfileName(type) });
+    if (!OPERATION_META[type]) return;
+    const remoteName = this.remote().name;
+    if (this.isOpActive(type)) {
+      this.stopJob.emit({ type, remoteName, profileName: this.getFirstActiveProfile(type) });
     } else {
       this.startJob.emit({ type, remoteName });
     }
   }
 
+  onProfileOpenInFiles(
+    operationType: PrimaryActionType,
+    profileName: string,
+    path: string,
+    event: Event
+  ): void {
+    event.stopPropagation();
+    this.openInFiles.emit({ remoteName: this.remote().name, path });
+  }
+
+  onOpenFolderClick(folder: OpenableFolder, event: Event): void {
+    event.stopPropagation();
+    this.openInFiles.emit({ remoteName: this.remote().name, path: folder.path });
+    (event.currentTarget as HTMLElement)?.blur();
+  }
+
+  onProfileChipClick(operationType: PrimaryActionType, profileName: string, event: Event): void {
+    event.stopPropagation();
+    if (this.isProfileActionInProgress(operationType, profileName)) return;
+    const remoteName = this.remote().name;
+    if (this.isProfileActive(operationType, profileName)) {
+      this.stopJob.emit({ type: operationType, remoteName, profileName });
+    } else {
+      this.startJob.emit({ type: operationType, remoteName, profileName });
+    }
+  }
+
+  // ── Profile chip helpers ───────────────────────────────────────────────────
+
+  // Exposed publicly — used by the template for both [disabled] and [class.is-running]
+  isProfileActionInProgress(op: PrimaryActionType, profile: string): boolean {
+    return this.actionStates().some(a => {
+      if (a.profileName && a.profileName !== profile) return false;
+      return a.type === 'stop' ? a.operationType === op : a.type === op;
+    });
+  }
+
+  getProfileChipTooltip(op: PrimaryActionType, profile: string): string {
+    const key = this.isProfileActive(op, profile)
+      ? OPERATION_META[op].stopTooltip
+      : OPERATION_META[op].startTooltip;
+    return `${this.translate.instant(key)} (${profile})`;
+  }
+
+  getProfileOpenTooltip(profileName: string, path: string): string {
+    return `${this.translate.instant('overviews.remoteCard.browse')} ${isLocalPath(path) ? 'Local' : 'Remote'} (${profileName})`;
+  }
+
+  getOperationLabelIcon(op: PrimaryActionType): string {
+    return OPERATION_META[op]?.startIcon ?? 'circle';
+  }
+
+  getOperationCssClass(op: PrimaryActionType): string {
+    return OPERATION_META[op]?.cssClass ?? 'primary';
+  }
+
   // ── Operation state helpers ────────────────────────────────────────────────
 
-  isOperationActive(operationType: PrimaryActionType): boolean {
-    const state = this.remote().status[operationType as keyof Omit<RemoteStatus, 'diskUsage'>];
-    return !!(state as RemoteOperationState | RemoteServeState)?.active;
+  isOpActive(op: PrimaryActionType): boolean {
+    return !!(
+      this.remote().status[op as keyof Omit<RemoteStatus, 'diskUsage'>] as
+        | RemoteOperationState
+        | RemoteServeState
+    )?.active;
   }
 
-  private getOperationActiveProfiles(
-    operationType: PrimaryActionType
-  ): Record<string, unknown> | undefined {
-    const state = this.remote().status[operationType as keyof Omit<RemoteStatus, 'diskUsage'>];
-    return (state as RemoteOperationState | RemoteServeState)?.activeProfiles;
+  private getActiveProfiles(op: PrimaryActionType): Record<string, unknown> | undefined {
+    return (
+      this.remote().status[op as keyof Omit<RemoteStatus, 'diskUsage'>] as
+        | RemoteOperationState
+        | RemoteServeState
+    )?.activeProfiles;
   }
 
-  /** Returns the first active profile name for the given operation, or 'default'. */
-  getActiveProfileName(operationType: PrimaryActionType): string {
-    const profiles = this.getOperationActiveProfiles(operationType);
+  getFirstActiveProfile(op: PrimaryActionType): string {
+    const profiles = this.getActiveProfiles(op);
     return profiles ? (Object.keys(profiles)[0] ?? 'default') : 'default';
   }
 
-  /** Returns the count of active profiles for the given operation. */
-  getActiveProfileCount(operationType: PrimaryActionType): number {
-    return Object.keys(this.getOperationActiveProfiles(operationType) ?? {}).length;
+  getProfileTooltip(op: PrimaryActionType): string {
+    const names = Object.keys(this.getActiveProfiles(op) ?? {});
+    if (names.length === 0) return op;
+    if (names.length === 1) return `${op} (${names[0]})`;
+    return `${op} (${names.join(', ')})`;
   }
 
-  /** Builds the tooltip text for status indicator badges, listing all active profiles. */
-  getProfileTooltip(operationType: PrimaryActionType): string {
-    const count = this.getActiveProfileCount(operationType);
-    if (count === 0) return operationType;
-    if (count === 1) return `${operationType} (${this.getActiveProfileName(operationType)})`;
-    const profiles = Object.keys(this.getOperationActiveProfiles(operationType) ?? {});
-    return `${operationType} (${profiles.join(', ')})`;
+  // ── Configured profiles helpers (detailed variant) ─────────────────────────
+
+  getConfiguredProfiles(op: PrimaryActionType): string[] {
+    return (
+      (
+        this.remote().status[op as keyof Omit<RemoteStatus, 'diskUsage'>] as
+          | RemoteOperationState
+          | RemoteServeState
+      )?.configuredProfiles ?? []
+    );
+  }
+
+  isProfileActive(op: PrimaryActionType, profile: string): boolean {
+    return profile in (this.getActiveProfiles(op) ?? {});
+  }
+
+  canOpenProfilePath(op: PrimaryActionType, profile: string): boolean {
+    return this.getProfileOpenPaths(op, profile).length > 0;
+  }
+
+  getProfileOpenPaths(op: PrimaryActionType, profile: string): string[] {
+    if (op === 'serve') return [];
+
+    const paths: string[] = [];
+
+    if (op === 'mount') {
+      if (!this.isProfileActive(op, profile)) return paths;
+      const active = this.getActiveProfiles('mount')?.[profile];
+      if (typeof active === 'string') paths.push(active);
+    }
+
+    if (SYNC_TYPES.includes(op) && !this.isProfileActive(op, profile)) return paths;
+
+    const browsePaths = (
+      this.remote().status[op as keyof Omit<RemoteStatus, 'diskUsage'>] as RemoteOperationState
+    )?.profileBrowsePaths;
+    const configuredPaths = browsePaths?.[profile];
+
+    if (Array.isArray(configuredPaths)) {
+      paths.push(...configuredPaths);
+    } else if (typeof configuredPaths === 'string') {
+      paths.push(configuredPaths);
+    }
+
+    const activeProfileValue = this.getActiveProfiles(op)?.[profile];
+    if (typeof activeProfileValue === 'string' && !paths.includes(activeProfileValue)) {
+      paths.push(activeProfileValue);
+    }
+
+    return [...new Set(paths)];
   }
 }

@@ -2,7 +2,7 @@
   background: var(--window-bg-color);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: hidden;
 
   .transfer-table {
     // STICKY HEADER CONFIGURATION
@@ -40,26 +40,22 @@
 
       // Active
       &.active {
-        border-left: 3px solid var(--primary-color);
-        background: rgba(var(--primary-color-rgb), 0.02);
+        background: color-mix(in srgb, var(--mat-sys-primary) 5%, transparent);
       }
 
       // Completed / Success
       &.completed,
       &.success {
-        border-left: 3px solid var(--accent-color);
         background: rgba(var(--accent-color-rgb), 0.02);
       }
 
       // Checked (Skipped)
       &.checked {
-        border-left: 3px solid var(--dim-color);
         background: rgba(var(--window-fg-color-rgb), 0.02);
       }
 
       // Error
       &.error {
-        border-left: 3px solid var(--warn-color);
         background: rgba(var(--warn-color-rgb), 0.05);
 
         .mat-mdc-cell {
@@ -152,7 +148,7 @@
           background-color: var(--accent-color);
         }
         &.speed-medium {
-          background-color: var(--primary-color);
+          background-color: var(--mat-sys-primary);
         }
         &.speed-slow {
           background-color: var(--warn-color);
@@ -188,8 +184,8 @@
         font-size: 10px;
         padding: 1px 6px;
         border-radius: 4px;
-        background: rgba(var(--primary-color-rgb), 0.1);
-        color: var(--primary-color);
+        background: rgba(var(--mat-sys-primary-rgb), 0.1);
+        color: var(--mat-sys-primary);
         width: fit-content;
         font-weight: 600;
       }

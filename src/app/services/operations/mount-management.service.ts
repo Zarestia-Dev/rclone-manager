@@ -5,6 +5,7 @@ import { TauriBaseService } from '../infrastructure/platform/tauri-base.service'
 import { MountedRemote, Origin } from '@app/types';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { getRemoteNameFromFs } from '../remote/utils/remote-config.utils';
+import { FileSystemService } from './file-system.service';
 
 /**
  * Service for managing rclone mounts
@@ -20,6 +21,7 @@ export class MountManagementService extends TauriBaseService {
 
   private eventListeners = inject(EventListenersService);
   private destroyRef = inject(DestroyRef);
+  private fileSystemService = inject(FileSystemService);
 
   constructor() {
     super();
@@ -115,7 +117,7 @@ export class MountManagementService extends TauriBaseService {
    * Open mount point in file manager
    */
   async openInFiles(mountPoint: string): Promise<void> {
-    return this.invokeCommand('open_in_files', { path: mountPoint });
+    return this.fileSystemService.openInFiles(mountPoint);
   }
 
   /**
@@ -127,11 +129,17 @@ export class MountManagementService extends TauriBaseService {
     oldName: string,
     newName: string
   ): Promise<number> {
-    return this.invokeCommand<number>('rename_mount_profile_in_cache', {
+    const updated = await this.invokeCommand<number>('rename_mount_profile_in_cache', {
       remoteName,
       oldName,
       newName,
     });
+
+    if (updated > 0) {
+      await this.getMountedRemotes();
+    }
+
+    return updated;
   }
 
   /**

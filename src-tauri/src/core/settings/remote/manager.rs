@@ -12,10 +12,8 @@ use log::{info, warn};
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager, State};
 
+use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 use crate::utils::types::events::REMOTE_SETTINGS_CHANGED;
-use crate::{
-    core::scheduler::engine::CronScheduler, rclone::state::scheduled_tasks::ScheduledTasksCache,
-};
 
 /// **Save remote settings (per remote)**
 #[tauri::command]
@@ -24,7 +22,6 @@ pub async fn save_remote_settings(
     mut settings: Value,
     manager: State<'_, AppSettingsManager>,
     cache: State<'_, ScheduledTasksCache>,
-    scheduler: State<'_, CronScheduler>,
     app_handle: AppHandle,
 ) -> Result<(), String> {
     // Insert name into settings
@@ -57,23 +54,65 @@ pub async fn save_remote_settings(
 
     info!("✅ Remote settings saved for '{remote_name}'");
 
-    // Update scheduled tasks
-    use crate::rclone::backend::BackendManager;
-    let backend_manager = app_handle.state::<BackendManager>();
+    // Detect deleted profiles to clean up associated job records
+    if let Ok(existing) = remotes.get_value(&remote_name) {
+        let config_keys = [
+            "syncConfigs",
+            "copyConfigs",
+            "moveConfigs",
+            "bisyncConfigs",
+            "mountConfigs",
+            "serveConfigs",
+        ];
+
+        for key in config_keys {
+            if let Some(old_configs) = existing.get(key).and_then(|v| v.as_object()) {
+                let new_configs = settings.get(key).and_then(|v| v.as_object());
+                for profile_name in old_configs.keys() {
+                    let was_deleted = match new_configs {
+                        Some(new) => !new.contains_key(profile_name),
+                        None => true,
+                    };
+
+                    if was_deleted {
+                        info!(
+                            "🗑️ Profile '{profile_name}' deleted for remote '{remote_name}', cleaning up jobs..."
+                        );
+                        app_handle
+                            .state::<crate::rclone::backend::BackendManager>()
+                            .job_cache
+                            .delete_jobs_by_profile(&remote_name, profile_name, Some(&app_handle))
+                            .await;
+                    }
+                }
+            }
+        }
+    }
+
+    // Sync the cache and scheduler together.
+    // BackendManager tells us which backend is currently active.
+    let backend_manager = app_handle.state::<crate::rclone::backend::BackendManager>();
     let backend_name = backend_manager.get_active_name().await;
 
     match cache
-        .add_or_update_task_for_remote(
-            cache.clone(),
-            &backend_name,
-            &remote_name,
-            &settings,
-            scheduler,
-        )
+        .add_or_update_task_for_remote(&backend_name, &remote_name, &settings)
         .await
     {
-        Ok(_) => info!("✅ Scheduled tasks updated for remote '{remote_name}'"),
-        Err(e) => warn!("⚠️  Failed to update scheduled tasks for remote '{remote_name}': {e}"),
+        Ok(result) if result.has_changes() => {
+            use crate::core::scheduler::engine::CronScheduler;
+            let scheduler = app_handle.state::<CronScheduler>();
+            if let Err(e) = scheduler.apply_cache_result(&result, cache.clone()).await {
+                warn!("⚠️  Scheduler sync incomplete for remote '{remote_name}': {e}");
+            } else {
+                info!("✅ Scheduler updated for remote '{remote_name}'");
+            }
+        }
+        Ok(_) => {
+            // No cron-relevant fields changed — nothing to do.
+        }
+        Err(e) => {
+            warn!("⚠️  Failed to update scheduled tasks for remote '{remote_name}': {e}");
+        }
     }
 
     app_handle.emit(REMOTE_SETTINGS_CHANGED, remote_name).ok();
@@ -83,10 +122,10 @@ pub async fn save_remote_settings(
 /// **Delete remote settings**
 #[tauri::command]
 pub async fn delete_remote_settings(
-    remote_name: String,
-    manager: State<'_, AppSettingsManager>,
     app_handle: tauri::AppHandle,
+    remote_name: String,
 ) -> Result<(), String> {
+    let manager = app_handle.state::<AppSettingsManager>();
     let remotes = manager.inner().sub_settings("remotes").map_err(
         |e| crate::localized_error!("backendErrors.settings.subSettingsFailed", "error" => e),
     )?;

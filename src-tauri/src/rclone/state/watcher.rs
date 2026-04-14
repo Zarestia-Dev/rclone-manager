@@ -53,14 +53,14 @@ async fn check_and_reconcile_mounts(
 }
 
 /// Background task that monitors mounted remotes
-/// Spawns itself in a tokio task for consistency with serve watcher
+/// Spawns itself using the Tauri async runtime for consistency with serve watcher
 pub fn start_mounted_remote_watcher(app_handle: AppHandle) {
     if WATCHER_RUNNING.swap(true, Ordering::SeqCst) {
         debug!("🔍 Mounted remote watcher already running");
         return;
     }
 
-    tokio::spawn(async move {
+    tauri::async_runtime::spawn(async move {
         debug!("🔍 Starting mounted remote watcher");
         let mut interval = time::interval(Duration::from_secs(5));
 

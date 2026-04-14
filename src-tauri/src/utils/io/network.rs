@@ -101,7 +101,7 @@ impl LinkChecker {
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", not(feature = "container")))]
 pub fn is_metered() -> bool {
     use zbus::blocking::{Connection, Proxy};
 
@@ -138,10 +138,10 @@ pub fn is_metered() -> bool {
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", not(feature = "container")))]
 use {futures_lite::stream::StreamExt, zbus::Connection};
 
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", not(feature = "container")))]
 pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
     use log::{debug, error, info};
 
@@ -181,6 +181,25 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
         if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
             error!("Failed to emit network status change event: {e}");
         }
+    }
+}
+
+#[cfg(feature = "container")]
+pub fn is_metered() -> bool {
+    use log::info;
+    info!(
+        "is_metered: container mode does not support metered network detection, returning false."
+    );
+    false
+}
+
+#[cfg(feature = "container")]
+pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
+    use crate::utils::types::core::NetworkStatusPayload;
+    use log::error;
+    let payload = NetworkStatusPayload { is_metered: false };
+    if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
+        error!("Failed to emit network status change event: {e}");
     }
 }
 

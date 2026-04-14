@@ -97,12 +97,12 @@ export class ServeManagementService extends TauriBaseService {
     try {
       await this.refreshServesFromCache();
     } catch (cacheErr) {
-      console.debug('Cache failed, falling back to API:', cacheErr);
+      console.debug('[ServeManagementService] Cache failed, falling back to API:', cacheErr);
       try {
         const response = await this.listServes();
         this._runningServes.set(this.normalizeServeList(response?.list ?? []));
       } catch (apiErr) {
-        console.error('Both cache and API failed:', apiErr);
+        console.error('[ServeManagementService] Both cache and API failed:', apiErr);
       }
     }
   }
@@ -113,15 +113,16 @@ export class ServeManagementService extends TauriBaseService {
    */
   async startServeProfile(remoteName: string, profileName: string): Promise<ServeStartResponse> {
     const params = { remote_name: remoteName, profile_name: profileName };
-    const response = await this.invokeWithNotification<ServeStartResponse>(
-      'start_serve_profile',
-      { params },
-      {
-        successKey: 'serve.successStart',
-        successParams: { remote: remoteName, profile: profileName },
-        errorKey: 'serve.failedStart',
-        errorParams: { remote: remoteName },
-      }
+    const response = await this.invokeCommand<ServeStartResponse>('start_serve_profile', {
+      params,
+    });
+
+    this.notificationService.showSuccess(
+      this.translate.instant('serve.successStart', {
+        remote: remoteName,
+        profile: profileName,
+        addr: response.addr,
+      })
     );
 
     await this.refreshServes();
@@ -209,11 +210,17 @@ export class ServeManagementService extends TauriBaseService {
     oldName: string,
     newName: string
   ): Promise<number> {
-    return this.invokeCommand<number>('rename_serve_profile_in_cache', {
+    const updated = await this.invokeCommand<number>('rename_serve_profile_in_cache', {
       remoteName,
       oldName,
       newName,
     });
+
+    if (updated > 0) {
+      await this.refreshServesFromCache();
+    }
+
+    return updated;
   }
 
   /**

@@ -1,34 +1,38 @@
 <div class="quick-add-modal">
   <div class="modal-header" data-tauri-drag-region>
-    <button>
-      <mat-icon
-        [svgIcon]="iconService.getIconName(quickAddForm.get('setup.type')?.value)"
-      ></mat-icon>
+    <button type="button" aria-hidden="true" tabindex="-1" [attr.aria-label]="setupTypeValue()">
+      <mat-icon [svgIcon]="iconService.getIconName(setupTypeValue())"></mat-icon>
     </button>
     <p>{{ 'modals.quickAdd.title' | translate }}</p>
-    <button mat-icon-button (click)="close()" [attr.aria-label]="'common.close' | translate">
+    <button
+      type="button"
+      mat-icon-button
+      (click)="close()"
+      [attr.aria-label]="'common.close' | translate"
+    >
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </div>
 
   <form class="form-container" [formGroup]="quickAddForm" (ngSubmit)="onSubmit()" novalidate>
-    <div class="modal-content custom-scrollbar">
+    @let flow = interactiveFlowState();
+    <div class="modal-content">
       @switch (currentStep()) {
         @case ('setup') {
           <div class="step-content">
             <app-remote-config-step
-              [form]="$any(quickAddForm.get('setup'))"
-              [remoteTypes]="remoteTypes"
-              [existingRemotes]="existingRemotes"
-              [useInteractiveMode]="quickAddForm.get('setup.useInteractiveMode')?.value"
+              [form]="setupFormGroup"
+              [remoteTypes]="remoteTypes()"
+              [existingRemotes]="existingRemotes()"
               [visibility]="{ advanced: false }"
-              (interactiveModeToggled)="onInteractiveModeToggled($event)"
+              [initialCommandOptions]="commandOptions()"
+              (commandOptionsChanged)="commandOptions.set($event)"
             />
           </div>
         }
 
         @case ('operations') {
-          <div formGroupName="operations" class="step-content">
+          <div formGroupName="operations">
             <div class="section-group">
               <div class="operations-header">
                 <h3 class="section-label">{{ 'modals.quickAdd.operations.title' | translate }}</h3>
@@ -37,48 +41,77 @@
                 </p>
               </div>
 
-              <div class="tabs-container">
-                <mat-tab-group>
-                  @for (tab of operationTabs; track tab.type) {
-                    <mat-tab [label]="tab.label | translate">
-                      <div class="operation-config">
-                        <app-operation-config
-                          [opFormGroup]="$any(quickAddForm.get('operations.' + tab.type))"
-                          [operationType]="tab.type"
-                          [currentRemoteName]="quickAddForm.get('setup.name')?.value || 'remote'"
-                          [existingRemotes]="existingRemotes"
-                          [description]="tab.description | translate"
-                          (destFolderSelected)="selectFolder(tab.type, 'dest')"
-                          (sourceFolderSelected)="selectFolder(tab.type, 'source')"
-                        ></app-operation-config>
-                      </div>
-                    </mat-tab>
-                  }
-                </mat-tab-group>
-              </div>
+              <mat-tab-group>
+                @for (tab of operationTabs; track tab.type) {
+                  <mat-tab [label]="tab.label | translate">
+                    <div class="operation-config">
+                      <app-operation-config
+                        [opFormGroup]="operationFormGroups.get(tab.type)!"
+                        [operationType]="tab.type"
+                        [currentRemoteName]="setupNameValue() || 'remote'"
+                        [existingRemotes]="existingRemotes()"
+                        [description]="tab.description | translate"
+                        (destFolderSelected)="selectFolder(tab.type, 'dest')"
+                        (sourceFolderSelected)="selectFolder(tab.type, 'source')"
+                      ></app-operation-config>
+                    </div>
+                  </mat-tab>
+                }
+              </mat-tab-group>
             </div>
           </div>
         }
 
         @case ('interactive') {
           <div class="step-content">
-            @if (interactiveFlowState().isActive && interactiveFlowState().question) {
-              <section class="interactive-section">
-                <app-interactive-config-step
-                  [question]="interactiveFlowState().question"
-                  [canceling]="isAuthCancelled()"
-                  [processing]="interactiveFlowState().isProcessing"
-                  (answerChange)="handleInteractiveAnswerUpdate($event)"
-                />
-              </section>
+            @if (flow.isActive && flow.question) {
+              <app-interactive-config-step
+                [question]="flow.question"
+                [canceling]="isAuthCancelled()"
+                [processing]="flow.isProcessing"
+                (answerChange)="handleInteractiveAnswerUpdate($event)"
+              />
             }
           </div>
         }
       }
     </div>
 
-    <!-- Message Bar Area -->
     <div class="message-area" aria-live="polite">
+      @if (oauthHelperUrl(); as oauthUrlValue) {
+        <section class="oauth-helper oauth-helper--actions" aria-live="polite">
+          <div class="oauth-helper-text">
+            <mat-icon svgIcon="globe"></mat-icon>
+            <span>{{ 'modals.oauth.manualOpenPrompt' | translate }}</span>
+          </div>
+          <div class="oauth-helper-actions">
+            <a
+              class="oauth-direct-link"
+              [href]="oauthUrlValue"
+              target="_blank"
+              rel="noopener noreferrer"
+              [matTooltip]="'modals.oauth.openLink' | translate"
+            >
+              {{ oauthUrlValue }}
+            </a>
+
+            <button
+              mat-icon-button
+              (click)="copyOAuthUrl()"
+              [attr.aria-label]="'modals.oauth.copyLink' | translate"
+              [matTooltip]="'modals.oauth.copyLink' | translate"
+            >
+              <mat-icon svgIcon="copy" class="accent"></mat-icon>
+            </button>
+          </div>
+        </section>
+      }
+      @if (shouldShowRemoteOAuthFallback()) {
+        <div class="message info oauth-helper">
+          <mat-icon svgIcon="info"></mat-icon>
+          <span>{{ 'modals.oauth.remoteFallback' | translate }}</span>
+        </div>
+      }
       @if (currentStep() === 'interactive' && !isAuthCancelled()) {
         <div class="message info">
           <mat-icon svgIcon="info"></mat-icon>
@@ -100,72 +133,73 @@
     </div>
 
     <div class="modal-actions">
-      @if (currentStep() === 'setup') {
-        <button mat-button type="button" (click)="close()">
-          {{ 'common.cancel' | translate }}
-        </button>
-        <button
-          mat-flat-button
-          class="primary"
-          (click)="nextStep()"
-          [disabled]="!isSetupStepValid()"
-          type="button"
-        >
-          {{ 'common.nextStep' | translate }}
-          <mat-icon iconPositionEnd svgIcon="right-arrow"></mat-icon>
-        </button>
-      }
-
-      @if (currentStep() === 'operations') {
-        <button mat-button type="button" (click)="prevStep()" [disabled]="isAuthInProgress()">
-          <mat-icon iconPositionStart svgIcon="left-arrow"></mat-icon>
-          {{ 'common.back' | translate }}
-        </button>
-
-        @if (isAuthInProgress() && !isAuthCancelled()) {
-          <button mat-button class="warn" type="button" (click)="cancelAuth()">
-            {{ 'common.cancel' | translate }}
+      @switch (currentStep()) {
+        @case ('setup') {
+          <button
+            type="button"
+            mat-flat-button
+            class="primary"
+            (click)="nextStep()"
+            [disabled]="!isSetupStepValid()"
+          >
+            {{ 'common.nextStep' | translate }}
+            <mat-icon iconPositionEnd svgIcon="right-arrow"></mat-icon>
           </button>
         }
 
-        <button
-          mat-flat-button
-          class="primary"
-          (click)="onSubmit()"
-          [disabled]="isAuthInProgress() || quickAddForm.invalid"
-          type="submit"
-        >
+        @case ('operations') {
+          @if (!isAuthInProgress()) {
+            <button type="button" mat-button (click)="prevStep()">
+              <mat-icon iconPositionStart svgIcon="left-arrow"></mat-icon>
+              {{ 'common.back' | translate }}
+            </button>
+          }
+
           @if (isAuthInProgress() && !isAuthCancelled()) {
-            <mat-spinner diameter="18" class="button-spinner"></mat-spinner>
-          } @else {
-            <mat-icon iconPositionEnd svgIcon="plus"></mat-icon>
+            <button type="button" mat-button class="warn" (click)="cancelAuth()">
+              {{ 'common.cancel' | translate }}
+            </button>
           }
-          {{ submitButtonText() | translate }}
-        </button>
-      }
 
-      @if (currentStep() === 'interactive') {
-        <button mat-button class="warn" type="button" (click)="cancelAuth()">
-          {{ 'common.cancel' | translate }}
-        </button>
+          <!-- type="submit" triggers ngSubmit — no (click) handler needed -->
+          <button
+            mat-flat-button
+            class="primary"
+            type="submit"
+            [disabled]="isAuthInProgress() || quickAddFormStatus() !== 'VALID'"
+          >
+            @if (isAuthInProgress() && !isAuthCancelled()) {
+              <mat-spinner diameter="18" class="button-spinner"></mat-spinner>
+            } @else {
+              <mat-icon iconPositionEnd svgIcon="plus"></mat-icon>
+            }
+            {{ submitButtonText() | translate }}
+          </button>
+        }
 
-        <button
-          mat-flat-button
-          class="primary"
-          type="button"
-          (click)="onInteractiveContinue(interactiveFlowState().answer)"
-          [disabled]="isInteractiveContinueDisabled()"
-        >
-          @if (interactiveFlowState().isProcessing) {
-            <mat-spinner diameter="18" class="button-spinner"></mat-spinner>
-          }
-          {{
-            (interactiveFlowState().isProcessing
-              ? 'modals.quickAdd.buttons.processing'
-              : 'common.continue'
-            ) | translate
-          }}
-        </button>
+        @case ('interactive') {
+          @let continueLabel =
+            (flow.isProcessing ? 'modals.quickAdd.buttons.processing' : 'common.continue')
+              | translate;
+
+          <button mat-button class="warn" type="button" (click)="cancelAuth()">
+            {{ 'common.cancel' | translate }}
+          </button>
+
+          <button
+            mat-flat-button
+            class="primary"
+            (click)="onInteractiveContinue(flow.answer)"
+            [disabled]="isInteractiveContinueDisabled()"
+            [attr.aria-label]="continueLabel"
+            [attr.title]="continueLabel"
+          >
+            @if (flow.isProcessing) {
+              <mat-spinner diameter="18" class="button-spinner"></mat-spinner>
+            }
+            {{ continueLabel }}
+          </button>
+        }
       }
     </div>
   </form>

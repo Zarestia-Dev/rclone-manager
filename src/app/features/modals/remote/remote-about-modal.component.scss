@@ -3,8 +3,6 @@
   flex-direction: column;
   height: 100%;
   max-height: 100vh;
-  background: var(--window-bg-color);
-  color: var(--window-fg-color);
   overflow: hidden;
 }
 
@@ -51,6 +49,7 @@
 
 /* --- Usage Card --- */
 .usage-card {
+  position: relative;
   display: flex;
   flex-direction: row;
   justify-content: space-evenly;
@@ -127,7 +126,7 @@
   white-space: nowrap;
 
   &.code-font {
-    font-family: monospace;
+    font-family: var(--font-mono);
     font-size: var(--font-size-md);
     background: rgba(var(--window-fg-color-rgb), 0.05);
     padding: 2px 6px;
@@ -136,6 +135,10 @@
 }
 
 /* --- Section Headers --- */
+.section-container {
+  margin-bottom: var(--space-md);
+}
+
 .section-header {
   font-size: var(--font-size-sm);
   font-weight: 700;
@@ -153,8 +156,17 @@
 }
 
 .hash-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(var(--primary-color-rgb), 0.08);
+  color: var(--primary-color);
   font-size: var(--font-size-sm);
-  font-family: monospace;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .empty-text {
@@ -177,12 +189,16 @@
   padding: 10px 14px;
   border-radius: var(--radius-md);
   background: var(--view-bg-color);
-  transition: all 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    opacity 0.2s ease;
 
   .feature-icon {
     font-size: var(--icon-size-sm);
     width: var(--icon-size-sm);
     height: var(--icon-size-sm);
+    flex-shrink: 0;
   }
 
   .feature-name {
@@ -201,6 +217,7 @@
     .feature-icon {
       color: var(--primary-color);
     }
+
     .feature-name {
       color: var(--window-fg-color);
     }
@@ -208,9 +225,11 @@
 
   &.unsupported {
     opacity: 0.7;
+
     .feature-icon {
       color: var(--dim-color);
     }
+
     .feature-name {
       color: var(--dim-color);
     }
@@ -255,6 +274,6 @@
   background: var(--hover-bg-color);
   padding: 2px 6px;
   border-radius: var(--radius-sm);
-  font-family: monospace;
+  font-family: var(--font-mono);
   font-size: var(--font-size-sm);
 }

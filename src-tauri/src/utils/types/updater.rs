@@ -23,15 +23,32 @@ impl Default for AppUpdaterState {
     }
 }
 
+/// Rclone-specific update metadata.
+/// This struct mirrors the frontend `RcloneUpdateInfo` interface.
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+pub struct RcloneUpdateMetadata {
+    pub current_version: String,
+    pub latest_version: String,
+    pub update_available: bool,
+    pub current_version_clean: String,
+    pub latest_version_clean: String,
+    pub channel: String,
+    pub release_notes: Option<String>,
+    pub release_date: Option<String>,
+    pub release_url: Option<String>,
+    pub update_in_progress: bool,
+    pub ready_to_restart: bool,
+}
+
 /// Rclone-specific update tracking in Tauri manage state
 pub struct RcloneUpdaterState {
-    pub pending_version: Mutex<Option<String>>,
+    pub pending_update: Mutex<Option<RcloneUpdateMetadata>>,
 }
 
 impl Default for RcloneUpdaterState {
     fn default() -> Self {
         Self {
-            pending_version: Mutex::new(None),
+            pending_update: Mutex::new(None),
         }
     }
 }

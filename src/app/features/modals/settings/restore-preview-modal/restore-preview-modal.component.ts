@@ -1,11 +1,4 @@
-import {
-  Component,
-  inject,
-  signal,
-  ChangeDetectionStrategy,
-  computed,
-  HostListener,
-} from '@angular/core';
+import { Component, inject, signal, ChangeDetectionStrategy, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -18,6 +11,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { DatePipe, UpperCasePipe } from '@angular/common';
 import { BackupAnalysis, BackupRestoreService, ModalService } from '@app/services';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+
+const MIN_PASSWORD_LENGTH = 4;
 
 @Component({
   selector: 'app-restore-preview-modal',
@@ -41,14 +36,25 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RestorePreviewModalComponent {
-  // Injected Services
   private readonly dialogRef = inject(MatDialogRef<RestorePreviewModalComponent>);
   private readonly backupRestoreService = inject(BackupRestoreService);
   private readonly translate = inject(TranslateService);
   private readonly modalService = inject(ModalService);
-  public readonly data = inject<{ backupPath: string; analysis: BackupAnalysis }>(MAT_DIALOG_DATA);
+  private readonly data = inject<{ backupPath: string; analysis: BackupAnalysis }>(MAT_DIALOG_DATA);
 
-  // Signals
+  readonly analysis: BackupAnalysis = this.data.analysis;
+  readonly backupPath: string = this.data.backupPath;
+
+  // Static derived data — plain properties since `analysis` is not a signal
+  readonly isEncrypted = this.analysis.isEncrypted;
+  readonly isLegacy = this.analysis.isLegacy === true;
+  readonly hasContents = !!this.analysis.contents;
+  readonly hasUserNote = !!this.analysis.userNote;
+  readonly profiles = this.analysis.contents?.profiles ?? [];
+  readonly showRemoteCount = (this.analysis.contents?.remoteCount ?? 0) > 1;
+  readonly itemCount = this.#computeItemCount();
+
+  // Mutable UI state
   readonly password = signal('');
   readonly isVerifying = signal(false);
   readonly passwordError = signal<string | null>(null);
@@ -56,98 +62,38 @@ export class RestorePreviewModalComponent {
   readonly selectedProfile = signal<string | null>(null);
   readonly restoreScope = signal<'all' | 'profile'>('all');
 
-  // Data from injection
-  readonly analysis: BackupAnalysis = this.data.analysis;
-  readonly backupPath: string = this.data.backupPath;
-
-  // Computed Signals
-  readonly isEncrypted = computed(() => this.analysis.isEncrypted);
-  readonly hasContents = computed(() => !!this.analysis.contents);
-  readonly hasUserNote = computed(() => !!this.analysis.userNote);
-  readonly profiles = computed(() => this.analysis.contents?.profiles || []);
-  readonly isLegacy = computed(() => this.analysis.isLegacy === true);
-
-  /**
-   * Check if we should show remote details (only for multiple remotes)
-   */
-  readonly shouldShowRemoteDetails = computed(() => {
-    const count = this.analysis.contents?.remoteCount || 0;
-    return count > 1;
-  });
-
-  /**
-   * Check if we should show count badge
-   */
-  readonly shouldShowRemoteCount = computed(() => {
-    const count = this.analysis.contents?.remoteCount || 0;
-    return count > 1;
-  });
-
-  /**
-   * Toggles restore scope
-   */
   toggleRestoreScope(scope: 'all' | 'profile'): void {
     this.restoreScope.set(scope);
     if (scope === 'all') {
       this.selectedProfile.set(null);
-    } else if (this.profiles().length > 0 && !this.selectedProfile()) {
-      this.selectedProfile.set(this.profiles()[0]);
+    } else if (this.profiles.length > 0 && !this.selectedProfile()) {
+      this.selectedProfile.set(this.profiles[0]);
     }
   }
 
-  /**
-   * Gets the total count of items in the backup
-   */
-  getItemCount(): number {
-    let count = 0;
-    // console.log(this.analysis);
-
-    if (!this.analysis.contents) return count;
-
-    const contents = this.analysis.contents;
-    if (contents.settings) count++;
-    if (contents.backendConfig) count++;
-    if (contents.rcloneConfig) count++;
-    if (contents.remoteCount) count += contents.remoteCount;
-
-    return count;
-  }
-
-  /**
-   * Toggles password visibility
-   */
   togglePasswordVisibility(): void {
     this.showPassword.update(show => !show);
   }
 
-  /**
-   * Handles password input changes
-   */
   onPasswordChange(value: string): void {
     this.password.set(value);
     this.passwordError.set(null);
   }
 
-  /**
-   * Verifies password and initiates restore process
-   */
   async verifyAndRestore(): Promise<void> {
-    // Validate password for encrypted backups
-    if (this.isEncrypted()) {
-      const rawPassword = this.password();
-      if (!rawPassword) {
-        this.passwordError.set(this.translate.instant('backup.restore.errors.passwordRequired'));
+    if (this.isEncrypted) {
+      const raw = this.password();
+      const trimmed = raw?.trim();
+
+      if (!trimmed) {
+        const key = raw
+          ? 'backup.restore.errors.passwordEmpty'
+          : 'backup.restore.errors.passwordRequired';
+        this.passwordError.set(this.translate.instant(key));
         return;
       }
 
-      const trimmedPassword = rawPassword.trim();
-      if (!trimmedPassword) {
-        this.passwordError.set(this.translate.instant('backup.restore.errors.passwordEmpty'));
-        return;
-      }
-
-      // Check minimum password length (should match backend validation)
-      if (trimmedPassword.length < 4) {
+      if (trimmed.length < MIN_PASSWORD_LENGTH) {
         this.passwordError.set(this.translate.instant('backup.restore.errors.passwordLength'));
         return;
       }
@@ -156,53 +102,55 @@ export class RestorePreviewModalComponent {
     this.isVerifying.set(true);
     this.passwordError.set(null);
 
-    const password = this.isEncrypted() ? this.password().trim() : null;
+    const password = this.isEncrypted ? this.password().trim() : null;
     const restoreProfile =
       this.restoreScope() === 'profile' ? (this.selectedProfile() ?? undefined) : undefined;
 
     try {
       await this.backupRestoreService.restoreSettings(this.backupPath, password, restoreProfile);
-      // Close modal with success
       this.modalService.animatedClose(this.dialogRef, true);
-    } catch (error: any) {
-      this.handleRestoreError(error);
+    } catch (error) {
+      this.#handleRestoreError(error);
     } finally {
       this.isVerifying.set(false);
     }
   }
 
-  /**
-   * Handles restore errors with appropriate user feedback
-   */
-  private handleRestoreError(error: any): void {
-    const errorMsg = String(error).toLowerCase();
-
-    // Check for specific error types
-    if (errorMsg.includes('wrong password')) {
-      this.passwordError.set(this.translate.instant('backup.restore.errors.wrongPassword'));
-    } else if (errorMsg.includes('integrity check failed')) {
-      this.passwordError.set(this.translate.instant('backup.restore.errors.integrityFailed'));
-    } else if (errorMsg.includes('checksum') || errorMsg.includes('hash')) {
-      this.passwordError.set(this.translate.instant('backup.restore.errors.verificationFailed'));
-    } else if (errorMsg.includes('password') && errorMsg.includes('required')) {
-      this.passwordError.set(this.translate.instant('backup.restore.errors.requiresPassword'));
-    } else if (errorMsg.includes('decrypt') || errorMsg.includes('encryption')) {
-      this.passwordError.set(this.translate.instant('backup.restore.errors.decryptFailed'));
-    } else {
-      // Generic error
-      this.passwordError.set(
-        this.translate.instant('backup.restore.errors.generic', { error: String(error) })
-      );
-    }
-  }
-
-  /**
-   * Closes the modal without restoring
-   */
   @HostListener('document:keydown.escape')
   close(): void {
     if (!this.isVerifying()) {
       this.modalService.animatedClose(this.dialogRef, false);
     }
+  }
+
+  #computeItemCount(): number {
+    // native JavaScript private class field. I wonder that so lets give a try. So its cant accesible on runtime to...
+    const c = this.analysis.contents;
+    if (!c) return 0;
+    return (
+      (c.settings ? 1 : 0) +
+      (c.backendConfig ? 1 : 0) +
+      (c.rcloneConfig ? 1 : 0) +
+      (c.remoteCount ?? 0)
+    );
+  }
+
+  #handleRestoreError(error: unknown): void {
+    const msg = String(error).toLowerCase();
+    let key: string;
+
+    if (msg.includes('wrong password')) key = 'backup.restore.errors.wrongPassword';
+    else if (msg.includes('integrity check failed')) key = 'backup.restore.errors.integrityFailed';
+    else if (msg.includes('checksum') || msg.includes('hash'))
+      key = 'backup.restore.errors.verificationFailed';
+    else if (msg.includes('password') && msg.includes('required'))
+      key = 'backup.restore.errors.requiresPassword';
+    else if (msg.includes('decrypt') || msg.includes('encryption'))
+      key = 'backup.restore.errors.decryptFailed';
+    else key = 'backup.restore.errors.generic';
+
+    this.passwordError.set(
+      this.translate.instant(key, key.endsWith('generic') ? { error: String(error) } : {})
+    );
   }
 }

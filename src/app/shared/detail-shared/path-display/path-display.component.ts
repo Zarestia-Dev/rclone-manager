@@ -1,6 +1,14 @@
-import { Component, Input, Output, EventEmitter, HostListener, OnInit } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  afterNextRender,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
-
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -11,6 +19,7 @@ import { isLocalPath } from 'src/app/services/remote/utils/remote-config.utils';
 @Component({
   selector: 'app-path-display',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatIconModule,
     MatButtonModule,
@@ -23,80 +32,89 @@ import { isLocalPath } from 'src/app/services/remote/utils/remote-config.utils';
     <div class="path-section">
       <div class="path-item">
         <div class="path-icon-container">
-          @if (config.showOpenButtons && isLocalPath(config.source)) {
+          @if (config().showOpenButtons && config().hasSource) {
             <button
               matIconButton
-              class="folder-button"
-              (click)="onOpenPath(config.source)"
+              class="folder-button active"
+              (click)="openPath.emit(config().source)"
               [matTooltip]="'detailShared.pathDisplay.openInExplorer' | translate"
             >
-              <mat-icon svgIcon="folder"></mat-icon>
+              <mat-icon
+                [svgIcon]="isLocalPath(config().source) ? 'folder' : 'folder-open'"
+              ></mat-icon>
             </button>
           } @else {
             <mat-icon svgIcon="cloud-arrow-up" class="path-icon"></mat-icon>
           }
         </div>
-        <div class="path-info" [matTooltip]="config.source">
+        <div class="path-info" [matTooltip]="config().source">
           <div class="path-label">
-            {{ config.sourceLabel || ('detailShared.pathDisplay.source' | translate) }}
+            {{ config().sourceLabel || ('detailShared.pathDisplay.source' | translate) }}
           </div>
-          <div class="path-value">{{ config.source }}</div>
+          <div class="path-value">{{ config().source }}</div>
         </div>
       </div>
 
       <div class="path-arrow">
-        <mat-icon [svgIcon]="isMobile ? 'arrow-down' : 'right-arrow'" class="arrow-icon"></mat-icon>
+        <mat-icon
+          [svgIcon]="isMobile() ? 'arrow-down' : 'right-arrow'"
+          class="arrow-icon"
+        ></mat-icon>
       </div>
-      <div class="path-item destination-path">
+
+      <div class="path-item">
         <div class="path-icon-container">
-          @if (config.showOpenButtons && isLocalPath(config.destination)) {
+          @if (config().showOpenButtons && config().hasDestination) {
             <button
               matIconButton
               class="folder-button"
-              [class.active]="config.isDestinationActive"
-              [class.inactive]="!config.isDestinationActive"
-              [disabled]="config.actionInProgress === 'open' || !config.isDestinationActive"
-              (click)="onOpenPath(config.destination)"
+              [class.active]="config().isDestinationActive"
+              [class.inactive]="!config().isDestinationActive"
+              [disabled]="config().actionInProgress === 'open' || !config().isDestinationActive"
+              (click)="openPath.emit(config().destination)"
               [matTooltip]="'detailShared.pathDisplay.openInExplorer' | translate"
             >
-              @if (config.actionInProgress === 'open') {
+              @if (config().actionInProgress === 'open') {
                 <mat-spinner diameter="24"></mat-spinner>
               } @else {
-                <mat-icon svgIcon="folder"></mat-icon>
+                <mat-icon
+                  [svgIcon]="isLocalPath(config().destination) ? 'folder' : 'folder-open'"
+                ></mat-icon>
               }
             </button>
           } @else {
             <mat-icon svgIcon="cloud-arrow-up" class="path-icon"></mat-icon>
           }
         </div>
-        <div class="path-info" [matTooltip]="config.destination">
+        <div class="path-info" [matTooltip]="config().destination">
           <div class="path-label">
-            {{ config.destinationLabel || ('detailShared.pathDisplay.destination' | translate) }}
+            {{ config().destinationLabel || ('detailShared.pathDisplay.destination' | translate) }}
           </div>
-          <div class="path-value">{{ config.destination }}</div>
+          <div class="path-value">{{ config().destination }}</div>
         </div>
       </div>
     </div>
   `,
 })
-export class PathDisplayComponent implements OnInit {
-  @Input() config!: PathDisplayConfig;
-  @Output() openPath = new EventEmitter<string>();
-  isMobile = false;
+export class PathDisplayComponent {
+  readonly config = input.required<PathDisplayConfig>();
+  readonly openPath = output<string>();
 
-  isLocalPath = isLocalPath;
+  readonly isMobile = signal(false);
 
-  onOpenPath(path: string): void {
-    this.openPath.emit(path);
-  }
+  readonly isLocalPath = isLocalPath;
 
-  ngOnInit(): void {
-    // Initial mobile detection
-    this.isMobile = window.innerWidth <= 768;
-  }
+  private readonly destroyRef = inject(DestroyRef);
 
-  @HostListener('window:resize')
-  onResize(): void {
-    this.isMobile = window.innerWidth <= 768;
+  constructor() {
+    afterNextRender(() => {
+      const update = (): void => {
+        this.isMobile.set(window.innerWidth <= 768);
+      };
+      update();
+      const observer = new ResizeObserver(update);
+      observer.observe(document.body);
+      this.destroyRef.onDestroy(() => observer.disconnect());
+    });
   }
 }

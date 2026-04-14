@@ -41,6 +41,8 @@ export const BASE_ICONS: Record<string, string> = {
   // ------------------- File & Folder Icons -------------------
   file: 'assets/icons/files/file.svg',
   folder: 'assets/icons/files/folder.svg',
+  'folder-off': 'assets/icons/files/folder-off.svg',
+  'folder-open': 'assets/icons/files/folder-open.svg',
   'file-lines': 'assets/icons/files/file-lines.svg',
   'file-arrow-up': 'assets/icons/files/file-arrow-up.svg',
   database: 'assets/icons/files/database.svg',
@@ -75,6 +77,8 @@ export const BASE_ICONS: Record<string, string> = {
   'power-off': 'assets/icons/actions/power-off.svg',
   broom: 'assets/icons/actions/broom.svg',
   'floppy-disk': 'assets/icons/actions/floppy-disk.svg',
+  compress: 'assets/icons/actions/compress.svg',
+  detailed: 'assets/icons/actions/detailed.svg',
 
   // ------------------- Device Icons -------------------
   'hard-drive': 'assets/icons/devices/hard-drive.svg',
@@ -94,6 +98,7 @@ export const BASE_ICONS: Record<string, string> = {
   // ------------------- General Icons -------------------
   home: 'assets/icons/general/home.svg',
   gear: 'assets/icons/general/gear.svg',
+  tune: 'assets/icons/general/tune.svg',
   info: 'assets/icons/general/info.svg',
   bug: 'assets/icons/general/bug.svg',
   chart: 'assets/icons/general/chart.svg',
@@ -158,4 +163,6 @@ export const BASE_ICONS: Record<string, string> = {
   mailru: 'assets/icons/remotes/mailru.svg',
   pikpak: 'assets/icons/remotes/pikpak.svg',
   swift: 'assets/icons/remotes/swift.svg',
+  crypt: 'assets/icons/remotes/crypt.svg',
+  sharefile: 'assets/icons/remotes/sharefile.svg',
 };

@@ -26,7 +26,6 @@ export const EXPLICIT_ENDPOINTS: Record<string, string> = {
   get_jobs: '/jobs',
   get_active_jobs: '/jobs/active',
   get_job_status: '/jobs/:id/status',
-  get_jobs_by_source: '/jobs/by-source',
   stop_job: '/jobs/stop',
   delete_job: '/jobs/delete',
   stop_jobs_by_group: '/jobs/stop-by-group',
@@ -163,6 +162,10 @@ export const POST_COMMANDS = new Set([
   'purge_directory',
   'remove_empty_dirs',
   'upload_file',
+  'upload_file_bytes',
+  'upload_local_drop_files',
+  'upload_local_drop_paths',
+  'upload_local_drop_entries',
   'rename_file',
   'rename_dir',
   // Backend Commands
@@ -175,7 +178,6 @@ export const POST_COMMANDS = new Set([
   'save_rclone_backend_options',
   'reset_rclone_backend_options',
   // Rename commands
-  'rename_profile_in_cache',
   'rename_mount_profile_in_cache',
   'rename_serve_profile_in_cache',
   // Debug Commands

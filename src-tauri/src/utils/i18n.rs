@@ -214,7 +214,10 @@ macro_rules! t {
     };
     ($key:expr, $($param_key:expr => $param_value:expr),+ $(,)?) => {{
         let params = [$(($param_key, $param_value.to_string())),+];
-        let params_ref: Vec<(&str, &str)> = params.iter().map(|(k, v)| (*k, v.as_str())).collect();
+        let params_ref = params
+            .iter()
+            .map(|(k, v)| (*k, v.as_str()))
+            .collect::<Vec<(&str, &str)>>();
         $crate::utils::i18n::t_with_params($key, &params_ref)
     }};
 }

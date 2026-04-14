@@ -1,104 +1,50 @@
 // =============================================
 // APP OVERVIEW ROOT CONTAINER
 // =============================================
+
 .app-overview {
   display: flex;
   flex-direction: column;
   gap: var(--section-gap);
-  margin: 0 auto;
   padding: var(--panel-padding);
 
-  // MODE-SPECIFIC COLOR VARIABLES
-  &.mount {
+  // ── MODE-SPECIFIC COLOR VARIABLES ──────────────────────────────────────────
+  &.mount,
+  &.serve {
     --mode-primary-color: var(--accent-color);
     --mode-primary-color-rgb: var(--accent-color-rgb);
     --mode-light-color: var(--light-blue);
-    --mode-light-color-rgb: var(--light-blue-rgb);
   }
 
-  // sync and serve share the same palette — combined to avoid drift
-  &.sync,
-  &.serve {
+  // sync and serve share the green palette
+  &.sync {
     --mode-primary-color: var(--primary-color);
     --mode-primary-color-rgb: var(--primary-color-rgb);
     --mode-light-color: var(--light-green);
-    --mode-light-color-rgb: var(--light-green-rgb);
   }
 }
 
 // =============================================
-// OVERVIEW CONTENT CONTAINER
+// OVERVIEW CONTENT GRID
 // =============================================
+
 .overview-content {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--panel-padding);
+  gap: var(--space-md);
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;
 }
 
 // =============================================
-// SERVE MODE — ACTIVE REMOTES PANEL
-// =============================================
-.remotes-panel.active-remotes-panel {
-  border-radius: var(--card-border-radius-large);
-  padding: 0;
-
-  .remotes-header {
-    padding: var(--space-xl) var(--space-xl) var(--space-md);
-
-    .panel-title-content {
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-      color: var(--window-fg-color);
-      font-size: var(--font-size-md);
-      font-weight: 500;
-
-      .active-icon {
-        color: var(--primary-color);
-      }
-
-      .remote-count {
-        padding: var(--space-xxs) var(--space-xs);
-        border-radius: var(--radius-sm);
-        background: rgba(var(--primary-color-rgb), 0.1);
-        box-shadow: 0 0 0 1px var(--card-shade-color);
-        color: var(--dim-color);
-        font-size: var(--font-size-base);
-        font-weight: 400;
-      }
-    }
-  }
-
-  .remotes-content {
-    padding: var(--panel-padding) var(--space-2xl) var(--space-2xl);
-
-    .remotes-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: var(--space-md);
-    }
-  }
-}
-
-// =============================================
 // RESPONSIVE
 // =============================================
+
 @media (max-width: 768px) {
   .app-overview {
     padding: var(--panel-padding-mobile);
     gap: var(--section-gap-mobile);
-  }
-
-  .remotes-panel.active-remotes-panel .remotes-content {
-    padding: var(--panel-padding-mobile) var(--panel-padding) var(--panel-padding);
-
-    .remotes-grid {
-      grid-template-columns: 1fr;
-      gap: var(--panel-padding-mobile);
-    }
   }
 }
 

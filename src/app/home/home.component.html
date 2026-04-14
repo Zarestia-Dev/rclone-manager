@@ -1,4 +1,4 @@
-<mat-sidenav-container class="home-container">
+<mat-sidenav-container>
   <!-- Sidebar -->
   <mat-sidenav
     #sidenav
@@ -19,17 +19,16 @@
     </div>
 
     <!-- Remote Options Menu -->
-    @for (remote of [selectedRemote()]; track remote?.name) {
-      @if (remote) {
-        <button
-          matIconButton
-          class="ellipsis-button"
-          [cdkMenuTriggerFor]="remoteOptionsMenu"
-          [cdkMenuTriggerData]="{ remote: remote }"
-        >
-          <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
-        </button>
-      }
+    @let remote = selectedRemote();
+    @if (remote) {
+      <button
+        matIconButton
+        class="ellipsis-button"
+        [cdkMenuTriggerFor]="remoteOptionsMenu"
+        [cdkMenuTriggerData]="{ remote: remote }"
+      >
+        <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
+      </button>
     }
 
     <!-- Empty State -->
@@ -68,16 +67,16 @@
     }
 
     <!-- Overview Components -->
-    @if (remotes().length > 0 && !selectedRemote() && !isLoading()) {
+    @if (remotes().length > 0 && !remote && !isLoading()) {
       @switch (currentTab()) {
         @case ('general') {
           <app-general-overview
             [remotes]="remotes()"
             [jobs]="jobs()"
             [actionInProgress]="actionInProgress()"
-            (startJob)="startJob($event.type, $event.remoteName)"
+            (startJob)="startJob($event.type, $event.remoteName, $event.profileName)"
             (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId, $event.profileName)"
-            (browseRemote)="openRemoteInFiles($event, 'mount')"
+            (browseRemote)="openRemoteInFiles($event.remoteName, $event.path ?? 'mount')"
             (selectRemote)="selectRemote($event)"
             (openBackendModal)="openBackendModal()"
           >
@@ -85,13 +84,13 @@
         }
         @default {
           <app-app-overview
-            [mode]="currentTab()"
+            [mode]="mainOperationType()"
             [remotes]="remotes()"
             [runningServes]="runningServes()"
             [actionInProgress]="actionInProgress()"
             (remoteSelected)="selectRemote($event)"
-            (openInFiles)="openRemoteInFiles($event, currentTab())"
-            (startJob)="startJob($event.type, $event.remoteName)"
+            (openInFiles)="openRemoteInFiles($event.remoteName, $event.path ?? currentTab())"
+            (startJob)="startJob($event.type, $event.remoteName, $event.profileName)"
             (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId, $event.profileName)"
             (openBackendModal)="openBackendModal()"
           >
@@ -101,7 +100,7 @@
     }
 
     <!-- Remote Detail View -->
-    @if (selectedRemote(); as remote) {
+    @if (remote) {
       @switch (currentTab()) {
         @case ('general') {
           <app-general-detail
@@ -119,19 +118,20 @@
         }
         @default {
           <app-app-detail
-            [mainOperationType]="$any(currentTab())"
+            [mainOperationType]="mainOperationType()"
             [selectedSyncOperation]="selectedSyncOperation()"
             [selectedRemote]="remote"
             [remoteSettings]="selectedRemoteSettings()"
             [actionInProgress]="actionInProgress()[remote.name]"
-            (syncOperationChange)="onSyncOperationChange($event)"
+            (selectedSyncOperationChange)="onSyncOperationChange($event)"
             (openRemoteConfigModal)="
               openRemoteConfigModal(
                 $event.editTarget,
                 $event.existingConfig,
                 $event.initialSection,
                 $event.targetProfile,
-                $event.remoteType
+                $event.remoteType,
+                $event.autoAddProfile
               )
             "
             (openInFiles)="openRemoteInFiles($event.remoteName, $event.path)"

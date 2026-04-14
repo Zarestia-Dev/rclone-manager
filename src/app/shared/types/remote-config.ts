@@ -23,7 +23,49 @@ export const DEFAULT_PROFILE_NAME = 'default';
 
 export type EditTarget = FlagType | 'remote' | 'runtimeRemote' | null;
 
-export const INTERACTIVE_REMOTES = ['iclouddrive', 'onedrive'];
+export const INTERACTIVE_REMOTES: ReadonlySet<string> = new Set(['onedrive', 'iclouddrive']);
+
+// ─── Command Option types ───────────────────────────────────────────────────
+
+export interface CommandOption {
+  key: string;
+  value: boolean | string | number | string[];
+  label?: string;
+  description?: string;
+}
+
+export const PREDEFINED_OPTIONS: CommandOption[] = [
+  {
+    key: 'obscure',
+    label: 'wizards.remoteConfig.predefinedOptions.obscure.label',
+    description: 'wizards.remoteConfig.predefinedOptions.obscure.description',
+    value: true,
+  },
+  {
+    key: 'noObscure',
+    label: 'wizards.remoteConfig.predefinedOptions.noObscure.label',
+    description: 'wizards.remoteConfig.predefinedOptions.noObscure.description',
+    value: true,
+  },
+  {
+    key: 'nonInteractive',
+    label: 'wizards.remoteConfig.predefinedOptions.nonInteractive.label',
+    description: 'wizards.remoteConfig.predefinedOptions.nonInteractive.description',
+    value: true,
+  },
+  {
+    key: 'all',
+    label: 'wizards.remoteConfig.predefinedOptions.all.label',
+    description: 'wizards.remoteConfig.predefinedOptions.all.description',
+    value: true,
+  },
+  {
+    key: 'noOutput',
+    label: 'wizards.remoteConfig.predefinedOptions.noOutput.label',
+    description: 'wizards.remoteConfig.predefinedOptions.noOutput.description',
+    value: true,
+  },
+];
 
 export const REMOTE_CONFIG_KEYS = {
   mount: 'mountConfigs',
@@ -88,6 +130,7 @@ export const OPERATION_METADATA: Record<string, UIOperationMetadata> = {
     icon: 'mount',
     cssClass: 'accent',
     description: 'dashboard.appDetail.mountBehave',
+    typeLabel: 'dashboard.appDetail.mount',
     supportsVfs: true,
     supportsProfiles: true,
   },
@@ -96,6 +139,7 @@ export const OPERATION_METADATA: Record<string, UIOperationMetadata> = {
     icon: 'satellite-dish',
     cssClass: 'accent',
     description: 'dashboard.appDetail.serveBehave',
+    typeLabel: 'dashboard.appDetail.serving',
     supportsVfs: true,
     supportsProfiles: true,
   },
@@ -142,6 +186,7 @@ export interface RemoteConfigStepVisibility {
   name?: boolean;
   advanced?: boolean;
   interactive?: boolean;
+  commands?: boolean;
 }
 
 // Base interface for operation configs (shared by copy, sync, move)

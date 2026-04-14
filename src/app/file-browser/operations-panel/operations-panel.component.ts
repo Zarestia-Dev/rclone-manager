@@ -1,0 +1,195 @@
+import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
+import { CommonModule, DatePipe } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { CdkMenuModule } from '@angular/cdk/menu';
+import { MatDividerModule } from '@angular/material/divider';
+import { JobManagementService, UiStateService, NotificationService } from '@app/services';
+import { JobInfo } from '@app/types';
+import { FormatFileSizePipe, FormatEtaPipe, FormatRateValuePipe } from '@app/pipes';
+import { Subject, interval } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+
+@Component({
+  selector: 'app-operations-panel',
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatIconModule,
+    MatButtonModule,
+    MatProgressBarModule,
+    MatTooltipModule,
+    MatExpansionModule,
+    CdkMenuModule,
+    MatDividerModule,
+    DatePipe,
+    FormatFileSizePipe,
+    FormatEtaPipe,
+    FormatRateValuePipe,
+    TranslateModule,
+  ],
+  templateUrl: './operations-panel.component.html',
+  styleUrls: ['./operations-panel.component.scss'],
+})
+export class OperationsPanelComponent implements OnInit, OnDestroy {
+  private jobManagementService = inject(JobManagementService);
+  private uiStateService = inject(UiStateService);
+  private notificationService = inject(NotificationService);
+  private translate = inject(TranslateService);
+  private destroy$ = new Subject<void>();
+
+  // Subscribe to reactive job stream
+  jobs = this.jobManagementService.nautilusJobs;
+  isExpanded = signal(true);
+  isLoading = signal(false);
+
+  // Computed
+  activeJobs = computed(() => this.jobs().filter(j => j.status === 'Running'));
+  completedJobs = computed(() => this.jobs().filter(j => j.status !== 'Running'));
+  hasJobs = computed(() => this.jobs().length > 0);
+
+  ngOnInit(): void {
+    // Initial load from backend
+    this.jobManagementService.refreshJobs();
+
+    // Adaptive polling: only poll when there are active jobs
+    interval(1000)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        // Only poll if there are active running jobs
+        if (this.activeJobs().length > 0) {
+          this.jobManagementService.refreshJobs();
+        }
+      });
+
+    console.log('[OperationsPanel] Initialized, subscribed to job stream');
+    console.log('[OperationsPanel] Current jobs:', this.jobs());
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  toggleExpanded(): void {
+    this.isExpanded.update(v => !v);
+  }
+
+  /**
+   * Return a human-readable label for the job type, using translations when available.
+   */
+  getJobTypeLabel(job: JobInfo): string {
+    const key = `fileBrowser.operations.types.${job.job_type}`;
+    const translated = this.translate.instant(key);
+    // If translation returns the key itself, fall back to a prettified name
+    if (translated === key) {
+      return job.job_type.replace(/_/g, ' ');
+    }
+    return translated;
+  }
+
+  getProgress(job: JobInfo): number {
+    if (!job.stats || !job.stats.totalBytes) return 0;
+    return Math.round((job.stats.bytes / job.stats.totalBytes) * 100);
+  }
+
+  getFileName(job: JobInfo): string {
+    if (job.job_type === 'upload') {
+      return this.getJobTypeLabel(job);
+    }
+
+    const path = job.destination || job.source || '';
+    return this.uiStateService.extractFilename(path);
+  }
+
+  /** Get icon for the job's operation type */
+  getJobTypeIcon(job: JobInfo): string {
+    switch (job.job_type) {
+      case 'delete_file':
+      case 'purge':
+      case 'cleanup':
+        return 'trash';
+      case 'rmdirs':
+        return 'broom';
+      case 'copy':
+      case 'copy_file':
+      case 'copy_url':
+        return 'copy';
+      case 'upload':
+        return 'file-arrow-up';
+      case 'move':
+      case 'move_file':
+        return 'move';
+      case 'rename_file':
+      case 'rename_dir':
+        return 'pen';
+      case 'sync':
+      case 'bisync':
+        return 'refresh';
+      default:
+        return 'folder';
+    }
+  }
+
+  /** Whether this job is a delete-type operation (no byte progress) */
+  isDeleteOperation(job: JobInfo): boolean {
+    return (
+      job.job_type === 'delete_file' ||
+      job.job_type === 'purge' ||
+      job.job_type === 'cleanup' ||
+      job.job_type === 'rmdirs'
+    );
+  }
+
+  getStatusIcon(job: JobInfo): string {
+    switch (job.status) {
+      case 'Running':
+        return 'refresh';
+      case 'Completed':
+        return 'circle-check';
+      case 'Failed':
+        return 'circle-xmark';
+      case 'Stopped':
+        return 'stop';
+      default:
+        return 'circle';
+    }
+  }
+
+  async stopJob(job: JobInfo): Promise<void> {
+    try {
+      await this.jobManagementService.stopJob(job.jobid, job.remote_name);
+      // Refresh the stream after stopping
+      await this.jobManagementService.refreshJobs();
+    } catch (err) {
+      console.error('Failed to stop job:', err);
+    }
+  }
+
+  async deleteJob(job: JobInfo): Promise<void> {
+    try {
+      await this.jobManagementService.deleteJob(job.jobid);
+      // Refresh the stream after deleting
+      await this.jobManagementService.refreshJobs();
+    } catch (err) {
+      console.error('Failed to delete job:', err);
+    }
+  }
+
+  async copyError(errors: string | string[] | undefined): Promise<void> {
+    if (!errors) return;
+    const text = Array.isArray(errors) ? errors.join('\n') : errors;
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      this.notificationService.showSuccess(this.translate.instant('common.errorCopied'));
+    } catch (err) {
+      console.error('Failed to copy error:', err);
+      this.notificationService.showError(this.translate.instant('common.error'));
+    }
+  }
+}

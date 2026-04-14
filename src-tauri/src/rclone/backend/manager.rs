@@ -16,12 +16,42 @@ use super::{
 
 use crate::utils::types::{jobs::JobCache, remotes::RemoteCache};
 
+/// Inner state that must always be read/written together to avoid index drift.
+///
+/// Keeping `backends` and `active_index` in the same lock ensures that no
+/// caller can observe a stale index after a concurrent add/remove/switch.
+struct BackendsState {
+    backends: Vec<Backend>,
+    active_index: usize,
+}
+
+impl BackendsState {
+    fn new() -> Self {
+        Self {
+            backends: vec![Backend::new_local("Local")],
+            active_index: 0,
+        }
+    }
+
+    fn active(&self) -> &Backend {
+        // active_index is always kept in bounds by our own write paths
+        &self.backends[self.active_index]
+    }
+
+    fn active_name(&self) -> &str {
+        self.active().name.as_str()
+    }
+
+    fn find_index(&self, name: &str) -> Option<usize> {
+        self.backends.iter().position(|b| b.name == name)
+    }
+}
+
 /// Central manager for rclone backends
 pub struct BackendManager {
-    /// All configured backends (index 0 is always Local)
-    backends: RwLock<Vec<Backend>>,
-    /// Index of the currently active backend
-    active_index: RwLock<usize>,
+    /// Combined lock for backends list + active index.
+    /// Never split these into two locks — see `BackendsState` docs.
+    state: RwLock<BackendsState>,
     /// Runtime connectivity info (version, os, status) - not persisted
     runtime_info: RwLock<HashMap<String, RuntimeInfo>>,
     /// Per-backend state storage (backend_name → cached state)
@@ -36,8 +66,7 @@ impl BackendManager {
     /// Create a new manager with just the Local backend
     pub fn new() -> Self {
         Self {
-            backends: RwLock::new(vec![Backend::new_local("Local")]),
-            active_index: RwLock::new(0),
+            state: RwLock::new(BackendsState::new()),
             runtime_info: RwLock::new(HashMap::new()),
             per_backend_state: RwLock::new(HashMap::new()),
             remote_cache: Arc::new(RemoteCache::new()),
@@ -47,41 +76,36 @@ impl BackendManager {
 
     /// Get a clone of the active backend
     pub async fn get_active(&self) -> Backend {
-        let backends = self.backends.read().await;
-        let index = *self.active_index.read().await;
-        backends
-            .get(index)
-            .cloned()
-            .unwrap_or_else(Backend::default)
+        self.state.read().await.active().clone()
     }
 
     /// Get the name of the active backend
     pub async fn get_active_name(&self) -> String {
-        let backends = self.backends.read().await;
-        let index = *self.active_index.read().await;
-        backends
-            .get(index)
-            .map(|b| b.name.clone())
-            .unwrap_or_default()
+        self.state.read().await.active_name().to_string()
     }
 
     /// Get a specific backend by name
     pub async fn get(&self, name: &str) -> Option<Backend> {
-        let backends = self.backends.read().await;
-        backends.iter().find(|b| b.name == name).cloned()
+        self.state
+            .read()
+            .await
+            .backends
+            .iter()
+            .find(|b| b.name == name)
+            .cloned()
     }
 
     /// List all backends with their active status and runtime info
     pub async fn list_all(&self) -> Vec<BackendInfo> {
-        let backends = self.backends.read().await;
-        let active_index = *self.active_index.read().await;
+        let state = self.state.read().await;
         let runtime_cache = self.runtime_info.read().await;
 
-        backends
+        state
+            .backends
             .iter()
             .enumerate()
             .map(|(i, b)| {
-                let info = BackendInfo::from_backend(b, i == active_index);
+                let info = BackendInfo::from_backend(b, i == state.active_index);
                 if let Some(runtime) = runtime_cache.get(&b.name) {
                     info.with_runtime_info(
                         runtime.version.clone(),
@@ -102,10 +126,16 @@ impl BackendManager {
 
     /// Helper to get the config path of the Local backend
     pub async fn get_local_config_path(&self) -> Result<Option<String>, String> {
-        let backend = self.get("Local").await.ok_or_else(
-            || crate::localized_error!("backendErrors.backend.notFound", "name" => "Local"),
-        )?;
-        Ok(backend.config_path.clone())
+        self.state
+            .read()
+            .await
+            .backends
+            .iter()
+            .find(|b| b.name == "Local")
+            .map(|b| b.config_path.clone())
+            .ok_or_else(
+                || crate::localized_error!("backendErrors.backend.notFound", "name" => "Local"),
+            )
     }
 
     /// Add a new backend and initialize its settings profiles
@@ -122,9 +152,9 @@ impl BackendManager {
         copy_backend_from: Option<&str>,
         copy_remotes_from: Option<&str>,
     ) -> Result<(), String> {
-        let mut backends = self.backends.write().await;
+        let mut state = self.state.write().await;
 
-        if backends.iter().any(|b| b.name == backend.name) {
+        if state.backends.iter().any(|b| b.name == backend.name) {
             return Err(crate::localized_error!(
                 "backendErrors.backend.alreadyExists",
                 "name" => &backend.name
@@ -158,11 +188,10 @@ impl BackendManager {
             }
         };
 
-        // Setup both profiles
         setup_profile("backend", copy_backend_from);
         setup_profile("remotes", copy_remotes_from);
 
-        backends.push(backend);
+        state.backends.push(backend);
         Ok(())
     }
 
@@ -173,22 +202,22 @@ impl BackendManager {
         name: &str,
         backend: Backend,
     ) -> Result<(), String> {
-        let mut backends = self.backends.write().await;
+        let mut state = self.state.write().await;
 
-        let index = backends.iter().position(|b| b.name == name).ok_or_else(
-            || crate::localized_error!("backendErrors.backend.notFound", "name" => name),
-        )?;
+        let index = state
+            .backends
+            .iter()
+            .position(|b| b.name == name)
+            .ok_or_else(
+                || crate::localized_error!("backendErrors.backend.notFound", "name" => name),
+            )?;
 
         info!("🔄 Updating backend: {}", name);
-        backends[index] = backend;
+        state.backends[index] = backend;
         Ok(())
     }
 
     /// Remove a backend by name and delete its associated profiles
-    ///
-    /// # Arguments
-    /// * `manager` - App settings manager to delete profiles
-    /// * `name` - Name of the backend to remove
     pub async fn remove(&self, manager: &AppSettingsManager, name: &str) -> Result<(), String> {
         if name == "Local" {
             return Err(crate::localized_error!(
@@ -196,30 +225,36 @@ impl BackendManager {
             ));
         }
 
-        let active_index = *self.active_index.read().await;
-        let mut backends = self.backends.write().await;
+        let mut state = self.state.write().await;
 
-        let index = backends.iter().position(|b| b.name == name).ok_or_else(
-            || crate::localized_error!("backendErrors.backend.notFound", "name" => name),
-        )?;
+        let index = state
+            .backends
+            .iter()
+            .position(|b| b.name == name)
+            .ok_or_else(
+                || crate::localized_error!("backendErrors.backend.notFound", "name" => name),
+            )?;
 
-        // Can't remove active backend
-        if index == active_index {
+        if index == state.active_index {
             return Err(crate::localized_error!(
                 "backendErrors.backend.cannotRemoveActive"
             ));
         }
 
         info!("➖ Removing backend: {}", name);
-        backends.remove(index);
+        state.backends.remove(index);
 
-        // Clean up per-backend state
-        {
-            let mut states = self.per_backend_state.write().await;
-            states.remove(name);
+        // Keep active_index consistent after removal
+        if state.active_index > index {
+            state.active_index -= 1;
         }
 
-        // Delete profiles for "remotes" and "backend"
+        drop(state);
+
+        // Clean up per-backend state
+        self.per_backend_state.write().await.remove(name);
+
+        // Delete settings profiles
         if let Ok(remotes_sub) = manager.sub_settings("remotes")
             && let Ok(pm) = remotes_sub.profiles()
             && let Err(e) = pm.delete(name)
@@ -233,65 +268,33 @@ impl BackendManager {
             log::warn!("Failed to delete 'backend' profile for {}: {}", name, e);
         }
 
-        // Adjust active_index if needed
-        drop(backends);
-        let mut active = self.active_index.write().await;
-        if *active > index {
-            *active -= 1;
-        }
-
         Ok(())
     }
 
     /// Switch to a different backend and manage its state and profiles
     ///
     /// This handles:
-    /// 1. Unscheduling tasks for the old backend
-    /// 2. Saving current state (jobs, cache)
-    /// 3. Restoring state for the new backend
-    /// 4. Switching settings profiles
-    pub async fn switch_to(
-        &self,
-        manager: &AppSettingsManager,
-        name: &str,
-        scheduler: Option<&crate::core::scheduler::engine::CronScheduler>,
-        task_cache: Option<&crate::rclone::state::scheduled_tasks::ScheduledTasksCache>,
-    ) -> Result<(), String> {
-        let backends = self.backends.read().await;
-        let (new_index, is_local) = backends
-            .iter()
-            .enumerate()
-            .find(|(_, b)| b.name == name)
-            .map(|(i, b)| (i, b.is_local))
-            .ok_or_else(
+    /// 1. Saving current state (jobs, cache)
+    /// 2. Restoring state for the new backend
+    /// 3. Switching settings profiles
+    ///
+    /// Task unscheduling/rescheduling is the caller's responsibility.
+    pub async fn switch_to(&self, manager: &AppSettingsManager, name: &str) -> Result<(), String> {
+        // Single read: capture everything we need atomically
+        let (new_index, is_local, current_name) = {
+            let state = self.state.read().await;
+            let new_index = state.find_index(name).ok_or_else(
                 || crate::localized_error!("backendErrors.backend.notFound", "name" => name),
             )?;
-        drop(backends);
-
-        let current_name = self.get_active_name().await;
+            let is_local = state.backends[new_index].is_local;
+            let current_name = state.active_name().to_string();
+            (new_index, is_local, current_name)
+        };
 
         if current_name != name {
-            if let (Some(sched), Some(cache)) = (scheduler, task_cache) {
-                let old_tasks = cache.get_tasks_for_backend(&current_name).await;
-                for task in &old_tasks {
-                    if let Some(job_id_str) = &task.scheduler_job_id
-                        && let Ok(job_id) = uuid::Uuid::parse_str(job_id_str)
-                    {
-                        let _ = sched.unschedule_task(job_id).await;
-                    }
-                }
-                info!(
-                    "⏸️  Unscheduled {} tasks for backend '{}'",
-                    old_tasks.len(),
-                    current_name
-                );
-            }
-
-            super::state::save_backend_state(self, &current_name, task_cache).await;
-
+            super::state::save_backend_state(self, &current_name).await;
             self.remote_cache.clear_all().await;
-
-            super::state::restore_backend_state(self, name, task_cache).await;
+            super::state::restore_backend_state(self, name).await;
         }
 
         let profile_name = if name == "Local" { "default" } else { name };
@@ -302,19 +305,10 @@ impl BackendManager {
         self.switch_sub_settings_profile(manager, "backend", profile_name)
             .await?;
 
-        *self.active_index.write().await = new_index;
-
-        // Tasks restored for new backend (caller must trigger scheduler reload)
-        if let (Some(_), Some(cache)) = (scheduler, task_cache) {
-            let task_count = cache.get_tasks_for_backend(name).await.len();
-            info!(
-                "▶️  Restored {} tasks for backend '{}' (will resched on reload)",
-                task_count, name
-            );
-        }
+        // Brief write: only flip the index, all heavy work is already done
+        self.state.write().await.active_index = new_index;
 
         info!("🔄 Switched to backend: {} (is_local: {})", name, is_local);
-
         Ok(())
     }
 
@@ -326,12 +320,10 @@ impl BackendManager {
         profile_name: &str,
     ) -> Result<(), String> {
         if let Ok(sub) = manager.sub_settings(sub_name) {
-            // Create profile if needed
             if profile_name != "default"
                 && let Ok(pm) = sub.profiles()
                 && let Err(e) = pm.create(profile_name)
             {
-                // Likely already exists, just warn
                 log::warn!(
                     "Failed to ensure profile '{}' for {}: {}",
                     profile_name,
@@ -340,7 +332,6 @@ impl BackendManager {
                 );
             }
 
-            // Switch profile
             if let Err(e) = sub.switch_profile(profile_name) {
                 log::error!(
                     "Failed to switch {} to profile '{}': {}",
@@ -359,57 +350,51 @@ impl BackendManager {
     }
 
     // ============================================================================
-    // Helper methods for internal module access
+    // Internal helpers (visible to sibling modules in rclone::backend)
     // ============================================================================
 
     /// Set runtime info for a backend (used by connectivity module)
     pub(super) async fn set_runtime_info(&self, name: &str, info: RuntimeInfo) {
-        let mut cache = self.runtime_info.write().await;
-        cache.insert(name.to_string(), info);
+        self.runtime_info
+            .write()
+            .await
+            .insert(name.to_string(), info);
     }
 
-    // pub(super) async fn switch_to_local_index(&self) -> Result<(), String> {
-    //     let index = self
-    //         .backends
-    //         .read()
-    //         .await
-    //         .iter()
-    //         .position(|b| b.name == "Local")
-    //         .ok_or_else(|| "Local backend not found".to_string())?;
-
-    //     *self.active_index.write().await = index;
-    //     Ok(())
-    // }
-
     /// Save backend state internally (used by state module)
-    pub(super) async fn save_state(&self, name: &str, state: super::state::BackendState) {
-        let mut states = self.per_backend_state.write().await;
-        states.insert(name.to_string(), state);
+    pub(super) async fn save_state(&self, name: &str, state: BackendState) {
+        self.per_backend_state
+            .write()
+            .await
+            .insert(name.to_string(), state);
     }
 
     /// Get backend state (used by state module)
-    pub(super) async fn get_state(&self, name: &str) -> super::state::BackendState {
-        let states = self.per_backend_state.read().await;
-        states.get(name).cloned().unwrap_or_default()
+    pub(super) async fn get_state(&self, name: &str) -> BackendState {
+        self.per_backend_state
+            .read()
+            .await
+            .get(name)
+            .cloned()
+            .unwrap_or_default()
     }
 
     /// Get the runtime config path for a specific backend
     pub async fn get_runtime_config_path(&self, name: &str) -> Option<String> {
-        let cache = self.runtime_info.read().await;
-        cache.get(name).and_then(|info| info.config_path.clone())
+        self.runtime_info
+            .read()
+            .await
+            .get(name)
+            .and_then(|info| info.config_path.clone())
     }
 
     /// Update runtime status for a backend (used for error states)
     pub async fn set_runtime_status(&self, name: &str, status: &str) {
         let mut cache = self.runtime_info.write().await;
-
-        // If this is an error status, create new RuntimeInfo with just the error
-        // Note: status parameter should already include "error:" prefix if it's an error
         if status.starts_with("error") {
             let error_msg = status.strip_prefix("error:").unwrap_or(status);
             cache.insert(name.to_string(), RuntimeInfo::with_error(error_msg));
         } else {
-            // Update status on existing RuntimeInfo or create new one
             cache
                 .entry(name.to_string())
                 .or_insert_with(RuntimeInfo::new)
@@ -425,11 +410,9 @@ impl BackendManager {
 
         let keys = connections.list().map_err(|e| e.to_string())?;
 
-        // Track active backend name for later
         let mut active_name: Option<String> = None;
 
         for key in keys {
-            // Special key for active backend
             if key == "_active" {
                 if let Ok(value) = connections.get_value(&key) {
                     active_name = value.as_str().map(String::from);
@@ -450,23 +433,19 @@ impl BackendManager {
             }
         }
 
-        // Determine target backend (Default to Local if none saved)
         let target_backend = active_name.unwrap_or_else(|| {
             log::info!("ℹ️ No active backend saved, defaulting to Local");
             "Local".to_string()
         });
 
-        // Restore active backend or fallback to Local
-        if let Err(e) = self.switch_to(manager, &target_backend, None, None).await {
+        if let Err(e) = self.switch_to(manager, &target_backend).await {
             log::warn!(
                 "Failed to restore active backend '{}': {}. Reverting to Local.",
                 target_backend,
                 e
             );
-
-            // Critical Fallback: If target wasn't Local, try Local now
             if target_backend != "Local"
-                && let Err(revert_e) = self.switch_to(manager, "Local", None, None).await
+                && let Err(revert_e) = self.switch_to(manager, "Local").await
             {
                 log::error!("Critical: Failed to revert to Local backend: {}", revert_e);
             }
@@ -477,18 +456,23 @@ impl BackendManager {
         Ok(())
     }
 
-    /// Save active backend name to settings
-    pub fn save_active_to_settings(manager: &AppSettingsManager, name: &str) -> Result<(), String> {
-        let connections = manager
-            .sub_settings("connections")
-            .map_err(|e| e.to_string())?;
+    /// Persist the active backend name to settings.
+    ///
+    /// Logs a warning on failure; callers should not treat this as fatal.
+    pub fn save_active_to_settings(manager: &AppSettingsManager, name: &str) {
+        let result = (|| -> Result<(), String> {
+            let connections = manager
+                .sub_settings("connections")
+                .map_err(|e| e.to_string())?;
+            connections
+                .set("_active", &name)
+                .map_err(|e| format!("Failed to save active backend: {}", e))
+        })();
 
-        connections
-            .set("_active", &name)
-            .map_err(|e| format!("Failed to save active backend: {}", e))?;
-
-        log::debug!("💾 Saved active backend: {}", name);
-        Ok(())
+        match result {
+            Ok(_) => log::debug!("💾 Saved active backend: {}", name),
+            Err(e) => log::warn!("Failed to persist active backend '{}': {}", name, e),
+        }
     }
 }
 
@@ -505,26 +489,11 @@ mod tests {
     #[tokio::test]
     async fn test_new_manager() {
         let manager = BackendManager::new();
-
         let backends = manager.list_all().await;
         assert_eq!(backends.len(), 1);
         assert_eq!(backends[0].name, "Local");
         assert!(backends[0].is_active);
     }
-
-    // FIXME: Update tests to support AppSettingsManager injection
-    /*
-    #[tokio::test]
-    async fn test_add_backend() {
-        let manager = BackendManager::new();
-        let remote = Backend::new_remote("NAS", "192.168.1.100", 51900);
-
-        manager.add(remote).await.unwrap();
-
-        let backends = manager.list_all().await;
-        assert_eq!(backends.len(), 2);
-    }
-    */
 
     #[tokio::test]
     async fn test_set_runtime_status() {
@@ -542,5 +511,13 @@ mod tests {
             backends[0].status,
             Some("error:connection failed".to_string())
         );
+    }
+
+    #[tokio::test]
+    async fn test_get_active_name_consistent() {
+        // Both reads come from the same lock, so they can never disagree.
+        let manager = BackendManager::new();
+        assert_eq!(manager.get_active_name().await, "Local");
+        assert_eq!(manager.get_active().await.name, "Local");
     }
 }

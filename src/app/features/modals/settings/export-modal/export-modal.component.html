@@ -1,6 +1,6 @@
 <div class="export-modal">
   <div class="modal-header" data-tauri-drag-region>
-    <button>
+    <button mat-icon-button [aria-label]="'modals.export.title' | translate">
       <mat-icon svgIcon="export"></mat-icon>
     </button>
     <p>{{ 'modals.export.title' | translate }}</p>
@@ -75,9 +75,7 @@
                 [placeholder]="'modals.export.chooseRemote' | translate"
               >
                 @for (remote of remotes(); track remote) {
-                  <mat-option [value]="remote">
-                    {{ remote }}
-                  </mat-option>
+                  <mat-option [value]="remote">{{ remote }}</mat-option>
                 }
               </mat-select>
             </mat-form-field>

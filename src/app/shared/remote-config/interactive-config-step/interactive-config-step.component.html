@@ -1,5 +1,5 @@
 <div class="interactive-container">
-  <!-- Enhanced Header with Progress Indicator -->
+  <!-- Header -->
   <div class="step-header">
     <div class="header-content">
       <div class="icon-container">
@@ -12,9 +12,14 @@
     </div>
   </div>
 
-  <!-- Question Content Card -->
-  <div class="question-content" aria-live="polite" role="main">
-    <!-- Question Display Card -->
+  <!-- Question Content -->
+  <div
+    class="question-content"
+    aria-live="polite"
+    role="region"
+    [attr.aria-label]="'wizards.remoteConfig.additionalConfig' | translate"
+  >
+    <!-- Question Card -->
     <div class="question-card">
       <div class="question-header">
         <mat-icon class="question-icon" svgIcon="question"></mat-icon>
@@ -40,10 +45,10 @@
         @if (question()?.Option?.DefaultStr) {
           <div class="default-info">
             <mat-icon class="info-icon" svgIcon="circle-info"></mat-icon>
-            <span
-              >{{ 'wizards.remoteConfig.defaultValue' | translate }}
-              <strong>{{ question()?.Option?.DefaultStr }}</strong></span
-            >
+            <span>
+              {{ 'wizards.remoteConfig.defaultValue' | translate }}
+              <strong>{{ question()?.Option?.DefaultStr }}</strong>
+            </span>
           </div>
         }
       </div>
@@ -53,19 +58,18 @@
     @if (question(); as q) {
       <div class="input-section">
         @switch (q.Option?.Type) {
-          <!-- Enhanced Boolean Toggle -->
           @case ('bool') {
             <div class="input-card bool-input">
               <div class="toggle-container">
                 <mat-slide-toggle
-                  [ngModel]="answer"
+                  [ngModel]="answer()"
                   (ngModelChange)="onAnswerChange($event)"
                   [disabled]="canceling()"
                   class="toggle-input primary"
                   [attr.aria-label]="q.Option?.Name || 'Toggle option'"
                 >
                   <span class="toggle-label">{{
-                    answer
+                    answer()
                       ? ('wizards.remoteConfig.yes' | translate)
                       : ('wizards.remoteConfig.no' | translate)
                   }}</span>
@@ -73,7 +77,6 @@
               </div>
             </div>
           }
-          <!-- Enhanced Select and Text Inputs -->
           @default {
             @if (q.Option?.Examples?.length) {
               <div class="input-card select-input">
@@ -92,10 +95,10 @@
                     <mat-select-trigger>
                       {{ selectedDisplayValue() }}
                     </mat-select-trigger>
-                    @for (ex of q.Option?.Examples; track index; let index = $index) {
+                    @for (ex of q.Option?.Examples; track $index; let index = $index) {
                       <mat-option [value]="index">
                         <div class="option-content">
-                          <span class="option-label">{{ ex.Help || ex.Value }} </span>
+                          <span class="option-label">{{ ex.Help || ex.Value }}</span>
                           @if (ex.Help && ex.Help !== ex.Value) {
                             <span class="option-secondary">{{ ex.Value }}</span>
                           }
@@ -113,7 +116,8 @@
                   }}</mat-label>
                   <input
                     matInput
-                    [ngModel]="answer"
+                    [type]="isPassword() ? 'password' : 'text'"
+                    [ngModel]="answer()"
                     (ngModelChange)="onAnswerChange($event)"
                     [disabled]="canceling()"
                     [placeholder]="inputPlaceholder()"
@@ -121,7 +125,7 @@
                       q.Option?.Name || ('wizards.remoteConfig.inputField' | translate)
                     "
                   />
-                  @if (isFieldRequired() && !answer) {
+                  @if (isFieldRequired() && !answer()) {
                     <mat-error>{{ 'wizards.remoteConfig.fieldRequired' | translate }}</mat-error>
                   }
                 </mat-form-field>

@@ -9,9 +9,6 @@ use crate::utils::types::core::{EngineState, RcloneState};
 use log::{debug, error};
 use tauri::{AppHandle, Manager};
 
-#[cfg(desktop)]
-use crate::core::tray::core::update_tray_menu;
-
 /// Trigger post-start actions after engine is ready
 ///
 /// Spawns async task to:
@@ -63,9 +60,9 @@ async fn refresh_caches_and_tray(app: &AppHandle) {
         Err(e) => error!("Failed to refresh backend caches: {e}"),
     }
 
-    // Update tray menu on desktop
-    #[cfg(desktop)]
-    if let Err(e) = update_tray_menu(app.clone()).await {
+    // Update tray menu when tray feature is enabled
+    #[cfg(feature = "tray")]
+    if let Err(e) = crate::core::tray::core::update_tray_menu(app.clone()).await {
         error!("Failed to update tray menu: {e}");
     }
 }

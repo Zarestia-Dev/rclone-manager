@@ -170,10 +170,14 @@ fn build_app(
     host: &str,
     port: u16,
 ) -> Router {
-    use axum::http::Method;
-    use axum::routing::get;
+    use axum::{extract::DefaultBodyLimit, http::Method, routing::get};
 
-    let api_router = build_api_router(state.clone());
+    let api_router = build_api_router(state.clone())
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            dynamic_body_limit_middleware,
+        ))
+        .layer(DefaultBodyLimit::disable());
 
     // Configure CORS
     let mut allowed_origins = vec![
@@ -227,8 +231,10 @@ fn build_app(
 
     if let Some(static_path) = static_dir {
         info!("📁 Serving static files from: {}", static_path.display());
-        use tower_http::services::ServeDir;
-        app = app.fallback_service(ServeDir::new(static_path));
+        use tower_http::services::{ServeDir, ServeFile};
+        let index_path = static_path.join("index.html");
+        let serve_dir = ServeDir::new(static_path).not_found_service(ServeFile::new(index_path));
+        app = app.fallback_service(serve_dir);
     } else {
         info!("⚠️  No static files found. Build Angular app with: npm run build:headless");
         app = app.route("/", get(handlers::root_handler));

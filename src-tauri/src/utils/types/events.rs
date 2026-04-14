@@ -15,6 +15,7 @@ pub const BACKEND_SWITCHED: &str = "backend_switched";
 
 // Remote management events
 pub const REMOTE_CACHE_CHANGED: &str = "remote_cache_changed";
+pub const RCLONE_OAUTH_URL: &str = "rclone_oauth_url";
 
 // System and settings events
 pub const REMOTE_SETTINGS_CHANGED: &str = "remote_settings_changed";
@@ -40,7 +41,7 @@ pub const SCHEDULED_TASKS_CACHE_CHANGED: &str = "scheduled_tasks_cache_changed";
 
 // Application events
 pub const APP_EVENT: &str = "app_event";
-pub const OPEN_INTERNAL_ROUTE: &str = "open_internal_route";
+pub const BROWSE: &str = "browse";
 
 /// List of all events that should be forwarded to SSE clients in headless mode
 pub const SSE_FORWARD_EVENTS: &[&str] = &[
@@ -53,6 +54,7 @@ pub const SSE_FORWARD_EVENTS: &[&str] = &[
     RCLONE_PASSWORD_STORED,
     BACKEND_SWITCHED,
     REMOTE_CACHE_CHANGED,
+    RCLONE_OAUTH_URL,
     REMOTE_SETTINGS_CHANGED,
     SYSTEM_SETTINGS_CHANGED,
     BANDWIDTH_LIMIT_CHANGED,
@@ -66,7 +68,7 @@ pub const SSE_FORWARD_EVENTS: &[&str] = &[
     NETWORK_STATUS_CHANGED,
     SCHEDULED_TASKS_CACHE_CHANGED,
     APP_EVENT,
-    OPEN_INTERNAL_ROUTE,
+    BROWSE,
 ];
 
 /// Strongly typed payload for settings change events

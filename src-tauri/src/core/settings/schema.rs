@@ -9,7 +9,7 @@ use serde_json::Value;
 
 // List of supported BCP-47 language tags
 // When adding a new language, add its BCP-47 code here and create the translation file
-const SUPPORTED_LANGUAGES: &[&str] = &["en-US", "tr-TR", "es-ES","zh-CN"];
+const SUPPORTED_LANGUAGES: &[&str] = &["en-US", "tr-TR", "es-ES", "zh-CN"];
 
 // =============================================================================
 // Struct Definitions with Derive Macro
@@ -35,6 +35,7 @@ pub struct GeneralSettings {
         label = "settings.general.tray_enabled.label",
         description = "settings.general.tray_enabled.description"
     )]
+    #[cfg(feature = "tray")]
     pub tray_enabled: bool,
 
     #[setting(
@@ -67,6 +68,7 @@ impl Default for GeneralSettings {
         };
 
         Self {
+            #[cfg(feature = "tray")]
             tray_enabled: true,
             language,
             start_on_startup: false,
@@ -87,6 +89,7 @@ pub struct CoreSettings {
         max = 40,
         step = 1
     )]
+    #[cfg(feature = "tray")]
     pub max_tray_items: usize,
 
     #[setting(
@@ -131,15 +134,33 @@ pub struct CoreSettings {
     pub bandwidth_limit: String,
 
     #[setting(
+        label = "settings.core.rclone_env_vars.label",
+        description = "settings.core.rclone_env_vars.description",
+        engine_restart = true
+    )]
+    pub rclone_env_vars: Vec<String>,
+
+    #[setting(
         label = "settings.core.completed_onboarding.label",
         description = "settings.core.completed_onboarding.description"
     )]
     pub completed_onboarding: bool,
+
+    #[setting(
+        label = "settings.core.max_upload_batch_size.label",
+        description = "settings.core.max_upload_batch_size.description",
+        min = 10,
+        max = 5120,
+        step = 10
+    )]
+    #[cfg(feature = "web-server")]
+    pub max_upload_batch_size: usize,
 }
 
 impl Default for CoreSettings {
     fn default() -> Self {
         Self {
+            #[cfg(feature = "tray")]
             max_tray_items: 5,
             connection_check_urls: vec![
                 "https://www.google.com".to_string(),
@@ -149,7 +170,10 @@ impl Default for CoreSettings {
             bandwidth_limit: String::new(),
             rclone_path: String::new(),
             rclone_additional_flags: vec![],
+            rclone_env_vars: vec![],
             completed_onboarding: false,
+            #[cfg(feature = "web-server")]
+            max_upload_batch_size: 500,
         }
     }
 }
@@ -233,6 +257,13 @@ pub struct RuntimeSettings {
         description = "settings.runtime.dashboard_layout.description"
     )]
     pub dashboard_layout: Vec<String>,
+
+    #[setting(
+        label = "settings.runtime.dashboard_card_variant.label",
+        description = "settings.runtime.dashboard_card_variant.description",
+        options(("compact", "settings.runtime.dashboard_card_variant.options.compact"), ("detailed", "settings.runtime.dashboard_card_variant.options.detailed"))
+    )]
+    pub dashboard_card_variant: String,
 }
 
 impl Default for RuntimeSettings {
@@ -247,6 +278,7 @@ impl Default for RuntimeSettings {
             rclone_update_channel: "stable".to_string(),
             flatpak_warn: true,
             dashboard_layout: vec![],
+            dashboard_card_variant: "compact".to_string(),
         }
     }
 }

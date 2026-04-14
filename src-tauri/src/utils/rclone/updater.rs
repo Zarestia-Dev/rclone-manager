@@ -13,12 +13,11 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::core::check_binaries::{build_rclone_command, get_rclone_binary_path, read_rclone_path};
 use crate::core::settings::operations::core::save_setting;
 use crate::rclone::queries::get_rclone_info;
-use crate::utils::app::notification::{Notification, send_notification_typed};
+use crate::utils::app::notification::{NotificationEvent, notify};
 use crate::utils::github_client;
 use crate::utils::types::core::EngineState;
 use crate::utils::types::events::RCLONE_ENGINE_UPDATING;
-use crate::utils::types::logs::LogLevel;
-use crate::utils::types::origin::Origin;
+use crate::utils::types::updater::RcloneUpdateMetadata;
 
 // ============================================================================
 // Types
@@ -71,7 +70,7 @@ struct UpdateCheckResult {
 pub async fn check_rclone_update(
     app_handle: tauri::AppHandle,
     channel: Option<String>,
-) -> Result<serde_json::Value, String> {
+) -> Result<RcloneUpdateMetadata, String> {
     let current_version = get_rclone_info(app_handle.clone())
         .await
         .map(|info| info.version)
@@ -92,76 +91,85 @@ pub async fn check_rclone_update(
         (None, None, None)
     };
 
-    let result_json = json!({
-        "current_version": current_version,
-        "latest_version": result.latest_version,
-        "update_available": result.update_available,
-        "current_version_clean": clean_version(&current_version),
-        "latest_version_clean": clean_version(&result.latest_version),
-        "channel": channel.as_str(),
-        "release_notes": release_notes,
-        "release_date": release_date,
-        "release_url": release_url
-    });
+    let result_meta = RcloneUpdateMetadata {
+        current_version: current_version.clone(),
+        latest_version: result.latest_version.clone(),
+        update_available: result.update_available,
+        current_version_clean: clean_version(&current_version),
+        latest_version_clean: clean_version(&result.latest_version),
+        channel: channel.as_str().to_string(),
+        release_notes,
+        release_date,
+        release_url,
+        update_in_progress: false,
+        ready_to_restart: false,
+    };
 
     if result.update_available {
         use crate::utils::types::updater::RcloneUpdaterState;
         if let Ok(mut pending) = app_handle
             .state::<RcloneUpdaterState>()
-            .pending_version
+            .pending_update
             .lock()
         {
-            *pending = Some(result.latest_version.clone());
+            *pending = Some(result_meta.clone());
         }
 
         if let Err(e) = app_handle.emit(
             crate::utils::types::events::APP_EVENT,
-            json!({ "status": "rclone_update_found", "data": result_json }),
+            json!({ "status": "rclone_update_found", "data": result_meta }),
         ) {
             log::warn!("Failed to emit rclone update event: {}", e);
         }
 
-        send_notification_typed(
+        notify(
             &app_handle,
-            Notification::localized(
-                "notification.title.rcloneUpdateFound",
-                "notification.body.rcloneUpdateFound",
-                Some(vec![("version", result.latest_version.as_str())]),
-                None,
-                Some(LogLevel::Info),
-            ),
-            Some(Origin::System),
+            NotificationEvent::RcloneUpdateAvailable {
+                version: result.latest_version.clone(),
+            },
         );
     }
 
-    Ok(result_json)
+    Ok(result_meta)
 }
 
 #[tauri::command]
 pub async fn get_rclone_update_info(
     app_handle: tauri::AppHandle,
-) -> Result<Option<serde_json::Value>, String> {
+) -> Result<Option<RcloneUpdateMetadata>, String> {
     use crate::utils::types::updater::RcloneUpdaterState;
 
     // Check the same candidate paths that activate_pending_rclone_update uses.
-    // We cannot rely solely on read_rclone_path() here because the settings
-    // are only updated *after* the swap — before apply, the runtime path still
-    // points to system rclone while the .new file lives in the local app dir.
     let has_pending_new = find_pending_new_binary(&app_handle).is_some();
 
-    if has_pending_new {
-        return Ok(Some(
-            json!({ "update_available": true, "ready_to_restart": true }),
-        ));
+    let updater_state = app_handle.state::<RcloneUpdaterState>();
+    if let Ok(pending) = updater_state.pending_update.lock()
+        && let Some(meta) = &*pending
+    {
+        let mut meta = meta.clone();
+        if has_pending_new {
+            meta.ready_to_restart = true;
+            meta.update_available = false; // It's already downloaded
+        }
+        return Ok(Some(meta));
     }
 
-    let updater_state = app_handle.state::<RcloneUpdaterState>();
-    if let Ok(pending) = updater_state.pending_version.lock()
-        && let Some(version) = &*pending
-    {
-        return Ok(Some(
-            json!({ "update_available": true, "latest_version": version, "ready_to_restart": false }),
-        ));
+    if has_pending_new {
+        // If we have a pending binary but no metadata (lost state),
+        // we return a minimal meta object.
+        return Ok(Some(RcloneUpdateMetadata {
+            current_version: "unknown".to_string(),
+            latest_version: "unknown".to_string(),
+            update_available: false,
+            current_version_clean: "unknown".to_string(),
+            latest_version_clean: "unknown".to_string(),
+            channel: "stable".to_string(),
+            release_notes: None,
+            release_date: None,
+            release_url: None,
+            update_in_progress: false,
+            ready_to_restart: true,
+        }));
     }
 
     Ok(None)
@@ -213,23 +221,17 @@ pub async fn update_rclone(
     let update_check =
         check_rclone_update(app_handle.clone(), Some(channel.as_str().to_string())).await?;
 
-    let update_available = update_check
-        .get("update_available")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
+    let update_available = update_check.update_available;
 
     if !update_available {
         return Ok(json!({
             "success": false,
             "message": "No update available",
-            "current_version": update_check.get("current_version")
+            "current_version": update_check.current_version
         }));
     }
 
-    let latest_version = update_check
-        .get("latest_version")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown");
+    let latest_version = &update_check.latest_version;
 
     // Resolve binary path, falling back to system rclone
     let manager = app_handle.state::<crate::core::settings::AppSettingsManager>();
@@ -256,16 +258,11 @@ pub async fn update_rclone(
         .emit(RCLONE_ENGINE_UPDATING, ())
         .map_err(|e| format!("Failed to emit update event: {e}"))?;
 
-    send_notification_typed(
+    notify(
         &app_handle,
-        Notification::localized(
-            "notification.title.rcloneUpdateStarted",
-            "notification.body.rcloneUpdateStarted",
-            Some(vec![("version", latest_version)]),
-            None,
-            Some(LogLevel::Info),
-        ),
-        Some(Origin::System),
+        NotificationEvent::RcloneUpdateStarted {
+            version: latest_version.to_string(),
+        },
     );
 
     let update_result = match determine_update_strategy(&current_path, &app_handle).await {
@@ -273,52 +270,24 @@ pub async fn update_rclone(
         Err(e) => Err(e),
     };
 
-    match &update_result {
-        Ok(res) if res["success"].as_bool().unwrap_or(false) => {
-            send_notification_typed(
+    if let Ok(res) = &update_result {
+        if res["success"].as_bool().unwrap_or(false) {
+            notify(
                 &app_handle,
-                Notification::localized(
-                    "notification.title.rcloneUpdateComplete",
-                    "notification.body.rcloneUpdateComplete",
-                    Some(vec![("version", latest_version)]),
-                    None,
-                    Some(LogLevel::Info),
-                ),
-                Some(Origin::System),
+                NotificationEvent::RcloneUpdateComplete {
+                    version: latest_version.to_string(),
+                },
             );
-            // the pending_version state is filled above; the actual binary swap will
-            // occur when the frontend calls `apply_rclone_update`.
-
-            use crate::utils::types::updater::RcloneUpdaterState;
-            if let Ok(mut pending) = app_handle
-                .state::<RcloneUpdaterState>()
-                .pending_version
-                .lock()
-            {
-                *pending = Some(latest_version.to_string());
-            }
+            // The pending_update state is already filled by `check_rclone_update` above;
+            // the actual binary swap will occur when the frontend calls `apply_rclone_update`.
         }
-        _ => {
-            let error_msg = match &update_result {
-                Ok(res) => res["message"]
-                    .as_str()
-                    .unwrap_or("Unknown error")
-                    .to_string(),
-                Err(e) => e.clone(),
-            };
-
-            send_notification_typed(
-                &app_handle,
-                Notification::localized(
-                    "notification.title.rcloneUpdateFailed",
-                    "notification.body.rcloneUpdateFailed",
-                    Some(vec![("error", error_msg.as_str())]),
-                    None,
-                    Some(LogLevel::Error),
-                ),
-                Some(Origin::System),
-            );
-        }
+    } else if let Err(error_msg) = &update_result {
+        notify(
+            &app_handle,
+            NotificationEvent::RcloneUpdateFailed {
+                error: error_msg.clone(),
+            },
+        );
     }
 
     update_result
@@ -331,16 +300,11 @@ pub async fn apply_rclone_update(app_handle: tauri::AppHandle) -> Result<(), Str
     let pending_version = activate_pending_rclone_update(&app_handle).await?;
 
     // send a notification that the update has actually been installed
-    send_notification_typed(
+    notify(
         &app_handle,
-        Notification::localized(
-            "notification.title.rcloneUpdateInstalled",
-            "notification.body.rcloneUpdateInstalled",
-            Some(vec![("version", pending_version.as_str())]),
-            None,
-            Some(LogLevel::Info),
-        ),
-        Some(Origin::System),
+        NotificationEvent::RcloneUpdateInstalled {
+            version: pending_version.to_string(),
+        },
     );
 
     crate::rclone::engine::lifecycle::restart_for_config_change(
@@ -363,7 +327,7 @@ pub async fn activate_pending_rclone_update(app_handle: &AppHandle) -> Result<St
         use crate::utils::types::updater::RcloneUpdaterState;
         if let Ok(mut pending) = app_handle
             .state::<RcloneUpdaterState>()
-            .pending_version
+            .pending_update
             .lock()
         {
             *pending = None;
@@ -448,11 +412,14 @@ pub async fn activate_pending_rclone_update(app_handle: &AppHandle) -> Result<St
     use crate::utils::types::updater::RcloneUpdaterState;
     let updater_state = app_handle.state::<RcloneUpdaterState>();
     let mut pending = updater_state
-        .pending_version
+        .pending_update
         .lock()
         .map_err(|e| format!("Failed to lock pending rclone version: {e}"))?;
 
-    Ok(pending.take().unwrap_or_else(|| "unknown".to_string()))
+    let meta = pending
+        .take()
+        .ok_or_else(|| "No pending update metadata".to_string())?;
+    Ok(meta.latest_version)
 }
 
 // ============================================================================

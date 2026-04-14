@@ -1,4 +1,28 @@
+// =============================================================================
+// NAVIGATION / UI TYPES
+// =============================================================================
+
+// ---------------------------------------------------------------------------
+// Tab navigation
+// ---------------------------------------------------------------------------
+
+/**
+ * The four top-level navigation tabs in the dashboard.
+ *
+ * Three of these (`mount`, `sync`, `serve`) correspond directly to a
+ * PrimaryActionType and are used to drive both tab display and operation
+ * dispatch. `general` is a pure overview tab with no associated operation.
+ *
+ * Use `OperationTab` when you need a type that excludes `general` — i.e.
+ * wherever a tab value is guaranteed to map to a runnable operation.
+ */
 export type AppTab = 'mount' | 'sync' | 'serve' | 'general';
+
+/**
+ * A subset of AppTab that always corresponds to a runnable PrimaryActionType.
+ * Use this for component inputs that should never receive `'general'`.
+ */
+export type OperationTab = Exclude<AppTab, 'general'>; // 'mount' | 'sync' | 'serve'
 
 export interface ModalSize {
   width: string;
@@ -6,7 +30,7 @@ export interface ModalSize {
   minWidth: string;
   height: string;
   maxHeight: string;
-  minHeight: string;
+  minHeight?: string;
   disableClose?: boolean;
 }
 
@@ -17,6 +41,15 @@ export const STANDARD_MODAL_SIZE: ModalSize = {
   height: '80vh',
   maxHeight: '800px',
   minHeight: '240px',
+  disableClose: true,
+};
+
+export const CONFIG_MODAL_SIZE: ModalSize = {
+  width: '95vw',
+  maxWidth: '1024px',
+  minWidth: '362px',
+  height: '90vh',
+  maxHeight: '860px',
   disableClose: true,
 };
 
@@ -36,9 +69,7 @@ export interface ConfirmDialogData {
   confirmText?: string; // Defaults to "Yes"
   cancelText?: string; // Defaults to "No"
   icon?: string; // Optional icon name for modal header
-  iconColor?: 'primary' | 'accent' | 'warn';
-  iconClass?: string;
-  confirmButtonColor?: 'primary' | 'accent' | 'warn';
+  color?: 'primary' | 'accent' | 'warn';
 }
 
 export type ExportType = 'All' | 'Settings' | 'SpecificRemote' | { Category: string };

@@ -9,27 +9,29 @@ use crate::{
     core::scheduler::engine::get_next_run,
     rclone::{backend::BackendManager, state::scheduled_tasks::ScheduledTasksCache},
     utils::{
-        app::notification::{Notification, send_notification_typed},
+        app::notification::{NotificationEvent, notify},
         logging::log::log_operation,
         rclone::endpoints::{core, job},
         types::{
             core::RcloneState,
-            jobs::{JobCache, JobInfo, JobResponse, JobStatus, JobType},
+            jobs::{JobCache, JobInfo, JobStatus, JobType},
             logs::LogLevel,
+            origin::Origin,
         },
     },
 };
 
 use super::system::RcloneError;
 
-/// Poll interval for job status/stat requests (milliseconds).
-/// Lower values make job completion detection faster but increase API load.
-const JOB_POLL_INTERVAL_MS: u64 = 200;
+/// Poll interval for job status/stats requests (milliseconds).
+/// Lower values make completion detection faster but increase API load.
+const JOB_POLL_INTERVAL_MS: u64 = 500;
 
-/// Metadata required to start and track a job
-use crate::utils::types::origin::Origin;
+/// Maximum consecutive network errors before the monitoring loop gives up.
+const MAX_CONSECUTIVE_ERRORS: u8 = 3;
+
+/// Metadata required to start and track a job.
 #[derive(Debug, Clone)]
-
 pub struct JobMetadata {
     pub remote_name: String,
     pub job_type: JobType,
@@ -37,20 +39,19 @@ pub struct JobMetadata {
     pub source: String,
     pub destination: String,
     pub profile: Option<String>,
-    /// Source UI that started this job (e.g., "nautilus", "dashboard", "scheduled")
+    /// Source that initiated this job.
     pub origin: Option<Origin>,
-    /// Stats group name for this job (format: "type/remote", e.g., "sync/gdrive")
-    /// If not provided, will be auto-generated from job_type and remote_name
+    /// Stats group name (`type/remote[/profile]`). Auto-generated when `None`.
     pub group: Option<String>,
-    /// Whether to skip adding this job to the global JobCache (avoids memory bloat for fire-and-forget jobs)
+    /// Skip `JobCache` insertion. Use for fire-and-forget ops to avoid memory bloat.
     pub no_cache: bool,
 }
 
 impl JobMetadata {
-    /// Generate group name in OS-like format: type/remote or type/remote/profile
-    /// Examples: "sync/gdrive", "sync/gdrive/daily", "mount/onedrive/work"
+    /// Generate group name: `type/remote` or `type/remote/profile`.
+    ///
+    /// Examples: `"sync/gdrive"`, `"sync/gdrive/daily"`, `"mount/onedrive/work"`.
     pub fn group_name(&self) -> String {
-        // Normalize remote name: remove trailing ':' (rclone style) and any trailing '/'
         let remote = self
             .remote_name
             .trim_end_matches(':')
@@ -62,52 +63,51 @@ impl JobMetadata {
             None => format!("{}/{}", self.job_type.as_str(), remote),
         })
     }
-}
 
-// -----------------------------------------------------------------------------
-// Notification builders for job lifecycle (kept small & pure for easy testing)
-// -----------------------------------------------------------------------------
-fn job_started_notification(metadata: &JobMetadata) -> Notification {
-    Notification::localized(
-        "notification.title.operationStarted",
-        "notification.body.started",
-        Some(vec![
-            ("operation", metadata.operation_name.as_str()),
-            ("remote", metadata.remote_name.as_str()),
-            ("profile", metadata.profile.as_deref().unwrap_or("")),
-        ]),
-        None,
-        Some(LogLevel::Info),
-    )
-}
+    fn resolved_origin(&self) -> Origin {
+        self.origin.clone().unwrap_or(Origin::System)
+    }
 
-fn job_completed_notification(metadata: &JobMetadata) -> Notification {
-    Notification::localized(
-        "notification.title.operationComplete",
-        "notification.body.complete",
-        Some(vec![
-            ("operation", metadata.operation_name.as_str()),
-            ("remote", metadata.remote_name.as_str()),
-            ("profile", metadata.profile.as_deref().unwrap_or("")),
-        ]),
-        None,
-        Some(LogLevel::Info),
-    )
-}
+    // Notification event constructors.
+    // Small helpers that build `NotificationEvent` values used by production
+    // code and verified by unit tests to prevent divergence.
 
-fn job_failed_notification(metadata: &JobMetadata, error_msg: &str) -> Notification {
-    Notification::localized(
-        "notification.title.operationFailed",
-        "notification.body.failed",
-        Some(vec![
-            ("operation", metadata.operation_name.as_str()),
-            ("remote", metadata.remote_name.as_str()),
-            ("profile", metadata.profile.as_deref().unwrap_or("")),
-            ("error", error_msg),
-        ]),
-        None,
-        Some(LogLevel::Error),
-    )
+    fn started_event(&self) -> NotificationEvent {
+        NotificationEvent::JobStarted {
+            remote: self.remote_name.clone(),
+            profile: self.profile.clone(),
+            operation: self.operation_name.clone(),
+            origin: self.resolved_origin(),
+        }
+    }
+
+    fn completed_event(&self) -> NotificationEvent {
+        NotificationEvent::JobCompleted {
+            remote: self.remote_name.clone(),
+            profile: self.profile.clone(),
+            operation: self.operation_name.clone(),
+            origin: self.resolved_origin(),
+        }
+    }
+
+    fn failed_event(&self, error_msg: &str) -> NotificationEvent {
+        NotificationEvent::JobFailed {
+            remote: self.remote_name.clone(),
+            profile: self.profile.clone(),
+            operation: self.operation_name.clone(),
+            error: error_msg.to_string(),
+            origin: self.resolved_origin(),
+        }
+    }
+
+    fn stopped_event(&self) -> NotificationEvent {
+        NotificationEvent::JobStopped {
+            remote: self.remote_name.clone(),
+            profile: self.profile.clone(),
+            operation: self.operation_name.clone(),
+            origin: self.resolved_origin(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -152,14 +152,7 @@ pub async fn submit_job_with_options(
         let app_clone = app.clone();
         let client_clone = client.clone();
         tauri::async_runtime::spawn(async move {
-            let _ = monitor_job(
-                backend_name,
-                metadata.clone(), // Pass full metadata
-                jobid,
-                app_clone,
-                client_clone,
-            )
-            .await;
+            let _ = monitor_job(backend_name, metadata, jobid, app_clone, client_clone).await;
         });
     }
 
@@ -175,8 +168,7 @@ async fn initialize_and_register_job(
     let (jobid, response_json, execute_id) = send_job_request(request, payload, metadata).await?;
 
     let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let backend_name = backend.name.clone();
+    let backend_name = backend_manager.get_active().await.name;
 
     if !metadata.no_cache {
         add_job_to_cache(
@@ -188,25 +180,21 @@ async fn initialize_and_register_job(
             Some(app),
         )
         .await;
+        notify(app, metadata.started_event());
     }
-
-    send_notification_typed(
-        app,
-        job_started_notification(metadata),
-        metadata.origin.clone(),
-    );
 
     Ok((jobid, backend_name, response_json, execute_id))
 }
 
-/// Internal: Send job request and parse response
-/// Automatically injects _group parameter for stats grouping
+/// Send a job request and parse the response.
+///
+/// Injects `_group` into the payload so rclone attributes stats to the right
+/// group from the moment the job starts.
 async fn send_job_request(
     client_builder: reqwest::RequestBuilder,
     payload: Value,
     metadata: &JobMetadata,
 ) -> Result<(u64, Value, Option<String>), String> {
-    // Inject _group parameter for stats grouping
     let mut payload = payload;
     if let Some(obj) = payload.as_object_mut()
         && !obj.contains_key("_group")
@@ -238,7 +226,6 @@ async fn send_job_request(
     let response_json: Value = serde_json::from_str(&body_text)
         .map_err(|e| crate::localized_error!("backendErrors.serve.parseFailed", "error" => e))?;
 
-    // Extract jobid / executeId from response (strict — error if missing)
     let (jobid, execute_id) = parse_job_response(&response_json)?;
 
     log_operation(
@@ -255,15 +242,12 @@ async fn send_job_request(
     Ok((jobid, response_json, execute_id))
 }
 
-/// Parse job response helper used by send_job_request
+/// Extract `jobid` and `executeId` from a rclone job response.
+///
+/// Handles both the canonical shape (`{"jobid": 42}`) and the legacy string-id
+/// fallback (`{"id": "42"}`). Extracts fields by reference — no full `Value` clone.
 fn parse_job_response(response_json: &Value) -> Result<(u64, Option<String>), String> {
-    // First try to parse into the canonical JobResponse
-    if let Ok(resp) = serde_json::from_value::<JobResponse>(response_json.clone()) {
-        return Ok((resp.jobid, resp.execute_id));
-    }
-
-    // Fallback: allow numeric `jobid` or string `id`
-    let jid_opt = response_json
+    let jobid = response_json
         .get("jobid")
         .and_then(|v| v.as_u64())
         .or_else(|| {
@@ -271,23 +255,22 @@ fn parse_job_response(response_json: &Value) -> Result<(u64, Option<String>), St
                 .get("id")
                 .and_then(|v| v.as_str())
                 .and_then(|s| s.parse::<u64>().ok())
-        });
+        })
+        .ok_or_else(|| {
+            crate::localized_error!(
+                "backendErrors.serve.parseFailed",
+                "error" => "missing job id in response"
+            )
+        })?;
 
-    if let Some(jid) = jid_opt {
-        let eid = response_json
-            .get("executeId")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string());
-        Ok((jid, eid))
-    } else {
-        Err(
-            crate::localized_error!("backendErrors.serve.parseFailed", "error" => "missing job id in response"),
-        )
-    }
+    let execute_id = response_json
+        .get("executeId")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+
+    Ok((jobid, execute_id))
 }
 
-/// Internal: Add job to cache (takes reference to JobCache)
-/// Now also emits JOB_CACHE_CHANGED via the cache layer
 async fn add_job_to_cache(
     job_cache: &JobCache,
     jobid: u64,
@@ -305,13 +288,15 @@ async fn add_job_to_cache(
                 source: metadata.source.clone(),
                 destination: metadata.destination.clone(),
                 start_time: Utc::now(),
+                end_time: None,
                 status: JobStatus::Running,
                 error: None,
                 stats: None,
+                uploaded_files: Vec::new(),
                 group: metadata.group_name(),
                 profile: metadata.profile.clone(),
                 origin: metadata.origin.clone(),
-                backend_name: Some(backend_name.to_string()),
+                backend_name: backend_name.to_string(),
                 execute_id,
             },
             app,
@@ -322,15 +307,13 @@ async fn add_job_to_cache(
 #[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn get_jobs(app: AppHandle) -> Result<Vec<JobInfo>, String> {
-    let backend_manager = app.state::<BackendManager>();
-    Ok(backend_manager.job_cache.get_jobs().await)
+    Ok(app.state::<BackendManager>().job_cache.get_jobs().await)
 }
 
 #[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn delete_job(app: AppHandle, jobid: u64) -> Result<(), String> {
-    let backend_manager = app.state::<BackendManager>();
-    backend_manager
+    app.state::<BackendManager>()
         .job_cache
         .delete_job(jobid, Some(&app))
         .await
@@ -339,37 +322,16 @@ pub async fn delete_job(app: AppHandle, jobid: u64) -> Result<(), String> {
 #[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn get_job_status(app: AppHandle, jobid: u64) -> Result<Option<JobInfo>, String> {
-    let backend_manager = app.state::<BackendManager>();
-    Ok(backend_manager.job_cache.get_job(jobid).await)
+    Ok(app.state::<BackendManager>().job_cache.get_job(jobid).await)
 }
 
 #[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn get_active_jobs(app: AppHandle) -> Result<Vec<JobInfo>, String> {
-    let backend_manager = app.state::<BackendManager>();
-    Ok(backend_manager.job_cache.get_active_jobs().await)
-}
-
-#[cfg(not(feature = "web-server"))]
-#[tauri::command]
-pub async fn get_jobs_by_source(app: AppHandle, source: String) -> Result<Vec<JobInfo>, String> {
-    let backend_manager = app.state::<BackendManager>();
-    Ok(backend_manager.job_cache.get_jobs_by_source(&source).await)
-}
-
-/// Rename a profile in all cached running jobs
-#[cfg(not(feature = "web-server"))]
-#[tauri::command]
-pub async fn rename_profile_in_cache(
-    app: AppHandle,
-    remote_name: String,
-    old_name: String,
-    new_name: String,
-) -> Result<usize, String> {
-    let backend_manager = app.state::<BackendManager>();
-    Ok(backend_manager
+    Ok(app
+        .state::<BackendManager>()
         .job_cache
-        .rename_profile(&remote_name, &old_name, &new_name, Some(&app))
+        .get_active_jobs()
         .await)
 }
 
@@ -383,7 +345,6 @@ pub async fn monitor_job(
     let scheduled_tasks_cache = app.state::<ScheduledTasksCache>();
     let backend_manager = app.state::<BackendManager>();
 
-    // Get backend for API calls
     let backend = backend_manager
         .get(&backend_name)
         .await
@@ -398,46 +359,69 @@ pub async fn monitor_job(
         metadata.operation_name
     );
 
-    let mut consecutive_errors = 0;
-    const MAX_CONSECUTIVE_ERRORS: u8 = 3;
+    let mut consecutive_errors = 0u8;
 
     loop {
-        // Stop if removed or explicitly stopped in cache (SKIP check if no_cache is true)
+        // Exit early if the job was manually stopped or evicted from the cache.
+        // Skipped for no_cache jobs — they have no cache entry to inspect.
         if !metadata.no_cache {
-            if let Some(job) = job_cache.get_job(jobid).await {
-                if job.status == JobStatus::Stopped {
-                    return Ok(json!({}));
-                }
-            } else {
-                return Ok(json!({}));
+            let should_exit = job_cache
+                .get_job(jobid)
+                .await
+                .is_none_or(|j| j.status == JobStatus::Stopped);
+
+            if should_exit {
+                info!("Monitoring for job {jobid} stopped: job removed or marked Stopped.");
+                return handle_job_completion(
+                    jobid,
+                    &metadata,
+                    json!({"finished": true, "success": false, "stopped": true}),
+                    &app,
+                    job_cache,
+                    scheduled_tasks_cache,
+                    None,
+                )
+                .await;
             }
         }
 
-        // Parallel fetch of status and stats
-        let status_req = backend
-            .inject_auth(client.post(&job_status_url))
-            .json(&json!({ "jobid": jobid }))
-            .send();
+        // For no_cache jobs, fetching stats on every tick wastes a round-trip
+        // because the result is immediately discarded. Only pay for it when
+        // caching is on and the response will actually be stored.
+        let poll_result = if metadata.no_cache {
+            backend
+                .inject_auth(client.post(&job_status_url))
+                .json(&json!({ "jobid": jobid }))
+                .send()
+                .await
+                .map(|r| (r, None))
+        } else {
+            // Build both request builders *before* the join so neither holds a
+            // borrow on `backend` across the await points inside tokio::join!.
+            let status_req = backend
+                .inject_auth(client.post(&job_status_url))
+                .json(&json!({ "jobid": jobid }));
+            let stats_req = backend
+                .inject_auth(client.post(&stats_url))
+                .json(&json!({ "jobid": jobid }));
 
-        let stats_req = backend
-            .inject_auth(client.post(&stats_url))
-            .json(&json!({ "jobid": jobid }))
-            .send();
+            tokio::try_join!(status_req.send(), stats_req.send())
+                .map(|(status_resp, stats_resp)| (status_resp, Some(stats_resp)))
+        };
 
-        match tokio::try_join!(status_req, stats_req) {
-            Ok((status_resp, stats_resp)) => {
+        match poll_result {
+            Ok((status_resp, stats_resp_opt)) => {
                 consecutive_errors = 0;
-                let status_body = status_resp.text().await.unwrap_or_default();
-                let stats_body = stats_resp.text().await.unwrap_or_default();
 
-                // Update Stats if valid (and caching enabled)
-                if !metadata.no_cache
-                    && let Ok(stats) = serde_json::from_str::<Value>(&stats_body)
-                {
-                    let _ = job_cache.update_job_stats(jobid, stats).await;
+                let status_body = status_resp.text().await.unwrap_or_default();
+
+                if let Some(stats_resp) = stats_resp_opt {
+                    let stats_body = stats_resp.text().await.unwrap_or_default();
+                    if let Ok(stats) = serde_json::from_str::<Value>(&stats_body) {
+                        let _ = job_cache.update_job_stats(jobid, stats).await;
+                    }
                 }
 
-                // Check Completion
                 if let Ok(job_status) = serde_json::from_str::<Value>(&status_body)
                     && job_status
                         .get("finished")
@@ -451,6 +435,7 @@ pub async fn monitor_job(
                         &app,
                         job_cache,
                         scheduled_tasks_cache,
+                        None,
                     )
                     .await;
                 }
@@ -480,6 +465,7 @@ pub async fn monitor_job(
                 }
             }
         }
+
         sleep(Duration::from_millis(JOB_POLL_INTERVAL_MS)).await;
     }
 }
@@ -491,9 +477,14 @@ pub async fn handle_job_completion(
     app: &AppHandle,
     job_cache: &JobCache,
     scheduled_tasks_cache: State<'_, ScheduledTasksCache>,
+    last_stats: Option<Value>,
 ) -> Result<Value, RcloneError> {
     let success = job_status
         .get("success")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let stopped = job_status
+        .get("stopped")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
     let error_msg = job_status
@@ -504,44 +495,39 @@ pub async fn handle_job_completion(
         .to_string();
 
     let task = scheduled_tasks_cache.get_task_by_job_id(jobid).await;
+    let next_run = task
+        .as_ref()
+        .and_then(|t| get_next_run(&t.cron_expression).ok());
 
-    let next_run = if let Some(ref t) = task {
-        get_next_run(&t.cron_expression).ok()
-    } else {
-        None
-    };
-
-    // Update cache if enabled
     if !metadata.no_cache {
-        Some(
-            job_cache
-                .complete_job(
-                    jobid,
-                    success,
-                    if !error_msg.is_empty() {
-                        Some(error_msg.clone())
-                    } else {
-                        None
-                    },
-                    Some(app),
-                )
-                .await
-                .map_err(RcloneError::JobError)?,
-        )
-    } else {
-        None
-    };
+        // Collect final stats (stats + completed-transfers, parallelised).
+        let final_stats = collect_final_stats(app, metadata, last_stats).await;
+        if !final_stats.is_null() && final_stats != json!({}) {
+            let _ = job_cache.update_job_stats(jobid, final_stats).await;
+        }
 
-    let _profile = metadata.profile.clone().unwrap_or_default();
-    let remote_name = &metadata.remote_name;
-    let operation = &metadata.operation_name;
+        // Fire-and-forget cleanup: deleting the rclone stats group is pure
+        // server-side housekeeping. Blocking the return path for it is wrong.
+        spawn_stats_cleanup(app, metadata);
 
+        // Mark the job terminal. The `?` propagates a cache error without hiding it.
+        job_cache
+            .complete_job(
+                jobid,
+                success,
+                (!error_msg.is_empty()).then(|| error_msg.clone()),
+                Some(app),
+            )
+            .await
+            .map_err(RcloneError::JobError)?;
+    }
+
+    // Update the associated scheduled task when this job was triggered by one.
     if let Some(task) = task {
         info!(
-            "Job {} was associated with scheduled task '{}', updating task status.",
-            jobid, task.name
+            "Job {jobid} was associated with scheduled task '{}', updating status.",
+            task.name
         );
-
         if success {
             scheduled_tasks_cache
                 .update_task(
@@ -569,53 +555,136 @@ pub async fn handle_job_completion(
         }
     }
 
-    if !error_msg.is_empty() {
-        log_operation(
-            LogLevel::Error,
-            Some(remote_name.to_string()),
-            Some(operation.to_string()),
-            format!("{operation} Job {jobid} failed: {error_msg}"),
-            Some(json!({"jobid": jobid, "status": job_status})),
-        );
+    if stopped {
+        info!("{} Job {jobid} stopped by user.", metadata.operation_name);
+        if !metadata.no_cache {
+            notify(app, metadata.stopped_event());
+        }
+        return Ok(job_status.get("output").cloned().unwrap_or(json!({})));
+    }
 
-        send_notification_typed(
-            app,
-            job_failed_notification(metadata, &error_msg),
-            metadata.origin.clone(),
-        );
+    if !success {
+        if !metadata.no_cache {
+            log_operation(
+                LogLevel::Error,
+                Some(metadata.remote_name.clone()),
+                Some(metadata.operation_name.clone()),
+                format!(
+                    "{} Job {jobid} failed: {error_msg}",
+                    metadata.operation_name
+                ),
+                Some(json!({"jobid": jobid, "status": job_status})),
+            );
+            notify(app, metadata.failed_event(&error_msg));
+        }
+        return Err(RcloneError::JobError(error_msg));
+    }
 
-        Err(RcloneError::JobError(error_msg))
-    } else if success {
+    if !metadata.no_cache {
         log_operation(
             LogLevel::Info,
-            Some(remote_name.to_string()),
-            Some(operation.to_string()),
-            format!("{operation} Job {jobid} completed successfully"),
+            Some(metadata.remote_name.clone()),
+            Some(metadata.operation_name.clone()),
+            format!(
+                "{} Job {jobid} completed successfully",
+                metadata.operation_name
+            ),
             Some(json!({"jobid": jobid, "status": job_status})),
         );
-
-        send_notification_typed(
-            app,
-            job_completed_notification(metadata),
-            metadata.origin.clone(),
-        );
-
-        Ok(job_status.get("output").cloned().unwrap_or(json!({})))
-    } else {
-        log_operation(
-            LogLevel::Warn,
-            Some(remote_name.to_string()),
-            Some(operation.to_string()),
-            format!("{operation} Job {jobid} completed without success but no error message"),
-            Some(json!({"jobid": jobid, "status": job_status})),
-        );
-        Err(RcloneError::JobError(
-            "Job completed without success".to_string(),
-        ))
+        notify(app, metadata.completed_event());
     }
+
+    Ok(job_status.get("output").cloned().unwrap_or(json!({})))
 }
 
-/// Stop a running job
+/// Fetch the final stats snapshot and completed-transfer list for a finished job.
+///
+/// The two API calls are independent; `tokio::join!` runs them in parallel.
+/// The caller owns the result and decides whether to persist it.
+async fn collect_final_stats(
+    app: &AppHandle,
+    metadata: &JobMetadata,
+    last_stats: Option<Value>,
+) -> Value {
+    let backend = app.state::<BackendManager>().get_active().await;
+    let client = &app.state::<RcloneState>().client;
+    let group = metadata.group_name();
+
+    // Skip the stats re-fetch when the last poll already gave us something
+    // useful — saves a round-trip on fast-completing jobs.
+    let needs_stats_fetch = last_stats
+        .as_ref()
+        .is_none_or(|s| s.is_null() || s == &json!({}));
+
+    // Build all request builders *before* the join. RequestBuilder does not
+    // borrow from Backend after construction, so this is borrow-safe.
+    let stats_req = needs_stats_fetch.then(|| {
+        backend
+            .inject_auth(client.post(backend.url_for(core::STATS)))
+            .json(&json!({ "group": group }))
+    });
+    let transferred_req = backend
+        .inject_auth(client.post(backend.url_for(core::TRANSFERRED)))
+        .json(&json!({ "group": group }));
+
+    let (stats_send_result, transferred_send_result) = tokio::join!(
+        async {
+            match stats_req {
+                Some(req) => req.send().await.ok(),
+                None => None,
+            }
+        },
+        transferred_req.send()
+    );
+
+    // Resolve the base stats blob.
+    let mut final_stats = if needs_stats_fetch {
+        match stats_send_result {
+            Some(resp) => resp.json::<Value>().await.unwrap_or(json!({})),
+            None => json!({}),
+        }
+    } else {
+        last_stats.unwrap_or(json!({}))
+    };
+
+    // Inject the completed-transfers list so the frontend can render a
+    // per-file summary without issuing a separate API call.
+    if let Ok(resp) = transferred_send_result
+        && let Ok(data) = resp.json::<Value>().await
+    {
+        info!("Completed transfers for group '{group}': {data}");
+        if let Some(obj) = final_stats.as_object_mut() {
+            obj.insert(
+                "completed".to_string(),
+                data.get("transferred").cloned().unwrap_or(json!([])),
+            );
+        }
+    }
+
+    final_stats
+}
+
+/// Spawn a background task that deletes the rclone stats group.
+///
+/// Deletion is pure server-side housekeeping. The caller must not block for
+/// it — the job is already marked terminal by the time this runs.
+fn spawn_stats_cleanup(app: &AppHandle, metadata: &JobMetadata) {
+    let client = app.state::<RcloneState>().client.clone();
+    let group = metadata.group_name();
+    let app = app.clone();
+
+    tauri::async_runtime::spawn(async move {
+        let backend = app.state::<BackendManager>().get_active().await;
+        let delete_url = backend.url_for(core::STATS_DELETE);
+        let _ = backend
+            .inject_auth(client.post(&delete_url))
+            .json(&json!({ "group": group }))
+            .send()
+            .await;
+    });
+}
+
+/// Stop a running job.
 #[tauri::command]
 pub async fn stop_job(
     app: AppHandle,
@@ -623,16 +692,14 @@ pub async fn stop_job(
     jobid: u64,
     remote_name: String,
 ) -> Result<(), String> {
-    // Use active backend (in simplified architecture, there's only one job cache)
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
     let job_cache = &backend_manager.job_cache;
     let url = backend.url_for(job::STOP);
-    let payload = json!({ "jobid": jobid });
 
     let response = backend
         .inject_auth(app.state::<RcloneState>().client.post(&url))
-        .json(&payload)
+        .json(&json!({ "jobid": jobid }))
         .send()
         .await
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
@@ -640,7 +707,9 @@ pub async fn stop_job(
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
 
-    let job_stopped = if status.is_success() {
+    // "job not found" from rclone means it already cleaned up on its end.
+    // We still mark our cache entry as stopped so the UI stays consistent.
+    let rclone_accepted = if status.is_success() {
         true
     } else if status.as_u16() == 500 && body.contains("\"job not found\"") {
         log_operation(
@@ -659,7 +728,7 @@ pub async fn stop_job(
         return Err(error);
     };
 
-    if job_stopped {
+    if rclone_accepted {
         job_cache
             .stop_job(jobid, Some(&app))
             .await
@@ -670,15 +739,8 @@ pub async fn stop_job(
                 "🛑 Job {} was associated with scheduled task '{}', marking task as stopped",
                 jobid, task.name
             );
-
             scheduled_tasks_cache
-                .update_task(
-                    &task.id,
-                    |t| {
-                        t.mark_stopped();
-                    },
-                    Some(&app),
-                )
+                .update_task(&task.id, |t| t.mark_stopped(), Some(&app))
                 .await
                 .map_err(|e| format!("Failed to update task state: {}", e))?;
         }
@@ -691,50 +753,27 @@ pub async fn stop_job(
             None,
         );
 
-        let stopped_profile = job_cache
-            .get_job(jobid)
-            .await
-            .and_then(|j| j.profile)
-            .unwrap_or_default();
-        send_notification_typed(
-            &app,
-            Notification::localized(
-                "notification.title.operationStopped",
-                "notification.body.stopped",
-                Some(vec![
-                    ("operation", "Job"),
-                    ("remote", remote_name.as_str()),
-                    ("profile", stopped_profile.as_str()),
-                ]),
-                None,
-                Some(LogLevel::Info),
-            ),
-            None,
-        );
-
         info!("✅ Stopped job {jobid}");
     }
 
     Ok(())
 }
 
-/// Stop all running jobs in a group
-/// Group name format: "type/remote/mount" (e.g., "sync/gdrive/default", "mount/onedrive/my-mount")
+/// Stop all running jobs in a group.
+///
+/// Group name format: `"type/remote[/profile]"` — e.g. `"sync/gdrive/default"`.
 #[tauri::command]
 pub async fn stop_jobs_by_group(app: AppHandle, group: String) -> Result<(), String> {
-    use crate::utils::rclone::endpoints::job;
-
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
     let job_cache = &backend_manager.job_cache;
     let url = backend.url_for(job::STOPGROUP);
-    let payload = json!({ "group": group });
 
     info!("🛑 Stopping all jobs in group: {}", group);
 
     let response = backend
         .inject_auth(app.state::<RcloneState>().client.post(&url))
-        .json(&payload)
+        .json(&json!({ "group": group }))
         .send()
         .await
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
@@ -749,7 +788,7 @@ pub async fn stop_jobs_by_group(app: AppHandle, group: String) -> Result<(), Str
         return Err(error);
     }
 
-    // Also update our local job cache - stop all jobs matching this group
+    // Mirror the rclone stop in our local cache.
     let jobs = job_cache.get_jobs().await;
     for job in jobs {
         if job.group == group && job.status == JobStatus::Running {
@@ -769,15 +808,14 @@ pub async fn stop_jobs_by_group(app: AppHandle, group: String) -> Result<(), Str
     Ok(())
 }
 
-// ============================================================================
-// TESTS
-// ============================================================================
+// Tests for JobMetadata and NotificationEvent constructors.
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// Test that group_name generates correct format from job_type and remote_name
+    // JobMetadata::group_name tests
+
     #[test]
     fn test_group_name_generation() {
         let meta = JobMetadata {
@@ -791,11 +829,9 @@ mod tests {
             group: None,
             no_cache: false,
         };
-
         assert_eq!(meta.group_name(), "sync/gdrive");
     }
 
-    /// Test that group_name includes profile if present
     #[test]
     fn test_group_name_with_profile() {
         let meta = JobMetadata {
@@ -809,13 +845,11 @@ mod tests {
             group: None,
             no_cache: false,
         };
-
         assert_eq!(meta.group_name(), "sync/gdrive/daily");
     }
 
-    /// Test custom group name takes precedence over auto-generation
     #[test]
-    fn test_custom_group_name() {
+    fn test_custom_group_name_takes_precedence() {
         let meta = JobMetadata {
             remote_name: "gdrive:".to_string(),
             job_type: JobType::Sync,
@@ -827,14 +861,12 @@ mod tests {
             group: Some("custom/group".to_string()),
             no_cache: true,
         };
-
         assert_eq!(meta.group_name(), "custom/group");
     }
 
-    /// Test different job types produce correct group names
     #[test]
     fn test_group_name_different_job_types() {
-        let test_cases = vec![
+        let cases = [
             (JobType::Sync, "gdrive:", "sync/gdrive"),
             (JobType::Copy, "onedrive:", "copy/onedrive"),
             (JobType::Move, "dropbox:", "move/dropbox"),
@@ -843,8 +875,7 @@ mod tests {
             (JobType::Serve, "local:", "serve/local"),
             (JobType::CopyUrl, "remote:", "copy_url/remote"),
         ];
-
-        for (job_type, remote_name, expected) in test_cases {
+        for (job_type, remote_name, expected) in cases {
             let meta = JobMetadata {
                 remote_name: remote_name.to_string(),
                 job_type: job_type.clone(),
@@ -856,196 +887,124 @@ mod tests {
                 group: None,
                 no_cache: false,
             };
-            assert_eq!(
-                meta.group_name(),
-                expected,
-                "Failed for job_type: {}",
-                job_type
-            );
+            assert_eq!(meta.group_name(), expected, "Failed for {:?}", job_type);
         }
     }
 
-    // ---------- parse_job_response tests ----------
+    // Notification event methods
+    // These tests verify the NotificationEvent constructors used by production.
+
+    fn make_meta(origin: Option<Origin>, profile: Option<&str>) -> JobMetadata {
+        JobMetadata {
+            remote_name: "gdrive:".to_string(),
+            job_type: JobType::Sync,
+            operation_name: "Sync".to_string(),
+            source: "src".to_string(),
+            destination: "dst".to_string(),
+            profile: profile.map(str::to_string),
+            origin,
+            group: None,
+            no_cache: false,
+        }
+    }
 
     #[test]
-    fn test_parse_job_response_from_struct() {
+    fn test_started_event() {
+        let meta = make_meta(Some(Origin::FileManager), Some("daily"));
+        match meta.started_event() {
+            NotificationEvent::JobStarted {
+                remote,
+                profile,
+                operation,
+                origin,
+            } => {
+                assert_eq!(remote, "gdrive:");
+                assert_eq!(profile, Some("daily".to_string()));
+                assert_eq!(operation, "Sync");
+                assert_eq!(origin, Origin::FileManager);
+            }
+            _ => panic!("expected JobStarted"),
+        }
+    }
+
+    #[test]
+    fn test_completed_event_defaults_origin_to_system() {
+        let meta = make_meta(None, None);
+        match meta.completed_event() {
+            NotificationEvent::JobCompleted {
+                remote,
+                profile,
+                operation,
+                origin,
+            } => {
+                assert_eq!(remote, "gdrive:");
+                assert_eq!(profile, None);
+                assert_eq!(operation, "Sync");
+                assert_eq!(origin, Origin::System);
+            }
+            _ => panic!("expected JobCompleted"),
+        }
+    }
+
+    #[test]
+    fn test_failed_event_carries_error_message() {
+        let meta = make_meta(None, Some("p"));
+        match meta.failed_event("disk full") {
+            NotificationEvent::JobFailed {
+                remote,
+                profile,
+                operation,
+                error,
+                origin,
+            } => {
+                assert_eq!(remote, "gdrive:");
+                assert_eq!(profile, Some("p".to_string()));
+                assert_eq!(operation, "Sync");
+                assert_eq!(error, "disk full");
+                assert_eq!(origin, Origin::System);
+            }
+            _ => panic!("expected JobFailed"),
+        }
+    }
+
+    #[test]
+    fn test_notification_suppression_for_dashboard_origin() {
+        use crate::utils::app::notification::should_suppress;
+        let meta_dashboard = make_meta(Some(Origin::Dashboard), None);
+        assert!(should_suppress(true, meta_dashboard.origin.as_ref()));
+
+        let meta_scheduler = make_meta(Some(Origin::Scheduler), None);
+        assert!(!should_suppress(true, meta_scheduler.origin.as_ref()));
+    }
+
+    // parse_job_response tests
+
+    #[test]
+    fn test_parse_job_response_canonical() {
         let v = json!({ "jobid": 123u64, "executeId": "exec-1" });
-        let res = parse_job_response(&v).unwrap();
-        assert_eq!(res.0, 123);
-        assert_eq!(res.1, Some("exec-1".to_string()));
+        let (id, eid) = parse_job_response(&v).unwrap();
+        assert_eq!(id, 123);
+        assert_eq!(eid, Some("exec-1".to_string()));
     }
 
     #[test]
-    fn test_parse_job_response_jobid_number() {
+    fn test_parse_job_response_numeric_jobid_no_execute_id() {
         let v = json!({ "jobid": 99u64 });
-        let res = parse_job_response(&v).unwrap();
-        assert_eq!(res.0, 99);
-        assert_eq!(res.1, None);
+        let (id, eid) = parse_job_response(&v).unwrap();
+        assert_eq!(id, 99);
+        assert_eq!(eid, None);
     }
 
     #[test]
-    fn test_parse_job_response_id_string() {
+    fn test_parse_job_response_legacy_string_id() {
         let v = json!({ "id": "42", "executeId": "e42" });
-        let res = parse_job_response(&v).unwrap();
-        assert_eq!(res.0, 42);
-        assert_eq!(res.1, Some("e42".to_string()));
+        let (id, eid) = parse_job_response(&v).unwrap();
+        assert_eq!(id, 42);
+        assert_eq!(eid, Some("e42".to_string()));
     }
 
     #[test]
-    fn test_parse_job_response_missing_jobid() {
-        let v = json!({});
-        assert!(parse_job_response(&v).is_err());
-    }
-
-    // -------------------------
-    // Notification builder tests
-    // -------------------------
-
-    #[test]
-    fn test_job_started_notification_builder() {
-        use crate::utils::types::origin::Origin;
-
-        let meta = JobMetadata {
-            remote_name: "gdrive:".to_string(),
-            job_type: JobType::Sync,
-            operation_name: "Sync".to_string(),
-            source: "src".to_string(),
-            destination: "dst".to_string(),
-            profile: Some("daily".to_string()),
-            origin: Some(Origin::Nautilus),
-            group: None,
-            no_cache: false,
-        };
-
-        let n = job_started_notification(&meta);
-
-        match n.title {
-            crate::utils::app::notification::Text::Localized { key, params } => {
-                assert_eq!(key, "notification.title.operationStarted");
-                let map = params.expect("params present");
-                assert_eq!(map.get("operation").map(|s| s.as_str()), Some("Sync"));
-                assert_eq!(map.get("remote").map(|s| s.as_str()), Some("gdrive:"));
-                assert_eq!(map.get("profile").map(|s| s.as_str()), Some("daily"));
-            }
-            _ => panic!("expected localized title"),
-        }
-
-        match n.body {
-            crate::utils::app::notification::Text::Localized { key, params } => {
-                assert_eq!(key, "notification.body.started");
-                let map = params.expect("params present");
-                assert_eq!(map.get("operation").map(|s| s.as_str()), Some("Sync"));
-                assert_eq!(map.get("remote").map(|s| s.as_str()), Some("gdrive:"));
-                assert_eq!(map.get("profile").map(|s| s.as_str()), Some("daily"));
-            }
-            _ => panic!("expected localized body"),
-        }
-
-        assert_eq!(n.level, Some(crate::utils::types::logs::LogLevel::Info));
-    }
-
-    #[test]
-    fn test_job_completed_notification_builder() {
-        let meta = JobMetadata {
-            remote_name: "onedrive:".to_string(),
-            job_type: JobType::Copy,
-            operation_name: "Copy".to_string(),
-            source: "a".to_string(),
-            destination: "b".to_string(),
-            profile: None,
-            origin: None,
-            group: None,
-            no_cache: false,
-        };
-
-        let n = job_completed_notification(&meta);
-
-        match n.title {
-            crate::utils::app::notification::Text::Localized { key, params } => {
-                assert_eq!(key, "notification.title.operationComplete");
-                let map = params.expect("params present");
-                assert_eq!(map.get("operation").map(|s| s.as_str()), Some("Copy"));
-                assert_eq!(map.get("remote").map(|s| s.as_str()), Some("onedrive:"));
-                // profile should be empty string when None
-                assert_eq!(map.get("profile").map(|s| s.as_str()), Some(""));
-            }
-            _ => panic!("expected localized title"),
-        }
-
-        match n.body {
-            crate::utils::app::notification::Text::Localized { key, params } => {
-                assert_eq!(key, "notification.body.complete");
-                let map = params.expect("params present");
-                assert_eq!(map.get("operation").map(|s| s.as_str()), Some("Copy"));
-                assert_eq!(map.get("remote").map(|s| s.as_str()), Some("onedrive:"));
-            }
-            _ => panic!("expected localized body"),
-        }
-
-        assert_eq!(n.level, Some(crate::utils::types::logs::LogLevel::Info));
-    }
-
-    #[test]
-    fn test_job_failed_notification_builder_includes_error() {
-        let meta = JobMetadata {
-            remote_name: "dropbox:".to_string(),
-            job_type: JobType::Move,
-            operation_name: "Move".to_string(),
-            source: "x".to_string(),
-            destination: "y".to_string(),
-            profile: Some("p".to_string()),
-            origin: None,
-            group: None,
-            no_cache: false,
-        };
-
-        let n = job_failed_notification(&meta, "disk full");
-
-        match n.body {
-            crate::utils::app::notification::Text::Localized { key, params } => {
-                assert_eq!(key, "notification.body.failed");
-                let map = params.expect("params present");
-                assert_eq!(map.get("error").map(|s| s.as_str()), Some("disk full"));
-                assert_eq!(map.get("operation").map(|s| s.as_str()), Some("Move"));
-                assert_eq!(map.get("remote").map(|s| s.as_str()), Some("dropbox:"));
-            }
-            _ => panic!("expected localized body"),
-        }
-
-        assert_eq!(n.level, Some(crate::utils::types::logs::LogLevel::Error));
-    }
-
-    #[test]
-    fn test_job_notification_suppression_for_dashboard_origin() {
-        use crate::utils::types::origin::Origin;
-
-        let meta_dashboard = JobMetadata {
-            remote_name: "gdrive:".to_string(),
-            job_type: JobType::Sync,
-            operation_name: "Sync".to_string(),
-            source: "src".to_string(),
-            destination: "dst".to_string(),
-            profile: None,
-            origin: Some(Origin::Dashboard),
-            group: None,
-            no_cache: false,
-        };
-
-        // Dashboard-origin job notifications should be suppressed when the app is focused
-        assert!(crate::utils::app::notification::should_suppress(
-            true,
-            meta_dashboard.origin.as_ref()
-        ));
-
-        let meta_scheduled = JobMetadata {
-            origin: Some(Origin::Scheduled),
-            ..meta_dashboard.clone()
-        };
-
-        // Scheduled-origin job notifications should NOT be suppressed
-        assert!(!crate::utils::app::notification::should_suppress(
-            true,
-            meta_scheduled.origin.as_ref()
-        ));
+    fn test_parse_job_response_missing_jobid_is_err() {
+        assert!(parse_job_response(&json!({})).is_err());
     }
 }

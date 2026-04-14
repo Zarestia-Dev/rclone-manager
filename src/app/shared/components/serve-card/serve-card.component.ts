@@ -1,45 +1,36 @@
-import {
-  Component,
-  Output,
-  EventEmitter,
-  inject,
-  input,
-  computed,
-  ChangeDetectionStrategy,
-} from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, input, output, computed, ChangeDetectionStrategy } from '@angular/core';
+import { UpperCasePipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ServeListItem } from '@app/types';
-import { IconService, getRemoteNameFromFs } from '@app/services';
+import { getRemoteNameFromFs, NotificationService } from '@app/services';
 
 interface TypeInfo {
   icon: string;
-  description: string;
 }
 
 const TYPE_INFO: Record<string, TypeInfo> = {
-  http: { icon: 'globe', description: 'Serve files via HTTP' },
-  webdav: { icon: 'cloud', description: 'WebDAV for file access' },
-  ftp: { icon: 'file-arrow-up', description: 'FTP file transfer' },
-  sftp: { icon: 'lock', description: 'Secure FTP over SSH' },
-  nfs: { icon: 'server', description: 'Network File System' },
-  dlna: { icon: 'tv', description: 'DLNA media server' },
-  restic: { icon: 'shield', description: 'Restic REST server' },
-  s3: { icon: 'bucket', description: 'Amazon S3 compatible server' },
+  http: { icon: 'globe' },
+  webdav: { icon: 'cloud' },
+  ftp: { icon: 'file-arrow-up' },
+  sftp: { icon: 'lock' },
+  nfs: { icon: 'server' },
+  dlna: { icon: 'tv' },
+  restic: { icon: 'shield' },
+  s3: { icon: 'bucket' },
 };
 
-const DEFAULT_TYPE_INFO: TypeInfo = { icon: 'satellite-dish', description: 'Serve' };
-const URL_BASED_PROTOCOLS = ['http', 'webdav', 'ftp', 'sftp', 's3'];
+const DEFAULT_ICON = 'satellite-dish';
+const URL_BASED_PROTOCOLS = new Set(['http', 'webdav', 'ftp', 'sftp', 's3']);
 
 @Component({
   selector: 'app-serve-card',
   standalone: true,
   imports: [
-    CommonModule,
+    UpperCasePipe,
     MatCardModule,
     MatIconModule,
     MatButtonModule,
@@ -51,75 +42,67 @@ const URL_BASED_PROTOCOLS = ['http', 'webdav', 'ftp', 'sftp', 's3'];
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ServeCardComponent {
-  readonly iconService = inject(IconService);
-  private translate = inject(TranslateService);
+  private readonly translate = inject(TranslateService);
+  private readonly notificationService = inject(NotificationService);
 
   serve = input.required<ServeListItem>();
   showRemoteName = input(false);
 
-  @Output() stopServe = new EventEmitter<ServeListItem>();
-  @Output() copyToClipboard = new EventEmitter<{ text: string; message: string }>();
-  @Output() cardClick = new EventEmitter<ServeListItem>();
+  stopServe = output<ServeListItem>();
+  cardClick = output<ServeListItem>();
 
-  serveTypeInfo = computed<TypeInfo>(() => {
-    const serveType = this.serve().params.type.toLowerCase();
-    const defaultInfo = DEFAULT_TYPE_INFO;
-    const info = TYPE_INFO[serveType] || defaultInfo;
-    const typeKey = TYPE_INFO[serveType] ? serveType : 'default';
-
-    return {
-      icon: info.icon,
-      description: this.translate.instant(`shared.serveCard.types.${typeKey}`),
-    };
+  serveIcon = computed<string>(() => {
+    const type = this.serve().params.type.toLowerCase();
+    return TYPE_INFO[type]?.icon ?? DEFAULT_ICON;
   });
 
   serveUrl = computed<string | null>(() => {
-    const serve = this.serve();
-    const type = serve.params.type.toLowerCase();
-    if (URL_BASED_PROTOCOLS.includes(type)) {
-      return `${type}://${serve.addr}`;
-    }
-    return null;
+    const type = this.serve().params.type.toLowerCase();
+    const addr = this.serve().addr;
+
+    return URL_BASED_PROTOCOLS.has(type) ? `${type}://${addr}` : null;
   });
 
-  optionsTooltip = computed<string>(() => {
-    const { ...options } = this.serve().params;
+  optionsData = computed<{ keys: string[]; tooltip: string }>(() => {
+    const params = this.serve().params;
+    const keys = Object.keys(params);
 
-    const keys = Object.keys(options);
     if (keys.length === 0) {
-      return this.translate.instant('shared.serveCard.messages.noOptions');
+      return { keys: [], tooltip: this.translate.instant('shared.serveCard.messages.noOptions') };
     }
 
-    return keys
+    const tooltip = keys
       .map(key => {
-        const value = options[key as keyof typeof options];
+        const value = params[key as keyof typeof params];
         if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-          const nestedOptions = Object.entries(value)
+          const nested = Object.entries(value)
             .map(([k, v]) => `  ${k}: ${v}`)
             .join('\n');
-          return `${key}:\n${nestedOptions}`;
+          return `${key}:\n${nested}`;
         }
         return `${key}: ${JSON.stringify(value)}`;
       })
       .join('\n');
+
+    return { keys, tooltip };
   });
 
-  optionKeys = computed<string[]>(() => {
-    const { ...options } = this.serve().params;
-    return Object.keys(options);
-  });
-
-  remoteName = computed<string>(() => {
-    return getRemoteNameFromFs(this.serve().params?.fs);
-  });
+  remoteName = computed<string>(() => getRemoteNameFromFs(this.serve().params.fs));
 
   onStopServe(): void {
     this.stopServe.emit(this.serve());
   }
 
   onCopyToClipboard(text: string, messageKey: string): void {
-    const message = this.translate.instant(messageKey);
-    this.copyToClipboard.emit({ text, message });
+    try {
+      navigator.clipboard.writeText(text);
+      this.notificationService.showSuccess(this.translate.instant(messageKey));
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
+      this.notificationService.showError(
+        this.translate.instant('shared.serveCard.messages.copyFailed')
+      );
+    }
   }
 
   onCardClick(): void {

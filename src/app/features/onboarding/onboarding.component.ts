@@ -1,6 +1,5 @@
 import {
   Component,
-  OnInit,
   HostListener,
   inject,
   signal,
@@ -19,7 +18,6 @@ import { InstallationOptionsComponent } from '../../shared/components/installati
 import { PasswordManagerComponent } from '../../shared/components/password-manager/password-manager.component';
 import { TranslateModule } from '@ngx-translate/core';
 
-// Services
 import {
   InstallationService,
   EventListenersService,
@@ -28,9 +26,9 @@ import {
   RclonePasswordService,
   SystemHealthService,
 } from '@app/services';
+import { BackendService } from '../../services/infrastructure/system/backend.service';
 import { InstallationOptionsData, InstallationTabOption } from '@app/types';
 
-/** Card definition for onboarding wizard */
 interface OnboardingCard {
   key: string;
   image: string;
@@ -38,7 +36,6 @@ interface OnboardingCard {
   content: string;
 }
 
-/** Action types for footer button */
 type OnboardingAction =
   | 'install-rclone'
   | 'install-plugin'
@@ -46,6 +43,8 @@ type OnboardingAction =
   | 'unlock'
   | 'finish'
   | 'next';
+
+const delay = (ms: number): Promise<void> => new Promise(r => setTimeout(r, ms));
 
 @Component({
   selector: 'app-onboarding',
@@ -64,7 +63,7 @@ type OnboardingAction =
   styleUrls: ['./onboarding.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class OnboardingComponent implements OnInit {
+export class OnboardingComponent {
   completed = output<void>();
 
   // ─── Services ───────────────────────────────────────────────────────────────
@@ -74,18 +73,17 @@ export class OnboardingComponent implements OnInit {
   private readonly eventListenersService = inject(EventListenersService);
   private readonly fileSystemService = inject(FileSystemService);
   private readonly rclonePasswordService = inject(RclonePasswordService);
+  private readonly backendService = inject(BackendService);
   readonly systemHealth = inject(SystemHealthService);
 
-  // ─── Local State Signals ────────────────────────────────────────────────────
+  // ─── State ──────────────────────────────────────────────────────────────────
 
   readonly animationState = signal<'loading' | 'visible'>('loading');
   readonly currentCardIndex = signal(0);
 
-  // Installation state
   readonly installing = signal(false);
   readonly downloadingPlugin = signal(false);
 
-  // Installation options data from shared component
   readonly installationData = signal<InstallationOptionsData>({
     installLocation: 'default',
     customPath: '',
@@ -94,19 +92,20 @@ export class OnboardingComponent implements OnInit {
   });
   readonly installationValid = signal(true);
 
-  // Config state
-  readonly configSelection = signal<'default' | 'custom'>('default');
-  readonly customConfigPath = signal('');
+  readonly configData = signal<InstallationOptionsData>({
+    installLocation: 'default',
+    customPath: '',
+    existingBinaryPath: '',
+    binaryTestResult: 'untested',
+  });
   readonly configValid = signal(true);
 
-  // Password state
   readonly configPassword = signal('');
   readonly passwordValidationError = signal<string | null>(null);
   readonly isSubmittingPassword = signal(false);
 
-  // ─── Computed Values ────────────────────────────────────────────────────────
+  // ─── Computed ───────────────────────────────────────────────────────────────
 
-  /** Base cards that are always shown */
   private readonly baseCards: OnboardingCard[] = [
     {
       key: 'welcome',
@@ -122,12 +121,9 @@ export class OnboardingComponent implements OnInit {
     },
   ];
 
-  /** Dynamically computed cards based on system health state */
   readonly cards = computed<OnboardingCard[]>(() => {
     const result: OnboardingCard[] = [...this.baseCards];
 
-    // Only add installation cards when we KNOW they're not installed (false)
-    // Don't add when still checking (null)
     if (this.systemHealth.rcloneInstalled() === false) {
       result.push({
         key: 'installRclone',
@@ -137,7 +133,6 @@ export class OnboardingComponent implements OnInit {
       });
     }
 
-    // Add mount plugin card only if explicitly not installed
     if (this.systemHealth.mountPluginInstalled() === false) {
       result.push({
         key: 'installPlugin',
@@ -147,7 +142,6 @@ export class OnboardingComponent implements OnInit {
       });
     }
 
-    // Always add config selection card
     result.push({
       key: 'selectConfig',
       image: '../assets/rclone-manager.svg',
@@ -155,7 +149,6 @@ export class OnboardingComponent implements OnInit {
       content: 'onboarding.cards.selectConfig.content',
     });
 
-    // Add password card if config is encrypted and not unlocked
     if (this.systemHealth.passwordRequired()) {
       result.push({
         key: 'passwordRequired',
@@ -165,7 +158,6 @@ export class OnboardingComponent implements OnInit {
       });
     }
 
-    // Always end with ready card
     result.push({
       key: 'ready',
       image: '../assets/rclone-manager.svg',
@@ -176,17 +168,14 @@ export class OnboardingComponent implements OnInit {
     return result;
   });
 
-  /** Currently displayed card - with bounds checking */
   readonly currentCard = computed(() => {
     const cards = this.cards();
     const index = Math.min(this.currentCardIndex(), cards.length - 1);
     return cards[Math.max(0, index)];
   });
 
-  /** Determines which action button to show in footer */
   readonly currentAction = computed<OnboardingAction>(() => {
     const card = this.currentCard();
-
     if (card.key === 'installRclone' && !this.systemHealth.rcloneInstalled())
       return 'install-rclone';
     if (card.key === 'installPlugin' && !this.systemHealth.mountPluginInstalled())
@@ -197,10 +186,8 @@ export class OnboardingComponent implements OnInit {
     return 'next';
   });
 
-  /** Whether install rclone button should be enabled */
   readonly canInstall = computed(() => !this.installing() && this.installationValid());
 
-  /** Dynamic install button text */
   readonly installButtonText = computed(() => {
     const data = this.installationData();
 
@@ -209,12 +196,11 @@ export class OnboardingComponent implements OnInit {
         ? 'onboarding.installButton.configuring'
         : 'onboarding.installButton.installing';
     }
-    if (data.installLocation === 'custom' && data.customPath.trim().length === 0) {
+    if (data.installLocation === 'custom' && !data.customPath.trim()) {
       return 'onboarding.installButton.selectPath';
     }
     if (data.installLocation === 'existing') {
-      if (data.existingBinaryPath.trim().length === 0)
-        return 'onboarding.installButton.selectBinary';
+      if (!data.existingBinaryPath.trim()) return 'onboarding.installButton.selectBinary';
       if (data.binaryTestResult === 'invalid') return 'onboarding.installButton.invalidBinary';
       if (data.binaryTestResult === 'testing') return 'onboarding.installButton.testingBinary';
       if (data.binaryTestResult === 'valid') return 'onboarding.installButton.useBinary';
@@ -232,41 +218,33 @@ export class OnboardingComponent implements OnInit {
   ];
 
   constructor() {
-    this.setupRcloneEngineListener();
+    this.eventListenersService
+      .listenToRcloneEngineReady()
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.passwordValidationError.set(null));
+
+    this.initOnboarding();
   }
 
-  // ─── Lifecycle ──────────────────────────────────────────────────────────────
+  // ─── Init ────────────────────────────────────────────────────────────────────
 
-  async ngOnInit(): Promise<void> {
-    // Initial delay for entrance animation
-    await new Promise(r => setTimeout(r, 500));
-
+  private async initOnboarding(): Promise<void> {
+    await delay(500);
     try {
       await this.systemHealth.runAllChecks();
     } catch (error) {
       console.error('OnboardingComponent: System checks failed', error);
     }
-
-    // Show content after system checks settle
-    setTimeout(() => this.animationState.set('visible'), 300);
+    await delay(300);
+    this.animationState.set('visible');
   }
 
-  private setupRcloneEngineListener(): void {
-    this.eventListenersService
-      .listenToRcloneEngineReady()
-      .pipe(takeUntilDestroyed())
-      .subscribe(() => {
-        this.passwordValidationError.set(null);
-      });
-  }
-
-  // ─── Navigation ─────────────────────────────────────────────────────────────
+  // ─── Keyboard Navigation ─────────────────────────────────────────────────────
 
   @HostListener('document:keydown', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent): void {
     if (event.key === 'Enter') {
-      const action = this.currentAction();
-      switch (action) {
+      switch (this.currentAction()) {
         case 'install-rclone':
           if (this.canInstall()) this.installRclone();
           break;
@@ -289,7 +267,6 @@ export class OnboardingComponent implements OnInit {
       return;
     }
 
-    // Arrow keys for simple navigation (only between intro cards)
     if (event.key === 'ArrowRight' && this.currentAction() === 'next') {
       this.nextCard();
     } else if (event.key === 'ArrowLeft' && this.currentCardIndex() > 0) {
@@ -297,9 +274,10 @@ export class OnboardingComponent implements OnInit {
     }
   }
 
+  // ─── Navigation ─────────────────────────────────────────────────────────────
+
   nextCard(): void {
-    const maxIndex = this.cards().length - 1;
-    if (this.currentCardIndex() < maxIndex) {
+    if (this.currentCardIndex() < this.cards().length - 1) {
       this.currentCardIndex.update(i => i + 1);
     }
   }
@@ -314,24 +292,19 @@ export class OnboardingComponent implements OnInit {
     this.completed.emit();
   }
 
-  // ─── Installation ───────────────────────────────────────────────────────────
+  // ─── Installation ────────────────────────────────────────────────────────────
 
   async installRclone(): Promise<void> {
     this.installing.set(true);
     try {
       const data = this.installationData();
-
       if (data.installLocation === 'existing') {
         await this.appSettingsService.saveSetting('core', 'rclone_path', data.existingBinaryPath);
       } else {
         const installPath = data.installLocation === 'default' ? null : data.customPath;
         await this.installationService.installRclone(installPath);
       }
-
-      // Mark as installed - this will automatically remove the Install card
-      // from the computed cards array, showing the next card at the same index
       this.systemHealth.markRcloneInstalled();
-      // Note: Don't call nextCard() here - the cards array shrink already advances us
     } catch (error) {
       console.error('RClone installation/configuration failed:', error);
     } finally {
@@ -343,8 +316,6 @@ export class OnboardingComponent implements OnInit {
     this.downloadingPlugin.set(true);
     try {
       await this.installationService.installMountPlugin();
-
-      // Re-check mount plugin status after installation
       await this.systemHealth.checkMountPlugin();
     } catch (error) {
       console.error('Plugin installation failed:', error);
@@ -353,7 +324,7 @@ export class OnboardingComponent implements OnInit {
     }
   }
 
-  // ─── Installation Options Callbacks ─────────────────────────────────────────
+  // ─── Installation Options Callbacks ──────────────────────────────────────────
 
   onInstallationOptionsChange(data: InstallationOptionsData): void {
     this.installationData.set(data);
@@ -363,46 +334,48 @@ export class OnboardingComponent implements OnInit {
     this.installationValid.set(valid);
   }
 
-  // ─── Config Selection ───────────────────────────────────────────────────────
+  // ─── Config Selection ─────────────────────────────────────────────────────────
 
   async onConfigNext(): Promise<void> {
-    await this.onConfigPathChanged();
-    this.nextCard();
-  }
-
-  async onConfigPathChanged(): Promise<void> {
     try {
-      if (this.configSelection() === 'custom' && this.customConfigPath()) {
-        await this.appSettingsService.saveSetting(
-          'core',
-          'rclone_config_file',
-          this.customConfigPath()
-        );
+      const data = this.configData();
+      if (data.installLocation === 'custom' && data.customPath) {
+        // rclone_config_file is now stored as config_path on the Local backend.
+        // Ensure backends are loaded (they may not be during onboarding).
+        if (this.backendService.backends().length === 0) {
+          await this.backendService.loadBackends();
+        }
+        const localBackend = this.backendService.backends().find(b => b.name === 'Local');
+        if (localBackend) {
+          await this.backendService.updateBackend({
+            name: 'Local',
+            host: localBackend.host,
+            oauthHost: localBackend.oauthHost,
+            port: localBackend.port,
+            isLocal: true,
+            username: localBackend.username,
+            password: localBackend.password,
+            configPath: data.customPath,
+            oauthPort: localBackend.oauthPort,
+          });
+        }
       }
-
-      // Re-check encryption after config change
       await this.systemHealth.checkConfigEncryption();
     } catch (error) {
       console.error('Failed to update config selection:', error);
     }
+    this.nextCard();
   }
 
   onConfigOptionsChange(data: InstallationOptionsData): void {
-    if (data.installLocation === 'default') {
-      this.configSelection.set('default');
-      this.customConfigPath.set('');
-    } else if (data.installLocation === 'custom') {
-      this.configSelection.set('custom');
-      this.customConfigPath.set(data.customPath || '');
-    }
-    this.onConfigPathChanged().catch(err => console.error(err));
+    this.configData.set(data);
   }
 
   onConfigValidChange(valid: boolean): void {
     this.configValid.set(valid);
   }
 
-  // ─── Password Handling ──────────────────────────────────────────────────────
+  // ─── Password ────────────────────────────────────────────────────────────────
 
   async submitConfigPassword(): Promise<void> {
     if (!this.configPassword() || this.isSubmittingPassword()) return;
@@ -412,7 +385,6 @@ export class OnboardingComponent implements OnInit {
       await this.rclonePasswordService.validatePassword(this.configPassword());
       await this.rclonePasswordService.setConfigPasswordEnv(this.configPassword());
       await this.rclonePasswordService.storePassword(this.configPassword());
-
       this.systemHealth.markPasswordUnlocked();
       this.passwordValidationError.set(null);
       this.nextCard();

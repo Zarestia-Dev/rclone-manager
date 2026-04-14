@@ -1,0 +1,330 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+}
+
+/* ==========================================================================
+   1. Pane Wrapper
+   ========================================================================== */
+
+.pane-wrapper {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--window-bg-color);
+  transition: var(--transition-fast);
+
+  // Active pane indicator in split mode
+  &.split-enabled.focused {
+    z-index: 10;
+
+    &::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--accent-color);
+      z-index: 100;
+      box-shadow: 0 1px 4px var(--accent-color);
+    }
+  }
+
+  &.split-enabled:not(.focused) {
+    opacity: 0.9;
+  }
+}
+
+/* ==========================================================================
+   2. Grid View
+   ========================================================================== */
+
+.nautilus-grid {
+  padding: var(--space-md) var(--space-xs);
+  flex: 1;
+  min-height: 0;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  .grid {
+    display: grid;
+    gap: var(--space-md);
+    justify-content: space-around;
+    align-items: start;
+    grid-auto-rows: auto;
+    margin: var(--space-sm) var(--space-xl);
+  }
+
+  .grid-item {
+    outline: none;
+    user-select: none;
+    -webkit-user-drag: element;
+
+    &.selected .folder-card {
+      background: var(--selected-bg-color);
+    }
+
+    &:focus-visible .folder-card {
+      outline: 2px solid var(--accent-color);
+      outline-offset: 2px;
+    }
+  }
+
+  .star-button {
+    position: absolute;
+    border-radius: 50%;
+    padding: var(--space-xxs);
+    transition: var(--transition-fast);
+    width: var(--icon-size-sm);
+    height: var(--icon-size-sm);
+    color: var(--dim-color);
+    z-index: 1;
+
+    &:hover {
+      background: var(--selected-bg-color);
+    }
+  }
+}
+
+/* ==========================================================================
+   3. Grid Card
+   ========================================================================== */
+
+.folder-card {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  border-radius: var(--card-border-radius);
+  transition: var(--transition-fast);
+  background: none;
+
+  &:hover {
+    background: var(--bg-elevated);
+  }
+
+  .folder-title {
+    margin: 0;
+    font-size: var(--font-size-md);
+    color: var(--window-fg-color);
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  &.hidden-item {
+    opacity: 0.55;
+  }
+}
+
+/* ==========================================================================
+   4. Drag-hover highlight — shared between grid items and list rows
+   ========================================================================== */
+
+:is(.grid-item, tr).folder-drag-over {
+  outline: 2px solid var(--accent-color);
+  outline-offset: -2px;
+}
+
+.grid-item.folder-drag-over .folder-card {
+  background: rgba(var(--accent-color-rgb), 0.15) !important;
+  box-shadow: inset 0 0 0 2px var(--accent-color) !important;
+  border-radius: var(--border-radius);
+}
+
+tr.folder-drag-over {
+  background: rgba(var(--accent-color-rgb), 0.15) !important;
+}
+
+/* ==========================================================================
+   5. List View
+   ========================================================================== */
+
+.nautilus-list-container {
+  flex: 1;
+  min-height: 0;
+}
+
+.nautilus-table {
+  border-spacing: 0 var(--space-xs);
+  border-inline: var(--space-md) solid transparent;
+  width: 100%;
+
+  .mat-column-name {
+    width: auto;
+    overflow: hidden;
+  }
+
+  .mat-column-size {
+    width: 80px;
+  }
+
+  .mat-column-modified {
+    width: 130px;
+  }
+
+  .mat-column-star {
+    width: 48px;
+    padding: 0 !important;
+  }
+
+  tr.mat-mdc-row {
+    transition: none;
+    border-radius: var(--border-radius);
+    user-select: none;
+    -webkit-user-drag: element;
+
+    &:hover {
+      background-color: var(--hover-bg-color);
+    }
+
+    &.selected {
+      background-color: var(--selected-bg-color);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--accent-color);
+      outline-offset: -2px;
+    }
+
+    td:first-child {
+      border-radius: var(--border-radius) 0 0 var(--border-radius);
+    }
+
+    td:last-child {
+      border-radius: 0 var(--border-radius) var(--border-radius) 0;
+    }
+  }
+
+  th.mat-mdc-header-cell {
+    font-weight: 600;
+    color: var(--dim-color);
+    border-bottom: none;
+
+    .header-content {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xxs);
+
+      mat-icon {
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
+      }
+    }
+  }
+
+  td.mat-mdc-cell {
+    border-bottom: 1px solid transparent;
+    font-size: var(--font-size-md);
+    color: var(--window-fg-color);
+    padding: 0 var(--space-xs);
+
+    .name-cell {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      width: 100%;
+      overflow: hidden;
+
+      span {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+  }
+
+  .hidden-item {
+    opacity: 0.55;
+  }
+
+  tr.cut-item {
+    opacity: 0.5;
+  }
+}
+
+/* ==========================================================================
+   6. Cut Item Icon
+   ========================================================================== */
+
+.cut-icon {
+  color: var(--dim-color);
+  border: 4px dashed var(--dim-color);
+  border-radius: var(--border-radius);
+  box-sizing: border-box;
+  opacity: 0.7;
+
+  &.list-view {
+    border-width: 2px;
+    padding: 2px;
+  }
+}
+
+/* ==========================================================================
+   7. Overlays — Loading & Empty State
+   ========================================================================== */
+
+.loading-overlay {
+  position: absolute;
+  bottom: var(--space-md);
+  right: var(--space-md);
+  background: var(--view-bg-color);
+  padding: var(--space-xxs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-gnome);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-size-base);
+}
+
+.empty-folder-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+
+  mat-icon {
+    width: 128px;
+    height: 128px;
+    font-size: 128px;
+    color: var(--border-color);
+  }
+
+  h2 {
+    font-weight: 700;
+    color: var(--window-fg-color);
+    opacity: 0.7;
+    margin: 0;
+  }
+
+  p {
+    color: var(--dim-color);
+    max-width: 300px;
+    text-align: center;
+    margin: 0;
+  }
+}

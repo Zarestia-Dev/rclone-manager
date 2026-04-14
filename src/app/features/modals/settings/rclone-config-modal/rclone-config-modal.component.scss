@@ -4,19 +4,20 @@
   flex-direction: column;
   overflow: hidden;
 
+  form,
+  app-json-editor,
+  .virtual-scroll-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    padding: var(--space-sm);
+  }
+
   // Virtual Scroll Viewport
   .virtual-scroll-viewport {
     height: 100%;
     min-height: 0;
     flex: 1;
-
-    form,
-    .virtual-scroll-content {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-xs);
-      padding: var(--space-sm);
-    }
 
     form {
       gap: var(--space-md);
@@ -47,7 +48,7 @@
 
       .category-title {
         font-weight: 700;
-        font-size: 15px;
+        font-size: var(--font-size-md);
         color: var(--window-fg-color);
       }
 
@@ -60,28 +61,23 @@
   }
 
   .main-category-panel {
-    .mat-expansion-panel {
-      background: var(--window-bg-color) !important;
-    }
-  }
+    .main-category-title-text .main-category-header {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xxs);
+      width: 100%;
 
-  // Main Category Panel
-  .main-category-panel .main-category-title-text .main-category-header {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-xxs);
-    width: 100%;
+      .category-name {
+        font-weight: 700;
+        font-size: var(--font-size-lg);
+        color: var(--window-fg-color);
+      }
 
-    .category-name {
-      font-weight: 700;
-      font-size: 16px;
-      color: var(--window-fg-color);
-    }
-
-    .category-desc {
-      color: var(--dim-color);
-      font-size: 13px;
-      line-height: 1.3;
+      .category-desc {
+        color: var(--dim-color);
+        font-size: var(--font-size-sm);
+        line-height: 1.3;
+      }
     }
   }
 
@@ -110,10 +106,7 @@
     border-radius: var(--radius-md);
     transition: box-shadow 0.2s ease-in-out;
     padding: var(--space-xs) var(--space-md);
-
-    &.search-result-item {
-      background-color: var(--view-bg-color);
-    }
+    cursor: pointer;
 
     &:hover,
     &:focus {
@@ -159,19 +152,9 @@
     }
 
     > mat-icon:last-child {
-      color: var(--dim-color) !important;
+      color: var(--dim-color);
       width: var(--icon-size-sm);
       height: var(--icon-size-sm);
-    }
-  }
-
-  // Security Section
-  .security-section {
-    box-shadow: 0 0 0 2px var(--primary-color);
-    border-radius: var(--radius-md);
-
-    .config-item {
-      min-height: 56px;
     }
   }
 
@@ -212,5 +195,41 @@
     justify-content: center;
     padding: var(--space-md);
     gap: var(--space-sm);
+  }
+
+  // ============================================================================
+  // JSON / FORM MODE TOGGLE HEADER
+  // ============================================================================
+
+  .dynamic-fields-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    padding: var(--space-xs) var(--space-sm);
+    border-bottom: 1px solid var(--border-color);
+
+    .fields-count {
+      font-size: var(--font-size-xs);
+      color: var(--dim-color);
+      font-weight: 500;
+    }
+  }
+
+  .json-toggle-btn {
+    color: var(--dim-color);
+    transition:
+      color 0.15s ease,
+      background-color 0.15s ease;
+
+    &:hover {
+      color: var(--window-fg-color);
+      background: rgba(var(--primary-color-rgb), 0.08);
+    }
+
+    &.active {
+      color: var(--primary-color);
+      background: rgba(var(--primary-color-rgb), 0.1);
+    }
   }
 }

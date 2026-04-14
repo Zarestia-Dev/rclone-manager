@@ -21,11 +21,17 @@
   padding: var(--panel-padding);
 
   .overview-content {
+    display: flex;
+    flex-direction: column;
     gap: var(--panel-padding);
     max-width: 1200px;
     margin: 0 auto;
     width: 100%;
     box-sizing: border-box;
+
+    --mode-primary-color: var(--purple);
+    --mode-primary-color-rgb: var(--purple-rgb);
+    --mode-light-color: var(--light-purple);
   }
 }
 
@@ -148,6 +154,106 @@
       gap: 16px;
     }
 
+    .running-jobs-section {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      background: rgba(var(--view-bg-color-rgb, var(--view-bg-color)), 0.02);
+      border: 1px solid rgba(var(--window-fg-color-rgb), 0.06);
+
+      .section-heading {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--dim-color);
+
+        mat-icon {
+          width: 16px;
+          height: 16px;
+          font-size: 16px;
+        }
+      }
+
+      .running-jobs-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .running-job-row {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        background: rgba(var(--window-bg-color-rgb), 0.7);
+        border: 1px solid rgba(var(--window-fg-color-rgb), 0.05);
+      }
+
+      .running-job-main {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .running-job-icon {
+        width: 16px;
+        height: 16px;
+        font-size: 16px;
+        color: var(--primary-color);
+        flex-shrink: 0;
+      }
+
+      .running-job-text {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        flex: 1;
+      }
+
+      .running-job-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--window-fg-color);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .running-job-path,
+      .running-job-meta {
+        font-size: 11px;
+        color: var(--dim-color);
+      }
+
+      .running-job-path {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .running-job-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .dot-separator {
+        opacity: 0.5;
+      }
+
+      .running-job-progress {
+        height: 4px;
+        border-radius: 999px;
+      }
+    }
+
     .error-section {
       margin-top: 8px;
       padding: 12px;
@@ -175,13 +281,6 @@
         }
       }
     }
-
-    .no-jobs-message {
-      @include flex-center;
-      gap: 12px;
-      padding: 16px;
-      border-radius: 8px;
-    }
   }
 }
 
@@ -190,14 +289,6 @@
 // =============================================
 
 .scheduled-tasks-panel {
-  .no-tasks-message {
-    @include flex-center;
-    gap: 12px;
-    padding: 24px;
-    color: var(--dim-color);
-    text-align: center;
-  }
-
   .tasks-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -290,7 +381,7 @@
             font-weight: 700;
             letter-spacing: 0.5px;
 
-            @each $status, $color in ("enabled", primary-color), ("disabled", --dim-color),
+            @each $status, $color in ("enabled", primary-color), ("disabled", dim-color),
               ("running", accent-color), ("failed", warn-color), ("stopping", orange)
             {
               &.#{$status} {
@@ -389,7 +480,7 @@
         }
 
         .cron-expression {
-          font-family: monospace;
+          font-family: var(--font-mono);
           font-size: 11px;
           color: var(--window-fg-color);
           overflow: hidden;
@@ -454,14 +545,6 @@
 // =============================================
 
 .serves-panel {
-  .no-serves-message {
-    @include flex-center;
-    gap: 12px;
-    padding: 24px;
-    color: var(--dim-color);
-    text-align: center;
-  }
-
   .serves-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -539,13 +622,19 @@
     color: var(--window-fg-color);
   }
 
+  // FIX: added gap — the label and slide-toggle were touching with no spacing.
   .visibility-toggle {
     display: flex;
     align-items: center;
+    gap: var(--space-xs);
 
     mat-slide-toggle {
       transform: scale(0.8);
     }
+  }
+
+  .card-layout-toggle {
+    margin-left: var(--space-2xs);
   }
 }
 
@@ -593,7 +682,7 @@
 }
 
 // =============================================
-// SHARED/UTILITY STYLES
+// SHARED / UTILITY STYLES
 // =============================================
 
 .panel-title-content {
@@ -678,12 +767,37 @@
 .active-serves-indicator {
   display: flex;
   align-items: center;
-  box-shadow: 0 0 0 1px var(--primary-color);
   color: var(--primary-color);
-  padding: 3px 12px;
-  border-radius: 16px;
-  font-size: clamp(10px, 2vw, 12px);
+  background: rgba(var(--primary-color-rgb), var(--active-opacity));
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
   font-weight: 600;
+}
+
+.disabled-jobs-indicator,
+.disabled-tasks-indicator,
+.disabled-serves-indicator {
+  display: flex;
+  align-items: center;
+  color: var(--dim-color);
+  background: rgba(var(--dim-color-rgb), var(--active-opacity));
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.empty-state-message {
+  @include flex-center;
+  gap: 12px;
+  padding: 24px;
+  color: var(--dim-color);
+  text-align: center;
+}
+
+.no-jobs-message {
+  padding: 16px;
 }
 
 .layout-actions {

@@ -19,6 +19,20 @@
     opacity: 1 !important;
   }
 
+  .ghost-header-btn {
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+  }
+
+  .header-title-ghost {
+    opacity: 0;
+  }
+
+  .text-nowrap {
+    text-wrap: nowrap;
+  }
+
   p {
     font-size: var(--font-size-md);
     display: flex;

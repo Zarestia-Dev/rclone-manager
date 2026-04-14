@@ -26,17 +26,13 @@ pub fn build_api_router(state: WebServerState) -> Router {
         .nest("/jobs", jobs_router)
         .route("/events", get(handlers::sse_handler))
         .with_state(state.clone())
-        .layer(axum::middleware::from_fn_with_state(
-            state.clone(),
-            auth_middleware,
-        ))
+        .layer(axum::middleware::from_fn_with_state(state, auth_middleware))
 }
 
 fn jobs_routes() -> Router<WebServerState> {
     Router::new()
         .route("/", get(handlers::get_jobs_handler))
         .route("/active", get(handlers::get_active_jobs_handler))
-        .route("/by-source", get(handlers::get_jobs_by_source_handler))
         .route("/stop", post(handlers::stop_job_handler))
         .route("/delete", post(handlers::delete_job_handler))
         .route(
@@ -56,10 +52,6 @@ fn jobs_routes() -> Router<WebServerState> {
             post(handlers::start_bisync_profile_handler),
         )
         .route("/{id}/status", get(handlers::get_job_status_handler))
-        .route(
-            "/rename-profile-in-cache",
-            post(handlers::rename_job_profile_handler),
-        )
         .route("/stop-by-group", post(handlers::stop_jobs_by_group_handler))
 }
 
@@ -166,11 +158,11 @@ fn system_routes() -> Router<WebServerState> {
             get(handlers::get_download_status_handler),
         )
         .route("/install-update", post(handlers::install_update_handler))
-        .route("/relaunch-app", post(handlers::relaunch_app_handler))
         .route(
-            "/are-updates-disabled",
-            get(handlers::are_updates_disabled_handler),
+            "/apply-app-update",
+            post(handlers::apply_app_update_handler),
         )
+        .route("/relaunch-app", post(handlers::relaunch_app_handler))
         .route("/get-build-type", get(handlers::get_build_type_handler))
         .route(
             "/quit-rclone-engine",
@@ -182,7 +174,6 @@ fn system_routes() -> Router<WebServerState> {
             get(handlers::get_fscache_entries_handler),
         )
         .route("/clear-fscache", post(handlers::clear_fscache_handler))
-        // Stats Group Management
         .route("/stats-groups", get(handlers::get_stats_groups_handler))
         .route(
             "/reset-group-stats",
@@ -231,6 +222,22 @@ fn file_operations_routes() -> Router<WebServerState> {
         )
         .route("/fs/audio/cover", get(handlers::get_audio_cover_handler))
         .route("/upload-file", post(handlers::upload_file_handler))
+        .route(
+            "/upload-file-bytes",
+            post(handlers::upload_file_bytes_handler),
+        )
+        .route(
+            "/upload-local-drop-files",
+            post(handlers::upload_local_drop_files_handler),
+        )
+        .route(
+            "/upload-local-drop-paths",
+            post(handlers::upload_local_drop_paths_handler),
+        )
+        .route(
+            "/upload-local-drop-entries",
+            post(handlers::upload_local_drop_entries_handler),
+        )
 }
 
 fn settings_routes() -> Router<WebServerState> {
@@ -262,6 +269,10 @@ fn settings_routes() -> Router<WebServerState> {
             get(handlers::get_rclone_update_info_handler),
         )
         .route("/update-rclone", get(handlers::update_rclone_handler))
+        .route(
+            "/apply-rclone-update",
+            get(handlers::apply_rclone_update_handler),
+        )
 }
 
 fn mount_serve_routes() -> Router<WebServerState> {

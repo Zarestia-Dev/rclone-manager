@@ -15,6 +15,7 @@ export interface TransferFile {
   srcFs: string;
   isError?: boolean;
   isCompleted?: boolean;
+  error?: string;
 }
 
 export interface GlobalStats {
@@ -40,6 +41,7 @@ export interface GlobalStats {
   transferTime: number;
   transferring: TransferFile[];
   transfers: number;
+  listed: number;
   startTime?: string;
 }
 
@@ -66,6 +68,7 @@ export const DEFAULT_JOB_STATS: GlobalStats = {
   serverSideMoveBytes: 0,
   transferTime: 0,
   transferring: [],
+  listed: 0,
 };
 
 import { Origin } from './origin';
@@ -76,10 +79,12 @@ export interface JobInfo {
   source: string;
   destination: string;
   start_time: string;
+  end_time?: string;
   status: JobStatus;
   error?: string;
   remote_name: string;
   stats: GlobalStats;
+  uploaded_files?: string[];
   group?: string;
   profile?: string;
   /** Source UI that started this job (e.g., "nautilus", "dashboard", "scheduled") */

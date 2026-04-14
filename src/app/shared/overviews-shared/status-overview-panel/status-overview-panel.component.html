@@ -1,35 +1,33 @@
-<mat-card class="status-panel">
-  <mat-card-header class="status-header">
-    <mat-card-title class="panel-title-content">
-      <mat-icon [svgIcon]="mode()" aria-hidden="true" />
-      <span>{{ title() | translate }}</span>
-      <span class="remote-count">{{ totalCount() }}</span>
-    </mat-card-title>
-  </mat-card-header>
+<div class="status-panel">
+  <div class="panel-title-row">
+    <div class="title-left">
+      <mat-icon [svgIcon]="summaryIcon" class="mode-icon" aria-hidden="true"></mat-icon>
+      <span class="panel-title">{{ title() | translate }}</span>
+    </div>
+    <span class="total-badge">{{ totalCount() }}</span>
+  </div>
 
-  <mat-card-content class="status-content">
-    <div class="status-bar-container">
-      <div class="remotes-bar">
-        <div class="bar active-bar" [style.width.%]="activePercentage()"></div>
-        <div class="bar inactive-bar" [style.width.%]="inactivePercentage()"></div>
-      </div>
+  <div class="progress-track" aria-hidden="true">
+    <div class="progress-fill active-fill" [style.width.%]="activePercentage()"></div>
+    <div class="progress-fill inactive-fill" [style.width.%]="inactivePercentage()"></div>
+  </div>
 
-      @if (hasData()) {
-        <div class="legend">
-          @if (activeCount() > 0) {
-            <div class="legend-item">
-              <span class="color-box active"></span>
-              {{ activeLabel() | translate }}: {{ activeCount() }}
-            </div>
-          }
-          @if (inactiveCount() > 0) {
-            <div class="legend-item">
-              <span class="color-box inactive"></span>
-              {{ inactiveLabel() | translate }}: {{ inactiveCount() }}
-            </div>
-          }
+  @if (hasData()) {
+    <div class="legend">
+      @if (activeCount() > 0) {
+        <div class="legend-item">
+          <span class="legend-dot active" aria-hidden="true"></span>
+          <span class="legend-label">{{ activeLabel() | translate }}</span>
+          <span class="legend-value">{{ activeCount() }}</span>
+        </div>
+      }
+      @if (inactiveCount() > 0) {
+        <div class="legend-item">
+          <span class="legend-dot inactive" aria-hidden="true"></span>
+          <span class="legend-label">{{ inactiveLabel() | translate }}</span>
+          <span class="legend-value">{{ inactiveCount() }}</span>
         </div>
       }
     </div>
-  </mat-card-content>
-</mat-card>
+  }
+</div>

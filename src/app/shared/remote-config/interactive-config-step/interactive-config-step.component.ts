@@ -2,21 +2,21 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
-  effect,
+  inject,
   input,
+  linkedSignal,
   output,
-  signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { LineBreaksPipe } from '@app/pipes';
 import { RcConfigExample, RcConfigQuestionResponse } from '@app/types';
-import { TranslateModule } from '@ngx-translate/core';
+import { getDefaultAnswerFromQuestion } from '@app/services';
 
 @Component({
   selector: 'app-interactive-config-step',
@@ -27,7 +27,6 @@ import { TranslateModule } from '@ngx-translate/core';
     MatSelectModule,
     MatSlideToggleModule,
     MatInputModule,
-    MatButtonModule,
     MatIconModule,
     LineBreaksPipe,
     TranslateModule,
@@ -37,115 +36,75 @@ import { TranslateModule } from '@ngx-translate/core';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class InteractiveConfigStepComponent {
-  question = input<RcConfigQuestionResponse | null>(null);
-  canceling = input(false);
-  processing = input(false);
+  private readonly translate = inject(TranslateService);
 
-  answerChange = output<string | number | boolean | null>();
+  readonly question = input<RcConfigQuestionResponse | null>(null);
+  readonly canceling = input(false);
+  readonly processing = input(false);
 
-  private readonly _answer = signal<string | boolean | number | null>(null);
+  readonly answerChange = output<string | number | boolean | null>();
 
-  // Keep an explicit selected index so duplicate option values remain selectable.
-  readonly selectedIndex = signal<number | null>(null);
+  readonly answer = linkedSignal(() => {
+    const q = this.question();
+    return q ? getDefaultAnswerFromQuestion(q) : null;
+  });
+
+  readonly selectedIndex = linkedSignal<number | null>(() => {
+    const q = this.question();
+    const examples = q?.Option?.Examples;
+    if (!examples?.length) return null;
+    const initial = getDefaultAnswerFromQuestion(q!);
+    const idx = examples.findIndex(ex => ex.Value === initial);
+    return idx >= 0 ? idx : null;
+  });
+
   readonly selectedDisplayValue = computed(() =>
     this.getDisplayValue(this.selectedIndex(), this.question()?.Option?.Examples)
   );
 
-  get answer(): string | boolean | number | null {
-    return this._answer();
-  }
+  readonly isFieldRequired = computed(() => !!this.question()?.Option?.Required);
 
-  isFieldRequired = computed(() => !!this.question()?.Option?.Required);
+  readonly isPassword = computed(() => !!this.question()?.Option?.IsPassword);
 
-  isValidAnswer = computed(() => {
+  readonly isValidAnswer = computed(() => {
     if (!this.isFieldRequired()) return true;
-
-    const currentAnswer = this._answer();
-    if (currentAnswer === null || currentAnswer === undefined) return false;
-
-    if (typeof currentAnswer === 'string') {
-      return currentAnswer.trim() !== '';
-    }
-    return true;
+    const current = this.answer();
+    if (current === null || current === undefined) return false;
+    return typeof current !== 'string' || current.trim() !== '';
   });
 
-  inputPlaceholder = computed(() => {
+  readonly inputPlaceholder = computed(() => {
     const q = this.question();
-    if (!q) return 'Enter a value...';
+    const fallback = this.translate.instant('wizards.remoteConfig.enterValue');
+    if (!q) return fallback;
     if (q.Option?.DefaultStr) {
-      return `Default: ${q.Option.DefaultStr}`;
+      return `${this.translate.instant('wizards.remoteConfig.defaultPrefix')} ${q.Option.DefaultStr}`;
     }
     if (q.Option?.Default !== undefined && q.Option?.Default !== null) {
-      return `Default: ${q.Option.Default}`;
+      return `${this.translate.instant('wizards.remoteConfig.defaultPrefix')} ${q.Option.Default}`;
     }
-    return 'Enter a value...';
+    return fallback;
   });
 
-  constructor() {
-    effect(() => {
-      const q = this.question();
-      const initialAnswer = this.defaultAnswer(q);
-      this._answer.set(initialAnswer);
-
-      const examples = q?.Option?.Examples;
-      if (!examples || !examples.length) {
-        this.selectedIndex.set(null);
-        return;
-      }
-
-      const initialIndex = examples.findIndex(ex => ex.Value === initialAnswer);
-      this.selectedIndex.set(initialIndex >= 0 ? initialIndex : null);
-    });
-  }
-
   onAnswerChange(val: string | number | boolean | null): void {
-    if (this._answer() === val) {
-      return;
-    }
-
-    this._answer.set(val);
+    if (this.answer() === val) return;
+    this.answer.set(val);
     this.answerChange.emit(val);
-
-    const examples = this.question()?.Option?.Examples;
-    if (!examples || val === null) {
-      this.selectedIndex.set(null);
-      return;
-    }
-
-    const idx = examples.findIndex(ex => ex.Value === val);
-    this.selectedIndex.set(idx >= 0 ? idx : null);
-  }
-
-  private defaultAnswer(q: RcConfigQuestionResponse | null): string | boolean | number {
-    const opt = q?.Option;
-    if (!opt) return '';
-    if (opt.Type === 'bool') {
-      if (typeof opt.Value === 'boolean') return opt.Value;
-      if (typeof opt.ValueStr === 'string') return opt.ValueStr.toLowerCase() === 'true';
-      if (typeof opt.DefaultStr === 'string') return opt.DefaultStr.toLowerCase() === 'true';
-      if (typeof opt.Default === 'boolean') return opt.Default;
-      return true;
-    }
-    if (typeof opt.ValueStr === 'string') return opt.ValueStr;
-    if (typeof opt.DefaultStr === 'string') return opt.DefaultStr;
-    if (opt.Default !== undefined && opt.Default !== null) return String(opt.Default);
-    if (opt.Examples && opt.Examples.length > 0) return opt.Examples[0].Value;
-    return '';
-  }
-
-  getDisplayValue(index: number | null, examples: RcConfigExample[] | undefined): string {
-    if (!examples || index === null || index < 0 || index >= examples.length) return '';
-    const selected = examples[index];
-    return selected ? selected.Help || selected.Value : '';
   }
 
   onSelectionChange(index: number): void {
     this.selectedIndex.set(index);
-    const ex = this.question()?.Option?.Examples;
-    if (ex && index >= 0 && index < ex.length) {
-      const selectedValue = ex[index].Value;
-      this._answer.set(selectedValue);
+    const examples = this.question()?.Option?.Examples;
+    if (examples && index >= 0 && index < examples.length) {
+      const selectedValue = examples[index].Value;
+      this.answer.set(selectedValue);
       this.answerChange.emit(selectedValue);
     }
+  }
+
+  private getDisplayValue(index: number | null, examples: RcConfigExample[] | undefined): string {
+    if (!examples || index === null || index < 0 || index >= examples.length) return '';
+    const selected = examples[index];
+    return selected ? selected.Help || selected.Value : '';
   }
 }

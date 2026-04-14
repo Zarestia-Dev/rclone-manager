@@ -68,28 +68,38 @@ pub struct AddBackendBody {
     pub config_password: Option<String>,
     pub config_path: Option<String>,
     pub oauth_port: Option<u16>,
+    pub oauth_host: Option<String>,
     pub copy_backend_from: Option<String>,
     pub copy_remotes_from: Option<String>,
 }
 
+#[derive(Deserialize)]
+pub struct AddBackendRequest {
+    pub params: AddBackendBody,
+}
+
 pub async fn add_backend_handler(
     State(state): State<WebServerState>,
-    Json(body): Json<AddBackendBody>,
+    Json(body): Json<AddBackendRequest>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
+    let body = body.params;
     use crate::rclone::commands::backend::add_backend;
     add_backend(
         state.app_handle.clone(),
-        body.name.clone(),
-        body.host,
-        body.port,
-        body.is_local,
-        body.username,
-        body.password,
-        body.config_password,
-        body.config_path,
-        body.oauth_port,
-        body.copy_backend_from,
-        body.copy_remotes_from,
+        crate::rclone::commands::backend::AddBackendParams {
+            name: body.name.clone(),
+            host: body.host,
+            port: body.port,
+            is_local: body.is_local,
+            username: body.username,
+            password: body.password,
+            config_password: body.config_password,
+            config_path: body.config_path,
+            oauth_port: body.oauth_port,
+            oauth_host: body.oauth_host,
+            copy_backend_from: body.copy_backend_from,
+            copy_remotes_from: body.copy_remotes_from,
+        },
     )
     .await
     .map_err(anyhow::Error::msg)?;
@@ -110,23 +120,33 @@ pub struct UpdateBackendBody {
     pub config_password: Option<String>,
     pub config_path: Option<String>,
     pub oauth_port: Option<u16>,
+    pub oauth_host: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct UpdateBackendRequest {
+    pub params: UpdateBackendBody,
 }
 
 pub async fn update_backend_handler(
     State(state): State<WebServerState>,
-    Json(body): Json<UpdateBackendBody>,
+    Json(body): Json<UpdateBackendRequest>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
+    let body = body.params;
     use crate::rclone::commands::backend::update_backend;
     update_backend(
         state.app_handle.clone(),
-        body.name.clone(),
-        body.host,
-        body.port,
-        body.username,
-        body.password,
-        body.config_password,
-        body.config_path,
-        body.oauth_port,
+        crate::rclone::commands::backend::UpdateBackendParams {
+            name: body.name.clone(),
+            host: body.host,
+            port: body.port,
+            username: body.username,
+            password: body.password,
+            config_password: body.config_password,
+            config_path: body.config_path,
+            oauth_port: body.oauth_port,
+            oauth_host: body.oauth_host,
+        },
     )
     .await
     .map_err(anyhow::Error::msg)?;

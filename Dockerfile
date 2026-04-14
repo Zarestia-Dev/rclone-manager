@@ -12,6 +12,9 @@
 #   RCLONE_MANAGER_PORT   — Listen port (default: 8080)
 #   RCLONE_MANAGER_USER   — Basic auth username
 #   RCLONE_MANAGER_PASS   — Basic auth password
+#   RCLONE_MANAGER_SECRET — Master password for rcman encrypted credentials
+#   RCLONE_MANAGER_SECRET_PATH — If file exists and SECRET is unset, treat as password file (Docker secret). Otherwise, custom path for encrypted credential store.
+#   RCLONE_MANAGER_SECRET_FILE — Explicit password file path for rcman encrypted credentials
 #   RCLONE_MANAGER_TLS_CERT / RCLONE_MANAGER_TLS_KEY — TLS certificate paths
 #
 # Volumes:
@@ -29,7 +32,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         curl \
         fuse3 \
-        libayatana-appindicator3-dev \
         libdbus-1-dev \
         libgtk-3-dev \
         libjavascriptcoregtk-4.1-dev \
@@ -51,11 +53,12 @@ RUN npm ci
 
 # Copy project source and build headless binary
 COPY . .
+RUN rm -rf src-tauri/capabilities || true
 RUN npm run tauri build -- \
     --config src-tauri/tauri.conf.headless.json \
     --config '{"bundle":{"createUpdaterArtifacts":false}}' \
-    --features web-server,updater \
-    --no-bundle
+    --features container \
+    --no-bundle -- --no-default-features
 
 # -----------------------------------------------------------------------------
 # Stage 2: Runtime
@@ -76,7 +79,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         dbus-x11 \
         fuse3 \
         gosu \
-        libayatana-appindicator3-1 \
         libgtk-3-0 \
         libwebkit2gtk-4.1-0 \
         openssl \
@@ -115,6 +117,8 @@ COPY --from=builder \
     ["/app/src-tauri/target/release/i18n", "/usr/lib/RClone Manager Headless/i18n/"]
 
 # Copy and setup the runtime entrypoint script
+# Moving this to the end ensures that changes to entrypoint.sh don't invalidate 
+# the heavy compilation layers above.
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
@@ -139,8 +143,10 @@ ENV DISPLAY=:99 \
     XDG_DATA_HOME=/home/rclone-manager/.local/share \
     XDG_CONFIG_HOME=/home/rclone-manager/.config \
     RCLONE_CONFIG=/config/rclone.conf \
-    RCLONE_MANAGER_DATA_DIR=/data \
-    RCLONE_MANAGER_CACHE_DIR=/data/cache
+    RCLONE_MANAGER_LOG_DIR=/data/logs \
+    RCLONE_MANAGER_CACHE_DIR=/data/cache \
+    RCLONE_MANAGER_SECRET=${RCLONE_MANAGER_SECRET:-} \
+    RCLONE_MANAGER_SECRET_PATH=${RCLONE_MANAGER_SECRET_PATH:-}
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD []

@@ -179,10 +179,4 @@ impl AppPaths {
     pub fn get_rclone_log_dir(&self) -> PathBuf {
         self.logs_dir.join("rclone")
     }
-
-    /// Get the rclone log file path for a specific process type
-    pub fn get_rclone_log_file(&self, process_type: &str) -> PathBuf {
-        self.get_rclone_log_dir()
-            .join(format!("{}.log", process_type))
-    }
 }

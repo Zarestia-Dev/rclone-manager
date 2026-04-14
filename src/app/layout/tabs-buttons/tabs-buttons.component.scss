@@ -6,11 +6,6 @@
   gap: var(--space-xs);
   padding: var(--space-xxs) var(--title-bar-padding);
 
-  @media (max-width: 600px) {
-    width: 100%;
-    padding: var(--space-xs) var(--title-bar-padding);
-  }
-
   @media (min-width: 600px) {
     position: absolute;
     left: 50%;

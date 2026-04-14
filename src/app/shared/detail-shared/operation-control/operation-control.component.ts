@@ -8,7 +8,6 @@ import {
   signal,
   effect,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -16,24 +15,26 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { StatusBadgeComponent } from '../status-badge/status-badge.component';
 import { PathDisplayComponent } from '../path-display/path-display.component';
-import {
-  OperationControlConfig,
-  PrimaryActionType,
-  StatusBadgeConfig,
-  LocalDiskUsage,
-} from '@app/types';
+import { OperationControlConfig, PrimaryActionType, LocalDiskUsage } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
 import { SystemInfoService } from '@app/services';
 import { TranslateModule } from '@ngx-translate/core';
+
+const OPERATION_ICONS: Record<PrimaryActionType, string> = {
+  mount: 'mount',
+  sync: 'refresh',
+  bisync: 'right-left',
+  move: 'move',
+  copy: 'copy',
+  serve: 'serve',
+};
 
 @Component({
   selector: 'app-operation-control',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule,
     MatCardModule,
     MatIconModule,
     MatButtonModule,
@@ -41,7 +42,6 @@ import { TranslateModule } from '@ngx-translate/core';
     MatTooltipModule,
     MatExpansionModule,
     MatProgressBarModule,
-    StatusBadgeComponent,
     PathDisplayComponent,
     TranslateModule,
     FormatFileSizePipe,
@@ -49,24 +49,23 @@ import { TranslateModule } from '@ngx-translate/core';
   template: `
     <mat-expansion-panel
       class="operation-panel"
-      (opened)="isExpanded = true"
-      (closed)="isExpanded = false"
+      (opened)="isExpanded.set(true)"
+      (closed)="isExpanded.set(false)"
     >
       <mat-expansion-panel-header>
         <mat-panel-title>
-          <mat-icon [svgIcon]="operationIcon()" class="panel-icon"></mat-icon>
+          <mat-icon [svgIcon]="operationIcon()" style="color: var(--mat-sys-primary)"></mat-icon>
           <div class="profile-info">
             <span class="profile-name">{{ config().profileName || 'default' }}</span>
-            <app-status-badge [config]="statusBadgeConfig()"></app-status-badge>
           </div>
         </mat-panel-title>
 
         <mat-panel-description>
-          <div class="quick-action-wrapper" [class.hidden]="isExpanded">
+          <div class="quick-action-wrapper" [class.hidden]="isExpanded()">
             <button
               mat-icon-button
               class="quick-action"
-              [ngClass]="buttonClass()"
+              [class]="buttonClass()"
               (click)="handleQuickAction($event)"
               [disabled]="config().isLoading"
               [matTooltip]="
@@ -96,30 +95,37 @@ import { TranslateModule } from '@ngx-translate/core';
           (openPath)="openPath.emit($event)"
         ></app-path-display>
 
-        @if (diskUsage(); as usage) {
+        @if (shouldPollDiskUsage()) {
           <div class="disk-usage-info">
-            <div class="usage-stats">
-              <span class="stat-label">{{ 'detailShared.diskUsage.title' | translate }}</span>
-              <span class="stat-value">
-                {{ usage.used | formatFileSize }} / {{ usage.total | formatFileSize }}
-              </span>
-            </div>
-            <mat-progress-bar
-              mode="determinate"
-              [value]="(usage.used / usage.total) * 100"
-              class="usage-bar"
-              [color]="getUsageColor(usage.used / usage.total)"
-            ></mat-progress-bar>
-            <span class="usage-free">{{
-              'detailShared.diskUsage.free' | translate: { value: (usage.free | formatFileSize) }
-            }}</span>
+            @if (isDiskUsageLoading() && !diskUsage()) {
+              <div class="usage-loading">
+                <mat-spinner diameter="16"></mat-spinner>
+                <span class="stat-label">{{ 'detailShared.diskUsage.loading' | translate }}</span>
+              </div>
+            } @else if (diskUsage(); as usage) {
+              <div class="usage-stats">
+                <span class="stat-label">{{ 'detailShared.diskUsage.title' | translate }}</span>
+                <span class="stat-value">
+                  {{ usage.used | formatFileSize }} / {{ usage.total | formatFileSize }}
+                </span>
+              </div>
+              <mat-progress-bar
+                mode="determinate"
+                [value]="(usage.used / usage.total) * 100"
+                class="usage-bar"
+                [color]="getUsageColor(usage.used / usage.total)"
+              ></mat-progress-bar>
+              <span class="usage-free">{{
+                'detailShared.diskUsage.free' | translate: { value: (usage.free | formatFileSize) }
+              }}</span>
+            }
           </div>
         }
 
         <div class="panel-actions">
           <button
             mat-flat-button
-            [ngClass]="buttonClass()"
+            [class]="buttonClass()"
             (click)="
               config().isActive
                 ? stopJob.emit(config().operationType)
@@ -185,6 +191,15 @@ import { TranslateModule } from '@ngx-translate/core';
         flex-direction: column;
         gap: 4px;
 
+        .usage-loading {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: var(--space-sm);
+          padding: var(--space-xs) 0;
+          color: var(--text-secondary);
+        }
+
         .usage-stats {
           display: flex;
           justify-content: space-between;
@@ -207,63 +222,60 @@ import { TranslateModule } from '@ngx-translate/core';
   ],
 })
 export class OperationControlComponent {
-  config = input.required<OperationControlConfig>();
-  startJob = output<PrimaryActionType>();
-  stopJob = output<PrimaryActionType>();
-  openPath = output<string>();
+  readonly config = input.required<OperationControlConfig>();
+  readonly startJob = output<PrimaryActionType>();
+  readonly stopJob = output<PrimaryActionType>();
+  readonly openPath = output<string>();
 
   private readonly systemInfo = inject(SystemInfoService);
 
-  // Track expansion state for animation
-  isExpanded = false;
+  readonly isExpanded = signal(false);
+  readonly diskUsage = signal<LocalDiskUsage | null>(null);
+  readonly isDiskUsageLoading = signal(false);
 
-  diskUsage = signal<LocalDiskUsage | null>(null);
-  readonly mountDestination = computed(() => this.config().pathConfig.destination || '');
   readonly shouldPollDiskUsage = computed(() => {
-    const cfg = this.config();
-    const destination = this.mountDestination();
+    const { operationType, isActive, pathConfig } = this.config();
+    const destination = pathConfig.destination ?? '';
     return (
-      cfg.operationType === 'mount' &&
-      cfg.isActive &&
+      operationType === 'mount' &&
+      isActive &&
       !!destination &&
       !destination.includes('Not configured')
     );
   });
 
   constructor() {
-    effect(onCleanup => {
-      const shouldPoll = this.shouldPollDiskUsage();
-      const destination = this.mountDestination();
-
-      if (shouldPoll) {
-        const fetchDiskUsage = async (): Promise<void> => {
-          try {
-            const usage = await this.systemInfo.getLocalDiskUsage(destination);
-            this.diskUsage.set(usage);
-          } catch (error) {
-            console.error('Failed to fetch disk usage:', error);
-            this.diskUsage.set(null);
-          }
-        };
-
-        void fetchDiskUsage();
-        const interval = setInterval(() => void fetchDiskUsage(), 5000);
-
-        onCleanup(() => clearInterval(interval));
-      } else {
+    effect(() => {
+      if (!this.shouldPollDiskUsage()) {
         this.diskUsage.set(null);
+        this.isDiskUsageLoading.set(false);
+        return;
       }
+      this.isDiskUsageLoading.set(true);
+      const destination = this.config().pathConfig.destination ?? '';
+      const fetchUsage = async (): Promise<void> => {
+        try {
+          const usage = await this.systemInfo.getLocalDiskUsage(destination);
+          this.diskUsage.set(usage);
+        } catch {
+          this.diskUsage.set(null);
+        } finally {
+          this.isDiskUsageLoading.set(false);
+        }
+      };
+
+      void fetchUsage();
     });
   }
 
   handleQuickAction(event: Event): void {
     event.preventDefault();
     event.stopPropagation();
-
-    if (this.config().isActive) {
-      this.stopJob.emit(this.config().operationType);
+    const { isActive, operationType } = this.config();
+    if (isActive) {
+      this.stopJob.emit(operationType);
     } else {
-      this.startJob.emit(this.config().operationType);
+      this.startJob.emit(operationType);
     }
   }
 
@@ -273,77 +285,12 @@ export class OperationControlComponent {
     return 'primary';
   }
 
-  // Operation icon configuration
-  private readonly OPERATION_ICONS: Record<PrimaryActionType, string> = {
-    mount: 'mount',
-    sync: 'refresh',
-    bisync: 'right-left',
-    move: 'move',
-    copy: 'copy',
-    serve: 'serve',
-  };
-
   readonly operationIcon = computed(
-    () => this.OPERATION_ICONS[this.config().operationType] || 'refresh'
+    () => OPERATION_ICONS[this.config().operationType] ?? 'refresh'
   );
 
-  readonly statusBadgeConfig = computed((): StatusBadgeConfig => {
-    const config = this.config();
-    // Define status labels for each operation type
-    const statusLabels: Record<PrimaryActionType, { active: string; inactive: string }> = {
-      mount: { active: 'detailShared.status.mounted', inactive: 'detailShared.status.notMounted' },
-      sync: { active: 'detailShared.status.syncing', inactive: 'detailShared.status.stopped' },
-      bisync: { active: 'detailShared.status.bisyncing', inactive: 'detailShared.status.stopped' },
-      move: { active: 'detailShared.status.moving', inactive: 'detailShared.status.stopped' },
-      copy: { active: 'detailShared.status.copying', inactive: 'detailShared.status.stopped' },
-      serve: { active: 'detailShared.status.serving', inactive: 'detailShared.status.stopped' },
-    };
-
-    // Determine the current state
-    let state: 'active' | 'inactive' | 'error';
-    if (config.isError) {
-      state = 'error';
-    } else if (config.isActive) {
-      state = 'active';
-    } else {
-      state = 'inactive';
-    }
-
-    // Resolve the badge class per operation and state
-    let resolvedBadgeClass: string;
-    if (state === 'error') {
-      resolvedBadgeClass = 'error';
-    } else if (state === 'active') {
-      // Active operation: use mounted for mount, otherwise active-<op>
-      if (config.operationType === 'mount') {
-        resolvedBadgeClass = 'mounted';
-      } else {
-        resolvedBadgeClass = `active-${config.operationType}`;
-      }
-    } else {
-      // Inactive: use unmounted for mount, otherwise generic inactive
-      if (config.operationType === 'mount') {
-        resolvedBadgeClass = 'unmounted';
-      } else {
-        resolvedBadgeClass = 'inactive';
-      }
-    }
-
-    return {
-      isActive: config.isActive,
-      isError: config.isError,
-      isLoading: config.isLoading,
-      activeLabel: statusLabels[config.operationType].active,
-      inactiveLabel: statusLabels[config.operationType].inactive,
-      errorLabel: 'Error',
-      badgeClass: resolvedBadgeClass,
-    };
-  });
-
   readonly buttonClass = computed(() => {
-    const config = this.config();
-    // When active, always use the warn class to emphasize stopping an active op.
-    if (config?.isActive) return 'warn';
-    return config?.cssClass || '';
+    const { isActive, cssClass } = this.config();
+    return isActive ? 'warn' : (cssClass ?? '');
   });
 }

@@ -7,18 +7,7 @@
     >
       <mat-icon svgIcon="search"></mat-icon>
     </button>
-    <p>
-      @if (currentPage() === 'home') {
-        {{ 'modals.rcloneConfig.pageTitle.home' | translate }}
-      } @else if (currentCategory()) {
-        {{
-          'modals.rcloneConfig.pageTitle.category'
-            | translate: { page: currentPage() | uppercase, category: currentCategory() }
-        }}
-      } @else {
-        {{ 'modals.rcloneConfig.pageTitle.backend' | translate }}
-      }
-    </p>
+    <p>{{ pageTitle() | translate: pageTitleParams() }}</p>
     <button mat-icon-button (click)="close()" [attr.aria-label]="'common.close' | translate">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
@@ -38,6 +27,7 @@
     </div>
   }
 
+  <!-- HOME PAGE -->
   @if (!isLoading() && currentPage() === 'home') {
     <div class="modal-content">
       @if (searchQuery()) {
@@ -46,7 +36,8 @@
             <div class="virtual-scroll-content">
               @for (result of globalSearchResults(); track trackBySearchResult($index, result)) {
                 <div
-                  class="config-item search-result-item"
+                  class="config-item"
+                  role="button"
                   (click)="navigateTo(result.service, result.category, result.option.Name)"
                   (keydown)="
                     handleKeyboardNavigation(
@@ -64,15 +55,13 @@
                   <div class="config-item-content">
                     <mat-icon [svgIcon]="getServiceIcon(result.service)"></mat-icon>
                     <div class="config-item-text">
-                      <span class="config-item-title">
-                        {{ result.option.FieldName }}
-                      </span>
+                      <span class="config-item-title">{{ result.option.FieldName }}</span>
                       <small class="config-item-description">
                         {{ result.service | titlecase }} > {{ result.category }}
                       </small>
-                      <small class="config-item-description result-help">
-                        {{ result.option.Help }}
-                      </small>
+                      <small class="config-item-description result-help">{{
+                        result.option.Help
+                      }}</small>
                     </div>
                   </div>
                   <mat-icon svgIcon="chevron-right"></mat-icon>
@@ -111,8 +100,8 @@
                   @for (service of servicesByMainCategory()[mainCategory]; track service.name) {
                     <mat-expansion-panel
                       [expanded]="service.expanded"
-                      (opened)="service.expanded = true"
-                      (closed)="service.expanded = false"
+                      (opened)="setServiceExpanded(service.name, true)"
+                      (closed)="setServiceExpanded(service.name, false)"
                       class="service-panel"
                     >
                       <mat-expansion-panel-header>
@@ -128,12 +117,10 @@
                       </mat-expansion-panel-header>
 
                       <div class="category-items">
-                        @for (
-                          categoryName of getServiceCategories(service.name);
-                          track categoryName
-                        ) {
+                        @for (categoryName of service.categories; track categoryName) {
                           <div
                             class="config-item"
+                            role="button"
                             (click)="navigateTo(service.name, categoryName)"
                             (keydown)="handleKeyboardNavigation($event, service.name, categoryName)"
                             [tabindex]="0"
@@ -144,9 +131,7 @@
                             <div class="config-item-content">
                               <mat-icon [svgIcon]="getCategoryIcon(categoryName)"></mat-icon>
                               <div class="config-item-text">
-                                <span class="config-item-title">
-                                  {{ categoryName }}
-                                </span>
+                                <span class="config-item-title">{{ categoryName }}</span>
                                 <small class="config-item-description">{{
                                   getCategoryDescription(categoryName) | translate
                                 }}</small>
@@ -184,7 +169,7 @@
     </div>
   }
 
-  <!-- SETTINGS PAGE: Category Settings Display -->
+  <!-- SETTINGS PAGE (overlay) -->
   @if (currentPage() !== 'home' && !isLoading()) {
     <div class="overlay" animate.enter="slide-overlay-enter" animate.leave="slide-overlay-leave">
       <div class="modal-header" data-tauri-drag-region>
@@ -195,24 +180,36 @@
         >
           <mat-icon svgIcon="chevron-left"></mat-icon>
         </button>
-        <p>
-          @if (currentPage() === 'home') {
-            {{ 'modals.rcloneConfig.pageTitle.home' | translate }}
-          } @else if (currentCategory()) {
-            {{
-              'modals.rcloneConfig.pageTitle.category'
-                | translate: { page: currentPage() | uppercase, category: currentCategory() }
-            }}
-          } @else {
-            {{ 'modals.rcloneConfig.pageTitle.backend' | translate }}
-          }
-        </p>
+        <p>{{ pageTitle() | translate: pageTitleParams() }}</p>
         <button mat-icon-button (click)="close()" [attr.aria-label]="'common.close' | translate">
           <mat-icon svgIcon="circle-xmark"></mat-icon>
         </button>
       </div>
 
       <div class="modal-content">
+        <div class="dynamic-fields-header">
+          <span class="fields-count">
+            {{ filteredOptionsCount() }}
+            {{ 'wizards.remoteConfig.fields' | translate }}
+          </span>
+          <button
+            type="button"
+            mat-icon-button
+            class="json-toggle-btn"
+            [class.active]="showJsonMode()"
+            (click)="toggleJsonMode()"
+            [matTooltip]="
+              (showJsonMode()
+                ? 'wizards.remoteConfig.switchToForm'
+                : 'wizards.remoteConfig.switchToJson'
+              ) | translate
+            "
+            [attr.aria-pressed]="showJsonMode()"
+          >
+            <mat-icon svgIcon="code" />
+          </button>
+        </div>
+
         @if (hasSearchQuery()) {
           <div class="search-results-info">
             <small>{{
@@ -229,25 +226,33 @@
             <p>{{ 'modals.rcloneConfig.search.adjustTerms' | translate }}</p>
           </div>
         } @else {
-          <!-- VIRTUAL SCROLL IMPLEMENTATION -->
-          <cdk-virtual-scroll-viewport [itemSize]="20" class="virtual-scroll-viewport">
-            <form [formGroup]="rcloneOptionsForm">
-              @for (option of virtualScrollData(); track trackByOptionIndex($index, option)) {
-                <app-setting-control
-                  [id]="'setting-' + option.Name"
-                  [option]="option"
-                  [formControlName]="getUniqueControlKey(option)"
-                  (valueCommit)="
-                    saveRCloneOption(
-                      getUniqueControlKey(option),
-                      isOptionAtDefault(getUniqueControlKey(option))
-                    )
-                  "
-                  (valueChanged)="onOptionValueChanged(getUniqueControlKey(option), $event)"
-                ></app-setting-control>
-              }
-            </form>
-          </cdk-virtual-scroll-viewport>
+          @if (showJsonMode()) {
+            <app-json-editor
+              [formGroup]="rcloneOptionsForm"
+              [fieldDefs]="categoryOptions()"
+              [searchQuery]="searchQuery()"
+              [keyPrefix]="editorKeyPrefix()"
+            />
+          } @else {
+            <cdk-virtual-scroll-viewport [itemSize]="20" class="virtual-scroll-viewport">
+              <form [formGroup]="rcloneOptionsForm">
+                @for (option of virtualScrollData(); track trackByOption($index, option)) {
+                  <app-setting-control
+                    [id]="'setting-' + option.Name"
+                    [option]="option"
+                    [formControlName]="getUniqueControlKey(option)"
+                    (valueCommit)="
+                      saveRCloneOption(
+                        getUniqueControlKey(option),
+                        isOptionAtDefault(getUniqueControlKey(option))
+                      )
+                    "
+                    (valueChanged)="onOptionValueChanged(getUniqueControlKey(option), $event)"
+                  ></app-setting-control>
+                }
+              </form>
+            </cdk-virtual-scroll-viewport>
+          }
         }
       </div>
     </div>

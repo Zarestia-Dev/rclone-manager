@@ -4,13 +4,13 @@
    viewBox="0 0 128 128"
    width="128px"
    version="1.1"
-   id="svg35"
+   id="application_toml_svg35"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
   <defs
-     id="defs39" />
+     id="application_toml_defs39" />
   <linearGradient
-     id="a"
+     id="application_toml_a"
      gradientUnits="userSpaceOnUse"
      x1="36"
      x2="60"
@@ -19,14 +19,14 @@
     <stop
        offset="0"
        stop-color="#ed336c"
-       id="stop2" />
+       id="application_toml_stop2" />
     <stop
        offset="1"
        stop-color="#ffa348"
-       id="stop4" />
+       id="application_toml_stop4" />
   </linearGradient>
   <linearGradient
-     id="b"
+     id="application_toml_b"
      gradientTransform="matrix(0 1 -1 0 144 -32)"
      gradientUnits="userSpaceOnUse"
      x1="72"
@@ -36,14 +36,14 @@
     <stop
        offset="0"
        stop-color="#404ce6"
-       id="stop7" />
+       id="application_toml_stop7" />
     <stop
        offset="1"
        stop-color="#c061cb"
-       id="stop9" />
+       id="application_toml_stop9" />
   </linearGradient>
   <linearGradient
-     id="c"
+     id="application_toml_c"
      gradientUnits="userSpaceOnUse"
      x1="68.84919"
      x2="95.257637"
@@ -52,49 +52,49 @@
     <stop
        offset="0"
        stop-color="#33d1c6"
-       id="stop12" />
+       id="application_toml_stop12" />
     <stop
        offset="1"
        stop-color="#1c25d8"
-       id="stop14" />
+       id="application_toml_stop14" />
   </linearGradient>
   <path
      style="display:inline;fill:#9c4221;fill-opacity:1;stroke:none;stroke-width:0.125;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;enable-background:new"
      clip-path="none"
      d="m 27.978072,8.0000006 h 50.000002 l 30.042896,29.9178934 10e-4,74.060006 c 8e-5,4.432 -3.6122,8.0221 -8.044196,8.0221 H 27.978011 c -4.431999,0 -7.999999,-3.568 -7.999999,-8.00001 V 16 c 0,-4.431999 3.568,-7.9999994 7.999999,-7.9999994 z"
-     id="path4411" />
+     id="application_toml_path4411" />
   <path
      style="display:inline;vector-effect:none;fill:#ffffff;fill-opacity:0.30000001;stroke:none;stroke-width:0.125;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;enable-background:new"
      d="M 77.978074,8.0000006 V 30.000002 c 0,4.432 3.610527,7.923448 8.042527,7.923448 l 22.000369,-0.0055 z"
-     id="path4413" />
+     id="application_toml_path4413" />
   <g
-     id="g5883"
+     id="application_toml_g5883"
      transform="matrix(1.2514833,0,0,1.2514833,-16.094929,-21.399907)">
     <g
-       id="XMLID_11_"
+       id="application_toml_XMLID_11_"
        style="fill:#ffffff;fill-opacity:0.5"
        transform="matrix(0.14222222,0,0,0.14222222,35.96088,47.860264)">
       <path
-         id="XMLID_12_"
+         id="application_toml_XMLID_12_"
          class="st1"
          d="m 28.6,30.5 h 75.1 V 67.8 H 69 v 262.7 h 34.7 V 368 H 28.6 Z"
          style="fill:#ffffff;fill-opacity:0.5" />
     </g>
     <g
-       id="XMLID_4_"
+       id="application_toml_XMLID_4_"
        style="fill:#ffffff"
        transform="matrix(0.14222222,0,0,0.14222222,35.96088,47.860264)">
       <path
-         id="XMLID_6_"
+         id="application_toml_XMLID_6_"
          d="m 276.4,101.5 v 39.1 H 216.3 V 322.5 H 174 V 140.6 h -60.4 v -39.1 z"
          style="fill:#ffffff" />
     </g>
     <g
-       id="XMLID_3_"
+       id="application_toml_XMLID_3_"
        style="fill:#ffffff;fill-opacity:0.5"
        transform="matrix(0.14222222,0,0,0.14222222,35.96088,47.860264)">
       <path
-         id="XMLID_5_"
+         id="application_toml_XMLID_5_"
          class="st1"
          d="m 365.7,368 h -75.1 v -37.3 h 34.7 V 68 H 290.6 V 30.5 h 75.1 z"
          style="fill:#ffffff;fill-opacity:0.5" />

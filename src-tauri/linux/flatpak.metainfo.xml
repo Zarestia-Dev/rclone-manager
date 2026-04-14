@@ -97,7 +97,53 @@
     </screenshot>
   </screenshots>
   <releases>
-    <release version="0.2.2" date="2026-03-08">
+    <release version="0.2.4" date="2026-04-14">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>Nautilus: Added external OS drag-into-app file upload support.</li>
+          <li>Nautilus: Added "spring-loaded folder" behavior for easier navigation during drag operations.</li>
+          <li>Nautilus: Now supports multiple independent file browser windows.</li>
+          <li>Job Detail: Introduced a detailed view modal for granular operation monitoring.</li>
+          <li>Language: Added Simplified Chinese support.</li>
+          <li>Tray: Added "Open File Browser" quick access menu item.</li>
+          <li>Security: Support for environment-based secret management (RCLONE_MANAGER_SECRET).</li>
+          <li>Core: Support for generic Rclone Environment Variables and upload batch size settings.</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>Nautilus: Switched to native HTML5 Drag and Drop for a more responsive, system-native feel.</li>
+          <li>Detailed Remote Card variant added, configurable from the layout editor.</li>
+          <li>JSON editor for rclone fields is back with optional toggle and improved usability.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>Headless mode fixes: file/path selection absolute path resolution and native browser downloads.</li>
+          <li>AppImage stability improvements for better compatibility across Linux distributions.</li>
+          <li>Multi-profile mounting fix and various core scheduler improvements.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.2.3" date="2026-03-17">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>Runtime Remote profile settings: override remote configuration for the current session without changing the rclone config file.</li>
+          <li>Windows version of headless builds and Homebrew tap for macOS now available.</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>Replaced custom date-time picker with native Angular Material component.</li>
+          <li>Security updates and dependency maintenance.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>UI responsiveness following configuration changes.</li>
+          <li>RPM dependency resolution and CLI tray argument fixes.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.2.2" date="2026-03-11">
       <description>
         <p>Added</p>
         <ul>

@@ -307,6 +307,15 @@ pub async fn create_tray_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<M
         None::<&str>,
     )?;
 
+    let open_file_browser_id = TrayAction::OpenFileBrowser.to_id();
+    let open_file_browser_item = MenuItem::with_id(
+        &handle,
+        open_file_browser_id,
+        t!("tray.openFileBrowser"),
+        true,
+        None::<&str>,
+    )?;
+
     let unmount_all_item = MenuItem::with_id(
         &handle,
         "unmount_all",
@@ -623,11 +632,13 @@ pub async fn create_tray_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<M
     #[cfg(not(feature = "web-server"))]
     {
         menu_items.push(&show_app_item);
+        menu_items.push(&open_file_browser_item);
         menu_items.push(&separator);
     }
     #[cfg(feature = "web-server")]
     {
         menu_items.push(&open_web_ui_item);
+        menu_items.push(&open_file_browser_item);
         menu_items.push(&separator);
     }
 

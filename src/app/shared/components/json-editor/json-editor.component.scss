@@ -1,0 +1,182 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-height: 0;
+}
+
+// ============================================================================
+// CHIP ROW
+// ============================================================================
+
+.chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  align-items: center;
+  min-height: 32px;
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--view-bg-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-gnome);
+}
+
+.chips-empty {
+  font-size: var(--font-size-xs);
+  color: var(--dim-color);
+  font-style: italic;
+}
+
+.config-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xxs);
+  padding: 6px 10px;
+  background: var(--selected-bg-color);
+  border-radius: 20px;
+  font-weight: 600;
+  color: var(--dim-color);
+  font-size: var(--font-size-sm);
+  max-width: 220px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    opacity 0.15s ease;
+
+  .chip-key {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+  }
+
+  &.active {
+    background: rgba(var(--primary-color-rgb), var(--legend-opacity));
+
+    .chip-key {
+      color: var(--primary-color);
+    }
+  }
+
+  &.active.changed {
+    background: rgba(var(--accent-color-rgb), var(--legend-opacity));
+
+    .chip-key {
+      color: var(--accent-color);
+    }
+  }
+
+  &.inactive {
+    .chip-key {
+      color: var(--dim-color);
+    }
+  }
+}
+
+// ============================================================================
+// EDITOR WRAPPER
+// ============================================================================
+
+.editor-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-gnome);
+  outline: 1px solid var(--border-color);
+  transition: outline-color 0.2s ease;
+
+  &:focus-within {
+    outline-color: var(--primary-color);
+  }
+}
+
+.editor-container {
+  flex: 1;
+  min-height: 280px;
+  overflow: hidden;
+
+  // ── Gutter & structure ─────────────────────────────────────────────────────
+
+  ::ng-deep .cm-editor {
+    height: 100%;
+    background: var(--view-bg-color);
+
+    &.cm-focused {
+      outline: none; // we handle focus ring on .editor-wrapper instead
+    }
+  }
+
+  ::ng-deep .cm-gutters {
+    background: var(--view-bg-color);
+    border-right: 1px solid var(--border-color);
+    color: var(--dim-color);
+  }
+
+  ::ng-deep .cm-activeLineGutter {
+    background: rgba(var(--primary-color-rgb), 0.06);
+  }
+
+  ::ng-deep .cm-activeLine {
+    background: rgba(var(--primary-color-rgb), 0.04);
+  }
+
+  ::ng-deep .cm-lint-marker-error {
+    color: var(--warn-color);
+  }
+  ::ng-deep .cm-lint-marker-warning {
+    color: var(--orange);
+  }
+}
+
+// ============================================================================
+// PARSE ERROR BAR
+// ============================================================================
+
+.parse-error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  background: rgba(var(--warn-color-rgb), 0.08);
+  color: var(--warn-color);
+  font-size: var(--font-size-xs);
+  border-top: 1px solid rgba(var(--warn-color-rgb), 0.25);
+
+  mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+}
+
+// ============================================================================
+// MOBILE
+// ============================================================================
+
+@media (max-width: 640px) {
+  .chips-row {
+    gap: var(--space-xxs);
+  }
+
+  .config-chip {
+    max-width: 160px;
+
+    .chip-key {
+      max-width: 120px;
+    }
+  }
+
+  .editor-container {
+    min-height: 220px;
+
+    ::ng-deep .cm-editor {
+      min-height: 220px;
+    }
+  }
+}

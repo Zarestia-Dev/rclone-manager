@@ -1,6 +1,6 @@
 {
   "name": "rclone-manager",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -9,10 +9,10 @@
     "tauri": "tauri",
     "dev:portable": "npm run tauri dev -- --features portable",
     "dev:flatpak": "npm run tauri dev -- --features flatpak",
-    "dev:headless": "npm run tauri dev -- --config src-tauri/tauri.conf.headless.json --features web-server,updater",
+    "dev:headless": "npm run tauri dev -- --config src-tauri/tauri.conf.headless.json --features web-server,tray",
     "build:portable": "npm run tauri build -- --features portable --no-bundle",
     "build:flatpak": "npm run tauri build -- --bundles deb --config '{\"bundle\":{\"createUpdaterArtifacts\":false}}' --features flatpak",
-    "build:headless": "npm run tauri build -- --config src-tauri/tauri.conf.headless.json --features web-server,updater",
+    "build:headless": "npm run tauri build -- --config src-tauri/tauri.conf.headless.json --features web-server,tray",
     "lint": "ng lint",
     "lint:fix": "ng lint --fix",
     "format": "prettier --write \"src/**/*.{ts,html,scss,json}\"",
@@ -21,7 +21,10 @@
     "format:rust": "cd src-tauri && cargo fmt",
     "format:rust:check": "cd src-tauri && cargo fmt -- --check",
     "lint:all": "npm run lint && npm run format:check && npm run lint:rust && npm run format:rust:check",
-    "fix:all": "npm run lint:fix && npm run format && npm run format:rust",
+    "fix:svg": "node scripts/fix-svg-ids.cjs",
+    "fix:all": "npm run fix:svg && npm run lint:fix && npm run format && npm run format:rust",
+    "sync:flags": "node scripts/update-flags.cjs",
+    "sync:providers": "node scripts/update-providers.cjs",
     "prepare": "husky"
   },
   "lint-staged": {

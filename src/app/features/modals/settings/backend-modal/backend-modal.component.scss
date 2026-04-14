@@ -1,5 +1,4 @@
 .modal {
-  background: var(--window-bg-color);
   display: flex;
   flex-direction: column;
   position: relative;
@@ -19,7 +18,7 @@
     align-items: center;
     justify-content: center;
     z-index: 1000;
-    background: rgba(255, 255, 255, 0.5);
+    background: color-mix(in srgb, var(--window-bg-color) 80%, transparent);
   }
 }
 
@@ -92,7 +91,6 @@
   flex-shrink: 0;
   position: relative;
 
-  // Status-based styling
   &.connected {
     color: var(--window-fg-color);
     box-shadow: var(--box-shadow);
@@ -112,7 +110,6 @@
     opacity: 1;
   }
 
-  // Status dot indicator
   .status-dot {
     position: absolute;
     bottom: -2px;
@@ -135,9 +132,47 @@
     }
   }
 }
-
 form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
   height: 100%;
+}
+
+.form-header {
+  h3 {
+    margin: 0;
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+  }
+}
+
+.form-row {
+  display: flex;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+
+  .field-wrapper {
+    flex: 1;
+    display: flex; // FIX: was duplicated
+    flex-direction: column;
+
+    mat-form-field {
+      width: 100%;
+    }
+
+    &.host-field {
+      flex: 2;
+    }
+
+    &.port-field {
+      flex: 1;
+    }
+
+    &.full-width {
+      flex-basis: 100%;
+    }
+  }
 }
 
 // Backend Info
@@ -201,54 +236,6 @@ form {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-}
-
-// ============================================================================
-// Form Section
-// ============================================================================
-.form-header {
-  h3 {
-    margin: 0;
-    font-size: var(--font-size-lg);
-    font-weight: 600;
-  }
-}
-
-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-}
-
-.form-row {
-  display: flex;
-  gap: var(--space-md);
-  flex-wrap: wrap;
-
-  // Field Wrapper
-  .field-wrapper {
-    flex: 1;
-    display: flex;
-    display: flex;
-
-    flex-direction: column;
-
-    mat-form-field {
-      width: 100%;
-    }
-
-    &.host-field {
-      flex: 2;
-    }
-
-    &.port-field {
-      flex: 1;
-    }
-
-    &.full-width {
-      flex-basis: 100%;
-    }
-  }
 }
 
 .oauth-group {

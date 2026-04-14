@@ -18,7 +18,29 @@ usermod -o -u "$PUID" rclone-manager 2>/dev/null || true
 chown -R rclone-manager:rclone-manager /home/rclone-manager /app /data /config 2>/dev/null || true
 
 # =============================================================================
-# 2. Runtime Rclone Provisioning
+# 2. Legacy Migration & Backward Compatibility (#158)
+# =============================================================================
+# Detect if user is using old v0.2.0 volume mappings (/home/rclone-manager/...)
+# while the new /config or /data roots are empty.
+
+LEGACY_CONFIG_DIR="/home/rclone-manager/.config/rclone"
+LEGACY_DATA_DIR="/home/rclone-manager/.local/share/com.rclone.manager.headless"
+
+# Redirect config if legacy exists and has files, and new /config is empty
+if [ -d "$LEGACY_CONFIG_DIR" ] && [ -n "$(ls -A $LEGACY_CONFIG_DIR 2>/dev/null)" ] && [ ! -f "/config/rclone.conf" ]; then
+    echo "📂 Legacy rclone config detected. Redirecting RCLONE_CONFIG..."
+    export RCLONE_CONFIG="${LEGACY_CONFIG_DIR}/rclone.conf"
+fi
+
+# Redirect data if legacy exists and has files, and new /data is empty
+if [ -d "$LEGACY_DATA_DIR" ] && [ -n "$(ls -A $LEGACY_DATA_DIR 2>/dev/null)" ] && [ -z "$(ls -A /data 2>/dev/null)" ]; then
+    echo "📂 Legacy app data detected. Redirecting RCLONE_MANAGER_DATA_DIR..."
+    export RCLONE_MANAGER_DATA_DIR="$LEGACY_DATA_DIR"
+    export RCLONE_MANAGER_CACHE_DIR="${LEGACY_DATA_DIR}/cache"
+fi
+
+# =============================================================================
+# 3. Runtime Rclone Provisioning
 # =============================================================================
 # Check if rclone exists in /data (either as 'rclone' or 'rclone-bin/rclone')
 if [ -x "/data/rclone" ]; then
@@ -59,7 +81,7 @@ RCLONE_DIR=$(dirname "$RCLONE_BIN")
 export PATH="${RCLONE_DIR}:${PATH}"
 
 # =============================================================================
-# 3. Virtual Display Initialization
+# 4. Virtual Display Initialization
 # =============================================================================
 # Tauri heavily relies on GTK. Since we are in a headless environment container,
 # we simulate a display environment using Xvfb (X virtual framebuffer) and dbus.
@@ -71,7 +93,7 @@ export $(dbus-launch)
 export DISPLAY=:99
 
 # =============================================================================
-# 4. Command Argument Assembly
+# 6. Command Argument Assembly
 # =============================================================================
 # Convert passed environment variables into the explicit CLI arg strings required
 # by the backend binary.
@@ -84,7 +106,7 @@ ARGS=()
 [ -n "$RCLONE_MANAGER_TLS_KEY" ] && ARGS+=("--tls-key" "$RCLONE_MANAGER_TLS_KEY")
 
 # =============================================================================
-# 5. Handover
+# 7. Handover
 # =============================================================================
 # Execute using gosu to securely drop privileges from root to rclone-manager.
 # `exec` ensures the resulting process becomes PID 1 to gracefully receive 

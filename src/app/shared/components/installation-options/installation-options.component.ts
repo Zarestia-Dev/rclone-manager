@@ -1,11 +1,21 @@
-import { Component, inject, OnInit, ChangeDetectionStrategy, input, output } from '@angular/core';
-import { FormControl, ReactiveFormsModule, FormsModule } from '@angular/forms';
+import {
+  Component,
+  inject,
+  OnInit,
+  ChangeDetectionStrategy,
+  input,
+  output,
+  signal,
+  computed,
+} from '@angular/core';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { FileSystemService, SystemInfoService } from '@app/services';
 import { ValidatorRegistryService } from '@app/services';
@@ -19,7 +29,6 @@ type BinaryStatus = 'untested' | 'testing' | 'valid' | 'invalid';
   standalone: true,
   imports: [
     ReactiveFormsModule,
-    FormsModule,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
@@ -43,8 +52,8 @@ export class InstallationOptionsComponent implements OnInit {
   dataChange = output<InstallationOptionsData>();
   validChange = output<boolean>();
 
-  installLocation: LocationType = 'default';
-  binaryTestResult: BinaryStatus = 'untested';
+  installLocation = signal<LocationType>('default');
+  binaryTestResult = signal<BinaryStatus>('untested');
 
   customPathControl = new FormControl('');
   existingBinaryControl = new FormControl('');
@@ -54,35 +63,55 @@ export class InstallationOptionsComponent implements OnInit {
   private validators = inject(ValidatorRegistryService);
   private translate = inject(TranslateService);
 
+  readonly statusText = computed(() => {
+    const labels: Record<BinaryStatus, string> = {
+      untested: 'shared.installationOptions.status.untested',
+      testing: 'shared.installationOptions.status.testing',
+      valid: 'shared.installationOptions.status.valid',
+      invalid: 'shared.installationOptions.status.invalid',
+    };
+    return this.translate.instant(labels[this.binaryTestResult()]);
+  });
+
+  readonly statusIcon = computed(() => {
+    const icons: Record<BinaryStatus, string> = {
+      untested: 'help',
+      testing: 'refresh',
+      valid: 'circle-check',
+      invalid: 'circle-xmark',
+    };
+    return icons[this.binaryTestResult()];
+  });
+
+  constructor() {
+    this.customPathControl.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.emit());
+
+    this.existingBinaryControl.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
+      if (this.installLocation() === 'existing') {
+        this.binaryTestResult.set('untested');
+      }
+      this.emit();
+    });
+  }
+
   ngOnInit(): void {
     const pathValidator = this.validators.getValidator('crossPlatformPath');
     if (pathValidator) {
       this.customPathControl.setValidators([pathValidator]);
       this.existingBinaryControl.setValidators([pathValidator]);
     }
-
-    this.customPathControl.valueChanges.subscribe(() => this.emit());
-    this.existingBinaryControl.valueChanges.subscribe(() => {
-      if (this.installLocation === 'existing') {
-        this.binaryTestResult = 'untested';
-      }
-      this.emit();
-    });
-
     this.emit();
   }
 
   setLocation(location: LocationType): void {
-    this.installLocation = location;
+    this.installLocation.set(location);
 
-    // Reset other fields when switching
-    if (location !== 'custom') this.customPathControl.setValue('');
+    if (location !== 'custom') this.customPathControl.setValue('', { emitEvent: false });
     if (location !== 'existing') {
-      this.existingBinaryControl.setValue('');
-      this.binaryTestResult = 'untested';
+      this.existingBinaryControl.setValue('', { emitEvent: false });
+      this.binaryTestResult.set('untested');
     }
 
-    // Auto-test if path exists
     if (location === 'existing' && this.existingBinaryControl.value?.trim()) {
       this.testBinary();
     }
@@ -93,15 +122,14 @@ export class InstallationOptionsComponent implements OnInit {
   async selectCustomPath(): Promise<void> {
     const path =
       this.mode() === 'config' ? await this.fs.selectFile() : await this.fs.selectFolder();
-
     if (path) this.customPathControl.setValue(path);
   }
 
   async selectBinary(): Promise<void> {
-    const path = await this.fs.selectFolder();
+    const path = await this.fs.selectFolder(); // Needs to change to selectFile when we have a rclone binary with a GUI-friendly name
     if (path) {
       this.existingBinaryControl.setValue(path);
-      this.binaryTestResult = 'untested';
+      this.binaryTestResult.set('untested');
       await this.testBinary();
     }
   }
@@ -109,42 +137,22 @@ export class InstallationOptionsComponent implements OnInit {
   async testBinary(): Promise<void> {
     const path = this.existingBinaryControl.value?.trim();
     if (!path) {
-      this.binaryTestResult = 'untested';
+      this.binaryTestResult.set('untested');
       this.emit();
       return;
     }
 
-    this.binaryTestResult = 'testing';
+    this.binaryTestResult.set('testing');
     this.emit();
 
     try {
       const valid = await this.system.isRcloneAvailable(path);
-      this.binaryTestResult = valid ? 'valid' : 'invalid';
+      this.binaryTestResult.set(valid ? 'valid' : 'invalid');
     } catch {
-      this.binaryTestResult = 'invalid';
+      this.binaryTestResult.set('invalid');
     }
 
     this.emit();
-  }
-
-  getStatusText(): string {
-    const labels: Record<BinaryStatus, string> = {
-      untested: 'shared.installationOptions.status.untested',
-      testing: 'shared.installationOptions.status.testing',
-      valid: 'shared.installationOptions.status.valid',
-      invalid: 'shared.installationOptions.status.invalid',
-    };
-    return this.translate.instant(labels[this.binaryTestResult]);
-  }
-
-  getStatusIcon(): string {
-    const icons: Record<BinaryStatus, string> = {
-      untested: 'help',
-      testing: 'refresh',
-      valid: 'circle-check',
-      invalid: 'circle-xmark',
-    };
-    return icons[this.binaryTestResult];
   }
 
   getError(control: FormControl): string {
@@ -157,10 +165,10 @@ export class InstallationOptionsComponent implements OnInit {
 
   private emit(): void {
     const data: InstallationOptionsData = {
-      installLocation: this.installLocation,
+      installLocation: this.installLocation(),
       customPath: this.customPathControl.value || '',
       existingBinaryPath: this.existingBinaryControl.value || '',
-      binaryTestResult: this.binaryTestResult,
+      binaryTestResult: this.binaryTestResult(),
     };
 
     this.dataChange.emit(data);
@@ -168,7 +176,7 @@ export class InstallationOptionsComponent implements OnInit {
   }
 
   private isValid(): boolean {
-    switch (this.installLocation) {
+    switch (this.installLocation()) {
       case 'default':
         return true;
       case 'custom':
@@ -177,7 +185,7 @@ export class InstallationOptionsComponent implements OnInit {
         return (
           !!this.existingBinaryControl.value?.trim() &&
           this.existingBinaryControl.valid &&
-          this.binaryTestResult === 'valid'
+          this.binaryTestResult() === 'valid'
         );
     }
   }

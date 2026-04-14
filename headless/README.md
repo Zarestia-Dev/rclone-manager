@@ -42,7 +42,6 @@ docker run -d \
   --name rclone-manager \
   --restart=unless-stopped \
   -p 8080:8080 \
-  -p 53682:53682 \
   -v rclone-config:/home/rclone-manager/.config/rclone \
   -v rclone-manager-data:/home/rclone-manager/.local/share/com.rclone.manager.headless \
   ghcr.io/zarestia-dev/rclone-manager:latest

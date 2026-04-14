@@ -31,14 +31,10 @@ impl RemoteCache {
     /// Clear ALL cache data (remotes, configs, mounts, serves)
     /// Used when switching backends to ensure no stale data remains
     pub async fn clear_all(&self) {
-        let mut remotes = self.remotes.write().await;
-        remotes.clear();
-        let mut configs = self.configs.write().await;
-        *configs = json!({});
-        let mut mounted = self.mounted.write().await;
-        mounted.clear();
-        let mut serves = self.serves.write().await;
-        serves.clear();
+        self.remotes.write().await.clear();
+        *self.configs.write().await = json!({});
+        self.mounted.write().await.clear();
+        self.serves.write().await.clear();
         // Do NOT clear profiles here, they are part of the Context which is managed separately
     }
 
@@ -211,13 +207,12 @@ impl RemoteCache {
     /// Store a mount profile mapping (call this when mounting)
     pub async fn store_mount_profile(&self, mount_point: &str, profile: Option<String>) {
         if let Some(profile_name) = profile {
-            let mut profiles = self.mount_profiles.write().await;
-            profiles.insert(mount_point.to_string(), profile_name);
             debug!(
                 "📌 Stored mount profile: {} -> {}",
-                mount_point,
-                profiles.get(mount_point).unwrap_or(&"?".to_string())
+                mount_point, profile_name
             );
+            let mut profiles = self.mount_profiles.write().await;
+            profiles.insert(mount_point.to_string(), profile_name);
         }
     }
 
@@ -227,29 +222,24 @@ impl RemoteCache {
         client: &reqwest::Client,
         backend: &Backend,
     ) -> Result<(), String> {
-        let (res1, res2, res3, res4): (
-            Result<(), String>,
-            Result<(), String>,
-            Result<(), String>,
-            Result<(), String>,
-        ) = tokio::join!(
+        let (r1, r2, r3, r4) = tokio::join!(
             self.refresh_remote_list(client, backend),
             self.refresh_remote_configs(client, backend),
             self.refresh_mounted_remotes(client, backend),
             self.refresh_serves(client, backend),
         );
 
-        if let Err(e) = res1 {
-            error!("Failed to refresh remote list: {e}");
-        }
-        if let Err(e) = res2 {
-            error!("Failed to refresh remote configs: {e}");
-        }
-        if let Err(e) = res3 {
-            error!("Failed to refresh mounted remotes: {e}");
-        }
-        if let Err(e) = res4 {
-            error!("Failed to refresh serves: {e}");
+        let results = vec![
+            ("remote list", r1),
+            ("remote configs", r2),
+            ("mounted remotes", r3),
+            ("serves", r4),
+        ];
+
+        for (label, res) in results {
+            if let Err(e) = res {
+                error!("Failed to refresh {}: {e}", label);
+            }
         }
 
         Ok(())
@@ -306,20 +296,14 @@ impl RemoteCache {
     /// Store a serve profile mapping (call this when starting serve)
     pub async fn store_serve_profile(&self, serve_id: &str, profile: Option<String>) {
         if let Some(profile_name) = profile {
+            debug!("📌 Stored serve profile: {} -> {}", serve_id, profile_name);
             let mut profiles = self.serve_profiles.write().await;
             profiles.insert(serve_id.to_string(), profile_name);
-            debug!(
-                "📌 Stored serve profile: {} -> {}",
-                serve_id,
-                profiles.get(serve_id).unwrap_or(&"?".to_string())
-            );
         }
     }
 
     pub async fn get_remotes(&self) -> Vec<String> {
-        let guard = self.remotes.read().await;
-        let v: Vec<String> = guard.clone();
-        v
+        self.remotes.read().await.clone()
     }
 
     pub async fn get_configs(&self) -> serde_json::Value {
@@ -344,16 +328,35 @@ impl RemoteCache {
         old_name: &str,
         new_name: &str,
     ) -> usize {
+        let new_name_owned = new_name.to_string();
         let mut mounts = self.mounted.write().await;
         let mut count = 0;
+        let mut updated_mount_points: Vec<String> = Vec::new();
+
         for mount in mounts.iter_mut() {
             if mount.fs.starts_with(remote_name)
                 && mount.profile.as_ref().is_some_and(|p| p == old_name)
             {
-                mount.profile = Some(new_name.to_string());
+                mount.profile = Some(new_name_owned.clone());
                 count += 1;
+                updated_mount_points.push(mount.mount_point.clone());
             }
         }
+
+        drop(mounts);
+
+        if count > 0 {
+            let mut profiles = self.mount_profiles.write().await;
+            for mount_point in updated_mount_points {
+                if profiles
+                    .get(&mount_point)
+                    .is_some_and(|profile| profile == old_name)
+                {
+                    profiles.insert(mount_point, new_name_owned.clone());
+                }
+            }
+        }
+
         count
     }
 
@@ -365,8 +368,11 @@ impl RemoteCache {
         old_name: &str,
         new_name: &str,
     ) -> usize {
+        let new_name_owned = new_name.to_string();
         let mut serves = self.serves.write().await;
         let mut count = 0;
+        let mut updated_serve_ids: Vec<String> = Vec::new();
+
         for serve in serves.iter_mut() {
             let fs_matches = serve
                 .params
@@ -374,10 +380,26 @@ impl RemoteCache {
                 .and_then(|v| v.as_str())
                 .is_some_and(|fs| fs.starts_with(remote_name));
             if fs_matches && serve.profile.as_ref().is_some_and(|p| p == old_name) {
-                serve.profile = Some(new_name.to_string());
+                serve.profile = Some(new_name_owned.clone());
                 count += 1;
+                updated_serve_ids.push(serve.id.clone());
             }
         }
+
+        drop(serves);
+
+        if count > 0 {
+            let mut profiles = self.serve_profiles.write().await;
+            for serve_id in updated_serve_ids {
+                if profiles
+                    .get(&serve_id)
+                    .is_some_and(|profile| profile == old_name)
+                {
+                    profiles.insert(serve_id, new_name_owned.clone());
+                }
+            }
+        }
+
         count
     }
 }
@@ -465,11 +487,17 @@ pub async fn rename_mount_profile_in_cache<R: Runtime>(
     new_name: String,
 ) -> Result<usize, String> {
     use crate::rclone::backend::BackendManager;
-    Ok(app
+    let updated = app
         .state::<BackendManager>()
         .remote_cache
         .rename_profile_in_mounts(&remote_name, &old_name, &new_name)
-        .await)
+        .await;
+
+    if updated > 0 {
+        let _ = app.emit(MOUNT_STATE_CHANGED, "cache_updated");
+    }
+
+    Ok(updated)
 }
 
 /// Rename a profile in all cached serves
@@ -482,11 +510,17 @@ pub async fn rename_serve_profile_in_cache<R: Runtime>(
     new_name: String,
 ) -> Result<usize, String> {
     use crate::rclone::backend::BackendManager;
-    Ok(app
+    let updated = app
         .state::<BackendManager>()
         .remote_cache
         .rename_profile_in_serves(&remote_name, &old_name, &new_name)
-        .await)
+        .await;
+
+    if updated > 0 {
+        let _ = app.emit(SERVE_STATE_CHANGED, "cache_updated");
+    }
+
+    Ok(updated)
 }
 
 impl Default for RemoteCache {

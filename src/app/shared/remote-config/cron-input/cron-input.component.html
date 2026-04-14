@@ -10,7 +10,7 @@
             <button
               type="button"
               class="preset-card"
-              [class.selected]="selectedPreset === preset.key"
+              [class.selected]="selectedPreset() === preset.key"
               (click)="applyPreset(preset.key, preset.cron)"
               [matTooltip]="preset.cron"
             >
@@ -296,7 +296,7 @@
                 'wizards.appOperation.aria.cronFor' | translate: { name: taskName() }
               "
             />
-            @if (cronControl.value) {
+            @if (cronValue()) {
               <button
                 matSuffix
                 mat-icon-button
@@ -308,7 +308,7 @@
               </button>
             }
             @if (cronControl.hasError('invalidCron')) {
-              <mat-error>{{ validationError }}</mat-error>
+              <mat-error>{{ validationError() }}</mat-error>
             }
           </mat-form-field>
         </div>
@@ -316,7 +316,7 @@
     </mat-tab>
   </mat-tab-group>
 
-  @if (cronControl.value && validationResponse?.isValid) {
+  @if (cronValue() && validationResponse()?.isValid) {
     <div class="schedule-preview">
       <div class="preview-header">
         <mat-icon svgIcon="circle-check" class="success-icon"></mat-icon>
@@ -324,24 +324,24 @@
       </div>
       <div class="preview-content">
         <div class="preview-description">
-          {{ getHumanReadableSchedule() }}
+          {{ humanReadableSchedule() }}
         </div>
-        @if (validationResponse?.nextRun) {
+        @if (validationResponse()?.nextRun) {
           <div class="preview-next-runs">
             <div class="next-run-item">
               <strong>{{ 'wizards.appOperation.nextRun' | translate }}</strong>
-              {{ formatNextRun(validationResponse?.nextRun ?? null) }}
+              {{ formatNextRun(validationResponse()?.nextRun ?? null) }}
             </div>
           </div>
         }
       </div>
       <div class="preview-technical">
-        <code>{{ cronControl.value }}</code>
+        <code>{{ cronValue() }}</code>
       </div>
     </div>
   }
 
-  @if (validationResponse?.isValid && cronControl.value) {
+  @if (validationResponse()?.isValid && cronValue()) {
     <div class="timezone-note">
       <mat-icon svgIcon="globe"></mat-icon>
       <span>

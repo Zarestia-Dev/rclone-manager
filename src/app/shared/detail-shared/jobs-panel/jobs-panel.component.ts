@@ -1,4 +1,12 @@
-import { Component, input, output, effect, viewChild } from '@angular/core';
+import {
+  Component,
+  input,
+  output,
+  effect,
+  viewChild,
+  inject,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { NgClass, TitleCasePipe, DatePipe } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
@@ -8,11 +16,14 @@ import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialogModule } from '@angular/material/dialog';
 import { JobInfo, JobsPanelConfig, PrimaryActionType } from '../../types';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
+import { ModalService, JobManagementService } from '@app/services';
 
 @Component({
   selector: 'app-jobs-panel',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
   imports: [
     NgClass,
@@ -27,6 +38,7 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
     MatTooltipModule,
     FormatFileSizePipe,
     TranslateModule,
+    MatDialogModule,
   ],
   styleUrls: ['./jobs-panel.component.scss'],
   template: `
@@ -35,8 +47,8 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
     <mat-card>
       <mat-card-header>
         <mat-card-title>
-          <mat-icon svgIcon="jobs"></mat-icon>
-          <span>{{ 'detailShared.jobs.activeJobs' | translate }}</span>
+          <mat-icon svgIcon="jobs" style="color: var(--op-color, var(--primary-color));"></mat-icon>
+          <span>{{ 'detailShared.jobs.title' | translate }}</span>
           <span class="count">{{ cfg.jobs.length }}</span>
         </mat-card-title>
       </mat-card-header>
@@ -132,7 +144,8 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
                           type: job.job_type,
                           remoteName: job.remote_name,
                           profileName: job.profile,
-                        })
+                        });
+                        $event.stopPropagation()
                       "
                     >
                       <mat-icon svgIcon="stop"></mat-icon>
@@ -143,7 +156,7 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
                       tabindex="-1"
                       class="action-button delete-button"
                       [matTooltip]="'detailShared.jobs.actions.delete' | translate"
-                      (click)="deleteJob.emit(job.jobid)"
+                      (click)="deleteJob.emit(job.jobid); $event.stopPropagation()"
                     >
                       <mat-icon svgIcon="trash"></mat-icon>
                     </button>
@@ -153,7 +166,12 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
             </ng-container>
 
             <tr mat-header-row *matHeaderRowDef="cfg.displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: cfg.displayedColumns" class="job-row"></tr>
+            <tr
+              mat-row
+              *matRowDef="let row; columns: cfg.displayedColumns"
+              class="job-row"
+              (click)="showJobDetails(row)"
+            ></tr>
             <tr class="no-data-row" *matNoDataRow>
               <td class="no-data-cell" [attr.colspan]="cfg.displayedColumns.length">
                 <div class="no-data-content">
@@ -178,6 +196,8 @@ export class JobsPanelComponent {
   }>();
   readonly deleteJob = output<number>();
 
+  private readonly modalService = inject(ModalService);
+  private readonly jobService = inject(JobManagementService);
   private readonly sort = viewChild(MatSort);
 
   readonly dataSource = new MatTableDataSource<JobInfo>([]);
@@ -213,5 +233,9 @@ export class JobsPanelComponent {
 
   getJobStatus(job: JobInfo): string {
     return job.status.toLowerCase();
+  }
+
+  showJobDetails(job: JobInfo): void {
+    this.modalService.openJobDetail(job);
   }
 }

@@ -3,119 +3,93 @@
   transition: var(--transition-standard);
   background: var(--window-bg-color);
   box-shadow: var(--box-shadow);
-  animation: fadeIn 0.6s ease-out;
-  animation-fill-mode: both;
+  animation: fadeIn 0.6s ease-out both;
   will-change: transform;
 
   &:hover {
     background: var(--hover-bg-color);
   }
 
-  &.serving,
-  &.mounted {
-    box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.2);
-    will-change: box-shadow;
+  // ── Active-state card borders & icon tints ─────────────────────────────────
 
+  &.mounted,
+  &.serving {
+    box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.2);
     .remote-info .icon-container {
       background: rgba(var(--accent-color-rgb), 0.1);
       box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.2);
-
       .remote-type-icon {
         color: var(--accent-color);
       }
     }
   }
-
   &.syncing {
     box-shadow: 0 0 0 1px rgba(var(--primary-color-rgb), 0.2);
-    will-change: box-shadow;
-
     .remote-info .icon-container {
       background: rgba(var(--primary-color-rgb), 0.1);
       box-shadow: 0 0 0 1px rgba(var(--primary-color-rgb), 0.2);
-
       .remote-type-icon {
         color: var(--primary-color);
       }
     }
   }
-
   &.copying {
     box-shadow: 0 0 0 1px rgba(var(--yellow-rgb), 0.2);
-    will-change: box-shadow;
-
     .remote-info .icon-container {
       background: rgba(var(--yellow-rgb), 0.1);
       box-shadow: 0 0 0 1px rgba(var(--yellow-rgb), 0.2);
-
       .remote-type-icon {
         color: var(--yellow);
       }
     }
   }
-
   &.moving {
     box-shadow: 0 0 0 1px rgba(var(--orange-rgb), 0.2);
-    will-change: box-shadow;
-
     .remote-info .icon-container {
       background: rgba(var(--orange-rgb), 0.1);
       box-shadow: 0 0 0 1px rgba(var(--orange-rgb), 0.2);
-
       .remote-type-icon {
         color: var(--orange);
       }
     }
   }
-
   &.bisyncing {
     box-shadow: 0 0 0 1px rgba(var(--purple-rgb), 0.2);
-    will-change: box-shadow;
-
     .remote-info .icon-container {
       background: rgba(var(--purple-rgb), 0.1);
       box-shadow: 0 0 0 1px rgba(var(--purple-rgb), 0.2);
-
       .remote-type-icon {
         color: var(--purple);
       }
     }
   }
-
-  &.inactive-remote {
-    .remote-info .icon-container {
-      background: rgba(var(--window-fg-color-rgb), 0.1);
-
-      .remote-type-icon {
-        color: rgba(var(--window-fg-color-rgb), 0.5);
-      }
+  &.inactive-remote .remote-info .icon-container {
+    background: rgba(var(--window-fg-color-rgb), 0.1);
+    .remote-type-icon {
+      color: rgba(var(--window-fg-color-rgb), 0.5);
     }
   }
-
   &.error-remote {
     border-color: rgba(var(--warn-color-rgb), 0.3);
-    will-change: box-shadow;
-
     .remote-info .icon-container {
       background: rgba(var(--warn-color-rgb), 0.1);
       box-shadow: 0 0 0 1px rgba(var(--warn-color-rgb), 0.2);
-
       .remote-type-icon {
         color: var(--warn-color);
       }
     }
   }
 
-  // Remote Header
+  // ── Header ─────────────────────────────────────────────────────────────────
+
   .remote-header {
-    padding: var(--space-md) var(--space-md) var(--space-sm) var(--space-md);
+    padding: var(--space-md) var(--space-md) var(--space-sm);
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: var(--space-md);
   }
 
-  // Remote Info Section
   .remote-info {
     display: flex;
     align-items: center;
@@ -149,7 +123,6 @@
         overflow: hidden;
         text-overflow: ellipsis;
       }
-
       .remote-type {
         font-size: var(--font-size-sm);
         color: var(--dim-color);
@@ -158,10 +131,10 @@
     }
   }
 
-  // Remote Status Indicators
+  // ── Status indicators ──────────────────────────────────────────────────────
+
   .remote-status-indicators {
     display: flex;
-    flex-direction: row;
     gap: var(--space-xs);
     align-items: flex-end;
 
@@ -178,56 +151,37 @@
         height: var(--icon-size-xs);
       }
 
-      .profile-name {
-        font-size: 0.65rem;
-        font-weight: 500;
-        opacity: 0.9;
-        white-space: nowrap;
-        line-height: 1;
-      }
-
       &.mounted {
         background: rgba(var(--accent-color-rgb), 0.1);
         color: var(--accent-color);
         box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.2);
       }
-
       &.syncing {
         background: rgba(var(--primary-color-rgb), 0.1);
         color: var(--primary-color);
         box-shadow: 0 0 0 1px rgba(var(--primary-color-rgb), 0.2);
-
         mat-icon {
           animation: spin 1s linear infinite;
         }
       }
-
       &.copying {
         background: rgba(var(--yellow-rgb), 0.1);
         color: var(--yellow);
         box-shadow: 0 0 0 1px rgba(var(--yellow-rgb), 0.2);
-
         mat-icon {
           animation: breathing 2s ease-in-out infinite;
         }
       }
-
       &.moving {
         background: rgba(var(--orange-rgb), 0.1);
         color: var(--orange);
         box-shadow: 0 0 0 1px rgba(var(--orange-rgb), 0.2);
-
-        .status-icon {
-          animation: breathing 2s ease-in-out infinite;
-        }
       }
-
       &.bisyncing {
         background: rgba(var(--purple-rgb), 0.1);
         color: var(--purple);
         box-shadow: 0 0 0 1px rgba(var(--purple-rgb), 0.2);
       }
-
       &.serving {
         background: rgba(var(--accent-color-rgb), 0.1);
         color: var(--accent-color);
@@ -237,34 +191,373 @@
     }
   }
 
-  // Remote Content Section
+  // ── Content ────────────────────────────────────────────────────────────────
+
   .remote-content {
-    padding: var(--space-sm) var(--space-md) var(--space-md) var(--space-md);
+    padding: var(--space-sm) var(--space-md) var(--space-md);
+  }
+
+  // ── Quick actions ──────────────────────────────────────────────────────────
+
+  .quick-actions {
+    display: flex;
+    gap: var(--space-xs);
+    flex-wrap: wrap;
+    justify-content: center;
+    overflow: visible;
+
+    button[mat-mini-fab] {
+      width: 36px !important;
+      height: 36px !important;
+      transition: var(--transition-fast);
+
+      mat-icon {
+        font-size: var(--icon-size-sm);
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+      }
+      &:hover {
+        transform: scale(var(--action-btn-scale-hover));
+      }
+      &:disabled {
+        transform: scale(var(--action-btn-scale-disabled));
+      }
+    }
+  }
+
+  // ── Folder blossom cluster ─────────────────────────────────────────────────
+
+  .folder-cluster {
+    position: relative;
+    z-index: 10;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    // Transparent bridge fills the gap between trigger and blossom panel so
+    // the mouse never "leaves" the hover zone while crossing it.
+    &::before {
+      content: "";
+      position: absolute;
+      bottom: 100%;
+      left: 0;
+      right: 0;
+      height: 14px;
+      pointer-events: auto;
+    }
+
+    .folder-badge {
+      position: absolute;
+      top: var(--space-xxs);
+      right: -var(--space-md);
+      min-width: 16px;
+      height: 16px;
+      border-radius: 8px;
+      background: var(--accent-color);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 16px;
+      text-align: center;
+      pointer-events: none;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      transition: transform 0.15s ease;
+      display: flex;
+      justify-content: center;
+    }
+
+    // Blossom panel — hidden by default, revealed on hover or focus-within (touch)
+    .folder-blossom {
+      position: absolute;
+      bottom: calc(100% + 10px);
+      left: 50%;
+      transform: translateX(-50%) translateY(4px) scale(0.9);
+      transform-origin: bottom center;
+
+      display: flex;
+      gap: var(--space-xs);
+      padding: 6px;
+      background: var(--window-bg-color);
+      border: 1px solid rgba(var(--window-fg-color-rgb), 0.1);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-popover);
+      opacity: 0;
+      transition:
+        opacity 0.18s ease 150ms,
+        transform 0.22s ease 150ms;
+
+      // Downward arrow pointing at the trigger
+      &::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 6px solid transparent;
+        border-top-color: var(--window-bg-color);
+        pointer-events: none;
+      }
+
+      // Individual item: starts hidden, slides up into place with a stagger set
+      // via [style.transition-delay] in the template.
+      .folder-blossom-item {
+        opacity: 0;
+        transform: scale(0.65) translateY(6px);
+        transition:
+          opacity 0.18s ease,
+          transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+    }
+
+    // ── Open state: hover (mouse) or focus-within (keyboard / touch tap) ─────
+    &:hover,
+    &:focus-within {
+      .folder-blossom {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateX(-50%) translateY(0) scale(1);
+        transition:
+          opacity 0.18s ease 0ms,
+          transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) 0ms;
+
+        .folder-blossom-item {
+          opacity: 1;
+          transform: none;
+        }
+      }
+    }
+  }
+
+  .profile-details-section {
+    padding: var(--space-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+
+  .profile-empty-state {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    color: var(--dim-color);
+
+    .profile-empty-icon {
+      width: var(--icon-size-md);
+      height: var(--icon-size-md);
+      font-size: var(--icon-size-md);
+      opacity: 0.8;
+    }
+
+    .profile-empty-text {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xxs);
+      min-width: 0;
+    }
+
+    .profile-empty-title {
+      font-size: var(--font-size-sm);
+      font-weight: 600;
+      color: var(--window-fg-color);
+    }
+
+    .profile-empty-subtitle {
+      font-size: var(--font-size-xs);
+      line-height: 1.4;
+      color: var(--dim-color);
+    }
+  }
+
+  .profile-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+
+    --op-color: var(--primary-color);
+    --op-color-rgb: var(--primary-color-rgb);
+
+    &.accent {
+      --op-color: var(--accent-color);
+      --op-color-rgb: var(--accent-color-rgb);
+    }
+    &.primary {
+      --op-color: var(--primary-color);
+      --op-color-rgb: var(--primary-color-rgb);
+    }
+    &.yellow {
+      --op-color: var(--yellow);
+      --op-color-rgb: var(--yellow-rgb);
+    }
+    &.orange {
+      --op-color: var(--orange);
+      --op-color-rgb: var(--orange-rgb);
+    }
+    &.purple {
+      --op-color: var(--purple);
+      --op-color-rgb: var(--purple-rgb);
+    }
+  }
+
+  .profile-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: var(--space-xxs);
+    border-bottom: 1px solid rgba(var(--window-fg-color-rgb), 0.08);
+
+    .operation-label {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xxs);
+      font-size: var(--font-size-sm);
+      font-weight: 600;
+      color: var(--op-color);
+
+      .operation-icon {
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
+      }
+    }
+
+    .profile-count {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--op-color);
+      background: rgba(var(--op-color-rgb), 0.14);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+  }
+
+  .profile-chips,
+  .profile-pills {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .profile-item {
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    .profile-pill {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: var(--radius-md);
+      background: rgba(var(--op-color-rgb), var(--active-opacity));
+      font-size: var(--font-size-sm);
+      font-weight: 600;
+      color: var(--op-color);
+      transition: background 0.2s ease;
+
+      .pill-content {
+        display: flex;
+        align-items: center;
+        gap: var(--space-xxs);
+      }
+
+      &.is-selected {
+        background: rgba(var(--warn-color-rgb), var(--active-opacity));
+        color: var(--warn-color);
+      }
+
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+
+      .profile-icon {
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
+      }
+    }
+
+    .profile-open-btn {
+      position: relative;
+      z-index: 1;
+      margin-left: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 10px;
+      border-radius: var(--radius-md);
+      background: rgba(var(--op-color-rgb), var(--active-opacity));
+      color: var(--op-color);
+      cursor: pointer;
+      animation: applePopOut 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      transform-origin: left center;
+
+      &::before {
+        content: "";
+        position: absolute;
+        right: 100%;
+        top: 50%;
+        width: 6px;
+        height: 4px;
+        background: linear-gradient(135deg, var(--warn-color), var(--op-color));
+        opacity: var(--active-opacity);
+        transform: translateY(-50%);
+      }
+
+      mat-icon {
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
+      }
+
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+    }
+  }
+
+  // ── Animations ─────────────────────────────────────────────────────────────
+
+  @keyframes applePopOut {
+    0% {
+      opacity: 0;
+      transform: scale(0.4) translateX(-50px);
+    }
+    70% {
+      transform: scale(1.05) translateX(0);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1) translateX(0);
+    }
   }
 }
 
-// Tablet (max-width: 768px)
+// ── Responsive ──────────────────────────────────────────────────────────────
+
 @media (max-width: 768px) {
   .remote-card {
     .remote-header {
       padding: var(--space-md);
     }
-
     .remote-content {
-      padding: var(--space-xs) var(--space-md) var(--space-md) var(--space-md);
+      padding: var(--space-xs) var(--space-md) var(--space-md);
     }
   }
 }
 
-// Mobile (max-width: 480px)
 @media (max-width: 480px) {
   .remote-card {
     .remote-header {
       padding: var(--space-sm);
     }
-
     .remote-content {
-      padding: var(--space-xxs) var(--space-sm) var(--space-sm) var(--space-sm);
+      padding: var(--space-xxs) var(--space-sm) var(--space-sm);
     }
   }
 }

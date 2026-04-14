@@ -1,16 +1,12 @@
 #![cfg(desktop)]
 
-use tauri::{AppHandle, Emitter, tray::TrayIconBuilder};
-
-use crate::core::tray::menu::create_tray_menu;
-use crate::utils::types::events::UPDATE_TRAY_MENU;
-
-pub async fn setup_tray(app: AppHandle) -> tauri::Result<()> {
+#[cfg(feature = "tray")]
+pub async fn setup_tray(app: tauri::AppHandle) -> tauri::Result<()> {
     let app_clone = app.clone();
-    let tray_menu = create_tray_menu(&app_clone).await?;
+    let tray_menu = crate::core::tray::menu::create_tray_menu(&app_clone).await?;
 
     #[allow(unused_mut)]
-    let mut tray = TrayIconBuilder::with_id("main-tray")
+    let mut tray = tauri::tray::TrayIconBuilder::with_id("main-tray")
         .icon(crate::core::tray::icon::get_icon(false)?)
         .tooltip(crate::t!("tray.tooltipDefault"))
         .menu(&tray_menu);
@@ -18,77 +14,152 @@ pub async fn setup_tray(app: AppHandle) -> tauri::Result<()> {
     #[cfg(not(feature = "web-server"))]
     {
         tray = tray.on_tray_icon_event(move |tray, event| {
-            let app = tray.app_handle();
             if let tauri::tray::TrayIconEvent::DoubleClick {
                 button: tauri::tray::MouseButton::Left,
                 ..
             } = event
             {
-                // Show the main window on left double click
-                crate::core::tray::actions::show_main_window(app.clone());
+                crate::core::tray::actions::show_main_window(tray.app_handle().clone());
             }
         });
     }
 
     tray.build(&app_clone)?;
-
-    app.emit(UPDATE_TRAY_MENU, ())?;
+    tauri::Emitter::emit(&app, crate::utils::types::events::UPDATE_TRAY_MENU, ())?;
     Ok(())
 }
 
-/// Creates the main app window.
-/// Optionally accepts a remote name to navigate to the in-app browser for that remote.
 #[cfg(not(feature = "web-server"))]
-pub fn create_app_window(app_handle: AppHandle, browse_remote: Option<&str>) {
-    let mut main_window =
-        tauri::WebviewWindowBuilder::new(&app_handle, "main", tauri::WebviewUrl::default())
-            .title("RClone Manager")
-            .inner_size(800.0, 630.0)
-            .resizable(true)
-            .center()
-            .shadow(false)
-            .devtools(true)
-            .min_inner_size(362.0, 240.0);
+fn build_nautilus_url(remote_name: Option<&str>, path: Option<&str>) -> String {
+    let Some(name) = remote_name else {
+        return "nautilus".to_string();
+    };
 
-    // MacOS does not support transparent windows. So we set the title bar style to show
-    // and remove the decorations.
-    // On other platforms, we set the decorations to false and make the window transparent.
+    let encoded_remote = urlencoding::encode(name);
+
+    match path.filter(|p| !p.is_empty()) {
+        Some(p) => {
+            let clean_path = p.trim_start_matches('/');
+            let encoded_path = urlencoding::encode(clean_path);
+            format!("nautilus/{encoded_remote}/{encoded_path}")
+        }
+        None => format!("nautilus/{encoded_remote}"),
+    }
+}
+
+#[cfg(not(feature = "web-server"))]
+fn apply_platform_config<'a>(
+    builder: tauri::WebviewWindowBuilder<'a, tauri::Wry, tauri::AppHandle>,
+) -> tauri::WebviewWindowBuilder<'a, tauri::Wry, tauri::AppHandle> {
+    #[allow(unused_mut)]
+    let mut b = builder
+        .inner_size(800.0, 630.0)
+        .resizable(true)
+        .center()
+        .shadow(false)
+        .devtools(true)
+        .min_inner_size(362.0, 240.0);
+
     #[cfg(target_os = "macos")]
     {
-        main_window = main_window.title_bar_style(tauri::TitleBarStyle::Visible);
+        b = b.title_bar_style(tauri::TitleBarStyle::Visible);
     }
 
-    // Windows specific scroll bar style
-    // Set to FluentOverlay for better appearance and not pushing content
     #[cfg(target_os = "windows")]
     {
         use tauri::webview::ScrollBarStyle;
-        main_window = main_window.scroll_bar_style(ScrollBarStyle::FluentOverlay);
+        b = b
+            .scroll_bar_style(ScrollBarStyle::FluentOverlay)
+            .disable_drag_drop_handler();
     }
 
     #[cfg(not(target_os = "macos"))]
     {
-        main_window = main_window.decorations(false).transparent(true);
+        b = b.decorations(false).transparent(true);
     }
 
-    let main_window = main_window.build().expect("Failed to build main window");
+    b
+}
 
-    // Navigate to current URL with browse parameter if provided
-    if let Some(remote_name) = browse_remote {
-        let remote_encoded = urlencoding::encode(remote_name);
-        if let Ok(current_url) = main_window.url() {
-            let new_url = format!(
-                "{}?browse={}",
-                current_url.as_str().trim_end_matches('/'),
-                remote_encoded
-            );
-            if let Ok(url) = tauri::Url::parse(&new_url) {
-                let _ = main_window.navigate(url);
+#[cfg(not(feature = "web-server"))]
+pub fn create_app_window(app_handle: tauri::AppHandle) {
+    let builder =
+        tauri::WebviewWindowBuilder::new(&app_handle, "main", tauri::WebviewUrl::default())
+            .title("RClone Manager");
+
+    let window = apply_platform_config(builder)
+        .build()
+        .expect("Failed to build main window");
+
+    window
+        .show()
+        .unwrap_or_else(|e| log::error!("Failed to show main window: {e}"));
+}
+
+#[cfg(not(feature = "web-server"))]
+pub fn create_nautilus_window(
+    app_handle: tauri::AppHandle,
+    remote_name: Option<&str>,
+    path: Option<&str>,
+) {
+    // Deterministic label based on remote identity
+    let label = remote_name
+        .map(|name| {
+            let slug: String = name
+                .chars()
+                .map(|c| {
+                    if c.is_alphanumeric() || c == '-' {
+                        c
+                    } else {
+                        '_'
+                    }
+                })
+                .collect();
+            format!("nautilus-{slug}")
+        })
+        .unwrap_or_else(|| "nautilus".to_string());
+
+    if let Some(existing) = tauri::Manager::get_webview_window(&app_handle, &label) {
+        let _ = existing.unminimize();
+        let _ = existing.set_focus();
+
+        use crate::utils::types::events::BROWSE;
+        let full_path = match (remote_name, path) {
+            (Some(r), Some(p)) => {
+                let is_local = r.starts_with('/') || (r.len() > 1 && r.as_bytes()[1] == b':');
+                let sep = if is_local { "/" } else { ":" };
+                format!("{}{}{}", r, sep, p.trim_start_matches('/'))
             }
-        }
+            (Some(r), None) => r.to_string(),
+            (None, Some(p)) => p.to_string(),
+            _ => "".to_string(),
+        };
+        let _ = tauri::Emitter::emit(&existing, BROWSE, full_path);
+        return;
     }
 
-    main_window.show().unwrap_or_else(|e| {
-        log::error!("Failed to show main window: {e}");
-    });
+    // Otherwise create a fresh window as before
+    let url = build_nautilus_url(remote_name, path);
+    let builder =
+        tauri::WebviewWindowBuilder::new(&app_handle, label, tauri::WebviewUrl::App(url.into()))
+            .title("RClone Nautilus");
+
+    match apply_platform_config(builder).build() {
+        Ok(window) => {
+            window
+                .show()
+                .unwrap_or_else(|e| log::error!("Failed to show nautilus window: {e}"));
+        }
+        Err(e) => log::error!("Failed to build nautilus window: {e}"),
+    }
+}
+
+#[cfg(not(feature = "web-server"))]
+#[tauri::command]
+pub fn new_nautilus_window(
+    app_handle: tauri::AppHandle,
+    remote: Option<String>,
+    path: Option<String>,
+) {
+    create_nautilus_window(app_handle, remote.as_deref(), path.as_deref());
 }

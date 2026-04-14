@@ -1,0 +1,43 @@
+<div class="nautilus-bottom-bar" [class.picker-mode]="isPickerMode()" data-tauri-drag-region>
+  <div class="bar-left">
+    <button class="nav-button" (click)="toggleSidebar.emit()" title="Toggle Sidebar">
+      <mat-icon svgIcon="menu-bar"></mat-icon>
+    </button>
+  </div>
+
+  <div class="bar-center">
+    @if (isPickerMode()) {
+      <button
+        mat-raised-button
+        class="accent"
+        (click)="confirmSelection.emit()"
+        [disabled]="isConfirmDisabled()"
+      >
+        {{ 'nautilus.contextMenu.open' | translate }}
+      </button>
+    }
+  </div>
+
+  <div class="bar-right">
+    <button class="nav-button" (click)="setLayout.emit(oppositeLayout())" title="Toggle Layout">
+      <mat-icon [svgIcon]="oppositeLayout()"></mat-icon>
+    </button>
+    <button
+      class="nav-button"
+      [cdkMenuTriggerFor]="viewMenu()"
+      [cdkMenuPosition]="[
+        {
+          originX: 'start',
+          originY: 'top',
+          overlayX: 'start',
+          overlayY: 'bottom',
+          offsetY: -12,
+          offsetX: -6,
+        },
+      ]"
+      title="View Options"
+    >
+      <mat-icon svgIcon="chevron-up"></mat-icon>
+    </button>
+  </div>
+</div>

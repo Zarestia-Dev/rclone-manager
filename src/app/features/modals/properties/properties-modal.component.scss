@@ -3,6 +3,17 @@
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+
+  .modal-header {
+    button[mat-icon-button] {
+      mat-icon {
+        transition: transform var(--transition-cubic);
+        &.starred {
+          transform: rotate(72deg);
+        }
+      }
+    }
+  }
 }
 
 .modal-content {
@@ -21,6 +32,23 @@
   height: 200px;
   gap: var(--space-md);
   color: var(--dim-color);
+}
+
+.error-block {
+  padding: var(--space-sm);
+  background: rgba(var(--warn-color-rgb), 0.1);
+  border-radius: var(--radius-sm);
+
+  .error-text {
+    color: var(--warn-color);
+    font-size: var(--font-size-sm);
+  }
+}
+
+.hash-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .item-overview {
@@ -110,7 +138,7 @@
         word-break: break-all;
         max-width: 60%;
         text-align: right;
-        font-family: monospace;
+        font-family: var(--font-mono);
         background: rgba(var(--window-fg-color-rgb), 0.05);
         padding: 2px 6px;
         border-radius: var(--radius-sm);
@@ -148,7 +176,7 @@
     }
 
     .hash-value {
-      font-family: "Roboto Mono", "Consolas", monospace;
+      font-family: "Roboto Mono", "Consolas", var(--font-mono);
       font-size: var(--font-size-xs);
       word-break: break-all;
       color: var(--window-fg-color);
@@ -169,12 +197,6 @@
       font-size: var(--font-size-sm);
       color: var(--dim-color);
     }
-
-    .hash-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
   }
 
   .hash-chip {
@@ -188,7 +210,7 @@
     letter-spacing: 0.3px;
     background: rgba(var(--primary-color-rgb), 0.1);
     color: var(--primary-color);
-    box-shadow: 0 0 0 1px var(--card-shade-color);
+    box-shadow: var(--box-shadow);
     border-radius: var(--radius-lg);
     transition: all 0.2s ease;
 
@@ -211,14 +233,7 @@
   }
 
   .hash-error {
-    padding: var(--space-sm);
-    background: rgba(var(--warn-color-rgb), 0.1);
-    border-radius: var(--radius-sm);
-
-    .error-text {
-      color: var(--warn-color);
-      font-size: var(--font-size-sm);
-    }
+    @extend .error-block;
   }
 
   .no-hashes {
@@ -255,7 +270,7 @@
 
       .link-url {
         flex: 1;
-        font-family: monospace;
+        font-family: var(--font-mono);
         font-size: var(--font-size-xs);
         color: var(--primary-color);
         word-break: break-all;
@@ -280,26 +295,11 @@
     display: flex;
     align-items: center;
     gap: var(--space-sm);
-
-    .expiry-select {
-      flex: 1;
-
-      ::ng-deep .mat-mdc-form-field-subscript-wrapper {
-        display: none;
-      }
-    }
   }
 
   .link-error {
-    padding: var(--space-sm);
-    background: rgba(var(--warn-color-rgb), 0.1);
-    border-radius: var(--radius-sm);
+    @extend .error-block;
     margin-top: var(--space-xs);
-
-    .error-text {
-      color: var(--warn-color);
-      font-size: var(--font-size-sm);
-    }
   }
 }
 
@@ -344,18 +344,14 @@
       border-radius: var(--radius-sm);
       background: rgba(var(--window-fg-color-rgb), 0.03);
       color: var(--window-fg-color);
-      font-family: "Roboto Mono", "Consolas", monospace;
+      font-family: "Roboto Mono", "Consolas", var(--font-mono);
       font-size: var(--font-size-xs);
       padding: var(--space-sm);
       line-height: 1.5;
       white-space: pre;
       box-sizing: border-box;
+      border: none;
+      outline: none;
     }
-  }
-
-  .bulk-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-xxs);
   }
 }

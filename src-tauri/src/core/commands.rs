@@ -30,7 +30,6 @@ macro_rules! generate_invoke_handler {
             // PLATFORM
             // =================================================================
             $crate::utils::app::platform::get_build_type,
-            $crate::utils::app::platform::are_updates_disabled,
             $crate::utils::app::platform::relaunch_app,
             // =================================================================
             // RCLONE OPERATIONS
@@ -127,6 +126,9 @@ macro_rules! generate_invoke_handler {
             $crate::rclone::commands::filesystem::copy_url,
             $crate::rclone::commands::filesystem::delete_file,
             $crate::rclone::commands::filesystem::upload_file,
+            $crate::rclone::commands::filesystem::upload_file_bytes,
+            $crate::rclone::commands::filesystem::upload_local_drop_files,
+            $crate::rclone::commands::filesystem::upload_local_drop_paths,
             $crate::rclone::commands::filesystem::purge_directory,
             $crate::rclone::commands::filesystem::remove_empty_dirs,
             $crate::rclone::queries::get_local_drives,
@@ -209,11 +211,9 @@ macro_rules! generate_invoke_handler {
             // =================================================================
             $crate::rclone::commands::job::get_jobs,
             $crate::rclone::commands::job::get_active_jobs,
-            $crate::rclone::commands::job::get_jobs_by_source,
             $crate::rclone::commands::job::get_job_status,
             $crate::rclone::commands::job::stop_job,
             $crate::rclone::commands::job::delete_job,
-            $crate::rclone::commands::job::rename_profile_in_cache,
             $crate::rclone::commands::job::stop_jobs_by_group,
             // =================================================================
             // STATS GROUP MANAGEMENT
@@ -242,7 +242,7 @@ macro_rules! generate_invoke_handler {
             $crate::core::scheduler::commands::toggle_scheduled_task,
             $crate::core::scheduler::commands::validate_cron,
             $crate::core::scheduler::commands::reload_scheduled_tasks,
-            $crate::rclone::state::scheduled_tasks::reload_scheduled_tasks_from_configs,
+            $crate::core::scheduler::commands::reload_scheduled_tasks_from_configs,
             $crate::core::scheduler::commands::clear_all_scheduled_tasks,
             // =================================================================
             // WATCHERS
@@ -267,21 +267,22 @@ macro_rules! generate_invoke_handler {
             $crate::core::security::change_config_password,
             $crate::core::security::set_config_password_env,
             // =================================================================
-            // UPDATER (Desktop + Updater feature only)
+            // UPDATER (Desktop only)
             // =================================================================
-            #[cfg(all(desktop, feature = "updater"))]
+            #[cfg(desktop)]
             $crate::utils::app::updater::app_updates::fetch_update,
-            #[cfg(all(desktop, feature = "updater"))]
+            #[cfg(desktop)]
             $crate::utils::app::updater::app_updates::get_download_status,
-            #[cfg(all(desktop, feature = "updater"))]
+            #[cfg(desktop)]
             $crate::utils::app::updater::app_updates::install_update,
-            #[cfg(all(desktop, feature = "updater"))]
+            #[cfg(desktop)]
             $crate::utils::app::updater::app_updates::apply_app_update,
             // =================================================================
             // DEBUG TOOLS
             // =================================================================
             $crate::core::debug::get_debug_info,
             $crate::core::debug::open_devtools,
+            $crate::utils::app::builder::new_nautilus_window,
         ]
     };
 }

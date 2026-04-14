@@ -2,7 +2,7 @@ import { Injectable, inject, signal, WritableSignal } from '@angular/core';
 import { Overlay } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { platform } from '@tauri-apps/plugin-os';
-import { FileViewerModalComponent } from '../../features/components/file-browser/file-viewer/file-viewer-modal.component';
+import { FileViewerModalComponent } from '../../file-browser/file-viewer/file-viewer-modal.component';
 import { Entry } from '@app/types';
 import { IconService } from './icon.service';
 import { PathService } from '../infrastructure/platform/path.service';

@@ -22,13 +22,6 @@ export class SystemInfoService extends TauriBaseService {
   async getBuildType(): Promise<string | null> {
     return this.invokeCommand<string | null>('get_build_type');
   }
-
-  /**
-   * Check if updates are disabled for this build
-   */
-  async areUpdatesDisabled(): Promise<boolean> {
-    return this.invokeCommand<boolean>('are_updates_disabled');
-  }
   /**
    * Check if network is metered
    */
@@ -76,7 +69,7 @@ export class SystemInfoService extends TauriBaseService {
    * Get core statistics
    */
   async getStats(groupName?: string): Promise<GlobalStats> {
-    return this.invokeCommand('get_stats', { groupName });
+    return this.invokeCommand('get_stats', { group: groupName });
   }
 
   /**

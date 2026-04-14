@@ -36,6 +36,7 @@ pub struct GeneralArgs {
     pub logs_dir: Option<PathBuf>,
 
     /// Start in system tray
+    #[cfg(feature = "tray")]
     #[arg(long)]
     pub tray: bool,
 }

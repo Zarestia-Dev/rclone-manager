@@ -11,7 +11,14 @@ import { AboutModalComponent } from '../../features/modals/settings/about-modal/
 import { RcloneConfigModalComponent } from '../../features/modals/settings/rclone-config-modal/rclone-config-modal.component';
 import { KeyboardShortcutsModalComponent } from '../../features/modals/settings/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component';
 import { RestorePreviewModalComponent } from '../../features/modals/settings/restore-preview-modal/restore-preview-modal.component';
-import { RemoteSettings, STANDARD_MODAL_SIZE, ABOUT_MODAL_SIZE } from '@app/types';
+import { JobDetailModalComponent } from '../../features/modals/job-detail-modal/job-detail-modal.component';
+import {
+  RemoteSettings,
+  STANDARD_MODAL_SIZE,
+  CONFIG_MODAL_SIZE,
+  ABOUT_MODAL_SIZE,
+} from '@app/types';
+import { JobInfo } from '../../shared/types/jobs';
 import { BackupAnalysis } from '../settings/backup-restore.service';
 
 export interface RemoteConfigModalOptions {
@@ -22,6 +29,7 @@ export interface RemoteConfigModalOptions {
   initialSection?: string;
   targetProfile?: string;
   cloneTarget?: boolean;
+  autoAddProfile?: boolean;
 }
 
 export interface ExportModalOptions {
@@ -59,7 +67,7 @@ export class ModalService {
     options: RemoteConfigModalOptions = {}
   ): MatDialogRef<RemoteConfigModalComponent> {
     return this.dialog.open(RemoteConfigModalComponent, {
-      ...STANDARD_MODAL_SIZE,
+      ...CONFIG_MODAL_SIZE,
       disableClose: true,
       data: {
         name: options.remoteName,
@@ -69,6 +77,7 @@ export class ModalService {
         initialSection: options.initialSection,
         targetProfile: options.targetProfile,
         cloneTarget: options.cloneTarget,
+        autoAddProfile: options.autoAddProfile,
       },
     });
   }
@@ -114,6 +123,18 @@ export class ModalService {
     return this.dialog.open(RcloneConfigModalComponent, {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,
+    });
+  }
+
+  /**
+   * Open the Job Detail modal for a given job info object.
+   * Uses the standard modal sizing and provides a default panelClass for styling.
+   */
+  openJobDetail(job: JobInfo): MatDialogRef<JobDetailModalComponent> {
+    return this.dialog.open(JobDetailModalComponent, {
+      ...STANDARD_MODAL_SIZE,
+      disableClose: true,
+      data: job,
     });
   }
 

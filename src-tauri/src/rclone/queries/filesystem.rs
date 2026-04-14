@@ -1,18 +1,79 @@
 use log::debug;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tauri::State;
 
+use crate::rclone::commands::job::{JobMetadata, SubmitJobOptions, submit_job_with_options};
 use crate::utils::{
     rclone::endpoints::operations,
+    rclone::util::build_full_path,
     types::{
         core::{DiskUsage, RcloneState},
+        jobs::{JobStatus, JobType},
         remotes::ListOptions,
     },
 };
 
 use crate::rclone::backend::BackendManager;
 use tauri::{AppHandle, Manager};
+
+async fn run_fs_command_as_job(
+    app: AppHandle,
+    endpoint: &str,
+    mut payload: serde_json::Value,
+    metadata: JobMetadata,
+) -> Result<serde_json::Value, String> {
+    use crate::utils::rclone::endpoints::job as job_endpoints;
+
+    let state = app.state::<RcloneState>();
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let url = backend.url_for(endpoint);
+
+    if let Some(obj) = payload.as_object_mut() {
+        obj.insert("_async".to_string(), json!(true));
+    }
+
+    let (jobid, _, _) = submit_job_with_options(
+        app.clone(),
+        state.client.clone(),
+        backend.inject_auth(state.client.clone().post(&url)),
+        payload,
+        metadata,
+        SubmitJobOptions {
+            wait_for_completion: true,
+        },
+    )
+    .await?;
+
+    if let Some(job) = backend_manager.job_cache.get_job(jobid).await
+        && job.status == JobStatus::Stopped
+    {
+        return Err("Operation cancelled".to_string());
+    }
+
+    let status_url = backend.url_for(job_endpoints::STATUS);
+    let response = backend
+        .inject_auth(state.client.clone().post(&status_url))
+        .json(&json!({ "jobid": jobid }))
+        .send()
+        .await
+        .map_err(|e| format!("Failed to fetch async job status: {e}"))?;
+
+    let status = response.status();
+    let body = response.text().await.unwrap_or_default();
+    if !status.is_success() {
+        return Err(format!(
+            "Failed to read async job output ({}): {}",
+            status, body
+        ));
+    }
+
+    let value: serde_json::Value =
+        serde_json::from_str(&body).map_err(|e| format!("Invalid job status payload: {e}"))?;
+
+    Ok(value.get("output").cloned().unwrap_or_else(|| json!({})))
+}
 
 /// Helper to execute a filesystem command (gets backend, builds URL, runs op)
 async fn run_fs_command(
@@ -48,18 +109,41 @@ pub struct LocalDrive {
     show_name: bool,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct PublicLinkParams {
+    pub unlink: Option<bool>,
+    pub expire: Option<String>,
+}
+
 #[tauri::command]
 pub async fn get_fs_info(
     app: AppHandle,
     remote: String,
     path: Option<String>,
-    state: State<'_, RcloneState>,
+    origin: Option<String>,
+    group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     debug!("ℹ️ Getting fs info for remote: {remote}, path: {path:?}");
 
     let params = create_fs_params(remote.clone(), path.clone());
 
-    let result = run_fs_command(app, state.client.clone(), operations::FSINFO, params).await;
+    let result = run_fs_command_as_job(
+        app,
+        operations::FSINFO,
+        json!(params),
+        JobMetadata {
+            remote_name: remote.clone(),
+            job_type: JobType::Info,
+            operation_name: "Get FS Info".to_string(),
+            source: build_full_path(&remote, path.as_deref().unwrap_or("")),
+            destination: String::new(),
+            profile: None,
+            origin: parse_origin(&origin),
+            group,
+            no_cache: true,
+        },
+    )
+    .await;
 
     match result {
         Ok(data) => {
@@ -87,7 +171,8 @@ pub async fn get_remote_paths(
     remote: String,
     path: Option<String>,
     options: Option<ListOptions>,
-    state: State<'_, RcloneState>,
+    origin: Option<String>,
+    group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     debug!("📂 Listing remote paths for remote: {remote}, path: {path:?}");
     let mut params = create_fs_params(remote.clone(), path.clone());
@@ -100,7 +185,23 @@ pub async fn get_remote_paths(
         params.insert("opt".to_string(), json!(opt));
     }
 
-    run_fs_command(app, state.client.clone(), operations::LIST, params).await
+    run_fs_command_as_job(
+        app,
+        operations::LIST,
+        json!(params),
+        JobMetadata {
+            remote_name: remote.clone(),
+            job_type: JobType::List,
+            operation_name: "List Remote Paths".to_string(),
+            source: build_full_path(&remote, path.as_deref().unwrap_or("")),
+            destination: String::new(),
+            profile: None,
+            origin: parse_origin(&origin),
+            group,
+            no_cache: true,
+        },
+    )
+    .await
 }
 
 #[tauri::command]
@@ -132,37 +233,33 @@ pub async fn get_local_drives(
         let mut futures = Vec::new();
         // Probe A: through Z:
         for i in b'A'..=b'Z' {
-            let drive_name = format!("{}:", i as char);
             let drive_path = format!("{}:\\", i as char);
 
             let app_clone = app.clone();
             let state_client = state.client.clone();
-            let drive_name_clone = drive_name.clone();
+
+            let drive_path_for_closure = drive_path.clone();
 
             futures.push(async move {
-                let params = create_fs_params(drive_path, None);
-                let res = run_fs_command(app_clone, state_client, operations::ABOUT, params).await;
-                if res.is_ok() {
-                    Some(LocalDrive {
-                        name: drive_name_clone,
+                let params = create_fs_params(drive_path_for_closure.clone(), None);
+                match run_fs_command(app_clone, state_client, operations::ABOUT, params).await {
+                    Ok(_) => Some(LocalDrive {
+                        name: drive_path_for_closure,
                         label: "nautilus.titles.localDisk".to_string(),
                         show_name: true,
-                    })
-                } else {
-                    None
+                    }),
+                    Err(_) => None,
                 }
             });
         }
 
         let results = join_all(futures).await;
-        for res in results.into_iter().flatten() {
-            drives.push(res);
-        }
+        drives.extend(results.into_iter().flatten());
 
         // Fallback if somehow none are detected
         if drives.is_empty() {
             drives.push(LocalDrive {
-                name: "C:".to_string(),
+                name: "C:\\".to_string(),
                 label: "nautilus.titles.localDisk".to_string(),
                 show_name: true,
             });
@@ -200,10 +297,11 @@ pub async fn get_disk_usage(
     app: AppHandle,
     remote: String,
     path: Option<String>,
-    state: State<'_, RcloneState>,
+    origin: Option<String>,
+    group: Option<String>,
 ) -> Result<DiskUsage, String> {
     // Delegate to get_about_remote (which is now async)
-    let json = get_about_remote(app, remote.clone(), path.clone(), state).await?;
+    let json = get_about_remote(app, remote.clone(), path.clone(), origin, group).await?;
 
     // Extract usage information
     let total = json["total"].as_i64().unwrap_or(0);
@@ -211,12 +309,20 @@ pub async fn get_disk_usage(
     let free = json["free"].as_i64().unwrap_or(0);
 
     // Compute fs_path string for logging
-    let fs_path = if remote.is_empty() {
-        path.unwrap_or_else(|| "/".to_string())
-    } else {
-        match path {
-            Some(p) if !p.is_empty() => format!("{remote}{p}"),
-            _ => remote,
+    let fs_path = match path.as_deref() {
+        Some(p) if !p.is_empty() => {
+            if remote.is_empty() {
+                p.to_string()
+            } else {
+                format!("{remote}{p}")
+            }
+        }
+        _ => {
+            if remote.is_empty() {
+                "/".to_string()
+            } else {
+                remote
+            }
         }
     };
 
@@ -231,13 +337,37 @@ pub async fn get_about_remote(
     app: AppHandle,
     remote: String,
     path: Option<String>,
-    state: State<'_, RcloneState>,
+    origin: Option<String>,
+    group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     debug!("ℹ️ Getting about info for remote: {remote}, path: {path:?}");
 
     let params = create_fs_params(remote.clone(), path.clone());
 
-    run_fs_command(app, state.client.clone(), operations::ABOUT, params).await
+    run_fs_command_as_job(
+        app,
+        operations::ABOUT,
+        json!(params),
+        JobMetadata {
+            remote_name: remote.clone(),
+            job_type: JobType::About,
+            operation_name: "Get About".to_string(),
+            source: build_full_path(&remote, path.as_deref().unwrap_or("")),
+            destination: String::new(),
+            profile: None,
+            origin: parse_origin(&origin),
+            group,
+            no_cache: true,
+        },
+    )
+    .await
+}
+
+// Small helper to avoid repeating the `as_deref().map(Origin::parse)` pattern
+fn parse_origin(origin: &Option<String>) -> Option<crate::utils::types::origin::Origin> {
+    origin
+        .as_deref()
+        .map(crate::utils::types::origin::Origin::parse)
 }
 
 #[tauri::command]
@@ -245,7 +375,8 @@ pub async fn get_size(
     app: AppHandle,
     remote: String,
     path: Option<String>,
-    state: State<'_, RcloneState>,
+    origin: Option<String>,
+    group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     debug!("📏 Getting size for remote: {remote}, path: {path:?}");
 
@@ -263,7 +394,23 @@ pub async fn get_size(
     };
     params.insert("fs".to_string(), json!(fs_with_path));
 
-    run_fs_command(app, state.client.clone(), operations::SIZE, params).await
+    run_fs_command_as_job(
+        app,
+        operations::SIZE,
+        json!(params),
+        JobMetadata {
+            remote_name: remote.clone(),
+            job_type: JobType::Size,
+            operation_name: "Calculate Size".to_string(),
+            source: fs_with_path,
+            destination: String::new(),
+            profile: None,
+            origin: parse_origin(&origin),
+            group,
+            no_cache: true,
+        },
+    )
+    .await
 }
 
 #[tauri::command]
@@ -271,14 +418,31 @@ pub async fn get_stat(
     app: AppHandle,
     remote: String,
     path: String,
-    state: State<'_, RcloneState>,
+    origin: Option<String>,
+    group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     debug!("📊 Getting stats for remote: {remote}, path: {path}");
 
     // Convert (String, String) to (String, Option<String>) for helper
     let params = create_fs_params(remote.clone(), Some(path.clone()));
 
-    run_fs_command(app, state.client.clone(), operations::STAT, params).await
+    run_fs_command_as_job(
+        app,
+        operations::STAT,
+        json!(params),
+        JobMetadata {
+            remote_name: remote.clone(),
+            job_type: JobType::Stat,
+            operation_name: "Get Stat".to_string(),
+            source: build_full_path(&remote, &path),
+            destination: String::new(),
+            profile: None,
+            origin: parse_origin(&origin),
+            group,
+            no_cache: true,
+        },
+    )
+    .await
 }
 
 /// Get hashsum for a path (file or directory)
@@ -289,7 +453,8 @@ pub async fn get_hashsum(
     remote: String,
     path: String,
     hash_type: String,
-    state: State<'_, RcloneState>,
+    origin: Option<String>,
+    group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     debug!("🔐 Getting hashsum for remote: {remote}, path: {path}, hash_type: {hash_type}");
 
@@ -305,7 +470,23 @@ pub async fn get_hashsum(
     params.insert("fs".to_string(), json!(fs_with_path));
     params.insert("hashType".to_string(), json!(hash_type));
 
-    run_fs_command(app, state.client.clone(), operations::HASHSUM, params).await
+    run_fs_command_as_job(
+        app,
+        operations::HASHSUM,
+        json!(params),
+        JobMetadata {
+            remote_name: remote.clone(),
+            job_type: JobType::Hash,
+            operation_name: "Calculate Hashsum".to_string(),
+            source: fs_with_path,
+            destination: String::new(),
+            profile: None,
+            origin: parse_origin(&origin),
+            group,
+            no_cache: true,
+        },
+    )
+    .await
 }
 
 /// Get hashsum for a single file
@@ -316,14 +497,31 @@ pub async fn get_hashsum_file(
     remote: String,
     path: String,
     hash_type: String,
-    state: State<'_, RcloneState>,
+    origin: Option<String>,
+    group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     debug!("🔐 Getting hashsum file for remote: {remote}, path: {path}, hash_type: {hash_type}");
 
     let mut params = create_fs_params(remote.clone(), Some(path.clone()));
     params.insert("hashType".to_string(), json!(hash_type));
 
-    run_fs_command(app, state.client.clone(), operations::HASHSUMFILE, params).await
+    run_fs_command_as_job(
+        app,
+        operations::HASHSUMFILE,
+        json!(params),
+        JobMetadata {
+            remote_name: remote.clone(),
+            job_type: JobType::Hash,
+            operation_name: "Calculate File Hash".to_string(),
+            source: build_full_path(&remote, &path),
+            destination: String::new(),
+            profile: None,
+            origin: parse_origin(&origin),
+            group,
+            no_cache: true,
+        },
+    )
+    .await
 }
 
 /// Get or create a public link for a file or folder
@@ -333,34 +531,40 @@ pub async fn get_public_link(
     app: AppHandle,
     remote: String,
     path: String,
-    unlink: Option<bool>,
-    expire: Option<String>,
-    state: State<'_, RcloneState>,
+    options: Option<PublicLinkParams>,
+    origin: Option<String>,
+    group: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    debug!(
-        "🔗 Getting public link for remote: {remote}, path: {path}, expire: {expire:?}, unlink: {unlink:?}"
-    );
+    debug!("🔗 Getting public link for remote: {remote}, path: {path}, options: {options:?}",);
 
-    let mut params = create_fs_params(remote, Some(path));
+    let mut params = create_fs_params(remote.clone(), Some(path.clone()));
 
-    if let Some(should_unlink) = unlink {
-        params.insert("unlink".to_string(), json!(should_unlink));
+    if let Some(opts) = options {
+        if let Some(should_unlink) = opts.unlink {
+            params.insert("unlink".to_string(), json!(should_unlink));
+        }
+        if let Some(expire) = opts.expire {
+            params.insert("expire".to_string(), json!(expire));
+        }
     }
 
-    if let Some(expire) = expire {
-        params.insert("expire".to_string(), json!(expire));
-    }
-
-    let client = state.client.clone();
-    let params_value = json!(params);
-
-    // This is NOT an async operation - it returns the URL directly
-    let result = backend
-        .post_json(&client, operations::PUBLICLINK, Some(&params_value))
-        .await
-        .map_err(|e| format!("❌ Failed to get public link: {e}"))?;
-
-    Ok(result)
+    run_fs_command_as_job(
+        app,
+        operations::PUBLICLINK,
+        json!(params),
+        JobMetadata {
+            remote_name: remote.clone(),
+            job_type: JobType::Info,
+            operation_name: "Get Public Link".to_string(),
+            source: build_full_path(&remote, &path),
+            destination: String::new(),
+            profile: None,
+            origin: origin
+                .as_deref()
+                .map(crate::utils::types::origin::Origin::parse),
+            group,
+            no_cache: true,
+        },
+    )
+    .await
 }

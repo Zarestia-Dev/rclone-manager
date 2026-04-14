@@ -16,8 +16,9 @@ use crate::core::lifecycle::shutdown::shutdown_app;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
 use crate::utils::types::core::BandwidthLimitResponse;
 
-#[cfg(feature = "updater")]
-use crate::utils::app::updater::app_updates::{fetch_update, get_download_status, install_update};
+use crate::utils::app::updater::app_updates::{
+    apply_app_update, fetch_update, get_download_status, install_update,
+};
 
 pub async fn get_stats_handler(
     State(state): State<WebServerState>,
@@ -176,7 +177,7 @@ pub async fn check_rclone_update_handler(
     let result = check_rclone_update(state.app_handle.clone(), query.channel)
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(result)))
+    Ok(Json(ApiResponse::success(serde_json::to_value(result)?)))
 }
 
 pub async fn get_rclone_update_info_handler(
@@ -186,7 +187,9 @@ pub async fn get_rclone_update_info_handler(
     let result = get_rclone_update_info(state.app_handle.clone())
         .await
         .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(result)))
+    Ok(Json(ApiResponse::success(
+        result.map(serde_json::to_value).transpose()?,
+    )))
 }
 
 #[derive(Deserialize)]
@@ -203,6 +206,18 @@ pub async fn update_rclone_handler(
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(result)))
+}
+
+pub async fn apply_rclone_update_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::utils::rclone::updater::apply_rclone_update;
+    apply_rclone_update(state.app_handle.clone())
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(
+        "Rclone update applied successfully. Engine restarting...".to_string(),
+    )))
 }
 
 pub async fn get_configs_handler(
@@ -303,13 +318,11 @@ pub async fn sse_handler(
 }
 
 // Updates
-#[cfg(feature = "updater")]
 #[derive(Deserialize)]
 pub struct FetchUpdateQuery {
     pub channel: String,
 }
 
-#[cfg(feature = "updater")]
 pub async fn fetch_update_handler(
     State(state): State<WebServerState>,
     Query(query): Query<FetchUpdateQuery>,
@@ -321,14 +334,6 @@ pub async fn fetch_update_handler(
     Ok(Json(ApiResponse::success(json_result)))
 }
 
-#[cfg(not(feature = "updater"))]
-pub async fn fetch_update_handler(
-    State(_state): State<WebServerState>,
-) -> Result<Json<ApiResponse<Option<serde_json::Value>>>, AppError> {
-    Ok(Json(ApiResponse::success(None)))
-}
-
-#[cfg(feature = "updater")]
 pub async fn get_download_status_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
@@ -339,14 +344,6 @@ pub async fn get_download_status_handler(
     Ok(Json(ApiResponse::success(json_status)))
 }
 
-#[cfg(not(feature = "updater"))]
-pub async fn get_download_status_handler(
-    State(_state): State<WebServerState>,
-) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    Ok(Json(ApiResponse::success(serde_json::json!({}))))
-}
-
-#[cfg(feature = "updater")]
 pub async fn install_update_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
@@ -358,11 +355,15 @@ pub async fn install_update_handler(
     ))))
 }
 
-#[cfg(not(feature = "updater"))]
-pub async fn install_update_handler(
-    State(_state): State<WebServerState>,
+pub async fn apply_app_update_handler(
+    State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
-    Ok(Json(ApiResponse::success("Updates disabled".to_string())))
+    apply_app_update(state.app_handle.clone())
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(
+        "Application update applied successfully. Relaunching...".to_string(),
+    )))
 }
 
 pub async fn relaunch_app_handler(
@@ -375,14 +376,6 @@ pub async fn relaunch_app_handler(
     Ok(Json(ApiResponse::success(
         "App relaunched successfully".to_string(),
     )))
-}
-
-pub async fn are_updates_disabled_handler(
-    State(_state): State<WebServerState>,
-) -> Result<Json<ApiResponse<bool>>, AppError> {
-    use crate::utils::app::platform::are_updates_disabled;
-    let disabled = are_updates_disabled();
-    Ok(Json(ApiResponse::success(disabled)))
 }
 
 pub async fn get_build_type_handler(

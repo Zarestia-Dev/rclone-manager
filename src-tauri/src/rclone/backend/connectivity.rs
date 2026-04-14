@@ -3,8 +3,8 @@
 use crate::rclone::backend::BackendManager;
 use log::info;
 
-/// Check connectivity to a backend, updating cache if successful
-/// Returns (version, os) on success
+/// Check connectivity to a backend, updating cache if successful.
+/// Returns (version, os) on success.
 pub async fn check_connectivity(
     manager: &BackendManager,
     name: &str,
@@ -23,10 +23,9 @@ pub async fn check_connectivity(
     let os = runtime_info.os.clone().unwrap_or_default();
 
     if !runtime_info.is_connected() {
-        if let Some(error) = runtime_info.error_message() {
-            return Err(error);
-        }
-        return Err("Connection failed".to_string());
+        return Err(runtime_info
+            .error_message()
+            .unwrap_or_else(|| "Connection failed".to_string()));
     }
 
     manager.set_runtime_info(name, runtime_info).await;
@@ -34,37 +33,40 @@ pub async fn check_connectivity(
     Ok((version, os))
 }
 
-/// Check connectivity with a specified timeout
-/// Returns detailed error message on failure or timeout
+/// Check connectivity with a hard timeout.
+/// Returns a clear error message on failure or timeout.
 pub async fn check_connectivity_with_timeout(
     manager: &BackendManager,
     name: &str,
     client: &reqwest::Client,
     timeout: std::time::Duration,
 ) -> Result<(String, String), String> {
-    let check_future = check_connectivity(manager, name, client, Some(timeout));
-
-    match tokio::time::timeout(timeout, check_future).await {
+    match tokio::time::timeout(
+        timeout,
+        check_connectivity(manager, name, client, Some(timeout)),
+    )
+    .await
+    {
         Ok(result) => result,
         Err(_) => Err(format!("Connection timed out after {}s", timeout.as_secs())),
     }
 }
 
-/// Check Local backend connectivity with retries (used during startup)
-/// Retries every 500ms until timeout
+/// Check Local backend connectivity with retries (used during startup).
+/// Retries every 500 ms until the outer timeout fires.
 pub async fn check_local_connectivity_retrying(
     manager: &BackendManager,
     client: &reqwest::Client,
     timeout: std::time::Duration,
 ) -> Result<(String, String), String> {
-    let check_local_future = async {
-        let mut attempts = 0;
+    let check_local = async {
+        let mut attempts = 0u32;
         loop {
             match check_connectivity(manager, "Local", client, None).await {
                 Ok(info) => return Ok(info),
                 Err(e) => {
                     attempts += 1;
-                    if attempts % 2 == 0 {
+                    if attempts.is_multiple_of(2) {
                         log::debug!("⚠️ Local backend check attempt {} failed: {}", attempts, e);
                     }
                     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
@@ -73,7 +75,7 @@ pub async fn check_local_connectivity_retrying(
         }
     };
 
-    match tokio::time::timeout(timeout, check_local_future).await {
+    match tokio::time::timeout(timeout, check_local).await {
         Ok(result) => result,
         Err(_) => Err(format!(
             "Local backend check timed out after {}s",
@@ -82,8 +84,13 @@ pub async fn check_local_connectivity_retrying(
     }
 }
 
-/// Ensure valid connectivity for the active backend, automatically failing back to Local if needed.
-/// This orchestrates the entire startup connectivity check process.
+/// Ensure the active backend is reachable at startup.
+///
+/// - Local backend: retries until connected or timeout, then marks connected anyway
+///   (we manage the process, so it will come up).
+/// - Remote backend: single attempt with timeout; marks offline without switching.
+///   The user explicitly chose this backend — we respect that even if it is
+///   temporarily unreachable. The UI shows the offline status.
 pub async fn ensure_connectivity_or_fallback(
     manager: &BackendManager,
     client: &reqwest::Client,
@@ -96,7 +103,6 @@ pub async fn ensure_connectivity_or_fallback(
             "🔍 Checking Local backend for version/OS info (timeout: {}s)",
             timeout.as_secs()
         );
-
         return match check_local_connectivity_retrying(manager, client, timeout).await {
             Ok(_) => {
                 info!("✅ Local backend is reachable and runtime info loaded");
@@ -104,10 +110,9 @@ pub async fn ensure_connectivity_or_fallback(
             }
             Err(_) => {
                 log::warn!(
-                    "⚠️ Local backend check timed out after {}s. Marking as connected but runtime info may be missing.",
+                    "⚠️ Local backend timed out after {}s. Marking connected; runtime info may be missing.",
                     timeout.as_secs()
                 );
-                // Still mark as connected since it's managed by us
                 manager.set_runtime_status("Local", "connected").await;
                 Ok(())
             }
@@ -115,7 +120,7 @@ pub async fn ensure_connectivity_or_fallback(
     }
 
     info!(
-        "🔍 Checking connectivity for active backend: {} (timeout: {}s)",
+        "🔍 Checking active backend: {} (timeout: {}s)",
         active_name,
         timeout.as_secs()
     );
@@ -127,120 +132,52 @@ pub async fn ensure_connectivity_or_fallback(
         }
         Err(e) => {
             log::warn!(
-                "⚠️ Active backend '{}' connectivity failed: {}. Keeping as active backend (marking offline).",
+                "⚠️ Active backend '{}' unreachable: {}. Marking offline.",
                 active_name,
                 e
             );
-
-            // Mark backend as offline but do NOT switch to Local.
-            // The user explicitly chose this backend; respect that choice even if it is
-            // temporarily unreachable at startup. The UI will show the offline status and
-            // the user can switch manually if needed.
             manager
                 .set_runtime_status(&active_name, &format!("error:{}", e))
                 .await;
-
             Ok(())
         }
     }
 }
 
-// /// Emergency fallback to Local backend (NO profile switching)
-// ///
-// /// This is a "best effort" fallback used during startup connectivity checks
-// /// when the active remote backend is unreachable. Unlike `BackendManager::switch_to()`,
-// /// this function does NOT switch settings profiles, only updates internal backend state.
-// ///
-// /// # Use Cases
-// /// - Automatic fallback during app initialization
-// /// - Recovery from remote backend connectivity failures
-// /// - Temporary fallback until user manually switches
-// ///
-// /// # Warning
-// /// ⚠️ This may leave profile settings mismatched with the active backend.
-// /// For full backend switches with profile management, use `BackendManager::switch_to()`.
-// ///
-// /// # What it does
-// /// 1. Switches the active backend index to Local
-// /// 2. Updates the `is_local` flag
-// /// 3. Starts Local engine if not already running (lazy init)
-// ///
-// /// # What it does NOT do
-// /// - Switch settings profiles (remotes/backend)
-// /// - Save state from previous backend
-// /// - Restore Local backend state
-// pub async fn switch_to_local_fallback(
-//     manager: &BackendManager,
-//     app: &tauri::AppHandle,
-//     _client: &reqwest::Client,
-// ) -> Result<(), String> {
-//     use crate::utils::types::core::EngineState;
-
-//     // 1. Reset profiles to default (Local)
-//     reset_profiles_to_default(app);
-
-//     // 2. Switch active index to Local
-//     manager.switch_to_local_index().await?;
-
-//     info!("🔄 Fallback switched to internal Local backend state");
-
-//     // 3. Start Local engine if not running (lazy init on fallback)
-//     let engine_state = app.state::<EngineState>();
-//     let mut engine = engine_state.lock().await;
-
-//     if !engine.running && !engine.path_error && !engine.password_error {
-//         info!("🚀 Starting Local engine after fallback from Remote...");
-//         engine.init(app).await;
-//     }
-
-//     Ok(())
-// }
-
-// /// Helper to reset settings profiles to default (used during fallback)
-// fn reset_profiles_to_default(app: &tauri::AppHandle) {
-//     use crate::core::settings::AppSettingsManager;
-//     let settings_manager = app.state::<AppSettingsManager>();
-
-//     // Helper to switch a sub-setting profile safely
-//     fn switch_profile(manager: &AppSettingsManager, sub: &str) {
-//         if let Ok(s) = manager.sub_settings(sub) {
-//             let _ = s.switch_profile("default");
-//         }
-//     }
-
-//     switch_profile(settings_manager.inner(), "remotes");
-//     switch_profile(settings_manager.inner(), "backend");
-//     info!("👤 Fallback switched profiles to default");
-// }
-
-/// Check non-active backends in background
+/// Check non-active backends in the background (best-effort, no fallback).
 pub async fn check_other_backends(manager: &BackendManager, client: &reqwest::Client) {
     let backends = manager.list_all().await;
     let active_name = manager.get_active_name().await;
 
     for backend in backends {
         if backend.name == active_name || backend.name == "Local" {
-            continue; // Already checked
+            continue;
         }
 
         info!("🔍 Background check for backend: {}", backend.name);
-        if let Err(e) = check_connectivity(manager, &backend.name, client, None).await {
-            log::warn!("⚠️ Backend '{}' unreachable: {}", backend.name, e);
-            manager
-                .set_runtime_status(&backend.name, &format!("error:{}", e))
-                .await;
-        } else {
-            info!("✅ Backend '{}' is reachable", backend.name);
+        match check_connectivity(manager, &backend.name, client, None).await {
+            Ok(_) => info!("✅ Backend '{}' is reachable", backend.name),
+            Err(e) => {
+                log::warn!("⚠️ Backend '{}' unreachable: {}", backend.name, e);
+                manager
+                    .set_runtime_status(&backend.name, &format!("error:{}", e))
+                    .await;
+            }
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    // TODO: Add connectivity tests
-    // - Test successful connectivity check
-    // - Test connection timeout
-    // - Test retry logic for Local backend
-    // - Test fallback on remote failure
-    // - Test background checks
+    use super::*;
+    use crate::rclone::backend::BackendManager;
+
+    #[tokio::test]
+    async fn test_check_connectivity_unknown_backend() {
+        let manager = BackendManager::new();
+        let client = reqwest::Client::new();
+        let result = check_connectivity(&manager, "DoesNotExist", &client, None).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("not found"));
+    }
 }

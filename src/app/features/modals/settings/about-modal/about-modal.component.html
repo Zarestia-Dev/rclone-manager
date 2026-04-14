@@ -1,9 +1,7 @@
 <div class="about-modal">
   <div class="modal-header" data-tauri-drag-region [class.scrolled]="scrolled()">
-    <button>
-      <mat-icon></mat-icon>
-    </button>
-    <p style="opacity: 0">{{ 'modals.about.title' | translate }}</p>
+    <div class="ghost-header-spacer" aria-hidden="true"></div>
+    <p class="header-title-ghost">{{ 'modals.about.title' | translate }}</p>
     <button mat-icon-button (click)="close()" [aria-label]="'common.close' | translate">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
@@ -19,31 +17,32 @@
       (keydown.space)="onLogoClick()"
       tabindex="0"
       role="button"
-      style="cursor: pointer"
-      [matTooltip]="logoClickCount >= 3 ? ('modals.about.keepClicking' | translate) : ''"
+      [matTooltip]="logoClickCount() >= 3 ? ('modals.about.keepClicking' | translate) : ''"
     />
     <h2 class="app-name">RClone Manager</h2>
     <p class="app-team">
       Zarestia
       <mat-icon svgIcon="wind"></mat-icon>
     </p>
+
+    @let buildTypeVal = buildType();
     <div class="version-info">
       <button class="version-badge" (click)="copyToClipboard(rCloneManagerVersion)">
         {{ rCloneManagerVersion }}
       </button>
-      @if (buildType()) {
+      @if (buildTypeVal) {
         <span
           class="platform-badge"
-          [class]="buildType()"
-          [matTooltip]="getChannelLabel(buildType()) | translate"
+          [ngClass]="buildTypeVal"
+          [matTooltip]="getChannelLabel(buildTypeVal) | translate"
         >
           <mat-icon svgIcon="package"></mat-icon>
-          {{ getChannelLabel(buildType()) | translate }}
+          {{ getChannelLabel(buildTypeVal) | translate }}
         </span>
       }
     </div>
 
-    <div class="about-list">
+    <div class="about-list" role="tablist">
       @for (item of navItems; track item.viewId) {
         <button
           matButton
@@ -58,17 +57,17 @@
         </button>
       }
 
-      @if (!updatesDisabled()) {
-        <button
-          matButton
-          class="about-item"
-          (click)="navigateTo('updates')"
-          [matBadge]="appUpdateAvailable() || appRestartRequired() ? '!' : null"
-        >
-          <span>{{ 'modals.about.updates' | translate }}</span>
-          <mat-icon svgIcon="chevron-right"></mat-icon>
-        </button>
-      }
+      <button
+        matButton
+        class="about-item"
+        role="tab"
+        [attr.aria-selected]="currentView().id === 'updates'"
+        (click)="navigateTo('updates')"
+        [matBadge]="appUpdateAvailable() || appRestartRequired() ? '!' : null"
+      >
+        <span>{{ 'modals.about.updates' | translate }}</span>
+        <mat-icon svgIcon="chevron-right"></mat-icon>
+      </button>
 
       <div class="stacked-buttons" role="tablist">
         @for (item of bottomNavItems; track item.viewId; let last = $last) {
@@ -105,9 +104,7 @@
         <button mat-icon-button (click)="goBack()">
           <mat-icon svgIcon="chevron-left"></mat-icon>
         </button>
-        <p>
-          {{ getPageTitle(overlay.id) }}
-        </p>
+        <p>{{ getPageTitle(overlay.id) }}</p>
         <button mat-icon-button (click)="close()">
           <mat-icon svgIcon="circle-xmark"></mat-icon>
         </button>
@@ -125,6 +122,17 @@
                 rel="noopener noreferrer"
               >
                 <span>{{ 'modals.about.website' | translate }}</span>
+                <mat-icon svgIcon="open-link"></mat-icon>
+              </a>
+              <mat-divider></mat-divider>
+              <a
+                matButton
+                class="about-item"
+                href="https://hakanismail.info/zarestia/rclone-manager/docs"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span>{{ 'modals.about.wiki' | translate }}</span>
                 <mat-icon svgIcon="open-link"></mat-icon>
               </a>
               <mat-divider></mat-divider>
@@ -182,6 +190,7 @@
                 </div>
               </div>
             } @else if (appUpdateAvailable()) {
+              @let update = appUpdateAvailable()!;
               <div class="update-card available">
                 <div class="update-header">
                   <mat-icon svgIcon="circle-up"></mat-icon>
@@ -189,7 +198,7 @@
                     <h4>{{ 'modals.about.updateAvailable' | translate }}</h4>
                     <span class="new-version">
                       {{ 'modals.about.version' | translate }}
-                      {{ appUpdateAvailable()?.version }}
+                      {{ update.version }}
                       @if (appUpdateReleaseChannel()) {
                         <span class="release-badge badge-{{ appUpdateReleaseChannel() }}">
                           {{ getChannelLabel(appUpdateReleaseChannel()) | translate }}
@@ -199,7 +208,7 @@
                   </div>
                 </div>
 
-                @if (appUpdateAvailable()?.releaseNotes) {
+                @if (update.releaseNotes) {
                   <button mat-stroked-button class="whats-new-button" (click)="showWhatsNew('app')">
                     <mat-icon svgIcon="file-lines"></mat-icon>
                     {{ 'modals.about.whatsNew' | translate }}
@@ -222,34 +231,72 @@
                   </div>
                 }
 
-                <div class="update-buttons">
-                  <button
-                    mat-flat-button
-                    (click)="installUpdate()"
-                    [disabled]="appUpdateInProgress() || appDownloadInProgress()"
-                  >
-                    @if (appUpdateInProgress() || appDownloadInProgress()) {
-                      <mat-spinner diameter="16"></mat-spinner>
-                      {{
-                        appDownloadInProgress()
-                          ? ('modals.about.downloading' | translate)
-                          : ('modals.about.installing' | translate)
-                      }}
-                    } @else {
-                      {{ 'modals.about.installUpdate' | translate }}
+                @if (buildType()) {
+                  @let instructions = getUpdateInstructions();
+                  <div class="managed-update-notice">
+                    <div class="managed-info">
+                      <mat-icon svgIcon="circle-info"></mat-icon>
+                      <p>{{ 'modals.about.managedBuildNotice' | translate }}</p>
+                    </div>
+                    @if (instructions?.command) {
+                      <button
+                        class="command-block"
+                        (click)="copyToClipboard(instructions!.command!)"
+                        [matTooltip]="'common.copy' | translate"
+                        matTooltipPosition="above"
+                      >
+                        <code>{{ instructions!.command }}</code>
+                        <mat-icon svgIcon="copy"></mat-icon>
+                      </button>
                     }
-                  </button>
-                  <button
-                    mat-stroked-button
-                    (click)="skipUpdate()"
-                    [disabled]="appDownloadInProgress()"
-                  >
-                    {{ 'modals.about.skipVersion' | translate }}
-                  </button>
-                </div>
+                  </div>
+                  <div class="update-buttons">
+                    @for (link of instructions!.links; track link.url) {
+                      <a
+                        mat-flat-button
+                        [attr.mat-flat-button]="link.primary ? '' : null"
+                        [attr.mat-stroked-button]="!link.primary ? '' : null"
+                        [href]="link.url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <mat-icon svgIcon="open-link"></mat-icon>
+                        {{ link.label | translate }}
+                      </a>
+                    }
+                    <button mat-stroked-button (click)="skipUpdate()">
+                      {{ 'modals.about.skipVersion' | translate }}
+                    </button>
+                  </div>
+                } @else {
+                  <div class="update-buttons">
+                    <button
+                      mat-flat-button
+                      (click)="installUpdate()"
+                      [disabled]="appUpdateInProgress() || appDownloadInProgress()"
+                    >
+                      @if (appUpdateInProgress() || appDownloadInProgress()) {
+                        <mat-spinner diameter="16"></mat-spinner>
+                        {{
+                          appDownloadInProgress()
+                            ? ('modals.about.downloading' | translate)
+                            : ('modals.about.installing' | translate)
+                        }}
+                      } @else {
+                        {{ 'modals.about.installUpdate' | translate }}
+                      }
+                    </button>
+                    <button
+                      mat-stroked-button
+                      (click)="skipUpdate()"
+                      [disabled]="appDownloadInProgress()"
+                    >
+                      {{ 'modals.about.skipVersion' | translate }}
+                    </button>
+                  </div>
+                }
               </div>
             } @else {
-              <!-- Up to Date Card -->
               <ng-container
                 *ngTemplateOutlet="upToDateCard; context: { $implicit: 'modals.about.upToDate' }"
               ></ng-container>
@@ -312,15 +359,15 @@
               }
 
               @if (rcloneInfo() && !loadingRclone()) {
-                <!-- GNOME-style hero: icon + name + version -->
+                @let info = rcloneInfo()!;
                 <div class="rclone-hero">
                   <img src="assets/rclone.svg" alt="Rclone" class="rclone-icon" />
                   <div class="rclone-identity">
                     <span class="rclone-name">Rclone</span>
-                    <span class="rclone-version">{{ rcloneInfo()?.version }}</span>
-                    @if (rcloneInfo()?.isBeta) {
+                    <span class="rclone-version">{{ info.version }}</span>
+                    @if (info.isBeta) {
                       <span class="channel-badge beta">β Beta</span>
-                    } @else if (rcloneInfo()?.isGit) {
+                    } @else if (info.isGit) {
                       <span class="channel-badge dev">Dev</span>
                     }
                   </div>
@@ -329,18 +376,16 @@
                 <div class="rclone-details">
                   <div class="detail-row">
                     <span class="detail-label">{{ 'modals.about.os' | translate }}</span>
-                    <span class="detail-value"
-                      >{{ rcloneInfo()?.os }} ({{ rcloneInfo()?.arch }})</span
-                    >
+                    <span class="detail-value">{{ info.os }} ({{ info.arch }})</span>
                   </div>
                   <div class="detail-row">
                     <span class="detail-label">{{ 'modals.about.goVersion' | translate }}</span>
-                    <span class="detail-value">{{ rcloneInfo()?.goVersion }}</span>
+                    <span class="detail-value">{{ info.goVersion }}</span>
                   </div>
-                  @if (rcloneInfo()?.pid) {
+                  @if (info.pid) {
                     <div class="detail-row">
                       <span class="detail-label">{{ 'modals.about.pid' | translate }}</span>
-                      <span class="detail-value">{{ rcloneInfo()?.pid }}</span>
+                      <span class="detail-value">{{ info.pid }}</span>
                       <button
                         mat-icon-button
                         class="action-button"
@@ -378,9 +423,9 @@
                   }
                   <div class="detail-row">
                     <span class="detail-label">{{ 'modals.about.backendCache' | translate }}</span>
-                    <span class="detail-value"
-                      >{{ fsCacheEntries() }} {{ 'modals.about.entries' | translate }}</span
-                    >
+                    <span class="detail-value">
+                      {{ fsCacheEntries() }} {{ 'modals.about.entries' | translate }}
+                    </span>
                     <button
                       mat-icon-button
                       class="action-button"
@@ -400,8 +445,10 @@
               }
             </div>
 
+            @let rcloneStatus = rcloneUpdateStatus();
+
             @if (isLocalBackend()) {
-              @if (rcloneUpdateStatus().readyToRestart) {
+              @if (rcloneStatus.readyToRestart) {
                 <div class="update-card restart-required">
                   <div class="update-header">
                     <mat-icon svgIcon="reset-wrench"></mat-icon>
@@ -426,7 +473,8 @@
                     </button>
                   </div>
                 </div>
-              } @else if (rcloneUpdateStatus().updateInfo?.update_available) {
+              } @else if (rcloneStatus.updateInfo?.update_available) {
+                @let rcloneUpdateInfo = rcloneStatus.updateInfo!;
                 <div class="update-card available">
                   <div class="update-header">
                     <mat-icon svgIcon="circle-up"></mat-icon>
@@ -435,8 +483,7 @@
                       <span class="new-version">
                         {{ 'modals.about.version' | translate }}
                         {{
-                          rcloneUpdateStatus().updateInfo?.latest_version_clean ||
-                            rcloneUpdateStatus().updateInfo?.latest_version
+                          rcloneUpdateInfo.latest_version_clean || rcloneUpdateInfo.latest_version
                         }}
                         <span class="release-badge badge-{{ rcloneUpdateChannel() }}">
                           {{ getChannelLabel(rcloneUpdateChannel()) | translate }}
@@ -445,7 +492,7 @@
                     </div>
                   </div>
 
-                  @if (rcloneUpdateStatus().updateInfo?.release_notes) {
+                  @if (rcloneUpdateInfo.release_notes) {
                     <button
                       mat-stroked-button
                       class="whats-new-button"
@@ -460,15 +507,11 @@
                     <button
                       matButton="filled"
                       (click)="installRcloneUpdate()"
-                      [disabled]="rcloneUpdateStatus().downloading"
+                      [disabled]="rcloneStatus.downloading"
                     >
-                      @if (rcloneUpdateStatus().downloading) {
+                      @if (rcloneStatus.downloading) {
                         <mat-spinner diameter="16"></mat-spinner>
-                        {{
-                          rcloneUpdateStatus().downloading
-                            ? ('modals.about.downloading' | translate)
-                            : ('modals.about.updateRclone' | translate)
-                        }}
+                        {{ 'modals.about.downloading' | translate }}
                       } @else {
                         {{ 'modals.about.updateRclone' | translate }}
                       }
@@ -479,7 +522,6 @@
                   </div>
                 </div>
               } @else {
-                <!-- Up to Date Card -->
                 <ng-container
                   *ngTemplateOutlet="
                     upToDateCard;
@@ -491,10 +533,10 @@
               <button
                 matButton="outlined"
                 (click)="checkForRcloneUpdates()"
-                [disabled]="rcloneUpdateStatus().checking"
+                [disabled]="rcloneStatus.checking"
                 class="check-button"
               >
-                @if (rcloneUpdateStatus().checking) {
+                @if (rcloneStatus.checking) {
                   <mat-spinner diameter="16"></mat-spinner>
                   {{ 'modals.about.checking' | translate }}
                 } @else {
@@ -594,34 +636,33 @@
         @case ('whats-new-app') {
           <div class="modal-content whats-new-content">
             @if (appUpdateAvailable()) {
+              @let update = appUpdateAvailable()!;
               <div class="release-header">
                 <div class="release-version">
-                  <h2>Version {{ appUpdateAvailable()?.version }}</h2>
-                  @if (appUpdateAvailable()?.releaseDate) {
+                  <h2>Version {{ update.version }}</h2>
+                  @if (update.releaseDate) {
                     <span class="release-date">
-                      {{ formatReleaseDate(appUpdateAvailable()!.releaseDate!) }}
+                      {{ formatReleaseDate(update.releaseDate) }}
                     </span>
                   }
                 </div>
-                @if (appUpdateAvailable()?.releaseUrl) {
+                @if (update.releaseUrl) {
                   <a
                     mat-stroked-button
-                    [href]="appUpdateAvailable()!.releaseUrl"
+                    [href]="update.releaseUrl"
                     target="_blank"
                     rel="noopener noreferrer"
                     class="whats-new-button"
                   >
                     <mat-icon svgIcon="open-link"></mat-icon>
-                    <span style="text-wrap: nowrap">{{
-                      'modals.about.viewOnGithub' | translate
-                    }}</span>
+                    <span class="text-nowrap">{{ 'modals.about.viewOnGithub' | translate }}</span>
                   </a>
                 }
               </div>
 
               <div
                 class="release-notes markdown-body"
-                [innerHTML]="getFormattedReleaseNotes(appUpdateAvailable()!.releaseNotes)"
+                [innerHTML]="formattedAppReleaseNotes()"
               ></div>
             }
           </div>
@@ -629,25 +670,23 @@
         @case ('whats-new-rclone') {
           <div class="modal-content whats-new-content">
             @if (rcloneUpdateStatus().updateInfo) {
+              @let rcloneUpdateInfo = rcloneUpdateStatus().updateInfo!;
               <div class="release-header">
                 <div class="release-version">
                   <h2>
                     Rclone
-                    {{
-                      rcloneUpdateStatus().updateInfo?.latest_version_clean ||
-                        rcloneUpdateStatus().updateInfo?.latest_version
-                    }}
+                    {{ rcloneUpdateInfo.latest_version_clean || rcloneUpdateInfo.latest_version }}
                   </h2>
-                  @if (rcloneUpdateStatus().updateInfo?.release_date) {
+                  @if (rcloneUpdateInfo.release_date) {
                     <span class="release-date">
-                      {{ formatReleaseDate(rcloneUpdateStatus().updateInfo!.release_date!) }}
+                      {{ formatReleaseDate(rcloneUpdateInfo.release_date) }}
                     </span>
                   }
                 </div>
-                @if (rcloneUpdateStatus().updateInfo?.release_url) {
+                @if (rcloneUpdateInfo.release_url) {
                   <a
                     mat-stroked-button
-                    [href]="rcloneUpdateStatus().updateInfo!.release_url"
+                    [href]="rcloneUpdateInfo.release_url"
                     target="_blank"
                     rel="noopener noreferrer"
                     class="whats-new-button"
@@ -660,9 +699,7 @@
 
               <div
                 class="release-notes markdown-body"
-                [innerHTML]="
-                  getFormattedReleaseNotes(rcloneUpdateStatus().updateInfo?.release_notes)
-                "
+                [innerHTML]="formattedRcloneReleaseNotes()"
               ></div>
             }
           </div>
@@ -670,22 +707,21 @@
         @case ('debug') {
           <div class="modal-content debug-content">
             @if (debugInfo()) {
+              @let debug = debugInfo()!;
               <div class="debug-section">
                 <h4>{{ 'modals.about.systemInfo' | translate }}</h4>
                 <div class="rclone-details">
                   <div class="detail-row">
                     <span class="detail-label">{{ 'modals.about.version' | translate }}</span>
-                    <span class="detail-value">{{ debugInfo()!.appVersion }}</span>
+                    <span class="detail-value">{{ debug.appVersion }}</span>
                   </div>
                   <div class="detail-row">
                     <span class="detail-label">{{ 'modals.about.mode' | translate }}</span>
-                    <span class="detail-value">{{ debugInfo()!.mode }}</span>
+                    <span class="detail-value">{{ debug.mode }}</span>
                   </div>
                   <div class="detail-row">
                     <span class="detail-label">{{ 'modals.about.platform' | translate }}</span>
-                    <span class="detail-value"
-                      >{{ debugInfo()!.platform }} ({{ debugInfo()!.arch }})</span
-                    >
+                    <span class="detail-value">{{ debug.platform }} ({{ debug.arch }})</span>
                   </div>
                 </div>
               </div>
@@ -731,30 +767,29 @@
         @case ('memory') {
           <div class="modal-content debug-content">
             @if (memoryStats()) {
+              @let mem = memoryStats()!;
               <div class="debug-section">
                 <h4>{{ 'modals.about.generalMemory' | translate }}</h4>
                 <div class="rclone-details">
                   <div class="detail-row">
                     <span class="detail-label">{{ 'modals.about.memAlloc' | translate }}</span>
-                    <span class="detail-value">{{ memoryStats()!.Alloc | formatFileSize }}</span>
+                    <span class="detail-value">{{ mem.Alloc | formatFileSize }}</span>
                   </div>
                   <div class="detail-row">
                     <span class="detail-label">{{ 'modals.about.memTotalAlloc' | translate }}</span>
-                    <span class="detail-value">{{
-                      memoryStats()!.TotalAlloc | formatFileSize
-                    }}</span>
+                    <span class="detail-value">{{ mem.TotalAlloc | formatFileSize }}</span>
                   </div>
                   <div class="detail-row">
                     <span class="detail-label">{{ 'modals.about.memSys' | translate }}</span>
-                    <span class="detail-value">{{ memoryStats()!.Sys | formatFileSize }}</span>
+                    <span class="detail-value">{{ mem.Sys | formatFileSize }}</span>
                   </div>
                   <div class="detail-row">
                     <span class="detail-label">{{ 'modals.about.memMallocs' | translate }}</span>
-                    <span class="detail-value">{{ memoryStats()!.Mallocs | number }}</span>
+                    <span class="detail-value">{{ mem.Mallocs | number }}</span>
                   </div>
                   <div class="detail-row">
                     <span class="detail-label">{{ 'modals.about.memFrees' | translate }}</span>
-                    <span class="detail-value">{{ memoryStats()!.Frees | number }}</span>
+                    <span class="detail-value">{{ mem.Frees | number }}</span>
                   </div>
                 </div>
               </div>
@@ -764,37 +799,31 @@
                 <div class="rclone-details">
                   <div class="detail-row">
                     <span class="detail-label">{{ 'modals.about.memHeapAlloc' | translate }}</span>
-                    <span class="detail-value">{{
-                      memoryStats()!.HeapAlloc | formatFileSize
-                    }}</span>
+                    <span class="detail-value">{{ mem.HeapAlloc | formatFileSize }}</span>
                   </div>
                   <div class="detail-row">
                     <span class="detail-label">{{ 'modals.about.memHeapSys' | translate }}</span>
-                    <span class="detail-value">{{ memoryStats()!.HeapSys | formatFileSize }}</span>
+                    <span class="detail-value">{{ mem.HeapSys | formatFileSize }}</span>
                   </div>
                   <div class="detail-row">
                     <span class="detail-label">{{ 'modals.about.memHeapIdle' | translate }}</span>
-                    <span class="detail-value">{{ memoryStats()!.HeapIdle | formatFileSize }}</span>
+                    <span class="detail-value">{{ mem.HeapIdle | formatFileSize }}</span>
                   </div>
                   <div class="detail-row">
                     <span class="detail-label">{{ 'modals.about.memHeapInuse' | translate }}</span>
-                    <span class="detail-value">{{
-                      memoryStats()!.HeapInuse | formatFileSize
-                    }}</span>
+                    <span class="detail-value">{{ mem.HeapInuse | formatFileSize }}</span>
                   </div>
                   <div class="detail-row">
-                    <span class="detail-label">{{
-                      'modals.about.memHeapReleased' | translate
-                    }}</span>
-                    <span class="detail-value">{{
-                      memoryStats()!.HeapReleased | formatFileSize
-                    }}</span>
+                    <span class="detail-label">
+                      {{ 'modals.about.memHeapReleased' | translate }}
+                    </span>
+                    <span class="detail-value">{{ mem.HeapReleased | formatFileSize }}</span>
                   </div>
                   <div class="detail-row">
-                    <span class="detail-label">{{
-                      'modals.about.memHeapObjects' | translate
-                    }}</span>
-                    <span class="detail-value">{{ memoryStats()!.HeapObjects | number }}</span>
+                    <span class="detail-label">
+                      {{ 'modals.about.memHeapObjects' | translate }}
+                    </span>
+                    <span class="detail-value">{{ mem.HeapObjects | number }}</span>
                   </div>
                 </div>
               </div>
@@ -804,13 +833,11 @@
                 <div class="rclone-details">
                   <div class="detail-row">
                     <span class="detail-label">{{ 'modals.about.memStackInuse' | translate }}</span>
-                    <span class="detail-value">{{
-                      memoryStats()!.StackInuse | formatFileSize
-                    }}</span>
+                    <span class="detail-value">{{ mem.StackInuse | formatFileSize }}</span>
                   </div>
                   <div class="detail-row">
                     <span class="detail-label">{{ 'modals.about.memStackSys' | translate }}</span>
-                    <span class="detail-value">{{ memoryStats()!.StackSys | formatFileSize }}</span>
+                    <span class="detail-value">{{ mem.StackSys | formatFileSize }}</span>
                   </div>
                 </div>
               </div>
@@ -884,7 +911,7 @@
         <span class="setting-title">{{ 'modals.about.releaseChannel' | translate }}</span>
       </div>
       <div class="setting-control">
-        <mat-form-field appearance="fill">
+        <mat-form-field appearance="fill" class="no-subscript">
           <mat-select
             [value]="channel"
             (selectionChange)="

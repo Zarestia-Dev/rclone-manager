@@ -1,0 +1,75 @@
+<div class="tabs-container">
+  <div
+    class="tabs-scroll-container hide-scrollbar"
+    #tabsScrollContainer
+    [class.show-left-shadow]="_showLeftShadow()"
+    [class.show-right-shadow]="_showRightShadow()"
+    (scroll)="onScroll()"
+  >
+    <div
+      class="tabs-bar"
+      role="tablist"
+      (dragover)="onNativeDragOver($event)"
+      (drop)="onNativeDrop($event)"
+    >
+      @for (t of tabs(); track t.id) {
+        <div
+          class="tab"
+          draggable="true"
+          role="tab"
+          tabindex="0"
+          [attr.aria-selected]="activeTabIndex() === $index"
+          [attr.data-tab-index]="$index"
+          [class.active]="activeTabIndex() === $index"
+          [class.is-dragging]="_draggedTabIndex() === $index"
+          [class.is-outside]="_isDraggedOutside() && _draggedTabIndex() === $index"
+          [class.file-drag-over]="isDragging() && hoveredTabIndex() === $index"
+          [style.transform]="getTabTransform($index)"
+          (click)="switchTab.emit($index)"
+          (keydown.enter)="switchTab.emit($index)"
+          (keydown.space)="$event.preventDefault(); switchTab.emit($index)"
+          (mousedown)="onTabMiddleClick($event, $index)"
+          (dragstart)="onNativeDragStart($event, t, $index)"
+          (dragend)="onNativeDragEnd($event, t, $index)"
+          (dragover)="onNativeDragOver($event, $index)"
+          (dragleave)="onNativeDragLeave($event)"
+          (drop)="onNativeDrop($event, $index)"
+          [cdkContextMenuTriggerFor]="tabContextMenu"
+          [cdkContextMenuTriggerData]="{ $implicit: $index }"
+          [matTooltip]="getTabTooltip(t)"
+          [matTooltipShowDelay]="800"
+        >
+          <span class="tab-title">{{ t.title | translate }}</span>
+          <button
+            class="close-tab"
+            [attr.aria-label]="'common.close' | translate"
+            (click)="$event.stopPropagation(); closeTab.emit($index)"
+          >
+            <mat-icon svgIcon="close" />
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+</div>
+
+<ng-template #tabContextMenu let-tabIdx>
+  <div class="material-context-menu" cdkMenu>
+    <button class="menu-item" cdkMenuItem (click)="detachTabAction(tabIdx)">
+      <span>{{ 'nautilus.contextMenu.detachTab' | translate }}</span>
+    </button>
+    <button class="menu-item" cdkMenuItem (click)="duplicateTab.emit(tabIdx)">
+      <span>{{ 'nautilus.contextMenu.duplicateTab' | translate }}</span>
+    </button>
+    <mat-divider />
+    <button class="menu-item" cdkMenuItem (click)="closeTab.emit(tabIdx)">
+      <span>{{ 'nautilus.contextMenu.closeTab' | translate }}</span>
+    </button>
+    <button class="menu-item" cdkMenuItem (click)="closeOtherTabs.emit(tabIdx)">
+      <span>{{ 'nautilus.contextMenu.closeOtherTabs' | translate }}</span>
+    </button>
+    <button class="menu-item" cdkMenuItem (click)="closeTabsToRight.emit(tabIdx)">
+      <span>{{ 'nautilus.contextMenu.closeTabsToRight' | translate }}</span>
+    </button>
+  </div>
+</ng-template>

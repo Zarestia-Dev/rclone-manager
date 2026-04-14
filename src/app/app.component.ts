@@ -3,13 +3,12 @@ import { TitlebarComponent } from './layout/titlebar/titlebar.component';
 import { OnboardingComponent } from './features/onboarding/onboarding.component';
 import { HomeComponent } from './home/home.component';
 import { TabsButtonsComponent } from './layout/tabs-buttons/tabs-buttons.component';
-import { AppTab } from '@app/types';
 import { ShortcutHandlerDirective } from './shared/directives/shortcut-handler.directive';
 import { BannerComponent } from './layout/banners/banner.component';
+import { NautilusComponent } from './file-browser/nautilus/nautilus.component';
 
 // Services
 import {
-  UiStateService,
   AppSettingsService,
   OnboardingStateService,
   NautilusService,
@@ -31,36 +30,30 @@ import { SseClientService } from './services/infrastructure/platform/sse-client.
     HomeComponent,
     ShortcutHandlerDirective,
     BannerComponent,
+    NautilusComponent,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppComponent implements OnInit {
-  // --- STATE SIGNALS ---
   readonly initializing = signal(true);
 
-  // --- INJECTED DEPENDENCIES & SERVICES ---
-  readonly uiStateService = inject(UiStateService);
-  readonly appSettingsService = inject(AppSettingsService);
-  readonly onboardingStateService = inject(OnboardingStateService);
-  private readonly nautilusService = inject(NautilusService);
+  protected readonly nautilusService = inject(NautilusService);
+  private readonly appSettingsService = inject(AppSettingsService);
+  private readonly onboardingStateService = inject(OnboardingStateService);
   private readonly backendService = inject(BackendService);
-  private readonly iconService = inject(IconService);
-  private readonly debugService = inject(DebugService);
-  private readonly loadingService = inject(GlobalLoadingService);
   private readonly apiClient = inject(ApiClientService);
   private readonly sseClient = inject(SseClientService);
-
-  // --- DERIVED STATE & SIGNAL EXPOSURE ---
-  readonly currentTab = this.uiStateService.currentTab;
+  private readonly loadingService = inject(GlobalLoadingService);
 
   readonly completedOnboarding = this.onboardingStateService.isCompleted;
 
   constructor() {
+    inject(IconService);
+    inject(DebugService);
+
     this.loadingService.bindToShutdownEvents();
-    void this.iconService;
-    void this.debugService;
     this.connectSseIfHeadless();
   }
 
@@ -77,8 +70,9 @@ export class AppComponent implements OnInit {
       await this.appSettingsService.applySavedLanguage();
       this.nautilusService.openFromBrowseQueryParam();
 
-      // Perform startup/background checks in the background
-      this.backendService.runStartupChecks();
+      if (!this.nautilusService.isStandaloneWindow()) {
+        this.backendService.runStartupChecks();
+      }
     } catch (error) {
       console.error('App initialization failed:', error);
     } finally {
@@ -95,17 +89,9 @@ export class AppComponent implements OnInit {
   async finishOnboarding(): Promise<void> {
     try {
       await this.onboardingStateService.completeOnboarding();
-      console.debug('Onboarding completed via OnboardingStateService');
     } catch (error) {
       console.error('Error saving onboarding status:', error);
       throw error;
     }
-  }
-
-  setTab(tab: AppTab): void {
-    if (this.currentTab() === tab) {
-      return;
-    }
-    this.uiStateService.setTab(tab);
   }
 }

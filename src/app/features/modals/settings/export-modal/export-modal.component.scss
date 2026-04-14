@@ -169,6 +169,7 @@
         border: 1px solid transparent;
         border-radius: var(--radius-sm);
         transition: var(--transition-fast);
+        position: relative;
 
         &:hover {
           background: rgba(var(--window-fg-color-rgb), 0.06);
@@ -179,8 +180,6 @@
           border-color: var(--primary-color);
         }
 
-        // Fix click area to cover entire card
-        position: relative;
         ::ng-deep label {
           &::after {
             content: "";
@@ -212,21 +211,6 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-  }
-
-  .security-warning {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    font-size: var(--font-size-sm);
-    color: var(--warn-color);
-    font-weight: 500;
-
-    mat-icon {
-      width: var(--icon-size-xs);
-      height: var(--icon-size-xs);
-      font-size: var(--icon-size-xs);
-    }
   }
 
   .password-field-wrapper {
@@ -286,9 +270,5 @@
 @media (max-width: 640px) {
   .options-grid {
     grid-template-columns: 1fr;
-  }
-
-  .modal-content {
-    padding: var(--space-md);
   }
 }

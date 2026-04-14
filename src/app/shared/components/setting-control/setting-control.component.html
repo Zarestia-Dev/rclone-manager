@@ -2,9 +2,12 @@
   <ng-template #settingInfo let-opt>
     <div class="setting">
       <div class="setting-info">
-        <strong>{{
-          opt.Name | rcloneOptionTranslate: 'title' : opt.FieldName || opt.Name : provider()
-        }}</strong>
+        <strong>
+          {{ opt.Name | rcloneOptionTranslate: 'title' : opt.FieldName || opt.Name : provider() }}
+          @if (opt.Required) {
+            <span class="required-asterisk">*</span>
+          }
+        </strong>
         <p
           class="help-text"
           [innerHTML]="
@@ -71,7 +74,7 @@
         >
           <mat-icon svgIcon="remove" />
         </button>
-        <mat-form-field class="input-field stepper-input" appearance="fill">
+        <mat-form-field class="input-field stepper-input no-subscript" appearance="fill">
           <input
             matInput
             [type]="isSensitiveField() ? 'password' : inputType"
@@ -168,7 +171,6 @@
     <div class="setting-full-width">
       <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }" />
       <div class="array-items">
-        <!-- FIX: uses formArrayControls() signal instead of getter — updates reactively in zoneless -->
         @for (itemControl of formArrayControls(); track $index) {
           <div class="array-item">
             <mat-form-field appearance="fill" class="array-input">
@@ -293,7 +295,6 @@
           <ng-container *ngTemplateOutlet="standardInput; context: { $implicit: mergedOption() }" />
         }
       }
-      <!-- int / int64 / uint32 all share the same integer stepper -->
       @case ('int') {
         <ng-container
           *ngTemplateOutlet="
@@ -327,15 +328,20 @@
         />
       }
       @case ('Bits') {
-        <ng-container
-          *ngTemplateOutlet="
-            multiSelect;
-            context: {
-              $implicit: mergedOption(),
-              optionsList: mergedOption()?.Examples || bitsFlags,
-            }
-          "
-        />
+        @if (hasBitsComboExamples()) {
+          <ng-container
+            *ngTemplateOutlet="standardSelect; context: { $implicit: mergedOption() }"
+          />
+        } @else if (mergedOption()?.Examples?.length) {
+          <ng-container
+            *ngTemplateOutlet="
+              multiSelect;
+              context: { $implicit: mergedOption(), optionsList: mergedOption()?.Examples }
+            "
+          />
+        } @else {
+          <ng-container *ngTemplateOutlet="standardInput; context: { $implicit: mergedOption() }" />
+        }
       }
       @case ('Encoding') {
         <ng-container
@@ -379,7 +385,13 @@
         <ng-container *ngTemplateOutlet="arrayInput; context: { $implicit: mergedOption() }" />
       }
       @default {
-        <ng-container *ngTemplateOutlet="standardInput; context: { $implicit: mergedOption() }" />
+        @if (mergedOption()?.Examples?.length) {
+          <ng-container
+            *ngTemplateOutlet="standardSelect; context: { $implicit: mergedOption() }"
+          />
+        } @else {
+          <ng-container *ngTemplateOutlet="standardInput; context: { $implicit: mergedOption() }" />
+        }
       }
     }
   </div>

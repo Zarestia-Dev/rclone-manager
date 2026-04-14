@@ -1,12 +1,10 @@
-#[cfg(all(desktop, feature = "updater"))]
+#[cfg(desktop)]
 pub mod app_updates {
     use crate::core::lifecycle::shutdown::shutdown_app;
     use crate::utils::app::platform::relaunch_app;
-    use crate::utils::types::logs::LogLevel;
-    use crate::utils::types::origin::Origin;
     use crate::utils::types::updater::AppUpdaterState;
     use crate::utils::{
-        app::notification::{Notification, send_notification_typed},
+        app::notification::{NotificationEvent, notify},
         github_client,
         types::core::RcloneState,
     };
@@ -232,16 +230,34 @@ pub mod app_updates {
             }
         }
 
-        let update_metadata = update.as_ref().map(|update| UpdateMetadata {
-            version: update.version.clone(),
-            current_version: update.current_version.clone(),
-            release_tag: release.tag_name.clone(),
-            release_notes: release.body.clone(),
-            release_date: release.published_at.clone(),
-            release_url: Some(release.html_url.clone()),
-            update_in_progress: false,
-            restart_required: false,
-        });
+        let update_metadata = if let Some(ref u) = update {
+            // Fetch the specific release by tag to ensure we have the full body/notes
+            let release_with_notes =
+                match github_client::get_release_by_tag(owner, repo, &release.tag_name).await {
+                    Ok(r) => r,
+                    Err(e) => {
+                        log::warn!(
+                            "Failed to fetch full release notes for {}: {}",
+                            release.tag_name,
+                            e
+                        );
+                        release.clone()
+                    }
+                };
+
+            Some(UpdateMetadata {
+                version: u.version.clone(),
+                current_version: u.current_version.clone(),
+                release_tag: release_with_notes.tag_name.clone(),
+                release_notes: release_with_notes.body,
+                release_date: release_with_notes.published_at,
+                release_url: Some(release_with_notes.html_url),
+                update_in_progress: false,
+                restart_required: false,
+            })
+        } else {
+            None
+        };
 
         if let Some(ref metadata) = update_metadata {
             // Emit APP_EVENT to notify frontend
@@ -255,16 +271,11 @@ pub mod app_updates {
                 log::warn!("Failed to emit app update event: {}", e);
             }
 
-            send_notification_typed(
+            notify(
                 &app,
-                Notification::localized(
-                    "notification.title.updateFound",
-                    "notification.body.updateFound",
-                    Some(vec![("version", &metadata.version)]),
-                    None,
-                    Some(LogLevel::Info),
-                ),
-                Some(Origin::Internal),
+                NotificationEvent::AppUpdateAvailable {
+                    version: metadata.version.clone(),
+                },
             );
         }
 
@@ -363,16 +374,11 @@ pub mod app_updates {
         info!("Preparing to download update from: {}", update.download_url);
         debug!("Update signature: {}", update.signature);
 
-        send_notification_typed(
+        notify(
             &app,
-            Notification::localized(
-                "notification.title.updateStarted",
-                "notification.body.updateStarted",
-                Some(vec![("version", &update.version)]),
-                None,
-                Some(LogLevel::Info),
-            ),
-            Some(Origin::Internal),
+            NotificationEvent::AppUpdateStarted {
+                version: update.version.clone(),
+            },
         );
 
         // Set update in progress flag
@@ -446,16 +452,11 @@ pub mod app_updates {
                 state.is_update_in_progress.store(false, Ordering::Relaxed);
                 state.is_restart_required.store(true, Ordering::Relaxed);
 
-                send_notification_typed(
+                notify(
                     &app,
-                    Notification::localized(
-                        "notification.title.updateComplete",
-                        "notification.body.updateComplete",
-                        None,
-                        None,
-                        Some(LogLevel::Info),
-                    ),
-                    Some(Origin::Internal),
+                    NotificationEvent::AppUpdateComplete {
+                        version: update.version.clone(),
+                    },
                 );
 
                 // Save update back to pending action for installation later
@@ -492,16 +493,11 @@ pub mod app_updates {
                     .is_update_in_progress
                     .store(false, Ordering::Relaxed);
 
-                send_notification_typed(
+                notify(
                     &app,
-                    Notification::localized(
-                        "notification.title.updateFailed",
-                        "notification.body.updateFailed",
-                        Some(vec![("error", &e.to_string())]),
-                        None,
-                        Some(LogLevel::Error),
-                    ),
-                    Some(Origin::Internal),
+                    NotificationEvent::AppUpdateFailed {
+                        error: e.to_string(),
+                    },
                 );
 
                 Err(Error::Updater(e))

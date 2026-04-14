@@ -1,5 +1,5 @@
-import { Injectable, inject, DOCUMENT, isDevMode } from '@angular/core';
-import { NautilusService } from '../../ui/nautilus.service';
+import { Injectable, inject, DestroyRef, DOCUMENT, isDevMode } from '@angular/core';
+import { FileSystemService } from '../../operations/file-system.service';
 import { TauriBaseService } from '../platform/tauri-base.service';
 
 /**
@@ -22,8 +22,9 @@ export interface DebugInfo {
   providedIn: 'root',
 })
 export class DebugService extends TauriBaseService {
-  private readonly nautilusService = inject(NautilusService);
+  private readonly fileSystemService = inject(FileSystemService);
   private readonly document = inject(DOCUMENT);
+  private readonly destroyRef = inject(DestroyRef);
 
   private contextMenu: HTMLElement | null = null;
 
@@ -68,14 +69,8 @@ export class DebugService extends TauriBaseService {
           break;
       }
 
-      // Use the existing open_in_files command
-      if (this.apiClient.isHeadless()) {
-        // In headless mode, use the in-app Nautilus file browser
-        this.nautilusService.openPath(path);
-      } else {
-        // In desktop mode, use the system file explorer
-        await this.apiClient.invoke<string>('open_in_files', { path });
-      }
+      // Use the unified file manager logic
+      await this.fileSystemService.openInFiles(path);
     } catch (error) {
       console.error('Failed to open folder:', error);
       this.notificationService.showError(this.translate.instant('home.errors.generic'));
@@ -90,38 +85,46 @@ export class DebugService extends TauriBaseService {
    */
   async openDevTools(): Promise<void> {
     if (this.apiClient.isHeadless()) {
-      // Browser mode - can't programmatically open DevTools, show instruction
       this.notificationService.showSuccess(
-        'Press F12 or right-click → Inspect to open browser DevTools'
+        this.translate.instant('developerTools.openDevToolsHint')
       );
       return;
     }
 
-    // Tauri desktop mode - call backend to open WebView DevTools
     try {
       await this.apiClient.invoke<string>('open_devtools');
     } catch (error) {
       console.error('Failed to open devtools:', error);
-      this.notificationService.showError('Failed to open DevTools');
+      this.notificationService.showError(
+        this.translate.instant('developerTools.openDevToolsError')
+      );
       throw error;
     }
   }
 
   private setupContextMenu(): void {
-    // Handle right-click
-    this.document.addEventListener('contextmenu', (event: MouseEvent) => {
-      event.preventDefault();
-      this.createContextMenu(event.clientX, event.clientY);
-    });
+    const onContextMenu = (e: MouseEvent): void => {
+      e.preventDefault();
 
-    // Close menu on click outside
-    this.document.addEventListener('click', () => this.closeMenu());
+      const tag = (e.target as HTMLElement).tagName;
+      if (['INPUT', 'TEXTAREA'].includes(tag)) return;
 
-    // Close menu on escape
-    this.document.addEventListener('keydown', (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        this.closeMenu();
-      }
+      this.createContextMenu(e.clientX, e.clientY);
+    };
+    const onClose = (): void => this.closeMenu();
+    const onKeydown = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') this.closeMenu();
+    };
+
+    this.document.addEventListener('contextmenu', onContextMenu);
+    this.document.addEventListener('click', onClose);
+    this.document.addEventListener('keydown', onKeydown);
+
+    this.destroyRef.onDestroy(() => {
+      this.document.removeEventListener('contextmenu', onContextMenu);
+      this.document.removeEventListener('click', onClose);
+      this.document.removeEventListener('keydown', onKeydown);
+      this.closeMenu();
     });
   }
 
@@ -130,14 +133,12 @@ export class DebugService extends TauriBaseService {
 
     this.contextMenu = this.document.createElement('div');
     this.contextMenu.className = 'material-context-menu';
-    if (this.contextMenu) {
-      this.contextMenu.style.cssText = `
+    this.contextMenu.style.cssText = `
       position: fixed;
       left: ${x}px;
       top: ${y}px;
       z-index: 99999;
     `;
-    }
 
     const menuItems = [
       {
@@ -152,9 +153,7 @@ export class DebugService extends TauriBaseService {
         ? [
             {
               label: this.translate.instant('developerTools.openDevTools'),
-              action: (): void => {
-                void this.openDevTools();
-              },
+              action: (): void => void this.openDevTools(),
             },
           ]
         : []),
@@ -198,53 +197,23 @@ export class DebugService extends TauriBaseService {
   }
 
   private clearCache(): void {
-    const feedback = this.document.createElement('div');
-    feedback.textContent = this.translate.instant('developerTools.clearing');
-    feedback.style.cssText = `
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      background: var(--primary-color);
-      color: white;
-      padding: 16px 32px;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      z-index: 99999;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-      animation: fadeIn 0.2s ease-out;
-      pointer-events: none;
-    `;
-    this.document.body.appendChild(feedback);
-
     // 1. Clear Local/Session Storage
     sessionStorage.clear();
     localStorage.clear();
 
-    // 2. Clear Cookies
+    // 2. Clear Cookies — trim whitespace to ensure deletion matches the stored name
     const cookies = this.document.cookie.split(';');
     for (const cookie of cookies) {
       const eqPos = cookie.indexOf('=');
-      const name = eqPos > -1 ? cookie.substring(0, eqPos) : cookie;
+      const name = (eqPos > -1 ? cookie.substring(0, eqPos) : cookie).trim();
       this.document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
     }
 
     // 3. Clear Cache API (Service Workers)
     if ('caches' in window) {
-      caches.keys().then(names => {
-        for (const name of names) {
-          caches.delete(name);
-        }
-      });
+      void caches.keys().then(names => names.forEach(n => void caches.delete(n)));
     }
 
-    // Update feedback
-    setTimeout(() => {
-      feedback.textContent = this.translate.instant('developerTools.cleared');
-      setTimeout(() => {
-        feedback.style.animation = 'fadeOut 0.2s ease-out forwards';
-        setTimeout(() => feedback.remove(), 300);
-      }, 1000);
-    }, 500);
+    this.notificationService.showSuccess(this.translate.instant('developerTools.cleared'));
   }
 }

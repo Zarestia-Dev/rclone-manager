@@ -17,10 +17,9 @@ use crate::{
         state::scheduled_tasks::ScheduledTasksCache,
     },
     utils::{
-        app::notification::{Notification, send_notification_typed},
+        app::notification::{NotificationEvent, notify},
         types::{
             jobs::{JobStatus, JobType},
-            logs::LogLevel,
             remotes::ProfileParams,
         },
     },
@@ -36,7 +35,7 @@ pub fn show_main_window(app: AppHandle) {
     } else {
         use crate::utils::app::builder::create_app_window;
         info!("⚠️ Main window not found. Building...");
-        create_app_window(app, None);
+        create_app_window(app);
     }
 }
 
@@ -132,16 +131,12 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
 
         if mount_point.is_empty() {
             error!("❌ Mount point not found for profile '{}'", profile);
-            send_notification_typed(
+            notify(
                 &app_clone,
-                Notification::localized(
-                    "notification.title.unmountFailed",
-                    "notification.body.profileNotFound",
-                    Some(vec![("profile", profile.as_str())]),
-                    None,
-                    Some(LogLevel::Error),
-                ),
-                Some(Origin::Tray),
+                NotificationEvent::MountFailed {
+                    mount_point: mount_point.clone(),
+                    error: format!("profile not found: {}", profile),
+                },
             );
             return;
         }
@@ -191,7 +186,6 @@ async fn handle_stop_job_profile(
     remote_name: String,
     profile_name: String,
     job_type: JobType,
-    action_name: &str,
 ) {
     let backend_manager = app.state::<BackendManager>();
 
@@ -231,20 +225,15 @@ async fn handle_stop_job_profile(
             remote_name,
             profile_name
         );
-        send_notification_typed(
+        notify(
             &app,
-            Notification::localized(
-                "notification.title.operationFailed",
-                "notification.body.noActiveJob",
-                Some(vec![
-                    ("operation", action_name),
-                    ("remote", remote_name.as_str()),
-                    ("profile", profile_name.as_str()),
-                ]),
-                None,
-                Some(LogLevel::Warn),
-            ),
-            Some(Origin::Tray),
+            NotificationEvent::JobFailed {
+                remote: remote_name.clone(),
+                profile: Some(profile_name.clone()),
+                operation: job_type.as_str().to_string(),
+                error: "no active job".to_string(),
+                origin: Origin::Ui,
+            },
         );
     }
 }
@@ -255,7 +244,6 @@ pub fn handle_stop_sync_profile(app: AppHandle, remote_name: &str, profile_name:
         remote_name.to_string(),
         profile_name.to_string(),
         JobType::Sync,
-        "Sync",
     ));
 }
 
@@ -265,7 +253,6 @@ pub fn handle_stop_copy_profile(app: AppHandle, remote_name: &str, profile_name:
         remote_name.to_string(),
         profile_name.to_string(),
         JobType::Copy,
-        "Copy",
     ));
 }
 
@@ -275,7 +262,6 @@ pub fn handle_stop_move_profile(app: AppHandle, remote_name: &str, profile_name:
         remote_name.to_string(),
         profile_name.to_string(),
         JobType::Move,
-        "Move",
     ));
 }
 
@@ -285,7 +271,6 @@ pub fn handle_stop_bisync_profile(app: AppHandle, remote_name: &str, profile_nam
         remote_name.to_string(),
         profile_name.to_string(),
         JobType::Bisync,
-        "BiSync",
     ));
 }
 
@@ -368,17 +353,7 @@ pub fn handle_stop_all_jobs(app: AppHandle) {
 
         // Nothing to do -> inform the user (tray-origin)
         if !should_emit_stop_all_jobs_notification(active_jobs.len()) {
-            send_notification_typed(
-                &app,
-                Notification::localized(
-                    "notification.title.nothingToDo",
-                    "notification.body.nothingToDoJobs",
-                    None,
-                    None,
-                    Some(LogLevel::Info),
-                ),
-                Some(Origin::Tray),
-            );
+            notify(&app, NotificationEvent::NothingToDoJobs);
             return;
         }
 
@@ -404,30 +379,14 @@ pub fn handle_stop_all_jobs(app: AppHandle) {
         }
 
         if stopped_count > 0 {
-            send_notification_typed(
+            notify(
                 &app,
-                Notification::localized(
-                    "notification.title.allJobsStopped",
-                    "notification.body.allJobsStopped",
-                    Some(vec![("count", &stopped_count.to_string())]),
-                    None,
-                    Some(LogLevel::Info),
-                ),
-                Some(Origin::Tray),
+                NotificationEvent::AllJobsStopped {
+                    count: stopped_count.to_string(),
+                },
             );
         }
     });
-}
-
-#[cfg(test)]
-mod tests {
-    use super::should_emit_stop_all_jobs_notification;
-
-    #[test]
-    fn test_should_emit_stop_all_jobs_notification() {
-        assert!(!should_emit_stop_all_jobs_notification(0));
-        assert!(should_emit_stop_all_jobs_notification(1));
-    }
 }
 
 #[cfg(not(feature = "web-server"))]
@@ -470,22 +429,13 @@ pub fn handle_browse_remote(app: &AppHandle, remote_name: &str) {
 }
 
 #[cfg(not(feature = "web-server"))]
-pub fn handle_browse_in_app(app: &AppHandle, remote_name: &str) {
-    info!("📂 Opening in-app browser for {}", remote_name);
-    if let Some(window) = app.get_webview_window("main") {
-        window.show().unwrap_or_else(|e| {
-            error!("🚨 Failed to show main window: {e}");
-        });
-        if let Err(e) = tauri::Emitter::emit(
-            app,
-            crate::utils::types::events::OPEN_INTERNAL_ROUTE,
-            remote_name,
-        ) {
-            error!("🚨 Failed to emit browse event: {e}");
-        }
+pub fn handle_browse_in_app(app: &AppHandle, remote_name: Option<&str>) {
+    if let Some(name) = remote_name {
+        info!("📂 Opening standalone in-app browser window for {}", name);
     } else {
-        crate::utils::app::builder::create_app_window(app.clone(), Some(remote_name));
+        info!("📂 Opening standalone in-app browser window");
     }
+    crate::utils::app::builder::create_nautilus_window(app.clone(), remote_name, None);
 }
 
 pub fn handle_stop_all_serves(app: AppHandle) {

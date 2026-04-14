@@ -4,7 +4,7 @@
     <button>
       <mat-icon [svgIcon]="iconService.getIconName(data.remote.type)"></mat-icon>
     </button>
-    <p>{{ data.remote.displayName }}</p>
+    <p>{{ displayName }}</p>
     <button
       mat-icon-button
       (click)="close()"
@@ -14,39 +14,33 @@
     </button>
   </div>
 
-  <div class="modal-content custom-scrollbar">
+  <div class="modal-content">
     <mat-tab-group animationDuration="0ms" dynamicHeight>
       <!-- OVERVIEW TAB -->
       <mat-tab [label]="'fileBrowser.remoteAbout.tabs.overview' | translate">
         <div class="tab-content">
-          <!-- Loading State -->
           @if (loadingAbout()) {
             <div class="loading-placeholder">
               <mat-spinner diameter="40"></mat-spinner>
               <p>{{ 'fileBrowser.remoteAbout.loading' | translate }}</p>
             </div>
-          }
-
-          <!-- Error State -->
-          @if (errorAbout()) {
+          } @else if (errorAbout()) {
             <div class="error-state">
               <mat-icon svgIcon="circle-exclamation" class="warn"></mat-icon>
               <p>{{ errorAbout() }}</p>
             </div>
-          }
-
-          <!-- Content -->
-          @if (aboutInfo(); as about) {
+          } @else if (aboutInfo(); as about) {
             <div class="fade-in">
               <!-- Usage Card -->
+              @let usage = diskUsage();
               <mat-card class="usage-card">
                 <div class="usage-item">
                   <span class="label">{{ 'fileBrowser.remoteAbout.totalSpace' | translate }}</span>
                   <span class="value">
-                    @if (diskUsage().loading) {
+                    @if (usage.loading) {
                       <mat-spinner diameter="16"></mat-spinner>
-                    } @else if (diskUsage().total_space !== undefined) {
-                      {{ diskUsage().total_space ?? 0 | formatFileSize }}
+                    } @else if (usage.total_space !== undefined) {
+                      {{ usage.total_space | formatFileSize }}
                     } @else {
                       -
                     }
@@ -55,10 +49,10 @@
                 <div class="usage-item">
                   <span class="label">{{ 'fileBrowser.remoteAbout.usedSpace' | translate }}</span>
                   <span class="value">
-                    @if (diskUsage().loading) {
+                    @if (usage.loading) {
                       <mat-spinner diameter="16"></mat-spinner>
-                    } @else if (diskUsage().used_space !== undefined) {
-                      {{ diskUsage().used_space ?? 0 | formatFileSize }}
+                    } @else if (usage.used_space !== undefined) {
+                      {{ usage.used_space | formatFileSize }}
                     } @else {
                       -
                     }
@@ -67,10 +61,10 @@
                 <div class="usage-item">
                   <span class="label">{{ 'fileBrowser.remoteAbout.freeSpace' | translate }}</span>
                   <span class="value">
-                    @if (diskUsage().loading) {
+                    @if (usage.loading) {
                       <mat-spinner diameter="16"></mat-spinner>
-                    } @else if (diskUsage().free_space !== undefined) {
-                      {{ diskUsage().free_space ?? 0 | formatFileSize }}
+                    } @else if (usage.free_space !== undefined) {
+                      {{ usage.free_space | formatFileSize }}
                     } @else {
                       -
                     }
@@ -89,14 +83,11 @@
                 <button
                   mat-icon-button
                   (click)="fetchDiskUsage(true)"
-                  [disabled]="diskUsage().loading"
+                  [disabled]="usage.loading"
                   [matTooltip]="'fileBrowser.remoteAbout.reloadUsage' | translate"
                   matTooltipPosition="left"
                 >
-                  <mat-icon
-                    svgIcon="rotate-right"
-                    [class.animate-spin]="diskUsage().loading"
-                  ></mat-icon>
+                  <mat-icon svgIcon="rotate-right" [class.animate-spin]="usage.loading"></mat-icon>
                 </button>
               </mat-card>
 
@@ -112,15 +103,13 @@
                   <span class="info-label">{{
                     'fileBrowser.remoteAbout.rootPath' | translate
                   }}</span>
-                  <span class="info-value code-font" [matTooltip]="getRoot(about)">
-                    {{ getRoot(about) }}
-                  </span>
+                  <span class="info-value code-font" [matTooltip]="root()">{{ root() }}</span>
                 </div>
                 <div class="info-row">
                   <span class="info-label">{{
                     'fileBrowser.remoteAbout.timePrecision' | translate
                   }}</span>
-                  <span class="info-value">{{ getPrecisionFormatted(about) }}</span>
+                  <span class="info-value">{{ precision() }}</span>
                 </div>
               </div>
 
@@ -130,13 +119,10 @@
                   {{ 'fileBrowser.remoteAbout.supportedHashes' | translate }}
                 </div>
                 <div class="chip-container">
-                  @let hashes = getHashes(about);
-                  @if (hashes.length > 0) {
-                    <mat-chip-set>
-                      @for (hash of hashes; track hash) {
-                        <mat-chip class="hash-chip">{{ hash }}</mat-chip>
-                      }
-                    </mat-chip-set>
+                  @if (hashes().length > 0) {
+                    @for (hash of hashes(); track hash) {
+                      <span class="hash-chip">{{ hash }}</span>
+                    }
                   } @else {
                     <span class="empty-text">{{
                       'fileBrowser.remoteAbout.noneSupported' | translate
@@ -152,9 +138,13 @@
       <!-- FEATURES TAB -->
       <mat-tab [label]="'fileBrowser.remoteAbout.tabs.features' | translate">
         <div class="tab-content">
-          @if (aboutInfo(); as about) {
+          @if (loadingAbout()) {
+            <div class="loading-placeholder">
+              <mat-spinner diameter="40"></mat-spinner>
+            </div>
+          } @else if (features().length > 0) {
             <div class="features-grid">
-              @for (feat of getFeatures(about); track feat.key) {
+              @for (feat of features(); track feat.key) {
                 <div
                   class="feature-item"
                   [class.supported]="feat.value"
@@ -174,17 +164,10 @@
                 </div>
               }
             </div>
-          }
-          @if (aboutInfo() === null && !loadingAbout()) {
+          } @else {
             <div class="empty-state">
               <mat-icon svgIcon="circle-info"></mat-icon>
               <span>{{ 'fileBrowser.remoteAbout.noFeatureInfo' | translate }}</span>
-            </div>
-          }
-
-          @if (!aboutInfo() && loadingAbout()) {
-            <div class="loading-placeholder">
-              <mat-spinner diameter="40"></mat-spinner>
             </div>
           }
         </div>
@@ -193,13 +176,16 @@
       <!-- METADATA TAB -->
       <mat-tab [label]="'fileBrowser.remoteAbout.tabs.metadata' | translate">
         <div class="tab-content">
-          @if (aboutInfo(); as about) {
+          @if (loadingAbout()) {
+            <div class="loading-placeholder">
+              <mat-spinner diameter="40"></mat-spinner>
+            </div>
+          } @else if (metadataGroups().length > 0) {
             <mat-accordion multi>
-              @for (group of getMetadataGroups(about); track group.name) {
+              @for (group of metadataGroups(); track group.name) {
                 @if (group.items.length > 0) {
                   <div class="group-header">{{ group.name }}</div>
                 }
-
                 @for (item of group.items; track item.key) {
                   <mat-expansion-panel>
                     <mat-expansion-panel-header>
@@ -208,7 +194,6 @@
                         {{ item.data['Type'] || ('fileBrowser.remoteAbout.unknown' | translate) }}
                       </mat-panel-description>
                     </mat-expansion-panel-header>
-
                     <div class="meta-details">
                       <p class="meta-help">{{ item.data['Help'] }}</p>
                       <div class="meta-props">
@@ -231,21 +216,11 @@
                   </mat-expansion-panel>
                 }
               }
-
-              @if (getMetadataGroups(about).length === 0) {
-                <div class="empty-state">
-                  <mat-icon svgIcon="circle-info"></mat-icon>
-                  <span>{{ 'fileBrowser.remoteAbout.noMetadata' | translate }}</span>
-                </div>
-              }
             </mat-accordion>
-          }
-
-          @if (!aboutInfo() && loadingAbout()) {
-            <div class="tab-content">
-              <div class="loading-placeholder">
-                <mat-spinner diameter="40"></mat-spinner>
-              </div>
+          } @else {
+            <div class="empty-state">
+              <mat-icon svgIcon="circle-info"></mat-icon>
+              <span>{{ 'fileBrowser.remoteAbout.noMetadata' | translate }}</span>
             </div>
           }
         </div>

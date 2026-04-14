@@ -474,6 +474,8 @@ $dark-theme: (
 // App-specific semantic colors and design system tokens.
 
 :root {
+  --font-mono: "JetBrains Mono", "Fira Code", var(--font-mono);
+
   // ===== SEMANTIC COLOR ALIASES =====
   // These map to the GNOME palette for app-specific semantic meaning
 
@@ -535,7 +537,7 @@ $dark-theme: (
   --item-radius: var(--radius-sm);
   --badge-radius: var(--radius-sm);
   --status-radius: var(--radius-sm);
-  --usage-bar-radius: var(--radius-lg);
+  --usage-bar-radius: var(--radius-sm);
   --card-border-radius-large: var(--radius-md);
   --divider-radius: 1px;
 
@@ -582,7 +584,7 @@ $dark-theme: (
   // Icon Size Scale (Grid-Perfect multiples of 24px)
   --icon-size-xxs: 8px; // 1/3x
   --icon-size-xs: 12px; // 1/2x
-  --icon-size-sm: 18px; // 3/4x
+  --icon-size-sm: 16px; // 2/3x
   --icon-size-md: 24px; // 1x (Standard. Not use for mat-icon)
   --icon-size-lg: 32px; // ~1.33x (Standard Material Large)
   --icon-size-xl: 48px; // 2x
@@ -606,7 +608,7 @@ $dark-theme: (
   --hover-opacity: 0.03;
   --active-opacity: 0.1;
   --inactive-opacity: 0.02;
-  --legend-opacity: 0.15;
+  --legend-opacity: 0.2;
 
   // Transition Scale
   --transition-fast: all 0.2s ease;
@@ -655,8 +657,7 @@ $dark-theme: (
   mat-card-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding: var(--panel-header-padding);
+    padding: var(--space-md);
 
     mat-card-title {
       display: flex;
@@ -693,7 +694,6 @@ body {
   height: 100%;
   border-radius: var(--app-border-radius);
   overflow: hidden;
-  clip-path: inset(0 round var(--app-border-radius));
 }
 
 body {
@@ -742,42 +742,21 @@ body {
     )
   );
 
-  @include mat.chips-overrides(
-    (
-      outline-color: var(--border-color),
-      focus-outline-color: var(--border-color),
-    )
-  );
-
-  @include mat.menu-overrides(
-    (
-      container-shape: var(--radius-sm),
-      container-color: var(--popover-bg-color),
-      divider-color: var(--border-color),
-      divider-top-spacing: var(--space-xs),
-      divider-bottom-spacing: var(--space-xs),
-      item-label-text-color: var(--window-fg-color),
-    )
-  );
-
   @include mat.card-overrides(
     (
-      // Container styling - use libadwaita colors
       elevated-container-color: var(--view-bg-color),
       filled-container-color: var(--view-bg-color),
       outlined-container-color: var(--view-bg-color),
-      // Border radius
       elevated-container-shape: var(--card-border-radius),
       filled-container-shape: var(--card-border-radius),
       outlined-container-shape: var(--card-border-radius),
-      elevated-container-elevation: var(--shadow-gnome)
+      elevated-container-elevation: var(--shadow-gnome),
     )
   );
 
   @include mat.expansion-overrides(
     (
       container-shape: var(--card-border-radius),
-      // Use libadwaita-style outline shadow instead of heavy drop shadow
       container-elevation-shadow: var(--shadow-gnome),
     )
   );
@@ -920,6 +899,26 @@ button {
   border-radius: var(--modal-radius) !important;
 }
 
+.contextual-action-wrapper {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  transition:
+    max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  max-width: 0;
+  opacity: 0;
+  transform: translateX(-20px);
+
+  &.visible {
+    max-width: 40px;
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 // ============================================================================
 // RESPONSIVE MODAL → BOTTOM SHEET BEHAVIOR (Libadwaita Style)
 // ============================================================================
@@ -933,20 +932,14 @@ button {
     right: 0 !important;
     max-width: 100% !important;
     width: 100% !important;
-    // This is the real behavior of libadwaita but my modals has a dynamic height.
-    // So this not looks good on my side. I gonna use the static height.
-    // height: auto !important;
-    // max-height: 96vh !important;
     height: 96vh !important;
     margin: 0 !important;
   }
 
   mat-dialog-container.mat-mdc-dialog-container,
   .mat-mdc-dialog-container.mdc-dialog {
-    // Apply our custom slide-up animation
     animation: slideUpSheet 250ms cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
 
-    // Closing animation - triggered by adding 'closing' class via ModalService.animatedClose()
     &.closing {
       animation: slideDownSheet 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards !important;
     }
@@ -957,19 +950,8 @@ button {
 // SECTION 6: COMPONENT STYLES
 // ============================================================================
 
-@media (max-width: 540px) {
-  mat-accordion {
-    gap: var(--space-sm);
-  }
-
-  .mat-expansion-panel-header {
-    padding: var(--space-sm);
-    min-height: 56px;
-  }
-
-  mat-panel-title {
-    gap: var(--space-sm);
-  }
+.mat-mdc-autocomplete-panel {
+  border-radius: var(--input-border-radius) !important;
 }
 
 mat-accordion {
@@ -980,7 +962,7 @@ mat-accordion {
 
 .mat-expansion-panel {
   background: var(--view-bg-color) !important;
-  border-radius: var(--card-border-radius) !important;
+  border-radius: var(--radius-md) !important;
 
   .mat-expansion-panel-body {
     padding: var(--space-md);
@@ -1017,6 +999,12 @@ mat-accordion {
   }
 }
 
+@media (max-width: 540px) {
+  mat-accordion {
+    gap: var(--space-sm);
+  }
+}
+
 .hide-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -1024,6 +1012,10 @@ mat-accordion {
   &::-webkit-scrollbar {
     display: none;
   }
+}
+
+.no-subscript .mat-mdc-form-field-subscript-wrapper {
+  display: none;
 }
 
 // Dropdown option content styling
@@ -1047,9 +1039,9 @@ mat-accordion {
 .material-context-menu {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xxs);
-  min-width: 200px;
-  max-width: 300px;
+  gap: 2px;
+  min-width: 220px;
+  max-width: 320px;
   overflow-y: auto;
 
   background: var(--popover-bg-color);
@@ -1062,13 +1054,15 @@ mat-accordion {
     all: unset;
     display: flex;
     align-items: center;
-    gap: var(--space-xxs);
+    justify-content: space-between;
+    gap: var(--space-sm);
     box-sizing: border-box;
     overflow: hidden;
     text-overflow: ellipsis;
 
-    width: 100%;
-    min-height: 34px;
+    width: calc(100% - 4px);
+    margin: 0 2px;
+    min-height: 32px;
     padding: var(--space-xxs) var(--space-sm);
 
     font-size: var(--font-size-md);
@@ -1076,14 +1070,43 @@ mat-accordion {
     font-weight: 500;
     color: var(--window-fg-color);
 
-    border-radius: var(--radius-xs);
-    transition: var(--transition-instant);
+    border-radius: 6px;
+    transition: background-color 0.1s ease;
+
+    .item-label {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .shortcut {
+      font-size: var(--font-size-sm);
+      color: var(--dim-color);
+      font-weight: 700;
+      margin-left: auto;
+    }
+
+    mat-icon {
+      width: 16px;
+      height: 16px;
+      font-size: 16px;
+      color: var(--dim-color);
+      margin-right: -4px;
+    }
 
     &:hover,
     &:focus,
-    &:focus-visible {
+    &:focus-visible,
+    &.cdk-menu-item-highlighted {
       background-color: var(--hover-bg-color);
       outline: none;
+
+      .shortcut {
+        color: var(--window-fg-color);
+      }
     }
 
     &:active {
@@ -1094,6 +1117,11 @@ mat-accordion {
       opacity: 0.4;
       background: transparent;
     }
+  }
+
+  mat-divider {
+    margin: 4px 6px;
+    opacity: 0.5;
   }
 }
 
@@ -1224,7 +1252,7 @@ mat-accordion {
     padding: 0.2em 0.4em;
     margin: 0;
     font-size: 85%;
-    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-family: var(--font-mono);
     background-color: rgba(var(--window-fg-color-rgb), 0.1);
     border-radius: 6px;
   }

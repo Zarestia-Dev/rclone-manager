@@ -1,9 +1,7 @@
 <div class="general-overview" animate.enter="fade-in-out-enter" animate.leave="fade-in-out-leave">
   <div class="overview-header" role="banner">
-    <div class="header-content">
-      <app-overview-header [mode]="'general'" (openBackendModal)="openBackendModal.emit()">
-      </app-overview-header>
-    </div>
+    <app-overview-header [mode]="'general'" (openBackendModal)="openBackendModal.emit()">
+    </app-overview-header>
   </div>
 
   <div class="overview-content" role="main">
@@ -31,6 +29,24 @@
                   </div>
                   <span class="panel-label">{{ panel.title | translate }}</span>
 
+                  @if (panel.id === 'remotes') {
+                    <button
+                      matIconButton
+                      class="card-layout-toggle"
+                      (click)="toggleCardDisplayMode()"
+                      [matTooltip]="
+                        cardDisplayMode() === 'compact'
+                          ? ('generalOverview.layout.showDetailed' | translate)
+                          : ('generalOverview.layout.showCompact' | translate)
+                      "
+                      matTooltipPosition="left"
+                      matTooltipShowDelay="500"
+                    >
+                      <mat-icon
+                        [svgIcon]="cardDisplayMode() === 'compact' ? 'detailed' : 'compress'"
+                      ></mat-icon>
+                    </button>
+                  }
                   <div class="visibility-toggle">
                     <span class="toggle-label">{{
                       panel.visible
@@ -53,19 +69,23 @@
               >
                 @switch (panel.id) {
                   @case ('remotes') {
-                    <!-- Quick Remote Access Panel -->
                     <app-remotes-panel
                       [title]="'generalOverview.panels.remotes' | translate"
                       [icon]="'cloud'"
                       [remotes]="remotes()"
                       [mode]="'general'"
+                      [displayMode]="cardDisplayMode()"
                       [actionInProgress]="actionInProgress()"
                       [primaryActionLabel]="'actions.mount' | translate"
                       [activeIcon]="'mount'"
-                      (remoteSelected)="onRemoteSelectedFromPanel($event)"
-                      (openInFiles)="onOpenInFilesFromPanel($event)"
+                      (remoteSelected)="selectRemote.emit($event)"
+                      (openInFiles)="browseRemote.emit($event)"
                       (startJob)="
-                        startJob.emit({ type: $event.type, remoteName: $event.remoteName })
+                        startJob.emit({
+                          type: $event.type,
+                          remoteName: $event.remoteName,
+                          profileName: $event.profileName,
+                        })
                       "
                       (stopJob)="
                         stopJob.emit({
@@ -75,7 +95,7 @@
                         })
                       "
                       role="region"
-                      aria-labelledby="remotes-panel-title"
+                      [attr.aria-label]="'generalOverview.panels.remotes' | translate"
                     >
                     </app-remotes-panel>
                   }
@@ -133,7 +153,7 @@
                           <span>{{ bandwidth?.error }}</span>
                           <button
                             matIconButton
-                            (click)="rcloneStatusService.loadBandwidthLimit()"
+                            (click)="loadBandwidthLimit()"
                             [matTooltip]="'generalOverview.bandwidth.retry' | translate"
                             [aria-label]="'generalOverview.bandwidth.retry' | translate"
                           >
@@ -237,16 +257,15 @@
                               'generalOverview.system.memoryUsage' | translate
                             }}</span>
                             <span class="value" role="gridcell">{{
-                              rcloneStatusService.memoryUsage() | formatMemoryUsage
+                              memoryUsage() | formatMemoryUsage
                             }}</span>
                           </div>
                           <div class="info-item" role="row">
                             <span class="label" role="gridcell">{{
                               'generalOverview.system.uptime' | translate
                             }}</span>
-                            <span class="value" role="gridcell">{{
-                              rcloneStatusService.uptime() | formatTime
-                            }}</span>
+                            <!-- FIX: same — use the exposed uptime signal. -->
+                            <span class="value" role="gridcell">{{ uptime() | formatTime }}</span>
                           </div>
                         </div>
                       }
@@ -268,7 +287,11 @@
                         </mat-panel-title>
                         <mat-panel-description>
                           @let activeJobs = activeJobsCount();
-                          <span [ngClass]="{ 'active-jobs-indicator': activeJobs > 0 }">
+                          <span
+                            [ngClass]="
+                              activeJobs > 0 ? 'active-jobs-indicator' : 'disabled-jobs-indicator'
+                            "
+                          >
                             {{
                               activeJobs > 0
                                 ? ('generalOverview.jobs.activeCount'
@@ -364,8 +387,80 @@
                             </div>
                           }
 
+                          @if (runningJobs().length > 0) {
+                            <div class="running-jobs-section">
+                              <div class="section-heading">
+                                <mat-icon svgIcon="download" aria-hidden="true"></mat-icon>
+                                <span>{{ 'generalOverview.jobs.runningJobs' | translate }}</span>
+                              </div>
+
+                              <div class="running-jobs-list">
+                                @for (job of runningJobs(); track job.jobid) {
+                                  <div class="running-job-row">
+                                    <div class="running-job-main">
+                                      <mat-icon
+                                        [svgIcon]="getJobTypeIcon(job)"
+                                        class="running-job-icon"
+                                      ></mat-icon>
+                                      <div class="running-job-text">
+                                        <span class="running-job-title">
+                                          {{ getJobLabel(job) }}
+                                        </span>
+                                        <span class="running-job-path">
+                                          {{ job.destination || job.source }}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    @if (job.stats; as stats) {
+                                      <div class="running-job-meta">
+                                        <span>{{ stats.bytes | formatBytes }}</span>
+                                        <span class="dot-separator">•</span>
+                                        @if (stats.speed > 0) {
+                                          <span>{{ stats.speed | formatRateValue }}</span>
+                                        } @else {
+                                          <span>{{
+                                            'generalOverview.jobs.starting' | translate
+                                          }}</span>
+                                        }
+                                        <span class="dot-separator">•</span>
+                                        <span>{{ stats.eta | formatEta }}</span>
+                                      </div>
+
+                                      <mat-progress-bar
+                                        mode="determinate"
+                                        [value]="
+                                          stats.totalBytes > 0
+                                            ? (stats.bytes / stats.totalBytes) * 100
+                                            : 0
+                                        "
+                                        class="running-job-progress"
+                                      ></mat-progress-bar>
+                                    } @else {
+                                      <div class="running-job-meta">
+                                        <span>{{ 0 | formatBytes }}</span>
+                                        <span class="dot-separator">•</span>
+                                        <span>{{
+                                          'generalOverview.jobs.starting' | translate
+                                        }}</span>
+                                        <span class="dot-separator">•</span>
+                                        <span>{{ 0 | formatEta }}</span>
+                                      </div>
+
+                                      <mat-progress-bar
+                                        mode="determinate"
+                                        [value]="0"
+                                        class="running-job-progress"
+                                      ></mat-progress-bar>
+                                    }
+                                  </div>
+                                }
+                              </div>
+                            </div>
+                          }
+
                           @if (activeJobs === 0) {
-                            <div class="no-jobs-message" role="status">
+                            <div class="no-jobs-message empty-state-message" role="status">
                               <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
                               <span>{{ 'generalOverview.jobs.noRunning' | translate }}</span>
                             </div>
@@ -390,9 +485,11 @@
                         </mat-panel-title>
                         <mat-panel-description>
                           <span
-                            [ngClass]="{
-                              'active-tasks-indicator': activeScheduledTasksCount() > 0,
-                            }"
+                            [ngClass]="
+                              activeScheduledTasksCount() > 0
+                                ? 'active-tasks-indicator'
+                                : 'disabled-tasks-indicator'
+                            "
                           >
                             {{
                               totalScheduledTasksCount() > 0
@@ -419,7 +516,7 @@
                       } @else {
                         <div class="scheduled-tasks-content">
                           @if (totalScheduledTasksCount() === 0) {
-                            <div class="no-tasks-message" role="status">
+                            <div class="no-tasks-message empty-state-message" role="status">
                               <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
                               <span>{{ 'generalOverview.tasks.noConfigured' | translate }}</span>
                             </div>
@@ -478,10 +575,8 @@
                                       </div>
                                     </div>
                                     <button
-                                      mat-icon-button
-                                      (click)="
-                                        toggleScheduledTask(task.id); $event.stopPropagation()
-                                      "
+                                      matIconButton
+                                      (click)="onToggleTaskClick(task.id, $event)"
                                       [matTooltip]="
                                         'task.toggle.' + getToggleKey(task.status) | translate
                                       "
@@ -579,9 +674,11 @@
                         </mat-panel-title>
                         <mat-panel-description>
                           <span
-                            [ngClass]="{
-                              'active-serves-indicator': serves.length > 0,
-                            }"
+                            [ngClass]="
+                              serves.length > 0
+                                ? 'active-serves-indicator'
+                                : 'disabled-serves-indicator'
+                            "
                           >
                             {{
                               serves.length > 0
@@ -598,7 +695,7 @@
                       </mat-expansion-panel-header>
 
                       @if (serves.length === 0) {
-                        <div class="no-serves-message" role="status">
+                        <div class="no-serves-message empty-state-message" role="status">
                           <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
                           <span>{{ 'generalOverview.serves.noRunning' | translate }}</span>
                         </div>
@@ -609,7 +706,6 @@
                               [serve]="serve"
                               [showRemoteName]="true"
                               (stopServe)="stopServe($event)"
-                              (copyToClipboard)="handleCopyToClipboard($event)"
                               (cardClick)="handleServeCardClick($event)"
                             ></app-serve-card>
                           }
@@ -627,7 +723,7 @@
 
     <div class="layout-actions">
       <button
-        mat-icon-button
+        matIconButton
         (click)="toggleEditLayout()"
         matTooltipPosition="left"
         matTooltipShowDelay="500"
@@ -645,7 +741,7 @@
 
       @if (isEditingLayout()) {
         <button
-          mat-icon-button
+          matIconButton
           (click)="resetLayout()"
           matTooltipPosition="left"
           matTooltipShowDelay="500"

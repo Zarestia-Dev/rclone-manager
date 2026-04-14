@@ -2,6 +2,7 @@ use log::{debug, error, info, warn};
 use serde_json::json;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager};
+use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::TcpStream;
 use tokio::time::sleep;
 
@@ -10,11 +11,11 @@ use crate::{
     utils::{
         rclone::{
             endpoints::{config, core, fscache},
-            process_common::create_rclone_command,
+            process_common::build_rclone_process_command,
         },
         types::{
-            core::{BandwidthLimitResponse, RcloneState},
-            events::{BANDWIDTH_LIMIT_CHANGED, RCLONE_CONFIG_UNLOCKED},
+            core::{BandwidthLimitResponse, ProcessKind, RcloneState},
+            events::{BANDWIDTH_LIMIT_CHANGED, RCLONE_CONFIG_UNLOCKED, RCLONE_OAUTH_URL},
         },
     },
 };
@@ -62,37 +63,34 @@ impl std::fmt::Display for RcloneError {
                 f,
                 "{}",
                 crate::localized_error!("backendErrors.request.failed", "error" => e)
-            ), // Generic fallback
+            ),
             RcloneError::ConfigError(e) => write!(
                 f,
                 "{}",
                 crate::localized_error!("backendErrors.sync.configIncomplete", "profile" => e)
-            ), // Generic fallback
+            ),
         }
     }
 }
 
-/// Try to auto-unlock config for remote backends with stored password
-///
-/// This is only for remote backends - local backends use RCLONE_CONFIG_PASS env var.
+/// Try to auto-unlock config for remote backends with stored password.
+/// This is only for remote backends — local backends use RCLONE_CONFIG_PASS env var.
 pub async fn try_auto_unlock_config(app: &AppHandle) -> Result<(), String> {
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
-    // Only for remote backends
     if backend.is_local {
         return Ok(());
     }
 
-    // Only if config_password is set
     let password = match &backend.config_password {
         Some(p) if !p.is_empty() => p.clone(),
         _ => return Ok(()),
     };
 
     let payload = json!({ "configPassword": password });
-
     let state = app.state::<RcloneState>();
+
     backend
         .post_json(&state.client, config::UNLOCK, Some(&payload))
         .await
@@ -112,98 +110,116 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
-    // Skip spawning for remote backends (assume remote handles it or it's simply not needed locally)
     if !backend.is_local {
         return Ok(());
     }
 
-    // Check OAuth is configured
-    if backend.oauth_port.is_none() {
-        return Err(RcloneError::ConfigError("OAuth not configured".to_string()));
-    }
-
-    // Check if process is already running (in memory or port open)
-    let mut process_running = guard.is_some();
-    if !process_running && let Some(addr) = backend.oauth_addr() {
-        match TcpStream::connect(&addr).await {
-            Ok(_) => {
-                process_running = true;
-                warn!(
-                    "Rclone OAuth process already running (port {} in use)",
-                    backend.oauth_port.unwrap()
-                );
-            }
-            Err(_) => {
-                debug!(
-                    "No existing OAuth process detected on port {:?}",
-                    backend.oauth_port
-                );
-            }
-        }
-    }
-
-    if process_running {
+    // Already tracked in memory — process is up, URL was already emitted.
+    if guard.is_some() {
         return Ok(());
     }
 
-    // Start new process
-    let oauth_cmd = match create_rclone_command(app, "oauth").await {
-        Ok(cmd) => cmd,
-        Err(e) => {
-            let error_msg = format!("Failed to create OAuth command: {e}");
-            return Err(RcloneError::OAuthError(error_msg));
-        }
-    };
-
-    let process = oauth_cmd.spawn().map_err(|e| {
-        let error_msg = format!(
-            "Failed to start Rclone OAuth process: {e}. Ensure Rclone is installed and in PATH."
+    // Port already open from a previous run not tracked in memory.
+    if TcpStream::connect(backend.oauth_addr()).await.is_ok() {
+        warn!(
+            "OAuth process already running on port {} (not tracked in memory)",
+            backend.oauth_port
         );
-        RcloneError::OAuthError(error_msg)
+        return Ok(());
+    }
+
+    let cmd = build_rclone_process_command(app, ProcessKind::OAuth)
+        .await
+        .map_err(|e| RcloneError::OAuthError(format!("Failed to build OAuth command: {e}")))?;
+
+    let mut process = cmd.spawn().map_err(|e| {
+        RcloneError::OAuthError(format!(
+            "Failed to spawn OAuth process: {e}. Is rclone installed and in PATH?"
+        ))
     })?;
 
-    info!("✅ Rclone OAuth process spawned successfully");
+    info!("✅ Rclone OAuth process spawned");
+
+    // Take stderr before moving the process into the guard.
+    let stderr = process
+        .stderr
+        .take()
+        .expect("stderr must be piped — set in create_oauth_tokio_command");
 
     *guard = Some(process);
 
-    // Wait for process to start with timeout
-    let start_time = Instant::now();
-    let timeout = Duration::from_secs(5);
+    // Spawn a task that reads stderr and emits the auth URL immediately.
+    let app_clone = app.clone();
+    tokio::spawn(async move {
+        let mut lines = BufReader::new(stderr).lines();
+        while let Ok(Some(line)) = lines.next_line().await {
+            debug!("[oauth] {line}");
 
-    while start_time.elapsed() < timeout {
-        if let Some(addr) = backend.oauth_addr()
-            && TcpStream::connect(&addr).await.is_ok()
-        {
+            if let Some(url) = extract_oauth_auth_url(&line) {
+                info!("🔗 OAuth URL ready: {url}");
+                if let Err(e) = app_clone.emit(RCLONE_OAUTH_URL, json!({ "url": url })) {
+                    warn!("Failed to emit OAuth URL event: {e}");
+                }
+                // Keep reading — the process must stay alive to receive the callback.
+            }
+        }
+        info!("OAuth stderr reader closed");
+    });
+
+    // Wait until the rc port is open (process is accepting connections).
+    let start = Instant::now();
+    let timeout = Duration::from_secs(5);
+    let addr = backend.oauth_addr();
+
+    while start.elapsed() < timeout {
+        if TcpStream::connect(&addr).await.is_ok() {
+            info!(
+                "✅ Rclone OAuth process ready on port {}",
+                backend.oauth_port
+            );
             return Ok(());
         }
         sleep(Duration::from_millis(100)).await;
     }
 
-    let timeout_error = format!(
-        "Timeout waiting for OAuth process to start on port {:?}",
+    Err(RcloneError::OAuthError(format!(
+        "Timeout waiting for OAuth process to start on port {}",
         backend.oauth_port
-    );
-    Err(RcloneError::OAuthError(timeout_error))
+    )))
 }
 
-/// Quit the main rclone engine via API (works for both local and remote backends)
+fn extract_oauth_auth_url(line: &str) -> Option<String> {
+    line.split_whitespace().find_map(|token| {
+        let candidate = token.trim_matches(|c: char| {
+            c == '"' || c == '\'' || c == '(' || c == ')' || c == '[' || c == ']'
+        });
+
+        if (candidate.starts_with("http://") || candidate.starts_with("https://"))
+            && candidate.contains("/auth?")
+        {
+            Some(candidate.to_string())
+        } else {
+            None
+        }
+    })
+}
+
+/// Quit the main rclone engine via API (works for both local and remote backends).
 #[tauri::command]
 pub async fn quit_rclone_engine(app: AppHandle) -> Result<(), String> {
     info!("🛑 Quitting Rclone engine via API");
 
-    use crate::rclone::backend::BackendManager;
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
     let quit_url = backend.url_for(core::QUIT);
 
-    // Send quit request to rclone API
     match backend
         .inject_auth(app.state::<RcloneState>().client.post(&quit_url))
         .send()
         .await
     {
         Ok(_) => {
-            info!("✅ Rclone engine quit request sent successfully");
+            info!("✅ Rclone engine quit request sent");
             Ok(())
         }
         Err(e) => {
@@ -216,7 +232,7 @@ pub async fn quit_rclone_engine(app: AppHandle) -> Result<(), String> {
     }
 }
 
-/// Clean up OAuth process
+/// Clean up the OAuth rclone process.
 #[tauri::command]
 pub async fn quit_rclone_oauth(app: AppHandle) -> Result<(), String> {
     info!("🛑 Quitting Rclone OAuth process");
@@ -224,7 +240,6 @@ pub async fn quit_rclone_oauth(app: AppHandle) -> Result<(), String> {
     let state = app.state::<RcloneState>();
     let mut guard = state.oauth_process.lock().await;
 
-    use crate::rclone::backend::BackendManager;
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
@@ -232,48 +247,37 @@ pub async fn quit_rclone_oauth(app: AppHandle) -> Result<(), String> {
         return Ok(());
     }
 
-    // Check oauth is configured
-    if backend.oauth_port.is_none() {
-        return Err(crate::localized_error!(
-            "backendErrors.system.oauthNotConfigured"
-        ));
-    }
-
-    let mut found_process = false;
-
-    // Check if process is tracked in memory
-    if guard.is_some() {
-        found_process = true;
-    } else {
-        // Try to connect to the port to see if something is running
-        if let Some(addr) = backend.oauth_addr()
-            && TcpStream::connect(&addr).await.is_ok()
-        {
-            found_process = true;
-        }
-    }
+    let found_process =
+        guard.is_some() || std::net::TcpStream::connect(backend.oauth_addr()).is_ok();
 
     if !found_process {
-        warn!("⚠️ No active Rclone OAuth process found (not in memory, port not open)");
+        warn!("⚠️ No active OAuth process found (not in memory, port not open)");
         return Ok(());
     }
 
-    if let Some(url) = backend.oauth_url_for(core::QUIT)
-        && let Err(e) = backend.inject_auth(state.client.post(&url)).send().await
+    // Ask rclone to quit gracefully first.
+    let quit_url = backend.oauth_url_for(core::QUIT);
+    if let Err(e) = backend
+        .inject_auth(state.client.post(&quit_url))
+        .send()
+        .await
     {
-        warn!("⚠️ Failed to send quit request: {e}");
+        warn!("⚠️ Failed to send OAuth quit request: {e}");
     }
 
+    // Kill the process if we're tracking it.
     if let Some(mut process) = guard.take() {
         if let Err(e) = process.kill().await {
-            error!("❌ Failed to kill process: {e}");
-            return Err(crate::localized_error!("backendErrors.system.killFailed", "error" => e));
-        } else {
-            info!("💀 Rclone OAuth process killed");
+            error!("❌ Failed to kill OAuth process: {e}");
+            return Err(crate::localized_error!(
+                "backendErrors.system.killFailed",
+                "error" => e
+            ));
         }
+        info!("💀 Rclone OAuth process killed");
     } else {
-        // If not tracked, just wait a bit for the process to exit after /core/quit
-        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        // Not tracked — give it a moment to exit after the quit request.
+        tokio::time::sleep(Duration::from_secs(2)).await;
     }
 
     info!("✅ Rclone OAuth process quit successfully");
@@ -285,16 +289,14 @@ pub async fn set_bandwidth_limit(
     app: AppHandle,
     rate: Option<String>,
 ) -> Result<BandwidthLimitResponse, String> {
-    let rate_value = match rate {
-        Some(ref s) if s.trim().is_empty() => "off".to_string(),
-        Some(s) => s,
-        _ => "off".to_string(),
-    };
+    let rate_value = rate
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| "off".to_string());
 
-    use crate::rclone::backend::BackendManager;
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
     let payload = json!({ "rate": rate_value });
+
     let json = backend
         .post_json(
             &app.state::<RcloneState>().client,
@@ -308,17 +310,19 @@ pub async fn set_bandwidth_limit(
         serde_json::from_value(json).map_err(|e| format!("Failed to parse response: {e}"))?;
 
     debug!("🪢 Bandwidth limit set: {response_data:?}");
+
     if let Err(e) = app.emit(BANDWIDTH_LIMIT_CHANGED, response_data.clone()) {
-        error!("❌ Failed to emit bandwidth limit changed event: {e}",);
+        error!("❌ Failed to emit bandwidth limit changed event: {e}");
     }
+
     Ok(response_data)
 }
 
 pub async fn unlock_rclone_config(app: AppHandle, password: String) -> Result<(), String> {
-    use crate::rclone::backend::BackendManager;
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
     let payload = json!({ "configPassword": password });
+
     let _ = backend
         .post_json(
             &app.state::<RcloneState>().client,
@@ -334,20 +338,20 @@ pub async fn unlock_rclone_config(app: AppHandle, password: String) -> Result<()
     Ok(())
 }
 
-/// Runs the garbage collector
+/// Runs the garbage collector.
 #[tauri::command]
 pub async fn run_garbage_collector(app: AppHandle) -> Result<(), String> {
     info!("🧹 Running garbage collector");
 
-    use crate::rclone::backend::BackendManager;
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
-    // Use empty payload for GC
-    let payload = json!({});
-
     let _ = backend
-        .post_json(&app.state::<RcloneState>().client, core::GC, Some(&payload))
+        .post_json(
+            &app.state::<RcloneState>().client,
+            core::GC,
+            Some(&json!({})),
+        )
         .await
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
@@ -355,10 +359,9 @@ pub async fn run_garbage_collector(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// Get the number of entries in the filesystem cache
+/// Get the number of entries in the filesystem cache.
 #[tauri::command]
 pub async fn get_fscache_entries(app: AppHandle) -> Result<usize, String> {
-    use crate::rclone::backend::BackendManager;
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
@@ -367,21 +370,17 @@ pub async fn get_fscache_entries(app: AppHandle) -> Result<usize, String> {
         .await
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
-    let entries = json
-        .get("entries")
+    json.get("entries")
         .and_then(|v| v.as_u64())
         .map(|v| v as usize)
-        .ok_or_else(|| "Failed to parse entries count".to_string())?;
-
-    Ok(entries)
+        .ok_or_else(|| "Failed to parse entries count".to_string())
 }
 
-/// Clear the filesystem cache
+/// Clear the filesystem cache.
 #[tauri::command]
 pub async fn clear_fscache(app: AppHandle) -> Result<(), String> {
     info!("🧹 Clearing filesystem cache");
 
-    use crate::rclone::backend::BackendManager;
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
@@ -390,7 +389,7 @@ pub async fn clear_fscache(app: AppHandle) -> Result<(), String> {
         .await
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
-    info!("✅ Filesystem cache cleared successfully");
+    info!("✅ Filesystem cache cleared");
     Ok(())
 }
 
@@ -398,11 +397,10 @@ pub async fn clear_fscache(app: AppHandle) -> Result<(), String> {
 // STATS GROUP MANAGEMENT
 // ============================================================================
 
-/// Get all active stats groups
-/// Returns a list of group names like ["sync/gdrive", "mount/onedrive"]
+/// Get all active stats groups.
+/// Returns a list of group names like ["sync/gdrive", "mount/onedrive"].
 #[tauri::command]
 pub async fn get_stats_groups(app: AppHandle) -> Result<Vec<String>, String> {
-    use crate::rclone::backend::BackendManager;
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
@@ -411,13 +409,12 @@ pub async fn get_stats_groups(app: AppHandle) -> Result<Vec<String>, String> {
         .await
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
-    // Parse groups array, return empty vec if null
     let groups = json
         .get("groups")
         .and_then(|v| v.as_array())
         .map(|arr| {
             arr.iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .filter_map(|v| v.as_str().map(str::to_string))
                 .collect()
         })
         .unwrap_or_default();
@@ -425,14 +422,11 @@ pub async fn get_stats_groups(app: AppHandle) -> Result<Vec<String>, String> {
     Ok(groups)
 }
 
-/// Reset stats for a specific group or all groups
-/// If group is None, resets all stats
+/// Reset stats for a specific group, or all groups if `group` is None.
 #[tauri::command]
 pub async fn reset_group_stats(app: AppHandle, group: Option<String>) -> Result<(), String> {
-    use crate::rclone::backend::BackendManager;
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-
     let payload = group.as_ref().map(|g| json!({ "group": g }));
 
     let _ = backend
@@ -445,30 +439,27 @@ pub async fn reset_group_stats(app: AppHandle, group: Option<String>) -> Result<
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
     info!(
-        "✅ Stats reset for group: {:?}",
+        "✅ Stats reset for group: {}",
         group.as_deref().unwrap_or("all")
     );
     Ok(())
 }
 
-/// Delete a stats group entirely
+/// Delete a stats group entirely.
 #[tauri::command]
 pub async fn delete_stats_group(app: AppHandle, group: String) -> Result<(), String> {
-    use crate::rclone::backend::BackendManager;
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-
-    let payload = json!({ "group": group });
 
     let _ = backend
         .post_json(
             &app.state::<RcloneState>().client,
             core::STATS_DELETE,
-            Some(&payload),
+            Some(&json!({ "group": group })),
         )
         .await
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
-    info!("✅ Stats group '{}' deleted", group);
+    info!("✅ Stats group '{group}' deleted");
     Ok(())
 }

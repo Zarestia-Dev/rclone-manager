@@ -1,8 +1,6 @@
 import { NgClass, TitleCasePipe } from '@angular/common';
 import {
   Component,
-  EventEmitter,
-  Output,
   inject,
   signal,
   computed,
@@ -10,16 +8,15 @@ import {
   input,
   untracked,
   model,
+  output,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatCardModule } from '@angular/material/card';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatButtonModule } from '@angular/material/button';
-import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatTabsModule } from '@angular/material/tabs';
 import { FormatTimePipe } from 'src/app/shared/pipes/format-time.pipe';
 import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
@@ -28,7 +25,9 @@ import {
   CompletedTransfer,
   GlobalStats,
   DEFAULT_JOB_STATS,
+  JobInfo,
   JobInfoConfig,
+  OperationColor,
   OperationControlConfig,
   PathDisplayConfig,
   PrimaryActionType,
@@ -39,11 +38,10 @@ import {
   RemoteAction,
   RemoteSettings,
   RemoteSettingsSection,
-  SENSITIVE_KEYS,
   ServeListItem,
   SettingsPanelConfig,
   StatsPanelConfig,
-  SyncOperation,
+  SyncOperationViewModel,
   SyncOperationType,
   TransferActivityPanelConfig,
   TransferFile,
@@ -58,10 +56,39 @@ import {
   TransferActivityPanelComponent,
 } from '../../../../shared/detail-shared';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
-import { IconService, SystemInfoService, JobManagementService } from '@app/services';
+import { IconService, JobManagementService, RawTransfer, mapRawTransfer } from '@app/services';
 import { toString as cronstrue } from 'cronstrue';
 import { VfsControlPanelComponent } from '../../../../shared/detail-shared/vfs-control/vfs-control-panel.component';
 import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
+
+interface JobStatsWithCompleted extends GlobalStats {
+  completed?: RawTransfer[];
+}
+
+interface ProfileConfig {
+  source?: string;
+  dest?: string;
+  destination?: string;
+  options?: { type?: string; addr?: string; [key: string]: unknown };
+}
+
+const ANIMATION_CLASS: Partial<Record<PrimaryActionType, string>> = {
+  sync: 'animate-spin',
+  copy: 'animate-breathing',
+  move: 'animate-move',
+  bisync: 'animate-breathing',
+  serve: 'animate-breathing',
+  mount: 'animate-breathing',
+};
+
+const OPERATION_COLOR_VAR: Record<OperationColor, string> = {
+  primary: 'var(--primary-color)',
+  accent: 'var(--accent-color)',
+  yellow: 'var(--yellow)',
+  orange: 'var(--orange)',
+  purple: 'var(--purple)',
+  warn: 'var(--warn-color)',
+};
 
 @Component({
   selector: 'app-app-detail',
@@ -73,9 +100,7 @@ import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
     MatTooltipModule,
     MatDividerModule,
     MatCardModule,
-    MatChipsModule,
     MatButtonModule,
-    MatButtonToggleModule,
     MatTabsModule,
     OperationControlComponent,
     JobInfoPanelComponent,
@@ -86,33 +111,34 @@ import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
     ServeCardComponent,
     TranslateModule,
   ],
+  providers: [FormatFileSizePipe, FormatTimePipe],
   templateUrl: './app-detail.component.html',
   styleUrls: ['./app-detail.component.scss'],
 })
 export class AppDetailComponent {
-  // --- Signal Inputs ---
-  mainOperationType = input<PrimaryActionType>('mount');
-  selectedSyncOperation = model<SyncOperationType>('sync');
-  selectedRemote = input.required<Remote>();
-  remoteSettings = input<RemoteSettings>({});
-  actionInProgress = input<ActionState[] | null | undefined>(null);
+  // --- Inputs ---
+  readonly mainOperationType = input<PrimaryActionType>('mount');
+  readonly selectedSyncOperation = model<SyncOperationType>('sync');
+  readonly selectedRemote = input.required<Remote>();
+  readonly remoteSettings = input<RemoteSettings>({});
+  readonly actionInProgress = input<ActionState[] | null | undefined>(null);
 
   // --- Outputs ---
-  @Output() syncOperationChange = new EventEmitter<SyncOperationType>();
-  @Output() openRemoteConfigModal = new EventEmitter<{
+  readonly openRemoteConfigModal = output<{
     editTarget?: string;
     existingConfig?: RemoteSettings;
     initialSection?: string;
     targetProfile?: string;
     remoteType?: string;
+    autoAddProfile?: boolean;
   }>();
-  @Output() openInFiles = new EventEmitter<{ remoteName: string; path: string }>();
-  @Output() startJob = new EventEmitter<{
+  readonly openInFiles = output<{ remoteName: string; path: string }>();
+  readonly startJob = output<{
     type: PrimaryActionType;
     remoteName: string;
     profileName?: string;
   }>();
-  @Output() stopJob = new EventEmitter<{
+  readonly stopJob = output<{
     type: PrimaryActionType;
     remoteName: string;
     profileName?: string;
@@ -123,91 +149,77 @@ export class AppDetailComponent {
   private readonly jobService = inject(JobManagementService);
   readonly iconService = inject(IconService);
   private readonly translate = inject(TranslateService);
-  private readonly langChange = signal<unknown | null>(null);
-  private readonly formatFileSize = new FormatFileSizePipe();
-  private readonly formatTime = new FormatTimePipe();
+  private readonly formatFileSize = inject(FormatFileSizePipe);
+  private readonly formatTime = inject(FormatTimePipe);
 
-  private readonly systemInfoService = inject(SystemInfoService);
+  // Reactive i18n: force recomputation of translate.instant() calls on lang change.
+  private readonly _lang = toSignal(this.translate.onLangChange, { initialValue: null });
 
-  // --- State Signals ---
-  // Group-based stats (e.g., 'sync/gdrive' for all sync jobs on gdrive remote)
-  private groupStats = signal<GlobalStats | null>(null);
-  // Use group stats if available, otherwise show empty stats (no global fallback)
-  jobStats = computed(() => this.groupStats() ?? DEFAULT_JOB_STATS);
+  readonly selectedProfile = signal<string | null>(null);
 
-  isLoading = signal(false);
-  activeTransfers = signal<TransferFile[]>([]);
-  completedTransfers = signal<CompletedTransfer[]>([]);
+  // --- Derived: Operation Type ---
+  readonly isSyncType = computed(() => this.mainOperationType() === 'sync');
 
-  // --- Internal State ---
-  private lastTransferCount = 0;
-  private lastGroupName?: string;
-
-  /**
-   * Reset stats for the current group
-   * This clears the "Completed Transfers" list and resets aggregated stats
-   */
-  async onResetStats(): Promise<void> {
-    const groupName = this.currentGroupName();
-    if (groupName) {
-      try {
-        await this.jobService.resetGroupStats(groupName);
-        this.resetTransfers();
-        this.fetchGroupData(groupName);
-      } catch (error) {
-        console.error('Failed to reset group stats:', error);
-      }
-    }
-  }
-
-  // --- Constants ---
-  readonly POLL_INTERVAL_MS = 1000;
-
-  // Derived from OPERATION_METADATA to avoid duplicating label/icon/cssClass/description.
-  readonly syncOperations: SyncOperation[] = (['sync', 'bisync', 'move', 'copy'] as const).map(
-    type => ({ type, ...OPERATION_METADATA[type] })
+  readonly currentOpType = computed<PrimaryActionType>(() =>
+    this.isSyncType() ? this.selectedSyncOperation() : this.mainOperationType()
   );
 
-  selectedProfile = signal<string | null>(null);
+  readonly currentOpMetadata = computed(() => OPERATION_METADATA[this.currentOpType()]);
 
-  profiles = computed<{ name: string; label: string }[]>(() => {
-    this.langChange(); // Dependency on language change
-    const settings = this.remoteSettings();
-    const opType = this.currentOpType();
-    const configKey = REMOTE_CONFIG_KEYS[opType as keyof typeof REMOTE_CONFIG_KEYS];
+  readonly operationActiveState = computed(() => this.isOperationActive(this.currentOpType()));
 
+  readonly operationColor = computed<OperationColor>(
+    () => (this.currentOpMetadata()?.cssClass as OperationColor) ?? 'primary'
+  );
+
+  readonly operationColorCssVar = computed(
+    () => OPERATION_COLOR_VAR[this.operationColor()] ?? OPERATION_COLOR_VAR.warn
+  );
+
+  readonly iconAnimationClass = computed(() =>
+    this.operationActiveState() ? (ANIMATION_CLASS[this.currentOpType()] ?? '') : ''
+  );
+
+  // --- Derived: Sync Operations ---
+  readonly syncOperations = computed<SyncOperationViewModel[]>(() =>
+    (['sync', 'bisync', 'move', 'copy'] as const).map(type => ({
+      type,
+      ...OPERATION_METADATA[type],
+      isActive: this.isOperationActive(type),
+    }))
+  );
+
+  readonly selectedSyncOpIndex = computed(() =>
+    this.syncOperations().findIndex(op => op.type === this.selectedSyncOperation())
+  );
+  readonly selectedSyncOpCol = computed(() => this.selectedSyncOpIndex() % 2);
+  readonly selectedSyncOpRow = computed(() => Math.floor(this.selectedSyncOpIndex() / 2));
+
+  // --- Derived: Profiles ---
+  readonly profiles = computed<{ name: string; label: string }[]>(() => {
+    this._lang();
+    const configKey = REMOTE_CONFIG_KEYS[this.currentOpType() as keyof typeof REMOTE_CONFIG_KEYS];
     if (!configKey) {
       return [{ name: 'default', label: this.translate.instant('dashboard.appDetail.default') }];
     }
-
-    const configProfiles = settings[configKey as keyof RemoteSettings] as
+    const profileMap = this.remoteSettings()[configKey as keyof RemoteSettings] as
       | Record<string, unknown>
       | undefined;
-    const profileNames = configProfiles ? Object.keys(configProfiles) : [];
-
-    if (profileNames.length > 0) {
-      return profileNames.map(name => ({ name, label: name }));
-    }
-
-    // No profiles exist, return default
-    return [{ name: 'default', label: this.translate.instant('dashboard.appDetail.default') }];
+    const names = profileMap ? Object.keys(profileMap) : [];
+    return names.length > 0
+      ? names.map(name => ({ name, label: name }))
+      : [{ name: 'default', label: this.translate.instant('dashboard.appDetail.default') }];
   });
 
-  // Enriched profiles with status information
-  enrichedProfiles = computed(() => {
-    const profiles = this.profiles();
-    // Reuses currentOpType() instead of inlining the ternary again
-    const opType = this.currentOpType();
-
-    const configs = this.getProfileConfigs(opType) as
+  readonly enrichedProfiles = computed(() => {
+    const configs = this.getProfileConfigMap(this.currentOpType()) as
       | Record<string, { cronEnabled?: boolean; cronExpression?: string | null }>
       | undefined;
 
-    return profiles.map(p => {
-      const config = configs?.[p.name];
-      const isActive = this.isProfileActive(opType, p.name);
-      const hasSchedule = !!(config?.cronEnabled && config?.cronExpression);
-
+    return this.profiles().map(p => {
+      const cfg = configs?.[p.name];
+      const isActive = this.isOperationActive(this.currentOpType(), p.name);
+      const hasSchedule = !!(cfg?.cronEnabled && cfg?.cronExpression);
       return {
         ...p,
         isActive,
@@ -217,558 +229,323 @@ export class AppDetailComponent {
     });
   });
 
-  // Show profile selector only when there are 2+ profiles
-  showProfileSelector = computed(() => this.profiles().length > 1);
+  readonly showProfileSelector = computed(() => this.profiles().length > 1);
+
+  // --- Derived: Job / Serve State ---
+  readonly filteredRunningServes = computed(
+    () => (this.selectedRemote().status.serve?.serves ?? []) as ServeListItem[]
+  );
+
+  readonly jobId = computed(() => {
+    if (!this.isSyncType()) return undefined;
+    const state = this.getOpState(this.selectedSyncOperation()) as RemoteOperationState;
+    if (!state) return undefined;
+    const profile = this.selectedProfile() ?? 'default';
+    return state.activeProfiles?.[profile] ?? state.lastRunProfiles?.[profile];
+  });
+
+  readonly currentGroupName = computed(
+    () =>
+      `${this.currentOpType()}/${this.selectedRemote().name}/${this.selectedProfile() ?? 'default'}`
+  );
+
+  readonly activeGroupJob = computed<JobInfo | null>(() =>
+    this.jobService.getLatestJobForRemote(
+      this.selectedRemote().name,
+      this.selectedProfile() ?? 'default',
+      this.currentOpType()
+    )
+  );
+
+  readonly shouldPoll = computed(
+    () =>
+      this.isSyncType() &&
+      this.operationActiveState() &&
+      this.activeGroupJob()?.status === 'Running'
+  );
+
+  // --- Derived: Live Data (from service, when polling) ---
+  readonly jobStats = computed<GlobalStats>(() => {
+    if (this.shouldPoll()) {
+      return this.jobService.groupStatsMap().get(this.currentGroupName()) ?? DEFAULT_JOB_STATS;
+    }
+    return (this.activeGroupJob()?.stats as GlobalStats | undefined) ?? DEFAULT_JOB_STATS;
+  });
+
+  readonly activeTransfers = computed<TransferFile[]>(() => {
+    const transferring = this.shouldPoll()
+      ? (this.jobService.groupStatsMap().get(this.currentGroupName())?.transferring ?? [])
+      : ((this.activeGroupJob()?.stats as JobStatsWithCompleted | undefined)?.transferring ?? []);
+
+    return (transferring as TransferFile[]).map(f => ({
+      ...f,
+      percentage: f.size > 0 ? Math.min(100, Math.round((f.bytes / f.size) * 100)) : 0,
+      isError: false,
+      isCompleted: false,
+    }));
+  });
+
+  readonly completedTransfers = computed<CompletedTransfer[]>(() => {
+    if (this.shouldPoll()) {
+      return this.jobService.groupTransfersMap().get(this.currentGroupName()) ?? [];
+    }
+    const completed = (this.activeGroupJob()?.stats as JobStatsWithCompleted | undefined)
+      ?.completed;
+    return Array.isArray(completed) ? completed.map(mapRawTransfer) : [];
+  });
+
+  // --- Derived: Timing ---
+  readonly resolvedStartTime = computed<Date | undefined>(() => {
+    const statsStart = parseDateValue(this.jobStats().startTime);
+    const jobStart = parseDateValue(this.activeGroupJob()?.start_time);
+    if (statsStart && jobStart) return statsStart >= jobStart ? statsStart : jobStart;
+    return statsStart ?? jobStart;
+  });
+
+  readonly resolvedEndTime = computed<Date | undefined>(() =>
+    parseDateValue(this.activeGroupJob()?.end_time)
+  );
+
+  readonly resolvedElapsedSeconds = computed<number>(() => {
+    const elapsed = this.jobStats().elapsedTime;
+    if (elapsed > 0) return elapsed;
+    const startTime = this.resolvedStartTime();
+    if (!startTime) return 0;
+    const endTime = this.resolvedEndTime() ?? new Date();
+    return Math.max(0, Math.floor((endTime.getTime() - startTime.getTime()) / 1000));
+  });
+
+  // --- Derived: Cron Schedules ---
+  readonly cronSchedules = computed<
+    { profileName: string; cronExpression: string; humanReadable: string }[]
+  >(() => {
+    const configKey = REMOTE_CONFIG_KEYS[
+      this.selectedSyncOperation() as keyof typeof REMOTE_CONFIG_KEYS
+    ] as keyof RemoteSettings;
+    const configs = this.remoteSettings()[configKey] as
+      | Record<string, { cronEnabled?: boolean; cronExpression?: string | null }>
+      | undefined;
+    if (!configs) return [];
+
+    return Object.entries(configs)
+      .filter(([, cfg]) => cfg?.cronEnabled && cfg?.cronExpression)
+      .map(([profileName, cfg]) => {
+        let humanReadable = 'Invalid schedule';
+        try {
+          humanReadable = cronstrue(cfg.cronExpression!, {
+            locale: getCronstrueLocale(this.translate.getCurrentLang()),
+          });
+        } catch {
+          console.warn(`Invalid cron expression for profile ${profileName}: ${cfg.cronExpression}`);
+        }
+        return { profileName, cronExpression: cfg.cronExpression!, humanReadable };
+      });
+  });
+
+  readonly selectedCronSchedule = computed(() => {
+    const schedules = this.cronSchedules();
+    const selected = this.selectedProfile();
+    return selected
+      ? (schedules.find(s => s.profileName === selected) ?? null)
+      : (schedules[0] ?? null);
+  });
+
+  readonly hasCronSchedule = computed(() => this.selectedCronSchedule() !== null);
+
+  // --- Derived: Settings Sections ---
+  readonly operationSettingsSections = computed<RemoteSettingsSection[]>(() => {
+    this._lang();
+    const metadata = this.currentOpMetadata();
+    if (!metadata) return [];
+    return this.buildSettingsSections(
+      this.currentOpType(),
+      this.translate.instant(metadata.label),
+      metadata.icon,
+      'operation'
+    );
+  });
+
+  readonly sharedSettingsSections = computed<RemoteSettingsSection[]>(() => {
+    const sections: RemoteSettingsSection[] = [];
+    const metadata = this.currentOpMetadata();
+
+    if (metadata?.supportsVfs) {
+      const m = OPERATION_METADATA['vfs'];
+      sections.push(
+        ...this.buildSettingsSections('vfs', this.translate.instant(m.label), m.icon, 'shared')
+      );
+    }
+
+    const sharedTypes = ['filter', 'backend', 'runtimeRemote'] as const;
+    for (const type of sharedTypes) {
+      const m = OPERATION_METADATA[type];
+      const icon =
+        type === 'runtimeRemote'
+          ? this.iconService.getIconName(this.selectedRemote().type)
+          : m.icon;
+      sections.push(
+        ...this.buildSettingsSections(type, this.translate.instant(m.label), icon, 'shared')
+      );
+    }
+
+    return sections;
+  });
+
+  readonly operationSettingsHeading = computed(() => {
+    const metadata = this.currentOpMetadata();
+    if (!metadata) return '';
+    const opLabel = this.translate.instant('modals.remoteConfig.steps.' + this.currentOpType());
+    if (this.operationSettingsSections().length > 1) {
+      return this.translate.instant('dashboard.appDetail.profilesLabel', { op: opLabel });
+    }
+    return (
+      opLabel + ' ' + this.translate.instant('dashboard.appDetail.settingsLabel', { op: '' }).trim()
+    );
+  });
+
+  readonly operationSettingsDescription = computed(() => {
+    const desc = this.currentOpMetadata()?.description;
+    return desc ? this.translate.instant(desc) : '';
+  });
+
+  private readonly settingsPanelConfigMap = computed(() => {
+    const settings = this.remoteSettings();
+    const allSections = [...this.operationSettingsSections(), ...this.sharedSettingsSections()];
+    return new Map(allSections.map(s => [s.key, this.buildPanelConfig(s, settings)]));
+  });
+
+  getSettingsPanelConfig(section: RemoteSettingsSection): SettingsPanelConfig {
+    return this.settingsPanelConfigMap().get(section.key)!;
+  }
+
+  // --- Derived: Control Configs ---
+  readonly controlConfigs = computed<OperationControlConfig[]>(() => {
+    const type = this.currentOpType();
+    const metadata = this.currentOpMetadata();
+    const configKey = REMOTE_CONFIG_KEYS[type as keyof typeof REMOTE_CONFIG_KEYS];
+    if (!configKey || !metadata) return [];
+
+    const profiles = this.remoteSettings()[configKey as keyof RemoteSettings] as
+      | Record<string, ProfileConfig>
+      | undefined;
+    const entries = profiles ? Object.entries(profiles) : [];
+
+    const all =
+      entries.length > 0
+        ? entries.map(([name, cfg]) => this.buildControlConfig(type, cfg, name))
+        : [this.buildControlConfig(type, {}, undefined)];
+
+    const selected = this.selectedProfile();
+    if (!this.showProfileSelector() || all.length <= 1) return all;
+    return all.filter(c => c.profileName === selected);
+  });
+
+  // --- Derived: Stats & Transfer Panels ---
+  readonly jobInfoConfig = computed<JobInfoConfig>(() => {
+    const startTime = this.resolvedStartTime();
+    const endTime = this.resolvedEndTime();
+    const elapsedSeconds = this.resolvedElapsedSeconds();
+    const duration = elapsedSeconds > 0 ? this.formatTime.transform(elapsedSeconds) : undefined;
+
+    return {
+      operationType: this.isSyncType() ? this.selectedSyncOperation() : this.mainOperationType(),
+      jobId: this.jobId() ? Number(this.jobId()) : undefined,
+      status: this.activeGroupJob()?.status,
+      startTime,
+      endTime,
+      duration,
+    };
+  });
+
+  readonly statsConfig = computed<StatsPanelConfig>(() => {
+    const s = this.jobStats();
+    const meta = this.currentOpMetadata();
+    const progress = s.totalBytes > 0 ? Math.min(100, (s.bytes / s.totalBytes) * 100) : 0;
+    const etaProgress =
+      s.elapsedTime && s.eta ? (s.elapsedTime / (s.elapsedTime + s.eta)) * 100 : 0;
+    const t = (key: string, params?: object) => this.translate.instant(key, params);
+
+    return {
+      title: t('dashboard.appDetail.transferStatistics', { op: meta ? t(meta.label) : 'Transfer' }),
+      icon: meta?.icon ?? 'bar_chart',
+      operationColor: this.operationColor(),
+      stats: [
+        {
+          value: this.formatProgress(),
+          label: t('dashboard.appDetail.progress'),
+          isPrimary: true,
+          progress,
+        },
+        {
+          value: `${this.formatFileSize.transform(s.speed || 0)}/s`,
+          label: t('dashboard.appDetail.speed'),
+        },
+        {
+          value: this.formatTime.transform(s.eta),
+          label: t('dashboard.appDetail.eta'),
+          isPrimary: true,
+          progress: etaProgress,
+        },
+        {
+          value: `${s.transfers || 0}/${s.totalTransfers || 0}`,
+          label: t('dashboard.appDetail.files'),
+        },
+        {
+          value: `${s.checks || 0}/${s.totalChecks || 0}`,
+          label: t('dashboard.appDetail.checks'),
+        },
+        {
+          value: s.errors || 0,
+          label: t('dashboard.appDetail.errors'),
+          hasError: (s.errors || 0) > 0,
+          tooltip: s.lastError || undefined,
+        },
+      ],
+    };
+  });
+
+  readonly transferActivityConfig = computed<TransferActivityPanelConfig>(() => ({
+    activeTransfers: this.activeTransfers(),
+    completedTransfers: this.completedTransfers(),
+    operationColor: this.operationColor(),
+    remoteName: this.selectedRemote().name,
+    showHistory: this.completedTransfers().length > 0,
+  }));
 
   constructor() {
-    this.translate.onLangChange.pipe(takeUntilDestroyed()).subscribe(val => {
-      this.langChange.set(val);
-    });
-
-    // 1. Polling Effect - Uses group-based stats
-    effect(onCleanup => {
-      const isActive = this.operationActiveState();
-      const groupName = this.currentGroupName();
-      const isSyncType = this.isSyncType();
-
-      if (isSyncType && isActive && groupName) {
-        const timer = setInterval(() => {
-          this.fetchGroupData(groupName);
-        }, this.POLL_INTERVAL_MS);
-
-        onCleanup(() => {
-          clearInterval(timer);
-        });
-      } else {
-        untracked(() => {
-          if (this.activeTransfers().length > 0) {
-            this.activeTransfers.set([]);
-          }
-        });
-      }
-    });
-
-    // 2. Group Name Change Reset Effect
-    effect(() => {
-      const groupName = this.currentGroupName();
-      untracked(() => {
-        if (groupName !== this.lastGroupName) {
-          this.lastGroupName = groupName;
-          this.resetTransfers();
-        }
-      });
-    });
-
-    // 3. Auto-select profile effect
+    // Auto-select first valid profile when the list changes.
     effect(() => {
       const profiles = this.profiles();
       const current = this.selectedProfile();
-
       untracked(() => {
         if (profiles.length > 0 && (!current || !profiles.some(p => p.name === current))) {
           this.selectedProfile.set(profiles[0].name);
         }
       });
     });
+
+    // Delegate group polling to the service while the current job is running.
+    effect(onCleanup => {
+      if (!this.shouldPoll()) return;
+      const groupName = this.currentGroupName();
+      this.jobService.watchGroup(groupName);
+      onCleanup(() => this.jobService.unwatchGroup(groupName));
+    });
   }
-
-  // --- Helper Methods for State Access ---
-
-  /** Get operation state from remote */
-  private getOperationState(
-    type: SyncOperationType | 'mount' | 'serve'
-  ): RemoteOperationState | RemoteServeState | null {
-    const remote = this.selectedRemote();
-    if (!remote) return null;
-    return remote.status[type as keyof Omit<RemoteStatus, 'diskUsage'>];
-  }
-
-  /** Check if a profile is active for an operation type */
-  private isProfileActive(type: string, profileName?: string): boolean {
-    const state = this.getOperationState(type as SyncOperationType | 'mount' | 'serve');
-    if (!state) return false;
-
-    if (type === 'serve') {
-      const serveState = state as RemoteStatus['serve'];
-      const serves = serveState?.serves || [];
-      return profileName ? serves.some(s => s.profile === profileName) : !!serveState?.active;
-    }
-
-    if (type === 'mount') {
-      const mountState = state as RemoteStatus['mount'];
-      return profileName ? !!mountState?.activeProfiles?.[profileName] : !!mountState?.active;
-    }
-
-    if (['sync', 'copy', 'move', 'bisync'].includes(type)) {
-      // These states all share the same structure regarding activeProfiles
-      const opState = state as RemoteStatus['sync' | 'copy' | 'move' | 'bisync'];
-      if (profileName) {
-        return !!opState?.activeProfiles?.[profileName];
-      }
-      return !!opState?.active;
-    }
-
-    return false;
-  }
-
-  /** Get profile configs for an operation type */
-  private getProfileConfigs(type: string): Record<string, any> | undefined {
-    const settings = this.remoteSettings();
-    const configKey = REMOTE_CONFIG_KEYS[type as keyof typeof REMOTE_CONFIG_KEYS];
-    return settings[configKey as keyof RemoteSettings] as Record<string, any> | undefined;
-  }
-
-  private addSettingsSections(
-    sections: RemoteSettingsSection[],
-    settings: RemoteSettings,
-    type: string,
-    titlePrefix: string,
-    icon: string,
-    group: 'operation' | 'shared'
-  ): void {
-    const profiles = settings[
-      REMOTE_CONFIG_KEYS[type as keyof typeof REMOTE_CONFIG_KEYS] as keyof RemoteSettings
-    ] as Record<string, unknown> | undefined;
-    const profileNames = profiles ? Object.keys(profiles) : [];
-
-    if (profileNames.length > 0) {
-      profileNames.forEach(profileName => {
-        sections.push({
-          key: `${type}:${profileName}`,
-          title: `${titlePrefix} (${profileName})`,
-          icon,
-          group,
-        });
-      });
-    } else {
-      // Always show at least one section for the type
-      sections.push({
-        key: type,
-        title: titlePrefix,
-        icon,
-        group,
-      });
-    }
-  }
-
-  // --- Computed Signals ---
-
-  remoteName = computed(() => this.selectedRemote().name);
-
-  /** Filters running serves to only show those belonging to the selected remote */
-  filteredRunningServes = computed(() => {
-    return (this.selectedRemote().status.serve?.serves || []) as ServeListItem[];
-  });
-
-  isSyncType = computed(() => this.mainOperationType() === 'sync');
-
-  currentOpType = computed(() =>
-    this.isSyncType() ? this.selectedSyncOperation() : this.mainOperationType()
-  );
-
-  currentOpMetadata = computed(() => OPERATION_METADATA[this.currentOpType()]);
-
-  // currentOperation removed: currentOpMetadata() exposes the same label/icon
-  // that statsConfig needs, without an extra .find() over syncOperations.
-
-  operationActiveState = computed(() => {
-    // Reuses currentOpType() instead of inlining the ternary
-    return this.isProfileActive(this.currentOpType());
-  });
-
-  jobId = computed(() => {
-    if (!this.isSyncType()) return undefined;
-    const op = this.selectedSyncOperation();
-    const profileName = this.selectedProfile() || 'default';
-    const state = this.getOperationState(op) as RemoteOperationState;
-    // Cast to syncState as we know op is partial SyncOperationType and all sync states have activeProfiles
-    return state?.activeProfiles?.[profileName];
-  });
-
-  /** Generate the group name for the current operation (e.g., 'sync/gdrive') */
-  currentGroupName = computed(() => {
-    // Reuses currentOpType() instead of inlining the ternary
-    const opType = this.currentOpType();
-    const profile = this.selectedProfile();
-
-    if (profile) {
-      return `${opType}/${this.remoteName()}/${profile}`;
-    }
-    return `${opType}/${this.remoteName()}`;
-  });
-
-  operationSettingsSections = computed<RemoteSettingsSection[]>(() => {
-    this.langChange(); // Dependency
-    const sections: RemoteSettingsSection[] = [];
-    const settings = this.remoteSettings();
-    const metadata = this.currentOpMetadata();
-    const type = this.currentOpType();
-
-    if (metadata) {
-      const title = this.translate.instant(metadata.label);
-      this.addSettingsSections(sections, settings, type, title, metadata.icon, 'operation');
-    }
-
-    return sections;
-  });
-
-  sharedSettingsSections = computed<RemoteSettingsSection[]>(() => {
-    const sections: RemoteSettingsSection[] = [];
-    const settings = this.remoteSettings();
-    const metadata = this.currentOpMetadata();
-
-    // VFS is only relevant for operations that support it
-    if (metadata?.supportsVfs) {
-      const vfsMeta = OPERATION_METADATA['vfs'];
-      this.addSettingsSections(
-        sections,
-        settings,
-        'vfs',
-        this.translate.instant(vfsMeta.label),
-        vfsMeta.icon,
-        'shared'
-      );
-    }
-
-    const filterMeta = OPERATION_METADATA['filter'];
-    this.addSettingsSections(
-      sections,
-      settings,
-      'filter',
-      this.translate.instant(filterMeta.label),
-      filterMeta.icon,
-      'shared'
-    );
-
-    const backendMeta = OPERATION_METADATA['backend'];
-    this.addSettingsSections(
-      sections,
-      settings,
-      'backend',
-      this.translate.instant(backendMeta.label),
-      backendMeta.icon,
-      'shared'
-    );
-
-    // Runtime remote overrides are available for all operation types.
-    const runtimeMeta = OPERATION_METADATA['runtimeRemote'];
-    const runtimeRemoteIcon = this.iconService.getIconName(this.selectedRemote().type);
-    this.addSettingsSections(
-      sections,
-      settings,
-      'runtimeRemote',
-      this.translate.instant(runtimeMeta.label),
-      runtimeRemoteIcon,
-      'shared'
-    );
-
-    return sections;
-  });
-
-  operationSettingsHeading = computed(() => {
-    const metadata = this.currentOpMetadata();
-    if (!metadata) return '';
-
-    const count = this.operationSettingsSections().length;
-    const opLabel = this.translate.instant(metadata.label);
-
-    if (count > 1) {
-      return this.translate.instant('dashboard.appDetail.profilesLabel', { op: opLabel });
-    }
-    return opLabel;
-  });
-
-  operationSettingsDescription = computed(() => {
-    const metadata = this.currentOpMetadata();
-    return metadata?.description ? this.translate.instant(metadata.description) : '';
-  });
-
-  // --- Configuration Generators (Computed) ---
-
-  unifiedControlConfigs = computed<OperationControlConfig[]>(() => {
-    const type = this.currentOpType() as PrimaryActionType;
-    const metadata = this.currentOpMetadata();
-    const settings = this.remoteSettings();
-    const configKey = REMOTE_CONFIG_KEYS[type as keyof typeof REMOTE_CONFIG_KEYS];
-
-    if (!configKey || !metadata) return [];
-
-    const profiles = settings[configKey as keyof RemoteSettings] as Record<string, any> | undefined;
-    const profileEntries = profiles ? Object.entries(profiles) : [];
-
-    // If we have profiles, create a config for each
-    if (profileEntries.length > 0) {
-      return profileEntries.map(([profileName, profile]) =>
-        this.createUnifiedControlConfig(type, profile, profileName)
-      );
-    }
-
-    // Always show at least one default config even if no profiles exist
-    return [this.createUnifiedControlConfig(type, {}, undefined)];
-  });
-
-  private createUnifiedControlConfig(
-    type: PrimaryActionType,
-    config: any,
-    profileName?: string
-  ): OperationControlConfig {
-    const metadata = OPERATION_METADATA[type];
-    const isActive = this.isProfileActive(type, profileName);
-    const inProgressActions = this.actionInProgress();
-
-    // Check for in-progress actions for this specific type/profile
-    const actionMatch = inProgressActions?.find(
-      a =>
-        (a.type === type || (type === 'mount' && a.type === 'unmount')) &&
-        (a.profileName === profileName || (!a.profileName && !profileName))
-    );
-    const actionType = actionMatch?.type;
-    const isLoading = this.isLoading() || !!actionType;
-
-    // Path Config specialization
-    let pathConfig: PathDisplayConfig;
-    if (type === 'serve') {
-      const serveType = (config?.options?.type as string) || 'http';
-      const serveAddr =
-        (config?.options?.addr as string) || this.translate.instant('dashboard.appDetail.default');
-      pathConfig = {
-        source: config.source || `${this.selectedRemote().name}:`,
-        destination: `${serveType.toUpperCase()} at ${serveAddr}`,
-        sourceLabel: this.translate.instant('dashboard.appDetail.serving'),
-        destinationLabel: this.translate.instant('dashboard.appDetail.accessibleVia'),
-        showOpenButtons: false,
-        operationColor: metadata.cssClass as any,
-        isDestinationActive: isActive,
-      };
-    } else {
-      pathConfig = {
-        source: config.source || this.translate.instant('dashboard.appDetail.notConfigured'),
-        destination:
-          config.dest ||
-          config.destination ||
-          this.translate.instant('dashboard.appDetail.notConfigured'),
-        showOpenButtons: true,
-        operationColor: metadata.cssClass as any,
-        isDestinationActive: type === 'mount' ? isActive : true,
-        actionInProgress: (actionType as RemoteAction) || undefined,
-      };
-    }
-
-    return {
-      operationType: type,
-      isActive,
-      isLoading,
-      cssClass: metadata.cssClass,
-      pathConfig,
-      primaryButtonLabel: isLoading
-        ? this.translate.instant(
-            type === 'mount' ? 'dashboard.appDetail.mount' : 'dashboard.appDetail.starting',
-            { op: this.translate.instant(metadata.label) }
-          )
-        : this.translate.instant(
-            type === 'mount' ? 'dashboard.appDetail.mount' : 'dashboard.appDetail.start',
-            { op: this.translate.instant(metadata.label) }
-          ),
-      secondaryButtonLabel: isLoading
-        ? this.translate.instant(
-            type === 'mount' ? 'dashboard.appDetail.unmounting' : 'dashboard.appDetail.stopping',
-            { op: this.translate.instant(metadata.label) }
-          )
-        : this.translate.instant(
-            type === 'mount' ? 'dashboard.appDetail.unmount' : 'dashboard.appDetail.stop',
-            { op: this.translate.instant(metadata.label) }
-          ),
-      primaryIcon: metadata.icon,
-      secondaryIcon: type === 'mount' ? 'eject' : 'stop',
-      actionInProgress: (actionType as RemoteAction) || undefined,
-      operationDescription: metadata.description
-        ? this.translate.instant(metadata.description)
-        : undefined,
-      profileName,
-    };
-  }
-
-  jobInfoConfig = computed<JobInfoConfig>(() => {
-    // Read once and reuse to avoid double signal subscription
-    const profiles = this.profiles();
-    return {
-      operationType: this.isSyncType()
-        ? this.selectedSyncOperation()
-        : (this.mainOperationType() ?? 'mount'),
-      jobId: this.jobId() ? Number(this.jobId()) : undefined,
-      startTime: this.jobStats().startTime
-        ? new Date(this.jobStats().startTime as string)
-        : undefined,
-      profiles,
-      selectedProfile: this.selectedProfile() ?? undefined,
-      showProfileSelector: profiles.length > 1,
-    };
-  });
-
-  statsConfig = computed<StatsPanelConfig>(() => {
-    const statsData = this.jobStats();
-    const progress = this.calculateProgress();
-    // Uses currentOpMetadata() directly; currentOperation() computed was removed
-    // as it was a redundant .find() over syncOperations for the same data.
-    const meta = this.currentOpMetadata();
-
-    const etaProgress =
-      statsData.elapsedTime && statsData.eta
-        ? (statsData.elapsedTime / (statsData.elapsedTime + statsData.eta)) * 100
-        : 0;
-
-    return {
-      title: this.translate.instant('dashboard.appDetail.transferStatistics', {
-        op: meta ? this.translate.instant(meta.label) : 'Transfer',
-      }),
-      icon: meta?.icon || 'bar_chart',
-      stats: [
-        {
-          value: this.formatProgress(),
-          label: this.translate.instant('dashboard.appDetail.progress'),
-          isPrimary: true,
-          progress,
-        },
-        {
-          value: this.formatSpeed(statsData.speed || 0),
-          label: this.translate.instant('dashboard.appDetail.speed'),
-        },
-        {
-          value: this.formatTime.transform(statsData.eta),
-          label: this.translate.instant('dashboard.appDetail.eta'),
-          isPrimary: true,
-          progress: etaProgress,
-        },
-        {
-          value: `${statsData.transfers || 0}/${statsData.totalTransfers || 0}`,
-          label: this.translate.instant('dashboard.appDetail.files'),
-        },
-        {
-          value: statsData.errors || 0,
-          label: this.translate.instant('dashboard.appDetail.errors'),
-          hasError: (statsData.errors || 0) > 0,
-          tooltip: statsData.lastError,
-        },
-        {
-          value: this.formatTime.transform(statsData.elapsedTime),
-          label: this.translate.instant('dashboard.appDetail.duration'),
-        },
-      ],
-      operationClass: this.operationClass(),
-      operationColor: this.operationColor(),
-    };
-  });
-
-  transferActivityConfig = computed<TransferActivityPanelConfig>(() => {
-    // Read once and reuse to avoid double signal subscription
-    const completedTransfers = this.completedTransfers();
-    return {
-      activeTransfers: this.activeTransfers(),
-      completedTransfers,
-      operationClass: this.operationClass(),
-      operationColor: this.operationColor(),
-      remoteName: this.selectedRemote().name,
-      showHistory: completedTransfers.length > 0,
-    };
-  });
-
-  // --- Helper Computeds ---
-  operationClass = computed(() => {
-    const type = this.currentOpType();
-    return this.isSyncType() ? `sync-${type}-operation` : `${type}-operation`;
-  });
-
-  operationColor = computed(() => {
-    const metadata = this.currentOpMetadata();
-    return (
-      (metadata?.cssClass as 'primary' | 'accent' | 'yellow' | 'orange' | 'purple') || 'primary'
-    );
-  });
-
-  // Cron schedules for all profiles of the current sync operation
-  cronSchedules = computed<
-    { profileName: string; cronExpression: string; humanReadable: string }[]
-  >(() => {
-    const settings = this.remoteSettings();
-    const opType = this.selectedSyncOperation();
-    const configKey = REMOTE_CONFIG_KEYS[
-      opType as keyof typeof REMOTE_CONFIG_KEYS
-    ] as keyof RemoteSettings;
-    const configs = settings[configKey] as
-      | Record<string, { cronEnabled?: boolean; cronExpression?: string | null }>
-      | undefined;
-
-    if (!configs) return [];
-
-    const schedules: { profileName: string; cronExpression: string; humanReadable: string }[] = [];
-
-    for (const [profileName, config] of Object.entries(configs)) {
-      if (config?.cronEnabled && config?.cronExpression) {
-        let humanReadable = 'Invalid schedule';
-        try {
-          const locale = getCronstrueLocale(this.translate.getCurrentLang());
-          humanReadable = cronstrue(config.cronExpression, { locale });
-        } catch {
-          // Keep default value
-        }
-        schedules.push({
-          profileName,
-          cronExpression: config.cronExpression,
-          humanReadable,
-        });
-      }
-    }
-
-    return schedules;
-  });
-
-  // Cron schedule for the selected profile only
-  selectedCronSchedule = computed(() => {
-    const schedules = this.cronSchedules();
-    const selected = this.selectedProfile();
-
-    // If no profile is selected, return first schedule
-    if (!selected) return schedules[0] || null;
-
-    return schedules.find(s => s.profileName === selected) || null;
-  });
-
-  hasCronSchedule = computed(() => this.selectedCronSchedule() !== null);
-
-  filteredControlConfigs = computed(() => {
-    const configs = this.unifiedControlConfigs();
-    const selected = this.selectedProfile();
-
-    // If no profile selector or only one config, show all
-    if (!this.showProfileSelector() || configs.length <= 1) {
-      return configs;
-    }
-
-    // Filter by selected profile
-    return configs.filter(c => c.profileName === selected);
-  });
 
   // --- Public Methods ---
 
-  onSyncOperationChange(operation: SyncOperationType): void {
-    this.selectedSyncOperation.set(operation);
-    this.syncOperationChange.emit(operation);
+  onAddProfile(): void {
+    this.openRemoteConfigModal.emit({
+      editTarget: this.currentOpType(),
+      existingConfig: this.remoteSettings(),
+      autoAddProfile: true,
+      remoteType: this.selectedRemote().type,
+    });
   }
 
   triggerOpenInFiles(path: string): void {
-    // selectedRemote is input.required<Remote>() so it is never null/undefined
-    const name = this.selectedRemote().name;
-    if (name) {
-      this.openInFiles.emit({ remoteName: name, path });
-    }
-  }
-
-  async onCopyToClipboard(event: { text: string; message: string }): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(event.text);
-    } catch (err) {
-      console.error('Failed to copy to clipboard:', err);
-    }
+    this.openInFiles.emit({ remoteName: this.selectedRemote().name, path });
   }
 
   onEditSettings(event: { section: string; settings: RemoteSettings }): void {
@@ -777,184 +554,167 @@ export class AppDetailComponent {
       editTarget: type,
       existingConfig: this.remoteSettings(),
       targetProfile: profileName,
-      remoteType: type === 'runtimeRemote' ? this.selectedRemote().type : undefined,
+      remoteType: this.selectedRemote().type,
     });
   }
 
-  getSettingsPanelConfig(section: RemoteSettingsSection): SettingsPanelConfig {
-    const [key, profileName] = section.key.split(':');
-    const settings = this.remoteSettings() as Record<string, any>;
+  async onResetStats(): Promise<void> {
+    const groupName = this.currentGroupName();
+    try {
+      await this.jobService.resetGroupStats(groupName);
+      this.jobService.clearGroupData(groupName);
+    } catch (error) {
+      console.error('Failed to reset group stats:', error);
+    }
+  }
 
-    // configKey resolved once and shared across both branches (was duplicated before)
+  // --- Private Helpers ---
+
+  private getOpState(
+    type: SyncOperationType | 'mount' | 'serve'
+  ): RemoteOperationState | RemoteServeState | null {
+    return (this.selectedRemote().status[type as keyof Omit<RemoteStatus, 'diskUsage'>] ?? null) as
+      | RemoteOperationState
+      | RemoteServeState
+      | null;
+  }
+
+  private isOperationActive(type: string, profileName?: string): boolean {
+    const state = this.getOpState(type as SyncOperationType | 'mount' | 'serve');
+    if (!state) return false;
+    if (type === 'serve') {
+      const s = state as RemoteServeState;
+      return profileName ? (s.serves?.some(sv => sv.profile === profileName) ?? false) : !!s.active;
+    }
+    const op = state as RemoteOperationState;
+    return profileName ? !!op.activeProfiles?.[profileName] : !!op.active;
+  }
+
+  private getProfileConfigMap(type: string): Record<string, unknown> | undefined {
+    const configKey = REMOTE_CONFIG_KEYS[type as keyof typeof REMOTE_CONFIG_KEYS];
+    return configKey
+      ? (this.remoteSettings()[configKey as keyof RemoteSettings] as
+          | Record<string, unknown>
+          | undefined)
+      : undefined;
+  }
+
+  private buildSettingsSections(
+    type: string,
+    titlePrefix: string,
+    icon: string,
+    group: 'operation' | 'shared'
+  ): RemoteSettingsSection[] {
+    const profiles = this.getProfileConfigMap(type);
+    const names = profiles ? Object.keys(profiles) : [];
+    return names.length > 0
+      ? names.map(name => ({
+          key: `${type}:${name}`,
+          title: `${titlePrefix} (${name})`,
+          icon,
+          group,
+        }))
+      : [{ key: type, title: titlePrefix, icon, group }];
+  }
+
+  private buildPanelConfig(
+    section: RemoteSettingsSection,
+    settings: RemoteSettings
+  ): SettingsPanelConfig {
+    const [key, profileName] = section.key.split(':');
     const configKey = REMOTE_CONFIG_KEYS[
       key as keyof typeof REMOTE_CONFIG_KEYS
     ] as keyof RemoteSettings;
-    const profiles = settings[configKey] as Record<string, any> | undefined;
+    const profiles = settings[configKey] as Record<string, unknown> | undefined;
 
-    let specificSettings: Record<string, any>;
-
+    let specificSettings: Record<string, unknown>;
     if (profileName) {
-      specificSettings = profiles?.[profileName] ?? {};
-    } else if (
-      profiles &&
-      (key === 'sync' || key === 'bisync' || key === 'move' || key === 'copy')
-    ) {
-      // For profile-based operations, fall back to 'default' or first entry
-      specificSettings = profiles['default'] ?? Object.values(profiles)[0] ?? {};
+      specificSettings = (profiles?.[profileName] as Record<string, unknown>) ?? {};
+    } else if (profiles && (['sync', 'bisync', 'move', 'copy'] as string[]).includes(key)) {
+      specificSettings =
+        (profiles['default'] as Record<string, unknown>) ?? Object.values(profiles)[0] ?? {};
     } else {
-      // For single-config/shared operations (vfs, filter, etc.)
-      specificSettings = profiles ?? {};
+      specificSettings = (profiles as Record<string, unknown>) ?? {};
     }
 
-    return {
-      section,
-      settings: specificSettings,
-      hasSettings: Object.keys(specificSettings).length > 0,
-      buttonColor: this.operationColor(),
-      buttonLabel: undefined,
-      sensitiveKeys: SENSITIVE_KEYS,
-    };
+    return { section, settings: specificSettings };
   }
 
-  shouldShowCharts = computed(() => this.isSyncType());
+  private buildControlConfig(
+    type: PrimaryActionType,
+    config: ProfileConfig,
+    profileName?: string
+  ): OperationControlConfig {
+    const metadata = OPERATION_METADATA[type];
+    const isActive = this.isOperationActive(type, profileName);
+    const actionMatch = this.actionInProgress()?.find(
+      a =>
+        (a.type === type ||
+          (type === 'mount' && a.type === 'unmount') ||
+          (a.type === 'stop' && a.operationType === type)) &&
+        (a.profileName === profileName || (!a.profileName && !profileName))
+    );
+    const actionType = actionMatch?.type;
+    const isLoading = !!actionType;
+    const t = (key: string, params?: object) => this.translate.instant(key, params);
+    const opLabel = t(metadata.typeLabel || metadata.label);
+    const isMount = type === 'mount';
 
-  // --- Data Fetching Logic (Polling) ---
-
-  private async fetchGroupData(groupName: string): Promise<void> {
-    try {
-      const [groupStats, completedTransfers] = await Promise.all([
-        this.systemInfoService.getStats(groupName) as Promise<GlobalStats | null>,
-        this.loadCompletedTransfers(groupName),
-      ]);
-
-      if (groupStats) {
-        this.updateStatsSignals(groupStats);
-      }
-
-      if (completedTransfers) {
-        this.completedTransfers.set(completedTransfers);
-      }
-    } catch (error) {
-      console.error('Error fetching group stats:', error);
-    }
-  }
-
-  private async loadCompletedTransfers(group: string): Promise<CompletedTransfer[] | null> {
-    try {
-      const response: any = await this.jobService.getCompletedTransfers(group);
-      const transfers = response?.transferred || response;
-      if (!Array.isArray(transfers)) return null;
-      return transfers.map((t: any) => this.mapTransfer(t));
-    } catch {
-      return null;
-    }
-  }
-
-  private updateStatsSignals(stats: GlobalStats): void {
-    this.trackCompletedFiles(stats);
-
-    const transferring = this.processTransfers(stats.transferring);
-    this.activeTransfers.set(transferring);
-
-    // Update group stats
-    this.groupStats.set({ ...stats, transferring });
-  }
-
-  // --- Logic Helpers ---
-
-  private processTransfers(files: any[] = []): TransferFile[] {
-    return files.map(f => ({
-      ...f,
-      percentage: f.size > 0 ? Math.min(100, Math.round((f.bytes / f.size) * 100)) : 0,
-      isError: f.bytes < f.size && f.percentage === 100,
-      isCompleted: false,
-    }));
-  }
-
-  private trackCompletedFiles(stats: GlobalStats): void {
-    const currentCount = stats.transfers || 0;
-
-    if (currentCount > this.lastTransferCount) {
-      const activeNames = new Set(stats.transferring?.map((f: TransferFile) => f.name) || []);
-      const currentActive = this.activeTransfers();
-
-      const newCompletions: CompletedTransfer[] = [];
-
-      currentActive.forEach(file => {
-        if (!activeNames.has(file.name) && file.percentage > 0 && file.percentage < 100) {
-          const completed: CompletedTransfer = {
-            ...file,
-            checked: false,
-            error: '',
-            jobid: Number(this.jobId() ?? 0),
-            status: 'completed',
-            startedAt: undefined,
-            completedAt: new Date().toISOString(),
-            srcFs: undefined,
-            dstFs: undefined,
-            group: undefined,
+    const pathConfig: PathDisplayConfig =
+      type === 'serve'
+        ? {
+            source: config.source ?? t('dashboard.appDetail.notConfigured'),
+            destination: `${((config.options?.type as string) ?? 'http').toUpperCase()} at ${config.options?.addr ?? t('dashboard.appDetail.default')}`,
+            sourceLabel: t('dashboard.appDetail.serving'),
+            destinationLabel: t('dashboard.appDetail.accessibleVia'),
+            showOpenButtons: true,
+            hasSource: !!config.source,
+            hasDestination: false,
+            isDestinationActive: isActive,
+          }
+        : {
+            source: config.source ?? t('dashboard.appDetail.notConfigured'),
+            destination:
+              config.dest ?? config.destination ?? t('dashboard.appDetail.notConfigured'),
+            showOpenButtons: true,
+            isDestinationActive: type === 'mount' ? isActive : true,
+            actionInProgress: (actionType as RemoteAction) ?? undefined,
+            hasSource: !!config.source,
+            hasDestination: !!(config.dest ?? config.destination),
           };
-          newCompletions.push(completed);
-        }
-      });
-
-      if (newCompletions.length > 0) {
-        this.completedTransfers.update(prev => {
-          const uniqueNew = newCompletions.filter(nc => !prev.some(p => p.name === nc.name));
-          return [...uniqueNew, ...prev].slice(0, 50);
-        });
-      }
-
-      this.lastTransferCount = currentCount;
-    }
-  }
-
-  private mapTransfer(transfer: any): CompletedTransfer {
-    let status: 'completed' | 'checked' | 'failed' | 'partial' = 'completed';
-    if (transfer.error) status = 'failed';
-    else if (transfer.checked) status = 'checked';
-    else if (transfer.bytes > 0 && transfer.bytes < transfer.size) status = 'partial';
 
     return {
-      name: transfer.name || '',
-      size: transfer.size || 0,
-      bytes: transfer.bytes || 0,
-      checked: transfer.checked || false,
-      error: transfer.error || '',
-      jobid: transfer.group ? parseInt(transfer.group.replace('job/', '')) : 0,
-      startedAt: transfer.started_at,
-      completedAt: transfer.completed_at,
-      srcFs: transfer.srcFs,
-      dstFs: transfer.dstFs,
-      group: transfer.group,
-      status,
+      operationType: type,
+      isActive,
+      isLoading,
+      cssClass: metadata.cssClass,
+      pathConfig,
+      primaryButtonLabel: isLoading
+        ? t(isMount ? 'dashboard.appDetail.mount' : 'dashboard.appDetail.starting', { op: opLabel })
+        : t(isMount ? 'dashboard.appDetail.mount' : 'dashboard.appDetail.start', { op: opLabel }),
+      secondaryButtonLabel: isLoading
+        ? t(isMount ? 'dashboard.appDetail.unmounting' : 'dashboard.appDetail.stopping', {
+            op: opLabel,
+          })
+        : t(isMount ? 'dashboard.appDetail.unmount' : 'dashboard.appDetail.stop', { op: opLabel }),
+      primaryIcon: metadata.icon,
+      secondaryIcon: isMount ? 'eject' : 'stop',
+      actionInProgress: (actionType as RemoteAction) ?? undefined,
+      operationDescription: metadata.description ? t(metadata.description) : undefined,
+      profileName,
     };
   }
-
-  private resetTransfers(): void {
-    this.activeTransfers.set([]);
-    this.completedTransfers.set([]);
-    this.lastTransferCount = 0;
-    // Clear group stats so it falls back to global stats from service
-    this.groupStats.set(null);
-  }
-
-  // --- Stats Formatting Helpers ---
 
   private formatProgress(): string {
     const { bytes, totalBytes } = this.jobStats();
-    if (totalBytes > 0) {
-      return `${this.formatFileSize.transform(bytes)} / ${this.formatFileSize.transform(totalBytes)}`;
-    }
-    return this.formatFileSize.transform(bytes);
+    return totalBytes > 0
+      ? `${this.formatFileSize.transform(bytes)} / ${this.formatFileSize.transform(totalBytes)}`
+      : this.formatFileSize.transform(bytes);
   }
+}
 
-  formatSpeed(speed: number): string {
-    return `${this.formatFileSize.transform(speed)}/s`;
-  }
-
-  calculateProgress(): number {
-    const { bytes, totalBytes } = this.jobStats();
-    return totalBytes > 0 ? Math.min(100, (bytes / totalBytes) * 100) : 0;
-  }
+function parseDateValue(value?: string | null): Date | undefined {
+  if (!value) return undefined;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 }

@@ -1,285 +1,242 @@
-<div class="remote-details">
+<div class="remote-details" [style.--mat-sys-primary]="operationColorCssVar()">
   <div class="detail-header">
-    <div class="header-content">
-      <div class="remote-info-section">
-        <div
-          [ngClass]="{
-            'icon-container': true,
-            sync: isSyncType() && operationActiveState(),
-            copy: selectedSyncOperation() === 'copy' && operationActiveState(),
-            move: selectedSyncOperation() === 'move' && operationActiveState(),
-            bisync: selectedSyncOperation() === 'bisync' && operationActiveState(),
-            mount: selectedRemote().status.mount.active,
-            serve: selectedRemote().status.serve.active,
-          }"
+    <div class="remote-info-section">
+      <div
+        class="icon-container"
+        [ngClass]="{
+          sync: isSyncType() && operationActiveState(),
+          copy: selectedSyncOperation() === 'copy' && operationActiveState(),
+          move: selectedSyncOperation() === 'move' && operationActiveState(),
+          bisync: selectedSyncOperation() === 'bisync' && operationActiveState(),
+          mount: selectedRemote().status.mount.active,
+          serve: selectedRemote().status.serve.active,
+        }"
+      >
+        <mat-icon
+          [svgIcon]="iconService.getIconName(selectedRemote().type)"
+          class="remote-type-icon"
+        ></mat-icon>
+      </div>
+      <div class="remote-text-info">
+        <h2 class="remote-name" [matTooltip]="selectedRemote().name" matTooltipShowDelay="600">
+          {{ selectedRemote().name }}
+        </h2>
+        <span class="remote-type">{{ selectedRemote().type | titlecase }}</span>
+      </div>
+    </div>
+  </div>
+
+  @if (mainOperationType() === 'sync') {
+    <div
+      class="operation-toggle-group"
+      role="group"
+      [style.--selected-index]="selectedSyncOpIndex()"
+      [style.--selected-col]="selectedSyncOpCol()"
+      [style.--selected-row]="selectedSyncOpRow()"
+    >
+      @for (operation of syncOperations(); track operation.type) {
+        <button
+          type="button"
+          class="operation-toggle"
+          [class.is-selected]="selectedSyncOperation() === operation.type"
+          [class.is-running]="operation.isActive"
+          (click)="selectedSyncOperation.set(operation.type)"
+          [matTooltip]="operation.description | translate"
+          matTooltipPosition="below"
+          matTooltipShowDelay="600"
         >
-          <mat-icon
-            [svgIcon]="iconService.getIconName(selectedRemote().type)"
-            class="remote-type-icon"
-          ></mat-icon>
-        </div>
-        <div class="remote-text-info">
-          <h2 class="remote-name" matTooltip="{{ selectedRemote().name }}">
-            {{ selectedRemote().name }}
-          </h2>
-          <span class="remote-type">{{ selectedRemote().type | titlecase }}</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Main Content Area -->
-  <div class="detail-content">
-    <div class="operation-wrapper">
-      @if (mainOperationType() === 'sync') {
-        <div class="operation-mode-selector">
-          <span class="selector-label">{{ 'dashboard.appDetail.operationMode' | translate }}</span>
-          <mat-button-toggle-group
-            [value]="selectedSyncOperation()"
-            (change)="onSyncOperationChange($event.value)"
-            class="operation-toggle-group"
-            [aria-label]="'dashboard.appDetail.selectOperationMode' | translate"
-          >
-            @for (operation of syncOperations; track operation.type) {
-              <mat-button-toggle
-                [value]="operation.type"
-                [matTooltip]="operation.description | translate"
-                matTooltipPosition="below"
-                [class]="'operation-toggle operation-' + operation.type"
-              >
-                <span class="toggle-label">{{ operation.typeLabel | translate }}</span>
-              </mat-button-toggle>
-            }
-          </mat-button-toggle-group>
-        </div>
+          <span>{{ operation.typeLabel | translate }}</span>
+        </button>
       }
-
-      <div class="unified-operation-content">
-        <mat-tab-group class="operation-tabs" animationDuration="300ms">
-          <!-- Monitoring Tab -->
-          <mat-tab>
-            <ng-template mat-tab-label>
-              <span>{{ 'dashboard.appDetail.monitoring' | translate }}</span>
-            </ng-template>
-
-            <div class="operation-monitor">
-              <!-- Profile Selector (when multiple profiles exist) -->
-              @if (showProfileSelector()) {
-                <div
-                  class="profile-selector-container"
-                  [ngClass]="{
-                    'operation-sync': isSyncType(),
-                    'operation-mount': mainOperationType() === 'mount',
-                    'operation-serve': mainOperationType() === 'serve',
-                  }"
-                >
-                  <div class="profile-selector-header">
-                    <span class="profile-selector-label">{{
-                      'dashboard.appDetail.selectedProfile' | translate
-                    }}</span>
-                    <span class="profile-count">{{
-                      'dashboard.appDetail.profilesCount'
-                        | translate: { count: enrichedProfiles().length }
-                    }}</span>
-                  </div>
-                  <mat-chip-set
-                    [attr.aria-label]="'dashboard.appDetail.aria.profileSelection' | translate"
-                    class="profile-chips"
-                  >
-                    @for (profile of enrichedProfiles(); track profile.name) {
-                      <mat-chip-option
-                        [selected]="selectedProfile() === profile.name"
-                        (click)="selectedProfile.set(profile.name)"
-                        [class.chip-running]="profile.status === 'running'"
-                        [class.chip-scheduled]="profile.status === 'scheduled'"
-                      >
-                        @if (profile.status === 'running') {
-                          <mat-icon
-                            [svgIcon]="currentOpMetadata().icon || 'refresh'"
-                            [class.animate-spin]="isSyncType()"
-                            [class]="operationColor()"
-                            matChipAvatar
-                          ></mat-icon>
-                        } @else if (profile.status === 'scheduled') {
-                          <mat-icon svgIcon="clock" class="orange" matChipAvatar></mat-icon>
-                        }
-                        {{ profile.label }}
-                      </mat-chip-option>
-                    }
-                  </mat-chip-set>
-                </div>
-              }
-
-              <!-- Operation Control Panel (filtered by selected profile) -->
-              @for (
-                opConfig of filteredControlConfigs();
-                track opConfig.profileName || opConfig.operationType
-              ) {
-                <app-operation-control
-                  [config]="opConfig"
-                  (startJob)="
-                    startJob.emit({
-                      type: $event,
-                      remoteName: selectedRemote().name,
-                      profileName: opConfig.profileName,
-                    })
-                  "
-                  (stopJob)="
-                    stopJob.emit({
-                      type: $event,
-                      remoteName: selectedRemote().name,
-                      profileName: opConfig.profileName,
-                    })
-                  "
-                  (openPath)="triggerOpenInFiles($event)"
-                  [class]="'control-panel ' + operationClass()"
-                >
-                </app-operation-control>
-              }
-              <!-- Job Information Panel -->
-              @if (shouldShowCharts()) {
-                <!-- Human Readable Cron Schedule (for selected profile) -->
-                @if (hasCronSchedule()) {
-                  @let schedule = selectedCronSchedule();
-                  @if (schedule) {
-                    <div class="cron-human-readable">
-                      <mat-icon svgIcon="clock" class="cron-icon"></mat-icon>
-                      <span class="cron-schedule" [matTooltip]="schedule.cronExpression">{{
-                        schedule.humanReadable
-                      }}</span>
-                    </div>
-                  }
-                }
-
-                <app-job-info-panel
-                  [config]="jobInfoConfig()"
-                  class="info-panel"
-                ></app-job-info-panel>
-
-                <!-- Statistics Panel -->
-                <app-stats-panel [config]="statsConfig()" class="stats-panel"></app-stats-panel>
-
-                <!-- Transfer Activity Panel -->
-                <app-transfer-activity-panel
-                  [config]="transferActivityConfig()"
-                  (resetStats)="onResetStats()"
-                  class="activity-panel"
-                ></app-transfer-activity-panel>
-              }
-
-              <!-- Active Serves List (conditional for serve) -->
-              @if (mainOperationType() === 'serve' && filteredRunningServes().length > 0) {
-                <div class="active-serves-list">
-                  <h3>{{ 'dashboard.appDetail.activeServes' | translate }}</h3>
-                  <div class="serves-grid">
-                    @for (serve of filteredRunningServes(); track serve.id) {
-                      <app-serve-card
-                        [serve]="serve"
-                        (stopServe)="
-                          stopJob.emit({
-                            type: 'serve',
-                            remoteName: selectedRemote().name,
-                            serveId: serve.id,
-                          })
-                        "
-                        (copyToClipboard)="onCopyToClipboard($event)"
-                      ></app-serve-card>
-                    }
-                  </div>
-                </div>
-              }
-
-              <!-- VFS Control Panel (conditional for mount or serve) -->
-              @if (currentOpMetadata().supportsVfs) {
-                <mat-divider></mat-divider>
-                <app-vfs-control-panel [remoteName]="selectedRemote().name"></app-vfs-control-panel>
-              }
-            </div>
-          </mat-tab>
-
-          <!-- Configuration Tab -->
-          <mat-tab>
-            <ng-template mat-tab-label>
-              <span>{{ 'dashboard.appDetail.configuration' | translate }}</span>
-            </ng-template>
-
-            <div class="configuration-content">
-              <!-- Operation-Specific Warnings -->
-              @if (isSyncType()) {
-                @switch (selectedSyncOperation()) {
-                  @case ('move') {
-                    <mat-card class="operation-warning">
-                      <mat-card-header>
-                        <mat-card-title>
-                          <mat-icon svgIcon="warning" class="warn"></mat-icon
-                          >{{ 'dashboard.appDetail.moveWarningTitle' | translate }}
-                        </mat-card-title>
-                      </mat-card-header>
-                      <mat-card-content>
-                        <p [innerHTML]="'dashboard.appDetail.moveWarningText1' | translate"></p>
-                        <p [innerHTML]="'dashboard.appDetail.moveWarningText2' | translate"></p>
-                      </mat-card-content>
-                    </mat-card>
-                  }
-                  @case ('bisync') {
-                    <mat-card class="operation-info">
-                      <mat-card-header>
-                        <mat-card-title>
-                          <mat-icon svgIcon="info"></mat-icon
-                          >{{ 'dashboard.appDetail.bisyncInfoTitle' | translate }}
-                        </mat-card-title>
-                      </mat-card-header>
-                      <mat-card-content>
-                        <p>{{ 'dashboard.appDetail.bisyncInfoText1' | translate }}</p>
-                        <p>{{ 'dashboard.appDetail.bisyncInfoText2' | translate }}</p>
-                        <p>{{ 'dashboard.appDetail.bisyncInfoText3' | translate }}</p>
-                      </mat-card-content>
-                    </mat-card>
-                  }
-                }
-              }
-
-              <div class="settings-layout">
-                <section class="settings-group operation-settings">
-                  <header class="group-header">
-                    <h3 class="group-title">{{ operationSettingsHeading() }}</h3>
-                    <p class="group-description">{{ operationSettingsDescription() }}</p>
-                  </header>
-                  <div class="group-panels">
-                    @for (section of operationSettingsSections(); track section.key) {
-                      <app-settings-panel
-                        [config]="getSettingsPanelConfig(section)"
-                        (editSettings)="onEditSettings($event)"
-                        [class]="'settings-section ' + operationClass()"
-                      ></app-settings-panel>
-                    }
-                  </div>
-                </section>
-
-                <section class="settings-group shared-settings">
-                  <header class="group-header">
-                    <h3 class="group-title">
-                      {{ 'dashboard.appDetail.sharedSettings' | translate }}
-                    </h3>
-                    <p class="group-description">
-                      {{ 'dashboard.appDetail.sharedSettingsDesc' | translate }}
-                    </p>
-                  </header>
-                  <div class="group-panels">
-                    @for (section of sharedSettingsSections(); track section.key) {
-                      <app-settings-panel
-                        [config]="getSettingsPanelConfig(section)"
-                        (editSettings)="onEditSettings($event)"
-                        [class]="'settings-section ' + operationClass()"
-                      ></app-settings-panel>
-                    }
-                  </div>
-                </section>
-              </div>
-            </div>
-          </mat-tab>
-        </mat-tab-group>
-      </div>
     </div>
-  </div>
+  }
+
+  <mat-tab-group class="operation-tabs" animationDuration="300ms">
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <span>{{ 'dashboard.appDetail.monitoring' | translate }}</span>
+      </ng-template>
+
+      <div class="operation-monitor">
+        @if (showProfileSelector()) {
+          <div
+            class="profile-selector-container"
+            [ngClass]="{
+              'operation-sync': selectedSyncOperation() === 'sync' && isSyncType(),
+              'operation-bisync': selectedSyncOperation() === 'bisync',
+              'operation-move': selectedSyncOperation() === 'move',
+              'operation-copy': selectedSyncOperation() === 'copy',
+              'operation-mount': mainOperationType() === 'mount',
+              'operation-serve': mainOperationType() === 'serve',
+            }"
+          >
+            <div class="profile-selector-header">
+              <span class="profile-selector-label">{{
+                'dashboard.appDetail.selectedProfile' | translate
+              }}</span>
+              <span class="profile-count">{{
+                'dashboard.appDetail.profilesCount'
+                  | translate: { count: enrichedProfiles().length }
+              }}</span>
+            </div>
+
+            <div class="profile-pills">
+              @for (profile of enrichedProfiles(); track profile.name) {
+                <button
+                  class="profile-pill"
+                  [class.is-selected]="selectedProfile() === profile.name"
+                  [class.is-running]="profile.status === 'running'"
+                  [class.is-scheduled]="profile.status === 'scheduled'"
+                  (click)="selectedProfile.set(profile.name)"
+                  type="button"
+                >
+                  @if (profile.status === 'running') {
+                    <mat-icon
+                      [svgIcon]="currentOpMetadata().icon || 'refresh'"
+                      [class]="iconAnimationClass()"
+                    ></mat-icon>
+                  } @else if (profile.status === 'scheduled') {
+                    <mat-icon svgIcon="clock"></mat-icon>
+                  }
+                  {{ profile.label }}
+                </button>
+              }
+              <button
+                class="profile-pill"
+                (click)="onAddProfile()"
+                [matTooltip]="'dashboard.appDetail.addProfile' | translate"
+                matTooltipShowDelay="400"
+                matTooltipPosition="below"
+              >
+                <mat-icon svgIcon="plus"></mat-icon>
+              </button>
+            </div>
+          </div>
+        }
+
+        @for (opConfig of controlConfigs(); track opConfig.profileName || opConfig.operationType) {
+          <app-operation-control
+            [config]="opConfig"
+            (startJob)="
+              startJob.emit({
+                type: $event,
+                remoteName: selectedRemote().name,
+                profileName: opConfig.profileName,
+              })
+            "
+            (stopJob)="
+              stopJob.emit({
+                type: $event,
+                remoteName: selectedRemote().name,
+                profileName: opConfig.profileName,
+              })
+            "
+            (openPath)="triggerOpenInFiles($event)"
+          >
+          </app-operation-control>
+        }
+
+        @if (isSyncType()) {
+          @if (hasCronSchedule()) {
+            @let schedule = selectedCronSchedule();
+            @if (schedule) {
+              <div
+                class="cron-human-readable"
+                [ngClass]="{
+                  'operation-sync': selectedSyncOperation() === 'sync',
+                  'operation-bisync': selectedSyncOperation() === 'bisync',
+                  'operation-move': selectedSyncOperation() === 'move',
+                  'operation-copy': selectedSyncOperation() === 'copy',
+                }"
+              >
+                <mat-icon svgIcon="clock" class="cron-icon"></mat-icon>
+                <span class="cron-schedule" [matTooltip]="schedule.cronExpression">{{
+                  schedule.humanReadable
+                }}</span>
+              </div>
+            }
+          }
+
+          <app-job-info-panel [config]="jobInfoConfig()" class="info-panel"></app-job-info-panel>
+
+          <app-stats-panel [config]="statsConfig()" class="stats-panel"></app-stats-panel>
+
+          <app-transfer-activity-panel
+            [config]="transferActivityConfig()"
+            (resetStats)="onResetStats()"
+            class="activity-panel"
+          ></app-transfer-activity-panel>
+        }
+
+        @if (mainOperationType() === 'serve' && filteredRunningServes().length > 0) {
+          <div class="active-serves-list">
+            <h3>{{ 'dashboard.appDetail.activeServes' | translate }}</h3>
+            <div class="serves-grid">
+              @for (serve of filteredRunningServes(); track serve.id) {
+                <app-serve-card
+                  [serve]="serve"
+                  (stopServe)="
+                    stopJob.emit({
+                      type: 'serve',
+                      remoteName: selectedRemote().name,
+                      serveId: serve.id,
+                    })
+                  "
+                ></app-serve-card>
+              }
+            </div>
+          </div>
+        }
+
+        @if (currentOpMetadata().supportsVfs) {
+          <mat-divider></mat-divider>
+          <app-vfs-control-panel [remoteName]="selectedRemote().name"></app-vfs-control-panel>
+        }
+      </div>
+    </mat-tab>
+
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <span>{{ 'dashboard.appDetail.configuration' | translate }}</span>
+      </ng-template>
+
+      <div class="configuration-content">
+        <div class="settings-layout">
+          <section class="settings-group operation-settings">
+            <header class="group-header">
+              <h3 class="group-title">{{ operationSettingsHeading() }}</h3>
+              <p class="group-description">{{ operationSettingsDescription() }}</p>
+            </header>
+            <div class="group-panels">
+              @for (section of operationSettingsSections(); track section.key) {
+                <app-settings-panel
+                  [config]="getSettingsPanelConfig(section)"
+                  (editSettings)="onEditSettings($event)"
+                ></app-settings-panel>
+              }
+            </div>
+          </section>
+
+          <section class="settings-group shared-settings">
+            <header class="group-header">
+              <h3 class="group-title">
+                {{ 'dashboard.appDetail.sharedSettings' | translate }}
+              </h3>
+              <p class="group-description">
+                {{ 'dashboard.appDetail.sharedSettingsDesc' | translate }}
+              </p>
+            </header>
+            <div class="group-panels">
+              @for (section of sharedSettingsSections(); track section.key) {
+                <app-settings-panel
+                  [config]="getSettingsPanelConfig(section)"
+                  (editSettings)="onEditSettings($event)"
+                ></app-settings-panel>
+              }
+            </div>
+          </section>
+        </div>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
 </div>

@@ -6,11 +6,10 @@ use tauri::{AppHandle, Manager};
 use crate::{
     rclone::{backend::BackendManager, state::watcher::force_check_mounted_remotes},
     utils::{
-        app::notification::{Notification, send_notification_typed},
+        app::notification::{NotificationEvent, notify},
         json_helpers::unwrap_nested_options,
         logging::log::log_operation,
         rclone::endpoints::mount,
-        rclone::util::{extract_remote_name_from_fs, normalize_remote_name},
         types::{core::RcloneState, jobs::JobType, logs::LogLevel, remotes::ProfileParams},
     },
 };
@@ -135,15 +134,6 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         return Err(error_msg);
     }
 
-    let requested_remote = normalize_remote_name(&params.remote_name);
-    if mounted_remotes
-        .iter()
-        .any(|m| extract_remote_name_from_fs(&m.fs) == requested_remote)
-    {
-        info!("Remote {} already mounted", params.remote_name);
-        return Ok(());
-    }
-
     let log_context = json!({
         "mount_point": params.mount_point,
         "remote_name": params.remote_name,
@@ -197,15 +187,11 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     cache
         .store_mount_profile(&params.mount_point, params.profile.clone())
         .await;
-    refresh_mounted_remotes_safely(&app).await;
-
-    Ok(())
-}
-
-async fn refresh_mounted_remotes_safely(app: &AppHandle) {
     if let Err(e) = force_check_mounted_remotes(app.clone()).await {
         warn!("Failed to refresh mounted remotes: {e}");
     }
+
+    Ok(())
 }
 
 // Small helper used to centralize the no-op policy for bulk unmount operations.
@@ -264,16 +250,12 @@ pub async fn unmount_remote(
         .await
         .map_err(|e| {
             let error_msg = crate::localized_error!("backendErrors.request.failed", "error" => &e);
-            send_notification_typed(
+            notify(
                 &app,
-                Notification::localized(
-                    "notification.title.unmountFailed",
-                    "notification.body.unmountFailed",
-                    Some(vec![("error", &e.to_string())]),
-                    None,
-                    Some(LogLevel::Error),
-                ),
-                Some(crate::utils::types::origin::Origin::Internal),
+                NotificationEvent::MountFailed {
+                    mount_point: mount_point.clone(),
+                    error: e.to_string(),
+                },
             );
             error_msg
         })?;
@@ -286,19 +268,18 @@ pub async fn unmount_remote(
         None,
     );
 
-    send_notification_typed(
+    notify(
         &app,
-        Notification::localized(
-            "notification.title.unmountSuccess",
-            "notification.body.unmounted",
-            Some(vec![("remote", &remote_name), ("profile", &profile)]),
-            None,
-            Some(LogLevel::Info),
-        ),
-        Some(crate::utils::types::origin::Origin::Internal),
+        NotificationEvent::UnmountSucceeded {
+            remote: remote_name.clone(),
+            profile,
+            origin: crate::utils::types::origin::Origin::Ui,
+        },
     );
 
-    refresh_mounted_remotes_safely(&app).await;
+    if let Err(e) = force_check_mounted_remotes(app.clone()).await {
+        warn!("Failed to refresh mounted remotes: {e}");
+    }
 
     Ok(crate::localized_success!(
         "backendSuccess.mount.unmounted",
@@ -321,19 +302,10 @@ pub async fn unmount_all_remotes(app: AppHandle, context: String) -> Result<Stri
         debug!("No mounted remotes to unmount — skipping API call");
         // Refresh cache for UI consistency (unless during shutdown)
         if context != "shutdown" {
-            refresh_mounted_remotes_safely(&app).await;
-            // Inform the user that there's nothing to do
-            send_notification_typed(
-                &app,
-                Notification::localized(
-                    "notification.title.nothingToDo",
-                    "notification.body.nothingToDoMounts",
-                    None,
-                    None,
-                    Some(LogLevel::Info),
-                ),
-                Some(crate::utils::types::origin::Origin::Internal),
-            );
+            if let Err(e) = force_check_mounted_remotes(app.clone()).await {
+                warn!("Failed to refresh mounted remotes: {e}");
+            } // Inform the user that there's nothing to do
+            notify(&app, NotificationEvent::NothingToUnmount);
         }
         // Silent no-op during shutdown
         return Ok(crate::localized_success!(
@@ -346,23 +318,15 @@ pub async fn unmount_all_remotes(app: AppHandle, context: String) -> Result<Stri
         .await
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
-    if context != "shutdown" {
-        refresh_mounted_remotes_safely(&app).await;
+    if context != "shutdown"
+        && let Err(e) = force_check_mounted_remotes(app.clone()).await
+    {
+        warn!("Failed to refresh mounted remotes: {e}");
     }
 
     info!("✅ All remotes unmounted successfully");
 
-    send_notification_typed(
-        &app,
-        Notification::localized(
-            "notification.title.unmountSuccess",
-            "notification.body.allRemotesUnmounted",
-            None,
-            None,
-            Some(LogLevel::Info),
-        ),
-        Some(crate::utils::types::origin::Origin::Internal),
-    );
+    notify(&app, NotificationEvent::AllUnmounted);
 
     Ok(crate::localized_success!(
         "backendSuccess.mount.allUnmounted"

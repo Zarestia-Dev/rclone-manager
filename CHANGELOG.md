@@ -4,6 +4,46 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v0.2.4] - 2026-04-14
+### Added
+- Detailed Remote Card variant added. Its can be enabled from layout editor.
+- **Nautilus**: Added external OS drag-into-app file upload support. Users can now drag files and folders from their OS file manager directly into the Nautilus file browser. Folder structure is preserved with recursive directory creation. Supports both Tauri desktop and headless HTTP modes.
+- **Tray**: Added "Open File Browser" menu item in tray. It will open the file browser in a new window.
+- **Language**: Added Simplified Chinese language support. (Thanks to @why25!)
+- **Nautilus**: Added "spring-loaded folder" behavior. Dragging an item and hovering over a folder, breadcrumb, tab, or sidebar item for 1sec will automatically open/navigate to it.
+- Readd the Json Editor for rclone fields. (Now it is optional with toggle button. Not like before v0.1.5). This one more user friendly. Now you can add or edit the custom flags from there too.
+- Legacy config directories for docker users.
+- **Core**: Added support for generic Rclone Environment Variables. Users can now specify arbitrary environment variables (e.g., `RCLONE_NO_UPDATE_MODTIME=true`) directly in the UI. This provides a flexible solution for FUSE compatibility and other rclone-specific configurations.
+ - **Remote Config**: Show direct OAuth URL in remote creation/editing flows with a compact copy button; preserve the OAuth helper URL during remote configuration so users can open or copy the link.
+- **Security**: Added support for `RCLONE_MANAGER_SECRET`, `RCLONE_MANAGER_SECRET_PATH`, and `RCLONE_MANAGER_SECRET_FILE` environment variables for managing `rcman` encrypted credentials. These serve as fallbacks when the OS keyring is unavailable or malfunctioning. If no secret is provided via environment variables and the keyring is inaccessible, credentials will be stored in-memory and lost upon application restart.
+- **Job Detail**: Introduced a job detail view modal, allowing users to inspect granular operation details directly by selecting a job from the list in the General tab.
+- **Settings**: Added `max_upload_batch_size` setting to the General tab. This setting controls the maximum size of a batch of files uploaded from the local computer in a single request. Only available on headless mode.
+- **Translation**: Added missing rclone provider translations.
+
+### Changed
+- **Nautilus**: Replaced Angular CDK drag-and-drop with native HTML5 Drag and Drop API for file and folder operations. This provides a more responsive, system-native feel. (Note: CDK remains active for tab reordering).
+- **Nautilus**: Improved split view drag UX. The active pane now automatically switches when hovering over the other panel during a drag operation.
+- Small design changes across the app.
+- Package-manager builds (Flatpak, deb, rpm, Arch, portable, container) no longer hide the Updates tab. The app still checks for new versions and notifies you.
+- **Nautilus**: Nautilus file browser now supports multiple windows. You can open multiple Nautilus windows for different remotes or paths. Each window is independent and has its own state but they share the same app instance and configuration. You can open a new Nautilus window from the tray menu, right-clicking a folder or remote to open on new window, or dragging a tab to the desktop to open it in a new window.
+
+### Fixed
+- **Nautilus**: Prevented invalid drag-and-drop operations, such as dropping a file into its current directory or dropping a folder onto itself.
+- **Nautilus**: Prevented spring-opening a folder that is currently being dragged.
+- **Tray**: Fully feature-gated tray implementation; `tray` code is excluded. Preventing tray-related imports/logic in Docker builds where tray is not needed.
+- Buggy and non-performant AppImage release files are fixed. Now they works properly on all Linux distributions.
+- **Mount**: Fixed a bug that prevented mounting multiple profiles or instances of the same remote at different mount points.
+- **Serve**: Fixed a UI issue where the listening address appeared as "undefined" for default profiles.
+- **Core**: Removed restrictive duplicate checks in mount and serve operations to allow running multiple instances with unique configurations (e.g., different profiles or ports).
+- **File Viewer**: Fixed the download functionality in headless web mode by implementing browser-native downloads. Remote files can now be downloaded to the local computer in both desktop and web environments.
+- **Core**: Bunch of scheduler tasks fixes.
+- **Core**: Fixed the issue where the app was not able to update rclone and app on headless mode.
+- **FileSystem**: Fixed a bug in headless mode where selecting a local directory or file would return a relative path instead of an absolute one.
+
+### Know Issues
+- Tauri asset protocols has a bug that causes media streaming to not work properly on linux webview2gtk. So this mean videos and music files not gonna work on linux systems. But it works on headless systems. Track https://github.com/tauri-apps/tauri/issues/3725 for updates on this issue. 
+
+
 ## [v0.2.3] - 2026-03-17
 
 ### Warning
