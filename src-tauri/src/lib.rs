@@ -99,12 +99,10 @@ pub fn run() {
     {
         // The only platform difference is the D-Bus service ID required on Linux.
         // The callback itself is identical — deduplicate with a cfg inside the builder.
-        let mut si_builder = tauri_plugin_single_instance::Builder::new();
+        let si_builder = tauri_plugin_single_instance::Builder::new();
 
         #[cfg(target_os = "linux")]
-        {
-            si_builder = si_builder.dbus_id("io.github.zarestia_dev.rclone-manager");
-        }
+        let si_builder = si_builder.dbus_id("io.github.zarestia_dev.rclone-manager");
 
         builder = builder.plugin(
             si_builder

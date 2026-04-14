@@ -233,17 +233,18 @@ pub async fn get_local_drives(
         let mut futures = Vec::new();
         // Probe A: through Z:
         for i in b'A'..=b'Z' {
-            let drive_name = format!("{}:", i as char);
             let drive_path = format!("{}:\\", i as char);
 
             let app_clone = app.clone();
             let state_client = state.client.clone();
 
+            let drive_path_for_closure = drive_path.clone();
+
             futures.push(async move {
-                let params = create_fs_params(drive_path, None);
+                let params = create_fs_params(drive_path_for_closure.clone(), None);
                 match run_fs_command(app_clone, state_client, operations::ABOUT, params).await {
                     Ok(_) => Some(LocalDrive {
-                        name: drive_name,
+                        name: drive_path_for_closure,
                         label: "nautilus.titles.localDisk".to_string(),
                         show_name: true,
                     }),
@@ -258,7 +259,7 @@ pub async fn get_local_drives(
         // Fallback if somehow none are detected
         if drives.is_empty() {
             drives.push(LocalDrive {
-                name: "C:".to_string(),
+                name: "C:\\".to_string(),
                 label: "nautilus.titles.localDisk".to_string(),
                 show_name: true,
             });

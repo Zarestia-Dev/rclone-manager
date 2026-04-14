@@ -98,24 +98,26 @@ export function getDefaultAnswerFromQuestion(
 
 /**
  * Checks if a given path is a local filesystem path.
- * Recognizes Unix-style absolute paths (starting with '/') and Windows-style paths (e.g., 'C:\').
+ * Recognizes Unix-style absolute paths (starting with '/') and Windows-style paths (e.g., 'C:\', 'C:/' or 'C:').
  */
 export function isLocalPath(path: string): boolean {
-  return path.startsWith('/') || /^[a-zA-Z]:\\/.test(path);
+  return path.startsWith('/') || /^[a-zA-Z]:([\\/]|$)/.test(path);
 }
 
 /**
  * Splits an absolute local path into its root (remote) and remainder (path).
  * Example: "/home/hakan" -> { remote: "/", remainder: "home/hakan" }
- * Example: "C:\Users\hakan" -> { remote: "C:", remainder: "Users\hakan" }
+ * Example: "C:\Users\hakan" -> { remote: "C:\", remainder: "Users\hakan" }
  */
 export function splitLocalPath(path: string): { remote: string; remainder: string } {
   if (path.startsWith('/')) {
     return { remote: '/', remainder: path.substring(1) };
   }
-  const windowsMatch = path.match(/^([a-zA-Z]:)([\\/].*)$/);
+  const windowsMatch = path.match(/^([a-zA-Z]:)([\\/]?)(.*)$/);
   if (windowsMatch) {
-    return { remote: windowsMatch[1], remainder: windowsMatch[2].substring(1) };
+    const drive = windowsMatch[1];
+    const slash = windowsMatch[2] || '\\';
+    return { remote: drive + slash, remainder: windowsMatch[3] };
   }
   return { remote: path, remainder: '' };
 }
