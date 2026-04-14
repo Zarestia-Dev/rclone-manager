@@ -117,7 +117,6 @@
         @for (opConfig of controlConfigs(); track opConfig.profileName || opConfig.operationType) {
           <app-operation-control
             [config]="opConfig"
-            [style.--op-color]="operationColorCssVar()"
             (startJob)="
               startJob.emit({
                 type: $event,

@@ -230,6 +230,7 @@ async fn handle_stop_job_profile(
             NotificationEvent::JobFailed {
                 remote: remote_name.clone(),
                 profile: Some(profile_name.clone()),
+                operation: job_type.as_str().to_string(),
                 error: "no active job".to_string(),
                 origin: Origin::Ui,
             },

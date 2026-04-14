@@ -1,5 +1,5 @@
 import { Injectable, inject, DestroyRef, DOCUMENT, isDevMode } from '@angular/core';
-import { NautilusService } from '../../ui/nautilus.service';
+import { FileSystemService } from '../../operations/file-system.service';
 import { TauriBaseService } from '../platform/tauri-base.service';
 
 /**
@@ -22,7 +22,7 @@ export interface DebugInfo {
   providedIn: 'root',
 })
 export class DebugService extends TauriBaseService {
-  private readonly nautilusService = inject(NautilusService);
+  private readonly fileSystemService = inject(FileSystemService);
   private readonly document = inject(DOCUMENT);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -69,14 +69,8 @@ export class DebugService extends TauriBaseService {
           break;
       }
 
-      // Use the existing open_in_files command
-      if (this.apiClient.isHeadless()) {
-        // In headless mode, use the in-app Nautilus file browser
-        this.nautilusService.openPath(path);
-      } else {
-        // In desktop mode, use the system file explorer
-        await this.apiClient.invoke<string>('open_in_files', { path });
-      }
+      // Use the unified file manager logic
+      await this.fileSystemService.openInFiles(path);
     } catch (error) {
       console.error('Failed to open folder:', error);
       this.notificationService.showError(this.translate.instant('home.errors.generic'));

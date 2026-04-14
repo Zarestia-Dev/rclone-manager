@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { NautilusService } from '../ui/nautilus.service';
 import { FilePickerConfig, FilePickerResult } from '@app/types';
+import { splitLocalPath } from '../remote/utils/remote-config.utils';
 import { filter, firstValueFrom } from 'rxjs';
 
 /**
@@ -113,6 +114,10 @@ export class FileSystemService extends TauriBaseService {
    * Open a path in the system file manager
    */
   async openInFiles(path: string): Promise<void> {
+    if (this.apiClient.isHeadless()) {
+      const { remote, remainder } = splitLocalPath(path);
+      return this.nautilusService.newNautilusWindow(remote, remainder);
+    }
     return this.invokeCommand('open_in_files', { path });
   }
 }

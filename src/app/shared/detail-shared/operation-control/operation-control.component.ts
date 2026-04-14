@@ -54,7 +54,7 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
     >
       <mat-expansion-panel-header>
         <mat-panel-title>
-          <mat-icon [svgIcon]="operationIcon()" style="color: var(--op-color)"></mat-icon>
+          <mat-icon [svgIcon]="operationIcon()" style="color: var(--mat-sys-primary)"></mat-icon>
           <div class="profile-info">
             <span class="profile-name">{{ config().profileName || 'default' }}</span>
           </div>
@@ -95,23 +95,30 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
           (openPath)="openPath.emit($event)"
         ></app-path-display>
 
-        @if (diskUsage(); as usage) {
+        @if (shouldPollDiskUsage()) {
           <div class="disk-usage-info">
-            <div class="usage-stats">
-              <span class="stat-label">{{ 'detailShared.diskUsage.title' | translate }}</span>
-              <span class="stat-value">
-                {{ usage.used | formatFileSize }} / {{ usage.total | formatFileSize }}
-              </span>
-            </div>
-            <mat-progress-bar
-              mode="determinate"
-              [value]="(usage.used / usage.total) * 100"
-              class="usage-bar"
-              [color]="getUsageColor(usage.used / usage.total)"
-            ></mat-progress-bar>
-            <span class="usage-free">{{
-              'detailShared.diskUsage.free' | translate: { value: (usage.free | formatFileSize) }
-            }}</span>
+            @if (isDiskUsageLoading() && !diskUsage()) {
+              <div class="usage-loading">
+                <mat-spinner diameter="16"></mat-spinner>
+                <span class="stat-label">{{ 'detailShared.diskUsage.loading' | translate }}</span>
+              </div>
+            } @else if (diskUsage(); as usage) {
+              <div class="usage-stats">
+                <span class="stat-label">{{ 'detailShared.diskUsage.title' | translate }}</span>
+                <span class="stat-value">
+                  {{ usage.used | formatFileSize }} / {{ usage.total | formatFileSize }}
+                </span>
+              </div>
+              <mat-progress-bar
+                mode="determinate"
+                [value]="(usage.used / usage.total) * 100"
+                class="usage-bar"
+                [color]="getUsageColor(usage.used / usage.total)"
+              ></mat-progress-bar>
+              <span class="usage-free">{{
+                'detailShared.diskUsage.free' | translate: { value: (usage.free | formatFileSize) }
+              }}</span>
+            }
           </div>
         }
 
@@ -184,6 +191,15 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
         flex-direction: column;
         gap: 4px;
 
+        .usage-loading {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: var(--space-sm);
+          padding: var(--space-xs) 0;
+          color: var(--text-secondary);
+        }
+
         .usage-stats {
           display: flex;
           justify-content: space-between;
@@ -215,8 +231,9 @@ export class OperationControlComponent {
 
   readonly isExpanded = signal(false);
   readonly diskUsage = signal<LocalDiskUsage | null>(null);
+  readonly isDiskUsageLoading = signal(false);
 
-  private readonly shouldPollDiskUsage = computed(() => {
+  readonly shouldPollDiskUsage = computed(() => {
     const { operationType, isActive, pathConfig } = this.config();
     const destination = pathConfig.destination ?? '';
     return (
@@ -228,22 +245,26 @@ export class OperationControlComponent {
   });
 
   constructor() {
-    effect(onCleanup => {
+    effect(() => {
       if (!this.shouldPollDiskUsage()) {
         this.diskUsage.set(null);
+        this.isDiskUsageLoading.set(false);
         return;
       }
+      this.isDiskUsageLoading.set(true);
       const destination = this.config().pathConfig.destination ?? '';
-      const fetch = async (): Promise<void> => {
+      const fetchUsage = async (): Promise<void> => {
         try {
-          this.diskUsage.set(await this.systemInfo.getLocalDiskUsage(destination));
+          const usage = await this.systemInfo.getLocalDiskUsage(destination);
+          this.diskUsage.set(usage);
         } catch {
           this.diskUsage.set(null);
+        } finally {
+          this.isDiskUsageLoading.set(false);
         }
       };
-      void fetch();
-      const id = setInterval(() => void fetch(), 5000);
-      onCleanup(() => clearInterval(id));
+
+      void fetchUsage();
     });
   }
 

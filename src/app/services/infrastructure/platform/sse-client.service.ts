@@ -1,5 +1,6 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
+import { RCLONE_ENGINE_READY } from '@app/types';
 
 export interface SseEvent {
   event: string;
@@ -17,7 +18,7 @@ export class SseClientService implements OnDestroy {
   private eventSource: EventSource | null = null;
   private eventSubject = new Subject<SseEvent>();
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
+  private maxReconnectAttempts = 50;
   private reconnectDelay = 1000; // Start with 1 second
 
   /**
@@ -92,6 +93,12 @@ export class SseClientService implements OnDestroy {
 
     this.eventSource.onopen = (): void => {
       console.debug('✅ SSE connected');
+      // Emit engine ready event whenever connection is (re)established
+      // to trigger state refreshes across the app
+      this.eventSubject.next({
+        event: RCLONE_ENGINE_READY,
+        payload: null,
+      });
       this.reconnectAttempts = 0;
       this.reconnectDelay = 1000;
     };

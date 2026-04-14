@@ -18,6 +18,7 @@ import { RemoteFileOperationsService } from '../remote/remote-file-operations.se
 import { RemoteMetadataService } from '../remote/remote-metadata.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
+import { FileSystemService } from '../operations/file-system.service';
 import { NautilusService } from '../ui/nautilus.service';
 import { isLocalPath, getRemoteNameFromFs } from '../remote/utils/remote-config.utils';
 import {
@@ -51,6 +52,7 @@ export class RemoteFacadeService extends TauriBaseService {
   private readonly metadataService = inject(RemoteMetadataService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly eventListeners = inject(EventListenersService);
+  private readonly fileSystemService = inject(FileSystemService);
   private readonly nautilusService = inject(NautilusService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -459,7 +461,7 @@ export class RemoteFacadeService extends TauriBaseService {
     }
 
     if (isLocalPath(path)) {
-      await this.executeAction(remoteName, 'open', () => this.mountService.openInFiles(path));
+      await this.executeAction(remoteName, 'open', () => this.fileSystemService.openInFiles(path));
     } else {
       await this.executeAction(remoteName, 'open', async () => {
         const colonIdx = path.indexOf(':');

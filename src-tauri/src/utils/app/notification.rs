@@ -6,6 +6,7 @@
 //! notify(&app, NotificationEvent::JobCompleted {
 //!     remote: "gdrive:".into(),
 //!     profile: Some("backup".into()),
+//!     operation: "Sync".into(),
 //!     origin: Origin::Ui,
 //! });
 //! ```
@@ -52,6 +53,7 @@ pub enum NotificationEvent {
     JobCompleted {
         remote: String,
         profile: Option<String>,
+        operation: String,
         /// Where the job was initiated. Drives suppression: UI-initiated
         /// completions are suppressed while the app is focused.
         origin: Origin,
@@ -70,6 +72,7 @@ pub enum NotificationEvent {
     JobFailed {
         remote: String,
         profile: Option<String>,
+        operation: String,
         error: String,
         /// Kept for auditing / log context, does not affect suppression.
         origin: Origin,
@@ -79,6 +82,7 @@ pub enum NotificationEvent {
     JobStopped {
         remote: String,
         profile: Option<String>,
+        operation: String,
         origin: Origin,
     },
 
@@ -314,12 +318,19 @@ impl NotificationEvent {
 
         match self {
             Self::JobCompleted {
-                remote, profile, ..
+                remote,
+                profile,
+                operation,
+                ..
             } => RenderedContent {
-                title: t("notification.title.jobCompleted"),
+                title: t_with_params(
+                    "notification.title.operationComplete",
+                    &[("operation", operation)],
+                ),
                 body: t_with_params(
-                    "notification.body.jobCompleted",
+                    "notification.body.complete",
                     &[
+                        ("operation", operation),
                         ("remote", remote),
                         ("profile", profile.as_deref().unwrap_or("")),
                     ],
@@ -333,7 +344,10 @@ impl NotificationEvent {
                 operation,
                 ..
             } => RenderedContent {
-                title: t("notification.title.operationStarted"),
+                title: t_with_params(
+                    "notification.title.operationStarted",
+                    &[("operation", operation)],
+                ),
                 body: t_with_params(
                     "notification.body.started",
                     &[
@@ -348,13 +362,18 @@ impl NotificationEvent {
             Self::JobFailed {
                 remote,
                 profile,
+                operation,
                 error,
                 ..
             } => RenderedContent {
-                title: t("notification.title.jobFailed"),
+                title: t_with_params(
+                    "notification.title.operationFailed",
+                    &[("operation", operation), ("error", error)],
+                ),
                 body: t_with_params(
-                    "notification.body.jobFailed",
+                    "notification.body.failed",
                     &[
+                        ("operation", operation),
                         ("remote", remote),
                         ("profile", profile.as_deref().unwrap_or("")),
                         ("error", error),
@@ -364,12 +383,19 @@ impl NotificationEvent {
             },
 
             Self::JobStopped {
-                remote, profile, ..
+                remote,
+                profile,
+                operation,
+                ..
             } => RenderedContent {
-                title: t("notification.title.jobStopped"),
+                title: t_with_params(
+                    "notification.title.operationStopped",
+                    &[("operation", operation)],
+                ),
                 body: t_with_params(
-                    "notification.body.jobStopped",
+                    "notification.body.stopped",
                     &[
+                        ("operation", operation),
                         ("remote", remote),
                         ("profile", profile.as_deref().unwrap_or("")),
                     ],
@@ -507,13 +533,16 @@ impl NotificationEvent {
 
             Self::EnginePasswordRequired { remote } => RenderedContent {
                 title: t("notification.title.engineError"),
-                body: t_with_params("notification.body.passwordRequired", &[("remote", remote)]),
+                body: t_with_params(
+                    "notification.body.enginePasswordError",
+                    &[("remote", remote)],
+                ),
                 level: LogLevel::Error,
             },
 
             Self::EngineBinaryNotFound => RenderedContent {
                 title: t("notification.title.engineError"),
-                body: t("notification.body.binaryNotFound"),
+                body: t("notification.body.enginePathError"),
                 level: LogLevel::Error,
             },
 
@@ -548,8 +577,8 @@ impl NotificationEvent {
             },
 
             Self::AppUpdateAvailable { version } => RenderedContent {
-                title: t("notification.title.appUpdate"),
-                body: t_with_params("notification.body.appUpdate", &[("version", version)]),
+                title: t("notification.title.updateFound"),
+                body: t_with_params("notification.body.updateFound", &[("version", version)]),
                 level: LogLevel::Info,
             },
 
@@ -578,8 +607,11 @@ impl NotificationEvent {
             },
 
             Self::RcloneUpdateAvailable { version } => RenderedContent {
-                title: t("notification.title.rcloneUpdate"),
-                body: t_with_params("notification.body.rcloneUpdate", &[("version", version)]),
+                title: t("notification.title.rcloneUpdateFound"),
+                body: t_with_params(
+                    "notification.body.rcloneUpdateFound",
+                    &[("version", version)],
+                ),
                 level: LogLevel::Info,
             },
 
@@ -694,6 +726,7 @@ pub fn should_suppress(is_focused: bool, origin: Option<&Origin>) -> bool {
     let event = NotificationEvent::JobCompleted {
         remote: String::new(),
         profile: None,
+        operation: String::new(),
         origin: origin_val,
     };
     event.suppression() == Suppression::WhenFocused && is_focused
@@ -766,6 +799,7 @@ mod tests {
         let e = NotificationEvent::JobFailed {
             remote: "s3:".into(),
             profile: None,
+            operation: "sync".into(),
             error: "permission denied".into(),
             origin: Origin::Ui,
         };
@@ -783,6 +817,7 @@ mod tests {
         let e = NotificationEvent::JobCompleted {
             remote: "gdrive:".into(),
             profile: Some("backup".into()),
+            operation: "sync".into(),
             origin: Origin::Ui,
         };
         assert_eq!(e.suppression(), Suppression::WhenFocused);
@@ -793,6 +828,7 @@ mod tests {
         let e = NotificationEvent::JobCompleted {
             remote: "gdrive:".into(),
             profile: None,
+            operation: "sync".into(),
             origin: Origin::Scheduler,
         };
         assert_eq!(e.suppression(), Suppression::Never);

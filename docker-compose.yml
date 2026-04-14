@@ -1,6 +1,7 @@
 x-common: &common
   image: ghcr.io/zarestia-dev/rclone-manager:latest
   restart: unless-stopped
+  # network_mode: host # Uncomment this to fix OAuth authentication issues
   networks:
     - rclone-network
   environment: &common-env
@@ -20,7 +21,6 @@ services:
     container_name: rclone-manager
     ports:
       - "${RCLONE_MANAGER_PORT:-8080}:8080"
-      - "53682:53682"
     volumes:
       - rclone-data:/data
       - rclone-config:/config
@@ -40,7 +40,6 @@ services:
     container_name: rclone-manager-auth
     ports:
       - "${RCLONE_MANAGER_PORT:-8080}:8080"
-      - "53682:53682"
     volumes:
       - rclone-data:/data
       - rclone-config:/config
@@ -70,7 +69,6 @@ services:
     container_name: rclone-manager-tls
     ports:
       - "${RCLONE_MANAGER_PORT:-8443}:8443"
-      - "53682:53682"
     volumes:
       - rclone-data:/data
       - rclone-config:/config
@@ -94,7 +92,6 @@ services:
     container_name: rclone-manager-auth-tls
     ports:
       - "${RCLONE_MANAGER_PORT:-8443}:8443"
-      - "53682:53682"
     volumes:
       - rclone-data:/data
       - rclone-config:/config
@@ -126,9 +123,8 @@ services:
   rclone-manager-host:
     <<: *common
     container_name: rclone-manager-host
-    ports:
-      - "${RCLONE_MANAGER_PORT:-8080}:8080"
-      - "53682:53682"
+    network_mode: host
+    networks: []
     volumes:
       - /home/hakan/.local/share/com.rclone.manager:/data
       - /home/hakan/.config/rclone:/config

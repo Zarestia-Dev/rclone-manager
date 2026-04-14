@@ -157,8 +157,14 @@ export class NautilusService extends TauriBaseService {
 
     if (remoteName) {
       if (remotePath) {
-        const isLocal = remoteName.startsWith('/') || remoteName[1] === ':';
-        this.targetPath.set(`${remoteName}${isLocal ? '/' : ':'}${remotePath}`);
+        const isLocal =
+          remoteName.startsWith('/') || (remoteName.length >= 2 && remoteName[1] === ':');
+        const separator = isLocal
+          ? remoteName.endsWith('/') || remoteName.endsWith('\\')
+            ? ''
+            : '/'
+          : ':';
+        this.targetPath.set(`${remoteName}${separator}${remotePath}`);
       } else {
         this.selectedNautilusRemote.set(remoteName);
       }

@@ -158,6 +158,7 @@
       "total": "Toplam: {{value}}",
       "used": "Kullanılan: {{value}}",
       "free": "Boş: {{value}}",
+      "loading": "Yükleniyor...",
       "errorLoading": "Disk kullanımı yüklenirken sorun oluştu"
     },
     "status": {
@@ -1555,7 +1556,8 @@
         "statistics": "İstatistikler",
         "paths": "Yollar",
         "activity": "Transfer Aktifliği",
-        "errors": "Hatalar"
+        "errors": "Hatalar",
+        "profile": "Profil"
       },
       "fields": {
         "type": "İş Türü",
@@ -1589,6 +1591,7 @@
       "credits": "Teşekkürler",
       "legal": "Yasal Bilgiler",
       "website": "Web Sitesi",
+      "wiki": "Wiki Sayfası",
       "reportIssues": "Hata Bildir",
       "rcloneWebsite": "Rclone Web Sitesi",
       "currentVersion": "Mevcut Sürüm",
@@ -2794,11 +2797,14 @@
       "rcloneUpdateStarted": "Rclone Güncellemesi Başlatıldı",
       "rcloneUpdateComplete": "Rclone Güncellemesi İndirildi",
       "rcloneUpdateFailed": "Rclone Güncellemesi Başarısız: {{error}}",
-      "rcloneUpdateInstalled": "Rclone Güncellemesi Yüklendi"
+      "rcloneUpdateInstalled": "Rclone Güncellemesi Yüklendi",
+      "scheduledTaskCompleted": "Zamanlanmış Görev Tamamlandı",
+      "scheduledTaskFailed": "Zamanlanmış Görev Başarısız",
+      "updateInstalled": "Güncelleme Kuruldu"
     },
     "body": {
-      "mounted": "{{remote}} profili '{{profile}}' bağlandı",
-      "mountFailed": "Başarısız: {{error}}",
+      "mounted": "{{remote}} profili '{{profile}}' {{mountPoint}} adresine bağlandı",
+      "mountFailed": "{{mountPoint}} adresine bağlama başarısız: {{error}}",
       "unmounted": "{{remote}} profili '{{profile}}' ayrıldı",
       "unmountFailed": "Başarısız: {{error}}",
       "profileNotFound": "'{{profile}}' profili bulunamadı",
@@ -2824,6 +2830,7 @@
       "updateComplete": "Güncelleme başarıyla kuruldu. Yeniden başlatma gerekli.",
       "updateFailed": "Güncelleme başarısız: {{error}}",
       "updateFound": "Rclone Manager'ın yeni bir {{version}} sürümü mevcut.",
+      "updateStarted": "{{version}} sürümü indiriliyor ve kuruluyor...",
       "rcloneUpdateFound": "Yeni Rclone sürümü {{version}} mevcut",
       "rcloneUpdateStarted": "Rclone {{version}} sürümüne güncelleniyor...",
       "rcloneUpdateComplete": "Rclone {{version}} sürümüne ait güncelleme indirildi",
@@ -2832,7 +2839,11 @@
       "enginePathError": "rclone ikili dosyası bulunamadı",
       "enginePasswordError": "rclone yapılandırması şifre korumalı",
       "engineRestartedSuccess": "Motor {{reason}} değişikliği nedeniyle başarıyla yeniden başlatıldı",
-      "engineRestartedFailed": "Motor {{reason}} değişikliği nedeniyle yeniden başlatılamadı"
+      "engineRestartedFailed": "Motor {{reason}} değişikliği nedeniyle yeniden başlatılamadı",
+      "connectionFailed": "Rclone motoruna bağlanılamadı: {{reason}}",
+      "scheduledTaskCompleted": "'{{task}}' zamanlanmış görevi başarıyla tamamlandı.",
+      "scheduledTaskFailed": "'{{task}}' zamanlanmış görevi başarısız oldu: {{error}}",
+      "updateInstalled": "Güncelleme başarıyla kuruldu. Yeniden başlatma gerekli."
     }
   },
   "repairSheet": {

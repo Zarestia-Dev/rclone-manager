@@ -16,7 +16,9 @@ use crate::core::lifecycle::shutdown::shutdown_app;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
 use crate::utils::types::core::BandwidthLimitResponse;
 
-use crate::utils::app::updater::app_updates::{fetch_update, get_download_status, install_update};
+use crate::utils::app::updater::app_updates::{
+    apply_app_update, fetch_update, get_download_status, install_update,
+};
 
 pub async fn get_stats_handler(
     State(state): State<WebServerState>,
@@ -351,6 +353,17 @@ pub async fn install_update_handler(
     Ok(Json(ApiResponse::success(crate::localized_success!(
         "backendSuccess.system.updateInstalled"
     ))))
+}
+
+pub async fn apply_app_update_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    apply_app_update(state.app_handle.clone())
+        .await
+        .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(
+        "Application update applied successfully. Relaunching...".to_string(),
+    )))
 }
 
 pub async fn relaunch_app_handler(

@@ -158,6 +158,10 @@ fn system_routes() -> Router<WebServerState> {
             get(handlers::get_download_status_handler),
         )
         .route("/install-update", post(handlers::install_update_handler))
+        .route(
+            "/apply-app-update",
+            post(handlers::apply_app_update_handler),
+        )
         .route("/relaunch-app", post(handlers::relaunch_app_handler))
         .route("/get-build-type", get(handlers::get_build_type_handler))
         .route(

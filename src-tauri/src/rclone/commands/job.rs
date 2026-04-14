@@ -85,6 +85,7 @@ impl JobMetadata {
         NotificationEvent::JobCompleted {
             remote: self.remote_name.clone(),
             profile: self.profile.clone(),
+            operation: self.operation_name.clone(),
             origin: self.resolved_origin(),
         }
     }
@@ -93,6 +94,7 @@ impl JobMetadata {
         NotificationEvent::JobFailed {
             remote: self.remote_name.clone(),
             profile: self.profile.clone(),
+            operation: self.operation_name.clone(),
             error: error_msg.to_string(),
             origin: self.resolved_origin(),
         }
@@ -102,6 +104,7 @@ impl JobMetadata {
         NotificationEvent::JobStopped {
             remote: self.remote_name.clone(),
             profile: self.profile.clone(),
+            operation: self.operation_name.clone(),
             origin: self.resolved_origin(),
         }
     }
@@ -750,21 +753,6 @@ pub async fn stop_job(
             None,
         );
 
-        let stopped_profile = job_cache
-            .get_job(jobid)
-            .await
-            .and_then(|j| j.profile)
-            .unwrap_or_default();
-
-        notify(
-            &app,
-            NotificationEvent::JobStopped {
-                remote: remote_name.clone(),
-                profile: Some(stopped_profile),
-                origin: Origin::System,
-            },
-        );
-
         info!("✅ Stopped job {jobid}");
     }
 
@@ -946,10 +934,12 @@ mod tests {
             NotificationEvent::JobCompleted {
                 remote,
                 profile,
+                operation,
                 origin,
             } => {
                 assert_eq!(remote, "gdrive:");
                 assert_eq!(profile, None);
+                assert_eq!(operation, "Sync");
                 assert_eq!(origin, Origin::System);
             }
             _ => panic!("expected JobCompleted"),
@@ -963,11 +953,13 @@ mod tests {
             NotificationEvent::JobFailed {
                 remote,
                 profile,
+                operation,
                 error,
                 origin,
             } => {
                 assert_eq!(remote, "gdrive:");
                 assert_eq!(profile, Some("p".to_string()));
+                assert_eq!(operation, "Sync");
                 assert_eq!(error, "disk full");
                 assert_eq!(origin, Origin::System);
             }

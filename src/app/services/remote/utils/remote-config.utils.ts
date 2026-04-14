@@ -105,6 +105,22 @@ export function isLocalPath(path: string): boolean {
 }
 
 /**
+ * Splits an absolute local path into its root (remote) and remainder (path).
+ * Example: "/home/hakan" -> { remote: "/", remainder: "home/hakan" }
+ * Example: "C:\Users\hakan" -> { remote: "C:", remainder: "Users\hakan" }
+ */
+export function splitLocalPath(path: string): { remote: string; remainder: string } {
+  if (path.startsWith('/')) {
+    return { remote: '/', remainder: path.substring(1) };
+  }
+  const windowsMatch = path.match(/^([a-zA-Z]:)([\\/].*)$/);
+  if (windowsMatch) {
+    return { remote: windowsMatch[1], remainder: windowsMatch[2].substring(1) };
+  }
+  return { remote: path, remainder: '' };
+}
+
+/**
  * Normalizes an rclone fs value to a string.
  * Handles both plain strings and object formats (e.g. from backend serve list).
  */

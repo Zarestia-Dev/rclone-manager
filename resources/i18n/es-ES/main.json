@@ -154,7 +154,8 @@
       "unknown": "Desconocido",
       "total": "Total: {{value}}",
       "used": "Usado: {{value}}",
-      "free": "Libre: {{value}}"
+      "free": "Libre: {{value}}",
+      "loading": "Cargando..."
     },
     "status": {
       "mounted": "Montado",
@@ -1515,7 +1516,8 @@
         "statistics": "Estadísticas",
         "paths": "Rutas",
         "activity": "Actividad de transferencia",
-        "errors": "Errores"
+        "errors": "Errores",
+        "profile": "Perfil"
       },
       "fields": {
         "type": "Tipo de trabajo",
@@ -1549,6 +1551,7 @@
       "credits": "Créditos",
       "legal": "Legal",
       "website": "Sitio web",
+      "wiki": "Página Wiki",
       "reportIssues": "Informar de problemas",
       "rcloneWebsite": "Sitio web de Rclone",
       "currentVersion": "Versión actual",
@@ -2709,11 +2712,14 @@
       "rcloneUpdateStarted": "Actualización de Rclone iniciada",
       "rcloneUpdateComplete": "Actualización de Rclone descargada",
       "rcloneUpdateFailed": "Actualización de Rclone fallida: {{error}}",
-      "rcloneUpdateInstalled": "Actualización de Rclone instalada"
+      "rcloneUpdateInstalled": "Actualización de Rclone instalada",
+      "scheduledTaskCompleted": "Tarea programada completada",
+      "scheduledTaskFailed": "Tarea programada fallida",
+      "updateInstalled": "Actualización instalada"
     },
     "body": {
-      "mounted": "{{remote}} perfil '{{profile}}' montado",
-      "mountFailed": "Falló: {{error}}",
+      "mounted": "{{remote}} perfil '{{profile}}' montado en {{mountPoint}}",
+      "mountFailed": "Error al montar en {{mountPoint}}: {{error}}",
       "unmounted": "{{remote}} perfil '{{profile}}' desmontado",
       "unmountFailed": "Falló: {{error}}",
       "profileNotFound": "Perfil '{{profile}}' no encontrado",
@@ -2736,6 +2742,7 @@
       "updateComplete": "Actualización instalada exitosamente. Reinicio requerido.",
       "updateFailed": "Actualización fallida: {{error}}",
       "updateFound": "Una nueva versión {{version}} representa el futuro de la gestión de archivos. ¡Actualice ahora!",
+      "updateStarted": "Descargando e instalando la versión {{version}}...",
       "rcloneUpdateFound": "Nueva versión {{version}} de Rclone disponible",
       "rcloneUpdateStarted": "Actualizando Rclone a la versión {{version}}...",
       "rcloneUpdateComplete": "La actualización de Rclone versión {{version}} ha sido descargada",
@@ -2744,7 +2751,11 @@
       "enginePathError": "Binario de rclone no encontrado",
       "enginePasswordError": "La configuración de rclone está protegida con contraseña",
       "engineRestartedSuccess": "Motor reiniciado exitosamente debido a cambio de {{reason}}",
-      "engineRestartedFailed": "Motor falló al reiniciarse debido a cambio de {{reason}}"
+      "engineRestartedFailed": "Motor falló al reiniciarse debido a cambio de {{reason}}",
+      "connectionFailed": "Error al conectar con el motor rclone: {{reason}}",
+      "scheduledTaskCompleted": "La tarea programada '{{task}}' se completó exitosamente.",
+      "scheduledTaskFailed": "La tarea programada '{{task}}' falló: {{error}}",
+      "updateInstalled": "La actualización se instaló correctamente. Se requiere reiniciar."
     }
   },
   "repairSheet": {

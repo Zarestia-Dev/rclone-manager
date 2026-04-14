@@ -160,6 +160,7 @@
       "total": "Total: {{value}}",
       "used": "Used: {{value}}",
       "free": "Free: {{value}}",
+      "loading": "Loading...",
       "errorLoading": "Problem loading disk usage"
     },
     "status": {
@@ -1559,7 +1560,8 @@
         "statistics": "Statistics",
         "paths": "Paths",
         "activity": "Transfer Activity",
-        "errors": "Errors"
+        "errors": "Errors",
+        "profile": "Profile"
       },
       "fields": {
         "type": "Job Type",
@@ -1593,6 +1595,7 @@
       "credits": "Credits",
       "legal": "Legal",
       "website": "Website",
+      "wiki": "Wiki Page",
       "reportIssues": "Report Issues",
       "rcloneWebsite": "Rclone Website",
       "currentVersion": "Current Version",
@@ -2807,11 +2810,13 @@
       "rcloneUpdateStarted": "Rclone Update Started",
       "rcloneUpdateComplete": "Rclone Update Downloaded",
       "rcloneUpdateFailed": "Rclone Update Failed: {{error}}",
-      "rcloneUpdateInstalled": "Rclone Update Installed"
+      "rcloneUpdateInstalled": "Rclone Update Installed",
+      "scheduledTaskCompleted": "Scheduled Task Completed",
+      "scheduledTaskFailed": "Scheduled Task Failed"
     },
     "body": {
-      "mounted": "Mounted {{remote}} profile '{{profile}}'",
-      "mountFailed": "Failed: {{error}}",
+      "mounted": "Mounted {{remote}} profile '{{profile}}' at {{mountPoint}}",
+      "mountFailed": "Failed to mount at {{mountPoint}}: {{error}}",
       "unmounted": "Unmounted {{remote}} profile '{{profile}}'",
       "unmountFailed": "Failed: {{error}}",
       "profileNotFound": "Profile '{{profile}}' not found",
@@ -2837,6 +2842,7 @@
       "updateComplete": "Update installed successfully. Restart required.",
       "updateFailed": "Update failed: {{error}}",
       "updateFound": "A new version {{version}} represents the future of file management. Update now!",
+      "updateStarted": "Downloading and installing version {{version}}...",
       "rcloneUpdateFound": "New Rclone version {{version}} is available",
       "rcloneUpdateStarted": "Updating Rclone to version {{version}}...",
       "rcloneUpdateComplete": "Rclone update for version {{version}} has been downloaded",
@@ -2845,7 +2851,10 @@
       "enginePathError": "rclone binary not found",
       "enginePasswordError": "rclone configuration is password-protected",
       "engineRestartedSuccess": "Engine restarted successfully due to {{reason}} change",
-      "engineRestartedFailed": "Engine failed to restart due to {{reason}} change"
+      "engineRestartedFailed": "Engine failed to restart due to {{reason}} change",
+      "connectionFailed": "Failed to connect to rclone engine: {{reason}}",
+      "scheduledTaskCompleted": "Scheduled task '{{task}}' completed successfully.",
+      "scheduledTaskFailed": "Scheduled task '{{task}}' failed: {{error}}"
     }
   },
   "repairSheet": {

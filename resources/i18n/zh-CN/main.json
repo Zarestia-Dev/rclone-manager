@@ -158,6 +158,7 @@
       "total": "总计：{{value}}",
       "used": "已用：{{value}}",
       "free": "可用：{{value}}",
+      "loading": "加载中...",
       "errorLoading": "加载磁盘使用情况时出错"
     },
     "status": {
@@ -1557,7 +1558,8 @@
         "statistics": "统计数据",
         "paths": "路径",
         "activity": "传输活动",
-        "errors": "错误"
+        "errors": "错误",
+        "profile": "配置文件"
       },
       "fields": {
         "type": "任务类型",
@@ -1590,8 +1592,9 @@
       "aboutRclone": "关于 Rclone",
       "credits": "致谢",
       "legal": "法律信息",
-      "website": "官网",
-      "reportIssues": "反馈问题",
+      "website": "官方网站",
+      "wiki": "Wiki 页面",
+      "reportIssues": "报告问题",
       "rcloneWebsite": "Rclone 官网",
       "currentVersion": "当前版本",
       "restartRequired": "需要重启",
@@ -2799,11 +2802,14 @@
       "rcloneUpdateStarted": "Rclone 更新已开始",
       "rcloneUpdateComplete": "Rclone 更新已下载",
       "rcloneUpdateFailed": "Rclone 更新失败: {{error}}",
-      "rcloneUpdateInstalled": "Rclone 更新已安装"
+      "rcloneUpdateInstalled": "Rclone 更新已安装",
+      "scheduledTaskCompleted": "计划任务已完成",
+      "scheduledTaskFailed": "计划任务失败",
+      "updateInstalled": "更新已安装"
     },
     "body": {
-      "mounted": "已挂载 {{remote}} 配置 '{{profile}}'",
-      "mountFailed": "失败：{{error}}",
+      "mounted": "已挂载 {{remote}} 配置 '{{profile}}' 到 {{mountPoint}}",
+      "mountFailed": "挂载到 {{mountPoint}} 失败: {{error}}",
       "unmounted": "已卸载 {{remote}} 配置 '{{profile}}'",
       "unmountFailed": "失败：{{error}}",
       "profileNotFound": "未找到配置 '{{profile}}'",
@@ -2829,6 +2835,7 @@
       "updateComplete": "更新安装成功，需要重启。",
       "updateFailed": "更新失败：{{error}}",
       "updateFound": "新版本 {{version}} 已发布，立即更新！",
+      "updateStarted": "正在下载并安装版本 {{version}}…",
       "rcloneUpdateFound": "Rclone 新版本 {{version}} 可用",
       "rcloneUpdateStarted": "正在更新 Rclone 到版本 {{version}}…",
       "rcloneUpdateComplete": "Rclone 版本 {{version}} 已下载",
@@ -2837,7 +2844,11 @@
       "enginePathError": "未找到 rclone 可执行文件",
       "enginePasswordError": "rclone 配置受密码保护",
       "engineRestartedSuccess": "因 {{reason}} 变更，引擎已重启成功",
-      "engineRestartedFailed": "因 {{reason}} 变更，引擎重启失败"
+      "engineRestartedFailed": "因 {{reason}} 变更，引擎重启失败",
+      "connectionFailed": "连接 rclone 引擎失败: {{reason}}",
+      "scheduledTaskCompleted": "计划任务 '{{task}}' 已成功完成。",
+      "scheduledTaskFailed": "计划任务 '{{task}}' 失败: {{error}}",
+      "updateInstalled": "更新安装成功，需要重启。"
     }
   },
   "repairSheet": {
