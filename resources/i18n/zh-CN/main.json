@@ -1443,6 +1443,8 @@
       "files": "文件",
       "errors": "错误",
       "duration": "耗时",
+      "checks": "检查",
+      "listed": "已列出",
       "transferStatistics": "{{op}} 统计"
     },
     "generalDetail": {
@@ -1559,11 +1561,13 @@
         "paths": "路径",
         "activity": "传输活动",
         "errors": "错误",
-        "profile": "配置文件"
+        "profile": "配置文件",
+        "completedTransfers": "完成的传输"
       },
       "fields": {
         "type": "任务类型",
         "id": "任务 ID",
+        "profile": "配置文件",
         "status": "状态",
         "started": "开始时间",
         "finished": "完成时间",
@@ -1581,7 +1585,20 @@
         "destination": "目标",
         "remoteSource": "远程源",
         "mountPoint": "挂载点",
-        "lastError": "最近错误"
+        "lastError": "最近错误",
+        "executeId": "执行 ID",
+        "group": "分组",
+        "backend": "后端",
+        "origin": "来源",
+        "serverSideCopies": "服务端复制",
+        "serverSideMoves": "服务端移动",
+        "serverSideCopyBytes": "服务端复制字节",
+        "serverSideMoveBytes": "服务端移动字节",
+        "retryError": "重试错误",
+        "fatalError": "致命错误",
+        "speedAvg": "平均速度",
+        "transferred": "已传输",
+        "total": "总量"
       }
     },
     "about": {
@@ -2409,6 +2426,8 @@
       "serverMoves": "服务端移动：",
       "lastError": "最后错误：",
       "copyError": "点击复制错误",
+      "runningJobs": "运行中的作业",
+      "starting": "正在启动...",
       "noRunning": "当前没有正在运行的活动任务。"
     },
     "tasks": {

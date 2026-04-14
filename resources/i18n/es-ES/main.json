@@ -1405,6 +1405,8 @@
       "files": "Archivos",
       "errors": "Errores",
       "duration": "Duración",
+      "checks": "Comprobaciones",
+      "listed": "Listados",
       "transferStatistics": "{{op}} Estadísticas"
     },
     "generalDetail": {
@@ -1517,11 +1519,13 @@
         "paths": "Rutas",
         "activity": "Actividad de transferencia",
         "errors": "Errores",
-        "profile": "Perfil"
+        "profile": "Perfil",
+        "completedTransfers": "Transferencias Completadas"
       },
       "fields": {
         "type": "Tipo de trabajo",
         "id": "ID de trabajo",
+        "profile": "Perfil",
         "status": "Estado",
         "started": "Iniciado",
         "finished": "Finalizado",
@@ -1539,7 +1543,20 @@
         "destination": "Destino",
         "remoteSource": "Origen remoto",
         "mountPoint": "Punto de montaje",
-        "lastError": "Último error"
+        "lastError": "Último error",
+        "executeId": "ID de Ejecución",
+        "group": "Grupo",
+        "backend": "Backend",
+        "origin": "Origen",
+        "serverSideCopies": "Copias del Lado del Servidor",
+        "serverSideMoves": "Movimientos del Lado del Servidor",
+        "serverSideCopyBytes": "Bytes de Copia del Lado del Servidor",
+        "serverSideMoveBytes": "Bytes de Movimiento del Lado del Servidor",
+        "retryError": "Error de Reintento",
+        "fatalError": "Error Fatal",
+        "speedAvg": "Velocidad Promedio",
+        "transferred": "Transferido",
+        "total": "Total"
       }
     },
     "about": {
@@ -2321,6 +2338,8 @@
       "serverMoves": "Movimientos en servidor:",
       "lastError": "Último error:",
       "copyError": "Haga clic para copiar el error",
+      "runningJobs": "Tareas en Ejecución",
+      "starting": "Iniciando...",
       "noRunning": "No hay trabajos activos en ejecución."
     },
     "tasks": {

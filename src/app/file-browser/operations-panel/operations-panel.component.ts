@@ -54,7 +54,7 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     // Initial load from backend
-    this.jobManagementService.refreshNautilusJobs();
+    this.jobManagementService.refreshJobs();
 
     // Adaptive polling: only poll when there are active jobs
     interval(1000)
@@ -62,7 +62,7 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
       .subscribe(() => {
         // Only poll if there are active running jobs
         if (this.activeJobs().length > 0) {
-          this.jobManagementService.refreshNautilusJobs();
+          this.jobManagementService.refreshJobs();
         }
       });
 
@@ -164,7 +164,7 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
     try {
       await this.jobManagementService.stopJob(job.jobid, job.remote_name);
       // Refresh the stream after stopping
-      await this.jobManagementService.refreshNautilusJobs();
+      await this.jobManagementService.refreshJobs();
     } catch (err) {
       console.error('Failed to stop job:', err);
     }
@@ -174,7 +174,7 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
     try {
       await this.jobManagementService.deleteJob(job.jobid);
       // Refresh the stream after deleting
-      await this.jobManagementService.refreshNautilusJobs();
+      await this.jobManagementService.refreshJobs();
     } catch (err) {
       console.error('Failed to delete job:', err);
     }

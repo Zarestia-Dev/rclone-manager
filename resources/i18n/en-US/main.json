@@ -1445,6 +1445,8 @@
       "files": "Files",
       "errors": "Errors",
       "duration": "Duration",
+      "checks": "Checks",
+      "listed": "Listed",
       "transferStatistics": "{{op}} Statistics"
     },
     "generalDetail": {
@@ -1561,11 +1563,13 @@
         "paths": "Paths",
         "activity": "Transfer Activity",
         "errors": "Errors",
-        "profile": "Profile"
+        "profile": "Profile",
+        "completedTransfers": "Completed Transfers"
       },
       "fields": {
         "type": "Job Type",
         "id": "Job ID",
+        "profile": "Profile",
         "status": "Status",
         "started": "Started",
         "finished": "Finished",
@@ -1583,7 +1587,20 @@
         "destination": "Destination",
         "remoteSource": "Remote Source",
         "mountPoint": "Mount Point",
-        "lastError": "Last Error"
+        "lastError": "Last Error",
+        "executeId": "Execute ID",
+        "group": "Group",
+        "backend": "Backend",
+        "origin": "Origin",
+        "serverSideCopies": "Server-side Copies",
+        "serverSideMoves": "Server-side Moves",
+        "serverSideCopyBytes": "Server-side Copy Bytes",
+        "serverSideMoveBytes": "Server-side Move Bytes",
+        "retryError": "Retry Error",
+        "fatalError": "Fatal Error",
+        "speedAvg": "Average Speed",
+        "transferred": "Transferred",
+        "total": "Total"
       }
     },
     "about": {
@@ -2417,6 +2434,8 @@
       "serverMoves": "Server Moves:",
       "lastError": "Last Error:",
       "copyError": "Click to copy error",
+      "runningJobs": "Running Jobs",
+      "starting": "Starting...",
       "noRunning": "No active jobs are currently running."
     },
     "tasks": {

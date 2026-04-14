@@ -694,11 +694,18 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       // Let user select a local folder for download destination
       const selectedPath = await this.fileSystemService.selectFolder();
 
-      // Build destination path with filename using OS-aware separator
-      const fullDestPath = this.uiStateService.joinPath(selectedPath, this.fileName());
-
       // Start the copy job
-      await this.jobManagementService.copyUrl(selectedPath, fullDestPath, this.rawUrl(), true);
+      const fsName = this.data.isLocal
+        ? this.data.remoteName
+        : this.pathSelectionService.normalizeRemoteForRclone(this.data.remoteName);
+
+      await this.remoteOps.copyFile(
+        fsName,
+        this.currentItem().Path,
+        selectedPath,
+        this.fileName(),
+        ORIGINS.FILEMANAGER
+      );
 
       this.notificationService.showInfo(
         this.translate.instant('fileBrowser.fileViewer.downloading', { name: this.fileName() })

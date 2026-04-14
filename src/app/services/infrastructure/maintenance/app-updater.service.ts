@@ -308,7 +308,6 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
       await this.initBaseSettings();
 
       this._buildType.set(await this.getBuildType());
-      console.debug('AppUpdaterService initialized with build type:', this._buildType());
 
       if (this.autoCheckEnabled()) {
         const cachedUpdate = await this.invokeCommand<UpdateMetadata | null>('fetch_update', {

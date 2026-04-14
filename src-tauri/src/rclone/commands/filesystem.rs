@@ -202,7 +202,7 @@ pub async fn delete_file(
                 .as_deref()
                 .map(crate::utils::types::origin::Origin::parse),
             group,
-            no_cache: true,
+            no_cache: false,
         },
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
@@ -250,7 +250,7 @@ pub async fn purge_directory(
                 .as_deref()
                 .map(crate::utils::types::origin::Origin::parse),
             group,
-            no_cache: true,
+            no_cache: false,
         },
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,

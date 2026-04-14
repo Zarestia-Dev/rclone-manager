@@ -2,7 +2,7 @@
   background: var(--window-bg-color);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: hidden;
 
   .transfer-table {
     // STICKY HEADER CONFIGURATION
@@ -40,26 +40,22 @@
 
       // Active
       &.active {
-        border-left: 3px solid var(--primary-color);
         background: color-mix(in srgb, var(--mat-sys-primary) 5%, transparent);
       }
 
       // Completed / Success
       &.completed,
       &.success {
-        border-left: 3px solid var(--accent-color);
         background: rgba(var(--accent-color-rgb), 0.02);
       }
 
       // Checked (Skipped)
       &.checked {
-        border-left: 3px solid var(--dim-color);
         background: rgba(var(--window-fg-color-rgb), 0.02);
       }
 
       // Error
       &.error {
-        border-left: 3px solid var(--warn-color);
         background: rgba(var(--warn-color-rgb), 0.05);
 
         .mat-mdc-cell {

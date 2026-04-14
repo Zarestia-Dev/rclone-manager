@@ -1441,6 +1441,8 @@
       "files": "Dosyalar",
       "errors": "Hatalar",
       "duration": "Süre",
+      "checks": "Kontroller",
+      "listed": "Listelenenler",
       "transferStatistics": "{{op}} İstatistikleri"
     },
     "generalDetail": {
@@ -1557,11 +1559,13 @@
         "paths": "Yollar",
         "activity": "Transfer Aktifliği",
         "errors": "Hatalar",
-        "profile": "Profil"
+        "profile": "Profil",
+        "completedTransfers": "Tamamlanan Transferler"
       },
       "fields": {
         "type": "İş Türü",
         "id": "İş Kimliği",
+        "profile": "Profil",
         "status": "Durum",
         "started": "Başlangıç",
         "finished": "Bitiş",
@@ -1579,7 +1583,20 @@
         "destination": "Hedef",
         "remoteSource": "Uzak Kaynak",
         "mountPoint": "Bağlama Noktası",
-        "lastError": "Son Hata"
+        "lastError": "Son Hata",
+        "executeId": "Yürütme Kimliği",
+        "group": "Grup",
+        "backend": "Arka Uç",
+        "origin": "Kaynak",
+        "serverSideCopies": "Sunucu Tarafı Kopyalar",
+        "serverSideMoves": "Sunucu Tarafı Taşımalar",
+        "serverSideCopyBytes": "Sunucu Tarafı Kopya Boyutu",
+        "serverSideMoveBytes": "Sunucu Tarafı Taşıma Boyutu",
+        "retryError": "Yeniden Deneme Hatası",
+        "fatalError": "Ölümcül Hata",
+        "speedAvg": "Ortalama Hız",
+        "transferred": "Aktarılan",
+        "total": "Toplam"
       }
     },
     "about": {
@@ -2404,6 +2421,8 @@
       "serverMoves": "Sunucu Tarafı Taşımalar:",
       "lastError": "Son Hata:",
       "copyError": "Hatayı kopyalamak için tıkla",
+      "runningJobs": "Çalışan İşler",
+      "starting": "Başlatılıyor...",
       "noRunning": "Şu anda çalışan aktif iş yok."
     },
     "tasks": {

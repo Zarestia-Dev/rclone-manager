@@ -19,7 +19,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialogModule } from '@angular/material/dialog';
 import { JobInfo, JobsPanelConfig, PrimaryActionType } from '../../types';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
-import { ModalService } from '@app/services';
+import { ModalService, JobManagementService } from '@app/services';
 
 @Component({
   selector: 'app-jobs-panel',
@@ -197,6 +197,7 @@ export class JobsPanelComponent {
   readonly deleteJob = output<number>();
 
   private readonly modalService = inject(ModalService);
+  private readonly jobService = inject(JobManagementService);
   private readonly sort = viewChild(MatSort);
 
   readonly dataSource = new MatTableDataSource<JobInfo>([]);
@@ -204,7 +205,6 @@ export class JobsPanelComponent {
   constructor() {
     effect(() => {
       this.dataSource.data = this.config().jobs;
-      console.log('JobsPanel initialized with config:', this.config().jobs);
       const sort = this.sort();
       if (sort) this.dataSource.sort = sort;
     });

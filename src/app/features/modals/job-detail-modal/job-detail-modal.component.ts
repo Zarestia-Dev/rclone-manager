@@ -1,4 +1,11 @@
-import { Component, inject, ChangeDetectionStrategy, HostListener } from '@angular/core';
+import {
+  Component,
+  inject,
+  ChangeDetectionStrategy,
+  HostListener,
+  computed,
+  effect,
+} from '@angular/core';
 import { CommonModule, DecimalPipe, DatePipe, TitleCasePipe } from '@angular/common';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,11 +14,13 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
-import { JobInfo } from '@app/types';
+import { CompletedTransfer, JobInfo } from '@app/types';
 import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
 import { FormatTimePipe } from 'src/app/shared/pipes/format-time.pipe';
 import { FormatEtaPipe } from 'src/app/shared/pipes/format-eta.pipe';
-import { ModalService, IconService } from '@app/services';
+import { TransferActivityPanelComponent } from '../../../shared/detail-shared';
+import { TransferActivityPanelConfig } from '@app/types';
+import { IconService, JobManagementService, mapRawTransfer, ModalService } from '@app/services';
 
 @Component({
   selector: 'app-job-detail-modal',
@@ -31,20 +40,68 @@ import { ModalService, IconService } from '@app/services';
     DecimalPipe,
     DatePipe,
     TitleCasePipe,
+    TransferActivityPanelComponent,
   ],
   templateUrl: './job-detail-modal.component.html',
   styleUrls: ['./job-detail-modal.component.scss', '../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class JobDetailModalComponent {
-  private dialogRef = inject(MatDialogRef<JobDetailModalComponent>);
-  public data: JobInfo = inject(MAT_DIALOG_DATA);
-  public iconService = inject(IconService);
-  private modalService = inject(ModalService);
+  private readonly dialogRef = inject(MatDialogRef<JobDetailModalComponent>);
+  public readonly initialData: JobInfo = inject(MAT_DIALOG_DATA);
+  public readonly iconService = inject(IconService);
+  private readonly modalService = inject(ModalService);
+  private readonly jobService = inject(JobManagementService);
+
+  public readonly jobData = computed(
+    () => this.jobService.jobs().find(j => j.jobid === this.initialData.jobid) ?? this.initialData
+  );
+
+  public readonly transferActivityConfig = computed<TransferActivityPanelConfig>(() => {
+    const job = this.jobData();
+    const stats = job.stats;
+
+    let completedTransfers: CompletedTransfer[];
+
+    if (job.status === 'Running' && job.group) {
+      // While running, prioritize the stable group watcher in JobManagementService
+      completedTransfers = this.jobService.groupTransfersMap().get(job.group) ?? [];
+    } else {
+      // Once finished or if no group, use the job stats completion list
+      const fromJobStats = ((stats as any)?.completed ?? []) as any[];
+      completedTransfers = fromJobStats.map(item =>
+        mapRawTransfer({ ...item, src_fs: item.srcFs, dst_fs: item.dstFs })
+      );
+    }
+
+    // Sort by completion time (latest first)
+    const combined = [...completedTransfers].sort((a, b) => {
+      const dateA = a.completedAt ? new Date(a.completedAt).getTime() : 0;
+      const dateB = b.completedAt ? new Date(b.completedAt).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    return {
+      activeTransfers: stats?.transferring ?? [],
+      completedTransfers: combined,
+      remoteName: job.source || job.backend_name || 'Rclone',
+      showHistory: true,
+    };
+  });
+
+  constructor() {
+    // Watch the group while the job is running so completed transfers stay live.
+    effect(onCleanup => {
+      const job = this.jobData();
+      if (!job.group || job.status !== 'Running') return;
+
+      this.jobService.watchGroup(job.group);
+      onCleanup(() => this.jobService.unwatchGroup(job.group!));
+    });
+  }
 
   getProgress(job: JobInfo): number {
-    if (!job.stats) return 0;
-    if (!job.stats.totalBytes) return 0;
+    if (!job.stats?.totalBytes) return 0;
     return (job.stats.bytes / job.stats.totalBytes) * 100;
   }
 
@@ -52,61 +109,73 @@ export class JobDetailModalComponent {
     return job.status.toLowerCase();
   }
 
-  /**
-   * Compute job duration in seconds.
-   * Priority:
-   *  1. Use explicit `end_time - start_time` when both present.
-   *  2. Use `stats.transferTime` if available (rclone reports seconds).
-   *  3. Fallback to `stats.elapsedTime` (may be group-level value).
-   */
   getJobDurationSeconds(job: JobInfo): number {
     try {
       if (job.start_time && job.end_time) {
         const start = Date.parse(job.start_time as unknown as string);
         const end = Date.parse(job.end_time as unknown as string);
-        if (!isNaN(start) && !isNaN(end) && end >= start) {
-          return (end - start) / 1000;
-        }
+        if (!isNaN(start) && !isNaN(end) && end >= start) return (end - start) / 1000;
       }
-
-      if (job.stats && (job.stats as any).transferTime) {
-        return (job.stats as any).transferTime;
-      }
-
-      return job.stats?.elapsedTime ?? 0;
     } catch {
-      return job.stats?.elapsedTime ?? 0;
+      return 0;
     }
-  }
-
-  get completedTransfers(): any[] {
-    return (this.data.stats as any).completed || [];
-  }
-
-  get hasActivity(): boolean {
-    return (this.data.stats?.transferring?.length || 0) > 0 || this.completedTransfers.length > 0;
+    return (job.stats as any)?.transferTime ?? job.stats?.elapsedTime ?? 0;
   }
 
   get showStatistics(): boolean {
-    return this.data.job_type !== 'mount';
+    const type = this.jobData().job_type;
+    return type !== 'mount' && type !== 'serve';
   }
 
   get statisticsTitle(): string {
-    if (this.data.job_type === 'mount') {
-      return 'modals.jobDetail.sections.statistics'; // Fallback or "Mount Status"
-    }
-
-    // Use current job type to form a dynamic title like "Sync Statistics"
-    // Using dashboard.appDetail.transferStatistics key which is "{{op}} Statistics"
-    return 'dashboard.appDetail.transferStatistics';
+    return this.jobData().job_type === 'mount'
+      ? 'modals.jobDetail.sections.statistics'
+      : 'dashboard.appDetail.transferStatistics';
   }
 
   get isMount(): boolean {
-    return this.data.job_type === 'mount';
+    return this.jobData().job_type === 'mount';
   }
 
   get lastError(): string | null {
-    return (this.data.stats as any)?.lastError || this.data.error || null;
+    const job = this.jobData();
+    return (job.stats as any)?.lastError || job.error || null;
+  }
+
+  get speedAvg(): number {
+    return (this.jobData().stats as any)?.speedAvg ?? 0;
+  }
+
+  get healthStatus() {
+    const job = this.jobData();
+    return {
+      errors: job.stats?.errors ?? 0,
+      retryError: job.stats?.retryError ?? false,
+      fatalError: job.stats?.fatalError ?? false,
+    };
+  }
+
+  get fileCounters() {
+    const s = this.jobData().stats;
+    if (!s) return null;
+    return {
+      transfers: `${s.transfers} / ${s.totalTransfers}`,
+      checks: `${s.checks} / ${s.totalChecks}`,
+      deletes: s.deletes + s.deletedDirs,
+      renames: s.renames,
+      listed: s.listed,
+    };
+  }
+
+  get identifiers() {
+    const job = this.jobData();
+    return {
+      executeId: (job as any).execute_id ?? null,
+      group: job.group ?? null,
+      backend: job.backend_name ?? 'Local',
+      origin: job.origin ?? null,
+      profile: (job as any).profile ?? 'default',
+    };
   }
 
   @HostListener('keydown.escape')

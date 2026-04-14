@@ -1,6 +1,7 @@
 .transfer-activity-panel {
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 
   .panel-header {
     .panel-title-content {

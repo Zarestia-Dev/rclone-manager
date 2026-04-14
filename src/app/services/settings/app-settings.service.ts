@@ -37,8 +37,6 @@ export class AppSettingsService extends TauriBaseService {
       const response = await this.invokeCommand<{ options: Record<string, SettingMetadata> }>(
         'load_settings'
       );
-      console.debug(response);
-
       this._options.set(response.options);
     } catch (error) {
       console.error('Failed to load settings:', error);

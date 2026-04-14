@@ -114,7 +114,6 @@ export class SystemHealthService {
   async checkMountPluginAndPromptRepair(): Promise<void> {
     try {
       const mountPluginOk = await this.checkMountPlugin();
-      console.debug('Mount plugin status: ', mountPluginOk);
 
       if (mountPluginOk === false) {
         await this.showRepairSheet({

@@ -154,9 +154,7 @@ export class EventListenersService extends TauriBaseService {
    * Listen to open internal route events from tray menu
    */
   listenToBrowse(): Observable<string> {
-    const asd = this.listenToEvent<string>(BROWSE);
-    console.log('asd', asd);
-    return asd;
+    return this.listenToEvent<string>(BROWSE);
   }
 
   /**
