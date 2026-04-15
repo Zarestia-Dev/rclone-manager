@@ -704,7 +704,7 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent)
 /// Build the web UI URL for a given path, resolving 0.0.0.0 to loopback.
 ///
 /// Used by tray actions to open the web interface in the system browser.
-#[cfg(feature = "web-server")]
+#[cfg(all(feature = "web-server", not(feature = "container")))]
 fn web_ui_url(app: &tauri::AppHandle, path: &str) -> String {
     let args = app.state::<crate::core::cli::CliArgs>();
     let host = if args.headless.host == "0.0.0.0" {

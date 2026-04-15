@@ -117,7 +117,7 @@ COPY --from=builder \
     ["/app/src-tauri/target/release/i18n", "/usr/lib/RClone Manager Headless/i18n/"]
 
 # Copy and setup the runtime entrypoint script
-# Moving this to the end ensures that changes to entrypoint.sh don't invalidate 
+# Moving this to the end ensures that changes to entrypoint.sh don't invalidate
 # the heavy compilation layers above.
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
@@ -143,6 +143,7 @@ ENV DISPLAY=:99 \
     XDG_DATA_HOME=/home/rclone-manager/.local/share \
     XDG_CONFIG_HOME=/home/rclone-manager/.config \
     RCLONE_CONFIG=/config/rclone.conf \
+    RCLONE_MANAGER_DATA_DIR=/data \
     RCLONE_MANAGER_LOG_DIR=/data/logs \
     RCLONE_MANAGER_CACHE_DIR=/data/cache \
     RCLONE_MANAGER_SECRET=${RCLONE_MANAGER_SECRET:-} \

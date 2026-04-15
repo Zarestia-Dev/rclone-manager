@@ -1,150 +1,67 @@
-x-common: &common
-  image: ghcr.io/zarestia-dev/rclone-manager:latest
-  restart: unless-stopped
-  # network_mode: host # Uncomment this to fix OAuth authentication issues
-  networks:
-    - rclone-network
-  environment: &common-env
-    PUID: ${PUID:-1000}
-    PGID: ${PGID:-1000}
-    RUST_LOG: ${RUST_LOG:-info}
-    RCLONE_MANAGER_DATA_DIR: /data
-    RCLONE_MANAGER_CACHE_DIR: /data/cache
-    RCLONE_MANAGER_LOG_DIR: /data/logs
-    RCLONE_MANAGER_SECRET: ${RCLONE_MANAGER_SECRET:-}
-    RCLONE_MANAGER_SECRET_PATH: ${RCLONE_MANAGER_SECRET_PATH:-}
-    RCLONE_MANAGER_SECRET_FILE: ${RCLONE_MANAGER_SECRET_FILE:-}
+# =============================================================================
+# RClone Manager — Docker Compose
+# =============================================================================
+# Quick start:
+#   docker compose up -d
+#   Open http://localhost:8080
+#
+# For advanced configuration (auth, TLS, host networking):
+#   https://hakanismail.info/zarestia/rclone-manager/docs/configuration-headless
+# =============================================================================
 
 services:
   rclone-manager:
-    <<: *common
+    image: ghcr.io/zarestia-dev/rclone-manager:latest
     container_name: rclone-manager
+    restart: unless-stopped
+
     ports:
-      - "${RCLONE_MANAGER_PORT:-8080}:8080"
+      - "8080:8080"
+      # Uncomment below if you need OAuth authentication for cloud remotes
+      # (Google Drive, OneDrive, Dropbox, etc.)
+      # Alternatively, use 'network_mode: host' — see docs for details.
+      # - "53682:53682"
+
     volumes:
-      - rclone-data:/data
-      - rclone-config:/config
+      - rclone-data:/data # App data & rclone binary (auto-downloaded on first run)
+      - rclone-config:/config # rclone.conf
+
     environment:
-      <<: *common-env
+      # Match these to your host user to avoid permission issues on mounted volumes.
+      # Run 'id' in your terminal to find your UID/GID.
+      - PUID=1000
+      - PGID=1000
+
+      # --- Optional: Basic Authentication ---
+      # Uncomment and fill in to password-protect the web UI.
+      # Most users behind a reverse proxy (NPM, Traefik) don't need this.
+      # - RCLONE_MANAGER_USER=admin
+      # - RCLONE_MANAGER_PASS=changeme
+
+      # --- Optional: HTTPS/TLS ---
+      # Mount your certs and uncomment these to enable HTTPS directly.
+      # - RCLONE_MANAGER_TLS_CERT=/app/certs/cert.pem
+      # - RCLONE_MANAGER_TLS_KEY=/app/certs/key.pem
+
+    # --- Optional: TLS cert volume ---
+    # Uncomment if using the TLS options above.
+    # volumes:
+    #   - ./certs:/app/certs:ro
+
+    # --- Optional: Host networking ---
+    # Uncomment to fix OAuth browser authentication (Google Drive, OneDrive, etc.)
+    # When enabled, remove the 'ports' section above — it's not needed.
+    # network_mode: host
+
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 10s
-    profiles:
-      - ""
-
-  rclone-manager-auth:
-    <<: *common
-    container_name: rclone-manager-auth
-    ports:
-      - "${RCLONE_MANAGER_PORT:-8080}:8080"
-    volumes:
-      - rclone-data:/data
-      - rclone-config:/config
-    environment:
-      <<: *common-env
-      RCLONE_MANAGER_USER: ${RCLONE_MANAGER_USER:-admin}
-      RCLONE_MANAGER_PASS: ${RCLONE_MANAGER_PASS:?Set RCLONE_MANAGER_PASS in .env}
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "curl",
-          "-sf",
-          "-u",
-          "${RCLONE_MANAGER_USER:-admin}:${RCLONE_MANAGER_PASS}",
-          "http://localhost:8080/health",
-        ]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    profiles:
-      - auth
-
-  rclone-manager-tls:
-    <<: *common
-    container_name: rclone-manager-tls
-    ports:
-      - "${RCLONE_MANAGER_PORT:-8443}:8443"
-    volumes:
-      - rclone-data:/data
-      - rclone-config:/config
-      - ./certs:/app/certs:ro
-    environment:
-      <<: *common-env
-      RCLONE_MANAGER_PORT: "8443"
-      RCLONE_MANAGER_TLS_CERT: /app/certs/cert.pem
-      RCLONE_MANAGER_TLS_KEY: /app/certs/key.pem
-    healthcheck:
-      test: ["CMD", "curl", "-sfk", "https://localhost:8443/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    profiles:
-      - tls
-
-  rclone-manager-auth-tls:
-    <<: *common
-    container_name: rclone-manager-auth-tls
-    ports:
-      - "${RCLONE_MANAGER_PORT:-8443}:8443"
-    volumes:
-      - rclone-data:/data
-      - rclone-config:/config
-      - ./certs:/app/certs:ro
-    environment:
-      <<: *common-env
-      RCLONE_MANAGER_USER: ${RCLONE_MANAGER_USER:-admin}
-      RCLONE_MANAGER_PASS: ${RCLONE_MANAGER_PASS:?Set RCLONE_MANAGER_PASS in .env}
-      RCLONE_MANAGER_PORT: "8443"
-      RCLONE_MANAGER_TLS_CERT: /app/certs/cert.pem
-      RCLONE_MANAGER_TLS_KEY: /app/certs/key.pem
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "curl",
-          "-sfk",
-          "-u",
-          "${RCLONE_MANAGER_USER:-admin}:${RCLONE_MANAGER_PASS}",
-          "https://localhost:8443/health",
-        ]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    profiles:
-      - auth-tls
-
-  rclone-manager-host:
-    <<: *common
-    container_name: rclone-manager-host
-    network_mode: host
-    networks: []
-    volumes:
-      - /home/hakan/.local/share/com.rclone.manager:/data
-      - /home/hakan/.config/rclone:/config
-    environment:
-      <<: *common-env
-    healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    profiles:
-      - host-test
+      start_period: 15s
 
 volumes:
   rclone-data:
     name: rclone-manager-data
   rclone-config:
     name: rclone-manager-config
-
-networks:
-  rclone-network:
-    driver: bridge

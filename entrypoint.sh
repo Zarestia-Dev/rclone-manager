@@ -109,6 +109,6 @@ ARGS=()
 # 7. Handover
 # =============================================================================
 # Execute using gosu to securely drop privileges from root to rclone-manager.
-# `exec` ensures the resulting process becomes PID 1 to gracefully receive 
+# `exec` ensures the resulting process becomes PID 1 to gracefully receive
 # termination signals issued by Docker stop commands.
 exec gosu rclone-manager /usr/local/bin/rclone-manager-headless "${ARGS[@]}" "$@"
