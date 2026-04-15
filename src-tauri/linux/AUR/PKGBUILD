@@ -18,6 +18,7 @@ sha256sums_x86_64=('88d69044560212e9f0bbaaec17f442f52adaddf0341b6df60415e90ede8d
 sha256sums_aarch64=('2e1b8713c0f1cd23b09da8d1ae382998e3bea7ba0471ada22493d710c1bbf224')
 package() {
   tar -xvf data.tar.gz -C "${pkgdir}"
+  rm -f "${pkgdir}/usr/share/flatpak.metainfo.xml"
 }
 post_install() {
   gtk-update-icon-cache -q -t -f usr/share/icons/hicolor

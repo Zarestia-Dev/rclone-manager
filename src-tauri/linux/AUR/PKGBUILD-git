@@ -58,6 +58,7 @@ package() {
  
   # Copy the entire usr directory structure
   cp -r "${extracted_dir}/usr" "${pkgdir}/"
+  rm -f "${pkgdir}/usr/share/flatpak.metainfo.xml"
 
   # Clean up
   rm -rf "${extracted_dir}"

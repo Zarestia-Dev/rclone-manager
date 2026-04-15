@@ -42,6 +42,8 @@ package() {
     return 1
   fi
   
+  rm -f "${pkgdir}/usr/share/flatpak.metainfo.xml"
+  
   # Fix permissions
   find "${pkgdir}" -type d -exec chmod 755 {} \;
   find "${pkgdir}/usr/bin" -type f -exec chmod 755 {} \; 2>/dev/null || true

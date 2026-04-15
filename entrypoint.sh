@@ -26,17 +26,21 @@ chown -R rclone-manager:rclone-manager /home/rclone-manager /app /data /config 2
 LEGACY_CONFIG_DIR="/home/rclone-manager/.config/rclone"
 LEGACY_DATA_DIR="/home/rclone-manager/.local/share/com.rclone.manager.headless"
 
-# Redirect config if legacy exists and has files, and new /config is empty
-if [ -d "$LEGACY_CONFIG_DIR" ] && [ -n "$(ls -A $LEGACY_CONFIG_DIR 2>/dev/null)" ] && [ ! -f "/config/rclone.conf" ]; then
-    echo "📂 Legacy rclone config detected. Redirecting RCLONE_CONFIG..."
-    export RCLONE_CONFIG="${LEGACY_CONFIG_DIR}/rclone.conf"
+# Only migrate if the user hasn't provided a custom path already
+if [ "$RCLONE_CONFIG" = "/config/rclone.conf" ]; then
+    if [ -d "$LEGACY_CONFIG_DIR" ] && [ -n "$(ls -A $LEGACY_CONFIG_DIR 2>/dev/null)" ] && [ ! -f "/config/rclone.conf" ]; then
+        echo "📂 Legacy rclone config detected. Redirecting RCLONE_CONFIG..."
+        export RCLONE_CONFIG="${LEGACY_CONFIG_DIR}/rclone.conf"
+    fi
 fi
 
-# Redirect data if legacy exists and has files, and new /data is empty
-if [ -d "$LEGACY_DATA_DIR" ] && [ -n "$(ls -A $LEGACY_DATA_DIR 2>/dev/null)" ] && [ -z "$(ls -A /data 2>/dev/null)" ]; then
-    echo "📂 Legacy app data detected. Redirecting RCLONE_MANAGER_DATA_DIR..."
-    export RCLONE_MANAGER_DATA_DIR="$LEGACY_DATA_DIR"
-    export RCLONE_MANAGER_CACHE_DIR="${LEGACY_DATA_DIR}/cache"
+# Only migrate data dir if it's still pointing to the default /data
+if [ "$RCLONE_MANAGER_DATA_DIR" = "/data" ]; then
+    if [ -d "$LEGACY_DATA_DIR" ] && [ -n "$(ls -A $LEGACY_DATA_DIR 2>/dev/null)" ] && [ -z "$(ls -A /data 2>/dev/null)" ]; then
+        echo "📂 Legacy app data detected. Redirecting RCLONE_MANAGER_DATA_DIR..."
+        export RCLONE_MANAGER_DATA_DIR="$LEGACY_DATA_DIR"
+        export RCLONE_MANAGER_CACHE_DIR="${LEGACY_DATA_DIR}/cache"
+    fi
 fi
 
 # =============================================================================

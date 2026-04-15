@@ -35,7 +35,7 @@
         "depends": ["libayatana-appindicator3-1 | libappindicator3-1"],
         "recommends": ["rclone"],
         "files": {
-          "/usr/share/flatpak.metainfo.xml": "linux/flatpak.metainfo.xml"
+          "/usr/share/metainfo/io.github.zarestia_dev.rclone-manager.metainfo.xml": "linux/flatpak.metainfo.xml"
         }
       },
       "rpm": {
