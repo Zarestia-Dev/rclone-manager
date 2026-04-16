@@ -144,10 +144,12 @@
       "title": "İş Bilgisi",
       "type": "İş Türü",
       "id": "İş Kimliği",
+      "status": "İş Durumu",
       "started": "Başlangıç",
       "finished": "Bitiş",
       "duration": "Süre",
       "lastOperation": "Son İşlem",
+      "errors": "Son Hatalar",
       "emptyTitle": "İş yok",
       "emptyMessage": "Bir işlem başladığında iş detayları burada görünecektir"
     },
@@ -310,14 +312,6 @@
       }
     },
     "runtime": {
-      "dashboard_card_variant": {
-        "label": "Kart Görüntüleme Modu",
-        "description": "Pano kartlarını kompakt veya ayrıntılı modda göster",
-        "options": {
-          "compact": "Kompakt",
-          "detailed": "Ayrıntılı"
-        }
-      },
       "theme": {
         "label": "Uygulama Teması",
         "options": {
@@ -362,6 +356,14 @@
       "dashboard_layout": {
         "label": "Panel Düzeni",
         "description": "Panel için özel düzen yapılandırması."
+      },
+      "dashboard_card_variant": {
+        "label": "Kart Görüntüleme Modu",
+        "description": "Pano kartlarını kompakt veya ayrıntılı modda göster",
+        "options": {
+          "compact": "Kompakt",
+          "detailed": "Ayrıntılı"
+        }
       }
     },
     "nautilus": {
@@ -1353,6 +1355,8 @@
         "copy_url": "URL Kopyala",
         "move": "Taşı",
         "move_file": "Dosya Taşı",
+        "rename_file": "Dosyayı Yeniden Adlandır",
+        "rename_dir": "Klasörü Yeniden Adlandır",
         "sync": "Senkronize",
         "bisync": "Çift Yönlü Senkronize"
       }
@@ -2040,7 +2044,12 @@
         "new": "Yeni Profil Adı",
         "save": "Kaydet",
         "cancel": "İptal",
-        "inUseWarning": "\"{{name}}\" profili silinemez - {{count}} aktif {{type}} tarafından kullanılıyor"
+        "inUseWarning": "\"{{name}}\" profili silinemez - {{count}} aktif {{type}} tarafından kullanılıyor",
+        "disabledReason": {
+          "defaultProtected": "Default profil silinemez veya yeniden adlandırılamaz",
+          "lastProfile": "Bir tane profil kalmak zorunda",
+          "inUse": "Profil, çalışan {{operation}} operasyonu tarafından kullanılıyor. İlk önce durdurun."
+        }
       },
       "buttons": {
         "back": "Geri",
@@ -2230,6 +2239,7 @@
       "redoFailed": "{{count}} öge için yineleme başarısız",
       "rmdirsFailed": "\"{{name}}\" içinde boş klasörler kaldırılamadı: {{error}}",
       "createFolderFailed": "\"{{name}}\" klasörü oluşturulamadı: {{error}}",
+      "renameFailed": "\"{{name}}\" yeniden adlandıralamadı: {{error}}",
       "emptyTrashFailed": "Çöp boşaltılamadı: {{error}}",
       "openFileFailed": "Dosya açılamıyor: uzak sunucu bağlamı eksik",
       "minSelection": "Lütfen en az {{min}} öge seçin."
@@ -2237,10 +2247,8 @@
     "contextMenu": {
       "open": "Aç",
       "openNewTab": "Yeni Sekmede Aç",
-      "openNewWindow": "Yeni Pencerede Aç",
       "copyPath": "Yolu Kopyala",
       "newFolder": "Yeni Klasör",
-      "rename": "Yeniden Adlandır",
       "refresh": "Yenile",
       "properties": "Özellikler",
       "reload": "Yeniden Yükle",
@@ -2257,7 +2265,9 @@
       "delete": "Sil",
       "copy": "Kopyala",
       "cut": "Kes",
+      "rename": "Yeniden Adlandır",
       "paste": "Yapıştır",
+      "openNewWindow": "Yeni Pencerede Aç",
       "focusPath": "Yola Odaklan",
       "newTab": "Yeni Sekme",
       "closeTab": "Sekmeyi Kapat",
@@ -2284,6 +2294,9 @@
       "locationCopied": "Konum panoya kopyalandı",
       "rmdirsStarted": "Boş klasörler kaldırılıyor: \"{{name}}\"...",
       "deleteStarted": "{{count}} öge siliniyor...",
+      "copyStarted": "{{count}} item kopyalanıyor...",
+      "moveStarted": "{{count}} item taşınıyor...",
+      "pasteStarted": "Yapıştırma işlemi başlatıldı",
       "pasteComplete": "Yapıştırma işlemi tamamlandı",
       "renameStarted": "Yeniden adlandırma işlemi başlatıldı",
       "undoComplete": "Geri alma başarılı",
@@ -2818,8 +2831,7 @@
       "rcloneUpdateFailed": "Rclone Güncellemesi Başarısız: {{error}}",
       "rcloneUpdateInstalled": "Rclone Güncellemesi Yüklendi",
       "scheduledTaskCompleted": "Zamanlanmış Görev Tamamlandı",
-      "scheduledTaskFailed": "Zamanlanmış Görev Başarısız",
-      "updateInstalled": "Güncelleme Kuruldu"
+      "scheduledTaskFailed": "Zamanlanmış Görev Başarısız"
     },
     "body": {
       "mounted": "{{remote}} profili '{{profile}}' {{mountPoint}} adresine bağlandı",
@@ -2861,8 +2873,7 @@
       "engineRestartedFailed": "Motor {{reason}} değişikliği nedeniyle yeniden başlatılamadı",
       "connectionFailed": "Rclone motoruna bağlanılamadı: {{reason}}",
       "scheduledTaskCompleted": "'{{task}}' zamanlanmış görevi başarıyla tamamlandı.",
-      "scheduledTaskFailed": "'{{task}}' zamanlanmış görevi başarısız oldu: {{error}}",
-      "updateInstalled": "Güncelleme başarıyla kuruldu. Yeniden başlatma gerekli."
+      "scheduledTaskFailed": "'{{task}}' zamanlanmış görevi başarısız oldu: {{error}}"
     }
   },
   "repairSheet": {
