@@ -55,3 +55,8 @@ This document outlines current limitations in the Rclone Remote Control (RC) API
 
 - [ ] **Limitation**: There is no command in RC to update the remote rclone instance (equivalent to `rclone selfupdate`). This prevents managing the rclone version of remote or headless instances via the API.
 - [ ] **Proposal**: Add `core/selfupdate` (or similar) endpoint to trigger a self-update operation on the running instance. After update, the instance should restart automatically with the same arguments.
+
+## 9. Dynamic VFS Filtering via RC API
+
+- [ ] **Limitation**: Filters passed dynamically via the RC API do not apply to mounted drives. Setting `_filter` in `mount/mount` is silently ignored (it only lasts for the duration of the RC call), and updating global options via `options/set` registers the filter but the VFS layer fails to pick it up. The VFS layer appears to capture filter states strictly at daemon startup. Currently, the only workaround is passing filters (e.g., `--exclude="*.pdf"`) directly when starting the `rcd` daemon.
+- [ ] **Proposal**: Ensure the VFS layer correctly inherits and applies dynamic filter options set via `options/set` prior to a `mount/mount` call. Alternatively, introduce a mechanism to pass persistent, mount-specific filters directly into the `mount/mount` API arguments so they aren't lost after the call completes.
