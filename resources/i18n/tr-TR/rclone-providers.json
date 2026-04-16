@@ -3368,6 +3368,7 @@
         "help": "True ise başarısızlık durumunda yüklemeyi iptal etme (abort upload) çağrısı yapmaktan kaçın.\n\nFarklı oturumlar arasında yüklemelere devam etmek için true olarak ayarlanmalıdır."
       },
       "no_chunk": {
+        "title": "Parçalama Yapma",
         "help": "Akışla yükleme (streaming upload) sırasında dosyaları parçalama.\n\nAkışla yükleme yaparken (örn. `rcat` veya `--vfs-cache-mode off` ile `mount` kullanarak) bu bayrağı ayarlamak, swift arka ucunun parçalanmış dosyalar yüklememesine neden olur.\n\nBu, akışla yüklenen maksimum boyutu 5 GiB ile sınırlayacaktır. Bu yararlıdır çünkü parçalanmamış dosyalarla çalışmak daha kolaydır ve bir MD5SUM değerine sahiptirler.\n\nrclone, normal kopyalama işlemleri yaparken `chunk_size` değerinden büyük dosyaları yine de parçalayacaktır."
       },
       "no_large_objects": {
