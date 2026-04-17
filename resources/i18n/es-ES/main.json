@@ -2154,6 +2154,13 @@
       "emptyTrash": {
         "title": "Vaciar papelera",
         "message": "¿Eliminar archivos de la papelera de {{remote}}?"
+      },
+      "copyUrl": {
+        "title": "Descargar desde URL",
+        "urlLabel": "URL",
+        "fileLabel": "Nombre de archivo (Opcional)",
+        "filePlaceholder": "Dejar vacío para usar el nombre automático",
+        "confirm": "Descargar"
       }
     },
     "errors": {
@@ -2166,7 +2173,8 @@
       "renameFailed": "Error al renombrar '{{name}}': {{error}}",
       "emptyTrashFailed": "Error al vaciar la papelera: {{error}}",
       "openFileFailed": "No se puede abrir el archivo: falta contexto remoto",
-      "minSelection": "Por favor seleccione al menos {{min}} elemento{{s}}."
+      "minSelection": "Por favor seleccione al menos {{min}} elemento{{s}}.",
+      "copyUrlFailed": "Error al descargar desde URL: {{error}}"
     },
     "contextMenu": {
       "open": "Abrir",
@@ -2202,7 +2210,8 @@
       "undo": "Deshacer",
       "trashEmptied": "Papelera vaciada",
       "renameStarted": "Operación de renombrado iniciada",
-      "locationCopied": "Ubicación copiada al portapapeles"
+      "locationCopied": "Ubicación copiada al portapapeles",
+      "copyUrlStarted": "Descargando desde URL..."
     }
   },
   "overview": {

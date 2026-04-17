@@ -2,9 +2,11 @@
   <div
     class="tabs-scroll-container hide-scrollbar"
     #tabsScrollContainer
-    [class.show-left-shadow]="_showLeftShadow()"
-    [class.show-right-shadow]="_showRightShadow()"
-    (scroll)="onScroll()"
+    appScrollShadow
+    [class.show-left-shadow]="showLeft()"
+    [class.show-right-shadow]="showRight()"
+    (leftShadow)="showLeft.set($event)"
+    (rightShadow)="showRight.set($event)"
   >
     <div
       class="tabs-bar"
@@ -39,7 +41,7 @@
           [matTooltip]="getTabTooltip(t)"
           [matTooltipShowDelay]="800"
         >
-          <span class="tab-title">{{ t.title | translate }}</span>
+          <span class="tab-title">{{ t.title }}</span>
           <button
             class="close-tab"
             [attr.aria-label]="'common.close' | translate"

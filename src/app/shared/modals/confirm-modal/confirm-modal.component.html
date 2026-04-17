@@ -1,19 +1,17 @@
 <div class="confirm-modal">
-  <h1 class="modal-title">{{ data.title }}</h1>
-
   <div class="modal-content">
     <!-- Contextual Icon -->
     <div class="modal-icon" [class]="getModalColor()">
       <mat-icon [svgIcon]="getModalIcon()" [class]="getModalColor()" aria-hidden="true"></mat-icon>
     </div>
-
+    <h2 class="modal-title">{{ data.title }}</h2>
     <p class="modal-message">{{ data.message }}</p>
   </div>
 
   <div class="modal-actions">
     @if (data.cancelText) {
       <button
-        matButton="filled"
+        mat-flat-button
         class="cancel-btn"
         (click)="onCancel()"
         [attr.aria-label]="data.cancelText || 'common.cancel' | translate"
@@ -24,8 +22,11 @@
 
     @if (data.confirmText) {
       <button
-        matButton="filled"
-        [class]="getModalColor()"
+        mat-flat-button
+        class="confirm-btn"
+        [class.warn]="getModalColor() === 'warn'"
+        [class.accent]="getModalColor() === 'accent'"
+        [class.primary]="getModalColor() === 'primary'"
         (click)="onConfirm()"
         [attr.aria-label]="data.confirmText || 'common.ok' | translate"
       >

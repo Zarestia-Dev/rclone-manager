@@ -2217,6 +2217,13 @@
         "title": "删除空文件夹",
         "message": "确定要删除 \"{{name}}\" 下所有空文件夹吗？",
         "confirm": "删除"
+      },
+      "copyUrl": {
+        "title": "从 URL 下载",
+        "urlLabel": "URL",
+        "fileLabel": "文件名（可选）",
+        "filePlaceholder": "留空以使用自动命名",
+        "confirm": "下载"
       }
     },
     "errors": {
@@ -2235,7 +2242,8 @@
       "renameFailed": "重命名 '{{name}}' 失败：{{error}}",
       "emptyTrashFailed": "清空 {{remote}} 回收站失败：{{error}}",
       "openFileFailed": "无法打开文件：缺少远程服务器上下文",
-      "minSelection": "请至少选择 {{min}} 项。"
+      "minSelection": "请至少选择 {{min}} 项。",
+      "copyUrlFailed": "从 URL 下载失败: {{error}}"
     },
     "contextMenu": {
       "open": "打开",
@@ -2292,7 +2300,8 @@
       "pasteComplete": "粘贴操作完成",
       "renameStarted": "重命名操作已开始",
       "undoComplete": "撤销成功",
-      "redoComplete": "重做成功"
+      "redoComplete": "重做成功",
+      "copyUrlStarted": "正在从 URL 下载..."
     }
   },
   "overview": {

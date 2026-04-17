@@ -180,3 +180,84 @@
     padding-bottom: var(--space-sm);
   }
 }
+
+/* ==========================================================================
+   7. Sliding Context Menu (Libadwaita Style)
+   ========================================================================== */
+
+.sliding-container {
+  padding: 0 !important;
+  overflow: hidden !important;
+  min-width: 260px !important;
+  display: block !important;
+  transition: height 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.menu-pages-track {
+  display: flex;
+  width: 200%;
+  align-items: flex-start;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--popover-bg-color);
+
+  &.show-submenu {
+    transform: translateX(-50%);
+  }
+}
+
+.menu-page {
+  width: 50%;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.menu-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+
+  .back-button {
+    all: unset;
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+    color: var(--window-fg-color);
+
+    &:hover {
+      background-color: var(--hover-bg-color);
+    }
+
+    mat-icon {
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
+    }
+  }
+
+  .menu-title {
+    font-size: var(--font-size-md);
+    font-weight: 700;
+    color: var(--window-fg-color);
+    flex: 1;
+    text-align: center;
+    margin-right: 28px; // Offset back button to center title
+  }
+}
+
+// Adjust menu items inside sliding container
+.sliding-container .menu-item {
+  width: calc(100% - 4px) !important;
+}
+
+.centered-item {
+  justify-content: center !important;
+}

@@ -1,9 +1,8 @@
 import { inject, Injectable } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatDialog } from '@angular/material/dialog';
 import { TranslateService } from '@ngx-translate/core';
 import { ConfirmDialogData } from '@app/types';
-import { ConfirmModalComponent } from 'src/app/shared/modals/confirm-modal/confirm-modal.component';
+import { ModalService } from '@app/services';
 import { firstValueFrom } from 'rxjs';
 
 /**
@@ -16,7 +15,7 @@ import { firstValueFrom } from 'rxjs';
 })
 export class NotificationService {
   private snackBar = inject(MatSnackBar);
-  private dialog = inject(MatDialog);
+  private readonly modalService = inject(ModalService);
   private translate = inject(TranslateService);
 
   /**
@@ -94,12 +93,7 @@ export class NotificationService {
       ...options,
     };
 
-    const dialogRef = this.dialog.open(ConfirmModalComponent, {
-      maxWidth: '480px',
-      data: dialogData,
-      disableClose: true,
-    });
-
+    const dialogRef = this.modalService.openConfirm(dialogData);
     const result = await firstValueFrom(dialogRef.afterClosed());
     return !!result;
   }
@@ -124,10 +118,8 @@ export class NotificationService {
       ...options,
     };
 
-    const dialogRef = this.dialog.open(ConfirmModalComponent, {
-      maxWidth: '480px',
-      data: dialogData,
-      disableClose: true,
+    const dialogRef = this.modalService.openConfirm({
+      ...dialogData,
     });
 
     await firstValueFrom(dialogRef.afterClosed());

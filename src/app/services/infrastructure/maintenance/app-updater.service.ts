@@ -3,11 +3,9 @@ import { interval, Subject, Subscription, firstValueFrom } from 'rxjs';
 import { map, takeWhile, filter, takeUntil } from 'rxjs/operators';
 import { UiStateService } from '../../ui/state/ui-state.service';
 import { EventListenersService } from '../system/event-listeners.service';
-import { DebugService } from '@app/services';
+import { DebugService, ModalService } from '@app/services';
 import { UpdateMetadata } from '@app/types';
 import { BaseUpdateService } from '../maintenance/base-update.service';
-import { MatDialog } from '@angular/material/dialog';
-import { ConfirmModalComponent } from '../../../shared/modals/confirm-modal/confirm-modal.component';
 
 export interface DownloadStatus {
   downloadedBytes: number;
@@ -30,7 +28,7 @@ export interface UpdateState {
 })
 export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
   private uiStateService = inject(UiStateService);
-  private dialog = inject(MatDialog);
+  private readonly modalService = inject(ModalService);
   private eventListenersService = inject(EventListenersService);
   private debugService = inject(DebugService);
 
@@ -132,15 +130,11 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
 
     try {
       if (this.uiStateService.platform === 'windows') {
-        const dialogRef = this.dialog.open(ConfirmModalComponent, {
-          data: {
-            title: this.translate.instant('updates.confirmInstall.title'),
-            message: this.translate.instant('updates.confirmInstall.message'),
-            confirmText: this.translate.instant('updates.confirmInstall.confirm'),
-            cancelText: this.translate.instant('updates.confirmInstall.cancel'),
-            hideCancel: false,
-          },
-          disableClose: true,
+        const dialogRef = this.modalService.openConfirm({
+          title: this.translate.instant('updates.confirmInstall.title'),
+          message: this.translate.instant('updates.confirmInstall.message'),
+          confirmText: this.translate.instant('updates.confirmInstall.confirm'),
+          cancelText: this.translate.instant('updates.confirmInstall.cancel'),
         });
 
         const confirmed = await firstValueFrom(dialogRef.afterClosed());

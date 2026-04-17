@@ -17,6 +17,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { NautilusService } from '@app/services';
+import { ScrollShadowDirective } from '../../../shared/directives/scroll-shadow.directive';
 
 export interface TabItem {
   id: number;
@@ -28,7 +29,14 @@ export interface TabItem {
 @Component({
   selector: 'app-nautilus-tabs',
   standalone: true,
-  imports: [MatIconModule, MatTooltipModule, MatDividerModule, CdkMenuModule, TranslateModule],
+  imports: [
+    MatIconModule,
+    MatTooltipModule,
+    MatDividerModule,
+    CdkMenuModule,
+    TranslateModule,
+    ScrollShadowDirective,
+  ],
   templateUrl: './nautilus-tabs.component.html',
   styleUrl: './nautilus-tabs.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -62,8 +70,8 @@ export class NautilusTabsComponent {
   private _dropSucceeded = false;
 
   // --- Scroll shadow state ---
-  protected readonly _showLeftShadow = signal(false);
-  protected readonly _showRightShadow = signal(false);
+  protected readonly showLeft = signal(false);
+  protected readonly showRight = signal(false);
 
   private readonly tabsScrollContainer =
     viewChild<ElementRef<HTMLDivElement>>('tabsScrollContainer');
@@ -73,22 +81,13 @@ export class NautilusTabsComponent {
       const activeIndex = this.activeTabIndex();
       this.tabs();
       this.scrollToActiveTab(activeIndex);
-      this.updateScrollShadows();
     });
 
     afterNextRender(() => {
-      const el = this.tabsScrollContainer()?.nativeElement;
-      if (!el) return;
-
-      el.addEventListener('wheel', this.onWheelScroll, { passive: false });
-
-      const ro = new ResizeObserver(() => this.updateScrollShadows());
-      ro.observe(el);
+      window.addEventListener('dragover', this.onGlobalDragOver);
 
       this.destroyRef.onDestroy(() => {
-        el.removeEventListener('wheel', this.onWheelScroll);
         window.removeEventListener('dragover', this.onGlobalDragOver);
-        ro.disconnect();
       });
     });
   }
@@ -257,10 +256,6 @@ export class NautilusTabsComponent {
     }
   }
 
-  protected onScroll(): void {
-    this.updateScrollShadows();
-  }
-
   protected getTabTooltip(t: TabItem): string {
     const prefix = t.remote ? `${this.translate.instant(t.remote.label)}:` : '';
     return `${prefix}${t.path}`;
@@ -284,20 +279,6 @@ export class NautilusTabsComponent {
 
     this._isDraggedOutside.set(isOutsideWindow || isDraggedDown);
   };
-
-  private readonly onWheelScroll = (event: WheelEvent): void => {
-    const container = this.tabsScrollContainer()?.nativeElement;
-    if (!container) return;
-    container.scrollLeft += event.deltaY;
-    event.preventDefault();
-  };
-
-  private updateScrollShadows(): void {
-    const el = this.tabsScrollContainer()?.nativeElement;
-    if (!el) return;
-    this._showLeftShadow.set(el.scrollLeft > 4);
-    this._showRightShadow.set(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
-  }
 
   private scrollToActiveTab(index: number): void {
     const container = this.tabsScrollContainer()?.nativeElement;

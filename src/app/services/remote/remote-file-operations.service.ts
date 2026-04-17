@@ -7,17 +7,11 @@ export interface LocalDropUploadResult {
   failed: string[];
 }
 
-export interface LocalDropUploadFile {
-  relativePath: string;
-  filename: string;
-  content: number[];
-}
-
 export interface LocalDropUploadEntry {
   relativePath: string;
   filename: string;
   size: number;
-  content?: number[];
+  content?: Uint8Array;
   localPath?: string | null;
 }
 
@@ -315,7 +309,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
       remote,
       path,
       filename,
-      content: Array.from(content),
+      content,
       source,
     });
   }
@@ -333,23 +327,6 @@ export class RemoteFileOperationsService extends TauriBaseService {
       remote,
       path,
       localPaths,
-      source,
-    });
-  }
-
-  /**
-   * Upload browser-dropped files to a remote path as one tracked batch.
-   */
-  async uploadLocalDropFiles(
-    remote: string,
-    path: string,
-    files: LocalDropUploadFile[],
-    source?: Origin
-  ): Promise<LocalDropUploadResult> {
-    return this.invokeCommand<LocalDropUploadResult>('upload_local_drop_files', {
-      remote,
-      path,
-      files,
       source,
     });
   }
@@ -435,5 +412,26 @@ export class RemoteFileOperationsService extends TauriBaseService {
    */
   async cleanup(remote: string, path?: string, source?: Origin, group?: string): Promise<void> {
     return this.invokeCommand<void>('cleanup', { remote, path, source, group });
+  }
+
+  /**
+   * Copy a URL directly to a remote path
+   */
+  async copyUrl(
+    remote: string,
+    path: string,
+    urlToCopy: string,
+    autoFilename: boolean,
+    source?: Origin,
+    group?: string
+  ): Promise<void> {
+    return this.invokeCommand<void>('copy_url', {
+      remote,
+      path,
+      urlToCopy,
+      autoFilename,
+      source,
+      group,
+    });
   }
 }

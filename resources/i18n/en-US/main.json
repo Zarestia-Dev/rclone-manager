@@ -2224,6 +2224,13 @@
         "title": "Remove Empty Folders",
         "message": "Are you sure you want to remove all empty folders in \"{{name}}\"?",
         "confirm": "Remove"
+      },
+      "copyUrl": {
+        "title": "Download from URL",
+        "urlLabel": "URL",
+        "fileLabel": "Filename (Optional)",
+        "filePlaceholder": "Leave empty to use automatic name",
+        "confirm": "Download"
       }
     },
     "errors": {
@@ -2242,7 +2249,8 @@
       "renameFailed": "Failed to rename '{{name}}': {{error}}",
       "emptyTrashFailed": "Failed to empty trash in {{remote}}: {{error}}",
       "openFileFailed": "Cannot open file: missing remote server context",
-      "minSelection": "Please select at least {{min}} item{{s}}."
+      "minSelection": "Please select at least {{min}} item{{s}}.",
+      "copyUrlFailed": "Failed to download from URL: {{error}}"
     },
     "contextMenu": {
       "open": "Open",
@@ -2300,7 +2308,8 @@
       "pasteComplete": "Paste operation completed",
       "renameStarted": "Rename operation started",
       "undoComplete": "Undo successful",
-      "redoComplete": "Redo successful"
+      "redoComplete": "Redo successful",
+      "copyUrlStarted": "Downloading from URL..."
     }
   },
   "overview": {

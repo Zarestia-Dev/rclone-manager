@@ -1,4 +1,6 @@
-use log::debug;
+use log::{debug, warn};
+use std::sync::atomic::{AtomicU64, Ordering};
+
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tauri::{AppHandle, Manager};
@@ -154,7 +156,7 @@ pub async fn copy_url(
                 .as_deref()
                 .map(crate::utils::types::origin::Origin::parse),
             group,
-            no_cache: true,
+            no_cache: false,
         },
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
@@ -760,15 +762,27 @@ fn build_upload_stats(
     })
 }
 
+static UPLOAD_JOB_COUNTER: AtomicU64 = AtomicU64::new(0);
+
 async fn next_upload_job_id(job_cache: &crate::utils::types::jobs::JobCache) -> u64 {
-    job_cache
-        .get_jobs()
-        .await
-        .into_iter()
-        .map(|job| job.jobid)
-        .max()
-        .unwrap_or(0)
-        .saturating_add(1)
+    // Lazy-initialize from the current cache max so we never collide with
+    // rclone-assigned job IDs already in the cache.
+    if UPLOAD_JOB_COUNTER.load(Ordering::Acquire) == 0 {
+        let max = job_cache
+            .get_jobs()
+            .await
+            .into_iter()
+            .map(|job| job.jobid)
+            .max()
+            .unwrap_or(0)
+            .saturating_add(1)
+            .max(1); // never stays at 0
+
+        // CAS: only the first winner writes; all subsequent callers skip.
+        let _ = UPLOAD_JOB_COUNTER.compare_exchange(0, max, Ordering::Release, Ordering::Relaxed);
+    }
+    // Always unique — even if two callers race through initialization.
+    UPLOAD_JOB_COUNTER.fetch_add(1, Ordering::SeqCst)
 }
 
 async fn create_upload_job(
@@ -846,18 +860,20 @@ pub async fn upload_local_drop_entries(
     let mkdir_url = backend.url_for(operations::MKDIR);
     let job_cache = &backend_manager.job_cache;
 
-    let total_bytes = entries.iter().map(|entry| entry.size).sum::<usize>();
+    let total_bytes = entries.iter().map(|e| e.size).sum::<usize>();
     let total_transfers = entries.len();
     let jobid =
         create_upload_job(app, &remote, &path, source, total_bytes, total_transfers).await?;
     let start = Instant::now();
 
-    let mut created_directories = HashSet::new();
+    let mut created_directories: HashSet<String> = HashSet::new();
+    let mut seen_paths: HashSet<String> = HashSet::new();
     let mut uploaded = 0usize;
-    let mut failed = Vec::new();
+    let mut failed: Vec<String> = Vec::new();
     let mut transferred_bytes = 0usize;
 
     for entry in entries {
+        // Stop if the job was externally cancelled.
         if job_cache
             .get_job(jobid)
             .await
@@ -866,13 +882,23 @@ pub async fn upload_local_drop_entries(
             return Ok(LocalDropUploadResult { uploaded, failed });
         }
 
+        // ── NEW: deduplicate by relative_path ────────────────────────────────
+        if !seen_paths.insert(entry.relative_path.clone()) {
+            warn!(
+                "⬆️ Skipping duplicate upload entry: {}",
+                entry.relative_path
+            );
+            continue;
+        }
+
         let destination = join_remote_path(&path, &entry.relative_path);
 
+        // Handle explicit empty-directory entries.
         if matches!(entry.source, LocalDropUploadEntrySource::Directory) {
             if !destination.is_empty() && !created_directories.contains(&destination) {
                 let mkdir_response = backend
                     .inject_auth(state.client.post(&mkdir_url))
-                    .json(&json!({ "fs": remote.clone(), "remote": destination }))
+                    .json(&serde_json::json!({ "fs": remote.clone(), "remote": destination }))
                     .send()
                     .await
                     .map_err(|e| format!("Failed to create directory: {}", e))?;
@@ -891,7 +917,6 @@ pub async fn upload_local_drop_entries(
                         Some((&entry.relative_path, 0)),
                         &remote,
                     );
-
                     let _ = job_cache
                         .update_job(
                             jobid,
@@ -911,10 +936,11 @@ pub async fn upload_local_drop_entries(
 
         let (directory, filename) = split_remote_directory(&destination);
 
+        // Ensure parent directory exists (idempotent, tracked in HashSet).
         if !directory.is_empty() && !created_directories.contains(&directory) {
             let mkdir_response = backend
                 .inject_auth(state.client.post(&mkdir_url))
-                .json(&json!({ "fs": remote.clone(), "remote": directory }))
+                .json(&serde_json::json!({ "fs": remote.clone(), "remote": directory }))
                 .send()
                 .await
                 .map_err(|e| format!("Failed to create directory: {}", e))?;
@@ -926,14 +952,15 @@ pub async fn upload_local_drop_entries(
 
         let bytes = match entry.source {
             LocalDropUploadEntrySource::Bytes(content) => content,
-            LocalDropUploadEntrySource::Path(ref path_buf) => match tokio::fs::read(path_buf).await
-            {
-                Ok(content) => content,
-                Err(_) => {
-                    failed.push(path_buf.display().to_string());
-                    continue;
+            LocalDropUploadEntrySource::Path(ref path_buf) => {
+                match tokio::fs::read(path_buf).await {
+                    Ok(content) => content,
+                    Err(_) => {
+                        failed.push(path_buf.display().to_string());
+                        continue;
+                    }
                 }
-            },
+            }
             LocalDropUploadEntrySource::Directory => unreachable!(),
         };
 
@@ -970,7 +997,6 @@ pub async fn upload_local_drop_entries(
                 &remote,
             );
             let uploaded_file = destination.clone();
-
             let _ = job_cache
                 .update_job(
                     jobid,
@@ -994,7 +1020,7 @@ pub async fn upload_local_drop_entries(
     };
 
     let _ = job_cache
-        .complete_job(jobid, success, final_error.clone(), Some(app))
+        .complete_job(jobid, success, final_error, Some(app))
         .await;
 
     Ok(LocalDropUploadResult { uploaded, failed })

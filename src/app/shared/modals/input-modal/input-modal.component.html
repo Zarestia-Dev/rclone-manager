@@ -1,39 +1,48 @@
 <div class="properties-modal input-modal">
-  <h1 class="modal-title">{{ data.title }}</h1>
+  <header>
+    <mat-icon [svgIcon]="data.icon"></mat-icon>
+    <p>
+      {{ data.title }}
+    </p>
+  </header>
 
   <div class="modal-content">
-    <mat-form-field appearance="fill" style="width: 100%">
-      <mat-label>{{
-        data.label || data.existingNameType || ('shared.inputModal.name' | translate)
-      }}</mat-label>
-      <input matInput [placeholder]="data.placeholder || ''" [formControl]="nameControl" />
-      @if (nameControl.hasError('required')) {
-        <mat-error>{{
-          'shared.inputModal.required'
-            | translate
-              : {
-                  field:
-                    data.label || data.existingNameType || ('shared.inputModal.name' | translate),
-                }
-        }}</mat-error>
-      } @else if (nameControl.hasError('alreadyExists')) {
-        <mat-error>{{
-          'shared.inputModal.alreadyExists'
-            | translate: { name: data.existingNameType || ('shared.inputModal.name' | translate) }
-        }}</mat-error>
-      } @else if (nameControl.hasError('forbiddenChars')) {
-        <mat-error>{{
-          data.forbiddenCharsMessage ||
-            ('shared.inputModal.forbiddenChars'
+    @for (field of fields; track field.key) {
+      <mat-form-field appearance="fill" style="width: 100%">
+        <mat-label>{{
+          field.label || data.existingNameType || ('shared.inputModal.name' | translate)
+        }}</mat-label>
+        <input
+          matInput
+          [placeholder]="field.placeholder || ''"
+          [formControl]="getControl(field.key)"
+          [type]="field.type === 'password' ? 'password' : field.type === 'url' ? 'url' : 'text'"
+        />
+        @if (getControl(field.key).hasError('required')) {
+          <mat-error>{{
+            'shared.inputModal.required'
+              | translate: { field: field.label || ('shared.inputModal.name' | translate) }
+          }}</mat-error>
+        } @else if (getControl(field.key).hasError('alreadyExists')) {
+          <mat-error>{{
+            'shared.inputModal.alreadyExists'
               | translate
-                : { name: data.existingNameType || ('shared.inputModal.name' | translate) })
-        }}</mat-error>
-      }
-    </mat-form-field>
+                : { name: field.uniqueness?.typeLabel || ('shared.inputModal.name' | translate) }
+          }}</mat-error>
+        } @else if (getControl(field.key).hasError('forbiddenChars')) {
+          <mat-error>{{
+            data.forbiddenCharsMessage ||
+              ('shared.inputModal.forbiddenChars'
+                | translate
+                  : { name: field.uniqueness?.typeLabel || ('shared.inputModal.name' | translate) })
+          }}</mat-error>
+        }
+      </mat-form-field>
+    }
   </div>
 
   <div class="modal-actions">
-    <button mat-flat-button class="primary" [disabled]="!nameControl.valid" (click)="onConfirm()">
+    <button mat-flat-button class="primary" [disabled]="!form.valid" (click)="onConfirm()">
       {{ data.createLabel || ('shared.inputModal.create' | translate) }}
     </button>
     <button mat-flat-button class="accent" (click)="onCancel()">

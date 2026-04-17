@@ -658,7 +658,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Download the current file to a selected destination using copyUrl
+   * Download the current file to a selected destination using copyFile
    * Opens a folder picker to let user choose where to save
    */
   async download(): Promise<void> {

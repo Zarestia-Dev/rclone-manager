@@ -2215,6 +2215,13 @@
         "title": "Boş Klasörleri Kaldır",
         "message": "\"{{name}}\" içindeki tüm boş klasörleri kaldırmak istediğinizden emin misiniz?",
         "confirm": "Kaldır"
+      },
+      "copyUrl": {
+        "title": "URL'den İndir",
+        "urlLabel": "URL",
+        "fileLabel": "Dosya Adı (Opsiyonel)",
+        "filePlaceholder": "Otomatik adlandırmak için boş bırakın",
+        "confirm": "İndir"
       }
     },
     "errors": {
@@ -2232,7 +2239,8 @@
       "createFolderFailed": "\"{{name}}\" klasörü oluşturulamadı: {{error}}",
       "emptyTrashFailed": "Çöp boşaltılamadı: {{error}}",
       "openFileFailed": "Dosya açılamıyor: uzak sunucu bağlamı eksik",
-      "minSelection": "Lütfen en az {{min}} öge seçin."
+      "minSelection": "Lütfen en az {{min}} öge seçin.",
+      "copyUrlFailed": "URL'den indirme başarısız: {{error}}"
     },
     "contextMenu": {
       "open": "Aç",
@@ -2287,7 +2295,8 @@
       "pasteComplete": "Yapıştırma işlemi tamamlandı",
       "renameStarted": "Yeniden adlandırma işlemi başlatıldı",
       "undoComplete": "Geri alma başarılı",
-      "redoComplete": "Yineleme başarılı"
+      "redoComplete": "Yineleme başarılı",
+      "copyUrlStarted": "URL'den indiriliyor..."
     }
   },
   "overview": {

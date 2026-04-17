@@ -10,12 +10,15 @@ use serde_json::json;
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::core::check_binaries::{build_rclone_command, get_rclone_binary_path, read_rclone_path};
+use crate::core::check_binaries::{get_rclone_binary_path, read_rclone_path};
 use crate::core::settings::operations::core::save_setting;
+use crate::rclone::backend::BackendManager;
 use crate::rclone::queries::get_rclone_info;
 use crate::utils::app::notification::{NotificationEvent, notify};
 use crate::utils::github_client;
+use crate::utils::rclone::endpoints::{core, operations};
 use crate::utils::types::core::EngineState;
+use crate::utils::types::core::RcloneState;
 use crate::utils::types::events::RCLONE_ENGINE_UPDATING;
 use crate::utils::types::updater::RcloneUpdateMetadata;
 
@@ -233,6 +236,63 @@ pub async fn update_rclone(
 
     let latest_version = &update_check.latest_version;
 
+    // --- Remote backend: update in-place, no staging ---
+    // On a remote instance we cannot pass a local --output path — the remote
+    // process would try to write to that path on the *remote* server's
+    // filesystem. Instead, run selfupdate with no output arg so rclone
+    // replaces its own binary, then quit so it restarts with the new build.
+    {
+        let backend_manager = app_handle.state::<BackendManager>();
+        let backend = backend_manager.get_active().await;
+        if !backend.is_local {
+            notify(
+                &app_handle,
+                NotificationEvent::RcloneUpdateStarted {
+                    version: latest_version.to_string(),
+                },
+            );
+
+            // No --output: remote rclone updates its own binary in place.
+            let channel_str = channel.as_str().to_string();
+            let result = perform_rclone_selfupdate(&app_handle, None, channel).await;
+
+            return match result {
+                Ok(_) => {
+                    notify(
+                        &app_handle,
+                        NotificationEvent::RcloneUpdateComplete {
+                            version: latest_version.to_string(),
+                        },
+                    );
+
+                    // Gracefully quit the remote process so it restarts with the new binary.
+                    let client = &app_handle.state::<RcloneState>().client;
+                    let backend_manager = app_handle.state::<BackendManager>();
+                    let backend = backend_manager.get_active().await;
+                    let _ = backend.post_json(client, core::QUIT, None).await;
+
+                    Ok(json!({
+                        "success": true,
+                        "immediate": true,
+                        "message": "Remote rclone updated and restarted",
+                        "channel": channel_str
+                    }))
+                }
+                Err(e) => {
+                    notify(
+                        &app_handle,
+                        NotificationEvent::RcloneUpdateFailed { error: e.clone() },
+                    );
+                    Err(e)
+                }
+            };
+        }
+    }
+
+    // --- Local backend: staged update (.new file + explicit activation) ---
+
+    let latest_version = &update_check.latest_version;
+
     // Resolve binary path, falling back to system rclone
     let manager = app_handle.state::<crate::core::settings::AppSettingsManager>();
     let base_path: PathBuf = manager
@@ -297,6 +357,18 @@ pub async fn update_rclone(
 #[tauri::command]
 pub async fn apply_rclone_update(app_handle: tauri::AppHandle) -> Result<(), String> {
     debug!("🎯 Applying previously downloaded rclone update");
+
+    // Same restriction as update_rclone: the binary swap operates on local
+    // filesystem paths and must not be attempted via a remote RC instance.
+    {
+        let backend_manager = app_handle.state::<BackendManager>();
+        let backend = backend_manager.get_active().await;
+        if !backend.is_local {
+            return Err(crate::localized_error!(
+                "backendErrors.rclone.updateRemoteUnsupported"
+            ));
+        }
+    }
     let pending_version = activate_pending_rclone_update(&app_handle).await?;
 
     // send a notification that the update has actually been installed
@@ -319,9 +391,7 @@ pub async fn apply_rclone_update(app_handle: tauri::AppHandle) -> Result<(), Str
 /// Swaps the pending `.new` binary into the active location.
 /// Does NOT restart the engine — returns the activated version string.
 pub async fn activate_pending_rclone_update(app_handle: &AppHandle) -> Result<String, String> {
-    use std::fs;
-
-    debug!("🚀 Activating rclone update (swapping binaries)");
+    debug!("🚀 Activating rclone update (swapping binaries via RC)");
 
     let (current_path, new_path) = find_pending_new_binary(app_handle).ok_or_else(|| {
         use crate::utils::types::updater::RcloneUpdaterState;
@@ -336,65 +406,85 @@ pub async fn activate_pending_rclone_update(app_handle: &AppHandle) -> Result<St
             .to_string()
     })?;
 
-    // Kill the engine so the binary is unlocked (critical on Windows)
-    {
-        let engine_state = app_handle.state::<EngineState>();
-        let mut engine = engine_state.lock().await;
-        engine.set_updating(true);
-        let _ = engine.kill_process(app_handle).await;
-    }
-
-    if let Some(parent) = current_path.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|e| format!("Failed to create destination directory: {e}"))?;
-    }
-
-    // Atomic-ish rename with copy+remove fallback for cross-device moves
-    fn rename_or_copy(src: &Path, dst: &Path) -> std::io::Result<()> {
-        fs::rename(src, dst).or_else(|_| {
-            fs::copy(src, dst)?;
-            fs::remove_file(src)
-        })
-    }
+    let backend_manager = app_handle.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let client = &app_handle.state::<RcloneState>().client;
 
     let old_path = PathBuf::from(format!("{}.old", current_path.display()));
 
-    let swap_result: Result<(), String> = (|| {
-        if current_path.exists() {
-            let _ = fs::remove_file(&old_path);
+    // 1. Backup current binary
+    if current_path.exists() {
+        let src_fs = current_path
+            .parent()
+            .unwrap_or_else(|| Path::new("/"))
+            .to_string_lossy();
+        let src_remote = current_path
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy();
+        let dst_fs = old_path
+            .parent()
+            .unwrap_or_else(|| Path::new("/"))
+            .to_string_lossy();
+        let dst_remote = old_path.file_name().unwrap_or_default().to_string_lossy();
 
-            rename_or_copy(&current_path, &old_path)
-                .map_err(|e| format!("Failed to backup current rclone binary: {e}"))?;
+        let _ = backend
+            .post_json(
+                client,
+                operations::MOVEFILE,
+                Some(&serde_json::json!({
+                    "srcFs": src_fs,
+                    "srcRemote": src_remote,
+                    "dstFs": dst_fs,
+                    "dstRemote": dst_remote,
+                })),
+            )
+            .await;
+    }
 
-            if let Err(e) = rename_or_copy(&new_path, &current_path) {
-                // Rollback
-                rename_or_copy(&old_path, &current_path).map_err(|re| {
-                    format!("CRITICAL: Promoted binary failed and rollback failed: {re}")
-                })?;
-                return Err(format!(
-                    "Failed to activate new binary, rollback successful: {e}"
-                ));
-            }
-        } else {
-            rename_or_copy(&new_path, &current_path)
-                .map_err(|e| format!("Failed to activate new binary: {e}"))?;
-        }
-        Ok(())
-    })();
+    // 2. Promote new binary
+    {
+        let src_fs = new_path
+            .parent()
+            .unwrap_or_else(|| Path::new("/"))
+            .to_string_lossy();
+        let src_remote = new_path.file_name().unwrap_or_default().to_string_lossy();
+        let dst_fs = current_path
+            .parent()
+            .unwrap_or_else(|| Path::new("/"))
+            .to_string_lossy();
+        let dst_remote = current_path
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy();
 
+        backend
+            .post_json(
+                client,
+                operations::MOVEFILE,
+                Some(&serde_json::json!({
+                    "srcFs": src_fs,
+                    "srcRemote": src_remote,
+                    "dstFs": dst_fs,
+                    "dstRemote": dst_remote,
+                })),
+            )
+            .await
+            .map_err(|e| format!("Failed to promote new binary via RC: {e}"))?;
+    }
+
+    // 3. Graceful quit
+    info!("✅ Binary successfully swapped via RC. Quitting engine for restart...");
+    let _ = backend.post_json(client, core::QUIT, None).await;
+
+    // Update engine state to reflect that we are updating
     {
         let engine_state = app_handle.state::<EngineState>();
         let mut engine = engine_state.lock().await;
-        engine.set_updating(false);
+        engine.set_updating(false); // We've finished the swap, restart will happen next
     }
 
-    swap_result?;
-    info!("✅ Binary successfully swapped from .new -> active");
-
-    // Only persist the path when it has actually changed. If the value is
-    // already correct the settings store skips the write but still fires the
-    // change event, which would trigger a redundant engine restart on top of
-    // the one apply_rclone_update is about to do explicitly.
+    // Persist new path if needed
     if let Some(new_parent) = current_path.parent() {
         let manager = app_handle.state::<crate::core::settings::AppSettingsManager>();
         let current_setting: PathBuf = manager
@@ -419,6 +509,7 @@ pub async fn activate_pending_rclone_update(app_handle: &AppHandle) -> Result<St
     let meta = pending
         .take()
         .ok_or_else(|| "No pending update metadata".to_string())?;
+
     Ok(meta.latest_version)
 }
 
@@ -535,23 +626,35 @@ async fn check_rclone_selfupdate(
     app_handle: &AppHandle,
     channel: &UpdateChannel,
 ) -> Result<UpdateCheckResult, String> {
-    let output = build_rclone_command(app_handle, None, None, None)
-        .arg("selfupdate")
-        .arg("--check")
-        .output()
+    let backend_manager = app_handle.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let client = &app_handle.state::<RcloneState>().client;
+
+    // Call `rclone selfupdate --check` through the running RC daemon.
+    // The RC endpoint core/command runs any rclone sub-command and returns its
+    // COMBINED_OUTPUT in the "result" field.
+    let response = backend
+        .post_json(
+            client,
+            core::COMMAND,
+            Some(&serde_json::json!({
+                "command": "selfupdate",
+                "arg": ["--check"]
+            })),
+        )
         .await
-        .map_err(|e: std::io::Error| {
-            crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => e)
-        })?;
+        .map_err(
+            |e| crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => e),
+        )?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(
-            crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => stderr),
-        );
-    }
+    // core/command returns { "result": "<combined stdout+stderr>", "error": bool }
+    let output = response
+        .get("result")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
 
-    // Example stdout:
+    // Example output:
     //   yours:  1.71.1
     //   latest: 1.71.1   (released 2025-09-24)
     //   beta:   1.72.0-beta.9155.2bc155a96  (released 2025-10-05)
@@ -559,7 +662,7 @@ async fn check_rclone_selfupdate(
     let mut latest_stable = String::new();
     let mut latest_beta = String::new();
 
-    for line in String::from_utf8_lossy(&output.stdout).lines() {
+    for line in output.lines() {
         let line = line.trim();
         let version_field = || line.split_whitespace().nth(1).unwrap_or("").to_string();
         if line.starts_with("yours:") {
@@ -665,47 +768,61 @@ async fn perform_rclone_selfupdate(
     output_path: Option<&Path>,
     channel: UpdateChannel,
 ) -> Result<serde_json::Value, String> {
-    let mut cmd = build_rclone_command(app_handle, None, None, None);
-    cmd = cmd.arg("selfupdate");
+    let backend_manager = app_handle.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let client = &app_handle.state::<RcloneState>().client;
 
+    let mut args = vec![];
     if let Some(output) = output_path {
-        cmd = cmd.args(["--output", &output.display().to_string()]);
-        info!("Updating rclone with output to: {output:?}");
+        args.push("--output".to_string());
+        args.push(output.display().to_string());
     }
 
     match channel {
-        UpdateChannel::Beta => {
-            cmd = cmd.arg("--beta");
-        }
-        UpdateChannel::Stable => {
-            cmd = cmd.arg("--stable");
-        }
+        UpdateChannel::Beta => args.push("--beta".to_string()),
+        UpdateChannel::Stable => args.push("--stable".to_string()),
     }
 
-    info!("Using {} channel", channel.as_str());
-    debug!("Executing rclone selfupdate");
+    info!(
+        "Executing rclone selfupdate via RC ({:?} channel)",
+        channel.as_str()
+    );
 
-    let output = cmd.output().await.map_err(|e: std::io::Error| {
-        crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => e)
-    })?;
+    let response = backend
+        .post_json(
+            client,
+            core::COMMAND,
+            Some(&serde_json::json!({
+                "command": "selfupdate",
+                "arg": args
+            })),
+        )
+        .await
+        .map_err(
+            |e| crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => e),
+        )?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
+    // core/command returns { "result": "...", "error": bool }
+    let error = response
+        .get("error")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let result = response
+        .get("result")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    if error {
         return Err(
-            crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => stderr),
+            crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => result),
         );
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    if !String::from_utf8_lossy(&output.stderr).is_empty() {
-        debug!("Update stderr: {}", String::from_utf8_lossy(&output.stderr));
-    }
-
-    info!("Rclone selfupdate finished (binary downloaded)");
-    Ok(json!({
+    info!("Rclone selfupdate finished via RC (binary downloaded)");
+    Ok(serde_json::json!({
         "success": true,
         "message": "Rclone update downloaded successfully",
-        "output": stdout.trim(),
+        "output": result.trim(),
         "channel": channel.as_str()
     }))
 }

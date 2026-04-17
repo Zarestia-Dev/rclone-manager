@@ -45,3 +45,7 @@ export * from './remote/remote-file-operations.service';
 export * from './remote/remote-metadata.service';
 export * from './remote/utils/remote-config.utils';
 export * from './infrastructure/platform/api-client.service';
+export * from './ui/nautilus-settings.service';
+export * from './ui/nautilus-tab.service';
+export * from './ui/nautilus-file-operations.service';
+export * from './ui/nautilus-drag-drop.service';

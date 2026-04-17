@@ -56,46 +56,46 @@ pub mod core {
     /// "bytesPerSecond" is returned as a number.
     pub const BWLIMIT: &str = "core/bwlimit";
 
-    // /// Run a rclone terminal command over rc.
-    // ///
-    // /// This takes the following parameters:
-    // ///
-    // /// - command - a string with the command name.
-    // /// - arg - a list of arguments for the backend command.
-    // /// - opt - a map of string to string of options.
-    // /// - returnType - one of ("COMBINED_OUTPUT", "STREAM", "STREAM_ONLY_STDOUT", "STREAM_ONLY_STDERR").
-    // ///     - Defaults to "COMBINED_OUTPUT" if not set.
-    // ///     - The STREAM returnTypes will write the output to the body of the HTTP message.
-    // ///     - The COMBINED_OUTPUT will write the output to the "result" parameter.
-    // ///
-    // /// Returns:
-    // ///
-    // /// - result - result from the backend command.
-    // ///     - Only set when using returnType "COMBINED_OUTPUT".
-    // /// - error     - set if rclone exits with an error code.
-    // /// - returnType - one of ("COMBINED_OUTPUT", "STREAM", "STREAM_ONLY_STDOUT", "STREAM_ONLY_STDERR").
-    // ///
-    // /// Example:
-    // ///
-    // ///     rclone rc core/command command=ls -a mydrive:/ -o max-depth=1
-    // ///     rclone rc core/command -a ls -a mydrive:/ -o max-depth=1
-    // ///
-    // /// Returns:
-    // ///
-    // /// ```
-    // /// {
-    // ///     "error": false,
-    // ///     "result": "<Raw command line output>"
-    // /// }
-    // ///
-    // /// OR
-    // /// {
-    // ///     "error": true,
-    // ///     "result": "<Raw command line output>"
-    // /// }
-    // ///
-    // /// ```
-    // pub const COMMAND: &str = "core/command";
+    /// Run a rclone terminal command over rc.
+    ///
+    /// This takes the following parameters:
+    ///
+    /// - command - a string with the command name.
+    /// - arg - a list of arguments for the backend command.
+    /// - opt - a map of string to string of options.
+    /// - returnType - one of ("COMBINED_OUTPUT", "STREAM", "STREAM_ONLY_STDOUT", "STREAM_ONLY_STDERR").
+    ///     - Defaults to "COMBINED_OUTPUT" if not set.
+    ///     - The STREAM returnTypes will write the output to the body of the HTTP message.
+    ///     - The COMBINED_OUTPUT will write the output to the "result" parameter.
+    ///
+    /// Returns:
+    ///
+    /// - result - result from the backend command.
+    ///     - Only set when using returnType "COMBINED_OUTPUT".
+    /// - error     - set if rclone exits with an error code.
+    /// - returnType - one of ("COMBINED_OUTPUT", "STREAM", "STREAM_ONLY_STDOUT", "STREAM_ONLY_STDERR").
+    ///
+    /// Example:
+    ///
+    ///     rclone rc core/command command=ls -a mydrive:/ -o max-depth=1
+    ///     rclone rc core/command -a ls -a mydrive:/ -o max-depth=1
+    ///
+    /// Returns:
+    ///
+    /// ```
+    /// {
+    ///     "error": false,
+    ///     "result": "<Raw command line output>"
+    /// }
+    ///
+    /// OR
+    /// {
+    ///     "error": true,
+    ///     "result": "<Raw command line output>"
+    /// }
+    ///
+    /// ```
+    pub const COMMAND: &str = "core/command";
 
     /// Returns disk usage of a locally attached disk.
     ///

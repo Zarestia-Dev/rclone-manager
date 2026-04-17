@@ -279,24 +279,6 @@ export class JobManagementService extends TauriBaseService {
     );
   }
 
-  async copyUrl(
-    remote: string,
-    path: string,
-    url: string,
-    autoFilename: boolean,
-    source?: Origin,
-    group?: string
-  ): Promise<void> {
-    await this.invokeCommand('copy_url', {
-      remote,
-      path,
-      urlToCopy: url,
-      autoFilename,
-      source,
-      group,
-    });
-  }
-
   async stopJob(jobid: number, remoteName: string): Promise<void> {
     await this.invokeWithNotification(
       'stop_job',

@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { filter, map } from 'rxjs/operators';
+import { filter, map, take, firstValueFrom } from 'rxjs';
 import { BaseUpdateService } from '../maintenance/base-update.service';
 import { EventListenersService } from '../system/event-listeners.service';
 import { RcloneUpdateInfo, UpdateStatus, UpdateResult } from '@app/types';
@@ -78,7 +78,17 @@ export class RcloneUpdateService extends BaseUpdateService {
       );
 
       if (result.success) {
-        this.patchUpdateStatus({ downloading: false, available: false, readyToRestart: true });
+        if (result.immediate) {
+          // Remote in-place update: already applied and restarted, no activation step.
+          this.patchUpdateStatus({
+            downloading: false,
+            available: false,
+            readyToRestart: false,
+            updateInfo: null,
+          });
+        } else {
+          this.patchUpdateStatus({ downloading: false, available: false, readyToRestart: true });
+        }
         return true;
       }
 
@@ -92,11 +102,22 @@ export class RcloneUpdateService extends BaseUpdateService {
   }
 
   async applyUpdate(): Promise<boolean> {
+    const restartPromise = firstValueFrom(
+      this.eventListenersService.listenToEngineRestarted().pipe(
+        filter(event => event.reason === 'rclone_update'),
+        take(1)
+      )
+    );
+
     try {
       await this.invokeWithNotification<void>('apply_rclone_update', undefined, {
         errorKey: 'rcloneUpdate.failed',
         showSuccess: false,
       });
+
+      // Wait for the engine to actually be back up before resolving
+      await restartPromise;
+
       this.patchUpdateStatus({ readyToRestart: false, updateInfo: null });
       return true;
     } catch (error) {

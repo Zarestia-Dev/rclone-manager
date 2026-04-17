@@ -68,6 +68,7 @@ export class NautilusViewPaneComponent implements OnDestroy {
   public readonly listRowHeight = input.required<number>();
   public readonly isDragging = input.required<boolean>();
   public readonly hoveredFolder = input<FileBrowserItem | null>(null);
+  public readonly hoveredFolderPaneIndex = input<number | null>(null);
   public readonly cutItemPaths = input.required<Set<string>>();
   public readonly starredMode = input.required<boolean>();
   public readonly sortKey = input.required<string>();

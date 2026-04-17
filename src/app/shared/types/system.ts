@@ -120,6 +120,8 @@ export interface UpdateResult {
   message?: string;
   output?: string;
   channel?: string;
+  /** True when the update was applied immediately (e.g. remote in-place selfupdate). No separate activation step is needed. */
+  immediate?: boolean;
 }
 
 // === Security / Passwords ===

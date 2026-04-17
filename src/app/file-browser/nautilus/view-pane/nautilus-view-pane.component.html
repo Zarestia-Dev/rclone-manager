@@ -4,7 +4,7 @@
   [attr.data-pane-index]="paneIndex()"
   [class.focused]="activePaneIndex() === paneIndex()"
   [class.split-enabled]="isSplitEnabled()"
-  (mousedown)="switchPane.emit(paneIndex())"
+  (mousedown.self)="switchPane.emit(paneIndex())"
 >
   @if (layout() === 'grid') {
     <div
@@ -42,6 +42,7 @@
             [class.item-drop-target]="item.entry.IsDir"
             [class.folder-drag-over]="
               isDragging() &&
+              hoveredFolderPaneIndex() === paneIndex() &&
               hoveredFolder()?.entry?.Path === item.entry.Path &&
               _draggedItemPath() !== item.entry.Path
             "
@@ -188,6 +189,7 @@
           [class.item-drop-target]="item.entry.IsDir"
           [class.folder-drag-over]="
             isDragging() &&
+            hoveredFolderPaneIndex() === paneIndex() &&
             hoveredFolder()?.entry?.Path === item.entry.Path &&
             _draggedItemPath() !== item.entry.Path
           "

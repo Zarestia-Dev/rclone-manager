@@ -6,10 +6,10 @@ import {
   input,
   output,
   effect,
-  signal,
   computed,
   TemplateRef,
   Injector,
+  signal,
   afterNextRender,
   afterRenderEffect,
 } from '@angular/core';
@@ -20,6 +20,7 @@ import { CdkMenuModule } from '@angular/cdk/menu';
 import { IconService, NautilusService } from '@app/services';
 import { WindowControlsComponent } from '@app/shared/components';
 import { ExplorerRoot } from '@app/types';
+import { ScrollShadowDirective } from '../../../shared/directives/scroll-shadow.directive';
 
 @Component({
   selector: 'app-nautilus-toolbar',
@@ -30,6 +31,7 @@ import { ExplorerRoot } from '@app/types';
     TranslateModule,
     CdkMenuModule,
     WindowControlsComponent,
+    ScrollShadowDirective,
   ],
   templateUrl: './nautilus-toolbar.component.html',
   styleUrl: './nautilus-toolbar.component.scss',
@@ -64,6 +66,7 @@ export class NautilusToolbarComponent {
   public readonly navigateToPath = output<string>();
   public readonly layoutChange = output<'grid' | 'list'>();
   public readonly closeOverlay = output<void>();
+  public readonly copyUrl = output<void>();
   public readonly searchFilterChange = output<string>();
   public readonly isSearchModeChange = output<boolean>();
   public readonly isEditingPathChange = output<boolean>();
@@ -75,8 +78,8 @@ export class NautilusToolbarComponent {
   protected readonly pathInput = viewChild<ElementRef<HTMLInputElement>>('pathInput');
 
   // --- State ---
-  protected readonly _showLeftShadow = signal(false);
-  protected readonly _showRightShadow = signal(false);
+  protected readonly showLeft = signal(false);
+  protected readonly showRight = signal(false);
 
   protected readonly toggledLayout = computed((): 'grid' | 'list' =>
     this.layout() === 'grid' ? 'list' : 'grid'
@@ -85,10 +88,7 @@ export class NautilusToolbarComponent {
   constructor() {
     afterRenderEffect(() => {
       this.pathSegments(); // tracked dependency
-      const el = this.pathScrollView()?.nativeElement;
-      if (!el) return;
-      el.scrollTo({ left: el.scrollWidth, behavior: 'smooth' });
-      this.updateScrollShadows();
+      this.pathScrollView()?.nativeElement.scrollTo({ left: 999999, behavior: 'smooth' });
     });
 
     effect(() => {
@@ -107,25 +107,6 @@ export class NautilusToolbarComponent {
         );
       }
     });
-  }
-
-  /** Called by the template's (scroll) binding on the path scroll view. */
-  protected onScrollViewScroll(): void {
-    this.updateScrollShadows();
-  }
-
-  private updateScrollShadows(): void {
-    const el = this.pathScrollView()?.nativeElement;
-    if (!el) return;
-    this._showLeftShadow.set(el.scrollLeft > 4);
-    this._showRightShadow.set(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
-  }
-
-  protected onPathScroll(event: WheelEvent): void {
-    const el = this.pathScrollView()?.nativeElement;
-    if (!el) return;
-    el.scrollLeft += event.deltaY;
-    event.preventDefault();
   }
 
   protected onSearchEscape(inputElement: HTMLInputElement, event: Event): void {
