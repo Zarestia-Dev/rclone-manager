@@ -10,57 +10,132 @@
     <!-- Status Summary -->
     <app-status-overview-panel
       [mode]="mode()"
-      [totalCount]="remotes().length"
+      [totalCount]="remoteFacade.activeRemotes().length"
       [activeCount]="activeCount()"
       [inactiveCount]="inactiveCount()"
     />
 
-    <!-- Active Remotes Panel -->
-    @if (activeCount() > 0) {
+    @if (isEditingLayout()) {
       <app-remotes-panel
-        [title]="activeTitle()"
-        [icon]="activeIcon()"
-        [remotes]="activeRemotes()"
+        [title]="'generalOverview.layout.editLayout' | translate"
+        [icon]="'pen'"
+        [isActive]="true"
+        [remotes]="allRemotesForEditor()"
+        [allRemotes]="allRemotesForEditor()"
+        [hiddenRemoteNames]="hiddenRemoteNames()"
+        [isEditingLayout]="true"
         [mode]="mode()"
         [displayMode]="cardDisplayMode()"
-        [actionInProgress]="actionInProgress()"
         [primaryActionLabel]="primaryActionLabel()"
         [activeIcon]="activeIcon()"
-        (remoteSelected)="selectRemote($event)"
-        (openInFiles)="triggerOpenInFiles($event)"
-        (startJob)="
-          startJob.emit({
-            type: $event.type,
-            remoteName: $event.remoteName,
-            profileName: $event.profileName,
-          })
-        "
-        (stopJob)="stopJob.emit($event)"
+        (layoutChanged)="onLayoutChanged($event)"
+        (toggleHidden)="onToggleHidden($event)"
       />
-    }
+    } @else {
+      <!-- Active Remotes Panel -->
+      @if (activeCount() > 0) {
+        <app-remotes-panel
+          [title]="activeTitle()"
+          [icon]="activeIcon()"
+          [isActive]="true"
+          [remotes]="activeRemotes()"
+          [allRemotes]="activeRemotesForEditor()"
+          [hiddenRemoteNames]="hiddenRemoteNames()"
+          [isEditingLayout]="false"
+          [mode]="mode()"
+          [displayMode]="cardDisplayMode()"
+          [primaryActionLabel]="primaryActionLabel()"
+          [activeIcon]="activeIcon()"
+          (remoteSelected)="selectRemote($event)"
+          (openInFiles)="triggerOpenInFiles($event)"
+          (startJob)="
+            startJob.emit({
+              type: $event.type,
+              remoteName: $event.remoteName,
+              profileName: $event.profileName,
+            })
+          "
+          (stopJob)="stopJob.emit($event)"
+        />
+      }
 
-    <!-- Inactive Remotes Panel -->
-    @if (inactiveCount() > 0) {
-      <app-remotes-panel
-        [title]="inactiveTitle()"
-        [icon]="'circle-xmark'"
-        [remotes]="inactiveRemotes()"
-        [mode]="mode()"
-        [displayMode]="cardDisplayMode()"
-        [actionInProgress]="actionInProgress()"
-        [primaryActionLabel]="primaryActionLabel()"
-        [activeIcon]="activeIcon()"
-        (remoteSelected)="selectRemote($event)"
-        (openInFiles)="triggerOpenInFiles($event)"
-        (startJob)="
-          startJob.emit({
-            type: $event.type,
-            remoteName: $event.remoteName,
-            profileName: $event.profileName,
-          })
-        "
-        (stopJob)="stopJob.emit($event)"
-      />
+      <!-- Inactive Remotes Panel -->
+      @if (inactiveCount() > 0) {
+        <app-remotes-panel
+          [title]="inactiveTitle()"
+          [icon]="'circle-xmark'"
+          [isActive]="false"
+          [remotes]="inactiveRemotes()"
+          [allRemotes]="inactiveRemotesForEditor()"
+          [hiddenRemoteNames]="hiddenRemoteNames()"
+          [isEditingLayout]="false"
+          [mode]="mode()"
+          [displayMode]="cardDisplayMode()"
+          [primaryActionLabel]="primaryActionLabel()"
+          [activeIcon]="activeIcon()"
+          (remoteSelected)="selectRemote($event)"
+          (openInFiles)="triggerOpenInFiles($event)"
+          (startJob)="
+            startJob.emit({
+              type: $event.type,
+              remoteName: $event.remoteName,
+              profileName: $event.profileName,
+            })
+          "
+          (stopJob)="stopJob.emit($event)"
+        />
+      }
     }
+  </div>
+
+  <div class="layout-actions-blossom">
+    <!-- Blossom Panel (Visible on Hover) -->
+    <div class="blossom-panel">
+      <!-- Card Display Mode -->
+      <button
+        matMiniFab
+        class="blossom-item accent"
+        [style.transition-delay]="'70ms'"
+        (click)="onCardDisplayModeToggle()"
+        [matTooltip]="
+          cardDisplayMode() === 'compact'
+            ? ('generalOverview.layout.showDetailed' | translate)
+            : ('generalOverview.layout.showCompact' | translate)
+        "
+        matTooltipPosition="left"
+        matTooltipShowDelay="500"
+      >
+        <mat-icon [svgIcon]="cardDisplayMode() === 'compact' ? 'detailed' : 'compress'"></mat-icon>
+      </button>
+
+      <!-- Edit Layout Toggle -->
+      <button
+        matMiniFab
+        class="blossom-item"
+        [style.transition-delay]="'0ms'"
+        [class]="isEditingLayout() ? 'primary' : 'accent'"
+        (click)="toggleEditLayout()"
+        matTooltipShowDelay="500"
+        matTooltipPosition="left"
+        [matTooltip]="
+          isEditingLayout()
+            ? ('generalOverview.layout.save' | translate)
+            : ('generalOverview.layout.edit' | translate)
+        "
+      >
+        <mat-icon [svgIcon]="isEditingLayout() ? 'circle-check' : 'pen'"></mat-icon>
+      </button>
+    </div>
+
+    <!-- Main Trigger Button -->
+    <button
+      matFab
+      class="blossom-trigger accent"
+      [matTooltip]="'generalOverview.layout.settings' | translate"
+      matTooltipPosition="left"
+      matTooltipShowDelay="500"
+    >
+      <mat-icon svgIcon="tune"></mat-icon>
+    </button>
   </div>
 </div>

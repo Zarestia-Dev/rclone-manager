@@ -1,7 +1,8 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal, computed, Signal } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { RemoteFileOperationsService } from '../remote/remote-file-operations.service';
 import { FsInfo, RemoteFeatures, Origin } from '@app/types';
+import { isLocalPath } from './utils/remote-config.utils';
 
 @Injectable({
   providedIn: 'root',
@@ -10,7 +11,7 @@ export class RemoteMetadataService extends TauriBaseService {
   private remoteOpsService = inject(RemoteFileOperationsService);
 
   private metadataCache = new Map<string, FsInfo>();
-  private featuresCache = new Map<string, RemoteFeatures>();
+  private readonly _features = signal<Record<string, RemoteFeatures>>({});
 
   /**
    * Get and cache filesystem info for a remote
@@ -47,7 +48,27 @@ export class RemoteMetadataService extends TauriBaseService {
   }
 
   /**
-   * Extract and cache features for a remote
+   * Get a signal for a specific remote's features
+   */
+  getFeaturesSignal(remoteName: string): Signal<RemoteFeatures> {
+    const normalizedKey = remoteName.endsWith(':') ? remoteName.slice(0, -1) : remoteName;
+    return computed(() => {
+      return (
+        this._features()[normalizedKey] ?? {
+          isLocal: isLocalPath(normalizedKey),
+          hasAbout: true,
+          hasBucket: false,
+          hasCleanUp: false,
+          hasPublicLink: false,
+          changeNotify: false,
+          hashes: [],
+        }
+      );
+    });
+  }
+
+  /**
+   * Get and cache features for a remote
    */
   async getFeatures(
     remoteName: string,
@@ -56,10 +77,8 @@ export class RemoteMetadataService extends TauriBaseService {
   ): Promise<RemoteFeatures> {
     const normalizedKey = remoteName.endsWith(':') ? remoteName.slice(0, -1) : remoteName;
 
-    if (this.featuresCache.has(normalizedKey)) {
-      const cached = this.featuresCache.get(normalizedKey);
-      if (cached) return cached;
-      throw new Error(`Features not found for ${normalizedKey}`);
+    if (this._features()[normalizedKey]) {
+      return this._features()[normalizedKey];
     }
 
     try {
@@ -73,7 +92,7 @@ export class RemoteMetadataService extends TauriBaseService {
         changeNotify: !!info.Features?.['ChangeNotify'],
         hashes: info.Hashes ?? [],
       };
-      this.featuresCache.set(normalizedKey, features);
+      this._features.update(cache => ({ ...cache, [normalizedKey]: features }));
       return features;
     } catch (error) {
       // Fallback for failed feature detection
@@ -93,10 +112,14 @@ export class RemoteMetadataService extends TauriBaseService {
   clearCache(remoteName?: string): void {
     if (remoteName) {
       this.metadataCache.delete(remoteName);
-      this.featuresCache.delete(remoteName);
+      this._features.update(cache => {
+        const next = { ...cache };
+        delete next[remoteName];
+        return next;
+      });
     } else {
       this.metadataCache.clear();
-      this.featuresCache.clear();
+      this._features.set({});
     }
   }
 }

@@ -1,10 +1,10 @@
-import { DestroyRef, inject, Injectable, signal } from '@angular/core';
+import { DestroyRef, inject, Injectable, signal, computed } from '@angular/core';
 import { merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { MountedRemote, Origin } from '@app/types';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
-import { getRemoteNameFromFs } from '../remote/utils/remote-config.utils';
+import { getRemoteNameFromFs, groupBy } from '../remote/utils/remote-config.utils';
 import { FileSystemService } from './file-system.service';
 
 /**
@@ -18,6 +18,10 @@ import { FileSystemService } from './file-system.service';
 export class MountManagementService extends TauriBaseService {
   private readonly _mountedRemotes = signal<MountedRemote[]>([]);
   public readonly mountedRemotes = this._mountedRemotes.asReadonly();
+
+  public readonly mountsByRemote = computed(() =>
+    groupBy(this._mountedRemotes(), m => getRemoteNameFromFs(m.fs))
+  );
 
   private eventListeners = inject(EventListenersService);
   private destroyRef = inject(DestroyRef);

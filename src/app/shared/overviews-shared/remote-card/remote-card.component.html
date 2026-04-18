@@ -1,4 +1,29 @@
-<mat-card class="remote-card" [ngClass]="remoteCardClasses()" (click)="onRemoteClick()">
+<mat-card
+  class="remote-card"
+  [ngClass]="remoteCardClasses()"
+  (click)="onRemoteClick()"
+  (keydown)="onRemoteKeyDown($event)"
+  [attr.tabindex]="isEditingLayout() ? -1 : 0"
+  role="button"
+>
+  @if (isEditingLayout()) {
+    <div
+      class="card-edit-overlay"
+      (click)="$event.stopPropagation()"
+      (keydown)="$event.stopPropagation()"
+      role="presentation"
+    >
+      <mat-icon svgIcon="drag-indicator" class="drag-handle"></mat-icon>
+      <button
+        class="hide-btn"
+        [matTooltip]="(isHidden() ? 'actions.show' : 'actions.hide') | translate"
+        (click)="onToggleHidden($event)"
+      >
+        <mat-icon [svgIcon]="isHidden() ? 'eye' : 'eye-slash'"></mat-icon>
+      </button>
+    </div>
+  }
+
   <mat-card-header class="remote-header" [ngClass]="'display-' + displayMode()">
     <div class="remote-info">
       <div class="icon-container">

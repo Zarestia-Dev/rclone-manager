@@ -2300,7 +2300,8 @@
       "copyErrorFailed": "Error al copiar el error",
       "errorCopied": "Error copiado al portapapeles",
       "showDetailed": "Mostrar tarjetas detalladas",
-      "showCompact": "Mostrar tarjetas compactas"
+      "showCompact": "Mostrar tarjetas compactas",
+      "settings": "Ajustes de diseño"
     },
     "bandwidth": {
       "aria": {

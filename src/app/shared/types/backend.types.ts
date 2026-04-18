@@ -51,7 +51,7 @@ export interface SettingOption {
 }
 
 export interface BackendSettingMetadata {
-  setting_type: 'toggle' | 'text' | 'number' | 'select' | 'info' | 'list';
+  setting_type: 'toggle' | 'text' | 'number' | 'select' | 'info' | 'list' | 'object';
   default: unknown;
   value?: unknown;
   constraints: {

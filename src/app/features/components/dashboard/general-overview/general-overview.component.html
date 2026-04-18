@@ -25,11 +25,21 @@
                   animate.leave="expand-height-leave"
                 >
                   <div>
-                    <mat-icon svgIcon="menu-bar"></mat-icon>
+                    <mat-icon svgIcon="drag-indicator"></mat-icon>
                   </div>
                   <span class="panel-label">{{ panel.title | translate }}</span>
 
                   @if (panel.id === 'remotes') {
+                    <button
+                      matIconButton
+                      class="card-layout-toggle"
+                      (click)="resetRemoteLayout()"
+                      [matTooltip]="'actions.reset' | translate"
+                      matTooltipPosition="left"
+                      matTooltipShowDelay="500"
+                    >
+                      <mat-icon svgIcon="rotate-right"></mat-icon>
+                    </button>
                     <button
                       matIconButton
                       class="card-layout-toggle"
@@ -72,28 +82,25 @@
                     <app-remotes-panel
                       [title]="'generalOverview.panels.remotes' | translate"
                       [icon]="'cloud'"
-                      [remotes]="remotes()"
+                      [isActive]="true"
+                      [remotes]="remoteFacade.orderedVisibleRemotes()"
+                      [allRemotes]="remoteFacade.allRemotesForEditor()"
+                      [hiddenRemoteNames]="remoteFacade.hiddenRemoteNames()"
+                      [isEditingLayout]="isEditingLayout()"
                       [mode]="'general'"
                       [displayMode]="cardDisplayMode()"
-                      [actionInProgress]="actionInProgress()"
                       [primaryActionLabel]="'actions.mount' | translate"
                       [activeIcon]="'mount'"
                       (remoteSelected)="selectRemote.emit($event)"
                       (openInFiles)="browseRemote.emit($event)"
-                      (startJob)="
-                        startJob.emit({
-                          type: $event.type,
-                          remoteName: $event.remoteName,
-                          profileName: $event.profileName,
-                        })
+                      (layoutChanged)="
+                        remoteFacade.saveCurrentLayout(backendService.activeBackend(), $event)
                       "
-                      (stopJob)="
-                        stopJob.emit({
-                          type: $event.type,
-                          remoteName: $event.remoteName,
-                          profileName: $event.profileName,
-                        })
+                      (toggleHidden)="
+                        remoteFacade.toggleRemoteVisibility(backendService.activeBackend(), $event)
                       "
+                      (startJob)="startJob.emit($event)"
+                      (stopJob)="stopJob.emit($event)"
                       role="region"
                       [attr.aria-label]="'generalOverview.panels.remotes' | translate"
                     >

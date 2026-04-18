@@ -1,13 +1,4 @@
-import {
-  Component,
-  inject,
-  input,
-  signal,
-  computed,
-  output,
-  effect,
-  untracked,
-} from '@angular/core';
+import { Component, inject, signal, computed, output, effect, untracked } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,7 +6,6 @@ import { MatCardModule } from '@angular/material/card';
 import { NgClass, TitleCasePipe, DatePipe } from '@angular/common';
 import {
   DiskUsage,
-  JobInfo,
   JobsPanelConfig,
   PrimaryActionType,
   Remote,
@@ -28,7 +18,7 @@ import {
   JobsPanelComponent,
   SettingsPanelComponent,
 } from '../../../../shared/detail-shared';
-import { IconService, SchedulerService } from '@app/services';
+import { IconService, SchedulerService, RemoteFacadeService } from '@app/services';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 interface ActionConfig {
@@ -125,12 +115,15 @@ export class GeneralDetailComponent {
   private readonly schedulerService = inject(SchedulerService);
   private readonly translate = inject(TranslateService);
   private readonly datePipe = inject(DatePipe);
+  private readonly remoteFacade = inject(RemoteFacadeService);
 
-  // Inputs
-  readonly selectedRemote = input.required<Remote>();
-  readonly jobs = input<JobInfo[]>([]);
+  // State
+  protected readonly selectedRemote = computed(() => {
+    const remote = this.remoteFacade.selectedRemote();
+    if (!remote) throw new Error('[GeneralDetail] Selected remote is required');
+    return remote;
+  });
 
-  // Outputs
   readonly openRemoteConfigModal = output<{
     editTarget?: string;
     existingConfig?: RemoteSettings;
@@ -191,6 +184,9 @@ export class GeneralDetailComponent {
   };
 
   // Derivations
+  readonly jobs = computed(() =>
+    this.remoteFacade.jobs().filter(j => j.remote_name === this.selectedRemote().name)
+  );
   readonly remoteScheduledTasks = computed(() => {
     const allTasks = this.allScheduledTasks();
     const remote = this.selectedRemote();

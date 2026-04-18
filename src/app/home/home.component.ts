@@ -21,7 +21,6 @@ import { CdkMenuModule } from '@angular/cdk/menu';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 import {
-  JobInfo,
   OperationTab,
   PrimaryActionType,
   Remote,
@@ -84,17 +83,12 @@ export class HomeComponent {
   readonly remotes = this.remoteFacadeService.activeRemotes;
   readonly jobs = this.remoteFacadeService.jobs;
   readonly runningServes = this.remoteFacadeService.runningServes;
-  readonly actionInProgress = this.remoteFacadeService.actionInProgress;
 
   readonly backendStatusClass = computed(() =>
     this.rcloneStatusService.rcloneStatus() === 'active' ? 'connected' : 'disconnected'
   );
 
-  readonly selectedRemote = computed(() => {
-    const source = this.uiStateService.selectedRemote();
-    if (!source) return null;
-    return this.remotes().find(r => r.name === source.name) ?? source;
-  });
+  readonly selectedRemote = this.remoteFacadeService.selectedRemote;
 
   readonly selectedRemoteSettings = computed(() => {
     const remote = this.selectedRemote();
@@ -225,10 +219,6 @@ export class HomeComponent {
     } catch (error) {
       console.error('Delete job failed:', error);
     }
-  }
-
-  getJobsForRemote(remoteName: string): JobInfo[] {
-    return this.jobs().filter(j => j.remote_name === remoteName);
   }
 
   // --- Remote Operations ---

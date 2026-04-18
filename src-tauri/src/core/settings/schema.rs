@@ -256,7 +256,13 @@ pub struct RuntimeSettings {
         label = "settings.runtime.dashboard_layout.label",
         description = "settings.runtime.dashboard_layout.description"
     )]
-    pub dashboard_layout: Vec<String>,
+    pub dashboard_layout: Value,
+
+    #[setting(
+        label = "settings.runtime.remote_layouts.label",
+        description = "settings.runtime.remote_layouts.description"
+    )]
+    pub remote_layouts: Value,
 
     #[setting(
         label = "settings.runtime.dashboard_card_variant.label",
@@ -277,7 +283,8 @@ impl Default for RuntimeSettings {
             rclone_skipped_updates: vec![],
             rclone_update_channel: "stable".to_string(),
             flatpak_warn: true,
-            dashboard_layout: vec![],
+            dashboard_layout: Value::Object(Default::default()),
+            remote_layouts: Value::Object(Default::default()),
             dashboard_card_variant: "compact".to_string(),
         }
     }

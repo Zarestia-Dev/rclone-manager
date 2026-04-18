@@ -34,13 +34,23 @@
             class="remote-card"
             (click)="selectRemote(remote)"
             [class.selected]="selectedRemote()?.name === remote.name"
+            [class.is-hidden-on-dashboard]="hiddenRemotes().includes(remote.name)"
           >
             <mat-card-content class="card-content">
               <!-- Remote Name with Status Indicators -->
               <div class="remote-header">
-                <h4 matTooltipShowDelay="500" [matTooltip]="remote.name">
-                  {{ remote.name }}
-                </h4>
+                <div class="remote-name-wrapper">
+                  <h4 matTooltipShowDelay="500" [matTooltip]="remote.name">
+                    {{ remote.name }}
+                  </h4>
+                  @if (hiddenRemotes().includes(remote.name)) {
+                    <mat-icon
+                      svgIcon="eye-slash"
+                      class="hidden-indicator"
+                      [matTooltip]="'sidebar.hiddenOnDashboard' | translate"
+                    ></mat-icon>
+                  }
+                </div>
                 <div class="status-indicators">
                   @if (remote.status.mount) {
                     <div

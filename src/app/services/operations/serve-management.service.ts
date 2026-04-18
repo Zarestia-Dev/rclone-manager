@@ -1,10 +1,10 @@
-import { DestroyRef, inject, Injectable, signal } from '@angular/core';
+import { DestroyRef, inject, Injectable, signal, computed } from '@angular/core';
 import { merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { ServeStartResponse, ServeListResponse, ServeListItem } from '@app/types';
 import { EventListenersService, normalizeFs } from '@app/services';
-import { getRemoteNameFromFs } from '../remote/utils/remote-config.utils';
+import { getRemoteNameFromFs, groupBy } from '../remote/utils/remote-config.utils';
 
 /**
  * Service for managing rclone serve instances
@@ -20,6 +20,10 @@ export class ServeManagementService extends TauriBaseService {
   // Observable for running serves list
   private readonly _runningServes = signal<ServeListItem[]>([]);
   public readonly runningServes = this._runningServes.asReadonly();
+
+  public readonly servesByRemote = computed(() =>
+    groupBy(this._runningServes(), s => getRemoteNameFromFs(s.params?.fs))
+  );
 
   private normalizeServeItem(serve: ServeListItem): ServeListItem {
     return {

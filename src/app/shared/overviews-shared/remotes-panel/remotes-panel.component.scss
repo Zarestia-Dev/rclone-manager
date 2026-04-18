@@ -45,7 +45,6 @@
   }
 }
 
-// Active panel: icon uses mode accent color
 .active-remotes-panel .panel-title mat-icon {
   color: var(--mode-primary-color, var(--primary-color));
 }
@@ -86,6 +85,42 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: var(--space-md);
+  align-items: start;
+}
+
+// ── Drag & drop ───────────────────────────────────────────────────────────────
+
+// Placeholder slot shown while a card is being dragged
+.remote-drag-placeholder {
+  background: rgba(var(--primary-color-rgb), 0.08);
+  border: 2px dashed var(--primary-color);
+  border-radius: var(--card-border-radius-large);
+  min-height: 120px;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+
+  .placeholder-icon {
+    opacity: 0.4;
+  }
+}
+
+.cdk-drag-preview {
+  box-sizing: border-box;
+  border-radius: var(--card-border-radius-large);
+  z-index: 1000;
+  cursor: grabbing !important;
+}
+
+.cdk-drag-animating {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.remotes-grid.cdk-drop-list-dragging app-remote-card:not(.cdk-drag-placeholder) {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
 }
 
 // ── Responsive ───────────────────────────────────────────────────────────────

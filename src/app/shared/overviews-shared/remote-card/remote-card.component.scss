@@ -1,10 +1,86 @@
+// ── Host ──────────────────────────────────────────────────────────────────────
+// The component is now a direct grid item (no wrapper div), so it must be a
+// proper block box and carry its own edit/hidden state via host bindings.
+
+:host {
+  display: block;
+  transition: transform 0.2s cubic-bezier(0, 0, 0.2, 1);
+}
+
+:host(.is-editing) {
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  // Prevent accidental interaction with the card while rearranging
+  .remote-card {
+    pointer-events: none;
+  }
+
+  // The overlay itself must still be interactive
+  .card-edit-overlay {
+    pointer-events: auto;
+  }
+}
+
+:host(.is-hidden-layout) {
+  opacity: 0.4;
+}
+
+// ── Edit overlay ──────────────────────────────────────────────────────────────
+// Positioned relative to .remote-card which already has position: relative.
+
+.card-edit-overlay {
+  position: absolute;
+  top: var(--space-xs);
+  right: var(--space-xs);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  background: var(--view-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 2px;
+  box-shadow: var(--shadow-sm);
+
+  .drag-handle {
+    cursor: grab;
+    color: var(--dim-color);
+    padding: 4px;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:active {
+      cursor: grabbing;
+    }
+  }
+
+  .hide-btn {
+    width: 32px;
+    height: 32px;
+    line-height: 32px;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+  }
+}
+
+// ── Card ──────────────────────────────────────────────────────────────────────
+
 .remote-card {
   position: relative;
   transition: var(--transition-standard);
   background: var(--window-bg-color);
   box-shadow: var(--box-shadow);
-  animation: fadeIn 0.6s ease-out both;
-  will-change: transform;
 
   &:hover {
     background: var(--hover-bg-color);
@@ -234,8 +310,6 @@
     align-items: center;
     justify-content: center;
 
-    // Transparent bridge fills the gap between trigger and blossom panel so
-    // the mouse never "leaves" the hover zone while crossing it.
     &::before {
       content: "";
       position: absolute;
@@ -266,7 +340,6 @@
       justify-content: center;
     }
 
-    // Blossom panel — hidden by default, revealed on hover or focus-within (touch)
     .folder-blossom {
       position: absolute;
       bottom: calc(100% + 10px);
@@ -286,7 +359,6 @@
         opacity 0.18s ease 150ms,
         transform 0.22s ease 150ms;
 
-      // Downward arrow pointing at the trigger
       &::after {
         content: "";
         position: absolute;
@@ -298,8 +370,6 @@
         pointer-events: none;
       }
 
-      // Individual item: starts hidden, slides up into place with a stagger set
-      // via [style.transition-delay] in the template.
       .folder-blossom-item {
         opacity: 0;
         transform: scale(0.65) translateY(6px);
@@ -309,7 +379,6 @@
       }
     }
 
-    // ── Open state: hover (mouse) or focus-within (keyboard / touch tap) ─────
     &:hover,
     &:focus-within {
       .folder-blossom {

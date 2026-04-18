@@ -2383,7 +2383,8 @@
       "resetSuccess": "Düzen varsayılana sıfırlandı",
       "toggleTaskFailed": "Zamanlanmış görev değiştirilemedi",
       "showDetailed": "Ayrıntılı Kartları Göster",
-      "showCompact": "Kompakt Kartları Göster"
+      "showCompact": "Kompakt Kartları Göster",
+      "settings": "Düzen Ayarları"
     },
     "bandwidth": {
       "aria": {

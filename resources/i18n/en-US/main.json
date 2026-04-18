@@ -2396,7 +2396,8 @@
       "resetSuccess": "Layout reset to default",
       "toggleTaskFailed": "Failed to toggle scheduled task",
       "showDetailed": "Show Detailed Cards",
-      "showCompact": "Show Compact Cards"
+      "showCompact": "Show Compact Cards",
+      "settings": "Layout Settings"
     },
     "bandwidth": {
       "aria": {

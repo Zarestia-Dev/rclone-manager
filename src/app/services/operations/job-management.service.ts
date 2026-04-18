@@ -4,6 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { JobInfo, Origin, ORIGINS, GlobalStats, CompletedTransfer } from '@app/types';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
+import { groupBy } from '../remote/utils/remote-config.utils';
 
 export interface RawTransfer {
   name?: string;
@@ -52,6 +53,8 @@ export class JobManagementService extends TauriBaseService {
   public readonly nautilusJobs = computed(() =>
     this._jobs().filter(job => job.origin === ORIGINS.FILEMANAGER)
   );
+
+  public readonly jobsByRemote = computed(() => groupBy(this._jobs(), j => j.remote_name));
 
   private readonly destroyRef = inject(DestroyRef);
   private readonly eventListeners = inject(EventListenersService);

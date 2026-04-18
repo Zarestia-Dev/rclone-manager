@@ -90,3 +90,13 @@ export interface Remote {
   features: RemoteFeatures;
   primaryActions: PrimaryActionType[];
 }
+
+// ── Remote layout ───────────────────────────────────────────────────────────
+
+export interface RemotesLayout {
+  order: string[];
+  hidden: string[];
+}
+
+/** Keyed by backend name */
+export type BackendsRemotesLayout = Record<string, RemotesLayout>;

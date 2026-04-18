@@ -2,7 +2,7 @@ import { inject, Injectable, signal } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { firstValueFrom, Observable } from 'rxjs';
 import { map, distinctUntilChanged, filter, first } from 'rxjs/operators';
-import { SettingMetadata, SettingsChangeEvent } from '@app/types';
+import { SettingMetadata, SettingsChangeEvent, BackendsRemotesLayout } from '@app/types';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 
@@ -216,5 +216,18 @@ export class AppSettingsService extends TauriBaseService {
     this.notificationService.showSuccess(
       this.translate.instant('settings.remoteResetSuccess', { remote: remoteName })
     );
+  }
+
+  /**
+   * Remove a backend's remote layout configuration
+   */
+  async removeBackendLayout(backendName: string): Promise<void> {
+    const allLayouts =
+      (await this.getSettingValue<BackendsRemotesLayout>('runtime.remote_layouts')) || {};
+
+    if (allLayouts[backendName]) {
+      delete allLayouts[backendName];
+      await this.saveSetting('runtime', 'remote_layouts', allLayouts);
+    }
   }
 }

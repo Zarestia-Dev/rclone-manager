@@ -21,7 +21,6 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { FormatTimePipe } from 'src/app/shared/pipes/format-time.pipe';
 import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
 import {
-  ActionState,
   CompletedTransfer,
   GlobalStats,
   DEFAULT_JOB_STATS,
@@ -31,7 +30,6 @@ import {
   OperationControlConfig,
   PathDisplayConfig,
   PrimaryActionType,
-  Remote,
   RemoteStatus,
   RemoteOperationState,
   RemoteServeState,
@@ -56,7 +54,13 @@ import {
   TransferActivityPanelComponent,
 } from '../../../../shared/detail-shared';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
-import { IconService, JobManagementService, RawTransfer, mapRawTransfer } from '@app/services';
+import {
+  IconService,
+  JobManagementService,
+  RawTransfer,
+  mapRawTransfer,
+  RemoteFacadeService,
+} from '@app/services';
 import { toString as cronstrue } from 'cronstrue';
 import { VfsControlPanelComponent } from '../../../../shared/detail-shared/vfs-control/vfs-control-panel.component';
 import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
@@ -119,9 +123,7 @@ export class AppDetailComponent {
   // --- Inputs ---
   readonly mainOperationType = input<PrimaryActionType>('mount');
   readonly selectedSyncOperation = model<SyncOperationType>('sync');
-  readonly selectedRemote = input.required<Remote>();
   readonly remoteSettings = input<RemoteSettings>({});
-  readonly actionInProgress = input<ActionState[] | null | undefined>(null);
 
   // --- Outputs ---
   readonly openRemoteConfigModal = output<{
@@ -146,6 +148,7 @@ export class AppDetailComponent {
   }>();
 
   // --- Services ---
+  private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly jobService = inject(JobManagementService);
   readonly iconService = inject(IconService);
   private readonly translate = inject(TranslateService);
@@ -156,6 +159,15 @@ export class AppDetailComponent {
   private readonly _lang = toSignal(this.translate.onLangChange, { initialValue: null });
 
   readonly selectedProfile = signal<string | null>(null);
+  protected readonly selectedRemote = computed(() => {
+    const remote = this.remoteFacade.selectedRemote();
+    if (!remote) throw new Error('[AppDetail] Selected remote is required');
+    return remote;
+  });
+
+  readonly actionInProgress = computed(
+    () => this.remoteFacade.actionInProgress()[this.selectedRemote().name] ?? []
+  );
 
   // --- Derived: Operation Type ---
   readonly isSyncType = computed(() => this.mainOperationType() === 'sync');

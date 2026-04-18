@@ -2388,7 +2388,8 @@
       "save": "保存布局",
       "reset": "重置布局",
       "resetSuccess": "布局已恢复默认",
-      "toggleTaskFailed": "切换计划任务状态失败"
+      "toggleTaskFailed": "切换计划任务状态失败",
+      "settings": "布局设置"
     },
     "bandwidth": {
       "aria": {

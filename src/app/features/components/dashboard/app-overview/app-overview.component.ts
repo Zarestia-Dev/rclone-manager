@@ -1,18 +1,15 @@
 import { NgClass } from '@angular/common';
 import { Component, computed, input, output, inject, signal, OnInit } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
-import {
-  CardDisplayMode,
-  OperationTab,
-  PrimaryActionType,
-  Remote,
-  RemoteActionProgress,
-  ServeListItem,
-} from '@app/types';
+import { CardDisplayMode, OperationTab, PrimaryActionType, Remote } from '@app/types';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { TranslateModule } from '@ngx-translate/core';
 import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
 import { StatusOverviewPanelComponent } from '../../../../shared/overviews-shared/status-overview-panel/status-overview-panel.component';
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
-import { AppSettingsService } from '@app/services';
+import { AppSettingsService, RemoteFacadeService, BackendService } from '@app/services';
 
 interface StopJobEvent {
   type: PrimaryActionType;
@@ -51,20 +48,27 @@ const MODE_CONFIG: Record<OperationTab, ModeConfig> = {
 
 @Component({
   selector: 'app-app-overview',
-  imports: [NgClass, OverviewHeaderComponent, StatusOverviewPanelComponent, RemotesPanelComponent],
+  imports: [
+    NgClass,
+    MatIconModule,
+    MatButtonModule,
+    MatTooltipModule,
+    TranslateModule,
+    OverviewHeaderComponent,
+    StatusOverviewPanelComponent,
+    RemotesPanelComponent,
+  ],
   templateUrl: './app-overview.component.html',
   styleUrl: './app-overview.component.scss',
 })
 export class AppOverviewComponent implements OnInit {
   private readonly translate = inject(TranslateService);
   private readonly appSettingsService = inject(AppSettingsService);
+  readonly remoteFacade = inject(RemoteFacadeService);
+  readonly backendService = inject(BackendService);
 
   // --- Inputs ---
   readonly mode = input<OperationTab>('mount');
-  readonly remotes = input<Remote[]>([]);
-  readonly selectedRemote = input<Remote | null>(null);
-  readonly actionInProgress = input<RemoteActionProgress>({});
-  readonly runningServes = input<ServeListItem[]>([]);
 
   // --- Outputs ---
   readonly remoteSelected = output<Remote>();
@@ -79,12 +83,33 @@ export class AppOverviewComponent implements OnInit {
 
   // Card display mode is local UI state, not derived from inputs
   readonly cardDisplayMode = signal<CardDisplayMode>('detailed');
+  readonly isEditingLayout = signal(false);
 
   // --- Derived state ---
   private readonly modeConfig = computed(() => MODE_CONFIG[this.mode()]);
 
-  readonly activeRemotes = computed(() => this.remotes().filter(r => this.isRemoteActive(r)));
-  readonly inactiveRemotes = computed(() => this.remotes().filter(r => !this.isRemoteActive(r)));
+  readonly activeRemotes = computed(() =>
+    this.remoteFacade.orderedVisibleRemotes().filter(r => this.isActive(r))
+  );
+  readonly inactiveRemotes = computed(() =>
+    this.remoteFacade.orderedVisibleRemotes().filter(r => !this.isActive(r))
+  );
+
+  /** Active remotes including hidden ones for the editor */
+  readonly activeRemotesForEditor = computed(() =>
+    this.remoteFacade.allRemotesForEditor().filter(r => this.isActive(r))
+  );
+
+  /** Inactive remotes including hidden ones for the editor */
+  readonly inactiveRemotesForEditor = computed(() =>
+    this.remoteFacade.allRemotesForEditor().filter(r => !this.isActive(r))
+  );
+
+  /** All remotes including hidden ones for the unified editor */
+  readonly allRemotesForEditor = computed(() => this.remoteFacade.allRemotesForEditor());
+
+  /** Names of remotes that are hidden in the current backend */
+  readonly hiddenRemoteNames = computed(() => this.remoteFacade.hiddenRemoteNames());
   readonly activeCount = computed(() => this.activeRemotes().length);
   readonly inactiveCount = computed(() => this.inactiveRemotes().length);
 
@@ -114,9 +139,30 @@ export class AppOverviewComponent implements OnInit {
     if (event?.remoteName) this.openInFiles.emit(event);
   }
 
+  toggleEditLayout(): void {
+    this.isEditingLayout.update(v => !v);
+  }
+
+  onLayoutChanged(newNames: string[]): void {
+    void this.remoteFacade.saveCurrentLayout(this.backendService.activeBackend(), newNames);
+  }
+
+  onToggleHidden(remoteName: string): void {
+    void this.remoteFacade.toggleRemoteVisibility(this.backendService.activeBackend(), remoteName);
+  }
+
+  onCardDisplayModeToggle(): void {
+    this.cardDisplayMode.update(m => (m === 'compact' ? 'detailed' : 'compact'));
+    void this.appSettingsService.saveSetting(
+      'runtime',
+      'dashboard_card_variant',
+      this.cardDisplayMode()
+    );
+  }
+
   // --- Private helpers ---
 
-  private isRemoteActive(remote: Remote): boolean {
+  private isActive(remote: Remote): boolean {
     switch (this.mode()) {
       case 'mount':
         return remote.status.mount.active;

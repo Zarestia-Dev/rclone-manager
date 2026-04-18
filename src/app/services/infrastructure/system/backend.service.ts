@@ -1,5 +1,6 @@
-import { computed, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { TauriBaseService } from '../platform/tauri-base.service';
+import { AppSettingsService } from '../../settings/app-settings.service';
 
 import {
   BackendInfo,
@@ -15,6 +16,7 @@ export class BackendService extends TauriBaseService {
   readonly backends = signal<BackendInfo[]>([]);
   readonly activeBackend = signal<string>('Local');
   readonly isLoading = signal<boolean>(false);
+  private readonly appSettingsService = inject(AppSettingsService);
 
   readonly activeConfigPath = computed(() => {
     const active = this.backends().find(b => b.name === this.activeBackend());
@@ -127,6 +129,7 @@ export class BackendService extends TauriBaseService {
       this.isLoading.set(true);
       await this.invokeCommand('remove_backend', { name });
       this.backends.update(current => current.filter(b => b.name !== name));
+      await this.appSettingsService.removeBackendLayout(name);
     } finally {
       this.isLoading.set(false);
     }
