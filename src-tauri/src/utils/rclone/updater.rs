@@ -265,16 +265,10 @@ pub async fn update_rclone(
                         },
                     );
 
-                    // Gracefully quit the remote process so it restarts with the new binary.
-                    let client = &app_handle.state::<RcloneState>().client;
-                    let backend_manager = app_handle.state::<BackendManager>();
-                    let backend = backend_manager.get_active().await;
-                    let _ = backend.post_json(client, core::QUIT, None).await;
-
                     Ok(json!({
                         "success": true,
-                        "immediate": true,
-                        "message": "Remote rclone updated and restarted",
+                        "manual": true,
+                        "message": "Rclone update completed. Please restart it manually.",
                         "channel": channel_str
                     }))
                 }

@@ -6,9 +6,9 @@ import {
   computed,
   effect,
   input,
-  untracked,
   model,
   output,
+  untracked,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
@@ -158,7 +158,21 @@ export class AppDetailComponent {
   // Reactive i18n: force recomputation of translate.instant() calls on lang change.
   private readonly _lang = toSignal(this.translate.onLangChange, { initialValue: null });
 
-  readonly selectedProfile = signal<string | null>(null);
+  private readonly _selectedProfiles = signal<Record<string, string>>({});
+
+  readonly selectedProfile = computed(() => {
+    const op = this.currentOpType();
+    const profiles = this.profiles();
+    const current = this._selectedProfiles()[op];
+
+    // If we have a saved selection that's still valid, use it
+    if (current && profiles.some(p => p.name === current)) {
+      return current;
+    }
+
+    // Fallback to the first available profile (or 'default' if empty)
+    return profiles[0]?.name ?? 'default';
+  });
   protected readonly selectedRemote = computed(() => {
     const remote = this.remoteFacade.selectedRemote();
     if (!remote) throw new Error('[AppDetail] Selected remote is required');
@@ -525,13 +539,15 @@ export class AppDetailComponent {
   }));
 
   constructor() {
-    // Auto-select first valid profile when the list changes.
+    // Load persistent preferences when the remote or its settings change
     effect(() => {
-      const profiles = this.profiles();
-      const current = this.selectedProfile();
+      const settings = this.remoteSettings();
       untracked(() => {
-        if (profiles.length > 0 && (!current || !profiles.some(p => p.name === current))) {
-          this.selectedProfile.set(profiles[0].name);
+        if (settings['selectedSyncOperation']) {
+          this.selectedSyncOperation.set(settings['selectedSyncOperation'] as SyncOperationType);
+        }
+        if (settings['selectedProfiles']) {
+          this._selectedProfiles.set(settings['selectedProfiles'] as Record<string, string>);
         }
       });
     });
@@ -546,6 +562,24 @@ export class AppDetailComponent {
   }
 
   // --- Public Methods ---
+
+  async onProfileSelect(name: string): Promise<void> {
+    const op = this.currentOpType();
+    const updatedMap = { ...this._selectedProfiles(), [op]: name };
+    this._selectedProfiles.set(updatedMap);
+
+    await this.remoteFacade.updateRemoteSettings(this.selectedRemote().name, {
+      selectedProfiles: updatedMap,
+    });
+  }
+
+  async onSyncOpSelect(type: SyncOperationType): Promise<void> {
+    this.selectedSyncOperation.set(type);
+
+    await this.remoteFacade.updateRemoteSettings(this.selectedRemote().name, {
+      selectedSyncOperation: type,
+    });
+  }
 
   onAddProfile(): void {
     this.openRemoteConfigModal.emit({

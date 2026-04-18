@@ -78,14 +78,18 @@ export class RcloneUpdateService extends BaseUpdateService {
       );
 
       if (result.success) {
-        if (result.immediate) {
-          // Remote in-place update: already applied and restarted, no activation step.
+        if (result.manual) {
+          // Remote in-place update: binary was updated, but the remote server
+          // must be restarted manually — we cannot trigger that remotely.
           this.patchUpdateStatus({
             downloading: false,
             available: false,
-            readyToRestart: false,
+            readyToRestart: true,
             updateInfo: null,
           });
+          this.notificationService.showWarning(
+            this.translate.instant('rcloneUpdate.manualRestartRequired')
+          );
         } else {
           this.patchUpdateStatus({ downloading: false, available: false, readyToRestart: true });
         }

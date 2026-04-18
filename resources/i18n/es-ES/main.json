@@ -219,7 +219,8 @@
     "restoreFailed": "Error al restaurar la actualización de rclone: {{error}}",
     "autoCheckEnabled": "La verificación automática de actualizaciones de Rclone está habilitada",
     "autoCheckDisabled": "La verificación automática de actualizaciones de Rclone está deshabilitada",
-    "settingsSaveFailed": "Error al guardar la configuración de actualización de rclone: {{error}}"
+    "settingsSaveFailed": "Error al guardar la configuración de actualización de rclone: {{error}}",
+    "manualRestartRequired": "Rclone se actualizó en el servidor remoto. Por favor, reinicie manualmente el servicio rclone remoto para aplicar la nueva versión."
   },
   "settings": {
     "resetToDefault": "Restablecer a los valores predeterminados",

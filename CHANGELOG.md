@@ -8,9 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - Download URL support for nautilus file browser. You can directly download file from url on selected path. Access via right vertical ellipsis menu on path bar.
+- **UI**: Implemented a Layout Editor for arranging and hiding dashboard and remote cards. Users can now customize their view by dragging cards to reorder them and using toggle buttons to hide unwanted items.
 
 ### Changed
-- Allow update support for remote rclone instances. But they updates immidently, not like the local rclone binary. Also there is a no restart support for remote instances.
+- Allow update support for remote rclone instances. Manual restart needed on remote rclone instance.
 
 
 ## [v0.2.4] - 2026-04-14

@@ -40,7 +40,7 @@
           class="operation-toggle"
           [class.is-selected]="selectedSyncOperation() === operation.type"
           [class.is-running]="operation.isActive"
-          (click)="selectedSyncOperation.set(operation.type)"
+          (click)="onSyncOpSelect(operation.type)"
           [matTooltip]="operation.description | translate"
           matTooltipPosition="below"
           matTooltipShowDelay="600"
@@ -87,7 +87,7 @@
                   [class.is-selected]="selectedProfile() === profile.name"
                   [class.is-running]="profile.status === 'running'"
                   [class.is-scheduled]="profile.status === 'scheduled'"
-                  (click)="selectedProfile.set(profile.name)"
+                  (click)="onProfileSelect(profile.name)"
                   type="button"
                 >
                   @if (profile.status === 'running') {

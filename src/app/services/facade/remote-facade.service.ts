@@ -167,6 +167,12 @@ export class RemoteFacadeService extends TauriBaseService {
     return (this.remoteSettings()[remoteName] ?? {}) as RemoteSettings;
   }
 
+  async updateRemoteSettings(remoteName: string, updates: Partial<RemoteSettings>): Promise<void> {
+    const current = this.getRemoteSettings(remoteName);
+    const updated = { ...current, ...updates };
+    await this.appSettingsService.saveRemoteSettings(remoteName, updated);
+  }
+
   // --- Disk Usage ---
 
   updateDiskUsage(remoteName: string, usage: Partial<DiskUsage>): void {

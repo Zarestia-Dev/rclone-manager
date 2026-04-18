@@ -223,7 +223,8 @@
     "restoreFailed": "恢复 Rclone 失败：{{error}}",
     "autoCheckEnabled": "已启用 Rclone 自动检查更新",
     "autoCheckDisabled": "已禁用 Rclone 自动检查更新",
-    "settingsSaveFailed": "保存 Rclone 更新设置失败：{{error}}"
+    "settingsSaveFailed": "保存 Rclone 更新设置失败：{{error}}",
+    "manualRestartRequired": "Rclone 已在远程服务器上更新。请手动重启远程 rclone 服务以应用新版本。"
   },
   "settings": {
     "resetToDefault": "恢复默认",

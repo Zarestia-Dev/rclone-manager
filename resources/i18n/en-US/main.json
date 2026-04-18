@@ -225,7 +225,8 @@
     "restoreFailed": "Failed to restore rclone update: {{error}}",
     "autoCheckEnabled": "Rclone auto-check updates enabled",
     "autoCheckDisabled": "Rclone auto-check updates disabled",
-    "settingsSaveFailed": "Failed to save rclone update settings: {{error}}"
+    "settingsSaveFailed": "Failed to save rclone update settings: {{error}}",
+    "manualRestartRequired": "Rclone was updated on the remote server. Please restart the remote rclone service manually to apply the new version."
   },
   "settings": {
     "resetToDefault": "Reset to default",

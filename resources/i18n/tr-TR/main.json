@@ -223,7 +223,8 @@
     "restoreFailed": "Rclone güncellemesi geri yüklenemedi: {{error}}",
     "autoCheckEnabled": "Rclone otomatik güncelleme kontrolü etkinleştirildi",
     "autoCheckDisabled": "Rclone otomatik güncelleme kontrolü devre dışı bırakıldı",
-    "settingsSaveFailed": "Rclone güncelleme ayarları kaydedilemedi: {{error}}"
+    "settingsSaveFailed": "Rclone güncelleme ayarları kaydedilemedi: {{error}}",
+    "manualRestartRequired": "Rclone uzak sunucuda güncellendi. Yeni sürümü uygulamak için lütfen uzak rclone servisini manuel olarak yeniden başlatın."
   },
   "settings": {
     "resetToDefault": "Varsayılana sıfırla",
