@@ -271,7 +271,7 @@ impl ScheduledTasksCache {
         let params = ProfileParams {
             remote_name: remote_name.to_string(),
             profile_name: profile_name.to_string(),
-            source: None,
+            origin: Some(crate::utils::types::origin::Origin::Scheduler),
             no_cache: None,
         };
 

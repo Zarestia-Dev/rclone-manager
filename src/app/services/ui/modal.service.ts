@@ -14,6 +14,7 @@ import { RestorePreviewModalComponent } from '../../features/modals/settings/res
 import { JobDetailModalComponent } from '../../features/modals/job-detail-modal/job-detail-modal.component';
 import { RemoteAboutModalComponent } from '../../features/modals/remote/remote-about-modal.component';
 import { PropertiesModalComponent } from '../../features/modals/properties/properties-modal.component';
+import { AlertsModalComponent } from '../../features/modals/alerts-modal/alerts-modal.component';
 import {
   InputModalComponent,
   InputModalData,
@@ -222,6 +223,16 @@ export class ModalService {
         backupPath: options.backupPath,
         analysis: options.analysis,
       },
+    });
+  }
+
+  openAlerts(): MatDialogRef<AlertsModalComponent> {
+    return this.dialog.open(AlertsModalComponent, {
+      width: '90vw',
+      maxWidth: '1200px',
+      height: '85vh',
+      disableClose: false,
+      panelClass: 'alerts-modal-panel',
     });
   }
 

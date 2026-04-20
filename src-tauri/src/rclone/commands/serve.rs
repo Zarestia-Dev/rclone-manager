@@ -177,7 +177,7 @@ pub async fn start_serve(
                     remote: params.remote_name.clone(),
                     profile: params.profile.clone(),
                     error: e.to_string(),
-                    origin: Origin::Ui,
+                    origin: Origin::Dashboard,
                 },
             );
             error
@@ -231,7 +231,7 @@ pub async fn start_serve(
             remote: params.remote_name.clone(),
             profile: params.profile.clone(),
             addr: serve_response.addr.clone(),
-            origin: Origin::Ui,
+            origin: Origin::Dashboard,
         },
     );
 
@@ -286,7 +286,7 @@ pub async fn stop_serve(
                     remote: remote_name.clone(),
                     profile: Some(profile.clone()),
                     error: e.to_string(),
-                    origin: Origin::Ui,
+                    origin: Origin::Dashboard,
                 },
             );
             error
@@ -310,7 +310,7 @@ pub async fn stop_serve(
         NotificationEvent::ServeStopped {
             remote: remote_name.clone(),
             profile: Some(profile),
-            origin: Origin::Ui,
+            origin: Origin::Dashboard,
         },
     );
 
@@ -339,15 +339,12 @@ pub async fn stop_all_serves(app: AppHandle, context: String) -> Result<String, 
         return Ok(crate::localized_success!("backendSuccess.serve.stopped"));
     }
 
-    let _ = backend
+    if let Err(e) = backend
         .post_json(&app.state::<RcloneState>().client, serve::STOPALL, None)
         .await
-        .map_err(|e| {
-            let error = format!("Failed to stop all serves: {e}");
-             let localized = crate::localized_error!("backendErrors.serve.failed", "operation" => "stop all", "error" => &error);
-             notify(&app, NotificationEvent::StopAllServesFailed { error: e.to_string() });
-            localized
-        })?;
+    {
+        warn!("Failed to stop all serves: {e}");
+    }
 
     if context != "shutdown"
         && let Err(e) = force_check_serves(app.clone()).await

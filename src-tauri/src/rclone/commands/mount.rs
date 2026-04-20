@@ -273,7 +273,7 @@ pub async fn unmount_remote(
         NotificationEvent::UnmountSucceeded {
             remote: remote_name.clone(),
             profile,
-            origin: crate::utils::types::origin::Origin::Ui,
+            origin: crate::utils::types::origin::Origin::Dashboard,
         },
     );
 
@@ -355,10 +355,7 @@ pub async fn mount_remote_profile(app: AppHandle, params: ProfileParams) -> Resu
 
     // Ensure profile is set from the function parameter, not the config object
     mount_params.profile = Some(params.profile_name.clone());
-    mount_params.origin = params
-        .source
-        .as_deref()
-        .map(crate::utils::types::origin::Origin::parse);
+    mount_params.origin = params.origin;
     mount_params.no_cache = params.no_cache;
 
     mount_remote(app, mount_params).await

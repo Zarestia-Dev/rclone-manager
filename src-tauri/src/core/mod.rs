@@ -1,3 +1,4 @@
+pub mod alerts;
 pub mod check_binaries;
 pub mod debug;
 pub mod event_listener;

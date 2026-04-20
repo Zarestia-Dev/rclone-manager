@@ -6,6 +6,7 @@
 // STANDARD LIBRARY & EXTERNAL CRATES
 // =============================================================================
 use crate::core::settings::schema::AppSettings;
+
 use std::sync::atomic::AtomicBool;
 use tauri::Manager;
 
@@ -29,7 +30,10 @@ mod server;
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 use crate::utils::logging::log::init_logging;
 use crate::{
-    core::{initialization::initialization, paths::AppPaths, scheduler::engine::CronScheduler},
+    core::{
+        alerts::AlertHistoryCache, initialization::initialization, paths::AppPaths,
+        scheduler::engine::CronScheduler,
+    },
     utils::types::{
         core::{RcApiEngine, RcloneState},
         logs::LogCache,
@@ -292,7 +296,7 @@ fn setup_app(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let app_handle = app.handle();
     let app_paths = AppPaths::setup(app_handle)?;
-    let config_dir = app_paths.config_dir;
+    let config_dir = app_paths.config_dir.clone();
 
     let rcman_manager =
         rcman::SettingsManager::builder(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
@@ -426,6 +430,14 @@ fn setup_app(
                         value
                     }),
             )
+            .with_sub_settings(
+                rcman::SubSettingsConfig::singlefile("alerts/rules")
+                    .with_schema::<crate::core::alerts::types::AlertRule>(),
+            )
+            .with_sub_settings(
+                rcman::SubSettingsConfig::singlefile("alerts/actions")
+                    .with_schema::<crate::core::alerts::types::AlertAction>(),
+            )
             .build()
             .map_err(|e| format!("Failed to create rcman settings manager: {e}"))?;
 
@@ -457,15 +469,12 @@ fn setup_app(
     // -------------------------------------------------------------------------
     crate::utils::i18n::init(app_paths.resource_dir);
 
-    if let Ok(lang) = rcman_manager.get::<String>("general.language") {
-        crate::utils::i18n::set_language(&lang);
-    }
+    crate::utils::i18n::set_language(&settings.general.language);
 
     // -------------------------------------------------------------------------
     // Manage App State
     // -------------------------------------------------------------------------
     app.manage(tokio::sync::Mutex::new(RcApiEngine::default()));
-    app.manage(rcman_manager);
     app.manage(env_manager);
 
     app.manage(RcloneState {
@@ -482,6 +491,22 @@ fn setup_app(
 
     app.manage(AppUpdaterState::default());
     app.manage(RcloneUpdaterState::default());
+
+    // -------------------------------------------------------------------------
+    // Initialize Alerts
+    // -------------------------------------------------------------------------
+    let history_cache = AlertHistoryCache::new(10000);
+
+    // Initial load & seed defaults
+    tauri::async_runtime::block_on(async {
+        // Ensure default rules/actions exist
+        if let Err(e) = crate::core::alerts::seed::seed_defaults(&rcman_manager).await {
+            log::error!("Failed to seed default alerts: {e}");
+        }
+    });
+
+    app.manage(history_cache);
+    app.manage(rcman_manager);
 
     // -------------------------------------------------------------------------
     // Initialize Logging

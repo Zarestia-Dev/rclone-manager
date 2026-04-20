@@ -127,7 +127,12 @@ export class PathSelectionService {
       // For local paths (empty remoteName), use '/' as the filesystem root
       // For remote paths, normalize with colon suffix
       const normalizedRemote = remoteName === '' ? '/' : this.normalizeRemoteForRclone(remoteName);
-      const response = await this.remoteOps.getRemotePaths(normalizedRemote, path || '', {}, 'ui');
+      const response = await this.remoteOps.getRemotePaths(
+        normalizedRemote,
+        path || '',
+        {},
+        'filemanager'
+      );
       const entries = response && Array.isArray(response.list) ? response.list : [];
       // Update state with new entries
       stateSignal.update(s => ({ ...s, options: entries, isLoading: false }));

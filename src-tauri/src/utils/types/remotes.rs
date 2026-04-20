@@ -3,6 +3,8 @@ use serde_json::Value;
 use std::collections::HashMap;
 use tokio::sync::RwLock;
 
+use crate::utils::types::origin::Origin;
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct MountedRemote {
     pub fs: String,
@@ -42,6 +44,6 @@ pub struct ListOptions {
 pub struct ProfileParams {
     pub remote_name: String,
     pub profile_name: String,
-    pub source: Option<String>,
+    pub origin: Option<Origin>,
     pub no_cache: Option<bool>,
 }

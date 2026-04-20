@@ -10,7 +10,7 @@ use crate::{
         serve::start_serve_profile,
         sync::{start_bisync_profile, start_copy_profile, start_move_profile, start_sync_profile},
     },
-    utils::types::remotes::ProfileParams,
+    utils::{types::origin::Origin, types::remotes::ProfileParams},
 };
 use log::{error, info, warn};
 use tauri::{AppHandle, Manager};
@@ -149,7 +149,7 @@ async fn auto_start_mount(app: &AppHandle, remote_name: &str, profile_name: &str
     let params = ProfileParams {
         remote_name: remote_name.to_string(),
         profile_name: profile_name.to_string(),
-        source: Some("startup".to_string()),
+        origin: Some(Origin::Startup),
         no_cache: None,
     };
 
@@ -173,7 +173,7 @@ async fn auto_start_serve(app: &AppHandle, remote_name: &str, profile_name: &str
     let params = ProfileParams {
         remote_name: remote_name.to_string(),
         profile_name: profile_name.to_string(),
-        source: Some("startup".to_string()),
+        origin: Some(Origin::Startup),
         no_cache: None,
     };
 
@@ -197,7 +197,7 @@ async fn auto_start_sync(app: &AppHandle, remote_name: &str, profile_name: &str,
     let params = ProfileParams {
         remote_name: remote_name.to_string(),
         profile_name: profile_name.to_string(),
-        source: Some("startup".to_string()),
+        origin: Some(Origin::Startup),
         no_cache: None,
     };
 

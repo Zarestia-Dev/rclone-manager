@@ -283,6 +283,23 @@ macro_rules! generate_invoke_handler {
             $crate::core::debug::get_debug_info,
             $crate::core::debug::open_devtools,
             $crate::utils::app::builder::new_nautilus_window,
+            // =================================================================
+            // ALERTS
+            // =================================================================
+            $crate::core::alerts::commands::get_alert_rules,
+            $crate::core::alerts::commands::save_alert_rule,
+            $crate::core::alerts::commands::delete_alert_rule,
+            $crate::core::alerts::commands::toggle_alert_rule,
+            $crate::core::alerts::commands::get_alert_actions,
+            $crate::core::alerts::commands::save_alert_action,
+            $crate::core::alerts::commands::delete_alert_action,
+            $crate::core::alerts::commands::test_alert_action,
+            $crate::core::alerts::commands::get_alert_history,
+            $crate::core::alerts::commands::acknowledge_alert,
+            $crate::core::alerts::commands::acknowledge_all_alerts,
+            $crate::core::alerts::commands::clear_alert_history,
+            $crate::core::alerts::commands::get_alert_stats,
+            $crate::core::alerts::commands::get_unacknowledged_alert_count,
         ]
     };
 }

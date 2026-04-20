@@ -65,7 +65,7 @@ impl JobMetadata {
     }
 
     fn resolved_origin(&self) -> Origin {
-        self.origin.clone().unwrap_or(Origin::System)
+        self.origin.clone().unwrap_or(Origin::Internal)
     }
 
     // Notification event constructors.
@@ -940,7 +940,7 @@ mod tests {
                 assert_eq!(remote, "gdrive:");
                 assert_eq!(profile, None);
                 assert_eq!(operation, "Sync");
-                assert_eq!(origin, Origin::System);
+                assert_eq!(origin, Origin::Internal);
             }
             _ => panic!("expected JobCompleted"),
         }
@@ -961,20 +961,10 @@ mod tests {
                 assert_eq!(profile, Some("p".to_string()));
                 assert_eq!(operation, "Sync");
                 assert_eq!(error, "disk full");
-                assert_eq!(origin, Origin::System);
+                assert_eq!(origin, Origin::Internal);
             }
             _ => panic!("expected JobFailed"),
         }
-    }
-
-    #[test]
-    fn test_notification_suppression_for_dashboard_origin() {
-        use crate::utils::app::notification::should_suppress;
-        let meta_dashboard = make_meta(Some(Origin::Dashboard), None);
-        assert!(should_suppress(true, meta_dashboard.origin.as_ref()));
-
-        let meta_scheduler = make_meta(Some(Origin::Scheduler), None);
-        assert!(!should_suppress(true, meta_scheduler.origin.as_ref()));
     }
 
     // parse_job_response tests

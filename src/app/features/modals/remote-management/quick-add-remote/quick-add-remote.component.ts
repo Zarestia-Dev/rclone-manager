@@ -559,29 +559,37 @@ export class QuickAddRemoteComponent {
   ): Promise<void> {
     const mountConfig = finalConfig[REMOTE_CONFIG_KEYS.mount]?.[DEFAULT_PROFILE_NAME] as any;
     if (mountConfig?.autoStart && mountConfig?.dest) {
-      void this.mountManagementService.mountRemoteProfile(remoteName, DEFAULT_PROFILE_NAME, 'ui');
+      void this.mountManagementService.mountRemoteProfile(
+        remoteName,
+        DEFAULT_PROFILE_NAME,
+        'dashboard'
+      );
     }
 
     const jobOps = [
       {
         key: REMOTE_CONFIG_KEYS.copy,
         start: (): Promise<number> =>
-          this.jobManagementService.startCopyProfile(remoteName, DEFAULT_PROFILE_NAME, 'ui'),
+          this.jobManagementService.startCopyProfile(remoteName, DEFAULT_PROFILE_NAME, 'dashboard'),
       },
       {
         key: REMOTE_CONFIG_KEYS.sync,
         start: (): Promise<number> =>
-          this.jobManagementService.startSyncProfile(remoteName, DEFAULT_PROFILE_NAME, 'ui'),
+          this.jobManagementService.startSyncProfile(remoteName, DEFAULT_PROFILE_NAME, 'dashboard'),
       },
       {
         key: REMOTE_CONFIG_KEYS.bisync,
         start: (): Promise<number> =>
-          this.jobManagementService.startBisyncProfile(remoteName, DEFAULT_PROFILE_NAME, 'ui'),
+          this.jobManagementService.startBisyncProfile(
+            remoteName,
+            DEFAULT_PROFILE_NAME,
+            'dashboard'
+          ),
       },
       {
         key: REMOTE_CONFIG_KEYS.move,
         start: (): Promise<number> =>
-          this.jobManagementService.startMoveProfile(remoteName, DEFAULT_PROFILE_NAME, 'ui'),
+          this.jobManagementService.startMoveProfile(remoteName, DEFAULT_PROFILE_NAME, 'dashboard'),
       },
     ] as const;
 

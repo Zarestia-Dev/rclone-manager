@@ -522,7 +522,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
         // For local: fsName is "C:" or "/", path is "path/to/dir"
         // For remote: fsName is "gdrive:", path is "path/to/dir"
         await this.remoteOps
-          .getSize(fsName, item.Path, 'ui', this.readJobGroup)
+          .getSize(fsName, item.Path, 'filemanager', this.readJobGroup)
           .then((size: { count: number; bytes: number }) => {
             this.folderSize.set(size);
           })

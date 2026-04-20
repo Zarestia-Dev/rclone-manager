@@ -49,3 +49,4 @@ export * from './ui/nautilus-settings.service';
 export * from './ui/nautilus-tab.service';
 export * from './ui/nautilus-file-operations.service';
 export * from './ui/nautilus-drag-drop.service';
+export * from './alerts/alert.service';

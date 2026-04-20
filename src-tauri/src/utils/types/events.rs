@@ -39,6 +39,9 @@ pub const NETWORK_STATUS_CHANGED: &str = "network_status_changed";
 // Scheduled task events
 pub const SCHEDULED_TASKS_CACHE_CHANGED: &str = "scheduled_tasks_cache_changed";
 
+// Alert events
+pub const ALERT_FIRED: &str = "alert_fired";
+
 // Application events
 pub const APP_EVENT: &str = "app_event";
 pub const BROWSE: &str = "browse";
@@ -69,6 +72,7 @@ pub const SSE_FORWARD_EVENTS: &[&str] = &[
     SCHEDULED_TASKS_CACHE_CHANGED,
     APP_EVENT,
     BROWSE,
+    ALERT_FIRED,
 ];
 
 /// Strongly typed payload for settings change events

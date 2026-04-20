@@ -83,7 +83,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
   private readonly remoteMetadata = inject(RemoteMetadataService);
   private readonly pathSelectionService = inject(PathSelectionService);
   private readonly jobManagementService = inject(JobManagementService);
-  private readonly readJobGroup = `ui/properties/${this.data.remoteName}/${this.data.path || '/'}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  private readonly readJobGroup = `filemanager/properties/${this.data.remoteName}/${this.data.path || '/'}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   // Derived properties (pure data derivations)
   readonly displayLocation: string = this.data.isLocal
@@ -185,7 +185,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
     if (targetIsDir) {
       this.loadingSize.set(true);
       this.remoteOps
-        .getSize(remoteName, path, 'ui', this.readJobGroup)
+        .getSize(remoteName, path, 'filemanager', this.readJobGroup)
         .then(size => {
           this.size.set(size);
           this.loadingSize.set(false);
@@ -220,7 +220,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
         const diskUsage = await this.remoteFacadeService.getCachedOrFetchDiskUsage(
           remoteName,
           remoteName.endsWith(':') ? remoteName : `${remoteName}:`,
-          'ui',
+          'filemanager',
           this.readJobGroup
         );
 
@@ -252,7 +252,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
       const diskUsage = await this.remoteOps.getDiskUsage(
         diskUsageRemote,
         diskUsagePath,
-        'ui',
+        'filemanager',
         this.readJobGroup
       );
       this.diskUsage.set(diskUsage);
@@ -279,7 +279,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
       // If features were not passed, or they have no hashes (could be stub or not yet loaded in facade)
       if (!features || !features.hashes || features.hashes.length === 0) {
         this.remoteMetadata.clearCache(baseName); // Clear cache to ensure fresh fetch
-        features = await this.remoteMetadata.getFeatures(baseName, 'ui');
+        features = await this.remoteMetadata.getFeatures(baseName, 'filemanager');
       }
 
       // Update supported hashes
@@ -332,7 +332,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
         this.fsRemote,
         this.hashPath,
         hashType,
-        'ui',
+        'filemanager',
         this.readJobGroup
       );
 
@@ -390,7 +390,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
         this.data.path,
         false,
         this.selectedExpiry() || undefined,
-        'ui',
+        'filemanager',
         this.readJobGroup
       );
 
@@ -423,7 +423,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
         this.data.path,
         true,
         undefined,
-        'ui',
+        'filemanager',
         this.readJobGroup
       ); // unlink = true
       this.publicLinkUrl.set(null);
@@ -541,7 +541,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
         fsRemote,
         hashPath,
         hashType,
-        'ui',
+        'filemanager',
         this.readJobGroup
       );
 

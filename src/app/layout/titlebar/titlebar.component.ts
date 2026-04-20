@@ -19,6 +19,7 @@ import {
   WindowService,
   ModalService,
   ConnectionService,
+  AlertService,
 } from '@app/services';
 import { Theme } from '@app/types';
 import { WindowControlsComponent } from '@app/shared/components';
@@ -52,6 +53,7 @@ export class TitlebarComponent implements OnInit {
 
   readonly uiStateService = inject(UiStateService);
   readonly connectionService = inject(ConnectionService);
+  readonly alertService = inject(AlertService);
 
   // Signals for update states
   readonly updateAvailable = this.appUpdaterService.updateAvailable;
@@ -188,6 +190,10 @@ export class TitlebarComponent implements OnInit {
 
   openAboutModal(): void {
     this.modalService.openAbout();
+  }
+
+  openAlertsModal(): void {
+    this.modalService.openAlerts();
   }
 
   // Other Methods

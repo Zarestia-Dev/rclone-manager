@@ -106,7 +106,7 @@ pub struct ProfileParamsBody {
 pub struct ProfileParamsInner {
     pub remote_name: String,
     pub profile_name: String,
-    pub source: Option<String>,
+    pub origin: Option<crate::utils::types::origin::Origin>,
     pub no_cache: Option<bool>,
 }
 
@@ -118,7 +118,7 @@ pub async fn start_sync_profile_handler(
     let params = ProfileParams {
         remote_name: body.params.remote_name,
         profile_name: body.params.profile_name,
-        source: body.params.source,
+        origin: body.params.origin,
         no_cache: body.params.no_cache,
     };
     let jobid = start_sync_profile(state.app_handle.clone(), params)
@@ -135,7 +135,7 @@ pub async fn start_copy_profile_handler(
     let params = ProfileParams {
         remote_name: body.params.remote_name,
         profile_name: body.params.profile_name,
-        source: body.params.source,
+        origin: body.params.origin,
         no_cache: body.params.no_cache,
     };
     let jobid = start_copy_profile(state.app_handle.clone(), params)
@@ -152,7 +152,7 @@ pub async fn start_move_profile_handler(
     let params = ProfileParams {
         remote_name: body.params.remote_name,
         profile_name: body.params.profile_name,
-        source: body.params.source,
+        origin: body.params.origin,
         no_cache: body.params.no_cache,
     };
     let jobid = start_move_profile(state.app_handle.clone(), params)
@@ -169,7 +169,7 @@ pub async fn start_bisync_profile_handler(
     let params = ProfileParams {
         remote_name: body.params.remote_name,
         profile_name: body.params.profile_name,
-        source: body.params.source,
+        origin: body.params.origin,
         no_cache: body.params.no_cache,
     };
     let jobid = start_bisync_profile(state.app_handle.clone(), params)

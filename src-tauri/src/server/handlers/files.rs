@@ -12,13 +12,14 @@ use tokio_util::io::ReaderStream;
 
 use crate::server::state::{ApiResponse, AppError, WebServerState};
 use crate::utils::types::core::DiskUsage;
+use crate::utils::types::origin::Origin;
 use crate::utils::types::remotes::ListOptions;
 
 #[derive(Deserialize)]
 pub struct FsInfoQuery {
     pub remote: String,
     pub path: Option<String>,
-    pub origin: Option<String>,
+    pub origin: Option<Origin>,
     pub group: Option<String>,
 }
 
@@ -43,7 +44,7 @@ pub async fn get_fs_info_handler(
 pub struct DiskUsageQuery {
     pub remote: String,
     pub path: Option<String>,
-    pub origin: Option<String>,
+    pub origin: Option<Origin>,
     pub group: Option<String>,
 }
 
@@ -80,7 +81,7 @@ pub async fn get_local_drives_handler(
 pub struct GetSizeQuery {
     pub remote: String,
     pub path: Option<String>,
-    pub origin: Option<String>,
+    pub origin: Option<Origin>,
     pub group: Option<String>,
 }
 
@@ -105,7 +106,7 @@ pub async fn get_size_handler(
 pub struct GetStatQuery {
     pub remote: String,
     pub path: String,
-    pub origin: Option<String>,
+    pub origin: Option<Origin>,
     pub group: Option<String>,
 }
 
@@ -132,7 +133,7 @@ pub struct GetHashsumQuery {
     pub remote: String,
     pub path: String,
     pub hash_type: String,
-    pub origin: Option<String>,
+    pub origin: Option<Origin>,
     pub group: Option<String>,
 }
 
@@ -178,7 +179,7 @@ pub struct GetPublicLinkQuery {
     pub path: String,
     pub unlink: Option<bool>,
     pub expire: Option<String>,
-    pub origin: Option<String>,
+    pub origin: Option<Origin>,
     pub group: Option<String>,
 }
 
@@ -210,7 +211,7 @@ pub async fn get_public_link_handler(
 pub struct MkdirBody {
     pub remote: String,
     pub path: String,
-    pub source: Option<String>,
+    pub source: Option<Origin>,
     pub group: Option<String>,
 }
 
@@ -236,7 +237,7 @@ pub async fn mkdir_handler(
 pub struct CleanupBody {
     pub remote: String,
     pub path: Option<String>,
-    pub source: Option<String>,
+    pub source: Option<Origin>,
     pub group: Option<String>,
 }
 
@@ -264,7 +265,7 @@ pub struct CopyUrlBody {
     pub path: String,
     pub url_to_copy: String,
     pub auto_filename: bool,
-    pub source: Option<String>,
+    pub source: Option<Origin>,
     pub group: Option<String>,
 }
 
@@ -292,7 +293,7 @@ pub async fn copy_url_handler(
 pub struct DeleteFileBody {
     pub remote: String,
     pub path: String,
-    pub source: Option<String>,
+    pub source: Option<Origin>,
     pub group: Option<String>,
 }
 
@@ -318,7 +319,7 @@ pub async fn delete_file_handler(
 pub struct PurgeDirectoryBody {
     pub remote: String,
     pub path: String,
-    pub source: Option<String>,
+    pub source: Option<Origin>,
     pub group: Option<String>,
 }
 
@@ -344,7 +345,7 @@ pub async fn purge_directory_handler(
 pub struct RemoveEmptyDirsBody {
     pub remote: String,
     pub path: String,
-    pub source: Option<String>,
+    pub source: Option<Origin>,
     pub group: Option<String>,
 }
 
@@ -372,7 +373,7 @@ pub struct CopyFileBody {
     pub src_path: String,
     pub dst_remote: String,
     pub dst_path: String,
-    pub source: Option<String>,
+    pub source: Option<Origin>,
     pub no_cache: Option<bool>,
 }
 
@@ -458,7 +459,7 @@ pub struct RenameBody {
     pub remote: String,
     pub src_path: String,
     pub dst_path: String,
-    pub source: Option<String>,
+    pub source: Option<Origin>,
     pub group: Option<String>,
 }
 
@@ -503,7 +504,7 @@ pub struct RemotePathsBody {
     pub remote: String,
     pub path: Option<String>,
     pub options: Option<serde_json::Value>,
-    pub origin: Option<String>,
+    pub origin: Option<Origin>,
     pub group: Option<String>,
 }
 
@@ -719,7 +720,7 @@ pub struct UploadLocalDropFilesBody {
     pub remote: String,
     pub path: String,
     pub files: Vec<crate::rclone::commands::filesystem::LocalDropUploadFile>,
-    pub source: Option<String>,
+    pub source: Option<Origin>,
 }
 
 pub async fn upload_local_drop_files_handler(
@@ -746,7 +747,7 @@ pub struct UploadLocalDropPathsBody {
     pub remote: String,
     pub path: String,
     pub local_paths: Vec<String>,
-    pub source: Option<String>,
+    pub source: Option<Origin>,
 }
 
 pub async fn upload_local_drop_paths_handler(
@@ -783,7 +784,7 @@ pub struct UploadLocalDropEntriesBody {
     pub remote: String,
     pub path: String,
     pub entries: Vec<LocalDropUploadEntryDTO>,
-    pub source: Option<String>,
+    pub source: Option<Origin>,
 }
 
 pub async fn upload_local_drop_entries_handler(

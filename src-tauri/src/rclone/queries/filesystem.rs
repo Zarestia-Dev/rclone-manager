@@ -120,7 +120,7 @@ pub async fn get_fs_info(
     app: AppHandle,
     remote: String,
     path: Option<String>,
-    origin: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     debug!("ℹ️ Getting fs info for remote: {remote}, path: {path:?}");
@@ -138,7 +138,7 @@ pub async fn get_fs_info(
             source: build_full_path(&remote, path.as_deref().unwrap_or("")),
             destination: String::new(),
             profile: None,
-            origin: parse_origin(&origin),
+            origin: origin.clone(),
             group,
             no_cache: true,
         },
@@ -171,7 +171,7 @@ pub async fn get_remote_paths(
     remote: String,
     path: Option<String>,
     options: Option<ListOptions>,
-    origin: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     debug!("📂 Listing remote paths for remote: {remote}, path: {path:?}");
@@ -196,7 +196,7 @@ pub async fn get_remote_paths(
             source: build_full_path(&remote, path.as_deref().unwrap_or("")),
             destination: String::new(),
             profile: None,
-            origin: parse_origin(&origin),
+            origin: origin.clone(),
             group,
             no_cache: true,
         },
@@ -297,7 +297,7 @@ pub async fn get_disk_usage(
     app: AppHandle,
     remote: String,
     path: Option<String>,
-    origin: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<DiskUsage, String> {
     // Delegate to get_about_remote (which is now async)
@@ -337,7 +337,7 @@ pub async fn get_about_remote(
     app: AppHandle,
     remote: String,
     path: Option<String>,
-    origin: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     debug!("ℹ️ Getting about info for remote: {remote}, path: {path:?}");
@@ -355,7 +355,7 @@ pub async fn get_about_remote(
             source: build_full_path(&remote, path.as_deref().unwrap_or("")),
             destination: String::new(),
             profile: None,
-            origin: parse_origin(&origin),
+            origin: origin.clone(),
             group,
             no_cache: true,
         },
@@ -363,19 +363,12 @@ pub async fn get_about_remote(
     .await
 }
 
-// Small helper to avoid repeating the `as_deref().map(Origin::parse)` pattern
-fn parse_origin(origin: &Option<String>) -> Option<crate::utils::types::origin::Origin> {
-    origin
-        .as_deref()
-        .map(crate::utils::types::origin::Origin::parse)
-}
-
 #[tauri::command]
 pub async fn get_size(
     app: AppHandle,
     remote: String,
     path: Option<String>,
-    origin: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     debug!("📏 Getting size for remote: {remote}, path: {path:?}");
@@ -405,7 +398,7 @@ pub async fn get_size(
             source: fs_with_path,
             destination: String::new(),
             profile: None,
-            origin: parse_origin(&origin),
+            origin: origin.clone(),
             group,
             no_cache: true,
         },
@@ -418,7 +411,7 @@ pub async fn get_stat(
     app: AppHandle,
     remote: String,
     path: String,
-    origin: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     debug!("📊 Getting stats for remote: {remote}, path: {path}");
@@ -437,7 +430,7 @@ pub async fn get_stat(
             source: build_full_path(&remote, &path),
             destination: String::new(),
             profile: None,
-            origin: parse_origin(&origin),
+            origin: origin.clone(),
             group,
             no_cache: true,
         },
@@ -453,7 +446,7 @@ pub async fn get_hashsum(
     remote: String,
     path: String,
     hash_type: String,
-    origin: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     debug!("🔐 Getting hashsum for remote: {remote}, path: {path}, hash_type: {hash_type}");
@@ -481,7 +474,7 @@ pub async fn get_hashsum(
             source: fs_with_path,
             destination: String::new(),
             profile: None,
-            origin: parse_origin(&origin),
+            origin: origin.clone(),
             group,
             no_cache: true,
         },
@@ -497,7 +490,7 @@ pub async fn get_hashsum_file(
     remote: String,
     path: String,
     hash_type: String,
-    origin: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     debug!("🔐 Getting hashsum file for remote: {remote}, path: {path}, hash_type: {hash_type}");
@@ -516,7 +509,7 @@ pub async fn get_hashsum_file(
             source: build_full_path(&remote, &path),
             destination: String::new(),
             profile: None,
-            origin: parse_origin(&origin),
+            origin: origin.clone(),
             group,
             no_cache: true,
         },
@@ -532,7 +525,7 @@ pub async fn get_public_link(
     remote: String,
     path: String,
     options: Option<PublicLinkParams>,
-    origin: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     debug!("🔗 Getting public link for remote: {remote}, path: {path}, options: {options:?}",);
@@ -559,9 +552,7 @@ pub async fn get_public_link(
             source: build_full_path(&remote, &path),
             destination: String::new(),
             profile: None,
-            origin: origin
-                .as_deref()
-                .map(crate::utils::types::origin::Origin::parse),
+            origin,
             group,
             no_cache: true,
         },

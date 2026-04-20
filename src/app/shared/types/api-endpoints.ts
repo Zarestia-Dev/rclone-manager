@@ -94,6 +94,22 @@ export const EXPLICIT_ENDPOINTS: Record<string, string> = {
   get_stats_groups: '/stats-groups',
   reset_group_stats: '/reset-group-stats',
   delete_stats_group: '/delete-stats-group',
+
+  // Alerts
+  get_alert_rules: '/alerts/rules',
+  save_alert_rule: '/alerts/rules',
+  delete_alert_rule: '/alerts/rules/:id',
+  toggle_alert_rule: '/alerts/rules/:id/toggle',
+  get_alert_actions: '/alerts/actions',
+  save_alert_action: '/alerts/actions',
+  delete_alert_action: '/alerts/actions/:id',
+  test_alert_action: '/alerts/actions/:id/test',
+  get_alert_history: '/alerts/history',
+  acknowledge_alert: '/alerts/history/:id/acknowledge',
+  acknowledge_all_alerts: '/alerts/history/acknowledge-all',
+  clear_alert_history: '/alerts/history',
+  get_alert_stats: '/alerts/stats',
+  get_unacknowledged_alert_count: '/alerts/unacknowledged-count',
 };
 
 /**
@@ -187,4 +203,14 @@ export const POST_COMMANDS = new Set([
   'stop_jobs_by_group',
   'reset_group_stats',
   'delete_stats_group',
+  // Alerts
+  'save_alert_rule',
+  'delete_alert_rule',
+  'toggle_alert_rule',
+  'save_alert_action',
+  'delete_alert_action',
+  'test_alert_action',
+  'acknowledge_alert',
+  'acknowledge_all_alerts',
+  'clear_alert_history',
 ]);

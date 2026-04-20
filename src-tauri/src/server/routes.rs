@@ -23,6 +23,7 @@ pub fn build_api_router(state: WebServerState) -> Router {
         .merge(backup_routes())
         .merge(backend_routes())
         .merge(debug_routes())
+        .merge(alerts_routes())
         .nest("/jobs", jobs_router)
         .route("/events", get(handlers::sse_handler))
         .with_state(state.clone())
@@ -475,4 +476,46 @@ fn backend_routes() -> Router<WebServerState> {
 
 fn debug_routes() -> Router<WebServerState> {
     Router::new().route("/debug/info", get(handlers::get_debug_info_handler))
+}
+
+fn alerts_routes() -> Router<WebServerState> {
+    Router::new()
+        .route("/alerts/rules", get(handlers::get_alert_rules_handler))
+        .route("/alerts/rules", post(handlers::save_alert_rule_handler))
+        .route(
+            "/alerts/rules/{id}",
+            post(handlers::delete_alert_rule_handler),
+        )
+        .route(
+            "/alerts/rules/{id}/toggle",
+            post(handlers::toggle_alert_rule_handler),
+        )
+        .route("/alerts/actions", get(handlers::get_alert_actions_handler))
+        .route("/alerts/actions", post(handlers::save_alert_action_handler))
+        .route(
+            "/alerts/actions/{id}",
+            post(handlers::delete_alert_action_handler),
+        )
+        .route(
+            "/alerts/actions/{id}/test",
+            post(handlers::test_alert_action_handler),
+        )
+        .route("/alerts/history", get(handlers::get_alert_history_handler))
+        .route(
+            "/alerts/history/{id}/acknowledge",
+            post(handlers::acknowledge_alert_handler),
+        )
+        .route(
+            "/alerts/history/acknowledge-all",
+            post(handlers::acknowledge_all_alerts_handler),
+        )
+        .route(
+            "/alerts/history",
+            post(handlers::clear_alert_history_handler),
+        )
+        .route("/alerts/stats", get(handlers::get_alert_stats_handler))
+        .route(
+            "/alerts/unacknowledged-count",
+            get(handlers::get_unacknowledged_alert_count_handler),
+        )
 }

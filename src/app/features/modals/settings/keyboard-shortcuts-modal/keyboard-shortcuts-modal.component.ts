@@ -20,6 +20,7 @@ import { SearchContainerComponent } from '../../../../shared/components/search-c
 
 @Component({
   selector: 'app-keyboard-shortcuts-modal',
+  standalone: true,
   imports: [
     MatTableModule,
     MatIconModule,
@@ -68,6 +69,11 @@ export class KeyboardShortcutsModalComponent {
     {
       keys: 'Ctrl + .',
       description: 'shortcuts.actions.openConfig',
+      category: 'shortcuts.categories.application',
+    },
+    {
+      keys: 'Ctrl + Alt + A',
+      description: 'alerts.title',
       category: 'shortcuts.categories.application',
     },
     {

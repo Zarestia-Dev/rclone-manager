@@ -47,6 +47,7 @@ clap = { version = "4.5", features = ["derive", "env"] }
 id3 = "1.16.4"
 base64 = "0.22"
 url = "2.5"
+handlebars = "6.2.0"
 
 tauri-plugin-shell = { version = "2", optional = true }
 tauri-plugin-window-state = { version = "2", optional = true }
@@ -76,7 +77,7 @@ zbus = "5.14.0"
 futures-lite = "2.6.1"
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61.2", features = ["Win32_System_Threading", "Win32_UI_WindowsAndMessaging", "Win32_Foundation"] }
+windows-sys = { version = "0.61.2", features = ["Win32_System_Threading", "Win32_Foundation"] }
 windows = { version = "0.62.2", features = ["Networking_Connectivity"] }
 shellexpand = "3.1.2"
 

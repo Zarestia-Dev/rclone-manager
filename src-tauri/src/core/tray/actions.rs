@@ -53,7 +53,7 @@ async fn handle_start_job_profile(
     let params = ProfileParams {
         remote_name: remote_name.clone(),
         profile_name: profile_name.clone(),
-        source: Some("tray".to_string()),
+        origin: Some(Origin::Dashboard),
         no_cache: None,
     };
 
@@ -90,7 +90,7 @@ pub fn handle_mount_profile(app: AppHandle, remote_name: &str, profile_name: &st
         let params = ProfileParams {
             remote_name: remote.clone(),
             profile_name: profile.clone(),
-            source: Some("tray".to_string()),
+            origin: Some(Origin::Dashboard),
             no_cache: None,
         };
 
@@ -232,7 +232,7 @@ async fn handle_stop_job_profile(
                 profile: Some(profile_name.clone()),
                 operation: job_type.as_str().to_string(),
                 error: "no active job".to_string(),
-                origin: Origin::Ui,
+                origin: Origin::Dashboard,
             },
         );
     }
@@ -283,7 +283,7 @@ pub fn handle_serve_profile(app: AppHandle, remote_name: &str, profile_name: &st
         let params = ProfileParams {
             remote_name: remote.clone(),
             profile_name: profile.clone(),
-            source: Some("tray".to_string()),
+            origin: Some(Origin::Dashboard),
             no_cache: None,
         };
 

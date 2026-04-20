@@ -56,7 +56,9 @@
     [matBadge]="
       restartRequired() || rcloneRestartRequired() || updateAvailable() || rcloneUpdateAvailable()
         ? '!'
-        : null
+        : alertService.unacknowledgedCount() > 0
+          ? alertService.unacknowledgedCount()
+          : null
     "
     [matBadgeColor]="restartRequired() || rcloneRestartRequired() ? 'warn' : 'primary'"
     matBadgePosition="below before"
@@ -117,6 +119,23 @@
         <mat-divider></mat-divider>
       }
     }
+    <button
+      cdkMenuItem
+      class="menu-item"
+      (click)="openAlertsModal()"
+      [attr.aria-label]="'alerts.title' | translate"
+    >
+      <span>{{ 'alerts.title' | translate }}</span>
+      <span class="shortcut" aria-hidden="true">Ctrl + Alt + A</span>
+      @if (alertService.unacknowledgedCount() > 0) {
+        <span
+          [matBadge]="alertService.unacknowledgedCount()"
+          matBadgePosition="below before"
+          matBadgeSize="small"
+        ></span>
+      }
+    </button>
+    <mat-divider></mat-divider>
 
     <button
       cdkMenuItem

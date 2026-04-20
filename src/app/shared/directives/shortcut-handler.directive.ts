@@ -109,6 +109,11 @@ export class ShortcutHandlerDirective {
       return true;
     }
 
+    if (ctrlKey && !shiftKey && altKey && key.toLowerCase() === 'a') {
+      this.openAlerts();
+      return true;
+    }
+
     return false;
   }
 
@@ -223,5 +228,9 @@ export class ShortcutHandlerDirective {
 
   private openRcloneConfig(): void {
     this.modalService.openRcloneConfig();
+  }
+
+  private openAlerts(): void {
+    this.modalService.openAlerts();
   }
 }

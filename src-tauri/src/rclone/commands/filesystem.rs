@@ -16,7 +16,7 @@ pub async fn mkdir(
     app: AppHandle,
     remote: String,
     path: String,
-    source: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<(), String> {
     let state = app.state::<RcloneState>();
@@ -43,9 +43,7 @@ pub async fn mkdir(
             source: build_full_path(&remote, &path),
             destination: String::new(),
             profile: None,
-            origin: source
-                .as_deref()
-                .map(crate::utils::types::origin::Origin::parse),
+            origin,
             group,
             no_cache: true,
         },
@@ -63,11 +61,11 @@ pub async fn cleanup(
     app: AppHandle,
     remote: String,
     path: Option<String>,
-    source: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<(), String> {
     let state = app.state::<RcloneState>();
-    let path_val = path.as_deref().unwrap_or("");
+    let path_val = path.as_deref().unwrap_or("").to_string();
     debug!(
         "🧹 Cleanup remote trash: remote={} path={}",
         remote, path_val
@@ -94,12 +92,10 @@ pub async fn cleanup(
             remote_name: remote.clone(),
             job_type: JobType::Cleanup,
             operation_name: "Cleanup".to_string(),
-            source: build_full_path(&remote, path_val),
+            source: build_full_path(&remote, &path_val),
             destination: String::new(),
             profile: None,
-            origin: source
-                .as_deref()
-                .map(crate::utils::types::origin::Origin::parse),
+            origin,
             group,
             no_cache: true,
         },
@@ -120,7 +116,7 @@ pub async fn copy_url(
     path: String,
     url_to_copy: String,
     auto_filename: bool,
-    source: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<(), String> {
     let state = app.state::<RcloneState>();
@@ -152,9 +148,7 @@ pub async fn copy_url(
             source: url_to_copy,
             destination: build_full_path(&remote, &path),
             profile: None,
-            origin: source
-                .as_deref()
-                .map(crate::utils::types::origin::Origin::parse),
+            origin,
             group,
             no_cache: false,
         },
@@ -172,7 +166,7 @@ pub async fn delete_file(
     app: AppHandle,
     remote: String,
     path: String,
-    source: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<(), String> {
     let state = app.state::<RcloneState>();
@@ -200,9 +194,7 @@ pub async fn delete_file(
             source: build_full_path(&remote, &path),
             destination: String::new(), // Deletion has no destination
             profile: None,
-            origin: source
-                .as_deref()
-                .map(crate::utils::types::origin::Origin::parse),
+            origin,
             group,
             no_cache: false,
         },
@@ -220,7 +212,7 @@ pub async fn purge_directory(
     app: AppHandle,
     remote: String,
     path: String,
-    source: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<(), String> {
     let state = app.state::<RcloneState>();
@@ -248,9 +240,7 @@ pub async fn purge_directory(
             source: build_full_path(&remote, &path),
             destination: String::new(),
             profile: None,
-            origin: source
-                .as_deref()
-                .map(crate::utils::types::origin::Origin::parse),
+            origin,
             group,
             no_cache: false,
         },
@@ -268,7 +258,7 @@ pub async fn remove_empty_dirs(
     app: AppHandle,
     remote: String,
     path: String,
-    source: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<(), String> {
     let state = app.state::<RcloneState>();
@@ -300,9 +290,7 @@ pub async fn remove_empty_dirs(
             source: build_full_path(&remote, &path),
             destination: String::new(),
             profile: None,
-            origin: source
-                .as_deref()
-                .map(crate::utils::types::origin::Origin::parse),
+            origin,
             group,
             no_cache: true,
         },
@@ -322,7 +310,7 @@ pub async fn copy_file(
     src_path: String,
     dst_remote: String,
     dst_path: String,
-    source: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
     no_cache: Option<bool>,
 ) -> Result<u64, String> {
     let state = app.state::<RcloneState>();
@@ -358,9 +346,7 @@ pub async fn copy_file(
             source: src_full,
             destination: dst_full,
             profile: None,
-            origin: source
-                .as_deref()
-                .map(crate::utils::types::origin::Origin::parse),
+            origin,
             group: None,
             no_cache: no_cache.unwrap_or(false),
         },
@@ -377,7 +363,7 @@ pub async fn move_file(
     src_path: String,
     dst_remote: String,
     dst_path: String,
-    source: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
     no_cache: Option<bool>,
 ) -> Result<u64, String> {
     let state = app.state::<RcloneState>();
@@ -413,9 +399,7 @@ pub async fn move_file(
             source: src_full,
             destination: dst_full,
             profile: None,
-            origin: source
-                .as_deref()
-                .map(crate::utils::types::origin::Origin::parse),
+            origin,
             group: None,
             no_cache: no_cache.unwrap_or(false),
         },
@@ -432,7 +416,7 @@ pub async fn copy_dir(
     src_path: String,
     dst_remote: String,
     dst_path: String,
-    source: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
     no_cache: Option<bool>,
 ) -> Result<u64, String> {
     let state = app.state::<RcloneState>();
@@ -467,9 +451,7 @@ pub async fn copy_dir(
             source: src_fs.clone(),
             destination: dst_fs.clone(),
             profile: None,
-            origin: source
-                .as_deref()
-                .map(crate::utils::types::origin::Origin::parse),
+            origin,
             group: None,
             no_cache: no_cache.unwrap_or(false),
         },
@@ -486,7 +468,7 @@ pub async fn move_dir(
     src_path: String,
     dst_remote: String,
     dst_path: String,
-    source: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
     no_cache: Option<bool>,
 ) -> Result<u64, String> {
     let state = app.state::<RcloneState>();
@@ -522,9 +504,7 @@ pub async fn move_dir(
             source: src_fs.clone(),
             destination: dst_fs.clone(),
             profile: None,
-            origin: source
-                .as_deref()
-                .map(crate::utils::types::origin::Origin::parse),
+            origin,
             group: None,
             no_cache: no_cache.unwrap_or(false),
         },
@@ -789,7 +769,7 @@ async fn create_upload_job(
     app: &AppHandle,
     remote: &str,
     path: &str,
-    source: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
     total_bytes: usize,
     total_transfers: usize,
 ) -> Result<u64, String> {
@@ -822,9 +802,7 @@ async fn create_upload_job(
                 group: format!("upload/{remote_name}"),
                 profile: None,
                 execute_id: None,
-                origin: source
-                    .as_deref()
-                    .map(crate::utils::types::origin::Origin::parse),
+                origin,
                 backend_name: backend_manager.get_active().await.name.clone(),
             },
             Some(app),
@@ -846,7 +824,7 @@ pub async fn upload_local_drop_entries(
     remote: String,
     path: String,
     entries: Vec<LocalDropUploadEntry>,
-    source: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
 ) -> Result<LocalDropUploadResult, String> {
     use reqwest::multipart;
     use std::collections::HashSet;
@@ -863,7 +841,7 @@ pub async fn upload_local_drop_entries(
     let total_bytes = entries.iter().map(|e| e.size).sum::<usize>();
     let total_transfers = entries.len();
     let jobid =
-        create_upload_job(app, &remote, &path, source, total_bytes, total_transfers).await?;
+        create_upload_job(app, &remote, &path, origin, total_bytes, total_transfers).await?;
     let start = Instant::now();
 
     let mut created_directories: HashSet<String> = HashSet::new();
@@ -1121,10 +1099,10 @@ pub async fn upload_local_drop_paths(
     remote: String,
     path: String,
     local_paths: Vec<String>,
-    source: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
 ) -> Result<LocalDropUploadResult, String> {
     let entries = collect_upload_entries_from_paths(local_paths).await?;
-    upload_local_drop_entries(&app, remote, path, entries, source).await
+    upload_local_drop_entries(&app, remote, path, entries, origin).await
 }
 
 #[tauri::command]
@@ -1133,7 +1111,7 @@ pub async fn upload_local_drop_files(
     remote: String,
     path: String,
     files: Vec<LocalDropUploadFile>,
-    source: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
 ) -> Result<LocalDropUploadResult, String> {
     let entries = files
         .into_iter()
@@ -1145,7 +1123,7 @@ pub async fn upload_local_drop_files(
         })
         .collect();
 
-    upload_local_drop_entries(&app, remote, path, entries, source).await
+    upload_local_drop_entries(&app, remote, path, entries, origin).await
 }
 
 #[tauri::command]
@@ -1154,7 +1132,7 @@ pub async fn rename_file(
     remote: String,
     src_path: String,
     dst_path: String,
-    source: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<(), String> {
     let state = app.state::<RcloneState>();
@@ -1190,9 +1168,7 @@ pub async fn rename_file(
             source: src_full,
             destination: dst_full,
             profile: None,
-            origin: source
-                .as_deref()
-                .map(crate::utils::types::origin::Origin::parse),
+            origin,
             group,
             no_cache: true,
         },
@@ -1211,7 +1187,7 @@ pub async fn rename_dir(
     remote: String,
     src_path: String,
     dst_path: String,
-    source: Option<String>,
+    origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<(), String> {
     let state = app.state::<RcloneState>();
@@ -1248,9 +1224,7 @@ pub async fn rename_dir(
             source: src_full.clone(),
             destination: dst_full.clone(),
             profile: None,
-            origin: source
-                .as_deref()
-                .map(crate::utils::types::origin::Origin::parse),
+            origin,
             group,
             no_cache: true,
         },

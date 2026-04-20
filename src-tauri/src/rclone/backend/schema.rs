@@ -3,7 +3,6 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, rcman::DeriveSettingsSchema)]
-#[schema(category = "")]
 pub struct BackendConnectionSchema {
     #[setting(
         label = "Local Backend",

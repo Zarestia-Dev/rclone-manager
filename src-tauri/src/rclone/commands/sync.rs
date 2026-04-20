@@ -3,7 +3,6 @@ use serde_json::{Map, Value, json};
 use std::collections::HashMap;
 use tauri::{AppHandle, Manager};
 
-use crate::utils::types::origin::Origin;
 use crate::{
     rclone::backend::BackendManager,
     utils::{
@@ -311,7 +310,7 @@ async fn load_profile_and_run(
         runtime_remote_options: common.runtime_remote_options,
         profile: Some(params.profile_name.clone()),
         transfer_type,
-        origin: params.source.as_deref().map(Origin::parse),
+        origin: params.origin,
         no_cache: params.no_cache,
     };
 

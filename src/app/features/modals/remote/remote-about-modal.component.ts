@@ -67,7 +67,7 @@ export class RemoteAboutModalComponent implements OnInit, OnDestroy {
   private readonly jobManagementService = inject(JobManagementService);
   public readonly iconService = inject(IconService);
   public readonly data: RemoteAboutData = inject(MAT_DIALOG_DATA);
-  private readonly readJobGroup = `ui/remote-about/${this.data.remote.displayName}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  private readonly readJobGroup = `dashboard/remote-about/${this.data.remote.displayName}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   // Plain properties — no need for a signal when value never changes
   readonly displayName = this.data.remote.displayName;
@@ -154,7 +154,7 @@ export class RemoteAboutModalComponent implements OnInit, OnDestroy {
     try {
       const fsInfo = await this.metadataService.getFsInfo(
         this.normalizedName,
-        'ui',
+        'dashboard',
         this.readJobGroup
       );
       this.aboutInfo.set(fsInfo);
@@ -175,7 +175,7 @@ export class RemoteAboutModalComponent implements OnInit, OnDestroy {
       const sizeData = await this.remoteOps.getSize(
         this.normalizedName,
         undefined,
-        'ui',
+        'dashboard',
         this.readJobGroup
       );
       this.sizeInfo.set(sizeData);
@@ -190,7 +190,7 @@ export class RemoteAboutModalComponent implements OnInit, OnDestroy {
     await this.remoteFacadeService.getCachedOrFetchDiskUsage(
       this.displayName,
       this.normalizedName,
-      'ui',
+      'dashboard',
       this.readJobGroup,
       forceRefresh
     );
