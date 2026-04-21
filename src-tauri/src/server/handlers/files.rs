@@ -290,167 +290,56 @@ pub async fn copy_url_handler(
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DeleteFileBody {
-    pub remote: String,
-    pub path: String,
-    pub source: Option<Origin>,
-    pub group: Option<String>,
-}
-
-pub async fn delete_file_handler(
-    State(state): State<WebServerState>,
-    Json(body): Json<DeleteFileBody>,
-) -> Result<Json<ApiResponse<()>>, AppError> {
-    use crate::rclone::commands::filesystem::delete_file;
-    delete_file(
-        state.app_handle.clone(),
-        body.remote,
-        body.path,
-        body.source,
-        body.group,
-    )
-    .await
-    .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(())))
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PurgeDirectoryBody {
-    pub remote: String,
-    pub path: String,
-    pub source: Option<Origin>,
-    pub group: Option<String>,
-}
-
-pub async fn purge_directory_handler(
-    State(state): State<WebServerState>,
-    Json(body): Json<PurgeDirectoryBody>,
-) -> Result<Json<ApiResponse<()>>, AppError> {
-    use crate::rclone::commands::filesystem::purge_directory;
-    purge_directory(
-        state.app_handle.clone(),
-        body.remote,
-        body.path,
-        body.source,
-        body.group,
-    )
-    .await
-    .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(())))
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RemoveEmptyDirsBody {
-    pub remote: String,
-    pub path: String,
-    pub source: Option<Origin>,
-    pub group: Option<String>,
-}
-
-pub async fn remove_empty_dirs_handler(
-    State(state): State<WebServerState>,
-    Json(body): Json<RemoveEmptyDirsBody>,
-) -> Result<Json<ApiResponse<()>>, AppError> {
-    use crate::rclone::commands::filesystem::remove_empty_dirs;
-    remove_empty_dirs(
-        state.app_handle.clone(),
-        body.remote,
-        body.path,
-        body.source,
-        body.group,
-    )
-    .await
-    .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(())))
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CopyFileBody {
-    pub src_remote: String,
-    pub src_path: String,
+pub struct TransferItemsBody {
+    pub items: Vec<crate::rclone::commands::filesystem::TransferItem>,
     pub dst_remote: String,
     pub dst_path: String,
+    pub mode: String,
     pub source: Option<Origin>,
-    pub no_cache: Option<bool>,
+    pub group: Option<String>,
 }
 
-pub async fn copy_file_handler(
+pub async fn transfer_items_handler(
     State(state): State<WebServerState>,
-    Json(body): Json<CopyFileBody>,
-) -> Result<Json<ApiResponse<u64>>, AppError> {
-    use crate::rclone::commands::filesystem::copy_file;
-    let jobid = copy_file(
+    Json(body): Json<TransferItemsBody>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::rclone::commands::filesystem::transfer_items;
+    let batch_id = transfer_items(
         state.app_handle.clone(),
-        body.src_remote,
-        body.src_path,
+        body.items,
         body.dst_remote,
         body.dst_path,
+        body.mode,
         body.source,
-        body.no_cache,
+        body.group,
     )
     .await
     .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(jobid)))
+    Ok(Json(ApiResponse::success(batch_id)))
 }
 
-pub async fn move_file_handler(
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeleteItemsBody {
+    pub items: Vec<crate::rclone::commands::filesystem::DeleteItem>,
+    pub source: Option<Origin>,
+    pub group: Option<String>,
+}
+
+pub async fn delete_items_handler(
     State(state): State<WebServerState>,
-    Json(body): Json<CopyFileBody>,
-) -> Result<Json<ApiResponse<u64>>, AppError> {
-    use crate::rclone::commands::filesystem::move_file;
-    let jobid = move_file(
+    Json(body): Json<DeleteItemsBody>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::rclone::commands::filesystem::delete_items;
+    let batch_id = delete_items(
         state.app_handle.clone(),
-        body.src_remote,
-        body.src_path,
-        body.dst_remote,
-        body.dst_path,
+        body.items,
         body.source,
-        body.no_cache,
+        body.group,
     )
     .await
     .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(jobid)))
-}
-
-pub async fn copy_dir_handler(
-    State(state): State<WebServerState>,
-    Json(body): Json<CopyFileBody>,
-) -> Result<Json<ApiResponse<u64>>, AppError> {
-    use crate::rclone::commands::filesystem::copy_dir;
-    let jobid = copy_dir(
-        state.app_handle.clone(),
-        body.src_remote,
-        body.src_path,
-        body.dst_remote,
-        body.dst_path,
-        body.source,
-        body.no_cache,
-    )
-    .await
-    .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(jobid)))
-}
-
-pub async fn move_dir_handler(
-    State(state): State<WebServerState>,
-    Json(body): Json<CopyFileBody>,
-) -> Result<Json<ApiResponse<u64>>, AppError> {
-    use crate::rclone::commands::filesystem::move_dir;
-    let jobid = move_dir(
-        state.app_handle.clone(),
-        body.src_remote,
-        body.src_path,
-        body.dst_remote,
-        body.dst_path,
-        body.source,
-        body.no_cache,
-    )
-    .await
-    .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(jobid)))
+    Ok(Json(ApiResponse::success(batch_id)))
 }
 
 #[derive(Deserialize)]

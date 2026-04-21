@@ -699,11 +699,18 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
         ? this.data.remoteName
         : this.pathSelectionService.normalizeRemoteForRclone(this.data.remoteName);
 
-      await this.remoteOps.copyFile(
-        fsName,
-        this.currentItem().Path,
+      await this.remoteOps.transferItems(
+        [
+          {
+            srcRemote: fsName,
+            srcPath: this.currentItem().Path,
+            name: this.fileName(),
+            isDir: false,
+          },
+        ],
         selectedPath,
-        this.fileName(),
+        '',
+        'copy',
         ORIGINS.FILEMANAGER
       );
 

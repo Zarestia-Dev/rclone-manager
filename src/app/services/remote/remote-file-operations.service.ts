@@ -151,30 +151,37 @@ export class RemoteFileOperationsService extends TauriBaseService {
   }
 
   /**
-   * Delete a single file
+   * Transfer multiple items (copy or move)
    */
-  async deleteFile(remote: string, path: string, source?: Origin, group?: string): Promise<void> {
-    return this.invokeCommand<void>('delete_file', {
-      remote,
-      path,
-      source,
+  async transferItems(
+    items: { srcRemote: string; srcPath: string; name: string; isDir: boolean }[],
+    dstRemote: string,
+    dstPath: string,
+    mode: 'copy' | 'move',
+    source?: Origin,
+    group?: string
+  ): Promise<string> {
+    return this.invokeCommand<string>('transfer_items', {
+      items,
+      dstRemote,
+      dstPath,
+      mode,
+      origin: source,
       group,
     });
   }
 
   /**
-   * Purge a directory (recursive delete)
+   * Delete multiple items
    */
-  async purgeDirectory(
-    remote: string,
-    path: string,
+  async deleteItems(
+    items: { remote: string; path: string; isDir: boolean }[],
     source?: Origin,
     group?: string
-  ): Promise<void> {
-    return this.invokeCommand<void>('purge_directory', {
-      remote,
-      path,
-      source,
+  ): Promise<string> {
+    return this.invokeCommand<string>('delete_items', {
+      items,
+      origin: source,
       group,
     });
   }
@@ -187,54 +194,12 @@ export class RemoteFileOperationsService extends TauriBaseService {
     path: string,
     source?: Origin,
     group?: string
-  ): Promise<void> {
-    return this.invokeCommand<void>('remove_empty_dirs', {
+  ): Promise<string> {
+    return this.invokeCommand<string>('remove_empty_dirs', {
       remote,
       path,
-      source,
+      origin: source,
       group,
-    });
-  }
-
-  /**
-   * Copy a single file
-   */
-  async copyFile(
-    srcRemote: string,
-    srcPath: string,
-    dstRemote: string,
-    dstPath: string,
-    source?: Origin,
-    noCache?: boolean
-  ): Promise<number> {
-    return this.invokeCommand<number>('copy_file', {
-      srcRemote,
-      srcPath,
-      dstRemote,
-      dstPath,
-      source,
-      noCache,
-    });
-  }
-
-  /**
-   * Move a single file
-   */
-  async moveFile(
-    srcRemote: string,
-    srcPath: string,
-    dstRemote: string,
-    dstPath: string,
-    source?: Origin,
-    noCache?: boolean
-  ): Promise<number> {
-    return this.invokeCommand<number>('move_file', {
-      srcRemote,
-      srcPath,
-      dstRemote,
-      dstPath,
-      source,
-      noCache,
     });
   }
 
@@ -349,48 +314,6 @@ export class RemoteFileOperationsService extends TauriBaseService {
   }
 
   /**
-   * Copy a directory
-   */
-  async copyDirectory(
-    srcRemote: string,
-    srcPath: string,
-    dstRemote: string,
-    dstPath: string,
-    source?: Origin,
-    noCache?: boolean
-  ): Promise<number> {
-    return this.invokeCommand<number>('copy_dir', {
-      srcRemote,
-      srcPath,
-      dstRemote,
-      dstPath,
-      source,
-      noCache,
-    });
-  }
-
-  /**
-   * Move a directory
-   */
-  async moveDirectory(
-    srcRemote: string,
-    srcPath: string,
-    dstRemote: string,
-    dstPath: string,
-    source?: Origin,
-    noCache?: boolean
-  ): Promise<number> {
-    return this.invokeCommand<number>('move_dir', {
-      srcRemote,
-      srcPath,
-      dstRemote,
-      dstPath,
-      source,
-      noCache,
-    });
-  }
-
-  /**
    * Create a directory on the remote via backend `mkdir` command
    */
   async makeDirectory(
@@ -430,6 +353,20 @@ export class RemoteFileOperationsService extends TauriBaseService {
       path,
       urlToCopy,
       autoFilename,
+      source,
+      group,
+    });
+  }
+  /**
+   * Submit a batch of operations to the remote via job/batch
+   */
+  async submitBatchJob(
+    inputs: Record<string, any>[],
+    source?: Origin,
+    group?: string
+  ): Promise<string> {
+    return this.invokeCommand<string>('submit_batch_job', {
+      inputs,
       source,
       group,
     });

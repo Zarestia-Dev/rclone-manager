@@ -9,7 +9,8 @@ use crate::{
     utils::{
         app::notification::{NotificationEvent, notify},
         json_helpers::{
-            get_string, json_to_hashmap, resolve_profile_options, unwrap_nested_options,
+            get_string, interpolate_value, json_to_hashmap, resolve_profile_options,
+            unwrap_nested_options,
         },
         logging::log::log_operation,
         rclone::endpoints::serve,
@@ -49,6 +50,7 @@ struct RcloneServeBody {
 impl ServeParams {
     /// Create ServeParams from a profile config and settings
     pub fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self> {
+        let config = &interpolate_value(config);
         let source = get_string(config, &["source"]);
 
         // Valid if either source is set or fs is in options
@@ -212,14 +214,14 @@ pub async fn start_serve(
         Some(json!({ "id": serve_response.id, "addr": serve_response.addr })),
     );
 
-    // Store state and refresh
-    let cache = &backend_manager.remote_cache;
-    cache
-        .store_serve_profile(&serve_id, params.profile.clone())
-        .await;
+    // Refresh first so the entry exists in cache, then attach the profile to it.
     if let Err(e) = force_check_serves(app.clone()).await {
         warn!("Failed to refresh serves: {e}");
     }
+    backend_manager
+        .remote_cache
+        .store_serve_profile(&serve_id, params.profile.clone())
+        .await;
     info!(
         "✅ Serve {} started: ID={}, Address={}",
         params.remote_name, serve_response.id, serve_response.addr
@@ -325,9 +327,9 @@ pub async fn stop_all_serves(app: AppHandle, context: String) -> Result<String, 
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
-    // If there are no active serves, use helper for the no-op policy
+    // If there are no active serves, skip the API call.
     let serves = backend_manager.remote_cache.get_serves().await;
-    if !should_emit_stop_all_serves_notification(serves.len(), &context) {
+    if serves.is_empty() || context == "shutdown" {
         debug!("No active serves to stop — skipping STOPALL");
         if context != "shutdown" {
             if let Err(e) = force_check_serves(app.clone()).await {
@@ -357,26 +359,6 @@ pub async fn stop_all_serves(app: AppHandle, context: String) -> Result<String, 
     notify(&app, NotificationEvent::AllServesStopped);
 
     Ok(crate::localized_success!("backendSuccess.serve.stopped"))
-}
-
-// Small helper to encapsulate the no-op policy for stopping all serves.
-fn should_emit_stop_all_serves_notification(serves_count: usize, context: &str) -> bool {
-    serves_count > 0 && context != "shutdown"
-}
-
-#[cfg(test)]
-mod tests {
-    use super::should_emit_stop_all_serves_notification;
-
-    #[test]
-    fn test_should_emit_stop_all_serves_notification() {
-        // No serves -> silent
-        assert!(!should_emit_stop_all_serves_notification(0, "menu"));
-        // Active serves -> notify
-        assert!(should_emit_stop_all_serves_notification(2, "menu"));
-        // Shutdown -> never notify
-        assert!(!should_emit_stop_all_serves_notification(2, "shutdown"));
-    }
 }
 
 /// Start a serve using a named profile

@@ -4,10 +4,7 @@ use log::{debug, error, info};
 use tauri::Manager;
 
 use crate::{
-    core::{
-        check_binaries::check_rclone_available, paths::AppPaths,
-        settings::operations::core::save_setting,
-    },
+    core::{paths::AppPaths, settings::operations::core::save_setting},
     utils::github_client,
 };
 
@@ -25,36 +22,10 @@ pub async fn provision_rclone(
     let os = tauri_plugin_os::platform();
     let arch = get_arch();
 
-    let install_path = match path {
+    let install_dir = match path {
         Some(p) => PathBuf::from(p),
-        _none => AppPaths::from_app_handle(&app_handle)?.config_dir,
+        None => AppPaths::from_app_handle(&app_handle)?.config_dir,
     };
-
-    // check_rclone_available is now async, so we need to await it
-    match check_rclone_available(app_handle.clone(), "").await {
-        Ok(available) => {
-            if available {
-                if let Err(e) = save_setting(
-                    "core".to_string(),
-                    "rclone_path".to_string(),
-                    serde_json::json!("system"),
-                    app_handle.state(),
-                    app_handle.clone(),
-                )
-                .await
-                {
-                    error!("Failed to save settings: {e}");
-                }
-                return Ok(
-                    crate::localized_success!("backendSuccess.rclone.updated", "channel" => "system"),
-                );
-            }
-        }
-        Err(e) => {
-            error!("Error checking rclone availability: {e}");
-            // Continue anyway - assume not available
-        }
-    }
 
     let os_name = match os {
         "macos" => "osx",
@@ -68,33 +39,25 @@ pub async fn provision_rclone(
     };
 
     let version = get_latest_rclone_version().await?;
-
     let zip_bytes = download_rclone_zip(os_name, &arch, &version).await?;
 
     info!("Rclone version: {version}");
-    // Save the downloaded zip bytes to a local file for debugging or reuse
+
     let temp_dir = std::env::temp_dir().join("rclone_temp");
     std::fs::create_dir_all(&temp_dir)
         .map_err(|e| format!("Failed to create temp directory: {e}"))?;
-    debug!("Temp directory created at {}", temp_dir.display());
-    let zip_file_path = temp_dir.join(format!("rclone-{version}-{os_name}-{arch}.zip"));
-    std::fs::write(&zip_file_path, &zip_bytes)
-        .map_err(|e| format!("Failed to save rclone zip file locally: {e}"))?;
-    info!(
-        "Rclone zip file saved locally at {}",
-        zip_file_path.display()
-    );
 
-    match verify_rclone_sha256(
-        &temp_dir,
-        &version,
-        &format!("rclone-{version}-{os_name}-{arch}.zip"),
-    )
-    .await
-    {
-        Ok(_) => info!("SHA256 hash matches ✅"),
+    let zip_file_name = format!("rclone-{version}-{os_name}-{arch}.zip");
+    let zip_file_path = temp_dir.join(&zip_file_name);
+    std::fs::write(&zip_file_path, &zip_bytes)
+        .map_err(|e| format!("Failed to save rclone zip: {e}"))?;
+
+    debug!("Rclone zip saved at {}", zip_file_path.display());
+
+    match verify_rclone_sha256(&temp_dir, &version, &zip_file_name).await {
+        Ok(_) => info!("SHA256 hash verified"),
         Err(err) => {
-            error!("SHA256 verification failed ❌: {err}");
+            error!("SHA256 verification failed: {err}");
             return Err(err);
         }
     }
@@ -117,25 +80,23 @@ pub async fn provision_rclone(
         ));
     }
 
-    info!("Rclone binary verified successfully. Proceeding to copy...");
-
-    safe_copy_rclone(&extracted_path, &install_path, binary_name)?;
-
     info!(
-        "Rclone installed successfully at {}",
-        install_path.display()
+        "Rclone binary verified. Copying to {}...",
+        install_dir.display()
     );
 
-    // Persist the new rclone path to settings
-    // Note: In-memory caching is no longer used - we read from AppSettingsManager which caches internally
+    safe_copy_rclone(&extracted_path, &install_dir, binary_name)?;
+
+    // Store the full path to the binary file, not the directory.
+    let binary_path = install_dir.join(binary_name);
+    let binary_path_str = binary_path
+        .to_str()
+        .ok_or_else(|| crate::localized_error!("backendErrors.rclone.binaryNotFound"))?;
+
     if let Err(e) = save_setting(
         "core".to_string(),
-        "rclone_path".to_string(),
-        serde_json::json!(
-            install_path
-                .to_str()
-                .ok_or_else(|| crate::localized_error!("backendErrors.rclone.binaryNotFound"))?
-        ),
+        "rclone_binary".to_string(),
+        serde_json::json!(binary_path_str),
         app_handle.state(),
         app_handle.clone(),
     )
@@ -144,10 +105,12 @@ pub async fn provision_rclone(
         error!("Failed to save settings: {e}");
     }
 
+    info!("Rclone installed at {}", binary_path.display());
+
     Ok(crate::localized_success!("backendSuccess.rclone.updated", "channel" => "stable"))
 }
 
-/// Get the latest rclone version from GitHub releases
+/// Get the latest rclone version from GitHub releases.
 pub async fn get_latest_rclone_version() -> Result<String, String> {
     let release = github_client::get_latest_release("rclone", "rclone")
         .await

@@ -1,4 +1,4 @@
-use log::info;
+use log::{debug, info, warn};
 use tauri::{AppHandle, Manager};
 
 use crate::core::check_binaries::build_rclone_command;
@@ -18,7 +18,7 @@ async fn apply_rclone_environment(
     if let Some(env_manager) = app.try_state::<SafeEnvironmentManager>() {
         let env_vars = env_manager.get_env_vars();
         if env_vars.contains_key("RCLONE_CONFIG_PASS") {
-            info!("🔑 Using environment manager password for rclone process");
+            debug!("Applying environment manager vars to rclone process");
             for (key, value) in env_vars {
                 command = command.env(&key, &value);
             }
@@ -26,7 +26,6 @@ async fn apply_rclone_environment(
         }
     }
 
-    // Apply user-defined environment variables from settings.
     let settings_manager = app.state::<AppSettingsManager>();
     if let Ok(settings) = settings_manager.get_all() {
         for env_str in &settings.core.rclone_env_vars {
@@ -34,8 +33,8 @@ async fn apply_rclone_environment(
                 let key = key.trim();
                 let value = value.trim();
                 if !key.is_empty() {
-                    info!(
-                        "🚀 Applying user rclone env: {key}={}",
+                    debug!(
+                        "Applying user rclone env: {key}={}",
                         if is_sensitive_field(key) {
                             "***"
                         } else {
@@ -51,14 +50,12 @@ async fn apply_rclone_environment(
     if !password_found {
         match crate::core::security::is_config_encrypted(app.clone()).await {
             Ok(true) => {
-                info!("🔒 Configuration is encrypted but no password available, stopping start");
+                info!("Configuration is encrypted but no password available, aborting start");
                 return Err(crate::rclone::engine::error::EngineError::PasswordRequired);
             }
-            Ok(false) => {
-                info!("🔓 Configuration is not encrypted, proceeding without password");
-            }
+            Ok(false) => {}
             Err(e) => {
-                info!("⚠️ Could not determine encryption status: {e}, proceeding without password");
+                warn!("Could not determine encryption status: {e}, proceeding without password");
             }
         }
     }
@@ -66,7 +63,6 @@ async fn apply_rclone_environment(
     Ok(command)
 }
 
-/// Build the args shared between the main engine and OAuth processes.
 fn build_rclone_base_args(host: &str, port: u16) -> Vec<String> {
     vec![
         "rcd".to_string(),
@@ -77,7 +73,6 @@ fn build_rclone_base_args(host: &str, port: u16) -> Vec<String> {
     ]
 }
 
-/// Build and apply user-defined extra flags from settings.
 fn append_user_flags_from_app(
     app: &AppHandle,
     args: &mut Vec<String>,
@@ -85,12 +80,11 @@ fn append_user_flags_from_app(
     let settings_manager = app.state::<AppSettingsManager>();
 
     let Ok(settings) = settings_manager.get_all() else {
-        info!("⚠️ Could not load settings to check for additional flags");
+        debug!("Could not load settings to check for additional flags");
         return Ok(());
     };
 
     let extra_flags = &settings.core.rclone_additional_flags;
-
     if extra_flags.is_empty() {
         return Ok(());
     }
@@ -102,7 +96,7 @@ fn append_user_flags_from_app(
         })?;
 
         if let Err(e) = meta.validate(&flags_value) {
-            info!("❌ Blocked reserved/invalid flags: {e}");
+            info!("Blocked reserved/invalid flags: {e}");
             return Err(
                 crate::rclone::engine::error::EngineError::ConfigValidationFailed(
                     crate::localized_error!("backendErrors.rclone.invalidFlags", "error" => e),
@@ -111,10 +105,9 @@ fn append_user_flags_from_app(
         }
     }
 
-    info!("🚩 Appending user-defined flags: {extra_flags:?}");
+    debug!("Appending user-defined flags: {extra_flags:?}");
 
     for flag in extra_flags {
-        // Allow "key value" pairs — split only on the first space so values can contain spaces.
         if let Some((key, value)) = flag.split_once(' ') {
             args.push(key.to_string());
             args.push(value.to_string());
@@ -126,22 +119,21 @@ fn append_user_flags_from_app(
     Ok(())
 }
 
-/// Append auth args (or --rc-no-auth) to the args list.
 fn append_auth_args(args: &mut Vec<String>, username: Option<String>, password: Option<String>) {
     match (username, password) {
         (Some(user), Some(pass)) if !user.is_empty() => {
-            info!("🔐 Starting rclone with authentication enabled");
+            debug!("Starting rclone with authentication");
             args.push(format!("--rc-user={user}"));
             args.push(format!("--rc-pass={pass}"));
         }
         _ => {
-            info!("🔓 Starting rclone with NO authentication");
+            debug!("Starting rclone with no authentication");
             args.push("--rc-no-auth".to_string());
         }
     }
 }
 
-/// Unified rclone command builder for both the main engine and the OAuth process.
+/// Build the rclone command for the main engine or the OAuth process.
 pub async fn build_rclone_process_command(
     app: &AppHandle,
     kind: ProcessKind,
@@ -150,7 +142,6 @@ pub async fn build_rclone_process_command(
     use std::path::PathBuf;
 
     let backend_manager_state = app.state::<BackendManager>();
-
     let config_path = backend_manager_state
         .get_local_config_path()
         .await
@@ -158,8 +149,6 @@ pub async fn build_rclone_process_command(
 
     let backend = backend_manager_state.get_active().await;
 
-    // Resolve the port — OAuth requires its own dedicated port.
-    // Both are always present: `oauth_port` is a required field with a default.
     let port = match kind {
         ProcessKind::Engine => backend.port,
         ProcessKind::OAuth => backend.oauth_port,
@@ -168,8 +157,6 @@ pub async fn build_rclone_process_command(
     let command = build_rclone_command(app, None, config_path.as_deref(), None);
     let mut args = build_rclone_base_args(&backend.host, port);
 
-    // Engine-only: log file + user-defined extra flags.
-    // OAuth output is consumed directly via stderr pipe, so no log file is written.
     if let ProcessKind::Engine = kind {
         let log_file_path = crate::core::paths::AppPaths::from_app_handle(app)
             .map(|paths| paths.get_rclone_log_dir().join("main_engine.log"))
@@ -202,8 +189,5 @@ pub async fn build_rclone_process_command(
         auth_args.map(|(_, p)| p),
     );
 
-    let command = command.args(args);
-
-    // Engine checks for password; OAuth skips it.
-    apply_rclone_environment(app, command).await
+    apply_rclone_environment(app, command.args(args)).await
 }

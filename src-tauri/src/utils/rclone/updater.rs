@@ -10,7 +10,7 @@ use serde_json::json;
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::core::check_binaries::{get_rclone_binary_path, read_rclone_path};
+use crate::core::check_binaries::read_rclone_binary;
 use crate::core::settings::operations::core::save_setting;
 use crate::rclone::backend::BackendManager;
 use crate::rclone::queries::get_rclone_info;
@@ -184,28 +184,11 @@ pub async fn get_rclone_update_info(
 /// Mirrors the candidate resolution logic in `activate_pending_rclone_update`
 /// so that both functions always agree on where the binary is.
 fn find_pending_new_binary(app_handle: &AppHandle) -> Option<(PathBuf, PathBuf)> {
-    let manager = app_handle.state::<crate::core::settings::AppSettingsManager>();
-    let configured_base: PathBuf = manager
-        .inner()
-        .get::<String>("core.rclone_path")
-        .ok()
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("system"));
+    let current_runtime = read_rclone_binary(app_handle);
+    let local_target = get_local_rclone_binary(app_handle).ok()?;
 
-    let current_runtime = read_rclone_path(app_handle);
-    let bin_name = if cfg!(windows) {
-        "rclone.exe"
-    } else {
-        "rclone"
-    };
-    let local_target = get_local_rclone_path(app_handle).ok()?.join(bin_name);
-
-    let configured_target = (!matches!(configured_base.to_string_lossy().as_ref(), "" | "system"))
-        .then(|| get_rclone_binary_path(&configured_base));
-
-    configured_target
+    [current_runtime, local_target]
         .into_iter()
-        .chain([current_runtime, local_target])
         .map(|p| {
             let new = PathBuf::from(format!("{}.new", p.display()));
             (p, new)
@@ -288,17 +271,10 @@ pub async fn update_rclone(
     let latest_version = &update_check.latest_version;
 
     // Resolve binary path, falling back to system rclone
-    let manager = app_handle.state::<crate::core::settings::AppSettingsManager>();
-    let base_path: PathBuf = manager
-        .inner()
-        .get::<String>("core.rclone_path")
-        .ok()
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("system"));
-    let mut current_path = get_rclone_binary_path(&base_path);
+    let mut current_path = read_rclone_binary(&app_handle);
 
     if !current_path.exists() {
-        let system_path = read_rclone_path(&app_handle);
+        let system_path = read_rclone_binary(&app_handle);
         if system_path.exists() {
             current_path = system_path;
         } else {
@@ -479,17 +455,17 @@ pub async fn activate_pending_rclone_update(app_handle: &AppHandle) -> Result<St
     }
 
     // Persist new path if needed
-    if let Some(new_parent) = current_path.parent() {
+    {
         let manager = app_handle.state::<crate::core::settings::AppSettingsManager>();
         let current_setting: PathBuf = manager
             .inner()
-            .get::<String>("core.rclone_path")
+            .get::<String>("core.rclone_binary")
             .ok()
             .map(PathBuf::from)
             .unwrap_or_default();
 
-        if current_setting != new_parent {
-            update_rclone_path_in_settings(app_handle, new_parent).await;
+        if current_setting != current_path {
+            update_rclone_binary_in_settings(app_handle, &current_path).await;
         }
     }
 
@@ -520,18 +496,12 @@ async fn determine_update_strategy(
         return Ok(UpdateStrategy::InPlace(current_path.to_path_buf()));
     }
 
-    let local_dir = get_local_rclone_path(app_handle)?;
-    if let Some(parent) = local_dir.parent() {
+    let full_path = get_local_rclone_binary(app_handle)?;
+    if let Some(parent) = full_path.parent() {
         std::fs::create_dir_all(parent)
             .map_err(|e| format!("Failed to create local rclone directory: {e}"))?;
     }
 
-    let bin_name = if cfg!(windows) {
-        "rclone.exe"
-    } else {
-        "rclone"
-    };
-    let full_path = local_dir.join(bin_name);
     log::info!("Will download rclone to local path: {full_path:?}");
     Ok(UpdateStrategy::DownloadToLocal(full_path))
 }
@@ -551,7 +521,7 @@ async fn execute_update_strategy(
         UpdateStrategy::DownloadToLocal(full_path) => {
             let new_path = PathBuf::from(format!("{}.new", full_path.display()));
             info!("Downloading update to local path: {:?}", new_path);
-            // Do NOT save settings here — that would trigger the rclone_path event
+            // Do NOT save settings here — that would trigger the rclone_binary event
             // listener and restart the engine before the binary is promoted.
             // The path is saved in activate_pending_rclone_update after the swap.
             perform_rclone_selfupdate(app_handle, Some(&new_path), channel).await
@@ -577,30 +547,46 @@ fn is_writable_dir(path: &Path) -> bool {
     }
 }
 
-fn get_local_rclone_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
+fn get_local_rclone_binary(app_handle: &AppHandle) -> Result<PathBuf, String> {
     let manager = app_handle.state::<crate::core::settings::AppSettingsManager>();
     let configured: PathBuf = manager
         .inner()
-        .get::<String>("core.rclone_path")
+        .get::<String>("core.rclone_binary")
         .ok()
         .map(PathBuf::from)
         .unwrap_or_default();
 
+    let bin_name = if cfg!(windows) {
+        "rclone.exe"
+    } else {
+        "rclone"
+    };
+
     if !matches!(configured.to_string_lossy().as_ref(), "" | "system") {
-        if is_writable_dir(&configured) {
-            log::info!("Using configured rclone install path: {configured:?}");
-            return Ok(configured);
+        let dir = if configured.is_dir() {
+            configured.clone()
+        } else {
+            configured
+                .parent()
+                .map(|p| p.to_path_buf())
+                .unwrap_or_default()
+        };
+
+        if !dir.as_os_str().is_empty() && is_writable_dir(&dir) {
+            log::info!("Using configured rclone install directory: {dir:?}");
+            return Ok(dir.join(bin_name));
         }
         log::warn!("Configured path {configured:?} is not writable, falling back to app data dir");
     }
 
-    Ok(crate::core::paths::AppPaths::from_app_handle(app_handle)?.config_dir)
+    let app_dir = crate::core::paths::AppPaths::from_app_handle(app_handle)?.config_dir;
+    Ok(app_dir.join(bin_name))
 }
 
-async fn update_rclone_path_in_settings(app_handle: &AppHandle, new_path: &Path) {
+async fn update_rclone_binary_in_settings(app_handle: &AppHandle, new_path: &Path) {
     match save_setting(
         "core".to_string(),
-        "rclone_path".to_string(),
+        "rclone_binary".to_string(),
         json!(new_path.display().to_string()),
         app_handle.state(),
         app_handle.clone(),

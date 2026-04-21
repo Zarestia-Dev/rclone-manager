@@ -10,9 +10,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Alert & Actions**: Added a new tab to the Alerts section for managing alert actions. Users can now define custom actions (OS Toast, Webhook, Script) that can be triggered when an alert rule matches. **Needs some polish before release**!
 - Download URL support for nautilus file browser. You can directly download file from url on selected path. Access via right vertical ellipsis menu on path bar.
 - **UI**: Implemented a Layout Editor for arranging and hiding dashboard and remote cards. Users can now customize their view by dragging cards to reorder them and using toggle buttons to hide unwanted items.
+- **Shell Command Interpolation**: Path and option fields now support shell command substitution using backticks. Wrap any command in backticks (e.g. `` `date +%Y-%m-%d` ``) and the output will be substituted into the path. Works for dynamic backup directories, timestamped mount points, and any configuration parameter. Commands are evaluated on the local system at job time.
+- Jottacloud provider added into the non-interactive remotes. 
 
 ### Changed
 - Allow update support for remote rclone instances. Manual restart needed on remote rclone instance.
+- change rclone binary location to direct binary path.
 
 
 ## [v0.2.4] - 2026-04-14

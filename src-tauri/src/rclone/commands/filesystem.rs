@@ -6,10 +6,27 @@ use serde_json::json;
 use tauri::{AppHandle, Manager};
 
 use crate::rclone::backend::BackendManager;
-use crate::rclone::commands::job::{JobMetadata, submit_job};
+use crate::rclone::commands::job::JobMetadata;
 use crate::utils::rclone::endpoints::{operations, sync};
 use crate::utils::rclone::util::build_full_path;
-use crate::utils::types::{core::RcloneState, jobs::JobType};
+use crate::utils::types::{core::RcloneState, jobs::JobType, origin::Origin};
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TransferItem {
+    pub src_remote: String,
+    pub src_path: String,
+    pub name: String,
+    pub is_dir: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeleteItem {
+    pub remote: String,
+    pub path: String,
+    pub is_dir: bool,
+}
 
 #[tauri::command]
 pub async fn mkdir(
@@ -162,356 +179,132 @@ pub async fn copy_url(
 }
 
 #[tauri::command]
-pub async fn delete_file(
-    app: AppHandle,
-    remote: String,
-    path: String,
-    origin: Option<crate::utils::types::origin::Origin>,
-    group: Option<String>,
-) -> Result<(), String> {
-    let state = app.state::<RcloneState>();
-    debug!("🗑️ Deleting file: remote={} path={}", remote, path);
-
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let url = backend.url_for(operations::DELETEFILE);
-
-    let payload = json!({
-        "fs": remote.clone(),
-        "remote": path.clone(),
-        "_async": true,
-    });
-
-    let _ = crate::rclone::commands::job::submit_job_with_options(
-        app.clone(),
-        state.client.clone(),
-        backend.inject_auth(state.client.clone().post(&url)),
-        payload,
-        JobMetadata {
-            remote_name: remote.clone(),
-            job_type: JobType::DeleteFile,
-            operation_name: "Delete File".to_string(),
-            source: build_full_path(&remote, &path),
-            destination: String::new(), // Deletion has no destination
-            profile: None,
-            origin,
-            group,
-            no_cache: false,
-        },
-        crate::rclone::commands::job::SubmitJobOptions {
-            wait_for_completion: true,
-        },
-    )
-    .await?;
-
-    Ok(())
-}
-
-#[tauri::command]
-pub async fn purge_directory(
-    app: AppHandle,
-    remote: String,
-    path: String,
-    origin: Option<crate::utils::types::origin::Origin>,
-    group: Option<String>,
-) -> Result<(), String> {
-    let state = app.state::<RcloneState>();
-    debug!("🗑️ Purging directory: remote={} path={}", remote, path);
-
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let url = backend.url_for(operations::PURGE);
-
-    let payload = json!({
-        "fs": remote.clone(),
-        "remote": path.clone(),
-        "_async": true,
-    });
-
-    let _ = crate::rclone::commands::job::submit_job_with_options(
-        app.clone(),
-        state.client.clone(),
-        backend.inject_auth(state.client.clone().post(&url)),
-        payload,
-        JobMetadata {
-            remote_name: remote.clone(),
-            job_type: JobType::Purge,
-            operation_name: "Purge".to_string(),
-            source: build_full_path(&remote, &path),
-            destination: String::new(),
-            profile: None,
-            origin,
-            group,
-            no_cache: false,
-        },
-        crate::rclone::commands::job::SubmitJobOptions {
-            wait_for_completion: true,
-        },
-    )
-    .await?;
-
-    Ok(())
-}
-
-#[tauri::command]
 pub async fn remove_empty_dirs(
     app: AppHandle,
     remote: String,
     path: String,
-    origin: Option<crate::utils::types::origin::Origin>,
+    origin: Option<Origin>,
     group: Option<String>,
-) -> Result<(), String> {
-    let state = app.state::<RcloneState>();
+) -> Result<String, String> {
     debug!(
         "🧹 Removing empty directories: remote={} path={}",
         remote, path
     );
 
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let url = backend.url_for(operations::RMDIRS);
-
-    let payload = json!({
-        "fs": remote.clone(),
-        "remote": path.clone(),
+    let inputs = vec![json!({
+        "_path": operations::RMDIRS,
+        "fs": remote,
+        "remote": path,
         "leaveRoot": true,
         "_async": true,
-    });
+    })];
 
-    let _ = crate::rclone::commands::job::submit_job_with_options(
-        app.clone(),
-        state.client.clone(),
-        backend.inject_auth(state.client.clone().post(&url)),
-        payload,
-        JobMetadata {
-            remote_name: remote.clone(),
-            job_type: JobType::Rmdirs,
-            operation_name: "Remove Empty Dirs".to_string(),
-            source: build_full_path(&remote, &path),
-            destination: String::new(),
-            profile: None,
-            origin,
-            group,
-            no_cache: true,
-        },
-        crate::rclone::commands::job::SubmitJobOptions {
-            wait_for_completion: true,
-        },
-    )
-    .await?;
-
-    Ok(())
+    crate::rclone::commands::job::submit_batch_job(app, inputs, origin, group).await
 }
 
 #[tauri::command]
-pub async fn copy_file(
+pub async fn transfer_items(
     app: AppHandle,
-    src_remote: String,
-    src_path: String,
+    items: Vec<TransferItem>,
     dst_remote: String,
     dst_path: String,
-    origin: Option<crate::utils::types::origin::Origin>,
-    no_cache: Option<bool>,
-) -> Result<u64, String> {
-    let state = app.state::<RcloneState>();
+    mode: String, // "copy" or "move"
+    origin: Option<Origin>,
+    group: Option<String>,
+) -> Result<String, String> {
+    let num_items = items.len();
     debug!(
-        "📄 Copying file: src_remote={} src_path={} dst_remote={} dst_path={}",
-        src_remote, src_path, dst_remote, dst_path
+        "📦 Transferring {} items to {}:{} (mode={})",
+        num_items, dst_remote, dst_path, mode
     );
 
-    let src_full = build_full_path(&src_remote, &src_path);
-    let dst_full = build_full_path(&dst_remote, &dst_path);
+    let mut inputs = Vec::new();
+    for item in items {
+        let dst_file = if dst_path.is_empty() {
+            item.name.clone()
+        } else {
+            format!("{}/{}", dst_path.trim_end_matches('/'), item.name)
+        };
 
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let url = backend.url_for(operations::COPYFILE);
+        let src_full = build_full_path(&item.src_remote, &item.src_path);
+        let dst_full = build_full_path(&dst_remote, &dst_file);
 
-    let payload = json!({
-        "srcFs": src_remote.clone(),
-        "srcRemote": src_path.clone(),
-        "dstFs": dst_remote.clone(),
-        "dstRemote": dst_path.clone(),
-        "_async": true,
-    });
+        if mode == "copy" {
+            if item.is_dir {
+                inputs.push(json!({
+                    "_path": sync::COPY,
+                    "srcFs": src_full,
+                    "dstFs": dst_full,
+                    "createEmptySrcDirs": true,
+                    "_async": true,
+                }));
+            } else {
+                inputs.push(json!({
+                    "_path": operations::COPYFILE,
+                    "srcFs": item.src_remote,
+                    "srcRemote": item.src_path,
+                    "dstFs": dst_remote.clone(),
+                    "dstRemote": dst_file,
+                    "_async": true,
+                }));
+            }
+        } else {
+            // mode == "move"
+            if item.is_dir {
+                inputs.push(json!({
+                    "_path": sync::MOVE,
+                    "srcFs": src_full,
+                    "dstFs": dst_full,
+                    "createEmptySrcDirs": true,
+                    "deleteEmptySrcDirs": true,
+                    "_async": true,
+                }));
+            } else {
+                inputs.push(json!({
+                    "_path": operations::MOVEFILE,
+                    "srcFs": item.src_remote,
+                    "srcRemote": item.src_path,
+                    "dstFs": dst_remote.clone(),
+                    "dstRemote": dst_file,
+                    "_async": true,
+                }));
+            }
+        }
+    }
 
-    let (jobid, _, _) = submit_job(
-        app.clone(),
-        state.client.clone(),
-        backend.inject_auth(state.client.clone().post(&url)),
-        payload,
-        JobMetadata {
-            remote_name: src_remote.clone(),
-            job_type: JobType::CopyFile,
-            operation_name: "Copy File".to_string(),
-            source: src_full,
-            destination: dst_full,
-            profile: None,
-            origin,
-            group: None,
-            no_cache: no_cache.unwrap_or(false),
-        },
-    )
-    .await?;
-
-    Ok(jobid)
+    crate::rclone::commands::job::submit_batch_job(app, inputs, origin, group).await
 }
 
 #[tauri::command]
-pub async fn move_file(
+pub async fn delete_items(
     app: AppHandle,
-    src_remote: String,
-    src_path: String,
-    dst_remote: String,
-    dst_path: String,
-    origin: Option<crate::utils::types::origin::Origin>,
-    no_cache: Option<bool>,
-) -> Result<u64, String> {
-    let state = app.state::<RcloneState>();
-    debug!(
-        "📦 Moving file: src_remote={} src_path={} dst_remote={} dst_path={}",
-        src_remote, src_path, dst_remote, dst_path
-    );
+    items: Vec<DeleteItem>,
+    origin: Option<Origin>,
+    group: Option<String>,
+) -> Result<String, String> {
+    let num_items = items.len();
+    debug!("🗑️ Deleting {} items", num_items);
 
-    let src_full = build_full_path(&src_remote, &src_path);
-    let dst_full = build_full_path(&dst_remote, &dst_path);
+    let mut inputs = Vec::new();
+    for item in items {
+        if item.is_dir {
+            inputs.push(json!({
+                "_path": operations::PURGE,
+                "fs": item.remote,
+                "remote": item.path,
+                "_async": true,
+            }));
+        } else {
+            inputs.push(json!({
+                "_path": operations::DELETEFILE,
+                "fs": item.remote,
+                "remote": item.path,
+                "_async": true,
+            }));
+        }
+    }
 
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let url = backend.url_for(operations::MOVEFILE);
-
-    let payload = json!({
-        "srcFs": src_remote.clone(),
-        "srcRemote": src_path.clone(),
-        "dstFs": dst_remote.clone(),
-        "dstRemote": dst_path.clone(),
-        "_async": true,
-    });
-
-    let (jobid, _, _) = submit_job(
-        app.clone(),
-        state.client.clone(),
-        backend.inject_auth(state.client.clone().post(&url)),
-        payload,
-        JobMetadata {
-            remote_name: src_remote.clone(),
-            job_type: JobType::MoveFile,
-            operation_name: "Move File".to_string(),
-            source: src_full,
-            destination: dst_full,
-            profile: None,
-            origin,
-            group: None,
-            no_cache: no_cache.unwrap_or(false),
-        },
-    )
-    .await?;
-
-    Ok(jobid)
-}
-
-#[tauri::command]
-pub async fn copy_dir(
-    app: AppHandle,
-    src_remote: String,
-    src_path: String,
-    dst_remote: String,
-    dst_path: String,
-    origin: Option<crate::utils::types::origin::Origin>,
-    no_cache: Option<bool>,
-) -> Result<u64, String> {
-    let state = app.state::<RcloneState>();
-    debug!(
-        "📁 Copying directory: src_remote={} src_path={} dst_remote={} dst_path={}",
-        src_remote, src_path, dst_remote, dst_path
-    );
-
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let url = backend.url_for(sync::COPY);
-
-    let src_fs = build_full_path(&src_remote, &src_path);
-    let dst_fs = build_full_path(&dst_remote, &dst_path);
-
-    let payload = json!({
-        "srcFs": src_fs,
-        "dstFs": dst_fs,
-        "createEmptySrcDirs": true,
-        "_async": true,
-    });
-
-    let (jobid, _, _) = submit_job(
-        app.clone(),
-        state.client.clone(),
-        backend.inject_auth(state.client.clone().post(&url)),
-        payload,
-        JobMetadata {
-            remote_name: src_remote.clone(),
-            job_type: JobType::CopyDir,
-            operation_name: "Copy Directory".to_string(),
-            source: src_fs.clone(),
-            destination: dst_fs.clone(),
-            profile: None,
-            origin,
-            group: None,
-            no_cache: no_cache.unwrap_or(false),
-        },
-    )
-    .await?;
-
-    Ok(jobid)
-}
-
-#[tauri::command]
-pub async fn move_dir(
-    app: AppHandle,
-    src_remote: String,
-    src_path: String,
-    dst_remote: String,
-    dst_path: String,
-    origin: Option<crate::utils::types::origin::Origin>,
-    no_cache: Option<bool>,
-) -> Result<u64, String> {
-    let state = app.state::<RcloneState>();
-    debug!(
-        "📂 Moving directory: src_remote={} src_path={} dst_remote={} dst_path={}",
-        src_remote, src_path, dst_remote, dst_path
-    );
-
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let url = backend.url_for(sync::MOVE);
-
-    let src_fs = build_full_path(&src_remote, &src_path);
-    let dst_fs = build_full_path(&dst_remote, &dst_path);
-
-    let payload = json!({
-        "srcFs": src_fs,
-        "dstFs": dst_fs,
-        "createEmptySrcDirs": true,
-        "deleteEmptySrcDirs": true,
-        "_async": true,
-    });
-
-    let (jobid, _, _) = submit_job(
-        app.clone(),
-        state.client.clone(),
-        backend.inject_auth(state.client.clone().post(&url)),
-        payload,
-        JobMetadata {
-            remote_name: src_remote.clone(),
-            job_type: JobType::MoveDir,
-            operation_name: "Move Directory".to_string(),
-            source: src_fs.clone(),
-            destination: dst_fs.clone(),
-            profile: None,
-            origin,
-            group: None,
-            no_cache: no_cache.unwrap_or(false),
-        },
-    )
-    .await?;
-
-    Ok(jobid)
+    crate::rclone::commands::job::submit_batch_job(app, inputs, origin, group).await
 }
 
 #[tauri::command]
@@ -804,6 +597,7 @@ async fn create_upload_job(
                 execute_id: None,
                 origin,
                 backend_name: backend_manager.get_active().await.name.clone(),
+                parent_batch_id: None,
             },
             Some(app),
         )

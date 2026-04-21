@@ -13,6 +13,7 @@ impl JobCache {
     pub fn new() -> Self {
         Self {
             jobs: RwLock::new(HashMap::new()),
+            batch_jobs: RwLock::new(HashMap::new()),
         }
     }
 
@@ -139,6 +140,56 @@ impl JobCache {
         self.jobs.read().await.get(&jobid).cloned()
     }
 
+    /// Add a batch master job
+    pub async fn add_batch_job(
+        &self,
+        batch_job: crate::utils::types::jobs::BatchMasterJob,
+        app: Option<&AppHandle>,
+    ) {
+        let batch_id = batch_job.batch_id.clone();
+        let mut batches = self.batch_jobs.write().await;
+        batches.insert(batch_id.clone(), batch_job);
+        drop(batches);
+
+        if let Some(app) = app {
+            info!("📦 Batch Job {batch_id} added");
+            let _ = app.emit(JOB_CACHE_CHANGED, batch_id);
+        }
+    }
+
+    pub async fn get_batch_job(
+        &self,
+        batch_id: &str,
+    ) -> Option<crate::utils::types::jobs::BatchMasterJob> {
+        self.batch_jobs.read().await.get(batch_id).cloned()
+    }
+
+    pub async fn get_batch_jobs(&self) -> Vec<crate::utils::types::jobs::BatchMasterJob> {
+        self.batch_jobs.read().await.values().cloned().collect()
+    }
+
+    pub async fn update_batch_job(
+        &self,
+        batch_id: &str,
+        update_fn: impl FnOnce(&mut crate::utils::types::jobs::BatchMasterJob),
+        app: Option<&AppHandle>,
+    ) -> Result<crate::utils::types::jobs::BatchMasterJob, String> {
+        let mut batches = self.batch_jobs.write().await;
+        if let Some(batch) = batches.get_mut(batch_id) {
+            update_fn(batch);
+            let result = batch.clone();
+            drop(batches);
+
+            if let Some(app) = app {
+                info!("📦 Batch Job {batch_id} updated");
+                let _ = app.emit(JOB_CACHE_CHANGED, batch_id);
+            }
+            Ok(result)
+        } else {
+            Err(crate::localized_error!("backendErrors.job.notFound"))
+        }
+    }
+
     /// Checks if a job of a specific type is already running for a specific remote.
     pub async fn is_job_running(
         &self,
@@ -227,6 +278,7 @@ mod tests {
             origin: None,
             backend_name: default_backend_name(),
             execute_id: None,
+            parent_batch_id: None,
         }
     }
 

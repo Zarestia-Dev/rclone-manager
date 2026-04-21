@@ -96,7 +96,7 @@ export class RepairSheetComponent {
   readonly configTabOptions = CONFIG_TAB_OPTIONS;
 
   // --- COMPUTED SIGNALS ---
-  readonly isRclonePathRepair = computed(() => this.data.type === 'rclone_path');
+  readonly isRcloneBinaryRepair = computed(() => this.data.type === 'rclone_binary');
   readonly isMountPluginRepair = computed(() => this.data.type === 'mount_plugin');
   readonly requiresPassword = computed(
     () => this.data.type === 'rclone_password' || this.data.requiresPassword === true
@@ -105,7 +105,7 @@ export class RepairSheetComponent {
 
   readonly currentMode = computed((): RepairMode => {
     if (this.showConfigOptions()) return 'config';
-    if (this.isRclonePathRepair() && this.showAdvanced()) return 'install';
+    if (this.isRcloneBinaryRepair() && this.showAdvanced()) return 'install';
     return 'standard';
   });
 
@@ -157,7 +157,8 @@ export class RepairSheetComponent {
   private readonly repairButtonTextKey = computed(() => {
     if (this.showConfigOptions()) return this.getConfigModeButtonTextKey();
     if (this.requiresPassword() && !this.password()) return 'repairSheet.buttons.enterPassword';
-    if (this.isRclonePathRepair() && this.showAdvanced()) return this.getInstallModeButtonTextKey();
+    if (this.isRcloneBinaryRepair() && this.showAdvanced())
+      return this.getInstallModeButtonTextKey();
     return this.repairService.getRepairButtonTextKey(this.data.type);
   });
 
@@ -364,7 +365,7 @@ export class RepairSheetComponent {
   private async handleInstallModeRepair(): Promise<void> {
     const { installLocation, existingBinaryPath, customPath } = this.installationData();
     if (installLocation === 'existing') {
-      await this.appSettingsService.saveSetting('core', 'rclone_path', existingBinaryPath);
+      await this.appSettingsService.saveSetting('core', 'rclone_binary', existingBinaryPath);
     } else {
       await this.repairService.repairRclonePath(installLocation === 'default' ? null : customPath);
     }

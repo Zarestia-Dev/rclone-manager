@@ -267,7 +267,7 @@
         "label": "网络检测地址",
         "description": "用于验证网络连接的 URL 列表，应用会定期检查"
       },
-      "rclone_path": {
+      "rclone_binary": {
         "label": "Rclone 可执行文件路径",
         "description": "rclone 程序或目录路径，留空则自动检测"
       },

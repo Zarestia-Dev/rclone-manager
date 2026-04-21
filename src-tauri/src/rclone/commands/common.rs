@@ -52,7 +52,9 @@ pub async fn resolve_profile_settings(
 // ============================================================================
 
 use crate::rclone::backend::types::Backend;
-use crate::utils::json_helpers::{get_string, json_to_hashmap, resolve_profile_options};
+use crate::utils::json_helpers::{
+    get_string, interpolate_value, json_to_hashmap, resolve_profile_options,
+};
 use serde_json::{Map, json};
 use std::collections::HashMap;
 
@@ -211,6 +213,10 @@ pub fn parse_common_config(
     settings: &Value,
     remote_name: &str,
 ) -> Option<CommonConfigParams> {
+    // Evaluate any $(date +FORMAT) expressions before reading any field so that
+    // source, dest, and all nested options are expanded consistently.
+    let config = &interpolate_value(config);
+
     let source = get_string(config, &["source"]);
     let dest = get_string(config, &["dest"]);
 

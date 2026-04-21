@@ -299,7 +299,7 @@ export class OnboardingComponent {
     try {
       const data = this.installationData();
       if (data.installLocation === 'existing') {
-        await this.appSettingsService.saveSetting('core', 'rclone_path', data.existingBinaryPath);
+        await this.appSettingsService.saveSetting('core', 'rclone_binary', data.existingBinaryPath);
       } else {
         const installPath = data.installLocation === 'default' ? null : data.customPath;
         await this.installationService.installRclone(installPath);

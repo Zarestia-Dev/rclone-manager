@@ -154,8 +154,12 @@ export class NautilusFileOperationsService {
     if (items.length === 0) return;
 
     const normalizedDst = this.pathSelection.normalizeRemoteForRclone(dstRemote.name);
-    let failCount = 0;
-    const succeededItems: UndoEntry['items'] = [];
+    const transferItems = items.map(item => ({
+      srcRemote: this.pathSelection.normalizeRemoteForRclone(item.meta.remote ?? ''),
+      srcPath: item.entry.Path,
+      name: item.entry.Name,
+      isDir: !!item.entry.IsDir,
+    }));
 
     this.notifications.showInfo(
       this.translate.instant(
@@ -166,53 +170,38 @@ export class NautilusFileOperationsService {
       )
     );
 
-    for (const item of items) {
-      try {
-        const srcRemoteName = item.meta.remote ?? '';
-        const normalizedSrc = this.pathSelection.normalizeRemoteForRclone(srcRemoteName);
-        const dstFile = dstPath ? `${dstPath}/${item.entry.Name}` : item.entry.Name;
-        const isDir = !!item.entry.IsDir;
+    try {
+      await this.remoteOps.transferItems(
+        transferItems,
+        normalizedDst,
+        dstPath,
+        mode,
+        ORIGINS.FILEMANAGER
+      );
 
-        await this._dispatchFileOp(
-          mode,
-          normalizedSrc,
-          item.entry.Path,
-          normalizedDst,
-          dstFile,
-          isDir
-        );
+      // Successfully dispatched batch!
+      const succeededItems: UndoEntry['items'] = items.map(item => ({
+        srcRemote: this.pathSelection.normalizeRemoteForRclone(item.meta.remote ?? ''),
+        srcPath: item.entry.Path,
+        dstRemote: normalizedDst,
+        dstFullPath: dstPath ? `${dstPath}/${item.entry.Name}` : item.entry.Name,
+        isDir: !!item.entry.IsDir,
+        name: item.entry.Name,
+      }));
 
-        succeededItems.push({
-          srcRemote: normalizedSrc,
-          srcPath: item.entry.Path,
-          dstRemote: normalizedDst,
-          dstFullPath: dstFile,
-          isDir,
-          name: item.entry.Name,
-        });
-      } catch (e) {
-        console.error(`${mode} failed for ${item.entry.Path}`, e);
-        failCount++;
-      }
-    }
-
-    if (succeededItems.length > 0) {
       this._undoStack.update(s => [
         ...s.slice(-(this.MAX_UNDO_STACK - 1)),
         { mode, items: succeededItems },
       ]);
       this._redoStack.set([]);
-    }
-
-    if (failCount > 0) {
+    } catch (e) {
+      console.error(`${mode} batch failed`, e);
       this.notifications.showError(
         this.translate.instant(
           mode === 'copy' ? 'nautilus.errors.copyFailed' : 'nautilus.errors.moveFailed',
-          { count: failCount }
+          { count: items.length }
         )
       );
-    } else {
-      this.notifications.showSuccess(this.translate.instant('nautilus.notifications.pasteStarted'));
     }
   }
 
@@ -236,39 +225,30 @@ export class NautilusFileOperationsService {
     if (!confirmed) return false;
 
     const normalizedRemote = this._normalizeRemote(remote);
-    let failCount = 0;
 
     this.notifications.showInfo(
       this.translate.instant('nautilus.notifications.deleteStarted', { count: items.length })
     );
 
-    for (const item of items) {
-      try {
-        if (item.entry.IsDir) {
-          await this.remoteOps.purgeDirectory(
-            normalizedRemote,
-            item.entry.Path,
-            ORIGINS.FILEMANAGER
-          );
-        } else {
-          await this.remoteOps.deleteFile(normalizedRemote, item.entry.Path, ORIGINS.FILEMANAGER);
-        }
-      } catch (e) {
-        console.error('Delete failed for', item.entry.Path, e);
-        failCount++;
-      }
-    }
+    const deleteItems = items.map(item => ({
+      remote: normalizedRemote,
+      path: item.entry.Path,
+      isDir: !!item.entry.IsDir,
+    }));
 
-    if (failCount > 0) {
+    try {
+      await this.remoteOps.deleteItems(deleteItems, ORIGINS.FILEMANAGER);
+      return true; // signal caller to refresh
+    } catch (e) {
+      console.error('Batch delete failed', e);
       this.notifications.showError(
         this.translate.instant('nautilus.errors.deleteFailed', {
-          count: failCount,
+          count: items.length,
           total: items.length,
         })
       );
+      return false;
     }
-
-    return true; // signal caller to refresh
   }
 
   async openRenameDialog(
@@ -424,16 +404,16 @@ export class NautilusFileOperationsService {
 
     const normalizedRemote = this.pathSelection.normalizeRemoteForRclone(remote.name);
     try {
-      await this.remoteOps.removeEmptyDirs(normalizedRemote, item.entry.Path, ORIGINS.FILEMANAGER);
       this.notifications.showInfo(
         this.translate.instant('nautilus.notifications.rmdirsStarted', { name: item.entry.Name })
       );
+      await this.remoteOps.removeEmptyDirs(normalizedRemote, item.entry.Path, ORIGINS.FILEMANAGER);
       return true;
     } catch (e) {
       this.notifications.showError(
         this.translate.instant('nautilus.errors.rmdirsFailed', {
           name: item.entry.Name,
-          error: (e as Error).message,
+          error: (e as any).message || String(e),
         })
       );
       return false;
@@ -451,43 +431,57 @@ export class NautilusFileOperationsService {
     const entry = stack[stack.length - 1];
     this._undoStack.set(stack.slice(0, -1));
 
-    let failCount = 0;
-    for (const item of entry.items) {
-      try {
-        if (entry.mode === 'copy') {
-          if (item.isDir) {
-            await this.remoteOps.purgeDirectory(
-              item.dstRemote,
-              item.dstFullPath,
-              ORIGINS.FILEMANAGER
-            );
-          } else {
-            await this.remoteOps.deleteFile(item.dstRemote, item.dstFullPath, ORIGINS.FILEMANAGER);
+    try {
+      if (entry.mode === 'copy') {
+        const itemsToDelete = entry.items.map(item => ({
+          remote: item.dstRemote,
+          path: item.dstFullPath,
+          isDir: item.isDir,
+        }));
+        await this.remoteOps.deleteItems(itemsToDelete, ORIGINS.FILEMANAGER);
+      } else {
+        // Move back: src becomes dst, dst becomes src
+        // We group by original source (which is now our destination) to use batch transfers
+        const groups = new Map<string, { dstRemote: string; dstPath: string; items: any[] }>();
+
+        for (const item of entry.items) {
+          const lastSlash = item.srcPath.lastIndexOf('/');
+          const dstParentPath = lastSlash > -1 ? item.srcPath.substring(0, lastSlash) : '';
+          const key = `${item.srcRemote}:${dstParentPath}`;
+
+          if (!groups.has(key)) {
+            groups.set(key, {
+              dstRemote: item.srcRemote,
+              dstPath: dstParentPath,
+              items: [],
+            });
           }
-        } else {
-          await this._dispatchFileOp(
+
+          groups.get(key)!.items.push({
+            srcRemote: item.dstRemote,
+            srcPath: item.dstFullPath,
+            name: item.name,
+            isDir: item.isDir,
+          });
+        }
+
+        for (const group of groups.values()) {
+          await this.remoteOps.transferItems(
+            group.items,
+            group.dstRemote,
+            group.dstPath,
             'move',
-            item.dstRemote,
-            item.dstFullPath,
-            item.srcRemote,
-            item.srcPath,
-            item.isDir
+            ORIGINS.FILEMANAGER
           );
         }
-      } catch (e) {
-        console.error('undo failed for', item.dstFullPath, e);
-        failCount++;
       }
-    }
-
-    this._redoStack.update(s => [...s.slice(-(this.MAX_UNDO_STACK - 1)), entry]);
-
-    if (failCount > 0) {
-      this.notifications.showError(
-        this.translate.instant('nautilus.errors.undoFailed', { count: failCount })
-      );
-    } else {
+      this._redoStack.update(s => [...s.slice(-(this.MAX_UNDO_STACK - 1)), entry]);
       this.notifications.showSuccess(this.translate.instant('nautilus.notifications.undoComplete'));
+    } catch (e) {
+      console.error('Batch undo failed', e);
+      this.notifications.showError(
+        this.translate.instant('nautilus.errors.undoFailed', { count: entry.items.length })
+      );
     }
   }
 
@@ -498,72 +492,42 @@ export class NautilusFileOperationsService {
     const entry = stack[stack.length - 1];
     this._redoStack.set(stack.slice(0, -1));
 
-    let failCount = 0;
-    for (const item of entry.items) {
-      try {
-        await this._dispatchFileOp(
-          entry.mode,
-          item.srcRemote,
-          item.srcPath,
-          item.dstRemote,
-          item.dstFullPath,
-          item.isDir
-        );
-      } catch (e) {
-        console.error('redo failed for', item.srcPath, e);
-        failCount++;
-      }
-    }
+    const transferItems = entry.items.map(item => ({
+      srcRemote: item.srcRemote,
+      srcPath: item.srcPath,
+      name: item.name,
+      isDir: item.isDir,
+    }));
 
-    this._undoStack.update(s => [...s.slice(-(this.MAX_UNDO_STACK - 1)), entry]);
+    try {
+      // All items in a single undo/redo entry are moved/copied to the same destination folder.
+      // We can use the parent path from the first item's destination.
+      const firstItem = entry.items[0];
+      const lastSlashIndex = firstItem.dstFullPath.lastIndexOf('/');
+      const parentPath =
+        lastSlashIndex > -1 ? firstItem.dstFullPath.substring(0, lastSlashIndex) : '';
 
-    if (failCount > 0) {
-      this.notifications.showError(
-        this.translate.instant('nautilus.errors.redoFailed', { count: failCount })
+      await this.remoteOps.transferItems(
+        transferItems,
+        firstItem.dstRemote,
+        parentPath,
+        entry.mode,
+        ORIGINS.FILEMANAGER
       );
-    } else {
+
+      this._undoStack.update(s => [...s.slice(-(this.MAX_UNDO_STACK - 1)), entry]);
       this.notifications.showSuccess(this.translate.instant('nautilus.notifications.redoComplete'));
+    } catch (e) {
+      console.error('Batch redo failed', e);
+      this.notifications.showError(
+        this.translate.instant('nautilus.errors.redoFailed', { count: entry.items.length })
+      );
     }
   }
 
   // ---------------------------------------------------------------------------
   // Private helpers
   // ---------------------------------------------------------------------------
-
-  private async _dispatchFileOp(
-    mode: 'copy' | 'move',
-    srcRemote: string,
-    srcPath: string,
-    dstRemote: string,
-    dstPath: string,
-    isDir: boolean
-  ): Promise<void> {
-    if (mode === 'copy') {
-      if (isDir) {
-        await this.remoteOps.copyDirectory(
-          srcRemote,
-          srcPath,
-          dstRemote,
-          dstPath,
-          ORIGINS.FILEMANAGER
-        );
-      } else {
-        await this.remoteOps.copyFile(srcRemote, srcPath, dstRemote, dstPath, ORIGINS.FILEMANAGER);
-      }
-    } else {
-      if (isDir) {
-        await this.remoteOps.moveDirectory(
-          srcRemote,
-          srcPath,
-          dstRemote,
-          dstPath,
-          ORIGINS.FILEMANAGER
-        );
-      } else {
-        await this.remoteOps.moveFile(srcRemote, srcPath, dstRemote, dstPath, ORIGINS.FILEMANAGER);
-      }
-    }
-  }
 
   private _normalizeRemote(remote: ExplorerRoot): string {
     return remote.isLocal ? remote.name : this.pathSelection.normalizeRemoteForRclone(remote.name);

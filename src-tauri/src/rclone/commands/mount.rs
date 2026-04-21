@@ -183,35 +183,15 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     )
     .await?;
 
-    // Store state and refresh only after successful completion
-    cache
-        .store_mount_profile(&params.mount_point, params.profile.clone())
-        .await;
+    // Refresh first so the entry exists in cache, then attach the profile to it.
     if let Err(e) = force_check_mounted_remotes(app.clone()).await {
         warn!("Failed to refresh mounted remotes: {e}");
     }
+    cache
+        .store_mount_profile(&params.mount_point, params.profile.clone())
+        .await;
 
     Ok(())
-}
-
-// Small helper used to centralize the no-op policy for bulk unmount operations.
-fn should_emit_unmount_all_notification(mounted_count: usize, context: &str) -> bool {
-    mounted_count > 0 && context != "shutdown"
-}
-
-#[cfg(test)]
-mod tests {
-    use super::should_emit_unmount_all_notification;
-
-    #[test]
-    fn test_should_emit_unmount_all_notification() {
-        // Nothing mounted => no notification
-        assert!(!should_emit_unmount_all_notification(0, "menu"));
-        // Mounted items => notify
-        assert!(should_emit_unmount_all_notification(1, "menu"));
-        // Shutdown context => never notify
-        assert!(!should_emit_unmount_all_notification(5, "shutdown"));
-    }
 }
 
 /// Unmount a remote filesystem
@@ -296,9 +276,9 @@ pub async fn unmount_all_remotes(app: AppHandle, context: String) -> Result<Stri
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
-    // Check current mounted remotes first — use helper for the no-op policy
+    // Check current mounted remotes first.
     let mounted = backend_manager.remote_cache.get_mounted_remotes().await;
-    if !should_emit_unmount_all_notification(mounted.len(), &context) {
+    if mounted.is_empty() || context == "shutdown" {
         debug!("No mounted remotes to unmount — skipping API call");
         // Refresh cache for UI consistency (unless during shutdown)
         if context != "shutdown" {

@@ -269,9 +269,9 @@
         "label": "Connectivity Check URLs",
         "description": "List of URLs used to verify internet connectivity. The app checks these URLs periodically."
       },
-      "rclone_path": {
+      "rclone_binary": {
         "label": "Rclone Binary Path",
-        "description": "Path to rclone binary or directory. Leave empty for auto-detection."
+        "description": "Path to rclone binary file. Leave empty for auto-detection."
       },
       "rclone_flags": {
         "label": "Additional Rclone Flags",

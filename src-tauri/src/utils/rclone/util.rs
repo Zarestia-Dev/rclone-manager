@@ -4,6 +4,11 @@ use sha2::{Digest, Sha256};
 use std::fs::File;
 use std::{fs, path::Path};
 
+#[cfg(windows)]
+pub const RCLONE_EXECUTABLE: &str = "rclone.exe";
+#[cfg(not(windows))]
+pub const RCLONE_EXECUTABLE: &str = "rclone";
+
 pub fn get_arch() -> String {
     match std::env::consts::ARCH {
         "x86_64" => "amd64".into(),

@@ -295,7 +295,7 @@ export class SystemHealthService {
     if (alreadyReported) return;
 
     this.showRepairSheet({
-      type: RepairSheetType.RCLONE_PATH,
+      type: RepairSheetType.RCLONE_BINARY,
     });
   }
 
@@ -329,7 +329,7 @@ export class SystemHealthService {
       .subscribe({
         next: () => {
           this.hasReportedRclonePathError = false;
-          this.closeSheetsByTypes([RepairSheetType.RCLONE_PATH, RepairSheetType.RCLONE_PASSWORD]);
+          this.closeSheetsByTypes([RepairSheetType.RCLONE_BINARY, RepairSheetType.RCLONE_PASSWORD]);
         },
         error: error => console.error('Rclone engine ready subscription error:', error),
       });

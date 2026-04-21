@@ -20,19 +20,12 @@ impl RcApiEngine {
 
         info!("🔍 Validating rclone configuration before engine start...");
 
-        // Check if rclone binary exists and is available using shared helpers
-        match crate::core::check_binaries::check_rclone_available(app.clone(), "").await {
-            Ok(available) => {
-                if !available {
-                    let path = crate::core::check_binaries::read_rclone_path(app);
-                    error!("❌ Rclone binary not found at: {}", path.display());
-                    return Err(EngineError::RcloneNotFound);
-                }
-            }
-            Err(e) => {
-                error!("❌ Failed to check rclone availability: {}", e);
-                return Err(EngineError::RcloneNotFound);
-            }
+        // Check if rclone binary exists and is available
+        if !crate::core::check_binaries::check_rclone_available(app.clone(), "")
+            .await
+            .unwrap_or(false)
+        {
+            return Err(EngineError::RcloneNotFound);
         }
 
         // Use shared method from core security to check if config is encrypted

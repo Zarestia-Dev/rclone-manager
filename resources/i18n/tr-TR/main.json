@@ -267,9 +267,9 @@
         "label": "Bağlantı Kontrol URL'leri",
         "description": "İnternet bağlantısını doğrulamak için kullanılan URL listesi. Uygulama bu URL'leri periyodik olarak kontrol eder."
       },
-      "rclone_path": {
+      "rclone_binary": {
         "label": "Rclone İkili Dosya Yolu",
-        "description": "Rclone ikili dosyası veya dizininin yolu. Otomatik algılama için boş bırakın."
+        "description": "Rclone ikili dosyası. Otomatik algılama için boş bırakın."
       },
       "rclone_flags": {
         "label": "Ek Rclone Bayrakları",

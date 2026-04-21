@@ -23,7 +23,11 @@ export const DEFAULT_PROFILE_NAME = 'default';
 
 export type EditTarget = FlagType | 'remote' | 'runtimeRemote' | null;
 
-export const INTERACTIVE_REMOTES: ReadonlySet<string> = new Set(['onedrive', 'iclouddrive']);
+export const INTERACTIVE_REMOTES: ReadonlySet<string> = new Set([
+  'onedrive',
+  'iclouddrive',
+  'jottacloud',
+]);
 
 // ─── Command Option types ───────────────────────────────────────────────────
 

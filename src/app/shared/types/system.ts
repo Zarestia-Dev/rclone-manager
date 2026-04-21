@@ -181,7 +181,7 @@ export interface SearchResult {
 export enum RepairSheetType {
   MOUNT_PLUGIN = 'mount_plugin',
   RCLONE_PASSWORD = 'rclone_password',
-  RCLONE_PATH = 'rclone_path',
+  RCLONE_BINARY = 'rclone_binary',
 }
 
 export interface LocalDiskUsage {

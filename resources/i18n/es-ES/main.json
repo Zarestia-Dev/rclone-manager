@@ -263,7 +263,7 @@
         "label": "Direcciones URL de verificación de conectividad",
         "description": "Lista de URL utilizadas para verificar la conectividad a Internet. La aplicación verifica estas URL periódicamente."
       },
-      "rclone_path": {
+      "rclone_binary": {
         "label": "Ruta del binario de Rclone",
         "description": "Ruta al binario o directorio de rclone. Dejar vacío para la detección automática."
       },

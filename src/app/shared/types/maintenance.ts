@@ -1,6 +1,6 @@
 export interface RepairData {
   type:
-    | 'rclone_path'
+    | 'rclone_binary'
     | 'mount_plugin'
     | 'config_corrupt'
     | 'backend_unreachable'

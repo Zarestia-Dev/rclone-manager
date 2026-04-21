@@ -451,27 +451,27 @@ pub mod config {
 
 /// Job management endpoints
 pub mod job {
-    // /// Run a batch of rclone rc commands concurrently.
-    // ///
-    // /// This takes the following parameters:
-    // ///
-    // /// - concurrency - int - do this many commands concurrently. Defaults to `--transfers` if not set.
-    // /// - inputs - an list of inputs to the commands with an extra `_path` parameter
-    // ///
-    // /// ```json
-    // /// {
-    // ///     "_path": "rc/path",
-    // ///     "param1": "parameter for the path as documented",
-    // ///     "param2": "parameter for the path as documented, etc",
-    // /// }
-    // /// ```
-    // ///
-    // /// The inputs may use `_async`, `_group`, `_config` and `_filter` as normal when using the rc.
-    // ///
-    // /// Returns:
-    // ///
-    // /// - results - a list of results from the commands with one entry for each in inputs.
-    // pub const BATCH: &str = "job/batch";
+    /// Run a batch of rclone rc commands concurrently.
+    ///
+    /// This takes the following parameters:
+    ///
+    /// - concurrency - int - do this many commands concurrently. Defaults to `--transfers` if not set.
+    /// - inputs - an list of inputs to the commands with an extra `_path` parameter
+    ///
+    /// ```json
+    /// {
+    ///     "_path": "rc/path",
+    ///     "param1": "parameter for the path as documented",
+    ///     "param2": "parameter for the path as documented, etc",
+    /// }
+    /// ```
+    ///
+    /// The inputs may use `_async`, `_group`, `_config` and `_filter` as normal when using the rc.
+    ///
+    /// Returns:
+    ///
+    /// - results - a list of results from the commands with one entry for each in inputs.
+    pub const BATCH: &str = "job/batch";
 
     // /// Lists the IDs of the running jobs.
     // ///

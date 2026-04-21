@@ -298,6 +298,7 @@ async fn add_job_to_cache(
                 origin: metadata.origin.clone(),
                 backend_name: backend_name.to_string(),
                 execute_id,
+                parent_batch_id: None,
             },
             app,
         )
@@ -511,7 +512,7 @@ pub async fn handle_job_completion(
         spawn_stats_cleanup(app, metadata);
 
         // Mark the job terminal. The `?` propagates a cache error without hiding it.
-        job_cache
+        let updated_job = job_cache
             .complete_job(
                 jobid,
                 success,
@@ -520,6 +521,30 @@ pub async fn handle_job_completion(
             )
             .await
             .map_err(RcloneError::JobError)?;
+
+        if let Some(batch_id) = &updated_job.parent_batch_id {
+            let _ = job_cache
+                .update_batch_job(
+                    batch_id,
+                    |batch| {
+                        if success {
+                            batch.completed_jobs += 1;
+                        } else {
+                            batch.failed_jobs += 1;
+                        }
+                        if batch.completed_jobs + batch.failed_jobs >= batch.total_jobs {
+                            batch.status = if batch.failed_jobs > 0 {
+                                JobStatus::Failed
+                            } else {
+                                JobStatus::Completed
+                            };
+                            batch.end_time = Some(chrono::Utc::now());
+                        }
+                    },
+                    Some(app),
+                )
+                .await;
+        }
     }
 
     // Update the associated scheduled task when this job was triggered by one.
@@ -806,6 +831,142 @@ pub async fn stop_jobs_by_group(app: AppHandle, group: String) -> Result<(), Str
 
     info!("✅ All jobs in group '{}' stopped", group);
     Ok(())
+}
+
+/// Submit a batch of job requests to run concurrently.
+#[tauri::command]
+pub async fn submit_batch_job(
+    app: AppHandle,
+    inputs: Vec<Value>,
+    origin: Option<Origin>,
+    group: Option<String>,
+) -> Result<String, String> {
+    let state = app.state::<RcloneState>();
+    let num_inputs = inputs.len();
+    log::debug!("📦 Submitting batch job with {} inputs", num_inputs);
+
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let url = backend.url_for(crate::utils::rclone::endpoints::job::BATCH);
+
+    let mut modified_inputs = Vec::new();
+    let batch_id = uuid::Uuid::new_v4().to_string();
+    let batch_group = group
+        .clone()
+        .unwrap_or_else(|| format!("batch/{}", batch_id));
+
+    for input in inputs {
+        let mut inp = input.clone();
+        if let Some(obj) = inp.as_object_mut() {
+            if !obj.contains_key("_group") {
+                obj.insert("_group".to_string(), json!(batch_group.clone()));
+            }
+            obj.insert("_async".to_string(), json!(true));
+        }
+        modified_inputs.push(inp);
+    }
+
+    let payload = json!({
+        "inputs": modified_inputs,
+    });
+
+    let response = backend
+        .inject_auth(state.client.post(&url))
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
+
+    let status = response.status();
+    let body_text = response.text().await.unwrap_or_default();
+
+    if !status.is_success() {
+        let error = crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body_text);
+        return Err(error);
+    }
+
+    let response_json: Value = serde_json::from_str(&body_text)
+        .map_err(|e| crate::localized_error!("backendErrors.serve.parseFailed", "error" => e))?;
+
+    let batch_master = crate::utils::types::jobs::BatchMasterJob {
+        batch_id: batch_id.clone(),
+        operation_name: format!("Batch ({})", num_inputs),
+        total_jobs: num_inputs,
+        completed_jobs: 0,
+        failed_jobs: 0,
+        start_time: chrono::Utc::now(),
+        end_time: None,
+        status: JobStatus::Running,
+        origin: origin.clone(),
+        group: Some(batch_group.clone()),
+    };
+
+    backend_manager
+        .job_cache
+        .add_batch_job(batch_master, Some(&app))
+        .await;
+
+    if let Some(results) = response_json.get("results").and_then(|r| r.as_array()) {
+        for (i, res) in results.iter().enumerate() {
+            if let Ok((jobid, execute_id)) = parse_job_response(res) {
+                let input_val = modified_inputs.get(i).unwrap();
+                let path_str = input_val
+                    .get("_path")
+                    .and_then(|p| p.as_str())
+                    .unwrap_or("unknown");
+
+                let metadata = JobMetadata {
+                    remote_name: "batch".to_string(),
+                    job_type: JobType::Batch,
+                    operation_name: path_str.to_string(),
+                    source: String::new(),
+                    destination: String::new(),
+                    profile: None,
+                    origin: origin.clone(),
+                    group: Some(batch_group.clone()),
+                    no_cache: false,
+                };
+
+                let backend_name = backend.name.clone();
+
+                backend_manager
+                    .job_cache
+                    .add_job(
+                        JobInfo {
+                            jobid,
+                            job_type: metadata.job_type.clone(),
+                            remote_name: metadata.remote_name.clone(),
+                            source: metadata.source.clone(),
+                            destination: metadata.destination.clone(),
+                            start_time: chrono::Utc::now(),
+                            end_time: None,
+                            status: JobStatus::Running,
+                            error: None,
+                            stats: None,
+                            uploaded_files: Vec::new(),
+                            group: batch_group.clone(),
+                            profile: metadata.profile.clone(),
+                            origin: metadata.origin.clone(),
+                            backend_name: backend_name.clone(),
+                            execute_id: execute_id.clone(),
+                            parent_batch_id: Some(batch_id.clone()),
+                        },
+                        Some(&app),
+                    )
+                    .await;
+
+                let app_clone = app.clone();
+                let client_clone = state.client.clone();
+
+                tauri::async_runtime::spawn(async move {
+                    let _ =
+                        monitor_job(backend_name, metadata, jobid, app_clone, client_clone).await;
+                });
+            }
+        }
+    }
+
+    Ok(batch_id)
 }
 
 // Tests for JobMetadata and NotificationEvent constructors.

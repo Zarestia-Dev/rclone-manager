@@ -3,34 +3,27 @@ use std::path::PathBuf;
 use log::{debug, error, info};
 use tauri::{AppHandle, Manager};
 
-/// Resolve rclone binary path with optional override
-///
-/// Handles path resolution logic with priority:
-/// 1. Explicit override path (if provided and non-empty)
-/// 2. Configured path from app settings (via read_rclone_path)
+use crate::utils::rclone::util::RCLONE_EXECUTABLE;
+
 fn resolve_rclone_binary(app: &AppHandle, override_path: Option<&str>) -> PathBuf {
-    if let Some(path_str) = override_path
-        && !path_str.is_empty()
-    {
-        return get_rclone_binary_path(&PathBuf::from(path_str));
+    if let Some(path) = override_path.filter(|p| !p.is_empty() && *p != "system") {
+        let path = PathBuf::from(path);
+        if !path.to_string_lossy().ends_with(RCLONE_EXECUTABLE) {
+            return path.join(RCLONE_EXECUTABLE);
+        }
+        return path;
     }
-    read_rclone_path(app)
+    read_rclone_binary(app)
 }
 
-/// Internal version that optionally emits events
 #[tauri::command]
 pub async fn check_rclone_available(app: AppHandle, path: &str) -> Result<bool, String> {
-    let path_override = if path.is_empty() { None } else { Some(path) };
-    let rclone_path = resolve_rclone_binary(&app, path_override);
+    let rclone_binary =
+        resolve_rclone_binary(&app, if path.is_empty() { None } else { Some(path) });
+    debug!("Checking rclone at: {}", rclone_binary.display());
 
-    debug!(
-        "Checking rclone availability at path: {}",
-        rclone_path.display()
-    );
-
-    // Check if the path exists and can execute --version
-    if rclone_path.exists() {
-        match crate::utils::process::command::Command::new(rclone_path)
+    if rclone_binary.exists() && rclone_binary.is_file() {
+        match crate::utils::process::command::Command::new(rclone_binary)
             .arg("--version")
             .output()
             .await
@@ -47,10 +40,9 @@ pub async fn check_rclone_available(app: AppHandle, path: &str) -> Result<bool, 
         if let Err(e) = app.emit(RCLONE_ENGINE_PATH_ERROR, ()) {
             error!("Failed to emit path error event: {e}");
         }
-
         Err(crate::localized_error!(
             "backendErrors.rclone.notFound",
-            "path" => rclone_path.display()
+            "path" => rclone_binary.display()
         ))
     }
 }
@@ -61,89 +53,56 @@ pub fn build_rclone_command(
     config_override: Option<&str>,
     args: Option<&[&str]>,
 ) -> crate::utils::process::command::Command {
-    // Determine binary path using helper
     let binary_path = resolve_rclone_binary(app, bin_override);
-
     let mut cmd = crate::utils::process::command::Command::new(binary_path);
 
-    // Determine config file: explicit override takes precedence,
-    if let Some(cfg) = config_override
-        && !cfg.is_empty()
-    {
+    if let Some(cfg) = config_override.filter(|c| !c.is_empty()) {
         cmd = cmd.arg("--config").arg(cfg);
     }
-    // Append any remaining args
-    if let Some(a) = args
-        && !a.is_empty()
-    {
+    if let Some(a) = args.filter(|a| !a.is_empty()) {
         cmd = cmd.args(a);
     }
 
     cmd
 }
 
-pub fn get_rclone_binary_path(base_path: &std::path::Path) -> PathBuf {
-    let bin = if cfg!(windows) {
-        "rclone.exe"
-    } else {
-        "rclone"
-    };
-    base_path.join(bin)
-}
-
-pub fn read_rclone_path(app: &AppHandle) -> PathBuf {
-    // Read from settings manager which caches internally
-    let configured_base_path: PathBuf = app
+/// Read the configured rclone binary path.
+///
+/// `core.rclone_binary` stores the **full path to the rclone binary file**.
+/// The special value `"system"` means: search the system PATH.
+pub fn read_rclone_binary(app: &AppHandle) -> PathBuf {
+    let configured: PathBuf = app
         .try_state::<crate::core::settings::AppSettingsManager>()
-        .and_then(|manager| {
-            manager
-                .inner()
-                .get::<String>("core.rclone_path")
+        .and_then(|m| {
+            m.inner()
+                .get::<String>("core.rclone_binary")
                 .ok()
                 .map(PathBuf::from)
         })
         .unwrap_or_else(|| PathBuf::from("system"));
 
-    debug!(
-        "🔄 Reading configured rclone base path: {}",
-        configured_base_path.to_string_lossy()
-    );
+    debug!("Configured rclone binary: {}", configured.to_string_lossy());
 
-    // 1. **PRIORITY**: Check for a valid, user-configured rclone binary.
-    // We only proceed if the path is not the special "system" keyword.
-    if configured_base_path.to_string_lossy() != "system" {
-        let configured_binary_path = get_rclone_binary_path(&configured_base_path);
+    let configured = if configured.to_string_lossy() != "system"
+        && !configured.to_string_lossy().is_empty()
+        && !configured.to_string_lossy().ends_with(RCLONE_EXECUTABLE)
+    {
+        configured.join(RCLONE_EXECUTABLE)
+    } else {
+        configured
+    };
 
-        // If the binary exists at the configured path, we use it immediately.
-        if configured_binary_path.exists() {
-            debug!(
-                "✅ Using user-configured rclone binary at {}",
-                configured_binary_path.display()
-            );
-            return configured_binary_path;
-        } else {
-            debug!(
-                "⚠️ Configured rclone binary not found at {}. Falling back to system PATH.",
-                configured_binary_path.display()
-            );
-        }
+    if configured.to_string_lossy() != "system" && configured.is_file() {
+        return configured;
     }
 
-    // 2. **FALLBACK**: If no valid configured path was found, search the system PATH.
-    debug!("🔍 Searching for rclone in system PATH...");
     match which::which("rclone") {
-        Ok(system_path) => {
-            info!(
-                "✅ Found and using system-installed rclone at {}",
-                system_path.display()
-            );
-            system_path
+        Ok(p) => {
+            info!("Using system rclone at {}", p.display());
+            p
         }
         Err(_) => {
-            error!(
-                "❌ Rclone binary not found. Neither the configured path is valid nor is it in the system PATH."
-            );
-            // Return a generic path. The subsequent command execution will fail with a clearer error to the user.
+            error!("rclone binary not found in PATH or at configured location");
             PathBuf::from("rclone")
         }
     }

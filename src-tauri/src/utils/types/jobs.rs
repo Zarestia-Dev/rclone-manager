@@ -42,6 +42,7 @@ pub enum JobType {
     #[serde(rename = "rename_dir")]
     RenameDir,
     Upload,
+    Batch,
     Unknown(String),
 }
 
@@ -103,6 +104,7 @@ impl JobType {
             JobType::RenameFile => "rename_file",
             JobType::RenameDir => "rename_dir",
             JobType::Upload => "upload",
+            JobType::Batch => "batch",
             JobType::Unknown(s) => s,
         }
     }
@@ -136,6 +138,7 @@ impl From<String> for JobType {
             "rename_file" => JobType::RenameFile,
             "rename_dir" => JobType::RenameDir,
             "upload" => JobType::Upload,
+            "batch" => JobType::Batch,
             _ => JobType::Unknown(s),
         }
     }
@@ -162,6 +165,8 @@ pub struct JobInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub execute_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_batch_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub origin: Option<Origin>,
     #[serde(default = "crate::rclone::backend::types::default_backend_name")]
     pub backend_name: String,
@@ -181,9 +186,26 @@ pub enum JobStatus {
     Stopped,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BatchMasterJob {
+    pub batch_id: String,
+    pub operation_name: String,
+    pub total_jobs: usize,
+    pub completed_jobs: usize,
+    pub failed_jobs: usize,
+    pub start_time: DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub end_time: Option<DateTime<Utc>>,
+    pub status: JobStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub origin: Option<Origin>,
+    pub group: Option<String>,
+}
+
 #[derive(Debug)]
 pub struct JobCache {
     pub jobs: tokio::sync::RwLock<HashMap<u64, JobInfo>>,
+    pub batch_jobs: tokio::sync::RwLock<HashMap<String, BatchMasterJob>>,
 }
 
 #[derive(serde::Deserialize)]

@@ -164,9 +164,9 @@ fn handle_settings_changed(app: &AppHandle) {
                 ("core", "bandwidth_limit") => {
                     handle_bandwidth_limit_change(&app, &change.value);
                 }
-                ("core", "rclone_path") => {
+                ("core", "rclone_binary") => {
                     if let Some(path) = change.value.as_str() {
-                        handle_rclone_path_change(&app, path);
+                        handle_rclone_binary_change(&app, path);
                     }
                 }
                 ("core", "rclone_additional_flags") => {
@@ -288,16 +288,16 @@ fn handle_bandwidth_limit_change(app: &AppHandle, value: &Value) {
     });
 }
 
-fn handle_rclone_path_change(app: &AppHandle, path: &str) {
-    debug!("Rclone path changed to: {path}");
+fn handle_rclone_binary_change(app: &AppHandle, path: &str) {
+    debug!("Rclone binary path changed to: {path}");
     match crate::rclone::engine::lifecycle::restart_for_config_change(
         app,
-        "rclone_path",
+        "rclone_binary",
         "previous",
         path,
     ) {
-        Ok(_) => info!("Rclone path updated to: {path}"),
-        Err(e) => error!("Failed to restart engine for rclone path change: {e}"),
+        Ok(_) => info!("Rclone binary path updated to: {path}"),
+        Err(e) => error!("Failed to restart engine for rclone binary change: {e}"),
     }
 }
 

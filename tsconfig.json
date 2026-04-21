@@ -3,6 +3,7 @@
   "compilerOptions": {
     "outDir": "./dist/out-tsc",
     "baseUrl": "./",
+    "ignoreDeprecations": "6.0",
     "paths": {
       "@app/services": ["src/app/services/index.ts"],
       "@app/types": ["src/app/shared/types/index.ts"],
