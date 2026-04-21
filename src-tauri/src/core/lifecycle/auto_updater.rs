@@ -6,83 +6,73 @@ use tokio::time::sleep;
 
 use crate::core::settings::AppSettingsManager;
 
-// Check for updates every 4 hours
+/// How often to poll for updates in the background.
 const UPDATE_CHECK_INTERVAL: Duration = Duration::from_secs(4 * 60 * 60);
 
-// Global cancellation token (AtomicBool)
-// true = running, false = should stop
+/// Global running flag — true while the background task is alive.
 static IS_RUNNING: AtomicBool = AtomicBool::new(false);
 
-/// Initialize the auto-update checker background task
+/// Starts the auto-update background task (no-op if already running).
 pub fn init_auto_updater(app: AppHandle) {
-    if IS_RUNNING.load(Ordering::SeqCst) {
-        warn!("⚠️ Auto-updater is already running");
+    if IS_RUNNING.swap(true, Ordering::SeqCst) {
+        warn!("Auto-updater is already running");
         return;
     }
 
-    info!("🕒 Initializing auto-updater...");
-    IS_RUNNING.store(true, Ordering::SeqCst);
+    info!(
+        "Initializing auto-updater (interval: {}h)",
+        UPDATE_CHECK_INTERVAL.as_secs() / 3600
+    );
 
     tauri::async_runtime::spawn(async move {
-        // Initial delay to let the app start up fully before first check
+        // Give the app time to finish startup before the first check.
         sleep(Duration::from_secs(10)).await;
 
         while IS_RUNNING.load(Ordering::SeqCst) {
             run_update_checks(&app).await;
-
             sleep(UPDATE_CHECK_INTERVAL).await;
         }
-        info!("🛑 Auto-updater background task stopped.");
+
+        info!("Auto-updater stopped.");
     });
 }
 
-/// Stop the auto-updater background task
+/// Signals the background task to exit on its next iteration.
 pub fn stop_auto_updater() {
-    if IS_RUNNING.load(Ordering::SeqCst) {
-        info!("🛑 Stopping auto-updater...");
-        IS_RUNNING.store(false, Ordering::SeqCst);
-    }
+    IS_RUNNING.store(false, Ordering::SeqCst);
 }
 
 async fn run_update_checks(app: &AppHandle) {
-    info!("🔄 Running scheduled update checks...");
+    info!("Running scheduled update checks...");
 
-    let settings = app.state::<AppSettingsManager>();
-    let config = settings.inner().get_all().unwrap_or_default();
+    let config = app
+        .state::<AppSettingsManager>()
+        .get_all()
+        .unwrap_or_default();
 
-    // Check App Updates
+    #[cfg(desktop)]
     if config.runtime.app_auto_check_updates {
-        #[cfg(desktop)]
-        {
-            let channel = &config.runtime.app_update_channel;
-            info!("🔍 Checking for App updates (channel: {})...", channel);
-            if let Err(e) = check_app_update(app, channel).await {
-                warn!("Failed to check for app updates: {}", e);
-            }
+        let channel = config.runtime.app_update_channel.clone();
+        info!("Checking for app updates (channel: {channel})...");
+        if let Err(e) = check_app_update(app, &channel).await {
+            warn!("App update check failed: {e}");
         }
-    } else {
-        info!("⏭️ Skipping App update check (disabled)");
     }
 
-    // Check Rclone Updates
     if config.runtime.rclone_auto_check_updates {
-        let channel = &config.runtime.rclone_update_channel;
-        info!("🔍 Checking for Rclone updates (channel: {})...", channel);
-
-        use crate::utils::rclone::updater::check_rclone_update;
-        if let Err(e) = check_rclone_update(app.clone(), Some(channel.clone())).await {
-            warn!("Failed to check for rclone updates: {}", e);
+        let channel = config.runtime.rclone_update_channel.clone();
+        info!("Checking for rclone updates (channel: {channel})...");
+        if let Err(e) =
+            crate::utils::rclone::updater::check_rclone_update(app.clone(), Some(channel)).await
+        {
+            warn!("Rclone update check failed: {e}");
         }
-    } else {
-        info!("⏭️ Skipping Rclone update check (disabled)");
     }
 }
 
 #[cfg(desktop)]
 async fn check_app_update(app: &AppHandle, channel: &str) -> Result<(), String> {
-    use crate::utils::app::updater::app_updates::fetch_update;
-
-    fetch_update(app.clone(), channel.to_string())
+    crate::utils::app::updater::app_updates::fetch_update(app.clone(), channel.to_string())
         .await
         .map(|_| ())
         .map_err(|e| e.to_string())

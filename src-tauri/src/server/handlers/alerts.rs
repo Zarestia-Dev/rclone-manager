@@ -10,7 +10,7 @@ use axum::{
     extract::{Path, Query, State},
 };
 use serde::Deserialize;
-use tauri::{Emitter, Manager};
+use tauri::Manager;
 
 // =============================================================================
 // RULES

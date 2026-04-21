@@ -260,6 +260,32 @@ pub async fn cleanup_handler(
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct RemoveEmptyDirsBody {
+    pub remote: String,
+    pub path: String,
+    pub source: Option<Origin>,
+    pub group: Option<String>,
+}
+
+pub async fn remove_empty_dirs_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<RemoveEmptyDirsBody>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    use crate::rclone::commands::filesystem::remove_empty_dirs;
+    let batch_id = remove_empty_dirs(
+        state.app_handle.clone(),
+        body.remote,
+        body.path,
+        body.source,
+        body.group,
+    )
+    .await
+    .map_err(anyhow::Error::msg)?;
+    Ok(Json(ApiResponse::success(batch_id)))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CopyUrlBody {
     pub remote: String,
     pub path: String,

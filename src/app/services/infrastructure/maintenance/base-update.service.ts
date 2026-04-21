@@ -3,8 +3,8 @@ import { AppSettingsService } from '../../settings/app-settings.service';
 import { TauriBaseService } from '../platform/tauri-base.service';
 
 /**
- * Base abstract class for update services.
- * Consolidates common settings for skipped versions, channels, and auto-check flags.
+ * Abstract base for update services.
+ * Manages persisted settings: skipped versions, update channel, auto-check flag.
  */
 export abstract class BaseUpdateService extends TauriBaseService {
   protected appSettingsService = inject(AppSettingsService);
@@ -13,6 +13,7 @@ export abstract class BaseUpdateService extends TauriBaseService {
   protected readonly _updateChannel = signal<string>('stable');
   protected readonly _autoCheckEnabled = signal<boolean>(true);
 
+  // Public readonly surface
   public readonly skippedVersions = this._skippedVersions.asReadonly();
   public readonly updateChannel = this._updateChannel.asReadonly();
   public readonly autoCheckEnabled = this._autoCheckEnabled.asReadonly();
@@ -22,43 +23,45 @@ export abstract class BaseUpdateService extends TauriBaseService {
   protected abstract get updateChannelKey(): string;
   protected abstract get autoCheckKey(): string;
 
-  /**
-   * Initialize shared update settings
-   */
+  // ---------------------------------------------------------------------------
+  // Initialization
+  // ---------------------------------------------------------------------------
+
   protected async initBaseSettings(): Promise<void> {
     const [skipped, channel, autoCheck] = await Promise.all([
-      this.getSkippedVersions(),
-      this.getChannel(),
-      this.getAutoCheckEnabled(),
+      this.loadSetting<string[]>(this.skippedVersionsKey, []),
+      this.loadSetting<string>('updateChannelKey', 'stable'),
+      this.loadSetting<boolean>(this.autoCheckKey, true),
     ]);
-
-    this._skippedVersions.set(skipped);
-    this._updateChannel.set(channel);
-    this._autoCheckEnabled.set(autoCheck);
+    this._skippedVersions.set(Array.isArray(skipped) ? skipped : []);
+    this._updateChannel.set(channel ?? 'stable');
+    this._autoCheckEnabled.set(autoCheck ?? true);
   }
 
-  async getSkippedVersions(): Promise<string[]> {
+  private async loadSetting<T>(key: string, fallback: T): Promise<T> {
     try {
-      const skipped = await this.appSettingsService.getSettingValue<string[]>(
-        `${this.settingNamespace}.${this.skippedVersionsKey}`
+      const value = await this.appSettingsService.getSettingValue<T>(
+        `${this.settingNamespace}.${key}`
       );
-      return Array.isArray(skipped) ? skipped : [];
-    } catch (error) {
-      console.error(`Failed to load ${this.skippedVersionsKey}:`, error);
-      return [];
+      return value ?? fallback;
+    } catch {
+      return fallback;
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // Skipped versions
+  // ---------------------------------------------------------------------------
 
   isVersionSkipped(version: string): boolean {
     return this._skippedVersions().includes(version);
   }
 
   async skipVersion(version: string): Promise<void> {
+    const current = this._skippedVersions();
+    if (current.includes(version)) return;
+    const updated = [...current, version];
     try {
-      const current = this._skippedVersions();
-      if (current.includes(version)) return;
-
-      const updated = [...current, version];
       await this.appSettingsService.saveSetting(
         this.settingNamespace,
         this.skippedVersionsKey,
@@ -66,14 +69,13 @@ export abstract class BaseUpdateService extends TauriBaseService {
       );
       this._skippedVersions.set(updated);
     } catch (error) {
-      console.error(`Failed to skip version ${version} for ${this.skippedVersionsKey}:`, error);
+      console.error(`Failed to skip version ${version}:`, error);
     }
   }
 
   async unskipVersion(version: string): Promise<void> {
+    const updated = this._skippedVersions().filter(v => v !== version);
     try {
-      const current = this._skippedVersions();
-      const updated = current.filter(v => v !== version);
       await this.appSettingsService.saveSetting(
         this.settingNamespace,
         this.skippedVersionsKey,
@@ -81,21 +83,13 @@ export abstract class BaseUpdateService extends TauriBaseService {
       );
       this._skippedVersions.set(updated);
     } catch (error) {
-      console.error(`Failed to unskip version ${version} for ${this.skippedVersionsKey}:`, error);
+      console.error(`Failed to unskip version ${version}:`, error);
     }
   }
 
-  // === Update Channel ===
-  async getChannel(): Promise<string> {
-    try {
-      const channel = await this.appSettingsService.getSettingValue<string>(
-        `${this.settingNamespace}.${this.updateChannelKey}`
-      );
-      return channel || 'stable';
-    } catch {
-      return 'stable';
-    }
-  }
+  // ---------------------------------------------------------------------------
+  // Update channel
+  // ---------------------------------------------------------------------------
 
   async setChannel(channel: string): Promise<void> {
     try {
@@ -106,28 +100,20 @@ export abstract class BaseUpdateService extends TauriBaseService {
       );
       this._updateChannel.set(channel);
     } catch (error) {
-      console.error(`Failed to save channel for ${this.updateChannelKey}:`, error);
+      console.error(`Failed to save update channel:`, error);
     }
   }
 
-  // === Auto Check ===
-  async getAutoCheckEnabled(): Promise<boolean> {
-    try {
-      const enabled = await this.appSettingsService.getSettingValue<boolean>(
-        `${this.settingNamespace}.${this.autoCheckKey}`
-      );
-      return enabled ?? true;
-    } catch {
-      return true;
-    }
-  }
+  // ---------------------------------------------------------------------------
+  // Auto-check
+  // ---------------------------------------------------------------------------
 
   async setAutoCheckEnabled(enabled: boolean): Promise<void> {
     try {
       await this.appSettingsService.saveSetting(this.settingNamespace, this.autoCheckKey, enabled);
       this._autoCheckEnabled.set(enabled);
     } catch (error) {
-      console.error(`Failed to save auto-check for ${this.autoCheckKey}:`, error);
+      console.error(`Failed to save auto-check setting:`, error);
     }
   }
 }

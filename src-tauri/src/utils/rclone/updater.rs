@@ -104,7 +104,6 @@ pub async fn check_rclone_update(
         release_notes,
         release_date,
         release_url,
-        update_in_progress: false,
         ready_to_restart: false,
     };
 
@@ -170,7 +169,6 @@ pub async fn get_rclone_update_info(
             release_notes: None,
             release_date: None,
             release_url: None,
-            update_in_progress: false,
             ready_to_restart: true,
         }));
     }

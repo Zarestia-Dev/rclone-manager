@@ -202,6 +202,10 @@ fn file_operations_routes() -> Router<WebServerState> {
         .route("/get-public-link", get(handlers::get_public_link_handler))
         .route("/mkdir", post(handlers::mkdir_handler))
         .route("/cleanup", post(handlers::cleanup_handler))
+        .route(
+            "/remove-empty-dirs",
+            post(handlers::remove_empty_dirs_handler),
+        )
         .route("/transfer-items", post(handlers::transfer_items_handler))
         .route("/delete-items", post(handlers::delete_items_handler))
         .route("/rename-file", post(handlers::rename_file_handler))

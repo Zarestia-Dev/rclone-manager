@@ -2,7 +2,7 @@ use std::sync::Mutex;
 use std::sync::atomic::AtomicU64;
 use tauri_plugin_updater::Update;
 
-/// App-specific update tracking in Tauri manage state
+/// Tracks the in-flight app self-update download and its staged payload.
 pub struct AppUpdaterState {
     pub downloaded_bytes: AtomicU64,
     pub total_bytes: AtomicU64,
@@ -23,8 +23,7 @@ impl Default for AppUpdaterState {
     }
 }
 
-/// Rclone-specific update metadata.
-/// This struct mirrors the frontend `RcloneUpdateInfo` interface.
+/// Rclone update metadata — mirrors the frontend `RcloneUpdateInfo` interface.
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct RcloneUpdateMetadata {
     pub current_version: String,
@@ -36,19 +35,11 @@ pub struct RcloneUpdateMetadata {
     pub release_notes: Option<String>,
     pub release_date: Option<String>,
     pub release_url: Option<String>,
-    pub update_in_progress: bool,
     pub ready_to_restart: bool,
 }
 
-/// Rclone-specific update tracking in Tauri manage state
+/// Holds the rclone update staged for activation at the next engine restart.
+#[derive(Default)]
 pub struct RcloneUpdaterState {
     pub pending_update: Mutex<Option<RcloneUpdateMetadata>>,
-}
-
-impl Default for RcloneUpdaterState {
-    fn default() -> Self {
-        Self {
-            pending_update: Mutex::new(None),
-        }
-    }
 }
