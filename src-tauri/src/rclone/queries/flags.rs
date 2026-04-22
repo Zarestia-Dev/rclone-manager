@@ -2,7 +2,7 @@ use serde_json::{Map, Value, json};
 use std::time::{Duration, Instant};
 
 use once_cell::sync::Lazy;
-use tauri::command;
+use tauri::{AppHandle, Manager, command};
 use tokio::sync::RwLock;
 use tokio::try_join;
 
@@ -10,8 +10,6 @@ use crate::{
     rclone::backend::BackendManager,
     utils::{rclone::endpoints::options, types::core::RcloneState},
 };
-use tauri::AppHandle;
-use tauri::Manager;
 
 const OPTIONS_CACHE_TTL: Duration = Duration::from_secs(300);
 
@@ -25,45 +23,21 @@ struct OptionsCacheEntry {
 static OPTIONS_CACHE: Lazy<RwLock<Option<OptionsCacheEntry>>> = Lazy::new(|| RwLock::new(None));
 
 // --- PRIVATE HELPERS ---
-// These functions perform the raw API calls and are the foundation.
 
-async fn fetch_all_options_info(
+async fn fetch_options(
     client: &reqwest::Client,
     backend_manager: &BackendManager,
+    endpoint: &str,
 ) -> Result<Value, String> {
     let backend = backend_manager.get_active().await;
-    let json = backend
-        .post_json(client, options::INFO, Some(&json!({})))
+    backend
+        .post_json(client, endpoint, Some(&json!({})))
         .await
-        .map_err(|e| format!("Failed to fetch options info: {e}"))?;
-    Ok(json)
-}
-
-async fn fetch_current_options(
-    client: &reqwest::Client,
-    backend_manager: &BackendManager,
-) -> Result<Value, String> {
-    let backend = backend_manager.get_active().await;
-    let json = backend
-        .post_json(client, options::GET, Some(&json!({})))
-        .await
-        .map_err(|e| format!("Failed to fetch current options: {e}"))?;
-    Ok(json)
-}
-
-async fn fetch_option_blocks(
-    client: &reqwest::Client,
-    backend_manager: &BackendManager,
-) -> Result<Value, String> {
-    let backend = backend_manager.get_active().await;
-    let json = backend
-        .post_json(client, options::BLOCKS, Some(&json!({})))
-        .await
-        .map_err(|e| format!("Failed to fetch option blocks: {e}"))?;
-    Ok(json)
+        .map_err(|e| format!("Failed to fetch options ({endpoint}): {e}"))
 }
 
 // --- DATA TRANSFORMATION LOGIC ---
+
 fn merge_options(options_info: &mut Value, current_options: &Value) {
     let Some(info_map) = options_info.as_object_mut() else {
         return;
@@ -75,14 +49,12 @@ fn merge_options(options_info: &mut Value, current_options: &Value) {
         };
 
         for option in options {
-            let field_name = match option.get("FieldName").and_then(|v| v.as_str()) {
-                Some(name) => name,
-                None => continue,
+            let Some(field_name) = option.get("FieldName").and_then(|v| v.as_str()) else {
+                continue;
             };
 
-            let parts: Vec<&str> = field_name.split('.').collect();
             let mut current_val_node = &current_options[block_name];
-            for part in &parts {
+            for part in field_name.split('.') {
                 if current_val_node.is_null() {
                     break;
                 }
@@ -90,41 +62,40 @@ fn merge_options(options_info: &mut Value, current_options: &Value) {
             }
 
             if !current_val_node.is_null()
-                && let Some(option_obj) = option.as_object_mut()
+                && let Some(obj) = option.as_object_mut()
             {
-                option_obj.insert("Value".to_string(), current_val_node.clone());
+                obj.insert("Value".to_string(), current_val_node.clone());
                 let value_str = match current_val_node {
                     Value::String(s) => s.clone(),
                     Value::Array(a) => a
                         .iter()
                         .filter_map(|v| v.as_str())
-                        .collect::<Vec<&str>>()
+                        .collect::<Vec<_>>()
                         .join(", "),
                     Value::Bool(b) => b.to_string(),
                     Value::Number(n) => n.to_string(),
                     _ => String::new(),
                 };
-                option_obj.insert("ValueStr".to_string(), Value::String(value_str));
+                obj.insert("ValueStr".to_string(), Value::String(value_str));
             }
         }
     }
 }
 
-/// Transforms a flat list of options into a nested object grouped by prefixes (e.g., "HTTP", "Auth").
+/// Groups a flat options list into a nested object keyed by prefix (e.g. "HTTP", "Auth").
 fn group_options(merged_info: &Value) -> Value {
-    let mut final_grouped_data = Map::new();
+    let mut result = Map::new();
 
     let Some(info_map) = merged_info.as_object() else {
-        return Value::Object(final_grouped_data);
+        return Value::Object(result);
     };
 
     for (block_name, options_array) in info_map {
-        let options = match options_array.as_array() {
-            Some(opts) => opts,
-            None => continue,
+        let Some(options) = options_array.as_array() else {
+            continue;
         };
 
-        let mut block_groups = Map::new();
+        let mut block_groups: Map<String, Value> = Map::new();
 
         for option in options {
             let mut new_option = option.clone();
@@ -134,36 +105,41 @@ fn group_options(merged_info: &Value) -> Value {
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
 
-            // Special handling for blocks like "rc" that have nested structures
-            let (group_name, simplified_field_name) =
-                if let Some((group, field)) = field_name.split_once('.') {
-                    (group.to_string(), field.to_string())
-                } else {
-                    // For fields without dots, use "General" group
-                    ("General".to_string(), field_name.to_string())
-                };
+            let (group_name, simplified_field) = field_name.split_once('.').map_or_else(
+                || ("General".to_string(), field_name.to_string()),
+                |(g, f)| (g.to_string(), f.to_string()),
+            );
 
-            // Update the FieldName to be simplified (without the group prefix)
             if let Some(obj) = new_option.as_object_mut() {
-                obj.insert(
-                    "FieldName".to_string(),
-                    Value::String(simplified_field_name),
-                );
+                obj.insert("FieldName".to_string(), Value::String(simplified_field));
             }
 
-            // Add to the appropriate group within this block
-            let entry = block_groups
+            block_groups
                 .entry(group_name)
-                .or_insert_with(|| Value::Array(vec![]));
-            if let Some(arr) = entry.as_array_mut() {
-                arr.push(new_option);
-            }
+                .or_insert_with(|| Value::Array(vec![]))
+                .as_array_mut()
+                .unwrap()
+                .push(new_option);
         }
 
-        // Insert the grouped options for this block
-        final_grouped_data.insert(block_name.clone(), Value::Object(block_groups));
+        result.insert(block_name.clone(), Value::Object(block_groups));
     }
-    Value::Object(final_grouped_data)
+    Value::Object(result)
+}
+
+/// Strip the last dot-segment of a flag's FieldName (mutates in place).
+fn simplify_field_names(flags: Vec<Value>) -> Vec<Value> {
+    flags
+        .into_iter()
+        .map(|mut flag| {
+            if let Some(field_name) = flag["FieldName"].as_str()
+                && let Some(last) = field_name.split('.').next_back()
+            {
+                flag["FieldName"] = Value::String(last.to_string());
+            }
+            flag
+        })
+        .collect()
 }
 
 // --- MASTER DATA COMMANDS ---
@@ -171,12 +147,12 @@ fn group_options(merged_info: &Value) -> Value {
 pub async fn get_all_options_with_values(app: AppHandle) -> Result<Value, String> {
     let backend_manager = app.state::<BackendManager>();
     let state = app.state::<RcloneState>();
+    let active_name = backend_manager.get_active().await.name.clone();
 
-    let active_backend_name = backend_manager.get_active().await.name.clone();
     {
         let cache = OPTIONS_CACHE.read().await;
         if let Some(entry) = cache.as_ref()
-            && entry.backend_name == active_backend_name
+            && entry.backend_name == active_name
             && entry.cached_at.elapsed() < OPTIONS_CACHE_TTL
         {
             return Ok(entry.payload.clone());
@@ -184,62 +160,61 @@ pub async fn get_all_options_with_values(app: AppHandle) -> Result<Value, String
     }
 
     let (mut options_info, current_options) = try_join!(
-        fetch_all_options_info(&state.client, &backend_manager),
-        fetch_current_options(&state.client, &backend_manager)
+        fetch_options(&state.client, &backend_manager, options::INFO),
+        fetch_options(&state.client, &backend_manager, options::GET),
     )?;
 
     merge_options(&mut options_info, &current_options);
 
-    {
-        let mut cache = OPTIONS_CACHE.write().await;
-        *cache = Some(OptionsCacheEntry {
-            backend_name: active_backend_name,
-            cached_at: Instant::now(),
-            payload: options_info.clone(),
-        });
-    }
+    *OPTIONS_CACHE.write().await = Some(OptionsCacheEntry {
+        backend_name: active_name,
+        cached_at: Instant::now(),
+        payload: options_info.clone(),
+    });
 
     Ok(options_info)
 }
 
 #[command]
 pub async fn get_grouped_options_with_values(app: AppHandle) -> Result<Value, String> {
-    let merged_flat_data = get_all_options_with_values(app).await?;
-    let grouped_data = group_options(&merged_flat_data);
-    Ok(grouped_data)
+    get_all_options_with_values(app)
+        .await
+        .map(|data| group_options(&data))
 }
 
-// --- GENERAL & FLAG-SPECIFIC COMMANDS ---
 #[command]
 pub async fn get_option_blocks(app: AppHandle) -> Result<Value, String> {
     let backend_manager = app.state::<BackendManager>();
-    fetch_option_blocks(&app.state::<RcloneState>().client, &backend_manager).await
+    fetch_options(
+        &app.state::<RcloneState>().client,
+        &backend_manager,
+        options::BLOCKS,
+    )
+    .await
 }
 
 fn get_flags_by_category_internal(
     merged_json: &Value,
     category: &str,
-    filter_groups: Option<Vec<String>>,
-    exclude_flags: Option<Vec<String>>,
+    filter_groups: Option<&[&str]>,
+    exclude_flags: Option<&[&str]>,
 ) -> Vec<Value> {
-    let empty_vec = vec![];
-    let category_flags = merged_json[category].as_array().unwrap_or(&empty_vec);
-
-    category_flags
+    let empty = vec![];
+    merged_json[category]
+        .as_array()
+        .unwrap_or(&empty)
         .iter()
         .filter(|flag| {
-            if let Some(ref excludes) = exclude_flags
+            if let Some(excludes) = exclude_flags
                 && let Some(name) = flag["Name"].as_str()
-                && excludes.contains(&name.to_string())
+                && excludes.contains(&name)
             {
                 return false;
             }
-
-            if let Some(ref groups_filter) = filter_groups {
-                if let Some(groups) = flag["Groups"].as_str() {
-                    return groups_filter.iter().any(|g| groups.contains(g));
-                }
-                return false;
+            if let Some(groups_filter) = filter_groups {
+                return flag["Groups"]
+                    .as_str()
+                    .is_some_and(|g| groups_filter.iter().any(|f| g.contains(f)));
             }
             true
         })
@@ -255,11 +230,17 @@ pub async fn get_flags_by_category(
     exclude_flags: Option<Vec<String>>,
 ) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(app).await?;
+    let fg: Option<Vec<&str>> = filter_groups
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect());
+    let ef: Option<Vec<&str>> = exclude_flags
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect());
     Ok(get_flags_by_category_internal(
         &merged_json,
         &category,
-        filter_groups,
-        exclude_flags,
+        fg.as_deref(),
+        ef.as_deref(),
     ))
 }
 
@@ -269,9 +250,15 @@ pub async fn get_copy_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     Ok(get_flags_by_category_internal(
         &merged_json,
         "main",
-        Some(vec!["Copy".to_string(), "Performance".to_string()]),
+        Some(&["Copy", "Performance"]),
         None,
     ))
+}
+
+// get_move_flags has the same groups as get_copy_flags — delegates to it via shared impl
+#[command]
+pub async fn get_move_flags(app: AppHandle) -> Result<Vec<Value>, String> {
+    get_copy_flags(app).await
 }
 
 #[command]
@@ -280,84 +267,66 @@ pub async fn get_sync_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     Ok(get_flags_by_category_internal(
         &merged_json,
         "main",
-        Some(vec![
-            "Copy".to_string(),
-            "Sync".to_string(),
-            "Performance".to_string(),
-        ]),
+        Some(&["Copy", "Sync", "Performance"]),
         None,
     ))
 }
 
 #[command]
+pub async fn get_bisync_flags(app: AppHandle) -> Result<Vec<Value>, String> {
+    get_sync_flags(app).await
+}
+
+#[command]
 pub async fn get_filter_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(app).await?;
-    let filter_flags = get_flags_by_category_internal(&merged_json, "filter", None, None);
-
-    let filtered: Vec<Value> = filter_flags
+    let flags = get_flags_by_category_internal(&merged_json, "filter", None, None);
+    let filtered = flags
         .into_iter()
         .filter(|flag| {
             !flag["Groups"]
                 .as_str()
-                .map(|g| g.contains("Metadata"))
-                .unwrap_or(false)
-        })
-        .map(|mut flag| {
-            if let Some(field_name) = flag["FieldName"].as_str()
-                && let Some(last_part) = field_name.split('.').next_back()
-            {
-                flag["FieldName"] = Value::String(last_part.to_string());
-            }
-            flag
+                .is_some_and(|g| g.contains("Metadata"))
         })
         .collect();
-    Ok(filtered)
+    Ok(simplify_field_names(filtered))
 }
 
 #[command]
 pub async fn get_backend_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(app).await?;
-    let main_flags = get_flags_by_category_internal(&merged_json, "main", None, None);
-
-    let mut backend_flags: Vec<Value> = main_flags
+    let mut flags: Vec<Value> = get_flags_by_category_internal(&merged_json, "main", None, None)
         .into_iter()
         .filter(|flag| {
-            if let Some(groups) = flag["Groups"].as_str() {
-                // Exclude groups handled by specific queries
-                if ["Filter", "Mount", "VFS", "RC", "WebDAV"]
-                    .iter()
-                    .any(|g| groups.contains(g))
-                {
-                    return false;
-                }
-
-                return [
-                    "Performance",
-                    "Listing",
-                    "Networking",
-                    "Check",
-                    "Config",
-                    "Sync",
-                    "Copy",
-                    "Logging",
-                    "Debugging",
-                    "Metadata",
-                    "Important",
-                ]
+            let Some(groups) = flag["Groups"].as_str() else {
+                return false;
+            };
+            if ["Filter", "Mount", "VFS", "RC", "WebDAV"]
                 .iter()
-                .any(|g| groups.contains(g));
+                .any(|g| groups.contains(g))
+            {
+                return false;
             }
-            false
+            [
+                "Performance",
+                "Listing",
+                "Networking",
+                "Check",
+                "Config",
+                "Sync",
+                "Copy",
+                "Logging",
+                "Debugging",
+                "Metadata",
+                "Important",
+            ]
+            .iter()
+            .any(|g| groups.contains(g))
         })
         .collect();
 
-    backend_flags.sort_by(|a, b| {
-        a["Name"]
-            .as_str()
-            .unwrap_or("")
-            .cmp(b["Name"].as_str().unwrap_or(""))
-    });
-    Ok(backend_flags)
+    flags.sort_by_key(|f| f["Name"].as_str().unwrap_or("").to_string());
+    Ok(flags)
 }
 
 #[command]
@@ -367,7 +336,7 @@ pub async fn get_vfs_flags(app: AppHandle) -> Result<Vec<Value>, String> {
         &merged_json,
         "vfs",
         None,
-        Some(vec!["NONE".to_string()]),
+        Some(&["NONE"]),
     ))
 }
 
@@ -378,72 +347,25 @@ pub async fn get_mount_flags(app: AppHandle) -> Result<Vec<Value>, String> {
         &merged_json,
         "mount",
         None,
-        Some(vec![
-            "debug_fuse".to_string(),
-            "daemon".to_string(),
-            "daemon_timeout".to_string(),
-        ]),
+        Some(&["debug_fuse", "daemon", "daemon_timeout"]),
     ))
 }
 
-#[command]
-pub async fn get_move_flags(app: AppHandle) -> Result<Vec<Value>, String> {
-    let merged_json = get_all_options_with_values(app).await?;
-    // Move largely shares the same main groups as copy; expose Copy + Performance flags
-    Ok(get_flags_by_category_internal(
-        &merged_json,
-        "main",
-        Some(vec!["Copy".to_string(), "Performance".to_string()]),
-        None,
-    ))
-}
-
-#[command]
-pub async fn get_bisync_flags(app: AppHandle) -> Result<Vec<Value>, String> {
-    let merged_json = get_all_options_with_values(app).await?;
-    // Bisync needs a mix of Sync and Copy related flags; include Performance as well
-    Ok(get_flags_by_category_internal(
-        &merged_json,
-        "main",
-        Some(vec![
-            "Sync".to_string(),
-            "Copy".to_string(),
-            "Performance".to_string(),
-        ]),
-        None,
-    ))
-}
-
-/// Get flags/options for a specific serve type
-/// If no serve_type is provided, defaults to "http"
+/// Get flags for a specific serve type (defaults to "http").
 #[command]
 pub async fn get_serve_flags(
     app: AppHandle,
     serve_type: Option<String>,
 ) -> Result<Vec<Value>, String> {
-    let serve_type = serve_type.unwrap_or_else(|| "http".to_string());
+    let serve_type = serve_type.as_deref().unwrap_or("http");
     let merged_json = get_all_options_with_values(app).await?;
-    let flags = get_flags_by_category_internal(&merged_json, &serve_type, None, None);
-
-    // Simplify FieldName to only the part after the last dot
-    let modified_flags: Vec<Value> = flags
-        .into_iter()
-        .map(|mut flag| {
-            if let Some(field_name) = flag["FieldName"].as_str()
-                && let Some(last_part) = field_name.split('.').next_back()
-            {
-                flag["FieldName"] = Value::String(last_part.to_string());
-            }
-            flag
-        })
-        .collect();
-
-    Ok(modified_flags)
+    let flags = get_flags_by_category_internal(&merged_json, serve_type, None, None);
+    Ok(simplify_field_names(flags))
 }
 
-// --- DATA MUTATION COMMAND ---
+// --- DATA MUTATION COMMANDS ---
 
-/// Saves a single RClone option value by building a nested JSON payload.
+/// Set a single rclone option, building a nested payload from a dotted name.
 #[command]
 pub async fn set_rclone_option(
     app: AppHandle,
@@ -453,45 +375,35 @@ pub async fn set_rclone_option(
 ) -> Result<Value, String> {
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-    let parts: Vec<&str> = option_name.split('.').collect();
-    let nested_value = parts
-        .iter()
+
+    let nested_value = option_name
+        .split('.')
         .rev()
-        .fold(value, |acc, &part| json!({ part: acc }));
+        .fold(value, |acc, part| json!({ part: acc }));
     let payload = json!({ block_name.clone(): nested_value });
 
-    let json = backend
+    backend
         .post_json(
             &app.state::<RcloneState>().client,
             options::SET,
             Some(&payload),
         )
         .await
-        .map_err(|e| {
-            format!(
-                "Failed to set option '{}' in block '{}': {}",
-                option_name, block_name, e
-            )
-        })?;
-
-    Ok(json)
+        .map_err(|e| format!("Failed to set option '{option_name}' in block '{block_name}': {e}"))
 }
 
-/// Saves multiple RClone options simultaneously by sending a fully qualified nested JSON payload.
-/// Expected payload structure: { "main": { "LogLevel": "DEBUG" }, "vfs": { "CacheMode": "full" } }
+/// Set multiple rclone options at once.
+/// Expected payload: `{ "main": { "LogLevel": "DEBUG" }, "vfs": { "CacheMode": "full" } }`
 #[command]
 pub async fn set_rclone_options_bulk(app: AppHandle, payload: Value) -> Result<Value, String> {
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-
-    let json = backend
+    backend
         .post_json(
             &app.state::<RcloneState>().client,
             options::SET,
             Some(&payload),
         )
         .await
-        .map_err(|e| format!("Failed to set bulk options: {}", e))?;
-
-    Ok(json)
+        .map_err(|e| format!("Failed to set bulk options: {e}"))
 }

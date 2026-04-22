@@ -1,14 +1,15 @@
 use log::debug;
 
-use crate::rclone::backend::types::Backend;
+use crate::rclone::backend::BackendManager;
 use crate::utils::rclone::endpoints::mount;
 use crate::utils::types::core::RcloneState;
 use crate::utils::types::remotes::MountedRemote;
+use tauri::{AppHandle, Manager};
 
-pub async fn get_mounted_remotes_internal(
-    client: &reqwest::Client,
-    backend: &Backend,
-) -> Result<Vec<MountedRemote>, String> {
+#[tauri::command]
+pub async fn get_mounted_remotes(app: AppHandle) -> Result<Vec<MountedRemote>, String> {
+    let client = &app.state::<RcloneState>().client;
+    let backend = app.state::<BackendManager>().get_active().await;
     let json = backend
         .post_json(client, mount::LISTMOUNTS, None)
         .await
@@ -16,13 +17,13 @@ pub async fn get_mounted_remotes_internal(
 
     let mounts = json["mountPoints"]
         .as_array()
-        .unwrap_or(&vec![]) // Default to an empty list if not found
+        .unwrap_or(&vec![])
         .iter()
         .filter_map(|mp| {
             Some(MountedRemote {
                 fs: mp["Fs"].as_str()?.to_string(),
                 mount_point: mp["MountPoint"].as_str()?.to_string(),
-                profile: None, // Profile not stored in rclone API - tracked separately
+                profile: None,
             })
         })
         .collect();
@@ -32,20 +33,8 @@ pub async fn get_mounted_remotes_internal(
 }
 
 #[tauri::command]
-pub async fn get_mounted_remotes(app: tauri::AppHandle) -> Result<Vec<MountedRemote>, String> {
-    use crate::rclone::backend::BackendManager;
-    use tauri::Manager;
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    get_mounted_remotes_internal(&app.state::<RcloneState>().client, &backend).await
-}
-
-#[tauri::command]
-pub async fn get_mount_types(app: tauri::AppHandle) -> Result<Vec<String>, String> {
-    use crate::rclone::backend::BackendManager;
-    use tauri::Manager;
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
+pub async fn get_mount_types(app: AppHandle) -> Result<Vec<String>, String> {
+    let backend = app.state::<BackendManager>().get_active().await;
     let json = backend
         .post_json(&app.state::<RcloneState>().client, mount::TYPES, None)
         .await
@@ -53,7 +42,7 @@ pub async fn get_mount_types(app: tauri::AppHandle) -> Result<Vec<String>, Strin
 
     let mount_types = json["mountTypes"]
         .as_array()
-        .unwrap_or(&vec![]) // Default to an empty list if not found
+        .unwrap_or(&vec![])
         .iter()
         .filter_map(|mt| mt.as_str().map(String::from))
         .collect();

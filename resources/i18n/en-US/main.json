@@ -1347,17 +1347,13 @@
         "transfers": "Transfers"
       },
       "types": {
-        "delete_file": "Delete File",
-        "purge": "Purge",
+        "delete": "Delete",
         "cleanup": "Cleanup",
         "rmdirs": "Remove Empty Folders",
         "copy": "Copy",
-        "copy_file": "Copy File",
         "copy_url": "Copy URL",
         "move": "Move",
-        "move_file": "Move File",
-        "rename_file": "Rename File",
-        "rename_dir": "Rename Folder",
+        "rename": "Rename",
         "sync": "Sync",
         "bisync": "BiSync"
       }

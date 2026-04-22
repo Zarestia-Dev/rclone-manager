@@ -10,9 +10,7 @@ use crate::{
             job::stop_job,
             mount::{mount_remote_profile, unmount_remote},
             serve::{start_serve_profile, stop_all_serves, stop_serve},
-            sync::{
-                start_bisync_profile, start_copy_profile, start_move_profile, start_sync_profile,
-            },
+            sync::{TransferType, start_profile_batch},
         },
         state::scheduled_tasks::ScheduledTasksCache,
     },
@@ -57,15 +55,18 @@ async fn handle_start_job_profile(
         no_cache: None,
     };
 
-    let result = match op_type {
-        "sync" => start_sync_profile(app.clone(), params).await.map(|_| ()),
-        "copy" => start_copy_profile(app.clone(), params).await.map(|_| ()),
-        "move" => start_move_profile(app.clone(), params).await.map(|_| ()),
-        "bisync" => start_bisync_profile(app.clone(), params).await.map(|_| ()),
-        _ => Err(format!("Unknown operation type: {}", op_type)),
+    let transfer_type = match op_type {
+        "sync" => TransferType::Sync,
+        "copy" => TransferType::Copy,
+        "move" => TransferType::Move,
+        "bisync" => TransferType::Bisync,
+        _ => {
+            error!("🚨 Unknown operation type: {}", op_type);
+            return;
+        }
     };
 
-    match result {
+    match start_profile_batch(app.clone(), vec![params], transfer_type).await {
         Ok(_) => {
             info!(
                 "✅ Started {} for {} profile '{}'",
@@ -203,34 +204,24 @@ async fn handle_stop_job_profile(
             Ok(_) => {
                 info!(
                     "🛑 Stopped {} job {} for {} profile '{}'",
-                    job_type.as_str(),
-                    job.jobid,
-                    remote_name,
-                    profile_name
+                    job_type, job.jobid, remote_name, profile_name
                 );
             }
             Err(e) => {
-                error!(
-                    "🚨 Failed to stop {} job {}: {}",
-                    job_type.as_str(),
-                    job.jobid,
-                    e
-                );
+                error!("🚨 Failed to stop {} job {}: {}", job_type, job.jobid, e);
             }
         }
     } else {
         error!(
             "🚨 No active {} job found for {} profile '{}'",
-            job_type.as_str(),
-            remote_name,
-            profile_name
+            job_type, remote_name, profile_name
         );
         notify(
             &app,
             NotificationEvent::JobFailed {
                 remote: remote_name.clone(),
                 profile: Some(profile_name.clone()),
-                operation: job_type.as_str().to_string(),
+                job_type: job_type.clone(),
                 error: "no active job".to_string(),
                 origin: Origin::Dashboard,
             },

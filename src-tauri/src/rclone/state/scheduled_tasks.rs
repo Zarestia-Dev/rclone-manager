@@ -20,15 +20,6 @@ use crate::utils::types::events::SCHEDULED_TASKS_CACHE_CHANGED;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct RemoteConfig {
-    copy_configs: Option<HashMap<String, ProfileConfig>>,
-    sync_configs: Option<HashMap<String, ProfileConfig>>,
-    move_configs: Option<HashMap<String, ProfileConfig>>,
-    bisync_configs: Option<HashMap<String, ProfileConfig>>,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct ProfileConfig {
     cron_enabled: Option<bool>,
     cron_expression: Option<String>,
@@ -81,11 +72,8 @@ impl ScheduledTasksCache {
         profile_name: &str,
     ) -> String {
         format!(
-            "{}:{}-{}-{}",
-            backend_name,
-            remote_name,
-            task_type.as_job_type(),
-            profile_name
+            "{}:{}-{:?}-{}",
+            backend_name, remote_name, task_type, profile_name
         )
     }
 
@@ -108,14 +96,12 @@ impl ScheduledTasksCache {
         let mut tasks_to_update = Vec::new();
 
         for (remote_name, remote_settings) in settings_obj {
-            if let Ok(config) = serde_json::from_value::<RemoteConfig>(remote_settings.clone()) {
-                let tasks = self
-                    .collect_tasks_from_remote(backend_name, remote_name, config)
-                    .await;
-                for task in tasks {
-                    new_task_ids.insert(task.id.clone());
-                    tasks_to_update.push(task);
-                }
+            let tasks = self
+                .collect_tasks_from_remote(backend_name, remote_name, remote_settings)
+                .await;
+            for task in tasks {
+                new_task_ids.insert(task.id.clone());
+                tasks_to_update.push(task);
             }
         }
 
@@ -168,27 +154,36 @@ impl ScheduledTasksCache {
         &self,
         backend_name: &str,
         remote_name: &str,
-        config: RemoteConfig,
+        remote_settings: &Value,
     ) -> Vec<ScheduledTask> {
         let mut tasks = Vec::new();
 
+        let Some(obj) = remote_settings.as_object() else {
+            return tasks;
+        };
+
         let operations = [
-            (config.sync_configs, TaskType::Sync),
-            (config.copy_configs, TaskType::Copy),
-            (config.move_configs, TaskType::Move),
-            (config.bisync_configs, TaskType::Bisync),
+            ("syncConfigs", TaskType::Sync),
+            ("copyConfigs", TaskType::Copy),
+            ("moveConfigs", TaskType::Move),
+            ("bisyncConfigs", TaskType::Bisync),
         ];
 
-        for (profiles_opt, task_type) in operations {
-            if let Some(profiles) = profiles_opt {
-                for (profile_name, profile_config) in profiles {
-                    if let Some(task) = self.create_task_struct(
-                        backend_name,
-                        remote_name,
-                        &profile_name,
-                        &task_type,
-                        &profile_config,
-                    ) {
+        for (key, task_type) in operations {
+            if let Some(profiles) = obj.get(key).and_then(|v| v.as_object()) {
+                for (profile_name, profile_val) in profiles {
+                    if let Some(task) = serde_json::from_value::<ProfileConfig>(profile_val.clone())
+                        .ok()
+                        .and_then(|config| {
+                            self.create_task_struct(
+                                backend_name,
+                                remote_name,
+                                profile_name,
+                                &task_type,
+                                &config,
+                            )
+                        })
+                    {
                         tasks.push(task);
                     }
                 }
@@ -284,11 +279,8 @@ impl ScheduledTasksCache {
         Some(ScheduledTask {
             id: task_id,
             name: format!(
-                "{} - {} - {} ({})",
-                backend_name,
-                remote_name,
-                task_type.as_job_type(),
-                profile_name
+                "{} - {} - {:?} ({})",
+                backend_name, remote_name, task_type, profile_name
             ),
             task_type: task_type.clone(),
             cron_expression: cron.clone(),
@@ -339,12 +331,12 @@ impl ScheduledTasksCache {
         self.tasks.read().await.values().cloned().collect()
     }
 
-    pub async fn get_task_by_job_id(&self, job_id: u64) -> Option<ScheduledTask> {
+    pub async fn get_task_by_job_id(&self, job_id: String) -> Option<ScheduledTask> {
         self.tasks
             .read()
             .await
             .values()
-            .find(|t| t.current_job_id == Some(job_id))
+            .find(|t| t.current_job_id == Some(job_id.clone()))
             .cloned()
     }
 
@@ -406,11 +398,8 @@ impl ScheduledTasksCache {
         remote_name: &str,
         remote_settings: &Value,
     ) -> Result<CacheUpdateResult, String> {
-        let config: RemoteConfig = serde_json::from_value(remote_settings.clone())
-            .map_err(|e| format!("Invalid remote settings: {}", e))?;
-
         let tasks = self
-            .collect_tasks_from_remote(backend_name, remote_name, config)
+            .collect_tasks_from_remote(backend_name, remote_name, remote_settings)
             .await;
 
         let active_ids: HashSet<String> = tasks.iter().map(|t| t.id.clone()).collect();
@@ -619,36 +608,18 @@ mod tests {
     // -----------------------------------------------------------------------
 
     #[test]
-    fn test_remote_config_deserialization() {
+    fn test_profile_config_deserialization() {
         let json_data = json!({
-            "copyConfigs": {
-                "profile1": {
-                    "cronEnabled": true,
-                    "cronExpression": "0 0 * * *",
-                    "source": "/src",
-                    "dest": "/dst"
-                }
-            },
-            "syncConfigs": {},
-            "moveConfigs": null
+            "cronEnabled": true,
+            "cronExpression": "0 0 * * *",
+            "source": "/src",
+            "dest": "/dst"
         });
 
-        let config: RemoteConfig = serde_json::from_value(json_data).unwrap();
-        assert!(config.copy_configs.is_some());
-        let profile = config.copy_configs.unwrap();
-        let p = profile.get("profile1").unwrap();
+        let p: ProfileConfig = serde_json::from_value(json_data).unwrap();
         assert_eq!(p.cron_enabled, Some(true));
         assert_eq!(p.cron_expression.as_deref(), Some("0 0 * * *"));
         assert_eq!(p.source.as_deref(), Some("/src"));
-    }
-
-    #[test]
-    fn test_remote_config_missing_fields_default_to_none() {
-        let json_data = json!({ "syncConfigs": {} });
-        let config: RemoteConfig = serde_json::from_value(json_data).unwrap();
-        assert!(config.copy_configs.is_none());
-        assert!(config.move_configs.is_none());
-        assert!(config.bisync_configs.is_none());
     }
 
     // -----------------------------------------------------------------------

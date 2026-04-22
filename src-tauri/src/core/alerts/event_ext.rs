@@ -116,10 +116,10 @@ impl NotificationEventExt for NotificationEvent {
 
     fn alert_operation(&self) -> Option<String> {
         match self {
-            Self::JobCompleted { operation, .. }
-            | Self::JobStarted { operation, .. }
-            | Self::JobFailed { operation, .. }
-            | Self::JobStopped { operation, .. } => Some(operation.clone()),
+            Self::JobCompleted { job_type, .. }
+            | Self::JobStarted { job_type, .. }
+            | Self::JobFailed { job_type, .. }
+            | Self::JobStopped { job_type, .. } => Some(job_type.to_string()),
 
             _ => None,
         }

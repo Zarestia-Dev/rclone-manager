@@ -10,12 +10,9 @@ use crate::{
     rclone::{commands::system::set_bandwidth_limit, state::scheduled_tasks::ScheduledTasksCache},
     utils::{
         logging::log::update_log_level,
-        types::{
-            core::RcloneState,
-            events::{
-                JOB_CACHE_CHANGED, RCLONE_PASSWORD_STORED, REMOTE_CACHE_CHANGED,
-                SYSTEM_SETTINGS_CHANGED, SettingsChangeEvent,
-            },
+        types::events::{
+            JOB_CACHE_CHANGED, RCLONE_PASSWORD_STORED, REMOTE_CACHE_CHANGED,
+            SYSTEM_SETTINGS_CHANGED, SettingsChangeEvent,
         },
     },
 };
@@ -58,16 +55,13 @@ fn handle_remote_presence_changed(app: &AppHandle) {
     app.listen(REMOTE_CACHE_CHANGED, move |_| {
         let app_clone = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            let client = app_clone.state::<RcloneState>().client.clone();
-
             use crate::rclone::backend::BackendManager;
             let backend_manager = app_clone.state::<BackendManager>();
-            let backend = backend_manager.get_active().await;
             let cache = &backend_manager.remote_cache;
 
             let refresh_tasks: (Result<(), String>, Result<(), String>) = tokio::join!(
-                cache.refresh_remote_list(&client, &backend),
-                cache.refresh_remote_configs(&client, &backend),
+                cache.refresh_remote_list(app_clone.clone()),
+                cache.refresh_remote_configs(app_clone.clone()),
             );
 
             if let (Err(e1), Err(e2)) = refresh_tasks {

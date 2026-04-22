@@ -7,24 +7,26 @@ use tauri::{AppHandle, Manager};
 
 use crate::rclone::backend::BackendManager;
 use crate::rclone::commands::job::JobMetadata;
-use crate::utils::rclone::endpoints::{operations, sync};
+use crate::utils::rclone::endpoints::operations;
 use crate::utils::rclone::util::build_full_path;
 use crate::utils::types::{core::RcloneState, jobs::JobType, origin::Origin};
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TransferItem {
-    pub src_remote: String,
-    pub src_path: String,
+pub struct FsItem {
+    pub remote: String,
+    pub path: String,
+    #[serde(default)]
     pub name: String,
     pub is_dir: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DeleteItem {
+pub struct RenameItem {
     pub remote: String,
-    pub path: String,
+    pub src_path: String,
+    pub dst_path: String,
     pub is_dir: bool,
 }
 
@@ -56,7 +58,6 @@ pub async fn mkdir(
         JobMetadata {
             remote_name: remote.clone(),
             job_type: JobType::Mkdir,
-            operation_name: "Create Directory".to_string(),
             source: build_full_path(&remote, &path),
             destination: String::new(),
             profile: None,
@@ -108,7 +109,6 @@ pub async fn cleanup(
         JobMetadata {
             remote_name: remote.clone(),
             job_type: JobType::Cleanup,
-            operation_name: "Cleanup".to_string(),
             source: build_full_path(&remote, &path_val),
             destination: String::new(),
             profile: None,
@@ -161,7 +161,6 @@ pub async fn copy_url(
         JobMetadata {
             remote_name: remote.clone(),
             job_type: JobType::CopyUrl,
-            operation_name: "Copy URL".to_string(),
             source: url_to_copy,
             destination: build_full_path(&remote, &path),
             profile: None,
@@ -199,16 +198,24 @@ pub async fn remove_empty_dirs(
         "_async": true,
     })];
 
-    crate::rclone::commands::job::submit_batch_job(app, inputs, origin, group).await
+    crate::rclone::commands::job::submit_batch_job(
+        app,
+        inputs,
+        None,
+        origin,
+        group,
+        JobType::Rmdirs,
+    )
+    .await
 }
 
 #[tauri::command]
-pub async fn transfer_items(
+pub async fn transfer(
     app: AppHandle,
-    items: Vec<TransferItem>,
+    items: Vec<FsItem>,
     dst_remote: String,
     dst_path: String,
-    mode: String, // "copy" or "move"
+    mode: String,
     origin: Option<Origin>,
     group: Option<String>,
 ) -> Result<String, String> {
@@ -226,59 +233,65 @@ pub async fn transfer_items(
             format!("{}/{}", dst_path.trim_end_matches('/'), item.name)
         };
 
-        let src_full = build_full_path(&item.src_remote, &item.src_path);
+        let src_full = build_full_path(&item.remote, &item.path);
         let dst_full = build_full_path(&dst_remote, &dst_file);
 
         if mode == "copy" {
             if item.is_dir {
                 inputs.push(json!({
-                    "_path": sync::COPY,
+                    "_path": "copy",
+                    "is_dir": true,
                     "srcFs": src_full,
                     "dstFs": dst_full,
                     "createEmptySrcDirs": true,
-                    "_async": true,
                 }));
             } else {
                 inputs.push(json!({
-                    "_path": operations::COPYFILE,
-                    "srcFs": item.src_remote,
-                    "srcRemote": item.src_path,
+                    "_path": "copy",
+                    "is_dir": false,
+                    "srcFs": item.remote,
+                    "srcRemote": item.path,
                     "dstFs": dst_remote.clone(),
                     "dstRemote": dst_file,
-                    "_async": true,
                 }));
             }
         } else {
             // mode == "move"
             if item.is_dir {
                 inputs.push(json!({
-                    "_path": sync::MOVE,
+                    "_path": "rename",
+                    "is_dir": true,
                     "srcFs": src_full,
                     "dstFs": dst_full,
                     "createEmptySrcDirs": true,
                     "deleteEmptySrcDirs": true,
-                    "_async": true,
                 }));
             } else {
                 inputs.push(json!({
-                    "_path": operations::MOVEFILE,
-                    "srcFs": item.src_remote,
-                    "srcRemote": item.src_path,
+                    "_path": "rename",
+                    "is_dir": false,
+                    "srcFs": item.remote,
+                    "srcRemote": item.path,
                     "dstFs": dst_remote.clone(),
                     "dstRemote": dst_file,
-                    "_async": true,
                 }));
             }
         }
     }
 
-    crate::rclone::commands::job::submit_batch_job(app, inputs, origin, group).await
+    let job_type = if mode == "move" {
+        JobType::Move
+    } else {
+        JobType::Copy
+    };
+
+    crate::rclone::commands::job::submit_batch_job(app, inputs, None, origin, group, job_type).await
 }
 
 #[tauri::command]
-pub async fn delete_items(
+pub async fn delete(
     app: AppHandle,
-    items: Vec<DeleteItem>,
+    items: Vec<FsItem>,
     origin: Option<Origin>,
     group: Option<String>,
 ) -> Result<String, String> {
@@ -287,24 +300,23 @@ pub async fn delete_items(
 
     let mut inputs = Vec::new();
     for item in items {
-        if item.is_dir {
-            inputs.push(json!({
-                "_path": operations::PURGE,
-                "fs": item.remote,
-                "remote": item.path,
-                "_async": true,
-            }));
-        } else {
-            inputs.push(json!({
-                "_path": operations::DELETEFILE,
-                "fs": item.remote,
-                "remote": item.path,
-                "_async": true,
-            }));
-        }
+        inputs.push(json!({
+            "_path": "delete",
+            "is_dir": item.is_dir,
+            "fs": item.remote,
+            "remote": item.path,
+        }));
     }
 
-    crate::rclone::commands::job::submit_batch_job(app, inputs, origin, group).await
+    crate::rclone::commands::job::submit_batch_job(
+        app,
+        inputs,
+        None,
+        origin,
+        group,
+        JobType::Delete,
+    )
+    .await
 }
 
 #[tauri::command]
@@ -921,112 +933,48 @@ pub async fn upload_local_drop_files(
 }
 
 #[tauri::command]
-pub async fn rename_file(
+pub async fn rename(
     app: AppHandle,
-    remote: String,
-    src_path: String,
-    dst_path: String,
+    items: Vec<RenameItem>,
     origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
-) -> Result<(), String> {
-    let state = app.state::<RcloneState>();
-    debug!(
-        "🖊️ Renaming file: remote={} src_path={} dst_path={}",
-        remote, src_path, dst_path
-    );
+) -> Result<String, String> {
+    let num_items = items.len();
+    debug!("🖊️ Renaming {} items", num_items);
 
-    let src_full = build_full_path(&remote, &src_path);
-    let dst_full = build_full_path(&remote, &dst_path);
+    let mut inputs = Vec::new();
+    for item in items {
+        let src_full = build_full_path(&item.remote, &item.src_path);
+        let dst_full = build_full_path(&item.remote, &item.dst_path);
 
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let url = backend.url_for(operations::MOVEFILE);
+        if item.is_dir {
+            inputs.push(json!({
+                "_path": "rename",
+                "is_dir": true,
+                "srcFs": src_full,
+                "dstFs": dst_full,
+                "createEmptySrcDirs": true,
+                "deleteEmptySrcDirs": true,
+            }));
+        } else {
+            inputs.push(json!({
+                "_path": "rename",
+                "is_dir": false,
+                "srcFs": item.remote,
+                "srcRemote": item.src_path,
+                "dstFs": item.remote,
+                "dstRemote": item.dst_path,
+            }));
+        }
+    }
 
-    let payload = json!({
-        "srcFs": remote.clone(),
-        "srcRemote": src_path.clone(),
-        "dstFs": remote.clone(),
-        "dstRemote": dst_path.clone(),
-        "_async": true,
-    });
-
-    let _ = crate::rclone::commands::job::submit_job_with_options(
-        app.clone(),
-        state.client.clone(),
-        backend.inject_auth(state.client.clone().post(&url)),
-        payload,
-        JobMetadata {
-            remote_name: remote.clone(),
-            job_type: JobType::RenameFile,
-            operation_name: "Rename File".to_string(),
-            source: src_full,
-            destination: dst_full,
-            profile: None,
-            origin,
-            group,
-            no_cache: true,
-        },
-        crate::rclone::commands::job::SubmitJobOptions {
-            wait_for_completion: true,
-        },
+    crate::rclone::commands::job::submit_batch_job(
+        app,
+        inputs,
+        None,
+        origin,
+        group,
+        JobType::Rename,
     )
-    .await?;
-
-    Ok(())
-}
-
-#[tauri::command]
-pub async fn rename_dir(
-    app: AppHandle,
-    remote: String,
-    src_path: String,
-    dst_path: String,
-    origin: Option<crate::utils::types::origin::Origin>,
-    group: Option<String>,
-) -> Result<(), String> {
-    let state = app.state::<RcloneState>();
-    debug!(
-        "🖊️ Renaming directory: remote={} src_path={} dst_path={}",
-        remote, src_path, dst_path
-    );
-
-    let src_full = build_full_path(&remote, &src_path);
-    let dst_full = build_full_path(&remote, &dst_path);
-
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let url = backend.url_for(sync::MOVE);
-
-    // For sync/move (directories), fs means the root of the copy
-    let payload = json!({
-        "srcFs": src_full.clone(),
-        "dstFs": dst_full.clone(),
-        "createEmptySrcDirs": true,
-        "deleteEmptySrcDirs": true,
-        "_async": true,
-    });
-
-    let _ = crate::rclone::commands::job::submit_job_with_options(
-        app.clone(),
-        state.client.clone(),
-        backend.inject_auth(state.client.clone().post(&url)),
-        payload,
-        JobMetadata {
-            remote_name: remote.clone(),
-            job_type: JobType::RenameDir,
-            operation_name: "Rename Directory".to_string(),
-            source: src_full.clone(),
-            destination: dst_full.clone(),
-            profile: None,
-            origin,
-            group,
-            no_cache: true,
-        },
-        crate::rclone::commands::job::SubmitJobOptions {
-            wait_for_completion: true,
-        },
-    )
-    .await?;
-
-    Ok(())
+    .await
 }

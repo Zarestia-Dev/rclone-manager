@@ -1,22 +1,16 @@
-use crate::core::settings::AppSettingsManager;
+use crate::{
+    core::settings::AppSettingsManager,
+    rclone::queries::{get_all_remote_configs, get_mounted_remotes, get_remotes, list_serves},
+};
 
 use log::{debug, error, info};
 use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tokio::sync::RwLock;
 
-use crate::{
-    rclone::{
-        backend::types::Backend,
-        queries::{
-            get_all_remote_configs_internal, get_mounted_remotes_internal, get_remotes_internal,
-            list_serves_internal, parse_serves_response,
-        },
-    },
-    utils::types::{
-        events::{MOUNT_STATE_CHANGED, SERVE_STATE_CHANGED},
-        remotes::{MountedRemote, RemoteCache, ServeInstance},
-    },
+use crate::utils::types::{
+    events::{MOUNT_STATE_CHANGED, SERVE_STATE_CHANGED},
+    remotes::{MountedRemote, RemoteCache, ServeInstance},
 };
 
 /// Persistent context for RemoteCache — saved/restored on backend switches so that
@@ -149,12 +143,8 @@ impl RemoteCache {
     // FULL REFRESH — called on startup / backend switch
     // =========================================================================
 
-    pub async fn refresh_remote_list(
-        &self,
-        client: &reqwest::Client,
-        backend: &Backend,
-    ) -> Result<(), String> {
-        match get_remotes_internal(client, backend).await {
+    pub async fn refresh_remote_list(&self, app: AppHandle) -> Result<(), String> {
+        match get_remotes(app).await {
             Ok(remote_list) => {
                 *self.remotes.write().await = remote_list;
                 Ok(())
@@ -168,12 +158,8 @@ impl RemoteCache {
         }
     }
 
-    pub async fn refresh_remote_configs(
-        &self,
-        client: &reqwest::Client,
-        backend: &Backend,
-    ) -> Result<(), String> {
-        match get_all_remote_configs_internal(client, backend).await {
+    pub async fn refresh_remote_configs(&self, app: AppHandle) -> Result<(), String> {
+        match get_all_remote_configs(app).await {
             Ok(remote_list) => {
                 *self.configs.write().await = remote_list;
                 Ok(())
@@ -187,12 +173,8 @@ impl RemoteCache {
         }
     }
 
-    pub async fn refresh_mounted_remotes(
-        &self,
-        client: &reqwest::Client,
-        backend: &Backend,
-    ) -> Result<(), String> {
-        match get_mounted_remotes_internal(client, backend).await {
+    pub async fn refresh_mounted_remotes(&self, app: AppHandle) -> Result<(), String> {
+        match get_mounted_remotes(app).await {
             Ok(remotes) => {
                 let mut mounted = self.mounted.write().await;
                 let existing = mounted.clone();
@@ -209,18 +191,16 @@ impl RemoteCache {
         }
     }
 
-    pub async fn refresh_serves(
-        &self,
-        client: &reqwest::Client,
-        backend: &Backend,
-    ) -> Result<(), String> {
-        match list_serves_internal(client, backend).await {
-            Ok(response) => {
-                let serves_list = parse_serves_response(&response);
-                let mut serves = self.serves.write().await;
-                let existing = serves.clone();
-                *serves = Self::merge_serve_profiles(serves_list, &existing);
-                debug!("🔄 Updated serves cache: {} active serves", serves.len());
+    pub async fn refresh_serves(&self, app: AppHandle) -> Result<(), String> {
+        match list_serves(app).await {
+            Ok(serves) => {
+                let mut cache_serves = self.serves.write().await;
+                let existing = cache_serves.clone();
+                *cache_serves = Self::merge_serve_profiles(serves, &existing);
+                debug!(
+                    "🔄 Updated serves cache: {} active serves",
+                    cache_serves.len()
+                );
                 Ok(())
             }
             Err(e) => {
@@ -233,16 +213,12 @@ impl RemoteCache {
     }
 
     #[allow(clippy::type_complexity)]
-    pub async fn refresh_all(
-        &self,
-        client: &reqwest::Client,
-        backend: &Backend,
-    ) -> Result<(), String> {
+    pub async fn refresh_all(&self, app: AppHandle) -> Result<(), String> {
         let (r1, r2, r3, r4) = tokio::join!(
-            self.refresh_remote_list(client, backend),
-            self.refresh_remote_configs(client, backend),
-            self.refresh_mounted_remotes(client, backend),
-            self.refresh_serves(client, backend),
+            self.refresh_remote_list(app.clone()),
+            self.refresh_remote_configs(app.clone()),
+            self.refresh_mounted_remotes(app.clone()),
+            self.refresh_serves(app.clone()),
         );
 
         for (label, res) in [

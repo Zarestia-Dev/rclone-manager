@@ -4,7 +4,6 @@ use std::collections::HashMap;
 use tauri::command;
 
 use crate::rclone::backend::BackendManager;
-use crate::rclone::backend::types::Backend;
 use crate::utils::rclone::endpoints::config;
 use crate::utils::types::core::RcloneState;
 use tauri::{AppHandle, Manager};
@@ -14,15 +13,8 @@ use tauri::{AppHandle, Manager};
 pub async fn get_all_remote_configs(app: AppHandle) -> Result<serde_json::Value, String> {
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-    get_all_remote_configs_internal(&app.state::<RcloneState>().client, &backend).await
-}
-
-pub async fn get_all_remote_configs_internal(
-    client: &reqwest::Client,
-    backend: &Backend,
-) -> Result<serde_json::Value, String> {
     let json = backend
-        .post_json(client, config::DUMP, None)
+        .post_json(&app.state::<RcloneState>().client, config::DUMP, None)
         .await
         .map_err(|e| format!("❌ Failed to fetch remote configs: {e}"))?;
 
@@ -34,15 +26,12 @@ pub async fn get_all_remote_configs_internal(
 pub async fn get_remotes(app: AppHandle) -> Result<Vec<String>, String> {
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-    get_remotes_internal(&app.state::<RcloneState>().client, &backend).await
-}
-
-pub async fn get_remotes_internal(
-    client: &reqwest::Client,
-    backend: &Backend,
-) -> Result<Vec<String>, String> {
     let json = backend
-        .post_json(client, config::LISTREMOTES, None)
+        .post_json(
+            &app.state::<RcloneState>().client,
+            config::LISTREMOTES,
+            None,
+        )
         .await
         .map_err(|e| {
             log::error!("❌ Failed to fetch remotes: {e}");

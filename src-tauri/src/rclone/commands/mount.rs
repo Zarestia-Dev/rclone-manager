@@ -161,7 +161,6 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     let metadata = JobMetadata {
         remote_name: params.remote_name.clone(),
         job_type: JobType::Mount,
-        operation_name: "Mount remote".to_string(),
         source: params.source.clone(),
         destination: params.mount_point.clone(),
         profile: params.profile.clone(),

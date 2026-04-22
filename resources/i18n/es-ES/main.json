@@ -1326,7 +1326,18 @@
       "failed": "Fallido",
       "cancelled": "Cancelado",
       "cancelJob": "Cancelar",
-      "removeJob": "Eliminar"
+      "removeJob": "Eliminar",
+      "types": {
+        "delete": "Eliminar",
+        "cleanup": "Limpieza",
+        "rmdirs": "Eliminar carpetas vacías",
+        "copy": "Copiar",
+        "copy_url": "Copiar URL",
+        "move": "Mover",
+        "rename": "Renombrar",
+        "sync": "Sincronizar",
+        "bisync": "BiSync"
+      }
     },
     "fileViewer": {
       "closeViewer": "Cerrar visor",

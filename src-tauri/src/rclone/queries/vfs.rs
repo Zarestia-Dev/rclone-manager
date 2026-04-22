@@ -1,58 +1,49 @@
 use log::debug;
 use serde_json::{Value, json};
-use tauri::command;
+use tauri::{AppHandle, Manager, command};
 
 use crate::rclone::backend::BackendManager;
 use crate::utils::rclone::endpoints::vfs;
 use crate::utils::types::core::RcloneState;
-use tauri::{AppHandle, Manager};
 
 #[cfg(target_os = "windows")]
 use crate::utils::json_helpers::normalize_windows_path;
 
-/// List active VFSes.
 #[command]
 pub async fn vfs_list(app: AppHandle) -> Result<Value, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let state = app.state::<RcloneState>();
+    let backend = app.state::<BackendManager>().get_active().await;
     let json = backend
-        .post_json(&state.client, vfs::LIST, None)
+        .post_json(&app.state::<RcloneState>().client, vfs::LIST, None)
         .await
         .map_err(|e| format!("Failed to fetch VFS list: {e}"))?;
-
     debug!("✅ VFS List: {json}");
     Ok(json)
 }
 
-/// Forget files or directories in the directory cache.
 #[command]
 pub async fn vfs_forget(
     app: AppHandle,
     fs: Option<String>,
     file: Option<String>,
 ) -> Result<Value, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
+    let backend = app.state::<BackendManager>().get_active().await;
     let mut payload = json!({});
-
     if let Some(f) = fs {
         payload["fs"] = Value::String(f);
     }
     if let Some(f) = file {
         payload["file"] = Value::String(f);
     }
-
-    let state = app.state::<RcloneState>();
-    let json = backend
-        .post_json(&state.client, vfs::FORGET, Some(&payload))
+    backend
+        .post_json(
+            &app.state::<RcloneState>().client,
+            vfs::FORGET,
+            Some(&payload),
+        )
         .await
-        .map_err(|e| format!("Failed to forget paths: {e}"))?;
-
-    Ok(json)
+        .map_err(|e| format!("Failed to forget paths: {e}"))
 }
 
-/// Refresh the directory cache.
 #[command]
 pub async fn vfs_refresh(
     app: AppHandle,
@@ -60,72 +51,55 @@ pub async fn vfs_refresh(
     dir: Option<String>,
     recursive: bool,
 ) -> Result<Value, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let mut payload = json!({
-        "recursive": recursive
-    });
-
+    let backend = app.state::<BackendManager>().get_active().await;
+    let mut payload = json!({ "recursive": recursive });
     if let Some(f) = fs {
         payload["fs"] = Value::String(f);
     }
     if let Some(d) = dir {
         payload["dir"] = Value::String(d);
     }
-
-    let state = app.state::<RcloneState>();
-    let json = backend
-        .post_json(&state.client, vfs::REFRESH, Some(&payload))
+    backend
+        .post_json(
+            &app.state::<RcloneState>().client,
+            vfs::REFRESH,
+            Some(&payload),
+        )
         .await
-        .map_err(|e| format!("Failed to refresh cache: {e}"))?;
-
-    Ok(json)
+        .map_err(|e| format!("Failed to refresh cache: {e}"))
 }
 
-/// Get stats for a VFS.
 #[command]
 pub async fn vfs_stats(app: AppHandle, fs: Option<String>) -> Result<Value, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
+    let backend = app.state::<BackendManager>().get_active().await;
     let mut payload = json!({});
     if let Some(f) = fs {
         payload["fs"] = Value::String(f);
     }
 
-    let state = app.state::<RcloneState>();
-    #[cfg(target_os = "windows")]
+    #[allow(unused_mut)]
     let mut json = backend
-        .post_json(&state.client, vfs::STATS, Some(&payload))
+        .post_json(
+            &app.state::<RcloneState>().client,
+            vfs::STATS,
+            Some(&payload),
+        )
         .await
         .map_err(|e| format!("Failed to fetch VFS stats: {e}"))?;
 
-    #[cfg(not(target_os = "windows"))]
-    let json = backend
-        .post_json(&state.client, vfs::STATS, Some(&payload))
-        .await
-        .map_err(|e| format!("Failed to fetch VFS stats: {e}"))?;
-
-    // Normalize Windows paths in diskCache on Windows only
     #[cfg(target_os = "windows")]
     if let Some(disk_cache) = json.get_mut("diskCache").and_then(|v| v.as_object_mut()) {
-        if let Some(path) = disk_cache.get("path").and_then(|v| v.as_str()) {
-            disk_cache.insert(
-                "path".to_string(),
-                Value::String(normalize_windows_path(path)),
-            );
-        }
-        if let Some(path_meta) = disk_cache.get("pathMeta").and_then(|v| v.as_str()) {
-            disk_cache.insert(
-                "pathMeta".to_string(),
-                Value::String(normalize_windows_path(path_meta)),
-            );
+        for key in ["path", "pathMeta"] {
+            if let Some(raw) = disk_cache.get(key).and_then(|v| v.as_str()) {
+                let normalized = normalize_windows_path(raw);
+                disk_cache.insert(key.to_string(), Value::String(normalized));
+            }
         }
     }
 
     Ok(json)
 }
 
-/// Get or update the value of the poll-interval option.
 #[command]
 pub async fn vfs_poll_interval(
     app: AppHandle,
@@ -133,8 +107,7 @@ pub async fn vfs_poll_interval(
     interval: Option<String>,
     timeout: Option<String>,
 ) -> Result<Value, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
+    let backend = app.state::<BackendManager>().get_active().await;
     let mut payload = json!({});
     if let Some(f) = fs {
         payload["fs"] = Value::String(f);
@@ -145,38 +118,35 @@ pub async fn vfs_poll_interval(
     if let Some(t) = timeout {
         payload["timeout"] = Value::String(t);
     }
-
-    let state = app.state::<RcloneState>();
-    let json = backend
-        .post_json(&state.client, vfs::POLL_INTERVAL, Some(&payload))
+    backend
+        .post_json(
+            &app.state::<RcloneState>().client,
+            vfs::POLL_INTERVAL,
+            Some(&payload),
+        )
         .await
-        .map_err(|e| format!("Failed to set/get poll interval: {e}"))?;
-
-    Ok(json)
+        .map_err(|e| format!("Failed to set/get poll interval: {e}"))
 }
 
-/// Get VFS queue info
 #[command]
 pub async fn vfs_queue(app: AppHandle, fs: Option<String>) -> Result<Value, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
+    let backend = app.state::<BackendManager>().get_active().await;
     let mut payload = json!({});
     if let Some(f) = fs {
         payload["fs"] = Value::String(f);
     }
-
-    let state = app.state::<RcloneState>();
     let json = backend
-        .post_json(&state.client, vfs::QUEUE, Some(&payload))
+        .post_json(
+            &app.state::<RcloneState>().client,
+            vfs::QUEUE,
+            Some(&payload),
+        )
         .await
         .map_err(|e| format!("Failed to fetch VFS queue: {e}"))?;
-
     debug!("✅ VFS Queue: {json}");
-
     Ok(json)
 }
 
-/// Set the expiry time for an item queued for upload
 #[command]
 pub async fn vfs_queue_set_expiry(
     app: AppHandle,
@@ -185,22 +155,17 @@ pub async fn vfs_queue_set_expiry(
     expiry: f64,
     relative: bool,
 ) -> Result<Value, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let mut payload = json!({
-        "id": id,
-        "expiry": expiry,
-        "relative": relative
-    });
+    let backend = app.state::<BackendManager>().get_active().await;
+    let mut payload = json!({ "id": id, "expiry": expiry, "relative": relative });
     if let Some(f) = fs {
         payload["fs"] = Value::String(f);
     }
-
-    let state = app.state::<RcloneState>();
-    let json = backend
-        .post_json(&state.client, vfs::QUEUE_SET_EXPIRY, Some(&payload))
+    backend
+        .post_json(
+            &app.state::<RcloneState>().client,
+            vfs::QUEUE_SET_EXPIRY,
+            Some(&payload),
+        )
         .await
-        .map_err(|e| format!("Failed to set queue expiry: {e}"))?;
-
-    Ok(json)
+        .map_err(|e| format!("Failed to set queue expiry: {e}"))
 }

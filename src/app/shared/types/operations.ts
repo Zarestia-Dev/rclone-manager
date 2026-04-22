@@ -33,12 +33,8 @@ export type RemoteAction =
   | null;
 
 export type FileOperationType =
-  | 'delete_file'
-  | 'purge'
-  | 'copy_file'
-  | 'move_file'
-  | 'rename_file'
-  | 'rename_dir'
+  | 'delete'
+  | 'rename'
   | 'upload'
   | 'copy_url'
   | 'cleanup'

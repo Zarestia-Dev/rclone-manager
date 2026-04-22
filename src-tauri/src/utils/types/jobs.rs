@@ -25,22 +25,9 @@ pub enum JobType {
     CopyUrl,
     Mkdir,
     Cleanup,
-    #[serde(rename = "delete_file")]
-    DeleteFile,
-    Purge,
+    Delete,
+    Rename,
     Rmdirs,
-    #[serde(rename = "copy_file")]
-    CopyFile,
-    #[serde(rename = "move_file")]
-    MoveFile,
-    #[serde(rename = "copy_dir")]
-    CopyDir,
-    #[serde(rename = "move_dir")]
-    MoveDir,
-    #[serde(rename = "rename_file")]
-    RenameFile,
-    #[serde(rename = "rename_dir")]
-    RenameDir,
     Upload,
     Batch,
     Unknown(String),
@@ -48,7 +35,18 @@ pub enum JobType {
 
 impl fmt::Display for JobType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.as_str())
+        match self {
+            // Unknown carries an arbitrary string not known to serde.
+            JobType::Unknown(s) => f.write_str(s),
+            // For all known variants the serde representation is canonical.
+            _ => f.write_str(
+                serde_json::to_value(self)
+                    .ok()
+                    .and_then(|v| v.as_str().map(str::to_string))
+                    .as_deref()
+                    .unwrap_or_default(),
+            ),
+        }
     }
 }
 
@@ -64,83 +62,11 @@ impl JobType {
                 | JobType::Hash
                 | JobType::Mkdir
                 | JobType::Cleanup
-                | JobType::DeleteFile
-                | JobType::Purge
+                | JobType::Delete
+                | JobType::Rename
                 | JobType::Rmdirs
-                | JobType::CopyFile
-                | JobType::MoveFile
-                | JobType::CopyDir
-                | JobType::MoveDir
-                | JobType::RenameFile
-                | JobType::RenameDir
                 | JobType::Upload
         )
-    }
-
-    pub fn as_str(&self) -> &str {
-        match self {
-            JobType::Sync => "sync",
-            JobType::Copy => "copy",
-            JobType::Move => "move",
-            JobType::Bisync => "bisync",
-            JobType::Mount => "mount",
-            JobType::Serve => "serve",
-            JobType::List => "list",
-            JobType::Stat => "stat",
-            JobType::Info => "info",
-            JobType::About => "about",
-            JobType::Size => "size",
-            JobType::Hash => "hash",
-            JobType::CopyUrl => "copy_url",
-            JobType::Mkdir => "mkdir",
-            JobType::Cleanup => "cleanup",
-            JobType::DeleteFile => "delete_file",
-            JobType::Purge => "purge",
-            JobType::Rmdirs => "rmdirs",
-            JobType::CopyFile => "copy_file",
-            JobType::MoveFile => "move_file",
-            JobType::CopyDir => "copy_dir",
-            JobType::MoveDir => "move_dir",
-            JobType::RenameFile => "rename_file",
-            JobType::RenameDir => "rename_dir",
-            JobType::Upload => "upload",
-            JobType::Batch => "batch",
-            JobType::Unknown(s) => s,
-        }
-    }
-}
-
-impl From<String> for JobType {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "sync" => JobType::Sync,
-            "copy" => JobType::Copy,
-            "move" => JobType::Move,
-            "bisync" => JobType::Bisync,
-            "mount" => JobType::Mount,
-            "serve" => JobType::Serve,
-            "list" => JobType::List,
-            "stat" => JobType::Stat,
-            "info" => JobType::Info,
-            "about" => JobType::About,
-            "size" => JobType::Size,
-            "hash" => JobType::Hash,
-            "copy_url" => JobType::CopyUrl,
-            "mkdir" => JobType::Mkdir,
-            "cleanup" => JobType::Cleanup,
-            "delete_file" => JobType::DeleteFile,
-            "purge" => JobType::Purge,
-            "rmdirs" => JobType::Rmdirs,
-            "copy_file" => JobType::CopyFile,
-            "move_file" => JobType::MoveFile,
-            "copy_dir" => JobType::CopyDir,
-            "move_dir" => JobType::MoveDir,
-            "rename_file" => JobType::RenameFile,
-            "rename_dir" => JobType::RenameDir,
-            "upload" => JobType::Upload,
-            "batch" => JobType::Batch,
-            _ => JobType::Unknown(s),
-        }
     }
 }
 
@@ -189,7 +115,7 @@ pub enum JobStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BatchMasterJob {
     pub batch_id: String,
-    pub operation_name: String,
+    pub job_type: JobType,
     pub total_jobs: usize,
     pub completed_jobs: usize,
     pub failed_jobs: usize,

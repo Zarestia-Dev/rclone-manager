@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { Entry, FsInfo, Origin } from '@app/types';
+import { Entry, FsInfo, JobActionType, Origin } from '@app/types';
 
 export interface LocalDropUploadResult {
   uploaded: number;
@@ -204,39 +204,22 @@ export class RemoteFileOperationsService extends TauriBaseService {
   }
 
   /**
-   * Rename a single file
+   * Rename an item (file or directory)
    */
-  async renameFile(
+  async rename(
     remote: string,
     srcPath: string,
     dstPath: string,
+    isDir: boolean,
     source?: Origin,
     group?: string
-  ): Promise<void> {
-    return this.invokeCommand<void>('rename_file', {
+  ): Promise<string> {
+    return this.invokeCommand<string>('rename', {
       remote,
       srcPath,
       dstPath,
-      source,
-      group,
-    });
-  }
-
-  /**
-   * Rename a directory
-   */
-  async renameDir(
-    remote: string,
-    srcPath: string,
-    dstPath: string,
-    source?: Origin,
-    group?: string
-  ): Promise<void> {
-    return this.invokeCommand<void>('rename_dir', {
-      remote,
-      srcPath,
-      dstPath,
-      source,
+      isDir,
+      origin: source,
       group,
     });
   }
@@ -362,12 +345,14 @@ export class RemoteFileOperationsService extends TauriBaseService {
    */
   async submitBatchJob(
     inputs: Record<string, any>[],
+    jobType: JobActionType,
     source?: Origin,
     group?: string
   ): Promise<string> {
     return this.invokeCommand<string>('submit_batch_job', {
       inputs,
-      source,
+      job_type: jobType,
+      origin: source,
       group,
     });
   }

@@ -6,7 +6,7 @@
 //! notify(&app, NotificationEvent::JobCompleted {
 //!     remote: "gdrive:".into(),
 //!     profile: Some("backup".into()),
-//!     operation: "Sync".into(),
+//!     job_type: JobType::Sync,
 //!     origin: Origin::Dashboard,
 //! });
 //! ```
@@ -19,7 +19,7 @@
 
 use log::{debug, error, info, trace, warn};
 
-use crate::utils::types::{logs::LogLevel, origin::Origin};
+use crate::utils::types::{jobs::JobType, logs::LogLevel, origin::Origin};
 
 // ---------------------------------------------------------------------------
 // Public event type
@@ -35,27 +35,27 @@ pub enum NotificationEvent {
     JobCompleted {
         remote: String,
         profile: Option<String>,
-        operation: String,
+        job_type: JobType,
         origin: Origin,
     },
     JobStarted {
         remote: String,
         profile: Option<String>,
-        operation: String,
+        job_type: JobType,
         origin: Origin,
     },
     /// Always shown — errors are never suppressed regardless of origin.
     JobFailed {
         remote: String,
         profile: Option<String>,
-        operation: String,
+        job_type: JobType,
         error: String,
         origin: Origin,
     },
     JobStopped {
         remote: String,
         profile: Option<String>,
-        operation: String,
+        job_type: JobType,
         origin: Origin,
     },
 
@@ -261,88 +261,100 @@ impl NotificationEvent {
             Self::JobCompleted {
                 remote,
                 profile,
-                operation,
+                job_type,
                 ..
-            } => RenderedContent {
-                title: t_with_params(
-                    "notification.title.operationComplete",
-                    &[("operation", operation)],
-                ),
-                body: t_with_params(
-                    "notification.body.complete",
-                    &[
-                        ("operation", operation),
-                        ("remote", remote),
-                        ("profile", profile.as_deref().unwrap_or("")),
-                    ],
-                ),
-                level: LogLevel::Info,
-            },
+            } => {
+                let operation = job_type.to_string();
+                RenderedContent {
+                    title: t_with_params(
+                        "notification.title.operationComplete",
+                        &[("operation", &operation)],
+                    ),
+                    body: t_with_params(
+                        "notification.body.complete",
+                        &[
+                            ("operation", &operation),
+                            ("remote", remote),
+                            ("profile", profile.as_deref().unwrap_or("")),
+                        ],
+                    ),
+                    level: LogLevel::Info,
+                }
+            }
 
             Self::JobStarted {
                 remote,
                 profile,
-                operation,
+                job_type,
                 ..
-            } => RenderedContent {
-                title: t_with_params(
-                    "notification.title.operationStarted",
-                    &[("operation", operation)],
-                ),
-                body: t_with_params(
-                    "notification.body.started",
-                    &[
-                        ("operation", operation),
-                        ("remote", remote),
-                        ("profile", profile.as_deref().unwrap_or("")),
-                    ],
-                ),
-                level: LogLevel::Info,
-            },
+            } => {
+                let operation = job_type.to_string();
+                RenderedContent {
+                    title: t_with_params(
+                        "notification.title.operationStarted",
+                        &[("operation", &operation)],
+                    ),
+                    body: t_with_params(
+                        "notification.body.started",
+                        &[
+                            ("operation", &operation),
+                            ("remote", remote),
+                            ("profile", profile.as_deref().unwrap_or("")),
+                        ],
+                    ),
+                    level: LogLevel::Info,
+                }
+            }
 
             Self::JobFailed {
                 remote,
                 profile,
-                operation,
+                job_type,
                 error,
                 ..
-            } => RenderedContent {
-                title: t_with_params(
-                    "notification.title.operationFailed",
-                    &[("operation", operation), ("error", error)],
-                ),
-                body: t_with_params(
-                    "notification.body.failed",
-                    &[
-                        ("operation", operation),
-                        ("remote", remote),
-                        ("profile", profile.as_deref().unwrap_or("")),
-                        ("error", error),
-                    ],
-                ),
-                level: LogLevel::Error,
-            },
+            } => {
+                let operation = job_type.to_string();
+                RenderedContent {
+                    title: t_with_params(
+                        "notification.title.operationFailed",
+                        &[("operation", &operation), ("error", error)],
+                    ),
+                    body: t_with_params(
+                        "notification.body.failed",
+                        &[
+                            ("operation", &operation),
+                            ("remote", remote),
+                            ("profile", profile.as_deref().unwrap_or("")),
+                            ("error", error),
+                        ],
+                    ),
+                    level: LogLevel::Error,
+                }
+            }
 
             Self::JobStopped {
                 remote,
                 profile,
-                operation,
+                job_type,
                 ..
-            } => RenderedContent {
-                title: t_with_params(
-                    "notification.title.operationStopped",
-                    &[("operation", operation)],
-                ),
-                body: t_with_params(
-                    "notification.body.stopped",
-                    &[
-                        ("operation", operation),
-                        ("remote", remote),
-                        ("profile", profile.as_deref().unwrap_or("")),
-                    ],
-                ),
-                level: LogLevel::Info,
-            },
+            } => {
+                let operation = job_type.to_string();
+                RenderedContent {
+                    title: t_with_params(
+                        "notification.title.operationStopped",
+                        &[("operation", &operation)],
+                    ),
+                    body: t_with_params(
+                        "notification.body.stopped",
+                        &[
+                            ("operation", &operation),
+                            ("remote", remote),
+                            ("profile", profile.as_deref().unwrap_or("")),
+                        ],
+                    ),
+                    level: LogLevel::Info,
+                }
+            }
 
             Self::ServeStarted {
                 remote,
@@ -688,7 +700,7 @@ mod tests {
             NotificationEvent::JobFailed {
                 remote: "s3:".into(),
                 profile: None,
-                operation: "sync".into(),
+                job_type: JobType::Sync,
                 error: "permission denied".into(),
                 origin: Origin::Dashboard,
             }
@@ -711,7 +723,7 @@ mod tests {
             NotificationEvent::JobCompleted {
                 remote: "gdrive:".into(),
                 profile: Some("backup".into()),
-                operation: "sync".into(),
+                job_type: JobType::Sync,
                 origin: Origin::Dashboard,
             }
             .suppression(),

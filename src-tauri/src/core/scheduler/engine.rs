@@ -1,6 +1,4 @@
-use crate::rclone::commands::sync::{
-    start_bisync_profile, start_copy_profile, start_move_profile, start_sync_profile,
-};
+use crate::rclone::commands::sync::{TransferType, start_profile_batch};
 use crate::rclone::state::scheduled_tasks::{CacheUpdateResult, ScheduledTasksCache};
 
 use crate::utils::types::remotes::ProfileParams;
@@ -411,12 +409,14 @@ async fn execute_scheduled_task(
         |e| crate::localized_error!("backendErrors.scheduler.invalidTaskArgs", "error" => e),
     )?;
 
-    let result = match task.task_type {
-        TaskType::Copy => start_copy_profile(app_handle.clone(), params).await,
-        TaskType::Sync => start_sync_profile(app_handle.clone(), params).await,
-        TaskType::Move => start_move_profile(app_handle.clone(), params).await,
-        TaskType::Bisync => start_bisync_profile(app_handle.clone(), params).await,
+    let transfer_type = match task.task_type {
+        TaskType::Copy => TransferType::Copy,
+        TaskType::Sync => TransferType::Sync,
+        TaskType::Move => TransferType::Move,
+        TaskType::Bisync => TransferType::Bisync,
     };
+
+    let result = start_profile_batch(app_handle.clone(), vec![params], transfer_type).await;
 
     match result {
         Ok(job_id) => {

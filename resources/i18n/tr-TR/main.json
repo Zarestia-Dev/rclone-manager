@@ -1345,15 +1345,13 @@
         "transfers": "Transferler"
       },
       "types": {
-        "delete_file": "Dosya Silme",
-        "purge": "Temizleme",
+        "delete": "Sil",
         "cleanup": "Temizlik",
         "rmdirs": "Boş Klasörleri Sil",
         "copy": "Kopyala",
-        "copy_file": "Dosya Kopyala",
         "copy_url": "URL Kopyala",
         "move": "Taşı",
-        "move_file": "Dosya Taşı",
+        "rename": "Yeniden Adlandır",
         "sync": "Senkronize",
         "bisync": "Çift Yönlü Senkronize"
       }

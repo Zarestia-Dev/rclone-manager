@@ -1345,17 +1345,13 @@
         "transfers": "传输"
       },
       "types": {
-        "delete_file": "删除文件",
-        "purge": "清理",
+        "delete": "删除",
         "cleanup": "整理",
         "rmdirs": "删除空文件夹",
         "copy": "复制",
-        "copy_file": "复制文件",
         "copy_url": "复制链接",
         "move": "移动",
-        "move_file": "移动文件",
-        "rename_file": "重命名文件",
-        "rename_dir": "重命名文件夹",
+        "rename": "重命名",
         "sync": "同步",
         "bisync": "双向同步"
       }

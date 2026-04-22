@@ -7,13 +7,10 @@ use std::time::Duration;
 use tauri::{AppHandle, Manager};
 use tokio::time;
 
-use crate::rclone::queries::{mount::get_mounted_remotes_internal, serve::list_serves_internal};
+use crate::rclone::queries::{get_mounted_remotes, list_serves};
 use crate::{
     rclone::backend::{BackendManager, types::Backend},
-    utils::types::{
-        core::RcloneState,
-        remotes::{RemoteCache, ServeInstance},
-    },
+    utils::types::remotes::RemoteCache,
 };
 
 /// Global flag to control the mounted remote watcher
@@ -27,10 +24,9 @@ async fn check_and_reconcile_mounts(
     app_handle: AppHandle,
     backend: Backend,
     cache: Arc<RemoteCache>,
-    client: reqwest::Client,
 ) -> Result<(), String> {
     let api_url = backend.api_url();
-    let api_mounts = match get_mounted_remotes_internal(&client, &backend).await {
+    let api_mounts = match get_mounted_remotes(app_handle.clone()).await {
         Ok(mounts) => mounts,
         Err(e) => {
             warn!(
@@ -74,11 +70,8 @@ pub fn start_mounted_remote_watcher(app_handle: AppHandle) {
             let backend_manager = app_handle.state::<BackendManager>();
             let backend = backend_manager.get_active().await;
             let cache = backend_manager.remote_cache.clone();
-            let client = app_handle.state::<RcloneState>().client.clone();
 
-            if let Err(e) =
-                check_and_reconcile_mounts(app_handle.clone(), backend, cache, client).await
-            {
+            if let Err(e) = check_and_reconcile_mounts(app_handle.clone(), backend, cache).await {
                 debug!("🔍 Watcher failed to reconcile mounts: {e}");
             }
         }
@@ -100,20 +93,9 @@ pub async fn force_check_mounted_remotes(app_handle: AppHandle) -> Result<(), St
     let backend_manager = app_handle.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
     let cache = backend_manager.remote_cache.clone();
-    let client = app_handle.state::<RcloneState>().client.clone();
 
-    check_and_reconcile_mounts(app_handle.clone(), backend, cache, client).await?;
+    check_and_reconcile_mounts(app_handle.clone(), backend, cache).await?;
     Ok(())
-}
-
-/// Helper to get running serves directly from the API
-async fn get_serves_from_api(
-    client: &reqwest::Client,
-    backend: &Backend,
-) -> Result<Vec<ServeInstance>, String> {
-    use crate::rclone::queries::parse_serves_response;
-    let api_response = list_serves_internal(client, backend).await?;
-    Ok(parse_serves_response(&api_response))
 }
 
 /// Core logic to check and reconcile running serves
@@ -121,10 +103,9 @@ async fn check_and_reconcile_serves(
     app_handle: AppHandle,
     backend: Backend,
     cache: Arc<RemoteCache>,
-    client: reqwest::Client,
 ) -> Result<(), String> {
     let api_url = backend.api_url();
-    let api_serves = match get_serves_from_api(&client, &backend).await {
+    let api_serves = match list_serves(app_handle.clone()).await {
         Ok(serves) => serves,
         Err(e) => {
             warn!(
@@ -153,9 +134,8 @@ pub async fn force_check_serves(app_handle: AppHandle) -> Result<(), String> {
     let backend_manager = app_handle.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
     let cache = backend_manager.remote_cache.clone();
-    let client = app_handle.state::<RcloneState>().client.clone();
 
-    check_and_reconcile_serves(app_handle.clone(), backend, cache, client).await?;
+    check_and_reconcile_serves(app_handle.clone(), backend, cache).await?;
     Ok(())
 }
 
@@ -181,11 +161,8 @@ pub fn start_serve_watcher(app_handle: AppHandle) {
             let backend_manager = app_handle.state::<BackendManager>();
             let backend = backend_manager.get_active().await;
             let cache = backend_manager.remote_cache.clone();
-            let client = app_handle.state::<RcloneState>().client.clone();
 
-            if let Err(e) =
-                check_and_reconcile_serves(app_handle.clone(), backend, cache, client).await
-            {
+            if let Err(e) = check_and_reconcile_serves(app_handle.clone(), backend, cache).await {
                 debug!("🔍 Watcher failed to reconcile serves: {e}");
             }
         }

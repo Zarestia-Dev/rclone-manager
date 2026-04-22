@@ -8,7 +8,7 @@ use crate::{
     rclone::commands::{
         mount::mount_remote_profile,
         serve::start_serve_profile,
-        sync::{start_bisync_profile, start_copy_profile, start_move_profile, start_sync_profile},
+        sync::{TransferType, start_profile_batch},
     },
     utils::{types::origin::Origin, types::remotes::ProfileParams},
 };
@@ -201,16 +201,18 @@ async fn auto_start_sync(app: &AppHandle, remote_name: &str, profile_name: &str,
         no_cache: None,
     };
 
-    let result = match op_type {
-        "sync" => start_sync_profile(app.clone(), params).await.map(|_| ()),
-        "copy" => start_copy_profile(app.clone(), params).await.map(|_| ()),
-        "move" => start_move_profile(app.clone(), params).await.map(|_| ()),
-        "bisync" => start_bisync_profile(app.clone(), params).await.map(|_| ()),
+    let transfer_type = match op_type {
+        "sync" => TransferType::Sync,
+        "copy" => TransferType::Copy,
+        "move" => TransferType::Move,
+        "bisync" => TransferType::Bisync,
         _ => {
             error!("Unknown sync type: {}", op_type);
             return;
         }
     };
+
+    let result = start_profile_batch(app.clone(), vec![params], transfer_type).await;
 
     match result {
         Ok(_) => {

@@ -1,5 +1,6 @@
 use chrono::Utc;
 use log::{error, info, warn};
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::time::Duration;
 use tauri::{AppHandle, Manager, State};
@@ -31,11 +32,11 @@ const JOB_POLL_INTERVAL_MS: u64 = 500;
 const MAX_CONSECUTIVE_ERRORS: u8 = 3;
 
 /// Metadata required to start and track a job.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct JobMetadata {
     pub remote_name: String,
     pub job_type: JobType,
-    pub operation_name: String,
     pub source: String,
     pub destination: String,
     pub profile: Option<String>,
@@ -59,8 +60,8 @@ impl JobMetadata {
             .to_string();
 
         self.group.clone().unwrap_or_else(|| match &self.profile {
-            Some(profile) => format!("{}/{}/{}", self.job_type.as_str(), remote, profile),
-            None => format!("{}/{}", self.job_type.as_str(), remote),
+            Some(profile) => format!("{}/{}/{}", self.job_type, remote, profile),
+            None => format!("{}/{}", self.job_type, remote),
         })
     }
 
@@ -76,7 +77,7 @@ impl JobMetadata {
         NotificationEvent::JobStarted {
             remote: self.remote_name.clone(),
             profile: self.profile.clone(),
-            operation: self.operation_name.clone(),
+            job_type: self.job_type.clone(),
             origin: self.resolved_origin(),
         }
     }
@@ -85,7 +86,7 @@ impl JobMetadata {
         NotificationEvent::JobCompleted {
             remote: self.remote_name.clone(),
             profile: self.profile.clone(),
-            operation: self.operation_name.clone(),
+            job_type: self.job_type.clone(),
             origin: self.resolved_origin(),
         }
     }
@@ -94,7 +95,7 @@ impl JobMetadata {
         NotificationEvent::JobFailed {
             remote: self.remote_name.clone(),
             profile: self.profile.clone(),
-            operation: self.operation_name.clone(),
+            job_type: self.job_type.clone(),
             error: error_msg.to_string(),
             origin: self.resolved_origin(),
         }
@@ -104,7 +105,7 @@ impl JobMetadata {
         NotificationEvent::JobStopped {
             remote: self.remote_name.clone(),
             profile: self.profile.clone(),
-            operation: self.operation_name.clone(),
+            job_type: self.job_type.clone(),
             origin: self.resolved_origin(),
         }
     }
@@ -113,24 +114,6 @@ impl JobMetadata {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct SubmitJobOptions {
     pub wait_for_completion: bool,
-}
-
-pub async fn submit_job(
-    app: AppHandle,
-    client: reqwest::Client,
-    request: reqwest::RequestBuilder,
-    payload: Value,
-    metadata: JobMetadata,
-) -> Result<(u64, Value, Option<String>), String> {
-    submit_job_with_options(
-        app,
-        client,
-        request,
-        payload,
-        metadata,
-        SubmitJobOptions::default(),
-    )
-    .await
 }
 
 pub async fn submit_job_with_options(
@@ -216,8 +199,8 @@ async fn send_job_request(
         log_operation(
             LogLevel::Error,
             Some(metadata.remote_name.clone()),
-            Some(metadata.operation_name.clone()),
-            format!("Failed to start {}: {error}", metadata.job_type.as_str()),
+            Some(metadata.job_type.to_string()),
+            format!("Failed to start {}: {error}", metadata.job_type),
             Some(json!({"response": body_text})),
         );
         return Err(error);
@@ -231,10 +214,10 @@ async fn send_job_request(
     log_operation(
         LogLevel::Info,
         Some(metadata.remote_name.clone()),
-        Some(metadata.operation_name.clone()),
+        Some(metadata.job_type.to_string()),
         format!(
             "{} started with ID {} (ExecuteID: {:?})",
-            metadata.operation_name, jobid, execute_id
+            metadata.job_type, jobid, execute_id
         ),
         Some(json!({"jobid": jobid, "executeId": execute_id})),
     );
@@ -357,7 +340,7 @@ pub async fn monitor_job(
 
     info!(
         "Starting monitoring for job {jobid} ({})",
-        metadata.operation_name
+        metadata.job_type
     );
 
     let mut consecutive_errors = 0u8;
@@ -495,7 +478,9 @@ pub async fn handle_job_completion(
         .trim()
         .to_string();
 
-    let task = scheduled_tasks_cache.get_task_by_job_id(jobid).await;
+    let task = scheduled_tasks_cache
+        .get_task_by_job_id(jobid.to_string())
+        .await;
     let next_run = task
         .as_ref()
         .and_then(|t| get_next_run(&t.cron_expression).ok());
@@ -581,7 +566,7 @@ pub async fn handle_job_completion(
     }
 
     if stopped {
-        info!("{} Job {jobid} stopped by user.", metadata.operation_name);
+        info!("{} Job {jobid} stopped by user.", metadata.job_type);
         if !metadata.no_cache {
             notify(app, metadata.stopped_event());
         }
@@ -593,11 +578,8 @@ pub async fn handle_job_completion(
             log_operation(
                 LogLevel::Error,
                 Some(metadata.remote_name.clone()),
-                Some(metadata.operation_name.clone()),
-                format!(
-                    "{} Job {jobid} failed: {error_msg}",
-                    metadata.operation_name
-                ),
+                Some(metadata.job_type.to_string()),
+                format!("{} Job {jobid} failed: {error_msg}", metadata.job_type),
                 Some(json!({"jobid": jobid, "status": job_status})),
             );
             notify(app, metadata.failed_event(&error_msg));
@@ -609,11 +591,8 @@ pub async fn handle_job_completion(
         log_operation(
             LogLevel::Info,
             Some(metadata.remote_name.clone()),
-            Some(metadata.operation_name.clone()),
-            format!(
-                "{} Job {jobid} completed successfully",
-                metadata.operation_name
-            ),
+            Some(metadata.job_type.to_string()),
+            format!("{} Job {jobid} completed successfully", metadata.job_type),
             Some(json!({"jobid": jobid, "status": job_status})),
         );
         notify(app, metadata.completed_event());
@@ -759,7 +738,10 @@ pub async fn stop_job(
             .await
             .map_err(|e| e.to_string())?;
 
-        if let Some(task) = scheduled_tasks_cache.get_task_by_job_id(jobid).await {
+        if let Some(task) = scheduled_tasks_cache
+            .get_task_by_job_id(jobid.to_string())
+            .await
+        {
             info!(
                 "🛑 Job {} was associated with scheduled task '{}', marking task as stopped",
                 jobid, task.name
@@ -838,8 +820,10 @@ pub async fn stop_jobs_by_group(app: AppHandle, group: String) -> Result<(), Str
 pub async fn submit_batch_job(
     app: AppHandle,
     inputs: Vec<Value>,
+    metadata_list: Option<Vec<JobMetadata>>,
     origin: Option<Origin>,
     group: Option<String>,
+    job_type: JobType,
 ) -> Result<String, String> {
     let state = app.state::<RcloneState>();
     let num_inputs = inputs.len();
@@ -890,7 +874,7 @@ pub async fn submit_batch_job(
 
     let batch_master = crate::utils::types::jobs::BatchMasterJob {
         batch_id: batch_id.clone(),
-        operation_name: format!("Batch ({})", num_inputs),
+        job_type: job_type.clone(),
         total_jobs: num_inputs,
         completed_jobs: 0,
         failed_jobs: 0,
@@ -910,22 +894,37 @@ pub async fn submit_batch_job(
         for (i, res) in results.iter().enumerate() {
             if let Ok((jobid, execute_id)) = parse_job_response(res) {
                 let input_val = modified_inputs.get(i).unwrap();
-                let path_str = input_val
+                let _path_str = input_val
                     .get("_path")
                     .and_then(|p| p.as_str())
                     .unwrap_or("unknown");
 
-                let metadata = JobMetadata {
-                    remote_name: "batch".to_string(),
-                    job_type: JobType::Batch,
-                    operation_name: path_str.to_string(),
-                    source: String::new(),
-                    destination: String::new(),
-                    profile: None,
-                    origin: origin.clone(),
-                    group: Some(batch_group.clone()),
-                    no_cache: false,
+                let mut metadata = if let Some(ref list) = metadata_list {
+                    list.get(i).cloned().unwrap_or_else(|| JobMetadata {
+                        remote_name: "batch".to_string(),
+                        job_type: job_type.clone(),
+                        source: String::new(),
+                        destination: String::new(),
+                        profile: None,
+                        origin: origin.clone(),
+                        group: Some(batch_group.clone()),
+                        no_cache: false,
+                    })
+                } else {
+                    JobMetadata {
+                        remote_name: "batch".to_string(),
+                        job_type: job_type.clone(),
+                        source: String::new(),
+                        destination: String::new(),
+                        profile: None,
+                        origin: origin.clone(),
+                        group: Some(batch_group.clone()),
+                        no_cache: false,
+                    }
                 };
+
+                // Ensure the group is set correctly for batch tracking
+                metadata.group = Some(batch_group.clone());
 
                 let backend_name = backend.name.clone();
 
@@ -982,7 +981,6 @@ mod tests {
         let meta = JobMetadata {
             remote_name: "gdrive:".to_string(),
             job_type: JobType::Sync,
-            operation_name: "Sync".to_string(),
             source: "src".to_string(),
             destination: "dst".to_string(),
             profile: None,
@@ -998,7 +996,6 @@ mod tests {
         let meta = JobMetadata {
             remote_name: "gdrive:".to_string(),
             job_type: JobType::Sync,
-            operation_name: "Sync".to_string(),
             source: "src".to_string(),
             destination: "dst".to_string(),
             profile: Some("daily".to_string()),
@@ -1014,7 +1011,6 @@ mod tests {
         let meta = JobMetadata {
             remote_name: "gdrive:".to_string(),
             job_type: JobType::Sync,
-            operation_name: "Sync".to_string(),
             source: "src".to_string(),
             destination: "dst".to_string(),
             profile: None,
@@ -1040,7 +1036,6 @@ mod tests {
             let meta = JobMetadata {
                 remote_name: remote_name.to_string(),
                 job_type: job_type.clone(),
-                operation_name: "Test".to_string(),
                 source: "src".to_string(),
                 destination: "dst".to_string(),
                 profile: None,
@@ -1059,7 +1054,6 @@ mod tests {
         JobMetadata {
             remote_name: "gdrive:".to_string(),
             job_type: JobType::Sync,
-            operation_name: "Sync".to_string(),
             source: "src".to_string(),
             destination: "dst".to_string(),
             profile: profile.map(str::to_string),
@@ -1076,12 +1070,12 @@ mod tests {
             NotificationEvent::JobStarted {
                 remote,
                 profile,
-                operation,
+                job_type,
                 origin,
             } => {
                 assert_eq!(remote, "gdrive:");
                 assert_eq!(profile, Some("daily".to_string()));
-                assert_eq!(operation, "Sync");
+                assert_eq!(job_type, JobType::Sync);
                 assert_eq!(origin, Origin::FileManager);
             }
             _ => panic!("expected JobStarted"),
@@ -1095,12 +1089,12 @@ mod tests {
             NotificationEvent::JobCompleted {
                 remote,
                 profile,
-                operation,
+                job_type,
                 origin,
             } => {
                 assert_eq!(remote, "gdrive:");
                 assert_eq!(profile, None);
-                assert_eq!(operation, "Sync");
+                assert_eq!(job_type, JobType::Sync);
                 assert_eq!(origin, Origin::Internal);
             }
             _ => panic!("expected JobCompleted"),
@@ -1114,13 +1108,13 @@ mod tests {
             NotificationEvent::JobFailed {
                 remote,
                 profile,
-                operation,
+                job_type,
                 error,
                 origin,
             } => {
                 assert_eq!(remote, "gdrive:");
                 assert_eq!(profile, Some("p".to_string()));
-                assert_eq!(operation, "Sync");
+                assert_eq!(job_type, JobType::Sync);
                 assert_eq!(error, "disk full");
                 assert_eq!(origin, Origin::Internal);
             }

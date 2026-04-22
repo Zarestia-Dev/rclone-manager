@@ -37,20 +37,8 @@ fn jobs_routes() -> Router<WebServerState> {
         .route("/stop", post(handlers::stop_job_handler))
         .route("/delete", post(handlers::delete_job_handler))
         .route(
-            "/start-sync-profile",
-            post(handlers::start_sync_profile_handler),
-        )
-        .route(
-            "/start-copy-profile",
-            post(handlers::start_copy_profile_handler),
-        )
-        .route(
-            "/start-move-profile",
-            post(handlers::start_move_profile_handler),
-        )
-        .route(
-            "/start-bisync-profile",
-            post(handlers::start_bisync_profile_handler),
+            "/start-profile-batch",
+            post(handlers::start_profile_batch_handler),
         )
         .route("/{id}/status", get(handlers::get_job_status_handler))
         .route("/stop-by-group", post(handlers::stop_jobs_by_group_handler))

@@ -6,7 +6,7 @@ pub mod scheduler;
 use crate::core::settings::AppSettingsManager;
 use crate::rclone::backend::BackendManager;
 use crate::rclone::state::watcher::{start_mounted_remote_watcher, start_serve_watcher};
-use crate::utils::types::core::{EngineState, RcloneState};
+use crate::utils::types::core::EngineState;
 use log::{debug, error, info};
 use tauri::Manager;
 
@@ -61,11 +61,13 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
     info!("📊 Refreshing caches...");
 
     let backend_manager = app_handle.state::<BackendManager>();
-    let client = app_handle.state::<RcloneState>().client.clone();
-
-    match crate::rclone::backend::cache::refresh_active_backend(&backend_manager, &client).await {
-        Ok(_) => info!("✅ Caches refreshed successfully"),
-        Err(e) => error!("❌ Failed to refresh caches: {e}"),
+    match backend_manager
+        .remote_cache
+        .refresh_all(app_handle.clone())
+        .await
+    {
+        Ok(_) => debug!("Refreshed backend caches"),
+        Err(e) => error!("Failed to refresh backend caches: {e}"),
     }
 
     // Step 3: Initialize and start scheduler with loaded config

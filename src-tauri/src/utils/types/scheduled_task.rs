@@ -75,8 +75,8 @@ pub struct ScheduledTask {
     /// Last error message if task failed
     pub last_error: Option<String>,
 
-    /// Current rclone job ID if task is running
-    pub current_job_id: Option<u64>,
+    /// Current rclone job ID or batch ID if task is running
+    pub current_job_id: Option<String>,
 
     /// Scheduler job UUID (used to unschedule the task)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -173,8 +173,8 @@ impl ScheduledTask {
         Ok(())
     }
 
-    /// Mark task as running with job ID (after operation starts)
-    pub fn mark_running(&mut self, job_id: u64) {
+    /// Mark task as running with job ID or batch ID (after operation starts)
+    pub fn mark_running(&mut self, job_id: String) {
         self.current_job_id = Some(job_id);
         self.status = TaskStatus::Running;
     }
@@ -301,8 +301,8 @@ mod tests {
         assert_eq!(task.run_count, 1);
         assert!(task.last_run.is_some());
 
-        task.mark_running(12345);
-        assert_eq!(task.current_job_id, Some(12345));
+        task.mark_running("12345".to_string());
+        assert_eq!(task.current_job_id, Some("12345".to_string()));
         assert!(!task.can_run());
     }
 
@@ -330,7 +330,7 @@ mod tests {
         let mut task = create_test_task();
 
         task.status = TaskStatus::Running;
-        task.current_job_id = Some(123);
+        task.current_job_id = Some("123".to_string());
         task.mark_stopped();
 
         assert_eq!(task.status, TaskStatus::Enabled);

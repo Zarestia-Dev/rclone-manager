@@ -276,21 +276,13 @@ export class NautilusFileOperationsService {
       pathParts[pathParts.length - 1] = newName;
       const newPath = pathParts.join('/');
 
-      if (item.entry.IsDir) {
-        await this.remoteOps.renameDir(
-          normalizedRemote,
-          item.entry.Path,
-          newPath,
-          ORIGINS.FILEMANAGER
-        );
-      } else {
-        await this.remoteOps.renameFile(
-          normalizedRemote,
-          item.entry.Path,
-          newPath,
-          ORIGINS.FILEMANAGER
-        );
-      }
+      await this.remoteOps.rename(
+        normalizedRemote,
+        item.entry.Path,
+        newPath,
+        !!item.entry.IsDir,
+        ORIGINS.FILEMANAGER
+      );
 
       this.notifications.showSuccess(
         this.translate.instant('nautilus.notifications.renameStarted')

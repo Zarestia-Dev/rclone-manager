@@ -109,23 +109,19 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
   /** Get icon for the job's operation type */
   getJobTypeIcon(job: JobInfo): string {
     switch (job.job_type) {
-      case 'delete_file':
-      case 'purge':
+      case 'delete':
       case 'cleanup':
         return 'trash';
       case 'rmdirs':
         return 'broom';
       case 'copy':
-      case 'copy_file':
       case 'copy_url':
         return 'copy';
       case 'upload':
         return 'file-arrow-up';
       case 'move':
-      case 'move_file':
         return 'move';
-      case 'rename_file':
-      case 'rename_dir':
+      case 'rename':
         return 'pen';
       case 'sync':
       case 'bisync':
@@ -137,12 +133,7 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
 
   /** Whether this job is a delete-type operation (no byte progress) */
   isDeleteOperation(job: JobInfo): boolean {
-    return (
-      job.job_type === 'delete_file' ||
-      job.job_type === 'purge' ||
-      job.job_type === 'cleanup' ||
-      job.job_type === 'rmdirs'
-    );
+    return job.job_type === 'delete' || job.job_type === 'cleanup' || job.job_type === 'rmdirs';
   }
 
   getStatusIcon(job: JobInfo): string {

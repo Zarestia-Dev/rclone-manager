@@ -68,10 +68,7 @@ macro_rules! generate_invoke_handler {
             // =================================================================
             // SYNC OPERATIONS
             // =================================================================
-            $crate::rclone::commands::sync::start_sync_profile,
-            $crate::rclone::commands::sync::start_copy_profile,
-            $crate::rclone::commands::sync::start_bisync_profile,
-            $crate::rclone::commands::sync::start_move_profile,
+            $crate::rclone::commands::sync::start_profile_batch,
             // =================================================================
             // MOUNT OPERATIONS
             // =================================================================
@@ -117,10 +114,9 @@ macro_rules! generate_invoke_handler {
             // =================================================================
             $crate::rclone::commands::filesystem::mkdir,
             $crate::rclone::commands::filesystem::cleanup,
-            $crate::rclone::commands::filesystem::transfer_items,
-            $crate::rclone::commands::filesystem::delete_items,
-            $crate::rclone::commands::filesystem::rename_file,
-            $crate::rclone::commands::filesystem::rename_dir,
+            $crate::rclone::commands::filesystem::transfer,
+            $crate::rclone::commands::filesystem::delete,
+            $crate::rclone::commands::filesystem::rename,
             $crate::rclone::commands::filesystem::copy_url,
             $crate::rclone::commands::filesystem::upload_file,
             $crate::rclone::commands::filesystem::upload_file_bytes,

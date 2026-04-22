@@ -85,14 +85,7 @@ pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> 
 
     configure_remote_backend(&app, &backend, &state.client).await;
 
-    refresh_and_verify_cache(
-        &app,
-        &backend_manager,
-        &settings_manager,
-        &state.client,
-        &name,
-    )
-    .await?;
+    refresh_and_verify_cache(&app, &backend_manager, &settings_manager, &name).await?;
 
     BackendManager::save_active_to_settings(settings_manager.inner(), &name);
 
@@ -468,12 +461,13 @@ async fn refresh_and_verify_cache(
     app: &AppHandle,
     backend_manager: &BackendManager,
     settings_manager: &AppSettingsManager,
-    client: &reqwest::Client,
     name: &str,
 ) -> Result<(), String> {
     match tokio::time::timeout(
         std::time::Duration::from_secs(15),
-        crate::rclone::backend::cache::refresh_active_backend(backend_manager, client),
+        app.state::<BackendManager>()
+            .remote_cache
+            .refresh_all(app.clone()),
     )
     .await
     {
