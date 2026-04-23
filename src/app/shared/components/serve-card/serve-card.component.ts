@@ -6,7 +6,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ServeListItem } from '@app/types';
-import { getRemoteNameFromFs, NotificationService } from '@app/services';
+import { getRemoteNameFromFs } from '@app/services';
+import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
 
 interface TypeInfo {
   icon: string;
@@ -36,6 +37,7 @@ const URL_BASED_PROTOCOLS = new Set(['http', 'webdav', 'ftp', 'sftp', 's3']);
     MatButtonModule,
     MatTooltipModule,
     TranslateModule,
+    CopyToClipboardDirective,
   ],
   templateUrl: './serve-card.component.html',
   styleUrl: './serve-card.component.scss',
@@ -43,7 +45,6 @@ const URL_BASED_PROTOCOLS = new Set(['http', 'webdav', 'ftp', 'sftp', 's3']);
 })
 export class ServeCardComponent {
   private readonly translate = inject(TranslateService);
-  private readonly notificationService = inject(NotificationService);
 
   serve = input.required<ServeListItem>();
   showRemoteName = input(false);
@@ -91,18 +92,6 @@ export class ServeCardComponent {
 
   onStopServe(): void {
     this.stopServe.emit(this.serve());
-  }
-
-  onCopyToClipboard(text: string, messageKey: string): void {
-    try {
-      navigator.clipboard.writeText(text);
-      this.notificationService.showSuccess(this.translate.instant(messageKey));
-    } catch (err) {
-      console.error('Failed to copy to clipboard:', err);
-      this.notificationService.showError(
-        this.translate.instant('shared.serveCard.messages.copyFailed')
-      );
-    }
   }
 
   onCardClick(): void {

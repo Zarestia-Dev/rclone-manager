@@ -27,7 +27,7 @@
 
     @let buildTypeVal = buildType();
     <div class="version-info">
-      <button class="version-badge" (click)="copyToClipboard(rCloneManagerVersion)">
+      <button class="version-badge" [appCopyToClipboard]="rCloneManagerVersion">
         {{ rCloneManagerVersion }}
       </button>
       @if (buildTypeVal) {
@@ -241,7 +241,7 @@
                     @if (instructions?.command) {
                       <button
                         class="command-block"
-                        (click)="copyToClipboard(instructions!.command!)"
+                        [appCopyToClipboard]="instructions!.command!"
                         [matTooltip]="'common.copy' | translate"
                         matTooltipPosition="above"
                       >

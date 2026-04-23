@@ -119,15 +119,4 @@ export class AuthStateService {
     this._oauthUrl.set(null);
     console.debug('Auth state reset');
   }
-
-  async copyOAuthUrl(): Promise<void> {
-    const url = this._oauthUrl();
-    if (!url || !navigator?.clipboard?.writeText) return;
-
-    try {
-      await navigator.clipboard.writeText(url);
-    } catch (error) {
-      console.warn('Failed to copy OAuth URL to clipboard:', error);
-    }
-  }
 }

@@ -143,16 +143,13 @@
                 <div class="hash-item">
                   <div class="hash-header">
                     <span class="hash-type">{{ hash.type | uppercase }}</span>
-                    <mat-icon
-                      (click)="copyHash(hash.type)"
-                      [matTooltip]="
-                        (copiedHash() === hash.type
-                          ? 'fileBrowser.properties.copied'
-                          : 'fileBrowser.properties.copyToClipboard'
-                        ) | translate
-                      "
-                      [svgIcon]="copiedHash() === hash.type ? 'circle-check' : 'copy'"
-                    ></mat-icon>
+                    <button
+                      mat-icon-button
+                      [appCopyToClipboard]="fileHashes()[hash.type]"
+                      [matTooltip]="'fileBrowser.properties.copyToClipboard' | translate"
+                    >
+                      <mat-icon svgIcon="copy"></mat-icon>
+                    </button>
                   </div>
                   <span class="hash-value" [title]="hash.value">{{ hash.value }}</span>
                 </div>
@@ -196,11 +193,11 @@
                     </span>
                     <div class="bulk-actions">
                       <button
-                        mat-icon-button
-                        (click)="copyBulkHash()"
+                        mat-button
+                        [appCopyToClipboard]="bulkHashResult()"
                         [matTooltip]="'fileBrowser.properties.copyToClipboard' | translate"
                       >
-                        <mat-icon [svgIcon]="copiedBulkHash() ? 'circle-check' : 'copy'"></mat-icon>
+                        <mat-icon svgIcon="copy"></mat-icon>
                       </button>
                     </div>
                   </div>
@@ -270,7 +267,7 @@
                 <span class="link-url" [title]="publicLinkUrl()">{{ publicLinkUrl() }}</span>
                 <button
                   mat-icon-button
-                  (click)="copyPublicLink()"
+                  [appCopyToClipboard]="publicLinkUrl()"
                   [matTooltip]="
                     (copiedLink()
                       ? 'fileBrowser.properties.copied'

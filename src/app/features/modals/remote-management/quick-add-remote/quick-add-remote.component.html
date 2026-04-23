@@ -97,7 +97,7 @@
 
             <button
               mat-icon-button
-              (click)="copyOAuthUrl()"
+              [appCopyToClipboard]="oauthUrlValue"
               [attr.aria-label]="'modals.oauth.copyLink' | translate"
               [matTooltip]="'modals.oauth.copyLink' | translate"
             >

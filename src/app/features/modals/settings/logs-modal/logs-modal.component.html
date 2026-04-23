@@ -127,7 +127,8 @@
               <div class="actions-hover">
                 <mat-icon
                   svgIcon="copy"
-                  (click)="$event.stopPropagation(); copyLog(log)"
+                  [appCopyToClipboard]="getFormattedLog(log)"
+                  (click)="$event.stopPropagation()"
                 ></mat-icon>
                 @if (log.context) {
                   <mat-icon

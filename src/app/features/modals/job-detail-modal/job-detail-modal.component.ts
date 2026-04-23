@@ -21,6 +21,7 @@ import { FormatEtaPipe } from 'src/app/shared/pipes/format-eta.pipe';
 import { TransferActivityPanelComponent } from '../../../shared/detail-shared';
 import { TransferActivityPanelConfig } from '@app/types';
 import { IconService, JobManagementService, mapRawTransfer, ModalService } from '@app/services';
+import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-clipboard.directive';
 
 @Component({
   selector: 'app-job-detail-modal',
@@ -41,6 +42,7 @@ import { IconService, JobManagementService, mapRawTransfer, ModalService } from 
     DatePipe,
     TitleCasePipe,
     TransferActivityPanelComponent,
+    CopyToClipboardDirective,
   ],
   templateUrl: './job-detail-modal.component.html',
   styleUrls: ['./job-detail-modal.component.scss', '../../../styles/_shared-modal.scss'],

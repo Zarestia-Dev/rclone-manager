@@ -88,6 +88,7 @@ import {
   parseFsString,
 } from '../../../../services/remote/utils/remote-config.utils';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { CopyToClipboardDirective } from 'src/app/shared/directives/copy-to-clipboard.directive';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -163,6 +164,7 @@ function profileRecord<T>(factory: () => T): Record<SharedProfileType, T> {
     FlagConfigStepComponent,
     InteractiveConfigStepComponent,
     SearchContainerComponent,
+    CopyToClipboardDirective,
   ],
   templateUrl: './remote-config-modal.component.html',
   styleUrls: ['./remote-config-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -1826,10 +1828,6 @@ export class RemoteConfigModalComponent implements OnInit {
   async cancelAuth(): Promise<void> {
     await this.authStateService.cancelAuth();
     this.interactiveFlowState.set(createInitialInteractiveFlowState());
-  }
-
-  async copyOAuthUrl(): Promise<void> {
-    await this.authStateService.copyOAuthUrl();
   }
 
   // ── Utilities ─────────────────────────────────────────────────────────────────

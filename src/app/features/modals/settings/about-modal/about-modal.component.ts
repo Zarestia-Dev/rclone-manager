@@ -36,6 +36,7 @@ import {
   BackendService,
   ModalService,
 } from '@app/services';
+import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 
 // Configure renderer once at module level
 const renderer = new Renderer();
@@ -76,6 +77,7 @@ export interface OverlayView {
     FormatFileSizePipe,
     TranslateModule,
     NgTemplateOutlet,
+    CopyToClipboardDirective,
   ],
   templateUrl: './about-modal.component.html',
   styleUrls: ['./about-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -580,16 +582,6 @@ export class AboutModalComponent implements OnInit {
 
   async openDevTools(): Promise<void> {
     await this.debugService.openDevTools();
-  }
-
-  copyToClipboard(text: string): void {
-    navigator.clipboard.writeText(text).then(
-      () => this.notificationService.showInfo(this.translate.instant('modals.about.copied')),
-      err => {
-        console.error('Failed to copy to clipboard:', err);
-        this.notificationService.showError(this.translate.instant('modals.about.copyFailed'));
-      }
-    );
   }
 
   formatReleaseDate(dateString: string): string {

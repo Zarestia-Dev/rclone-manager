@@ -20,8 +20,8 @@
     "move": "移动",
     "retry": "重试",
     "default": "默认",
-    "copyErrorFailed": "复制错误信息失败",
-    "errorCopied": "错误信息已复制到剪贴板",
+    "copied": "已复制到剪贴板",
+    "copyFailed": "复制到剪贴板失败",
     "required": "此字段为必填项",
     "clear": "清除"
   },
@@ -716,8 +716,6 @@
         "copyId": "点击复制 ID"
       },
       "messages": {
-        "urlCopied": "URL 已复制！",
-        "idCopied": "ID 已复制！",
         "noOptions": "无额外选项"
       },
       "labels": {
@@ -1735,7 +1733,6 @@
       "adjustFilters": "尝试调整过滤器",
       "terminalOutput": "终端输出",
       "logContext": "日志上下文",
-      "copiedToClipboard": "日志已复制到剪贴板",
       "logLevel": "日志等级",
       "allLevels": "所有等级",
       "searchPlaceholder": "搜索日志..."
@@ -2288,7 +2285,6 @@
     "notifications": {
       "undo": "撤销",
       "trashEmptied": "清理操作完成",
-      "locationCopied": "位置已复制到剪贴板",
       "rmdirsStarted": "正在删除 \"{{name}}\" 中的空文件夹...",
       "deleteStarted": "正在删除 {{count}} 项...",
       "copyStarted": "正在复制 {{count}} 项...",

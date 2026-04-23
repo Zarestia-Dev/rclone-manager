@@ -26,6 +26,7 @@ import { LogContext, RemoteLogEntry, LOG_LEVELS, LogLevel } from '@app/types';
 import { LoggingService, BackendTranslationService, ModalService } from '@app/services';
 import { AnsiToHtmlPipe } from 'src/app/shared/pipes/ansi-to-html.pipe';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 
 @Component({
   selector: 'app-logs-modal',
@@ -44,6 +45,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
     DatePipe,
     UpperCasePipe,
     TranslateModule,
+    CopyToClipboardDirective,
   ],
   templateUrl: './logs-modal.component.html',
   styleUrls: ['./logs-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -177,7 +179,7 @@ export class LogsModalComponent implements OnInit {
     return this.backendTranslation.translateBackendMessage(message);
   }
 
-  async copyLog(log: RemoteLogEntry): Promise<void> {
+  getFormattedLog(log: RemoteLogEntry): string {
     const output = this.getCommandOutput(log);
     const translatedMessage = this.translateLogMessage(log.message);
     let text = `[${log.timestamp}] [${log.level.toUpperCase()}] ${translatedMessage}`;
@@ -192,17 +194,7 @@ export class LogsModalComponent implements OnInit {
       text += `\n\nDetails:\n${this.formatContext(log.context)}`;
     }
 
-    try {
-      await navigator.clipboard.writeText(text);
-      this.snackBar.open(this.translate.instant('modals.logs.copiedToClipboard'), undefined, {
-        duration: 2000,
-      });
-    } catch (error) {
-      console.error('Failed to copy log to clipboard:', error);
-      this.snackBar.open(this.translate.instant('common.errorCopied'), undefined, {
-        duration: 2000,
-      });
-    }
+    return text;
   }
 
   scrollToBottom(): void {

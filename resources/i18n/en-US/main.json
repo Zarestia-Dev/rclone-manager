@@ -20,8 +20,8 @@
     "move": "Move",
     "retry": "Retry",
     "default": "Default",
-    "copyErrorFailed": "Failed to copy error",
-    "errorCopied": "Error copied to clipboard",
+    "copied": "Copied to clipboard",
+    "copyFailed": "Failed to copy to clipboard",
     "required": "This field is required.",
     "clear": "Clear"
   },
@@ -718,8 +718,6 @@
         "copyId": "Click to copy ID"
       },
       "messages": {
-        "urlCopied": "URL Copied!",
-        "idCopied": "ID Copied!",
         "noOptions": "No additional options"
       },
       "labels": {
@@ -1323,7 +1321,6 @@
       "removingLink": "Removing link...",
       "failLoadHashes": "Failed to load checksums",
       "failGetLink": "Failed to get public link",
-      "failCopyLink": "Failed to copy - check console",
       "star": "Star",
       "unstar": "Unstar",
       "generatedChecksums": "Generated Checksums",
@@ -1657,8 +1654,6 @@
       "killSuccess": "Rclone process killed successfully",
       "killFailed": "Failed to kill rclone process",
       "noProcessToKill": "No rclone process to kill",
-      "copied": "Copied to clipboard",
-      "copyFailed": "Failed to copy to clipboard",
       "autoCheckEnabled": "Auto-check updates enabled",
       "autoCheckDisabled": "Auto-check updates disabled",
       "updateSettingFailed": "Failed to update setting",
@@ -1737,7 +1732,6 @@
       "adjustFilters": "Try adjusting your filters",
       "terminalOutput": "Terminal Output",
       "logContext": "Log Context",
-      "copiedToClipboard": "Log copied to clipboard",
       "logLevel": "Log Level",
       "allLevels": "All Levels",
       "searchPlaceholder": "Search logs..."
@@ -2296,7 +2290,6 @@
     "notifications": {
       "undo": "Undo",
       "trashEmptied": "Cleanup operation completed",
-      "locationCopied": "Location copied to clipboard",
       "rmdirsStarted": "Removing empty folders in \"{{name}}\"...",
       "deleteStarted": "Deleting {{count}} items...",
       "copyStarted": "Copying {{count}} items...",

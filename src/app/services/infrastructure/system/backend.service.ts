@@ -63,6 +63,7 @@ export class BackendService extends TauriBaseService {
         { name },
         {
           successKey: 'backendSuccess.backend.switched',
+          successParams: { name },
           errorKey: 'backendErrors.request.failed',
         }
       );

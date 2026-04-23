@@ -20,8 +20,8 @@
     "move": "Taşı",
     "retry": "Yeniden Dene",
     "default": "Varsayılan",
-    "copyErrorFailed": "Hata kopyalanamadı",
-    "errorCopied": "Hata panoya kopyalandı",
+    "copied": "Panoya kopyalandı",
+    "copyFailed": "Panoya kopyalanamadı",
     "required": "Bu alan zorunludur.",
     "clear": "Temizle"
   },
@@ -716,8 +716,6 @@
         "copyId": "Kimliği kopyalamak için tıkla"
       },
       "messages": {
-        "urlCopied": "URL Kopyalandı!",
-        "idCopied": "Kimlik Kopyalandı!",
         "noOptions": "Ek seçenek yok"
       },
       "labels": {
@@ -1735,7 +1733,6 @@
       "adjustFilters": "Filtrelerinizi ayarlamayı deneyin",
       "terminalOutput": "Terminal Çıktısı",
       "logContext": "Günlük Bağlamı",
-      "copiedToClipboard": "Günlük panoya kopyalandı",
       "logLevel": "Günlük Seviyesi",
       "allLevels": "Tüm Seviyeler",
       "searchPlaceholder": "Günlüklerde ara..."
@@ -2288,7 +2285,6 @@
     "notifications": {
       "undo": "Geri Al",
       "trashEmptied": "Temizlik işlemi başlatıldı",
-      "locationCopied": "Konum panoya kopyalandı",
       "rmdirsStarted": "Boş klasörler kaldırılıyor: \"{{name}}\"...",
       "deleteStarted": "{{count}} öge siliniyor...",
       "pasteComplete": "Yapıştırma işlemi tamamlandı",

@@ -188,7 +188,7 @@
                     }}</span>
                   </button>
                 }
-                <button class="menu-item" cdkMenuItem (click)="openContextMenuCopyPath()">
+                <button class="menu-item" cdkMenuItem [appCopyToClipboard]="getFormattedPath(item)">
                   <span class="item-label">{{ 'nautilus.contextMenu.copyPath' | translate }}</span>
                 </button>
 
@@ -309,7 +309,7 @@
 
         @if (!errorState()) {
           @if (!activeStarredMode()) {
-            <button class="menu-item" cdkMenuItem (click)="copyCurrentLocation()">
+            <button class="menu-item" cdkMenuItem [appCopyToClipboard]="fullPathInput()">
               <span>{{ 'nautilus.contextMenu.copyLocation' | translate }}</span>
             </button>
           }

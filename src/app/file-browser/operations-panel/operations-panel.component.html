@@ -191,7 +191,7 @@
                         <button
                           mat-icon-button
                           class="copy-error-btn"
-                          (click)="copyError(job.error)"
+                          [appCopyToClipboard]="getFormattedJobError(job.error)"
                           [matTooltip]="'common.copy' | translate"
                         >
                           <mat-icon svgIcon="copy"></mat-icon>

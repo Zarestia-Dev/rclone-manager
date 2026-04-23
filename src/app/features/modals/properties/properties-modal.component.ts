@@ -23,12 +23,12 @@ import {
   NautilusService,
   RemoteFacadeService,
   ModalService,
-  NotificationService,
   IconService,
   RemoteMetadataService,
   PathSelectionService,
   JobManagementService,
 } from '@app/services';
+import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-clipboard.directive';
 import { Entry, FileBrowserItem, RemoteFeatures } from '@app/types';
 import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -55,6 +55,7 @@ interface ExpiryOption {
     MatFormFieldModule,
     FormatFileSizePipe,
     TranslateModule,
+    CopyToClipboardDirective,
   ],
   templateUrl: './properties-modal.component.html',
   styleUrls: ['./properties-modal.component.scss', '../../../styles/_shared-modal.scss'],
@@ -79,7 +80,6 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
   private readonly iconService = inject(IconService);
   private readonly translate = inject(TranslateService);
   private readonly modalService = inject(ModalService);
-  private readonly notificationService = inject(NotificationService);
   private readonly remoteMetadata = inject(RemoteMetadataService);
   private readonly pathSelectionService = inject(PathSelectionService);
   private readonly jobManagementService = inject(JobManagementService);
@@ -96,7 +96,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
       ? this.data.remoteName
       : `${this.data.remoteName}:`;
 
-  readonly hashPath: string = (() => {
+  readonly hashPath: string = ((): string => {
     const { remoteName, path, isLocal, item } = this.data;
     if (isLocal) {
       const candidatePath = path || item?.Path || item?.Name || '';
@@ -351,24 +351,6 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Copy hash value to clipboard
-   */
-  async copyHash(hashType: string): Promise<void> {
-    const hash = this.fileHashes()[hashType];
-    if (!hash) return;
-
-    try {
-      await navigator.clipboard.writeText(hash);
-      this.copiedHash.set(hashType);
-      this.startCopyReset(() => {
-        if (this.copiedHash() === hashType) this.copiedHash.set(null);
-      });
-    } catch (err) {
-      console.error('Failed to copy hash:', err);
-    }
-  }
-
-  /**
    * Check if a hash type is currently being calculated
    */
   isHashLoading(hashType: string): boolean {
@@ -437,24 +419,6 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
       );
     } finally {
       this.loadingPublicLink.set(false);
-    }
-  }
-
-  /**
-   * Copy the public link to clipboard
-   */
-  async copyPublicLink(): Promise<void> {
-    const url = this.publicLinkUrl();
-    if (!url) return;
-
-    try {
-      await navigator.clipboard.writeText(url);
-      this.copiedLink.set(true);
-      this.startCopyReset(() => this.copiedLink.set(false));
-    } catch {
-      // Clipboard failed - log to console
-      console.log('Public link:', url);
-      this.publicLinkError.set(this.translate.instant('fileBrowser.properties.failCopyLink'));
     }
   }
 
@@ -556,24 +520,6 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
       this.bulkHashError.set(`${this.translate.instant('common.error')}: ${errorMessage}`);
     } finally {
       this.calculatingBulkHash.set(false);
-    }
-  }
-
-  /**
-   * Copy the generated bulk hashsum to clipboard
-   */
-  async copyBulkHash(): Promise<void> {
-    const result = this.bulkHashResult();
-    if (!result) return;
-
-    try {
-      await navigator.clipboard.writeText(result);
-      this.copiedBulkHash.set(true);
-
-      this.startCopyReset(() => this.copiedBulkHash.set(false));
-    } catch (err) {
-      console.error('Failed to copy bulk hash:', err);
-      this.notificationService.showError(this.translate.instant('common.error'));
     }
   }
 }

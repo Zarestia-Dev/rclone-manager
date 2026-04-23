@@ -33,6 +33,7 @@ import { NautilusDragDropService } from 'src/app/services/ui/nautilus-drag-drop.
 import { NautilusSettingsService } from 'src/app/services/ui/nautilus-settings.service';
 import { NautilusTabService, PaneViewModel } from 'src/app/services/ui/nautilus-tab.service';
 import { NautilusActionsService } from 'src/app/services/ui/nautilus-actions.service';
+import { CopyToClipboardDirective } from '../../shared/directives/copy-to-clipboard.directive';
 import { NautilusKeyboardDirective } from '../../shared/directives/nautilus-keyboard.directive';
 
 import { NautilusSidebarComponent } from './sidebar/nautilus-sidebar.component';
@@ -65,6 +66,7 @@ const DEFAULT_PICKER_OPTIONS: FilePickerConfig = {
     MatRadioModule,
     MatCheckboxModule,
     CdkMenuModule,
+    CopyToClipboardDirective,
   ],
   providers: [
     FormatFileSizePipe,
@@ -172,8 +174,16 @@ export class NautilusComponent implements OnInit {
   protected openContextMenuOpenInNewWindow(): void {
     this.actions.openContextMenuOpenInNewWindow();
   }
-  protected openContextMenuCopyPath(): void {
-    this.actions.copyContextItemPath();
+  protected getFormattedPath(item: FileBrowserItem | null): string {
+    if (!item) return this.fullPathInput();
+    const remote = this.tabSvc.activeRemote();
+    if (!remote) return '';
+
+    const cleanRemote = remote.isLocal
+      ? remote.name
+      : this.pathSelectionService.normalizeRemoteForRclone(remote.name) + ':';
+
+    return `${cleanRemote}${item.entry.Path}`.replace('//', '/');
   }
   protected openPropertiesDialog(source: 'contextMenu' | 'bookmark', item?: FileBrowserItem): void {
     this.actions.openPropertiesDialog(source, item);
@@ -954,16 +964,6 @@ export class NautilusComponent implements OnInit {
     const pane = this.tabSvc.getPaneRef(paneIndex);
     pane.loading.set(false);
     void this.tabSvc.stopListReadGroup(this.tabSvc.listReadGroups[paneIndex]);
-  }
-
-  copyCurrentLocation(): void {
-    const path = this.fullPathInput();
-    if (path) {
-      navigator.clipboard?.writeText(path);
-      this.notificationService.showInfo(
-        this.translate.instant('nautilus.notifications.locationCopied')
-      );
-    }
   }
 
   toggleSearchMode(): void {

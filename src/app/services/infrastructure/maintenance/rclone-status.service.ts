@@ -138,7 +138,11 @@ export class RcloneStatusService {
         this.systemInfoService.getMemoryStats().catch(() => null),
         this.systemInfoService.getStats().catch(() => null),
       ]);
-      this.jobStats.set(coreStats ?? { ...DEFAULT_JOB_STATS });
+      const stats = coreStats ?? { ...DEFAULT_JOB_STATS };
+      this.jobStats.update(old => ({
+        ...stats,
+        lastError: stats.lastError || old.lastError,
+      }));
       this.memoryUsage.set(memoryStats);
     } catch (error) {
       if (this.rcloneStatus() !== 'error') {

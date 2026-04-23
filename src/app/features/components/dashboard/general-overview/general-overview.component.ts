@@ -44,6 +44,7 @@ import {
   IconService,
   getRemoteNameFromFs,
 } from '@app/services';
+import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 import { FormatRateValuePipe } from '../../../../shared/pipes/format-rate-value.pipe';
 import { FormatBytes } from '../../../../shared/pipes/format-bytes.pipe';
 
@@ -145,6 +146,7 @@ const ALL_PANELS: PanelConfig[] = [
     FormatBytes,
     OverviewHeaderComponent,
     TranslateModule,
+    CopyToClipboardDirective,
   ],
   templateUrl: './general-overview.component.html',
   styleUrls: ['./general-overview.component.scss'],
@@ -374,13 +376,6 @@ export class GeneralOverviewComponent {
       event.preventDefault();
       this.onTaskClick(task);
     }
-  }
-
-  copyError(error: string): void {
-    void navigator.clipboard
-      .writeText(error)
-      .then(() => this.showSnackbar(this.translate.instant('common.errorCopied')))
-      .catch(() => this.showSnackbar(this.translate.instant('common.copyErrorFailed')));
   }
 
   // --- Task display utilities ---

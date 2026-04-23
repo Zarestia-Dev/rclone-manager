@@ -115,18 +115,6 @@ export class NautilusActionsService {
 
   // ── Context-menu file actions ────────────────────────────────────────────────
 
-  copyContextItemPath(): void {
-    const item = this.contextMenuItem();
-    const remote = this.tabSvc.activeRemote();
-    if (!item || !remote) return;
-
-    const cleanRemote = remote.isLocal
-      ? remote.name
-      : this.pathSvc.normalizeRemoteForRclone(remote.name) + ':';
-
-    navigator.clipboard?.writeText(`${cleanRemote}${item.entry.Path}`.replace('//', '/'));
-  }
-
   /**
    * Opens the file viewer.
    * The caller must supply the sorted/filtered file list from the active pane

@@ -256,14 +256,15 @@
 
     .error-section {
       margin-top: 8px;
+      border-radius: var(--radius-xs);
       padding: 12px;
       @include status-container(rgba(var(--warn-color-rgb), 0.1), rgba(var(--warn-color-rgb), 0.2));
-      border-radius: 8px;
 
       .error-message {
         display: flex;
         align-items: flex-start;
         gap: 8px;
+        border-radius: var(--radius-xs);
         margin-top: 8px;
 
         .error-text-content {

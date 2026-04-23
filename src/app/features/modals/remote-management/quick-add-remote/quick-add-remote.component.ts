@@ -35,6 +35,7 @@ import {
   ValidatorRegistryService,
   IconService,
 } from '@app/services';
+import { CopyToClipboardDirective } from 'src/app/shared/directives/copy-to-clipboard.directive';
 import {
   RemoteType,
   RemoteConfigSections,
@@ -76,6 +77,7 @@ type OperationType = 'mount' | 'sync' | 'copy' | 'bisync' | 'move';
     OperationConfigComponent,
     TranslateModule,
     MatTooltipModule,
+    CopyToClipboardDirective,
   ],
   templateUrl: './quick-add-remote.component.html',
   styleUrls: ['./quick-add-remote.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -605,10 +607,6 @@ export class QuickAddRemoteComponent {
     await this.authStateService.cancelAuth();
     this.currentStep.set('operations');
     this.interactiveFlowState.set(createInitialInteractiveFlowState());
-  }
-
-  async copyOAuthUrl(): Promise<void> {
-    await this.authStateService.copyOAuthUrl();
   }
 
   close(): void {

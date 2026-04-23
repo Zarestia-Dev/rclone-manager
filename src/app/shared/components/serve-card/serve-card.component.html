@@ -25,12 +25,7 @@
             class="serve-url"
             [matTooltip]="'shared.serveCard.tooltips.copyUrl' | translate"
             [matTooltipShowDelay]="400"
-            (click)="
-              onCopyToClipboard(url, 'shared.serveCard.messages.urlCopied');
-              $event.stopPropagation()
-            "
-            role="button"
-            tabindex="0"
+            [appCopyToClipboard]="url"
             >{{ url }}</span
           >
         } @else {
@@ -63,12 +58,7 @@
         class="meta-value"
         [matTooltip]="'shared.serveCard.tooltips.copyId' | translate"
         [matTooltipShowDelay]="400"
-        (click)="
-          onCopyToClipboard(serve().id, 'shared.serveCard.messages.idCopied');
-          $event.stopPropagation()
-        "
-        role="button"
-        tabindex="0"
+        [appCopyToClipboard]="serve().id"
         >{{ serve().id }}</span
       >
     </div>

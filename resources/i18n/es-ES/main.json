@@ -20,6 +20,8 @@
     "move": "Mover",
     "retry": "Reintentar",
     "default": "Predeterminado",
+    "copied": "Copiado al portapapeles",
+    "copyFailed": "Error al copiar al portapapeles",
     "clear": "Limpiar"
   },
   "validators": {
@@ -710,8 +712,6 @@
         "copyId": "Haga clic para copiar el ID"
       },
       "messages": {
-        "urlCopied": "¡URL copiada!",
-        "idCopied": "¡ID copiado!",
         "noOptions": "Sin opciones adicionales"
       },
       "labels": {
@@ -1706,7 +1706,6 @@
       "adjustFilters": "Intente ajustar sus filtros",
       "terminalOutput": "Salida de la terminal",
       "logContext": "Contexto del registro",
-      "copiedToClipboard": "Registro copiado al portapapeles",
       "logLevel": "Nivel de registro",
       "allLevels": "Todos los niveles",
       "searchPlaceholder": "Buscar registros..."
@@ -2222,7 +2221,6 @@
       "undo": "Deshacer",
       "trashEmptied": "Papelera vaciada",
       "renameStarted": "Operación de renombrado iniciada",
-      "locationCopied": "Ubicación copiada al portapapeles",
       "copyUrlStarted": "Descargando desde URL..."
     }
   },

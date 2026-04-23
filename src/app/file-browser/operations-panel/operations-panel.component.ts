@@ -7,7 +7,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { MatDividerModule } from '@angular/material/divider';
-import { JobManagementService, UiStateService, NotificationService } from '@app/services';
+import { JobManagementService, UiStateService } from '@app/services';
+import { CopyToClipboardDirective } from '../../shared/directives/copy-to-clipboard.directive';
 import { JobInfo } from '@app/types';
 import { FormatFileSizePipe, FormatEtaPipe, FormatRateValuePipe } from '@app/pipes';
 import { Subject, interval } from 'rxjs';
@@ -31,6 +32,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
     FormatEtaPipe,
     FormatRateValuePipe,
     TranslateModule,
+    CopyToClipboardDirective,
   ],
   templateUrl: './operations-panel.component.html',
   styleUrls: ['./operations-panel.component.scss'],
@@ -38,7 +40,6 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 export class OperationsPanelComponent implements OnInit, OnDestroy {
   private jobManagementService = inject(JobManagementService);
   private uiStateService = inject(UiStateService);
-  private notificationService = inject(NotificationService);
   private translate = inject(TranslateService);
   private destroy$ = new Subject<void>();
 
@@ -171,16 +172,8 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
     }
   }
 
-  async copyError(errors: string | string[] | undefined): Promise<void> {
-    if (!errors) return;
-    const text = Array.isArray(errors) ? errors.join('\n') : errors;
-    if (!text) return;
-    try {
-      await navigator.clipboard.writeText(text);
-      this.notificationService.showSuccess(this.translate.instant('common.errorCopied'));
-    } catch (err) {
-      console.error('Failed to copy error:', err);
-      this.notificationService.showError(this.translate.instant('common.error'));
-    }
+  getFormattedJobError(errors: string | string[] | undefined): string | null {
+    if (!errors) return null;
+    return Array.isArray(errors) ? errors.join('\n') : errors;
   }
 }

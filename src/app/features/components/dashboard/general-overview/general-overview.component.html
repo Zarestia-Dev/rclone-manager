@@ -376,20 +376,17 @@
                               <div class="label">
                                 {{ 'generalOverview.jobs.lastError' | translate }}
                               </div>
-                              <div class="error-message">
+                              <div
+                                class="error-message"
+                                matTooltip="{{ 'generalOverview.jobs.copyError' | translate }}"
+                                [appCopyToClipboard]="stats.lastError"
+                              >
                                 <mat-icon
                                   svgIcon="circle-exclamation"
                                   class="error-icon warn"
                                   aria-hidden="true"
                                 ></mat-icon>
-                                <span
-                                  matTooltip="{{ 'generalOverview.jobs.copyError' | translate }}"
-                                  (click)="copyError(stats.lastError)"
-                                  tabindex="0"
-                                  role="button"
-                                  class="error-text-content"
-                                  >{{ stats.lastError }}</span
-                                >
+                                <span class="error-text-content">{{ stats.lastError }}</span>
                               </div>
                             </div>
                           }
