@@ -189,6 +189,7 @@ impl NotificationEvent {
     ///
     /// Exposed as `pub` so the alert engine can enforce it in Gate 6
     /// without duplicating the match arms.
+    #[must_use]
     pub fn suppression(&self) -> Suppression {
         match self {
             // Critical engine/auth failures: never silent.
@@ -646,7 +647,7 @@ pub fn notify(app: &tauri::AppHandle, event: NotificationEvent) {
     tauri::async_runtime::spawn(async move {
         // Pass the already-rendered strings so the engine doesn't have to
         // re-derive them (and can't drift from this implementation).
-        crate::core::alerts::engine::process(&app_handle, &event, title, body).await;
+        crate::core::alerts::engine::process(&app_handle, &event, title, body);
     });
 }
 

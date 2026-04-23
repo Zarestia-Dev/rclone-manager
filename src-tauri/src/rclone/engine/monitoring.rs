@@ -23,12 +23,13 @@ impl RcApiEngine {
     }
 
     /// Check if the process is still alive using native PID checking.
+    #[must_use]
     pub fn is_process_alive(&self) -> bool {
         if let Some(child) = &self.process {
             if let Some(pid) = child.id() {
                 let alive = crate::utils::process::process_manager::is_process_alive(pid);
                 if !alive {
-                    debug!("Process {} is no longer running", pid);
+                    debug!("Process {pid} is no longer running");
                 }
                 alive
             } else {
@@ -87,15 +88,12 @@ impl RcApiEngine {
             }
         };
 
-        match tokio::time::timeout(timeout, check_future).await {
-            Ok(_) => {
-                debug!("API is healthy and ready");
-                true
-            }
-            Err(_) => {
-                debug!("API health check timed out after {timeout_secs}s");
-                false
-            }
+        if tokio::time::timeout(timeout, check_future).await.is_ok() {
+            debug!("API is healthy and ready");
+            true
+        } else {
+            debug!("API health check timed out after {timeout_secs}s");
+            false
         }
     }
 }

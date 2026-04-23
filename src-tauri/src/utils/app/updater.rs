@@ -54,10 +54,10 @@ pub mod app_updates {
                     crate::localized_error!("backendErrors.updater.updateFailed", "error" => e)
                 }
                 Error::Relaunch(e) => {
-                    format!("Relaunch failed: {}", e)
+                    format!("Relaunch failed: {e}")
                 }
                 Error::UpdateUnavailable(e) => {
-                    format!("Update unavailable: {}", e)
+                    format!("Update unavailable: {e}")
                 }
             };
             serializer.serialize_str(&error_msg)
@@ -134,7 +134,7 @@ pub mod app_updates {
             *failure_message = None;
         }
 
-        info!("Checking for updates on channel: {}", channel);
+        info!("Checking for updates on channel: {channel}");
 
         let owner = "Zarestia-Dev";
         let repo = "rclone-manager";
@@ -148,15 +148,12 @@ pub mod app_updates {
             .filter(|release| !release.draft)
             .find(|release| is_release_for_channel(release, &channel));
 
-        let release = match suitable_release {
-            Some(release) => {
-                info!("Found suitable release: {}", release.tag_name);
-                release
-            }
-            None => {
-                info!("No suitable release found for channel: {}", channel);
-                return Ok(None);
-            }
+        let release = if let Some(release) = suitable_release {
+            info!("Found suitable release: {}", release.tag_name);
+            release
+        } else {
+            info!("No suitable release found for channel: {channel}");
+            return Ok(None);
         };
 
         // Find the JSON update file in release assets
@@ -167,21 +164,18 @@ pub mod app_updates {
                     || asset.name.contains("update"))
         });
 
-        let json_url = match json_asset {
-            Some(asset) => {
-                info!("Found JSON asset: {}", asset.name);
-                &asset.browser_download_url
-            }
-            None => {
-                info!("No JSON asset found, constructing URL from release tag");
-                &format!(
-                    "https://github.com/Zarestia-Dev/rclone-manager/releases/download/{}/latest.json",
-                    release.tag_name
-                )
-            }
+        let json_url = if let Some(asset) = json_asset {
+            info!("Found JSON asset: {}", asset.name);
+            &asset.browser_download_url
+        } else {
+            info!("No JSON asset found, constructing URL from release tag");
+            &format!(
+                "https://github.com/Zarestia-Dev/rclone-manager/releases/download/{}/latest.json",
+                release.tag_name
+            )
         };
 
-        info!("Using update JSON URL: {}", json_url);
+        info!("Using update JSON URL: {json_url}");
 
         let app_exit = app.clone();
         // Check for update using the specific release's JSON file
@@ -221,10 +215,7 @@ pub mod app_updates {
                         u.download_url = parsed;
                     }
                     Err(err) => {
-                        warn!(
-                            "Failed to parse adjusted download URL '{}': {}",
-                            new_url, err
-                        );
+                        warn!("Failed to parse adjusted download URL '{new_url}': {err}");
                     }
                 }
             }
@@ -268,7 +259,7 @@ pub mod app_updates {
                     "data": metadata
                 }),
             ) {
-                log::warn!("Failed to emit app update event: {}", e);
+                log::warn!("Failed to emit app update event: {e}");
             }
 
             notify(
@@ -471,7 +462,7 @@ pub mod app_updates {
                 Ok(())
             }
             Err(e) => {
-                warn!("Update installation failed: {}", e);
+                warn!("Update installation failed: {e}");
 
                 // Preserve pending update so user can retry without re-checking
                 if let Ok(mut pending) = updater_state.pending_action.lock() {

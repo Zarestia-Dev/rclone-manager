@@ -1,6 +1,7 @@
 import { Injectable, inject, DestroyRef, DOCUMENT, isDevMode } from '@angular/core';
 import { FileSystemService } from '../../operations/file-system.service';
 import { TauriBaseService } from '../platform/tauri-base.service';
+import { isHeadlessMode } from '@app/services';
 
 /**
  * Debug information returned from backend
@@ -84,7 +85,7 @@ export class DebugService extends TauriBaseService {
    * - Headless (Browser): Shows instruction to use F12 (can't programmatically open browser DevTools)
    */
   async openDevTools(): Promise<void> {
-    if (this.apiClient.isHeadless()) {
+    if (isHeadlessMode()) {
       this.notificationService.showSuccess(
         this.translate.instant('developerTools.openDevToolsHint')
       );

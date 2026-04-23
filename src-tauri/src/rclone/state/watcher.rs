@@ -29,10 +29,7 @@ async fn check_and_reconcile_mounts(
     let api_mounts = match get_mounted_remotes(app_handle.clone()).await {
         Ok(mounts) => mounts,
         Err(e) => {
-            warn!(
-                "🔍 Failed to get mounts from API ({}), skipping reconciliation: {e}",
-                api_url
-            );
+            warn!("🔍 Failed to get mounts from API ({api_url}), skipping reconciliation: {e}");
             return Err(e);
         }
     };
@@ -42,7 +39,7 @@ async fn check_and_reconcile_mounts(
         .update_mounts_if_changed(api_mounts, &app_handle)
         .await;
     if changed {
-        debug!("🔍 Mount cache updated via watcher for {}", api_url);
+        debug!("🔍 Mount cache updated via watcher for {api_url}");
     }
 
     Ok(())
@@ -108,10 +105,7 @@ async fn check_and_reconcile_serves(
     let api_serves = match list_serves(app_handle.clone()).await {
         Ok(serves) => serves,
         Err(e) => {
-            warn!(
-                "🔍 Failed to get serves from API ({}), skipping reconciliation: {e}",
-                api_url
-            );
+            warn!("🔍 Failed to get serves from API ({api_url}), skipping reconciliation: {e}");
             return Err(e);
         }
     };
@@ -121,7 +115,7 @@ async fn check_and_reconcile_serves(
         .update_serves_if_changed(api_serves, &app_handle)
         .await;
     if changed {
-        debug!("🔍 Serve cache updated via watcher for {}", api_url);
+        debug!("🔍 Serve cache updated via watcher for {api_url}");
     }
 
     Ok(())

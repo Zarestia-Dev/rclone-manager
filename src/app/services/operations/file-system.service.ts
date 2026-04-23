@@ -4,6 +4,7 @@ import { NautilusService } from '../ui/nautilus.service';
 import { FilePickerConfig, FilePickerResult } from '@app/types';
 import { splitLocalPath } from '../remote/utils/remote-config.utils';
 import { filter, firstValueFrom } from 'rxjs';
+import { isHeadlessMode } from '../infrastructure/platform/api-client.service';
 
 /**
  * Service for file system operations
@@ -22,7 +23,7 @@ export class FileSystemService extends TauriBaseService {
    */
   async selectFolder(requireEmpty?: boolean, initialPath?: string): Promise<string> {
     // In headless mode, use Nautilus file browser
-    if (this.apiClient.isHeadless()) {
+    if (isHeadlessMode()) {
       const config: FilePickerConfig = {
         mode: 'local',
         selection: 'folders',
@@ -78,7 +79,7 @@ export class FileSystemService extends TauriBaseService {
    */
   async selectFile(initialPath?: string): Promise<string> {
     // In headless mode, use Nautilus file browser
-    if (this.apiClient.isHeadless()) {
+    if (isHeadlessMode()) {
       const config: FilePickerConfig = {
         mode: 'local',
         selection: 'files',
@@ -114,7 +115,7 @@ export class FileSystemService extends TauriBaseService {
    * Open a path in the system file manager
    */
   async openInFiles(path: string): Promise<void> {
-    if (this.apiClient.isHeadless()) {
+    if (isHeadlessMode()) {
       const { remote, remainder } = splitLocalPath(path);
       return this.nautilusService.newNautilusWindow(remote, remainder);
     }

@@ -2,7 +2,7 @@ use crate::core::alerts::{template::TemplateContext, types::OsToastAction};
 use tauri::AppHandle;
 use tauri_plugin_notification::NotificationExt;
 
-pub async fn dispatch(
+pub fn dispatch(
     app: &AppHandle,
     _action: &OsToastAction,
     ctx: &TemplateContext,

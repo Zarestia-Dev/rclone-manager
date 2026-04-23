@@ -28,7 +28,7 @@ fn handle_ctrl_c(app: &AppHandle) {
     tauri::async_runtime::spawn(async move {
         use tokio::signal::ctrl_c;
         if let Err(e) = ctrl_c().await {
-            error!("Failed to install Ctrl+C handler: {}", e);
+            error!("Failed to install Ctrl+C handler: {e}");
             return;
         }
         info!("Ctrl+C received. Initiating shutdown...");
@@ -106,7 +106,7 @@ fn handle_settings_changed(app: &AppHandle) {
                             use crate::core::alerts::cache;
                             let manager = app_clone.state::<AppSettingsManager>();
 
-                            let _ = crate::core::alerts::seed::seed_defaults(&manager).await;
+                            let _ = crate::core::alerts::seed::seed_defaults(&manager);
 
                             if let Some(mut action) =
                                 cache::get_action(&manager, "default-os-toast")
@@ -282,13 +282,13 @@ fn handle_rclone_binary_change(app: &AppHandle, path: &str) {
         "previous",
         path,
     ) {
-        Ok(_) => info!("Rclone binary path updated to: {path}"),
+        Ok(()) => info!("Rclone binary path updated to: {path}"),
         Err(e) => error!("Failed to restart engine for rclone binary change: {e}"),
     }
 }
 
 fn handle_rclone_flags_change(app: &AppHandle, flags: &Vec<Value>) {
-    debug!("Rclone additional flags changed to: {:?}", flags);
+    debug!("Rclone additional flags changed to: {flags:?}");
     let flags_str = serde_json::to_string(flags).unwrap_or_default();
 
     match crate::rclone::engine::lifecycle::restart_for_config_change(
@@ -297,7 +297,7 @@ fn handle_rclone_flags_change(app: &AppHandle, flags: &Vec<Value>) {
         "previous",
         &flags_str,
     ) {
-        Ok(_) => info!("Engine restarting due to additional flags change"),
+        Ok(()) => info!("Engine restarting due to additional flags change"),
         Err(e) => error!("Failed to restart engine for flags change: {e}"),
     }
 }

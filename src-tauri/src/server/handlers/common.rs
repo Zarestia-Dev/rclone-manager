@@ -1,7 +1,5 @@
-use crate::server::state::{ApiResponse, AppError};
+use crate::server::state::ApiResponse;
 use axum::Json;
-
-pub type ApiResult<T> = Result<Json<ApiResponse<T>>, AppError>;
 
 pub async fn root_handler() -> &'static str {
     "RClone Manager Headless API Server"

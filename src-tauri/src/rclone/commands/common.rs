@@ -11,7 +11,7 @@ use crate::rclone::backend::BackendManager;
 /// 2. The entire remote settings object (used for resolving nested profile references like `vfsProfile`)
 ///
 /// # Arguments
-/// * `app` - The Tauri AppHandle
+/// * `app` - The Tauri `AppHandle`
 /// * `remote_name` - The name of the remote
 /// * `profile_name` - The name of the profile to load
 /// * `config_key` - The key in settings to look for (e.g., "mountConfigs", "syncConfigs")
@@ -96,8 +96,7 @@ fn normalize_runtime_remote_profile_options(
     // RC override resolution expects options keyed by remote name.
     if options
         .get(remote_name)
-        .map(|v| v.is_object())
-        .unwrap_or(false)
+        .is_some_and(serde_json::Value::is_object)
     {
         return options;
     }
@@ -280,7 +279,7 @@ pub fn resolve_runtime_remote_options(
 }
 
 /// Redact sensitive values from parameters for logging.
-/// Reads restrict setting from AppSettingsManager internally.
+/// Reads restrict setting from `AppSettingsManager` internally.
 pub fn redact_sensitive_values(params: &HashMap<String, Value>, app: &AppHandle) -> Value {
     let restrict_enabled: bool = app
         .try_state::<AppSettingsManager>()

@@ -1,8 +1,7 @@
 import { inject, Injectable, signal, effect } from '@angular/core';
 import { platform } from '@tauri-apps/plugin-os';
 import { AppTab, Remote } from '@app/types';
-import { PathService, WindowService } from '@app/services';
-import { ApiClientService } from '../../infrastructure/platform/api-client.service';
+import { isHeadlessMode, PathService, WindowService } from '@app/services';
 
 /**
  * Service for managing UI state with focus on viewport settings
@@ -13,7 +12,6 @@ import { ApiClientService } from '../../infrastructure/platform/api-client.servi
 export class UiStateService {
   private pathService = inject(PathService);
   private windowService = inject(WindowService);
-  private apiClient = inject(ApiClientService);
 
   public isMaximized = this.windowService.isMaximized;
   public readonly platform: string;
@@ -46,7 +44,7 @@ export class UiStateService {
   }
 
   private initializePlatform(): string {
-    if (this.apiClient.isHeadless()) {
+    if (isHeadlessMode()) {
       return 'web';
     }
     try {

@@ -1,17 +1,19 @@
 use serde_json::Value;
 use std::collections::HashMap;
 
-/// Safely converts a JSON object to a HashMap.
+/// Safely converts a JSON object to a `HashMap`.
 /// Returns None if the input is not a JSON object.
+#[must_use]
 pub fn json_to_hashmap(json: Option<&Value>) -> Option<HashMap<String, Value>> {
     json.and_then(|v| v.as_object())
         .map(|obj| obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect())
 }
 
 /// Resolve profile options from a settings object.
-/// Looks up `settings[configs_key][profile_name]["options"]` and returns it as a HashMap.
+/// Looks up `settings[configs_key][profile_name]["options"]` and returns it as a `HashMap`.
 ///
 /// This is used by `from_config` methods to resolve filter, backend, and VFS profiles.
+#[must_use]
 pub fn resolve_profile_options(
     settings: &Value,
     profile_name: Option<&str>,
@@ -23,9 +25,10 @@ pub fn resolve_profile_options(
     json_to_hashmap(profile_cfg.get("options"))
 }
 
-/// Unwraps nested "options" key if it exists in a HashMap.
+/// Unwraps nested "options" key if it exists in a `HashMap`.
 /// This handles the case where frontend sends { "options": { "key": "value" } }
 /// and we need just { "key": "value" }.
+#[must_use]
 pub fn unwrap_nested_options(opts: HashMap<String, Value>) -> HashMap<String, Value> {
     if let Some(Value::Object(nested)) = opts.get("options") {
         nested.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
@@ -36,6 +39,7 @@ pub fn unwrap_nested_options(opts: HashMap<String, Value>) -> HashMap<String, Va
 
 /// Safely extracts a string value from a nested JSON path.
 /// Returns an empty string if any key is not found or the final value is not a string.
+#[must_use]
 pub fn get_string(json: &Value, path: &[&str]) -> String {
     let mut current = Some(json);
     for key in path {
@@ -55,6 +59,7 @@ pub fn get_string(json: &Value, path: &[&str]) -> String {
 /// kept intact so the user sees what went wrong instead of a silent empty string.
 ///
 /// On Unix this runs `sh -c "<cmd>"`. On Windows it runs `cmd /C "<cmd>"`.
+#[must_use]
 pub fn interpolate_shell_commands(s: &str) -> String {
     if !s.contains('`') {
         return s.to_string();

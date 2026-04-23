@@ -34,7 +34,7 @@ impl log::Log for DynamicLogger {
             );
 
             // Write to console
-            println!("{}", log_line);
+            println!("{log_line}");
 
             // Write to rotating log file
             write_to_file(&log_line);
@@ -56,7 +56,7 @@ fn current_log_level() -> LevelFilter {
     }
 }
 
-/// Parse log level string to LevelFilter
+/// Parse log level string to `LevelFilter`
 fn parse_log_level(level: &str) -> LevelFilter {
     match level.to_lowercase().as_str() {
         "error" => LevelFilter::Error,
@@ -129,10 +129,7 @@ pub fn log_operation(
 
     if let Some(sender) = LOG_SENDER.get() {
         if let Err(e) = sender.try_send(entry) {
-            eprintln!(
-                "Failed to send log message to processor (channel full?): {}",
-                e
-            );
+            eprintln!("Failed to send log message to processor (channel full?): {e}");
         }
     } else {
         eprintln!("Log sender not initialized. Log entry dropped.");

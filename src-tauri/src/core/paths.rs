@@ -20,7 +20,7 @@ fn get_executable_directory() -> Result<PathBuf, String> {
     std::env::current_exe()
         .map_err(|e| format!("Failed to get executable path: {e}"))?
         .parent()
-        .map(|p| p.to_path_buf())
+        .map(std::path::Path::to_path_buf)
         .ok_or_else(|| "Failed to get executable directory".to_string())
 }
 
@@ -43,7 +43,7 @@ pub struct AppPaths {
 }
 
 impl AppPaths {
-    /// Create AppPaths for portable mode
+    /// Create `AppPaths` for portable mode
     ///
     /// Uses directories next to the executable.
     #[cfg(feature = "portable")]
@@ -147,7 +147,7 @@ impl AppPaths {
     /// Setup application paths and ensure directories exist
     ///
     /// This is the main entry point for initializing paths during app startup.
-    /// Returns the complete AppPaths struct.
+    /// Returns the complete `AppPaths` struct.
     pub fn setup(app: &AppHandle) -> Result<Self, String> {
         let paths = Self::from_app_handle(app)?;
         paths.ensure_dirs()?;
@@ -157,16 +157,16 @@ impl AppPaths {
     /// Ensure all directories exist
     pub fn ensure_dirs(&self) -> Result<(), String> {
         std::fs::create_dir_all(&self.config_dir)
-            .map_err(|e| format!("Failed to create config directory: {}", e))?;
+            .map_err(|e| format!("Failed to create config directory: {e}"))?;
         std::fs::create_dir_all(&self.cache_dir)
-            .map_err(|e| format!("Failed to create cache directory: {}", e))?;
+            .map_err(|e| format!("Failed to create cache directory: {e}"))?;
         std::fs::create_dir_all(&self.logs_dir)
-            .map_err(|e| format!("Failed to create logs directory: {}", e))?;
+            .map_err(|e| format!("Failed to create logs directory: {e}"))?;
         // Create log subdirectories
         std::fs::create_dir_all(self.get_app_log_dir())
-            .map_err(|e| format!("Failed to create app log directory: {}", e))?;
+            .map_err(|e| format!("Failed to create app log directory: {e}"))?;
         std::fs::create_dir_all(self.get_rclone_log_dir())
-            .map_err(|e| format!("Failed to create rclone log directory: {}", e))?;
+            .map_err(|e| format!("Failed to create rclone log directory: {e}"))?;
         Ok(())
     }
 

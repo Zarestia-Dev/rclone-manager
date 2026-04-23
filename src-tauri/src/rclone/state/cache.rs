@@ -13,7 +13,7 @@ use crate::utils::types::{
     remotes::{MountedRemote, RemoteCache, ServeInstance},
 };
 
-/// Persistent context for RemoteCache — saved/restored on backend switches so that
+/// Persistent context for `RemoteCache` — saved/restored on backend switches so that
 /// profile associations (embedded in the structs) survive the transition.
 #[derive(Debug, Clone, Default)]
 pub struct RemoteCacheContext {
@@ -22,6 +22,7 @@ pub struct RemoteCacheContext {
 }
 
 impl RemoteCache {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             remotes: RwLock::new(Vec::new()),
@@ -33,7 +34,7 @@ impl RemoteCache {
 
     /// Clear ALL cache data (remotes, configs, mounts, serves).
     /// Called when switching backends to ensure no stale data remains.
-    /// Profiles are preserved via get_context/set_context, which snapshots the vecs.
+    /// Profiles are preserved via `get_context/set_context`, which snapshots the vecs.
     pub async fn clear_all(&self) {
         self.remotes.write().await.clear();
         *self.configs.write().await = json!({});
@@ -144,32 +145,26 @@ impl RemoteCache {
     // =========================================================================
 
     pub async fn refresh_remote_list(&self, app: AppHandle) -> Result<(), String> {
-        match get_remotes(app).await {
-            Ok(remote_list) => {
-                *self.remotes.write().await = remote_list;
-                Ok(())
-            }
-            Err(_) => {
-                error!("Failed to fetch remotes");
-                Err(crate::localized_error!(
-                    "backendErrors.cache.fetchRemotesFailed"
-                ))
-            }
+        if let Ok(remote_list) = get_remotes(app).await {
+            *self.remotes.write().await = remote_list;
+            Ok(())
+        } else {
+            error!("Failed to fetch remotes");
+            Err(crate::localized_error!(
+                "backendErrors.cache.fetchRemotesFailed"
+            ))
         }
     }
 
     pub async fn refresh_remote_configs(&self, app: AppHandle) -> Result<(), String> {
-        match get_all_remote_configs(app).await {
-            Ok(remote_list) => {
-                *self.configs.write().await = remote_list;
-                Ok(())
-            }
-            Err(_) => {
-                error!("Failed to fetch remotes config");
-                Err(crate::localized_error!(
-                    "backendErrors.cache.fetchConfigFailed"
-                ))
-            }
+        if let Ok(remote_list) = get_all_remote_configs(app).await {
+            *self.configs.write().await = remote_list;
+            Ok(())
+        } else {
+            error!("Failed to fetch remotes config");
+            Err(crate::localized_error!(
+                "backendErrors.cache.fetchConfigFailed"
+            ))
         }
     }
 
@@ -240,7 +235,7 @@ impl RemoteCache {
     // =========================================================================
 
     /// Write a profile directly onto the matching mount cache entry.
-    /// Must be called AFTER force_check_mounted_remotes so the entry exists.
+    /// Must be called AFTER `force_check_mounted_remotes` so the entry exists.
     pub async fn store_mount_profile(&self, mount_point: &str, profile: Option<String>) {
         let mut mounts = self.mounted.write().await;
         if let Some(m) = mounts.iter_mut().find(|m| m.mount_point == mount_point) {
@@ -250,7 +245,7 @@ impl RemoteCache {
     }
 
     /// Write a profile directly onto the matching serve cache entry.
-    /// Must be called AFTER force_check_serves so the entry exists.
+    /// Must be called AFTER `force_check_serves` so the entry exists.
     pub async fn store_serve_profile(&self, serve_id: &str, profile: Option<String>) {
         let mut serves = self.serves.write().await;
         if let Some(s) = serves.iter_mut().find(|s| s.id == serve_id) {

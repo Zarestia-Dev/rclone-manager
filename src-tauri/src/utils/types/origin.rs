@@ -31,11 +31,13 @@ impl std::fmt::Display for Origin {
 impl Origin {
     /// `true` when the user was actively looking at a surface when they
     /// initiated the operation.
+    #[must_use]
     pub fn is_user_facing(&self) -> bool {
         matches!(self, Origin::Dashboard | Origin::FileManager)
     }
 
     /// Return a stable tag suitable for storage/IPC matching.
+    #[must_use]
     pub fn as_str(&self) -> &str {
         match self {
             Origin::Dashboard => "dashboard",

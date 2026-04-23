@@ -430,7 +430,7 @@ impl BackendInfo {
         }
     }
 
-    /// Merge runtime info (version, os, status, runtime_config_path) into BackendInfo
+    /// Merge runtime info (version, os, status, `runtime_config_path`) into `BackendInfo`
     pub fn with_runtime_info(
         mut self,
         version: Option<String>,

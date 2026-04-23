@@ -1,6 +1,7 @@
-import { Injectable, OnDestroy } from '@angular/core';
+import { inject, Injectable, OnDestroy } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
 import { RCLONE_ENGINE_READY } from '@app/types';
+import { ApiClientService } from './api-client.service';
 
 export interface SseEvent {
   event: string;
@@ -15,6 +16,7 @@ export interface SseEvent {
   providedIn: 'root',
 })
 export class SseClientService implements OnDestroy {
+  private readonly apiClient = inject(ApiClientService);
   private eventSource: EventSource | null = null;
   private eventSubject = new Subject<SseEvent>();
   private reconnectAttempts = 0;
@@ -30,24 +32,9 @@ export class SseClientService implements OnDestroy {
       return;
     }
 
-    // If no URL provided, determine dynamically based on current page
+    // If no URL provided, determine dynamically from ApiClientService
     if (!url) {
-      const protocol = window.location.protocol; // http: or https:
-      const host = window.location.hostname; // localhost, 127.0.0.1, or actual hostname
-      const port = window.location.port; // 8080, 3000, etc.
-
-      // In development mode (Angular dev server on port 1420), use the API server on port 8080
-      const devApiPort = (window as Window & { RCLONE_MANAGER_API_PORT?: string })
-        .RCLONE_MANAGER_API_PORT;
-      let portSuffix: string;
-      if (port === '1420' || devApiPort) {
-        const apiPort = devApiPort || '8080';
-        portSuffix = `:${apiPort}`;
-        console.debug('🔧 Development mode - SSE connecting to API server on port', apiPort);
-      } else {
-        portSuffix = port ? `:${port}` : ''; // Only add port if it's not default
-      }
-      url = `${protocol}//${host}${portSuffix}/api/events`;
+      url = `${this.apiClient.getApiBaseUrl()}/events`;
     }
 
     this.createEventSource(url);

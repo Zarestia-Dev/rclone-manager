@@ -30,7 +30,7 @@ pub fn trigger_post_start_setup(app: AppHandle) {
                 refresh_caches_and_tray(&app).await;
             }
             Err(e) => {
-                error!("Failed to load settings to apply after engine start: {}", e);
+                error!("Failed to load settings to apply after engine start: {e}");
             }
         }
     });
@@ -57,7 +57,7 @@ async fn refresh_caches_and_tray(app: &AppHandle) {
     // Refresh active backend caches
     let backend_manager = app.state::<BackendManager>();
     match backend_manager.remote_cache.refresh_all(app.clone()).await {
-        Ok(_) => debug!("Refreshed backend caches"),
+        Ok(()) => debug!("Refreshed backend caches"),
         Err(e) => error!("Failed to refresh backend caches: {e}"),
     }
 

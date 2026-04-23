@@ -1,4 +1,4 @@
-//! CLI Arguments for RClone Manager
+//! CLI Arguments for `RClone` Manager
 //!
 //! This module contains the command-line argument definitions for
 //! both Desktop and Headless (web-server) builds.
@@ -6,7 +6,7 @@
 use clap::{Args, Parser};
 use std::path::PathBuf;
 
-/// RClone Manager CLI Arguments
+/// `RClone` Manager CLI Arguments
 #[derive(Parser, Debug, Clone)]
 #[command(name = "rclone-manager")]
 #[cfg_attr(feature = "web-server", command(about = "RClone Manager - Headless Web UI for Rclone", long_about = None))]

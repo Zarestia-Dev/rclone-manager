@@ -104,14 +104,11 @@ pub fn read_rclone_binary(app: &AppHandle) -> PathBuf {
         return configured;
     }
 
-    match which::which("rclone") {
-        Ok(p) => {
-            info!("Using system rclone at {}", p.display());
-            p
-        }
-        Err(_) => {
-            error!("rclone binary not found in PATH or at configured location");
-            PathBuf::from("rclone")
-        }
+    if let Ok(p) = which::which("rclone") {
+        info!("Using system rclone at {}", p.display());
+        p
+    } else {
+        error!("rclone binary not found in PATH or at configured location");
+        PathBuf::from("rclone")
     }
 }

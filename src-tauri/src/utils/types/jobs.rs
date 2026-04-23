@@ -51,6 +51,7 @@ impl fmt::Display for JobType {
 }
 
 impl JobType {
+    #[must_use]
     pub fn is_meta(&self) -> bool {
         matches!(
             self,
@@ -99,6 +100,7 @@ pub struct JobInfo {
 }
 
 impl JobInfo {
+    #[must_use]
     pub fn is_meta(&self) -> bool {
         self.job_type.is_meta()
     }

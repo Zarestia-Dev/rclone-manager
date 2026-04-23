@@ -60,23 +60,17 @@ async fn handle_start_job_profile(
         "move" => TransferType::Move,
         "bisync" => TransferType::Bisync,
         _ => {
-            error!("🚨 Unknown operation type: {}", op_type);
+            error!("🚨 Unknown operation type: {op_type}");
             return;
         }
     };
 
     match start_profile_batch(app.clone(), vec![params], transfer_type).await {
         Ok(_) => {
-            info!(
-                "✅ Started {} for {} profile '{}'",
-                op_name, remote_name, profile_name
-            );
+            info!("✅ Started {op_name} for {remote_name} profile '{profile_name}'");
         }
         Err(e) => {
-            error!(
-                "🚨 Failed to start {} for {} profile '{}': {}",
-                op_name, remote_name, profile_name, e
-            );
+            error!("🚨 Failed to start {op_name} for {remote_name} profile '{profile_name}': {e}");
         }
     }
 }
@@ -95,11 +89,11 @@ pub fn handle_mount_profile(app: AppHandle, remote_name: &str, profile_name: &st
         };
 
         match mount_remote_profile(app_clone.clone(), params).await {
-            Ok(_) => {
-                info!("✅ Mounted {} profile '{}'", remote, profile);
+            Ok(()) => {
+                info!("✅ Mounted {remote} profile '{profile}'");
             }
             Err(e) => {
-                error!("🚨 Failed to mount {} profile '{}': {}", remote, profile, e);
+                error!("🚨 Failed to mount {remote} profile '{profile}': {e}");
             }
         }
     });
@@ -130,12 +124,12 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
             .to_string();
 
         if mount_point.is_empty() {
-            error!("❌ Mount point not found for profile '{}'", profile);
+            error!("❌ Mount point not found for profile '{profile}'");
             notify(
                 &app_clone,
                 NotificationEvent::MountFailed {
                     mount_point: mount_point.clone(),
-                    error: format!("profile not found: {}", profile),
+                    error: format!("profile not found: {profile}"),
                 },
             );
             return;
@@ -143,13 +137,10 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
 
         match unmount_remote(app_clone.clone(), mount_point.clone(), remote.clone()).await {
             Ok(_) => {
-                info!("🛑 Unmounted {} profile '{}'", remote, profile);
+                info!("🛑 Unmounted {remote} profile '{profile}'");
             }
             Err(e) => {
-                error!(
-                    "🚨 Failed to unmount {} profile '{}': {}",
-                    remote, profile, e
-                );
+                error!("🚨 Failed to unmount {remote} profile '{profile}': {e}");
             }
         }
     });
@@ -199,7 +190,7 @@ async fn handle_stop_job_profile(
             && j.status == JobStatus::Running
     }) {
         match stop_job(app.clone(), job.jobid, remote_name.clone()).await {
-            Ok(_) => {
+            Ok(()) => {
                 info!(
                     "🛑 Stopped {} job {} for {} profile '{}'",
                     job_type, job.jobid, remote_name, profile_name
@@ -210,10 +201,7 @@ async fn handle_stop_job_profile(
             }
         }
     } else {
-        error!(
-            "🚨 No active {} job found for {} profile '{}'",
-            job_type, remote_name, profile_name
-        );
+        error!("🚨 No active {job_type} job found for {remote_name} profile '{profile_name}'");
         notify(
             &app,
             NotificationEvent::JobFailed {
@@ -284,10 +272,7 @@ pub fn handle_serve_profile(app: AppHandle, remote_name: &str, profile_name: &st
                 );
             }
             Err(e) => {
-                error!(
-                    "🚨 Failed to start serve for {} profile '{}': {}",
-                    remote, profile, e
-                );
+                error!("🚨 Failed to start serve for {remote} profile '{profile}': {e}");
             }
         }
     });
@@ -307,8 +292,10 @@ pub fn handle_stop_serve_profile(app: AppHandle, _remote_name: &str, serve_id: &
             .iter()
             .find(|s| s.id == serve_id_clone)
             .and_then(|s| s.params["fs"].as_str())
-            .map(|fs| fs.split(':').next().unwrap_or("").to_string())
-            .unwrap_or_else(|| "unknown_remote".to_string());
+            .map_or_else(
+                || "unknown_remote".to_string(),
+                |fs| fs.split(':').next().unwrap_or("").to_string(),
+            );
 
         match stop_serve(
             app_clone.clone(),
@@ -349,7 +336,7 @@ pub fn handle_stop_all_jobs(app: AppHandle) {
         let mut stopped_count = 0usize;
         for job in active_jobs {
             match stop_job(app.clone(), job.jobid, job.remote_name.clone()).await {
-                Ok(_) => {
+                Ok(()) => {
                     stopped_count += 1;
                     info!("🛑 Stopped job {}", job.jobid);
                 }

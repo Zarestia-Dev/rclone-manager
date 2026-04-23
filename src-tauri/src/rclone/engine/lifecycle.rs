@@ -94,7 +94,7 @@ impl RcApiEngine {
 /// Start the Rclone engine.
 pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
     if let Some(reason) = engine.start_blocked_reason() {
-        debug!("Engine cannot start: {}", reason);
+        debug!("Engine cannot start: {reason}");
         match reason {
             super::core::PauseReason::Password => {
                 app.emit(RCLONE_ENGINE_PASSWORD_ERROR, ()).ok();
@@ -121,7 +121,7 @@ pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
         }
     }
 
-    if let Err(e) = engine.kill_port_processes().await {
+    if let Err(e) = engine.kill_port_processes() {
         error!("Failed to clean up port processes: {e}");
     }
 
@@ -191,7 +191,7 @@ pub fn restart_for_config_change(
 
     tauri::async_runtime::spawn(async move {
         match restart_engine(&app, &change_type).await {
-            Ok(_) => {
+            Ok(()) => {
                 info!("Engine restarted for {change_type} change");
                 app.emit(
                     ENGINE_RESTARTED,

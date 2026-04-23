@@ -32,12 +32,11 @@ pub async fn handle_startup(app: AppHandle) {
     );
 
     // settings_val is a serde_json::Value containing remote->settings mapping
-    let settings_map = match settings_val.as_object() {
-        Some(map) => map,
-        None => {
-            warn!("⚠️ Settings is not an object, skipping auto-start");
-            return;
-        }
+    let settings_map = if let Some(map) = settings_val.as_object() {
+        map
+    } else {
+        warn!("⚠️ Settings is not an object, skipping auto-start");
+        return;
     };
 
     // Profile type definitions: (config_key, op_type)
@@ -51,7 +50,7 @@ pub async fn handle_startup(app: AppHandle) {
     // Collect all auto-start tasks to run in parallel
     let mut tasks: Vec<tokio::task::JoinHandle<()>> = Vec::new();
 
-    for (remote_name, settings) in settings_map.iter() {
+    for (remote_name, settings) in settings_map {
         // Collect mount profiles
         collect_auto_start_tasks(
             &mut tasks,
@@ -95,10 +94,7 @@ pub async fn handle_startup(app: AppHandle) {
 
     let task_count = tasks.len();
     if task_count > 0 {
-        info!(
-            "⚡ Starting {} auto-start profile(s) in parallel...",
-            task_count
-        );
+        info!("⚡ Starting {task_count} auto-start profile(s) in parallel...");
 
         // Run all tasks in parallel and wait for completion
         let _ = futures::future::join_all(tasks).await;
@@ -129,7 +125,7 @@ fn collect_auto_start_tasks<F>(
         for (profile_name, config) in configs {
             if config
                 .get("autoStart")
-                .and_then(|v| v.as_bool())
+                .and_then(serde_json::Value::as_bool)
                 .unwrap_or(false)
             {
                 let app = app.clone();
@@ -154,17 +150,11 @@ async fn auto_start_mount(app: &AppHandle, remote_name: &str, profile_name: &str
     };
 
     match mount_remote_profile(app.clone(), params).await {
-        Ok(_) => {
-            info!(
-                "✅ Auto-started mount: {} profile '{}'",
-                remote_name, profile_name
-            );
+        Ok(()) => {
+            info!("✅ Auto-started mount: {remote_name} profile '{profile_name}'");
         }
         Err(e) => {
-            warn!(
-                "⚠️ Failed to auto-start mount {} profile '{}': {}",
-                remote_name, profile_name, e
-            );
+            warn!("⚠️ Failed to auto-start mount {remote_name} profile '{profile_name}': {e}");
         }
     }
 }
@@ -185,10 +175,7 @@ async fn auto_start_serve(app: &AppHandle, remote_name: &str, profile_name: &str
             );
         }
         Err(e) => {
-            warn!(
-                "⚠️ Failed to auto-start serve {} profile '{}': {}",
-                remote_name, profile_name, e
-            );
+            warn!("⚠️ Failed to auto-start serve {remote_name} profile '{profile_name}': {e}");
         }
     }
 }
@@ -207,7 +194,7 @@ async fn auto_start_sync(app: &AppHandle, remote_name: &str, profile_name: &str,
         "move" => TransferType::Move,
         "bisync" => TransferType::Bisync,
         _ => {
-            error!("Unknown sync type: {}", op_type);
+            error!("Unknown sync type: {op_type}");
             return;
         }
     };
@@ -216,16 +203,10 @@ async fn auto_start_sync(app: &AppHandle, remote_name: &str, profile_name: &str,
 
     match result {
         Ok(_) => {
-            info!(
-                "✅ Auto-started {}: {} profile '{}'",
-                op_type, remote_name, profile_name
-            );
+            info!("✅ Auto-started {op_type}: {remote_name} profile '{profile_name}'");
         }
         Err(e) => {
-            warn!(
-                "⚠️ Failed to auto-start {} {} profile '{}': {}",
-                op_type, remote_name, profile_name, e
-            );
+            warn!("⚠️ Failed to auto-start {op_type} {remote_name} profile '{profile_name}': {e}");
         }
     }
 }

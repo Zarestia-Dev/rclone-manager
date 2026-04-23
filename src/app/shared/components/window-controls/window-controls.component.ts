@@ -2,7 +2,7 @@ import { Component, ChangeDetectionStrategy, computed, inject } from '@angular/c
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslateModule } from '@ngx-translate/core';
-import { UiStateService, WindowService } from '@app/services';
+import { UiStateService, WindowService, isHeadlessMode } from '@app/services';
 
 @Component({
   selector: 'app-window-controls',
@@ -19,7 +19,7 @@ export class WindowControlsComponent {
   private readonly isMaximized = this.windowService.isMaximized;
 
   readonly windowButtons = computed(() => {
-    return this.uiStateService.platform !== 'macos' && this.uiStateService.platform !== 'web';
+    return this.uiStateService.platform !== 'macos' && !isHeadlessMode();
   });
 
   readonly controls = computed(() => [

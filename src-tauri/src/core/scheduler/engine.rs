@@ -119,7 +119,7 @@ impl CronScheduler {
         let task_name = task.name.clone();
         let task_type = task.task_type.clone();
         let cron_expr_5_field = task.cron_expression.clone();
-        let cron_expr_6_field = format!("0 {}", cron_expr_5_field);
+        let cron_expr_6_field = format!("0 {cron_expr_5_field}");
 
         let app_handle_for_job = app_handle.clone();
         let job = JobBuilder::new()
@@ -137,15 +137,14 @@ impl CronScheduler {
 
                 Box::pin(async move {
                     info!(
-                        "⏰ Executing scheduled task: {} ({}) — {:?}",
-                        task_name, task_id, task_type
+                        "⏰ Executing scheduled task: {task_name} ({task_id}) — {task_type:?}"
                     );
 
                     let cache = app_handle.state::<ScheduledTasksCache>();
                     if let Err(e) = execute_scheduled_task(&task_id, &app_handle, cache).await {
-                        error!("❌ Task execution failed {}: {}", task_id, e);
+                        error!("❌ Task execution failed {task_id}: {e}");
                     } else {
-                        info!("✅ Task execution completed: {}", task_id);
+                        info!("✅ Task execution completed: {task_id}");
                     }
                 })
             }))
@@ -186,7 +185,7 @@ impl CronScheduler {
             |e| crate::localized_error!("backendErrors.scheduler.executionFailed", "error" => e),
         )?;
 
-        debug!("🗑️  Unscheduled job: {}", job_id);
+        debug!("🗑️  Unscheduled job: {job_id}");
         Ok(())
     }
 
@@ -200,8 +199,8 @@ impl CronScheduler {
             && let Ok(job_id) = Uuid::parse_str(job_id_str)
         {
             match self.unschedule_task(job_id).await {
-                Ok(_) => info!("Removed old job {} for '{}'", job_id, task.name),
-                Err(e) => warn!("Failed to remove old job {}: {}", job_id, e),
+                Ok(()) => info!("Removed old job {} for '{}'", job_id, task.name),
+                Err(e) => warn!("Failed to remove old job {job_id}: {e}"),
             }
         }
 
@@ -209,7 +208,7 @@ impl CronScheduler {
             info!("Scheduling enabled task '{}'…", task.name);
             match self.schedule_task(task, cache.clone()).await {
                 Ok(new_job_id) => {
-                    info!("Rescheduled '{}' → job {}", task.name, new_job_id)
+                    info!("Rescheduled '{}' → job {}", task.name, new_job_id);
                 }
                 Err(e) => {
                     error!("Failed to reschedule '{}': {}", task.name, e);
@@ -315,7 +314,7 @@ pub fn validate_cron_expression(cron_expr: &str) -> Result<(), String> {
         |e| crate::localized_error!("backendErrors.scheduler.invalidCron", "error" => e),
     )?;
 
-    let cron_6_field = format!("0 {}", cron_expr);
+    let cron_6_field = format!("0 {cron_expr}");
     JobBuilder::new()
         .with_cron_job_type()
         .with_schedule(&cron_6_field)
@@ -330,7 +329,7 @@ pub fn validate_cron_expression(cron_expr: &str) -> Result<(), String> {
 pub fn get_next_run(cron_expr: &str) -> Result<chrono::DateTime<Utc>, String> {
     let cron = croner::parser::CronParser::new()
         .parse(cron_expr)
-        .map_err(|e| format!("Invalid cron expression: {}", e))?;
+        .map_err(|e| format!("Invalid cron expression: {e}"))?;
 
     let next_local = cron.find_next_occurrence(&Local::now(), false).map_err(
         |e| crate::localized_error!("backendErrors.scheduler.executionFailed", "error" => e),

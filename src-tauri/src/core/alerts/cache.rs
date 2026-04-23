@@ -212,7 +212,7 @@ impl AlertHistoryCache {
         let record = records
             .iter_mut()
             .find(|r| r.id == id)
-            .ok_or_else(|| format!("Alert record '{}' not found", id))?;
+            .ok_or_else(|| format!("Alert record '{id}' not found"))?;
         record.acknowledged = true;
         record.ack_at = Some(chrono::Utc::now());
         Ok(())

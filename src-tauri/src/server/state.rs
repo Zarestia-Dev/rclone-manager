@@ -77,7 +77,7 @@ impl IntoResponse for AppError {
             AppError::BadRequest(e) => (StatusCode::BAD_REQUEST, e.to_string()),
             AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             AppError::InternalServerError(e) => {
-                error!("API Error: {:#}", e);
+                error!("API Error: {e:#}");
                 (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
             }
         };

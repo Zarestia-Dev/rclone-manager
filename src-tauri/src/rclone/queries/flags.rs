@@ -127,7 +127,7 @@ fn group_options(merged_info: &Value) -> Value {
     Value::Object(result)
 }
 
-/// Strip the last dot-segment of a flag's FieldName (mutates in place).
+/// Strip the last dot-segment of a flag's `FieldName` (mutates in place).
 fn simplify_field_names(flags: Vec<Value>) -> Vec<Value> {
     flags
         .into_iter()
@@ -232,10 +232,10 @@ pub async fn get_flags_by_category(
     let merged_json = get_all_options_with_values(app).await?;
     let fg: Option<Vec<&str>> = filter_groups
         .as_ref()
-        .map(|v| v.iter().map(|s| s.as_str()).collect());
+        .map(|v| v.iter().map(std::string::String::as_str).collect());
     let ef: Option<Vec<&str>> = exclude_flags
         .as_ref()
-        .map(|v| v.iter().map(|s| s.as_str()).collect());
+        .map(|v| v.iter().map(std::string::String::as_str).collect());
     Ok(get_flags_by_category_internal(
         &merged_json,
         &category,

@@ -3,6 +3,7 @@ use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
+    rclone::backend::BackendManager,
     rclone::{
         commands::{job::stop_job, mount::unmount_all_remotes, serve::stop_all_serves},
         engine::core::{DEFAULT_API_PORT, DEFAULT_OAUTH_PORT},
@@ -10,7 +11,11 @@ use crate::{
     },
     utils::{
         process::process_manager::kill_all_rclone_processes,
-        types::{core::RcloneState, events::APP_EVENT},
+        types::{
+            core::RcloneState,
+            events::APP_EVENT,
+            updater::{AppUpdaterState, RcloneUpdaterState},
+        },
     },
 };
 
@@ -77,7 +82,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     .await;
 
     match engine_result {
-        Ok(Ok(_)) => info!("Engine shutdown completed."),
+        Ok(Ok(())) => info!("Engine shutdown completed."),
         Ok(Err(e)) => error!("Engine shutdown failed: {e}"),
         Err(_) => {
             error!("Engine shutdown timed out — force-killing rclone processes");
@@ -118,8 +123,6 @@ async fn apply_pending_updates(app_handle: &AppHandle) {
     // App self-update (requires the 'updater' Tauri feature).
     #[cfg(desktop)]
     {
-        use crate::utils::types::updater::AppUpdaterState;
-
         if let Some(state) = app_handle.try_state::<AppUpdaterState>() {
             let pending = state.pending_action.lock().ok().and_then(|mut g| g.take());
             let signature = state.signature.lock().ok().and_then(|mut g| g.take());
@@ -134,7 +137,6 @@ async fn apply_pending_updates(app_handle: &AppHandle) {
     }
 
     // Rclone update (binary swap — always available, not feature-gated).
-    use crate::utils::types::updater::RcloneUpdaterState;
 
     if let Some(state) = app_handle.try_state::<RcloneUpdaterState>() {
         let has_pending = state
@@ -155,8 +157,6 @@ async fn apply_pending_updates(app_handle: &AppHandle) {
 }
 
 async fn stop_all_active_jobs(app: AppHandle) -> Result<(), String> {
-    use crate::rclone::backend::BackendManager;
-
     let active_jobs = app
         .state::<BackendManager>()
         .job_cache
@@ -181,7 +181,7 @@ async fn stop_all_active_jobs(app: AppHandle) -> Result<(), String> {
         .filter_map(|r| match r {
             Ok(Err(e)) => Some(e),
             Err(e) => Some(format!("Task panicked: {e}")),
-            Ok(Ok(_)) => None,
+            Ok(Ok(())) => None,
         })
         .collect();
 

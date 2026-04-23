@@ -15,6 +15,7 @@ pub enum TaskType {
 }
 
 impl TaskType {
+    #[must_use]
     pub fn as_job_type(&self) -> JobType {
         match self {
             TaskType::Copy => JobType::Copy,
@@ -191,6 +192,7 @@ impl ScheduledTask {
     }
 
     /// Check if task can transition to running
+    #[must_use]
     pub fn can_run(&self) -> bool {
         self.status == TaskStatus::Enabled && self.current_job_id.is_none()
     }

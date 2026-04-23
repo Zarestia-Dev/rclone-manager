@@ -15,7 +15,7 @@ use crate::utils::app::notification::NotificationEvent;
 use crate::utils::types::core::RcloneState;
 
 /// Process a `NotificationEvent` through the alert engine.
-pub async fn process(app: &AppHandle, event: &NotificationEvent, title: String, body: String) {
+pub fn process(app: &AppHandle, event: &NotificationEvent, title: String, body: String) {
     let severity = event.alert_severity();
     let kind = event.alert_kind();
     let remote = event.alert_remote();
@@ -54,8 +54,7 @@ pub async fn process(app: &AppHandle, event: &NotificationEvent, title: String, 
         if !rule.remote_filter.is_empty() {
             let matches = remote
                 .as_deref()
-                .map(|r| rule.remote_filter.iter().any(|f| f == r))
-                .unwrap_or(false);
+                .is_some_and(|r| rule.remote_filter.iter().any(|f| f == r));
             if !matches {
                 continue;
             }
@@ -64,8 +63,7 @@ pub async fn process(app: &AppHandle, event: &NotificationEvent, title: String, 
         if !rule.origin_filter.is_empty() {
             let matches = origin
                 .as_ref()
-                .map(|o| rule.origin_filter.contains(o))
-                .unwrap_or(false);
+                .is_some_and(|o| rule.origin_filter.contains(o));
             if !matches {
                 continue;
             }
@@ -141,7 +139,7 @@ pub async fn process(app: &AppHandle, event: &NotificationEvent, title: String, 
                     let duration_ms = start.elapsed().as_millis() as u64;
 
                     let (success, error_msg) = match result {
-                        Ok(_) => (true, None),
+                        Ok(()) => (true, None),
                         Err(e) => {
                             error!("Action '{}' failed: {e}", action.name());
                             (false, Some(e))
@@ -163,7 +161,7 @@ pub async fn process(app: &AppHandle, event: &NotificationEvent, title: String, 
             let action_results: Vec<ActionResult> = join_all(action_futures)
                 .await
                 .into_iter()
-                .filter_map(|res| res.ok())
+                .filter_map(std::result::Result::ok)
                 .collect();
 
             // Record History
@@ -192,7 +190,7 @@ async fn execute_action(
     http_client: &reqwest::Client,
 ) -> Result<(), String> {
     match action {
-        AlertAction::OsToast(a) => dispatch::os_toast::dispatch(app, a, ctx).await,
+        AlertAction::OsToast(a) => dispatch::os_toast::dispatch(app, a, ctx),
         AlertAction::Webhook(a) => dispatch::webhook::dispatch(http_client, a, ctx).await,
         AlertAction::Script(a) => dispatch::script::dispatch(a, ctx).await,
     }

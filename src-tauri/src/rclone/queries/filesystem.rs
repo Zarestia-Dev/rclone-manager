@@ -276,7 +276,7 @@ pub async fn get_disk_usage(
     let fs_path = build_full_path(&remote, path.as_deref().unwrap_or(""));
     debug!("💾 Disk Usage for {fs_path}: total={total} used={used} free={free}");
 
-    Ok(DiskUsage { total, used, free })
+    Ok(DiskUsage { free, used, total })
 }
 
 #[tauri::command]

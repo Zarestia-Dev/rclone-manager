@@ -349,7 +349,7 @@ pub async fn delete_remote(app: tauri::AppHandle, name: String) -> Result<(), St
         .await;
 
     match delete_remote_settings(app.clone(), name.clone()).await {
-        Ok(_) => {
+        Ok(()) => {
             info!("✅ Settings for remote '{name}' deleted successfully");
         }
         Err(e) => {

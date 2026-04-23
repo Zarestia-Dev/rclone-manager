@@ -54,7 +54,7 @@ pub async fn provision_rclone(
     debug!("Rclone zip saved at {}", zip_file_path.display());
 
     match verify_rclone_sha256(&temp_dir, &version, &zip_file_name).await {
-        Ok(_) => info!("SHA256 hash verified"),
+        Ok(()) => info!("SHA256 hash verified"),
         Err(err) => {
             error!("SHA256 verification failed: {err}");
             return Err(err);

@@ -161,9 +161,10 @@ pub async fn build_rclone_process_command(
     let mut args = build_rclone_base_args(&backend.host, port);
 
     if let ProcessKind::Engine = kind {
-        let log_file_path = crate::core::paths::AppPaths::from_app_handle(app)
-            .map(|paths| paths.get_rclone_log_dir().join("main_engine.log"))
-            .unwrap_or_else(|_| PathBuf::from("main_engine.log"));
+        let log_file_path = crate::core::paths::AppPaths::from_app_handle(app).map_or_else(
+            |_| PathBuf::from("main_engine.log"),
+            |paths| paths.get_rclone_log_dir().join("main_engine.log"),
+        );
 
         args.extend([
             "--log-file".to_string(),

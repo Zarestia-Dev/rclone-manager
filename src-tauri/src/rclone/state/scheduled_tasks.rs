@@ -71,10 +71,7 @@ impl ScheduledTasksCache {
         task_type: &TaskType,
         profile_name: &str,
     ) -> String {
-        format!(
-            "{}:{}-{:?}-{}",
-            backend_name, remote_name, task_type, profile_name
-        )
+        format!("{backend_name}:{remote_name}-{task_type:?}-{profile_name}")
     }
 
     /// Load tasks from remote configs, preserving existing task states.
@@ -96,9 +93,7 @@ impl ScheduledTasksCache {
         let mut tasks_to_update = Vec::new();
 
         for (remote_name, remote_settings) in settings_obj {
-            let tasks = self
-                .collect_tasks_from_remote(backend_name, remote_name, remote_settings)
-                .await;
+            let tasks = self.collect_tasks_from_remote(backend_name, remote_name, remote_settings);
             for task in tasks {
                 new_task_ids.insert(task.id.clone());
                 tasks_to_update.push(task);
@@ -150,7 +145,7 @@ impl ScheduledTasksCache {
         Ok(result)
     }
 
-    async fn collect_tasks_from_remote(
+    fn collect_tasks_from_remote(
         &self,
         backend_name: &str,
         remote_name: &str,
@@ -239,7 +234,7 @@ impl ScheduledTasksCache {
 
         let mut removed = Vec::with_capacity(stale.len());
         for id in &stale {
-            info!("🗑️ Removing obsolete task: {}", id);
+            info!("🗑️ Removing obsolete task: {id}");
             removed.push(self.remove_task(id, app).await?);
         }
         Ok(removed)
@@ -278,10 +273,7 @@ impl ScheduledTasksCache {
 
         Some(ScheduledTask {
             id: task_id,
-            name: format!(
-                "{} - {} - {:?} ({})",
-                backend_name, remote_name, task_type, profile_name
-            ),
+            name: format!("{backend_name} - {remote_name} - {task_type:?} ({profile_name})"),
             task_type: task_type.clone(),
             cron_expression: cron.clone(),
             status: TaskStatus::Enabled,
@@ -312,7 +304,7 @@ impl ScheduledTasksCache {
         let mut tasks = self.tasks.write().await;
 
         if tasks.contains_key(&task_id) {
-            return Err(format!("Task with ID {} already exists", task_id));
+            return Err(format!("Task with ID {task_id} already exists"));
         }
 
         tasks.insert(task_id.clone(), task.clone());
@@ -349,7 +341,7 @@ impl ScheduledTasksCache {
         let mut tasks = self.tasks.write().await;
         let task = tasks
             .get_mut(task_id)
-            .ok_or_else(|| format!("Task {} not found", task_id))?;
+            .ok_or_else(|| format!("Task {task_id} not found"))?;
 
         update_fn(task);
         let updated_task = task.clone();
@@ -371,7 +363,7 @@ impl ScheduledTasksCache {
         let mut tasks = self.tasks.write().await;
         let task = tasks
             .remove(task_id)
-            .ok_or_else(|| format!("Task {} not found", task_id))?;
+            .ok_or_else(|| format!("Task {task_id} not found"))?;
         drop(tasks);
         if let Some(app) = app {
             let _ = app.emit(SCHEDULED_TASKS_CACHE_CHANGED, "task_removed");
@@ -398,9 +390,7 @@ impl ScheduledTasksCache {
         remote_name: &str,
         remote_settings: &Value,
     ) -> Result<CacheUpdateResult, String> {
-        let tasks = self
-            .collect_tasks_from_remote(backend_name, remote_name, remote_settings)
-            .await;
+        let tasks = self.collect_tasks_from_remote(backend_name, remote_name, remote_settings);
 
         let active_ids: HashSet<String> = tasks.iter().map(|t| t.id.clone()).collect();
 
@@ -423,7 +413,7 @@ impl ScheduledTasksCache {
             }
         }
 
-        let prefix = format!("{}:{}-", backend_name, remote_name);
+        let prefix = format!("{backend_name}:{remote_name}-");
         let to_remove: Vec<String> = self
             .get_all_tasks()
             .await
@@ -434,7 +424,7 @@ impl ScheduledTasksCache {
 
         let mut removed = Vec::with_capacity(to_remove.len());
         for id in &to_remove {
-            info!("🗑️ Removing task no longer in config: {}", id);
+            info!("🗑️ Removing task no longer in config: {id}");
             removed.push(self.remove_task(id, None).await?);
         }
 
@@ -453,7 +443,7 @@ impl ScheduledTasksCache {
         remote_name: &str,
         app: Option<&AppHandle>,
     ) -> Result<Vec<ScheduledTask>, String> {
-        let prefix = format!("{}:{}-", backend_name, remote_name);
+        let prefix = format!("{backend_name}:{remote_name}-");
         let to_remove: Vec<String> = self
             .get_all_tasks()
             .await

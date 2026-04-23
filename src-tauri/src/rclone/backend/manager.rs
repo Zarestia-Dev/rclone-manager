@@ -55,7 +55,7 @@ pub struct BackendManager {
     state: RwLock<BackendsState>,
     /// Runtime connectivity info (version, os, status) - not persisted
     runtime_info: RwLock<HashMap<String, RuntimeInfo>>,
-    /// Per-backend state storage (backend_name → cached state)
+    /// Per-backend state storage (`backend_name` → cached state)
     per_backend_state: RwLock<HashMap<String, BackendState>>,
     /// Shared remote cache (for active backend)
     pub remote_cache: Arc<RemoteCache>,
@@ -172,14 +172,14 @@ impl BackendManager {
                     Some(src) => {
                         let src_profile = if src == "Local" { "default" } else { src };
                         pm.duplicate(src_profile, &backend.name)
-                            .map(|_| {
+                            .map(|()| {
                                 info!(
                                     "📋 Copied {} from '{}' to '{}'",
                                     sub_name, src, backend.name
-                                )
+                                );
                             })
                             .or_else(|e| {
-                                log::warn!("Failed to duplicate {} profile: {}", sub_name, e);
+                                log::warn!("Failed to duplicate {sub_name} profile: {e}");
                                 pm.create(&backend.name)
                             })
                     }
@@ -213,7 +213,7 @@ impl BackendManager {
                 || crate::localized_error!("backendErrors.backend.notFound", "name" => name),
             )?;
 
-        info!("🔄 Updating backend: {}", name);
+        info!("🔄 Updating backend: {name}");
         state.backends[index] = backend;
         Ok(())
     }
@@ -242,7 +242,7 @@ impl BackendManager {
             ));
         }
 
-        info!("➖ Removing backend: {}", name);
+        info!("➖ Removing backend: {name}");
         state.backends.remove(index);
 
         // Keep active_index consistent after removal
@@ -260,13 +260,13 @@ impl BackendManager {
             && let Ok(pm) = remotes_sub.profiles()
             && let Err(e) = pm.delete(name)
         {
-            log::warn!("Failed to delete 'remotes' profile for {}: {}", name, e);
+            log::warn!("Failed to delete 'remotes' profile for {name}: {e}");
         }
         if let Ok(backend_sub) = manager.sub_settings("backend")
             && let Ok(pm) = backend_sub.profiles()
             && let Err(e) = pm.delete(name)
         {
-            log::warn!("Failed to delete 'backend' profile for {}: {}", name, e);
+            log::warn!("Failed to delete 'backend' profile for {name}: {e}");
         }
 
         Ok(())
@@ -299,22 +299,20 @@ impl BackendManager {
         }
 
         let profile_name = if name == "Local" { "default" } else { name };
-        info!("👤 Switching profiles to: {}", profile_name);
+        info!("👤 Switching profiles to: {profile_name}");
 
-        self.switch_sub_settings_profile(manager, "remotes", profile_name)
-            .await?;
-        self.switch_sub_settings_profile(manager, "backend", profile_name)
-            .await?;
+        self.switch_sub_settings_profile(manager, "remotes", profile_name)?;
+        self.switch_sub_settings_profile(manager, "backend", profile_name)?;
 
         // Brief write: only flip the index, all heavy work is already done
         self.state.write().await.active_index = new_index;
 
-        info!("🔄 Switched to backend: {} (is_local: {})", name, is_local);
+        info!("🔄 Switched to backend: {name} (is_local: {is_local})");
         Ok(())
     }
 
     /// Generic helper to switch profiles for a sub-setting
-    async fn switch_sub_settings_profile(
+    fn switch_sub_settings_profile(
         &self,
         manager: &AppSettingsManager,
         sub_name: &str,
@@ -325,28 +323,18 @@ impl BackendManager {
                 && let Ok(pm) = sub.profiles()
                 && let Err(e) = pm.create(profile_name)
             {
-                log::warn!(
-                    "Failed to ensure profile '{}' for {}: {}",
-                    profile_name,
-                    sub_name,
-                    e
-                );
+                log::warn!("Failed to ensure profile '{profile_name}' for {sub_name}: {e}");
             }
 
             if let Err(e) = sub.switch_profile(profile_name) {
-                log::error!(
-                    "Failed to switch {} to profile '{}': {}",
-                    sub_name,
-                    profile_name,
-                    e
-                );
-                return Err(format!("Failed to switch {} profile: {}", sub_name, e));
+                log::error!("Failed to switch {sub_name} to profile '{profile_name}': {e}");
+                return Err(format!("Failed to switch {sub_name} profile: {e}"));
             }
-            log::info!("👤 Switched '{}' to profile: {}", sub_name, profile_name);
+            log::info!("👤 Switched '{sub_name}' to profile: {profile_name}");
             Ok(())
         } else {
-            log::error!("Failed to access '{}' sub-settings", sub_name);
-            Err(format!("Failed to access '{}' sub-settings", sub_name))
+            log::error!("Failed to access '{sub_name}' sub-settings");
+            Err(format!("Failed to access '{sub_name}' sub-settings"))
         }
     }
 
@@ -441,17 +429,15 @@ impl BackendManager {
 
         if let Err(e) = self.switch_to(manager, &target_backend).await {
             log::warn!(
-                "Failed to restore active backend '{}': {}. Reverting to Local.",
-                target_backend,
-                e
+                "Failed to restore active backend '{target_backend}': {e}. Reverting to Local."
             );
             if target_backend != "Local"
                 && let Err(revert_e) = self.switch_to(manager, "Local").await
             {
-                log::error!("Critical: Failed to revert to Local backend: {}", revert_e);
+                log::error!("Critical: Failed to revert to Local backend: {revert_e}");
             }
         } else {
-            log::info!("✅ Restored active backend: {}", target_backend);
+            log::info!("✅ Restored active backend: {target_backend}");
         }
 
         Ok(())
@@ -467,12 +453,12 @@ impl BackendManager {
                 .map_err(|e| e.to_string())?;
             connections
                 .set("_active", &name)
-                .map_err(|e| format!("Failed to save active backend: {}", e))
+                .map_err(|e| format!("Failed to save active backend: {e}"))
         })();
 
         match result {
-            Ok(_) => log::debug!("💾 Saved active backend: {}", name),
-            Err(e) => log::warn!("Failed to persist active backend '{}': {}", name, e),
+            Ok(()) => log::debug!("💾 Saved active backend: {name}"),
+            Err(e) => log::warn!("Failed to persist active backend '{name}': {e}"),
         }
     }
 }

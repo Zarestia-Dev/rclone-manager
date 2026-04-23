@@ -2,7 +2,7 @@
 //!
 //! This module provides extensible runtime information detection by fetching
 //! ALL available properties from rclone's API endpoints and storing them in a
-//! flexible HashMap structure. This means adding new runtime properties doesn't
+//! flexible `HashMap` structure. This means adding new runtime properties doesn't
 //! require code changes - they're automatically available.
 
 use std::path::PathBuf;
@@ -30,12 +30,12 @@ pub struct RuntimeInfo {
 }
 
 impl RuntimeInfo {
-    /// Create a new empty RuntimeInfo
+    /// Create a new empty `RuntimeInfo`
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Create a RuntimeInfo with error status
+    /// Create a `RuntimeInfo` with error status
     pub fn with_error(error: impl Into<String>) -> Self {
         Self {
             status: format!("error:{}", error.into()),

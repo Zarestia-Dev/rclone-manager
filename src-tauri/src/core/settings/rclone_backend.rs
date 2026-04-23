@@ -1,4 +1,4 @@
-//! RClone Backend Settings Manager (using rcman sub-settings single-file mode)
+//! `RClone` Backend Settings Manager (using rcman sub-settings single-file mode)
 
 use crate::core::settings::AppSettingsManager;
 use log::{debug, info};
@@ -9,7 +9,7 @@ use tauri::{AppHandle, Manager};
 // LOAD BACKEND OPTIONS
 // -----------------------------------------------------------------------------
 
-/// Load all RClone backend options from rcman sub-settings (single file)
+/// Load all `RClone` backend options from rcman sub-settings (single file)
 #[tauri::command]
 pub async fn load_rclone_backend_options(app: AppHandle) -> Result<serde_json::Value, String> {
     debug!("Loading RClone backend options via rcman sub-settings");
@@ -35,7 +35,7 @@ pub fn load_backend_options_sync(manager: &AppSettingsManager) -> serde_json::Va
 // SAVE BACKEND OPTIONS
 // -----------------------------------------------------------------------------
 
-/// Save all RClone backend options
+/// Save all `RClone` backend options
 #[tauri::command]
 pub async fn save_rclone_backend_options(
     app: AppHandle,
@@ -46,13 +46,13 @@ pub async fn save_rclone_backend_options(
 
     let sub = manager
         .sub_settings("backend")
-        .map_err(|e| format!("Failed to get backend sub-settings: {}", e))?;
+        .map_err(|e| format!("Failed to get backend sub-settings: {e}"))?;
 
     // Save each top-level block
     if let Some(obj) = options.as_object() {
         for (block_name, block_value) in obj {
             sub.set(block_name, block_value)
-                .map_err(|e| format!("Failed to save block '{}': {}", block_name, e))?;
+                .map_err(|e| format!("Failed to save block '{block_name}': {e}"))?;
         }
     }
 
@@ -64,7 +64,7 @@ pub async fn save_rclone_backend_options(
 // SAVE SINGLE OPTION
 // -----------------------------------------------------------------------------
 
-/// Save a single RClone backend option (block.option format)
+/// Save a single `RClone` backend option (block.option format)
 #[tauri::command]
 pub async fn save_rclone_backend_option(
     app: AppHandle,
@@ -72,12 +72,12 @@ pub async fn save_rclone_backend_option(
     option: String,
     value: serde_json::Value,
 ) -> Result<(), String> {
-    debug!("Saving RClone option: {}.{}", block, option);
+    debug!("Saving RClone option: {block}.{option}");
     let manager = app.state::<AppSettingsManager>();
 
     let sub = manager
         .sub_settings("backend")
-        .map_err(|e| format!("Failed to get backend sub-settings: {}", e))?;
+        .map_err(|e| format!("Failed to get backend sub-settings: {e}"))?;
 
     let mut block_value = sub.get_value(&block).unwrap_or_else(|_| json!({}));
 
@@ -90,9 +90,9 @@ pub async fn save_rclone_backend_option(
     }
 
     sub.set(&block, &block_value)
-        .map_err(|e| format!("Failed to save block '{}': {}", block, e))?;
+        .map_err(|e| format!("Failed to save block '{block}': {e}"))?;
 
-    info!("✅ RClone option {}.{} saved: {}", block, option, value);
+    info!("✅ RClone option {block}.{option} saved: {value}");
     Ok(())
 }
 
@@ -100,7 +100,7 @@ pub async fn save_rclone_backend_option(
 // RESET BACKEND OPTIONS
 // -----------------------------------------------------------------------------
 
-/// Reset RClone backend options to defaults (delete all) and restart engine
+/// Reset `RClone` backend options to defaults (delete all) and restart engine
 #[tauri::command]
 pub async fn reset_rclone_backend_options(app: AppHandle) -> Result<(), String> {
     debug!("Resetting RClone backend options");
@@ -108,7 +108,7 @@ pub async fn reset_rclone_backend_options(app: AppHandle) -> Result<(), String> 
 
     let sub = manager
         .sub_settings("backend")
-        .map_err(|e| format!("Failed to get backend sub-settings: {}", e))?;
+        .map_err(|e| format!("Failed to get backend sub-settings: {e}"))?;
 
     let blocks = sub.list().unwrap_or_default();
     for block in blocks {
@@ -119,7 +119,7 @@ pub async fn reset_rclone_backend_options(app: AppHandle) -> Result<(), String> 
 
     use crate::rclone::engine::lifecycle::restart_for_config_change;
     restart_for_config_change(&app, "backend_options_reset", "custom", "defaults")
-        .map_err(|e| format!("Failed to restart engine: {}", e))?;
+        .map_err(|e| format!("Failed to restart engine: {e}"))?;
 
     info!("✅ RClone engine restart initiated");
     Ok(())
@@ -129,19 +129,19 @@ pub async fn reset_rclone_backend_options(app: AppHandle) -> Result<(), String> 
 // REMOVE SINGLE OPTION
 // -----------------------------------------------------------------------------
 
-/// Remove a single RClone backend option
+/// Remove a single `RClone` backend option
 #[tauri::command]
 pub async fn remove_rclone_backend_option(
     app: AppHandle,
     block: String,
     option: String,
 ) -> Result<(), String> {
-    debug!("Removing RClone option: {}.{}", block, option);
+    debug!("Removing RClone option: {block}.{option}");
     let manager = app.state::<AppSettingsManager>();
 
     let sub = manager
         .sub_settings("backend")
-        .map_err(|e| format!("Failed to get backend sub-settings: {}", e))?;
+        .map_err(|e| format!("Failed to get backend sub-settings: {e}"))?;
 
     let mut block_value = match sub.get_value(&block) {
         Ok(v) => v,
@@ -159,14 +159,11 @@ pub async fn remove_rclone_backend_option(
             let _ = sub.delete(&block);
         } else {
             sub.set(&block, &block_value)
-                .map_err(|e| format!("Failed to save block '{}': {}", block, e))?;
+                .map_err(|e| format!("Failed to save block '{block}': {e}"))?;
         }
     }
 
-    info!(
-        "✅ RClone option {}.{} removed (reset to default)",
-        block, option
-    );
+    info!("✅ RClone option {block}.{option} removed (reset to default)");
     Ok(())
 }
 
@@ -174,14 +171,14 @@ pub async fn remove_rclone_backend_option(
 // GET BACKEND STORE PATH
 // -----------------------------------------------------------------------------
 
-/// Get RClone backend store path for backup/export
+/// Get `RClone` backend store path for backup/export
 #[tauri::command]
 pub async fn get_rclone_backend_store_path(app: AppHandle) -> Result<String, String> {
     let manager = app.state::<AppSettingsManager>();
     let sub = manager
         .inner()
         .sub_settings("backend")
-        .map_err(|e| format!("Failed to get backend sub-settings: {}", e))?;
+        .map_err(|e| format!("Failed to get backend sub-settings: {e}"))?;
 
     let path = sub
         .file_path()

@@ -66,18 +66,18 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
         .refresh_all(app_handle.clone())
         .await
     {
-        Ok(_) => debug!("Refreshed backend caches"),
+        Ok(()) => debug!("Refreshed backend caches"),
         Err(e) => error!("Failed to refresh backend caches: {e}"),
     }
 
     // Step 3: Initialize and start scheduler with loaded config
     info!("⏰ Initializing cron scheduler...");
     match scheduler::initialize_scheduler(app_handle.clone()).await {
-        Ok(_) => {
+        Ok(()) => {
             info!("✅ Cron scheduler initialized and started successfully");
         }
         Err(e) => {
-            error!("❌ Failed to initialize cron scheduler: {}", e);
+            error!("❌ Failed to initialize cron scheduler: {e}");
         }
     }
 

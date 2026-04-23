@@ -54,7 +54,10 @@ pub async fn get_rclone_pid(app: AppHandle) -> Result<Option<u32>, String> {
         .post_json(&app.state::<RcloneState>().client, core::PID, None)
         .await
     {
-        Ok(json) => Ok(json.get("pid").and_then(|v| v.as_u64()).map(|v| v as u32)),
+        Ok(json) => Ok(json
+            .get("pid")
+            .and_then(serde_json::Value::as_u64)
+            .map(|v| v as u32)),
         Err(e) => {
             debug!("Failed to query /core/pid: {e}");
             Err(format!("Failed to query /core/pid: {e}"))
@@ -62,7 +65,7 @@ pub async fn get_rclone_pid(app: AppHandle) -> Result<Option<u32>, String> {
     }
 }
 
-/// Get RClone memory statistics
+/// Get `RClone` memory statistics
 #[tauri::command]
 pub async fn get_memory_stats(app: AppHandle) -> Result<serde_json::Value, String> {
     let backend_manager = app.state::<BackendManager>();

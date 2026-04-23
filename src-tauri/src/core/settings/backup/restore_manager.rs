@@ -30,7 +30,7 @@ pub enum BackupFormatVersion {
 fn detect_manifest_format(manifest_json: &serde_json::Value) -> BackupFormatVersion {
     if manifest_json
         .get("version")
-        .and_then(|v| v.as_u64())
+        .and_then(serde_json::Value::as_u64)
         .is_some()
     {
         return BackupFormatVersion::Rcman;
@@ -61,7 +61,7 @@ pub async fn restore_settings(
     restore_profile_as: Option<String>,
 ) -> Result<String, String> {
     let manager = app.state::<AppSettingsManager>();
-    info!("Starting restore from: {:?}", backup_path);
+    info!("Starting restore from: {backup_path:?}");
 
     let mut options = rcman::RestoreOptions::from_path(&backup_path)
         .restore_settings(true)
@@ -113,7 +113,7 @@ pub async fn restore_settings(
     )?;
 
     let format = detect_manifest_format(&manifest_json);
-    info!("Detected backup format via fallback: {:?}", format);
+    info!("Detected backup format via fallback: {format:?}");
 
     match format {
         BackupFormatVersion::Rcman => {
@@ -155,10 +155,7 @@ async fn restore_rcman_backup(
     if let Err(e) =
         super::backup_manager::register_rclone_config_provider(app_handle, manager).await
     {
-        warn!(
-            "⚠️ Failed to register rclone.conf provider for restore: {}",
-            e
-        );
+        warn!("⚠️ Failed to register rclone.conf provider for restore: {e}");
     }
 
     let result = manager
@@ -181,15 +178,12 @@ async fn restore_rcman_backup(
     }
 
     let mut remote_restore_count = 0;
-    for item in result.external_pending.iter() {
+    for item in &result.external_pending {
         if item.starts_with("remote:") {
             let remote_name = item.trim_start_matches("remote:");
-            info!(
-                "📥 Attempting to restore external remote config: {}",
-                remote_name
-            );
+            info!("📥 Attempting to restore external remote config: {remote_name}");
 
-            let archive_filename = format!("{}_rclone.json", remote_name);
+            let archive_filename = format!("{remote_name}_rclone.json");
 
             if let Ok(config_data) = manager.backup().get_external_config_from_backup(
                 backup_path,
@@ -204,14 +198,14 @@ async fn restore_rcman_backup(
                 match upsert_remote_from_config(remote_name, parsed, app_handle).await {
                     Ok(()) => {
                         remote_restore_count += 1;
-                        info!("✅ Restored remote: {}", remote_name);
+                        info!("✅ Restored remote: {remote_name}");
                     }
                     Err(e) => {
-                        warn!("⚠️ Failed to restore remote '{}': {}", remote_name, e);
+                        warn!("⚠️ Failed to restore remote '{remote_name}': {e}");
                     }
                 }
             } else {
-                warn!("⚠️ Could not read external config for: {}", item);
+                warn!("⚠️ Could not read external config for: {item}");
             }
         }
     }
@@ -219,14 +213,10 @@ async fn restore_rcman_backup(
     let restored_count = result.restored.len() + remote_restore_count;
     let skipped_count = result.skipped.len();
 
-    info!(
-        "✅ Restore complete: {} restored, {} skipped",
-        restored_count, skipped_count
-    );
+    info!("✅ Restore complete: {restored_count} restored, {skipped_count} skipped");
 
     Ok(format!(
-        "Settings restored successfully ({} items restored, {} skipped)",
-        restored_count, skipped_count
+        "Settings restored successfully ({restored_count} items restored, {skipped_count} skipped)"
     ))
 }
 
@@ -246,7 +236,7 @@ pub(super) async fn upsert_remote_from_config(
     let config_map: HashMap<String, Value> =
         serde_json::from_value(config).map_err(|e| format!("Invalid config map format: {e}"))?;
 
-    info!("🔄 Upserting remote '{}'...", remote_name);
+    info!("🔄 Upserting remote '{remote_name}'...");
 
     if let Err(e) = update_remote(
         app_handle.clone(),
@@ -256,10 +246,7 @@ pub(super) async fn upsert_remote_from_config(
     )
     .await
     {
-        debug!(
-            "Update failed (likely remote doesn't exist), attempting create: {}",
-            e
-        );
+        debug!("Update failed (likely remote doesn't exist), attempting create: {e}");
         create_remote(
             app_handle.clone(),
             remote_name.to_string(),
@@ -267,7 +254,7 @@ pub(super) async fn upsert_remote_from_config(
             None,
         )
         .await
-        .map_err(|e| format!("Failed to create remote '{}': {}", remote_name, e))?;
+        .map_err(|e| format!("Failed to create remote '{remote_name}': {e}"))?;
     }
 
     Ok(())

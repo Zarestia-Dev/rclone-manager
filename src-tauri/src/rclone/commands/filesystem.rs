@@ -39,7 +39,7 @@ pub async fn mkdir(
     group: Option<String>,
 ) -> Result<(), String> {
     let state = app.state::<RcloneState>();
-    debug!("📁 Creating directory: remote={} path={}", remote, path);
+    debug!("📁 Creating directory: remote={remote} path={path}");
 
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
@@ -84,10 +84,7 @@ pub async fn cleanup(
 ) -> Result<(), String> {
     let state = app.state::<RcloneState>();
     let path_val = path.as_deref().unwrap_or("").to_string();
-    debug!(
-        "🧹 Cleanup remote trash: remote={} path={}",
-        remote, path_val
-    );
+    debug!("🧹 Cleanup remote trash: remote={remote} path={path_val}");
 
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
@@ -138,8 +135,7 @@ pub async fn copy_url(
 ) -> Result<(), String> {
     let state = app.state::<RcloneState>();
     debug!(
-        "🔗 Copying URL: remote={}, path={}, url={}, auto_filename={}",
-        remote, path, url_to_copy, auto_filename
+        "🔗 Copying URL: remote={remote}, path={path}, url={url_to_copy}, auto_filename={auto_filename}"
     );
 
     let backend_manager = app.state::<BackendManager>();
@@ -185,10 +181,7 @@ pub async fn remove_empty_dirs(
     origin: Option<Origin>,
     group: Option<String>,
 ) -> Result<String, String> {
-    debug!(
-        "🧹 Removing empty directories: remote={} path={}",
-        remote, path
-    );
+    debug!("🧹 Removing empty directories: remote={remote} path={path}");
 
     let inputs = vec![json!({
         "_path": operations::RMDIRS,
@@ -220,10 +213,7 @@ pub async fn transfer(
     group: Option<String>,
 ) -> Result<String, String> {
     let num_items = items.len();
-    debug!(
-        "📦 Transferring {} items to {}:{} (mode={})",
-        num_items, dst_remote, dst_path, mode
-    );
+    debug!("📦 Transferring {num_items} items to {dst_remote}:{dst_path} (mode={mode})");
 
     let mut inputs = Vec::new();
     for item in items {
@@ -296,7 +286,7 @@ pub async fn delete(
     group: Option<String>,
 ) -> Result<String, String> {
     let num_items = items.len();
-    debug!("🗑️ Deleting {} items", num_items);
+    debug!("🗑️ Deleting {num_items} items");
 
     let mut inputs = Vec::new();
     for item in items {
@@ -331,10 +321,7 @@ pub async fn upload_file(
     use reqwest::multipart;
 
     let state = app.state::<RcloneState>();
-    debug!(
-        "⬆️ Uploading file: remote={} path={} filename={}",
-        remote, path, filename
-    );
+    debug!("⬆️ Uploading file: remote={remote} path={path} filename={filename}");
 
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
@@ -357,13 +344,13 @@ pub async fn upload_file(
         .multipart(form)
         .send()
         .await
-        .map_err(|e| format!("Failed to send upload request: {}", e))?;
+        .map_err(|e| format!("Failed to send upload request: {e}"))?;
 
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        return Err(format!("Upload failed ({}): {}", status, body));
+        return Err(format!("Upload failed ({status}): {body}"));
     }
 
     Ok("Upload successful".to_string())
@@ -414,13 +401,13 @@ pub async fn upload_file_bytes(
         .multipart(form)
         .send()
         .await
-        .map_err(|e| format!("Failed to send upload request: {}", e))?;
+        .map_err(|e| format!("Failed to send upload request: {e}"))?;
 
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        return Err(format!("Upload failed ({}): {}", status, body));
+        return Err(format!("Upload failed ({status}): {body}"));
     }
 
     Ok("Upload successful".to_string())
@@ -685,14 +672,14 @@ pub async fn upload_local_drop_entries(
                     .json(&serde_json::json!({ "fs": remote.clone(), "remote": destination }))
                     .send()
                     .await
-                    .map_err(|e| format!("Failed to create directory: {}", e))?;
+                    .map_err(|e| format!("Failed to create directory: {e}"))?;
 
                 if mkdir_response.status().is_success() {
                     created_directories.insert(destination.clone());
                     uploaded += 1;
 
                     let elapsed = start.elapsed().as_secs_f64();
-                    let stats = build_upload_stats(
+                    let upload_stats = build_upload_stats(
                         transferred_bytes,
                         total_bytes,
                         uploaded,
@@ -705,7 +692,7 @@ pub async fn upload_local_drop_entries(
                         .update_job(
                             jobid,
                             |job| {
-                                job.stats = Some(stats);
+                                job.stats = Some(upload_stats);
                                 job.uploaded_files.push(destination);
                             },
                             Some(app),
@@ -727,7 +714,7 @@ pub async fn upload_local_drop_entries(
                 .json(&serde_json::json!({ "fs": remote.clone(), "remote": directory }))
                 .send()
                 .await
-                .map_err(|e| format!("Failed to create directory: {}", e))?;
+                .map_err(|e| format!("Failed to create directory: {e}"))?;
 
             if mkdir_response.status().is_success() {
                 created_directories.insert(directory.clone());
@@ -737,12 +724,11 @@ pub async fn upload_local_drop_entries(
         let bytes = match entry.source {
             LocalDropUploadEntrySource::Bytes(content) => content,
             LocalDropUploadEntrySource::Path(ref path_buf) => {
-                match tokio::fs::read(path_buf).await {
-                    Ok(content) => content,
-                    Err(_) => {
-                        failed.push(path_buf.display().to_string());
-                        continue;
-                    }
+                if let Ok(content) = tokio::fs::read(path_buf).await {
+                    content
+                } else {
+                    failed.push(path_buf.display().to_string());
+                    continue;
                 }
             }
             LocalDropUploadEntrySource::Directory => unreachable!(),
@@ -764,14 +750,14 @@ pub async fn upload_local_drop_entries(
             .multipart(form)
             .send()
             .await
-            .map_err(|e| format!("Failed to send upload request: {}", e))?;
+            .map_err(|e| format!("Failed to send upload request: {e}"))?;
 
         if response.status().is_success() {
             uploaded += 1;
             transferred_bytes += entry.size;
 
             let elapsed = start.elapsed().as_secs_f64();
-            let stats = build_upload_stats(
+            let upload_stats = build_upload_stats(
                 transferred_bytes,
                 total_bytes,
                 uploaded,
@@ -785,7 +771,7 @@ pub async fn upload_local_drop_entries(
                 .update_job(
                     jobid,
                     |job| {
-                        job.stats = Some(stats);
+                        job.stats = Some(upload_stats);
                         job.uploaded_files.push(uploaded_file);
                     },
                     Some(app),
@@ -810,7 +796,7 @@ pub async fn upload_local_drop_entries(
     Ok(LocalDropUploadResult { uploaded, failed })
 }
 
-async fn collect_upload_entries_from_paths(
+fn collect_upload_entries_from_paths(
     local_paths: Vec<String>,
 ) -> Result<Vec<LocalDropUploadEntry>, String> {
     use std::path::PathBuf;
@@ -824,7 +810,7 @@ async fn collect_upload_entries_from_paths(
             continue;
         }
 
-        let base_parent = root.parent().map(|p| p.to_path_buf());
+        let base_parent = root.parent().map(std::path::Path::to_path_buf);
 
         if root.is_dir() {
             for entry in WalkDir::new(&root).into_iter().filter_map(Result::ok) {
@@ -907,7 +893,7 @@ pub async fn upload_local_drop_paths(
     local_paths: Vec<String>,
     origin: Option<crate::utils::types::origin::Origin>,
 ) -> Result<LocalDropUploadResult, String> {
-    let entries = collect_upload_entries_from_paths(local_paths).await?;
+    let entries = collect_upload_entries_from_paths(local_paths)?;
     upload_local_drop_entries(&app, remote, path, entries, origin).await
 }
 
@@ -940,7 +926,7 @@ pub async fn rename(
     group: Option<String>,
 ) -> Result<String, String> {
     let num_items = items.len();
-    debug!("🖊️ Renaming {} items", num_items);
+    debug!("🖊️ Renaming {num_items} items");
 
     let mut inputs = Vec::new();
     for item in items {

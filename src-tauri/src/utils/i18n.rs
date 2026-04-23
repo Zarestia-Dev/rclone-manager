@@ -38,7 +38,7 @@ impl Translations {
         if let Ok(mut path) = self.base_path.write() {
             *path = Some(i18n_path.clone());
         }
-        log::info!("🌐 Backend i18n initialized with path: {:?}", i18n_path);
+        log::info!("🌐 Backend i18n initialized with path: {i18n_path:?}");
 
         // Pre-load default language
         self.load_language(DEFAULT_LANG);
@@ -63,28 +63,28 @@ impl Translations {
                                         merged_translations.extend(map);
                                     }
                                     Ok(_) => {
-                                        log::warn!("Skipping non-object JSON file: {:?}", path);
+                                        log::warn!("Skipping non-object JSON file: {path:?}");
                                     }
                                     Err(e) => {
-                                        log::warn!("Failed to parse {:?}: {}", path, e);
+                                        log::warn!("Failed to parse {path:?}: {e}");
                                     }
                                 },
                                 Err(e) => {
-                                    log::warn!("Failed to read {:?}: {}", path, e);
+                                    log::warn!("Failed to read {path:?}: {e}");
                                 }
                             }
                         }
                     }
                 }
             } else {
-                log::warn!("Language directory not found: {:?}", lang_dir);
+                log::warn!("Language directory not found: {lang_dir:?}");
             }
 
             if !merged_translations.is_empty()
                 && let Ok(mut cache) = self.cache.write()
             {
                 cache.insert(lang.to_string(), Value::Object(merged_translations));
-                log::info!("🌐 Loaded translations for: {}", lang);
+                log::info!("🌐 Loaded translations for: {lang}");
                 return true;
             }
         } else {
@@ -122,8 +122,7 @@ impl Translations {
         let lang = self
             .current_lang
             .read()
-            .map(|l| l.clone())
-            .unwrap_or_else(|_| DEFAULT_LANG.to_string());
+            .map_or_else(|_| DEFAULT_LANG.to_string(), |l| l.clone());
 
         let dict = match self.get_dict(&lang) {
             Some(d) => d,
@@ -148,7 +147,7 @@ impl Translations {
     fn resolve_with_params(&self, key: &str, params: &[(&str, &str)]) -> String {
         let mut result = self.resolve(key);
         for (param_key, param_value) in params {
-            let placeholder = format!("{{{{{}}}}}", param_key);
+            let placeholder = format!("{{{{{param_key}}}}}");
             result = result.replace(&placeholder, param_value);
         }
         result
@@ -165,7 +164,7 @@ pub fn init(resource_dir: PathBuf) {
 pub fn set_language(lang: &str) {
     if let Ok(mut current) = TRANSLATIONS.current_lang.write() {
         *current = lang.to_string();
-        log::info!("🌐 Backend language set to: {}", lang);
+        log::info!("🌐 Backend language set to: {lang}");
     }
     // Pre-load the language if not cached
     TRANSLATIONS.load_language(lang);

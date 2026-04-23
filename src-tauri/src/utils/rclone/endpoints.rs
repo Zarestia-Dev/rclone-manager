@@ -63,17 +63,17 @@ pub mod core {
     /// - command - a string with the command name.
     /// - arg - a list of arguments for the backend command.
     /// - opt - a map of string to string of options.
-    /// - returnType - one of ("COMBINED_OUTPUT", "STREAM", "STREAM_ONLY_STDOUT", "STREAM_ONLY_STDERR").
-    ///     - Defaults to "COMBINED_OUTPUT" if not set.
+    /// - returnType - one of ("`COMBINED_OUTPUT`", "STREAM", "`STREAM_ONLY_STDOUT`", "`STREAM_ONLY_STDERR`").
+    ///     - Defaults to "`COMBINED_OUTPUT`" if not set.
     ///     - The STREAM returnTypes will write the output to the body of the HTTP message.
-    ///     - The COMBINED_OUTPUT will write the output to the "result" parameter.
+    ///     - The `COMBINED_OUTPUT` will write the output to the "result" parameter.
     ///
     /// Returns:
     ///
     /// - result - result from the backend command.
-    ///     - Only set when using returnType "COMBINED_OUTPUT".
+    ///     - Only set when using returnType "`COMBINED_OUTPUT`".
     /// - error     - set if rclone exits with an error code.
-    /// - returnType - one of ("COMBINED_OUTPUT", "STREAM", "STREAM_ONLY_STDOUT", "STREAM_ONLY_STDERR").
+    /// - returnType - one of ("`COMBINED_OUTPUT`", "STREAM", "`STREAM_ONLY_STDOUT`", "`STREAM_ONLY_STDERR`").
     ///
     /// Example:
     ///
@@ -146,12 +146,12 @@ pub mod core {
     /// Returns the memory statistics.
     ///
     /// This returns the memory statistics of the running program. What the values mean
-    /// are explained in the go docs: https://golang.org/pkg/runtime/#MemStats
+    /// are explained in the go docs: <https://golang.org/pkg/runtime/#MemStats>
     ///
     /// The most interesting values for most people are:
     ///
-    /// - HeapAlloc - this is the amount of memory rclone is actually using
-    /// - HeapSys - this is the amount of memory rclone has obtained from the OS
+    /// - `HeapAlloc` - this is the amount of memory rclone is actually using
+    /// - `HeapSys` - this is the amount of memory rclone has obtained from the OS
     /// - Sys - this is the total amount of memory requested from the OS
     ///    - It is virtual memory so may include unused memory
     pub const MEMSTATS: &str = "core/memstats";
@@ -423,9 +423,9 @@ pub mod config {
     ///
     /// Parameters:
     ///
-    /// - 'config_password' - password to unlock the config file
+    /// - '`config_password`' - password to unlock the config file
     ///
-    /// A good idea is to disable AskPassword before making this call
+    /// A good idea is to disable `AskPassword` before making this call
     pub const UNLOCK: &str = "config/unlock";
 
     /// Update the config for a remote.
@@ -1064,8 +1064,8 @@ pub mod sync {
     /// - path2 - a remote directory string e.g. `drive:path2`
     /// - dryRun - dry-run mode
     /// - resync - performs the resync run
-    /// - checkAccess - abort if RCLONE_TEST files are not found on both filesystems
-    /// - checkFilename - file name for checkAccess (default: RCLONE_TEST)
+    /// - checkAccess - abort if `RCLONE_TEST` files are not found on both filesystems
+    /// - checkFilename - file name for checkAccess (default: `RCLONE_TEST`)
     /// - maxDelete - abort sync if percentage of deleted files is above
     ///   this threshold (default: 50)
     /// - force - Bypass maxDelete safety check and run the sync

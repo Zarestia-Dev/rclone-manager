@@ -30,41 +30,41 @@ pub enum TrayAction {
 
 impl TrayAction {
     /// Converts a tray action into its unique string ID.
-    /// Example: TrayAction::MountProfile("myRemote", "profile1") -> "mount_profile-myRemote-profile1"
+    /// Example: `TrayAction::MountProfile("myRemote`", "profile1") -> "mount_profile-myRemote-profile1"
     pub fn to_id(&self) -> String {
         match self {
             Self::MountProfile(remote, profile) => {
-                format!("mount_profile__{}__{}", remote, profile)
+                format!("mount_profile__{remote}__{profile}")
             }
             Self::UnmountProfile(remote, profile) => {
-                format!("unmount_profile__{}__{}", remote, profile)
+                format!("unmount_profile__{remote}__{profile}")
             }
-            Self::SyncProfile(remote, profile) => format!("sync_profile__{}__{}", remote, profile),
+            Self::SyncProfile(remote, profile) => format!("sync_profile__{remote}__{profile}"),
             Self::StopSyncProfile(remote, profile) => {
-                format!("stop_sync_profile__{}__{}", remote, profile)
+                format!("stop_sync_profile__{remote}__{profile}")
             }
-            Self::CopyProfile(remote, profile) => format!("copy_profile__{}__{}", remote, profile),
+            Self::CopyProfile(remote, profile) => format!("copy_profile__{remote}__{profile}"),
             Self::StopCopyProfile(remote, profile) => {
-                format!("stop_copy_profile__{}__{}", remote, profile)
+                format!("stop_copy_profile__{remote}__{profile}")
             }
-            Self::MoveProfile(remote, profile) => format!("move_profile__{}__{}", remote, profile),
+            Self::MoveProfile(remote, profile) => format!("move_profile__{remote}__{profile}"),
             Self::StopMoveProfile(remote, profile) => {
-                format!("stop_move_profile__{}__{}", remote, profile)
+                format!("stop_move_profile__{remote}__{profile}")
             }
             Self::BisyncProfile(remote, profile) => {
-                format!("bisync_profile__{}__{}", remote, profile)
+                format!("bisync_profile__{remote}__{profile}")
             }
             Self::StopBisyncProfile(remote, profile) => {
-                format!("stop_bisync_profile__{}__{}", remote, profile)
+                format!("stop_bisync_profile__{remote}__{profile}")
             }
             Self::ServeProfile(remote, profile) => {
-                format!("serve_profile__{}__{}", remote, profile)
+                format!("serve_profile__{remote}__{profile}")
             }
             Self::StopServeProfile(remote, profile) => {
-                format!("stop_serve_profile__{}__{}", remote, profile)
+                format!("stop_serve_profile__{remote}__{profile}")
             }
-            Self::Browse(remote) => format!("browse-__{}", remote),
-            Self::BrowseInApp(remote) => format!("browse_in_app__{}", remote),
+            Self::Browse(remote) => format!("browse-__{remote}"),
+            Self::BrowseInApp(remote) => format!("browse_in_app__{remote}"),
             Self::UnmountAll => "unmount_all".to_string(),
             Self::StopAllJobs => "stop_all_jobs".to_string(),
             Self::StopAllServes => "stop_all_serves".to_string(),
@@ -72,8 +72,8 @@ impl TrayAction {
         }
     }
 
-    /// Parses a unique string ID back into a TrayAction.
-    /// Example: "mount_profile__myRemote__profile1" -> Some(TrayAction::MountProfile("myRemote", "profile1"))
+    /// Parses a unique string ID back into a `TrayAction`.
+    /// Example: "`mount_profile__myRemote__profile1`" -> `Some(TrayAction::MountProfile("myRemote`", "profile1"))
     pub fn from_id(id: &str) -> Option<Self> {
         // Check for global actions first (single word, no separators)
         match id {
@@ -98,7 +98,7 @@ impl TrayAction {
         }
 
         if parts.len() != 3 {
-            warn!("Invalid tray menu ID format: {}", id);
+            warn!("Invalid tray menu ID format: {id}");
             return None;
         }
 
@@ -118,7 +118,7 @@ impl TrayAction {
             "serve_profile" => Some(Self::ServeProfile(remote, profile)),
             "stop_serve_profile" => Some(Self::StopServeProfile(remote, profile)),
             _ => {
-                warn!("Unhandled tray menu ID prefix: {}", prefix);
+                warn!("Unhandled tray menu ID prefix: {prefix}");
                 None
             }
         }

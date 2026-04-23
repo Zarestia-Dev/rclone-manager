@@ -6,9 +6,8 @@ import { FileViewerModalComponent } from '../../file-browser/file-viewer/file-vi
 import { Entry } from '@app/types';
 import { IconService } from './icon.service';
 import { PathService } from '../infrastructure/platform/path.service';
-import { HttpClient } from '@angular/common/http';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { firstValueFrom } from 'rxjs';
+import { isHeadlessMode } from '../infrastructure/platform/api-client.service';
 
 @Injectable({
   providedIn: 'root',
@@ -17,7 +16,6 @@ export class FileViewerService extends TauriBaseService {
   private overlay = inject(Overlay);
   private iconService = inject(IconService);
   private pathService = inject(PathService);
-  private http = inject(HttpClient);
 
   // Use Angular signal for viewer open state
   private readonly _isViewerOpen: WritableSignal<boolean> = signal(false);
@@ -65,36 +63,15 @@ export class FileViewerService extends TauriBaseService {
   }
 
   async getAudioCover(item: Entry, remoteName: string, isLocal: boolean): Promise<string | null> {
-    if (this.apiClient.isHeadless()) {
-      try {
-        const response = await firstValueFrom(
-          this.http.get<{ data: string | null }>(
-            `${this.apiClient.getApiBaseUrl()}/fs/audio/cover`,
-            {
-              params: {
-                remote: remoteName,
-                path: item.Path,
-                is_local: String(isLocal),
-              },
-            }
-          )
-        );
-        return response?.data ?? null;
-      } catch (e) {
-        console.warn('[FileViewerService] Failed to fetch audio cover:', e);
-        return null;
-      }
-    } else {
-      try {
-        return await this.invokeCommand<string | null>('get_audio_cover', {
-          remote: remoteName,
-          path: item.Path,
-          isLocal: isLocal,
-        });
-      } catch (e) {
-        console.warn('[FileViewerService] Failed to invoke get_audio_cover:', e);
-        return null;
-      }
+    try {
+      return await this.invokeCommand<string | null>('get_audio_cover', {
+        remote: remoteName,
+        path: item.Path,
+        isLocal: isLocal,
+      });
+    } catch (e) {
+      console.warn('[FileViewerService] Failed to fetch audio cover:', e);
+      return null;
     }
   }
 
@@ -138,7 +115,7 @@ export class FileViewerService extends TauriBaseService {
       const separator = remoteName.endsWith('/') || remoteName.endsWith('\\') ? '' : '/';
       const fullPath = `${remoteName}${separator}${path}`;
 
-      if (this.apiClient.isHeadless()) {
+      if (isHeadlessMode()) {
         const encodedPath = encodeURIComponent(fullPath);
         return `${this.apiClient.getApiBaseUrl()}/fs/stream?path=${encodedPath}`;
       }
@@ -172,7 +149,7 @@ export class FileViewerService extends TauriBaseService {
       .map(p => encodeURIComponent(p))
       .join('/');
 
-    if (this.apiClient.isHeadless()) {
+    if (isHeadlessMode()) {
       return `${this.apiClient.getApiBaseUrl()}/fs/stream/remote?remote=${encodeURIComponent(
         rName
       )}&path=${encodedPath}`;

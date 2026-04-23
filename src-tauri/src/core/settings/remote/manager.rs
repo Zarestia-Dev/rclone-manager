@@ -186,7 +186,9 @@ pub fn migrate_to_multi_profile(mut settings: Value) -> Value {
             if obj.contains_key(old_key)
                 && let Some(mut old_config) = obj.remove(old_key)
             {
-                if !obj.contains_key(new_key) {
+                if obj.contains_key(new_key) {
+                    warn!("🗑️ Removed legacy {old_key} as {new_key} already exists");
+                } else {
                     let profile_name = old_config
                         .get("name")
                         .and_then(|v| v.as_str())
@@ -202,15 +204,7 @@ pub fn migrate_to_multi_profile(mut settings: Value) -> Value {
                     profiles_obj.insert(profile_name.clone(), old_config);
                     obj.insert(new_key.to_string(), Value::Object(profiles_obj));
 
-                    info!(
-                        "✨ Migrated legacy {} to {} (profile: '{}')",
-                        old_key, new_key, profile_name
-                    );
-                } else {
-                    warn!(
-                        "🗑️ Removed legacy {} as {} already exists",
-                        old_key, new_key
-                    );
+                    info!("✨ Migrated legacy {old_key} to {new_key} (profile: '{profile_name}')");
                 }
             }
         }

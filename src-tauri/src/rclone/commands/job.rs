@@ -232,7 +232,7 @@ async fn send_job_request(
 fn parse_job_response(response_json: &Value) -> Result<(u64, Option<String>), String> {
     let jobid = response_json
         .get("jobid")
-        .and_then(|v| v.as_u64())
+        .and_then(serde_json::Value::as_u64)
         .or_else(|| {
             response_json
                 .get("id")
@@ -328,7 +328,7 @@ pub async fn monitor_job(
     let backend = backend_manager
         .get(&backend_name)
         .await
-        .ok_or_else(|| RcloneError::ConfigError(format!("Backend '{}' not found", backend_name)))?;
+        .ok_or_else(|| RcloneError::ConfigError(format!("Backend '{backend_name}' not found")))?;
 
     let job_cache = &backend_manager.job_cache;
     let job_status_url = backend.url_for(job::STATUS);
@@ -381,11 +381,11 @@ pub async fn monitor_job(
             let status_req = backend
                 .inject_auth(client.post(&job_status_url))
                 .json(&json!({ "jobid": jobid }));
-            let stats_req = backend
+            let job_stats_req = backend
                 .inject_auth(client.post(&stats_url))
                 .json(&json!({ "jobid": jobid }));
 
-            tokio::try_join!(status_req.send(), stats_req.send())
+            tokio::try_join!(status_req.send(), job_stats_req.send())
                 .map(|(status_resp, stats_resp)| (status_resp, Some(stats_resp)))
         };
 
@@ -396,8 +396,8 @@ pub async fn monitor_job(
                 let status_body = status_resp.text().await.unwrap_or_default();
 
                 if let Some(stats_resp) = stats_resp_opt {
-                    let stats_body = stats_resp.text().await.unwrap_or_default();
-                    if let Ok(stats) = serde_json::from_str::<Value>(&stats_body) {
+                    let job_stats_body = stats_resp.text().await.unwrap_or_default();
+                    if let Ok(stats) = serde_json::from_str::<Value>(&job_stats_body) {
                         let _ = job_cache.update_job_stats(jobid, stats).await;
                     }
                 }
@@ -405,7 +405,7 @@ pub async fn monitor_job(
                 if let Ok(job_status) = serde_json::from_str::<Value>(&status_body)
                     && job_status
                         .get("finished")
-                        .and_then(|v| v.as_bool())
+                        .and_then(serde_json::Value::as_bool)
                         .unwrap_or(false)
                 {
                     return handle_job_completion(
@@ -461,11 +461,11 @@ pub async fn handle_job_completion(
 ) -> Result<Value, RcloneError> {
     let success = job_status
         .get("success")
-        .and_then(|v| v.as_bool())
+        .and_then(serde_json::Value::as_bool)
         .unwrap_or(false);
     let stopped = job_status
         .get("stopped")
-        .and_then(|v| v.as_bool())
+        .and_then(serde_json::Value::as_bool)
         .unwrap_or(false);
     let error_msg = job_status
         .get("error")
@@ -728,7 +728,7 @@ pub async fn stop_job(app: AppHandle, jobid: u64, remote_name: String) -> Result
         job_cache
             .stop_job(jobid, Some(&app))
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| e.clone())?;
 
         if let Some(task) = scheduled_tasks_cache
             .get_task_by_job_id(jobid.to_string())
@@ -739,9 +739,13 @@ pub async fn stop_job(app: AppHandle, jobid: u64, remote_name: String) -> Result
                 jobid, task.name
             );
             scheduled_tasks_cache
-                .update_task(&task.id, |t| t.mark_stopped(), Some(&app))
+                .update_task(
+                    &task.id,
+                    crate::utils::types::scheduled_task::ScheduledTask::mark_stopped,
+                    Some(&app),
+                )
                 .await
-                .map_err(|e| format!("Failed to update task state: {}", e))?;
+                .map_err(|e| format!("Failed to update task state: {e}"))?;
         }
 
         log_operation(
@@ -768,7 +772,7 @@ pub async fn stop_jobs_by_group(app: AppHandle, group: String) -> Result<(), Str
     let job_cache = &backend_manager.job_cache;
     let url = backend.url_for(job::STOPGROUP);
 
-    info!("🛑 Stopping all jobs in group: {}", group);
+    info!("🛑 Stopping all jobs in group: {group}");
 
     let response = backend
         .inject_auth(app.state::<RcloneState>().client.post(&url))
@@ -783,7 +787,7 @@ pub async fn stop_jobs_by_group(app: AppHandle, group: String) -> Result<(), Str
     if !status.is_success() && !body.contains("no jobs in group") {
         let error =
             crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body);
-        error!("❌ Failed to stop jobs in group {}: {}", group, error);
+        error!("❌ Failed to stop jobs in group {group}: {error}");
         return Err(error);
     }
 
@@ -799,11 +803,11 @@ pub async fn stop_jobs_by_group(app: AppHandle, group: String) -> Result<(), Str
         LogLevel::Info,
         None,
         Some("Stop job group".to_string()),
-        format!("All jobs in group '{}' stopped", group),
+        format!("All jobs in group '{group}' stopped"),
         None,
     );
 
-    info!("✅ All jobs in group '{}' stopped", group);
+    info!("✅ All jobs in group '{group}' stopped");
     Ok(())
 }
 
@@ -819,7 +823,7 @@ pub async fn submit_batch_job(
 ) -> Result<String, String> {
     let state = app.state::<RcloneState>();
     let num_inputs = inputs.len();
-    log::debug!("📦 Submitting batch job with {} inputs", num_inputs);
+    log::debug!("📦 Submitting batch job with {num_inputs} inputs");
 
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
@@ -827,9 +831,7 @@ pub async fn submit_batch_job(
 
     let mut modified_inputs = Vec::new();
     let batch_id = uuid::Uuid::new_v4().to_string();
-    let batch_group = group
-        .clone()
-        .unwrap_or_else(|| format!("batch/{}", batch_id));
+    let batch_group = group.clone().unwrap_or_else(|| format!("batch/{batch_id}"));
 
     for input in inputs {
         let mut inp = input.clone();

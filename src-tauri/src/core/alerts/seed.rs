@@ -9,14 +9,11 @@ use log::{error, info};
 pub const DEFAULT_ACTION_ID: &str = "default-os-toast";
 pub const DEFAULT_RULE_ID: &str = "default-rule";
 
-pub async fn seed_defaults(manager: &AppSettingsManager) -> Result<(), String> {
+pub fn seed_defaults(manager: &AppSettingsManager) -> Result<(), String> {
     let notifications_on = manager.get::<bool>("general.notifications").unwrap_or(true);
 
     if cache::get_action(manager, DEFAULT_ACTION_ID).is_none() {
-        info!(
-            "Seeding default OS toast action (enabled={})",
-            notifications_on
-        );
+        info!("Seeding default OS toast action (enabled={notifications_on})");
         let action = AlertAction::OsToast(OsToastAction {
             id: DEFAULT_ACTION_ID.to_string(),
             name: "Desktop Notifications".to_string(),
@@ -28,7 +25,7 @@ pub async fn seed_defaults(manager: &AppSettingsManager) -> Result<(), String> {
     }
 
     if cache::get_rule(manager, DEFAULT_RULE_ID).is_none() {
-        info!("Seeding default alert rule (enabled={})", notifications_on);
+        info!("Seeding default alert rule (enabled={notifications_on})");
         let rule = AlertRule {
             id: DEFAULT_RULE_ID.to_string(),
             name: "Desktop Notifications".to_string(),

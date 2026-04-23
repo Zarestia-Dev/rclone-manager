@@ -50,7 +50,7 @@ impl fmt::Display for EngineError {
                 crate::localized_error!("backendErrors.security.incorrectPassword")
             }
         };
-        write!(f, "{}", msg)
+        write!(f, "{msg}")
     }
 }
 

@@ -1,7 +1,7 @@
-//! rcman-compatible settings schema for RClone Manager
+//! rcman-compatible settings schema for `RClone` Manager
 //!
-//! This module provides the SettingsSchema implementation for the existing
-//! AppSettings types, using the derive macro for simplified definition.
+//! This module provides the `SettingsSchema` implementation for the existing
+//! `AppSettings` types, using the derive macro for simplified definition.
 
 use rcman::DeriveSettingsSchema;
 use serde::{Deserialize, Serialize};

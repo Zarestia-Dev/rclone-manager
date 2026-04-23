@@ -161,7 +161,7 @@ pub async fn validate_rclone_password(app: AppHandle, password: String) -> Resul
         Ok(())
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        error!("❌ Password validation failed: {}", stderr);
+        error!("❌ Password validation failed: {stderr}");
 
         let error_msg = if stderr
             .contains("Couldn't decrypt configuration, most likely wrong password")
@@ -246,10 +246,10 @@ async fn run_encryption_command(
     let password_command = if cfg!(windows) {
         format!(
             "powershell -Command \"Write-Host {} -NoNewline\"",
-            password.replace("'", "''")
+            password.replace('\'', "''")
         )
     } else {
-        format!("echo \"{}\"", password)
+        format!("echo \"{password}\"")
     };
 
     let output = build_rclone_command(app, None, config_path.as_deref(), None)
@@ -279,10 +279,10 @@ async fn run_encryption_command(
     {
         Ok((stdout, stderr))
     } else {
-        let err_detail = if !stderr.trim().is_empty() {
-            stderr
-        } else {
+        let err_detail = if stderr.trim().is_empty() {
             stdout
+        } else {
+            stderr
         };
         let l10n_key = if action == "set" {
             "backendErrors.security.encryptFailed"
@@ -304,10 +304,7 @@ pub async fn encrypt_config(app: AppHandle, password: String) -> Result<(), Stri
     let env_manager = app.state::<SafeEnvironmentManager>();
 
     if let Err(e) = update_local_config_password(manager.inner(), Some(&password)) {
-        warn!(
-            "⚠️ Failed to store password after encryption via rcman: {}",
-            e
-        );
+        warn!("⚠️ Failed to store password after encryption via rcman: {e}");
     } else {
         use crate::rclone::backend::BackendManager;
         let backend_manager = app.state::<BackendManager>();
@@ -337,10 +334,7 @@ pub async fn unencrypt_config(app: AppHandle, password: String) -> Result<(), St
     let env_manager = app.state::<SafeEnvironmentManager>();
 
     if let Err(e) = update_local_config_password(manager.inner(), None) {
-        warn!(
-            "⚠️ Failed to remove stored config password via rcman: {}",
-            e
-        );
+        warn!("⚠️ Failed to remove stored config password via rcman: {e}");
     }
 
     use crate::rclone::backend::BackendManager;

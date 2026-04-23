@@ -37,7 +37,7 @@ pub async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
         )
         .await
         {
-            error!("🔥 Critical startup failure: {}", e);
+            error!("🔥 Critical startup failure: {e}");
         }
     }
 

@@ -30,7 +30,7 @@ pub async fn apply_core_settings(app_handle: &tauri::AppHandle, settings: &AppSe
     }
 }
 
-/// Apply RClone backend settings from rcman settings in a single bulk API request
+/// Apply `RClone` backend settings from rcman settings in a single bulk API request
 pub async fn apply_backend_settings(app_handle: &tauri::AppHandle) -> Result<(), String> {
     debug!("🔧 Applying RClone backend settings from rcman");
 
@@ -42,7 +42,7 @@ pub async fn apply_backend_settings(app_handle: &tauri::AppHandle) -> Result<(),
         && !obj.is_empty()
         && let Err(e) = set_rclone_options_bulk(app_handle.clone(), backend_options).await
     {
-        error!("Failed to apply bulk backend settings: {}", e);
+        error!("Failed to apply bulk backend settings: {e}");
     }
 
     info!("✅ RClone backend settings applied successfully");

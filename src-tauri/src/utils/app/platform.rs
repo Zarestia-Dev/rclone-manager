@@ -1,4 +1,5 @@
 #[tauri::command]
+#[must_use]
 pub fn get_build_type() -> Option<&'static str> {
     if cfg!(feature = "flatpak") {
         Some("flatpak")
@@ -42,7 +43,7 @@ pub fn manage_flatpak_autostart(enable: bool) -> Result<(), String> {
                 .map_err(|e| format!("Failed to create autostart directory: {e}"))?;
         }
 
-        let content = r#"[Desktop Entry]
+        let content = r"[Desktop Entry]
 Type=Application
 Name=RClone Manager
 Comment=RClone Manager Flatpak autostart entry
@@ -52,7 +53,7 @@ Categories=Utility;Network;
 Keywords=rclone;cloud;backup;sync;storage;
 X-Flatpak=io.github.zarestia_dev.rclone-manager
 Terminal=false
-"#;
+";
         fs::write(&desktop_file_path, content)
             .map_err(|e| format!("Failed to write autostart file: {e}"))?;
     } else if desktop_file_path.exists() {

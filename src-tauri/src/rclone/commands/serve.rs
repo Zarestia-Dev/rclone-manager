@@ -48,7 +48,7 @@ struct RcloneServeBody {
 }
 
 impl ServeParams {
-    /// Create ServeParams from a profile config and settings
+    /// Create `ServeParams` from a profile config and settings
     pub fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self> {
         let config = &interpolate_value(config);
         let source = get_string(config, &["source"]);
@@ -59,8 +59,7 @@ impl ServeParams {
             .get("options")
             .and_then(|opts| opts.get("fs"))
             .and_then(|v| v.as_str())
-            .map(|s| !s.is_empty())
-            .unwrap_or(false);
+            .is_some_and(|s| !s.is_empty());
 
         if !has_source && !has_fs {
             return None;
@@ -153,7 +152,7 @@ pub async fn start_serve(
         LogLevel::Info,
         Some(params.remote_name.clone()),
         Some("Start serve".to_string()),
-        format!("Attempting to start {} serve", serve_type),
+        format!("Attempting to start {serve_type} serve"),
         Some(log_context),
     );
 
@@ -178,7 +177,7 @@ pub async fn start_serve(
                 NotificationEvent::ServeFailed {
                     remote: params.remote_name.clone(),
                     profile: params.profile.clone(),
-                    error: e.to_string(),
+                    error: e.clone(),
                     origin: Origin::Dashboard,
                 },
             );
@@ -287,7 +286,7 @@ pub async fn stop_serve(
                 NotificationEvent::ServeFailed {
                     remote: remote_name.clone(),
                     profile: Some(profile.clone()),
-                    error: e.to_string(),
+                    error: e.clone(),
                     origin: Origin::Dashboard,
                 },
             );

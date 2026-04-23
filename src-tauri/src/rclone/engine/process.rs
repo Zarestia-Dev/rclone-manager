@@ -62,7 +62,7 @@ impl RcApiEngine {
             if self.running
                 && let Some(pid_val) = pid
             {
-                info!("Attempting graceful shutdown for PID {}...", pid_val);
+                info!("Attempting graceful shutdown for PID {pid_val}...");
 
                 use crate::rclone::backend::BackendManager;
                 let backend_manager = app.state::<BackendManager>();
@@ -117,7 +117,7 @@ impl RcApiEngine {
             info!("Force killing process...");
             if let Err(e) = child.kill().await {
                 let error_msg = format!("Failed to kill process: {e}");
-                error!("{}", error_msg);
+                error!("{error_msg}");
                 return Err(EngineError::KillFailed(error_msg));
             }
             // Reap the child after a forced kill too.
@@ -129,7 +129,7 @@ impl RcApiEngine {
         Ok(())
     }
 
-    pub async fn kill_port_processes(&self) -> EngineResult<()> {
+    pub fn kill_port_processes(&self) -> EngineResult<()> {
         let port = self.current_api_port;
         kill_processes_on_port(port).map_err(EngineError::PortCleanupFailed)
     }
@@ -164,6 +164,6 @@ mod tests {
     async fn test_kill_port_processes_default_port() {
         let engine = RcApiEngine::default();
         assert_eq!(engine.current_api_port, DEFAULT_API_PORT);
-        let _ = engine.kill_port_processes().await;
+        let _ = engine.kill_port_processes();
     }
 }

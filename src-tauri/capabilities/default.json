@@ -13,7 +13,6 @@
     "core:window:allow-minimize",
     "core:window:allow-toggle-maximize",
     "core:window:allow-internal-toggle-maximize",
-    "notification:allow-is-permission-granted",
-    "shell:allow-open"
+    "notification:allow-is-permission-granted"
   ]
 }

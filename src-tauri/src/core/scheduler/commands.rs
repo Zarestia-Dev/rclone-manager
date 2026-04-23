@@ -10,7 +10,7 @@ pub async fn toggle_scheduled_task(
     app: AppHandle,
     task_id: String,
 ) -> Result<ScheduledTask, String> {
-    info!("🔄 Toggling scheduled task: {}", task_id);
+    info!("🔄 Toggling scheduled task: {task_id}");
 
     let cache = app.state::<ScheduledTasksCache>();
     let scheduler = app.state::<CronScheduler>();
@@ -18,7 +18,7 @@ pub async fn toggle_scheduled_task(
     let task = cache.toggle_task_status(&task_id, Some(&app)).await?;
 
     if let Err(e) = scheduler.reschedule_task(&task, cache.clone()).await {
-        error!("⚠️  Failed to reload tasks after toggle: {}", e);
+        error!("⚠️  Failed to reload tasks after toggle: {e}");
     } else {
         info!(
             "✅ Task {} {}",
@@ -38,7 +38,7 @@ pub async fn toggle_scheduled_task(
 #[tauri::command]
 pub async fn validate_cron(cron_expression: String) -> Result<CronValidationResponse, String> {
     match validate_cron_expression(&cron_expression) {
-        Ok(_) => {
+        Ok(()) => {
             let next_run = get_next_run(&cron_expression).ok();
 
             Ok(CronValidationResponse {
@@ -82,7 +82,7 @@ pub async fn clear_all_scheduled_tasks(app: AppHandle) -> Result<(), String> {
             && let Ok(job_id) = uuid::Uuid::parse_str(&job_id_str)
             && let Err(e) = scheduler.unschedule_task(job_id).await
         {
-            warn!("Failed to unschedule job {}: {}", job_id, e);
+            warn!("Failed to unschedule job {job_id}: {e}");
         }
     }
 

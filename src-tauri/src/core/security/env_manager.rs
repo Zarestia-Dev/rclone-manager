@@ -34,12 +34,12 @@ impl SafeEnvironmentManager {
                     Ok(())
                 }
                 Err(e) => {
-                    debug!("Failed to load Local connection settings: {}", e);
+                    debug!("Failed to load Local connection settings: {e}");
                     Ok(())
                 }
             },
             Err(e) => {
-                debug!("Failed to access connections sub-settings: {}", e);
+                debug!("Failed to access connections sub-settings: {e}");
                 Ok(())
             }
         }

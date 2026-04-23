@@ -48,7 +48,7 @@ pub async fn save_setting(
     )
     .map_err(|e| crate::localized_error!("backendErrors.settings.eventEmitFailed", "error" => e))?;
 
-    info!("✅ Setting {}.{} saved successfully.", category, key);
+    info!("✅ Setting {category}.{key} saved successfully.");
     Ok(())
 }
 
@@ -75,7 +75,7 @@ pub async fn reset_setting(
     )
     .map_err(|e| format!("Failed to emit settings change event: {e}"))?;
 
-    info!("✅ Setting {}.{} reset to default.", category, key);
+    info!("✅ Setting {category}.{key} reset to default.");
     Ok(default_value)
 }
 

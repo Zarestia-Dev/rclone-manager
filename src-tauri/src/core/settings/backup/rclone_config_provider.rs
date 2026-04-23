@@ -41,12 +41,12 @@ impl RcloneConfigProvider {
 
             vec![
                 ExternalConfig::from_content(
-                    format!("remote:{}", remote_name),
-                    format!("{}_rclone.json", remote_name),
+                    format!("remote:{remote_name}"),
+                    format!("{remote_name}_rclone.json"),
                     content,
                 )
-                .display_name(format!("{} Rclone Config", remote_name))
-                .description(format!("Rclone configuration for remote '{}'", remote_name))
+                .display_name(format!("{remote_name} Rclone Config"))
+                .description(format!("Rclone configuration for remote '{remote_name}'"))
                 .sensitive()
                 .import_read_only(),
             ]

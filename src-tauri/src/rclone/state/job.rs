@@ -10,6 +10,7 @@ use crate::utils::types::{
 };
 
 impl JobCache {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             jobs: RwLock::new(HashMap::new()),

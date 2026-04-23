@@ -1,7 +1,7 @@
 //! Mount plugin detection and installation
 //!
 //! This module handles:
-//! - Detecting mount plugins (WinFsp, FUSE-T, MacFUSE) on each platauri::Manager::state:: <crate::utils::types::core::RcloneState>(&app)ion fetching from GitHub
+//! - Detecting mount plugins (`WinFsp`, FUSE-T, `MacFUSE`) on each `platauri::Manager::state::` <crate::utils::types::core::RcloneState>(&app)ion fetching from GitHub
 //! - Installing mount plugins with dynamic version fetching from GitHub
 
 #[cfg(any(target_os = "macos", target_os = "windows"))]

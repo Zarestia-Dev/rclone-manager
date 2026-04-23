@@ -19,7 +19,7 @@ impl RcApiEngine {
         info!("🔍 Validating rclone configuration before engine start...");
 
         // Check if rclone binary exists and is available
-        if !crate::core::check_binaries::check_rclone_available(app.clone(), "".to_string())
+        if !crate::core::check_binaries::check_rclone_available(app.clone(), String::new())
             .await
             .unwrap_or(false)
         {
@@ -30,7 +30,7 @@ impl RcApiEngine {
         let is_encrypted = match crate::core::security::is_config_encrypted(app.clone()).await {
             Ok(encrypted) => encrypted,
             Err(e) => {
-                warn!("⚠️ Unexpected error checking encryption: {}", e);
+                warn!("⚠️ Unexpected error checking encryption: {e}");
                 false
             }
         };
@@ -63,7 +63,7 @@ impl RcApiEngine {
         // Fetch Local backend to get the configured config path
         let backend_manager = app.state::<BackendManager>();
         let config_path_string = backend_manager.get_local_config_path().await.map_err(|e| {
-            EngineError::ConfigValidationFailed(format!("Local backend error: {}", e))
+            EngineError::ConfigValidationFailed(format!("Local backend error: {e}"))
         })?;
 
         let config_path = config_path_string.as_deref();
@@ -75,8 +75,7 @@ impl RcApiEngine {
             .await
             .map_err(|e| {
                 EngineError::ConfigValidationFailed(format!(
-                    "Failed to execute rclone command: {}",
-                    e
+                    "Failed to execute rclone command: {e}"
                 ))
             })?;
 
@@ -97,7 +96,7 @@ impl RcApiEngine {
                 Err(EngineError::WrongPassword)
             } else if stderr.contains("Failed to load config file") {
                 let error_msg = format!("Failed to load rclone config file: {}", stderr.trim());
-                error!("❌ {}", error_msg);
+                error!("❌ {error_msg}");
                 Err(EngineError::ConfigValidationFailed(error_msg))
             } else {
                 // Unknown error, but we can still try to start the engine
@@ -117,13 +116,13 @@ impl RcApiEngine {
         let result = self.validate_config_before_start(app).await;
 
         match result {
-            Ok(_) => {
+            Ok(()) => {
                 info!("✅ Rclone configuration and password are valid");
                 self.clear_errors();
                 true
             }
             Err(ref e) => {
-                error!("❌ Rclone configuration validation failed: {}", e);
+                error!("❌ Rclone configuration validation failed: {e}");
 
                 match e {
                     EngineError::RcloneNotFound => {

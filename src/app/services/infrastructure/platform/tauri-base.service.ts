@@ -1,18 +1,13 @@
 import { inject, Injectable } from '@angular/core';
-import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow, Window } from '@tauri-apps/api/window';
 import { Observable } from 'rxjs';
-import { ApiClientService } from './api-client.service';
+import { ApiClientService, isHeadlessMode } from './api-client.service';
 import { SseClientService } from './sse-client.service';
 import { NotificationService } from '../../ui/notification.service';
 import { TranslateService } from '@ngx-translate/core';
 import { BackendTranslationService } from '../../i18n/backend-translation.service';
 import { NotifyOptions } from '@app/types';
-
-const isTauriRuntime = (): boolean =>
-  typeof window !== 'undefined' &&
-  !!(window as unknown as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
 
 /**
  * Base service for Tauri communication
@@ -27,7 +22,7 @@ export class TauriBaseService {
   protected readonly notificationService = inject(NotificationService);
   protected readonly translate = inject(TranslateService);
   protected readonly backendTranslation = inject(BackendTranslationService);
-  protected readonly isTauriEnvironment = isTauriRuntime();
+  protected readonly isTauriEnvironment = !isHeadlessMode();
 
   /**
    * Get the current Tauri window instance
@@ -44,10 +39,6 @@ export class TauriBaseService {
    */
   protected async invokeCommand<T>(command: string, args?: Record<string, unknown>): Promise<T> {
     try {
-      if (this.isTauriEnvironment) {
-        return await invoke<T>(command, args || {});
-      }
-
       return await this.apiClient.invoke<T>(command, args);
     } catch (error) {
       console.error(`[TauriBaseService] Error invoking "${command}":`, error);

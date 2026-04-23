@@ -33,7 +33,7 @@ pub async fn toggle_alert_rule(
 ) -> Result<AlertRule, String> {
     let manager = app.state::<AppSettingsManager>();
     let mut rule =
-        cache::get_rule(&manager, &id).ok_or_else(|| format!("Alert rule '{}' not found", id))?;
+        cache::get_rule(&manager, &id).ok_or_else(|| format!("Alert rule '{id}' not found"))?;
     rule.enabled = enabled;
     let result = cache::upsert_rule(&manager, rule)?;
     Ok(result)
@@ -66,8 +66,8 @@ pub async fn test_alert_action(app: AppHandle, id: String) -> Result<bool, Strin
     use chrono::Utc;
 
     let manager = app.state::<AppSettingsManager>();
-    let action = cache::get_action(&manager, &id)
-        .ok_or_else(|| format!("Alert action '{}' not found", id))?;
+    let action =
+        cache::get_action(&manager, &id).ok_or_else(|| format!("Alert action '{id}' not found"))?;
 
     let ctx = TemplateContext {
         title: "Test Alert".to_string(),
@@ -92,7 +92,7 @@ pub async fn test_alert_action(app: AppHandle, id: String) -> Result<bool, Strin
     };
 
     match action {
-        AlertAction::OsToast(ref a) => dispatch::os_toast::dispatch(&app, a, &ctx).await?,
+        AlertAction::OsToast(ref a) => dispatch::os_toast::dispatch(&app, a, &ctx)?,
         AlertAction::Webhook(ref a) => dispatch::webhook::dispatch(&http_client, a, &ctx).await?,
         AlertAction::Script(ref a) => dispatch::script::dispatch(a, &ctx).await?,
     }

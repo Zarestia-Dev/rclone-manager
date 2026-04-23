@@ -14,7 +14,7 @@ use tauri::{AppHandle, Listener, Manager};
 use tokio::sync::broadcast;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
-use crate::utils::types::events::*;
+use crate::utils::types::events::SSE_FORWARD_EVENTS;
 
 pub async fn start_web_server(
     app_handle: AppHandle,
@@ -24,7 +24,7 @@ pub async fn start_web_server(
     tls_cert: Option<std::path::PathBuf>,
     tls_key: Option<std::path::PathBuf>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    info!("🌐 Starting web server on {}:{}", host, port);
+    info!("🌐 Starting web server on {host}:{port}");
 
     #[cfg(debug_assertions)]
     {
@@ -33,11 +33,8 @@ pub async fn start_web_server(
             .and_then(|p| p.parse::<u16>().ok())
             .unwrap_or(1420);
         info!("🔧 Development mode detected!");
-        info!(
-            "   → Angular dev server: http://localhost:{} (with hot reload)",
-            dev_port
-        );
-        info!("   → API server: http://localhost:{}/api", port);
+        info!("   → Angular dev server: http://localhost:{dev_port} (with hot reload)");
+        info!("   → API server: http://localhost:{port}/api");
         info!("   → Use Angular dev server for faster development with hot reload");
     }
 
@@ -68,7 +65,7 @@ pub async fn start_web_server(
     // Encode credentials for Basic Authentication
     let encoded_auth = auth_credentials.map(|(username, password)| {
         use base64::{Engine as _, engine::general_purpose::STANDARD};
-        let credentials = format!("{}:{}", username, password);
+        let credentials = format!("{username}:{password}");
         let encoded = STANDARD.encode(credentials.as_bytes());
         (username, encoded)
     });
@@ -85,28 +82,28 @@ pub async fn start_web_server(
     // Build the application router
     let app = build_app(state.clone(), static_dir, &host, port);
 
-    let addr: std::net::SocketAddr = format!("{}:{}", host, port).parse()?;
+    let addr: std::net::SocketAddr = format!("{host}:{port}").parse()?;
 
     // Start server with or without TLS
     if let (Some(cert), Some(key)) = (tls_cert, tls_key) {
         info!("🔒 SSL/TLS Enabled");
-        info!("📜 Certificate: {:?}", cert);
-        info!("🔑 Key: {:?}", key);
-        info!("🌍 Secure Server listening on https://{}", addr);
+        info!("📜 Certificate: {cert:?}");
+        info!("🔑 Key: {key:?}");
+        info!("🌍 Secure Server listening on https://{addr}");
 
         // Install the ring crypto provider for rustls
         let _ = rustls::crypto::ring::default_provider().install_default();
 
         let config = RustlsConfig::from_pem_file(cert, key)
             .await
-            .map_err(|e| format!("Failed to load TLS config: {}", e))?;
+            .map_err(|e| format!("Failed to load TLS config: {e}"))?;
 
         axum_server::bind_rustls(addr, config)
             .serve(app.into_make_service())
             .await?;
     } else {
         info!("⚠️  TLS keys not provided - Running in INSECURE HTTP mode");
-        info!("🌍 Server listening on http://{}", addr);
+        info!("🌍 Server listening on http://{addr}");
 
         axum_server::bind(addr)
             .serve(app.into_make_service())
@@ -120,7 +117,7 @@ fn find_static_dir(app_handle: &AppHandle) -> Option<std::path::PathBuf> {
     let resource_path = app_handle
         .path()
         .resolve("browser", BaseDirectory::Resource);
-    info!("Looking for static files in resources: {:?}", resource_path);
+    info!("Looking for static files in resources: {resource_path:?}");
 
     if let Ok(path) = resource_path
         && path.exists()
@@ -149,7 +146,7 @@ fn find_static_dir(app_handle: &AppHandle) -> Option<std::path::PathBuf> {
 
     std::env::current_exe()
         .ok()
-        .and_then(|exe_path| exe_path.parent().map(|p| p.to_path_buf()))
+        .and_then(|exe_path| exe_path.parent().map(std::path::Path::to_path_buf))
         .and_then(|exe_dir| {
             let dist_path = exe_dir.join("../../../dist/rclone-manager/browser");
             if dist_path.exists() {
@@ -181,13 +178,13 @@ fn build_app(
 
     // Configure CORS
     let mut allowed_origins = vec![
-        format!("http://localhost:{}", port).parse().unwrap(),
-        format!("http://127.0.0.1:{}", port).parse().unwrap(),
+        format!("http://localhost:{port}").parse().unwrap(),
+        format!("http://127.0.0.1:{port}").parse().unwrap(),
     ];
     if host != "0.0.0.0"
         && host != "127.0.0.1"
         && host != "localhost"
-        && let Ok(origin) = format!("http://{}:{}", host, port).parse()
+        && let Ok(origin) = format!("http://{host}:{port}").parse()
     {
         allowed_origins.push(origin);
     }
@@ -198,12 +195,9 @@ fn build_app(
             .ok()
             .and_then(|p| p.parse::<u16>().ok())
             .unwrap_or(1420);
-        info!(
-            "🔧 Development mode: allowing Angular dev server on port {}",
-            dev_port
-        );
-        allowed_origins.push(format!("http://localhost:{}", dev_port).parse().unwrap());
-        allowed_origins.push(format!("http://127.0.0.1:{}", dev_port).parse().unwrap());
+        info!("🔧 Development mode: allowing Angular dev server on port {dev_port}");
+        allowed_origins.push(format!("http://localhost:{dev_port}").parse().unwrap());
+        allowed_origins.push(format!("http://127.0.0.1:{dev_port}").parse().unwrap());
     }
 
     let cors = CorsLayer::new()

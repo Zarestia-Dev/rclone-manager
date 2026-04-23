@@ -2,6 +2,7 @@ import { DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import {
   AppSettingsService,
+  isHeadlessMode,
   NotificationService,
   PathSelectionService,
   RemoteFileOperationsService,
@@ -68,10 +69,6 @@ interface HitResult {
 
 const HOVER_OPEN_DELAY_MS = 1000;
 
-const isTauriRuntime = (): boolean =>
-  typeof window !== 'undefined' &&
-  !!(window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
-
 // ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
@@ -122,7 +119,7 @@ export class NautilusDragDropService {
    * no bytes flow over IPC.
    */
   async setupDesktopNativeDropListener(): Promise<void> {
-    if (!isTauriRuntime()) return;
+    if (isHeadlessMode()) return;
     try {
       const unlisten = await getCurrentWindow().onDragDropEvent(async event => {
         if (event.payload.type !== 'drop') return;
@@ -228,10 +225,8 @@ export class NautilusDragDropService {
     event.preventDefault();
     const ctx = this._cb.getContext();
 
-    const skipExternalForNative = isTauriRuntime();
-
     if (
-      !skipExternalForNative &&
+      !isHeadlessMode() &&
       ctx.activeRemote &&
       event.dataTransfer &&
       this._hasExternalFiles(event)

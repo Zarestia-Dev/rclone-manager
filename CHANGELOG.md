@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## Unreleased
 
 ### Added
+- **Unified Command Registry**: Implemented a master command registry macro that automatically synchronizes Tauri IPC commands and headless HTTP endpoints. This simplifies adding new features and ensures parity between desktop and web modes.
 - **Alert & Actions**: Added a new tab to the Alerts section for managing alert actions. Users can now define custom actions (OS Toast, Webhook, Script) that can be triggered when an alert rule matches. **Needs some polish before release**!
 - Download URL support for nautilus file browser. You can directly download file from url on selected path. Access via right vertical ellipsis menu on path bar.
 - **UI**: Implemented a Layout Editor for arranging and hiding dashboard and remote cards. Users can now customize their view by dragging cards to reorder them and using toggle buttons to hide unwanted items.
@@ -14,6 +15,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Jottacloud provider added into the non-interactive remotes. 
 
 ### Changed
+- **Architecture Refactor**: Completely rebuilt the backend dispatch system, removing nearly 4,000 lines of redundant routing and handler code.
+- **Frontend Communication**: Streamlined the frontend's transport layer by centralizing environment detection and routing all commands through a unified `invoke` bridge.
 - Allow update support for remote rclone instances. Manual restart needed on remote rclone instance.
 - change rclone binary location to direct binary path.
 

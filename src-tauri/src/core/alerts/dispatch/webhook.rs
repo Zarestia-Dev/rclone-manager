@@ -42,18 +42,17 @@ pub async fn dispatch(
                         action.name, action.method, action.url
                     );
                     return Ok(());
-                } else {
-                    let err = format!(
-                        "Webhook '{}' returned HTTP {}: {}",
-                        action.name,
-                        status.as_u16(),
-                        resp.text().await.unwrap_or_default()
-                    );
-                    if attempt >= max_attempts {
-                        return Err(err);
-                    }
-                    warn!("{err} — retrying ({attempt}/{max_attempts})");
                 }
+                let err = format!(
+                    "Webhook '{}' returned HTTP {}: {}",
+                    action.name,
+                    status.as_u16(),
+                    resp.text().await.unwrap_or_default()
+                );
+                if attempt >= max_attempts {
+                    return Err(err);
+                }
+                warn!("{err} — retrying ({attempt}/{max_attempts})");
             }
             Err(e) => {
                 let err = format!("Webhook '{}' request error: {e}", action.name);

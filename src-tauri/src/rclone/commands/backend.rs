@@ -8,20 +8,26 @@ use tauri::{AppHandle, Manager};
 
 use crate::{
     core::scheduler::engine::CronScheduler,
-    rclone::backend::{
-        BackendManager,
-        schema::BackendConnectionSchema,
-        types::{Backend, BackendInfo},
+    rclone::{
+        backend::{
+            BackendManager,
+            schema::BackendConnectionSchema,
+            types::{Backend, BackendInfo},
+        },
+        state::scheduled_tasks::ScheduledTasksCache,
     },
-    rclone::state::scheduled_tasks::ScheduledTasksCache,
     utils::{
         rclone::endpoints::{config, core},
-        types::core::RcloneState,
+        types::{
+            core::{EngineState, RcloneState},
+            events::{BACKEND_SWITCHED, REMOTE_CACHE_CHANGED},
+        },
     },
 };
 use rcman::{SettingMetadata, SettingsSchema};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use tauri::Emitter;
 
 #[tauri::command]
 pub async fn get_backend_schema() -> Result<HashMap<String, SettingMetadata>, String> {
@@ -74,7 +80,6 @@ pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> 
         .await?;
 
     if backend.is_local {
-        use crate::utils::types::core::EngineState;
         let engine_state = app.state::<EngineState>();
         let mut engine = engine_state.lock().await;
         if !engine.running && !engine.path_error && !engine.password_error {
@@ -468,10 +473,8 @@ async fn refresh_and_verify_cache(
     )
     .await
     {
-        Ok(Ok(_)) => {
+        Ok(Ok(())) => {
             info!("✅ Cache refreshed for backend '{name}'");
-            use crate::utils::types::events::{BACKEND_SWITCHED, REMOTE_CACHE_CHANGED};
-            use tauri::Emitter;
             let _ = app.emit(REMOTE_CACHE_CHANGED, ());
             let _ = app.emit(BACKEND_SWITCHED, name);
             Ok(())

@@ -20,7 +20,7 @@ use crate::utils::rclone::endpoints::{core, operations};
 use crate::utils::types::core::EngineState;
 use crate::utils::types::core::RcloneState;
 use crate::utils::types::events::RCLONE_ENGINE_UPDATING;
-use crate::utils::types::updater::RcloneUpdateMetadata;
+use crate::utils::types::updater::{RcloneUpdateMetadata, RcloneUpdaterState};
 
 // ============================================================================
 // Types
@@ -84,7 +84,7 @@ pub async fn check_rclone_update(
     let channel: UpdateChannel = channel.into();
     let result = check_rclone_selfupdate(&app_handle, &channel)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| e.clone())?;
 
     let (release_notes, release_date, release_url) = if result.update_available {
         fetch_rclone_release_info(&result.latest_version, &channel)
@@ -108,7 +108,6 @@ pub async fn check_rclone_update(
     };
 
     if result.update_available {
-        use crate::utils::types::updater::RcloneUpdaterState;
         if let Ok(mut pending) = app_handle
             .state::<RcloneUpdaterState>()
             .pending_update
@@ -121,7 +120,7 @@ pub async fn check_rclone_update(
             crate::utils::types::events::APP_EVENT,
             json!({ "status": "rclone_update_found", "data": result_meta }),
         ) {
-            log::warn!("Failed to emit rclone update event: {}", e);
+            log::warn!("Failed to emit rclone update event: {e}");
         }
 
         notify(
@@ -139,8 +138,6 @@ pub async fn check_rclone_update(
 pub async fn get_rclone_update_info(
     app_handle: tauri::AppHandle,
 ) -> Result<Option<RcloneUpdateMetadata>, String> {
-    use crate::utils::types::updater::RcloneUpdaterState;
-
     // Check the same candidate paths that activate_pending_rclone_update uses.
     let has_pending_new = find_pending_new_binary(&app_handle).is_some();
 
@@ -229,7 +226,7 @@ pub async fn update_rclone(
             notify(
                 &app_handle,
                 NotificationEvent::RcloneUpdateStarted {
-                    version: latest_version.to_string(),
+                    version: latest_version.clone(),
                 },
             );
 
@@ -242,7 +239,7 @@ pub async fn update_rclone(
                     notify(
                         &app_handle,
                         NotificationEvent::RcloneUpdateComplete {
-                            version: latest_version.to_string(),
+                            version: latest_version.clone(),
                         },
                     );
 
@@ -289,11 +286,11 @@ pub async fn update_rclone(
     notify(
         &app_handle,
         NotificationEvent::RcloneUpdateStarted {
-            version: latest_version.to_string(),
+            version: latest_version.clone(),
         },
     );
 
-    let update_result = match determine_update_strategy(&current_path, &app_handle).await {
+    let update_result = match determine_update_strategy(&current_path, &app_handle) {
         Ok(strategy) => execute_update_strategy(strategy, &app_handle, channel).await,
         Err(e) => Err(e),
     };
@@ -303,7 +300,7 @@ pub async fn update_rclone(
             notify(
                 &app_handle,
                 NotificationEvent::RcloneUpdateComplete {
-                    version: latest_version.to_string(),
+                    version: latest_version.clone(),
                 },
             );
             // The pending_update state is already filled by `check_rclone_update` above;
@@ -343,7 +340,7 @@ pub async fn apply_rclone_update(app_handle: tauri::AppHandle) -> Result<(), Str
     notify(
         &app_handle,
         NotificationEvent::RcloneUpdateInstalled {
-            version: pending_version.to_string(),
+            version: pending_version.clone(),
         },
     );
 
@@ -353,16 +350,14 @@ pub async fn apply_rclone_update(app_handle: tauri::AppHandle) -> Result<(), Str
         "unknown",
         &pending_version,
     )
-    .map_err(|e| format!("Binary swapped but engine restart failed: {}", e))
+    .map_err(|e| format!("Binary swapped but engine restart failed: {e}"))
 }
 
 /// Swaps the pending `.new` binary into the active location.
 /// Does NOT restart the engine — returns the activated version string.
 pub async fn activate_pending_rclone_update(app_handle: &AppHandle) -> Result<String, String> {
     debug!("🚀 Activating rclone update (swapping binaries via RC)");
-
     let (current_path, new_path) = find_pending_new_binary(app_handle).ok_or_else(|| {
-        use crate::utils::types::updater::RcloneUpdaterState;
         if let Ok(mut pending) = app_handle
             .state::<RcloneUpdaterState>()
             .pending_update
@@ -467,7 +462,6 @@ pub async fn activate_pending_rclone_update(app_handle: &AppHandle) -> Result<St
         }
     }
 
-    use crate::utils::types::updater::RcloneUpdaterState;
     let updater_state = app_handle.state::<RcloneUpdaterState>();
     let mut pending = updater_state
         .pending_update
@@ -485,7 +479,7 @@ pub async fn activate_pending_rclone_update(app_handle: &AppHandle) -> Result<St
 // Update Strategy
 // ============================================================================
 
-async fn determine_update_strategy(
+fn determine_update_strategy(
     current_path: &Path,
     app_handle: &AppHandle,
 ) -> Result<UpdateStrategy, String> {
@@ -512,13 +506,13 @@ async fn execute_update_strategy(
     match strategy {
         UpdateStrategy::InPlace(target_file) => {
             let new_path = PathBuf::from(format!("{}.new", target_file.display()));
-            info!("Downloading update in-place to: {:?}", new_path);
+            info!("Downloading update in-place to: {new_path:?}");
             perform_rclone_selfupdate(app_handle, Some(&new_path), channel).await
         }
 
         UpdateStrategy::DownloadToLocal(full_path) => {
             let new_path = PathBuf::from(format!("{}.new", full_path.display()));
-            info!("Downloading update to local path: {:?}", new_path);
+            info!("Downloading update to local path: {new_path:?}");
             // Do NOT save settings here — that would trigger the rclone_binary event
             // listener and restart the engine before the binary is promoted.
             // The path is saved in activate_pending_rclone_update after the swap.
@@ -566,7 +560,7 @@ fn get_local_rclone_binary(app_handle: &AppHandle) -> Result<PathBuf, String> {
         } else {
             configured
                 .parent()
-                .map(|p| p.to_path_buf())
+                .map(std::path::Path::to_path_buf)
                 .unwrap_or_default()
         };
 
@@ -590,7 +584,7 @@ async fn update_rclone_binary_in_settings(app_handle: &AppHandle, new_path: &Pat
     )
     .await
     {
-        Ok(_) => info!("Updated rclone path in settings to: {:?}", new_path),
+        Ok(()) => info!("Updated rclone path in settings to: {new_path:?}"),
         Err(e) => log::error!("Failed to save rclone path to settings: {e}"),
     }
 }
@@ -735,8 +729,7 @@ fn extract_version_changelog(changelog: &str, version: &str) -> Option<String> {
     let after_header = &changelog[start..];
     let end = after_header[header.len()..]
         .find("\n## ")
-        .map(|i| header.len() + i)
-        .unwrap_or(after_header.len());
+        .map_or(after_header.len(), |i| header.len() + i);
     Some(after_header[..end].trim().to_string())
 }
 
@@ -782,7 +775,7 @@ async fn perform_rclone_selfupdate(
     // core/command returns { "result": "...", "error": bool }
     let error = response
         .get("error")
-        .and_then(|v| v.as_bool())
+        .and_then(serde_json::Value::as_bool)
         .unwrap_or(false);
     let result = response
         .get("result")

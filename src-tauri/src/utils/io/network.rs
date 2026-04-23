@@ -60,9 +60,8 @@ impl LinkChecker {
                                 successful.lock().await.push(link.clone());
                                 retries_used.lock().await.insert(link.clone(), retries);
                                 return;
-                            } else {
-                                last_error = Some(format!("HTTP status: {}", response.status()));
                             }
+                            last_error = Some(format!("HTTP status: {}", response.status()));
                         }
                         Err(e) => {
                             last_error = Some(e.to_string());
@@ -184,6 +183,7 @@ pub async fn monitor_network_changes(app_handle: AppHandle) {
 }
 
 #[cfg(feature = "container")]
+#[must_use]
 pub fn is_metered() -> bool {
     use log::info;
     info!(

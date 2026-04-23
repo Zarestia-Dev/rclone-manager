@@ -60,6 +60,7 @@ impl RcApiEngine {
         self.password_error = false;
     }
 
+    #[must_use]
     pub fn start_blocked_reason(&self) -> Option<PauseReason> {
         if self.updating {
             Some(PauseReason::Updating)

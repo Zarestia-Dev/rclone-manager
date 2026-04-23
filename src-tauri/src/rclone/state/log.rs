@@ -4,6 +4,7 @@ use tokio::sync::RwLock;
 use crate::utils::types::logs::{LogCache, LogEntry};
 
 impl LogCache {
+    #[must_use]
     pub fn new(max_entries: usize) -> Self {
         Self {
             entries: RwLock::new(Vec::with_capacity(max_entries)),

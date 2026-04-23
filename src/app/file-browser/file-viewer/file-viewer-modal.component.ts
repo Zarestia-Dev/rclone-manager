@@ -57,7 +57,10 @@ import { Entry, ORIGINS } from '@app/types';
 
 import { FormsModule } from '@angular/forms';
 import { MatTooltip } from '@angular/material/tooltip';
-import { ApiClientService } from 'src/app/services/infrastructure/platform/api-client.service';
+import {
+  ApiClientService,
+  isHeadlessMode,
+} from 'src/app/services/infrastructure/platform/api-client.service';
 
 // ── GNOME / Adwaita Light Syntax Highlighting ──
 // Colors inspired by GNOME Builder's light theme and Adwaita palette
@@ -664,7 +667,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   async download(): Promise<void> {
     if (this.isDownloading()) return;
 
-    if (this.apiClient.isHeadless()) {
+    if (isHeadlessMode()) {
       try {
         const url = new URL(this.rawUrl());
         url.searchParams.set('download', 'true');

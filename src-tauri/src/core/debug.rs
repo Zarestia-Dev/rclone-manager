@@ -1,6 +1,6 @@
 //! Debug commands for troubleshooting and developer tools
 //!
-//! These commands are available via Tauri's invoke system for desktop mode.
+//! These commands are available via both desktop and headless modes.
 
 use serde::Serialize;
 use tauri::AppHandle;

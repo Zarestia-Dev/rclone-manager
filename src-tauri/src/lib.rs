@@ -73,7 +73,7 @@ pub fn run() {
     let cli_args: crate::core::cli::CliArgs = match crate::core::cli::CliArgs::try_parse() {
         Ok(args) => {
             if let Err(e) = args.validate() {
-                eprintln!("❌ Invalid CLI arguments: {}", e);
+                eprintln!("❌ Invalid CLI arguments: {e}");
                 std::process::exit(1);
             }
             args
@@ -242,7 +242,7 @@ pub fn run() {
     // -------------------------------------------------------------------------
     #[cfg(all(desktop, feature = "tray"))]
     {
-        builder = builder.on_menu_event(handle_tray_menu_event);
+        builder = builder.on_menu_event(|app, event| handle_tray_menu_event(app, &event));
     }
 
     // -------------------------------------------------------------------------
@@ -250,7 +250,7 @@ pub fn run() {
     // -------------------------------------------------------------------------
     #[cfg(not(feature = "web-server"))]
     {
-        builder = builder.invoke_handler(generate_invoke_handler!());
+        builder = builder.invoke_handler(crate::core::commands::dispatch_invoke);
     }
 
     // -------------------------------------------------------------------------
@@ -393,69 +393,54 @@ fn setup_app(
                             if let Some(connections) = value.as_object() {
                                 for (name, _) in connections {
                                     // Password field
-                                    let legacy_pass_key = format!("backend:{}:password", name);
-                                    let new_pass_key = format!("sub.connections.{}.password", name);
+                                    let legacy_pass_key = format!("backend:{name}:password");
+                                    let new_pass_key = format!("sub.connections.{name}.password");
 
                                     if creds.exists(&legacy_pass_key) {
-                                        if !creds.exists(&new_pass_key) {
-                                            if let Ok(Some(secret)) = creds.get(&legacy_pass_key) {
-                                                log::info!(
-                                                    "🔐 Migrating legacy password for '{}'",
-                                                    name
-                                                );
-                                                if let Err(e) = creds.store(&new_pass_key, &secret)
-                                                {
-                                                    log::error!(
-                                                        "Failed to migrate password for '{}': {}",
-                                                        name,
-                                                        e
-                                                    );
-                                                } else {
-                                                    let _ = creds.remove(&legacy_pass_key);
-                                                }
-                                            }
-                                        } else {
+                                        if creds.exists(&new_pass_key) {
                                             log::debug!(
-                                                "Cleaning up legacy password for '{}' \
-                                                 (already migrated)",
-                                                name
+                                                "Cleaning up legacy password for '{name}' \
+                                                 (already migrated)"
                                             );
                                             let _ = creds.remove(&legacy_pass_key);
+                                        } else if let Ok(Some(secret)) = creds.get(&legacy_pass_key)
+                                        {
+                                            log::info!("🔐 Migrating legacy password for '{name}'");
+                                            if let Err(e) = creds.store(&new_pass_key, &secret) {
+                                                log::error!(
+                                                    "Failed to migrate password for '{name}': {e}"
+                                                );
+                                            } else {
+                                                let _ = creds.remove(&legacy_pass_key);
+                                            }
                                         }
                                     }
 
                                     // Config Password field
-                                    let legacy_conf_key =
-                                        format!("backend:{}:config_password", name);
+                                    let legacy_conf_key = format!("backend:{name}:config_password");
                                     let new_conf_key =
-                                        format!("sub.connections.{}.config_password", name);
+                                        format!("sub.connections.{name}.config_password");
 
                                     if creds.exists(&legacy_conf_key) {
-                                        if !creds.exists(&new_conf_key) {
-                                            if let Ok(Some(secret)) = creds.get(&legacy_conf_key) {
-                                                log::info!(
-                                                    "🔐 Migrating legacy config_password for '{}'",
-                                                    name
-                                                );
-                                                if let Err(e) = creds.store(&new_conf_key, &secret)
-                                                {
-                                                    log::error!(
-                                                        "Failed to migrate config_password \
-                                                         for '{}': {}",
-                                                        name,
-                                                        e
-                                                    );
-                                                } else {
-                                                    let _ = creds.remove(&legacy_conf_key);
-                                                }
-                                            }
-                                        } else {
+                                        if creds.exists(&new_conf_key) {
                                             log::debug!(
-                                                "Cleaning up legacy config_password for '{}' \
-                                                 (already migrated)",
-                                                name
+                                                "Cleaning up legacy config_password for '{name}' \
+                                                 (already migrated)"
                                             );
                                             let _ = creds.remove(&legacy_conf_key);
+                                        } else if let Ok(Some(secret)) = creds.get(&legacy_conf_key)
+                                        {
+                                            log::info!(
+                                                "🔐 Migrating legacy config_password for '{name}'"
+                                            );
+                                            if let Err(e) = creds.store(&new_conf_key, &secret) {
+                                                log::error!(
+                                                    "Failed to migrate config_password \
+                                                         for '{name}': {e}"
+                                                );
+                                            } else {
+                                                let _ = creds.remove(&legacy_conf_key);
+                                            }
                                         }
                                     }
                                 }
@@ -532,12 +517,10 @@ fn setup_app(
     let history_cache = AlertHistoryCache::new(10000);
 
     // Initial load & seed defaults
-    tauri::async_runtime::block_on(async {
-        // Ensure default rules/actions exist
-        if let Err(e) = crate::core::alerts::seed::seed_defaults(&rcman_manager).await {
-            log::error!("Failed to seed default alerts: {e}");
-        }
-    });
+    // Ensure default rules/actions exist
+    if let Err(e) = crate::core::alerts::seed::seed_defaults(&rcman_manager) {
+        log::error!("Failed to seed default alerts: {e}");
+    }
 
     app.manage(history_cache);
     app.manage(rcman_manager);
@@ -649,90 +632,9 @@ fn setup_app(
 // =============================================================================
 
 #[cfg(all(desktop, feature = "tray"))]
-fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent) {
-    use crate::rclone::commands::mount::unmount_all_remotes;
-
+fn handle_tray_menu_event(app: &tauri::AppHandle, event: &tauri::menu::MenuEvent) {
     if let Some(action) = TrayAction::from_id(event.id.as_ref()) {
-        match action {
-            TrayAction::MountProfile(remote, profile) => {
-                handle_mount_profile(app.clone(), &remote, &profile)
-            }
-            TrayAction::UnmountProfile(remote, profile) => {
-                handle_unmount_profile(app.clone(), &remote, &profile)
-            }
-            TrayAction::SyncProfile(remote, profile) => {
-                handle_sync_profile(app.clone(), &remote, &profile)
-            }
-            TrayAction::StopSyncProfile(remote, profile) => {
-                handle_stop_sync_profile(app.clone(), &remote, &profile)
-            }
-            TrayAction::CopyProfile(remote, profile) => {
-                handle_copy_profile(app.clone(), &remote, &profile)
-            }
-            TrayAction::StopCopyProfile(remote, profile) => {
-                handle_stop_copy_profile(app.clone(), &remote, &profile)
-            }
-            TrayAction::MoveProfile(remote, profile) => {
-                handle_move_profile(app.clone(), &remote, &profile)
-            }
-            TrayAction::StopMoveProfile(remote, profile) => {
-                handle_stop_move_profile(app.clone(), &remote, &profile)
-            }
-            TrayAction::BisyncProfile(remote, profile) => {
-                handle_bisync_profile(app.clone(), &remote, &profile)
-            }
-            TrayAction::StopBisyncProfile(remote, profile) => {
-                handle_stop_bisync_profile(app.clone(), &remote, &profile)
-            }
-            TrayAction::ServeProfile(remote, profile) => {
-                handle_serve_profile(app.clone(), &remote, &profile)
-            }
-            TrayAction::StopServeProfile(remote, serve_id) => {
-                handle_stop_serve_profile(app.clone(), &remote, &serve_id)
-            }
-            TrayAction::Browse(_remote) => {
-                #[cfg(not(feature = "web-server"))]
-                handle_browse_remote(app, &_remote);
-            }
-            TrayAction::BrowseInApp(remote) => {
-                #[cfg(not(feature = "web-server"))]
-                core::tray::actions::handle_browse_in_app(app, Some(&remote));
-
-                #[cfg(feature = "web-server")]
-                {
-                    let url =
-                        web_ui_url(app, &format!("/nautilus/{}", urlencoding::encode(&remote)));
-                    use tauri_plugin_opener::OpenerExt;
-                    if let Err(e) = app.opener().open_url(&url, None::<&str>) {
-                        log::error!("Failed to open web UI for browsing: {}", e);
-                    }
-                }
-            }
-            TrayAction::UnmountAll => {
-                let app_clone = app.clone();
-                tauri::async_runtime::spawn(async move {
-                    if let Err(e) = unmount_all_remotes(app_clone.clone(), "menu".to_string()).await
-                    {
-                        log::error!("Failed to unmount all remotes: {e}");
-                    }
-                });
-            }
-            TrayAction::StopAllJobs => handle_stop_all_jobs(app.clone()),
-            TrayAction::StopAllServes => handle_stop_all_serves(app.clone()),
-            TrayAction::OpenFileBrowser => {
-                #[cfg(not(feature = "web-server"))]
-                core::tray::actions::handle_browse_in_app(app, None);
-
-                #[cfg(feature = "web-server")]
-                {
-                    let url = web_ui_url(app, "/nautilus");
-                    use tauri_plugin_opener::OpenerExt;
-                    if let Err(e) = app.opener().open_url(&url, None::<&str>) {
-                        log::error!("Failed to open web UI for file browser: {}", e);
-                    }
-                }
-            }
-        }
+        dispatch_tray_action(app, action);
         return;
     }
 
@@ -742,10 +644,10 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent)
 
         #[cfg(feature = "web-server")]
         "open_web_ui" => {
-            let url = web_ui_url(app, "");
             use tauri_plugin_opener::OpenerExt;
+            let url = web_ui_url(app, "");
             if let Err(e) = app.opener().open_url(&url, None::<&str>) {
-                log::error!("Failed to open web UI: {}", e);
+                log::error!("Failed to open web UI: {e}");
             }
         }
 
@@ -760,10 +662,94 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent)
     }
 }
 
+#[cfg(all(desktop, feature = "tray"))]
+fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
+    use crate::rclone::commands::mount::unmount_all_remotes;
+    #[cfg(feature = "web-server")]
+    use tauri_plugin_opener::OpenerExt;
+
+    match action {
+        TrayAction::MountProfile(remote, profile) => {
+            handle_mount_profile(app.clone(), &remote, &profile);
+        }
+        TrayAction::UnmountProfile(remote, profile) => {
+            handle_unmount_profile(app.clone(), &remote, &profile);
+        }
+        TrayAction::SyncProfile(remote, profile) => {
+            handle_sync_profile(app.clone(), &remote, &profile);
+        }
+        TrayAction::StopSyncProfile(remote, profile) => {
+            handle_stop_sync_profile(app.clone(), &remote, &profile);
+        }
+        TrayAction::CopyProfile(remote, profile) => {
+            handle_copy_profile(app.clone(), &remote, &profile);
+        }
+        TrayAction::StopCopyProfile(remote, profile) => {
+            handle_stop_copy_profile(app.clone(), &remote, &profile);
+        }
+        TrayAction::MoveProfile(remote, profile) => {
+            handle_move_profile(app.clone(), &remote, &profile);
+        }
+        TrayAction::StopMoveProfile(remote, profile) => {
+            handle_stop_move_profile(app.clone(), &remote, &profile);
+        }
+        TrayAction::BisyncProfile(remote, profile) => {
+            handle_bisync_profile(app.clone(), &remote, &profile);
+        }
+        TrayAction::StopBisyncProfile(remote, profile) => {
+            handle_stop_bisync_profile(app.clone(), &remote, &profile);
+        }
+        TrayAction::ServeProfile(remote, profile) => {
+            handle_serve_profile(app.clone(), &remote, &profile);
+        }
+        TrayAction::StopServeProfile(remote, serve_id) => {
+            handle_stop_serve_profile(app.clone(), &remote, &serve_id);
+        }
+        TrayAction::Browse(_remote) => {
+            #[cfg(not(feature = "web-server"))]
+            handle_browse_remote(app, &_remote);
+        }
+        TrayAction::BrowseInApp(remote) => {
+            #[cfg(not(feature = "web-server"))]
+            core::tray::actions::handle_browse_in_app(app, Some(&remote));
+
+            #[cfg(feature = "web-server")]
+            {
+                let url = web_ui_url(app, &format!("/nautilus/{}", urlencoding::encode(&remote)));
+                if let Err(e) = app.opener().open_url(&url, None::<&str>) {
+                    log::error!("Failed to open web UI for browsing: {e}");
+                }
+            }
+        }
+        TrayAction::UnmountAll => {
+            let app_clone = app.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = unmount_all_remotes(app_clone.clone(), "menu".to_string()).await {
+                    log::error!("Failed to unmount all remotes: {e}");
+                }
+            });
+        }
+        TrayAction::StopAllJobs => handle_stop_all_jobs(app.clone()),
+        TrayAction::StopAllServes => handle_stop_all_serves(app.clone()),
+        TrayAction::OpenFileBrowser => {
+            #[cfg(not(feature = "web-server"))]
+            core::tray::actions::handle_browse_in_app(app, None);
+
+            #[cfg(feature = "web-server")]
+            {
+                let url = web_ui_url(app, "/nautilus");
+                if let Err(e) = app.opener().open_url(&url, None::<&str>) {
+                    log::error!("Failed to open web UI for file browser: {e}");
+                }
+            }
+        }
+    }
+}
+
 /// Build the web UI URL for a given path, resolving 0.0.0.0 to loopback.
 ///
 /// Used by tray actions to open the web interface in the system browser.
-#[cfg(all(feature = "web-server", not(feature = "container")))]
+#[cfg(all(feature = "web-server", feature = "tray"))]
 fn web_ui_url(app: &tauri::AppHandle, path: &str) -> String {
     let args = app.state::<crate::core::cli::CliArgs>();
     let host = if args.headless.host == "0.0.0.0" {

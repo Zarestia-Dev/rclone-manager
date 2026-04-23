@@ -38,7 +38,7 @@ pub async fn get_remotes(app: AppHandle) -> Result<Vec<String>, String> {
         .unwrap_or(&vec![])
         .iter()
         .filter_map(|r| r.as_str())
-        .map(|s| s.to_string())
+        .map(std::string::ToString::to_string)
         .collect();
 
     debug!("📡 Found {} remotes: {:?}", remotes.len(), remotes);

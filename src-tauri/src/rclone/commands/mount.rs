@@ -114,7 +114,7 @@ impl MountParams {
     }
 }
 
-/// Mount a remote filesystem (not exposed as Tauri command - use mount_remote_profile)
+/// Mount a remote filesystem (not exposed as Tauri command - use `mount_remote_profile`)
 pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), String> {
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
@@ -233,7 +233,7 @@ pub async fn unmount_remote(
                 &app,
                 NotificationEvent::MountFailed {
                     mount_point: mount_point.clone(),
-                    error: e.to_string(),
+                    error: e.clone(),
                 },
             );
             error_msg

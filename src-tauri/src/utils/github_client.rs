@@ -1,6 +1,6 @@
 //! Centralized module for interacting with the GitHub API.
 //!
-//! Re-uses a single reqwest::Client for performance (connection pooling)
+//! Re-uses a single `reqwest::Client` for performance (connection pooling)
 //! and sets a consistent User-Agent header for all requests.
 
 use once_cell::sync::Lazy;
@@ -56,10 +56,7 @@ pub struct Release {
 /// Fetches all releases for a given repository.
 /// (Used by app/updater.rs)
 pub async fn get_releases(owner: &str, repo: &str) -> Result<Vec<Release>, Error> {
-    let url = format!(
-        "https://api.github.com/repos/{}/{}/releases?per_page=100",
-        owner, repo
-    );
+    let url = format!("https://api.github.com/repos/{owner}/{repo}/releases?per_page=100");
 
     let releases: Vec<Release> = GITHUB_CLIENT
         .get(&url)
@@ -75,10 +72,7 @@ pub async fn get_releases(owner: &str, repo: &str) -> Result<Vec<Release>, Error
 /// Fetches the single "latest" release for a repository.
 /// (Used by rclone/provision.rs)
 pub async fn get_latest_release(owner: &str, repo: &str) -> Result<Release, Error> {
-    let url = format!(
-        "https://api.github.com/repos/{}/{}/releases/latest",
-        owner, repo
-    );
+    let url = format!("https://api.github.com/repos/{owner}/{repo}/releases/latest");
 
     let release: Release = GITHUB_CLIENT
         .get(&url)
@@ -94,10 +88,7 @@ pub async fn get_latest_release(owner: &str, repo: &str) -> Result<Release, Erro
 /// Fetches a specific release by its tag name.
 /// (Used by rclone/updater.rs)
 pub async fn get_release_by_tag(owner: &str, repo: &str, tag: &str) -> Result<Release, Error> {
-    let url = format!(
-        "https://api.github.com/repos/{}/{}/releases/tags/{}",
-        owner, repo, tag
-    );
+    let url = format!("https://api.github.com/repos/{owner}/{repo}/releases/tags/{tag}");
 
     let release: Release = GITHUB_CLIENT
         .get(&url)
@@ -118,10 +109,7 @@ pub async fn get_raw_file_content(
     branch_or_tag: &str,
     path: &str,
 ) -> Result<String, Error> {
-    let url = format!(
-        "https://raw.githubusercontent.com/{}/{}/{}/{}",
-        owner, repo, branch_or_tag, path
-    );
+    let url = format!("https://raw.githubusercontent.com/{owner}/{repo}/{branch_or_tag}/{path}");
 
     let content: String = GITHUB_CLIENT
         .get(&url)

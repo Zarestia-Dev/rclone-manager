@@ -17,7 +17,7 @@ pub fn extract_audio_cover(path: &str) -> Result<Option<String>, String> {
     let tag = match Tag::read_from_path(file_path) {
         Ok(t) => t,
         Err(e) => {
-            log::warn!("Failed to read ID3 tags for {}: {}", path, e);
+            log::warn!("Failed to read ID3 tags for {path}: {e}");
             return Ok(None);
         }
     };
@@ -26,7 +26,7 @@ pub fn extract_audio_cover(path: &str) -> Result<Option<String>, String> {
     if let Some(pic) = tag.pictures().next() {
         let mime_type = &pic.mime_type;
         let b64_data = general_purpose::STANDARD_NO_PAD.encode(&pic.data);
-        return Ok(Some(format!("data:{};base64,{}", mime_type, b64_data)));
+        return Ok(Some(format!("data:{mime_type};base64,{b64_data}")));
     }
 
     Ok(None)
@@ -41,7 +41,7 @@ pub fn extract_audio_cover_from_bytes(data: &[u8]) -> Result<Option<String>, Str
     let tag = match Tag::read_from2(&mut cursor) {
         Ok(t) => t,
         Err(e) => {
-            log::warn!("Failed to read ID3 tags from memory: {}", e);
+            log::warn!("Failed to read ID3 tags from memory: {e}");
             return Ok(None);
         }
     };
@@ -50,7 +50,7 @@ pub fn extract_audio_cover_from_bytes(data: &[u8]) -> Result<Option<String>, Str
     if let Some(pic) = tag.pictures().next() {
         let mime_type = &pic.mime_type;
         let b64_data = general_purpose::STANDARD_NO_PAD.encode(&pic.data);
-        return Ok(Some(format!("data:{};base64,{}", mime_type, b64_data)));
+        return Ok(Some(format!("data:{mime_type};base64,{b64_data}")));
     }
 
     Ok(None)
@@ -73,7 +73,7 @@ pub async fn get_audio_cover(
         } else {
             "/"
         };
-        let full_path = format!("{}{}{}", remote, separator, path);
+        let full_path = format!("{remote}{separator}{path}");
         return extract_audio_cover(&full_path);
     }
 
@@ -96,7 +96,7 @@ pub async fn get_audio_cover(
                 match response.bytes().await {
                     Ok(bytes) => extract_audio_cover_from_bytes(&bytes),
                     Err(e) => {
-                        log::warn!("Failed to read stream bytes for audio cover: {}", e);
+                        log::warn!("Failed to read stream bytes for audio cover: {e}");
                         Ok(None)
                     }
                 }
@@ -109,7 +109,7 @@ pub async fn get_audio_cover(
             }
         }
         Err(e) => {
-            log::warn!("Proxy error fetching audio cover: {}", e);
+            log::warn!("Proxy error fetching audio cover: {e}");
             Ok(None)
         }
     }

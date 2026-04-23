@@ -74,7 +74,7 @@ impl std::fmt::Display for RcloneError {
 }
 
 /// Try to auto-unlock config for remote backends with stored password.
-/// This is only for remote backends — local backends use RCLONE_CONFIG_PASS env var.
+/// This is only for remote backends — local backends use `RCLONE_CONFIG_PASS` env var.
 pub async fn try_auto_unlock_config(app: &AppHandle) -> Result<(), String> {
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
@@ -371,7 +371,7 @@ pub async fn get_fscache_entries(app: AppHandle) -> Result<usize, String> {
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
     json.get("entries")
-        .and_then(|v| v.as_u64())
+        .and_then(serde_json::Value::as_u64)
         .map(|v| v as usize)
         .ok_or_else(|| "Failed to parse entries count".to_string())
 }

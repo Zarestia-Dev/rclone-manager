@@ -29,7 +29,7 @@ pub async fn save_backend_state(manager: &BackendManager, name: &str) {
         .save_state(name, BackendState { jobs, context })
         .await;
 
-    info!("💾 Saved state for backend: {}", name);
+    info!("💾 Saved state for backend: {name}");
 }
 
 /// Restore jobs and remote context for the given backend name.
@@ -41,7 +41,7 @@ pub async fn restore_backend_state(manager: &BackendManager, name: &str) {
     manager.job_cache.set_all_jobs(saved.jobs).await;
     manager.remote_cache.set_context(saved.context).await;
 
-    info!("📂 Restored state for backend: {}", name);
+    info!("📂 Restored state for backend: {name}");
 }
 
 #[cfg(test)]

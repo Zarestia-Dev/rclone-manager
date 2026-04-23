@@ -14,7 +14,7 @@ pub async fn check_connectivity(
     let backend = manager
         .get(name)
         .await
-        .ok_or_else(|| format!("Backend '{}' not found", name))?;
+        .ok_or_else(|| format!("Backend '{name}' not found"))?;
 
     let timeout = timeout.unwrap_or(std::time::Duration::from_secs(5));
     let runtime_info = backend.fetch_runtime_info(client, timeout).await;
@@ -67,7 +67,7 @@ pub async fn check_local_connectivity_retrying(
                 Err(e) => {
                     attempts += 1;
                     if attempts.is_multiple_of(2) {
-                        log::debug!("⚠️ Local backend check attempt {} failed: {}", attempts, e);
+                        log::debug!("⚠️ Local backend check attempt {attempts} failed: {e}");
                     }
                     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
                 }
@@ -103,19 +103,19 @@ pub async fn ensure_connectivity_or_fallback(
             "🔍 Checking Local backend for version/OS info (timeout: {}s)",
             timeout.as_secs()
         );
-        return match check_local_connectivity_retrying(manager, client, timeout).await {
-            Ok(_) => {
-                info!("✅ Local backend is reachable and runtime info loaded");
-                Ok(())
-            }
-            Err(_) => {
-                log::warn!(
-                    "⚠️ Local backend timed out after {}s. Marking connected; runtime info may be missing.",
-                    timeout.as_secs()
-                );
-                manager.set_runtime_status("Local", "connected").await;
-                Ok(())
-            }
+        return if check_local_connectivity_retrying(manager, client, timeout)
+            .await
+            .is_ok()
+        {
+            info!("✅ Local backend is reachable and runtime info loaded");
+            Ok(())
+        } else {
+            log::warn!(
+                "⚠️ Local backend timed out after {}s. Marking connected; runtime info may be missing.",
+                timeout.as_secs()
+            );
+            manager.set_runtime_status("Local", "connected").await;
+            Ok(())
         };
     }
 
@@ -127,17 +127,13 @@ pub async fn ensure_connectivity_or_fallback(
 
     match check_connectivity_with_timeout(manager, &active_name, client, timeout).await {
         Ok(_) => {
-            info!("✅ Active backend '{}' is reachable", active_name);
+            info!("✅ Active backend '{active_name}' is reachable");
             Ok(())
         }
         Err(e) => {
-            log::warn!(
-                "⚠️ Active backend '{}' unreachable: {}. Marking offline.",
-                active_name,
-                e
-            );
+            log::warn!("⚠️ Active backend '{active_name}' unreachable: {e}. Marking offline.");
             manager
-                .set_runtime_status(&active_name, &format!("error:{}", e))
+                .set_runtime_status(&active_name, &format!("error:{e}"))
                 .await;
             Ok(())
         }
@@ -160,7 +156,7 @@ pub async fn check_other_backends(manager: &BackendManager, client: &reqwest::Cl
             Err(e) => {
                 log::warn!("⚠️ Backend '{}' unreachable: {}", backend.name, e);
                 manager
-                    .set_runtime_status(&backend.name, &format!("error:{}", e))
+                    .set_runtime_status(&backend.name, &format!("error:{e}"))
                     .await;
             }
         }

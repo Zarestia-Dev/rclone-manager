@@ -26,7 +26,7 @@ pub async fn backup_settings(
     include_profiles: Option<Vec<String>>,
 ) -> Result<String, String> {
     let manager = app_handle.state::<AppSettingsManager>();
-    info!("Starting backup with rcman to: {}", backup_dir);
+    info!("Starting backup with rcman to: {backup_dir}");
 
     // Map app's ExportType to rcman's ExportType
     let rcman_export_type = match &export_type {
@@ -78,9 +78,9 @@ pub async fn backup_settings(
         let remote_config = all_configs.get(name).cloned();
 
         let provider = RcloneConfigProvider::for_remote(name, remote_config)
-            .map_err(|e| format!("Failed to serialize remote config: {}", e))?;
+            .map_err(|e| format!("Failed to serialize remote config: {e}"))?;
         manager.register_external_provider(Box::new(provider));
-        options = options.include_external(format!("remote:{}", name));
+        options = options.include_external(format!("remote:{name}"));
     }
 
     if let Some(ref pw) = password {
@@ -101,8 +101,8 @@ pub async fn backup_settings(
     }
 
     let backup_path = manager.backup().create(&options).map_err(|e| {
-        error!("❌ Backup failed: {}", e);
-        format!("Backup failed: {}", e)
+        error!("❌ Backup failed: {e}");
+        format!("Backup failed: {e}")
     })?;
 
     info!("Backup complete: {}", backup_path.display());
@@ -185,11 +185,11 @@ pub async fn analyze_backup_file(
                             for (profile, entry) in profiles {
                                 match entry {
                                     rcman::ProfileEntry::Single(item) => {
-                                        names.push(format!("{}: {}", profile, item));
+                                        names.push(format!("{profile}: {item}"));
                                     }
                                     rcman::ProfileEntry::Multiple(items) => {
                                         for item in items {
-                                            names.push(format!("{}: {}", profile, item));
+                                            names.push(format!("{profile}: {item}"));
                                         }
                                     }
                                 }

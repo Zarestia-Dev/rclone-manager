@@ -138,7 +138,7 @@ fn create_job_submenu<R: Runtime>(
         items.push(Box::new(item));
     }
 
-    let profile_count = configs.map(|c| c.len()).unwrap_or(1);
+    let profile_count = configs.map_or(1, serde_json::Map::len);
     let active_count = active_jobs
         .iter()
         .filter(|job| job.remote_name == remote && job.job_type == job_type)
@@ -154,7 +154,10 @@ fn create_job_submenu<R: Runtime>(
         handle,
         submenu_label,
         true,
-        &items.iter().map(|item| item.as_ref()).collect::<Vec<_>>(),
+        &items
+            .iter()
+            .map(std::convert::AsRef::as_ref)
+            .collect::<Vec<_>>(),
     )
 }
 
@@ -207,14 +210,17 @@ fn create_mount_submenu<R: Runtime>(
         items.push(Box::new(item));
     }
 
-    let profile_count = mount_configs.map(|c| c.len()).unwrap_or(1);
+    let profile_count = mount_configs.map_or(1, serde_json::Map::len);
 
     let submenu_label = t!("tray.mountCount", "active" => &active_count.to_string(), "total" => &profile_count.to_string());
     let submenu = Submenu::with_items(
         handle,
         submenu_label,
         true,
-        &items.iter().map(|item| item.as_ref()).collect::<Vec<_>>(),
+        &items
+            .iter()
+            .map(std::convert::AsRef::as_ref)
+            .collect::<Vec<_>>(),
     )?;
 
     Ok(submenu)
@@ -270,14 +276,17 @@ fn create_serve_submenu<R: Runtime>(
         items.push(Box::new(item));
     }
 
-    let profile_count = serve_configs.map(|c| c.len()).unwrap_or(1);
+    let profile_count = serve_configs.map_or(1, serde_json::Map::len);
 
     let submenu_label = t!("tray.serveCount", "active" => &active_count.to_string(), "total" => &profile_count.to_string());
     let submenu = Submenu::with_items(
         handle,
         submenu_label,
         true,
-        &items.iter().map(|item| item.as_ref()).collect::<Vec<_>>(),
+        &items
+            .iter()
+            .map(std::convert::AsRef::as_ref)
+            .collect::<Vec<_>>(),
     )?;
 
     Ok(submenu)
@@ -372,36 +381,32 @@ pub async fn create_tray_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<M
             cached_settings
                 .get(remote)
                 .and_then(|s| s.get("showOnTray"))
-                .and_then(|v| v.as_bool())
+                .and_then(serde_json::Value::as_bool)
                 .unwrap_or(false)
         })
         .take(max_tray_items);
 
     let mut remote_menus = vec![];
     for remote_str in remotes_to_show {
-        let remote = remote_str.to_string();
+        let remote = remote_str.clone();
         if let Some(settings) = cached_settings.get(&remote).cloned() {
             // Count profiles for this remote (for job aggregation)
             let sync_count = settings
                 .get("syncConfigs")
                 .and_then(|v| v.as_object())
-                .map(|a| a.len())
-                .unwrap_or(0);
+                .map_or(0, serde_json::Map::len);
             let copy_count = settings
                 .get("copyConfigs")
                 .and_then(|v| v.as_object())
-                .map(|a| a.len())
-                .unwrap_or(0);
+                .map_or(0, serde_json::Map::len);
             let move_count = settings
                 .get("moveConfigs")
                 .and_then(|v| v.as_object())
-                .map(|a| a.len())
-                .unwrap_or(0);
+                .map_or(0, serde_json::Map::len);
             let bisync_count = settings
                 .get("bisyncConfigs")
                 .and_then(|v| v.as_object())
-                .map(|a| a.len())
-                .unwrap_or(0);
+                .map_or(0, serde_json::Map::len);
 
             // Count active mounts for this remote
             let active_mount_count = mounted_remotes
@@ -453,7 +458,7 @@ pub async fn create_tray_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<M
             };
             let job_status = CheckMenuItem::with_id(
                 &handle,
-                format!("job_status-{}", remote),
+                format!("job_status-{remote}"),
                 job_status_text,
                 false,
                 !active_jobs_for_remote.is_empty(),
@@ -468,7 +473,7 @@ pub async fn create_tray_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<M
                 .and_then(|v| v.as_array())
                 .map(|arr| {
                     arr.iter()
-                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .filter_map(|v| v.as_str().map(std::string::ToString::to_string))
                         .collect::<Vec<String>>()
                 })
                 .unwrap_or_else(|| {
@@ -597,15 +602,15 @@ pub async fn create_tray_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<M
                 } else {
                     ""
                 },
-                if !active_jobs_for_remote.is_empty() {
+                if active_jobs_for_remote.is_empty() {
+                    ""
+                } else {
                     "🔄 "
-                } else {
-                    ""
                 },
-                if !active_serves_for_remote.is_empty() {
-                    "📡"
-                } else {
+                if active_serves_for_remote.is_empty() {
                     ""
+                } else {
+                    "📡"
                 }
             );
 
@@ -615,12 +620,12 @@ pub async fn create_tray_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<M
                 true,
                 &submenu_items
                     .iter()
-                    .map(|item| item.as_ref())
+                    .map(std::convert::AsRef::as_ref)
                     .collect::<Vec<_>>(),
             )?;
             remote_menus.push(remote_submenu);
         } else {
-            warn!("No cached settings found for remote: {}", remote);
+            warn!("No cached settings found for remote: {remote}");
         }
     }
 
