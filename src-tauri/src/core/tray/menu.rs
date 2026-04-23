@@ -429,10 +429,7 @@ pub async fn create_tray_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<M
                             | JobType::Stat
                             | JobType::Hash
                     );
-                    job.remote_name == remote
-                        && !is_meta
-                        && job.job_type != JobType::Serve
-                        && job.job_type != JobType::Mount
+                    job.remote_name == remote && !is_meta && job.job_type != JobType::Mount
                 })
                 .collect();
 

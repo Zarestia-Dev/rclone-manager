@@ -39,7 +39,7 @@ build() {
   # Ensure pkg-config can find all libraries
   export PKG_CONFIG_PATH="/usr/lib/pkgconfig:/usr/share/pkgconfig"
   
-  npm run tauri build -- --bundles deb --config '{"bundle":{"createUpdaterArtifacts":false}}' --features arch
+  npm run tauri build -- --bundles deb --config '{"bundle":{"createUpdaterArtifacts":false}}'
 }
 
 package() {

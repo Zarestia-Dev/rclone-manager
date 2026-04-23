@@ -1023,7 +1023,6 @@ mod tests {
             (JobType::Move, "dropbox:", "move/dropbox"),
             (JobType::Bisync, "box:", "bisync/box"),
             (JobType::Mount, "s3:", "mount/s3"),
-            (JobType::Serve, "local:", "serve/local"),
             (JobType::CopyUrl, "remote:", "copy_url/remote"),
         ];
         for (job_type, remote_name, expected) in cases {

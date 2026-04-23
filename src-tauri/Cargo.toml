@@ -99,7 +99,4 @@ tray = ["tauri/tray-icon", "tauri/image-png"]
 # Managed by package managers or not compatible with updater
 portable = ["desktop", "tray"]
 flatpak = ["desktop", "tray"]
-deb = ["desktop", "tray"]
-rpm = ["desktop", "tray"]
-arch = ["desktop", "tray"]
 

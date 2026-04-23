@@ -3,12 +3,6 @@
 pub fn get_build_type() -> Option<&'static str> {
     if cfg!(feature = "flatpak") {
         Some("flatpak")
-    } else if cfg!(feature = "deb") {
-        Some("deb")
-    } else if cfg!(feature = "rpm") {
-        Some("rpm")
-    } else if cfg!(feature = "arch") {
-        Some("arch")
     } else if cfg!(feature = "container") {
         Some("container")
     } else if cfg!(feature = "portable") {

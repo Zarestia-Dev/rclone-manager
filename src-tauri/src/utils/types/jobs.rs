@@ -14,7 +14,6 @@ pub enum JobType {
     Move,
     Bisync,
     Mount,
-    Serve,
     List,
     Stat,
     Info,
@@ -29,7 +28,6 @@ pub enum JobType {
     Rename,
     Rmdirs,
     Upload,
-    Batch,
     Unknown(String),
 }
 
