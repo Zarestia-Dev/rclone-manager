@@ -3,7 +3,7 @@
 //! Exposes rcman's dynamic export categories to the frontend.
 
 use crate::core::settings::AppSettingsManager;
-use tauri::State;
+use tauri::{AppHandle, Manager};
 
 /// Response type for export categories
 #[derive(serde::Serialize)]
@@ -19,10 +19,9 @@ pub struct ExportCategoryResponse {
 
 /// Get available export categories from rcman
 #[tauri::command]
-pub fn get_export_categories(
-    manager: State<'_, AppSettingsManager>,
-) -> Vec<ExportCategoryResponse> {
-    manager
+pub async fn get_export_categories(app: AppHandle) -> Result<Vec<ExportCategoryResponse>, String> {
+    let manager = app.state::<AppSettingsManager>();
+    let categories = manager
         .get_export_categories()
         .into_iter()
         .map(|cat| ExportCategoryResponse {
@@ -32,5 +31,6 @@ pub fn get_export_categories(
             optional: cat.optional,
             description: cat.description,
         })
-        .collect()
+        .collect();
+    Ok(categories)
 }

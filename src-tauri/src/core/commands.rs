@@ -45,7 +45,6 @@ macro_rules! generate_invoke_handler {
             // =================================================================
             // RCLONE QUERIES
             // =================================================================
-            $crate::rclone::queries::get_all_remote_configs,
             $crate::rclone::queries::get_stats,
             $crate::rclone::queries::get_completed_transfers,
             $crate::rclone::queries::get_fs_info,
@@ -58,11 +57,8 @@ macro_rules! generate_invoke_handler {
             $crate::rclone::queries::get_public_link,
             $crate::rclone::queries::get_memory_stats,
             $crate::rclone::queries::get_local_disk_usage,
-            $crate::rclone::queries::get_remotes,
-            $crate::rclone::queries::get_remote_config,
             $crate::rclone::queries::get_remote_types,
             $crate::rclone::queries::get_oauth_supported_remotes,
-            $crate::rclone::queries::get_mounted_remotes,
             $crate::rclone::queries::get_rclone_config_file,
             $crate::rclone::commands::system::set_bandwidth_limit,
             // =================================================================

@@ -142,10 +142,13 @@ pub async fn build_rclone_process_command(
     use std::path::PathBuf;
 
     let backend_manager_state = app.state::<BackendManager>();
-    let config_path = backend_manager_state
-        .get_local_config_path()
-        .await
-        .unwrap_or(None);
+    let config_path = match backend_manager_state.get_local_config_path().await {
+        Ok(path) => path,
+        Err(e) => {
+            warn!("Failed to get local config path, proceeding without it: {e}");
+            None
+        }
+    };
 
     let backend = backend_manager_state.get_active().await;
 

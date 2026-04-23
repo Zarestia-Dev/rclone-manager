@@ -1,7 +1,6 @@
 use log::debug;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tauri::State;
 
 use crate::rclone::commands::job::{JobMetadata, SubmitJobOptions, submit_job_with_options};
 use crate::utils::{
@@ -192,10 +191,8 @@ pub async fn get_remote_paths(
 }
 
 #[tauri::command]
-pub async fn get_local_drives(
-    app: AppHandle,
-    state: State<'_, RcloneState>,
-) -> Result<Vec<LocalDrive>, String> {
+pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String> {
+    let state = app.state::<RcloneState>();
     use crate::utils::rclone::endpoints::{core, operations};
     use futures::future::join_all;
 

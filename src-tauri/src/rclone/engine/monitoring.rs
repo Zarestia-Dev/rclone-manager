@@ -11,7 +11,7 @@ const API_READY_POLL_INTERVAL: Duration = Duration::from_millis(500);
 impl RcApiEngine {
     /// Check if both the process is running AND the API is responding.
     pub async fn is_api_healthy(
-        &mut self,
+        &self,
         client: &reqwest::Client,
         backend_manager: &BackendManager,
     ) -> bool {
@@ -23,7 +23,7 @@ impl RcApiEngine {
     }
 
     /// Check if the process is still alive using native PID checking.
-    pub fn is_process_alive(&mut self) -> bool {
+    pub fn is_process_alive(&self) -> bool {
         if let Some(child) = &self.process {
             if let Some(pid) = child.id() {
                 let alive = crate::utils::process::process_manager::is_process_alive(pid);
@@ -70,7 +70,7 @@ impl RcApiEngine {
     }
 
     pub async fn wait_until_ready(
-        &mut self,
+        &self,
         client: &reqwest::Client,
         backend_manager: &BackendManager,
         timeout_secs: u64,
@@ -106,7 +106,7 @@ mod tests {
 
     #[test]
     fn test_engine_process_alive_no_process() {
-        let mut engine = RcApiEngine::default();
+        let engine = RcApiEngine::default();
         assert!(!engine.is_process_alive());
     }
 }

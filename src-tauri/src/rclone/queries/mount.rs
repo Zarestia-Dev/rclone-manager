@@ -6,7 +6,6 @@ use crate::utils::types::core::RcloneState;
 use crate::utils::types::remotes::MountedRemote;
 use tauri::{AppHandle, Manager};
 
-#[tauri::command]
 pub async fn get_mounted_remotes(app: AppHandle) -> Result<Vec<MountedRemote>, String> {
     let client = &app.state::<RcloneState>().client;
     let backend = app.state::<BackendManager>().get_active().await;

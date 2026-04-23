@@ -361,12 +361,10 @@ pub async fn create_tray_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<M
     let backend_manager = app.state::<BackendManager>();
     let active_jobs = backend_manager.job_cache.get_active_jobs().await;
 
-    let cached_settings = get_settings(app.clone(), app.state::<AppSettingsManager>())
-        .await
-        .unwrap_or_else(|_| {
-            error!("Failed to fetch cached settings");
-            serde_json::Value::Null
-        });
+    let cached_settings = get_settings(app.clone()).await.unwrap_or_else(|_| {
+        error!("Failed to fetch cached settings");
+        serde_json::Value::Null
+    });
 
     let remotes_to_show = remotes
         .iter()

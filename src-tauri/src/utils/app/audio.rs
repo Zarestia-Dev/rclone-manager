@@ -1,3 +1,4 @@
+use crate::RcloneState;
 use base64::{Engine as _, engine::general_purpose};
 use id3::Tag;
 use std::path::Path;
@@ -57,13 +58,12 @@ pub fn extract_audio_cover_from_bytes(data: &[u8]) -> Result<Option<String>, Str
 
 #[command]
 pub async fn get_audio_cover(
+    app: tauri::AppHandle,
     remote: String,
     path: String,
     is_local: bool,
-    app: tauri::AppHandle,
 ) -> Result<Option<String>, String> {
     use crate::rclone::backend::BackendManager;
-    use crate::utils::types::core::RcloneState;
     use tauri::Manager;
 
     if is_local {

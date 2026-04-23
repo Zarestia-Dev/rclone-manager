@@ -3,11 +3,11 @@
 //! This module provides backup and analysis commands using the rcman library.
 
 use crate::core::settings::AppSettingsManager;
-use crate::localized_error;
+use crate::rclone::queries::get_rclone_config_file;
 use crate::utils::types::backup_types::{BackupAnalysis, BackupContentsInfo, ExportType};
 use log::{error, info};
 use std::{fs::File, io::BufReader, path::PathBuf};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager};
 use zip::ZipArchive;
 
 // =============================================================================
@@ -17,15 +17,15 @@ use zip::ZipArchive;
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
 pub async fn backup_settings(
+    app_handle: AppHandle,
     backup_dir: String,
     export_type: ExportType,
     password: Option<String>,
     remote_name: Option<String>,
     user_note: Option<String>,
     include_profiles: Option<Vec<String>>,
-    manager: State<'_, AppSettingsManager>,
-    app_handle: AppHandle,
 ) -> Result<String, String> {
+    let manager = app_handle.state::<AppSettingsManager>();
     info!("Starting backup with rcman to: {}", backup_dir);
 
     // Map app's ExportType to rcman's ExportType
@@ -44,7 +44,6 @@ pub async fn backup_settings(
         .output_dir(&backup_dir)
         .export_type(rcman_export_type);
 
-    // Disable settings.json for partial exports (Categories or SpecificRemote)
     if matches!(
         export_type,
         ExportType::Category(_) | ExportType::SpecificRemote
@@ -52,31 +51,22 @@ pub async fn backup_settings(
         options = options.include_settings(false);
     }
 
-    // Handle dynamic categories
     if let ExportType::Category(ref category) = export_type {
-        // Special handling for legacy "remotes" category if needed,
-        // but generally we just pass the category name to rcman
         options = options.include_sub_settings(category);
-
-        // If category is "remotes", we should also include rclone.conf
         if category == "remotes" {
             register_rclone_config_provider(&app_handle, &manager).await?;
             options = options.include_external("rclone.conf");
         }
     }
 
-    // Always include remotes/rclone.conf for Full backup
     if matches!(export_type, ExportType::All) {
-        // Register provider for rclone.conf (if not already handled)
         register_rclone_config_provider(&app_handle, &manager).await?;
-
         options = options.include_sub_settings("remotes");
         options = options.include_external("rclone.conf");
         options = options.include_sub_settings("backend");
         options = options.include_sub_settings("connections");
     }
 
-    // Single remote export: register dynamic provider for just this remote's config
     if matches!(export_type, ExportType::SpecificRemote)
         && let Some(ref name) = remote_name
     {
@@ -119,27 +109,17 @@ pub async fn backup_settings(
     Ok(format!("Backup created at: {}", backup_path.display()))
 }
 
-/// Helper to register the dynamic rclone config provider
 pub(super) async fn register_rclone_config_provider(
     app_handle: &AppHandle,
     manager: &AppSettingsManager,
 ) -> Result<(), String> {
     use crate::core::settings::backup::rclone_config_provider::RcloneConfigProvider;
-    use crate::rclone::backend::BackendManager;
-    use crate::rclone::queries::system::fetch_config_path;
-    use crate::utils::types::core::RcloneState;
 
-    let state = app_handle.state::<RcloneState>();
-    let backend_manager = app_handle.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-
-    let config_path_str = fetch_config_path(&backend, &state.client)
+    let config_path = get_rclone_config_file(app_handle.clone())
         .await
-        .map_err(|e| format!("Failed to fetch rclone config path: {}", e))?;
+        .map_err(|e| format!("Failed to fetch rclone config path: {e}"))?;
 
-    manager.register_external_provider(Box::new(RcloneConfigProvider::from_path(PathBuf::from(
-        config_path_str,
-    ))));
+    manager.register_external_provider(Box::new(RcloneConfigProvider::from_path(config_path)));
 
     Ok(())
 }
@@ -150,9 +130,10 @@ pub(super) async fn register_rclone_config_provider(
 
 #[tauri::command]
 pub async fn analyze_backup_file(
+    app_handle: AppHandle,
     path: PathBuf,
-    manager: State<'_, AppSettingsManager>,
 ) -> Result<BackupAnalysis, String> {
+    let manager = app_handle.state::<AppSettingsManager>();
     let ext = path
         .extension()
         .and_then(|s| s.to_str())
@@ -165,7 +146,6 @@ pub async fn analyze_backup_file(
         ));
     }
 
-    // Improvement #3: Try rcman first (Double ZIP optimization)
     if let Ok(analysis) = manager.backup().analyze(&path)
         && analysis.format_version.parse::<u64>().unwrap_or(0) >= 1
     {
@@ -247,24 +227,25 @@ pub async fn analyze_backup_file(
         });
     }
 
-    // Fallback: Read manifest manually to detect and handle legacy format
     let file = File::open(&path)
-        .map_err(|e| localized_error!("backendErrors.backup.openFailed", "error" => e))?;
-    let mut archive = ZipArchive::new(BufReader::new(file))
-        .map_err(|e| localized_error!("backendErrors.backup.invalidArchive", "error" => e))?;
+        .map_err(|e| crate::localized_error!("backendErrors.backup.openFailed", "error" => e))?;
+    let mut archive = ZipArchive::new(BufReader::new(file)).map_err(
+        |e| crate::localized_error!("backendErrors.backup.invalidArchive", "error" => e),
+    )?;
 
     let manifest_file = archive
         .by_name("manifest.json")
-        .map_err(|_| localized_error!("backendErrors.backup.missingManifest"))?;
+        .map_err(|_| crate::localized_error!("backendErrors.backup.missingManifest"))?;
 
-    let manifest_json: serde_json::Value = serde_json::from_reader(manifest_file)
-        .map_err(|e| localized_error!("backendErrors.backup.manifestParseFailed", "error" => e))?;
+    let manifest_json: serde_json::Value = serde_json::from_reader(manifest_file).map_err(
+        |e| crate::localized_error!("backendErrors.backup.manifestParseFailed", "error" => e),
+    )?;
 
-    // DEPRECATION (2026-2027): Delete this block when removing legacy support
     use super::legacy_restore::BackupManifest;
 
-    let manifest: BackupManifest = serde_json::from_value(manifest_json)
-        .map_err(|e| localized_error!("backendErrors.backup.manifestParseFailed", "error" => e))?;
+    let manifest: BackupManifest = serde_json::from_value(manifest_json).map_err(
+        |e| crate::localized_error!("backendErrors.backup.manifestParseFailed", "error" => e),
+    )?;
 
     Ok(BackupAnalysis {
         is_encrypted: manifest.backup.encrypted,
@@ -279,7 +260,7 @@ pub async fn analyze_backup_file(
             rclone_config: manifest.contents.rclone_config,
             remote_count: manifest.contents.remote_configs.as_ref().map(|r| r.count),
             remote_names: manifest.contents.remote_configs.and_then(|r| r.names),
-            profiles: Some(vec!["default".to_string()]), // Legacy backups always restore to "default"
+            profiles: Some(vec!["default".to_string()]),
         }),
         is_legacy: Some(true),
     })

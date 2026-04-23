@@ -8,17 +8,6 @@ use crate::server::handlers::jobs::ProfileParamsBody;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
 use crate::utils::types::remotes::ProfileParams;
 
-pub async fn get_mounted_remotes_handler(
-    State(state): State<WebServerState>,
-) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::rclone::queries::get_mounted_remotes;
-    let remotes = get_mounted_remotes(state.app_handle.clone())
-        .await
-        .map_err(anyhow::Error::msg)?;
-    let json_remotes = serde_json::to_value(remotes)?;
-    Ok(Json(ApiResponse::success(json_remotes)))
-}
-
 pub async fn get_cached_mounted_remotes_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {

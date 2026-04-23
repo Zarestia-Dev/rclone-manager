@@ -47,7 +47,6 @@ fn jobs_routes() -> Router<WebServerState> {
 fn remote_routes() -> Router<WebServerState> {
     Router::new()
         .route("/remotes", get(handlers::get_remotes_handler))
-        .route("/remote/{name}", get(handlers::get_remote_config_handler))
         .route("/remote-types", get(handlers::get_remote_types_handler))
         .route("/create-remote", post(handlers::create_remote_handler))
         .route(
@@ -262,10 +261,6 @@ fn settings_routes() -> Router<WebServerState> {
 
 fn mount_serve_routes() -> Router<WebServerState> {
     Router::new()
-        .route(
-            "/mounted-remotes",
-            get(handlers::get_mounted_remotes_handler),
-        )
         .route(
             "/get-cached-mounted-remotes",
             get(handlers::get_cached_mounted_remotes_handler),

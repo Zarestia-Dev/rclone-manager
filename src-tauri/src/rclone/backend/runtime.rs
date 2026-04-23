@@ -5,6 +5,8 @@
 //! flexible HashMap structure. This means adding new runtime properties doesn't
 //! require code changes - they're automatically available.
 
+use std::path::PathBuf;
+
 /// Extensible runtime information storage
 ///
 /// Stores all runtime properties as a flat key-value map, allowing
@@ -22,7 +24,7 @@ pub struct RuntimeInfo {
     /// Go version (e.g. "go1.22.1")
     pub go_version: Option<String>,
     /// Config file path
-    pub config_path: Option<String>,
+    pub config_path: Option<PathBuf>,
     /// Connection status: "connected", "error:message", or empty
     pub status: String,
 }

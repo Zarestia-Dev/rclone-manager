@@ -1,6 +1,5 @@
 use std::collections::HashMap;
-use tauri::Emitter;
-use tauri::command;
+use tauri::{AppHandle, Emitter, command};
 
 use crate::utils::types::core::CheckResult;
 use crate::utils::types::core::LinkChecker;
@@ -142,7 +141,7 @@ pub fn is_metered() -> bool {
 use {futures_lite::stream::StreamExt, zbus::Connection};
 
 #[cfg(all(target_os = "linux", not(feature = "container")))]
-pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
+pub async fn monitor_network_changes(app_handle: AppHandle) {
     use log::{debug, error, info};
 
     let connection = match Connection::system().await {
@@ -194,7 +193,7 @@ pub fn is_metered() -> bool {
 }
 
 #[cfg(feature = "container")]
-pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
+pub async fn monitor_network_changes(app_handle: AppHandle) {
     use crate::utils::types::core::NetworkStatusPayload;
     use log::error;
     let payload = NetworkStatusPayload { is_metered: false };
@@ -213,7 +212,7 @@ pub fn is_metered() -> bool {
 }
 
 #[cfg(target_os = "macos")]
-pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
+pub async fn monitor_network_changes(app_handle: AppHandle) {
     // Always emit is_metered: false, since macOS does not support metered detection.
     use crate::utils::types::core::NetworkStatusPayload;
     use log::error;
@@ -221,9 +220,6 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
     if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
         error!("Failed to emit network status change event: {e}");
     }
-
-    // Optionally, you can skip the loop entirely, or just sleep forever.
-    // loop { tokio::time::sleep(std::time::Duration::from_secs(3600)).await; }
 }
 
 #[cfg(windows)]
@@ -247,7 +243,7 @@ pub fn is_metered() -> bool {
 }
 
 #[cfg(windows)]
-pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
+pub async fn monitor_network_changes(app_handle: AppHandle) {
     use log::error;
     use windows::Networking::Connectivity::{NetworkInformation, NetworkStatusChangedEventHandler};
 
@@ -267,17 +263,17 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
     }
 }
 
-#[tauri::command]
-pub fn is_network_metered() -> bool {
+#[command]
+pub async fn is_network_metered() -> Result<bool, String> {
     #[cfg(target_os = "linux")]
-    return is_metered();
+    return Ok(is_metered());
 
     #[cfg(windows)]
-    return is_metered();
+    return Ok(is_metered());
 
     #[cfg(target_os = "macos")]
-    return is_metered();
+    return Ok(is_metered());
 
     #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
-    return false; // Default for unsupported platforms
+    return Ok(false); // Default for unsupported platforms
 }

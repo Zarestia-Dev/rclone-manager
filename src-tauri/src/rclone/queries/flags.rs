@@ -2,7 +2,7 @@ use serde_json::{Map, Value, json};
 use std::time::{Duration, Instant};
 
 use once_cell::sync::Lazy;
-use tauri::{AppHandle, Manager, command};
+use tauri::{AppHandle, Manager};
 use tokio::sync::RwLock;
 use tokio::try_join;
 
@@ -175,14 +175,14 @@ pub async fn get_all_options_with_values(app: AppHandle) -> Result<Value, String
     Ok(options_info)
 }
 
-#[command]
+#[tauri::command]
 pub async fn get_grouped_options_with_values(app: AppHandle) -> Result<Value, String> {
     get_all_options_with_values(app)
         .await
         .map(|data| group_options(&data))
 }
 
-#[command]
+#[tauri::command]
 pub async fn get_option_blocks(app: AppHandle) -> Result<Value, String> {
     let backend_manager = app.state::<BackendManager>();
     fetch_options(
@@ -222,7 +222,7 @@ fn get_flags_by_category_internal(
         .collect()
 }
 
-#[command]
+#[tauri::command]
 pub async fn get_flags_by_category(
     app: AppHandle,
     category: String,
@@ -244,7 +244,7 @@ pub async fn get_flags_by_category(
     ))
 }
 
-#[command]
+#[tauri::command]
 pub async fn get_copy_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(app).await?;
     Ok(get_flags_by_category_internal(
@@ -256,12 +256,12 @@ pub async fn get_copy_flags(app: AppHandle) -> Result<Vec<Value>, String> {
 }
 
 // get_move_flags has the same groups as get_copy_flags — delegates to it via shared impl
-#[command]
+#[tauri::command]
 pub async fn get_move_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     get_copy_flags(app).await
 }
 
-#[command]
+#[tauri::command]
 pub async fn get_sync_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(app).await?;
     Ok(get_flags_by_category_internal(
@@ -272,12 +272,12 @@ pub async fn get_sync_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     ))
 }
 
-#[command]
+#[tauri::command]
 pub async fn get_bisync_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     get_sync_flags(app).await
 }
 
-#[command]
+#[tauri::command]
 pub async fn get_filter_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(app).await?;
     let flags = get_flags_by_category_internal(&merged_json, "filter", None, None);
@@ -292,7 +292,7 @@ pub async fn get_filter_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     Ok(simplify_field_names(filtered))
 }
 
-#[command]
+#[tauri::command]
 pub async fn get_backend_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(app).await?;
     let mut flags: Vec<Value> = get_flags_by_category_internal(&merged_json, "main", None, None)
@@ -329,7 +329,7 @@ pub async fn get_backend_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     Ok(flags)
 }
 
-#[command]
+#[tauri::command]
 pub async fn get_vfs_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(app).await?;
     Ok(get_flags_by_category_internal(
@@ -340,7 +340,7 @@ pub async fn get_vfs_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     ))
 }
 
-#[command]
+#[tauri::command]
 pub async fn get_mount_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(app).await?;
     Ok(get_flags_by_category_internal(
@@ -352,7 +352,7 @@ pub async fn get_mount_flags(app: AppHandle) -> Result<Vec<Value>, String> {
 }
 
 /// Get flags for a specific serve type (defaults to "http").
-#[command]
+#[tauri::command]
 pub async fn get_serve_flags(
     app: AppHandle,
     serve_type: Option<String>,
@@ -366,7 +366,7 @@ pub async fn get_serve_flags(
 // --- DATA MUTATION COMMANDS ---
 
 /// Set a single rclone option, building a nested payload from a dotted name.
-#[command]
+#[tauri::command]
 pub async fn set_rclone_option(
     app: AppHandle,
     block_name: String,
@@ -394,7 +394,7 @@ pub async fn set_rclone_option(
 
 /// Set multiple rclone options at once.
 /// Expected payload: `{ "main": { "LogLevel": "DEBUG" }, "vfs": { "CacheMode": "full" } }`
-#[command]
+#[tauri::command]
 pub async fn set_rclone_options_bulk(app: AppHandle, payload: Value) -> Result<Value, String> {
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;

@@ -1,20 +1,13 @@
 //! Mount plugin detection and installation
 //!
 //! This module handles:
-//! - Detecting mount plugins (WinFsp, FUSE-T, MacFUSE) on each platform
-//! - Installing mount plugins with dynamic version fetching from GitHub
+//! - Detecting mount plugins (WinFsp, FUSE-T, MacFUSE) on each platauri::Manager::state:: <crate::utils::types::core::RcloneState>(&app)ion fetching from GitHub
 //! - Installing mount plugins with dynamic version fetching from GitHub
 
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 use crate::utils::{
     github_client, types::core::RcloneState, types::events::MOUNT_PLUGIN_INSTALLED,
 };
-
-#[cfg(all(target_os = "linux", not(feature = "web-server")))]
-use tauri::State;
-
-#[cfg(all(target_os = "linux", not(feature = "web-server")))]
-use crate::utils::types::core::RcloneState;
 
 // =============================================================================
 // MOUNT PLUGIN DETECTION
@@ -53,12 +46,6 @@ fn check_fuse_installed() -> bool {
     }
 }
 
-#[cfg(target_os = "linux")]
-fn check_mount_plugin_installed_linux() -> bool {
-    // Linux does not require a mount plugin, always return true
-    true
-}
-
 #[cfg(target_os = "windows")]
 fn check_winfsp_installed() -> bool {
     let possible_paths = [
@@ -93,22 +80,22 @@ fn check_winfsp_installed() -> bool {
 
 /// Checks if the required mount plugin is installed for the current platform.
 #[tauri::command]
-pub fn check_mount_plugin_installed() -> bool {
+pub async fn check_mount_plugin_installed() -> Result<bool, String> {
     #[cfg(target_os = "macos")]
     {
-        check_fuse_installed()
-    }
-    #[cfg(target_os = "linux")]
-    {
-        check_mount_plugin_installed_linux()
+        Ok(check_fuse_installed())
     }
     #[cfg(target_os = "windows")]
     {
-        check_winfsp_installed()
+        Ok(check_winfsp_installed())
     }
-    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+    #[cfg(target_os = "linux")]
     {
-        false
+        Ok(true)
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+    {
+        Ok(false)
     }
 }
 
@@ -174,10 +161,8 @@ async fn get_latest_fuse_t_url() -> Result<MountPluginInfo, String> {
 /// Install mount plugin - macOS version
 #[cfg(target_os = "macos")]
 #[tauri::command]
-pub async fn install_mount_plugin(
-    app_handle: tauri::AppHandle,
-    state: tauri::State<'_, RcloneState>,
-) -> Result<String, String> {
+pub async fn install_mount_plugin(app_handle: tauri::AppHandle) -> Result<String, String> {
+    let state = app_handle.state::<RcloneState>();
     let download_path = std::env::temp_dir().join("rclone_temp");
     std::fs::create_dir_all(&download_path)
         .map_err(|e| format!("Failed to create download directory: {e}"))?;
@@ -216,10 +201,8 @@ pub async fn install_mount_plugin(
 /// Install mount plugin - Windows version
 #[cfg(target_os = "windows")]
 #[tauri::command]
-pub async fn install_mount_plugin(
-    app_handle: tauri::AppHandle,
-    state: tauri::State<'_, RcloneState>,
-) -> Result<String, String> {
+pub async fn install_mount_plugin(app_handle: tauri::AppHandle) -> Result<String, String> {
+    let state = app_handle.state::<RcloneState>();
     let download_path = std::env::temp_dir().join("rclone_temp");
     std::fs::create_dir_all(&download_path)
         .map_err(|e| format!("Failed to create download directory: {e}"))?;
@@ -256,9 +239,9 @@ pub async fn install_mount_plugin(
 }
 
 /// Install mount plugin - Linux version (no-op)
-#[cfg(all(target_os = "linux", not(feature = "web-server")))]
+#[cfg(target_os = "linux")]
 #[tauri::command]
-pub async fn install_mount_plugin(_state: State<'_, RcloneState>) -> Result<String, String> {
+pub async fn install_mount_plugin() -> Result<String, String> {
     Ok("Linux does not require a mount plugin".to_string())
 }
 

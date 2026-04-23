@@ -288,13 +288,11 @@ async fn add_job_to_cache(
         .await;
 }
 
-#[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn get_jobs(app: AppHandle) -> Result<Vec<JobInfo>, String> {
     Ok(app.state::<BackendManager>().job_cache.get_jobs().await)
 }
 
-#[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn delete_job(app: AppHandle, jobid: u64) -> Result<(), String> {
     app.state::<BackendManager>()
@@ -303,13 +301,11 @@ pub async fn delete_job(app: AppHandle, jobid: u64) -> Result<(), String> {
         .await
 }
 
-#[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn get_job_status(app: AppHandle, jobid: u64) -> Result<Option<JobInfo>, String> {
     Ok(app.state::<BackendManager>().job_cache.get_job(jobid).await)
 }
 
-#[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn get_active_jobs(app: AppHandle) -> Result<Vec<JobInfo>, String> {
     Ok(app
@@ -690,12 +686,8 @@ fn spawn_stats_cleanup(app: &AppHandle, metadata: &JobMetadata) {
 
 /// Stop a running job.
 #[tauri::command]
-pub async fn stop_job(
-    app: AppHandle,
-    scheduled_tasks_cache: State<'_, ScheduledTasksCache>,
-    jobid: u64,
-    remote_name: String,
-) -> Result<(), String> {
+pub async fn stop_job(app: AppHandle, jobid: u64, remote_name: String) -> Result<(), String> {
+    let scheduled_tasks_cache = app.state::<ScheduledTasksCache>();
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
     let job_cache = &backend_manager.job_cache;

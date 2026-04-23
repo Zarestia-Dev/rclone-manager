@@ -2,6 +2,8 @@
 //
 // Simplified flat structure - no nested types.
 
+use std::path::PathBuf;
+
 use serde::{Deserialize, Serialize};
 
 fn default_oauth_port() -> u16 {
@@ -67,7 +69,7 @@ pub struct Backend {
 
     /// Config file path (for remote backends mostly) - optional
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub config_path: Option<String>,
+    pub config_path: Option<PathBuf>,
 }
 
 impl Default for Backend {
@@ -237,7 +239,7 @@ impl Backend {
         timeout: std::time::Duration,
     ) -> crate::rclone::backend::runtime::RuntimeInfo {
         use crate::rclone::backend::runtime::RuntimeInfo;
-        use crate::rclone::queries::system::{fetch_config_path, fetch_version_info};
+        use crate::rclone::queries::system::fetch_version_info;
 
         let mut info = RuntimeInfo::new();
 
@@ -260,7 +262,7 @@ impl Backend {
         }
 
         // Config path is non-critical — log and continue on failure.
-        match tokio::time::timeout(timeout, fetch_config_path(self, client)).await {
+        match tokio::time::timeout(timeout, self.fetch_config_path(client)).await {
             Ok(Ok(path)) => {
                 log::debug!("Fetched config path for backend: {}", self.name);
                 info.config_path = Some(path);
@@ -356,6 +358,21 @@ impl Backend {
             .await
             .map_err(|e| format!("Failed to parse response: {e}"))
     }
+
+    /// Internal helper to fetch the config path from this backend's RC API.
+    async fn fetch_config_path(&self, client: &reqwest::Client) -> Result<PathBuf, String> {
+        use crate::utils::rclone::endpoints::config;
+        let paths = self
+            .post_json(client, config::PATHS, Some(&serde_json::json!({})))
+            .await?;
+
+        let config_path = paths
+            .get("config")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| "No config path in response".to_string())?;
+
+        Ok(PathBuf::from(config_path))
+    }
 }
 
 /// Frontend-friendly backend info (for list display)
@@ -370,7 +387,7 @@ pub struct BackendInfo {
     pub has_auth: bool,
     pub has_config_password: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub config_path: Option<String>,
+    pub config_path: Option<PathBuf>,
     pub oauth_port: u16,
     pub oauth_host: String,
     // Include auth fields for edit form
@@ -388,7 +405,7 @@ pub struct BackendInfo {
     pub status: Option<String>,
     /// Actual config path being used by rclone (fetched at runtime)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub runtime_config_path: Option<String>,
+    pub runtime_config_path: Option<PathBuf>,
 }
 
 impl BackendInfo {
@@ -419,7 +436,7 @@ impl BackendInfo {
         version: Option<String>,
         os: Option<String>,
         status: Option<String>,
-        runtime_config_path: Option<String>,
+        runtime_config_path: Option<PathBuf>,
     ) -> Self {
         self.version = version;
         self.os = os;

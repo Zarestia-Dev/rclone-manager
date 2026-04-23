@@ -26,11 +26,6 @@ use crate::utils::{
     },
 };
 
-#[cfg(not(desktop))]
-async fn update_tray_menu(_app: AppHandle) -> Result<(), String> {
-    Ok(())
-}
-
 fn spawn_monitoring_loop(app_handle: AppHandle) {
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_secs(MONITORING_INTERVAL_SECS));
@@ -242,30 +237,10 @@ async fn restart_engine(app: &AppHandle, change_type: &str) -> super::error::Eng
         error!("Failed to stop engine cleanly during restart: {e}");
     }
 
-    if change_type == "rclone_binary" {
-        let path = crate::core::check_binaries::read_rclone_binary(app);
-        match crate::core::check_binaries::check_rclone_available(app.clone(), "").await {
-            Ok(true) => engine.set_path_error(false),
-            Ok(false) => {
-                engine.set_path_error(true);
-                app.emit(RCLONE_ENGINE_PATH_ERROR, ()).ok();
-                return Err(EngineError::ConfigValidationFailed(format!(
-                    "Configured rclone path is invalid: {}",
-                    path.display()
-                )));
-            }
-            Err(e) => {
-                engine.set_path_error(true);
-                app.emit(RCLONE_ENGINE_PATH_ERROR, ()).ok();
-                return Err(EngineError::ConfigValidationFailed(e));
-            }
-        }
-    }
-
     if !engine.validate_config(app).await {
-        return Err(EngineError::ConfigValidationFailed(
-            "Configuration validation failed".to_string(),
-        ));
+        return Err(EngineError::ConfigValidationFailed(format!(
+            "Configuration validation failed after {change_type} change"
+        )));
     }
 
     start(&mut engine, app).await;

@@ -583,11 +583,10 @@ fn get_local_rclone_binary(app_handle: &AppHandle) -> Result<PathBuf, String> {
 
 async fn update_rclone_binary_in_settings(app_handle: &AppHandle, new_path: &Path) {
     match save_setting(
+        app_handle.clone(),
         "core".to_string(),
         "rclone_binary".to_string(),
         json!(new_path.display().to_string()),
-        app_handle.state(),
-        app_handle.clone(),
     )
     .await
     {

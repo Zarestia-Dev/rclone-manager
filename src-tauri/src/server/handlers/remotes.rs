@@ -23,22 +23,6 @@ pub async fn get_remotes_handler(
     Ok(Json(ApiResponse::success(remotes)))
 }
 
-#[derive(Deserialize)]
-pub struct RemoteNameQuery {
-    pub name: String,
-}
-
-pub async fn get_remote_config_handler(
-    State(state): State<WebServerState>,
-    Query(query): Query<RemoteNameQuery>,
-) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::rclone::queries::get_remote_config;
-    let config = get_remote_config(state.app_handle.clone(), query.name)
-        .await
-        .map_err(anyhow::Error::msg)?;
-    Ok(Json(ApiResponse::success(config)))
-}
-
 pub async fn get_remote_types_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {

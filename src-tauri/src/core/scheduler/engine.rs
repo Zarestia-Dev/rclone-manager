@@ -1,3 +1,5 @@
+//! Cron scheduler engine using tokio-cron-scheduler
+
 use crate::rclone::commands::sync::{TransferType, start_profile_batch};
 use crate::rclone::state::scheduled_tasks::{CacheUpdateResult, ScheduledTasksCache};
 
@@ -117,8 +119,6 @@ impl CronScheduler {
         let task_name = task.name.clone();
         let task_type = task.task_type.clone();
         let cron_expr_5_field = task.cron_expression.clone();
-        // tokio-cron-scheduler requires 6 fields; users supply 5.
-        // Prepend "0 " → "at second 0 of every matching minute".
         let cron_expr_6_field = format!("0 {}", cron_expr_5_field);
 
         let app_handle_for_job = app_handle.clone();
@@ -237,8 +237,9 @@ impl CronScheduler {
     }
 
     /// Reload all tasks from the cache, rescheduling every one.
-    pub async fn reload_tasks(&self, cache: State<'_, ScheduledTasksCache>) -> Result<(), String> {
+    pub async fn reload_tasks(&self, app: AppHandle) -> Result<(), String> {
         info!("🔄 Reloading all scheduled tasks…");
+        let cache = app.state::<ScheduledTasksCache>();
 
         let tasks = cache.get_all_tasks().await;
         info!("Found {} task(s) to sync", tasks.len());
@@ -304,13 +305,7 @@ impl Default for CronScheduler {
     }
 }
 
-// ============================================================================
-// CRON EXPRESSION UTILITIES
-// ============================================================================
-
 pub fn validate_cron_expression(cron_expr: &str) -> Result<(), String> {
-    // Reject six-field expressions from the user — we expect five fields
-    // (minute hour day month weekday). The scheduler adds a seconds field.
     if cron_expr.split_whitespace().count() == 6 {
         return Err(
             crate::localized_error!("backendErrors.scheduler.invalidCron", "error" => "unexpected number of fields"),
@@ -320,8 +315,6 @@ pub fn validate_cron_expression(cron_expr: &str) -> Result<(), String> {
         |e| crate::localized_error!("backendErrors.scheduler.invalidCron", "error" => e),
     )?;
 
-    // Check with tokio-cron-scheduler (used for actual scheduling).
-    // Users provide 5 fields; the scheduler expects 6 — prepend "0 ".
     let cron_6_field = format!("0 {}", cron_expr);
     JobBuilder::new()
         .with_cron_job_type()
@@ -345,10 +338,6 @@ pub fn get_next_run(cron_expr: &str) -> Result<chrono::DateTime<Utc>, String> {
 
     Ok(next_local.with_timezone(&Utc))
 }
-
-// ============================================================================
-// TASK EXECUTION
-// ============================================================================
 
 async fn execute_scheduled_task(
     task_id: &str,

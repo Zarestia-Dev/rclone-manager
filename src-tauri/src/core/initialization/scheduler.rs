@@ -39,7 +39,7 @@ pub async fn initialize_scheduler(app_handle: AppHandle) -> Result<(), String> {
 
     scheduler_state.initialize(app_handle.clone()).await?;
     scheduler_state.start().await?;
-    scheduler_state.reload_tasks(cache_state).await?;
+    scheduler_state.reload_tasks(app_handle.clone()).await?;
 
     Ok(())
 }

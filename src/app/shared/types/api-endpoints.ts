@@ -9,10 +9,7 @@
  */
 export const EXPLICIT_ENDPOINTS: Record<string, string> = {
   // Remote operations - shortened/nested routes
-  get_remotes: '/remotes',
-  get_remote_config: '/remote/:name',
   get_remote_types: '/remote-types',
-  get_all_remote_configs: '/get-configs',
   get_configs: '/get-configs',
 
   // Stats - shortened/nested routes
@@ -35,7 +32,6 @@ export const EXPLICIT_ENDPOINTS: Record<string, string> = {
   start_bisync_profile: '/jobs/start-bisync-profile',
 
   // Mount operations - shortened
-  get_mounted_remotes: '/mounted-remotes',
   get_mount_types: '/mount-types',
 
   // VFS - nested under /vfs

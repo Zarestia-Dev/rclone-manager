@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use log::{debug, error, info};
-use tauri::Manager;
 
 use crate::{
     core::{paths::AppPaths, settings::operations::core::save_setting},
@@ -94,11 +93,10 @@ pub async fn provision_rclone(
         .ok_or_else(|| crate::localized_error!("backendErrors.rclone.binaryNotFound"))?;
 
     if let Err(e) = save_setting(
+        app_handle.clone(),
         "core".to_string(),
         "rclone_binary".to_string(),
         serde_json::json!(binary_path_str),
-        app_handle.state(),
-        app_handle.clone(),
     )
     .await
     {

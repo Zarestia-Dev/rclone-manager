@@ -5,6 +5,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::{
     rclone::{
         commands::{job::stop_job, mount::unmount_all_remotes, serve::stop_all_serves},
+        engine::core::{DEFAULT_API_PORT, DEFAULT_OAUTH_PORT},
         state::watcher::{stop_mounted_remote_watcher, stop_serve_watcher},
     },
     utils::{
@@ -14,7 +15,6 @@ use crate::{
 };
 
 use crate::core::scheduler::engine::CronScheduler;
-use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 
 /// Main entry point for the shutdown sequence.
 pub async fn handle_shutdown(app_handle: AppHandle) {
@@ -81,7 +81,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         Ok(Err(e)) => error!("Engine shutdown failed: {e}"),
         Err(_) => {
             error!("Engine shutdown timed out — force-killing rclone processes");
-            if let Err(e) = kill_all_rclone_processes(51900, 51901) {
+            if let Err(e) = kill_all_rclone_processes(DEFAULT_API_PORT, DEFAULT_OAUTH_PORT) {
                 error!("Force kill failed: {e}");
             }
         }
@@ -171,10 +171,7 @@ async fn stop_all_active_jobs(app: AppHandle) -> Result<(), String> {
         .into_iter()
         .map(|job| {
             let app = app.clone();
-            tokio::spawn(async move {
-                let scheduled_cache = app.state::<ScheduledTasksCache>();
-                stop_job(app.clone(), scheduled_cache, job.jobid, job.remote_name).await
-            })
+            tokio::spawn(async move { stop_job(app.clone(), job.jobid, job.remote_name).await })
         })
         .collect();
 

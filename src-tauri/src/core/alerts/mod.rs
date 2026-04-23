@@ -6,7 +6,6 @@ pub mod seed;
 pub mod template;
 pub mod types;
 
-#[cfg(not(feature = "web-server"))]
 pub mod commands;
 
 pub use cache::AlertHistoryCache;

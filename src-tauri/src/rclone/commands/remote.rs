@@ -1,7 +1,7 @@
 use log::{error, info, warn};
 use serde_json::{Map, Value, json};
 use std::collections::HashMap;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
     core::settings::remote::manager::delete_remote_settings,
@@ -289,11 +289,8 @@ pub async fn update_remote(
 }
 
 #[tauri::command]
-pub async fn delete_remote(
-    app: AppHandle,
-    name: String,
-    cache: State<'_, ScheduledTasksCache>,
-) -> Result<(), String> {
+pub async fn delete_remote(app: tauri::AppHandle, name: String) -> Result<(), String> {
+    let cache = app.state::<ScheduledTasksCache>();
     info!("🗑️ Deleting remote: {name}");
 
     let state = app.state::<RcloneState>();
@@ -341,7 +338,7 @@ pub async fn delete_remote(
     for j in jobs {
         if j.remote_name == name {
             info!("  - Stopping job: {}", j.jobid);
-            let _ = stop_job(app.clone(), cache.clone(), j.jobid, name.clone()).await;
+            let _ = stop_job(app.clone(), j.jobid, name.clone()).await;
         }
     }
 

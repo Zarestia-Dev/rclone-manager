@@ -4,7 +4,7 @@
 
 use crate::core::settings::AppSettingsManager;
 use log::{debug, info, warn};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager};
 
 use crate::{
     core::scheduler::engine::CronScheduler,
@@ -21,6 +21,7 @@ use crate::{
 };
 use rcman::{SettingMetadata, SettingsSchema};
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 #[tauri::command]
 pub async fn get_backend_schema() -> Result<HashMap<String, SettingMetadata>, String> {
@@ -40,9 +41,8 @@ pub async fn get_active_backend(app: AppHandle) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub async fn get_backend_profiles(
-    manager: State<'_, AppSettingsManager>,
-) -> Result<Vec<String>, String> {
+pub async fn get_backend_profiles(app: AppHandle) -> Result<Vec<String>, String> {
+    let manager = app.state::<AppSettingsManager>();
     let remotes = manager
         .sub_settings("remotes")
         .map_err(|e| format!("Failed to access remotes sub-settings: {e}"))?;
@@ -104,7 +104,7 @@ pub struct AddBackendParams {
     pub username: Option<String>,
     pub password: Option<String>,
     pub config_password: Option<String>,
-    pub config_path: Option<String>,
+    pub config_path: Option<PathBuf>,
     pub oauth_port: Option<u16>,
     pub oauth_host: Option<String>,
     pub copy_backend_from: Option<String>,
@@ -185,7 +185,7 @@ pub struct UpdateBackendParams {
     pub username: Option<String>,
     pub password: Option<String>,
     pub config_password: Option<String>,
-    pub config_path: Option<String>,
+    pub config_path: Option<PathBuf>,
     pub oauth_port: Option<u16>,
     pub oauth_host: Option<String>,
 }
@@ -243,7 +243,7 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
     //   Some("")     → explicitly cleared
     //   Some(value)  → update
     match params.config_password.as_deref() {
-        None => { /* preserve existing.config_password already set above */ }
+        None => { /* preserve */ }
         Some(cp) if !cp.is_empty() => {
             backend.config_password = Some(cp.to_string());
         }
@@ -252,8 +252,6 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
         }
     }
 
-    // Only restart the Local engine when connection-relevant fields actually changed.
-    // Saving identical settings must be a no-op for the running process.
     let needs_engine_restart = params.name == "Local"
         && (existing.host != backend.host
             || existing.port != backend.port
@@ -283,16 +281,14 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
 }
 
 #[tauri::command]
-pub async fn remove_backend(
-    app: AppHandle,
-    name: String,
-    scheduler: State<'_, CronScheduler>,
-    task_cache: State<'_, ScheduledTasksCache>,
-) -> Result<(), String> {
+pub async fn remove_backend(app: AppHandle, name: String) -> Result<(), String> {
     info!("➖ Removing backend: {name}");
 
+    let scheduler = app.state::<CronScheduler>();
+    let task_cache = app.state::<ScheduledTasksCache>();
     let settings_manager = app.state::<AppSettingsManager>();
     let backend_manager = app.state::<BackendManager>();
+
     backend_manager
         .remove(settings_manager.inner(), &name)
         .await?;
@@ -364,7 +360,7 @@ pub struct TestConnectionResult {
     pub message: String,
     pub version: Option<String>,
     pub os: Option<String>,
-    pub config_path: Option<String>,
+    pub config_path: Option<PathBuf>,
 }
 
 // =============================================================================
@@ -436,8 +432,9 @@ async fn configure_remote_backend(app: &AppHandle, backend: &Backend, client: &r
 
     if let Some(config_path) = &backend.config_path {
         info!(
-            "📝 Setting config path for remote backend '{}' to: {config_path}",
-            backend.name
+            "📝 Setting config path for remote backend '{}' to: {}",
+            backend.name,
+            config_path.display()
         );
         let params = serde_json::json!({ "path": config_path });
         if let Err(e) = backend
@@ -535,7 +532,10 @@ mod tests {
         assert_eq!(params.oauth_port, Some(53682));
         assert_eq!(params.oauth_host.as_deref(), Some("my-server.local"));
         assert_eq!(params.config_password.as_deref(), Some("secret"));
-        assert_eq!(params.config_path.as_deref(), Some("/config/rclone.conf"));
+        assert_eq!(
+            params.config_path.as_ref(),
+            Some(&PathBuf::from("/config/rclone.conf"))
+        );
     }
 
     #[test]

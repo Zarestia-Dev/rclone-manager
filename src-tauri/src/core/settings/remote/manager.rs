@@ -10,7 +10,7 @@
 use crate::core::settings::AppSettingsManager;
 use log::{info, warn};
 use serde_json::Value;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 use crate::utils::types::events::REMOTE_SETTINGS_CHANGED;
@@ -18,12 +18,13 @@ use crate::utils::types::events::REMOTE_SETTINGS_CHANGED;
 /// **Save remote settings (per remote)**
 #[tauri::command]
 pub async fn save_remote_settings(
+    app: AppHandle,
     remote_name: String,
     mut settings: Value,
-    manager: State<'_, AppSettingsManager>,
-    cache: State<'_, ScheduledTasksCache>,
-    app_handle: AppHandle,
 ) -> Result<(), String> {
+    let manager = app.state::<AppSettingsManager>();
+    let cache = app.state::<ScheduledTasksCache>();
+
     // Insert name into settings
     if let Some(settings_obj) = settings.as_object_mut() {
         settings_obj.insert("name".to_string(), Value::String(remote_name.clone()));
@@ -35,16 +36,14 @@ pub async fn save_remote_settings(
     )?;
 
     // Check if remote already exists and merge settings
-    // Note: get_value runs the registered migrator automatically
-    if let Ok(existing) = remotes.get_value(&remote_name) {
-        // Merge new settings on top of existing (already migrated by rcman)
-        if let (Some(existing_obj), Some(new_obj)) = (existing.as_object(), settings.as_object()) {
-            let mut merged = existing_obj.clone();
-            for (key, value) in new_obj {
-                merged.insert(key.clone(), value.clone());
-            }
-            settings = Value::Object(merged);
+    if let Ok(existing) = remotes.get_value(&remote_name)
+        && let (Some(existing_obj), Some(new_obj)) = (existing.as_object(), settings.as_object())
+    {
+        let mut merged = existing_obj.clone();
+        for (key, value) in new_obj {
+            merged.insert(key.clone(), value.clone());
         }
+        settings = Value::Object(merged);
     }
 
     // Save to rcman sub-settings
@@ -54,7 +53,7 @@ pub async fn save_remote_settings(
 
     info!("✅ Remote settings saved for '{remote_name}'");
 
-    // Detect deleted profiles to clean up associated job records
+    // Detect deleted profiles
     if let Ok(existing) = remotes.get_value(&remote_name) {
         let config_keys = [
             "syncConfigs",
@@ -78,10 +77,9 @@ pub async fn save_remote_settings(
                         info!(
                             "🗑️ Profile '{profile_name}' deleted for remote '{remote_name}', cleaning up jobs..."
                         );
-                        app_handle
-                            .state::<crate::rclone::backend::BackendManager>()
+                        app.state::<crate::rclone::backend::BackendManager>()
                             .job_cache
-                            .delete_jobs_by_profile(&remote_name, profile_name, Some(&app_handle))
+                            .delete_jobs_by_profile(&remote_name, profile_name, Some(&app))
                             .await;
                     }
                 }
@@ -89,9 +87,7 @@ pub async fn save_remote_settings(
         }
     }
 
-    // Sync the cache and scheduler together.
-    // BackendManager tells us which backend is currently active.
-    let backend_manager = app_handle.state::<crate::rclone::backend::BackendManager>();
+    let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
     let backend_name = backend_manager.get_active_name().await;
 
     match cache
@@ -100,40 +96,31 @@ pub async fn save_remote_settings(
     {
         Ok(result) if result.has_changes() => {
             use crate::core::scheduler::engine::CronScheduler;
-            let scheduler = app_handle.state::<CronScheduler>();
-            if let Err(e) = scheduler.apply_cache_result(&result, cache.clone()).await {
+            let scheduler = app.state::<CronScheduler>();
+            if let Err(e) = scheduler.apply_cache_result(&result, cache).await {
                 warn!("⚠️  Scheduler sync incomplete for remote '{remote_name}': {e}");
             } else {
                 info!("✅ Scheduler updated for remote '{remote_name}'");
             }
         }
-        Ok(_) => {
-            // No cron-relevant fields changed — nothing to do.
-        }
-        Err(e) => {
-            warn!("⚠️  Failed to update scheduled tasks for remote '{remote_name}': {e}");
-        }
+        _ => {}
     }
 
-    app_handle.emit(REMOTE_SETTINGS_CHANGED, remote_name).ok();
+    app.emit(REMOTE_SETTINGS_CHANGED, remote_name).ok();
     Ok(())
 }
 
 /// **Delete remote settings**
 #[tauri::command]
-pub async fn delete_remote_settings(
-    app_handle: tauri::AppHandle,
-    remote_name: String,
-) -> Result<(), String> {
-    let manager = app_handle.state::<AppSettingsManager>();
+pub async fn delete_remote_settings(app: AppHandle, remote_name: String) -> Result<(), String> {
+    let manager = app.state::<AppSettingsManager>();
     let remotes = manager.inner().sub_settings("remotes").map_err(
         |e| crate::localized_error!("backendErrors.settings.subSettingsFailed", "error" => e),
     )?;
 
-    // Check if exists first
     if remotes.get_value(&remote_name).is_err() {
         warn!("⚠️ Remote settings for '{remote_name}' not found, but that's okay.");
-        app_handle.emit(REMOTE_SETTINGS_CHANGED, remote_name).ok();
+        app.emit(REMOTE_SETTINGS_CHANGED, remote_name).ok();
         return Ok(());
     }
 
@@ -142,26 +129,22 @@ pub async fn delete_remote_settings(
     )?;
 
     info!("✅ Remote settings for '{remote_name}' deleted.");
-    app_handle.emit(REMOTE_SETTINGS_CHANGED, remote_name).ok();
+    app.emit(REMOTE_SETTINGS_CHANGED, remote_name).ok();
     Ok(())
 }
 
 /// **Retrieve settings for a specific remote**
-///
-/// The registered migrator runs automatically when loading, so legacy
-/// format migration is handled transparently by rcman.
-#[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn get_remote_settings(
+    app: AppHandle,
     remote_name: String,
-    manager: State<'_, AppSettingsManager>,
 ) -> Result<serde_json::Value, String> {
+    let manager = app.state::<AppSettingsManager>();
     let remotes = manager
         .inner()
         .sub_settings("remotes")
         .map_err(|e| format!("Failed to get remotes sub-settings: {e}"))?;
 
-    // Migration is handled automatically by rcman's registered migrator
     let settings = remotes.get_value(&remote_name).map_err(
         |_| crate::localized_error!("backendErrors.settings.notFound", "name" => remote_name),
     )?;
@@ -171,9 +154,6 @@ pub async fn get_remote_settings(
 }
 
 /// **Get all remote settings as a map (for internal use)**
-///
-/// This is used by modules like scheduler, startup, and sync that need
-/// to access all remote settings at once.
 pub fn get_all_remote_settings_sync(
     manager: &AppSettingsManager,
     remote_names: &[String],
@@ -184,20 +164,10 @@ pub fn get_all_remote_settings_sync(
     };
 
     let mut all_settings = remotes.get_all_values().unwrap_or_default();
-
-    // Filter by requested names
     all_settings.retain(|name, _| remote_names.contains(name));
-
     serde_json::to_value(all_settings).unwrap_or_default()
 }
 
-/// Migrator to convert legacy singular configs to object-based configs.
-///
-/// This is registered with rcman's `with_migrator()` and runs automatically
-/// when loading remote settings entries.
-///
-/// Migration: `mountConfig: { source: "...", dest: "..." }`
-///         → `mountConfigs: { "Default": { source: "...", dest: "..." } }`
 pub fn migrate_to_multi_profile(mut settings: Value) -> Value {
     if let Some(obj) = settings.as_object_mut() {
         let migration_map = [

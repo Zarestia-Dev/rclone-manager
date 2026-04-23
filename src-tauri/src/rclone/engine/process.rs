@@ -10,9 +10,9 @@ use crate::utils::{
 
 use super::error::{EngineError, EngineResult};
 
-const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(2);
-const MAX_GRACEFUL_SHUTDOWN_ITERATIONS: usize = 20;
-const GRACEFUL_SHUTDOWN_CHECK_INTERVAL: Duration = Duration::from_millis(100);
+const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
+const MAX_GRACEFUL_SHUTDOWN_ITERATIONS: usize = 10;
+const GRACEFUL_SHUTDOWN_CHECK_INTERVAL: Duration = Duration::from_millis(500);
 
 impl RcApiEngine {
     pub async fn spawn_process(&mut self, app: &AppHandle) -> EngineResult<tokio::process::Child> {
@@ -75,6 +75,7 @@ impl RcApiEngine {
                     .send()
                     .await;
 
+                #[cfg(unix)]
                 for _ in 0..MAX_GRACEFUL_SHUTDOWN_ITERATIONS {
                     if let Ok(output) = tokio::process::Command::new("kill")
                         .args(["-0", &pid_val.to_string()])
@@ -83,11 +84,33 @@ impl RcApiEngine {
                         && !output.status.success()
                     {
                         info!("Process terminated gracefully");
+                        let _ = child.wait().await;
                         self.running = false;
                         return Ok(());
                     }
                     tokio::time::sleep(GRACEFUL_SHUTDOWN_CHECK_INTERVAL).await;
                 }
+
+                #[cfg(windows)]
+                {
+                    let total_wait = GRACEFUL_SHUTDOWN_CHECK_INTERVAL
+                        .saturating_mul(MAX_GRACEFUL_SHUTDOWN_ITERATIONS as u32);
+                    let deadline = tokio::time::Instant::now() + total_wait;
+
+                    loop {
+                        if !crate::utils::process::process_manager::is_process_alive(pid_val) {
+                            info!("Process terminated gracefully");
+                            let _ = child.wait().await;
+                            self.running = false;
+                            return Ok(());
+                        }
+                        if tokio::time::Instant::now() >= deadline {
+                            break;
+                        }
+                        tokio::time::sleep(GRACEFUL_SHUTDOWN_CHECK_INTERVAL).await;
+                    }
+                }
+
                 debug!("Graceful shutdown timed out, force killing...");
             }
 
@@ -97,6 +120,8 @@ impl RcApiEngine {
                 error!("{}", error_msg);
                 return Err(EngineError::KillFailed(error_msg));
             }
+            // Reap the child after a forced kill too.
+            let _ = child.wait().await;
             info!("Process terminated");
         }
 

@@ -6,8 +6,8 @@ use serde_json::Value;
 use tauri::{AppHandle, Emitter, Listener, Manager};
 
 use crate::{
-    core::{lifecycle::shutdown::shutdown_app, scheduler::engine::CronScheduler},
-    rclone::{commands::system::set_bandwidth_limit, state::scheduled_tasks::ScheduledTasksCache},
+    core::lifecycle::shutdown::shutdown_app,
+    rclone::commands::system::set_bandwidth_limit,
     utils::{
         logging::log::update_log_level,
         types::events::{
@@ -76,16 +76,8 @@ fn handle_remote_presence_changed(app: &AppHandle) {
                 &remote_names,
             );
 
-            let cache_state = app_clone.state::<ScheduledTasksCache>();
-            let scheduler_state = app_clone.state::<CronScheduler>();
-
-            if let Err(e) = reload_scheduled_tasks_from_configs(
-                cache_state,
-                scheduler_state,
-                all_configs,
-                app_clone.clone(),
-            )
-            .await
+            if let Err(e) =
+                reload_scheduled_tasks_from_configs(app_clone.clone(), all_configs).await
             {
                 error!("Failed to reload scheduled tasks after remote change: {e}");
             }

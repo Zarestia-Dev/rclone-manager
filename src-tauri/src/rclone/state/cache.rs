@@ -367,13 +367,11 @@ pub async fn get_configs<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Va
 
 /// Get all remote settings from rcman sub-settings
 #[tauri::command]
-pub async fn get_settings<R: Runtime>(
-    app: AppHandle<R>,
-    manager: tauri::State<'_, AppSettingsManager>,
-) -> Result<serde_json::Value, String> {
+pub async fn get_settings<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Value, String> {
     use crate::rclone::backend::BackendManager;
     use serde_json::json;
 
+    let manager = app.state::<AppSettingsManager>();
     let remotes = manager
         .inner()
         .sub_settings("remotes")
@@ -417,7 +415,6 @@ pub async fn get_cached_serves<R: Runtime>(
 }
 
 /// Rename a profile in all cached mounts
-#[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn rename_mount_profile_in_cache<R: Runtime>(
     app: AppHandle<R>,
@@ -440,7 +437,6 @@ pub async fn rename_mount_profile_in_cache<R: Runtime>(
 }
 
 /// Rename a profile in all cached serves
-#[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn rename_serve_profile_in_cache<R: Runtime>(
     app: AppHandle<R>,

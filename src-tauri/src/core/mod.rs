@@ -11,5 +11,4 @@ pub mod settings;
 pub mod tray;
 
 pub mod cli;
-#[cfg(not(feature = "web-server"))]
 pub mod commands;

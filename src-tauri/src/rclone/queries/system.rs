@@ -75,13 +75,13 @@ pub async fn get_memory_stats(app: AppHandle) -> Result<serde_json::Value, Strin
     Ok(json)
 }
 
-/// Fetch config path from Rclone
-pub async fn fetch_config_path(
-    backend: &crate::rclone::backend::types::Backend,
-    client: &reqwest::Client,
-) -> Result<String, String> {
+#[tauri::command]
+pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {
+    let state = app.state::<RcloneState>();
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
     let paths = backend
-        .post_json(client, config::PATHS, Some(&json!({})))
+        .post_json(&state.client, config::PATHS, Some(&json!({})))
         .await
         .map_err(|e| format!("Failed to execute API request: {e}"))?;
 
@@ -90,20 +90,9 @@ pub async fn fetch_config_path(
         .and_then(|v| v.as_str())
         .ok_or("No config path in response")?;
 
-    Ok(config_path.to_string())
+    Ok(PathBuf::from(config_path))
 }
 
-#[tauri::command]
-pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {
-    let state = app.state::<RcloneState>();
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    fetch_config_path(&backend, &state.client)
-        .await
-        .map(PathBuf::from)
-}
-
-#[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn get_rclone_rc_url(app: AppHandle) -> Result<String, String> {
     let backend_manager = app.state::<BackendManager>();

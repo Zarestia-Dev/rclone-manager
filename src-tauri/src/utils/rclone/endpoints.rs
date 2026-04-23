@@ -348,14 +348,14 @@ pub mod config {
     /// See the [config dump](/commands/rclone_config_dump/) command for more information on the above.
     pub const DUMP: &str = "config/dump";
 
-    /// Get a remote in the config file.
-    ///
-    /// Parameters:
-    ///
-    /// - name - name of remote to get
-    ///
-    /// See the [config dump](/commands/rclone_config_dump/) command for more information on the above.
-    pub const GET: &str = "config/get";
+    // /// Get a remote in the config file.
+    // ///
+    // /// Parameters:
+    // ///
+    // /// - name - name of remote to get
+    // ///
+    // /// See the [config dump](/commands/rclone_config_dump/) command for more information on the above.
+    // pub const GET: &str = "config/get";
 
     /// Lists the remotes in the config file and defined in environment variables.
     ///

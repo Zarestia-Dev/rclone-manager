@@ -1,15 +1,12 @@
 use log::debug;
 use serde_json::Value;
 use std::collections::HashMap;
-use tauri::command;
 
 use crate::rclone::backend::BackendManager;
 use crate::utils::rclone::endpoints::config;
 use crate::utils::types::core::RcloneState;
 use tauri::{AppHandle, Manager};
 
-#[cfg(not(feature = "web-server"))]
-#[command]
 pub async fn get_all_remote_configs(app: AppHandle) -> Result<serde_json::Value, String> {
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
@@ -21,8 +18,6 @@ pub async fn get_all_remote_configs(app: AppHandle) -> Result<serde_json::Value,
     Ok(json)
 }
 
-#[cfg(not(feature = "web-server"))]
-#[command]
 pub async fn get_remotes(app: AppHandle) -> Result<Vec<String>, String> {
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
@@ -50,33 +45,13 @@ pub async fn get_remotes(app: AppHandle) -> Result<Vec<String>, String> {
     Ok(remotes)
 }
 
+/// ✅ Fetch all remote types
 #[tauri::command]
-pub async fn get_remote_config(
-    app: AppHandle,
-    remote_name: String,
-) -> Result<serde_json::Value, String> {
+pub async fn get_remote_types(app: AppHandle) -> Result<HashMap<String, Vec<Value>>, String> {
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
     let json = backend
-        .post_json(
-            &app.state::<RcloneState>().client,
-            config::GET,
-            Some(&serde_json::json!({ "name": remote_name })),
-        )
-        .await
-        .map_err(|e| format!("❌ Failed to fetch remote config: {e}"))?;
-
-    Ok(json)
-}
-
-/// ✅ Fetch remote providers (cached for reuse)
-async fn fetch_remote_providers(
-    backend_manager: &BackendManager,
-    client: &reqwest::Client,
-) -> Result<HashMap<String, Vec<Value>>, String> {
-    let backend = backend_manager.get_active().await;
-    let json = backend
-        .post_json(client, config::PROVIDERS, None)
+        .post_json(&app.state::<RcloneState>().client, config::PROVIDERS, None)
         .await
         .map_err(|e| format!("❌ Failed to send request: {e}"))?;
 
@@ -86,21 +61,12 @@ async fn fetch_remote_providers(
     Ok(providers)
 }
 
-/// ✅ Fetch all remote types
-#[tauri::command]
-pub async fn get_remote_types(app: AppHandle) -> Result<HashMap<String, Vec<Value>>, String> {
-    let backend_manager = app.state::<BackendManager>();
-    fetch_remote_providers(&backend_manager, &app.state::<RcloneState>().client).await
-}
-
 /// ✅ Fetch only OAuth-supported remotes
-#[command]
+#[tauri::command]
 pub async fn get_oauth_supported_remotes(
     app: AppHandle,
 ) -> Result<HashMap<String, Vec<Value>>, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let providers =
-        fetch_remote_providers(&backend_manager, &app.state::<RcloneState>().client).await?;
+    let providers = get_remote_types(app).await?;
 
     // Extract all OAuth-supported remotes with their full information
     let mut oauth_remotes = HashMap::new();

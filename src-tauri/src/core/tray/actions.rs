@@ -12,7 +12,6 @@ use crate::{
             serve::{start_serve_profile, stop_all_serves, stop_serve},
             sync::{TransferType, start_profile_batch},
         },
-        state::scheduled_tasks::ScheduledTasksCache,
     },
     utils::{
         app::notification::{NotificationEvent, notify},
@@ -199,8 +198,7 @@ async fn handle_stop_job_profile(
             && j.profile.as_ref() == Some(&profile_name)
             && j.status == JobStatus::Running
     }) {
-        let scheduled_cache = app.state::<ScheduledTasksCache>();
-        match stop_job(app.clone(), scheduled_cache, job.jobid, remote_name.clone()).await {
+        match stop_job(app.clone(), job.jobid, remote_name.clone()).await {
             Ok(_) => {
                 info!(
                     "🛑 Stopped {} job {} for {} profile '{}'",
@@ -350,15 +348,7 @@ pub fn handle_stop_all_jobs(app: AppHandle) {
 
         let mut stopped_count = 0usize;
         for job in active_jobs {
-            let scheduled_cache = app.state::<ScheduledTasksCache>();
-            match stop_job(
-                app.clone(),
-                scheduled_cache,
-                job.jobid,
-                job.remote_name.clone(),
-            )
-            .await
-            {
+            match stop_job(app.clone(), job.jobid, job.remote_name.clone()).await {
                 Ok(_) => {
                     stopped_count += 1;
                     info!("🛑 Stopped job {}", job.jobid);

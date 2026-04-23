@@ -9,7 +9,7 @@ use log::info;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::RwLock;
 
 use crate::utils::types::events::SCHEDULED_TASKS_CACHE_CHANGED;
@@ -573,24 +573,23 @@ impl Default for ScheduledTasksCache {
 /// Commands that coordinate both cache and scheduler live in `commands.rs`.
 
 #[tauri::command]
-pub async fn get_scheduled_tasks(
-    cache: State<'_, ScheduledTasksCache>,
-) -> Result<Vec<ScheduledTask>, String> {
+pub async fn get_scheduled_tasks(app: AppHandle) -> Result<Vec<ScheduledTask>, String> {
+    let cache = app.state::<ScheduledTasksCache>();
     Ok(cache.get_all_tasks().await)
 }
 
 #[tauri::command]
 pub async fn get_scheduled_task(
-    cache: State<'_, ScheduledTasksCache>,
+    app: AppHandle,
     task_id: String,
 ) -> Result<Option<ScheduledTask>, String> {
+    let cache = app.state::<ScheduledTasksCache>();
     Ok(cache.get_task(&task_id).await)
 }
 
 #[tauri::command]
-pub async fn get_scheduled_tasks_stats(
-    cache: State<'_, ScheduledTasksCache>,
-) -> Result<ScheduledTaskStats, String> {
+pub async fn get_scheduled_tasks_stats(app: AppHandle) -> Result<ScheduledTaskStats, String> {
+    let cache = app.state::<ScheduledTasksCache>();
     Ok(cache.get_stats().await)
 }
 

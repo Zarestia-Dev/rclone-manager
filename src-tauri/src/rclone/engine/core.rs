@@ -4,6 +4,8 @@ use std::fmt;
 /// Default port for the rclone API
 pub const DEFAULT_API_PORT: u16 = 51900;
 
+pub const DEFAULT_OAUTH_PORT: u16 = 51901;
+
 /// Why the engine cannot start
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PauseReason {

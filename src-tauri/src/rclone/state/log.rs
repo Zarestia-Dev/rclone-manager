@@ -1,4 +1,4 @@
-use tauri::State;
+use tauri::{AppHandle, Manager};
 use tokio::sync::RwLock;
 
 use crate::utils::types::logs::{LogCache, LogEntry};
@@ -55,18 +55,17 @@ impl LogCache {
 
 #[tauri::command]
 pub async fn get_remote_logs(
-    log_cache: State<'_, LogCache>,
+    app: AppHandle,
     remote_name: Option<String>,
 ) -> Result<Vec<LogEntry>, String> {
+    let log_cache = app.state::<LogCache>();
     let logs = log_cache.get_logs_for_remote(remote_name.as_deref()).await;
     Ok(logs)
 }
 
 #[tauri::command]
-pub async fn clear_remote_logs(
-    log_cache: State<'_, LogCache>,
-    remote_name: Option<String>,
-) -> Result<(), String> {
+pub async fn clear_remote_logs(app: AppHandle, remote_name: Option<String>) -> Result<(), String> {
+    let log_cache = app.state::<LogCache>();
     if let Some(name) = remote_name {
         log_cache.clear_for_remote(&name).await;
     }

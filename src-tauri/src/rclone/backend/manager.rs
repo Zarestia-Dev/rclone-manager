@@ -5,6 +5,7 @@
 use crate::core::settings::AppSettingsManager;
 use log::info;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -125,7 +126,7 @@ impl BackendManager {
     }
 
     /// Helper to get the config path of the Local backend
-    pub async fn get_local_config_path(&self) -> Result<Option<String>, String> {
+    pub async fn get_local_config_path(&self) -> Result<Option<PathBuf>, String> {
         self.state
             .read()
             .await
@@ -380,7 +381,7 @@ impl BackendManager {
     }
 
     /// Get the runtime config path for a specific backend
-    pub async fn get_runtime_config_path(&self, name: &str) -> Option<String> {
+    pub async fn get_runtime_config_path(&self, name: &str) -> Option<PathBuf> {
         self.runtime_info
             .read()
             .await

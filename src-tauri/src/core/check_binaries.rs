@@ -5,8 +5,10 @@ use tauri::{AppHandle, Manager};
 
 use crate::utils::rclone::util::RCLONE_EXECUTABLE;
 
-fn resolve_rclone_binary(app: &AppHandle, override_path: Option<&str>) -> PathBuf {
-    if let Some(path) = override_path.filter(|p| !p.is_empty() && *p != "system") {
+fn resolve_rclone_binary(app: &AppHandle, override_path: Option<&std::path::Path>) -> PathBuf {
+    if let Some(path) = override_path
+        .filter(|p| !p.to_string_lossy().is_empty() && *p != std::path::Path::new("system"))
+    {
         let path = PathBuf::from(path);
         if !path.to_string_lossy().ends_with(RCLONE_EXECUTABLE) {
             return path.join(RCLONE_EXECUTABLE);
@@ -17,9 +19,15 @@ fn resolve_rclone_binary(app: &AppHandle, override_path: Option<&str>) -> PathBu
 }
 
 #[tauri::command]
-pub async fn check_rclone_available(app: AppHandle, path: &str) -> Result<bool, String> {
-    let rclone_binary =
-        resolve_rclone_binary(&app, if path.is_empty() { None } else { Some(path) });
+pub async fn check_rclone_available(app: AppHandle, path: String) -> Result<bool, String> {
+    let rclone_binary = resolve_rclone_binary(
+        &app,
+        if path.is_empty() {
+            None
+        } else {
+            Some(std::path::Path::new(&path))
+        },
+    );
     debug!("Checking rclone at: {}", rclone_binary.display());
 
     if rclone_binary.exists() && rclone_binary.is_file() {
@@ -50,13 +58,13 @@ pub async fn check_rclone_available(app: AppHandle, path: &str) -> Result<bool, 
 pub fn build_rclone_command(
     app: &AppHandle,
     bin_override: Option<&str>,
-    config_override: Option<&str>,
+    config_override: Option<&std::path::Path>,
     args: Option<&[&str]>,
 ) -> crate::utils::process::command::Command {
-    let binary_path = resolve_rclone_binary(app, bin_override);
+    let binary_path = resolve_rclone_binary(app, bin_override.map(std::path::Path::new));
     let mut cmd = crate::utils::process::command::Command::new(binary_path);
 
-    if let Some(cfg) = config_override.filter(|c| !c.is_empty()) {
+    if let Some(cfg) = config_override.filter(|c| !c.to_string_lossy().is_empty()) {
         cmd = cmd.arg("--config").arg(cfg);
     }
     if let Some(a) = args.filter(|a| !a.is_empty()) {
