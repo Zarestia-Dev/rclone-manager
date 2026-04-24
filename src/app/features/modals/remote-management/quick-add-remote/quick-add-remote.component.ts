@@ -35,7 +35,7 @@ import {
   ValidatorRegistryService,
   IconService,
 } from '@app/services';
-import { CopyToClipboardDirective } from 'src/app/shared/directives/copy-to-clipboard.directive';
+import { CopyToClipboardDirective } from '@app/directives';
 import {
   RemoteType,
   RemoteConfigSections,

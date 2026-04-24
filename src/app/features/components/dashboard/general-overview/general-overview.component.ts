@@ -28,9 +28,13 @@ import {
   CardDisplayMode,
 } from '@app/types';
 
-import { FormatTimePipe } from '../../../../shared/pipes/format-time.pipe';
-import { FormatEtaPipe } from '../../../../shared/pipes/format-eta.pipe';
-import { FormatMemoryUsagePipe } from '../../../../shared/pipes/format-memory-usage.pipe';
+import {
+  FormatTimePipe,
+  FormatEtaPipe,
+  FormatMemoryUsagePipe,
+  FormatRateValuePipe,
+  FormatBytes,
+} from '@app/pipes';
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
@@ -44,9 +48,7 @@ import {
   IconService,
   getRemoteNameFromFs,
 } from '@app/services';
-import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
-import { FormatRateValuePipe } from '../../../../shared/pipes/format-rate-value.pipe';
-import { FormatBytes } from '../../../../shared/pipes/format-bytes.pipe';
+import { CopyToClipboardDirective } from '@app/directives';
 
 const SCROLL_DELAY_MS = 60;
 

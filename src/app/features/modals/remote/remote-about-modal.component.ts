@@ -27,7 +27,7 @@ import {
   RemoteMetadataService,
   JobManagementService,
 } from 'src/app/services';
-import { FormatFileSizePipe } from 'src/app/shared/pipes';
+import { FormatFileSizePipe } from '@app/pipes';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { DiskUsage, FsInfo } from '@app/types';
 

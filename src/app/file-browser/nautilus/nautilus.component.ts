@@ -33,8 +33,7 @@ import { NautilusDragDropService } from 'src/app/services/ui/nautilus-drag-drop.
 import { NautilusSettingsService } from 'src/app/services/ui/nautilus-settings.service';
 import { NautilusTabService, PaneViewModel } from 'src/app/services/ui/nautilus-tab.service';
 import { NautilusActionsService } from 'src/app/services/ui/nautilus-actions.service';
-import { CopyToClipboardDirective } from '../../shared/directives/copy-to-clipboard.directive';
-import { NautilusKeyboardDirective } from '../../shared/directives/nautilus-keyboard.directive';
+import { CopyToClipboardDirective, NautilusKeyboardDirective } from '@app/directives';
 
 import { NautilusSidebarComponent } from './sidebar/nautilus-sidebar.component';
 import { NautilusToolbarComponent } from './toolbar/nautilus-toolbar.component';

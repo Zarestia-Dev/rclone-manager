@@ -24,9 +24,9 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { DatePipe, UpperCasePipe } from '@angular/common';
 import { LogContext, RemoteLogEntry, LOG_LEVELS, LogLevel } from '@app/types';
 import { LoggingService, BackendTranslationService, ModalService } from '@app/services';
-import { AnsiToHtmlPipe } from 'src/app/shared/pipes/ansi-to-html.pipe';
+import { AnsiToHtmlPipe } from '@app/pipes';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
+import { CopyToClipboardDirective } from '@app/directives';
 
 @Component({
   selector: 'app-logs-modal',

@@ -3,7 +3,7 @@ import { TitlebarComponent } from './layout/titlebar/titlebar.component';
 import { OnboardingComponent } from './features/onboarding/onboarding.component';
 import { HomeComponent } from './home/home.component';
 import { TabsButtonsComponent } from './layout/tabs-buttons/tabs-buttons.component';
-import { ShortcutHandlerDirective } from './shared/directives/shortcut-handler.directive';
+import { ShortcutHandlerDirective } from '@app/directives';
 import { BannerComponent } from './layout/banners/banner.component';
 import { NautilusComponent } from './file-browser/nautilus/nautilus.component';
 

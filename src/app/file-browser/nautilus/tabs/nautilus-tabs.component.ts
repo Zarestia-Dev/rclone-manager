@@ -17,7 +17,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { NautilusService } from '@app/services';
-import { ScrollShadowDirective } from '../../../shared/directives/scroll-shadow.directive';
+import { ScrollShadowDirective } from '@app/directives';
 
 export interface TabItem {
   id: number;

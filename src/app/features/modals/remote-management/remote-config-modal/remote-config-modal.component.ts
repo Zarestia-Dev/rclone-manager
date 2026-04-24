@@ -88,7 +88,7 @@ import {
   parseFsString,
 } from '../../../../services/remote/utils/remote-config.utils';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { CopyToClipboardDirective } from 'src/app/shared/directives/copy-to-clipboard.directive';
+import { CopyToClipboardDirective } from '@app/directives';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

@@ -18,8 +18,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
-import { FormatTimePipe } from 'src/app/shared/pipes/format-time.pipe';
-import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
+import { FormatTimePipe, FormatFileSizePipe } from '@app/pipes';
 import {
   CompletedTransfer,
   GlobalStats,

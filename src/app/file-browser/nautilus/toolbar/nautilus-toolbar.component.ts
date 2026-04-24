@@ -20,7 +20,7 @@ import { CdkMenuModule } from '@angular/cdk/menu';
 import { IconService, NautilusService } from '@app/services';
 import { WindowControlsComponent } from '@app/shared/components';
 import { ExplorerRoot } from '@app/types';
-import { ScrollShadowDirective } from '../../../shared/directives/scroll-shadow.directive';
+import { ScrollShadowDirective } from '@app/directives';
 
 @Component({
   selector: 'app-nautilus-toolbar',

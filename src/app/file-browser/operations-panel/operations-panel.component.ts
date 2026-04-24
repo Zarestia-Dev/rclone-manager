@@ -8,7 +8,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { JobManagementService, UiStateService } from '@app/services';
-import { CopyToClipboardDirective } from '../../shared/directives/copy-to-clipboard.directive';
+import { CopyToClipboardDirective } from '@app/directives';
 import { JobInfo } from '@app/types';
 import { FormatFileSizePipe, FormatEtaPipe, FormatRateValuePipe } from '@app/pipes';
 import { Subject, interval } from 'rxjs';

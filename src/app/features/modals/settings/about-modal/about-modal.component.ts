@@ -19,7 +19,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
+import { FormatFileSizePipe } from '@app/pipes';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { marked, Renderer } from 'marked';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -36,7 +36,7 @@ import {
   BackendService,
   ModalService,
 } from '@app/services';
-import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
+import { CopyToClipboardDirective } from '@app/directives';
 
 // Configure renderer once at module level
 const renderer = new Renderer();

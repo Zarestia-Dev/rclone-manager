@@ -15,13 +15,11 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
 import { CompletedTransfer, JobInfo } from '@app/types';
-import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
-import { FormatTimePipe } from 'src/app/shared/pipes/format-time.pipe';
-import { FormatEtaPipe } from 'src/app/shared/pipes/format-eta.pipe';
+import { FormatFileSizePipe, FormatTimePipe, FormatEtaPipe } from '@app/pipes';
 import { TransferActivityPanelComponent } from '../../../shared/detail-shared';
 import { TransferActivityPanelConfig } from '@app/types';
 import { IconService, JobManagementService, mapRawTransfer, ModalService } from '@app/services';
-import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-clipboard.directive';
+import { CopyToClipboardDirective } from '@app/directives';
 
 @Component({
   selector: 'app-job-detail-modal',

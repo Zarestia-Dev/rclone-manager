@@ -28,9 +28,9 @@ import {
   PathSelectionService,
   JobManagementService,
 } from '@app/services';
-import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-clipboard.directive';
+import { CopyToClipboardDirective } from '@app/directives';
 import { Entry, FileBrowserItem, RemoteFeatures } from '@app/types';
-import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
+import { FormatFileSizePipe } from '@app/pipes';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 interface ExpiryOption {
