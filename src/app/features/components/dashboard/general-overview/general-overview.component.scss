@@ -374,23 +374,6 @@
             text-overflow: ellipsis;
             white-space: nowrap;
           }
-
-          .task-status-badge {
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-
-            @each $status, $color in ("enabled", primary-color), ("disabled", dim-color),
-              ("running", accent-color), ("failed", warn-color), ("stopping", orange)
-            {
-              &.#{$status} {
-                background: rgba(var(--#{$color}-rgb), 0.2);
-                color: var(--#{$color});
-              }
-            }
-          }
         }
       }
 
@@ -517,26 +500,6 @@
       -webkit-line-clamp: 2;
       line-clamp: 2;
       -webkit-box-orient: vertical;
-    }
-  }
-
-  .task-running-badge {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 8px;
-    @include status-container(
-      rgba(var(--accent-color-rgb), 0.2),
-      rgba(var(--accent-color-rgb), 0.3)
-    );
-    border-radius: 12px;
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--accent-color);
-
-    .running-icon {
-      width: var(--icon-size-xs);
-      height: var(--icon-size-xs);
     }
   }
 }
@@ -761,32 +724,6 @@
 .error-text {
   color: var(--warn-color);
   font-weight: 500;
-}
-
-.active-jobs-indicator,
-.active-tasks-indicator,
-.active-serves-indicator {
-  display: flex;
-  align-items: center;
-  color: var(--primary-color);
-  background: rgba(var(--primary-color-rgb), var(--active-opacity));
-  padding: 6px 10px;
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-}
-
-.disabled-jobs-indicator,
-.disabled-tasks-indicator,
-.disabled-serves-indicator {
-  display: flex;
-  align-items: center;
-  color: var(--dim-color);
-  background: rgba(var(--dim-color-rgb), var(--active-opacity));
-  padding: 6px 10px;
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
 }
 
 .empty-state-message {

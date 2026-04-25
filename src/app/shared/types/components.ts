@@ -129,3 +129,28 @@ export interface InstallationTabOption {
 // ── Remote card display ─────────────────────────────────────────────────────
 export type RemoteCardVariant = 'active' | 'inactive' | 'error';
 export type CardDisplayMode = 'compact' | 'detailed';
+
+/**
+ * Global mapping of operation types to their corresponding animation classes.
+ * These classes are defined in src/animations.scss.
+ */
+export const ACTION_ANIMATION_CLASS: Record<PrimaryActionType, string> = {
+  sync: 'animate-spin',
+  copy: 'animate-copy',
+  move: 'animate-move',
+  bisync: 'animate-breathing',
+  serve: 'animate-pulse-blue',
+  mount: 'animate-breathing',
+};
+
+/**
+ * Mapping of operation colors to their corresponding CSS variable names.
+ */
+export const OPERATION_COLOR_VAR: Record<OperationColor, string> = {
+  primary: 'var(--primary-color)',
+  accent: 'var(--accent-color)',
+  yellow: 'var(--yellow)',
+  orange: 'var(--orange)',
+  purple: 'var(--purple)',
+  warn: 'var(--warn-color)',
+};

@@ -7,7 +7,7 @@ use tauri::{AppHandle, Manager};
 
 use crate::rclone::backend::BackendManager;
 use crate::rclone::commands::job::JobMetadata;
-use crate::utils::rclone::endpoints::operations;
+use crate::utils::rclone::endpoints::{operations, sync};
 use crate::utils::rclone::util::build_full_path;
 use crate::utils::types::{core::RcloneState, jobs::JobType, origin::Origin};
 
@@ -229,16 +229,14 @@ pub async fn transfer(
         if mode == "copy" {
             if item.is_dir {
                 inputs.push(json!({
-                    "_path": "copy",
-                    "is_dir": true,
+                    "_path": sync::COPY,
                     "srcFs": src_full,
                     "dstFs": dst_full,
                     "createEmptySrcDirs": true,
                 }));
             } else {
                 inputs.push(json!({
-                    "_path": "copy",
-                    "is_dir": false,
+                    "_path": operations::COPYFILE,
                     "srcFs": item.remote,
                     "srcRemote": item.path,
                     "dstFs": dst_remote.clone(),
@@ -249,8 +247,7 @@ pub async fn transfer(
             // mode == "move"
             if item.is_dir {
                 inputs.push(json!({
-                    "_path": "rename",
-                    "is_dir": true,
+                    "_path": sync::MOVE,
                     "srcFs": src_full,
                     "dstFs": dst_full,
                     "createEmptySrcDirs": true,
@@ -258,8 +255,7 @@ pub async fn transfer(
                 }));
             } else {
                 inputs.push(json!({
-                    "_path": "rename",
-                    "is_dir": false,
+                    "_path": operations::MOVEFILE,
                     "srcFs": item.remote,
                     "srcRemote": item.path,
                     "dstFs": dst_remote.clone(),
@@ -290,9 +286,14 @@ pub async fn delete(
 
     let mut inputs = Vec::new();
     for item in items {
+        let endpoint = if item.is_dir {
+            crate::utils::rclone::endpoints::operations::PURGE
+        } else {
+            crate::utils::rclone::endpoints::operations::DELETEFILE
+        };
+
         inputs.push(json!({
-            "_path": "delete",
-            "is_dir": item.is_dir,
+            "_path": endpoint,
             "fs": item.remote,
             "remote": item.path,
         }));
@@ -935,8 +936,7 @@ pub async fn rename(
 
         if item.is_dir {
             inputs.push(json!({
-                "_path": "rename",
-                "is_dir": true,
+                "_path": sync::MOVE,
                 "srcFs": src_full,
                 "dstFs": dst_full,
                 "createEmptySrcDirs": true,
@@ -944,8 +944,7 @@ pub async fn rename(
             }));
         } else {
             inputs.push(json!({
-                "_path": "rename",
-                "is_dir": false,
+                "_path": operations::MOVEFILE,
                 "srcFs": item.remote,
                 "srcRemote": item.src_path,
                 "dstFs": item.remote,

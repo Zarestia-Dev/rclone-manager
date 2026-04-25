@@ -138,30 +138,6 @@
 }
 
 // ============================================================================
-// Shared Placeholders
-// ============================================================================
-
-// Pill badge used for category labels — extended by .setting-category and .change-category.
-%category-chip {
-  font-size: var(--font-size-sm);
-  color: var(--primary-color);
-  font-weight: 500;
-  background: rgba(var(--primary-color-rgb), 0.1);
-  padding: var(--space-xxs) var(--space-xs);
-  border-radius: var(--radius-xxs);
-  display: inline-block;
-  width: fit-content;
-}
-
-// Shared pill style for change value badges.
-%value-chip {
-  padding: var(--space-xxs) var(--space-sm);
-  border-radius: 999px;
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-}
-
-// ============================================================================
 // Setting Item
 // ============================================================================
 .setting-item {
@@ -218,7 +194,6 @@
   }
 
   .setting-category {
-    @extend %category-chip;
     margin-top: var(--space-xxs);
   }
 }
@@ -320,20 +295,6 @@
   gap: var(--space-xs);
   flex-wrap: wrap;
   justify-content: center;
-
-  .chip {
-    padding: var(--space-xxs) var(--space-sm);
-    background: rgba(var(--primary-color-rgb), 0.1);
-    color: var(--primary-color);
-    border-radius: var(--radius-xs);
-    font-size: var(--font-size-sm);
-    font-weight: 500;
-    transition: var(--transition-fast);
-
-    &:hover {
-      background: rgba(var(--primary-color-rgb), 0.15);
-    }
-  }
 }
 
 // ============================================================================
@@ -409,7 +370,7 @@
   }
 
   .change-category {
-    @extend %category-chip;
+    margin-bottom: var(--space-xxs);
   }
 }
 
@@ -417,23 +378,6 @@
   display: flex;
   align-items: center;
   flex-shrink: 0;
-
-  .boolean-value {
-    @extend %value-chip;
-    background: rgba(var(--warn-color-rgb), 0.1);
-    color: var(--warn-color);
-
-    &.enabled {
-      background: rgba(var(--primary-color-rgb), 0.1);
-      color: var(--primary-color);
-    }
-  }
-
-  .array-value {
-    @extend %value-chip;
-    background: rgba(var(--accent-color-rgb), 0.1);
-    color: var(--accent-color);
-  }
 
   .text-value {
     font-size: var(--font-size-md);

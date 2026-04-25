@@ -682,6 +682,85 @@ $dark-theme: (
       }
     }
   }
+
+  // =============================================
+  // APP PILL SYSTEM
+  // =============================================
+  .app-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    transition: var(--transition-fast);
+    line-height: 1.2;
+    min-height: 28px;
+    box-sizing: border-box;
+
+    &.interactive {
+      cursor: pointer;
+      border: none;
+      outline: none;
+      background: var(--selected-bg-color);
+      color: var(--dim-color);
+
+      &:hover {
+        background: var(--hover-bg-color);
+      }
+
+      &:active {
+        background: var(--active-bg-color);
+      }
+
+      &.is-selected {
+        background: var(--mat-sys-primary) !important;
+        color: var(--accent-fg-color) !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+    }
+
+    mat-icon {
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
+      font-size: var(--icon-size-sm);
+    }
+
+    span {
+      flex: 1;
+    }
+
+    // Status Variants
+    @each $status,
+      $color
+        in (
+          "primary": primary-color,
+          "accent": accent-color,
+          "warn": warn-color,
+          "orange": orange,
+          "yellow": yellow,
+          "purple": purple,
+          "dim": dim-color
+        )
+    {
+      &.p-#{$status} {
+        background: rgba(var(--#{$color}-rgb), 0.15);
+        color: var(--#{$color});
+
+        &.interactive:hover {
+          background: rgba(var(--#{$color}-rgb), 0.25);
+        }
+      }
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+  }
 }
 
 // ============================================================================

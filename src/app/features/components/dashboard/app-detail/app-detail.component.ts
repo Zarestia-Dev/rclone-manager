@@ -75,23 +75,7 @@ interface ProfileConfig {
   options?: { type?: string; addr?: string; [key: string]: unknown };
 }
 
-const ANIMATION_CLASS: Partial<Record<PrimaryActionType, string>> = {
-  sync: 'animate-spin',
-  copy: 'animate-breathing',
-  move: 'animate-move',
-  bisync: 'animate-breathing',
-  serve: 'animate-breathing',
-  mount: 'animate-breathing',
-};
-
-const OPERATION_COLOR_VAR: Record<OperationColor, string> = {
-  primary: 'var(--primary-color)',
-  accent: 'var(--accent-color)',
-  yellow: 'var(--yellow)',
-  orange: 'var(--orange)',
-  purple: 'var(--purple)',
-  warn: 'var(--warn-color)',
-};
+import { ACTION_ANIMATION_CLASS, OPERATION_COLOR_VAR } from '@app/types';
 
 @Component({
   selector: 'app-app-detail',
@@ -202,7 +186,7 @@ export class AppDetailComponent {
   );
 
   readonly iconAnimationClass = computed(() =>
-    this.operationActiveState() ? (ANIMATION_CLASS[this.currentOpType()] ?? '') : ''
+    this.operationActiveState() ? (ACTION_ANIMATION_CLASS[this.currentOpType()] ?? '') : ''
   );
 
   // --- Derived: Sync Operations ---
@@ -356,14 +340,15 @@ export class AppDetailComponent {
       .filter(([, cfg]) => cfg?.cronEnabled && cfg?.cronExpression)
       .map(([profileName, cfg]) => {
         let humanReadable = 'Invalid schedule';
+        const cronExpression = cfg.cronExpression ?? '';
         try {
-          humanReadable = cronstrue(cfg.cronExpression!, {
+          humanReadable = cronstrue(cronExpression, {
             locale: getCronstrueLocale(this.translate.getCurrentLang()),
           });
         } catch {
-          console.warn(`Invalid cron expression for profile ${profileName}: ${cfg.cronExpression}`);
+          console.warn(`Invalid cron expression for profile ${profileName}: ${cronExpression}`);
         }
-        return { profileName, cronExpression: cfg.cronExpression!, humanReadable };
+        return { profileName, cronExpression, humanReadable };
       });
   });
 
@@ -440,7 +425,12 @@ export class AppDetailComponent {
   });
 
   getSettingsPanelConfig(section: RemoteSettingsSection): SettingsPanelConfig {
-    return this.settingsPanelConfigMap().get(section.key)!;
+    const config = this.settingsPanelConfigMap().get(section.key);
+    if (!config) {
+      // Fallback to empty settings if section not found in map (should not happen)
+      return { section, settings: {} };
+    }
+    return config;
   }
 
   // --- Derived: Control Configs ---
@@ -488,7 +478,7 @@ export class AppDetailComponent {
     const progress = s.totalBytes > 0 ? Math.min(100, (s.bytes / s.totalBytes) * 100) : 0;
     const etaProgress =
       s.elapsedTime && s.eta ? (s.elapsedTime / (s.elapsedTime + s.eta)) * 100 : 0;
-    const t = (key: string, params?: object) => this.translate.instant(key, params);
+    const t = (key: string, params?: object): string => this.translate.instant(key, params);
 
     return {
       title: t('dashboard.appDetail.transferStatistics', { op: meta ? t(meta.label) : 'Transfer' }),
@@ -701,7 +691,7 @@ export class AppDetailComponent {
     );
     const actionType = actionMatch?.type;
     const isLoading = !!actionType;
-    const t = (key: string, params?: object) => this.translate.instant(key, params);
+    const t = (key: string, params?: object): string => this.translate.instant(key, params);
     const opLabel = t(metadata.typeLabel || metadata.label);
     const isMount = type === 'mount';
 

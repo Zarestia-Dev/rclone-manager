@@ -83,12 +83,11 @@
             <div class="profile-pills">
               @for (profile of enrichedProfiles(); track profile.name) {
                 <button
-                  class="profile-pill"
+                  class="app-pill interactive"
                   [class.is-selected]="selectedProfile() === profile.name"
-                  [class.is-running]="profile.status === 'running'"
-                  [class.is-scheduled]="profile.status === 'scheduled'"
+                  [class.p-primary]="profile.status === 'running'"
+                  [class.p-orange]="profile.status === 'scheduled'"
                   (click)="onProfileSelect(profile.name)"
-                  type="button"
                 >
                   @if (profile.status === 'running') {
                     <mat-icon
@@ -98,11 +97,11 @@
                   } @else if (profile.status === 'scheduled') {
                     <mat-icon svgIcon="clock"></mat-icon>
                   }
-                  {{ profile.label }}
+                  <span>{{ profile.label }}</span>
                 </button>
               }
               <button
-                class="profile-pill"
+                class="app-pill interactive"
                 (click)="onAddProfile()"
                 [matTooltip]="'dashboard.appDetail.addProfile' | translate"
                 matTooltipShowDelay="400"

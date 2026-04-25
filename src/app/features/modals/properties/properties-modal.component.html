@@ -164,10 +164,9 @@
                   <div class="hash-chips">
                     @for (hashType of uncalculatedHashes(); track hashType) {
                       <button
-                        class="hash-chip"
+                        class="app-pill interactive p-primary"
                         [class.loading]="isHashLoading(hashType)"
-                        [disabled]="isHashLoading(hashType)"
-                        (click)="calculateHash(hashType)"
+                        (click)="!isHashLoading(hashType) && calculateHash(hashType)"
                       >
                         @if (isHashLoading(hashType)) {
                           <mat-spinner diameter="14"></mat-spinner>
@@ -191,15 +190,13 @@
                         bulkHashType() | uppercase
                       }})
                     </span>
-                    <div class="bulk-actions">
-                      <button
-                        mat-button
-                        [appCopyToClipboard]="bulkHashResult()"
-                        [matTooltip]="'fileBrowser.properties.copyToClipboard' | translate"
-                      >
-                        <mat-icon svgIcon="copy"></mat-icon>
-                      </button>
-                    </div>
+                    <button
+                      mat-icon-button
+                      [appCopyToClipboard]="bulkHashResult()"
+                      [matTooltip]="'fileBrowser.properties.copyToClipboard' | translate"
+                    >
+                      <mat-icon svgIcon="copy"></mat-icon>
+                    </button>
                   </div>
                   <!-- Use a read-only textarea for code-block feel -->
                   <textarea class="bulk-textarea" readonly>{{ bulkHashResult() }}</textarea>
@@ -223,10 +220,9 @@
                 <div class="hash-chips">
                   @for (hashType of supportedHashes(); track hashType) {
                     <button
-                      class="hash-chip"
-                      [class.loading]="calculatingBulkHash() && bulkHashType() === hashType"
-                      [disabled]="calculatingBulkHash()"
-                      (click)="calculateBulkHash(hashType)"
+                      class="app-pill interactive p-primary"
+                      [class.p-accent]="calculatingBulkHash() && bulkHashType() === hashType"
+                      (click)="!calculatingBulkHash() && calculateBulkHash(hashType)"
                     >
                       @if (calculatingBulkHash() && bulkHashType() === hashType) {
                         <mat-spinner diameter="14"></mat-spinner>

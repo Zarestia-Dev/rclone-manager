@@ -44,35 +44,27 @@ import { CompletedTransfer } from '@app/types';
             <td mat-cell *matCellDef="let transfer" class="status-cell">
               @switch (transfer.status) {
                 @case ('failed') {
-                  <span class="status-chip error" [matTooltip]="transfer.error">
-                    <span>
-                      <mat-icon svgIcon="circle-exclamation" class="chip-icon"></mat-icon>
-                      {{ 'shared.transferActivity.status.failed' | translate }}
-                    </span>
+                  <span class="app-pill p-warn" [matTooltip]="transfer.error">
+                    <mat-icon svgIcon="circle-exclamation"></mat-icon>
+                    {{ 'shared.transferActivity.status.failed' | translate }}
                   </span>
                 }
                 @case ('checked') {
-                  <span class="status-chip checked" [matTooltip]="transfer.error">
-                    <span>
-                      <mat-icon svgIcon="circle-check" class="chip-icon accent"></mat-icon>
-                      {{ 'shared.transferActivity.status.checked' | translate }}
-                    </span>
+                  <span class="app-pill p-accent" [matTooltip]="transfer.error">
+                    <mat-icon svgIcon="circle-check"></mat-icon>
+                    {{ 'shared.transferActivity.status.checked' | translate }}
                   </span>
                 }
                 @case ('partial') {
-                  <span class="status-chip partial" [matTooltip]="transfer.error">
-                    <span>
-                      <mat-icon svgIcon="circle-exclamation" class="chip-icon warn"></mat-icon>
-                      {{ 'shared.transferActivity.status.partial' | translate }}
-                    </span>
+                  <span class="app-pill p-orange" [matTooltip]="transfer.error">
+                    <mat-icon svgIcon="circle-exclamation"></mat-icon>
+                    {{ 'shared.transferActivity.status.partial' | translate }}
                   </span>
                 }
                 @default {
-                  <span class="status-chip success" [matTooltip]="transfer.error">
-                    <span>
-                      <mat-icon svgIcon="circle-check" class="chip-icon accent"></mat-icon>
-                      {{ 'shared.transferActivity.status.completed' | translate }}
-                    </span>
+                  <span class="app-pill p-primary" [matTooltip]="transfer.error">
+                    <mat-icon svgIcon="circle-check"></mat-icon>
+                    {{ 'shared.transferActivity.status.completed' | translate }}
                   </span>
                 }
               }

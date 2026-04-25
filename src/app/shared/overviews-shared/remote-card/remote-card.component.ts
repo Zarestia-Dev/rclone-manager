@@ -18,6 +18,7 @@ import {
   CardDisplayMode,
 } from '@app/types';
 import { IconService, isLocalPath, RemoteFacadeService } from '@app/services';
+import { ACTION_ANIMATION_CLASS } from '@app/types';
 
 interface OpenInFilesEvent {
   remoteName: string;
@@ -126,6 +127,7 @@ export class RemoteCardComponent {
   private readonly translate = inject(TranslateService);
   readonly iconService = inject(IconService);
   readonly isLocalPath = isLocalPath;
+  readonly ACTION_ANIMATION_CLASS = ACTION_ANIMATION_CLASS;
 
   readonly remote = input.required<Remote>();
   readonly mode = input<AppTab>('general');

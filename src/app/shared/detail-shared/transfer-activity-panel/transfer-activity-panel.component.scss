@@ -10,42 +10,6 @@
         gap: var(--space-sm);
         align-items: center;
         margin-left: auto;
-
-        .summary-chip {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          padding: 0 10px;
-          border-radius: 999px;
-          font-size: var(--font-size-sm);
-          height: 24px;
-          min-height: 24px;
-          font-weight: 600;
-          white-space: nowrap;
-          line-height: 24px;
-
-          // Active transfers — tinted with the current operation colour
-          &.active {
-            background: color-mix(in srgb, var(--mat-sys-primary) 15%, transparent);
-            color: var(--mat-sys-primary);
-          }
-
-          // Completed transfers — always accent (positive outcome)
-          &.completed {
-            background: color-mix(in srgb, var(--accent-color) 15%, transparent);
-            color: var(--accent-color);
-          }
-
-          .chip-label {
-            opacity: 0.7;
-            margin-right: 4px;
-            font-weight: 500;
-          }
-
-          .chip-value {
-            font-weight: 700;
-          }
-        }
       }
     }
   }

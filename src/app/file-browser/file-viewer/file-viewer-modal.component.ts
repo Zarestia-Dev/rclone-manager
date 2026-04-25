@@ -705,8 +705,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       await this.remoteOps.transferItems(
         [
           {
-            srcRemote: fsName,
-            srcPath: this.currentItem().Path,
+            remote: fsName,
+            path: this.currentItem().Path,
             name: this.fileName(),
             isDir: false,
           },

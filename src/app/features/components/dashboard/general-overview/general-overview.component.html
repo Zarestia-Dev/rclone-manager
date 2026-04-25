@@ -295,9 +295,9 @@
                         <mat-panel-description>
                           @let activeJobs = activeJobsCount();
                           <span
-                            [ngClass]="
-                              activeJobs > 0 ? 'active-jobs-indicator' : 'disabled-jobs-indicator'
-                            "
+                            class="app-pill"
+                            [class.p-primary]="activeJobs > 0"
+                            [class.p-dim]="activeJobs === 0"
                           >
                             {{
                               activeJobs > 0
@@ -489,11 +489,9 @@
                         </mat-panel-title>
                         <mat-panel-description>
                           <span
-                            [ngClass]="
-                              activeScheduledTasksCount() > 0
-                                ? 'active-tasks-indicator'
-                                : 'disabled-tasks-indicator'
-                            "
+                            class="app-pill"
+                            [class.p-primary]="activeScheduledTasksCount() > 0"
+                            [class.p-dim]="activeScheduledTasksCount() === 0"
                           >
                             {{
                               totalScheduledTasksCount() > 0
@@ -555,18 +553,19 @@
                                         <div class="task-name-row">
                                           <span class="task-name">{{ task.name }}</span>
                                           <span
-                                            class="task-status-badge"
-                                            [ngClass]="task.status"
+                                            class="app-pill"
+                                            [class.p-primary]="task.status === 'enabled'"
+                                            [class.p-accent]="task.status === 'running'"
+                                            [class.p-dim]="task.status === 'disabled'"
+                                            [class.p-orange]="task.status === 'stopping'"
+                                            [class.p-warn]="task.status === 'failed'"
                                             [matTooltip]="'task.status.' + task.status | translate"
                                           >
                                             {{ 'task.status.' + task.status | translate }}
                                           </span>
                                           @if (task.currentJobId) {
-                                            <div class="task-running-badge">
-                                              <mat-icon
-                                                svgIcon="play"
-                                                class="running-icon"
-                                              ></mat-icon>
+                                            <div class="app-pill running">
+                                              <mat-icon svgIcon="play"></mat-icon>
                                               <span>{{
                                                 'generalOverview.tasks.running' | translate
                                               }}</span>
@@ -678,11 +677,9 @@
                         </mat-panel-title>
                         <mat-panel-description>
                           <span
-                            [ngClass]="
-                              serves.length > 0
-                                ? 'active-serves-indicator'
-                                : 'disabled-serves-indicator'
-                            "
+                            class="app-pill"
+                            [class.p-primary]="serves.length > 0"
+                            [class.p-dim]="serves.length === 0"
                           >
                             {{
                               serves.length > 0

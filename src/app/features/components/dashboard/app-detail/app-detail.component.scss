@@ -304,64 +304,6 @@
   gap: var(--space-xs);
 }
 
-.profile-pill {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xxs);
-  cursor: pointer;
-  padding: 6px 10px;
-  border-radius: var(--radius-md);
-  background: var(--selected-bg-color);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--dim-color);
-  transition:
-    color 0.2s ease,
-    background 0.2s ease;
-
-  mat-icon {
-    width: var(--icon-size-sm);
-    height: var(--icon-size-sm);
-    font-size: var(--icon-size-sm);
-  }
-
-  &.is-selected {
-    background: var(--op-color);
-    color: #ffffff;
-
-    mat-icon {
-      color: #ffffff;
-    }
-  }
-
-  &.is-running {
-    &:not(.is-selected) {
-      color: var(--op-color);
-      background: rgba(var(--op-color-rgb), var(--active-opacity));
-
-      mat-icon {
-        color: var(--op-color);
-      }
-    }
-  }
-
-  &.is-scheduled {
-    &:not(.is-selected) {
-      color: var(--orange);
-      background: rgba(var(--orange-rgb), var(--active-opacity));
-
-      mat-icon {
-        color: var(--orange);
-      }
-    }
-  }
-
-  &:hover:not(.is-selected) {
-    color: var(--op-color);
-    background: var(--hover-bg-color);
-  }
-}
-
 // ─── Cron schedule ────────────────────────────────────────────────────────────
 
 .cron-human-readable {

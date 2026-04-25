@@ -17,8 +17,8 @@ import { firstValueFrom } from 'rxjs';
 export interface UndoEntry {
   mode: 'copy' | 'move';
   items: {
-    srcRemote: string;
-    srcPath: string;
+    remote: string;
+    path: string;
     dstRemote: string;
     dstFullPath: string;
     isDir: boolean;
@@ -155,8 +155,8 @@ export class NautilusFileOperationsService {
 
     const normalizedDst = this.pathSelection.normalizeRemoteForRclone(dstRemote.name);
     const transferItems = items.map(item => ({
-      srcRemote: this.pathSelection.normalizeRemoteForRclone(item.meta.remote ?? ''),
-      srcPath: item.entry.Path,
+      remote: this.pathSelection.normalizeRemoteForRclone(item.meta.remote ?? ''),
+      path: item.entry.Path,
       name: item.entry.Name,
       isDir: !!item.entry.IsDir,
     }));
@@ -181,8 +181,8 @@ export class NautilusFileOperationsService {
 
       // Successfully dispatched batch!
       const succeededItems: UndoEntry['items'] = items.map(item => ({
-        srcRemote: this.pathSelection.normalizeRemoteForRclone(item.meta.remote ?? ''),
-        srcPath: item.entry.Path,
+        remote: this.pathSelection.normalizeRemoteForRclone(item.meta.remote ?? ''),
+        path: item.entry.Path,
         dstRemote: normalizedDst,
         dstFullPath: dstPath ? `${dstPath}/${item.entry.Name}` : item.entry.Name,
         isDir: !!item.entry.IsDir,
@@ -437,21 +437,21 @@ export class NautilusFileOperationsService {
         const groups = new Map<string, { dstRemote: string; dstPath: string; items: any[] }>();
 
         for (const item of entry.items) {
-          const lastSlash = item.srcPath.lastIndexOf('/');
-          const dstParentPath = lastSlash > -1 ? item.srcPath.substring(0, lastSlash) : '';
-          const key = `${item.srcRemote}:${dstParentPath}`;
+          const lastSlash = item.path.lastIndexOf('/');
+          const dstParentPath = lastSlash > -1 ? item.path.substring(0, lastSlash) : '';
+          const key = `${item.remote}:${dstParentPath}`;
 
           if (!groups.has(key)) {
             groups.set(key, {
-              dstRemote: item.srcRemote,
+              dstRemote: item.remote,
               dstPath: dstParentPath,
               items: [],
             });
           }
 
           groups.get(key)!.items.push({
-            srcRemote: item.dstRemote,
-            srcPath: item.dstFullPath,
+            remote: item.dstRemote,
+            path: item.dstFullPath,
             name: item.name,
             isDir: item.isDir,
           });
@@ -485,8 +485,8 @@ export class NautilusFileOperationsService {
     this._redoStack.set(stack.slice(0, -1));
 
     const transferItems = entry.items.map(item => ({
-      srcRemote: item.srcRemote,
-      srcPath: item.srcPath,
+      remote: item.remote,
+      path: item.path,
       name: item.name,
       isDir: item.isDir,
     }));

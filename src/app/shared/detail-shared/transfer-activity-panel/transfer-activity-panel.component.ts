@@ -30,14 +30,14 @@ import { TransferActivityPanelConfig } from '../../types';
           <mat-icon svgIcon="download" style="color: var(--mat-sys-primary);"></mat-icon>
           <span>{{ 'shared.transferActivity.title' | translate }}</span>
           <div class="transfer-summary">
-            <span class="summary-chip active">
-              <span class="chip-label">{{ 'shared.transferActivity.active' | translate }}</span>
-              <span class="chip-value">{{ config().activeTransfers.length }}</span>
+            <span class="app-pill running">
+              {{ 'shared.transferActivity.active' | translate }}
+              {{ config().activeTransfers.length }}
             </span>
             @if (config().showHistory) {
-              <span class="summary-chip completed">
-                <span class="chip-label">{{ 'shared.transferActivity.recent' | translate }}</span>
-                <span class="chip-value">{{ config().completedTransfers.length }}</span>
+              <span class="app-pill p-primary">
+                {{ 'shared.transferActivity.recent' | translate }}
+                {{ config().completedTransfers.length }}
               </span>
             }
           </div>

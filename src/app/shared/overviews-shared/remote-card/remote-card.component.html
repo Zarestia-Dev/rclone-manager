@@ -44,67 +44,73 @@
       <div class="remote-status-indicators" aria-hidden="true">
         @if (remote().status.mount.active) {
           <div
-            class="status-badge mounted"
+            class="app-pill p-accent"
             [matTooltip]="getProfileTooltip('mount')"
             matTooltipShowDelay="500"
           >
             <mat-icon
               svgIcon="mount"
+              [class]="ACTION_ANIMATION_CLASS['mount']"
               [attr.aria-label]="'detailShared.status.mounted' | translate"
             ></mat-icon>
           </div>
         }
         @if (remote().status.sync.active) {
           <div
-            class="status-badge syncing"
+            class="app-pill p-primary"
             [matTooltip]="getProfileTooltip('sync')"
             matTooltipShowDelay="500"
           >
             <mat-icon
               svgIcon="refresh"
+              [class]="ACTION_ANIMATION_CLASS['sync']"
               [attr.aria-label]="'detailShared.status.syncing' | translate"
             ></mat-icon>
           </div>
         }
         @if (remote().status.copy.active) {
           <div
-            class="status-badge copying"
+            class="app-pill p-yellow"
             [matTooltip]="getProfileTooltip('copy')"
             matTooltipShowDelay="500"
           >
             <mat-icon
               svgIcon="copy"
+              [class]="ACTION_ANIMATION_CLASS['copy']"
               [attr.aria-label]="'detailShared.status.copying' | translate"
             ></mat-icon>
           </div>
         }
         @if (remote().status.move.active) {
           <div
-            class="status-badge moving"
+            class="app-pill p-orange"
             [matTooltip]="getProfileTooltip('move')"
             matTooltipShowDelay="500"
           >
             <mat-icon
               svgIcon="move"
+              [class]="ACTION_ANIMATION_CLASS['move']"
               [attr.aria-label]="'detailShared.status.moving' | translate"
             ></mat-icon>
           </div>
         }
         @if (remote().status.bisync.active) {
           <div
-            class="status-badge bisyncing"
+            class="app-pill p-purple"
             [matTooltip]="getProfileTooltip('bisync')"
             matTooltipShowDelay="500"
           >
             <mat-icon
               svgIcon="right-left"
+              [class]="ACTION_ANIMATION_CLASS['bisync']"
               [attr.aria-label]="'detailShared.status.bisyncing' | translate"
             ></mat-icon>
           </div>
         }
         @if (remote().status.serve.active) {
           <div
-            class="status-badge serving"
+            class="app-pill p-accent"
+            [class]="ACTION_ANIMATION_CLASS['serve']"
             [matTooltip]="getProfileTooltip('serve')"
             matTooltipShowDelay="500"
           >
@@ -243,10 +249,10 @@
                     [class.can-open]="canOpenProfilePath(operation, profile)"
                   >
                     <button
-                      type="button"
-                      class="profile-pill"
-                      [class.is-selected]="isProfileActive(operation, profile)"
-                      [class.is-running]="isBusy"
+                      class="app-pill interactive"
+                      [ngClass]="'p-' + getOperationCssClass(operation)"
+                      [class.p-warn]="isProfileActive(operation, profile)"
+                      [class.p-dim]="isBusy"
                       [disabled]="isBusy"
                       [matTooltip]="getProfileChipTooltip(operation, profile)"
                       matTooltipShowDelay="500"

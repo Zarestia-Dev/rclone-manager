@@ -6,11 +6,11 @@
   }
 
   @for (chip of chips(); track chip.controlKey) {
-    <div
-      class="config-chip"
-      [class.active]="chip.isActive"
-      [class.changed]="chip.isChanged"
-      [class.inactive]="!chip.isActive"
+    <span
+      class="app-pill interactive"
+      [class.p-primary]="chip.isActive"
+      [class.p-accent]="chip.isChanged"
+      [class.p-dim]="!chip.isActive"
       [matTooltip]="
         chip.field.Name
           | rcloneOptionTranslate
@@ -26,8 +26,8 @@
       (keydown.enter)="toggleChip(chip)"
       (keydown.space)="toggleChip(chip); $event.preventDefault()"
     >
-      <span class="chip-key">{{ chip.displayKey }}</span>
-    </div>
+      <span>{{ chip.displayKey }}</span>
+    </span>
   }
 </div>
 

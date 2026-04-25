@@ -154,14 +154,14 @@ export class RemoteFileOperationsService extends TauriBaseService {
    * Transfer multiple items (copy or move)
    */
   async transferItems(
-    items: { srcRemote: string; srcPath: string; name: string; isDir: boolean }[],
+    items: { remote: string; path: string; name: string; isDir: boolean }[],
     dstRemote: string,
     dstPath: string,
     mode: 'copy' | 'move',
     source?: Origin,
     group?: string
   ): Promise<string> {
-    return this.invokeCommand<string>('transfer_items', {
+    return this.invokeCommand<string>('transfer', {
       items,
       dstRemote,
       dstPath,
@@ -179,7 +179,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
     source?: Origin,
     group?: string
   ): Promise<string> {
-    return this.invokeCommand<string>('delete_items', {
+    return this.invokeCommand<string>('delete', {
       items,
       origin: source,
       group,
@@ -288,11 +288,11 @@ export class RemoteFileOperationsService extends TauriBaseService {
     entries: LocalDropUploadEntry[],
     source?: Origin
   ): Promise<LocalDropUploadResult> {
-    return this.invokeCommand<LocalDropUploadResult>('upload_local_drop_entries', {
+    return this.invokeCommand<LocalDropUploadResult>('upload_local_drop_files', {
       remote,
       path,
-      entries,
-      source,
+      files: entries,
+      origin: source,
     });
   }
 

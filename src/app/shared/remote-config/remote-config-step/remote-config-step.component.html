@@ -66,18 +66,17 @@
         @if (remoteTypes().length > 0) {
           <div class="empty-state-pills">
             @for (remote of suggestedRemotes(); track remote.value) {
-              <button type="button" class="empty-pill" (click)="onTypeSelected(remote.value)">
-                <mat-icon [svgIcon]="remote.icon" class="pill-icon"></mat-icon>
+              <button class="app-pill interactive" (click)="onTypeSelected(remote.value)">
+                <mat-icon [svgIcon]="remote.icon"></mat-icon>
                 <span>{{ remote.label }}</span>
               </button>
             }
             <button
-              type="button"
-              class="empty-pill empty-pill--reshuffle"
+              class="app-pill interactive reshuffle-btn"
               (click)="reshuffleSuggestions()"
               [matTooltip]="'wizards.remoteConfig.shuffleSuggestions' | translate"
             >
-              <mat-icon svgIcon="refresh" class="pill-icon"></mat-icon>
+              <mat-icon svgIcon="refresh"></mat-icon>
             </button>
           </div>
         }
@@ -255,13 +254,12 @@
             <div class="predefined-chips">
               @for (p of availablePredefinedOptions(); track p.key) {
                 <button
-                  type="button"
-                  class="predefined-chip"
+                  class="app-pill interactive"
                   (click)="addPredefinedOption(p)"
                   [matTooltip]="p.description | translate"
                   matTooltipPosition="above"
                 >
-                  <mat-icon svgIcon="plus" />
+                  <mat-icon svgIcon="plus"></mat-icon>
                   <span>{{ p.label | translate }}</span>
                 </button>
               }
@@ -311,30 +309,36 @@
                     @case ('array') {
                       <div class="option-chip-field no-subscript">
                         @for (chip of opt.arrayValue; track chip; let ci = $index) {
-                          <span class="option-chip">
-                            <span class="option-chip__label">{{ chip }}</span>
+                          <div class="app-pill">
+                            <span>{{ chip }}</span>
                             <button
-                              type="button"
-                              class="option-chip__remove"
+                              class="pill-remove-btn"
                               (click)="removeArrayChip(opt.key, ci)"
                               [attr.aria-label]="'remove ' + chip"
                             >
-                              <mat-icon svgIcon="close" />
+                              <mat-icon svgIcon="close"></mat-icon>
                             </button>
-                          </span>
+                          </div>
                         }
-                        <input
-                          #arrayInput
-                          class="option-chip-input"
-                          type="text"
-                          [placeholder]="'wizards.remoteConfig.addValue' | translate"
-                          (keydown)="handleArrayChipKeydown(opt.key, $event, arrayInput)"
-                        />
+                        <div class="option-chip-input">
+                          <input
+                            #arrayInput
+                            type="text"
+                            [placeholder]="'wizards.remoteConfig.addValue' | translate"
+                            (keydown)="handleArrayChipKeydown(opt.key, $event, arrayInput)"
+                          />
+                          <button
+                            mat-icon-button
+                            [disabled]="!arrayInput.value"
+                            (click)="handleArrayChipKeydown(opt.key, $event, arrayInput)"
+                          >
+                            <mat-icon svgIcon="plus"></mat-icon>
+                          </button>
+                        </div>
                       </div>
                     }
                   }
                   <button
-                    type="button"
                     mat-icon-button
                     class="remove-option-btn"
                     (click)="removeOption(opt.key)"

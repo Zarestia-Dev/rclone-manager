@@ -255,56 +255,20 @@ form {
   }
 }
 
-.empty-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xxs);
-  padding: 6px 10px;
-  border-radius: var(--radius-md);
-  background: var(--selected-bg-color);
-  color: var(--dim-color);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  cursor: pointer;
-  animation: slideInFromBottomIn 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-  transition:
-    color 0.15s ease,
-    background 0.15s ease,
-    transform 0.12s ease,
-    box-shadow 0.15s ease;
+.reshuffle-btn {
+  animation: none !important;
 
-  // Stagger the first 6 pills via nth-child (no JS needed)
+  &:hover mat-icon {
+    animation: spin 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  }
+}
+
+.empty-state-pills .app-pill {
+  animation: slideInFromBottomIn 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+
   @for $i from 1 through 6 {
     &:nth-child(#{$i}) {
       animation-delay: #{$i * 45ms};
-    }
-  }
-
-  span {
-    white-space: normal;
-  }
-
-  .pill-icon {
-    width: 14px;
-    height: 14px;
-    opacity: 0.7;
-  }
-
-  &:hover {
-    color: var(--primary-color);
-    background: rgba(var(--primary-color-rgb), var(--active-opacity));
-  }
-
-  &:active {
-    box-shadow: none;
-  }
-
-  &--reshuffle {
-    padding: 5px 8px;
-    animation: none;
-
-    &:hover .pill-icon {
-      animation: spin 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
     }
   }
 }
@@ -407,30 +371,6 @@ form {
     }
   }
 
-  .predefined-chip {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xxs);
-    cursor: pointer;
-    padding: 6px 10px;
-    border-radius: var(--radius-md);
-    background: var(--selected-bg-color);
-    font-size: var(--font-size-sm);
-    font-weight: 600;
-    color: var(--dim-color);
-    transition: background 0.2s ease;
-
-    mat-icon {
-      font-size: 14px;
-      width: 14px;
-      height: 14px;
-    }
-
-    &:hover {
-      background: var(--active-bg-color);
-    }
-  }
-
   // ── Active options list ────────────────────────────────────────────────────
 
   .active-options {
@@ -491,12 +431,12 @@ form {
         color: var(--dim-color);
 
         &[data-type="boolean"] {
-          background: rgba(var(--green-rgb), 0.1);
-          color: var(--green);
+          background: rgba(var(--primary-color-rgb), 0.1);
+          color: var(--primary-color);
         }
         &[data-type="string"] {
-          background: rgba(var(--blue-rgb), 0.1);
-          color: var(--blue);
+          background: rgba(var(--accent-color-rgb), 0.1);
+          color: var(--accent-color);
         }
         &[data-type="number"] {
           background: rgba(var(--orange-rgb), 0.1);
@@ -529,51 +469,19 @@ form {
         padding: 6px 10px;
         border-radius: var(--radius-md);
         background: var(--selected-bg-color);
-        border: 1px solid rgba(var(--accent-color-rgb), 0.14);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
       }
 
-      .option-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: var(--space-xxs);
-        padding: 5px 8px;
-        border-radius: var(--radius-md);
-        background: rgba(var(--primary-color-rgb), 0.08);
-        color: var(--window-fg-color);
-        font-size: var(--font-size-sm);
-        font-weight: 600;
-        white-space: nowrap;
-      }
-
-      .option-chip__label {
-        max-width: 220px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .option-chip__remove {
+      .pill-remove-btn {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 18px;
-        height: 18px;
-        border: 0;
         border-radius: 999px;
-        background: transparent;
-        color: inherit;
-        cursor: pointer;
         opacity: 0.55;
         transition:
           opacity 0.15s ease,
           color 0.15s ease,
           background 0.15s ease;
-
-        mat-icon {
-          width: 13px;
-          height: 13px;
-          font-size: 13px;
-        }
 
         &:hover {
           opacity: 1;
@@ -583,18 +491,24 @@ form {
       }
 
       .option-chip-input {
-        flex: 1 1 140px;
-        min-width: 120px;
-        border: 0;
-        outline: 0;
-        background: transparent;
-        color: var(--window-fg-color);
-        font: inherit;
-        padding: 4px 2px;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 4px;
 
-        &::placeholder {
-          color: var(--dim-color);
-          opacity: 0.75;
+        input {
+          flex: 1;
+          border: 0;
+          outline: 0;
+          background: transparent;
+          color: var(--window-fg-color);
+          font: inherit;
+          padding: 4px 2px;
+
+          &::placeholder {
+            color: var(--dim-color);
+            opacity: 0.75;
+          }
         }
       }
 

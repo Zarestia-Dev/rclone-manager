@@ -481,9 +481,11 @@ export class RemoteConfigStepComponent {
     input.value = '';
   }
 
-  handleArrayChipKeydown(key: string, event: KeyboardEvent, input: HTMLInputElement): void {
-    if (event.key !== 'Enter' && event.key !== ',') return;
-    event.preventDefault();
+  handleArrayChipKeydown(key: string, event: KeyboardEvent | Event, input: HTMLInputElement): void {
+    if (event instanceof KeyboardEvent) {
+      if (event.key !== 'Enter' && event.key !== ',') return;
+      event.preventDefault();
+    }
     this.addArrayChip(key, input.value, input);
   }
 

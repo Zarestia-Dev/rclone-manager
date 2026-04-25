@@ -213,58 +213,6 @@
     display: flex;
     gap: var(--space-xs);
     align-items: flex-end;
-
-    .status-badge {
-      display: flex;
-      align-items: center;
-      gap: var(--space-xxs);
-      padding: var(--space-xxs) var(--space-xs);
-      border-radius: var(--radius-md);
-
-      mat-icon {
-        font-size: var(--icon-size-xs);
-        width: var(--icon-size-xs);
-        height: var(--icon-size-xs);
-      }
-
-      &.mounted {
-        background: rgba(var(--accent-color-rgb), 0.1);
-        color: var(--accent-color);
-        box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.2);
-      }
-      &.syncing {
-        background: rgba(var(--primary-color-rgb), 0.1);
-        color: var(--primary-color);
-        box-shadow: 0 0 0 1px rgba(var(--primary-color-rgb), 0.2);
-        mat-icon {
-          animation: spin 1s linear infinite;
-        }
-      }
-      &.copying {
-        background: rgba(var(--yellow-rgb), 0.1);
-        color: var(--yellow);
-        box-shadow: 0 0 0 1px rgba(var(--yellow-rgb), 0.2);
-        mat-icon {
-          animation: breathing 2s ease-in-out infinite;
-        }
-      }
-      &.moving {
-        background: rgba(var(--orange-rgb), 0.1);
-        color: var(--orange);
-        box-shadow: 0 0 0 1px rgba(var(--orange-rgb), 0.2);
-      }
-      &.bisyncing {
-        background: rgba(var(--purple-rgb), 0.1);
-        color: var(--purple);
-        box-shadow: 0 0 0 1px rgba(var(--purple-rgb), 0.2);
-      }
-      &.serving {
-        background: rgba(var(--accent-color-rgb), 0.1);
-        color: var(--accent-color);
-        box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.2);
-        animation: pulseBlue 1.5s infinite;
-      }
-    }
   }
 
   // ── Content ────────────────────────────────────────────────────────────────
@@ -512,43 +460,6 @@
     align-items: center;
     position: relative;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-    .profile-pill {
-      position: relative;
-      z-index: 2;
-      display: flex;
-      align-items: center;
-      cursor: pointer;
-      padding: 6px 10px;
-      border-radius: var(--radius-md);
-      background: rgba(var(--op-color-rgb), var(--active-opacity));
-      font-size: var(--font-size-sm);
-      font-weight: 600;
-      color: var(--op-color);
-      transition: background 0.2s ease;
-
-      .pill-content {
-        display: flex;
-        align-items: center;
-        gap: var(--space-xxs);
-      }
-
-      &.is-selected {
-        background: rgba(var(--warn-color-rgb), var(--active-opacity));
-        color: var(--warn-color);
-      }
-
-      &:disabled {
-        cursor: not-allowed;
-        opacity: 0.55;
-      }
-
-      .profile-icon {
-        width: var(--icon-size-sm);
-        height: var(--icon-size-sm);
-        font-size: var(--icon-size-sm);
-      }
-    }
 
     .profile-open-btn {
       position: relative;

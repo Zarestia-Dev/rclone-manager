@@ -90,7 +90,7 @@
                   <div class="suggestion-chips">
                     @for (suggestion of searchSuggestions(); track suggestion) {
                       <button
-                        class="chip"
+                        class="app-pill interactive p-primary"
                         (click)="onSearchTextChange(suggestion)"
                         [attr.aria-label]="
                           'modals.preferences.aria.searchFor'
@@ -156,11 +156,17 @@
               <div class="pending-change-item">
                 <div class="change-info">
                   <strong>{{ change.displayName }}</strong>
-                  <span class="change-category">{{ getCategoryDisplayName(change.category) }}</span>
+                  <span class="app-pill p-primary">{{
+                    getCategoryDisplayName(change.category)
+                  }}</span>
                 </div>
                 <div class="change-value">
                   @if (change.value === true || change.value === false) {
-                    <span class="boolean-value" [class.enabled]="change.value">
+                    <span
+                      class="app-pill p-primary"
+                      [class.p-primary]="change.value"
+                      [class.p-warn]="!change.value"
+                    >
                       {{
                         change.value
                           ? ('modals.preferences.enabled' | translate)
@@ -168,7 +174,7 @@
                       }}
                     </span>
                   } @else if (isArray(change.value)) {
-                    <span class="array-value">
+                    <span class="app-pill p-accent">
                       {{ asArray(change.value).length }}
                       {{ 'modals.preferences.items' | translate }}
                     </span>
@@ -238,7 +244,7 @@
           <strong>{{ getSettingLabel(category, key, meta) }}</strong>
           <p>{{ getSettingDescription(category, key, meta) }}</p>
           @if (showCategory) {
-            <small class="setting-category">{{ getCategoryDisplayName(category) }}</small>
+            <small class="app-pill p-primary">{{ getCategoryDisplayName(category) }}</small>
           }
         </div>
         @if (isModified(category, key)) {

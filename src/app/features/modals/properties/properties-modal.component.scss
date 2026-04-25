@@ -48,7 +48,7 @@
 .hash-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--space-xxs);
 }
 
 .item-overview {
@@ -160,14 +160,6 @@
       justify-content: space-between;
       align-items: center;
 
-      .hash-type {
-        font-size: var(--font-size-xs);
-        font-weight: 600;
-        color: var(--primary-color);
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
-      }
-
       mat-icon {
         width: var(--icon-size-sm);
         height: var(--icon-size-sm);
@@ -196,39 +188,6 @@
     .hash-options-label {
       font-size: var(--font-size-sm);
       color: var(--dim-color);
-    }
-  }
-
-  .hash-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 10px;
-    font-size: var(--font-size-xs);
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    background: rgba(var(--primary-color-rgb), 0.1);
-    color: var(--primary-color);
-    box-shadow: var(--box-shadow);
-    border-radius: var(--radius-lg);
-    transition: all 0.2s ease;
-
-    &:hover:not(:disabled) {
-      background: rgba(var(--primary-color-rgb), 0.2);
-    }
-
-    &:disabled {
-      opacity: 0.7;
-      cursor: wait;
-    }
-
-    &.loading {
-      padding-left: 6px;
-    }
-
-    mat-spinner {
-      margin-right: 2px;
     }
   }
 
@@ -323,17 +282,11 @@
     .bulk-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: end;
 
       .bulk-label {
         font-size: var(--font-size-sm);
         font-weight: 500;
-        color: var(--primary-color);
-      }
-
-      .bulk-actions {
-        display: flex;
-        gap: 4px;
       }
     }
 
